@@ -1,0 +1,1578 @@
+   Compiling og-core v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-core)
+   Compiling wgpu-hal v30.0.1 (/Volumes/app/origin-engine-measure/third_party/wgpu-hal)
+   Compiling og-blob v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-blob)
+   Compiling og-bake v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-bake)
+   Compiling og-tests-web v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tests-web)
+   Compiling og-lanes v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-lanes)
+   Compiling og-core-derive v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-core-derive)
+   Compiling og-ecs v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ecs)
+   Compiling og-tilemap v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tilemap)
+   Compiling og-i18n v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-i18n)
+   Compiling og-geom v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+   Compiling og-net v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-net)
+   Compiling og-idl v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-idl)
+   Compiling og-audio v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-audio)
+   Compiling og-input v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-input)
+   Compiling og-anim v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-anim)
+   Compiling og-nav v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-nav)
+   Compiling og-tween v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tween)
+   Compiling og-physics v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-physics)
+   Compiling og-timeline v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-timeline)
+   Compiling og-probe v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+   Compiling og-ai v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ai)
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling og-render v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+   Compiling og-ui v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+   Compiling og-cook v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+   Compiling og-api v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-api)
+   Compiling og-tests v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tests)
+   Compiling og-runtime v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-runtime)
+   Compiling og-cli v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-cli)
+   Compiling og-host-web v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-host-web)
+    Finished `test` profile [unoptimized] target(s) in 2m 22s
+────────────
+ Nextest run ID 5bf377c4-b4be-423d-ad2c-6318ff97e6a4 with nextest profile: default
+    Starting 1360 tests across 231 binaries (18 tests skipped)
+        PASS [   0.078s] (   1/1360) og-cook::animation khr_animation_pointer_onto_node_visibility_cooks_to_a_visibility_track
+        PASS [   2.635s] (   2/1360) og-cook::animation a_cooked_walker_plays_in_og_anim
+        PASS [   3.426s] (   3/1360) og-cook::animation skins_and_morphs_follow_the_cooked_vertices
+        PASS [   0.929s] (   4/1360) og-cook::template meshes_keep_their_triangles_and_bounds
+        PASS [   0.153s] (   5/1360) og-cook::template sounds_fonts_and_scenes_load_as_authored
+        PASS [   1.116s] (   6/1360) og-cook::template textures_decode_close_to_their_sources
+        PASS [   5.743s] (   7/1360) og-cook::animation markers_come_from_extras_and_import_settings
+        PASS [   6.077s] (   8/1360) og-cook::template a_stale_blob_is_refused_with_both_stamps
+        PASS [   6.140s] (   9/1360) og-cook::animation cooked_clips_resample_to_the_gltf_sampler_within_1e_5
+        PASS [   6.192s] (  10/1360) og-cook::template a_gltf_edit_recooks_exactly_its_outputs
+        PASS [   6.195s] (  11/1360) og-cook::template cooked_models_render_the_gltf_reference_scene
+        PASS [   0.215s] (  12/1360) og-tests::atmosphere a_replaced_mesh_draws_its_new_shape
+        PASS [   0.327s] (  13/1360) og-tests::atmosphere metaballs_merge_within_reach
+        PASS [   2.209s] (  14/1360) og-tests::atmosphere fog_hides_the_distance_not_the_foreground
+        PASS [   3.000s] (  15/1360) og-tests::atmosphere day_night_darkens_towards_night_with_stars
+        PASS [   2.660s] (  16/1360) og-tests::atmosphere shader_hooks_dissolve_and_sway
+        PASS [   1.597s] (  17/1360) og-tests::atmosphere shader_hooks_match_their_reference
+        PASS [   0.802s] (  18/1360) og-tests::atmosphere water_2d_follows_its_surface_in_the_sprite_order
+        PASS [   1.096s] (  19/1360) og-tests::atmosphere ten_fluids_draw_in_one_frame_and_a_group_blends_its_colours
+        PASS [   4.550s] (  20/1360) og-tests::atmosphere atmosphere_scenes_match_their_references
+        PASS [   1.481s] (  21/1360) og-tests::atmosphere water_darkens_with_depth_foams_ripples_and_reflects
+        PASS [   2.099s] (  22/1360) og-tests::atmosphere water_scenes_match_their_references
+        PASS [  13.532s] (  23/1360) og-cook::animation a_clip_is_mirrored_at_cook_time
+        PASS [   0.025s] (  24/1360) og-ai::ai a_check_against_a_tuning_field_reads_it_every_time
+        PASS [   0.042s] (  25/1360) og-ai::ai a_guard_patrols_chases_on_sight_bites_on_a_cooldown_and_flees_when_hurt
+        PASS [   0.019s] (  26/1360) og-ai::ai a_resource_fact_redirects_the_patrol_and_the_selector_is_reactive
+        PASS [   0.017s] (  27/1360) og-ai::ai a_restart_puts_a_machine_in_its_initial_state_and_a_tree_at_its_root
+        PASS [   0.019s] (  28/1360) og-ai::ai a_state_machine_moves_on_facts_and_timers_and_runs_enter_and_exit
+        PASS [   0.015s] (  29/1360) og-ai::ai an_agent_does_not_hear_its_own_sounds_nor_its_children_s
+        PASS [   0.015s] (  30/1360) og-ai::ai malformed_behaviours_are_refused_with_their_line_and_the_fix
+        PASS [   3.012s] (  31/1360) og-tests::culling auto_culls_only_large_scenes_on_the_gpu
+        PASS [   0.118s] (  32/1360) og-ai::ai two_runs_and_a_restored_snapshot_decide_the_same
+        PASS [   0.061s] (  33/1360) og-ai::ai walls_the_view_cone_and_range_hide_the_target_and_noises_are_heard_within_hearing
+        PASS [   0.022s] (  34/1360) og-anim retarget::tests::names_of_each_scheme_land_on_their_bones
+        PASS [   0.025s] (  35/1360) og-anim rig2d::tests::a_chain_of_any_length_reaches_and_curls_the_asked_way
+        PASS [   0.018s] (  36/1360) og-anim rig2d::tests::a_child_armature_is_posed_and_drawn_in_its_slot
+        PASS [   0.018s] (  37/1360) og-anim rig2d::tests::a_child_armature_wears_its_skin_of_the_name_the_rig_wears
+        PASS [   0.026s] (  38/1360) og-anim rig2d::tests::a_path_constraint_places_its_bones_along_the_curve
+        PASS [   0.018s] (  39/1360) og-anim rig2d::tests::a_region_is_a_quad_of_its_rect
+        PASS [   0.017s] (  40/1360) og-anim rig2d::tests::a_skin_swaps_the_default_attachments_wherever_they_show
+        PASS [   0.015s] (  41/1360) og-anim rig2d::tests::a_transform_constraint_moves_its_bones_by_the_mix_towards_the_target
+        PASS [   0.014s] (  42/1360) og-anim rig2d::tests::bezier_keys_follow_their_curve_not_the_line
+        PASS [   0.014s] (  43/1360) og-anim rig2d::tests::bounding_boxes_are_the_polygons_the_pose_shows
+        PASS [   0.017s] (  44/1360) og-anim rig2d::tests::clips_turn_bones_relative_to_setup_and_switch_slots
+        PASS [   0.016s] (  45/1360) og-anim rig2d::tests::colour_offsets_add_after_the_multiplier_and_animate
+        PASS [   0.017s] (  46/1360) og-anim rig2d::tests::ik_keys_animate_the_weight_and_bend_and_the_target_weight_multiplies
+        PASS [   0.015s] (  47/1360) og-anim rig2d::tests::mistakes_are_refused_with_their_line
+        PASS [   0.015s] (  48/1360) og-anim rig2d::tests::one_and_two_bone_ik_give_the_poses_they_always_gave
+        PASS [   0.017s] (  49/1360) og-anim rig2d::tests::order_keys_redraw_the_slots_back_to_front
+        PASS [   0.026s] (  50/1360) og-anim rig2d::tests::rotate_keys_turn_the_asked_way_through_whole_turns
+        PASS [   0.014s] (  51/1360) og-anim rig2d::tests::skew_turns_a_bones_y_axis_apart_from_its_x_axis
+        PASS [   0.015s] (  52/1360) og-anim rig2d::tests::the_text_parses_back_equal
+        PASS [   0.015s] (  53/1360) og-anim rig2d::tests::trig_from_arithmetic_matches_the_library
+        PASS [   0.016s] (  54/1360) og-anim rig2d::tests::two_bone_ik_reaches_and_bends_the_asked_way
+        PASS [   0.014s] (  55/1360) og-anim rig2d::tests::weighted_and_deformed_vertices_follow_their_bones
+        PASS [   0.019s] (  56/1360) og-anim skeleton2d::tests::a_child_armatures_events_fire_tagged_with_its_name
+        PASS [   0.021s] (  57/1360) og-anim skeleton2d::tests::a_child_armatures_events_fire_when_its_parent_plays_backwards
+        PASS [   0.022s] (  58/1360) og-anim::flipbook a_clip_change_restarts_a_seek_is_silent_and_speed_scales
+        PASS [   0.013s] (  59/1360) og-anim::flipbook a_looping_clip_advances_at_its_rate_and_fires_once_per_pass
+        PASS [   0.018s] (  60/1360) og-anim::flipbook a_snapshot_keeps_the_playback_and_the_transcript_is_the_same
+        PASS [   0.013s] (  61/1360) og-anim::flipbook ping_pong_turns_at_the_ends_and_once_holds_and_finishes
+        PASS [   0.016s] (  62/1360) og-anim::flipbook slow_motion_and_hit_stop_slow_and_hold_the_frame
+        PASS [   0.017s] (  63/1360) og-anim::flipbook the_sheet_reads_grid_and_named_frames_and_round_trips
+        PASS [   4.122s] (  64/1360) og-tests::atmosphere weather_presets_match_their_references
+        PASS [   0.059s] (  65/1360) og-anim::footlock a_planted_foot_stays_put_through_root_motion_and_a_cross_fade
+        PASS [   0.025s] (  66/1360) og-anim::footlock a_restore_mid_plant_keeps_the_foot_where_it_was
+        PASS [   0.017s] (  67/1360) og-anim::footlock the_walks_plants_are_retargetings
+        PASS [   0.034s] (  68/1360) og-anim::graph a_guarded_fade_survives_a_snapshot
+        PASS [   0.041s] (  69/1360) og-anim::graph a_mirrored_graph_clip_plays_as_the_clip_og_anim_mirror_makes
+        PASS [   0.043s] (  70/1360) og-anim::graph an_interrupt_rule_says_which_transitions_may_cut_a_fade
+        PASS [   0.012s] (  71/1360) og-anim::graph bad_graph_text_is_refused_with_its_line
+        PASS [   0.022s] (  72/1360) og-anim::graph blend1d_mixes_walk_and_run_and_the_additive_layer_adds
+        PASS [   0.028s] (  73/1360) og-anim::graph transitions_fire_when_their_condition_holds_and_cross_fade
+        PASS [   0.031s] (  74/1360) og-anim::ik a_head_looks_at_a_world_target_with_its_up_towards_the_hint
+        PASS [   0.019s] (  75/1360) og-anim::ik a_hinged_knee_never_bends_backwards_for_two_bone_ik
+        PASS [   0.017s] (  76/1360) og-anim::ik a_joint_limit_splits_swing_from_twist_and_clamps_each
+        PASS [   0.019s] (  77/1360) og-anim::ik a_look_outside_its_angles_is_clamped_and_shared_down_the_spine
+        PASS [   0.019s] (  78/1360) og-anim::ik fabrik_keeps_a_limited_shoulder_inside_its_cone
+        PASS [  11.207s] (  79/1360) og-physics::pile a_pen_on_the_lanes_and_off_them_ends_in_the_same_world
+        PASS [   0.016s] (  80/1360) og-anim::ik fabrik_reaches_and_clamps
+        PASS [   0.014s] (  81/1360) og-anim::ik two_bone_clamps_an_unreachable_target
+        PASS [   0.020s] (  82/1360) og-anim::ik half_weight_turns_halfway_and_a_bad_tip_is_an_error
+        PASS [   0.015s] (  83/1360) og-anim::ik two_bone_reaches_a_reachable_target_and_bends_to_the_pole
+        PASS [   0.016s] (  84/1360) og-anim::ik world_targets_are_taken_into_the_skeletons_frame
+        PASS [   0.032s] (  85/1360) og-anim::layers a_mask_limits_an_override_layer_to_its_branch_by_weight
+        PASS [   0.032s] (  86/1360) og-anim::layers a_synced_layer_plays_at_its_leaders_phase
+        PASS [   0.015s] (  87/1360) og-anim::layers a_transition_inside_a_group_keeps_the_phase
+        PASS [   0.027s] (  88/1360) og-anim::output clip_weights_drive_the_component
+        PASS [   0.015s] (  89/1360) og-anim::output component_weights_write_through
+        PASS [   0.015s] (  90/1360) og-anim::output the_bind_pose_palette_is_identity_and_a_clip_moves_it
+        PASS [   0.020s] (  91/1360) og-anim::output root_motion_moves_the_transform_and_pins_the_hips
+        PASS [   0.021s] (  92/1360) og-anim::output unregistered_assets_are_refused_with_the_entity
+        PASS [   0.032s] (  93/1360) og-anim::playback a_clip_change_cross_fades_and_fires_both_clips_markers_by_weight
+        PASS [   0.017s] (  94/1360) og-anim::playback a_marker_at_zero_fires_on_the_first_tick_and_at_every_loop
+        PASS [   0.018s] (  95/1360) og-anim::playback a_seek_moves_without_firing_and_a_one_shot_holds_its_end
+        PASS [   0.021s] (  96/1360) og-anim::playback a_stepped_player_holds_each_pose_for_its_step
+        PASS [   0.017s] (  97/1360) og-anim::playback backwards_playback_fires_markers_on_the_way_back
+        PASS [   0.021s] (  98/1360) og-anim::playback double_speed_fires_twice_as_often
+        PASS [   0.012s] (  99/1360) og-anim::playback stepped_time_floors_to_the_step_and_ends_on_the_last_frame
+        PASS [   0.025s] ( 100/1360) og-anim::playback markers_fire_in_the_tick_playback_passes_them
+        PASS [   0.017s] ( 101/1360) og-anim::playback the_pose_at_a_sampled_time_is_the_clips_sample
+        PASS [   0.031s] ( 102/1360) og-anim::retarget a_mirrored_walk_moves_each_foot_as_the_other_did_reflected
+        PASS [   0.017s] ( 103/1360) og-anim::retarget a_rigs_foot_height_puts_its_feet_on_the_ground_not_where_its_rest_pose_has_them
+        PASS [   0.014s] ( 104/1360) og-anim::retarget a_wave_turns_the_a_posed_arm_as_the_walker_turns_its_t_posed_one
+        PASS [   0.020s] ( 105/1360) og-anim::retarget a_walk_on_longer_legs_keeps_its_planted_feet_on_the_ground
+        PASS [   0.016s] ( 106/1360) og-anim::retarget fingers_are_humanoid_bones_and_a_curl_carries_over
+        PASS [   0.012s] ( 107/1360) og-anim::retarget sides_swap_in_every_schemes_names
+        PASS [   0.018s] ( 108/1360) og-anim::retarget the_retargeted_clip_plays_on_the_tall_rig
+        PASS [   0.016s] ( 109/1360) og-anim::retarget the_schemes_are_detected_from_the_names
+        PASS [   0.016s] ( 110/1360) og-anim::retarget twist_bones_share_their_segments_twist_when_a_clip_for_the_rig_leaves_them_still
+        PASS [   0.018s] ( 111/1360) og-anim::retarget twist_bones_share_their_segments_twist
+        PASS [   0.017s] ( 112/1360) og-anim::retarget unitys_legacy_thumb_names_start_at_the_metacarpal
+        PASS [   0.025s] ( 113/1360) og-anim::skeleton2d a_looping_clip_wraps_and_fires_each_event_once_per_pass
+        PASS [   0.015s] ( 114/1360) og-anim::skeleton2d a_one_shot_holds_its_end_and_a_clip_change_restarts_at_zero
+        PASS [   0.013s] ( 115/1360) og-anim::skeleton2d a_restored_snapshot_continues_without_replaying_events
+        PASS [   0.014s] ( 116/1360) og-anim::skeleton2d an_ik_target_in_the_entitys_frame_is_reached_and_flip_mirrors_it
+        PASS [   0.013s] ( 117/1360) og-anim::skeleton2d an_ik_target_on_a_chain_of_three_bones_is_reached_and_its_error_is_the_tips_distance
+        PASS [   0.014s] ( 118/1360) og-anim::skeleton2d bounding_boxes_follow_the_pose_in_the_entitys_frame_and_restore_with_snapshots
+        PASS [   0.015s] ( 119/1360) og-anim::skeleton2d the_skin_a_skeleton_wears_is_what_its_pose_shows
+        PASS [   0.028s] ( 120/1360) og-anim::spring a_model_space_spring_ignores_the_entitys_motion
+        PASS [   0.031s] ( 121/1360) og-anim::spring a_restore_mid_swing_continues_the_same
+        PASS [   0.016s] ( 122/1360) og-anim::spring a_single_joint_spring_turns_that_joint_only
+        PASS [   0.027s] ( 123/1360) og-anim::spring a_tail_lags_behind_the_moving_body_then_swings_back_and_settles
+        PASS [   0.044s] ( 124/1360) og-anim::spring colliders_keep_a_drooping_tail_outside_them
+        PASS [   0.053s] ( 125/1360) og-anim::spring gravity_droops_a_soft_tail_more_than_a_stiff_one
+        PASS [   0.029s] ( 126/1360) og-anim::visibility a_cross_fade_swaps_at_its_middle
+        PASS [   0.062s] ( 127/1360) og-anim::spring tip_frequency_and_damping_soften_a_chain_towards_its_tip
+        PASS [   0.015s] ( 128/1360) og-anim::visibility a_visibility_channel_is_held_and_hides_what_is_under_its_node
+        PASS [   0.026s] ( 129/1360) og-anim::visibility a_snapshot_keeps_the_flags_and_the_hashes
+        PASS [   0.013s] ( 130/1360) og-anim::visibility blends_take_the_heavier_poses_flags
+        PASS [   0.012s] ( 131/1360) og-anim::visibility mirroring_moves_a_visibility_channel_to_the_other_side
+        PASS [   0.014s] ( 132/1360) og-anim::visibility retargeting_carries_visibility_by_bone_and_by_name
+        PASS [   0.027s] ( 133/1360) og-api::modules physics_audio_animation_and_input_records_have_the_idl_layouts
+        PASS [   0.079s] ( 134/1360) og-api::modules theme_color_names_every_palette_role
+        PASS [   0.063s] ( 135/1360) og-audio::audio a_late_sink_hears_the_playing_loop_and_a_despawn_silences_it
+        PASS [   0.040s] ( 136/1360) og-audio::audio a_one_shot_ends_on_its_tick
+        PASS [   0.114s] ( 137/1360) og-audio::audio a_spatial_source_moving_left_to_right_pans_left_to_right
+        PASS [   0.710s] ( 138/1360) og-audio::audio a_loop_crosses_its_seam_without_a_discontinuity
+        PASS [   0.041s] ( 139/1360) og-audio::audio pitch_two_halves_the_duration
+        PASS [   0.993s] ( 140/1360) og-audio::audio the_limiter_keeps_summed_peaks_at_or_below_one
+        PASS [   1.005s] ( 141/1360) og-audio::audio the_scripted_scene_renders_to_a_wav
+        PASS [   3.774s] ( 142/1360) og-tests::effects ambient_occlusion_darkens_contacts
+        PASS [   0.314s] ( 143/1360) og-tests::effects beams_scroll_with_the_tick
+        PASS [   0.780s] ( 144/1360) og-tests::effects blendshapes_move_vertices_by_their_weights
+        PASS [   1.510s] ( 145/1360) og-audio::chunks a_chunked_sound_in_a_streaming_group_takes_its_stand_in_handle
+        PASS [   0.476s] ( 146/1360) og-tests::effects camera_shake_moves_the_view
+        PASS [   0.452s] ( 147/1360) og-tests::effects colour_grading_reads_the_lut
+        PASS [   0.931s] ( 148/1360) og-audio::chunks a_missing_chunk_plays_silence_and_a_bad_one_is_refused
+        PASS [   8.505s] ( 149/1360) og-tests::effects a_600_tick_cpu_particle_run_is_deterministic
+        PASS [   1.496s] ( 150/1360) og-tests::effects cpu_particles_bounce_off_the_scene_colliders
+        PASS [   8.074s] ( 151/1360) og-tests::effects a_600_tick_gpu_particle_run_is_deterministic
+        PASS [   6.448s] ( 152/1360) og-audio::audio command_stream_is_deterministic_and_in_the_world_hash
+        PASS [   0.512s] ( 153/1360) og-tests::effects dissolved_pixels_leave_no_trace_in_the_prepass
+        PASS [  22.436s] ( 154/1360) og-cook::template cooking_twice_gives_identical_bytes
+        PASS [   0.759s] ( 155/1360) og-audio::chunks chunk_distances_rank_chunks_by_how_soon_a_playhead_reaches_them
+        PASS [   2.678s] ( 156/1360) og-tests::effects depth_of_field_blurs_outside_the_focus_band
+        PASS [   2.117s] ( 157/1360) og-audio::decode a_sound_is_indexed_at_insert_and_decoded_by_the_helper
+        PASS [   4.246s] ( 158/1360) og-tests::effects decals_project_onto_surfaces_and_are_capped
+        PASS [   0.054s] ( 159/1360) og-audio::decode answers_of_another_length_or_key_are_refused
+        PASS [   3.070s] ( 160/1360) og-tests::effects effects_off_add_no_passes
+        PASS [   0.828s] ( 161/1360) og-tests::effects glow_is_order_independent_and_flash_tints
+        PASS [   0.462s] ( 162/1360) og-tests::effects gpu_and_cpu_paths_simulate_the_same_particles
+        PASS [   1.649s] ( 163/1360) og-audio::decode the_decode_ahead_is_bounded_and_crosses_the_wrap
+        PASS [   3.336s] ( 164/1360) og-tests::effects every_effect_pass_together_under_taa
+        PASS [   2.845s] ( 165/1360) og-tests::effects god_rays_shine_between_the_columns
+        PASS [   0.527s] ( 166/1360) og-tests::effects outlines_follow_silhouettes
+        PASS [   0.765s] ( 167/1360) og-tests::effects particles_bounce_off_the_depth_buffer
+        PASS [   0.784s] ( 168/1360) og-tests::effects skinned_cylinder_bends_with_its_palette
+        PASS [   0.205s] ( 169/1360) og-tests::effects spawn_counts_follow_rate_bursts_and_lifetime
+        PASS [   0.334s] ( 170/1360) og-tests::effects soft_particles_fade_against_the_scene
+        PASS [   3.147s] ( 171/1360) og-tests::effects motion_blur_follows_object_and_camera_motion
+        PASS [   0.211s] ( 172/1360) og-tests::effects trails_remember_the_path_for_their_lifetime
+        PASS [   0.219s] ( 173/1360) og-tests::effects two_d_emitters_draw_as_sprites
+        PASS [   0.206s] ( 174/1360) og-tests::effects two_d_lighting_leaves_ui_layers_alone
+        PASS [   0.953s] ( 175/1360) og-tests::effects toon_rim_flash_and_dissolve
+        PASS [   0.326s] ( 176/1360) og-tests::effects two_d_lights_cast_soft_shadows_from_occluders
+        PASS [   7.941s] ( 177/1360) og-audio::chunks with_a_loader_a_chunk_is_read_when_a_voice_reaches_it
+        PASS [   0.054s] ( 178/1360) og-audio::decode the_shared_fixture_decodes_to_its_hash_frame_by_frame
+        PASS [   0.135s] ( 179/1360) og-audio::mix a_crossfade_ramps_over_its_fade
+        PASS [   0.057s] ( 180/1360) og-audio::mix a_reverb_send_leaves_a_tail
+        PASS [   0.062s] ( 181/1360) og-audio::mix a_reverb_zone_eases_the_shared_reverb_by_where_the_listener_is
+        PASS [   0.147s] ( 182/1360) og-audio::mix a_silent_stand_in_becomes_its_sound_in_the_voice_already_playing
+        PASS [   0.107s] ( 183/1360) og-audio::mix a_start_part_way_plays_the_clip_from_its_offset_to_the_sample
+        PASS [   0.684s] ( 184/1360) og-tests::exposure a_frame_before_the_first_tick_does_not_start_the_adaptation
+        PASS [   0.116s] ( 185/1360) og-audio::mix bus_filters_shape_their_bus_only
+        PASS [   0.125s] ( 186/1360) og-audio::mix ducking_turns_music_down_under_effects_and_back
+        PASS [   0.101s] ( 187/1360) og-audio::mix occlusion_and_distance_dull_a_source
+        PASS [   0.085s] ( 188/1360) og-audio::mix scheduled_starts_land_on_their_sample_and_stems_stay_aligned
+        PASS [   0.064s] ( 189/1360) og-audio::mix the_compressor_reduces_a_loud_bus
+        PASS [   1.216s] ( 190/1360) og-tests::effects vignette_aberration_grain_and_flash
+        PASS [   0.460s] ( 191/1360) og-tests::exposure zero_speeds_meter_the_frame_at_once
+        PASS [   1.693s] ( 192/1360) og-tests::exposure adaptation_converges_identically_and_survives_a_restore
+        PASS [   1.186s] ( 193/1360) og-tests::fluids3d a_local_light_lights_the_fluid
+        PASS [   1.849s] ( 194/1360) og-audio::mix the_mix_is_the_same_twice_and_listen_returns_its_last_second
+        PASS [   0.042s] ( 195/1360) og-audio::mix the_music_clock_beats_and_a_stinger_lands_on_the_bar_line
+        PASS [   0.128s] ( 196/1360) og-audio::mix the_voice_cap_culls_the_lowest_priority
+        PASS [   0.060s] ( 197/1360) og-audio::parented a_listener_under_a_rig_hears_from_the_rig
+        PASS [   0.053s] ( 198/1360) og-audio::parented a_source_on_a_child_follows_its_moving_parent
+        PASS [   0.017s] ( 199/1360) og-audio::parented a_zone_under_a_parent_is_where_its_parent_puts_it
+        PASS [   0.053s] ( 200/1360) og-audio::propagation a_cone_turns_a_source_down_away_from_its_front
+        PASS [   0.634s] ( 201/1360) og-tests::fluids3d smoothing_melts_the_spheres_into_one_surface
+        PASS [   1.292s] ( 202/1360) og-tests::fluids3d fluid_3d_matches_its_reference
+        PASS [   0.392s] ( 203/1360) og-tests::fluids3d the_basin_wall_hides_the_fluid_behind_it
+        PASS [   0.364s] ( 204/1360) og-tests::fluids3d the_drop_is_drawn_in_its_particles_colours
+        PASS [   0.269s] ( 205/1360) og-tests::geometry a_wireframe_draws_its_edges_not_its_faces
+        PASS [   0.775s] ( 206/1360) og-tests::fluids3d the_pool_tints_shows_through_and_refracts_what_lies_behind_it
+        PASS [   0.523s] ( 207/1360) og-tests::geometry debug_overlay_matches_its_reference
+        PASS [   0.443s] ( 208/1360) og-tests::geometry geometry_procedural_matches_its_reference
+        PASS [   1.955s] ( 209/1360) og-audio::propagation a_walk_with_doppler_cones_and_the_hrtf_is_the_same_twice_and_across_a_restore
+        PASS [   0.384s] ( 210/1360) og-tests::geometry lines_match_their_reference
+        PASS [   0.443s] ( 211/1360) og-audio::propagation doppler_shifts_by_the_motion_along_the_line_between_source_and_listener
+        PASS [   0.150s] ( 212/1360) og-audio::propagation the_hrtf_delays_and_shadows_the_far_ear
+        PASS [   0.447s] ( 213/1360) og-tests::geometry points_match_their_reference
+        PASS [   9.710s] ( 214/1360) og-audio::decode the_mix_is_the_same_whatever_the_helper_did
+        PASS [   0.155s] ( 215/1360) og-audio::voices a_virtual_voice_resumes_where_it_would_have_been
+        PASS [   1.353s] ( 216/1360) og-tests::geometry geometry_shapes_matches_its_reference
+        PASS [   0.085s] ( 217/1360) og-audio::voices retrigger_restarts_a_sound_without_a_level_change
+        PASS [   0.471s] ( 218/1360) og-tests::geometry wireframe_matches_its_reference
+        PASS [   0.116s] ( 219/1360) og-audio::voices the_windowed_sinc_resamples_without_images_and_linear_is_kept
+        PASS [   0.031s] ( 220/1360) og-bake atlas::tests::charts_keep_every_triangle_and_stay_in_the_page
+        PASS [   0.034s] ( 221/1360) og-bake atlas::tests::charts_past_the_largest_page_spill_into_more_pages
+        PASS [   0.035s] ( 222/1360) og-bake atlas::tests::the_same_input_packs_the_same_way
+        PASS [   0.024s] ( 223/1360) og-bake bvh::tests::a_back_face_is_reported_as_one
+        PASS [   0.048s] ( 224/1360) og-bake bvh::tests::the_tree_finds_what_brute_force_finds
+        PASS [   0.021s] ( 225/1360) og-bake lightmap::tests::a_furnace_box_bakes_to_its_emission
+        PASS [   0.044s] ( 226/1360) og-bake lightmap::tests::coloured_walls_bleed_onto_the_floor
+        PASS [   0.016s] ( 227/1360) og-bake lightmap::tests::dilation_fills_the_gutter_from_its_neighbours
+        PASS [   0.013s] ( 228/1360) og-bake trace::tests::a_lit_floor_returns_its_diffuse_radiance
+        PASS [   0.019s] ( 229/1360) og-bake trace::tests::a_point_light_falls_off_as_the_renderer_draws_it
+        PASS [   0.477s] ( 230/1360) og-tests::gfx a_reflection_probe_puts_the_room_in_the_chrome_sphere
+        PASS [   0.023s] ( 231/1360) og-bake trace::tests::a_ray_inside_a_closed_box_reports_it
+        PASS [   0.018s] ( 232/1360) og-bake trace::tests::a_rect_light_lights_its_front_only
+        PASS [   0.024s] ( 233/1360) og-bake trace::tests::an_open_sky_gives_its_radiance_from_every_direction
+        PASS [   0.032s] ( 234/1360) og-bake trace::tests::cosine_directions_stay_above_the_surface_and_average_its_normal
+        PASS [   0.407s] ( 235/1360) og-tests::gfx a_sprite_draws_the_layer_of_its_texture_array
+        PASS [   0.029s] ( 236/1360) og-bake volume::tests::a_probe_inside_a_wall_takes_its_neighbours_light
+        PASS [   0.019s] ( 237/1360) og-bake volume::tests::a_uniform_sky_gives_its_radiance_for_every_normal
+        PASS [   0.030s] ( 238/1360) og-bake volume::tests::the_harmonics_point_at_where_the_light_comes_from
+        PASS [   0.036s] ( 239/1360) og-blob::blob a_stale_blob_is_refused_with_the_path_and_both_stamps
+        PASS [   0.028s] ( 240/1360) og-blob::blob damaged_files_are_refused
+        PASS [   0.017s] ( 241/1360) og-blob::blob sections_come_back_unchanged_and_aligned
+        PASS [   0.018s] ( 242/1360) og-blob::blob tables_are_viewed_in_place_when_aligned_and_copied_otherwise
+        PASS [   0.016s] ( 243/1360) og-blob::blob the_same_calls_write_the_same_bytes
+        PASS [   0.483s] ( 244/1360) og-tests::gfx ao_gtao_matches_its_reference
+        PASS [   1.413s] ( 245/1360) og-audio::voices a_run_with_sinc_virtual_voices_and_retriggers_is_the_same_twice_and_across_a_restore
+        PASS [   0.694s] ( 246/1360) og-tests::gfx antialiasing_smooths_edges
+        PASS [   0.453s] ( 247/1360) og-tests::gfx ao_ssao_matches_its_reference
+        PASS [   8.894s] ( 248/1360) og-tests::effects the_high_preset_refines_ao_reflections_and_fog_and_medium_moves_nothing
+        PASS [   0.867s] ( 249/1360) og-tests::gfx array_particles_take_their_layers_by_age_or_at_random
+        PASS [   1.311s] ( 250/1360) og-cli::cli a_2d_publish_build_refuses_the_3d_world_by_scene_and_line
+        PASS [   0.639s] ( 251/1360) og-tests::gfx array_sprites_glow_and_draw_in_the_overlay
+        PASS [   0.325s] ( 252/1360) og-cli::cli api_check_passes_on_the_repository
+        PASS [   0.110s] ( 253/1360) og-cli::cli api_gen_refuses_an_invalid_idl_and_names_the_line
+        PASS [   0.876s] ( 254/1360) og-tests::gfx auto_exposure_meters_the_frame
+        PASS [   0.377s] ( 255/1360) og-tests::gfx billboards_sort_among_transparent_meshes
+        PASS [   0.200s] ( 256/1360) og-cli::cli api_gen_wiki_writes_only_the_wiki_and_removes_stale_pages
+        PASS [  39.261s] ( 257/1360) og-anim::walk a_3600_tick_walk_gives_the_same_hash_twice_and_after_a_restore_at_1800
+        PASS [   0.077s] ( 258/1360) og-cli::cli build_refuses_a_bad_publish_setting_by_line
+        PASS [   0.794s] ( 259/1360) og-tests::gfx billboards_face_each_camera_sort_back_to_front_and_cull_by_bounds
+        PASS [   0.365s] ( 260/1360) og-tests::gfx bloom_spreads_light_beyond_the_emitters
+        PASS [   0.449s] ( 261/1360) og-tests::gfx bloom_matches_its_reference
+        PASS [   0.250s] ( 262/1360) og-cli::cli check_synthesises_the_configuration_a_project_does_not_have
+        PASS [   2.027s] ( 263/1360) og-cli::cli api_check_detects_a_hand_edit_and_a_stray_file_and_gen_repairs_them
+        PASS [   0.105s] ( 264/1360) og-cli::cli compare_prints_the_iou_and_delta_e_and_writes_the_sheet
+        PASS [   0.034s] ( 265/1360) og-cli::cli cook_defaults_the_engine_component_fields_a_scene_omits
+        PASS [   0.132s] ( 266/1360) og-cli::cli cook_watch_times_one_changed_asset_and_report_prints_the_slowest
+        PASS [   0.425s] ( 267/1360) og-tests::gfx cascades_200m_matches_its_reference
+        PASS [   0.490s] ( 268/1360) og-tests::gfx capture_of_a_bgra_output_matches_rgba
+        PASS [   0.754s] ( 269/1360) og-cli::cli check_never_reads_a_failing_tsrs_as_clean
+        PASS [   0.580s] ( 270/1360) og-tests::gfx cascades_cover_the_view_near_to_far
+        PASS [   0.380s] ( 271/1360) og-cli::cli dev_reports_the_check_of_each_save_and_reloads_anyway
+        PASS [   0.037s] ( 272/1360) og-cli::cli doctor_names_a_fix_for_every_missing_tool
+        PASS [   0.483s] ( 273/1360) og-cli::cli dev_stopped_by_a_signal_stops_its_game_and_what_it_started
+        PASS [   0.056s] ( 274/1360) og-cli::cli migrate_three_rewrites_a_file_and_lists_what_is_not_mechanical
+        PASS [   0.083s] ( 275/1360) og-cli::cli project_commands_without_a_project_name_the_fix
+        PASS [   1.326s] ( 276/1360) og-cli::cli check_finds_tsrs_by_its_chain_and_reports_diagnostics_as_values
+        PASS [   0.814s] ( 277/1360) og-tests::gfx decals_match_their_reference
+        PASS [   0.059s] ( 278/1360) og-cli::cli style_pack_packs_nine_patches_and_rewrites_the_style_file
+        PASS [   0.681s] ( 279/1360) og-tests::gfx dof_low_matches_its_reference
+        PASS [   0.481s] ( 280/1360) og-cli::cli run_test_and_build_stop_on_a_type_error_before_bundling
+        PASS [   0.025s] ( 281/1360) og-cli::cli version_names_og_and_the_engine
+        PASS [   0.029s] ( 282/1360) og-cli::bin/og check::tests::a_configuration_error
+        PASS [   0.016s] ( 283/1360) og-cli::bin/og check::tests::a_diagnostic_without_a_location
+        PASS [   0.018s] ( 284/1360) og-cli::bin/og check::tests::a_failing_checker_is_never_clean
+        PASS [   0.021s] ( 285/1360) og-cli::bin/og check::tests::a_located_diagnostic
+        PASS [   0.015s] ( 286/1360) og-cli::bin/og check::tests::a_message_holding_the_diagnostic_syntax
+        PASS [   0.018s] ( 287/1360) og-cli::bin/og check::tests::a_path_with_parentheses
+        PASS [   0.017s] ( 288/1360) og-cli::bin/og check::tests::continuation_lines_join_the_message_above
+        PASS [   0.014s] ( 289/1360) og-cli::bin/og check::tests::empty_output_is_no_diagnostics_and_status_0_is_clean
+        PASS [   0.398s] ( 290/1360) og-cli::cli test_filters_unit_and_playtest_paths_and_refuses_no_match
+        PASS [   0.017s] ( 291/1360) og-cli::bin/og compare::tests::a_frame_against_itself_is_iou_one_and_no_difference
+        PASS [   0.030s] ( 292/1360) og-cli::bin/og compare::tests::a_shifted_recoloured_copy_gives_the_computed_values
+        PASS [   0.015s] ( 293/1360) og-cli::bin/og compare::tests::arguments
+        PASS [   0.012s] ( 294/1360) og-cli::bin/og compare::tests::delta_e00_matches_the_published_test_data
+        PASS [   0.054s] ( 295/1360) og-cli::bin/og compare::tests::align_takes_the_framing_out_and_a_size_mismatch_is_refused
+        PASS [   0.018s] ( 296/1360) og-cli::bin/og compare::tests::lab_matches_the_srgb_primaries
+        PASS [   0.029s] ( 297/1360) og-cli::bin/og compare::tests::transparency_is_the_silhouette_when_an_image_has_it
+        PASS [   0.036s] ( 298/1360) og-cli::bin/og compare::tests::the_sheet_puts_three_labelled_panels_side_by_side
+        PASS [   1.338s] ( 299/1360) og-tests::gfx dof_high_matches_its_reference
+        PASS [   0.025s] ( 300/1360) og-cli::bin/og contact_sheet::tests::picks_spread_over_the_range_with_both_ends
+        PASS [   0.016s] ( 301/1360) og-cli::bin/og migrate::tests::a_file_without_three_is_not_migrated
+        PASS [   0.013s] ( 302/1360) og-cli::bin/og migrate::tests::a_scene_file_is_rewritten_where_mechanical_and_listed_where_not
+        PASS [   0.016s] ( 303/1360) og-cli::bin/og migrate::tests::named_imports_and_dropped_parameters
+        PASS [   0.059s] ( 304/1360) og-cli::bin/og migrate::tests::the_tables_match_the_generated_api
+        PASS [   0.023s] ( 305/1360) og-cli::bin/og migrate::tests::values_colours_and_loaders
+        PASS [   0.588s] ( 306/1360) og-tests::gfx exposure_matches_its_reference
+        PASS [   0.027s] ( 307/1360) og-cli::bin/og render::tests::a_timeline_s_duration_is_its_range
+        PASS [   0.023s] ( 308/1360) og-cli::bin/og render::tests::parse_takes_the_documented_options_and_refuses_a_bad_range
+        PASS [   0.016s] ( 309/1360) og-cli::bin/og render::tests::the_layout_follows_the_out_and_falls_back_to_frames_without_ffmpeg
+        PASS [   0.031s] ( 310/1360) og-cli::bin/og trace::tests::cook_spans_lie_where_they_ran_on_their_threads
+        PASS [   0.050s] ( 311/1360) og-cook anim_codec::tests::a_range_too_wide_for_sixteen_bits_stays_f32
+        PASS [   0.017s] ( 312/1360) og-cook anim_codec::tests::a_straight_line_keeps_two_keys_and_a_curve_stays_within_tolerance
+        PASS [   0.017s] ( 313/1360) og-cook anim_codec::tests::a_visibility_channel_keeps_its_changes_exactly_at_any_tolerance
+        PASS [   0.014s] ( 314/1360) og-cook anim_codec::tests::constant_channels_are_one_sample_and_exact
+        PASS [   0.017s] ( 315/1360) og-cook anim_codec::tests::rotations_rebuild_within_tolerance
+        PASS [   0.015s] ( 316/1360) og-cook anim_codec::tests::smallest_three_is_within_its_step
+        PASS [   0.389s] ( 317/1360) og-cli::bin/og contact_sheet::tests::the_sheet_lays_cells_out_in_rows_and_labels_them
+        PASS [   0.017s] ( 318/1360) og-cook anim_codec::tests::without_a_tolerance_samples_stay_f32
+        PASS [   0.019s] ( 319/1360) og-cook cook::bc6h::tests::every_mode_decodes_as_the_reference_does
+        PASS [   0.024s] ( 320/1360) og-cook cook::bc6h::tests::a_one_region_block_interpolates_its_endpoints
+        PASS [   0.016s] ( 321/1360) og-cook cook::bc6h::tests::half_floats_decode
+        PASS [   0.017s] ( 322/1360) og-cook cook::cube_source::tests::a_ktx2_that_is_not_a_cube_is_refused
+        PASS [   0.015s] ( 323/1360) og-cook cook::cube_source::tests::packed_floats_decode
+        PASS [   0.070s] ( 324/1360) og-cook cook::icons::tests::a_miter_join_keeps_its_corner_and_a_bevel_cuts_it
+        PASS [   0.049s] ( 325/1360) og-cook cook::icons::tests::a_round_stroke_is_its_width_and_a_butt_end_is_cut
+        PASS [   0.015s] ( 326/1360) og-cook cook::icons::tests::a_set_declares_the_join_its_paths_leave_out
+        PASS [   0.019s] ( 327/1360) og-cook cook::icons::tests::path_data_flattens_with_relative_and_smooth_commands
+        PASS [   0.204s] ( 328/1360) og-cook cook::bc6h::tests::every_mode_hashes_as_the_reference_decodes
+        PASS [   0.026s] ( 329/1360) og-cook cook::icons::tests::the_rendered_field_keeps_a_miter_corner_sharp
+        PASS [   0.031s] ( 330/1360) og-cook cook::look::tests::checks_fields_against_the_records
+        PASS [   0.020s] ( 331/1360) og-cook cook::look::tests::extends_a_preset_and_the_games_own_look_wins
+        PASS [   0.038s] ( 332/1360) og-cook cook::look::tests::every_preset_checks_against_the_records_with_the_built_ins
+        PASS [   0.017s] ( 333/1360) og-cook cook::look::tests::names_the_built_in_assets_by_their_reserved_ids
+        PASS [   0.026s] ( 334/1360) og-cook cook::look::tests::refuses_a_missing_base_and_a_cycle
+        PASS [   0.019s] ( 335/1360) og-cook cook::look::tests::the_presets_are_the_template_looks
+        PASS [   0.045s] ( 336/1360) og-cook cook::look::tests::the_built_ins_are_the_template_assets
+        PASS [   0.724s] ( 337/1360) og-tests::gfx fx_2d_matches_its_reference
+        PASS [   0.020s] ( 338/1360) og-cook cook::stats::tests::a_model_warns_when_its_bvh_passes_the_share_and_the_floor
+        PASS [   0.037s] ( 339/1360) og-cook cook::probes::tests::a_baked_probe_loads_back_and_survives_a_cook
+        PASS [   0.016s] ( 340/1360) og-cook cook::stats::tests::budgets_read_over_the_defaults_and_refuse_unknown_keys
+        PASS [   0.022s] ( 341/1360) og-cook cook::stats::tests::flags_fire_above_the_limit_only
+        PASS [   2.004s] ( 342/1360) og-cli::cli doctor_outside_the_repository_needs_only_bun_and_the_engine
+        PASS [   2.151s] ( 343/1360) og-cli::cli doctor_reports_the_pins_and_each_tool
+        PASS [   0.020s] ( 344/1360) og-cook cook::terrain_generate::tests::refusals_name_the_line
+        PASS [   0.096s] ( 345/1360) og-cook cook::terrain_generate::tests::the_sea_level_flattens_the_shore
+        PASS [   0.021s] ( 346/1360) og-cook cook::terrain_generate::tests::the_series_match_the_library_closely
+        PASS [   0.039s] ( 347/1360) og-cook cook::terrain_generate::tests::two_seeds_two_terrains_one_seed_one
+        PASS [   0.015s] ( 348/1360) og-cook cook::video::tests::parse_reads_the_settings_and_names_what_is_wrong
+        PASS [   0.018s] ( 349/1360) og-cook cook::video::tests::the_plan_counts_frames_and_refuses_more_than_an_array_holds
+        PASS [   0.026s] ( 350/1360) og-cook cook::vox::tests::a_file_without_a_graph_lands_where_a_trivial_graph_puts_it
+        PASS [   1.154s] ( 351/1360) og-tests::gfx gltf_reference_matches_its_reference
+        PASS [   0.017s] ( 352/1360) og-cook cook::vox::tests::a_file_without_the_header_is_refused
+        PASS [   0.034s] ( 353/1360) og-cook cook::vox::tests::a_pack_without_a_graph_is_the_frames_of_one_clip
+        PASS [   0.047s] ( 354/1360) og-cook cook::vox::tests::a_solid_block_of_one_colour_is_six_quads
+        PASS [   0.038s] ( 355/1360) og-cook cook::vox::tests::an_animated_shape_keys_its_models_and_clips_cut_its_frames
+        PASS [   0.030s] ( 356/1360) og-cook cook::vox::tests::determinants_of_signed_axis_permutations
+        PASS [   0.035s] ( 357/1360) og-cook cook::vox::tests::frame_rate_and_clips_are_read
+        PASS [   0.021s] ( 358/1360) og-cook cook::vox::tests::keyed_transforms_move_and_turn_what_they_hold
+        PASS [   0.019s] ( 359/1360) og-cook cook::vox::tests::keys_that_do_not_move_leave_the_file_static
+        PASS [   0.021s] ( 360/1360) og-cook cook::vox::tests::looped_nodes_repeat_their_keys
+        PASS [   0.027s] ( 361/1360) og-cook cook::vox::tests::mirrors_flip_the_winding_and_every_frame_faces_out
+        PASS [   0.018s] ( 362/1360) og-cook cook::vox::tests::the_palette_colours_the_vertices_and_the_frame_is_y_up
+        PASS [   0.022s] ( 363/1360) og-cook cook::vox::tests::the_playback_range_is_the_default_clip
+        PASS [   0.024s] ( 364/1360) og-cook cook::vox::tests::turned_and_mirrored_odd_models_keep_magicavoxels_pivot
+        PASS [   0.018s] ( 365/1360) og-cook cook::vox::tests::two_colours_split_a_face_and_hidden_faces_are_dropped
+        PASS [   0.366s] ( 366/1360) og-tests::gfx lights_beyond_the_limit_are_counted
+        PASS [   0.911s] ( 367/1360) og-cook cook::terrain_generate::tests::a_biome_writes_its_layer_where_its_rules_hold
+        PASS [   0.022s] ( 368/1360) og-cook cook::vox::tests::vox_scale_and_bottom_origin_place_the_mesh
+        PASS [   0.018s] ( 369/1360) og-cook cook::vox::tests::vox_settings_are_read_and_bad_ones_refused
+        PASS [   0.017s] ( 370/1360) og-cook lightmap::tests::names
+        PASS [   0.916s] ( 371/1360) og-cook cook::terrain_generate::tests::a_generated_field_hashes_the_same_everywhere
+        PASS [   0.019s] ( 372/1360) og-cook lightmap::tests::pages_round_trip
+        PASS [   0.020s] ( 373/1360) og-cook look::tests::hex_colours_are_linear
+        PASS [   0.023s] ( 374/1360) og-cook lightmap::tests::text_round_trips
+        PASS [   0.017s] ( 375/1360) og-cook look::tests::merges_over_its_base
+        PASS [   0.016s] ( 376/1360) og-cook look::tests::reads_hex_and_gpl_palettes
+        PASS [   0.020s] ( 377/1360) og-cook look::tests::parses_and_writes_canonical_text
+        PASS [   0.022s] ( 378/1360) og-cook look::tests::refuses_what_is_not_a_look
+        PASS [   0.018s] ( 379/1360) og-cook scene_text::tests::numbers_are_the_shortest_f32_text
+        PASS [   0.019s] ( 380/1360) og-cook scene_text::tests::changed_fields_rewrite_their_line_only_with_comment_and_spelling
+        PASS [   0.020s] ( 381/1360) og-cook scene_text::tests::tuned_fields_the_text_lacks_are_added_in_place
+        PASS [   0.019s] ( 382/1360) og-cook scene_text::tests::unchanged_world_rewrites_nothing
+        PASS [   0.019s] ( 383/1360) og-cook scene_text::tests::values_rounding_to_the_same_f32_keep_their_line
+        PASS [   0.029s] ( 384/1360) og-cook shader::tests::a_broken_full_shader_is_refused_at_its_line
+        PASS [   0.035s] ( 385/1360) og-cook shader::tests::a_post_pass_cooks_for_every_tier
+        PASS [   0.037s] ( 386/1360) og-cook::anim_compress compress_and_tolerance_are_import_settings
+        PASS [   0.074s] ( 387/1360) og-cook shader::tests::a_full_shader_cooks_for_every_tier_and_keeps_its_mode
+        PASS [   0.084s] ( 388/1360) og-cook::behaviour a_check_against_a_tuning_field_cooks_and_a_malformed_one_is_refused_with_its_line
+        PASS [   0.542s] ( 389/1360) og-tests::gfx local_lights_cast_shadows
+        PASS [   3.145s] ( 390/1360) og-tests::gfx environment_map_matches_its_reference
+        PASS [   1.891s] ( 391/1360) og-tests::gfx god_rays_match_their_reference
+        PASS [   0.230s] ( 392/1360) og-tests::gfx lod_levels_pick_coarser_meshes_with_distance
+        PASS [   0.987s] ( 393/1360) og-tests::gfx lod_levels_matches_its_reference
+        PASS [   2.431s] ( 394/1360) og-cook cook::terrain_generate::tests::a_river_reaches_the_sea
+        PASS [   0.721s] ( 395/1360) og-tests::gfx materials_array_match_their_reference_in_one_batch_per_material
+        PASS [   0.184s] ( 396/1360) og-tests::gfx msaa_matches_its_reference_on_the_no_compute_tier
+        PASS [  24.195s] ( 397/1360) og-audio::chunks a_three_minute_track_streams_in_chunks_sample_identical_to_the_whole_file
+        PASS [  39.122s] ( 398/1360) og-physics::pile the_pile_is_deterministic_and_a_restore_at_tick_1800_ends_in_the_same_world
+        PASS [   0.851s] ( 399/1360) og-cook::environment a_cube_map_bakes_as_its_equirectangular_studio
+        PASS [   1.453s] ( 400/1360) og-tests::gfx motion_blur_matches_its_reference
+        PASS [   0.100s] ( 401/1360) og-cook::environment a_prefiltered_ktx2_chain_is_taken_as_it_is
+        PASS [   0.107s] ( 402/1360) og-cook::environment an_environment_cooks_into_the_baked_map_and_loads_back
+        PASS [   0.041s] ( 403/1360) og-cook::environment cube_sources_are_refused_by_what_is_wrong
+        PASS [   0.028s] ( 404/1360) og-cook::environment refusals_name_the_fix
+        PASS [   0.063s] ( 405/1360) og-cook::flipbook an_array_sheet_cooks_its_frames_into_a_texture_array
+        PASS [   0.031s] ( 406/1360) og-cook::flipbook an_array_sheet_in_a_streaming_group_is_packed_with_its_array_and_layers
+        PASS [   0.035s] ( 407/1360) og-cook::flipbook aseprite_and_texturepacker_atlases_cook_into_sheets
+        PASS [   0.035s] ( 408/1360) og-cook::flipbook sheet_mistakes_are_refused_by_name
+        PASS [   0.079s] ( 409/1360) og-cook::fx a_cube_and_an_emitter_cook_and_load
+        PASS [   0.037s] ( 410/1360) og-cook::fx a_streaming_group_holds_a_lut
+        PASS [   0.049s] ( 411/1360) og-cook::fx an_emitter_draws_from_a_texture_array
+        PASS [   0.020s] ( 412/1360) og-cook::fx bad_effect_assets_are_refused_with_the_reason
+        PASS [   0.677s] ( 413/1360) og-cook::lod a_level_carries_the_distance_measured_from_the_full_mesh
+        PASS [   2.426s] ( 414/1360) og-tests::gfx overlay_matches_its_reference
+        PASS [   0.224s] ( 415/1360) og-cook::lod a_model_names_its_own_levels_and_bad_ones_are_refused
+        PASS [   1.497s] ( 416/1360) og-tests::gfx particles_cpu_match_their_reference
+        PASS [   4.599s] ( 417/1360) og-cook::anim_compress resident_quantised_clips_cost_their_cooked_bytes_and_pose_as_their_frames
+        PASS [   0.099s] ( 418/1360) og-cook::lod msft_lod_levels_are_kept_as_the_gltf_gives_them
+        PASS [   0.424s] ( 419/1360) og-tests::gfx point_spot_lights_match_their_reference
+        PASS [   0.482s] ( 420/1360) og-cook::lod every_mesh_is_simplified_into_the_default_levels
+        PASS [   0.058s] ( 421/1360) og-cook::look_builtins a_games_own_at_path_is_refused
+        PASS [   0.077s] ( 422/1360) og-cook::model_text a_bad_model_says_where
+        PASS [   0.123s] ( 423/1360) og-cook::model_text a_cooked_gear_raycasts_where_its_triangles_are
+        PASS [   0.106s] ( 424/1360) og-cook::model_text a_model_cooked_twice_is_byte_identical
+        PASS [   0.059s] ( 425/1360) og-cook::model_text a_part_placed_three_times_is_one_mesh_under_three_nodes_of_its_pivot
+        PASS [   3.354s] ( 426/1360) og-cook::compressed each_kind_reaches_its_familys_format
+        PASS [   0.116s] ( 427/1360) og-cook::model_text its_lod_errors_are_measured_as_a_gltf_s_are
+        PASS [   0.505s] ( 428/1360) og-cook::look_builtins a_look_naming_built_ins_cooks_them_into_the_bundle
+        PASS [   0.124s] ( 429/1360) og-cook::model_text past_the_project_s_budgets_it_is_refused_and_a_scene_names_it
+        PASS [   4.286s] ( 430/1360) og-tests::gfx model_flash_matches_its_reference
+        PASS [   0.067s] ( 431/1360) og-cook::model_text the_report_counts_its_triangles_draws_and_bvh
+        PASS [   0.092s] ( 432/1360) og-cook::physical physical_extensions_are_cooked_and_loaded
+        PASS [   0.314s] ( 433/1360) og-cook::model_text the_skill_s_example_cooks
+        PASS [   0.188s] ( 434/1360) og-cook::retarget an_edit_of_the_rig_or_the_library_recooks_and_a_bad_rig_names_its_line
+        PASS [   0.068s] ( 435/1360) og-cook::retarget library_clips_are_retargeted_into_each_characters_anim_with_planted_feet
+        PASS [   0.064s] ( 436/1360) og-cook::rig2d a_child_armatures_skins_are_imported_and_worn_by_name
+        PASS [   0.027s] ( 437/1360) og-cook::rig2d a_dragonbones_clockwise_turn_plays_its_whole_turns
+        PASS [   0.021s] ( 438/1360) og-cook::rig2d a_dragonbones_export_becomes_a_rig_with_y_up
+        PASS [   4.073s] ( 439/1360) og-cook::cook_report every_asset_type_reports_its_figures_and_its_budgets_flag_it
+        PASS [   0.024s] ( 440/1360) og-cook::rig2d a_dragonbones_export_keeps_skew_offsets_order_ik_keys_children_boxes_and_curves
+        PASS [   0.024s] ( 441/1360) og-cook::rig2d a_dragonbones_path_constraint_places_its_bones_on_the_path_display
+        PASS [   0.025s] ( 442/1360) og-cook::rig2d a_dragonbones_ik_chain_of_any_length_is_imported_root_first
+        PASS [   0.026s] ( 443/1360) og-cook::rig2d a_hand_written_rig_cooks_with_its_texture_size
+        PASS [   0.027s] ( 444/1360) og-cook::rig2d a_dragonbones_sine_ease_plays_the_sine_at_every_tick
+        PASS [   0.023s] ( 445/1360) og-cook::rig2d every_dragonbones_skin_is_imported_and_the_default_comes_first
+        PASS [   1.288s] ( 446/1360) og-tests::gfx post_agx_matches_its_reference
+        PASS [   1.910s] ( 447/1360) og-tests::gfx particles_match_their_reference
+        PASS [   0.061s] ( 448/1360) og-cook::scene_bool bool_and_enum_fields_pack_to_the_schema_layout
+        PASS [   0.063s] ( 449/1360) og-cook::scene_list a_list_on_its_line_cooks_to_its_field_and_writes_back_the_same
+        PASS [   0.026s] ( 450/1360) og-cook::scene_list a_list_over_its_capacity_or_of_the_wrong_values_is_refused_with_the_line
+        PASS [   0.052s] ( 451/1360) og-cook::scene_string a_string_over_its_capacity_or_of_the_wrong_kind_is_refused_with_the_line
+        PASS [   0.058s] ( 452/1360) og-cook::scene_string a_quoted_string_cooks_to_its_field_and_reads_back_as_the_same_text
+        PASS [   0.061s] ( 453/1360) og-cook::scene_write_back load_change_save_load_is_exact
+        PASS [   0.058s] ( 454/1360) og-cook::scene_write_back resources_and_spawned_entities_round_trip_exactly
+        PASS [   0.058s] ( 455/1360) og-cook::sfx a_cooked_preset_is_a_sound_the_runtime_loads
+        PASS [   0.073s] ( 456/1360) og-cook::sfx every_preset_renders_a_short_audible_unclipped_sound_the_same_twice
+        PASS [   0.017s] ( 457/1360) og-cook::sfx malformed_presets_are_refused_with_the_fix
+        PASS [   0.022s] ( 458/1360) og-cook::sfx seed_pitch_and_length_vary_a_preset
+        PASS [   1.033s] ( 459/1360) og-tests::gfx post_grade_matches_its_reference
+        PASS [   0.064s] ( 460/1360) og-cook::shader shaders_that_do_not_compile_are_refused_with_the_reason
+        PASS [   0.417s] ( 461/1360) og-tests::gfx probe_interior_matches_its_reference
+        PASS [   0.179s] ( 462/1360) og-cook::shader a_shader_cooks_for_every_back_end_and_loads
+        PASS [   0.202s] ( 463/1360) og-cook::sound_chunks a_chunked_sound_in_a_stream_group_packs_its_head_and_keeps_its_chunks_apart
+        PASS [   0.019s] ( 464/1360) og-cook::sound_chunks the_threshold_and_the_settings_choose_chunks
+        PASS [   0.699s] ( 465/1360) og-tests::gfx shadows_fall_in_every_cascade_at_200m_scale
+        PASS [   0.579s] ( 466/1360) og-cook::sound_chunks a_long_sound_cooks_in_chunks_that_decode_to_the_whole_files_samples
+        PASS [   0.955s] ( 467/1360) og-tests::gfx skeleton_2d_draws_rigs_as_sprite_triangles
+        PASS [   0.494s] ( 468/1360) og-cook::stream groups_are_packed_listed_and_stood_in_for
+        PASS [   0.245s] ( 469/1360) og-cook::strings an_arabic_font_carries_its_joined_forms_and_its_file
+        PASS [   0.020s] ( 470/1360) og-cook::strings tables_are_validated_and_every_locale_is_checked_against_the_base
+        PASS [   0.613s] ( 471/1360) og-tests::gfx sky_only_matches_its_reference
+        PASS [   0.329s] ( 472/1360) og-cook::terrain a_generated_terrain_cooks_into_the_same_tiles
+        PASS [   1.437s] ( 473/1360) og-tests::gfx skinning_matches_its_reference
+        PASS [   0.120s] ( 474/1360) og-cook::terrain a_kept_blob_whose_type_moved_is_cooked_again
+        PASS [   2.913s] ( 475/1360) og-cook::raycast_bvh raycast_false_cooks_no_bvh
+        PASS [   0.088s] ( 476/1360) og-cook::terrain a_navmesh_bakes_a_terrains_walkable_surface
+        PASS [   0.029s] ( 477/1360) og-cook::terrain an_exr_heightmap_is_metres_as_stored
+        PASS [   0.196s] ( 478/1360) og-tests::gfx sprite_layers_order_the_draw
+        PASS [   0.036s] ( 479/1360) og-cook::terrain refusals_name_the_fix
+        PASS [   0.114s] ( 480/1360) og-cook::terrain a_terrain_cooks_into_tiles_and_loads_back
+        PASS [   0.113s] ( 481/1360) og-cook::terrain terrain_layers_from_texture_arrays
+        PASS [   0.159s] ( 482/1360) og-cook::terrain the_terrain_cook_is_deterministic_and_incremental
+        PASS [   2.290s] ( 483/1360) og-tests::gfx showcase_matches_its_reference
+        PASS [   0.745s] ( 484/1360) og-tests::gfx spheres_20k_are_batched_automatically
+        PASS [   0.255s] ( 485/1360) og-cook::texture_cache shared_texture_results_reuse_invalidate_recover_and_match_uncached_bytes
+        PASS [   0.096s] ( 486/1360) og-cook::textures_p4 ktx2_sources_are_flipped_and_swizzled_to_rd_rgba_or_taken_as_they_are
+        PASS [   0.410s] ( 487/1360) og-cook::textures_p4 a_texture_array_cooks_its_layers_and_uploads_them_as_one_array
+        PASS [   0.075s] ( 488/1360) og-cook::tilemap a_compressed_tiled_layer_and_a_missing_tileset_ogt_are_refused_by_name
+        PASS [   0.043s] ( 489/1360) og-cook::tilemap a_tiled_custom_property_the_importer_does_not_read_is_a_warning_naming_it
+        PASS [   0.034s] ( 490/1360) og-cook::tilemap import_settings_pick_the_ldtk_level_unit_and_solid_values
+        PASS [   0.785s] ( 491/1360) og-tests::gfx sprites_20k_match_their_reference_in_a_handful_of_draws
+        PASS [   0.030s] ( 492/1360) og-cook::tilemap tilesets_and_maps_from_three_sources_cook_and_load
+        PASS [   0.064s] ( 493/1360) og-cook::timeline a_scenes_named_paths_reach_the_loaded_scene
+        PASS [   0.029s] ( 494/1360) og-cook::timeline a_sound_the_bundle_lacks_is_refused_by_name
+        PASS [   0.041s] ( 495/1360) og-cook::timeline an_srt_is_imported_into_caption_keys_and_its_edit_recooks_the_timeline
+        PASS [   9.218s] ( 496/1360) og-cook::compressed compressed_textures_draw_as_their_rgba8_decode
+        PASS [   0.474s] ( 497/1360) og-cook::textures_p4 toktx_cooks_the_template_textures
+        PASS [   0.034s] ( 498/1360) og-cook::vox an_animated_vox_cooks_its_frames_into_clips
+        PASS [   0.069s] ( 499/1360) og-cook::vox a_keyed_transform_cooks_to_a_moving_joint
+        PASS [   0.055s] ( 500/1360) og-cook::vox a_vox_with_and_without_a_scene_graph_cooks_to_the_same_bounds
+        PASS [   0.019s] ( 501/1360) og-core alloc::tests::counts_what_it_hands_out
+        PASS [   0.026s] ( 502/1360) og-cook::vox import_settings_scale_and_ground_a_vox_and_an_edit_recooks_it
+        PASS [   0.013s] ( 503/1360) og-core idmap::tests::collects_and_reads_back_as_the_btreemap
+        PASS [   0.012s] ( 504/1360) og-core sort::tests::maps_as_collect_does
+        PASS [   0.041s] ( 505/1360) og-core idmap::tests::behaves_as_the_btreemap_it_replaces
+        PASS [   0.011s] ( 506/1360) og-core sort::tests::sorts_values_that_own_memory
+        PASS [   0.021s] ( 507/1360) og-core::glam_scalar mat3a_and_affine3a_match_the_scalar_reference
+        PASS [   0.042s] ( 508/1360) og-core sort::tests::sorts_as_the_standard_stable_sort_does
+        PASS [   0.029s] ( 509/1360) og-core::glam_scalar mat4_products_and_transforms_match_the_scalar_reference
+        PASS [   2.878s] ( 510/1360) og-cook::stream bad_groups_are_refused_with_the_reason
+        PASS [   0.022s] ( 511/1360) og-core::handle a_freed_slot_reused_does_not_revive_old_handles
+        PASS [   0.039s] ( 512/1360) og-core::glam_scalar quat_products_and_rotations_match_the_scalar_reference
+        PASS [   0.029s] ( 513/1360) og-core::glam_scalar vec3a_and_vec4_sum_lanes_in_one_order
+        PASS [   0.013s] ( 514/1360) og-core::handle allocator_parts_rebuild_the_same_allocator_and_reject_inconsistency
+        PASS [   0.013s] ( 515/1360) og-core::handle bits_round_trip_and_zero_is_never_live
+        PASS [   0.018s] ( 516/1360) og-core::math atan_and_atan2_match_the_vectors
+        PASS [   0.012s] ( 517/1360) og-core::math deterministic_rotation_matches_its_definition
+        PASS [   0.013s] ( 518/1360) og-core::math exp_ln_pow_match_the_vectors
+        PASS [   0.010s] ( 519/1360) og-core::math sin_and_cos_match_the_vectors
+        PASS [   0.012s] ( 520/1360) og-core::math special_values_follow_c99
+        PASS [   0.012s] ( 521/1360) og-core::math world_pose_composes_down_the_parent_chain
+        PASS [   0.896s] ( 522/1360) og-tests::gfx sprites_array_fx_match_their_reference_in_one_draw_per_array
+        PASS [   0.020s] ( 523/1360) og-core::ogt canonical_text_round_trips_exactly
+        PASS [   0.014s] ( 524/1360) og-core::ogt documents_built_in_memory_write_and_read_back
+        PASS [   0.013s] ( 525/1360) og-core::ogt loose_text_reads_as_its_canonical_form
+        PASS [   0.057s] ( 526/1360) og-core::math results_are_correctly_rounded_across_ranges
+        PASS [   0.011s] ( 527/1360) og-core::ogt malformed_text_is_refused_with_its_line
+        PASS [   0.012s] ( 528/1360) og-core::ogt the_tree_holds_what_the_text_says
+        PASS [   0.101s] ( 529/1360) og-core::handle a_slot_retires_before_its_ids_stop_being_exact_javascript_numbers
+        PASS [   0.015s] ( 530/1360) og-core::reflect a_list_field_is_a_count_lane_then_its_capacity_of_elements
+        PASS [   0.021s] ( 531/1360) og-core::reflect a_list_field_has_no_range_default_or_tune
+        PASS [   0.015s] ( 532/1360) og-core::reflect a_list_type_is_named_by_its_element_and_capacity
+        PASS [   0.011s] ( 533/1360) og-core::reflect a_string_field_is_its_capacity_in_zero_padded_utf8
+        PASS [   0.012s] ( 534/1360) og-core::reflect a_string_over_its_capacity_is_refused_with_the_fix_never_truncated
+        PASS [   0.014s] ( 535/1360) og-core::reflect a_string_field_has_no_range_default_or_tune
+        PASS [   0.011s] ( 536/1360) og-core::reflect a_string_type_is_named_by_its_capacity_and_hashed_with_it
+        PASS [   0.011s] ( 537/1360) og-core::reflect bool_mat4_enum_and_string_fields_have_their_layout
+        PASS [   0.013s] ( 538/1360) og-core::reflect derive_produces_the_schema_with_metadata
+        PASS [   0.014s] ( 539/1360) og-core::reflect invalid_schemas_are_refused_with_a_reason
+        PASS [   0.013s] ( 540/1360) og-core::reflect layout_hash_tracks_bytes_not_metadata
+        PASS [   0.014s] ( 541/1360) og-core::reflect new_field_types_validate_and_hash_their_meaning
+        PASS [   0.014s] ( 542/1360) og-core::reflect schema_json_is_exported_and_reads_back
+        PASS [   0.014s] ( 543/1360) og-core::reflect values_round_trip_through_packed_bytes
+        PASS [   0.015s] ( 544/1360) og-core::rng forks_derive_the_web_substrate_seed
+        PASS [   0.013s] ( 545/1360) og-core::rng integer_and_range_follow_the_same_draws
+        PASS [   0.015s] ( 546/1360) og-core::rng matches_the_web_substrate_sequence
+        PASS [   0.014s] ( 547/1360) og-core::rng save_restore_and_reflected_bytes_resume_the_sequence
+        PASS [   0.018s] ( 548/1360) og-ecs::churn a_refused_spawn_leaves_no_trace
+        PASS [   0.723s] ( 549/1360) og-tests::gfx ssr_reflects_the_sphere_in_the_floor
+        PASS [   0.268s] ( 550/1360) og-ecs::bouncing_boxes a_run_snapshotted_halfway_and_restored_ends_in_the_same_world
+        PASS [   0.021s] ( 551/1360) og-ecs::field_types a_bool_column_round_trips_through_snapshot_and_hash
+        PASS [   0.013s] ( 552/1360) og-ecs::field_types a_list_column_round_trips_and_migrates_to_another_capacity
+        PASS [   0.015s] ( 553/1360) og-ecs::field_types a_mat4_column_is_sixteen_floats_per_entity
+        PASS [   0.014s] ( 554/1360) og-ecs::field_types a_string_column_snapshots_and_hashes_by_its_text
+        PASS [   0.034s] ( 555/1360) og-ecs::field_types a_string_is_plain_data_in_events_components_and_resources
+        PASS [   0.489s] ( 556/1360) og-tests::gfx ssr_wet_floor_matches_its_reference
+        PASS [   0.040s] ( 557/1360) og-ecs::field_types a_string_migrates_to_another_capacity_by_its_text
+        PASS [   0.050s] ( 558/1360) og-ecs::host_schema a_host_layout_is_registered_by_name_and_used_as_bytes
+        PASS [   0.471s] ( 559/1360) og-ecs::bouncing_boxes the_same_seed_gives_the_same_world_after_3600_ticks
+        PASS [   0.019s] ( 560/1360) og-ecs::host_schema a_rust_type_adopts_a_host_layout_of_the_same_shape
+        PASS [   0.015s] ( 561/1360) og-ecs::host_schema a_world_can_move_to_the_engine_thread
+        PASS [   0.022s] ( 562/1360) og-ecs::introspection names_address_entities_and_survive_snapshots
+        PASS [   0.013s] ( 563/1360) og-ecs::introspection system_info_reports_declarations_and_what_each_query_matched
+        PASS [   0.014s] ( 564/1360) og-ecs::introspection systems_are_timed_with_the_world_clock
+        PASS [   0.013s] ( 565/1360) og-ecs::introspection the_structural_counter_moves_exactly_on_structural_operations
+        PASS [   0.016s] ( 566/1360) og-ecs::migrate a_migrating_restore_maps_fields_by_name
+        PASS [   0.021s] ( 567/1360) og-ecs::migrate a_malformed_snapshot_is_refused_and_changes_nothing
+        PASS [   0.013s] ( 568/1360) og-ecs::migrate check_snapshot_refuses_what_restore_would_naming_the_fields_and_changes_nothing
+        PASS [   0.014s] ( 569/1360) og-ecs::migrate a_snapshot_that_fits_migrates_to_the_same_world_as_restore
+        PASS [   0.014s] ( 570/1360) og-ecs::migrate events_in_flight_are_migrated_too
+        PASS [   0.020s] ( 571/1360) og-ecs::packed_access a_system_reads_and_writes_host_layouts_as_bytes
+        PASS [   0.013s] ( 572/1360) og-ecs::packed_access byte_calls_check_sizes_and_values
+        PASS [   0.012s] ( 573/1360) og-ecs::packed_access undeclared_byte_access_is_refused_and_named
+        PASS [   0.040s] ( 574/1360) og-ecs::schedule a_failing_system_stops_the_tick_and_says_where
+        PASS [   0.038s] ( 575/1360) og-ecs::schedule commands_after_a_despawn_in_the_same_batch
+        PASS [   0.047s] ( 576/1360) og-ecs::schedule events_sent_in_one_tick_are_read_in_the_next
+        PASS [   0.043s] ( 577/1360) og-ecs::schedule registration_refuses_undeclared_access_and_names_it
+        PASS [   0.029s] ( 578/1360) og-ecs::schedule structural_changes_land_when_the_system_returns
+        PASS [   0.034s] ( 579/1360) og-ecs::schedule run_time_access_outside_the_declaration_is_refused
+        PASS [   0.022s] ( 580/1360) og-ecs::schedule time_advances_by_ticks_without_drift
+        PASS [   0.025s] ( 581/1360) og-ecs::shared_schema a_second_rust_type_of_the_same_layout_shares_the_rows
+        PASS [  41.903s] ( 582/1360) og-tests::culling gpu_culling_draws_the_cpu_paths_frame
+        PASS [   0.055s] ( 583/1360) og-ecs::snapshot a_bad_snapshot_is_refused_and_changes_nothing
+        PASS [   0.028s] ( 584/1360) og-ecs::snapshot a_system_snapshots_the_world_while_it_holds_its_columns
+        PASS [   0.026s] ( 585/1360) og-ecs::snapshot a_world_restored_from_a_system_snapshot_completes_that_tick_and_goes_on_the_same
+        PASS [   0.023s] ( 586/1360) og-ecs::snapshot restore_gives_the_identical_world_and_the_same_future
+        PASS [   0.012s] ( 587/1360) og-ecs::snapshot restore_maps_types_by_name_across_registration_order
+        PASS [   0.013s] ( 588/1360) og-ecs::snapshot the_hash_sees_every_part_of_the_state
+        PASS [   0.019s] ( 589/1360) og-ecs::state_blocks a_block_this_world_lacks_is_refused_and_dropped_on_migration
+        PASS [   0.015s] ( 590/1360) og-ecs::state_blocks a_refused_restore_changes_neither_the_world_nor_any_block
+        PASS [   0.015s] ( 591/1360) og-ecs::state_blocks a_snapshot_without_a_block_resets_it
+        PASS [   0.014s] ( 592/1360) og-ecs::state_blocks a_world_without_blocks_snapshots_and_hashes_as_before
+        PASS [   0.013s] ( 593/1360) og-ecs::state_blocks block_names_are_unique
+        PASS [   0.014s] ( 594/1360) og-ecs::state_blocks blocks_travel_with_the_snapshot_into_the_same_and_a_fresh_world
+        PASS [   0.012s] ( 595/1360) og-ecs::state_blocks the_hash_covers_every_block
+        PASS [   1.876s] ( 596/1360) og-tests::gfx sprites_array_match_their_reference_in_one_draw_per_array
+        PASS [   0.017s] ( 597/1360) og-geom earcut::tests::a_square_with_a_hole_takes_eight_triangles
+        PASS [   0.013s] ( 598/1360) og-geom extrude::tests::overlapping_points_go_including_the_closing_one
+        PASS [   0.014s] ( 599/1360) og-geom frames::tests::a_straight_line_keeps_one_frame_and_frames_stay_orthonormal
+        PASS [   0.015s] ( 600/1360) og-geom shape::tests::a_square_with_a_square_hole_is_three_js_s
+        PASS [   0.018s] ( 601/1360) og-geom trig::tests::the_series_match_libm_closely
+        PASS [   1.165s] ( 602/1360) og-core::ogt every_ogt_file_in_the_repository_round_trips
+        PASS [   0.836s] ( 603/1360) og-tests::gfx stylise_paint_matches_its_reference
+        PASS [   0.023s] ( 604/1360) og-geom::geom box_minus_box_is_its_analytic_volume_and_closed
+        PASS [   0.026s] ( 605/1360) og-geom::geom a_lathed_circle_is_pappus_s_torus
+        PASS [   0.016s] ( 606/1360) og-geom::geom csg_keeps_one_of_two_coincident_faces
+        PASS [   0.016s] ( 607/1360) og-geom::geom extrude_along_a_path_follows_it
+        PASS [   0.029s] ( 608/1360) og-geom::geom extrude_counts_are_three_js_s_and_it_is_closed
+        PASS [   0.061s] ( 609/1360) og-geom::geom csg_of_a_cube_and_a_sphere_is_closed_and_adds_up
+        PASS [   0.016s] ( 610/1360) og-geom::geom lathe_counts_are_three_js_s
+        PASS [   0.016s] ( 611/1360) og-geom::geom extruding_a_square_makes_its_prism
+        PASS [   0.016s] ( 612/1360) og-geom::geom merge_mirrors_and_keeps_parts_facing_out
+        PASS [   0.016s] ( 613/1360) og-geom::geom path2_flattens_to_the_typescript_runtime_s_points
+        PASS [   0.014s] ( 614/1360) og-geom::geom the_sweep_is_closed_and_tapers
+        PASS [   0.020s] ( 615/1360) og-geom::geom polyhedra_counts_are_three_js_s_at_detail_0_to_2
+        PASS [   0.018s] ( 616/1360) og-i18n::i18n directions_follow_the_first_strong_character_and_the_locale
+        PASS [   0.030s] ( 617/1360) og-geom::geom two_builds_are_byte_identical
+        PASS [   0.013s] ( 618/1360) og-i18n::i18n locales_negotiate_to_the_best_table
+        PASS [   0.013s] ( 619/1360) og-i18n::i18n malformed_messages_and_tables_are_refused_with_where
+        PASS [   0.014s] ( 620/1360) og-i18n::i18n messages_format_selects_numbers_quotes_and_missing_arguments
+        PASS [   0.015s] ( 621/1360) og-i18n::i18n plurals_pick_each_languages_case
+        PASS [   0.014s] ( 622/1360) og-i18n::i18n the_catalog_falls_back_and_the_check_names_every_gap
+        PASS [   0.013s] ( 623/1360) og-i18n::i18n words_and_graphemes_follow_uax_29
+        PASS [   0.021s] ( 624/1360) og-idl r#gen::tests::snake_case_follows_word_boundaries
+        PASS [   0.031s] ( 625/1360) og-idl::idl a_record_list_field_carries_its_element_and_capacity_into_every_output
+        PASS [   0.020s] ( 626/1360) og-idl::idl a_record_text_field_carries_its_capacity_into_every_output
+        PASS [   0.015s] ( 627/1360) og-idl::idl broken_idls_are_refused_with_the_right_reason
+        PASS [   1.010s] ( 628/1360) og-tests::gfx stylised_matches_its_reference
+        PASS [   0.094s] ( 629/1360) og-idl::idl the_generated_declarations_type_check_with_the_examples
+        PASS [   0.072s] ( 630/1360) og-idl::idl the_probe_is_protocol_5_plus_the_wire_members_with_the_publish_trim
+        PASS [   0.069s] ( 631/1360) og-idl::idl the_repository_idl_is_valid_and_covers_the_design
+        PASS [   0.581s] ( 632/1360) og-tests::gfx taa_matches_its_reference_on_the_full_tier
+        PASS [  11.431s] ( 633/1360) og-cook::anim_compress compressed_clips_stay_within_tolerance_and_shrink
+        PASS [   0.390s] ( 634/1360) og-tests::gfx text_msdf_matches_its_reference
+        PASS [   0.284s] ( 635/1360) og-tests::gfx text_reports_missing_glyphs_and_bad_fonts
+        PASS [   0.574s] ( 636/1360) og-idl::idl the_committed_generated_files_match_the_idl
+        PASS [   1.924s] ( 637/1360) og-ecs::churn ten_thousand_entities_survive_structural_churn
+        PASS [   0.037s] ( 638/1360) og-input::edges a_key_event_holds_the_modifiers_it_names
+        PASS [   0.018s] ( 639/1360) og-input::edges edges_last_one_tick_over_a_scripted_sequence
+        PASS [   0.018s] ( 640/1360) og-input::edges injected_input_is_world_state_and_replays_exactly
+        PASS [   0.023s] ( 641/1360) og-input::pads pad_and_touch_state_is_world_state_and_replays
+        PASS [   0.016s] ( 642/1360) og-input::pads pads_and_touches_over_a_scripted_sequence
+        PASS [   0.025s] ( 643/1360) og-input::ring the_decoder_reads_what_the_web_shell_wrote
+        PASS [   0.021s] ( 644/1360) og-input::ring the_input_layer_drains_a_ring_into_the_world
+        PASS [   1.369s] ( 645/1360) og-tests::gfx taa_after_the_camera_stops_reaches_the_still_cameras_fixed_point
+        PASS [   0.015s] ( 646/1360) og-input::ring the_writer_and_the_decoder_agree_and_a_full_ring_refuses
+        PASS [   0.028s] ( 647/1360) og-lanes tests::a_job_that_ends_returns_its_result
+        PASS [   0.018s] ( 648/1360) og-lanes tests::a_lane_that_panics_wakes_the_waiting_thread_with_its_message
+        PASS [   0.017s] ( 649/1360) og-lanes tests::a_native_lane_panic_reaches_the_caller_and_names_its_site
+        PASS [   0.020s] ( 650/1360) og-lanes tests::an_injected_fault_panics_once_at_its_site
+        PASS [   0.349s] ( 651/1360) og-idl::wiki every_quote_is_the_idl_text_at_the_line_it_cites
+        PASS [   0.017s] ( 652/1360) og-lanes tests::calls_here_counts_this_threads_parallel_calls
+        PASS [   0.022s] ( 653/1360) og-lanes tests::install_splits_from_two_grains_and_runs_inline_below
+        PASS [   0.015s] ( 654/1360) og-lanes tests::serial_runs_rayon_inline_and_its_fault_is_the_callers
+        PASS [   0.472s] ( 655/1360) og-tests::gfx the_device_msaa_caps_the_qualitys
+        PASS [   0.411s] ( 656/1360) og-tests::gfx the_overlay_blends_in_linear_light_on_a_non_srgb_output
+        PASS [   0.610s] ( 657/1360) og-idl::wiki every_module_has_a_page_and_every_index_link_lands
+        PASS [   0.013s] ( 658/1360) og-lanes tests::threads_follows_the_switch
+        PASS [   0.053s] ( 659/1360) og-lanes tests::traced_jobs_cover_the_items_on_their_threads
+        PASS [   0.223s] ( 660/1360) og-lanes tests::the_relay_reaches_its_pool_from_a_thread_in_another
+        PASS [   0.022s] ( 661/1360) og-nav::nav a_flow_field_leads_every_reachable_cell_downhill_to_a_target
+        PASS [   0.048s] ( 662/1360) og-nav::nav a_baked_navmesh_routes_around_walls_up_ramps_and_stays_on_the_surface
+        PASS [   0.037s] ( 663/1360) og-nav::nav a_navmesh_s_bounds_hold_every_polygon_up_to_the_high_terrace
+        PASS [   0.994s] ( 664/1360) og-idl::wiki every_binding_symbol_is_documented_on_a_page
+        PASS [   0.054s] ( 665/1360) og-nav::nav an_agent_walks_a_navmesh_around_the_wall_and_arrives_on_the_surface
+        PASS [   0.041s] ( 666/1360) og-nav::nav an_obstacle_rebuilds_only_its_tiles_and_removing_it_restores_them
+        PASS [   0.081s] ( 667/1360) og-nav::nav an_idle_agent_stays_on_its_own_terrace_and_later_reaches_a_target
+        PASS [   0.077s] ( 668/1360) og-nav::nav geometry_wholly_above_the_bounds_is_left_out_of_the_bake
+        PASS [   0.055s] ( 669/1360) og-nav::nav jump_point_search_finds_paths_as_short_as_astar_and_never_cuts_a_corner
+        PASS [   0.026s] ( 670/1360) og-nav::nav smoothed_grid_paths_keep_line_of_sight_and_open_rooms_are_one_segment
+        PASS [   0.062s] ( 671/1360) og-nav::nav moving_along_the_surface_slides_on_walls_and_never_leaves_the_mesh
+        PASS [   0.434s] ( 672/1360) og-tests::gfx tilemap_lit_matches_its_reference
+        PASS [   0.025s] ( 673/1360) og-nav::nav weighted_cells_are_avoided_when_a_detour_is_cheaper_and_jps_falls_back_to_astar
+        PASS [   0.494s] ( 674/1360) og-lanes tests::sort_is_the_slices_sort
+        PASS [   0.047s] ( 675/1360) og-net base64::tests::round_trips_every_length
+        PASS [   0.134s] ( 676/1360) og-nav::nav separation_spreads_a_pile_of_agents_and_wander_is_deterministic
+        PASS [   0.029s] ( 677/1360) og-net lockstep::tests::a_late_joiner_takes_a_left_seat_from_a_snapshot_and_the_worlds_stay_equal
+        PASS [   0.041s] ( 678/1360) og-net client::tests::two_clients_meet_in_a_room_by_path_and_messages_keep_their_order
+        PASS [   0.017s] ( 679/1360) og-net lockstep::tests::a_world_that_reads_its_own_clock_is_named_at_the_first_divergent_tick
+        PASS [   0.015s] ( 680/1360) og-net protocol::tests::events_round_trip_and_bytes_cross_as_base64
+        PASS [   0.015s] ( 681/1360) og-net state::tests::a_list_field_reads_as_its_elements_up_to_its_length
+        PASS [   0.016s] ( 682/1360) og-physics dim2::debug_lines::tests::hsla_primaries
+        PASS [   0.016s] ( 683/1360) og-physics dim3::debug_lines::tests::hsla_primaries
+        PASS [   0.050s] ( 684/1360) og-net lockstep::tests::two_peers_start_together_wait_for_each_other_and_agree
+        PASS [   0.016s] ( 685/1360) og-physics lanes::tests::a_pool_that_does_not_pay_is_left_for_longer_each_time_until_it_pays
+        PASS [   0.043s] ( 686/1360) og-physics::bodies a_broken_collider_stops_the_tick_with_the_entity_named
+        PASS [   0.086s] ( 687/1360) og-physics::bodies a_dropped_box_comes_to_rest_on_a_static_floor_and_its_transform_is_written_back
+        PASS [   0.062s] ( 688/1360) og-physics::bodies a_sensor_reports_entry_and_exit_and_does_not_stop_what_passes
+        PASS [   0.058s] ( 689/1360) og-physics::bodies kinematic_bodies_move_by_their_velocity_and_push_dynamic_ones
+        PASS [   0.057s] ( 690/1360) og-physics::bodies kinematic_bodies_without_a_velocity_follow_their_transform
+        PASS [   0.023s] ( 691/1360) og-physics::bodies layers_filter_collisions
+        PASS [   0.020s] ( 692/1360) og-physics::bodies locked_axes_and_gravity_scale_hold
+        PASS [   0.020s] ( 693/1360) og-physics::bodies touching_starts_once_ends_once_and_a_removed_floor_stops_holding_the_box
+        PASS [   0.059s] ( 694/1360) og-physics::character_ground a_run_back_and_forth_keeps_the_feet_a_skin_over_the_floor
+        PASS [   0.049s] ( 695/1360) og-physics::character_ground a_run_on_a_triangle_mesh_and_a_height_field_holds_its_speed
+        PASS [   0.034s] ( 696/1360) og-physics::character_ground a_run_on_one_box_and_on_adjacent_boxes_holds_its_speed
+        PASS [   0.034s] ( 697/1360) og-physics::character_ground a_step_of_step_height_is_climbed_and_a_higher_one_is_not
+        PASS [   2.132s] ( 698/1360) og-tests::gfx taa_with_a_still_camera_reaches_a_fixed_point_in_place
+        PASS [   0.042s] ( 699/1360) og-physics::character_ground it_runs_up_and_down_a_30_degree_slope_at_its_speed_and_not_up_a_50_degree_one
+        PASS [   0.041s] ( 700/1360) og-physics::character_ground stairs_of_0_2_m_are_climbed_and_descended_at_walking_speed
+        PASS [   0.057s] ( 701/1360) og-physics::contact_hits a_controller_hitting_a_dynamic_body_reports_its_interpolated_velocity_and_the_bodys_momentum
+        PASS [   0.022s] ( 702/1360) og-physics::contact_hits a_dynamic_body_on_a_static_and_on_a_kinematic_body
+        PASS [   0.024s] ( 703/1360) og-physics::contact_hits a_light_body_into_a_heavy_one_reports_one_impulse_for_both_and_a_to_b_velocity
+        PASS [   1.114s] ( 704/1360) og-tests::gfx trails_beams_match_their_reference
+        PASS [   0.725s] ( 705/1360) og-tests::gfx vox_keyframes_show_the_keyed_block_at_both_keys
+        PASS [   0.025s] ( 706/1360) og-physics::contact_hits a_snapshot_taken_before_the_hit_replays_the_same_event
+        PASS [   0.015s] ( 707/1360) og-physics::contact_hits a_spinning_body_hitting_a_wall_counts_its_angular_point_velocity
+        PASS [   0.020s] ( 708/1360) og-tests::graph a_missing_target_is_refused_with_the_pass_and_the_name
+        PASS [   0.043s] ( 709/1360) og-tests::graph a_cycle_is_refused_with_its_passes
+        PASS [   0.015s] ( 710/1360) og-tests::graph passes_run_in_data_flow_order
+        PASS [   0.069s] ( 711/1360) og-physics::controllers a_character_climbs_gentle_slopes_and_steps_but_not_steep_ones_or_tall_steps
+        PASS [   0.033s] ( 712/1360) og-physics::controllers a_character_rides_a_moving_platform_and_pushes_crates
+        PASS [   0.022s] ( 713/1360) og-physics::controllers a_character_walks_at_its_speed_stays_on_the_ground_and_jumps_once_per_press
+        PASS [   0.038s] ( 714/1360) og-physics::controllers a_character_walks_through_colliders_its_layers_do_not_meet
+        PASS [   0.035s] ( 715/1360) og-physics::controllers a_platformer_jumps_to_its_jump_height_in_its_time_to_apex_and_a_tap_jumps_lower
+        PASS [   0.023s] ( 716/1360) og-physics::controllers a_platformer_rides_a_moving_platform
+        PASS [   0.022s] ( 717/1360) og-physics::controllers a_platformer_rides_a_platform_moving_by_its_velocity
+        PASS [   0.027s] ( 718/1360) og-physics::controllers a_platformer_runs_through_colliders_its_layers_do_not_meet
+        PASS [   0.037s] ( 719/1360) og-physics::controllers a_platformer_shoves_a_light_crate_and_not_a_heavy_one_nor_any_without_push_bodies
+        PASS [   0.516s] ( 720/1360) og-tests::gfx world_text_faces_the_camera
+        PASS [   0.733s] ( 721/1360) og-physics::character_ground a_controller_put_exactly_on_the_floor_stands_a_skin_over_it_and_runs
+        PASS [   0.018s] ( 722/1360) og-tests::graph transients_alias_when_their_lifetimes_do_not_overlap
+        PASS [   0.023s] ( 723/1360) og-physics::controllers a_top_down_character_moves_in_the_plane_and_slides_along_walls
+        PASS [   0.020s] ( 724/1360) og-physics::controllers a_wall_slows_the_fall_and_a_wall_jump_pushes_away
+        PASS [   0.019s] ( 725/1360) og-physics::controllers an_impulse_knocks_a_platformer_back_once
+        PASS [   0.016s] ( 726/1360) og-physics::controllers corner_correction_slides_a_jump_past_a_ceiling_corner
+        PASS [   3.070s] ( 727/1360) og-ecs::snapshot a_retired_entity_slot_stays_retired_across_restore
+        PASS [   0.023s] ( 728/1360) og-physics::controllers one_way_platforms_are_solid_from_above_and_down_drops_through
+        PASS [   0.028s] ( 729/1360) og-physics::controllers coyote_time_and_the_jump_buffer_forgive_late_and_early_presses
+        PASS [   0.029s] ( 730/1360) og-physics::controllers two_bodies_walked_into_at_once_share_the_push
+        PASS [   0.038s] ( 731/1360) og-physics::edits a_despawned_body_stops_holding_up_what_rests_on_it
+        PASS [   0.048s] ( 732/1360) og-physics::edits a_mesh_registered_again_changes_its_colliders_only_when_its_geometry_changes
+        PASS [   0.048s] ( 733/1360) og-physics::edits a_resized_collider_and_a_body_made_static_take_effect
+        PASS [   0.054s] ( 734/1360) og-physics::edits a_restore_into_a_world_that_ran_on_continues_from_the_snapshot
+        PASS [   0.055s] ( 735/1360) og-physics::edits a_static_collider_moved_by_game_code_moves_in_the_simulation
+        PASS [   0.039s] ( 736/1360) og-physics::edits a_teleport_moves_the_body_and_it_falls_from_there
+        PASS [   0.046s] ( 737/1360) og-physics::edits a_velocity_set_by_game_code_launches_the_body
+        PASS [   0.615s] ( 738/1360) og-tests::graph half_resolution_ao_adds_its_upsample_and_halves_its_targets
+        PASS [  12.533s] ( 739/1360) og-cook::compressed cooked_models_with_compressed_textures_render_the_gltf_reference_scene
+        PASS [   0.846s] ( 740/1360) og-tests::hooks an_offset_mesh_draws_shadows_and_occludes_where_it_moved
+        PASS [   2.490s] ( 741/1360) og-tests::gfx the_overlay_is_drawn_after_post_untonemapped_and_clipped
+        PASS [   1.200s] ( 742/1360) og-tests::graph the_showcase_frame_is_recorded_from_its_graph
+        PASS [   0.618s] ( 743/1360) og-tests::hooks an_offset_skinned_mesh_draws_shadows_and_occludes_where_it_moved
+        PASS [   0.307s] ( 744/1360) og-physics::fluid3d a_restored_fluid_continues_exactly_and_the_seed_matters
+        PASS [   0.129s] ( 745/1360) og-physics::fluid3d a_viscous_fluid_spreads_slower_than_water
+        PASS [   0.993s] ( 746/1360) og-physics::fluid3d a_drop_in_zero_gravity_holds_together_and_rounds
+        PASS [   0.207s] ( 747/1360) og-physics::fluid3d an_emitter_adds_its_rate_up_to_max_count_and_a_sink_takes_what_enters
+        PASS [   1.138s] ( 748/1360) og-physics::fluid3d a_poured_block_settles_into_a_still_pool_inside_its_bounds
+        PASS [   0.020s] ( 749/1360) og-physics::fluid3d the_2d_profile_does_not_simulate_it
+        PASS [   0.108s] ( 750/1360) og-physics::fluid3d fluid_poured_on_a_box_flows_around_it_and_never_inside
+        PASS [   0.456s] ( 751/1360) og-physics::fluid3d fluid_poured_into_a_terrain_bowl_runs_to_its_bottom_and_never_through
+        PASS [   0.719s] ( 752/1360) og-tests::light a_renderer_restore_keeps_the_baked_frame
+        PASS [   1.893s] ( 753/1360) og-physics::fluid3d a_heavy_fluid_poured_on_a_light_one_sinks_under_it
+        PASS [   1.251s] ( 754/1360) og-tests::light a_shadowed_rect_light_casts_a_soft_shadow
+        PASS [   0.975s] ( 755/1360) og-tests::light baked_batches_matches_its_reference
+        PASS [  10.794s] ( 756/1360) og-cook::raycast_bvh a_cooked_model_carries_the_bvh_a_build_over_its_mesh_makes
+        PASS [   1.442s] ( 757/1360) og-physics::fluid3d with_mixing_two_fluids_blend_and_keep_their_amounts
+        PASS [   0.079s] ( 758/1360) og-physics::forces a_centre_of_mass_below_a_box_rights_it
+        PASS [   1.960s] ( 759/1360) og-tests::hooks skinned_hooks_match_their_reference
+        PASS [   0.031s] ( 760/1360) og-physics::forces a_force_acts_over_one_step_and_an_impulse_at_once
+        PASS [   0.019s] ( 761/1360) og-physics::forces a_hit_stop_drops_forces_and_keeps_impulses_for_after_it
+        PASS [   0.016s] ( 762/1360) og-physics::forces a_push_off_the_centre_spins_and_a_torque_turns_about_its_axis
+        PASS [   0.029s] ( 763/1360) og-physics::forces only_dynamic_bodies_move_and_the_2d_profile_takes_pushes_too
+        PASS [   0.025s] ( 764/1360) og-physics::forces pushes_not_yet_applied_are_in_the_snapshot
+        PASS [   0.026s] ( 765/1360) og-physics::heightfield bad_or_missing_fields_are_refused
+        PASS [   0.016s] ( 766/1360) og-physics::heightfield heights_are_rows_along_z_split_along_the_renderers_diagonal
+        PASS [   0.024s] ( 767/1360) og-physics::heightfield the_surface_follows_the_field_and_its_edits
+        PASS [   0.085s] ( 768/1360) og-physics::heightfield a_character_walks_up_a_field_and_a_ball_rests_on_it
+        PASS [   0.033s] ( 769/1360) og-physics::joints a_hinge_swings_about_its_world_anchor_and_reports_its_angle
+        PASS [   0.044s] ( 770/1360) og-physics::joints a_fixed_joint_keeps_two_bodies_as_one
+        PASS [   0.030s] ( 771/1360) og-physics::joints a_joint_survives_its_body_being_rebuilt_and_stops_when_removed
+        PASS [   0.043s] ( 772/1360) og-physics::joints a_hinge_with_limits_stops_at_them
+        PASS [   0.030s] ( 773/1360) og-physics::joints a_slider_moves_along_its_axis_within_its_limits
+        PASS [   0.881s] ( 774/1360) og-tests::light baked_cornell_matches_its_reference
+        PASS [   0.040s] ( 775/1360) og-physics::joints a_joint_to_an_entity_that_is_not_a_body_does_nothing_until_it_is
+        PASS [   0.031s] ( 776/1360) og-physics::joints a_velocity_motor_spins_a_wheel_and_a_position_motor_turns_to_its_target
+        PASS [   0.036s] ( 777/1360) og-physics::joints a_spring_settles_below_its_rest_length_and_a_rope_holds_at_its_length
+        PASS [   0.033s] ( 778/1360) og-physics::joints the_2d_profile_hinges_in_the_plane
+        PASS [   0.445s] ( 779/1360) og-tests::light light_cookies_match_their_reference
+        PASS [   0.197s] ( 780/1360) og-physics::lanes a_panic_in_a_query_is_the_structured_crash
+        PASS [   0.377s] ( 781/1360) og-tests::light rect_lights_match_their_reference
+        PASS [   2.807s] ( 782/1360) og-tests::light a_full_custom_shader_lights_rect_lights_with_their_shadow
+        PASS [   1.358s] ( 783/1360) og-tests::light every_batch_kind_draws_its_lightmap
+        PASS [   1.273s] ( 784/1360) og-tests::light the_bake_bleeds_colour_and_lights_the_ceiling
+        PASS [   0.755s] ( 785/1360) og-tests::light the_raymarch_lights_the_fog_with_the_spot
+        PASS [   1.780s] ( 786/1360) og-physics::lanes many_ragdolls_split_and_off_the_lanes_end_in_the_same_world
+        PASS [   0.218s] ( 787/1360) og-tests::light the_volumetric_fog_has_no_froxel_streaks
+        PASS [   0.028s] ( 788/1360) og-physics::lanes queries_outside_the_step_stay_on_the_calling_thread
+        PASS [   0.024s] ( 789/1360) og-physics::lanes stats_say_what_each_phase_cost_and_where_it_ran
+        PASS [   3.751s] ( 790/1360) og-physics::fluid_groups a_fluid_alone_carries_no_mix_and_groups_replay
+        PASS [   0.366s] ( 791/1360) og-tests::light volumetric_fog_matches_its_reference
+        PASS [   0.175s] ( 792/1360) og-physics::lanes the_step_goes_to_the_pool_from_the_threshold_of_its_thread_count
+        PASS [   1.836s] ( 793/1360) og-tests::light the_low_quality_preset_turns_rect_light_shadows_off
+        PASS [   6.466s] ( 794/1360) og-physics::beyond_determinism physics_beyond_rigid_bodies_is_deterministic_and_restores_mid_run
+        PASS [   0.048s] ( 795/1360) og-physics::platformer_ground a_run_left_and_right_keeps_the_feet_a_skin_over_the_floor
+        PASS [   0.031s] ( 796/1360) og-physics::platformer_ground a_run_on_a_tilemaps_collision_layer_holds_max_speed
+        PASS [   0.314s] ( 797/1360) og-physics::platformer_ground a_controller_put_exactly_on_the_floor_stands_and_runs
+        PASS [   0.045s] ( 798/1360) og-physics::platformer_ground a_run_on_one_flat_box_holds_max_speed
+        PASS [   0.033s] ( 799/1360) og-physics::platformer_ground a_run_over_adjacent_boxes_holds_max_speed
+        PASS [   0.050s] ( 800/1360) og-physics::platformer_ground it_runs_up_and_down_a_walkable_slope_at_its_speed_and_not_up_a_steep_one
+        PASS [   0.062s] ( 801/1360) og-physics::profile_2d a_circle_rolls_down_a_slope
+        PASS [   0.039s] ( 802/1360) og-physics::profile_2d a_polygon_from_a_mesh_lands_flat
+        PASS [   0.470s] ( 803/1360) og-tests::lights lights_256_matches_its_reference
+        PASS [   0.019s] ( 804/1360) og-physics::profile_2d the_2d_profile_refuses_3d_only_shapes
+        PASS [   0.057s] ( 805/1360) og-physics::profile_2d a_world_switches_profile_at_run_time_and_back
+        PASS [   0.041s] ( 806/1360) og-physics::queries a_raycast_hits_the_nearest_body_and_honours_the_filter
+        PASS [   0.029s] ( 807/1360) og-physics::queries a_shape_cast_stops_at_the_first_surface_and_overlap_lists_what_it_touches
+        PASS [   0.030s] ( 808/1360) og-physics::queries queries_see_where_the_step_moved_bodies
+        PASS [   0.050s] ( 809/1360) og-physics::ragdoll a_2d_ragdoll_follows_goes_limp_on_hinges_in_its_plane_and_recovers
+        PASS [   0.036s] ( 810/1360) og-physics::ragdoll a_ragdoll_follows_its_animation_goes_limp_and_recovers_with_a_blend
+        PASS [   0.408s] ( 811/1360) og-tests::lights lights_outside_the_view_are_culled
+        PASS [   0.077s] ( 812/1360) og-physics::saves a_snapshot_carries_mesh_colliders_by_their_asset_and_restores_to_the_same_world
+        PASS [   1.563s] ( 813/1360) og-tests::light two_baked_scenes_draw_their_own_pages
+        PASS [   0.461s] ( 814/1360) og-tests::lights past_max_lights_the_faint_far_ones_are_dropped
+        PASS [   0.219s] ( 815/1360) og-tests::lights tile_boundaries_leave_no_step
+        PASS [   0.412s] ( 816/1360) og-tests::lights past_the_cluster_cap_the_brightest_lights_stay
+        PASS [   1.025s] ( 817/1360) og-physics::self_collision a_sheet_that_falls_and_folds_never_passes_through_itself
+        PASS [   0.095s] ( 818/1360) og-physics::soft a_2d_water_line_is_splashed_by_bodies_and_characters_and_settles
+        PASS [   1.267s] ( 819/1360) og-tests::lights moving_the_depth_slices_changes_nothing
+        PASS [   0.055s] ( 820/1360) og-physics::soft a_body_dropped_in_water_splashes_makes_waves_that_die_out_and_floats
+        PASS [   0.024s] ( 821/1360) og-physics::soft a_cloth_pinned_to_a_child_entity_follows_its_parent
+        PASS [   0.031s] ( 822/1360) og-physics::soft a_rope_hangs_at_its_length_follows_its_anchor_and_drapes_over_a_box
+        PASS [   0.026s] ( 823/1360) og-physics::soft a_rope_tied_at_both_ends_sags_between_them
+        PASS [   0.446s] ( 824/1360) og-tests::materials a_non_uniform_scale_bends_normals_correctly
+        PASS [   0.039s] ( 825/1360) og-physics::soft cloth_hangs_from_its_pins_flutters_in_the_wind_and_drapes_over_a_ball
+        PASS [   0.048s] ( 826/1360) og-physics::time_scale a_hit_stop_freezes_bodies_keeps_contacts_and_resumes_exactly
+        PASS [   0.025s] ( 827/1360) og-physics::time_scale slow_motion_scales_the_step_and_zero_stops_it
+        PASS [   0.298s] ( 828/1360) og-tests::materials a_normal_maps_green_points_up_the_image
+        PASS [   0.714s] ( 829/1360) og-tests::materials a_large_ground_keeps_its_outline_only_where_it_ends
+        PASS [   0.019s] ( 830/1360) og-tests::materials generate_tangents_follows_the_uvs
+        PASS [   0.096s] ( 831/1360) og-physics::vehicles a_2d_car_drives_on_sprung_wheels_and_its_wheels_go_with_it
+        PASS [   0.052s] ( 832/1360) og-physics::vehicles a_3d_car_rests_on_its_wheels_drives_forward_steers_and_brakes
+        PASS [   0.034s] ( 833/1360) og-physics::vehicles a_car_on_a_raft_drives_it_backwards_and_weighs_on_it
+        PASS [   0.127s] ( 834/1360) og-physics::vehicles a_car_on_rails_with_its_front_wheels_turned_scrubs_them
+        PASS [   0.028s] ( 835/1360) og-physics::vehicles cars_on_layers_that_do_not_meet_pass_through_each_other
+        PASS [   0.555s] ( 836/1360) og-tests::materials clearcoat_adds_a_glossy_layer
+        PASS [   0.113s] ( 837/1360) og-physics::vehicles full_lock_at_speed_tips_a_tall_car_only_with_roll_influence_and_a_high_centre_of_mass
+        PASS [   6.099s] ( 838/1360) og-physics::fluid_groups a_heavy_fluid_poured_on_a_light_one_sinks_under_it_and_they_layer
+        PASS [   0.023s] ( 839/1360) og-probe expect::tests::compares_numbers_and_values
+        PASS [   0.049s] ( 840/1360) og-physics::vehicles the_defaults_drive_a_car_of_a_thousand_kilograms
+        PASS [   0.020s] ( 841/1360) og-probe expect::tests::dump_paths_take_dotted_component_names
+        PASS [   0.431s] ( 842/1360) og-tests::materials generated_tangents_match_the_surface
+        PASS [   0.019s] ( 843/1360) og-probe expect::tests::parses_every_form
+        PASS [   0.021s] ( 844/1360) og-probe probe::record::tests::a_render_snapshot_moves_the_world_and_keeps_only_the_steps_after_it
+        PASS [   0.012s] ( 845/1360) og-probe value::tests::a_write_outside_the_range_is_refused_naming_the_range_and_the_fix
+        PASS [   0.018s] ( 846/1360) og-probe value::tests::an_enum_reads_as_its_variant_name_and_writes_from_the_name_or_the_index
+        PASS [   0.016s] ( 847/1360) og-probe value::tests::command_text_takes_true_and_false_for_a_bool
+        PASS [   0.031s] ( 848/1360) og-probe::commands a_dot_name_is_kept_for_the_harness
+        PASS [   0.030s] ( 849/1360) og-probe::commands a_gate_that_restores_a_peers_snapshot_keeps_the_steps_on_the_shared_ticks
+        PASS [   0.021s] ( 850/1360) og-probe::commands a_screenshot_whose_frame_lands_later_holds_the_clock_and_the_steps_after_it
+        PASS [   0.023s] ( 851/1360) og-probe::commands a_scripted_run_seeds_advances_dumps_and_quits
+        PASS [   0.021s] ( 852/1360) og-probe::commands a_second_step_naming_a_written_file_goes_beside_it_with_a_warning_naming_both
+        PASS [   0.021s] ( 853/1360) og-probe::commands an_unknown_action_warns_and_the_script_continues
+        PASS [   0.024s] ( 854/1360) og-probe::commands get_answers_an_enum_by_its_variant_name_and_set_takes_the_name_or_the_index
+        PASS [   0.021s] ( 855/1360) og-probe::commands get_answers_og_time_whole_and_unnamed_gets_on_one_tick_keep_their_files
+        PASS [   0.022s] ( 856/1360) og-probe::commands help_lists_every_action_core_and_registered
+        PASS [   0.023s] ( 857/1360) og-probe::commands output_paths_stay_inside_the_output_directory
+        PASS [   0.023s] ( 858/1360) og-probe::commands pointer_and_key_actions_go_through_the_input_layer
+        PASS [   0.021s] ( 859/1360) og-probe::commands set_and_get_reach_resources_entities_components_and_fields
+        PASS [   0.022s] ( 860/1360) og-probe::commands steps_run_on_simulation_time_even_inside_an_advance
+        PASS [   0.030s] ( 861/1360) og-probe::commands steps_left_ends_a_script_whose_steps_a_restore_moved_past_its_scheduled_end
+        PASS [   0.023s] ( 862/1360) og-probe::commands teleport_set_frame_and_dump_entity_write_through_the_schema
+        PASS [   0.024s] ( 863/1360) og-probe::commands the_grammar_is_strict_about_times_and_names
+        PASS [   0.035s] ( 864/1360) og-probe::conformance a_failing_system_is_a_fault_and_the_probe_still_answers
+        PASS [   0.031s] ( 865/1360) og-probe::conformance a_sweep_whose_frames_land_later_answers_them_all_on_a_later_call
+        PASS [   0.023s] ( 866/1360) og-probe::conformance a_sweep_yields_one_frame_per_value_and_restores_the_world
+        PASS [   0.030s] ( 867/1360) og-probe::conformance every_member_answers_as_protocol_5_says
+        PASS [   0.019s] ( 868/1360) og-probe::conformance reload_swaps_the_bundle_and_keeps_the_world
+        PASS [   0.017s] ( 869/1360) og-probe::conformance snapshots_and_sweeps_carry_the_renderers_state
+        PASS [   0.321s] ( 870/1360) og-tests::materials mirrored_uvs_keep_the_map_the_right_way_round
+        PASS [   0.026s] ( 871/1360) og-probe::expect a_malformed_expectation_is_a_warning_not_a_result
+        PASS [   0.018s] ( 872/1360) og-probe::expect a_script_of_expectations_reports_each_with_its_tick_and_observed_value
+        PASS [   0.400s] ( 873/1360) og-tests::materials materials_matches_its_reference
+        PASS [   6.025s] ( 874/1360) og-physics::fluid_groups with_mixing_the_two_fluids_blend_into_one
+        PASS [   0.014s] ( 875/1360) og-probe::expect describe_names_the_views_each_entity_shows_in
+        PASS [   0.018s] ( 876/1360) og-probe::expect describe_orders_entities_nearest_first_with_ui_and_pick_falls_back_to_the_view
+        PASS [   0.014s] ( 877/1360) og-probe::expect programs_and_the_member_answer_results_and_expectations_drains_them
+        PASS [   0.031s] ( 878/1360) og-probe::lists set_refuses_a_list_over_its_capacity_and_patch_refuses_any_list
+        PASS [   0.037s] ( 879/1360) og-probe::lists set_get_and_the_dumps_move_a_list_field_as_an_array
+        PASS [   0.818s] ( 880/1360) og-tests::materials ground_grid_repeats_every_10_m
+        PASS [   0.055s] ( 881/1360) og-probe::strings set_and_get_move_a_string_field_as_text
+        PASS [   0.057s] ( 882/1360) og-probe::strings set_refuses_a_string_over_its_capacity_and_names_the_fix
+        PASS [   0.086s] ( 883/1360) og-probe::websocket a_browser_page_is_refused_at_the_handshake
+        PASS [   0.043s] ( 884/1360) og-probe::websocket other_paths_and_non_loopback_addresses_are_refused
+        PASS [   0.101s] ( 885/1360) og-probe::websocket a_real_client_is_answered_on_the_world_thread
+        PASS [   0.083s] ( 886/1360) og-runtime codec::tests::a_kept_decode_is_redone_only_when_the_bytes_change
+        PASS [   0.047s] ( 887/1360) og-runtime codec::tests::an_engine_record_list_field_takes_the_idl_capacity
+        PASS [   0.017s] ( 888/1360) og-runtime codec::tests::post_effects_custom_is_a_list_of_every_pass_og_render_runs
+        PASS [   0.024s] ( 889/1360) og-runtime codec::tests::an_engine_record_text_field_takes_the_idl_capacity
+        PASS [   0.104s] ( 890/1360) og-runtime codec::tests::a_row_reads_what_the_decoded_json_answers
+        PASS [   0.020s] ( 891/1360) og-runtime engine::tests::a_value_set_in_both_places_differently_is_refused
+        PASS [   0.022s] ( 892/1360) og-runtime engine::tests::a_game_command_named_as_a_module_action_is_refused
+        PASS [   0.020s] ( 893/1360) og-runtime engine::tests::project_ogt_fills_what_gamedesc_leaves_unset
+        PASS [   0.018s] ( 894/1360) og-runtime engine::tests::the_module_actions_are_the_reserved_list
+        PASS [   5.125s] ( 895/1360) og-tests::light terrain_and_scatter_light_rect_lights_as_areas
+        PASS [   0.074s] ( 896/1360) og-runtime geometry::tests::a_still_read_walks_no_entity
+        PASS [   0.069s] ( 897/1360) og-runtime geometry::tests::the_raycast_record_composes_only_what_moved
+        PASS [   0.015s] ( 898/1360) og-runtime modules::tests::a_native_host_edits_with_the_platforms_keys
+        PASS [   0.020s] ( 899/1360) og-runtime memory::tests::a_native_process_reads_its_resident_memory
+        PASS [   0.039s] ( 900/1360) og-runtime platform::tests::a_slot_calls_answer_carries_the_hosts_time_as_a_store_answer_does
+        PASS [   0.042s] ( 901/1360) og-runtime platform::tests::calls_waiting_and_answers_are_bounded
+        PASS [   0.557s] ( 902/1360) og-tests::materials normal_maps_follow_the_vertex_tangent_frame
+        PASS [   0.134s] ( 903/1360) og-runtime platform::tests::now_never_goes_back_on_one_clock_and_starts_afresh_on_another
+        PASS [   0.017s] ( 904/1360) og-runtime review::tests::the_orbit_fits_the_bounding_sphere_inside_the_frame
+        PASS [   0.016s] ( 905/1360) og-runtime save::tests::a_save_decodes_to_its_snapshot_and_other_text_is_refused_with_the_fix
+        PASS [   0.018s] ( 906/1360) og-runtime save::tests::base64_round_trips_every_length
+        PASS [   0.018s] ( 907/1360) og-runtime trace::tests::a_gpu_pass_ends_on_the_microsecond_its_frame_does
+        PASS [   2.867s] ( 908/1360) og-physics::soft a_2d_fluid_settles_into_its_container_without_leaking_or_blowing_up
+        PASS [   0.087s] ( 909/1360) og-runtime::ao_resolution ao_resolution_reaches_the_renderer_and_defaults_to_full
+        PASS [   0.462s] ( 910/1360) og-runtime platform::tests::a_slot_takes_a_text_over_a_key_in_banks_and_a_save_cut_short_leaves_the_last_one
+        PASS [   0.604s] ( 911/1360) og-runtime feel::tests::the_time_payload_reads_back_as_the_formatted_numbers
+        PASS [   0.222s] ( 912/1360) og-runtime::armed_emitters a_one_shot_never_given_a_start_tick_waits_and_a_looping_one_runs
+        PASS [   0.107s] ( 913/1360) og-runtime::billboards every_world_sprite_reaches_the_renderer_with_its_facing
+        PASS [   0.237s] ( 914/1360) og-runtime::baked_scenes a_render_snapshot_restores_the_bake_with_its_world
+        PASS [   0.211s] ( 915/1360) og-runtime::baked_scenes two_baked_scenes_both_draw_their_bakes
+        PASS [   0.356s] ( 916/1360) og-runtime::baked_scenes a_recook_that_keeps_the_geometry_keeps_the_bake
+        PASS [   0.102s] ( 917/1360) og-runtime::cookie_cap cookies_past_the_cap_are_reported
+        PASS [   1.130s] ( 918/1360) og-tests::moon the_moon_sets_below_the_horizon
+        PASS [   0.166s] ( 919/1360) og-runtime::contact_hit a_game_reads_the_impulse_and_the_relative_velocity_and_a_restore_replays_them
+        PASS [   1.255s] ( 920/1360) og-tests::moon atmosphere_moon_matches_its_reference
+        PASS [   0.171s] ( 921/1360) og-runtime::geometry_uv_repeat uv_repeat_scales_every_generated_geometry_s_uvs
+        PASS [   0.220s] ( 922/1360) og-runtime::drop_shadows drop_shadows_lie_on_the_terrain_or_their_height
+        PASS [   0.222s] ( 923/1360) og-runtime::material_arrays a_material_samples_arrays_and_each_mesh_picks_its_layer
+        PASS [   0.134s] ( 924/1360) og-runtime::mesh_flash a_flashing_mesh_is_one_material_with_its_twins
+        PASS [   0.182s] ( 925/1360) og-runtime::material_arrays a_terrain_samples_its_layer_arrays
+        PASS [   0.199s] ( 926/1360) og-runtime::mid_tick_save a_replay_from_a_save_taken_inside_a_system_matches_the_run_that_saved
+        PASS [   0.179s] ( 927/1360) og-runtime::model_clips a_vox_without_a_skeleton_draws_frame_0_only
+        PASS [   0.179s] ( 928/1360) og-runtime::model_clips a_mirrored_clip_is_registered_once_and_plays
+        PASS [   0.044s] ( 929/1360) og-runtime::model_clips gltf_info_lists_the_clips_of_the_models_anim_blob
+        PASS [   0.152s] ( 930/1360) og-runtime::model_clips an_animated_vox_plays_one_frame_at_a_time
+        PASS [   0.135s] ( 931/1360) og-runtime::model_reload an_edited_type_model_loads_again_under_its_handle
+        PASS [   0.166s] ( 932/1360) og-runtime::no_renderer a_world_without_a_renderer_replays_from_its_snapshot
+        PASS [   0.143s] ( 933/1360) og-runtime::no_renderer without_a_renderer_the_run_is_the_same_and_its_frames_are_unchecked
+        PASS [   0.107s] ( 934/1360) og-runtime::render_quality apply_quality_writes_the_presets_row_and_the_renderer_reads_it
+        PASS [   0.052s] ( 935/1360) og-runtime::render_quality the_capabilities_say_what_msaa_the_device_gives
+        PASS [   0.585s] ( 936/1360) og-tests::physical a_transmission_map_masks_the_glass
+        PASS [   0.736s] ( 937/1360) og-tests::physical a_physical_material_with_its_lobes_off_shades_as_the_standard_one
+        PASS [   0.128s] ( 938/1360) og-runtime::render_raycast the_mesh_raycast_answers_the_collider_raycast
+        PASS [   0.133s] ( 939/1360) og-runtime::restored_event the_tick_after_a_restore_reads_og_world_restored_once
+        PASS [   0.668s] ( 940/1360) og-runtime::missing_glyphs a_missing_glyph_is_named_once_on_the_tick_it_is_first_drawn
+        PASS [   0.141s] ( 941/1360) og-runtime::review_views views_frame_the_entity_orthographically_from_their_side
+        PASS [   0.164s] ( 942/1360) og-runtime::scene_string a_cooked_scene_with_a_string_field_loads_into_a_live_world_with_the_text_intact
+        PASS [   0.219s] ( 943/1360) og-runtime::shadow_flags a_mesh_receives_unless_told_not_to
+        PASS [   0.173s] ( 944/1360) og-runtime::shadow_flags a_model_loaded_without_flags_casts_and_receives_and_one_turned_off_does_neither
+        PASS [   0.254s] ( 945/1360) og-runtime::shadow_flags a_hidden_model_draws_nothing_posed_or_not
+        PASS [   0.017s] ( 946/1360) og-runtime::shadow_flags reflection_declares_the_defaults
+        PASS [   0.057s] ( 947/1360) og-runtime::shadow_flags a_scene_model_line_takes_the_loads_flags
+        PASS [   0.058s] ( 948/1360) og-runtime::shadow_flags a_posed_models_skinned_instances_carry_its_flags
+        PASS [   0.060s] ( 949/1360) og-runtime::shadow_flags the_flags_round_trip_through_the_scene_text
+        PASS [   0.583s] ( 950/1360) og-tests::physical anisotropy_stretches_the_highlight
+        PASS [   1.934s] ( 951/1360) og-tests::moon the_size_sets_the_disc
+        PASS [   0.118s] ( 952/1360) og-runtime::sprite_arrays screen_sprites_and_emitters_draw_from_arrays
+        PASS [   0.142s] ( 953/1360) og-runtime::sprite_arrays an_og_sprite_draws_the_layer_of_its_array
+        PASS [   0.154s] ( 954/1360) og-runtime::sprite_arrays an_array_flipbook_draws_its_frame_as_the_layer
+        PASS [   0.644s] ( 955/1360) og-tests::physical clearcoat_maps_mask_and_bend_the_coat
+        PASS [   0.194s] ( 956/1360) og-runtime::stream_release an_array_flipbook_in_a_group_follows_its_array_out_and_back
+        PASS [   0.071s] ( 957/1360) og-runtime::stream_release an_emitter_of_a_grouped_array_keeps_it_while_it_runs_and_follows_it_back
+        PASS [   0.320s] ( 958/1360) og-runtime::stream_fetch chunks_nearest_the_playhead_go_first_then_packs_by_priority_four_at_a_time
+        PASS [   0.067s] ( 959/1360) og-runtime::stream_release an_unloaded_group_lets_go_of_its_maps_arrays_palettes_looks_and_luts_and_a_reload_brings_them_back
+        PASS [   0.077s] ( 960/1360) og-runtime::stream_release what_the_frame_keeps_counts_in_the_budget_until_it_is_let_go
+        PASS [   0.399s] ( 961/1360) og-runtime::stream_chunked a_chunked_sound_in_a_group_reads_no_chunk_until_its_group_is_resident
+        PASS [   0.074s] ( 962/1360) og-runtime::stream_release what_the_frame_still_uses_is_kept_with_a_warning_until_it_is_not
+        PASS [   1.234s] ( 963/1360) og-runtime::render_raycast a_cooked_model_raycasts_without_building_a_bvh
+        PASS [   0.285s] ( 964/1360) og-runtime::tilemap_reload reload_preserves_edited_tiles_and_runs_the_new_bundle
+        PASS [   0.857s] ( 965/1360) og-tests::physical iridescence_colours_the_reflections
+        PASS [   0.305s] ( 966/1360) og-runtime::timeline playback_raises_markers_once_and_hands_the_camera_back_at_the_end
+        PASS [   0.418s] ( 967/1360) og-runtime::timeline a_hot_reload_keeps_playing_from_the_same_time_with_the_edited_keys
+        PASS [   0.043s] ( 968/1360) og-runtime::timeline timeline_play_and_seek_from_the_command_channel
+        PASS [   0.286s] ( 969/1360) og-runtime::timeline seeking_to_4s_hashes_as_playing_to_4s
+        PASS [   0.902s] ( 970/1360) og-tests::physical materials_physical_matches_its_reference
+        PASS [   0.143s] ( 971/1360) og-runtime::tube_path a_tube_along_a_path_is_the_tube_through_its_points
+        PASS [   0.633s] ( 972/1360) og-runtime::text_facing faced_world_text_reaches_the_renderer_with_its_pivot
+        PASS [   0.178s] ( 973/1360) og-runtime::web_findings a_mesh_casts_shadows_only_when_its_flag_says_so
+        PASS [   0.079s] ( 974/1360) og-runtime::web_findings the_looks_antialias_reaches_the_renderer_before_its_assets_can_load
+        PASS [   0.022s] ( 975/1360) og-tilemap::autotile a_fill_then_clear_restores_the_neighbourhood_exactly
+        PASS [   0.016s] ( 976/1360) og-tilemap::autotile an_isolated_cell_and_a_3x3_block_resolve_to_their_neighbourhoods
+        PASS [   0.018s] ( 977/1360) og-tilemap::autotile bitmask16_reads_the_four_edges
+        PASS [   0.015s] ( 978/1360) og-tilemap::autotile rules_must_name_reduced_masks_and_terrain_cells_are_0_or_1
+        PASS [   0.016s] ( 979/1360) og-tilemap::autotile the_map_edge_counts_as_filled_unless_the_terrain_says_empty
+        PASS [   0.013s] ( 980/1360) og-tilemap::autotile there_are_47_reduced_blob_masks_and_reduction_drops_lone_corners
+        PASS [   0.022s] ( 981/1360) og-tilemap::chunks culling_lists_the_chunks_a_rectangle_touches
+        PASS [   0.016s] ( 982/1360) og-tilemap::chunks quads_carry_their_cell_flips_and_animations
+        PASS [   0.012s] ( 983/1360) og-tilemap::chunks regions_are_inset_and_animations_loop
+        PASS [   0.614s] ( 984/1360) og-runtime::timeline_sound the_timelines_sound_is_heard_where_its_keys_put_it
+        PASS [   0.020s] ( 985/1360) og-tilemap::collision a_room_outline_is_four_rectangles
+        PASS [   0.018s] ( 986/1360) og-tilemap::collision an_l_shape_is_two_rectangles
+        PASS [   0.498s] ( 987/1360) og-runtime::ui_configure a_style_names_its_assets_relative_to_itself_or_from_assets
+        PASS [   0.458s] ( 988/1360) og-runtime::ui_configure configure_keeps_the_fields_a_call_leaves_out
+        PASS [   0.015s] ( 989/1360) og-tilemap::collision only_layers_with_collision_and_their_offsets_count
+        PASS [   0.013s] ( 990/1360) og-tilemap::collision partial_shapes_stay_per_tile_and_full_width_ones_merge_along_a_row
+        PASS [   0.015s] ( 991/1360) og-tilemap::state equal_edits_give_equal_states_and_bytes_and_decode_restores_them
+        PASS [   0.013s] ( 992/1360) og-tilemap::state tile_layer_edits_are_checked_and_bump_only_their_chunk
+        PASS [   0.019s] ( 993/1360) og-tilemap::text a_collision_layer_names_its_own_collider_layers_and_mask
+        PASS [   0.014s] ( 994/1360) og-tilemap::text a_hand_written_map_reads_legends_rows_and_objects
+        PASS [   0.033s] ( 995/1360) og-tilemap::state an_untouched_256x256_four_layer_map_snapshots_in_a_few_bytes
+        PASS [   0.016s] ( 996/1360) og-tilemap::text a_tileset_round_trips_through_its_canonical_text
+        PASS [   0.013s] ( 997/1360) og-tilemap::text tileset_mistakes_name_their_line
+        PASS [   0.014s] ( 998/1360) og-tilemap::text map_mistakes_name_their_line
+        PASS [   0.018s] ( 999/1360) og-timeline captions::tests::whisper_segments_and_plain_arrays_parse
+        PASS [   0.022s] (1000/1360) og-timeline captions::tests::srt_cues_with_and_without_indexes_tags_and_hints
+        PASS [   0.016s] (1001/1360) og-timeline eval::tests::channels_hold_outside_and_ease_by_the_later_key
+        PASS [   0.017s] (1002/1360) og-timeline captions::tests::words_group_at_sentences_pauses_and_width
+        PASS [   0.012s] (1003/1360) og-timeline eval::tests::covers_through_in_out_and_cut
+        PASS [   0.012s] (1004/1360) og-timeline eval::tests::music_fades_in_and_out_by_the_time_alone
+        PASS [   0.015s] (1005/1360) og-timeline eval::tests::slerp_takes_the_short_way_and_lands_exactly
+        PASS [   0.010s] (1006/1360) og-timeline path::tests::a_linear_path_is_measured_by_arc_length_not_by_points
+        PASS [   0.013s] (1007/1360) og-timeline model::tests::refusals_name_the_line_and_the_fix
+        PASS [   0.019s] (1008/1360) og-timeline model::tests::parses_sorts_imports_and_round_trips_canonically
+        PASS [   0.011s] (1009/1360) og-timeline path::tests::catmull_rom_passes_through_its_points_at_their_distances
+        PASS [   0.011s] (1010/1360) og-timeline path::tests::nearest_answers_the_point_and_its_parameter
+        PASS [   0.018s] (1011/1360) og-timeline path::tests::bezier_segments_end_on_their_anchors_and_closed_paths_wrap
+        PASS [   0.020s] (1012/1360) og-tween::tweens a_leaf_eases_one_lane_and_reports_once
+        PASS [   3.779s] (1013/1360) og-tests::moon the_phase_lights_the_disc
+        PASS [   0.015s] (1014/1360) og-tween::tweens a_snapshot_mid_tween_restores_running_tweens
+        PASS [   0.014s] (1015/1360) og-tween::tweens cancelled_and_orphaned_tweens_end_without_an_event
+        PASS [   0.017s] (1016/1360) og-tween::tweens a_squash_scales_z_on_3d_models_and_leaves_it_at_rest_for_sprites
+        PASS [   0.801s] (1017/1360) og-tests::physical sheen_lights_the_rim_in_its_colour
+        PASS [   0.014s] (1018/1360) og-tween::tweens delay_relative_loops_and_yoyo
+        PASS [   0.013s] (1019/1360) og-tween::tweens every_ease_starts_at_0_and_ends_at_1
+        PASS [   0.012s] (1020/1360) og-tween::tweens sequences_hand_on_their_leftover_time_and_parallels_wait_for_the_last
+        PASS [   0.016s] (1021/1360) og-tween::tweens targets_must_be_numeric_fields_and_values_must_fit
+        PASS [   0.014s] (1022/1360) og-tween::tweens time_scale_and_hit_stop_slow_and_hold_scaled_tweens_only
+        PASS [   0.457s] (1023/1360) og-tests::probes a_capture_draws_3d_fluids
+        PASS [   1.128s] (1024/1360) og-tests::physical skinned_physical_materials_draw
+        PASS [   7.860s] (1025/1360) og-physics::lanes the_beyond_scenario_split_and_off_the_lanes_ends_in_the_same_world
+        PASS [   0.867s] (1026/1360) og-tests::physical transmission_refracts_the_scene_behind
+        PASS [   2.629s] (1027/1360) og-tests::physical material_shaders_run_on_physical_materials
+        PASS [   0.801s] (1028/1360) og-tests::probes a_skinned_instance_takes_the_probe_of_its_pose
+        PASS [   1.224s] (1029/1360) og-tests::probes a_capture_draws_water
+        PASS [   1.704s] (1030/1360) og-tests::probes a_capture_draws_particles_sprites_and_lines
+        PASS [   0.392s] (1031/1360) og-tests::probes each_of_two_rooms_reflects_its_own_room
+        PASS [   0.427s] (1032/1360) og-tests::probes probe_two_rooms_matches_its_reference
+        PASS [   0.759s] (1033/1360) og-tests::probes probe_outdoor_matches_its_reference
+        PASS [   2.530s] (1034/1360) og-tests::probes a_capture_draws_skinned_meshes_terrain_grass_and_glass
+        PASS [   0.547s] (1035/1360) og-tests::probes soft_particles_in_a_capture_fade_against_the_floor
+        PASS [  72.153s] (1036/1360) og-cook::template every_thread_count_cooks_the_same_bytes
+        PASS [   0.907s] (1037/1360) og-tests::probes ssr_reads_roughness_maps_and_terrain_layers
+        PASS [   0.724s] (1038/1360) og-tests::probes water_in_a_capture_reflects_the_face_in_screen_space
+        PASS [   0.245s] (1039/1360) og-tests::removal a_removed_lut_is_refused_and_its_bytes_freed
+        PASS [   1.132s] (1040/1360) og-tests::probes terrain_and_grass_in_a_probes_box_take_its_light
+        PASS [   0.434s] (1041/1360) og-tests::probes water_in_a_capture_shows_the_floor_below
+        PASS [   2.248s] (1042/1360) og-tests::probes local_lights_reach_terrain_and_fluids_in_a_capture
+        PASS [   0.202s] (1043/1360) og-tests::removal a_removed_texture_leaves_its_materials_and_a_removed_material_is_refused
+        PASS [   0.273s] (1044/1360) og-tests::removal a_removed_mesh_is_refused_and_its_slot_reused_under_a_new_generation
+        PASS [   0.230s] (1045/1360) og-tests::removal environment_maps_texture_arrays_and_palettes_leave_the_frame_and_its_bytes
+        PASS [   0.202s] (1046/1360) og-tests::removal text_in_a_removed_font_is_refused
+        PASS [   0.258s] (1047/1360) og-tests::render a_kept_frame_is_what_a_capture_reads
+        PASS [   0.229s] (1048/1360) og-tests::render a_reflected_material_edit_reaches_the_frame
+        PASS [   0.218s] (1049/1360) og-tests::render a_replaced_texture_reaches_the_materials_that_sample_it
+        PASS [   0.548s] (1050/1360) og-tests::render a_capture_png_decodes_to_the_captured_pixels
+        PASS [   0.468s] (1051/1360) og-tests::render double_sided_materials_draw_back_faces
+        PASS [   0.328s] (1052/1360) og-tests::render gltf_materials_draw_as_their_standard_form
+        PASS [   0.159s] (1053/1360) og-tests::render malformed_texture_uploads_are_refused
+        PASS [   0.027s] (1054/1360) og-tests::render the_default_material_is_the_schema_default
+        PASS [   0.021s] (1055/1360) og-tests::render the_material_schema_matches_the_idl
+        PASS [   0.215s] (1056/1360) og-tests::render the_mobile_preset_is_reported
+        PASS [   0.230s] (1057/1360) og-tests::render transparent_draws_are_sorted_back_to_front
+        PASS [   1.330s] (1058/1360) og-tests::render cascade_count_is_one_to_three
+        PASS [   0.213s] (1059/1360) og-tests::render transparent_instances_of_one_material_are_sorted_too
+        PASS [  15.104s] (1060/1360) og-physics::lanes many_soft_bodies_split_and_off_the_lanes_end_in_the_same_world
+        PASS [   1.751s] (1061/1360) og-tests::render compressed_formats_are_chosen_per_tier_and_draw_like_rgba8
+        PASS [   0.535s] (1062/1360) og-tests::render unlit_materials_ignore_lighting
+        PASS [   1.319s] (1063/1360) og-tests::render shadow_map_size_sets_the_shadow_resolution
+        PASS [   0.843s] (1064/1360) og-tests::shadows a_light_in_a_non_casting_fixture_lights_its_room_on_both_point_shadow_storages
+        PASS [   0.414s] (1065/1360) og-tests::shadows cascade_blending_is_opt_in
+        PASS [   0.606s] (1066/1360) og-tests::shadows catmull_rom_history_and_sharpening_keep_detail_under_motion
+        PASS [   0.373s] (1067/1360) og-tests::shadows fxaa_is_one_pass_on_every_tier
+        PASS [   0.391s] (1068/1360) og-tests::shadows fxaa_matches_its_reference
+        PASS [   1.107s] (1069/1360) og-tests::shadows a_model_casts_as_its_instances_say
+        PASS [   0.536s] (1070/1360) og-tests::shadows more_than_two_local_lights_cast_shadows
+        PASS [   0.394s] (1071/1360) og-tests::shadows point_shadows_paraboloid_match_their_reference_in_three_passes
+        PASS [   0.579s] (1072/1360) og-tests::shadows paraboloid_point_shadows_match_cube_faces_within_tolerance
+        PASS [  21.154s] (1073/1360) og-nav::nav two_hundred_agents_cross_a_256_grid_and_replay_identically_after_a_snapshot
+        PASS [   0.365s] (1074/1360) og-tests::shadows shadows_crypt_matches_its_reference
+        PASS [   0.543s] (1075/1360) og-tests::shadows shadow_flags_matches_its_reference
+        PASS [   0.421s] (1076/1360) og-tests::shadows shadows_local_8_matches_its_reference_on_the_full_tier
+        PASS [   0.361s] (1077/1360) og-tests::shadows shadows_soft_matches_its_reference
+        PASS [   0.338s] (1078/1360) og-tests::shadows taa_sharp_matches_its_reference
+        PASS [   0.291s] (1079/1360) og-tests::shadows the_local_shadow_array_grows_and_frames_stay_the_same
+        PASS [   0.667s] (1080/1360) og-tests::shadows soft_shadows_widen_the_penumbra
+        PASS [   0.356s] (1081/1360) og-tests::shadows the_shadowed_lights_kept_are_the_brightest_at_the_camera
+        PASS [   0.361s] (1082/1360) og-tests::sprites2d a_layered_trail_draws_in_the_sprite_order
+        PASS [   0.279s] (1083/1360) og-tests::sprites2d a_nearest_texture_is_not_blended_between_texels
+        PASS [   0.194s] (1084/1360) og-tests::sprites2d a_replaced_texture_reaches_the_sprites_that_draw_it
+        PASS [   0.345s] (1085/1360) og-tests::sprites2d an_outline_surrounds_text_only_when_asked
+        PASS [   0.199s] (1086/1360) og-tests::sprites2d nine_slice_corners_keep_their_size_and_the_centre_stretches
+        PASS [   0.296s] (1087/1360) og-tests::sprites2d sort_keys_order_sprites_within_a_layer_across_textures
+        PASS [   0.394s] (1088/1360) og-tests::sprites2d tile_layers_cull_chunks_draw_under_their_layer_repeat_and_animate
+        PASS [   0.407s] (1089/1360) og-tests::sprites2d tile_layers_in_the_lit_range_take_the_2d_light
+        PASS [   0.330s] (1090/1360) og-tests::taa_look a_look_that_switches_the_stylisation_resets_the_taa_history
+        PASS [   0.338s] (1091/1360) og-tests::targets a_failing_post_pass_is_reported_and_skipped
+        PASS [   0.648s] (1092/1360) og-tests::stylise_space a_moving_object_carries_its_strokes_in_object_space
+        PASS [   0.201s] (1093/1360) og-tests::targets a_layer_the_main_camera_lacks_shows_only_on_the_monitor
+        PASS [   0.198s] (1094/1360) og-tests::targets a_targets_depth_texture_holds_the_views_linear_depth
+        PASS [   2.127s] (1095/1360) og-tests::shadows surfaces_that_receive_no_shadows_are_lit_as_if_unshadowed
+        PASS [   0.855s] (1096/1360) og-tests::targets a_full_shaders_shadow_follows_its_cut
+        PASS [   0.851s] (1097/1360) og-tests::targets a_views_glow_spreads_as_the_frames_bloom
+        PASS [   0.375s] (1098/1360) og-tests::targets post_crt_matches_its_reference
+        PASS [   1.282s] (1099/1360) og-tests::targets a_view_draws_transparents_sprites_particles_and_lines_on_its_layers
+        PASS [   0.319s] (1100/1360) og-tests::targets views_depth_matches_its_reference
+        PASS [   0.342s] (1101/1360) og-tests::targets views_layers_matches_its_reference
+        PASS [   0.330s] (1102/1360) og-tests::targets views_mirror_matches_its_reference
+        PASS [   0.835s] (1103/1360) og-tests::targets shader_full_dissolve_matches_its_reference
+        PASS [   0.327s] (1104/1360) og-tests::targets views_monitor_matches_its_reference
+        PASS [   0.325s] (1105/1360) og-tests::targets views_split_matches_its_reference
+        PASS [   2.060s] (1106/1360) og-tests::targets a_view_draws_the_main_passs_effects
+        PASS [   0.897s] (1107/1360) og-tests::terrain a_streamed_tile_of_the_wrong_size_is_refused
+        PASS [   1.881s] (1108/1360) og-tests::terrain a_terrain_honours_its_transform
+        PASS [   2.418s] (1109/1360) og-tests::terrain a_generated_terrain_draws_its_sea_shore_and_biomes
+        PASS [   2.713s] (1110/1360) og-tests::terrain a_tile_budget_keeps_the_terrain_whole
+        PASS [   1.977s] (1111/1360) og-tests::terrain an_edit_changes_the_drawn_surface
+        PASS [   0.498s] (1112/1360) og-tests::terrain layers_follow_slope_altitude_and_the_control_map
+        PASS [   4.151s] (1113/1360) og-tests::terrain a_streamed_terrain_draws_what_has_arrived
+        PASS [   0.542s] (1114/1360) og-tests::terrain scattered_copies_are_drawn_from_chunks_and_fade_by_dither
+        PASS [   1.298s] (1115/1360) og-tests::terrain scatter_follows_its_layer_distance_and_stays_put
+        PASS [   3.802s] (1116/1360) og-tests::terrain layer_arrays_draw_as_separate_layer_textures
+        PASS [   2.439s] (1117/1360) og-tests::terrain levels_follow_the_camera
+        PASS [   0.016s] (1118/1360) og-tests::terrain the_cpu_height_and_normal_follow_the_field
+        PASS [   1.566s] (1119/1360) og-tests::terrain the_clipmap_leaves_no_cracks
+        PASS [   1.693s] (1120/1360) og-tests::terrain the_grass_scene_matches_its_reference
+        PASS [   0.600s] (1121/1360) og-tests::terrain the_planar_reflection_shows_what_the_screen_does_not
+        PASS [   0.676s] (1122/1360) og-tests::terrain the_underwater_view_fogs_shows_the_surface_and_caustics
+        PASS [   0.719s] (1123/1360) og-tests::terrain wanted_tiles_are_ranked_and_closed_under_their_parents
+        PASS [   4.241s] (1124/1360) og-tests::terrain terrain_casts_and_receives_shadows
+        PASS [   3.556s] (1125/1360) og-tests::terrain terrain_scenes_match_their_references
+        PASS [   0.395s] (1126/1360) og-tests::upload a_still_scene_uploads_no_transforms_and_a_moved_instance_one_block
+        PASS [   0.619s] (1127/1360) og-tests::terrain water_receives_shadows
+        PASS [   0.022s] (1128/1360) og-tests::wasm og_render_checks_for_wasm32
+        PASS [   0.197s] (1129/1360) og-tests::upload only_the_records_a_draw_reads_are_uploaded
+        PASS [   0.015s] (1130/1360) og-render area::tests::ltc_table_starts_with_the_identity
+        PASS [   0.027s] (1131/1360) og-render area::tests::cookies_past_the_cap_are_counted_and_named
+        PASS [   0.017s] (1132/1360) og-render atmosphere::tests::the_dusk_hours_keep_sun_shadows
+        PASS [   0.019s] (1133/1360) og-render blue_noise::tests::every_level_is_used_equally_and_spread_evenly
+        PASS [   0.018s] (1134/1360) og-render compact::tests::compact_vertices_decode_close_to_the_mesh
+        PASS [   0.018s] (1135/1360) og-render compact::tests::unit_bounds_never_shrink_the_culling_sphere
+        PASS [   0.012s] (1136/1360) og-render debug::tests::a_box_has_twelve_edges_on_its_corners
+        PASS [   0.016s] (1137/1360) og-render debug::tests::circles_lie_on_their_radius_and_arrows_end_where_asked
+        PASS [   0.011s] (1138/1360) og-render deferred::tests::made_once_on_first_use_and_warmed_in_order
+        PASS [   0.135s] (1139/1360) og-render environment::tests::a_cube_bakes_as_its_equirectangular_twin
+        PASS [   0.026s] (1140/1360) og-render environment::tests::a_prefiltered_chain_is_taken_as_is
+        PASS [   0.017s] (1141/1360) og-render environment::tests::a_uniform_sky_bakes_to_itself
+        PASS [   0.015s] (1142/1360) og-render environment::tests::face_directions_follow_the_cube_convention
+        PASS [   0.013s] (1143/1360) og-render environment::tests::rgb9e5_round_trips_within_its_precision
+        PASS [   0.080s] (1144/1360) og-render environment::tests::the_sky_above_lights_upward_faces_and_rotation_turns_the_map
+        PASS [   1.006s] (1145/1360) og-tests::upload gpu_culling_uploads_only_changed_transforms
+        PASS [   0.023s] (1146/1360) og-render geometry::bvh::tests::a_bvh_from_its_parts_is_the_bvh_built
+        PASS [   0.012s] (1147/1360) og-render geometry::bvh::tests::a_hit_carries_its_face_normal_and_uv
+        PASS [   0.126s] (1148/1360) og-render frame::tests::the_cull_splits_only_from_its_threshold_and_keeps_the_same_bounds
+        PASS [   0.021s] (1149/1360) og-render geometry::bvh::tests::the_distance_is_to_the_nearest_surface
+        PASS [   0.016s] (1150/1360) og-render geometry::primitives::tests::a_tube_keeps_its_radius_from_the_curve
+        PASS [   0.013s] (1151/1360) og-render geometry::primitives::tests::capsule_extent_is_height_plus_two_radii
+        PASS [   0.015s] (1152/1360) og-render geometry::primitives::tests::catmull_rom_passes_through_its_points
+        PASS [   0.014s] (1153/1360) og-render geometry::primitives::tests::cone_has_no_top_cap_and_faces_out
+        PASS [   0.018s] (1154/1360) og-render geometry::primitives::tests::cylinder_matches_three_js_counts_and_extent
+        PASS [   0.013s] (1155/1360) og-render geometry::primitives::tests::torus_ring_circle_face_their_way
+        PASS [   0.164s] (1156/1360) og-render geometry::bvh::tests::the_bvh_answers_what_every_triangle_answers
+        PASS [   0.013s] (1157/1360) og-render geometry::primitives::tests::u_to_t_inverts_the_length_table
+        PASS [   0.012s] (1158/1360) og-render geometry::tests::attributes_are_checked_against_the_vertex_count
+        PASS [   0.015s] (1159/1360) og-render geometry::tests::missing_normals_are_computed_and_shared_vertices_average
+        PASS [   0.013s] (1160/1360) og-render glass::tests::the_pyramid_is_rebuilt_before_glass_with_overlay_under_it
+        PASS [   0.017s] (1161/1360) og-render id_pass::tests::a_view_sees_what_its_layers_admit_from_its_own_eye
+        PASS [   0.025s] (1162/1360) og-render id_pass::tests::deterministic_and_order_free
+        PASS [   0.017s] (1163/1360) og-render id_pass::tests::nearer_object_wins_and_hides_part_of_the_farther
+        PASS [   0.013s] (1164/1360) og-render instances::tests::compact_runs_fold_the_dequantisation_into_the_transforms
+        PASS [   0.018s] (1165/1360) og-render id_pass::tests::sprites_draw_over_by_layer_and_behind_nearer_meshes
+        PASS [   0.012s] (1166/1360) og-render instances::tests::instances_in_two_probes_boxes_are_two_runs
+        PASS [   0.012s] (1167/1360) og-render instances::tests::kept_instances_are_a_fresh_builds
+        PASS [   0.013s] (1168/1360) og-render instances::tests::non_casters_are_runs_of_their_own
+        PASS [   0.014s] (1169/1360) og-render instances::tests::the_receive_flag_rides_in_the_layer_lane
+        PASS [   0.712s] (1170/1360) og-render blue_noise::tests::the_tile_is_the_generators
+        PASS [   0.011s] (1171/1360) og-render lightmap::tests::half_floats
+        PASS [   0.012s] (1172/1360) og-render lightmap::tests::packs_header_and_probes
+        PASS [   0.012s] (1173/1360) og-render lightmap::tests::resamples_a_volume_too_large_for_the_uniform
+        PASS [   0.012s] (1174/1360) og-render lines::tests::a_box_face_has_its_four_sides_and_one_diagonal
+        PASS [   0.011s] (1175/1360) og-render lines::tests::a_strip_carries_its_distance_along_and_a_loop_closes
+        PASS [   0.012s] (1176/1360) og-render lod::tests::a_level_is_kept_near_its_boundary
+        PASS [   0.010s] (1177/1360) og-render lod::tests::levels_follow_the_projected_error
+        PASS [   0.010s] (1178/1360) og-render lod::tests::pixels_per_unit_is_the_view_height_over_the_near_side
+        PASS [   0.012s] (1179/1360) og-render material::style_tests::a_physical_lobe_keeps_physical_shading_under_toon
+        PASS [   0.014s] (1180/1360) og-render material::style_tests::a_plain_material_takes_the_style
+        PASS [   0.012s] (1181/1360) og-render material::style_tests::an_unstyled_material_is_untouched
+        PASS [   0.011s] (1182/1360) og-render material::tests::a_removed_array_is_forgotten_by_its_materials
+        PASS [   0.011s] (1183/1360) og-render material::tests::array_maps_set_the_layers_and_the_normal_kind
+        PASS [   0.015s] (1184/1360) og-render material::tests::the_array_variant_samples_every_map_at_its_layer
+        PASS [   0.012s] (1185/1360) og-render metaballs::tests::fluids_pack_into_fields_of_four_channels_and_groups_stay_together
+        PASS [   0.014s] (1186/1360) og-render physical::tests::a_pack_holds_only_the_groups_with_maps
+        PASS [   0.012s] (1187/1360) og-render physical::tests::a_two_channel_coat_normal_is_rebuilt_and_sheen_is_stored_srgb
+        PASS [   0.012s] (1188/1360) og-render physical::tests::the_standard_material_is_not_physical
+        PASS [   0.012s] (1189/1360) og-render post_custom::tests::post_params_set_by_name
+        PASS [   0.012s] (1190/1360) og-render probe_content::tests::the_hash_follows_the_rooms_content
+        PASS [   0.014s] (1191/1360) og-render probe_select::tests::a_point_takes_the_smallest_box_holding_it
+        PASS [   0.011s] (1192/1360) og-render probes::tests::face_cameras_mirror_the_cube_faces
+        PASS [   0.012s] (1193/1360) og-render probes::tests::face_sizes_round_up_to_powers_of_two
+        PASS [   0.011s] (1194/1360) og-render probes::tests::face_targets_are_kept_for_due_and_realtime_captures_only
+        PASS [   0.012s] (1195/1360) og-render probes::tests::halves_decode
+        PASS [   0.013s] (1196/1360) og-render quality::tests::high_doubles_and_low_halves_the_steps
+        PASS [   0.010s] (1197/1360) og-render quality::tests::medium_is_the_default_and_the_default_scales_nothing
+        PASS [   0.012s] (1198/1360) og-render shadows::tests::auto_is_cube_on_the_full_tier_and_paraboloid_without_compute
+        PASS [   0.012s] (1199/1360) og-render sprite_mesh::tests::meshes_take_consecutive_corners_and_bad_indices_are_refused
+        PASS [   0.012s] (1200/1360) og-render sprites::tests::a_drop_shadow_draws_first_in_its_layer_projected_along_the_sun
+        PASS [   0.011s] (1201/1360) og-render sprites::tests::a_drop_shadow_lies_on_its_ground_at_its_height_and_slope
+        PASS [   0.012s] (1202/1360) og-render sprites::tests::a_fitted_ground_follows_the_terrain_under_the_shadow
+        PASS [   0.012s] (1203/1360) og-render sprites::tests::a_low_sun_casts_at_most_five_heights
+        PASS [   0.011s] (1204/1360) og-render sprites::tests::a_shadow_bends_over_a_hollow_narrower_than_itself
+        PASS [   0.011s] (1205/1360) og-render sprites::tests::a_sprite_anchored_elsewhere_keeps_its_corners
+        PASS [   0.011s] (1206/1360) og-render sprites::tests::a_sprite_mesh_is_one_run_in_its_layers_sprite_order
+        PASS [   0.011s] (1207/1360) og-render sprites::tests::faced_sprites_sort_back_to_front_cull_to_the_frustum_and_cast_sun_facing_shadows
+        PASS [   0.012s] (1208/1360) og-render ssr::tests::reflectivity_round_trips
+        PASS [   0.013s] (1209/1360) og-render ssr::tests::rows_clamp_and_off_is_zero
+        PASS [   0.010s] (1210/1360) og-render stylise::tests::everything_is_off_by_default
+        PASS [   0.012s] (1211/1360) og-render stylise::tests::surface_space_asks_for_the_prepass_only_where_it_draws
+        PASS [   0.011s] (1212/1360) og-render stylise::tests::the_chain_bits_follow_primitives_not_their_settings
+        PASS [   0.013s] (1213/1360) og-render stylise::tests::the_pixel_grid_keeps_its_scale_and_drops_at_most_a_column
+        PASS [   0.013s] (1214/1360) og-render terrain::tests::the_layer_array_variant_reads_two_arrays
+        PASS [   0.016s] (1215/1360) og-render texture_array::tests::layers_must_agree_and_awkward_counts_are_padded
+        PASS [   0.013s] (1216/1360) og-render timing::tests::passes_run_back_to_back_to_the_ends_of_the_passes_they_opened
+        PASS [   0.013s] (1217/1360) og-render upload::tests::blocks_no_draw_reads_are_not_written
+        PASS [   0.013s] (1218/1360) og-render upload::tests::only_changed_blocks_are_runs_and_neighbours_merge
+        PASS [   0.013s] (1219/1360) og-render video::tests::the_texture_is_replaced_only_when_the_frame_changes
+        PASS [   0.013s] (1220/1360) og-render views::tests::layers_default_to_layer_zero
+        PASS [   0.014s] (1221/1360) og-render views::tests::mirror_frustum_fits_the_quad
+        PASS [   0.207s] (1222/1360) og-render terrain::tests::levels_tile_the_plane_without_overlap_or_gaps
+        PASS [   0.016s] (1223/1360) og-render::shaders taa_reads_the_depth_buffer_through_a_sampler_on_gl
+        PASS [   0.043s] (1224/1360) og-render::shaders the_compiled_wgsl_is_the_source_without_its_comments
+        PASS [   0.021s] (1225/1360) og-render::shaders the_gl_volumetric_raymarch_reads_the_local_lights
+        PASS [   0.016s] (1226/1360) og-render::tier a_cpu_vulkan_adapter_is_vulkan_cpu_and_a_gpu_one_vulkan
+        PASS [   0.012s] (1227/1360) og-render::tier other_backends_keep_their_names
+        PASS [   0.014s] (1228/1360) og-render::tier software_rasterizers_are_known_by_name_too
+        PASS [   0.034s] (1229/1360) og-render::webgl2 a_targets_depth_resolve_is_the_gl_tiers_and_translates
+        PASS [   0.015s] (1230/1360) og-render::webgl2 the_overlay_and_glass_shaders_translate_to_glsl_es_300
+        PASS [   0.337s] (1231/1360) og-render::shaders every_full_tier_module_validates_and_translates_to_msl_and_spirv
+        PASS [   0.059s] (1232/1360) og-render::webgl2 the_physical_shaders_translate_and_fit_webgl2s_texture_units
+        PASS [   0.060s] (1233/1360) og-render::webgl2 the_shadow_and_antialiasing_shaders_translate_to_glsl_es_300
+        PASS [   0.015s] (1234/1360) og-ui layout::text_cache::a_frame_measures_only_the_texts_that_changed
+        PASS [   0.037s] (1235/1360) og-ui draw::levels::the_grid_assigns_the_levels_of_every_pair_tested
+        PASS [   0.417s] (1236/1360) og-render::shaders every_gl_tier_module_validates_and_translates_to_glsl_es_300
+        PASS [   0.012s] (1237/1360) og-ui layout::text_cache::a_kept_measurement_lays_out_as_a_fresh_one
+        PASS [   0.011s] (1238/1360) og-ui layout::text_cache::an_unchanged_text_is_measured_once_and_a_gone_one_is_dropped
+        PASS [   0.021s] (1239/1360) og-ui::a11y groups_and_icons_take_the_names_their_descs_give
+        PASS [   0.033s] (1240/1360) og-ui::a11y every_widget_has_a_role_a_name_and_its_state
+        PASS [   0.015s] (1241/1360) og-ui::a11y ranges_carry_their_bounds_and_value
+        PASS [   0.049s] (1242/1360) og-ui::a11y a_screen_readers_requests_reach_the_control_the_tree_names
+        PASS [   0.025s] (1243/1360) og-ui::a11y the_pages_motion_and_contrast_preferences_reach_the_theme
+        PASS [   0.039s] (1244/1360) og-ui::a11y tab_walks_the_focus_order_and_a_dialog_keeps_it
+        PASS [   0.058s] (1245/1360) og-ui::fields arrows_move_as_they_point_in_right_to_left_runs
+        PASS [   0.041s] (1246/1360) og-ui::fields arrows_move_visually_across_a_bidi_edge
+        PASS [   0.057s] (1247/1360) og-ui::fields double_and_triple_clicks_select_words_and_lines
+        PASS [   0.210s] (1248/1360) og-ui::fields a_drag_past_a_text_area_scrolls_it_line_by_line
+        PASS [   0.048s] (1249/1360) og-ui::fields mac_keys_honour_the_emacs_keys
+        PASS [   0.046s] (1250/1360) og-ui::fields mac_keys_tell_command_from_control
+        PASS [   0.062s] (1251/1360) og-ui::fields mac_keys_keep_an_emacs_kill_buffer
+        PASS [   0.045s] (1252/1360) og-ui::fields the_caret_and_backspace_step_by_grapheme_clusters
+        PASS [   0.037s] (1253/1360) og-ui::fields the_text_fields_scene_is_what_its_frame_shows
+        PASS [   0.045s] (1254/1360) og-ui::fields words_are_uax_29_words
+        PASS [   0.030s] (1255/1360) og-ui::fields words_move_and_delete_with_alt_or_ctrl
+        PASS [   0.152s] (1256/1360) og-ui::fields undo_and_redo_step_through_the_history
+        PASS [   0.311s] (1257/1360) og-ui::gfx a_glass_panel_blurs_the_overlay_layers_below_it
+        PASS [   0.383s] (1258/1360) og-ui::gfx a_glass_panel_blurs_the_frame_under_it_and_nothing_else
+        PASS [   0.159s] (1259/1360) og-ui::gfx a_middle_squeezed_six_times_keeps_its_outline_as_dark_as_the_art
+        PASS [   0.950s] (1260/1360) og-ui::button_contrast every_button_role_reads_at_4_5_to_1_on_its_fill_in_both_themes_and_every_state
+        PASS [   0.182s] (1261/1360) og-ui::gfx a_scroll_container_clips_everything_it_draws
+        PASS [   3.580s] (1262/1360) og-tests::terrain water_phase_2_scenes_match_their_references
+        PASS [   0.486s] (1263/1360) og-ui::gfx sample_screen_matches_its_reference_frame
+        PASS [   0.027s] (1264/1360) og-ui::glyphs a_glyph_has_ink_inside_and_none_outside
+        PASS [   0.023s] (1265/1360) og-ui::glyphs its_metrics_are_the_fonts
+        PASS [   0.288s] (1266/1360) og-ui::gfx text_fields_match_their_reference_frame
+        PASS [   0.729s] (1267/1360) og-ui::gfx bold_rich_text_is_heavier_ink_never_a_box
+        PASS [   0.026s] (1268/1360) og-ui::layout nested_rows_and_columns_lay_out_as_the_golden
+        PASS [   0.049s] (1269/1360) og-ui::linebreak text_without_a_rule_breaks_as_before
+        PASS [   0.096s] (1270/1360) og-ui::linebreak kinsoku_keeps_punctuation_and_small_kana_off_the_wrong_end_and_katakana_words_whole
+        PASS [   1.777s] (1271/1360) og-ui::kit_gfx the_widget_set_matches_its_reference_frame
+        PASS [   3.314s] (1272/1360) og-ui::materials_gfx the_materials_frame_matches_its_reference
+        PASS [   4.345s] (1273/1360) og-ui::gfx a_text_glow_is_a_halo_from_the_distance_field
+        PASS [   0.068s] (1274/1360) og-ui::packs every_style_pack_parses_and_keeps_body_text_at_4_5_to_1
+        PASS [   0.083s] (1275/1360) og-ui::probe a_button_clicks_only_on_a_press_and_a_release_inside_it
+        PASS [   0.031s] (1276/1360) og-ui::probe a_scroll_container_scrolls_by_wheel_and_clips_its_content
+        PASS [   0.033s] (1277/1360) og-ui::probe dump_ui_lists_every_visible_element_with_bounds_and_text
+        PASS [   0.047s] (1278/1360) og-ui::probe move_to_text_resolves_exact_substring_and_nth_matches
+        PASS [   0.069s] (1279/1360) og-ui::probe restoring_the_world_and_the_ui_state_replays_the_same_frames
+        PASS [   0.062s] (1280/1360) og-ui::probe the_text_field_toggle_and_slider_edit_game_state
+        PASS [   0.041s] (1281/1360) og-ui::rich a_link_answers_a_click_and_keyboard_focus
+        PASS [   0.023s] (1282/1360) og-ui::rich a_right_to_left_paragraph_runs_its_spans_by_the_bidi_algorithm
+        PASS [   0.027s] (1283/1360) og-ui::rich lines_break_between_words_and_keep_a_restyled_word_whole
+        PASS [   0.023s] (1284/1360) og-ui::rich markup_it_cannot_read_shows_as_text_with_a_warning
+        PASS [   0.045s] (1285/1360) og-ui::rich per_glyph_motion_moves_by_the_tick_and_rests_under_reduced_motion
+        PASS [   0.023s] (1286/1360) og-ui::rich runs_of_either_direction_reorder_inside_one_span
+        PASS [   0.022s] (1287/1360) og-ui::rich spans_keep_their_style_and_links_are_elements
+        PASS [   0.024s] (1288/1360) og-ui::rtl a_right_to_left_ui_mirrors_its_layout
+        PASS [   0.020s] (1289/1360) og-ui::rtl arabic_words_are_shaped_into_joined_forms_in_visual_order
+        PASS [   0.016s] (1290/1360) og-ui::rtl devanagari_forms_conjuncts_and_reorders_its_vowel_signs
+        PASS [   0.012s] (1291/1360) og-ui::rtl kerning_pairs_tighten_the_measure
+        PASS [   0.016s] (1292/1360) og-ui::rtl paragraphs_order_their_runs_by_the_bidi_algorithm
+        PASS [   0.055s] (1293/1360) og-ui::runs a_grapheme_cluster_takes_one_font
+        PASS [   0.034s] (1294/1360) og-ui::runs a_mixed_label_draws_one_command_per_run
+        PASS [   0.034s] (1295/1360) og-ui::runs a_mixed_labels_runs_share_a_baseline_that_holds_every_face
+        PASS [   0.035s] (1296/1360) og-ui::runs a_moving_span_that_mixes_faces_moves
+        PASS [   0.034s] (1297/1360) og-ui::runs a_text_one_font_sets_whole_is_not_cut
+        PASS [   0.036s] (1298/1360) og-ui::runs an_arabic_run_is_shaped_with_its_own_font
+        PASS [   0.033s] (1299/1360) og-ui::runs each_run_takes_the_first_font_that_has_it
+        PASS [   0.032s] (1300/1360) og-ui::runs neutral_characters_stay_with_their_run
+        PASS [   0.222s] (1301/1360) og-ui::screen_layers screen_sprites_above_the_ui_layer_draw_over_the_ui
+        PASS [   0.055s] (1302/1360) og-ui::style a_counter_counts_by_the_tick_and_replays_after_a_restore
+        PASS [   0.056s] (1303/1360) og-ui::style a_frame_smaller_than_its_art_tiles_exactly_and_never_squeezes_its_middle_past_twice
+        PASS [   0.042s] (1304/1360) og-ui::style a_glass_part_draws_the_blurred_frame_under_its_thinned_nine_slice
+        PASS [   0.034s] (1305/1360) og-ui::style a_refused_press_shakes_the_button_and_queues_the_error_sound
+        PASS [   0.077s] (1306/1360) og-ui::style a_screen_transition_covers_switches_at_full_cover_and_reveals
+        PASS [   0.042s] (1307/1360) og-ui::style a_slice_tiles_its_edges_and_centre_when_the_style_says_repeat_or_round
+        PASS [   0.059s] (1308/1360) og-ui::style a_staggered_panels_controls_take_presses_once_the_panel_has_arrived
+        PASS [   0.012s] (1309/1360) og-ui::style a_style_file_names_the_line_that_is_wrong
+        PASS [   0.010s] (1310/1360) og-ui::style a_style_resolves_its_ids_beside_itself_then_from_assets
+        PASS [   0.020s] (1311/1360) og-ui::style a_styled_panel_is_nine_pieces_of_the_atlas_that_tile_its_rectangle
+        PASS [   0.052s] (1312/1360) og-ui::style an_instant_panel_is_settled_and_answering_on_its_first_tick_and_enters_when_it_comes_back
+        PASS [   0.047s] (1313/1360) og-ui::style game_code_shakes_an_element_once_and_it_comes_to_rest_by_itself
+        PASS [   0.020s] (1314/1360) og-ui::style keyboard_and_gamepad_focus_moves_sound_as_the_pointer_does
+        PASS [   0.020s] (1315/1360) og-ui::style the_default_theme_draws_no_atlas_pieces
+        PASS [   0.069s] (1316/1360) og-ui::style the_hover_lift_and_the_press_move_on_springs
+        PASS [   0.020s] (1317/1360) og-ui::style the_probe_names_each_elements_kind_and_a_disabled_control
+        PASS [   0.039s] (1318/1360) og-ui::text a_composition_shows_at_the_caret_until_it_commits
+        PASS [   0.020s] (1319/1360) og-ui::text a_drag_selects_and_a_press_places_the_caret
+        PASS [   2.130s] (1320/1360) og-ui::pack_contrast every_style_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel
+        PASS [   0.020s] (1321/1360) og-ui::text a_text_area_breaks_lines_and_moves_between_them
+        PASS [   0.019s] (1322/1360) og-ui::text a_typed_text_stream_takes_over_from_the_keys
+        PASS [   0.019s] (1323/1360) og-ui::text labels_cut_with_an_ellipsis_where_they_do_not_fit
+        PASS [   0.019s] (1324/1360) og-ui::text shift_arrows_select_and_typing_replaces_the_selection
+        PASS [   0.019s] (1325/1360) og-ui::text the_edit_state_is_saved_and_restored
+        PASS [   0.025s] (1326/1360) og-ui::text the_caret_blinks_by_the_tick
+        PASS [   0.039s] (1327/1360) og-ui::widgets a_corner_group_steps_down_past_the_control_when_moving_along_lands_on_another
+        PASS [   0.028s] (1328/1360) og-ui::widgets a_dialog_traps_focus_blocks_what_is_under_it_and_closes_on_back
+        PASS [   0.136s] (1329/1360) og-ui::widgets a_dialogue_or_a_dialog_that_appears_takes_the_focus_so_enter_answers_it
+        PASS [   0.051s] (1330/1360) og-ui::widgets a_focused_zoom_view_takes_keys
+        PASS [   0.015s] (1331/1360) og-ui::widgets a_game_primary_derives_its_hover_press_and_ink
+        PASS [   0.135s] (1332/1360) og-ui::widgets a_grid_lays_out_exactly_its_columns_whatever_its_width
+        PASS [   0.036s] (1333/1360) og-ui::widgets a_hud_never_takes_back_while_a_dialog_is_open
+        PASS [   0.029s] (1334/1360) og-ui::widgets a_long_list_builds_only_the_rows_in_view_and_scrolls_focus_into_view
+        PASS [   0.046s] (1335/1360) og-ui::widgets a_menu_that_appears_takes_the_focus_and_a_move_from_nothing_lands_on_its_first_item
+        PASS [   0.021s] (1336/1360) og-ui::widgets a_meter_label_takes_the_ink_that_reads_over_the_fill_and_over_the_track
+        PASS [   0.032s] (1337/1360) og-ui::widgets a_meter_trail_follows_a_drop_by_tick_and_replays_identically
+        PASS [   0.022s] (1338/1360) og-ui::widgets a_press_dragged_from_one_cell_to_another_drops_there_once
+        PASS [   0.022s] (1339/1360) og-ui::widgets a_select_opens_chooses_and_closes_on_a_press_outside
+        PASS [   0.045s] (1340/1360) og-ui::widgets a_steps_tracking_spaces_latin_glyphs_and_not_cjk
+        PASS [   0.021s] (1341/1360) og-ui::widgets a_transition_advances_by_tick_takes_no_input_while_moving_and_leaves
+        PASS [   0.031s] (1342/1360) og-ui::widgets an_icon_set_draws_its_glyphs_in_their_squares
+        PASS [   0.023s] (1343/1360) og-ui::widgets anchored_groups_keep_out_of_the_host_control
+        PASS [   0.022s] (1344/1360) og-ui::widgets anchors_sit_in_the_safe_area_and_touch_controls_keep_44px
+        PASS [   0.022s] (1345/1360) og-ui::widgets arrows_move_to_the_aligned_neighbour_and_wrap_at_the_edges
+        PASS [   0.021s] (1346/1360) og-ui::widgets pads_beyond_the_first_move_their_own_focus_and_press
+        PASS [   0.076s] (1347/1360) og-ui::widgets scroll_views_scroll_both_ways_hand_off_fling_and_grab
+        PASS [   0.025s] (1348/1360) og-ui::widgets tab_walks_reading_order_and_shift_tab_walks_back
+        PASS [   0.021s] (1349/1360) og-ui::widgets the_dialogue_types_by_tick_a_press_finishes_and_the_next_press_advances
+        PASS [   0.024s] (1350/1360) og-ui::widgets the_gamepad_dpad_and_stick_navigate_with_repeat_by_tick
+        PASS [   0.032s] (1351/1360) og-ui::widgets toasts_stack_three_leave_on_time_and_replay_after_a_restore
+        PASS [   0.107s] (1352/1360) og-ui::widgets two_fingers_lifting_off_a_list_fling_it
+        PASS [   0.025s] (1353/1360) og-ui::widgets two_fingers_scroll_lists_and_pinch_zoom_views
+        PASS [   1.550s] (1354/1360) og-ui::text_gfx text_frames_match_their_references
+        PASS [   9.757s] (1355/1360) og-ui::pack_contrast every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame
+        PASS [   8.754s] (1356/1360) og-ui::pack_contrast every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn
+        PASS [   2.476s] (1357/1360) og-audio::audio one_second_of_a_busy_mix_renders_in_bounded_time
+        PASS [   0.180s] (1358/1360) og-cli::cli run_reports_a_dead_game_process_at_once
+        PASS [   0.772s] (1359/1360) og-runtime::extract_cost extraction_is_linear_and_never_decodes_meshes_on_the_lanes
+        PASS [   0.302s] (1360/1360) og-tests::render capture_is_bounded_and_cancellable
+────────────
+     Summary [ 107.436s] 1360 tests run: 1360 passed, 18 skipped
+warning: doc tests are not supported for crate type(s) `cdylib` in package `og-host-node`
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized] target(s) in 29.88s
+   Doc-tests og_ai
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_anim
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_api
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_audio
+
+running 1 test
+test crates/og-audio/src/lib.rs - (line 29) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.52s; merged doctests compilation took 0.23s
+   Doc-tests og_bake
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_blob
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_cook
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_core_derive
+
+running 1 test
+test crates/og-core-derive/src/lib.rs - (line 10) ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 1.51s; merged doctests compilation took 1.23s
+   Doc-tests og_ecs
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_geom
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_host_web
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_i18n
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_idl
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_input
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_lanes
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_nav
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_net
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_physics
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_probe
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_render
+
+running 1 test
+test crates/og-render/src/lib.rs - (line 18) - compile ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 1.45s; merged doctests compilation took 1.17s
+   Doc-tests og_runtime
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_tests
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_tests_web
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_tilemap
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_timeline
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_tween
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests og_ui
+
+running 1 test
+test crates/og-ui/src/lib.rs - (line 7) ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.55s; merged doctests compilation took 0.26s
