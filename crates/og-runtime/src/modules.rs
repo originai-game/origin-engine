@@ -118,6 +118,9 @@ pub(crate) fn mount_front(
     // The 2D profile has no terrain, so no height field (terrain_absent.rs).
     #[cfg(feature = "profile2d")]
     physics.refuse_heightfields(super::terrain::ABSENT);
+    physics.set_mesh_source(Some(std::sync::Arc::new(move |h| {
+        geometry_mesh(engine_id, h)
+    })));
     let (desc, run) = physics.query_system();
     world.add_system(desc, run).map_err(err)?;
     let shared = ui.clone();
@@ -546,6 +549,16 @@ pub fn og_physics_set_mesh(world: u32, mesh: f64, desc: Option<String>) -> Strin
         Ok(()) => ok_void(),
         Err(e) => refuse(e),
     }
+}
+
+/// Geometry `handle` of engine `engine_id` as a physics mesh (physics'
+/// mesh source: a collider naming a geometry nobody registered). None from
+/// another thread than the engine's, or while its renderer is borrowed.
+fn geometry_mesh(engine_id: u32, handle: u64) -> Option<MeshDesc> {
+    let eng = engine(engine_id).ok()?;
+    let rs = eng.render.try_borrow().ok()?;
+    let m = *rs.geometries.get(super::assets::index_of(handle as f64)?)?;
+    Some(mesh_of(rs.scene.mesh(m)?))
 }
 
 /// The geometry of a render mesh, as physics takes it.
