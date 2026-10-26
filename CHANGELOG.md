@@ -9,6 +9,11 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- render, `RenderSettings.toneMapping`: `neutral`, Khronos PBR Neutral
+  (three.js `NeutralToneMapping`, RedGPU's `khronosPbrNeutral`): colours
+  up to 0.76 come out as authored less a dielectric's 0.04, only
+  highlights roll off towards white (og-render `Tonemap::Neutral`). The
+  enum's existing indices are unchanged.
 - render, `PostEffects`: colour adjustments after the LUT (RedGPU's
   adjustments, ported): `temperature` and `tint` (white balance),
   `brightness`, `contrast`, `balanceShadows`, `balanceMidtones`,

@@ -4141,8 +4141,9 @@ export interface SpotLight {
  * - `"aces"`: ACES (the fitted filmic curve), as three.js ACESFilmicToneMapping: the default.
  * - `"agx"`: AgX (Blender 4's and three.js AgXToneMapping's fit, base look): bright saturated lights go to white instead of skewing hue, and keep their hue further up than under ACES.
  * - `"none"`: No curve: the exposed linear colour is clamped to 0..1, so 2D colours come out exactly as authored at exposure 1 (the same as toneMapped false).
+ * - `"neutral"`: Khronos PBR Neutral, as three.js NeutralToneMapping: colours up to about 0.8 come out as authored (a white-lit base colour shows as the colour picked), only brighter ones roll off to white. For product shots and saturated stylised colour that ACES would darken and shift.
  */
-export type ToneMapping = "aces" | "agx" | "none";
+export type ToneMapping = "aces" | "agx" | "none" | "neutral";
 
 /**
  * A ToneMapping field: the variant's index.
@@ -4280,7 +4281,7 @@ export interface RenderSettings {
    */
   toneMapped: boolean;
   /**
-   * Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none.
+   * Which curve tone maps the frame while toneMapped is true: aces (the default), agx, neutral or none.
    */
   toneMapping: ToneMapping;
   /**

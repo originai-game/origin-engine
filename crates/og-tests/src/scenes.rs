@@ -135,6 +135,7 @@ pub const SCENES: &[&str] = &[
     "terrain-hidden",
     "terrain-scatter-unshadowed",
     "post-adjust",
+    "post-neutral",
 ];
 
 /// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
@@ -731,6 +732,18 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "post-adjust" => {
             g.scene = spike_gltf_scene()?;
             fx::adjust(&mut g.scene);
+        }
+        // The bloom scene's saturated emissive spheres through Khronos PBR
+        // Neutral: the bodies keep their authored colour, which ACES darkens
+        // and shifts, and the brightest cores roll to white.
+        "post-neutral" => {
+            g.scene = emissive_spheres();
+            g.scene.post.bloom = Some(Bloom {
+                threshold: 1.0,
+                knee: 0.5,
+                intensity: 0.8,
+            });
+            g.scene.post.tonemap = Tonemap::Neutral;
         }
         other => {
             return Err(format!(

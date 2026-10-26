@@ -1116,11 +1116,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             match s["toneMapping"].as_u64().or_else(|| {
                 s["toneMapping"]
                     .as_str()
-                    .and_then(|n| ["aces", "agx", "none"].iter().position(|v| *v == n))
+                    .and_then(|n| {
+                        ["aces", "agx", "none", "neutral"]
+                            .iter()
+                            .position(|v| *v == n)
+                    })
                     .map(|i| i as u64)
             }) {
                 Some(1) => og_render::Tonemap::Agx,
                 Some(2) => og_render::Tonemap::None,
+                Some(3) => og_render::Tonemap::Neutral,
                 _ => og_render::Tonemap::Aces,
             }
         } else {

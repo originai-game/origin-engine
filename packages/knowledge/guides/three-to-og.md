@@ -194,7 +194,7 @@ and geometry groups become one entity per group.
 | `scene.background = new THREE.Color(0x87ceeb)` | `camera.background = color.fromHex(0x87ceeb)` (og.Camera's `background`) |
 | `scene.fog = new THREE.Fog(color, near, far)` | og.Fog's `color`, `start`, `end` (`density` for FogExp2), with `enabled` true (og-game §11) |
 | `new THREE.WebGLRenderer({ antialias: true })` | `GameDesc.render` (`render: { antialias: "msaa4" }`); the engine owns the canvas, on an OffscreenCanvas in a Worker on the web |
-| `renderer.toneMapping`, `toneMappingExposure` | RenderSettings.toneMapping (`"aces"` by default, `"agx"`, `"none"`) and `exposure` (og-game §16) |
+| `renderer.toneMapping`, `toneMappingExposure` | RenderSettings.toneMapping (`"aces"` by default, `"agx"`, `"neutral"` for `NeutralToneMapping`, `"none"`) and `exposure` (og-game §16) |
 | a second camera into a `WebGLRenderTarget` | og.CameraView with `target` from `og.render.renderTarget` (og-game §23) |
 | `EffectComposer` and its passes | og.PostEffects (bloom, AO, depth of field, outline, LUTs and more, og-game §10) and custom post passes (§10 here) |
 

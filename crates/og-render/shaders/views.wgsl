@@ -4,7 +4,7 @@
 // (`fs_depth`): this part is shared, views_color.wgsl or views_depth.wgsl
 // follows it.
 struct Resolve {
-  params: vec4<f32>,  // x: exposure multiplier, y: tone curve (0 ACES, 1 none, 2 AgX), z: 1 mirrored across x, w: 1 encode sRGB here
+  params: vec4<f32>,  // x: exposure multiplier, y: tone curve (0 ACES, 1 none, 2 AgX, 3 Khronos PBR Neutral), z: 1 mirrored across x, w: 1 encode sRGB here
   rect: vec4<f32>,    // xy: the rect's origin in destination pixels
   depth: vec4<f32>,   // x: near, y: far, z: 1 orthographic, w: source width
 };
@@ -50,6 +50,18 @@ fn agx(x: vec3<f32>) -> vec3<f32> {
   c = outset * agx_contrast(c);
   c = pow(max(c, vec3<f32>(0.0)), vec3<f32>(2.2));
   return clamp(rec2020_to_srgb * c, vec3<f32>(0.0), vec3<f32>(1.0));
+}
+
+// As post.wgsl's Khronos PBR Neutral.
+fn neutral(color: vec3<f32>) -> vec3<f32> {
+  let x = min(color.r, min(color.g, color.b));
+  var c = color - select(0.04, x - 6.25 * x * x, x < 0.08);
+  let peak = max(c.r, max(c.g, c.b));
+  if (peak < 0.76) { return clamp(c, vec3<f32>(0.0), vec3<f32>(1.0)); }
+  let new_peak = 1.0 - 0.0576 / (peak - 0.52);
+  c *= new_peak / peak;
+  let g = 1.0 - 1.0 / (0.15 * (peak - new_peak) + 1.0);
+  return clamp(mix(c, vec3<f32>(new_peak), g), vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
 fn srgb_encode(c: vec3<f32>) -> vec3<f32> {

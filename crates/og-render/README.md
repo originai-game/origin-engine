@@ -29,7 +29,7 @@ the world → scene extraction belongs to the layer above.
 | `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev, adapt_speed_up, adapt_speed_down }`: the frame's log-average luminance brought to 0.18. With both speeds 0 (`Exposure::auto()`) from the current frame only, so the same frame always gets the same exposure; otherwise adapted over the scene's ticks (see [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation)). |
 | `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth), `shadow_softness` (PCSS: the penumbra's width per metre between caster and receiver; 0, the default, is the hard edge) and `cascade_blend` (the fraction of each cascade's depth over which it fades into the next; 0 by default). Three cascades. |
 | `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. Clustered (see [Forward+](#forward-phase-2)): lights whose range misses the view are culled (`FrameStats::lights_culled`), up to `MAX_LIGHTS` = 256 in view are drawn (past it the brightest at the camera are kept, the rest counted in `lights_dropped`); of those in view with `cast_shadows`, `RenderInfo::shadowed_lights` (`MAX_SHADOWED_LIGHTS` = 8 on the full tier, `NO_COMPUTE_SHADOWED_LIGHTS` = 4 on WebGL2) get shadows, the most radiant at the camera first (the rest counted in `shadowed_lights_dropped`). |
-| `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default), `Agx` (Blender 4's and three.js's AgX fit, base look) or `None` (clamp: authored 2D colours come out exact). |
+| `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default), `Agx` (Blender 4's and three.js's AgX fit, base look), `Neutral` (Khronos PBR Neutral, three.js `NeutralToneMapping`: colours up to 0.76 pass through less a dielectric's 0.04, only highlights roll off) or `None` (clamp: authored 2D colours come out exact). |
 | `EnvironmentMapData`, `EnvironmentMap`, `bake` | A prefiltered environment map (level 0's face `size`, `ENVIRONMENT_MAP_LEVELS` = 5 levels of RGB9E5 `texels`, level m at roughness m/4, `irradiance` as nine harmonics) and how a frame uses one (`map`, `rotation` about +y in radians, `background_intensity`); `rgb9e5`, `rgb9e5_decode`, `sh9`, `face_direction`; feature `bake`: `bake::bake(&Equirect, &BakeDesc)` and `bake::bake_cube`, the cook's prefilter, and `bake::from_prefiltered(&PrefilteredCube, &BakeDesc)`, a cube's own prefiltered mip chain taken as it is. See [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation). |
 | `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. `anchored_at(pivot)`: the same quad anchored elsewhere (a faced nine-slice's pieces turn about the panel's anchor). |
 | `SpriteFacing`, `sun_card_right` | `sprite_facing` (by sprite index, like `sprite_layers`): billboards, `None` (the xy plane), `Camera` (the view plane), `CameraY` (upright, turned about y). Turned in the sprite vertex shader for each camera, sorted back to front from its eye among the transparent meshes, culled by bounds (`FrameStats::sprites_culled`); a faced sprite's drop shadow is cast by its sun-facing card (`sun_card_right`, `ShadowGround::fit_facing`). `TextFacing` (`RenderScene::text_facing`): world text as a billboard, turned about its aligned point. See [Billboards](#billboards). |
@@ -192,7 +192,7 @@ not recorded.
 8. **Bloom**: a 13-tap prefilter with exposure and a soft-knee threshold into
    a half-resolution chain (up to 6 levels), 13-tap downsamples, then tent
    upsamples added back level by level.
-9. **Tonemap**: exposure × (HDR + bloom × intensity) → ACES, AgX or clamp → the
+9. **Tonemap**: exposure × (HDR + bloom × intensity) → ACES, AgX, Khronos PBR Neutral or clamp → the
    output. An sRGB output is encoded by the hardware; a non-sRGB one
    (WebGPU canvases are `Bgra8Unorm`) by the shader (`fs_srgb_encode`). A
    surface takes an sRGB format where one is offered (WebGL2, native
@@ -684,6 +684,7 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `bloom` | Emissive spheres with bloom. | all |
 | `exposure` | A dim dusk scene metered to middle grey. | all |
 | `post-agx` | The `bloom` scene through AgX: lower contrast, the orange and magenta halos paler than under ACES, the cores rolling to white. | all |
+| `post-neutral` | The `bloom` scene through Khronos PBR Neutral: the spheres' bodies as saturated as their authored colour (ACES darkens and shifts them), the over-exposed cores rolling to white. | all |
 | `post-adjust` | The spike's scene through the teal-orange LUT at 0.6, then colour adjustments baked into the same table (`ColorAdjust`: temperature 0.06, contrast 0.15, vibrance 0.25, shadows towards teal): deeper blue-violet robots, the far floor and the haze a warm sand, richer yellow crates. | all |
 | `environment-map` | Chrome and white spheres from mirror to rough lit only by a cooked 64×32 HDR studio (baked here as the cook bakes it), turned 0.6 rad, drawn as the background. | all |
 | `sprites-20k` | 20,000 sprites (3 textures, one a 2×2 atlas, 2 layers), orthographic: 3 sprite draws. | all |
@@ -1768,6 +1769,15 @@ the inset matrix, log2 encoding over −12.47..+4.03 EV, the sixth-order
 contrast polynomial, the outset, 2.2 back to linear and Rec.2020 to sRGB:
 the base look of Blender 4, Filament and three.js `AgXToneMapping`. ACES
 stays the default, so no reference moved.
+
+**Khronos PBR Neutral** (`Tonemap::Neutral`, `post.wgsl`'s and
+`views.wgsl`'s `neutral`; ported from RedGPU's `khronosPbrNeutral`, the
+same curve as three.js `NeutralToneMapping`): the 0.04 of a dielectric's
+Fresnel reflection is taken off (less near black, `x - 6.25x²` under
+0.08), so a base colour lit by white light shows as authored; a colour
+whose peak is then under 0.76 passes through, a brighter one is scaled
+so its peak rolls off as `1 - 0.24² / (peak - 0.52)` and mixed towards
+white by `1 - 1 / (0.15 (peak - new peak) + 1)`. Reference `post-neutral`.
 
 **Exposure adaptation** (`Exposure::Auto { adapt_speed_up,
 adapt_speed_down }`, EV per second; the IDL's

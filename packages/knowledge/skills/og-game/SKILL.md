@@ -2084,7 +2084,10 @@ og.render.look(world)?.name;                                              // the
 
 - **Tone mapping and exposure** (`og.RenderSettings`): `toneMapping` is
   `aces` (the default), `agx` (bright saturated lights go to white instead
-  of shifting hue: neon, fire, magic) or `none`; `toneMapped false` clamps
+  of shifting hue: neon, fire, magic), `neutral` (Khronos PBR Neutral:
+  colours up to about 0.8 come out as picked and only highlights roll
+  off; product shots, toy and cartoon colour that ACES darkens) or
+  `none`; `toneMapped false` clamps
   so 2D colours come out as authored. `exposure` multiplies every camera's
   `Camera.exposure`. `autoExposure` meters each frame to middle grey;
   `adaptSpeedUp` and `adaptSpeedDown` (EV per second of game time, so a

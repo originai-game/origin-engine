@@ -14,8 +14,8 @@ use og_render::{
     Lighting2d, MAX_DECALS, Material, MorphTargets, MotionBlur, Occluder2d, Outline,
     ParticleCollision, ParticleEmitter, ParticleRender, ParticleSimulation, ParticleSystem,
     Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, ScreenFlash,
-    SkinnedInstance, Sprite, SpriteFx, StandardMaterial, Tier, Tonemap, Trail, TrailStyle,
-    Vignette, shapes,
+    SkinnedInstance, Sprite, SpriteFx, StandardMaterial, Tier, Tonemap, Trail, TrailStyle, View,
+    ViewTarget, Vignette, shapes,
 };
 use og_tests::fx_scenes as fx;
 use og_tests::{gfx, scenes};
@@ -888,6 +888,75 @@ fn colour_adjustments_bake_after_the_lut() {
         ColorAdjust::default().apply(Vec3::splat(0.5)),
         Vec3::splat(0.5)
     );
+}
+
+/// Khronos PBR Neutral against the curve computed here from its
+/// definition: the colour bars, whose peaks are under the knee once a
+/// dielectric's 0.04 is off (less near black), and an over-bright bar,
+/// rolled off and mixed towards white; through the frame's tonemap and
+/// through a view's resolve drawn over the whole frame.
+#[test]
+fn neutral_tone_curve_follows_khronos() {
+    // KhronosGroup/ToneMapping, PBR Neutral.
+    let neutral = |c: Vec3| {
+        let (start_compression, desaturation) = (0.8 - 0.04, 0.15);
+        let x = c.min_element();
+        let c = c - if x < 0.08 { x - 6.25 * x * x } else { 0.04 };
+        let peak = c.max_element();
+        if peak < start_compression {
+            return c;
+        }
+        let d = 1.0 - start_compression;
+        let new_peak = 1.0 - d * d / (peak + d - start_compression);
+        let g = 1.0 - 1.0 / (desaturation * (peak - new_peak) + 1.0);
+        (c * (new_peak / peak)).lerp(Vec3::splat(new_peak), g)
+    };
+    let encode = |v: f32| {
+        let e = if v <= 0.003_130_8 {
+            v * 12.92
+        } else {
+            1.055 * v.powf(1.0 / 2.4) - 0.055
+        };
+        (e * 255.0).round() as i32
+    };
+    let bars = [
+        (Vec3::new(0.8, 0.1, 0.05), -3.0),
+        (Vec3::new(0.1, 0.6, 0.1), -1.0),
+        (Vec3::new(0.05, 0.1, 0.8), 1.0),
+        (Vec3::new(0.5, 0.5, 0.5), 3.0),
+        (Vec3::new(4.0, 2.0, 1.0), 5.0),
+    ];
+    for through_view in [false, true] {
+        let mut scene = colour_scene();
+        scene.add_sprite(Sprite {
+            position: Vec3::new(5.0, 0.0, 0.0),
+            size: Vec2::new(1.5, 4.0),
+            color: [4.0, 2.0, 1.0, 1.0],
+            ..Default::default()
+        });
+        scene.post.tonemap = Tonemap::Neutral;
+        if through_view {
+            scene.views.push(View {
+                camera: scene.camera,
+                target: ViewTarget::Viewport([0.0, 0.0, 1.0, 1.0]),
+                ..Default::default()
+            });
+        }
+        let (img, _) = frame(&small(), &scene);
+        for (c, x) in bars {
+            let (px_x, px_y) = project(&scene.camera, 320, 180, Vec3::new(x, 0.0, 0.0));
+            let got = px(&img, px_x, px_y);
+            let n = neutral(c);
+            let want = [encode(n.x), encode(n.y), encode(n.z)];
+            println!("neutral (view {through_view}): {c} -> {got:?}, the curve {want:?}");
+            assert!(
+                got.iter()
+                    .zip(want)
+                    .all(|(g, w)| (*g as i32 - w).abs() <= 2),
+                "neutral (view {through_view}) of {c}: {got:?} against {want:?}"
+            );
+        }
+    }
 }
 
 /// Vignette darkens the corners, not the centre; chromatic aberration

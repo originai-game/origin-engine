@@ -196,7 +196,7 @@ lighting falls back to a forward tile table built on the CPU).
 - IBL from an environment map prefiltered at cook time; sky model with
   exposure; height fog, lit as a medium when volumetric; baked lightmaps
   and light volumes (below).
-- Post: bloom, tonemap (ACES or AgX), colour grading LUT (a photo
+- Post: bloom, tonemap (ACES, AgX or Khronos PBR Neutral), colour grading LUT (a photo
   editor's colour adjustments baked into it on the CPU), SSAO (GTAO on
   WebGPU), antialiasing by tier: TAA on the full tier (optional
   Catmull-Rom history and sharpening), 4× MSAA on WebGL2, FXAA on any tier

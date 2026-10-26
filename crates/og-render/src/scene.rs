@@ -836,6 +836,13 @@ pub enum Tonemap {
     /// no "punchy"): highlights desaturate towards white instead of skewing
     /// hue, and saturated lights keep their hue further up than under ACES.
     Agx,
+    /// Khronos PBR Neutral (three.js `NeutralToneMapping`): colours whose
+    /// brightest channel stays under 0.76 pass through, less the 0.04 of a
+    /// dielectric's reflection (so a white-lit base colour shows as
+    /// authored), and only brighter ones roll off towards 1, desaturating
+    /// to white. For product shots and saturated stylised colour, where
+    /// ACES's contrast and hue shifts are unwanted.
+    Neutral,
 }
 
 /// Bloom: light above a threshold bleeds into its surroundings.

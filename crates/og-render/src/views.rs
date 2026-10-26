@@ -870,6 +870,7 @@ impl Views {
                     crate::Tonemap::Aces => 0.0,
                     crate::Tonemap::None => 1.0,
                     crate::Tonemap::Agx => 2.0,
+                    crate::Tonemap::Neutral => 3.0,
                 },
                 plan.flip as u32 as f32,
                 (!format.is_srgb() && format != wgpu::TextureFormat::Rgba16Float) as u32 as f32,

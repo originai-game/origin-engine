@@ -74,3 +74,49 @@ metal references are owed to the Mac lane (`OG_GFX_CAPTURE=<scene>`).
   row teal); bottom right threshold 0.5, the board as black and white
   silhouettes. The HUD and the og.ui badge are untouched in all four:
   the overlay draws after the post stack.
+
+## 2. Khronos PBR Neutral (`RenderSettings.toneMapping = "neutral"`)
+
+- **What landed.** og-render `Tonemap::Neutral`, code 3 in the tonemap's
+  `mode.x` and the views' resolve `params.y`; `post.wgsl` and
+  `views.wgsl` gain `neutral()`, the Khronos curve (RedGPU's
+  `khronosPbrNeutral`, three.js's `NeutralToneMapping`): the 0.04 of a
+  dielectric's reflection comes off (`x - 6.25x²` under 0.08), a colour
+  whose peak is then under 0.76 passes through, a brighter one is scaled
+  so its peak rolls off as `1 - 0.24² / (peak - 0.52)` and mixed towards
+  white by `1 - 1 / (0.15 (peak - new peak) + 1)`, then clamped. The
+  IDL's `ToneMapping` gains `neutral` after `none`, so the existing
+  indices (aces 0, agx 1, none 2) and every saved value keep their
+  meaning; og-runtime maps index 3 and the name; a look's `toneMapping
+  neutral` is checked against the same enum by the cook.
+  `og migrate three` and the three-to-og guide map three.js's
+  `NeutralToneMapping` to it.
+- **Tests.** og-tests `effects::neutral_tone_curve_follows_khronos`: the
+  colour bars and an over-bright bar (4, 2, 1) against the curve computed
+  in the test from Khronos's definition, through the frame's tonemap and
+  through a view's resolve over the whole frame (0.8, 0.1, 0.05 → 227,
+  73, 34 against 227, 72, 34; 0.5 grey → 181; 4, 2, 1 → 253, 209, 182 on
+  both paths). With the views' branch broken (`> 3.5`) the view half
+  fails (204, 117, 94: AgX), so the test reads that path. New gfx scene
+  `post-neutral`.
+- `crates/og-tests/references/vulkan-cpu/post-neutral.png` —
+  `OG_GFX_CAPTURE=post-neutral cargo test -p og-tests --test tests
+  gfx::post_neutral` (sha256 a02dbc5b75baf944). Read beside metal's
+  `bloom` (ACES) and `post-agx`: the orange sphere stays orange-red where
+  ACES turns it yellow-white, the blue stays blue (ACES: cyan-white), the
+  green and magenta keep their hue into vivid halos, the white sphere's
+  core rolls to white, and the backdrop is a deeper navy (the curve's
+  offset darkens the near-blacks); no banding in the halos.
+- `neutral-run.png` — `og run templates/fx-showcase --size 1280x720
+  --commands "0.5:station:materials;2.0:screenshot:materials-aces.png;
+  2.05:set:og.RenderSettings.toneMapping=neutral;2.2:screenshot:materials-neutral.png;
+  2.25:station:lights;4.0:screenshot:lights-neutral.png;
+  4.05:set:og.RenderSettings.toneMapping=aces;4.2:screenshot:lights-aces.png;4.25:quit"`,
+  ACES left and Neutral right at half size (rev 6ba3ab70+dirty,
+  2026-10-26, sha256 c2998557a565ec1e). Read: on the materials board the
+  backdrop goes from ACES's washed pale grey to a lavender blue, the
+  emissive sphere (1, 0.45, 0.1 at intensity 3) stays orange where ACES
+  skews it to pale yellow,
+  the blue and red spheres and the gold row are deeper; under the night
+  lights the floor's pools are more saturated with smaller white
+  centres. The HUD is the same in both.

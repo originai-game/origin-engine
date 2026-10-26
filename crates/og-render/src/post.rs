@@ -1122,6 +1122,7 @@ impl PostPasses {
             Tonemap::Aces => 0.0,
             Tonemap::None => 1.0,
             Tonemap::Agx => 2.0,
+            Tonemap::Neutral => 3.0,
         };
         let v = post.vignette.unwrap_or(crate::Vignette {
             intensity: 0.0,

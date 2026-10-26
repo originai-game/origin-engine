@@ -2666,6 +2666,7 @@ module render {
     variant aces "ACES (the fitted filmic curve), as three.js ACESFilmicToneMapping: the default."
     variant agx "AgX (Blender 4's and three.js AgXToneMapping's fit, base look): bright saturated lights go to white instead of skewing hue, and keep their hue further up than under ACES."
     variant none "No curve: the exposed linear colour is clamped to 0..1, so 2D colours come out exactly as authored at exposure 1 (the same as toneMapped false)."
+    variant neutral "Khronos PBR Neutral, as three.js NeutralToneMapping: colours up to about 0.8 come out as authored (a white-lit base colour shows as the colour picked), only brighter ones roll off to white. For product shots and saturated stylised colour that ACES would darken and shift."
   }
 
   column ToneMapping {
@@ -2760,7 +2761,7 @@ module render {
     field toneMapped bool "Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1." {
       default true
     }
-    field toneMapping ToneMapping "Which curve tone maps the frame while toneMapped is true: aces (the default), agx or none."
+    field toneMapping ToneMapping "Which curve tone maps the frame while toneMapped is true: aces (the default), agx, neutral or none."
     field exposure f32 "A multiplier on every camera's Camera.exposure, as three.js renderer.toneMappingExposure is one for the whole frame: a look's brightness without touching the cameras; 1 leaves them as they are." {
       default 1
       min 0

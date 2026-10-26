@@ -1384,6 +1384,13 @@ fn post_adjust_matches_its_reference() {
     check("post-adjust");
 }
 
+/// Khronos PBR Neutral: the bloom scene's spheres keep their colour under
+/// the knee and roll to white above it.
+#[test]
+fn post_neutral_matches_its_reference() {
+    check("post-neutral");
+}
+
 /// AgX: the bloom scene's emissive spheres keep their hue in the glow but
 /// their over-exposed cores go towards white, where ACES skews them.
 #[test]

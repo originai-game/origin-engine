@@ -10,7 +10,7 @@
 struct Post {
   exposure: vec4<f32>,  // x: manual ev, y: manual (0), auto (1) or adapted (2: `luminance` holds the EV), z: min ev, w: max ev
   bloom: vec4<f32>,     // x: threshold, y: knee, z: intensity (0: off), w: compensation
-  mode: vec4<f32>,      // x: tonemap (0 ACES, 1 none, 2 AgX), y: upsample radius in texels, z: 1 when the lit image feeds bloom, w: 1 when the glow buffer does
+  mode: vec4<f32>,      // x: tonemap (0 ACES, 1 none, 2 AgX, 3 Khronos PBR Neutral), y: upsample radius in texels, z: 1 when the lit image feeds bloom, w: 1 when the glow buffer does
   grade: vec4<f32>,     // x: LUT intensity (0 off), y: vignette intensity (0 off), z: vignette radius, w: vignette smoothness
   vignette: vec4<f32>,  // rgb: vignette colour, w: chromatic aberration at the corners (uv units, 0 off)
   grain: vec4<f32>,     // x: intensity (0 off), y: size in pixels, z: seed (0..1)
@@ -78,6 +78,25 @@ fn agx(x: vec3<f32>) -> vec3<f32> {
   return clamp(rec2020_to_srgb * c, vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
+// Khronos PBR Neutral, as three.js's NeutralToneMapping: linear sRGB in
+// and out. The 0.04 of a dielectric's reflection comes off (less near
+// black); a colour whose peak is then under 0.76 passes through, a
+// brighter one is scaled so the peak rolls off towards 1 and is mixed
+// towards white by how far it rolled.
+fn neutral(color: vec3<f32>) -> vec3<f32> {
+  let start = 0.76;
+  let x = min(color.r, min(color.g, color.b));
+  let offset = select(0.04, x - 6.25 * x * x, x < 0.08);
+  var c = color - offset;
+  let peak = max(c.r, max(c.g, c.b));
+  if (peak < start) { return clamp(c, vec3<f32>(0.0), vec3<f32>(1.0)); }
+  let d = 1.0 - start;
+  let new_peak = 1.0 - d * d / (peak + d - start);
+  c *= new_peak / peak;
+  let g = 1.0 - 1.0 / (0.15 * (peak - new_peak) + 1.0);
+  return clamp(mix(c, vec3<f32>(new_peak), g), vec3<f32>(0.0), vec3<f32>(1.0));
+}
+
 fn tonemapped(uv: vec2<f32>) -> vec3<f32> {
   let curved = curve(uv);
   if (post.extra.y < 0.5) { return curved; }
@@ -109,6 +128,7 @@ fn curve(uv: vec2<f32>) -> vec3<f32> {
   if (post.extra.x > 0.5) {
     c += textureSampleLevel(god_rays, linear_sampler, uv, 0.0).rgb * exposure();
   }
+  if (post.mode.x > 2.5) { return neutral(c); }
   if (post.mode.x > 1.5) { return agx(c); }
   if (post.mode.x > 0.5) { return clamp(c, vec3<f32>(0.0), vec3<f32>(1.0)); }
   return aces(c);

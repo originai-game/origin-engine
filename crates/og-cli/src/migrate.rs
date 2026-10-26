@@ -1442,7 +1442,7 @@ impl Ctx {
                 let head = rest.split(['(', '.', ' ', '=']).next().unwrap_or("");
                 match head {
                     "setAnimationLoop" => Done::Manual("the render loop: its body goes in systems on the tick, and the engine draws every frame".into(), S_TICK),
-                    "toneMapping" | "toneMappingExposure" => Done::Manual("RenderSettings.toneMapping (\"aces\", \"agx\", \"none\") and exposure".into(), S_LIGHT),
+                    "toneMapping" | "toneMappingExposure" => Done::Manual("RenderSettings.toneMapping (\"aces\", \"agx\", \"neutral\", \"none\") and exposure".into(), S_LIGHT),
                     "setClearColor" => Done::Manual("the clear colour is og.Camera's background (linear: color.fromHex of the hex)".into(), S_LIGHT),
                     "render" | "setSize" | "setPixelRatio" | "shadowMap" | "outputColorSpace" | "outputEncoding" | "physicallyCorrectLights" | "useLegacyLights" => {
                         Done::Removed("the engine owns the renderer, its size and its shadows".into(), S_LIGHT)
