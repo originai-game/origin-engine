@@ -7,6 +7,7 @@
 // error, never a skip.
 
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 declare module "node:fs" {
@@ -55,7 +56,8 @@ export class Browser {
   }
 
   static async launch(o: { chrome?: string; width?: number; height?: number; flags?: string[] } = {}): Promise<Browser> {
-    const profile = mkdtempSync(join(process.env.TMPDIR ?? "/tmp", "og-cdp-"));
+    // os.tmpdir(): TMPDIR else /tmp on Unix, %TEMP% on Windows (where "/tmp" is \tmp on the current drive).
+    const profile = mkdtempSync(join(tmpdir(), "og-cdp-"));
     const proc = Bun.spawn(
       [
         o.chrome ?? chromePath(),
