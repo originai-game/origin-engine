@@ -6,6 +6,7 @@ use arrayvec::ArrayVec;
 use glow::HasContext;
 
 use super::{conv::is_layered_target, lock, Command as C, PrivateCapabilities};
+use super::shadow::{Attached, Pointer, Shadow};
 
 const DEBUG_ID: u32 = 0;
 
@@ -52,12 +53,18 @@ fn get_z_offset(target: u32, base: &crate::TextureCopyBase) -> u32 {
 
 impl super::Queue {
     /// Performs a manual shader clear, used as a workaround for a clearing bug on mesa
-    unsafe fn perform_shader_clear(&self, gl: &glow::Context, draw_buffer: u32, color: [f32; 4]) {
+    unsafe fn perform_shader_clear(
+        &self,
+        gl: &glow::Context,
+        shadow: &mut Shadow,
+        draw_buffer: u32,
+        color: [f32; 4],
+    ) {
         let shader_clear = self
             .shader_clear_program
             .as_ref()
             .expect("shader_clear_program should always be set if the workaround is enabled");
-        unsafe { gl.use_program(Some(shader_clear.program)) };
+        shadow.use_program(gl, Some(shader_clear.program));
         unsafe {
             gl.uniform_4_f32(
                 Some(&shader_clear.color_uniform_location),
@@ -67,12 +74,13 @@ impl super::Queue {
                 color[3],
             )
         };
-        unsafe { gl.disable(glow::DEPTH_TEST) };
-        unsafe { gl.disable(glow::STENCIL_TEST) };
-        unsafe { gl.disable(glow::SCISSOR_TEST) };
-        unsafe { gl.disable(glow::BLEND) };
-        unsafe { gl.disable(glow::CULL_FACE) };
+        shadow.cap(gl, glow::DEPTH_TEST, false);
+        shadow.cap(gl, glow::STENCIL_TEST, false);
+        shadow.cap(gl, glow::SCISSOR_TEST, false);
+        shadow.cap(gl, glow::BLEND, false);
+        shadow.cap(gl, glow::CULL_FACE, false);
         unsafe { gl.draw_buffers(&[glow::COLOR_ATTACHMENT0 + draw_buffer]) };
+        shadow.flush(gl);
         unsafe { gl.draw_arrays(glow::TRIANGLES, 0, 3) };
 
         let draw_buffer_count = self.draw_buffer_count.load(Ordering::Relaxed);
@@ -85,21 +93,21 @@ impl super::Queue {
         }
     }
 
-    unsafe fn reset_state(&self, gl: &glow::Context) {
-        unsafe { gl.use_program(None) };
-        unsafe { gl.bind_framebuffer(glow::FRAMEBUFFER, None) };
-        unsafe { gl.disable(glow::DEPTH_TEST) };
-        unsafe { gl.disable(glow::STENCIL_TEST) };
-        unsafe { gl.disable(glow::SCISSOR_TEST) };
-        unsafe { gl.disable(glow::BLEND) };
-        unsafe { gl.disable(glow::CULL_FACE) };
-        unsafe { gl.disable(glow::POLYGON_OFFSET_FILL) };
-        unsafe { gl.disable(glow::SAMPLE_ALPHA_TO_COVERAGE) };
+    unsafe fn reset_state(&self, gl: &glow::Context, shadow: &mut Shadow) {
+        shadow.use_program(gl, None);
+        shadow.bind_framebuffer(gl, glow::FRAMEBUFFER, None);
+        shadow.cap(gl, glow::DEPTH_TEST, false);
+        shadow.cap(gl, glow::STENCIL_TEST, false);
+        shadow.cap(gl, glow::SCISSOR_TEST, false);
+        shadow.cap(gl, glow::BLEND, false);
+        shadow.cap(gl, glow::CULL_FACE, false);
+        shadow.cap(gl, glow::POLYGON_OFFSET_FILL, false);
+        shadow.cap(gl, glow::SAMPLE_ALPHA_TO_COVERAGE, false);
         if self.features.contains(wgt::Features::DEPTH_CLIP_CONTROL) {
-            unsafe { gl.disable(glow::DEPTH_CLAMP) };
+            shadow.cap(gl, glow::DEPTH_CLAMP, false);
         }
 
-        unsafe { gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, None) };
+        shadow.bind_buffer(gl, glow::ELEMENT_ARRAY_BUFFER, None);
         let mut current_index_buffer = self.current_index_buffer.lock();
         *current_index_buffer = None;
     }
@@ -107,6 +115,7 @@ impl super::Queue {
     unsafe fn set_attachment(
         &self,
         gl: &glow::Context,
+        shadow: &mut Shadow,
         fbo_target: u32,
         attachment: u32,
         view: &super::TextureView,
@@ -115,19 +124,13 @@ impl super::Queue {
     ) {
         match view.inner {
             super::TextureInner::Renderbuffer { raw } => {
-                unsafe {
-                    gl.framebuffer_renderbuffer(
-                        fbo_target,
-                        attachment,
-                        glow::RENDERBUFFER,
-                        Some(raw),
-                    )
-                };
+                shadow.attach(gl, fbo_target, attachment, Attached::Renderbuffer(raw));
             }
             super::TextureInner::DefaultRenderbuffer => panic!("Unexpected default RBO"),
             super::TextureInner::Texture { raw, target } => {
                 let num_layers = view.array_layers.end - view.array_layers.start;
                 if num_layers > 1 {
+                    shadow.attached_otherwise(gl);
                     #[cfg(webgl)]
                     unsafe {
                         gl.framebuffer_texture_multiview_ovr(
@@ -145,19 +148,21 @@ impl super::Queue {
                     } else {
                         view.array_layers.start as i32
                     };
-                    unsafe {
-                        gl.framebuffer_texture_layer(
-                            fbo_target,
-                            attachment,
-                            Some(raw),
-                            view.mip_levels.start as i32,
+                    shadow.attach(
+                        gl,
+                        fbo_target,
+                        attachment,
+                        Attached::Layer {
+                            texture: raw,
+                            level: view.mip_levels.start as i32,
                             layer,
-                        )
-                    };
+                        },
+                    );
                 } else {
                     unsafe {
                         assert_eq!(view.mip_levels.len(), 1);
                         if sample_count != 1 {
+                            shadow.attached_otherwise(gl);
                             gl.framebuffer_texture_2d_multisample(
                                 fbo_target,
                                 attachment,
@@ -167,12 +172,15 @@ impl super::Queue {
                                 sample_count as i32,
                             )
                         } else {
-                            gl.framebuffer_texture_2d(
+                            shadow.attach(
+                                gl,
                                 fbo_target,
                                 attachment,
-                                get_2d_target(target, view.array_layers.start),
-                                Some(raw),
-                                view.mip_levels.start as i32,
+                                Attached::Texture2d {
+                                    target: get_2d_target(target, view.array_layers.start),
+                                    texture: raw,
+                                    level: view.mip_levels.start as i32,
+                                },
                             )
                         }
                     };
@@ -180,11 +188,15 @@ impl super::Queue {
             }
             #[cfg(webgl)]
             super::TextureInner::ExternalFramebuffer { ref inner } => unsafe {
+                shadow.flush(gl);
                 gl.bind_external_framebuffer(glow::FRAMEBUFFER, inner);
+                shadow.forget();
             },
             #[cfg(native)]
             super::TextureInner::ExternalNativeFramebuffer { ref inner } => unsafe {
+                shadow.flush(gl);
                 gl.bind_framebuffer(glow::FRAMEBUFFER, Some(*inner));
+                shadow.forget();
             },
         }
     }
@@ -192,6 +204,7 @@ impl super::Queue {
     unsafe fn process(
         &self,
         gl: &glow::Context,
+        shadow: &mut Shadow,
         command: &C,
         #[cfg_attr(target_arch = "wasm32", allow(unused))] data_bytes: &[u8],
         queries: &[glow::Query],
@@ -994,7 +1007,7 @@ impl super::Queue {
                 }
             }
             C::SetIndexBuffer(buffer) => {
-                unsafe { gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(buffer)) };
+                shadow.bind_buffer(gl, glow::ELEMENT_ARRAY_BUFFER, Some(buffer));
                 let mut current_index_buffer = self.current_index_buffer.lock();
                 *current_index_buffer = Some(buffer);
             }
@@ -1123,37 +1136,26 @@ impl super::Queue {
             }
             C::ResetFramebuffer { is_default } => {
                 if is_default {
-                    unsafe { gl.bind_framebuffer(glow::DRAW_FRAMEBUFFER, None) };
+                    shadow.bind_framebuffer(gl, glow::DRAW_FRAMEBUFFER, None);
                 } else {
-                    unsafe { gl.bind_framebuffer(glow::DRAW_FRAMEBUFFER, Some(self.draw_fbo)) };
-                    unsafe {
-                        gl.framebuffer_texture_2d(
-                            glow::DRAW_FRAMEBUFFER,
-                            glow::DEPTH_STENCIL_ATTACHMENT,
-                            glow::TEXTURE_2D,
-                            None,
-                            0,
-                        )
-                    };
+                    shadow.bind_framebuffer(gl, glow::DRAW_FRAMEBUFFER, Some(self.draw_fbo));
+                    shadow.attach(
+                        gl,
+                        glow::DRAW_FRAMEBUFFER,
+                        glow::DEPTH_STENCIL_ATTACHMENT,
+                        Attached::None,
+                    );
                     for i in 0..self.shared.limits.max_color_attachments {
                         let target = glow::COLOR_ATTACHMENT0 + i;
-                        unsafe {
-                            gl.framebuffer_texture_2d(
-                                glow::DRAW_FRAMEBUFFER,
-                                target,
-                                glow::TEXTURE_2D,
-                                None,
-                                0,
-                            )
-                        };
+                        shadow.attach(gl, glow::DRAW_FRAMEBUFFER, target, Attached::None);
                     }
                 }
-                unsafe { gl.color_mask(true, true, true, true) };
-                unsafe { gl.depth_mask(true) };
-                unsafe { gl.stencil_mask(!0) };
-                unsafe { gl.disable(glow::DEPTH_TEST) };
-                unsafe { gl.disable(glow::STENCIL_TEST) };
-                unsafe { gl.disable(glow::SCISSOR_TEST) };
+                shadow.color_mask(gl, [true; 4]);
+                shadow.depth_mask(gl, true);
+                shadow.stencil_mask(gl, glow::FRONT_AND_BACK, !0);
+                shadow.cap(gl, glow::DEPTH_TEST, false);
+                shadow.cap(gl, glow::STENCIL_TEST, false);
+                shadow.cap(gl, glow::SCISSOR_TEST, false);
             }
             C::BindAttachment {
                 attachment,
@@ -1164,6 +1166,7 @@ impl super::Queue {
                 unsafe {
                     self.set_attachment(
                         gl,
+                        shadow,
                         glow::DRAW_FRAMEBUFFER,
                         attachment,
                         view,
@@ -1177,12 +1180,13 @@ impl super::Queue {
                 ref dst,
                 ref size,
             } => {
-                unsafe { gl.bind_framebuffer(glow::READ_FRAMEBUFFER, Some(self.draw_fbo)) };
+                shadow.bind_framebuffer(gl, glow::READ_FRAMEBUFFER, Some(self.draw_fbo));
                 unsafe { gl.read_buffer(attachment) };
-                unsafe { gl.bind_framebuffer(glow::DRAW_FRAMEBUFFER, Some(self.copy_fbo)) };
+                shadow.bind_framebuffer(gl, glow::DRAW_FRAMEBUFFER, Some(self.copy_fbo));
                 unsafe {
                     self.set_attachment(
                         gl,
+                        shadow,
                         glow::DRAW_FRAMEBUFFER,
                         glow::COLOR_ATTACHMENT0,
                         dst,
@@ -1204,8 +1208,8 @@ impl super::Queue {
                         glow::NEAREST,
                     )
                 };
-                unsafe { gl.bind_framebuffer(glow::READ_FRAMEBUFFER, None) };
-                unsafe { gl.bind_framebuffer(glow::DRAW_FRAMEBUFFER, Some(self.draw_fbo)) };
+                shadow.bind_framebuffer(gl, glow::READ_FRAMEBUFFER, None);
+                shadow.bind_framebuffer(gl, glow::DRAW_FRAMEBUFFER, Some(self.draw_fbo));
             }
             C::InvalidateAttachments(ref list) => {
                 if self
@@ -1234,7 +1238,7 @@ impl super::Queue {
                     .contains(super::Workarounds::MESA_I915_SRGB_SHADER_CLEAR)
                     && is_srgb
                 {
-                    unsafe { self.perform_shader_clear(gl, draw_buffer, *color) };
+                    unsafe { self.perform_shader_clear(gl, shadow, draw_buffer, *color) };
                 } else {
                     unsafe { gl.clear_buffer_f32_slice(glow::COLOR, draw_buffer, color) };
                 }
@@ -1346,7 +1350,7 @@ impl super::Queue {
             }
             C::SetScissor(ref rect) => {
                 unsafe { gl.scissor(rect.x, rect.y, rect.w, rect.h) };
-                unsafe { gl.enable(glow::SCISSOR_TEST) };
+                shadow.cap(gl, glow::SCISSOR_TEST, true);
             }
             C::SetStencilFunc {
                 face,
@@ -1361,7 +1365,7 @@ impl super::Queue {
                 write_mask,
                 ref ops,
             } => {
-                unsafe { gl.stencil_mask_separate(face, write_mask) };
+                shadow.stencil_mask(gl, face, write_mask);
                 unsafe { gl.stencil_op_separate(face, ops.fail, ops.depth_fail, ops.pass) };
             }
             C::SetVertexAttribute {
@@ -1369,10 +1373,30 @@ impl super::Queue {
                 ref buffer_desc,
                 attribute_desc: ref vat,
             } => {
-                unsafe { gl.bind_buffer(glow::ARRAY_BUFFER, buffer) };
-                unsafe { gl.enable_vertex_attrib_array(vat.location) };
+                shadow.enable_attribute(gl, vat.location, true);
 
-                if buffer.is_none() {
+                if let Some(buffer) = buffer {
+                    let integer = match vat.format_desc.attrib_kind {
+                        super::VertexAttribKind::Float => false,
+                        super::VertexAttribKind::Integer => true,
+                    };
+                    shadow.pointer(
+                        gl,
+                        vat.location,
+                        Pointer {
+                            buffer,
+                            integer,
+                            normalized: true, // always normalized
+                            size: vat.format_desc.element_count,
+                            ty: vat.format_desc.element_format,
+                            stride: buffer_desc.stride as i32,
+                            offset: vat.offset as i32,
+                        },
+                    );
+                    shadow.divisor(gl, vat.location, buffer_desc.step as u32);
+                } else {
+                    shadow.bind_buffer(gl, glow::ARRAY_BUFFER, None);
+                    shadow.forget_attributes(gl);
                     match vat.format_desc.attrib_kind {
                         super::VertexAttribKind::Float => unsafe {
                             gl.vertex_attrib_format_f32(
@@ -1396,39 +1420,17 @@ impl super::Queue {
                     //Note: there is apparently a bug on AMD 3500U:
                     // this call is ignored if the current array is disabled.
                     unsafe { gl.vertex_attrib_binding(vat.location, vat.buffer_index) };
-                } else {
-                    match vat.format_desc.attrib_kind {
-                        super::VertexAttribKind::Float => unsafe {
-                            gl.vertex_attrib_pointer_f32(
-                                vat.location,
-                                vat.format_desc.element_count,
-                                vat.format_desc.element_format,
-                                true, // always normalized
-                                buffer_desc.stride as i32,
-                                vat.offset as i32,
-                            )
-                        },
-                        super::VertexAttribKind::Integer => unsafe {
-                            gl.vertex_attrib_pointer_i32(
-                                vat.location,
-                                vat.format_desc.element_count,
-                                vat.format_desc.element_format,
-                                buffer_desc.stride as i32,
-                                vat.offset as i32,
-                            )
-                        },
-                    }
-                    unsafe { gl.vertex_attrib_divisor(vat.location, buffer_desc.step as u32) };
                 }
             }
             C::UnsetVertexAttribute(location) => {
-                unsafe { gl.disable_vertex_attrib_array(location) };
+                shadow.enable_attribute(gl, location, false);
             }
             C::SetVertexBuffer {
                 index,
                 ref buffer,
                 ref buffer_desc,
             } => {
+                shadow.forget_attributes(gl);
                 unsafe { gl.vertex_binding_divisor(index, buffer_desc.step as u32) };
                 unsafe {
                     gl.bind_vertex_buffer(
@@ -1441,53 +1443,45 @@ impl super::Queue {
             }
             C::SetDepth(ref depth) => {
                 unsafe { gl.depth_func(depth.function) };
-                unsafe { gl.depth_mask(depth.mask) };
+                shadow.depth_mask(gl, depth.mask);
             }
             C::SetDepthBias(bias) => {
                 if bias.is_enabled() {
-                    unsafe { gl.enable(glow::POLYGON_OFFSET_FILL) };
+                    shadow.cap(gl, glow::POLYGON_OFFSET_FILL, true);
                     unsafe { gl.polygon_offset(bias.slope_scale, bias.constant as f32) };
                 } else {
-                    unsafe { gl.disable(glow::POLYGON_OFFSET_FILL) };
+                    shadow.cap(gl, glow::POLYGON_OFFSET_FILL, false);
                 }
             }
             C::ConfigureDepthStencil(aspects) => {
-                if aspects.contains(crate::FormatAspects::DEPTH) {
-                    unsafe { gl.enable(glow::DEPTH_TEST) };
-                } else {
-                    unsafe { gl.disable(glow::DEPTH_TEST) };
-                }
-                if aspects.contains(crate::FormatAspects::STENCIL) {
-                    unsafe { gl.enable(glow::STENCIL_TEST) };
-                } else {
-                    unsafe { gl.disable(glow::STENCIL_TEST) };
-                }
+                shadow.cap(
+                    gl,
+                    glow::DEPTH_TEST,
+                    aspects.contains(crate::FormatAspects::DEPTH),
+                );
+                shadow.cap(
+                    gl,
+                    glow::STENCIL_TEST,
+                    aspects.contains(crate::FormatAspects::STENCIL),
+                );
             }
             C::SetAlphaToCoverage(enabled) => {
-                if enabled {
-                    unsafe { gl.enable(glow::SAMPLE_ALPHA_TO_COVERAGE) };
-                } else {
-                    unsafe { gl.disable(glow::SAMPLE_ALPHA_TO_COVERAGE) };
-                }
+                shadow.cap(gl, glow::SAMPLE_ALPHA_TO_COVERAGE, enabled);
             }
             C::SetProgram(program) => {
-                unsafe { gl.use_program(Some(program)) };
+                shadow.use_program(gl, Some(program));
             }
             C::SetPrimitive(ref state) => {
                 unsafe { gl.front_face(state.front_face) };
                 if state.cull_face != 0 {
-                    unsafe { gl.enable(glow::CULL_FACE) };
+                    shadow.cap(gl, glow::CULL_FACE, true);
                     unsafe { gl.cull_face(state.cull_face) };
                 } else {
-                    unsafe { gl.disable(glow::CULL_FACE) };
+                    shadow.cap(gl, glow::CULL_FACE, false);
                 }
                 if self.features.contains(wgt::Features::DEPTH_CLIP_CONTROL) {
                     //Note: this is a bit tricky, since we are controlling the clip, not the clamp.
-                    if state.unclipped_depth {
-                        unsafe { gl.enable(glow::DEPTH_CLAMP) };
-                    } else {
-                        unsafe { gl.disable(glow::DEPTH_CLAMP) };
-                    }
+                    shadow.cap(gl, glow::DEPTH_CLAMP, state.unclipped_depth);
                 }
                 // POLYGON_MODE_LINE also implies POLYGON_MODE_POINT
                 if self.features.contains(wgt::Features::POLYGON_MODE_LINE) {
@@ -1503,6 +1497,10 @@ impl super::Queue {
             } => {
                 use wgt::ColorWrites as Cw;
                 if let Some(index) = draw_buffer_index {
+                    // Per draw buffer: what is pending goes first.
+                    shadow.flush(gl);
+                    shadow.forget_color_mask();
+                    shadow.forget_cap(glow::BLEND);
                     unsafe {
                         gl.color_mask_draw_buffer(
                             index,
@@ -1541,16 +1539,17 @@ impl super::Queue {
                         unsafe { gl.disable_draw_buffer(glow::BLEND, index) };
                     }
                 } else {
-                    unsafe {
-                        gl.color_mask(
+                    shadow.color_mask(
+                        gl,
+                        [
                             mask.contains(Cw::RED),
                             mask.contains(Cw::GREEN),
                             mask.contains(Cw::BLUE),
                             mask.contains(Cw::ALPHA),
-                        )
-                    };
+                        ],
+                    );
                     if let Some(ref blend) = *blend {
-                        unsafe { gl.enable(glow::BLEND) };
+                        shadow.cap(gl, glow::BLEND, true);
                         if blend.color != blend.alpha {
                             unsafe {
                                 gl.blend_equation_separate(
@@ -1571,7 +1570,7 @@ impl super::Queue {
                             unsafe { gl.blend_func(blend.color.src, blend.color.dst) };
                         }
                     } else {
-                        unsafe { gl.disable(glow::BLEND) };
+                        shadow.cap(gl, glow::BLEND, false);
                     }
                 }
             }
@@ -1585,7 +1584,7 @@ impl super::Queue {
                 unsafe { gl.bind_buffer_range(target, slot, Some(buffer), offset, size) };
             }
             C::BindSampler(texture_index, sampler) => {
-                unsafe { gl.bind_sampler(texture_index, sampler) };
+                shadow.bind_sampler(gl, texture_index, sampler);
             }
             C::BindTexture {
                 slot,
@@ -1594,19 +1593,13 @@ impl super::Queue {
                 aspects,
                 ref mip_levels,
             } => {
-                unsafe { gl.active_texture(glow::TEXTURE0 + slot) };
-                unsafe { gl.bind_texture(target, Some(texture)) };
-
-                unsafe {
-                    gl.tex_parameter_i32(target, glow::TEXTURE_BASE_LEVEL, mip_levels.start as i32)
-                };
-                unsafe {
-                    gl.tex_parameter_i32(
-                        target,
-                        glow::TEXTURE_MAX_LEVEL,
-                        (mip_levels.end - 1) as i32,
-                    )
-                };
+                shadow.bind_texture(
+                    gl,
+                    slot,
+                    target,
+                    texture,
+                    (mip_levels.start as i32, (mip_levels.end - 1) as i32),
+                );
 
                 let version = gl.version();
                 let is_min_es_3_1 = version.is_embedded && (version.major, version.minor) >= (3, 1);
@@ -1925,12 +1918,14 @@ impl crate::Queue for super::Queue {
     ) -> Result<(), crate::DeviceError> {
         let shared = Arc::clone(&self.shared);
         let gl = &shared.context.lock();
+        // What this submit has set (origin-engine patch, shadow.rs).
+        let mut shadow = Shadow::new(self.draw_fbo);
         for cmd_buf in command_buffers.iter() {
             // The command encoder assumes a default state when encoding the command buffer.
             // Always reset the state between command_buffers to reflect this assumption. Do
             // this at the beginning of the loop in case something outside of wgpu modified
             // this state prior to commit.
-            unsafe { self.reset_state(gl) };
+            unsafe { self.reset_state(gl, &mut shadow) };
             if let Some(ref label) = cmd_buf.label {
                 if self
                     .shared
@@ -1948,8 +1943,24 @@ impl crate::Queue for super::Queue {
             }
 
             for command in cmd_buf.commands.iter() {
-                unsafe { self.process(gl, command, &cmd_buf.data_bytes, &cmd_buf.queries) };
+                // What a command only sets waits for the next that observes it.
+                if !Shadow::sets_only(command) {
+                    shadow.flush(gl);
+                }
+                unsafe {
+                    self.process(
+                        gl,
+                        &mut shadow,
+                        command,
+                        &cmd_buf.data_bytes,
+                        &cmd_buf.queries,
+                    )
+                };
+                if !Shadow::follows(command) {
+                    shadow.forget();
+                }
             }
+            shadow.flush(gl);
 
             if cmd_buf.label.is_some()
                 && self
