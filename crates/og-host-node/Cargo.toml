@@ -24,6 +24,12 @@ native-audio = ["dep:cpal"]
 [dependencies]
 og-api = { path = "../og-api" }
 og-runtime = { path = "../og-runtime" }
+# Not called here: og-physics' `default` (both profiles, which og-runtime's
+# default features turn on anyway) is what the workspace's test build
+# selects for it as a member, so asking for it here gives og and the addon
+# the tests' build of og-physics and og-runtime instead of a second one
+# (docs/ci.md §Test binaries). The addon is native and ships both profiles.
+og-physics = { path = "../og-physics" }
 og-render = { path = "../og-render" }
 og-probe = { path = "../og-probe", features = ["ws"] }
 og-cook = { path = "../og-cook", default-features = false, features = ["transcode"] }

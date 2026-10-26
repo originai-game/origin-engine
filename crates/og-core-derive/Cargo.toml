@@ -13,3 +13,10 @@ proc-macro = true
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "2", features = ["full"] }
+# Not used by this crate: it asks for the syn 3 features that og-host-web's
+# wasm-bindgen macros turn on in the workspace's test build, so `og` and the
+# addon resolve syn (and serde_derive, and every crate above them) to the
+# same build as the tests and share it instead of compiling it twice
+# (docs/ci.md §Test binaries). A proc-macro's dependencies are host-only,
+# so the wasm builds never compile it.
+syn3 = { package = "syn", version = "3", default-features = false, features = ["visit", "visit-mut"] }

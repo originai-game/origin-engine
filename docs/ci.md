@@ -229,6 +229,29 @@ process), or when they assert a wall-clock bound: og-physics' `lanes` and
 `[[test]]` of its own in the crate's `Cargo.toml`, named in the header of
 its `tests/main.rs`. Crates with one test file keep cargo's default.
 
+The test build (`--workspace`) and the gate's dev `og` and addon
+(`cargo build -p og-host-node -p og-cli`, `packages/engine/scripts/build.sh`)
+share every library build. Cargo resolves features per command, so a
+feature that turns on only in one graph gives that crate and every crate
+above it a second build. Two had done that, and an og-core edit compiled
+22 crates again for `og` after the test build had compiled them:
+
+- syn 3: og-host-web's wasm-bindgen macros turn on `visit` and
+  `visit-mut` in the test graph only, which rebuilt serde_derive and with
+  it everything from og-core up. og-core-derive asks for the same
+  features (`syn3`, unused in its code).
+- og-physics: as a workspace member, the test build selects its
+  `default`, which adds nothing but changes its hash and og-runtime's.
+  og-host-node asks for og-physics' `default`.
+
+Measured as above: after an edit's test build, `og` and the addon
+recompiled 22 crates in 8.1–8.3 s after an og-core edit and 6.1 s after an
+og-runtime one; now they relink og-host-node alone in 2.6–3.1 s. To check
+after a dependency change, compare the two builds' artifact file names
+(`--message-format=json`, `compiler-artifact` records with
+`profile.test` false): a library both graphs build under two hashes is a
+split, and the lowest such crate is its cause.
+
 ## What runs where
 
 | Step | Command | Lane | CI `quick` (PR) | CI `functional` (PR) | CI `gate` (push to main, PR) | CI `perf-nightly` (03:17 UTC, manual) |
