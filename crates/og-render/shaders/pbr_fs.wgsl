@@ -57,7 +57,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     if (EFFECTS && material.toon.w > 0.0) { unlit = mix(unlit, material.flash.rgb, material.toon.w); }
     unlit = look_flash(unlit, in.look);
     if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) {
-      // Debug (OG_DEBUG_VIEW=2): the ambient occlusion here, as on lit surfaces.
+      // Debug (DebugView::AmbientOcclusion): the ambient occlusion here, as on lit surfaces.
       let ssao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
       return vec4<f32>(vec3<f32>(select(1.0, ssao, fx.ao.x > 0.5)), 1.0);
     }
@@ -206,7 +206,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   color = look_flash(color, in.look);
 
   if (frame.light_color.w > 2.5) {
-    // Debug (OG_DEBUG_VIEW): 3 albedo, 4 diffuse image-based light, 5 specular image-based light, 6 direct light.
+    // Debug (DebugView::lit_code): 3 albedo, 4 diffuse image-based light, 5 specular image-based light, 6 direct light.
     let m = u32(frame.light_color.w + 0.5);
     if (m == 3u) { return vec4<f32>(s.albedo, 1.0); }
     if (m == 4u) { return vec4<f32>(kd_ibl * diffuse_ibl * ibl_scale, 1.0); }

@@ -5286,30 +5286,8 @@ impl Renderer {
         }
     }
 
-    /// Draws one frame of `scene` into `target`. With `OG_RENDER_STATS=n`
-    /// set, every n-th frame's [`FrameStats`] go to stderr (diagnostics).
+    /// Draws one frame of `scene` into `target`.
     pub fn render(
-        &mut self,
-        scene: &RenderScene,
-        target: &RenderTarget,
-    ) -> Result<FrameStats, RenderError> {
-        let stats = self.render_frame(scene, target);
-        if let (Ok(s), Some(n)) = (
-            &stats,
-            std::env::var("OG_RENDER_STATS")
-                .ok()
-                .and_then(|v| v.parse::<u64>().ok()),
-        ) {
-            static FRAME: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-            let f = FRAME.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            if n > 0 && f.is_multiple_of(n) {
-                eprintln!("og-render stats frame {f}: {s:?}");
-            }
-        }
-        stats
-    }
-
-    fn render_frame(
         &mut self,
         scene: &RenderScene,
         target: &RenderTarget,
@@ -6781,15 +6759,7 @@ impl Renderer {
                 .to_array(),
             light_dir: to_light.extend(cascades.len() as f32).to_array(),
             light_color: (light.color * light.intensity)
-                .extend(match scene.debug {
-                    // OG_DEBUG_VIEW=3..6: pbr_fs's lighting terms (diagnostics)
-                    DebugView::None => std::env::var("OG_DEBUG_VIEW")
-                        .ok()
-                        .and_then(|v| v.parse::<f32>().ok())
-                        .unwrap_or(0.0),
-                    DebugView::Cascades => 1.0,
-                    DebugView::AmbientOcclusion => 2.0,
-                })
+                .extend(scene.debug.lit_code())
                 .to_array(),
             params: [
                 scene.environment.intensity,
@@ -7053,15 +7023,13 @@ impl Renderer {
                 1.0 / self.width as f32,
                 1.0 / self.height as f32,
             ],
-            // w: OG_AO_DEPTH (diagnostics): the AO target holds the view depth (1: its fraction, 2: depth / 30)
+            // w: the AO debug views (DebugView::ao_code): 1 the AO target holds
+            // the view depth's fraction, 2 the term unblurred.
             cam: [
                 camera.far,
                 cam.orthographic as u32 as f32,
                 camera.near,
-                std::env::var("OG_AO_DEPTH")
-                    .ok()
-                    .and_then(|v| v.parse::<f32>().ok())
-                    .unwrap_or(0.0),
+                scene.debug.ao_code(),
             ],
             // z: the AO targets' divisor of the screen (2 at half resolution).
             ao: ao.map_or([0.0; 4], |a| {

@@ -337,7 +337,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // water's own, darkened here the same way (the whole colour × mix(0.35, 1, ao), as pbr_fs with aoDirect 1 and as
   // three.js-era post AO, which darkened the water's pixel whole).
   let ao_raw = textureSampleLevel(ao_tex, water_sampler, uv, 0.0).r;
-  // Debug (OG_DEBUG_VIEW=2): the ambient occlusion here, as pbr_fs.wgsl and scatter.wgsl.
+  // Debug (DebugView::AmbientOcclusion): the ambient occlusion here, as pbr_fs.wgsl and scatter.wgsl.
   if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) { return vec4<f32>(vec3<f32>(ao_raw), 1.0); }
   let ao_k = mix(0.35, 1.0, ao_raw);
   reflected *= ao_k;

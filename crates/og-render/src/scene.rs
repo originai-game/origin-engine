@@ -908,6 +908,50 @@ pub enum DebugView {
     /// The screen-space ambient occlusion term (white: unoccluded), with
     /// [`PostEffects::ao`] set.
     AmbientOcclusion,
+    /// The lit materials' base colour (their albedo after maps and hooks),
+    /// unlit.
+    Albedo,
+    /// The diffuse image-based light each lit material receives.
+    IblDiffuse,
+    /// The specular image-based light each lit material reflects.
+    IblSpecular,
+    /// The direct light (directional, point and spot) each lit material
+    /// receives, shadows applied.
+    DirectLight,
+    /// The depth the ambient occlusion pass reads, as its fraction of a
+    /// metre (one ramp per metre), in the AO view; with [`PostEffects::ao`]
+    /// set.
+    AoDepth,
+    /// The ambient occlusion term before its depth-aware blur; with
+    /// [`PostEffects::ao`] set.
+    AoRaw,
+}
+
+impl DebugView {
+    /// `FrameUniform.light_color.w`: which view the lit shaders draw
+    /// (0 none, 1 cascades, 2 ambient occlusion, 3 albedo, 4 diffuse IBL,
+    /// 5 specular IBL, 6 direct light).
+    pub(crate) fn lit_code(self) -> f32 {
+        match self {
+            DebugView::None => 0.0,
+            DebugView::Cascades => 1.0,
+            DebugView::AmbientOcclusion | DebugView::AoDepth | DebugView::AoRaw => 2.0,
+            DebugView::Albedo => 3.0,
+            DebugView::IblDiffuse => 4.0,
+            DebugView::IblSpecular => 5.0,
+            DebugView::DirectLight => 6.0,
+        }
+    }
+
+    /// `FxPostUniform.cam.w`: what the AO pass writes in place of its term
+    /// (0 the term, 1 the depth's fraction, 2 the term unblurred).
+    pub(crate) fn ao_code(self) -> f32 {
+        match self {
+            DebugView::AoDepth => 1.0,
+            DebugView::AoRaw => 2.0,
+            _ => 0.0,
+        }
+    }
 }
 
 /// A textured quad in the world's xy plane, facing +z (towards the 2D
