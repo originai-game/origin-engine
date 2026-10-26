@@ -760,7 +760,7 @@ pub fn flags_terrain() -> TerrainData {
     }
 }
 
-/// The flags scene's scatter: 0.6 m cubes, one per 6 m².
+/// The flags scene's scatter: 3 m posts, one per 6 m².
 pub fn flags_scatter() -> TerrainScatter {
     TerrainScatter {
         density: 0.16,
@@ -772,9 +772,9 @@ pub fn flags_scatter() -> TerrainScatter {
     }
 }
 
-/// A 48 m terrain flat at 2 m over a magenta void, red cubes scattered on
-/// it, a low sun from +x: with `visible` false the terrain is not drawn
-/// but its cubes still stand on it; `cast_shadows` is the cubes'.
+/// A 48 m terrain flat at 2 m over a magenta void, red 3 m posts scattered
+/// on it, a low sun from +x: with `visible` false the terrain is not drawn
+/// but its posts still stand on it; `cast_shadows` is the posts'.
 pub fn terrain_flags_scene(visible: bool, cast_shadows: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     sky(&mut scene, Vec3::new(1.0, 0.7, 0.2), 3.0);
@@ -789,7 +789,7 @@ pub fn terrain_flags_scene(visible: bool, cast_shadows: bool) -> RenderScene {
         visible,
         ..Terrain::new(h)
     });
-    let cube = scene.add_mesh(shapes::cuboid(Vec3::splat(0.6)));
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::new(0.4, 3.0, 0.4)));
     let red = scene.add_material(Material {
         base_color: [0.8, 0.1, 0.05, 1.0],
         roughness: 0.8,

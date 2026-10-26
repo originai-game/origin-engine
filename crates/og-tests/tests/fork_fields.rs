@@ -996,3 +996,87 @@ fn two_water_surfaces_reflect_in_their_own_planes() {
     );
     assert!(stats.reflection_draws > single_stats.reflection_draws);
 }
+
+// ---------------------------------------------------------------------------
+// The terrain's visibility and its scatter's shadows.
+// ---------------------------------------------------------------------------
+
+fn is_magenta(p: [f32; 3]) -> bool {
+    p[0] > 200.0 && p[2] > 200.0 && p[1] < 60.0
+}
+
+fn is_red(p: [f32; 3]) -> bool {
+    p[0] > 60.0 && p[0] > 2.5 * p[1] && p[0] > 2.5 * p[2]
+}
+
+/// `Terrain::visible` false: the terrain is not drawn (nor in the shadow
+/// passes) but its scattered posts still stand on it. Where the visible
+/// terrain covers the frame's middle, the hidden one shows the magenta
+/// background; the red posts are there in both frames, at the same pixels.
+/// Fails if `visible` is ignored, or if hiding the terrain drops its
+/// scatter too.
+#[test]
+fn a_hidden_terrain_keeps_its_scatter_standing() {
+    let (desc, scene) = built("terrain-hidden");
+    let (hidden, hs) = render_n(&desc, &scene, 2);
+    let (shown, ss) = render_n(&desc, &fs::terrain_flags_scene(true, true), 2);
+    save("terrain-hidden", &hidden);
+    save("terrain-shown", &shown);
+    let mid = (W / 4, H / 3, 3 * W / 4, 2 * H / 3);
+    let count = |img: &RgbaImage, f: fn([f32; 3]) -> bool| {
+        pixels(img, mid).into_iter().filter(|p| f(*p)).count()
+    };
+    let n = ((mid.2 - mid.0) * (mid.3 - mid.1)) as usize;
+    let (hm, sm) = (count(&hidden, is_magenta), count(&shown, is_magenta));
+    let (hr, sr) = (count(&hidden, is_red), count(&shown, is_red));
+    let both = pixels(&hidden, mid)
+        .into_iter()
+        .zip(pixels(&shown, mid))
+        .filter(|(a, b)| is_red(*a) && is_red(*b))
+        .count();
+    println!(
+        "of {n} middle pixels: magenta hidden {hm} shown {sm}; red hidden {hr} shown {sr}, in both {both}; terrain draws {} vs {}, scatter copies {} vs {}",
+        hs.terrain_draws, ss.terrain_draws, hs.scatter_copies, ss.scatter_copies
+    );
+    assert_eq!(hs.terrain_draws, 0, "the hidden terrain is not drawn");
+    assert!(ss.terrain_draws > 0);
+    assert!(
+        sm == 0 && hm > n / 2,
+        "the background shows where the terrain was"
+    );
+    assert!(sr > 500 && hr > 500, "the posts stand in both");
+    assert!(both as f32 > 0.85 * sr.min(hr) as f32, "at the same pixels");
+}
+
+/// `ScatterDraw::cast_shadows` (TerrainScatter castShadows) false: the
+/// posts cast no shadow on the terrain (its ground beside them is as lit as
+/// with no posts' shadow at all), while the terrain still casts (its shadow
+/// passes draw). Fails if the flag is ignored or turns the terrain's
+/// shadows off too.
+#[test]
+fn unshadowed_scatter_copies_cast_no_shadow() {
+    let (desc, scene) = built("terrain-scatter-unshadowed");
+    let (off, os) = render_n(&desc, &scene, 2);
+    let (on, ons) = render_n(&desc, &fs::terrain_flags_scene(true, true), 2);
+    save("terrain-scatter-unshadowed", &off);
+    save("terrain-scatter-shadowed", &on);
+    // Ground (neither post nor background) in each frame, its luma sorted:
+    // the darkest tenth against the median (shadows pull it down).
+    let ground = |img: &RgbaImage| {
+        let mut l: Vec<f32> = pixels(img, (W / 4, H / 3, 3 * W / 4, 2 * H / 3))
+            .into_iter()
+            .filter(|p| !is_red(*p) && !is_magenta(*p))
+            .map(luma)
+            .collect();
+        l.sort_by(f32::total_cmp);
+        (l[l.len() / 10], l[l.len() / 2])
+    };
+    let ((d_on, m_on), (d_off, m_off)) = (ground(&on), ground(&off));
+    println!(
+        "ground luma, darkest tenth / median: posts casting {d_on:.1} / {m_on:.1}, not casting {d_off:.1} / {m_off:.1}; terrain shadow draws {} / {}",
+        os.terrain_shadow_draws, ons.terrain_shadow_draws
+    );
+    assert!(d_on < m_on - 25.0, "the posts shadow the ground");
+    assert!(d_off > m_off - 5.0, "with castShadows false they do not");
+    assert!(os.terrain_shadow_draws > 0, "the terrain still casts");
+}
