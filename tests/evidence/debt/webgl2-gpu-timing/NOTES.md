@@ -1,5 +1,14 @@
 # WebGL2 GPU pass timing (debt/webgl2-gpu-timing)
 
+> **Superseded build route (2026-10-26, `debt/wgpu-hal-vendor`).** The wgpu
+> fork and the ten-crate git `[patch.crates-io]` below were never merged:
+> the same wgpu-hal commit is applied to the vendored crates.io copy in
+> `third_party/wgpu-hal` (patch 1 of its ORIGIN.md), and every other wgpu
+> crate stays the crates.io one. The fork commands under "Owner action
+> needed" are not needed. The root cause, the browser evidence and the size
+> below still hold; `tests/evidence/debt3/wgpu-hal-vendor/NOTES.md` has the
+> rerun.
+
 The engine's GPU pass timer (`crates/og-render/src/timing.rs`, `GpuTimer`)
 now works on the WebGL2 tier wherever the context has
 `EXT_disjoint_timer_query_webgl2` (Chrome). It reports through the same probe
