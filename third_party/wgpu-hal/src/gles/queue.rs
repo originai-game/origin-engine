@@ -1,0 +1,2177 @@
+use alloc::sync::Arc;
+use alloc::{vec, vec::Vec};
+use core::sync::atomic::Ordering;
+
+use arrayvec::ArrayVec;
+use glow::HasContext;
+
+use super::{conv::is_layered_target, lock, Command as C, PrivateCapabilities};
+use super::shadow::{Attached, Pointer, Shadow};
+
+const DEBUG_ID: u32 = 0;
+
+fn extract_marker<'a>(data: &'a [u8], range: &core::ops::Range<u32>) -> &'a str {
+    core::str::from_utf8(&data[range.start as usize..range.end as usize]).unwrap()
+}
+
+fn to_debug_str(s: &str) -> &str {
+    // The spec mentions that if the length given to debug functions is negative,
+    // the implementation will access the ptr and look for a null that terminates
+    // the string but some implementations will try to access the ptr even if the
+    // length is 0.
+    if s.is_empty() {
+        "<empty>"
+    } else {
+        s
+    }
+}
+
+fn get_2d_target(target: u32, array_layer: u32) -> u32 {
+    const CUBEMAP_FACES: [u32; 6] = [
+        glow::TEXTURE_CUBE_MAP_POSITIVE_X,
+        glow::TEXTURE_CUBE_MAP_NEGATIVE_X,
+        glow::TEXTURE_CUBE_MAP_POSITIVE_Y,
+        glow::TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        glow::TEXTURE_CUBE_MAP_POSITIVE_Z,
+        glow::TEXTURE_CUBE_MAP_NEGATIVE_Z,
+    ];
+
+    match target {
+        glow::TEXTURE_2D => target,
+        glow::TEXTURE_CUBE_MAP => CUBEMAP_FACES[array_layer as usize],
+        _ => unreachable!(),
+    }
+}
+
+fn get_z_offset(target: u32, base: &crate::TextureCopyBase) -> u32 {
+    match target {
+        glow::TEXTURE_2D_ARRAY | glow::TEXTURE_CUBE_MAP_ARRAY => base.array_layer,
+        glow::TEXTURE_3D => base.origin.z,
+        _ => unreachable!(),
+    }
+}
+
+impl super::Queue {
+    /// Performs a manual shader clear, used as a workaround for a clearing bug on mesa
+    unsafe fn perform_shader_clear(
+        &self,
+        gl: &glow::Context,
+        shadow: &mut Shadow,
+        draw_buffer: u32,
+        color: [f32; 4],
+    ) {
+        let shader_clear = self
+            .shader_clear_program
+            .as_ref()
+            .expect("shader_clear_program should always be set if the workaround is enabled");
+        shadow.use_program(gl, Some(shader_clear.program));
+        unsafe {
+            gl.uniform_4_f32(
+                Some(&shader_clear.color_uniform_location),
+                color[0],
+                color[1],
+                color[2],
+                color[3],
+            )
+        };
+        shadow.cap(gl, glow::DEPTH_TEST, false);
+        shadow.cap(gl, glow::STENCIL_TEST, false);
+        shadow.cap(gl, glow::SCISSOR_TEST, false);
+        shadow.cap(gl, glow::BLEND, false);
+        shadow.cap(gl, glow::CULL_FACE, false);
+        unsafe { gl.draw_buffers(&[glow::COLOR_ATTACHMENT0 + draw_buffer]) };
+        shadow.flush(gl);
+        unsafe { gl.draw_arrays(glow::TRIANGLES, 0, 3) };
+
+        let draw_buffer_count = self.draw_buffer_count.load(Ordering::Relaxed);
+        if draw_buffer_count != 0 {
+            // Reset the draw buffers to what they were before the clear
+            let indices = (0..draw_buffer_count as u32)
+                .map(|i| glow::COLOR_ATTACHMENT0 + i)
+                .collect::<ArrayVec<_, { crate::MAX_COLOR_ATTACHMENTS }>>();
+            unsafe { gl.draw_buffers(&indices) };
+        }
+    }
+
+    unsafe fn reset_state(&self, gl: &glow::Context, shadow: &mut Shadow) {
+        shadow.use_program(gl, None);
+        shadow.bind_framebuffer(gl, glow::FRAMEBUFFER, None);
+        shadow.cap(gl, glow::DEPTH_TEST, false);
+        shadow.cap(gl, glow::STENCIL_TEST, false);
+        shadow.cap(gl, glow::SCISSOR_TEST, false);
+        shadow.cap(gl, glow::BLEND, false);
+        shadow.cap(gl, glow::CULL_FACE, false);
+        shadow.cap(gl, glow::POLYGON_OFFSET_FILL, false);
+        shadow.cap(gl, glow::SAMPLE_ALPHA_TO_COVERAGE, false);
+        if self.features.contains(wgt::Features::DEPTH_CLIP_CONTROL) {
+            shadow.cap(gl, glow::DEPTH_CLAMP, false);
+        }
+
+        shadow.bind_buffer(gl, glow::ELEMENT_ARRAY_BUFFER, None);
+        let mut current_index_buffer = self.current_index_buffer.lock();
+        *current_index_buffer = None;
+    }
+
+    unsafe fn set_attachment(
+        &self,
+        gl: &glow::Context,
+        shadow: &mut Shadow,
+        fbo_target: u32,
+        attachment: u32,
+        view: &super::TextureView,
+        depth_slice: Option<u32>,
+        sample_count: u32,
+    ) {
+        match view.inner {
+            super::TextureInner::Renderbuffer { raw } => {
+                shadow.attach(gl, fbo_target, attachment, Attached::Renderbuffer(raw));
+            }
+            super::TextureInner::DefaultRenderbuffer => panic!("Unexpected default RBO"),
+            super::TextureInner::Texture { raw, target } => {
+                let num_layers = view.array_layers.end - view.array_layers.start;
+                if num_layers > 1 {
+                    shadow.attached_otherwise(gl);
+                    #[cfg(webgl)]
+                    unsafe {
+                        gl.framebuffer_texture_multiview_ovr(
+                            fbo_target,
+                            attachment,
+                            Some(raw),
+                            view.mip_levels.start as i32,
+                            view.array_layers.start as i32,
+                            num_layers as i32,
+                        )
+                    };
+                } else if is_layered_target(target) {
+                    let layer = if target == glow::TEXTURE_3D {
+                        depth_slice.unwrap() as i32
+                    } else {
+                        view.array_layers.start as i32
+                    };
+                    shadow.attach(
+                        gl,
+                        fbo_target,
+                        attachment,
+                        Attached::Layer {
+                            texture: raw,
+                            level: view.mip_levels.start as i32,
+                            layer,
+                        },
+                    );
+                } else {
+                    unsafe {
+                        assert_eq!(view.mip_levels.len(), 1);
+                        if sample_count != 1 {
+                            shadow.attached_otherwise(gl);
+                            gl.framebuffer_texture_2d_multisample(
+                                fbo_target,
+                                attachment,
+                                get_2d_target(target, view.array_layers.start),
+                                Some(raw),
+                                view.mip_levels.start as i32,
+                                sample_count as i32,
+                            )
+                        } else {
+                            shadow.attach(
+                                gl,
+                                fbo_target,
+                                attachment,
+                                Attached::Texture2d {
+                                    target: get_2d_target(target, view.array_layers.start),
+                                    texture: raw,
+                                    level: view.mip_levels.start as i32,
+                                },
+                            )
+                        }
+                    };
+                }
+            }
+            #[cfg(webgl)]
+            super::TextureInner::ExternalFramebuffer { ref inner } => unsafe {
+                shadow.flush(gl);
+                gl.bind_external_framebuffer(glow::FRAMEBUFFER, inner);
+                shadow.forget();
+            },
+            #[cfg(native)]
+            super::TextureInner::ExternalNativeFramebuffer { ref inner } => unsafe {
+                shadow.flush(gl);
+                gl.bind_framebuffer(glow::FRAMEBUFFER, Some(*inner));
+                shadow.forget();
+            },
+        }
+    }
+
+    unsafe fn process(
+        &self,
+        gl: &glow::Context,
+        shadow: &mut Shadow,
+        command: &C,
+        #[cfg_attr(target_arch = "wasm32", allow(unused))] data_bytes: &[u8],
+        queries: &[glow::Query],
+    ) {
+        match *command {
+            C::Draw {
+                topology,
+                first_vertex,
+                vertex_count,
+                instance_count,
+                first_instance,
+                ref first_instance_location,
+            } => {
+                let supports_full_instancing = self
+                    .shared
+                    .private_caps
+                    .contains(PrivateCapabilities::FULLY_FEATURED_INSTANCING);
+
+                if supports_full_instancing {
+                    unsafe {
+                        gl.draw_arrays_instanced_base_instance(
+                            topology,
+                            first_vertex as i32,
+                            vertex_count as i32,
+                            instance_count as i32,
+                            first_instance,
+                        )
+                    }
+                } else {
+                    unsafe {
+                        gl.uniform_1_u32(first_instance_location.as_ref(), first_instance);
+                    }
+
+                    // Don't use `gl.draw_arrays` for `instance_count == 1`.
+                    // Angle has a bug where it doesn't consider the instance divisor when `DYNAMIC_DRAW` is used in `draw_arrays`.
+                    // See https://github.com/gfx-rs/wgpu/issues/3578
+                    unsafe {
+                        gl.draw_arrays_instanced(
+                            topology,
+                            first_vertex as i32,
+                            vertex_count as i32,
+                            instance_count as i32,
+                        )
+                    }
+                };
+            }
+            C::DrawIndexed {
+                topology,
+                index_type,
+                index_count,
+                index_offset,
+                base_vertex,
+                first_instance,
+                instance_count,
+                ref first_instance_location,
+            } => {
+                let supports_full_instancing = self
+                    .shared
+                    .private_caps
+                    .contains(PrivateCapabilities::FULLY_FEATURED_INSTANCING);
+
+                if supports_full_instancing {
+                    unsafe {
+                        gl.draw_elements_instanced_base_vertex_base_instance(
+                            topology,
+                            index_count as i32,
+                            index_type,
+                            index_offset as i32,
+                            instance_count as i32,
+                            base_vertex,
+                            first_instance,
+                        )
+                    }
+                } else {
+                    unsafe { gl.uniform_1_u32(first_instance_location.as_ref(), first_instance) };
+
+                    if base_vertex == 0 {
+                        unsafe {
+                            // Don't use `gl.draw_elements`/`gl.draw_elements_base_vertex` for `instance_count == 1`.
+                            // Angle has a bug where it doesn't consider the instance divisor when `DYNAMIC_DRAW` is used in `gl.draw_elements`/`gl.draw_elements_base_vertex`.
+                            // See https://github.com/gfx-rs/wgpu/issues/3578
+                            gl.draw_elements_instanced(
+                                topology,
+                                index_count as i32,
+                                index_type,
+                                index_offset as i32,
+                                instance_count as i32,
+                            )
+                        }
+                    } else {
+                        // If we've gotten here, wgpu-core has already validated that this function exists via the DownlevelFlags::BASE_VERTEX feature.
+                        unsafe {
+                            gl.draw_elements_instanced_base_vertex(
+                                topology,
+                                index_count as _,
+                                index_type,
+                                index_offset as i32,
+                                instance_count as i32,
+                                base_vertex,
+                            )
+                        }
+                    }
+                }
+            }
+            C::DrawIndirect {
+                topology,
+                indirect_buf,
+                indirect_offset,
+                ref first_instance_location,
+            } => {
+                unsafe { gl.uniform_1_u32(first_instance_location.as_ref(), 0) };
+
+                unsafe { gl.bind_buffer(glow::DRAW_INDIRECT_BUFFER, Some(indirect_buf)) };
+                unsafe { gl.draw_arrays_indirect_offset(topology, indirect_offset as i32) };
+            }
+            C::DrawIndexedIndirect {
+                topology,
+                index_type,
+                indirect_buf,
+                indirect_offset,
+                ref first_instance_location,
+            } => {
+                unsafe { gl.uniform_1_u32(first_instance_location.as_ref(), 0) };
+
+                unsafe { gl.bind_buffer(glow::DRAW_INDIRECT_BUFFER, Some(indirect_buf)) };
+                unsafe {
+                    gl.draw_elements_indirect_offset(topology, index_type, indirect_offset as i32)
+                };
+            }
+            C::Dispatch(group_counts) => {
+                unsafe { gl.dispatch_compute(group_counts[0], group_counts[1], group_counts[2]) };
+            }
+            C::DispatchIndirect {
+                indirect_buf,
+                indirect_offset,
+            } => {
+                unsafe { gl.bind_buffer(glow::DISPATCH_INDIRECT_BUFFER, Some(indirect_buf)) };
+                unsafe { gl.dispatch_compute_indirect(indirect_offset as i32) };
+            }
+            C::ClearBuffer {
+                ref dst,
+                dst_target,
+                ref range,
+            } => match dst.raw {
+                Some(buffer) => {
+                    // When `INDEX_BUFFER_ROLE_CHANGE` isn't available, we can't copy into the
+                    // index buffer from the zero buffer. This would fail in Chrome with the
+                    // following message:
+                    //
+                    // > Cannot copy into an element buffer destination from a non-element buffer
+                    // > source
+                    //
+                    // Instead, we'll upload zeroes into the buffer.
+                    let can_use_zero_buffer = self
+                        .shared
+                        .private_caps
+                        .contains(PrivateCapabilities::INDEX_BUFFER_ROLE_CHANGE)
+                        || dst_target != glow::ELEMENT_ARRAY_BUFFER;
+
+                    if can_use_zero_buffer {
+                        unsafe { gl.bind_buffer(glow::COPY_READ_BUFFER, Some(self.zero_buffer)) };
+                        unsafe { gl.bind_buffer(dst_target, Some(buffer)) };
+                        let mut dst_offset = range.start;
+                        while dst_offset < range.end {
+                            let size = (range.end - dst_offset).min(super::ZERO_BUFFER_SIZE as u64);
+                            unsafe {
+                                gl.copy_buffer_sub_data(
+                                    glow::COPY_READ_BUFFER,
+                                    dst_target,
+                                    0,
+                                    dst_offset as i32,
+                                    size as i32,
+                                )
+                            };
+                            dst_offset += size;
+                        }
+                    } else {
+                        unsafe { gl.bind_buffer(dst_target, Some(buffer)) };
+                        let zeroes = vec![0u8; (range.end - range.start) as usize];
+                        unsafe {
+                            gl.buffer_sub_data_u8_slice(dst_target, range.start as i32, &zeroes)
+                        };
+                    }
+                }
+                None => {
+                    let mut map_state = lock(&dst.map_state);
+                    map_state.data.as_mut().unwrap().as_mut_slice()
+                        [range.start as usize..range.end as usize]
+                        .fill(0);
+                }
+            },
+            C::CopyBufferToBuffer {
+                ref src,
+                src_target,
+                ref dst,
+                dst_target,
+                copy,
+            } => {
+                let copy_src_target = glow::COPY_READ_BUFFER;
+                let is_index_buffer_only_element_dst = !self
+                    .shared
+                    .private_caps
+                    .contains(PrivateCapabilities::INDEX_BUFFER_ROLE_CHANGE)
+                    && dst_target == glow::ELEMENT_ARRAY_BUFFER
+                    || src_target == glow::ELEMENT_ARRAY_BUFFER;
+
+                // WebGL not allowed to copy data from other targets to element buffer and can't copy element data to other buffers
+                let copy_dst_target = if is_index_buffer_only_element_dst {
+                    glow::ELEMENT_ARRAY_BUFFER
+                } else {
+                    glow::COPY_WRITE_BUFFER
+                };
+                let size = copy.size.get() as usize;
+                match (src.raw, dst.raw) {
+                    (Some(ref src), Some(ref dst)) => {
+                        unsafe { gl.bind_buffer(copy_src_target, Some(*src)) };
+                        unsafe { gl.bind_buffer(copy_dst_target, Some(*dst)) };
+                        unsafe {
+                            gl.copy_buffer_sub_data(
+                                copy_src_target,
+                                copy_dst_target,
+                                copy.src_offset as _,
+                                copy.dst_offset as _,
+                                copy.size.get() as _,
+                            )
+                        };
+                    }
+                    (Some(src), None) => {
+                        let mut map_state = lock(&dst.map_state);
+                        let dst_data = &mut map_state.data.as_mut().unwrap().as_mut_slice()
+                            [copy.dst_offset as usize..copy.dst_offset as usize + size];
+
+                        unsafe { gl.bind_buffer(copy_src_target, Some(src)) };
+                        unsafe {
+                            self.shared.get_buffer_sub_data(
+                                gl,
+                                copy_src_target,
+                                copy.src_offset as i32,
+                                dst_data,
+                            )
+                        };
+                    }
+                    (None, Some(dst)) => {
+                        let map_state = lock(&src.map_state);
+                        let src_data = &map_state.data.as_ref().unwrap().as_slice()
+                            [copy.src_offset as usize..copy.src_offset as usize + size];
+                        unsafe { gl.bind_buffer(copy_dst_target, Some(dst)) };
+                        unsafe {
+                            gl.buffer_sub_data_u8_slice(
+                                copy_dst_target,
+                                copy.dst_offset as i32,
+                                src_data,
+                            )
+                        };
+                    }
+                    (None, None) => {
+                        todo!()
+                    }
+                }
+                unsafe { gl.bind_buffer(copy_src_target, None) };
+                if is_index_buffer_only_element_dst {
+                    unsafe {
+                        gl.bind_buffer(
+                            glow::ELEMENT_ARRAY_BUFFER,
+                            *self.current_index_buffer.lock(),
+                        )
+                    };
+                } else {
+                    unsafe { gl.bind_buffer(copy_dst_target, None) };
+                }
+            }
+            #[cfg(webgl)]
+            C::CopyExternalImageToTexture {
+                ref src,
+                dst,
+                dst_target,
+                dst_format,
+                dst_premultiplication,
+                ref copy,
+            } => {
+                const UNPACK_FLIP_Y_WEBGL: u32 =
+                    web_sys::WebGl2RenderingContext::UNPACK_FLIP_Y_WEBGL;
+                const UNPACK_PREMULTIPLY_ALPHA_WEBGL: u32 =
+                    web_sys::WebGl2RenderingContext::UNPACK_PREMULTIPLY_ALPHA_WEBGL;
+
+                unsafe {
+                    if src.flip_y {
+                        gl.pixel_store_bool(UNPACK_FLIP_Y_WEBGL, true);
+                    }
+                    if dst_premultiplication {
+                        gl.pixel_store_bool(UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+                    }
+                }
+
+                unsafe { gl.bind_texture(dst_target, Some(dst)) };
+                let format_desc = self.shared.describe_texture_format(dst_format);
+                if is_layered_target(dst_target) {
+                    let z_offset = get_z_offset(dst_target, &copy.dst_base);
+
+                    match src.source {
+                        wgt::ExternalImageSource::ImageBitmap(ref b) => unsafe {
+                            gl.tex_sub_image_3d_with_image_bitmap(
+                                dst_target,
+                                copy.dst_base.mip_level as i32,
+                                copy.dst_base.origin.x as i32,
+                                copy.dst_base.origin.y as i32,
+                                z_offset as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                copy.size.depth as i32,
+                                format_desc.external,
+                                format_desc.data_type,
+                                b,
+                            );
+                        },
+                        wgt::ExternalImageSource::HTMLImageElement(ref i) => unsafe {
+                            gl.tex_sub_image_3d_with_html_image_element(
+                                dst_target,
+                                copy.dst_base.mip_level as i32,
+                                copy.dst_base.origin.x as i32,
+                                copy.dst_base.origin.y as i32,
+                                z_offset as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                copy.size.depth as i32,
+                                format_desc.external,
+                                format_desc.data_type,
+                                i,
+                            );
+                        },
+                        wgt::ExternalImageSource::HTMLVideoElement(ref v) => unsafe {
+                            gl.tex_sub_image_3d_with_html_video_element(
+                                dst_target,
+                                copy.dst_base.mip_level as i32,
+                                copy.dst_base.origin.x as i32,
+                                copy.dst_base.origin.y as i32,
+                                z_offset as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                copy.size.depth as i32,
+                                format_desc.external,
+                                format_desc.data_type,
+                                v,
+                            );
+                        },
+                        #[cfg(not(web_sys_unstable_apis))]
+                        wgt::ExternalImageSource::VideoFrame(_) => {
+                            unimplemented!("web_sys_unstable_apis is needed for glow")
+                        }
+                        #[cfg(web_sys_unstable_apis)]
+                        wgt::ExternalImageSource::VideoFrame(ref v) => unsafe {
+                            gl.tex_sub_image_3d_with_video_frame(
+                                dst_target,
+                                copy.dst_base.mip_level as i32,
+                                copy.dst_base.origin.x as i32,
+                                copy.dst_base.origin.y as i32,
+                                z_offset as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                copy.size.depth as i32,
+                                format_desc.external,
+                                format_desc.data_type,
+                                v,
+                            )
+                        },
+                        wgt::ExternalImageSource::ImageData(ref i) => unsafe {
+                            gl.tex_sub_image_3d_with_image_data(
+                                dst_target,
+                                copy.dst_base.mip_level as i32,
+                                copy.dst_base.origin.x as i32,
+                                copy.dst_base.origin.y as i32,
+                                z_offset as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                copy.size.depth as i32,
+                                format_desc.external,
+                                format_desc.data_type,
+                                i,
+                            );
+                        },
+                        wgt::ExternalImageSource::HTMLCanvasElement(ref c) => unsafe {
+                            gl.tex_sub_image_3d_with_html_canvas_element(
+                                dst_target,
+                                copy.dst_base.mip_level as i32,
+                                copy.dst_base.origin.x as i32,
+                                copy.dst_base.origin.y as i32,
+                                z_offset as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                copy.size.depth as i32,
+                                format_desc.external,
+                                format_desc.data_type,
+                                c,
+                            );
+                        },
+                        wgt::ExternalImageSource::OffscreenCanvas(_) => unreachable!(),
+                    }
+                } else {
+                    let dst_target = get_2d_target(dst_target, copy.dst_base.array_layer);
+
+                    match src.source {
+                        wgt::ExternalImageSource::ImageBitmap(ref b) => unsafe {
+                            gl.tex_sub_image_2d_with_image_bitmap_and_width_and_height(
+                                dst_target,
+                                copy.dst_base.mip_level as i32,
+                                copy.dst_base.origin.x as i32,
+                                copy.dst_base.origin.y as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                format_desc.external,
+                                format_desc.data_type,
+                                b,
+                            );
+                        },
+                        wgt::ExternalImageSource::HTMLImageElement(ref i) => unsafe {
+                            gl.tex_sub_image_2d_with_html_image_and_width_and_height(
+                                dst_target,
+                                copy.dst_base.mip_level as i32,
+                                copy.dst_base.origin.x as i32,
+                                copy.dst_base.origin.y as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                format_desc.external,
+                                format_desc.data_type,
+                                i,
+                            )
+                        },
+                        wgt::ExternalImageSource::HTMLVideoElement(ref v) => unsafe {
+                            gl.tex_sub_image_2d_with_html_video_and_width_and_height(
+                                dst_target,
+                                copy.dst_base.mip_level as i32,
+                                copy.dst_base.origin.x as i32,
+                                copy.dst_base.origin.y as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                format_desc.external,
+                                format_desc.data_type,
+                                v,
+                            )
+                        },
+                        #[cfg(not(web_sys_unstable_apis))]
+                        wgt::ExternalImageSource::VideoFrame(_) => {
+                            unimplemented!("web_sys_unstable_apis is needed for glow")
+                        }
+                        #[cfg(web_sys_unstable_apis)]
+                        wgt::ExternalImageSource::VideoFrame(ref v) => unsafe {
+                            gl.tex_sub_image_2d_with_video_frame_and_width_and_height(
+                                dst_target,
+                                copy.dst_base.mip_level as i32,
+                                copy.dst_base.origin.x as i32,
+                                copy.dst_base.origin.y as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                format_desc.external,
+                                format_desc.data_type,
+                                v,
+                            )
+                        },
+                        wgt::ExternalImageSource::ImageData(ref i) => unsafe {
+                            gl.tex_sub_image_2d_with_image_data_and_width_and_height(
+                                dst_target,
+                                copy.dst_base.mip_level as i32,
+                                copy.dst_base.origin.x as i32,
+                                copy.dst_base.origin.y as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                format_desc.external,
+                                format_desc.data_type,
+                                i,
+                            );
+                        },
+                        wgt::ExternalImageSource::HTMLCanvasElement(ref c) => unsafe {
+                            gl.tex_sub_image_2d_with_html_canvas_and_width_and_height(
+                                dst_target,
+                                copy.dst_base.mip_level as i32,
+                                copy.dst_base.origin.x as i32,
+                                copy.dst_base.origin.y as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                format_desc.external,
+                                format_desc.data_type,
+                                c,
+                            )
+                        },
+                        wgt::ExternalImageSource::OffscreenCanvas(_) => unreachable!(),
+                    }
+                }
+
+                unsafe {
+                    if src.flip_y {
+                        gl.pixel_store_bool(UNPACK_FLIP_Y_WEBGL, false);
+                    }
+                    if dst_premultiplication {
+                        gl.pixel_store_bool(UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+                    }
+                }
+            }
+            C::CopyTextureToTexture {
+                src,
+                src_target,
+                dst,
+                dst_target,
+                ref copy,
+            } => {
+                //TODO: handle 3D copies
+                unsafe { gl.bind_framebuffer(glow::READ_FRAMEBUFFER, Some(self.copy_fbo)) };
+                if is_layered_target(src_target) {
+                    //TODO: handle GLES without framebuffer_texture_3d
+                    unsafe {
+                        gl.framebuffer_texture_layer(
+                            glow::READ_FRAMEBUFFER,
+                            glow::COLOR_ATTACHMENT0,
+                            Some(src),
+                            copy.src_base.mip_level as i32,
+                            copy.src_base.array_layer as i32,
+                        )
+                    };
+                } else {
+                    unsafe {
+                        gl.framebuffer_texture_2d(
+                            glow::READ_FRAMEBUFFER,
+                            glow::COLOR_ATTACHMENT0,
+                            src_target,
+                            Some(src),
+                            copy.src_base.mip_level as i32,
+                        )
+                    };
+                }
+
+                unsafe { gl.bind_texture(dst_target, Some(dst)) };
+                if is_layered_target(dst_target) {
+                    unsafe {
+                        gl.copy_tex_sub_image_3d(
+                            dst_target,
+                            copy.dst_base.mip_level as i32,
+                            copy.dst_base.origin.x as i32,
+                            copy.dst_base.origin.y as i32,
+                            get_z_offset(dst_target, &copy.dst_base) as i32,
+                            copy.src_base.origin.x as i32,
+                            copy.src_base.origin.y as i32,
+                            copy.size.width as i32,
+                            copy.size.height as i32,
+                        )
+                    };
+                } else {
+                    unsafe {
+                        gl.copy_tex_sub_image_2d(
+                            get_2d_target(dst_target, copy.dst_base.array_layer),
+                            copy.dst_base.mip_level as i32,
+                            copy.dst_base.origin.x as i32,
+                            copy.dst_base.origin.y as i32,
+                            copy.src_base.origin.x as i32,
+                            copy.src_base.origin.y as i32,
+                            copy.size.width as i32,
+                            copy.size.height as i32,
+                        )
+                    };
+                }
+            }
+            C::CopyBufferToTexture {
+                ref src,
+                src_target: _,
+                dst,
+                dst_target,
+                dst_format,
+                ref copy,
+            } => {
+                let (block_width, block_height) = dst_format.block_dimensions();
+                let block_size = dst_format.block_copy_size(None).unwrap();
+                let format_desc = self.shared.describe_texture_format(dst_format);
+                let row_texels = copy
+                    .buffer_layout
+                    .bytes_per_row
+                    .map_or(0, |bpr| block_width * bpr / block_size);
+                let column_texels = copy
+                    .buffer_layout
+                    .rows_per_image
+                    .map_or(0, |rpi| block_height * rpi);
+
+                unsafe { gl.bind_texture(dst_target, Some(dst)) };
+                unsafe { gl.pixel_store_i32(glow::UNPACK_ROW_LENGTH, row_texels as i32) };
+                unsafe { gl.pixel_store_i32(glow::UNPACK_IMAGE_HEIGHT, column_texels as i32) };
+                let mut unbind_unpack_buffer = false;
+                if !dst_format.is_compressed() {
+                    let map_state;
+                    let unpack_data = match src.raw {
+                        Some(buffer) => {
+                            unsafe { gl.bind_buffer(glow::PIXEL_UNPACK_BUFFER, Some(buffer)) };
+                            unbind_unpack_buffer = true;
+                            glow::PixelUnpackData::BufferOffset(copy.buffer_layout.offset as u32)
+                        }
+                        None => {
+                            map_state = lock(&src.map_state);
+                            let src_data = &map_state.data.as_ref().unwrap().as_slice()
+                                [copy.buffer_layout.offset as usize..];
+                            glow::PixelUnpackData::Slice(Some(src_data))
+                        }
+                    };
+                    if is_layered_target(dst_target) {
+                        unsafe {
+                            gl.tex_sub_image_3d(
+                                dst_target,
+                                copy.texture_base.mip_level as i32,
+                                copy.texture_base.origin.x as i32,
+                                copy.texture_base.origin.y as i32,
+                                get_z_offset(dst_target, &copy.texture_base) as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                copy.size.depth as i32,
+                                format_desc.external,
+                                format_desc.data_type,
+                                unpack_data,
+                            )
+                        };
+                    } else {
+                        unsafe {
+                            gl.tex_sub_image_2d(
+                                get_2d_target(dst_target, copy.texture_base.array_layer),
+                                copy.texture_base.mip_level as i32,
+                                copy.texture_base.origin.x as i32,
+                                copy.texture_base.origin.y as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                format_desc.external,
+                                format_desc.data_type,
+                                unpack_data,
+                            )
+                        };
+                    }
+                } else {
+                    let bytes_per_row = copy
+                        .buffer_layout
+                        .bytes_per_row
+                        .unwrap_or(copy.size.width * block_size);
+                    let minimum_rows_per_image = copy.size.height.div_ceil(block_height);
+                    let rows_per_image = copy
+                        .buffer_layout
+                        .rows_per_image
+                        .unwrap_or(minimum_rows_per_image);
+
+                    let bytes_per_image = bytes_per_row * rows_per_image;
+                    let minimum_bytes_per_image = bytes_per_row * minimum_rows_per_image;
+                    let bytes_in_upload =
+                        (bytes_per_image * (copy.size.depth - 1)) + minimum_bytes_per_image;
+                    let offset = copy.buffer_layout.offset as u32;
+
+                    let map_state;
+                    let unpack_data = match src.raw {
+                        Some(buffer) => {
+                            unsafe { gl.bind_buffer(glow::PIXEL_UNPACK_BUFFER, Some(buffer)) };
+                            unbind_unpack_buffer = true;
+                            glow::CompressedPixelUnpackData::BufferRange(
+                                offset..offset + bytes_in_upload,
+                            )
+                        }
+                        None => {
+                            map_state = lock(&src.map_state);
+                            let src_data = &map_state.data.as_ref().unwrap().as_slice()
+                                [(offset as usize)..(offset + bytes_in_upload) as usize];
+                            glow::CompressedPixelUnpackData::Slice(src_data)
+                        }
+                    };
+
+                    if is_layered_target(dst_target) {
+                        unsafe {
+                            gl.compressed_tex_sub_image_3d(
+                                dst_target,
+                                copy.texture_base.mip_level as i32,
+                                copy.texture_base.origin.x as i32,
+                                copy.texture_base.origin.y as i32,
+                                get_z_offset(dst_target, &copy.texture_base) as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                copy.size.depth as i32,
+                                format_desc.internal,
+                                unpack_data,
+                            )
+                        };
+                    } else {
+                        unsafe {
+                            gl.compressed_tex_sub_image_2d(
+                                get_2d_target(dst_target, copy.texture_base.array_layer),
+                                copy.texture_base.mip_level as i32,
+                                copy.texture_base.origin.x as i32,
+                                copy.texture_base.origin.y as i32,
+                                copy.size.width as i32,
+                                copy.size.height as i32,
+                                format_desc.internal,
+                                unpack_data,
+                            )
+                        };
+                    }
+                }
+                if unbind_unpack_buffer {
+                    unsafe { gl.bind_buffer(glow::PIXEL_UNPACK_BUFFER, None) };
+                }
+            }
+            C::CopyTextureToBuffer {
+                src,
+                src_target,
+                src_format,
+                ref dst,
+                dst_target: _,
+                ref copy,
+            } => {
+                let block_size = src_format.block_copy_size(None).unwrap();
+                if src_format.is_compressed() {
+                    log::error!("Not implemented yet: compressed texture copy to buffer");
+                    return;
+                }
+                if src_target == glow::TEXTURE_CUBE_MAP
+                    || src_target == glow::TEXTURE_CUBE_MAP_ARRAY
+                {
+                    log::error!("Not implemented yet: cubemap texture copy to buffer");
+                    return;
+                }
+                let format_desc = self.shared.describe_texture_format(src_format);
+                let row_texels = copy
+                    .buffer_layout
+                    .bytes_per_row
+                    .map_or(copy.size.width, |bpr| bpr / block_size);
+                let column_texels = copy
+                    .buffer_layout
+                    .rows_per_image
+                    .unwrap_or(copy.size.height);
+
+                unsafe { gl.bind_framebuffer(glow::READ_FRAMEBUFFER, Some(self.copy_fbo)) };
+
+                let read_pixels = |offset| {
+                    let mut map_state;
+                    let unpack_data = match dst.raw {
+                        Some(buffer) => {
+                            unsafe { gl.pixel_store_i32(glow::PACK_ROW_LENGTH, row_texels as i32) };
+                            unsafe { gl.bind_buffer(glow::PIXEL_PACK_BUFFER, Some(buffer)) };
+                            glow::PixelPackData::BufferOffset(offset as u32)
+                        }
+                        None => {
+                            map_state = lock(&dst.map_state);
+                            let dst_data = &mut map_state.data.as_mut().unwrap().as_mut_slice()
+                                [offset as usize..];
+                            glow::PixelPackData::Slice(Some(dst_data))
+                        }
+                    };
+                    unsafe {
+                        gl.read_pixels(
+                            copy.texture_base.origin.x as i32,
+                            copy.texture_base.origin.y as i32,
+                            copy.size.width as i32,
+                            copy.size.height as i32,
+                            format_desc.external,
+                            format_desc.data_type,
+                            unpack_data,
+                        )
+                    };
+                };
+
+                match src_target {
+                    glow::TEXTURE_2D => {
+                        unsafe {
+                            gl.framebuffer_texture_2d(
+                                glow::READ_FRAMEBUFFER,
+                                glow::COLOR_ATTACHMENT0,
+                                src_target,
+                                Some(src),
+                                copy.texture_base.mip_level as i32,
+                            )
+                        };
+                        read_pixels(copy.buffer_layout.offset);
+                    }
+                    glow::TEXTURE_2D_ARRAY => {
+                        unsafe {
+                            gl.framebuffer_texture_layer(
+                                glow::READ_FRAMEBUFFER,
+                                glow::COLOR_ATTACHMENT0,
+                                Some(src),
+                                copy.texture_base.mip_level as i32,
+                                copy.texture_base.array_layer as i32,
+                            )
+                        };
+                        read_pixels(copy.buffer_layout.offset);
+                    }
+                    glow::TEXTURE_3D => {
+                        for z in copy.texture_base.origin.z..copy.size.depth {
+                            unsafe {
+                                gl.framebuffer_texture_layer(
+                                    glow::READ_FRAMEBUFFER,
+                                    glow::COLOR_ATTACHMENT0,
+                                    Some(src),
+                                    copy.texture_base.mip_level as i32,
+                                    z as i32,
+                                )
+                            };
+                            let offset = copy.buffer_layout.offset
+                                + (z * block_size * row_texels * column_texels) as u64;
+                            read_pixels(offset);
+                        }
+                    }
+                    glow::TEXTURE_CUBE_MAP | glow::TEXTURE_CUBE_MAP_ARRAY => unimplemented!(),
+                    _ => unreachable!(),
+                }
+            }
+            C::SetIndexBuffer(buffer) => {
+                shadow.bind_buffer(gl, glow::ELEMENT_ARRAY_BUFFER, Some(buffer));
+                let mut current_index_buffer = self.current_index_buffer.lock();
+                *current_index_buffer = Some(buffer);
+            }
+            C::BeginQuery(query, target) => {
+                unsafe { gl.begin_query(target, query) };
+            }
+            C::EndQuery(target) => {
+                unsafe { gl.end_query(target) };
+            }
+            C::TimestampQuery(query) => {
+                if self
+                    .shared
+                    .private_caps
+                    .contains(PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED)
+                {
+                    unsafe { self.shared.elapsed_timestamps.lock().write(gl, query) };
+                } else {
+                    unsafe { gl.query_counter(query, glow::TIMESTAMP) };
+                }
+            }
+            C::CopyQueryResults {
+                ref query_range,
+                query_target,
+                ref dst,
+                dst_target,
+                dst_offset,
+            } => {
+                if self
+                    .shared
+                    .private_caps
+                    .contains(PrivateCapabilities::QUERY_BUFFERS)
+                    && dst.raw.is_some()
+                {
+                    unsafe {
+                        // We're assuming that the only relevant queries are 8 byte timestamps or
+                        // occlusion tests.
+                        let query_size = 8;
+
+                        let query_range_size = query_size * query_range.len();
+
+                        let buffer = gl.create_buffer().ok();
+                        gl.bind_buffer(glow::QUERY_BUFFER, buffer);
+                        gl.buffer_data_size(
+                            glow::QUERY_BUFFER,
+                            query_range_size as _,
+                            glow::STREAM_COPY,
+                        );
+
+                        for (i, &query) in queries
+                            [query_range.start as usize..query_range.end as usize]
+                            .iter()
+                            .enumerate()
+                        {
+                            gl.get_query_parameter_u64_with_offset(
+                                query,
+                                glow::QUERY_RESULT,
+                                query_size * i,
+                            )
+                        }
+                        gl.bind_buffer(dst_target, dst.raw);
+                        gl.copy_buffer_sub_data(
+                            glow::QUERY_BUFFER,
+                            dst_target,
+                            0,
+                            dst_offset as _,
+                            query_range_size as _,
+                        );
+                        if let Some(buffer) = buffer {
+                            gl.delete_buffer(buffer)
+                        }
+                    }
+                } else {
+                    let mut temp_query_results = self.temp_query_results.lock();
+                    temp_query_results.clear();
+                    let range = &queries[query_range.start as usize..query_range.end as usize];
+                    if query_target == glow::TIMESTAMP
+                        && self
+                            .shared
+                            .private_caps
+                            .contains(PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED)
+                    {
+                        let timestamps = self.shared.elapsed_timestamps.lock();
+                        unsafe { timestamps.resolve(gl, range, &mut temp_query_results) };
+                    }
+                    for &query in range.iter().skip(temp_query_results.len()) {
+                        let mut result: u64 = 0;
+                        unsafe {
+                            if self
+                                .shared
+                                .private_caps
+                                .contains(PrivateCapabilities::QUERY_64BIT)
+                            {
+                                let result: *mut u64 = &mut result;
+                                gl.get_query_parameter_u64_with_offset(
+                                    query,
+                                    glow::QUERY_RESULT,
+                                    result as usize,
+                                )
+                            } else {
+                                result =
+                                    gl.get_query_parameter_u32(query, glow::QUERY_RESULT) as u64;
+                            }
+                        };
+                        temp_query_results.push(result);
+                    }
+                    let query_data = bytemuck::cast_slice(&temp_query_results);
+                    match dst.raw {
+                        Some(buffer) => {
+                            unsafe { gl.bind_buffer(dst_target, Some(buffer)) };
+                            unsafe {
+                                gl.buffer_sub_data_u8_slice(
+                                    dst_target,
+                                    dst_offset as i32,
+                                    query_data,
+                                )
+                            };
+                        }
+                        None => {
+                            let mut map_state = lock(&dst.map_state);
+                            let data = map_state.data.as_mut().unwrap();
+                            let len = query_data.len().min(data.len());
+                            data[..len].copy_from_slice(&query_data[..len]);
+                        }
+                    }
+                }
+            }
+            C::ResetFramebuffer { is_default } => {
+                if is_default {
+                    shadow.bind_framebuffer(gl, glow::DRAW_FRAMEBUFFER, None);
+                } else {
+                    shadow.bind_framebuffer(gl, glow::DRAW_FRAMEBUFFER, Some(self.draw_fbo));
+                    shadow.attach(
+                        gl,
+                        glow::DRAW_FRAMEBUFFER,
+                        glow::DEPTH_STENCIL_ATTACHMENT,
+                        Attached::None,
+                    );
+                    for i in 0..self.shared.limits.max_color_attachments {
+                        let target = glow::COLOR_ATTACHMENT0 + i;
+                        shadow.attach(gl, glow::DRAW_FRAMEBUFFER, target, Attached::None);
+                    }
+                }
+                shadow.color_mask(gl, [true; 4]);
+                shadow.depth_mask(gl, true);
+                shadow.stencil_mask(gl, glow::FRONT_AND_BACK, !0);
+                shadow.cap(gl, glow::DEPTH_TEST, false);
+                shadow.cap(gl, glow::STENCIL_TEST, false);
+                shadow.cap(gl, glow::SCISSOR_TEST, false);
+            }
+            C::BindAttachment {
+                attachment,
+                ref view,
+                depth_slice,
+                sample_count,
+            } => {
+                unsafe {
+                    self.set_attachment(
+                        gl,
+                        shadow,
+                        glow::DRAW_FRAMEBUFFER,
+                        attachment,
+                        view,
+                        depth_slice,
+                        sample_count,
+                    )
+                };
+            }
+            C::ResolveAttachment {
+                attachment,
+                ref dst,
+                ref size,
+            } => {
+                shadow.bind_framebuffer(gl, glow::READ_FRAMEBUFFER, Some(self.draw_fbo));
+                unsafe { gl.read_buffer(attachment) };
+                shadow.bind_framebuffer(gl, glow::DRAW_FRAMEBUFFER, Some(self.copy_fbo));
+                unsafe {
+                    self.set_attachment(
+                        gl,
+                        shadow,
+                        glow::DRAW_FRAMEBUFFER,
+                        glow::COLOR_ATTACHMENT0,
+                        dst,
+                        None,
+                        1,
+                    )
+                };
+                unsafe {
+                    gl.blit_framebuffer(
+                        0,
+                        0,
+                        size.width as i32,
+                        size.height as i32,
+                        0,
+                        0,
+                        size.width as i32,
+                        size.height as i32,
+                        glow::COLOR_BUFFER_BIT,
+                        glow::NEAREST,
+                    )
+                };
+                shadow.bind_framebuffer(gl, glow::READ_FRAMEBUFFER, None);
+                shadow.bind_framebuffer(gl, glow::DRAW_FRAMEBUFFER, Some(self.draw_fbo));
+            }
+            C::InvalidateAttachments(ref list) => {
+                if self
+                    .shared
+                    .private_caps
+                    .contains(PrivateCapabilities::INVALIDATE_FRAMEBUFFER)
+                {
+                    unsafe { gl.invalidate_framebuffer(glow::DRAW_FRAMEBUFFER, list) };
+                }
+            }
+            C::SetDrawColorBuffers(count) => {
+                self.draw_buffer_count.store(count, Ordering::Relaxed);
+                let indices = (0..count as u32)
+                    .map(|i| glow::COLOR_ATTACHMENT0 + i)
+                    .collect::<ArrayVec<_, { crate::MAX_COLOR_ATTACHMENTS }>>();
+                unsafe { gl.draw_buffers(&indices) };
+            }
+            C::ClearColorF {
+                draw_buffer,
+                ref color,
+                is_srgb,
+            } => {
+                if self
+                    .shared
+                    .workarounds
+                    .contains(super::Workarounds::MESA_I915_SRGB_SHADER_CLEAR)
+                    && is_srgb
+                {
+                    unsafe { self.perform_shader_clear(gl, shadow, draw_buffer, *color) };
+                } else {
+                    unsafe { gl.clear_buffer_f32_slice(glow::COLOR, draw_buffer, color) };
+                }
+            }
+            C::ClearColorU(draw_buffer, ref color) => {
+                unsafe { gl.clear_buffer_u32_slice(glow::COLOR, draw_buffer, color) };
+            }
+            C::ClearColorI(draw_buffer, ref color) => {
+                unsafe { gl.clear_buffer_i32_slice(glow::COLOR, draw_buffer, color) };
+            }
+            C::ClearDepth(depth) => {
+                // Prefer `clear` as `clear_buffer` functions have issues on Sandy Bridge
+                // on Windows.
+                unsafe {
+                    gl.clear_depth_f32(depth);
+                    gl.clear(glow::DEPTH_BUFFER_BIT);
+                }
+            }
+            C::ClearStencil(value) => {
+                // Prefer `clear` as `clear_buffer` functions have issues on Sandy Bridge
+                // on Windows.
+                unsafe {
+                    gl.clear_stencil(value as i32);
+                    gl.clear(glow::STENCIL_BUFFER_BIT);
+                }
+            }
+            C::ClearDepthAndStencil(depth, stencil_value) => {
+                // Prefer `clear` as `clear_buffer` functions have issues on Sandy Bridge
+                // on Windows.
+                unsafe {
+                    gl.clear_depth_f32(depth);
+                    gl.clear_stencil(stencil_value as i32);
+                    gl.clear(glow::DEPTH_BUFFER_BIT | glow::STENCIL_BUFFER_BIT);
+                }
+            }
+            C::BufferBarrier(raw, usage) => {
+                let mut flags = 0;
+                if usage.contains(wgt::BufferUses::VERTEX) {
+                    flags |= glow::VERTEX_ATTRIB_ARRAY_BARRIER_BIT;
+                    unsafe { gl.bind_buffer(glow::ARRAY_BUFFER, Some(raw)) };
+                    unsafe { gl.vertex_attrib_pointer_f32(0, 1, glow::BYTE, true, 0, 0) };
+                }
+                if usage.contains(wgt::BufferUses::INDEX) {
+                    flags |= glow::ELEMENT_ARRAY_BARRIER_BIT;
+                    unsafe { gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(raw)) };
+                }
+                if usage.contains(wgt::BufferUses::UNIFORM) {
+                    flags |= glow::UNIFORM_BARRIER_BIT;
+                }
+                if usage.contains(wgt::BufferUses::INDIRECT) {
+                    flags |= glow::COMMAND_BARRIER_BIT;
+                    unsafe { gl.bind_buffer(glow::DRAW_INDIRECT_BUFFER, Some(raw)) };
+                }
+                if usage.contains(wgt::BufferUses::COPY_SRC) {
+                    flags |= glow::PIXEL_BUFFER_BARRIER_BIT;
+                    unsafe { gl.bind_buffer(glow::PIXEL_UNPACK_BUFFER, Some(raw)) };
+                }
+                if usage.contains(wgt::BufferUses::COPY_DST) {
+                    flags |= glow::PIXEL_BUFFER_BARRIER_BIT;
+                    unsafe { gl.bind_buffer(glow::PIXEL_PACK_BUFFER, Some(raw)) };
+                }
+                if usage.intersects(wgt::BufferUses::MAP_READ | wgt::BufferUses::MAP_WRITE) {
+                    flags |= glow::BUFFER_UPDATE_BARRIER_BIT;
+                }
+                if usage.intersects(
+                    wgt::BufferUses::STORAGE_READ_ONLY | wgt::BufferUses::STORAGE_READ_WRITE,
+                ) {
+                    flags |= glow::SHADER_STORAGE_BARRIER_BIT;
+                }
+                unsafe { gl.memory_barrier(flags) };
+            }
+            // because `STORAGE_WRITE_ONLY` and `STORAGE_READ_WRITE` are only states
+            // we can transit from due OpenGL memory barriers are used to make _subsequent_
+            // operations see changes from the _shader_ side. We filter out usage changes that are
+            // does not comes from the shader side in `transition_textures`
+            C::TextureBarrier(usage) => {
+                let mut flags = 0;
+                if usage.contains(wgt::TextureUses::RESOURCE) {
+                    flags |= glow::TEXTURE_FETCH_BARRIER_BIT;
+                }
+                if usage.intersects(
+                    wgt::TextureUses::STORAGE_READ_ONLY
+                        | wgt::TextureUses::STORAGE_WRITE_ONLY
+                        | wgt::TextureUses::STORAGE_READ_WRITE,
+                ) {
+                    flags |= glow::SHADER_IMAGE_ACCESS_BARRIER_BIT;
+                }
+                if usage.intersects(wgt::TextureUses::COPY_SRC) {
+                    flags |= glow::PIXEL_BUFFER_BARRIER_BIT;
+                }
+                if usage.contains(wgt::TextureUses::COPY_DST) {
+                    flags |= glow::TEXTURE_UPDATE_BARRIER_BIT;
+                }
+                if usage.intersects(
+                    wgt::TextureUses::COLOR_TARGET
+                        | wgt::TextureUses::DEPTH_STENCIL_READ
+                        | wgt::TextureUses::DEPTH_STENCIL_WRITE,
+                ) {
+                    flags |= glow::FRAMEBUFFER_BARRIER_BIT;
+                }
+                unsafe { gl.memory_barrier(flags) };
+            }
+            C::SetViewport {
+                ref rect,
+                ref depth,
+            } => {
+                unsafe { gl.viewport(rect.x, rect.y, rect.w, rect.h) };
+                unsafe { gl.depth_range_f32(depth.start, depth.end) };
+            }
+            C::SetScissor(ref rect) => {
+                unsafe { gl.scissor(rect.x, rect.y, rect.w, rect.h) };
+                shadow.cap(gl, glow::SCISSOR_TEST, true);
+            }
+            C::SetStencilFunc {
+                face,
+                function,
+                reference,
+                read_mask,
+            } => {
+                unsafe { gl.stencil_func_separate(face, function, reference as i32, read_mask) };
+            }
+            C::SetStencilOps {
+                face,
+                write_mask,
+                ref ops,
+            } => {
+                shadow.stencil_mask(gl, face, write_mask);
+                unsafe { gl.stencil_op_separate(face, ops.fail, ops.depth_fail, ops.pass) };
+            }
+            C::SetVertexAttribute {
+                buffer,
+                ref buffer_desc,
+                attribute_desc: ref vat,
+            } => {
+                shadow.enable_attribute(gl, vat.location, true);
+
+                if let Some(buffer) = buffer {
+                    let integer = match vat.format_desc.attrib_kind {
+                        super::VertexAttribKind::Float => false,
+                        super::VertexAttribKind::Integer => true,
+                    };
+                    shadow.pointer(
+                        gl,
+                        vat.location,
+                        Pointer {
+                            buffer,
+                            integer,
+                            normalized: true, // always normalized
+                            size: vat.format_desc.element_count,
+                            ty: vat.format_desc.element_format,
+                            stride: buffer_desc.stride as i32,
+                            offset: vat.offset as i32,
+                        },
+                    );
+                    shadow.divisor(gl, vat.location, buffer_desc.step as u32);
+                } else {
+                    shadow.bind_buffer(gl, glow::ARRAY_BUFFER, None);
+                    shadow.forget_attributes(gl);
+                    match vat.format_desc.attrib_kind {
+                        super::VertexAttribKind::Float => unsafe {
+                            gl.vertex_attrib_format_f32(
+                                vat.location,
+                                vat.format_desc.element_count,
+                                vat.format_desc.element_format,
+                                true, // always normalized
+                                vat.offset,
+                            )
+                        },
+                        super::VertexAttribKind::Integer => unsafe {
+                            gl.vertex_attrib_format_i32(
+                                vat.location,
+                                vat.format_desc.element_count,
+                                vat.format_desc.element_format,
+                                vat.offset,
+                            )
+                        },
+                    }
+
+                    //Note: there is apparently a bug on AMD 3500U:
+                    // this call is ignored if the current array is disabled.
+                    unsafe { gl.vertex_attrib_binding(vat.location, vat.buffer_index) };
+                }
+            }
+            C::UnsetVertexAttribute(location) => {
+                shadow.enable_attribute(gl, location, false);
+            }
+            C::SetVertexBuffer {
+                index,
+                ref buffer,
+                ref buffer_desc,
+            } => {
+                shadow.forget_attributes(gl);
+                unsafe { gl.vertex_binding_divisor(index, buffer_desc.step as u32) };
+                unsafe {
+                    gl.bind_vertex_buffer(
+                        index,
+                        Some(buffer.raw),
+                        buffer.offset as i32,
+                        buffer_desc.stride as i32,
+                    )
+                };
+            }
+            C::SetDepth(ref depth) => {
+                unsafe { gl.depth_func(depth.function) };
+                shadow.depth_mask(gl, depth.mask);
+            }
+            C::SetDepthBias(bias) => {
+                if bias.is_enabled() {
+                    shadow.cap(gl, glow::POLYGON_OFFSET_FILL, true);
+                    unsafe { gl.polygon_offset(bias.slope_scale, bias.constant as f32) };
+                } else {
+                    shadow.cap(gl, glow::POLYGON_OFFSET_FILL, false);
+                }
+            }
+            C::ConfigureDepthStencil(aspects) => {
+                shadow.cap(
+                    gl,
+                    glow::DEPTH_TEST,
+                    aspects.contains(crate::FormatAspects::DEPTH),
+                );
+                shadow.cap(
+                    gl,
+                    glow::STENCIL_TEST,
+                    aspects.contains(crate::FormatAspects::STENCIL),
+                );
+            }
+            C::SetAlphaToCoverage(enabled) => {
+                shadow.cap(gl, glow::SAMPLE_ALPHA_TO_COVERAGE, enabled);
+            }
+            C::SetProgram(program) => {
+                shadow.use_program(gl, Some(program));
+            }
+            C::SetPrimitive(ref state) => {
+                unsafe { gl.front_face(state.front_face) };
+                if state.cull_face != 0 {
+                    shadow.cap(gl, glow::CULL_FACE, true);
+                    unsafe { gl.cull_face(state.cull_face) };
+                } else {
+                    shadow.cap(gl, glow::CULL_FACE, false);
+                }
+                if self.features.contains(wgt::Features::DEPTH_CLIP_CONTROL) {
+                    //Note: this is a bit tricky, since we are controlling the clip, not the clamp.
+                    shadow.cap(gl, glow::DEPTH_CLAMP, state.unclipped_depth);
+                }
+                // POLYGON_MODE_LINE also implies POLYGON_MODE_POINT
+                if self.features.contains(wgt::Features::POLYGON_MODE_LINE) {
+                    unsafe { gl.polygon_mode(glow::FRONT_AND_BACK, state.polygon_mode) };
+                }
+            }
+            C::SetBlendConstant(c) => {
+                unsafe { gl.blend_color(c[0], c[1], c[2], c[3]) };
+            }
+            C::SetColorTarget {
+                draw_buffer_index,
+                desc: super::ColorTargetDesc { mask, ref blend },
+            } => {
+                use wgt::ColorWrites as Cw;
+                if let Some(index) = draw_buffer_index {
+                    // Per draw buffer: what is pending goes first.
+                    shadow.flush(gl);
+                    shadow.forget_color_mask();
+                    shadow.forget_cap(glow::BLEND);
+                    unsafe {
+                        gl.color_mask_draw_buffer(
+                            index,
+                            mask.contains(Cw::RED),
+                            mask.contains(Cw::GREEN),
+                            mask.contains(Cw::BLUE),
+                            mask.contains(Cw::ALPHA),
+                        )
+                    };
+                    if let Some(ref blend) = *blend {
+                        unsafe { gl.enable_draw_buffer(glow::BLEND, index) };
+                        if blend.color != blend.alpha {
+                            unsafe {
+                                gl.blend_equation_separate_draw_buffer(
+                                    index,
+                                    blend.color.equation,
+                                    blend.alpha.equation,
+                                )
+                            };
+                            unsafe {
+                                gl.blend_func_separate_draw_buffer(
+                                    index,
+                                    blend.color.src,
+                                    blend.color.dst,
+                                    blend.alpha.src,
+                                    blend.alpha.dst,
+                                )
+                            };
+                        } else {
+                            unsafe { gl.blend_equation_draw_buffer(index, blend.color.equation) };
+                            unsafe {
+                                gl.blend_func_draw_buffer(index, blend.color.src, blend.color.dst)
+                            };
+                        }
+                    } else {
+                        unsafe { gl.disable_draw_buffer(glow::BLEND, index) };
+                    }
+                } else {
+                    shadow.color_mask(
+                        gl,
+                        [
+                            mask.contains(Cw::RED),
+                            mask.contains(Cw::GREEN),
+                            mask.contains(Cw::BLUE),
+                            mask.contains(Cw::ALPHA),
+                        ],
+                    );
+                    if let Some(ref blend) = *blend {
+                        shadow.cap(gl, glow::BLEND, true);
+                        if blend.color != blend.alpha {
+                            unsafe {
+                                gl.blend_equation_separate(
+                                    blend.color.equation,
+                                    blend.alpha.equation,
+                                )
+                            };
+                            unsafe {
+                                gl.blend_func_separate(
+                                    blend.color.src,
+                                    blend.color.dst,
+                                    blend.alpha.src,
+                                    blend.alpha.dst,
+                                )
+                            };
+                        } else {
+                            unsafe { gl.blend_equation(blend.color.equation) };
+                            unsafe { gl.blend_func(blend.color.src, blend.color.dst) };
+                        }
+                    } else {
+                        shadow.cap(gl, glow::BLEND, false);
+                    }
+                }
+            }
+            C::BindBuffer {
+                target,
+                slot,
+                buffer,
+                offset,
+                size,
+            } => {
+                unsafe { gl.bind_buffer_range(target, slot, Some(buffer), offset, size) };
+            }
+            C::BindSampler(texture_index, sampler) => {
+                shadow.bind_sampler(gl, texture_index, sampler);
+            }
+            C::BindTexture {
+                slot,
+                texture,
+                target,
+                aspects,
+                ref mip_levels,
+            } => {
+                shadow.bind_texture(
+                    gl,
+                    slot,
+                    target,
+                    texture,
+                    (mip_levels.start as i32, (mip_levels.end - 1) as i32),
+                );
+
+                let version = gl.version();
+                let is_min_es_3_1 = version.is_embedded && (version.major, version.minor) >= (3, 1);
+                let is_min_4_3 = !version.is_embedded && (version.major, version.minor) >= (4, 3);
+                if is_min_es_3_1 || is_min_4_3 {
+                    let mode = match aspects {
+                        crate::FormatAspects::DEPTH => Some(glow::DEPTH_COMPONENT),
+                        crate::FormatAspects::STENCIL => Some(glow::STENCIL_INDEX),
+                        _ => None,
+                    };
+                    if let Some(mode) = mode {
+                        unsafe {
+                            gl.tex_parameter_i32(
+                                target,
+                                glow::DEPTH_STENCIL_TEXTURE_MODE,
+                                mode as _,
+                            )
+                        };
+                    }
+                }
+            }
+            C::BindImage { slot, ref binding } => {
+                unsafe {
+                    gl.bind_image_texture(
+                        slot,
+                        Some(binding.raw),
+                        binding.mip_level as i32,
+                        binding.array_layer.is_none(),
+                        binding.array_layer.unwrap_or_default() as i32,
+                        binding.access,
+                        binding.format,
+                    )
+                };
+            }
+            C::InsertDebugMarker(ref range) => {
+                let marker = extract_marker(data_bytes, range);
+                unsafe {
+                    if self
+                        .shared
+                        .private_caps
+                        .contains(PrivateCapabilities::DEBUG_FNS)
+                    {
+                        gl.debug_message_insert(
+                            glow::DEBUG_SOURCE_APPLICATION,
+                            glow::DEBUG_TYPE_MARKER,
+                            DEBUG_ID,
+                            glow::DEBUG_SEVERITY_NOTIFICATION,
+                            to_debug_str(marker),
+                        )
+                    }
+                };
+            }
+            C::PushDebugGroup(ref range) => {
+                let marker = extract_marker(data_bytes, range);
+                unsafe {
+                    if self
+                        .shared
+                        .private_caps
+                        .contains(PrivateCapabilities::DEBUG_FNS)
+                    {
+                        gl.push_debug_group(
+                            glow::DEBUG_SOURCE_APPLICATION,
+                            DEBUG_ID,
+                            to_debug_str(marker),
+                        )
+                    }
+                };
+            }
+            C::PopDebugGroup => {
+                unsafe {
+                    if self
+                        .shared
+                        .private_caps
+                        .contains(PrivateCapabilities::DEBUG_FNS)
+                    {
+                        gl.pop_debug_group()
+                    }
+                };
+            }
+            C::SetImmediates {
+                ref uniform,
+                offset,
+            } => {
+                fn get_data<T, const COUNT: usize>(data: &[u8], offset: u32) -> [T; COUNT]
+                where
+                    [T; COUNT]: bytemuck::AnyBitPattern,
+                {
+                    let data_required = size_of::<T>() * COUNT;
+                    let raw = &data[(offset as usize)..][..data_required];
+                    bytemuck::pod_read_unaligned(raw)
+                }
+
+                let location = Some(&uniform.location);
+                use nt::glsl::{GlslScalar, GlslUniformType, GlslVectorSize};
+                match uniform.ty {
+                    //
+                    // --- Float 1-4 Component ---
+                    //
+                    GlslUniformType::Scalar(GlslScalar::F32) => {
+                        let data = get_data::<f32, 1>(data_bytes, offset)[0];
+                        unsafe { gl.uniform_1_f32(location, data) };
+                    }
+                    GlslUniformType::Vector {
+                        size: GlslVectorSize::Bi,
+                        scalar: GlslScalar::F32,
+                    } => {
+                        let data = &get_data::<f32, 2>(data_bytes, offset);
+                        unsafe { gl.uniform_2_f32_slice(location, data) };
+                    }
+                    GlslUniformType::Vector {
+                        size: GlslVectorSize::Tri,
+                        scalar: GlslScalar::F32,
+                    } => {
+                        let data = &get_data::<f32, 3>(data_bytes, offset);
+                        unsafe { gl.uniform_3_f32_slice(location, data) };
+                    }
+                    GlslUniformType::Vector {
+                        size: GlslVectorSize::Quad,
+                        scalar: GlslScalar::F32,
+                    } => {
+                        let data = &get_data::<f32, 4>(data_bytes, offset);
+                        unsafe { gl.uniform_4_f32_slice(location, data) };
+                    }
+
+                    //
+                    // --- Int 1-4 Component ---
+                    //
+                    GlslUniformType::Scalar(GlslScalar::I32) => {
+                        let data = get_data::<i32, 1>(data_bytes, offset)[0];
+                        unsafe { gl.uniform_1_i32(location, data) };
+                    }
+                    GlslUniformType::Vector {
+                        size: GlslVectorSize::Bi,
+                        scalar: GlslScalar::I32,
+                    } => {
+                        let data = &get_data::<i32, 2>(data_bytes, offset);
+                        unsafe { gl.uniform_2_i32_slice(location, data) };
+                    }
+                    GlslUniformType::Vector {
+                        size: GlslVectorSize::Tri,
+                        scalar: GlslScalar::I32,
+                    } => {
+                        let data = &get_data::<i32, 3>(data_bytes, offset);
+                        unsafe { gl.uniform_3_i32_slice(location, data) };
+                    }
+                    GlslUniformType::Vector {
+                        size: GlslVectorSize::Quad,
+                        scalar: GlslScalar::I32,
+                    } => {
+                        let data = &get_data::<i32, 4>(data_bytes, offset);
+                        unsafe { gl.uniform_4_i32_slice(location, data) };
+                    }
+
+                    //
+                    // --- Uint 1-4 Component ---
+                    //
+                    GlslUniformType::Scalar(GlslScalar::U32) => {
+                        let data = get_data::<u32, 1>(data_bytes, offset)[0];
+                        unsafe { gl.uniform_1_u32(location, data) };
+                    }
+                    GlslUniformType::Vector {
+                        size: GlslVectorSize::Bi,
+                        scalar: GlslScalar::U32,
+                    } => {
+                        let data = &get_data::<u32, 2>(data_bytes, offset);
+                        unsafe { gl.uniform_2_u32_slice(location, data) };
+                    }
+                    GlslUniformType::Vector {
+                        size: GlslVectorSize::Tri,
+                        scalar: GlslScalar::U32,
+                    } => {
+                        let data = &get_data::<u32, 3>(data_bytes, offset);
+                        unsafe { gl.uniform_3_u32_slice(location, data) };
+                    }
+                    GlslUniformType::Vector {
+                        size: GlslVectorSize::Quad,
+                        scalar: GlslScalar::U32,
+                    } => {
+                        let data = &get_data::<u32, 4>(data_bytes, offset);
+                        unsafe { gl.uniform_4_u32_slice(location, data) };
+                    }
+
+                    //
+                    // --- Matrix 2xR ---
+                    //
+                    GlslUniformType::Matrix {
+                        columns: GlslVectorSize::Bi,
+                        rows: GlslVectorSize::Bi,
+                        scalar: GlslScalar::F32,
+                    } => {
+                        let data = &get_data::<f32, 4>(data_bytes, offset);
+                        unsafe { gl.uniform_matrix_2_f32_slice(location, false, data) };
+                    }
+                    GlslUniformType::Matrix {
+                        columns: GlslVectorSize::Bi,
+                        rows: GlslVectorSize::Tri,
+                        scalar: GlslScalar::F32,
+                    } => {
+                        // repack 2 vec3s into 6 values.
+                        let unpacked_data = &get_data::<f32, 8>(data_bytes, offset);
+                        #[rustfmt::skip]
+                        let packed_data = [
+                            unpacked_data[0], unpacked_data[1], unpacked_data[2],
+                            unpacked_data[4], unpacked_data[5], unpacked_data[6],
+                        ];
+                        unsafe { gl.uniform_matrix_2x3_f32_slice(location, false, &packed_data) };
+                    }
+                    GlslUniformType::Matrix {
+                        columns: GlslVectorSize::Bi,
+                        rows: GlslVectorSize::Quad,
+                        scalar: GlslScalar::F32,
+                    } => {
+                        let data = &get_data::<f32, 8>(data_bytes, offset);
+                        unsafe { gl.uniform_matrix_2x4_f32_slice(location, false, data) };
+                    }
+
+                    //
+                    // --- Matrix 3xR ---
+                    //
+                    GlslUniformType::Matrix {
+                        columns: GlslVectorSize::Tri,
+                        rows: GlslVectorSize::Bi,
+                        scalar: GlslScalar::F32,
+                    } => {
+                        let data = &get_data::<f32, 6>(data_bytes, offset);
+                        unsafe { gl.uniform_matrix_3x2_f32_slice(location, false, data) };
+                    }
+                    GlslUniformType::Matrix {
+                        columns: GlslVectorSize::Tri,
+                        rows: GlslVectorSize::Tri,
+                        scalar: GlslScalar::F32,
+                    } => {
+                        // repack 3 vec3s into 9 values.
+                        let unpacked_data = &get_data::<f32, 12>(data_bytes, offset);
+                        #[rustfmt::skip]
+                        let packed_data = [
+                            unpacked_data[0], unpacked_data[1], unpacked_data[2],
+                            unpacked_data[4], unpacked_data[5], unpacked_data[6],
+                            unpacked_data[8], unpacked_data[9], unpacked_data[10],
+                        ];
+                        unsafe { gl.uniform_matrix_3_f32_slice(location, false, &packed_data) };
+                    }
+                    GlslUniformType::Matrix {
+                        columns: GlslVectorSize::Tri,
+                        rows: GlslVectorSize::Quad,
+                        scalar: GlslScalar::F32,
+                    } => {
+                        let data = &get_data::<f32, 12>(data_bytes, offset);
+                        unsafe { gl.uniform_matrix_3x4_f32_slice(location, false, data) };
+                    }
+
+                    //
+                    // --- Matrix 4xR ---
+                    //
+                    GlslUniformType::Matrix {
+                        columns: GlslVectorSize::Quad,
+                        rows: GlslVectorSize::Bi,
+                        scalar: GlslScalar::F32,
+                    } => {
+                        let data = &get_data::<f32, 8>(data_bytes, offset);
+                        unsafe { gl.uniform_matrix_4x2_f32_slice(location, false, data) };
+                    }
+                    GlslUniformType::Matrix {
+                        columns: GlslVectorSize::Quad,
+                        rows: GlslVectorSize::Tri,
+                        scalar: GlslScalar::F32,
+                    } => {
+                        // repack 4 vec3s into 12 values.
+                        let unpacked_data = &get_data::<f32, 16>(data_bytes, offset);
+                        #[rustfmt::skip]
+                        let packed_data = [
+                            unpacked_data[0], unpacked_data[1], unpacked_data[2],
+                            unpacked_data[4], unpacked_data[5], unpacked_data[6],
+                            unpacked_data[8], unpacked_data[9], unpacked_data[10],
+                            unpacked_data[12], unpacked_data[13], unpacked_data[14],
+                        ];
+                        unsafe { gl.uniform_matrix_4x3_f32_slice(location, false, &packed_data) };
+                    }
+                    GlslUniformType::Matrix {
+                        columns: GlslVectorSize::Quad,
+                        rows: GlslVectorSize::Quad,
+                        scalar: GlslScalar::F32,
+                    } => {
+                        let data = &get_data::<f32, 16>(data_bytes, offset);
+                        unsafe { gl.uniform_matrix_4_f32_slice(location, false, data) };
+                    }
+                    _ => panic!("Unsupported uniform datatype: {:?}!", uniform.ty),
+                }
+            }
+            C::SetClipDistances {
+                old_count,
+                new_count,
+            } => {
+                // Disable clip planes that are no longer active
+                for i in new_count..old_count {
+                    unsafe { gl.disable(glow::CLIP_DISTANCE0 + i) };
+                }
+
+                // Enable clip planes that are now active
+                for i in old_count..new_count {
+                    unsafe { gl.enable(glow::CLIP_DISTANCE0 + i) };
+                }
+            }
+        }
+    }
+}
+
+impl crate::Queue for super::Queue {
+    type A = super::Api;
+
+    unsafe fn submit(
+        &self,
+        command_buffers: &[&super::CommandBuffer],
+        _surface_textures: &[&super::Texture],
+        (signal_fence, signal_value): (&super::Fence, crate::FenceValue),
+    ) -> Result<(), crate::DeviceError> {
+        let shared = Arc::clone(&self.shared);
+        let gl = &shared.context.lock();
+        // What this submit has set (origin-engine patch, shadow.rs).
+        let mut shadow = Shadow::new(self.draw_fbo);
+        for cmd_buf in command_buffers.iter() {
+            // The command encoder assumes a default state when encoding the command buffer.
+            // Always reset the state between command_buffers to reflect this assumption. Do
+            // this at the beginning of the loop in case something outside of wgpu modified
+            // this state prior to commit.
+            unsafe { self.reset_state(gl, &mut shadow) };
+            if let Some(ref label) = cmd_buf.label {
+                if self
+                    .shared
+                    .private_caps
+                    .contains(PrivateCapabilities::DEBUG_FNS)
+                {
+                    unsafe {
+                        gl.push_debug_group(
+                            glow::DEBUG_SOURCE_APPLICATION,
+                            DEBUG_ID,
+                            to_debug_str(label),
+                        )
+                    };
+                }
+            }
+
+            for command in cmd_buf.commands.iter() {
+                // What a command only sets waits for the next that observes it.
+                if !Shadow::sets_only(command) {
+                    shadow.flush(gl);
+                }
+                unsafe {
+                    self.process(
+                        gl,
+                        &mut shadow,
+                        command,
+                        &cmd_buf.data_bytes,
+                        &cmd_buf.queries,
+                    )
+                };
+                if !Shadow::follows(command) {
+                    shadow.forget();
+                }
+            }
+            shadow.flush(gl);
+
+            if cmd_buf.label.is_some()
+                && self
+                    .shared
+                    .private_caps
+                    .contains(PrivateCapabilities::DEBUG_FNS)
+            {
+                unsafe { gl.pop_debug_group() };
+            }
+        }
+
+        if self
+            .shared
+            .private_caps
+            .contains(PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED)
+        {
+            unsafe { self.shared.elapsed_timestamps.lock().end_submission(gl) };
+        }
+
+        signal_fence.maintain(gl);
+        signal_fence.signal(gl, signal_value)?;
+
+        // This is extremely important. If we don't flush, the above fences may never
+        // be signaled, particularly in headless contexts. Headed contexts will
+        // often flush every so often, but headless contexts may not.
+        unsafe { gl.flush() };
+
+        Ok(())
+    }
+
+    unsafe fn present(
+        &self,
+        surface: &super::Surface,
+        texture: super::Texture,
+    ) -> Result<(), crate::SurfaceError> {
+        unsafe { surface.present(texture, &self.shared.context) }
+    }
+
+    unsafe fn get_timestamp_period(&self) -> f32 {
+        1.0
+    }
+
+    unsafe fn wait_for_idle(&self) -> Result<(), crate::DeviceError> {
+        let gl = &self.shared.context.lock();
+        unsafe { gl.finish() };
+        Ok(())
+    }
+}
+
+#[cfg(send_sync)]
+unsafe impl Sync for super::Queue {}
+#[cfg(send_sync)]
+unsafe impl Send for super::Queue {}
+
+/// `GPU_DISJOINT_EXT` (`EXT_disjoint_timer_query`): whether the GPU's timer
+/// was disturbed (a power change, a context switch) since it was last asked,
+/// which invalidates every timer query in flight.
+const GPU_DISJOINT: u32 = 0x8FBB;
+
+/// Timestamp queries on a context that times intervals only
+/// ([`PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED`]): WebGL2's
+/// `EXT_disjoint_timer_query_webgl2` has `queryCounterEXT`, but its
+/// `TIMESTAMP_EXT` counter has no bits on ANGLE's Metal and D3D11 backends
+/// (Chrome on macOS and Windows), where only `TIME_ELAPSED_EXT` measures.
+///
+/// Each timestamp write ends the `TIME_ELAPSED` query the write before it
+/// in the submission began and begins its own, so the queries cover the
+/// submission's commands from its first write on, back to back, and the
+/// timestamp of a write is the first write's plus the intervals between.
+/// The first write of a submission takes the CPU's clock in nanoseconds:
+/// timestamps of one submission differ by the GPU's time exactly, those of
+/// different submissions only as closely as the CPU's clock follows the GPU.
+///
+/// A timestamp resolves to 0 (WebGPU's unwritten query) when it, or a write
+/// it is reckoned from, is unwritten, rewritten since, or not yet
+/// available, and every one does when the context reports a disjoint
+/// operation since the last resolve: WebGL makes a query's result available
+/// only after the task that ended it, never in it.
+#[derive(Debug, Default)]
+pub(super) struct ElapsedTimestamps {
+    /// The `TIME_ELAPSED` query begun by the last write of the submission
+    /// being executed.
+    active: Option<glow::Query>,
+    writes: naga::FastHashMap<glow::Query, ElapsedWrite>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct ElapsedWrite {
+    /// Counts the query's writes, so that a write reckoned from an earlier
+    /// one sees when that one was overwritten.
+    generation: u32,
+    since: ElapsedSince,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum ElapsedSince {
+    /// The first write of its submission, at this CPU time.
+    Start(u64),
+    /// The write after this query's write of this generation, whose
+    /// `TIME_ELAPSED` interval it ended.
+    After(glow::Query, u32),
+}
+
+impl ElapsedTimestamps {
+    pub(super) unsafe fn write(&mut self, gl: &glow::Context, query: glow::Query) {
+        let since = match self.active.take() {
+            Some(previous) => {
+                unsafe { gl.end_query(glow::TIME_ELAPSED) };
+                ElapsedSince::After(previous, self.writes[&previous].generation)
+            }
+            None => ElapsedSince::Start(cpu_time_ns()),
+        };
+        let generation = self
+            .writes
+            .get(&query)
+            .map_or(0, |w| w.generation.wrapping_add(1));
+        self.writes
+            .insert(query, ElapsedWrite { generation, since });
+        unsafe { gl.begin_query(glow::TIME_ELAPSED, query) };
+        self.active = Some(query);
+    }
+
+    /// Ends the last interval at the end of the submission.
+    pub(super) unsafe fn end_submission(&mut self, gl: &glow::Context) {
+        if self.active.take().is_some() {
+            unsafe { gl.end_query(glow::TIME_ELAPSED) };
+        }
+    }
+
+    /// Drops the writes of a destroyed query set.
+    pub(super) fn forget(&mut self, queries: &[glow::Query]) {
+        for query in queries {
+            self.writes.remove(query);
+        }
+    }
+
+    /// Pushes the timestamp of each of `queries` onto `out`.
+    pub(super) unsafe fn resolve(
+        &self,
+        gl: &glow::Context,
+        queries: &[glow::Query],
+        out: &mut Vec<u64>,
+    ) {
+        if unsafe { gl.get_parameter_bool(GPU_DISJOINT) } {
+            out.extend(queries.iter().map(|_| 0));
+            return;
+        }
+        // Timestamps already reckoned in this resolve, `None` where unknown.
+        let mut known = naga::FastHashMap::<glow::Query, Option<u64>>::default();
+        for &query in queries {
+            let timestamp = unsafe { self.timestamp(gl, query, &mut known) };
+            out.push(timestamp.unwrap_or(0));
+        }
+    }
+
+    unsafe fn timestamp(
+        &self,
+        gl: &glow::Context,
+        query: glow::Query,
+        known: &mut naga::FastHashMap<glow::Query, Option<u64>>,
+    ) -> Option<u64> {
+        // Back through the writes to one already reckoned or the
+        // submission's first, then forward adding each interval.
+        let mut path = Vec::new();
+        let mut at = query;
+        let mut timestamp = loop {
+            if let Some(&known) = known.get(&at) {
+                break known;
+            }
+            let Some(write) = self.writes.get(&at) else {
+                break None;
+            };
+            match write.since {
+                ElapsedSince::Start(cpu) => {
+                    known.insert(at, Some(cpu));
+                    break Some(cpu);
+                }
+                ElapsedSince::After(previous, generation) => {
+                    path.push(at);
+                    match self.writes.get(&previous) {
+                        Some(w) if w.generation == generation => at = previous,
+                        _ => break None,
+                    }
+                }
+            }
+        };
+        for &next in path.iter().rev() {
+            let ElapsedSince::After(previous, _) = self.writes[&next].since else {
+                unreachable!("only a write after another is on the path");
+            };
+            timestamp = timestamp.and_then(|t| {
+                let available =
+                    unsafe { gl.get_query_parameter_u32(previous, glow::QUERY_RESULT_AVAILABLE) };
+                (available != 0).then(|| {
+                    t + unsafe { gl.get_query_parameter_u64(previous, glow::QUERY_RESULT) }
+                })
+            });
+            known.insert(next, timestamp);
+        }
+        timestamp
+    }
+}
+
+/// The CPU's clock in nanoseconds: the first timestamp of a submission
+/// ([`ElapsedTimestamps`]). Only WebGL builds timestamps from intervals
+/// (`EXT_disjoint_timer_query_webgl2` is WebGL's): elsewhere any nonzero
+/// value would do and none is ever taken.
+fn cpu_time_ns() -> u64 {
+    #[cfg(webgl)]
+    let ns = (js_sys::Date::now() * 1e6) as u64;
+    #[cfg(not(webgl))]
+    let ns = 1;
+    ns
+}

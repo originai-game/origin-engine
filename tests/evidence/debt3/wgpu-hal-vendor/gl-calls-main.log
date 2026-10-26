@@ -1,0 +1,7 @@
+og build: warning: /home/user/workspace/repo/packages/engine/dist/web-publish/origin-engine-lanes.js is missing, so this build ships single-threaded (no 3D lanes variant); `bun run build` in packages/engine builds it (scripts/build.sh, docs/web-export.md §Lanes)
+ok   the page runs the WebGL2 tier
+ok   the engine draws through the JS state filter
+ok   the counter sees the scene's draws (41 a frame)
+FAIL 3793 calls a frame leave wasm, fewer than 1500 (upstream wgpu-hal: 3,797): {"texParameteri":480,"disable":452,"bindBuffer":348,"bindSampler":287,"bindTexture":242,"activeTexture":241,"enableVertexAttribArray":233,"vertexAttribDivisor":233,"vertexAttribPointer":227,"framebufferTexture2D":209,"disableVertexAttribArray":143,"useProgram":76,"bindFramebuffer":68,"enable":60,"bindBufferRange":59,"colorMask":42,"uniform1ui":40,"depthMask":35,"drawElementsInstanced":24,"viewport":22,"drawBuffers":22,"frontFace":22,"stencilMask":21,"scissor":21,"depthRange":21,"clearBufferfv":18,"drawArraysInstanced":16,"bufferSubData":15,"depthFunc":14,"stencilFuncSeparate":14,"stencilMaskSe
+ok   761 of them reach WebGL behind the JS filter
+4 of 5 checks passed (/tmp/gl-calls-main/gl-calls.json)

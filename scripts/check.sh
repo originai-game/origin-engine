@@ -544,7 +544,7 @@ step_bun_quick() {
 # §Browser reference tiers; `make web-reference`). In no lane: CI has no
 # Chrome for Testing.
 step_web_reference() {
-  local a b c d e f g h i j k l m n o
+  local a b c d e f g h i j k l m n o q r
   if skip_unchanged web-reference "web-reference" "$(rule_web)"; then return $SKIP; fi
   og_need bun || return 1
   # The tests cook each project with packages/engine/native's og and serve
@@ -594,11 +594,19 @@ step_web_reference() {
   # A panic inside a lane reaches the page as a crash within 5 s, not a hang
   # (docs/web-export.md §Errors), and the same fault single-threaded.
   (cd packages/engine && bun tests/web/lane-panic.ts); k=$?
+  # The WebGL calls a reference-scene frame sends out of wasm on the WebGL2
+  # tier, fewer than 1,500 (3,797 on upstream wgpu-hal): the carried
+  # wgpu-hal's GLES queue patch (third_party/wgpu-hal/ORIGIN.md).
+  (cd packages/engine && bun tests/web/gl-calls.ts); r=$?
   # The accessibility mirror over ui-kit's settings screen, a screen
   # reader's click, the live region and the page's preferences.
   (cd packages/engine && bun tests/web/a11y.ts); l=$?
   (cd packages/engine && bun tests/web/a11y.ts --webgl); m=$?
-  return $((a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p))
+  # GPU pass timing on the WebGL2 tier: gpuTimestamps and gpuPasses with
+  # EXT_disjoint_timer_query_webgl2 (the browser's, or a stand-in where it
+  # has none) and without it (tests/evidence/debt/webgl2-gpu-timing).
+  (cd packages/engine && bun tests/web/gpu-timing.ts); q=$?
+  return $((a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r))
 }
 
 # --- Scheduling ---------------------------------------------------------------
