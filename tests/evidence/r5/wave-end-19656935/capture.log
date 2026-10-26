@@ -1,0 +1,50 @@
+   Compiling og-core-derive v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-core-derive)
+   Compiling wgpu-hal v30.0.1 (/Volumes/app/origin-engine-measure/third_party/wgpu-hal)
+   Compiling gltf-json v1.4.1
+   Compiling og-lanes v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-lanes)
+   Compiling og-render v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+   Compiling nalgebra v0.34.2
+   Compiling og-bake v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-bake)
+   Compiling og-blob v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-blob)
+   Compiling og-api v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-api)
+   Compiling og-core v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-core)
+   Compiling og-ecs v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ecs)
+   Compiling og-i18n v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-i18n)
+   Compiling og-tilemap v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tilemap)
+   Compiling og-geom v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+   Compiling og-input v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-input)
+   Compiling og-tween v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tween)
+   Compiling og-nav v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-nav)
+   Compiling og-audio v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-audio)
+   Compiling og-anim v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-anim)
+   Compiling og-timeline v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-timeline)
+   Compiling gltf v1.4.1
+   Compiling og-probe v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+   Compiling og-ai v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ai)
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling fdsm v0.8.0
+   Compiling fdsm-ttf-parser v0.2.0
+   Compiling wgpu v30.0.1
+   Compiling og-ui v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+   Compiling og-cook v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+   Compiling og-tests v0.5.0 (/Volumes/app/origin-engine-measure/crates/og-tests)
+    Finished `dev` profile [unoptimized] target(s) in 21.73s
+     Running `target/debug/og-gfx water-mesh water-ripples water-fresnel water-glint shadow-box hemisphere-light ao-direct ao-screen-water post-sharpen bloom-unreal alpha-to-coverage hooks-eye-front hooks-planar hooks-screen-ao water-planar-two terrain-hidden terrain-scatter-unshadowed --frames 0 --capture crates/og-tests/references`
+water-mesh: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=8 batches=1 instances=1 culled=0 triangles=2 shadow_passes=3 shadow_casters=3 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=2231.1ms
+water-ripples: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=8 batches=1 instances=1 culled=0 triangles=2 shadow_passes=3 shadow_casters=3 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=163.7ms
+water-fresnel: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=8 batches=1 instances=1 culled=0 triangles=2 shadow_passes=3 shadow_casters=3 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=65.2ms
+water-glint: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=8 batches=1 instances=1 culled=0 triangles=2 shadow_passes=3 shadow_casters=3 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=64.9ms
+shadow-box: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=10 batches=4 instances=5 culled=0 triangles=30 shadow_passes=1 shadow_casters=4 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=55.2ms
+hemisphere-light: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=5 batches=3 instances=3 culled=0 triangles=6 shadow_passes=0 shadow_casters=0 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=62.4ms
+ao-direct: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=18 batches=3 instances=11 culled=0 triangles=3170 shadow_passes=3 shadow_casters=25 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=1578.8ms
+ao-screen-water: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=19 batches=3 instances=3 culled=0 triangles=26 shadow_passes=3 shadow_casters=7 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=215.9ms
+post-sharpen: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=10 batches=2 instances=2 culled=0 triangles=14 shadow_passes=3 shadow_casters=6 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=58.2ms
+bloom-unreal: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=31 batches=6 instances=6 culled=0 triangles=7682 shadow_passes=3 shadow_casters=13 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=349.6ms
+alpha-to-coverage: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Msaa4 draws=4 batches=1 instances=1 culled=0 triangles=2 shadow_passes=3 shadow_casters=2 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=253.1ms
+hooks-eye-front: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=3 batches=1 instances=2 culled=0 triangles=4 shadow_passes=3 shadow_casters=2 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=807.3ms
+hooks-planar: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=20 batches=3 instances=3 culled=0 triangles=16 shadow_passes=3 shadow_casters=7 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=963.6ms
+hooks-screen-ao: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=13 batches=2 instances=2 culled=0 triangles=14 shadow_passes=3 shadow_casters=5 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=846.8ms
+water-planar-two: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=32 batches=4 instances=4 culled=0 triangles=38 shadow_passes=3 shadow_casters=10 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=64.1ms
+terrain-hidden: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=2 batches=0 instances=0 culled=0 triangles=0 shadow_passes=0 shadow_casters=0 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=664.9ms
+terrain-scatter-unshadowed: 1280x720 tier=metal adapter="Apple M4 Pro" aa=Off draws=10 batches=0 instances=0 culled=0 triangles=14336 shadow_passes=3 shadow_casters=0 lights=0 sprites=0 glyphs=0 sprite_draws=0 setup+first=712.1ms

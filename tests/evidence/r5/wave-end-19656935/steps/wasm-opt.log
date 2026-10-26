@@ -1,0 +1,6 @@
+og_host_web-lanes: 18644513 B raw -> 17929183 B bindgen -> 11408695 B wasm-opt -Oz
+og_host_web-lanes2d: 17568201 B raw -> 16836293 B bindgen -> 10517748 B wasm-opt -Oz
+og_host_web-publish: 18073963 B raw -> 17056966 B bindgen -> 11114815 B wasm-opt -Oz
+og_host_web-publish2d: 16994998 B raw -> 15965639 B bindgen -> 10225842 B wasm-opt -Oz
+og_host_web: 20991705 B raw -> 20012966 B bindgen -> 13217514 B wasm-opt -Oz
+size-gate measures the publish variant(s): /Volumes/app/origin-engine-measure/target/og-wasm/opt/og_host_web-lanes.wasm /Volumes/app/origin-engine-measure/target/og-wasm/opt/og_host_web-lanes2d.wasm /Volumes/app/origin-engine-measure/target/og-wasm/opt/og_host_web-publish.wasm /Volumes/app/origin-engine-measure/target/og-wasm/opt/og_host_web-publish2d.wasm
