@@ -705,9 +705,17 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.desc.antialias = Antialias::Msaa4;
         }
         "hooks-eye-front" => g.scene = crate::fork_scenes::hooks_eye_front_scene(),
-        "hooks-planar" => g.scene = crate::fork_scenes::hooks_planar_scene(true),
+        // Material shaders read the planar reflection, and a second surface
+        // gets one, only with the second slot (RenderOptions.planarReflections 2).
+        "hooks-planar" => {
+            g.scene = crate::fork_scenes::hooks_planar_scene(true);
+            g.desc.planar_reflections = 2;
+        }
         "hooks-screen-ao" => g.scene = crate::fork_scenes::hooks_screen_ao_scene(),
-        "water-planar-two" => g.scene = crate::fork_scenes::water_planar_two_scene(),
+        "water-planar-two" => {
+            g.scene = crate::fork_scenes::water_planar_two_scene();
+            g.desc.planar_reflections = 2;
+        }
         "terrain-hidden" => g.scene = crate::fork_scenes::terrain_flags_scene(false, true),
         "terrain-scatter-unshadowed" => {
             g.scene = crate::fork_scenes::terrain_flags_scene(true, false)
