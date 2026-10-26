@@ -1,0 +1,65 @@
+   Compiling syn v3.0.9
+   Compiling wgpu-hal v30.0.1 (/Volumes/app/origin-engine-lane-3/third_party/wgpu-hal)
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling og-lanes v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-lanes)
+   Compiling og-render v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-render)
+   Compiling og-bake v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-bake)
+   Compiling spade v2.15.1
+   Compiling og-api v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-api)
+   Compiling bytemuck_derive v1.12.1
+   Compiling thiserror-impl v2.0.21
+   Compiling serde_derive v1.0.229
+   Compiling og-core-derive v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-core-derive)
+   Compiling bytemuck v1.25.2
+   Compiling thiserror v2.0.21
+   Compiling naga-types v30.0.1
+   Compiling meshopt v0.6.2
+   Compiling serde v1.0.229
+   Compiling glam v0.34.1
+   Compiling num-complex v0.4.6
+   Compiling safe_arch v0.7.4
+   Compiling rustybuzz v0.20.1
+   Compiling og-blob v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-blob)
+   Compiling naga v30.0.1
+   Compiling wgpu-types v30.0.1
+   Compiling wide v0.7.33
+   Compiling pulp v0.22.3
+   Compiling simba v0.9.1
+   Compiling og-core v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-core)
+   Compiling gltf-json v1.4.1
+   Compiling og-ecs v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-ecs)
+   Compiling og-i18n v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-i18n)
+   Compiling og-geom v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-geom)
+   Compiling og-tilemap v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-tilemap)
+   Compiling og-input v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-input)
+   Compiling og-tween v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-tween)
+   Compiling og-audio v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-audio)
+   Compiling og-nav v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-nav)
+   Compiling og-anim v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-anim)
+   Compiling og-timeline v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-timeline)
+   Compiling og-probe v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-probe)
+   Compiling nalgebra v0.34.2
+   Compiling og-ai v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-ai)
+   Compiling exr v1.74.2
+   Compiling image v0.25.10
+   Compiling gltf v1.4.1
+   Compiling fdsm v0.8.0
+   Compiling fdsm-ttf-parser v0.2.0
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling og-ui v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-ui)
+   Compiling og-cook v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-cook)
+   Compiling og-tests v0.6.0 (/Volumes/app/origin-engine-lane-3/crates/og-tests)
+    Finished `test` profile [unoptimized] target(s) in 32.37s
+     Running tests/main.rs (target/debug/deps/tests-a441a3dcbf4bb00d)
+
+running 5 tests
+test gfx::post_adjust_matches_its_reference ... ok
+test gfx::post_neutral_matches_its_reference ... ok
+test gfx::post_blur_matches_its_reference ... ok
+test gfx::post_lens_matches_its_reference ... ok
+test terrain::the_grass_scene_in_the_wind_matches_its_reference ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 298 filtered out; finished in 4.29s
+

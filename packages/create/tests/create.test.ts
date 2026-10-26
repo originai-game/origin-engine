@@ -325,7 +325,17 @@ test("what a scaffold ships never calls a UI style a skin", () => {
   // UI's words (og.ui, ui, style, entrance, theme) is that use, unless it
   // names one of the word's other meanings (knowledge's SKIN_ELSEWHERE: a
   // glTF rig, the controllers' collision gap, a surface).
-  const roots = ["game", "game-2d", "archetypes"].map((d) => join(pkg, "..", "..", "templates", d));
+  // Each archetype is its own project: its cooked/, .og/ and og-out/ are
+  // build output the scaffold leaves out, like the templates' own.
+  const templates = join(pkg, "..", "..", "templates");
+  const archetypes = join(templates, "archetypes");
+  const roots = [
+    join(templates, "game"),
+    join(templates, "game-2d"),
+    ...readdirSync(archetypes)
+      .map((a) => join(archetypes, a))
+      .filter((a) => existsSync(join(a, "project.ogt"))),
+  ];
   const found: string[] = [];
   for (const root of roots) {
     for (const f of copied(root).filter((f) => /\.(ts|md|ogt|py)$/.test(f))) {
