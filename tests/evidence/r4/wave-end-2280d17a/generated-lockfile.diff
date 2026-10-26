@@ -1,0 +1,12 @@
+diff --git a/tools/wasm-determinism/Cargo.lock b/tools/wasm-determinism/Cargo.lock
+index 49ae41e3..10902beb 100644
+--- a/tools/wasm-determinism/Cargo.lock
++++ b/tools/wasm-determinism/Cargo.lock
+@@ -452,6 +452,7 @@ dependencies = [
+  "proc-macro2",
+  "quote",
+  "syn 2.0.119",
++ "syn 3.0.9",
+ ]
+ 
+ [[package]]
