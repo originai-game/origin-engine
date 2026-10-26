@@ -1265,12 +1265,11 @@ fn a_ramp_lines_fifth_number_tracks_cjk_text_and_not_latin() {
 }
 
 /// The same with the style changed between two frames of one Ui: the CJK
-/// text's measurement follows its CJK tracking. It does not yet: the text
-/// measurement cache's key (layout.rs `TextKey::of`) holds the step's Latin
-/// `tracking_em` and not `cjk_tracking_em`, so the width measured before
-/// the change is kept (120 px where a fresh Ui measures 144).
+/// text's measurement follows its CJK tracking. The text measurement
+/// cache's key (layout.rs `TextKey::of`) holds the step's `cjk_tracking_em`
+/// beside its Latin `tracking_em`; without it the width measured before the
+/// change was kept (120 px where a fresh Ui measures 144).
 #[test]
-#[ignore = "og-ui's TextKey leaves cjk_tracking_em out of the measurement cache's key"]
 fn a_changed_cjk_tracking_remeasures_the_text() {
     let fresh = xl_label(&mut drawing_ui(), cjk_tracked(Some(0.2)), "原点引擎").0;
     let mut ui = drawing_ui();
