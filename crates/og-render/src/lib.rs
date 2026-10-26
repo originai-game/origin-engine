@@ -274,8 +274,9 @@ const LIGHTMAP_PHYSICAL_WGSL: &str = wgsl!("lightmap_physical.wgsl");
 /// a texture slot for it, else [`PLANAR_STUB`].
 const PLANAR_WGSL: &str = wgsl!("planar.wgsl");
 /// `planar_reflection` reading nothing: the shadow passes, the scattered
-/// copies, the physical shader, and every lit shader on devices whose
-/// skinned lit pipeline has no texture slot left (`planar_slot`).
+/// copies, the physical shader, and every lit shader of a renderer made for
+/// one planar reflection or on a device whose skinned lit pipeline has no
+/// texture slot left (`planar_slot`).
 const PLANAR_STUB: &str = "fn planar_reflection(p: vec3<f32>, shift: vec2<f32>) -> vec4<f32> { return vec4<f32>(0.0); }\n";
 /// `screen_ao(p)` for material shaders in the lit and physical shaders: this
 /// frame's screen-space AO (the effect group's `ssao_tex`) where world point
@@ -292,19 +293,41 @@ const SCREEN_AO_WGSL: &str = "fn screen_ao(p: vec3<f32>) -> f32 {
 /// `screen_ao` where there is no AO texture (shadow passes, scattered copies).
 const SCREEN_AO_STUB: &str = "fn screen_ao(p: vec3<f32>) -> f32 { return 1.0; }\n";
 
-/// Whether the effect group carries the planar reflection (binding 4): with
-/// the joint palette in a storage buffer. The lit pipelines have sixteen
-/// texture slots (downlevel limits); a palette texture takes the last.
-pub(crate) fn planar_slot(palette: skin::PaletteMode) -> bool {
-    palette == skin::PaletteMode::Storage
+/// Whether the effect group carries the planar reflection material shaders
+/// read (binding 4): with two planar reflections
+/// ([`RenderDesc::planar_reflections`]) and the joint palette in a storage
+/// buffer. The lit pipelines have sixteen texture slots (downlevel limits);
+/// a palette texture takes the last. With one, the effect group is the four
+/// bindings it was before material shaders could read the mirror.
+pub(crate) fn planar_slot(palette: skin::PaletteMode, planar_reflections: u32) -> bool {
+    planar_reflections > 1 && palette == skin::PaletteMode::Storage
+}
+
+/// The lit pipelines' effect group (group 2): the effect uniform, the screen
+/// AO, the decal atlas and their sampler, and with `planar` ([`planar_slot`])
+/// the planar reflection material shaders read (planar.wgsl).
+fn fx_layout_entries(planar: bool) -> Vec<wgpu::BindGroupLayoutEntry> {
+    let mut entries = vec![
+        uniform_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
+        tex2d(1),
+        tex2d(2),
+        sampler_entry(3, wgpu::SamplerBindingType::Filtering),
+    ];
+    if planar {
+        entries.push(tex2d(4));
+    }
+    entries
 }
 
 /// The lit shader's source with `hooks` (`hooks.rs`), the joint palette
-/// read as `palette` and the light tables as `tables`.
+/// read as `palette` and the light tables as `tables`; with `planar`
+/// ([`planar_slot`]) `planar_reflection` reads the effect group's binding 4,
+/// else it is [`PLANAR_STUB`].
 fn lit_source_with(
     hooks: &str,
     palette: skin::PaletteMode,
     tables: clusters::LightTables,
+    planar: bool,
 ) -> String {
     format!(
         "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{}{SCREEN_AO_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
@@ -312,11 +335,7 @@ fn lit_source_with(
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3),
         lightmap::probe_wgsl(tables),
-        if planar_slot(palette) {
-            PLANAR_WGSL
-        } else {
-            PLANAR_STUB
-        }
+        if planar { PLANAR_WGSL } else { PLANAR_STUB }
     )
 }
 
@@ -354,21 +373,17 @@ pub(crate) fn physical_source(hooks: &str, full: bool) -> String {
 }
 
 /// [`lit_source_with`] for a tier (`full`: storage buffers for the palette
-/// and the light tables).
+/// and the light tables), with the planar reflection where the tier can
+/// carry it (two planar reflections, [`planar_slot`]): the cook validates a
+/// material shader against the module that reads it.
 pub(crate) fn lit_source(hooks: &str, full: bool) -> String {
-    if full {
-        lit_source_with(
-            hooks,
-            skin::PaletteMode::Storage,
-            clusters::LightTables::Storage,
-        )
-    } else {
-        lit_source_with(
-            hooks,
-            skin::PaletteMode::Texture,
-            clusters::LightTables::Uniform,
-        )
-    }
+    let (palette, tables) = custom::tier(full);
+    lit_source_with(
+        hooks,
+        palette,
+        tables,
+        planar_slot(palette, MAX_PLANAR_REFLECTIONS),
+    )
 }
 const SHADOW_WGSL: &str = wgsl!("shadow.wgsl");
 /// The shadow pass's slot and the paraboloid projection every caster shares.
@@ -602,7 +617,23 @@ pub struct RenderDesc {
     /// path's frames natively: `OG_GFX_VOLUMETRIC=raymarch`). A froxel grid
     /// asked for without compute is the raymarch.
     pub volumetric: Option<VolumetricMethod>,
+    /// How many water surfaces draw a planar reflection in one frame, 1
+    /// (the default) to [`MAX_PLANAR_REFLECTIONS`]. 1: the first surface
+    /// that asks (a grid surface first) mirrors the scene; the others reflect
+    /// as without one, and the lit pipelines' effect group is the four
+    /// bindings it has always been. 2: a second surface in view mirrors the
+    /// scene in a pass of its own, and material shaders read the first
+    /// mirror (`planar_reflection`): one more texture in every lit pipeline
+    /// where the joint palette is a storage buffer, which pushes the
+    /// lightmapped pipelines' lightmap pages past sixteen textures, so they
+    /// take an effect group without it ([`RenderInfo::planar_reflections`]
+    /// says what the renderer was made with).
+    pub planar_reflections: u32,
 }
+
+/// The most planar reflections one frame draws
+/// ([`RenderDesc::planar_reflections`]).
+pub const MAX_PLANAR_REFLECTIONS: u32 = 2;
 
 /// Where instances are culled ([`RenderDesc::culling`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -651,6 +682,7 @@ impl Default for RenderDesc {
             taa_history: TaaHistory::Bilinear,
             taa_sharpen: 0.0,
             volumetric: None,
+            planar_reflections: 1,
         }
     }
 }
@@ -731,6 +763,10 @@ pub struct RenderInfo {
     /// reads it by the squeezed axis and blurs, which og-ui's 2× bound on a
     /// middle's squeeze keeps slight.
     pub sprite_anisotropy: u16,
+    /// How many water surfaces draw a planar reflection in one frame:
+    /// [`RenderDesc::planar_reflections`] clamped to 1 to
+    /// [`MAX_PLANAR_REFLECTIONS`], 0 without the 3D world ([`WORLD_3D`]).
+    pub planar_reflections: u32,
 }
 
 /// The anisotropy clamp of the sprite sampler where the device filters
@@ -1539,14 +1575,14 @@ pub struct Renderer {
     /// Volumetric fog (made on first use).
     volumetric: volumetric::Volumetric,
     clusters: clusters::ClusterBuilder,
-    /// Per planar reflection slot (0: the one material shaders read, 1: a second surface's): the frame uniform of
-    /// its mirrored camera.
-    reflection_buffer: [wgpu::Buffer; 2],
+    /// Per planar reflection slot, as many as [`RenderInfo::planar_reflections`] (0: the one material shaders read
+    /// with two, 1: a second surface's): the frame uniform of its mirrored camera.
+    reflection_buffer: Vec<wgpu::Buffer>,
     /// Its effect uniform (decals; no screen-space AO).
-    reflection_fx_buffer: [wgpu::Buffer; 2],
+    reflection_fx_buffer: Vec<wgpu::Buffer>,
     /// Its cluster table and references, over the main view's light records.
-    reflection_light_buffers: [[wgpu::Buffer; 3]; 2],
-    reflection_clusters: [clusters::ClusterBuilder; 2],
+    reflection_light_buffers: Vec<[wgpu::Buffer; 3]>,
+    reflection_clusters: Vec<clusters::ClusterBuilder>,
     shadow_buffer: wgpu::Buffer,
     shadow_bind_group: wgpu::BindGroup,
     pbr_layout: wgpu::PipelineLayout,
@@ -1593,9 +1629,11 @@ pub struct Renderer {
     msdf_pipeline: Sampled<wgpu::RenderPipeline>,
     ribbon_pipelines: [Sampled<wgpu::RenderPipeline>; 2],
     fx_layout: wgpu::BindGroupLayout,
-    /// `fx_layout` without the planar reflection, where it has it: the
-    /// lightmapped pipelines' group 2, whose lightmap pages would otherwise
-    /// be a seventeenth texture (`Renderer::fx_lean_group`).
+    /// `fx_layout` without the planar reflection, where it has it (two
+    /// planar reflections, [`planar_slot`]): the lightmapped pipelines'
+    /// group 2, whose lightmap pages would otherwise be a seventeenth
+    /// texture (`Renderer::fx_lean_group`). `None` with one: `fx_layout`
+    /// serves them.
     fx_lean_layout: Option<wgpu::BindGroupLayout>,
     fx_buffer: wgpu::Buffer,
     sprite_fx_layout: wgpu::BindGroupLayout,
@@ -1615,6 +1653,10 @@ pub struct Renderer {
     trails: ribbons::Trails,
     /// The previous frame's unjittered view-projection (motion vectors).
     prev_view_proj: Option<Mat4>,
+    /// A second water surface asked for a planar reflection the renderer
+    /// does not draw ([`RenderDesc::planar_reflections`] 1), and the log
+    /// said so once.
+    warned_planar: bool,
     fx_groups: Option<FxGroups>,
     mips: mips::MipGenerator,
     /// The physical lit pipelines, made when a scene first draws a physical
@@ -1634,7 +1676,7 @@ pub struct Renderer {
         EnvironmentKey,
         wgpu::BindGroup,
         wgpu::BindGroup,
-        [wgpu::BindGroup; 2],
+        Vec<wgpu::BindGroup>,
     )>,
     default_white: wgpu::TextureView,
     default_normal: wgpu::TextureView,
@@ -2491,6 +2533,11 @@ impl Renderer {
             } else {
                 1
             },
+            planar_reflections: if WORLD_3D {
+                desc.planar_reflections.clamp(1, MAX_PLANAR_REFLECTIONS)
+            } else {
+                0
+            },
         };
         info.volumetric_lights = volumetric::lights(info.volumetric);
         log::info!(
@@ -2578,26 +2625,18 @@ impl Renderer {
                 tex2d(9),
             ],
         });
+        // With two planar reflections the effect group carries the one
+        // material shaders read, and the lightmapped pipelines, whose pages
+        // would make it a seventeenth texture, take the group without it.
+        let planar = planar_slot(palette_mode, info.planar_reflections);
         let fx_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("fx"),
-            entries: &[
-                uniform_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
-                tex2d(1),
-                tex2d(2),
-                sampler_entry(3, wgpu::SamplerBindingType::Filtering),
-                // The planar reflection material shaders read (planar.wgsl).
-                tex2d(4),
-            ][..if planar_slot(palette_mode) { 5 } else { 4 }],
+            entries: &fx_layout_entries(planar),
         });
-        let fx_lean_layout = planar_slot(palette_mode).then(|| {
+        let fx_lean_layout = planar.then(|| {
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("fx (lightmapped)"),
-                entries: &[
-                    uniform_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
-                    tex2d(1),
-                    tex2d(2),
-                    sampler_entry(3, wgpu::SamplerBindingType::Filtering),
-                ],
+                entries: &fx_layout_entries(false),
             })
         });
         let sprite_fx_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -2709,24 +2748,38 @@ impl Renderer {
             light_tables == clusters::LightTables::Storage
                 && desc.volumetric != Some(VolumetricMethod::Raymarch),
         );
-        let reflection_light_buffers =
-            [light_tables.buffers(&device), light_tables.buffers(&device)];
-        let reflection_buffer = [0, 1].map(|_| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("frame (planar reflection)"),
-                size: std::mem::size_of::<frame::FrameUniform>() as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
+        // One set per planar reflection the renderer draws (none without
+        // the 3D world).
+        let slots = 0..info.planar_reflections;
+        let reflection_light_buffers: Vec<_> = slots
+            .clone()
+            .map(|_| light_tables.buffers(&device))
+            .collect();
+        let reflection_buffer: Vec<_> = slots
+            .clone()
+            .map(|_| {
+                device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("frame (planar reflection)"),
+                    size: std::mem::size_of::<frame::FrameUniform>() as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                })
             })
-        });
-        let reflection_fx_buffer = [0, 1].map(|_| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("fx (planar reflection)"),
-                size: std::mem::size_of::<fx::FxUniform>() as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
+            .collect();
+        let reflection_clusters: Vec<_> = slots
+            .clone()
+            .map(|_| clusters::ClusterBuilder::default())
+            .collect();
+        let reflection_fx_buffer: Vec<_> = slots
+            .map(|_| {
+                device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("fx (planar reflection)"),
+                    size: std::mem::size_of::<fx::FxUniform>() as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                })
             })
-        });
+            .collect();
         let shadow_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("shadow passes"),
             size: SHADOW_SLOT_STRIDE * SHADOW_SLOTS as u64,
@@ -2750,7 +2803,7 @@ impl Renderer {
         let pbr_shader = shader(
             &device,
             "pbr",
-            lit_source_with(&hooks::default_hooks(), palette_mode, light_tables),
+            lit_source_with(&hooks::default_hooks(), palette_mode, light_tables, planar),
         );
         // Parsed when the first pipeline that uses it is made (deferred.rs).
         let sky_shader = deferred::module(&device, "sky", format!("{FRAME_WGSL}{SKY_WGSL}"));
@@ -3148,10 +3201,7 @@ impl Renderer {
             reflection_buffer,
             reflection_fx_buffer,
             reflection_light_buffers,
-            reflection_clusters: [
-                clusters::ClusterBuilder::default(),
-                clusters::ClusterBuilder::default(),
-            ],
+            reflection_clusters,
             shadow_buffer,
             shadow_bind_group,
             pbr_layout,
@@ -3198,6 +3248,7 @@ impl Renderer {
             lights_2d,
             trails: ribbons::Trails::default(),
             prev_view_proj: None,
+            warned_planar: false,
             fx_groups: None,
             mips,
             physical: None,
@@ -3585,6 +3636,7 @@ impl Renderer {
                 &scene.shaders()[index],
                 self.palette.mode(),
                 self.light_tables,
+                self.planar_slot(),
             );
             let module = shader(&self.device, "pbr (material shader)", lit);
             self.cache.shaders.push(module);
@@ -3804,6 +3856,7 @@ impl Renderer {
                         &hooks::default_hooks(),
                         self.palette.mode(),
                         self.light_tables,
+                        self.planar_slot(),
                     ),
                     shadow_source(&hooks::default_hooks(), self.palette.mode()),
                 ));
@@ -4535,7 +4588,7 @@ impl Renderer {
             self.ltc.as_entire_binding(),
         ];
         let group = bind_group(&self.device, "frame", &self.frame_layout, &entries);
-        let reflection_group = [0, 1].map(|k| {
+        let reflection_group = (0..self.reflection_buffer.len()).map(|k| {
             let mut reflected = entries.clone();
             reflected[0] = self.reflection_buffer[k].as_entire_binding();
             reflected[8] = self.reflection_light_buffers[k][1].as_entire_binding();
@@ -4547,6 +4600,7 @@ impl Renderer {
                 &reflected,
             )
         });
+        let reflection_group = reflection_group.collect();
         let sky_group = bind_group(
             &self.device,
             "sky",
@@ -4685,6 +4739,13 @@ impl Renderer {
             list.triangles += (index_count / 3) as u64 * count as u64;
         }
         (list, culled)
+    }
+
+    /// Whether the effect group carries the planar reflection material
+    /// shaders read ([`planar_slot`] for this renderer's palette and planar
+    /// reflections).
+    pub(crate) fn planar_slot(&self) -> bool {
+        planar_slot(self.palette.mode(), self.info.planar_reflections)
     }
 
     /// An effect group without the planar reflection, for the lightmapped
@@ -5389,9 +5450,10 @@ impl Renderer {
             None if volumetric_fog.is_some() => None,
             None => scene.fog,
         };
-        // Up to two surfaces mirror the scene, each in its own pass: slot 0 is the one material shaders read
-        // (`planar_reflection`; a grid surface first, such as a lake, else the first), slot 1 a second surface, only
-        // while it is in view (only it reads its mirror).
+        // Up to `planar_reflections` surfaces mirror the scene, each in its own pass: slot 0 a grid surface first,
+        // such as a lake, else the first that asks (with two, the one material shaders read: `planar_reflection`),
+        // slot 1 a second surface, only while it is in view (only it reads its mirror). With one, a second surface
+        // that asks reflects as without it (RenderDesc::planar_reflections), never in the first's mirror.
         let planar: Vec<usize> = match (under, cam.orthographic) {
             (None, false) => {
                 let asks: Vec<(usize, bool, bool)> = scene_water
@@ -5408,7 +5470,18 @@ impl Renderer {
                     .collect();
                 let first = asks.iter().find(|a| a.1).or(asks.first()).map(|a| a.0);
                 let second = asks.iter().find(|a| Some(a.0) != first && a.2).map(|a| a.0);
-                first.into_iter().chain(second).collect()
+                if second.is_some() && self.info.planar_reflections < 2 && !self.warned_planar {
+                    self.warned_planar = true;
+                    log::warn!(
+                        "og-render: a second water surface in view asks for a planar reflection; the renderer \
+                         draws one (RenderOptions.planarReflections 1), so it reflects without one"
+                    );
+                }
+                first
+                    .into_iter()
+                    .chain(second)
+                    .take(self.info.planar_reflections as usize)
+                    .collect()
             }
             _ => Vec::new(),
         };
@@ -7696,11 +7769,7 @@ impl Renderer {
                         wgpu::BindingResource::TextureView(atlas_view),
                         wgpu::BindingResource::Sampler(&self.trilinear_sampler),
                         wgpu::BindingResource::TextureView(planar_view),
-                    ][..if planar_slot(self.palette.mode()) {
-                        5
-                    } else {
-                        4
-                    }],
+                    ][..if self.planar_slot() { 5 } else { 4 }],
                 ),
                 fx_lean: self.fx_lean_group(&self.fx_buffer, ao_view, atlas_view),
                 sprite: sprite_group(lightmap_view, "sprite fx"),
@@ -7949,11 +8018,7 @@ impl Renderer {
                         wgpu::BindingResource::Sampler(&self.trilinear_sampler),
                         // Not the reflection itself: this pass draws it.
                         wgpu::BindingResource::TextureView(&self.post.white),
-                    ][..if planar_slot(self.palette.mode()) {
-                        5
-                    } else {
-                        4
-                    }],
+                    ][..if self.planar_slot() { 5 } else { 4 }],
                 )
             })
             .collect();
@@ -10566,5 +10631,55 @@ fn grow_and_write(
     grow(device, buffer, label, bytes.len() as u64);
     if !bytes.is_empty() {
         queue.write_buffer(buffer, 0, bytes);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use skin::PaletteMode;
+
+    /// The sampled textures of a bind group layout's entries.
+    fn textures(entries: &[wgpu::BindGroupLayoutEntry]) -> usize {
+        entries
+            .iter()
+            .filter(|e| matches!(e.ty, wgpu::BindingType::Texture { .. }))
+            .count()
+    }
+
+    /// One planar reflection keeps the effect group main had before
+    /// material shaders could read the mirror (four bindings, no lean group
+    /// for the lightmapped pipelines, the lit module's `planar_reflection`
+    /// the stub); two add binding 4 where the palette leaves it a texture
+    /// slot, and only there do the lightmapped pipelines need the group
+    /// without it.
+    #[test]
+    fn the_effect_group_carries_the_planar_reflection_only_with_two() {
+        let tables = clusters::LightTables::Storage;
+        let hooks = hooks::default_hooks();
+        for (palette, count, slot) in [
+            (PaletteMode::Storage, 1, false),
+            (PaletteMode::Storage, 2, true),
+            (PaletteMode::Texture, 1, false),
+            (PaletteMode::Texture, 2, false),
+        ] {
+            let at = format!("{palette:?} with {count}");
+            assert_eq!(planar_slot(palette, count), slot, "{at}");
+            let fx = fx_layout_entries(planar_slot(palette, count));
+            let bindings: Vec<u32> = fx.iter().map(|e| e.binding).collect();
+            if slot {
+                assert_eq!(bindings, [0, 1, 2, 3, 4], "{at}");
+                assert_eq!(textures(&fx), 3, "{at}");
+                // The lightmapped pipelines' group: the default one's.
+                let lean = fx_layout_entries(false);
+                assert_eq!(textures(&lean), 2, "{at}");
+            } else {
+                assert_eq!(bindings, [0, 1, 2, 3], "{at}");
+                assert_eq!(textures(&fx), 2, "{at}");
+            }
+            let source = lit_source_with(&hooks, palette, tables, planar_slot(palette, count));
+            assert_eq!(source.contains("var planar_tex"), slot, "{at}");
+            assert!(source.contains("fn planar_reflection("), "{at}");
+        }
     }
 }

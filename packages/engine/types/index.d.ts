@@ -3436,6 +3436,13 @@ export interface RenderOptions {
    */
   readonly taaSharpen?: number;
   /**
+   * How many planar reflection surfaces draw at once: water surfaces (og.Water.planarReflection) that mirror the scene in a pass of their own in the same frame. 1: the first surface that asks (a grid surface before one over a mesh); a second surface reflects as if it did not ask (screen-space and sky reflections), never in the first's mirror, and the log says so once. 2: a second surface in view mirrors the scene too, and material shaders can read the first's mirror (`planar_reflection`), at the cost of one more texture in every lit pipeline and a second reflection pass while both are in view. RenderCapabilities.planarReflections reports the count the renderer was made with.
+   *
+   * @default 1
+   * @range 1..2
+   */
+  readonly planarReflections?: number;
+  /**
    * A debug overlay from the first frame (og.debug.setView, the command channel's `debug:<view>`): none in a game, a view while building one. Not in publish builds.
    *
    * @default "none"
@@ -6695,6 +6702,10 @@ export interface RenderCapabilities {
    * The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, WebGL2 with EXT_texture_filter_anisotropic), 1 where it has none and on a software rasterizer (the vulkan-cpu tier: lavapipe's anisotropic filter softens even an image drawn 1:1), 0 without a renderer. Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners.
    */
   readonly spriteAnisotropy: number;
+  /**
+   * How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead.
+   */
+  readonly planarReflections: number;
   /**
    * Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn, og.terrain's calls and a SHAPE_HEIGHTFIELD collider answer a refusal naming this field, and `og build --publish` refuses a 2D project whose scenes hold og.Terrain, og.TerrainScatter, og.Water, og.WaterSurface or og.Fluid3D, by scene file and line); true in the 3D modules, the dev module and the native host.
    */
@@ -11904,7 +11915,7 @@ export interface Water {
    */
   reflectivity: number;
   /**
-   * Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). One surface a frame, the first that asks; it costs about a second scene pass at that resolution.
+   * Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). One surface a frame, the first that asks (a grid surface before one over a mesh), or two with RenderOptions.planarReflections 2 (the second while it is in view); each costs about a second scene pass at that resolution.
    *
    * @range 0..1
    * @unit ratio (a fraction between 0 and 1)

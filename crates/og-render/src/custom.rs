@@ -136,17 +136,19 @@ pub(crate) fn shadow_source(shader: &MaterialShader, palette: PaletteMode) -> St
 }
 
 /// The lit and shadow module sources of any material shader, as the
-/// renderer compiles them.
+/// renderer compiles them (`planar`: its effect group carries the planar
+/// reflection, `crate::planar_slot`).
 pub(crate) fn module_sources(
     shader: &MaterialShader,
     palette: PaletteMode,
     tables: LightTables,
+    planar: bool,
 ) -> (String, String) {
     match shader.mode {
         ShaderMode::Hooks => {
             let hooks = shader.hooks_wgsl();
             (
-                crate::lit_source_with(&hooks, palette, tables),
+                crate::lit_source_with(&hooks, palette, tables, planar),
                 crate::shadow_source(&hooks, palette),
             )
         }

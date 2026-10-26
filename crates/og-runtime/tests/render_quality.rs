@@ -234,6 +234,7 @@ impl RenderBackend for Device {
             volumetric: og_render::VolumetricMethod::Froxel,
             volumetric_lights: 64,
             sprite_anisotropy: 1,
+            planar_reflections: 1,
         })
     }
     fn render(&mut self, _: &RenderScene) -> Result<(), String> {

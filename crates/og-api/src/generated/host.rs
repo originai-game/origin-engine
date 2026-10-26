@@ -15321,7 +15321,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "ratio",
                 label: "",
-                doc: doc!("Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). One surface a frame, the first that asks; it costs about a second scene pass at that resolution."),
+                doc: doc!("Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). One surface a frame, the first that asks (a grid surface before one over a mesh), or two with RenderOptions.planarReflections 2 (the second while it is in view); each costs about a second scene pass at that resolution."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

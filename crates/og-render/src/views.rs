@@ -1260,11 +1260,7 @@ impl crate::Renderer {
                         wgpu::BindingResource::Sampler(&self.trilinear_sampler),
                         // No planar reflection in a view (the main camera's).
                         wgpu::BindingResource::TextureView(&self.post.white),
-                    ][..if crate::planar_slot(self.palette.mode()) {
-                        5
-                    } else {
-                        4
-                    }],
+                    ][..if self.planar_slot() { 5 } else { 4 }],
                 );
                 let lean = self.fx_lean_group(&slot.fx_buffer, &self.post.white, atlas_view);
                 (frame, fx, lean)
