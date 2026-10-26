@@ -249,6 +249,11 @@ bitflags::bitflags! {
         /// `GL_ARB_shader_image_load_store`; GLES needs `GL_NV_image_formats`
         /// (which itself depends on `GL_EXT_texture_norm16`).
         const TEXTURE_FORMAT_NORM16_STORAGE = 1 << 20;
+        /// Timestamp queries are built from chained `TIME_ELAPSED` queries
+        /// ([`queue::ElapsedTimestamps`]): WebGL2's
+        /// `EXT_disjoint_timer_query_webgl2`, whose `TIMESTAMP_EXT` counter
+        /// has no bits on ANGLE's Metal and D3D11 backends.
+        const TIMESTAMP_FROM_TIME_ELAPSED = 1 << 21;
     }
 }
 
@@ -295,6 +300,8 @@ struct AdapterShared {
     shading_language_version: naga::back::glsl::Version,
     next_shader_id: AtomicU32,
     program_cache: Mutex<ProgramCache>,
+    /// The timestamp writes of [`PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED`].
+    elapsed_timestamps: Mutex<queue::ElapsedTimestamps>,
     es: bool,
 
     /// Result of `gl.get_parameter_i32(glow::MAX_SAMPLES)`.
@@ -315,6 +322,7 @@ impl fmt::Debug for AdapterShared {
             shading_language_version,
             next_shader_id,
             program_cache: _,
+            elapsed_timestamps: _,
             es,
             max_msaa_samples,
         } = self;
@@ -988,6 +996,7 @@ enum Command {
     TimestampQuery(glow::Query),
     CopyQueryResults {
         query_range: Range<u32>,
+        query_target: BindTarget,
         dst: Buffer,
         dst_target: BindTarget,
         dst_offset: wgt::BufferAddress,

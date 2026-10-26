@@ -1,5 +1,5 @@
 use alloc::sync::Arc;
-use alloc::vec;
+use alloc::{vec, vec::Vec};
 use core::sync::atomic::Ordering;
 
 use arrayvec::ArrayVec;
@@ -1005,10 +1005,19 @@ impl super::Queue {
                 unsafe { gl.end_query(target) };
             }
             C::TimestampQuery(query) => {
-                unsafe { gl.query_counter(query, glow::TIMESTAMP) };
+                if self
+                    .shared
+                    .private_caps
+                    .contains(PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED)
+                {
+                    unsafe { self.shared.elapsed_timestamps.lock().write(gl, query) };
+                } else {
+                    unsafe { gl.query_counter(query, glow::TIMESTAMP) };
+                }
             }
             C::CopyQueryResults {
                 ref query_range,
+                query_target,
                 ref dst,
                 dst_target,
                 dst_offset,
@@ -1060,9 +1069,17 @@ impl super::Queue {
                 } else {
                     let mut temp_query_results = self.temp_query_results.lock();
                     temp_query_results.clear();
-                    for &query in
-                        queries[query_range.start as usize..query_range.end as usize].iter()
+                    let range = &queries[query_range.start as usize..query_range.end as usize];
+                    if query_target == glow::TIMESTAMP
+                        && self
+                            .shared
+                            .private_caps
+                            .contains(PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED)
                     {
+                        let timestamps = self.shared.elapsed_timestamps.lock();
+                        unsafe { timestamps.resolve(gl, range, &mut temp_query_results) };
+                    }
+                    for &query in range.iter().skip(temp_query_results.len()) {
                         let mut result: u64 = 0;
                         unsafe {
                             if self
@@ -1944,6 +1961,14 @@ impl crate::Queue for super::Queue {
             }
         }
 
+        if self
+            .shared
+            .private_caps
+            .contains(PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED)
+        {
+            unsafe { self.shared.elapsed_timestamps.lock().end_submission(gl) };
+        }
+
         signal_fence.maintain(gl);
         signal_fence.signal(gl, signal_value)?;
 
@@ -1978,3 +2003,164 @@ impl crate::Queue for super::Queue {
 unsafe impl Sync for super::Queue {}
 #[cfg(send_sync)]
 unsafe impl Send for super::Queue {}
+
+/// `GPU_DISJOINT_EXT` (`EXT_disjoint_timer_query`): whether the GPU's timer
+/// was disturbed (a power change, a context switch) since it was last asked,
+/// which invalidates every timer query in flight.
+const GPU_DISJOINT: u32 = 0x8FBB;
+
+/// Timestamp queries on a context that times intervals only
+/// ([`PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED`]): WebGL2's
+/// `EXT_disjoint_timer_query_webgl2` has `queryCounterEXT`, but its
+/// `TIMESTAMP_EXT` counter has no bits on ANGLE's Metal and D3D11 backends
+/// (Chrome on macOS and Windows), where only `TIME_ELAPSED_EXT` measures.
+///
+/// Each timestamp write ends the `TIME_ELAPSED` query the write before it
+/// in the submission began and begins its own, so the queries cover the
+/// submission's commands from its first write on, back to back, and the
+/// timestamp of a write is the first write's plus the intervals between.
+/// The first write of a submission takes the CPU's clock in nanoseconds:
+/// timestamps of one submission differ by the GPU's time exactly, those of
+/// different submissions only as closely as the CPU's clock follows the GPU.
+///
+/// A timestamp resolves to 0 (WebGPU's unwritten query) when it, or a write
+/// it is reckoned from, is unwritten, rewritten since, or not yet
+/// available, and every one does when the context reports a disjoint
+/// operation since the last resolve: WebGL makes a query's result available
+/// only after the task that ended it, never in it.
+#[derive(Debug, Default)]
+pub(super) struct ElapsedTimestamps {
+    /// The `TIME_ELAPSED` query begun by the last write of the submission
+    /// being executed.
+    active: Option<glow::Query>,
+    writes: naga::FastHashMap<glow::Query, ElapsedWrite>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct ElapsedWrite {
+    /// Counts the query's writes, so that a write reckoned from an earlier
+    /// one sees when that one was overwritten.
+    generation: u32,
+    since: ElapsedSince,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum ElapsedSince {
+    /// The first write of its submission, at this CPU time.
+    Start(u64),
+    /// The write after this query's write of this generation, whose
+    /// `TIME_ELAPSED` interval it ended.
+    After(glow::Query, u32),
+}
+
+impl ElapsedTimestamps {
+    pub(super) unsafe fn write(&mut self, gl: &glow::Context, query: glow::Query) {
+        let since = match self.active.take() {
+            Some(previous) => {
+                unsafe { gl.end_query(glow::TIME_ELAPSED) };
+                ElapsedSince::After(previous, self.writes[&previous].generation)
+            }
+            None => ElapsedSince::Start(cpu_time_ns()),
+        };
+        let generation = self
+            .writes
+            .get(&query)
+            .map_or(0, |w| w.generation.wrapping_add(1));
+        self.writes
+            .insert(query, ElapsedWrite { generation, since });
+        unsafe { gl.begin_query(glow::TIME_ELAPSED, query) };
+        self.active = Some(query);
+    }
+
+    /// Ends the last interval at the end of the submission.
+    pub(super) unsafe fn end_submission(&mut self, gl: &glow::Context) {
+        if self.active.take().is_some() {
+            unsafe { gl.end_query(glow::TIME_ELAPSED) };
+        }
+    }
+
+    /// Drops the writes of a destroyed query set.
+    pub(super) fn forget(&mut self, queries: &[glow::Query]) {
+        for query in queries {
+            self.writes.remove(query);
+        }
+    }
+
+    /// Pushes the timestamp of each of `queries` onto `out`.
+    pub(super) unsafe fn resolve(
+        &self,
+        gl: &glow::Context,
+        queries: &[glow::Query],
+        out: &mut Vec<u64>,
+    ) {
+        if unsafe { gl.get_parameter_bool(GPU_DISJOINT) } {
+            out.extend(queries.iter().map(|_| 0));
+            return;
+        }
+        // Timestamps already reckoned in this resolve, `None` where unknown.
+        let mut known = naga::FastHashMap::<glow::Query, Option<u64>>::default();
+        for &query in queries {
+            let timestamp = unsafe { self.timestamp(gl, query, &mut known) };
+            out.push(timestamp.unwrap_or(0));
+        }
+    }
+
+    unsafe fn timestamp(
+        &self,
+        gl: &glow::Context,
+        query: glow::Query,
+        known: &mut naga::FastHashMap<glow::Query, Option<u64>>,
+    ) -> Option<u64> {
+        // Back through the writes to one already reckoned or the
+        // submission's first, then forward adding each interval.
+        let mut path = Vec::new();
+        let mut at = query;
+        let mut timestamp = loop {
+            if let Some(&known) = known.get(&at) {
+                break known;
+            }
+            let Some(write) = self.writes.get(&at) else {
+                break None;
+            };
+            match write.since {
+                ElapsedSince::Start(cpu) => {
+                    known.insert(at, Some(cpu));
+                    break Some(cpu);
+                }
+                ElapsedSince::After(previous, generation) => {
+                    path.push(at);
+                    match self.writes.get(&previous) {
+                        Some(w) if w.generation == generation => at = previous,
+                        _ => break None,
+                    }
+                }
+            }
+        };
+        for &next in path.iter().rev() {
+            let ElapsedSince::After(previous, _) = self.writes[&next].since else {
+                unreachable!("only a write after another is on the path");
+            };
+            timestamp = timestamp.and_then(|t| {
+                let available =
+                    unsafe { gl.get_query_parameter_u32(previous, glow::QUERY_RESULT_AVAILABLE) };
+                (available != 0).then(|| {
+                    t + unsafe { gl.get_query_parameter_u64(previous, glow::QUERY_RESULT) }
+                })
+            });
+            known.insert(next, timestamp);
+        }
+        timestamp
+    }
+}
+
+/// The CPU's clock in nanoseconds: the first timestamp of a submission
+/// ([`ElapsedTimestamps`]). Only WebGL builds timestamps from intervals
+/// (`EXT_disjoint_timer_query_webgl2` is WebGL's): elsewhere any nonzero
+/// value would do and none is ever taken.
+fn cpu_time_ns() -> u64 {
+    #[cfg(webgl)]
+    let ns = (js_sys::Date::now() * 1e6) as u64;
+    #[cfg(not(webgl))]
+    let ns = 1;
+    ns
+}

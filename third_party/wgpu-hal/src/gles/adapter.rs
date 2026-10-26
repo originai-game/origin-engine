@@ -527,7 +527,12 @@ impl super::Adapter {
             wgt::Features::SHADER_EARLY_DEPTH_TEST,
             supported((3, 1), (4, 2)) || extensions.contains("GL_ARB_shader_image_load_store"),
         );
-        if extensions.contains("GL_ARB_timer_query") {
+        // WebGL2 times the GPU through `EXT_disjoint_timer_query_webgl2`,
+        // whose `TIMESTAMP_EXT` counter has no bits on ANGLE's Metal and
+        // D3D11 backends: timestamps are built from `TIME_ELAPSED_EXT`
+        // queries there (`PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED`).
+        let timestamp_from_time_elapsed = extensions.contains("EXT_disjoint_timer_query_webgl2");
+        if extensions.contains("GL_ARB_timer_query") || timestamp_from_time_elapsed {
             features.set(wgt::Features::TIMESTAMP_QUERY, true);
             features.set(wgt::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS, true);
             features.set(wgt::Features::TIMESTAMP_QUERY_INSIDE_PASSES, true);
@@ -680,6 +685,10 @@ impl super::Adapter {
         );
         private_caps.set(super::PrivateCapabilities::QUERY_BUFFERS, query_buffers);
         private_caps.set(super::PrivateCapabilities::QUERY_64BIT, full_ver.is_some());
+        private_caps.set(
+            super::PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED,
+            timestamp_from_time_elapsed && !extensions.contains("GL_ARB_timer_query"),
+        );
         private_caps.set(
             super::PrivateCapabilities::TEXTURE_STORAGE,
             supported((3, 0), (4, 2)),
@@ -956,6 +965,7 @@ impl super::Adapter {
                     shading_language_version,
                     next_shader_id: Default::default(),
                     program_cache: Default::default(),
+                    elapsed_timestamps: Default::default(),
                     es: es_ver.is_some(),
                     max_msaa_samples: max_samples,
                 }),

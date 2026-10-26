@@ -1715,6 +1715,9 @@ impl crate::Device for super::Device {
 
     unsafe fn destroy_query_set(&self, set: super::QuerySet) {
         let gl = &self.shared.context.lock();
+        if set.target == glow::TIMESTAMP {
+            self.shared.elapsed_timestamps.lock().forget(&set.queries);
+        }
         for &query in set.queries.iter() {
             unsafe { gl.delete_query(query) };
         }

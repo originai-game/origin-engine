@@ -487,6 +487,7 @@ impl crate::CommandEncoder for super::CommandEncoder {
         let query_range = start as u32..self.cmd_buffer.queries.len() as u32;
         self.cmd_buffer.commands.push(C::CopyQueryResults {
             query_range,
+            query_target: set.target,
             dst: buffer.clone(),
             dst_target: buffer.target,
             dst_offset: offset,
