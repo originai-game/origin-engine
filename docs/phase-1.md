@@ -5989,7 +5989,7 @@ resource only the owner can give.
 | 50 | The engine's render cost per instance of one mesh: 20,000 moving spheres take 174 ms a frame on WebGPU and WebGL2 (extraction plus og-render; the tick 0.3 ms), doubling near 4,096 instances and about 8.7 us an instance beyond (`tests/evidence/P4/web-host-tools/threejs-comparison.md`; the spike drew the same field in 4.6 ms) | P4 web host | M | engine, phase 4 | done dedf817: extraction decoded every og.Mesh row to JSON on the lanes, and the lanes wasm's Workers waited on one allocator (85 % of the frame in og_lanes::wait_for); og.Mesh and og.Transform are read from their columns, the wasm decodes rows serially. The field's frame went from 137.6 to about 4 ms; what remains against three.js is the lit pass's GPU cost per instance (P4 perf round, `tests/evidence/P4/perf/`). That remainder (branch `r-lean`, bddb7411): plain materials draw through lean lit, prepass and shadow pipelines (10 interpolated floats instead of 23, only the attributes read, no discard where no screen derivative is taken; og-render README, Lit pipeline variants); natively spheres-20k 7.1 to 4.6 ms a frame on an M4 Pro, the §7 reference scene unchanged, every Metal og-gfx frame byte-identical (`tests/evidence/P4/lean/`); the instance transform stays 64 bytes (a 3x4 would save a quarter of an upload costing 0.04 ms). Then (branch `render-parity`, 038cc380 to 5a96a149, `tests/evidence/P4/parity/`): instances are 52 bytes on the GPU (an affine matrix's columns' xyz and the array-map layer; the projections of the points they move go through `instance.wgsl` `mul_point` so Metal's sums stay the 4x4's), plain meshes can be 16-byte compact vertices (`VertexEncoding::Compact`, opt-in: quantised), the sort and the bounding spheres are kept across frames, wgpu's indirect-call validation is off and objc2 has no debug assertions in the dev profile; every Metal og-gfx frame byte-identical. Natively the dev CPU of spheres-20k went from 4.27 to 1.76 ms (moving 4.27 to 2.96, gltf-reference 3.89 to 0.95), release 1.60 to 1.13 ms; the frame is GPU-bound at 5.4 ms (from 5.6), the GPU bound by the field's 7.3 million triangles, which neither encoding moves natively; the §7 reference scene unchanged. The browser comparison with three.js is to be run again (row 51) |
 | 51 | The three.js comparison (`tools/bench/threejs-compare.ts`) run again after the lean pipelines: before them the 20,000-sphere field was 0.31x of three.js's WebGPU InstancedMesh and 0.48x of WebGL2's, the §7 reference scene 2.04x and 1.54x. Since 2026-10-25 (the owner) the judge of the 1.5x is the complex scene (`tools/bench/complex` against `three-complex.js`, `tests/evidence/r4/bench-complex/NOTES.md`), on WebGPU, WebGL2 reported; the reference scene (1.93x and 1.27x on the Mac) is reported beside it | P4 lean | S | engine, phase 4 (a wave-end measurement) | closed 2026-10-26 at 18a2964a (`tests/evidence/r4/bench-complex/mac-2/`, the M4 Pro, two rounds of 600 frames): the complex scene on WebGPU 5.449x (three per tile 31.050 ms against the engine's 5.698 ms) against §7's 1.5x; WebGL2 reported, per tile 1.249x, per part 3.171x; three's WebGPU had drawn nothing (17 sampled textures against Chrome's 16) and its WebGL2 was washed out by its sky until bench-complex-2 (30376326) gave it three's own PCF path and the engine's analytic sky. The WebGL2 ratio is reported, not a target (the owner, 2026-10-25); its remaining lead is the vendored GLES state skip (`debt/wgpu-hal-vendor`), measured when it merges. Was: deferred until the features are complete (2026-10-22, "Features before optimisation"); open (render parity, 26649d4c, measured natively only: `tests/evidence/P4/parity/`) |
 | 52 | The lanes wasm's physics step timed and hashed in Chrome: `bun bench/lanes.ts --chrome --pile` (1,000 and 2,000 boxes, the three modes) | P4 physics lanes | S | engine, phase 4 (a wave-end measurement) | closed 2026-10-26 by the Mac lane at db10aaf9 (`tests/evidence/P4/physics-lanes-2/chrome-2026-10-26.json` and README; Chrome 150 WebGPU on the M4 Pro, a minute's pause before every mode, 60 warm and 600 measured frames, one-minute load 4.3 to 6.1): the three modes (not isolated, isolated with lanes off, eight lanes) give one whole-world snapshot SHA-256 at tick 660 for each pile (1,000 boxes 3aa525cc…, 2,000 boxes f40f709b…; the publish wasm strips `Engine.hash`, so the harness reads `og_world_snapshot` and `og_physics_stats` from the Worker's wasm over CDP) and the same pixels as the 24th's run; web `og.physics.stats` read directly: 1,000 bodies stay below the split threshold in every mode (threads 1/1/8, pool false), 2,000 bodies split on the pool with eight lanes (1,921 parallel calls), frame p50 10.90/10.87/6.34 ms against 5.10/5.14/5.19 ms at 1,000. Was: partially closed 2026-10-24 (five rounds, 30 runs, every pixel hash at tick 660; whole-world hashes and direct stats unverified) |
-| 53 | A wave-end `scripts/check.sh --all` and `web-reference` on main after phase 4, their summary filed (none is recorded after 50eb7f7: the 2026-10-21 gate above; the looks station's 37 browser frames per tier have never run on record) | P4 gate | S | engine, phase 4 | open; `scripts/wave-end.sh` landed with ci-green (53b876f7) and has not run for real (row 82); wave 7's and waves 8 and 9's runs are recorded in their Main gate sections |
+| 53 | A wave-end `scripts/check.sh --all` and `web-reference` on main after phase 4, their summary filed (none is recorded after 50eb7f7: the 2026-10-21 gate above; the looks station's 37 browser frames per tier have never run on record) | P4 gate | S | engine, phase 4 | closed 2026-10-26: `CI=1 scripts/wave-end.sh --stages gate,web` at 5f3754a3 on the Mac's measure lane, green in 1,273 s with no path-aware reuse (gate 9/9 in 789 s, web-reference 484 s); the summary is in §Debt round 3 closeout below and the receipts in `tests/evidence/r4/wave-end-5f3754a3/` |
 | 54 | Reference frames owed after the wave-end lavapipe pass (4d6188b). `vulkan-cpu` for frames recorded or moved on `metal` since: og-tests `stylise-surface`, `stylise-object`, `stylise-halftone-surface` (no lavapipe run), `sprites-shadow-terrain` (moved twice, da96248 and 721886b) and `sprites-20k` (re-recorded on `metal` in da96248, its vulkan-cpu copy from 1e0dee6); og-ui `text-fields-2`, `text-mixed-runs` (no lavapipe run) and `text-bidi` (re-recorded on `metal` in a2c5e44, its vulkan-cpu copy 033bf00's); fx-showcase's looks frames, every one moved by the HUD's preset label (b76ca77, 721886b) while the 35 vulkan-cpu copies predate it. og-tests `materials-array` too (55c0c53; its `metal` reference f1d9233) | P4 stylisation 3 and 4, UI fields, cook 4 | S | engine, phase 4 (a wave-end capture) | closed: wave 11's second wave-end run (e7d6cb5e, `--record og-ui,...`) recorded og-ui's 85 frames on lavapipe and every one is within tolerance of `metal` (worst `kit-desktop-widgets` RMSE 0.0086, 0.159 %), so og-ui keeps no vulkan-cpu copy at all (36b326c3; Main gate, wave 11) |
 | 55 | Stylise in surface space: the octave fade shows as faint bands on a long receding floor (the footprint is measured across the pixel, not along the depth gradient) | P4 stylisation 3 | S | engine, phase 4 | closed at 725b9a4e (Wave 13, vox-stylise): the footprint measured along the depth gradient; three stylise frames re-recorded |
 | 56 | Compressed animation clips are rebuilt to f32 at load, so a resident clip is no smaller in memory; og-anim sampling the quantised keys would be | P4 cook-anim | M | engine, phase 4 | deferred until the features are complete (2026-10-22, "Features before optimisation"); was: open; **closed on debt3/anim-import** (og-anim `Samples`: a loaded clip keeps the cooked f32, constant or quantised keys and samples the keys where they lie, bit for bit the poses of the frames written out; `tests/evidence/debt3/anim-import/NOTES.md`) |
@@ -6545,6 +6545,50 @@ browser tiers against Metal, closing row 58. F2 and F4 are closed in
 to the next version's release checks; this closeout does not publish a
 package or update a deployment. F3, F5, Windows registry acceptance and
 the deferred optimisation rows remain separate work.
+
+#### Debt round 3 closeout, 2026-10-26
+
+The debt streams of 2026-10-25 and 26 (`debt/*` and `r4/*` branches,
+rows 14, 44, 51, 52, 53, 56, 57, 63, 66, 81, 89, 90, 99, 100 and 101)
+are merged, each through the functional lane. Two decisions at the
+merges:
+
+- The vendored wgpu-hal keeps the WebGL2 timer patch alone (row 100).
+  The GL-state shadow (row 101) was carried to the merge for the Mac's
+  measurement, which read the complex scene on WebGL2 at 7.592 ms with
+  it against 7.861 ms without, under the 0.363 ms spread between rounds
+  (`tests/evidence/r4/bench-complex/mac-3/`), the same as the reference
+  and spheres scenes on 2026-10-25; it was reverted with its test
+  (1a1260ba, 535dac11) and the row is closed by decision.
+- The first wave-end at 9498bc0a failed at determinism on a compile
+  error, not a hash: the tool hashed a clip channel's frames as `&[f32]`
+  after og-anim's `Samples` (debt3/anim-import) had given them three
+  forms. 10bfea5e hashes the form and its numbers. The same gate also
+  found `every_ogt_file_in_the_repository_round_trips` reading the
+  gitignored packed copies in `packages/create/template/` while
+  bun-functional re-packed them (b1939724 skips a file that vanished
+  between the listing and the read).
+
+The wave-end at 5f3754a3 (the Mac's measure lane, `CI=1
+scripts/wave-end.sh --stages gate,web`, 1,273 s: gate 789 s, web 484 s;
+`tests/evidence/r4/wave-end-5f3754a3/`) is green with no path-aware
+reuse: fmt 3 s, clippy 20 s, wasm-build 332 s, test 321 s, wasm-opt
+235 s, size-gate 35 s, drift 28 s, bun-test 183 s, determinism 238 s;
+web-reference fresh on both tiers, no frame failed or moved outside its
+tolerance, `gpu-timing.ts` with Chrome's own extension on Metal. The
+size gate at 3D lanes 3,232,252 B brotli (77 % of the 4,194,304 B
+budget, the largest), 2D lanes 2,988,274 B (71 %), 3D publish
+3,202,050 B (76 %), 2D publish 2,959,886 B (71 %). Every determinism
+build agrees, on the Mac and on the orb: math 6117185439544271997,
+boxes 15551159556835976588, physics3d 10053948282410406339, physics2d
+3002410719564870113, anim 12806465523503570878. The Mac's complex
+bench on the merged main (mac-3): engine 5.228 ms WebGPU and 7.592 ms
+WebGL2; three.js per tile 5.838× slower on WebGPU, 1.315× on WebGL2
+(3.193× per part).
+
+Still open by nature, not by work: row 35 (wgpu 31 unpublished, F5), the
+platform-side rows 36 and 62, row 40 (the owner's devices), row 70 (set
+aside) and the web first-frame part of row 88.
 
 ### F3 coverage audit and terrain acceptance, 2026-10-24
 
