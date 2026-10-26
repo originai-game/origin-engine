@@ -138,6 +138,7 @@ pub const SCENES: &[&str] = &[
     "post-neutral",
     "post-lens",
     "terrain-grass-wind",
+    "post-blur",
 ];
 
 /// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
@@ -769,6 +770,24 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 gust: 0.7,
             });
             g.scene.tick = 90;
+        }
+        // The bloom scene through a zoom blur towards a point left of and
+        // above the centre (strength 0.15, 16 taps): the spheres streak
+        // along the lines to it, and bloom, after the blur, glows round the
+        // streaks.
+        "post-blur" => {
+            g.scene = emissive_spheres();
+            g.scene.post.bloom = Some(Bloom {
+                threshold: 1.0,
+                knee: 0.5,
+                intensity: 0.8,
+            });
+            g.scene.post.screen_blur = Some(og_render::ScreenBlur {
+                kind: og_render::ScreenBlurKind::Zoom,
+                strength: 0.15,
+                center: Vec2::new(0.42, 0.4),
+                ..Default::default()
+            });
         }
         other => {
             return Err(format!(

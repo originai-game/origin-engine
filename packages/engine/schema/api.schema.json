@@ -2775,6 +2775,8 @@
         "AoResolution",
         "DofQuality",
         "DofQuality",
+        "ScreenBlur",
+        "ScreenBlur",
         "SpriteBlend",
         "SpriteBlend",
         "SpriteFacing",
@@ -15796,6 +15798,24 @@
         "high": "48 taps at half resolution: rounder, smoother bokeh."
       }
     },
+    "ScreenBlur": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "Which way PostEffects.screenBlur smears the whole frame.",
+      "type": "string",
+      "enum": [
+        "none",
+        "zoom",
+        "spin",
+        "directional"
+      ],
+      "x-og-variants": {
+        "none": "Off.",
+        "zoom": "Along the line to screenBlurCenter, each way by screenBlurStrength's fraction of the distance to it (0.1 a light dash, 0.3 a hard impact): a dash forwards, a hit, a warp.",
+        "spin": "Round screenBlurCenter, each way by screenBlurStrength radians (0.05 is about 3 degrees), on circles in pixels whatever the frame's aspect: a spin, a vortex, a dizzy spell.",
+        "directional": "Along screenBlurAngle across the whole frame, each way by screenBlurStrength pixels at 720 lines (scaled with the frame's height): a fast pan, a sideways dash."
+      }
+    },
     "SpriteBlend": {
       "x-og-kind": "enum",
       "x-og-module": "render",
@@ -15991,6 +16011,43 @@
           "description": "The longest blur in pixels.",
           "default": 40,
           "minimum": 1
+        },
+        "screenBlur": {
+          "$ref": "#/$defs/ScreenBlur",
+          "description": "A zoom, spin or directional blur of the whole frame (RedGPU's zoom, radial and directional blurs), weighted to the middle of its reach: one pass after motion blur and before bloom and the tone curve, so highlights streak and glow; the UI is not blurred. Off at none or at screenBlurStrength 0.",
+          "default": "none"
+        },
+        "screenBlurStrength": {
+          "type": "number",
+          "description": "How far it reaches each way: for zoom the fraction of the way to the centre, for spin radians, for directional pixels at 720 lines; 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "screenBlurCenter": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Zoom's and spin's centre, in fractions of the frame from the top left.",
+          "default": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "x-og-tunable": true
+        },
+        "screenBlurAngle": {
+          "type": "number",
+          "description": "Directional's direction, counter-clockwise from the right (90 is vertical).",
+          "default": 0,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "screenBlurSamples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Taps per pixel: more is smoother on long blurs, each one a texture read.",
+          "default": 16,
+          "minimum": 4,
+          "maximum": 64
         },
         "godRays": {
           "type": "boolean",

@@ -890,6 +890,9 @@ pub struct PostEffects {
     /// Barrel or pincushion distortion (a pass after the stylisation
     /// passes that read the depth).
     pub lens_distortion: Option<crate::LensDistortion>,
+    /// A zoom, spin or directional blur of the lit frame (an HDR pass
+    /// after motion blur).
+    pub screen_blur: Option<crate::ScreenBlur>,
     pub film_grain: Option<FilmGrain>,
     /// Contrast-adaptive sharpening of the display image (three.js-style CAS
     /// over the graded, sRGB-encoded colour), its strength 0 to 1.

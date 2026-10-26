@@ -26,6 +26,8 @@ struct FxPost {
   bands_far: vec4<f32>,       // the farthest band's colour (linear)
   ssr: vec4<f32>,             // x: max distance, y: thickness, z: edge fade, w: intensity (0: off) (ssr.wgsl)
   ssr2: vec4<f32>,            // x: steps
+  blur: vec4<f32>,            // the screen blur: x kind (0 off, 1 zoom, 2 spin, 3 directional), y strength, zw centre (uv)
+  blur2: vec4<f32>,           // x: taps, yz: directional's offset (uv) at t = 1
 };
 @group(0) @binding(0) var<uniform> fxp: FxPost;
 @group(0) @binding(1) var fx_linear: sampler;
@@ -565,6 +567,40 @@ fn fs_motion_blur(in: VsOut) -> @location(0) vec4<f32> {
     sum += textureSampleLevel(tex_a, fx_linear, in.uv + v * t, 0.0).rgb;
   }
   return vec4<f32>(sum / f32(n + 1u), c.a);
+}
+
+// The screen blur (effects.rs ScreenBlur): taps of the lit image at t in
+// -1..1, tent-weighted for zoom (towards the centre by the strength's
+// fraction of the way) and spin (turned about the centre by strength × t
+// radians, in pixels so it follows circles on any aspect), Gaussian for
+// directional (a fixed offset).
+@fragment
+fn fs_screen_blur(in: VsOut) -> @location(0) vec4<f32> {
+  let kind = u32(fxp.blur.x);
+  let n = max(u32(fxp.blur2.x), 1u);
+  let c = fxp.blur.zw;
+  let to_px = fxp.screen.xy;
+  let rel = (in.uv - c) * to_px;
+  var sum = vec3<f32>(0.0);
+  var total = 0.0;
+  for (var i = 0u; i < n; i++) {
+    let t = (f32(i) + 0.5) / f32(n) * 2.0 - 1.0;
+    var uv = in.uv;
+    var w = 1.0 - abs(t);
+    if (kind == 1u) {
+      uv = in.uv + (c - in.uv) * (fxp.blur.y * t);
+    } else if (kind == 2u) {
+      let a = fxp.blur.y * t;
+      let r = vec2<f32>(rel.x * cos(a) - rel.y * sin(a), rel.x * sin(a) + rel.y * cos(a));
+      uv = c + r / to_px;
+    } else {
+      uv = in.uv + fxp.blur2.yz * t;
+      w = exp(-2.0 * t * t);
+    }
+    sum += textureSampleLevel(tex_a, fx_linear, uv, 0.0).rgb * w;
+    total += w;
+  }
+  return vec4<f32>(sum / max(total, 1e-6), textureLoad(tex_a, vec2<i32>(in.pos.xy), 0).a);
 }
 
 // Half resolution: the sky's light around the sun (geometry masks it out).

@@ -586,7 +586,7 @@ module `render`), on both hosts, off by default:
 
 | og-render | TypeScript |
 |---|---|
-| AO, outlines, depth of field, motion blur, god rays, glow, LUT grading, colour adjustments, vignette, aberration, lens distortion, grain, flash, shake | resource `og.PostEffects` (zero = off; `lut` is a handle from `og.load.lut`) |
+| AO, outlines, depth of field, motion blur, screen blur, god rays, glow, LUT grading, colour adjustments, vignette, aberration, lens distortion, grain, flash, shake | resource `og.PostEffects` (zero = off; `lut` is a handle from `og.load.lut`) |
 | `Lighting2d`, `Light2d`, `Occluder2d` | resource `og.Lighting2D`; components `og.Light2D`, `og.Occluder2D`; `SpriteDesc.castShadow` |
 | `Decal` | component `og.Decal` with the atlas in `og.RenderSettings.decalAtlas` |
 | `ParticleSystem` | component `og.ParticleSystem` naming an emitter from `og.load.emitter` (`.ogt` of type `particles`, cooked by og-cook) |
@@ -685,6 +685,7 @@ the full tier) asserts the tier's antialiasing choice instead.
 | `exposure` | A dim dusk scene metered to middle grey. | all |
 | `post-agx` | The `bloom` scene through AgX: lower contrast, the orange and magenta halos paler than under ACES, the cores rolling to white. | all |
 | `post-neutral` | The `bloom` scene through Khronos PBR Neutral: the spheres' bodies as saturated as their authored colour (ACES darkens and shifts them), the over-exposed cores rolling to white. | all |
+| `post-blur` | The `bloom` scene through a zoom blur (0.15, 16 taps) towards a point left of and above the centre: the blue sphere near it sharp, the outer spheres stretched into ovals along the lines to it, the floor's checks smeared radially, the bloom glowing round the streaks (it runs after the blur). | all |
 | `post-lens` | The spike's scene through a centred barrel lens (0.35): the robots and drones magnified at the centre, the floor's far edge and the horizon bowed into arcs, the corners fitted (no black). | all |
 | `post-adjust` | The spike's scene through the teal-orange LUT at 0.6, then colour adjustments baked into the same table (`ColorAdjust`: temperature 0.06, contrast 0.15, vibrance 0.25, shadows towards teal): deeper blue-violet robots, the far floor and the haze a warm sand, richer yellow crates. | all |
 | `environment-map` | Chrome and white spheres from mirror to rough lit only by a cooked 64×32 HDR studio (baked here as the cook bakes it), turned 0.6 rad, drawn as the background. | all |
@@ -1189,6 +1190,12 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
   invert and threshold, RedGPU's adjustments; baked with the grading
   table into one 32³ table on the CPU when either changes, so they add
   no pass and cost nothing while they hold still),
+  a zoom, spin or directional blur of the whole frame (`ScreenBlur`,
+  RedGPU's zoom, radial and directional blurs with the spin and the
+  directional reach measured in pixels on any aspect: `fs_screen_blur`,
+  one HDR pass after motion blur into `hdr.blur`, before the custom
+  passes, bloom and the tonemap; it binds the prepass only when the frame
+  has one),
   vignette, chromatic aberration, lens distortion (`LensDistortion`,
   RedGPU's barrel and pincushion with the radius in pixels and a barrel
   fitted to its farthest corner; the `lens` pass of the chain after the

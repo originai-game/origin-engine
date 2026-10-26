@@ -153,6 +153,12 @@
       "value": "DofQuality"
     },
     {
+      "name": "ScreenBlur",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "ScreenBlur"
+    },
+    {
       "name": "SpriteBlend",
       "array": "Uint32Array",
       "stride": 1,
@@ -6816,6 +6822,37 @@
           "name": "motionBlurMaxPixels",
           "column": "f32",
           "default": 40
+        },
+        {
+          "name": "screenBlur",
+          "column": "ScreenBlur",
+          "default": "none"
+        },
+        {
+          "name": "screenBlurStrength",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "screenBlurCenter",
+          "column": "Vector2",
+          "default": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "tunable": true
+        },
+        {
+          "name": "screenBlurAngle",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "screenBlurSamples",
+          "column": "u32",
+          "default": 16
         },
         {
           "name": "godRays",

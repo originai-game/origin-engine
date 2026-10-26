@@ -9,6 +9,12 @@ that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
 
 ## Unreleased
 
+- render, `PostEffects`: `screenBlur` (`none`, `zoom`, `spin`,
+  `directional`; RedGPU's zoom, radial and directional blurs, the spin
+  and the directional blur measured in pixels on any aspect) with
+  `screenBlurStrength` (off at 0), `screenBlurCenter`, `screenBlurAngle`
+  and `screenBlurSamples`. One HDR pass after motion blur, before bloom
+  and the tone curve; the UI is not blurred (og-render `ScreenBlur`).
 - atmosphere: resource `og.Wind` (`strength`, `direction`, `speed`,
   `gust`; off at strength 0) sways every `og.TerrainScatter`'s copies:
   a lean downwind that grows with the vertex's height, varied by gusts

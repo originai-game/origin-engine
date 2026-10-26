@@ -72,6 +72,7 @@ export const AoResolution = ((value = "full" as Api.AoResolution, options) => sp
 export const AoResolutionSetting = ((value = "postEffects" as Api.AoResolutionSetting, options) => spec("AoResolutionSetting", value, options)) as typeof Api.AoResolutionSetting;
 export const LineMode = ((value = "strip" as Api.LineMode, options) => spec("LineMode", value, options)) as typeof Api.LineMode;
 export const DofQuality = ((value = "low" as Api.DofQuality, options) => spec("DofQuality", value, options)) as typeof Api.DofQuality;
+export const ScreenBlur = ((value = "none" as Api.ScreenBlur, options) => spec("ScreenBlur", value, options)) as typeof Api.ScreenBlur;
 export const ReflectionProbeMode = ((value = "baked" as Api.ReflectionProbeMode, options) => spec("ReflectionProbeMode", value, options)) as typeof Api.ReflectionProbeMode;
 export const SpriteBlend = ((value = "alpha" as Api.SpriteBlend, options) => spec("SpriteBlend", value, options)) as typeof Api.SpriteBlend;
 export const SpriteFacing = ((value = "none" as Api.SpriteFacing, options) => spec("SpriteFacing", value, options)) as typeof Api.SpriteFacing;

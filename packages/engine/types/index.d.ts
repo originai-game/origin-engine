@@ -155,6 +155,8 @@ export interface ColumnKinds {
   AoResolution: { readonly array: Uint32Array; readonly stride: 1; readonly value: AoResolution };
   /** A DofQuality field: the variant's index. */
   DofQuality: { readonly array: Uint32Array; readonly stride: 1; readonly value: DofQuality };
+  /** A ScreenBlur field: the variant's index. */
+  ScreenBlur: { readonly array: Uint32Array; readonly stride: 1; readonly value: ScreenBlur };
   /** A SpriteBlend field: the variant's index. */
   SpriteBlend: { readonly array: Uint32Array; readonly stride: 1; readonly value: SpriteBlend };
   /** A SpriteFacing field: the variant's index. */
@@ -4550,6 +4552,24 @@ export type DofQuality = "low" | "high";
 export declare function DofQuality(value?: DofQuality, options?: FieldOptions): FieldSpec<"DofQuality">;
 
 /**
+ * Which way PostEffects.screenBlur smears the whole frame.
+ * - `"none"`: Off.
+ * - `"zoom"`: Along the line to screenBlurCenter, each way by screenBlurStrength's fraction of the distance to it (0.1 a light dash, 0.3 a hard impact): a dash forwards, a hit, a warp.
+ * - `"spin"`: Round screenBlurCenter, each way by screenBlurStrength radians (0.05 is about 3 degrees), on circles in pixels whatever the frame's aspect: a spin, a vortex, a dizzy spell.
+ * - `"directional"`: Along screenBlurAngle across the whole frame, each way by screenBlurStrength pixels at 720 lines (scaled with the frame's height): a fast pan, a sideways dash.
+ */
+export type ScreenBlur = "none" | "zoom" | "spin" | "directional";
+
+/**
+ * A ScreenBlur field: the variant's index.
+ *
+ * A `ScreenBlur` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ScreenBlur(value?: ScreenBlur, options?: FieldOptions): FieldSpec<"ScreenBlur">;
+
+/**
  * How a sprite is blended over what is below it.
  * - `"alpha"`: Ordinary alpha blending.
  * - `"additive"`: Added (light, fire, magic): order-independent within a layer.
@@ -4735,6 +4755,38 @@ export interface PostEffects {
    * @range 1..
    */
   motionBlurMaxPixels: number;
+  /**
+   * A zoom, spin or directional blur of the whole frame (RedGPU's zoom, radial and directional blurs), weighted to the middle of its reach: one pass after motion blur and before bloom and the tone curve, so highlights streak and glow; the UI is not blurred. Off at none or at screenBlurStrength 0.
+   */
+  screenBlur: ScreenBlur;
+  /**
+   * How far it reaches each way: for zoom the fraction of the way to the centre, for spin radians, for directional pixels at 720 lines; 0 is off.
+   *
+   * @range 0..
+   * @tunable
+   */
+  screenBlurStrength: number;
+  /**
+   * Zoom's and spin's centre, in fractions of the frame from the top left.
+   *
+   * @default { x: 0.5, y: 0.5 }
+   * @tunable
+   */
+  screenBlurCenter: Vector2;
+  /**
+   * Directional's direction, counter-clockwise from the right (90 is vertical).
+   *
+   * @unit deg (degrees)
+   * @tunable
+   */
+  screenBlurAngle: number;
+  /**
+   * Taps per pixel: more is smoother on long blurs, each one a texture read.
+   *
+   * @default 16
+   * @range 4..64
+   */
+  screenBlurSamples: number;
   /**
    * Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera).
    */
@@ -23246,7 +23298,7 @@ export declare namespace og {
    * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.
    * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, the colour adjustments (temperature to threshold), vignette, aberration, grain and the flash apply to the display colour after tone mapping, and lens distortion bends the result; the UI and screen-space sprites (the overlay) come after all of it.
    */
-  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly aoResolution: FieldSpec<"AoResolution">; readonly aoDirect: FieldSpec<"f32">; readonly aoRadiusScale: FieldSpec<"f32">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly temperature: FieldSpec<"f32">; readonly tint: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly contrast: FieldSpec<"f32">; readonly balanceShadows: FieldSpec<"Vector3">; readonly balanceMidtones: FieldSpec<"Vector3">; readonly balanceHighlights: FieldSpec<"Vector3">; readonly preserveLuminosity: FieldSpec<"bool">; readonly hue: FieldSpec<"f32">; readonly saturation: FieldSpec<"f32">; readonly vibrance: FieldSpec<"f32">; readonly grayscale: FieldSpec<"f32">; readonly invert: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly lensDistortion: FieldSpec<"f32">; readonly lensDistortionCenter: FieldSpec<"Vector2">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly sharpen: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32">; readonly custom: ListSpec<"Post"> }, PostEffects>;
+  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly aoResolution: FieldSpec<"AoResolution">; readonly aoDirect: FieldSpec<"f32">; readonly aoRadiusScale: FieldSpec<"f32">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly screenBlur: FieldSpec<"ScreenBlur">; readonly screenBlurStrength: FieldSpec<"f32">; readonly screenBlurCenter: FieldSpec<"Vector2">; readonly screenBlurAngle: FieldSpec<"f32">; readonly screenBlurSamples: FieldSpec<"u32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly temperature: FieldSpec<"f32">; readonly tint: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly contrast: FieldSpec<"f32">; readonly balanceShadows: FieldSpec<"Vector3">; readonly balanceMidtones: FieldSpec<"Vector3">; readonly balanceHighlights: FieldSpec<"Vector3">; readonly preserveLuminosity: FieldSpec<"bool">; readonly hue: FieldSpec<"f32">; readonly saturation: FieldSpec<"f32">; readonly vibrance: FieldSpec<"f32">; readonly grayscale: FieldSpec<"f32">; readonly invert: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly lensDistortion: FieldSpec<"f32">; readonly lensDistortionCenter: FieldSpec<"Vector2">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly sharpen: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32">; readonly custom: ListSpec<"Post"> }, PostEffects>;
   /**
    * Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
    * Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised.

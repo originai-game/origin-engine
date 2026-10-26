@@ -2928,6 +2928,21 @@ module render {
     value DofQuality
   }
 
+  enum ScreenBlur {
+    doc "Which way PostEffects.screenBlur smears the whole frame."
+    variant none "Off."
+    variant zoom "Along the line to screenBlurCenter, each way by screenBlurStrength's fraction of the distance to it (0.1 a light dash, 0.3 a hard impact): a dash forwards, a hit, a warp."
+    variant spin "Round screenBlurCenter, each way by screenBlurStrength radians (0.05 is about 3 degrees), on circles in pixels whatever the frame's aspect: a spin, a vortex, a dizzy spell."
+    variant directional "Along screenBlurAngle across the whole frame, each way by screenBlurStrength pixels at 720 lines (scaled with the frame's height): a fast pan, a sideways dash."
+  }
+
+  column ScreenBlur {
+    doc "A ScreenBlur field: the variant's index."
+    array Uint32Array
+    stride 1
+    value ScreenBlur
+  }
+
   enum SpriteBlend {
     doc "How a sprite is blended over what is below it."
     variant alpha "Ordinary alpha blending."
@@ -3051,6 +3066,24 @@ module render {
     field motionBlurMaxPixels f32 "The longest blur in pixels." {
       default 40
       min 1
+    }
+    field screenBlur ScreenBlur "A zoom, spin or directional blur of the whole frame (RedGPU's zoom, radial and directional blurs), weighted to the middle of its reach: one pass after motion blur and before bloom and the tone curve, so highlights streak and glow; the UI is not blurred. Off at none or at screenBlurStrength 0."
+    field screenBlurStrength f32 "How far it reaches each way: for zoom the fraction of the way to the centre, for spin radians, for directional pixels at 720 lines; 0 is off." {
+      min 0
+      tunable true
+    }
+    field screenBlurCenter Vector2 "Zoom's and spin's centre, in fractions of the frame from the top left." {
+      default 0.5 0.5
+      tunable true
+    }
+    field screenBlurAngle f32 "Directional's direction, counter-clockwise from the right (90 is vertical)." {
+      unit deg
+      tunable true
+    }
+    field screenBlurSamples u32 "Taps per pixel: more is smoother on long blurs, each one a texture read." {
+      default 16
+      min 4
+      max 64
     }
     field godRays bool "Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera)."
     field godRaysIntensity f32 "How bright the shafts are." {

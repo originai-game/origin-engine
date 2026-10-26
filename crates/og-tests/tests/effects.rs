@@ -13,9 +13,9 @@ use og_render::{
     EmitterShape, Exposure, FilmGrain, FrameStats, Glow, GodRays, JointPalette, LensDistortion,
     Light2d, Lighting2d, MAX_DECALS, Material, MorphTargets, MotionBlur, Occluder2d, Outline,
     ParticleCollision, ParticleEmitter, ParticleRender, ParticleSimulation, ParticleSystem,
-    Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, ScreenFlash,
-    SkinnedInstance, Sprite, SpriteFx, StandardMaterial, Tier, Tonemap, Trail, TrailStyle, View,
-    ViewTarget, Vignette, shapes,
+    Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, ScreenBlur,
+    ScreenBlurKind, ScreenFlash, SkinnedInstance, Sprite, SpriteFx, StandardMaterial, Tier,
+    Tonemap, Trail, TrailStyle, View, ViewTarget, Vignette, shapes,
 };
 use og_tests::fx_scenes as fx;
 use og_tests::{gfx, scenes};
@@ -1058,6 +1058,119 @@ fn lens_distortion_bends_by_its_formula() {
             let got = centroid(&bent, want);
             println!("{name}: the mark at {m} shows at {got}, the formula {want}");
             assert!(got.distance(want) < 1.0, "{name}: {m} at {got}, not {want}");
+        }
+    }
+}
+
+/// The screen blur takes its taps where its formula puts them: with four
+/// taps (t = ±0.25, ±0.75) a white dot on a dark frame shows as four
+/// copies, the one of tap t where that tap of a pixel lands on the dot,
+/// each within 1 px of the formula solved here. Zoom: q + (c − q) s t = P
+/// (towards an off-centre centre); spin: P turned about the centre by
+/// −a t in pixels, a circle on the 16:9 frame (turned in uv it is an
+/// ellipse, 3 px and more off); directional at 30° counter-clockwise from
+/// the right, 160 px at 720 lines (40 px here), so the copies run down to
+/// the left of the dot and up to its right (a flipped y runs them the
+/// other way). One pass while on, none at strength 0, and no prepass for
+/// it.
+#[test]
+fn screen_blur_taps_where_its_formula_says() {
+    let (w, h) = (320.0f32, 180.0f32);
+    let scene = |blur: Option<ScreenBlur>| {
+        let mut s = RenderScene::new();
+        s.add_sprite(Sprite {
+            position: Vec3::new(4.0, 1.5, 0.0),
+            size: Vec2::splat(0.25),
+            color: [1.0; 4],
+            ..Default::default()
+        });
+        s.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
+        s.environment.background = Background::Color(Vec3::splat(0.05));
+        s.post.tonemap = Tonemap::None;
+        s.post.screen_blur = blur;
+        s
+    };
+    // The centroid of the bright pixels within 5 px of `near`, weighted
+    // by how far each is above the background (63 in sRGB).
+    let centroid = |img: &RgbaImage, near: Vec2| {
+        let (mut sum, mut n) = (Vec2::ZERO, 0.0);
+        for y in (near.y as i32 - 5).max(0)..(near.y as i32 + 6).min(h as i32) {
+            for x in (near.x as i32 - 5).max(0)..(near.x as i32 + 6).min(w as i32) {
+                let at = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
+                let k = (luma(px(img, x as u32, y as u32)) - 63.0).max(0.0);
+                if k > 4.0 && at.distance(near) <= 5.0 {
+                    sum += at * k;
+                    n += k;
+                }
+            }
+        }
+        (n > 0.0).then(|| sum / n)
+    };
+    let (plain, off) = frame(&small(), &scene(None));
+    let dot = centroid(&plain, Vec2::new(232.0, 63.0)).expect("the dot");
+    let (_, zero) = frame(
+        &small(),
+        &scene(Some(ScreenBlur {
+            strength: 0.0,
+            ..Default::default()
+        })),
+    );
+    assert_eq!(zero.graph_passes, off.graph_passes, "a blur of strength 0");
+    let size = Vec2::new(w, h);
+    let turn =
+        |v: Vec2, a: f32| Vec2::new(v.x * a.cos() - v.y * a.sin(), v.x * a.sin() + v.y * a.cos());
+    let cases = [
+        (
+            "zoom",
+            ScreenBlur {
+                kind: ScreenBlurKind::Zoom,
+                strength: 0.4,
+                center: Vec2::new(0.3, 0.6),
+                samples: 4,
+                ..Default::default()
+            },
+        ),
+        (
+            "spin",
+            ScreenBlur {
+                kind: ScreenBlurKind::Spin,
+                strength: 0.3,
+                center: Vec2::new(0.4, 0.55),
+                samples: 4,
+                ..Default::default()
+            },
+        ),
+        (
+            "directional",
+            ScreenBlur {
+                kind: ScreenBlurKind::Directional,
+                strength: 160.0,
+                angle: 30f32.to_radians(),
+                samples: 4,
+                ..Default::default()
+            },
+        ),
+    ];
+    for (name, blur) in cases {
+        let (img, stats) = frame(&small(), &scene(Some(blur)));
+        assert_eq!(stats.graph_passes, off.graph_passes + 1, "{name}: one pass");
+        let c = blur.center * size;
+        for t in [-0.75f32, -0.25, 0.25, 0.75] {
+            let want = match blur.kind {
+                ScreenBlurKind::Zoom => (dot - c * blur.strength * t) / (1.0 - blur.strength * t),
+                ScreenBlurKind::Spin => c + turn(dot - c, -blur.strength * t),
+                ScreenBlurKind::Directional => {
+                    let d =
+                        Vec2::new(blur.angle.cos(), -blur.angle.sin()) * blur.strength * h / 720.0;
+                    dot - d * t
+                }
+            };
+            let got = centroid(&img, want);
+            println!("{name}: tap {t} shows the dot at {got:?}, the formula {want}");
+            assert!(
+                got.is_some_and(|g| g.distance(want) < 1.0),
+                "{name}: tap {t}'s copy at {got:?}, not {want}"
+            );
         }
     }
 }

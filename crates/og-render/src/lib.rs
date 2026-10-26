@@ -5564,6 +5564,7 @@ impl Renderer {
                 .any(|b| !b.transparent && self.cache.materials[b.material].outline);
         let dof = post_fx.depth_of_field;
         let motion_blur = post_fx.motion_blur;
+        let screen_blur = post_fx.screen_blur.filter(|b| b.strength != 0.0);
         let god_rays = post_fx.god_rays;
         let fluids_3d = WORLD_3D && scene.fluids_3d.iter().any(|f| !f.particles.is_empty());
         let depth_bands = scene.stylise.depth_bands.filter(|b| b.count >= 2);
@@ -7184,6 +7185,9 @@ impl Renderer {
                 [b.far_color[0], b.far_color[1], b.far_color[2], 1.0]
             }),
             ssr: ssr::ScreenSpaceReflections::rows(ssr.as_ref()),
+            blur: screen_blur.map_or([[0.0; 4]; 2], |b| {
+                b.rows(self.width as f32, self.height as f32)
+            }),
         };
         self.queue
             .write_buffer(&self.post.fx_buffer, 0, bytemuck::bytes_of(&fxp));
@@ -7303,6 +7307,9 @@ impl Renderer {
         }
         if motion_blur.is_some() {
             passes.push(FramePass::MotionBlur);
+        }
+        if screen_blur.is_some() {
+            passes.push(FramePass::ScreenBlur);
         }
         passes.extend((0..custom_posts.len() as u32).map(FramePass::CustomPost));
         if god_rays.is_some() {

@@ -601,6 +601,85 @@ impl Default for LensDistortion {
     }
 }
 
+/// Which way [`ScreenBlur`] smears the frame.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScreenBlurKind {
+    /// Along the line to the centre: a dash forwards, an impact.
+    Zoom,
+    /// Round the centre: a spin, a vortex.
+    Spin,
+    /// Along one direction across the whole frame: a fast pan.
+    Directional,
+}
+
+/// A blur of the whole lit frame (RedGPU's zoom, radial and directional
+/// blurs, with the spin and the directional blur measured in pixels on
+/// any aspect): each pixel averages `samples` taps of the image at `t` in
+/// -1..1, weighted by a tent for zoom and spin and a Gaussian for
+/// directional, at
+///
+/// - zoom: `p + (center − p) × strength × t` (`strength` the fraction of
+///   the way to the centre each way, 0.1 a light dash);
+/// - spin: `p` turned about `center` by `strength × t` radians in pixels,
+///   so it follows circles on any aspect (0.05 is about 3° each way);
+/// - directional: `p + (cos angle, −sin angle) × strength × t` pixels at
+///   720 lines (scaled with the target's height), the angle counter-
+///   clockwise from the right.
+///
+/// One HDR pass after motion blur and before the custom passes, bloom and
+/// the tonemap, so highlights streak and bloom after it; the overlay is
+/// not blurred. Off at strength 0.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ScreenBlur {
+    pub kind: ScreenBlurKind,
+    pub strength: f32,
+    /// Zoom's and spin's centre, in fractions of the frame from the top
+    /// left.
+    pub center: Vec2,
+    /// Directional's direction (radians, counter-clockwise from the
+    /// right).
+    pub angle: f32,
+    /// Taps per pixel (4 to 64).
+    pub samples: u32,
+}
+
+impl Default for ScreenBlur {
+    fn default() -> Self {
+        ScreenBlur {
+            kind: ScreenBlurKind::Zoom,
+            strength: 0.1,
+            center: Vec2::splat(0.5),
+            angle: 0.0,
+            samples: 16,
+        }
+    }
+}
+
+impl ScreenBlur {
+    /// The `blur` and `blur2` rows of fxpost.wgsl's uniform: x the kind (1
+    /// zoom, 2 spin, 3 directional; 0 off), y the strength, zw the centre;
+    /// x the taps, yz the directional offset in uv at t = 1 for a target
+    /// `width` × `height`.
+    pub(crate) fn rows(&self, width: f32, height: f32) -> [[f32; 4]; 2] {
+        let kind = match self.kind {
+            ScreenBlurKind::Zoom => 1.0,
+            ScreenBlurKind::Spin => 2.0,
+            ScreenBlurKind::Directional => 3.0,
+        };
+        let px = self.strength * height / 720.0;
+        let (sin, cos) = self.angle.sin_cos();
+        [
+            [kind, self.strength, self.center.x, self.center.y],
+            [
+                self.samples.clamp(4, 64) as f32,
+                cos * px / width.max(1.0),
+                -sin * px / height.max(1.0),
+                0.0,
+            ],
+        ]
+    }
+}
+
 /// Film grain: luminance-weighted noise, a new pattern every
 /// [`crate::RenderScene::tick`] (so a given tick always has the same grain).
 #[derive(Clone, Copy, Debug, PartialEq)]

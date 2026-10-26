@@ -14,8 +14,8 @@ use og_render::{
     AmbientOcclusion, AoMethod, AoResolution, Beam, CameraShake, ChromaticAberration, ColorAdjust,
     ColorCurve, ColorGrading, Curve, Decal, DepthOfField, DofQuality, FilmGrain, Glow, GodRays,
     JointPalette, LensDistortion, Light2d, Lighting2d, MeshHandle, MorphTargets, MotionBlur,
-    Occluder2d, Outline, ParticleBlend, ParticleSystem, RibbonUv, ScreenFlash, SkinData,
-    SkinnedInstance, Trail, TrailStyle, TrailStyleHandle, Vignette,
+    Occluder2d, Outline, ParticleBlend, ParticleSystem, RibbonUv, ScreenBlur, ScreenBlurKind,
+    ScreenFlash, SkinData, SkinnedInstance, Trail, TrailStyle, TrailStyleHandle, Vignette,
 };
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -259,6 +259,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     post.vignette = None;
     post.chromatic_aberration = None;
     post.lens_distortion = None;
+    post.screen_blur = None;
     post.film_grain = None;
     post.sharpen = None;
     post.flash = None;
@@ -308,6 +309,21 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
                 shutter: f(&p, "motionBlurShutter", 0.5),
                 samples: u(&p, "motionBlurSamples", 12),
                 max_pixels: f(&p, "motionBlurMaxPixels", 40.0),
+            });
+        }
+        let blur_kind = variant(&p["screenBlur"], &["none", "zoom", "spin", "directional"]);
+        let blur_strength = f(&p, "screenBlurStrength", 0.0);
+        if blur_kind > 0 && blur_strength != 0.0 {
+            post.screen_blur = Some(ScreenBlur {
+                kind: [
+                    ScreenBlurKind::Zoom,
+                    ScreenBlurKind::Spin,
+                    ScreenBlurKind::Directional,
+                ][(blur_kind - 1).min(2)],
+                strength: blur_strength,
+                center: vec2(&p["screenBlurCenter"], Vec2::splat(0.5)),
+                angle: f(&p, "screenBlurAngle", 0.0).to_radians(),
+                samples: u(&p, "screenBlurSamples", 16),
             });
         }
         if on(&p, "godRays", false) {

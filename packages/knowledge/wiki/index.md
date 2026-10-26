@@ -121,7 +121,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1241 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1243 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1124,6 +1124,8 @@ Field units the docs and Tune use.
 | [`SaveSlotDesc`](platform.md#type-SaveSlotDesc) | desc struct | platform | — |
 | [`Scheme`](ui.md#type-Scheme) | enum | ui | — |
 | [`ScoreFormat`](ui.md#type-ScoreFormat) | enum | ui | — |
+| [`ScreenBlur`](render.md#type-ScreenBlur) | enum | render | — |
+| [`ScreenBlur()`](render.md#column-ScreenBlur) | column kind | render | — |
 | [`ScreenBox`](probe.md#type-ScreenBox) | struct | probe | — |
 | [`ScreenPoint`](probe.md#type-ScreenPoint) | struct | probe | — |
 | [`ScreenTransitionDesc`](ui.md#type-ScreenTransitionDesc) | desc struct | ui | — |

@@ -236,3 +236,66 @@ metal references are owed to the Mac lane (`OG_GFX_CAPTURE=<scene>`).
   near ones lying lower, by different amounts across the field and from
   frame to frame as the gusts pass. The HUD and the og.ui badge are
   unchanged.
+
+## 5. Screen blur (`PostEffects.screenBlur` … `screenBlurSamples`)
+
+- **What landed.** og-render `ScreenBlur { kind, strength, center, angle,
+  samples }` (`PostEffects::screen_blur`, `ScreenBlurKind` zoom, spin,
+  directional) and `FramePass::ScreenBlur`, `fxpost.wgsl`'s
+  `fs_screen_blur`: one HDR pass after motion blur into `hdr.blur`,
+  before the custom passes, bloom and the tonemap, its parameters in two
+  new rows of the effects' uniform. Each pixel averages `samples` taps at
+  t in -1..1 (tent weights for zoom and spin, Gaussian for directional):
+  zoom at `p + (c − p) s t`, spin at `p` turned about `c` by `s t`
+  radians, directional at `p + (cos a, −sin a) s t` pixels at 720 lines.
+  The IDL's PostEffects gains the enum `screenBlur` (none, zoom, spin,
+  directional; its column) and `screenBlurStrength` (off at 0),
+  `screenBlurCenter` (0.5 0.5), `screenBlurAngle` (degrees),
+  `screenBlurSamples` (16, 4 to 64); og-runtime builds the struct when
+  the kind is not none and the strength not 0.
+- **Decisions.** RedGPU's three effects are one pass here with one
+  strength whose unit follows the kind. Its radial blur turns by an
+  angle that grows with the distance in uv units, an ellipse on a 16:9
+  frame; this spin turns by a fixed angle in pixels, so it follows
+  circles and is a camera's roll. Its directional blur is in CSS pixels
+  times the device ratio; here it is pixels at 720 lines, so a 4K frame
+  blurs as far across as a 720p one. Its centres are offsets in CSS
+  pixels; here a fraction of the frame, as the lens's. The pass sits
+  before bloom so a highlight's streak blooms (after it, the bloom would
+  glow round the sharp highlight under a blurred image), and binds the
+  prepass's targets only when the frame has a prepass: turning it on
+  never adds one.
+- **Tests.** og-tests `effects::screen_blur_taps_where_its_formula_says`:
+  with four taps a white dot on a dark 320×180 frame shows as four
+  copies, each where one tap lands on the dot, all twelve within 0.15 px
+  of the formula solved in the test (zoom 0.4 towards (0.3, 0.6), the
+  copies at 200.6, 73.4 … 290.3, 43.7; spin 0.3 about (0.4, 0.55);
+  directional 160 at 30°, 40 px here, from 258.0, 48 to 206.0, 78). One
+  graph pass while on, none at strength 0. Measured against wrong
+  implementations: the spin turned in uv (RedGPU's) and the directional
+  offset with y flipped both leave a copy where the formula has none.
+  New gfx scene `post-blur`.
+- `crates/og-tests/references/vulkan-cpu/post-blur.png` —
+  `OG_GFX_CAPTURE=post-blur cargo test -p og-tests --test tests
+  gfx::post_blur` (sha256 9187e3cd5501d3c6). Read beside metal's
+  `bloom`: the zoom's centre is left of and above the frame's, by the
+  blue sphere, which stays sharp; the orange and magenta spheres at the
+  sides stretch into ovals along the lines to it, the green and white a
+  little; the floor's checks smear radially into streaks; the bloom
+  glows round the stretched shapes.
+- `blur-run.png` — `og run templates/fx-showcase --size 1280x720
+  --commands "0.5:station:materials;2.0:screenshot:plain.png;
+  2.05:set:og.PostEffects.screenBlur=zoom;2.05:set:og.PostEffects.screenBlurStrength=0.15;
+  2.2:screenshot:zoom.png;2.25:set:og.PostEffects.screenBlur=spin;
+  2.25:set:og.PostEffects.screenBlurStrength=0.06;2.25:set:og.PostEffects.screenBlurCenter=0.5,0.55;
+  2.4:screenshot:spin.png;2.45:set:og.PostEffects.screenBlur=directional;
+  2.45:set:og.PostEffects.screenBlurStrength=40;2.45:set:og.PostEffects.screenBlurAngle=20;
+  2.6:screenshot:directional.png;2.65:quit"`, the four frames at half
+  size (rev 0ab0485e+dirty, 2026-10-26, sha256 b6f903695e056da9). Read:
+  top left the board as it is; top right zoom 0.15, the middle spheres
+  sharp and the outer ones streaked along lines to the centre, the gold
+  row's highlights drawn into dashes; bottom left spin 0.06 about (0.5,
+  0.55), the board's edges smeared along arcs round it and its middle
+  sharp; bottom right directional 40 at 20°, every row streaked up to
+  the right. The HUD and the og.ui badge are sharp in all four: the
+  overlay draws after the post stack.

@@ -143,6 +143,8 @@ pub(crate) struct FxPostUniform {
     pub bands_far: [f32; 4],
     /// Screen-space reflections (`ssr.rs`): `ScreenSpaceReflections::rows`.
     pub ssr: [[f32; 4]; 2],
+    /// The screen blur (`ScreenBlur::rows`).
+    pub blur: [[f32; 4]; 2],
 }
 
 /// `struct Stylise` in stylise.wgsl: the post-tonemap stylisation passes'
@@ -494,6 +496,7 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_dof_blur", HDR_FORMAT),
     ("fs_dof_composite", HDR_FORMAT),
     ("fs_motion_blur", HDR_FORMAT),
+    ("fs_screen_blur", HDR_FORMAT),
     ("fs_godrays_mask", HDR_FORMAT),
     ("fs_godrays_blur", HDR_FORMAT),
     ("fs_depth_bands", HDR_FORMAT),
@@ -1518,8 +1521,12 @@ pub(crate) enum FramePass {
     DofBlur,
     DofComposite,
     MotionBlur,
+    /// The zoom, spin or directional blur of the whole frame
+    /// (`ScreenBlur`), after motion blur.
+    ScreenBlur,
     /// Custom post pass `i` of the frame (`post_custom.rs`): a game's WGSL
-    /// over the lit image, after motion blur, before exposure and bloom.
+    /// over the lit image, after motion blur and the screen blur, before
+    /// exposure and bloom.
     CustomPost(u32),
     GodRaysMask,
     GodRaysBlur,
@@ -1599,6 +1606,7 @@ impl FramePass {
             FramePass::DofBlur => "dof-blur".into(),
             FramePass::DofComposite => "dof-composite".into(),
             FramePass::MotionBlur => "motion-blur".into(),
+            FramePass::ScreenBlur => "screen-blur".into(),
             FramePass::CustomPost(i) => format!("custom-post.{i}"),
             FramePass::GodRaysMask => "god-rays-mask".into(),
             FramePass::GodRaysBlur => "god-rays-blur".into(),
@@ -1677,7 +1685,10 @@ struct LitNames {
     /// `None` when TAA writes the history and nothing sharpens it.
     aa: Option<&'static str>,
     after_dof: Option<&'static str>,
-    /// The lit image the first custom post pass reads (after motion blur).
+    /// The lit image after motion blur (the screen blur reads it).
+    after_mb: Option<&'static str>,
+    /// The lit image the first custom post pass reads (after motion blur
+    /// and the screen blur).
     before_custom: Option<&'static str>,
     last: Option<&'static str>,
 }
@@ -1721,10 +1732,15 @@ fn lit_names(passes: &[FramePass]) -> LitNames {
     } else {
         aa
     };
-    let before_custom = if has(FramePass::MotionBlur) {
+    let after_mb = if has(FramePass::MotionBlur) {
         Some("hdr.mb")
     } else {
         after_dof
+    };
+    let before_custom = if has(FramePass::ScreenBlur) {
+        Some("hdr.blur")
+    } else {
+        after_mb
     };
     let customs = passes
         .iter()
@@ -1740,6 +1756,7 @@ fn lit_names(passes: &[FramePass]) -> LitNames {
         main,
         aa,
         after_dof,
+        after_mb,
         before_custom,
         last,
     }
@@ -1930,6 +1947,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         (FramePass::TaaSharpen, "hdr.sharp"),
         (FramePass::DofComposite, "hdr.dof"),
         (FramePass::MotionBlur, "hdr.mb"),
+        (FramePass::ScreenBlur, "hdr.blur"),
     ] {
         if has(pass) {
             g.transient(name, desc(w, h, HDR_FORMAT, 1, attach_bind));
@@ -2120,6 +2138,16 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 g.pass(name, &[aa, "dof.blur", "lindepth", "gbuffer"], &["hdr.dof"])
             }
             FramePass::MotionBlur => g.pass(name, &[after_dof, "gbuffer", "lindepth"], &["hdr.mb"]),
+            // The prepass's targets are bound when the frame has them
+            // (`fx_group`); the screen blur alone does not ask for one.
+            FramePass::ScreenBlur => {
+                let after_mb = names.after_mb.unwrap_or("history-write");
+                if prepass {
+                    g.pass(name, &[after_mb, "gbuffer", "lindepth"], &["hdr.blur"])
+                } else {
+                    g.pass(name, &[after_mb], &["hdr.blur"])
+                }
+            }
             FramePass::CustomPost(i) => {
                 let read = match i {
                     0 => names.before_custom.unwrap_or("history-write"),
@@ -2638,6 +2666,7 @@ impl FrameGraph {
                 FramePass::MotionBlur => {
                     pair(&|slot| fx_group(stage(names.after_dof, slot), black))
                 }
+                FramePass::ScreenBlur => pair(&|slot| fx_group(stage(names.after_mb, slot), black)),
                 FramePass::GodRaysMask => pair(&|slot| fx_group(source(slot), black)),
                 FramePass::GodRaysBlur => pair(&|_| fx_group(black, self.view("god.mask"))),
                 _ => continue,
@@ -2691,6 +2720,7 @@ impl FrameGraph {
             FramePass::DofBlur => Some(("fs_dof_blur", "dof.blur")),
             FramePass::DofComposite => Some(("fs_dof_composite", "hdr.dof")),
             FramePass::MotionBlur => Some(("fs_motion_blur", "hdr.mb")),
+            FramePass::ScreenBlur => Some(("fs_screen_blur", "hdr.blur")),
             FramePass::GodRaysMask => Some(("fs_godrays_mask", "god.mask")),
             FramePass::GodRaysBlur => Some(("fs_godrays_blur", "god.blur")),
             FramePass::DepthBands => Some(("fs_depth_bands", "hdr.bands")),
@@ -2860,6 +2890,7 @@ impl FrameGraph {
             | FramePass::DofBlur
             | FramePass::DofComposite
             | FramePass::MotionBlur
+            | FramePass::ScreenBlur
             | FramePass::CustomPost(_)
             | FramePass::GodRaysMask
             | FramePass::GodRaysBlur
@@ -2938,6 +2969,7 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
         "hdr.outline",
         "hdr.dof",
         "hdr.mb",
+        "hdr.blur",
         "dof.coc",
         "dof.blur",
         "god.mask",

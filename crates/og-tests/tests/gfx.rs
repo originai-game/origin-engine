@@ -1397,6 +1397,12 @@ fn post_lens_matches_its_reference() {
     check("post-lens");
 }
 
+/// The bloom scene through a zoom blur, bloomed after it.
+#[test]
+fn post_blur_matches_its_reference() {
+    check("post-blur");
+}
+
 /// AgX: the bloom scene's emissive spheres keep their hue in the glow but
 /// their over-exposed cores go towards white, where ACES skews them.
 #[test]
