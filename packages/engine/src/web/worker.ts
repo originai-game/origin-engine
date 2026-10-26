@@ -191,6 +191,9 @@ export class Received {
  */
 export const FETCH_DEADLINE_MS = 300_000;
 
+/** How many of the first group's files the boot fetches at once. */
+export const FETCH_CONCURRENCY = 24;
+
 async function bytesOf(url: string, received?: Received, onChunk?: () => void): Promise<Uint8Array> {
   const r = await fetch(url, typeof AbortSignal?.timeout === "function" ? { signal: AbortSignal.timeout(FETCH_DEADLINE_MS) } : {});
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -279,19 +282,26 @@ export async function preloadBundle(
   let fetched = 0;
   let failed = 0;
   const blobs = new Map<string, Uint8Array>();
+  // At most FETCH_CONCURRENCY in flight: a bundle of thousands of files
+  // fetched all at once fails some with "Failed to fetch" (Chrome runs out
+  // of sockets and buffers).
+  let next = 0;
+  const one = async (o: (typeof listed)[number]) => {
+    const path = `${dir}/${o.file}`;
+    try {
+      const bytes = await bytesOf(path, received, received ? () => progress(received.value, "fetch") : undefined);
+      glue.og_web_put_file(path, bytes);
+      blobs.set(o.id, bytes);
+    } catch (e) {
+      failed++;
+      glue.og_web_fail_file(path, `cannot fetch ${path} (${e instanceof Error ? e.message : String(e)})`);
+    }
+    ++fetched;
+    if (!received) progress(0.1 + 0.7 * (fetched / Math.max(1, listed.length)), "fetch");
+  };
   await Promise.all(
-    listed.map(async (o) => {
-      const path = `${dir}/${o.file}`;
-      try {
-        const bytes = await bytesOf(path, received, received ? () => progress(received.value, "fetch") : undefined);
-        glue.og_web_put_file(path, bytes);
-        blobs.set(o.id, bytes);
-      } catch (e) {
-        failed++;
-        glue.og_web_fail_file(path, `cannot fetch ${path} (${e instanceof Error ? e.message : String(e)})`);
-      }
-      ++fetched;
-      if (!received) progress(0.1 + 0.7 * (fetched / Math.max(1, listed.length)), "fetch");
+    Array.from({ length: Math.min(FETCH_CONCURRENCY, listed.length) }, async () => {
+      while (next < listed.length) await one(listed[next++]!);
     }),
   );
   const textures = listed.filter((o) => o.type === "og.Texture" && blobs.has(o.id)).map((o) => ({ id: o.id, bytes: blobs.get(o.id)! }));

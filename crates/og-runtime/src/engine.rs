@@ -1191,9 +1191,15 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         let i = engine.assets.borrow_mut().open_bundle("cooked");
         engine.assets.borrow_mut().default_bundle = Some(i);
     }
+    // With `deferStart` the scene waits for the first tick boundary too: the
+    // web host transcodes the bundle's Basis textures only once its renderer
+    // is attached, and a scene spawned before that finds none of them.
+    let defer = options["deferStart"].as_bool().unwrap_or(false);
     if let Some(path) = a.game.scenes.get(&a.game.scene) {
         engine.state.borrow_mut().boot_scene = Some(path.clone());
-        boot_scene(&engine);
+        if !defer {
+            boot_scene(&engine);
+        }
     }
     // GameDesc.look's antialias, before the host attaches its renderer.
     if !a.game.look.is_empty() {
@@ -1201,7 +1207,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     }
     // `deferStart`: the host attaches its renderer and reports the viewport
     // first; start then runs at the first tick boundary.
-    if !options["deferStart"].as_bool().unwrap_or(false) {
+    if !defer {
         run_start(&engine)?;
     }
     Ok(engine_id)

@@ -257,6 +257,9 @@ pub(crate) struct Push {
     pub point: Option<Vec3>,
 }
 
+/// The host's geometry by handle, for [`PhysicsSystem::set_mesh_source`].
+pub type MeshSource = Arc<dyn Fn(u64) -> Option<MeshDesc> + Send + Sync>;
+
 /// What the system keeps between ticks: the simulation of the active
 /// profile (world state, saved by [`PhysicsState`]), registered meshes and
 /// the shapes built from them (assets and caches).
@@ -270,6 +273,9 @@ pub(crate) struct Shared {
     /// built from them are rebuilt.
     pub stale_meshes: BTreeSet<u64>,
     pub meshes: BTreeMap<u64, Arc<MeshDesc>>,
+    /// Where a collider's mesh nobody registered comes from
+    /// ([`PhysicsSystem::set_mesh_source`]).
+    pub mesh_source: Option<MeshSource>,
     /// Height fields by handle (assets, like meshes).
     pub heightfields: BTreeMap<u64, Arc<HeightfieldDesc>>,
     #[cfg(feature = "physics3d")]
@@ -701,6 +707,16 @@ impl PhysicsSystem {
         #[cfg(feature = "physics2d")]
         shared.shapes2.retain(|k, _| k.mesh != handle);
         Ok(())
+    }
+
+    /// What a convex or triangle-mesh collider whose `mesh` was never given
+    /// to [`set_mesh`](Self::set_mesh) is built from: the host's geometry
+    /// under that handle, asked for once, when a collider first needs it
+    /// (`None`: no such geometry, the collider is refused as before). A host
+    /// that holds many geometries few colliders use (a large scene's
+    /// meshes) need not copy every one into physics up front.
+    pub fn set_mesh_source(&self, source: Option<MeshSource>) {
+        lock(&self.shared).mesh_source = source;
     }
 
     /// Registers (or replaces) the height field `handle` that

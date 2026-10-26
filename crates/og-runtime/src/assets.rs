@@ -435,7 +435,7 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
     let mut assets = eng.assets.borrow_mut();
     let payload = Payload::Gltf {
         scenes: model.scenes.len() as u32,
-        geometries,
+        geometries: geometries.clone(),
         materials,
     };
     let index = match into {
@@ -456,14 +456,22 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
         },
     );
     assets.by_path.insert(format!("gltf:{id}"), index);
-    // Its geometries become physics meshes under their Geometry handles, for
-    // convex and triangle-mesh colliders.
-    let meshes: Vec<(u64, og_physics::MeshDesc)> = rs
-        .geometries
-        .iter()
-        .enumerate()
-        .filter_map(|(g, m)| Some((handle(g), super::modules::mesh_of(rs.scene.mesh(*m)?))))
-        .collect();
+    // Its geometries are physics meshes under their Geometry handles, for
+    // convex and triangle-mesh colliders: built when a collider first names
+    // one (modules::geometry_mesh, physics' mesh source), not copied for
+    // every geometry here. A streamed model's are registered now, while they
+    // are its proxy's, since physics collides with the proxy.
+    let meshes: Vec<(u64, og_physics::MeshDesc)> = if group.is_some() {
+        geometries
+            .iter()
+            .filter_map(|&h| {
+                let m = *rs.geometries.get(index_of(h as f64)?)?;
+                Some((h, super::modules::mesh_of(rs.scene.mesh(m)?)))
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
     drop(assets);
     drop(rs);
     for (h, mesh) in meshes {
