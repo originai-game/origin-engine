@@ -13,7 +13,7 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
-## Unreleased
+## 0.6.4 — 2026-10-27
 
 No IDL member changed; the simulation is unchanged (the golden replays).
 

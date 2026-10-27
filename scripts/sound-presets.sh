@@ -18,7 +18,7 @@ out="$OG_ROOT/tests/evidence/E6/audio/presets.json"
 rm -rf "$work"
 mkdir -p "$work/assets/sfx" "$work/wav" "$work/src" "$(dirname "$out")"
 printf 'export default {};\n' > "$work/src/main.ts"
-printf 'type project\nversion 1\n---\nname "Sound presets"\nid "sound-presets"\nengine "0.6.3"\nentry "src/main.ts"\nprofile "2d"\n' > "$work/project.ogt"
+printf 'type project\nversion 1\n---\nname "Sound presets"\nid "sound-presets"\nengine "0.6.4"\nentry "src/main.ts"\nprofile "2d"\n' > "$work/project.ogt"
 "$og" sfx library "$work/assets/sfx"
 "$og" cook "$work" >/dev/null
 sha() { shasum -a 256 "$1" | cut -d' ' -f1; }
