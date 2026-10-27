@@ -342,7 +342,7 @@ with `og compare` before deleting the factory: a region that moved is a
 part the asset places differently.
 
 **A gray level painted from views** is a different job from a prop: a
-blockout glb (uv-mapped, y up) whose surfaces get one texture painted by
+blockout glb (y up; uvs optional, charted by xatlas when missing) whose surfaces get one texture painted by
 an image model from cameras a player could stand at. `og bake projection`
 does the engine half on the CPU (`init`, `plan`, `prepare` per view,
 `project` the model's picture, `holes`, `export` a textured glb;

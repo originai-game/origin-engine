@@ -578,12 +578,14 @@ Baked lighting, volumetrics and area lights (depth S7).
   entry points) and physical (`lightmap_physical.wgsl`).
 - **Projection painting** (`og bake projection <step> --run <dir>`,
   `og-bake/src/projection`). A native CPU tool, like the lightmap bake,
-  that turns a gray, uv-mapped level glb into a textured one by painting
+  that turns a gray level glb into a textured one by painting
   it from views: the trompe workflow (Patch-gg/trompe, Apache-2.0)
   without Blender or a GPU. The image model stays outside the engine; a
   driver (the platform's `level-texturing` skill) runs the steps and calls
   it between `prepare` and `project`. `init` rasterises the level's
-  TEXCOORD_0 into texels (world position, normal, triangle) with a BVH;
+  TEXCOORD_0 into texels (world position, normal, triangle) with a BVH
+  (a level without TEXCOORD_0 is charted by xatlas at one texel density
+  into one page first, and the run keeps that charted level);
   `plan` picks cameras in paint order from walkable points on the
   floors (ground, then roof passes and an aerial ring) by greedy coverage
   of a probe render; `prepare` ray-casts a view, renders its clay (ambient

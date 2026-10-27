@@ -25,6 +25,7 @@ use og_bake::projection::{
     ClayLight, GBuffer, Level, Paint, Texels, ViewKind, ViewSpec, clay, padded, prepare, project,
     silhouette, unpainted_pixels,
 };
+use og_bake::{PackSettings, UnwrapMesh, unwrap};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -32,7 +33,8 @@ use std::time::Instant;
 
 const USAGE: &str = "usage: og bake projection <step> --run <dir> [options]
   init <level.glb> [--size N] [--view-size N] [--ratio R]
-                     load the level (y up, TEXCOORD_0) and rasterise its texels
+                     load the level (y up; without TEXCOORD_0 it is charted
+                     by xatlas) and rasterise its texels
   plan [--views N] [--spacing M] [--aerial N] [--roofs N] [--seed N]
                      choose the cameras in paint order into plan.json
   prepare --view K   render view K against the texture so far: state.png,
@@ -127,8 +129,9 @@ pub fn run(args: &[&str]) -> ExitCode {
 // ---- the level -------------------------------------------------------------
 
 /// The level's triangles in world space, labelled by material name (else
-/// mesh name), with TEXCOORD_0.
-pub fn load_level(path: &Path) -> Result<Level, String> {
+/// mesh name), with TEXCOORD_0, and whether every primitive had one (when
+/// not, the uvs are zero and the level needs [`unwrap_level`]).
+pub fn load_level(path: &Path) -> Result<(Level, bool), String> {
     let (doc, buffers, _) = gltf::import(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let (mut pos, mut nrm, mut uvs, mut idx, mut tri_label) =
         (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
@@ -207,13 +210,172 @@ pub fn load_level(path: &Path) -> Result<Level, String> {
     if idx.is_empty() {
         return Err("the level has no triangles".into());
     }
-    if missing_uv {
-        return Err("some primitives have no TEXCOORD_0: the level needs uvs to paint into".into());
-    }
     if nrm.contains(&Vec3::ZERO) {
         nrm.clear();
     }
-    Ok(Level::new(pos, nrm, uvs, idx, tri_label, labels))
+    Ok((
+        Level::new(pos, nrm, uvs, idx, tri_label, labels),
+        !missing_uv,
+    ))
+}
+
+/// The level with new uvs from xatlas, charted in world space at one texel
+/// density and packed into one `size`² page: the vertices are split along
+/// the chart seams, the triangles and their labels keep their order.
+pub fn unwrap_level(level: &Level, size: u32) -> Result<Level, String> {
+    let mesh = UnwrapMesh {
+        positions: level.positions.iter().map(|p| p.to_array()).collect(),
+        normals: level.normals.iter().map(|n| n.to_array()).collect(),
+        indices: level.indices.clone(),
+    };
+    let area: f32 = level
+        .indices
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|t| {
+            let [a, b, c] = t.map(|i| level.positions[i as usize]);
+            (b - a).cross(c - a).length() * 0.5
+        })
+        .sum();
+    let padding = (size / 1024).max(2);
+    // Charts fill about half a page; shrink the density until they fit one.
+    let mut tpu = (0.5 * (size as f32).powi(2) / area.max(1e-6)).sqrt();
+    for _ in 0..16 {
+        let settings = PackSettings {
+            texels_per_unit: tpu,
+            max_size: size,
+            padding,
+        };
+        let a = unwrap(std::slice::from_ref(&mesh), &settings)?;
+        if a.pages == 1 && a.width <= size && a.height <= size {
+            let m = &a.meshes[0];
+            if m.indices.len() != level.indices.len() {
+                return Err(format!(
+                    "xatlas returned {} indices for {}",
+                    m.indices.len(),
+                    level.indices.len()
+                ));
+            }
+            let side = a.width.max(a.height) as f32;
+            let at = |v: &og_bake::AtlasVertex| v.xref as usize;
+            let normals = if level.normals.is_empty() {
+                Vec::new()
+            } else {
+                m.vertices.iter().map(|v| level.normals[at(v)]).collect()
+            };
+            return Ok(Level::new(
+                m.vertices.iter().map(|v| level.positions[at(v)]).collect(),
+                normals,
+                m.vertices.iter().map(|v| Vec2::from(v.uv) / side).collect(),
+                m.indices.clone(),
+                level.triangle_label.clone(),
+                level.labels.clone(),
+            ));
+        }
+        tpu *= 0.85;
+    }
+    Err(format!(
+        "xatlas could not pack the level into one {size}² page"
+    ))
+}
+
+/// A binary glTF of `level` as it stands: one node, one primitive per label
+/// (a material of that name), world-space positions, normals when it has
+/// them, TEXCOORD_0.
+pub fn level_glb(level: &Level) -> Vec<u8> {
+    let mut bin: Vec<u8> = Vec::new();
+    let mut views = Vec::new();
+    let mut accessors = Vec::new();
+    let mut push = |bin: &mut Vec<u8>, bytes: Vec<u8>, accessor: Value| {
+        while !bin.len().is_multiple_of(4) {
+            bin.push(0);
+        }
+        views.push(json!({"buffer": 0, "byteOffset": bin.len(), "byteLength": bytes.len()}));
+        bin.extend(bytes);
+        let mut acc = accessor;
+        acc["bufferView"] = json!(views.len() - 1);
+        accessors.push(acc);
+        accessors.len() - 1
+    };
+    let f32s = |v: &mut dyn Iterator<Item = f32>| v.flat_map(f32::to_le_bytes).collect::<Vec<u8>>();
+    let n = level.positions.len();
+    let position = push(
+        &mut bin,
+        f32s(&mut level.positions.iter().flat_map(|p| p.to_array())),
+        json!({"componentType": 5126, "count": n, "type": "VEC3",
+            "min": level.min.to_array(), "max": level.max.to_array()}),
+    );
+    let normal = (!level.normals.is_empty()).then(|| {
+        push(
+            &mut bin,
+            f32s(&mut level.normals.iter().flat_map(|p| p.to_array())),
+            json!({"componentType": 5126, "count": n, "type": "VEC3"}),
+        )
+    });
+    let uv = push(
+        &mut bin,
+        f32s(&mut level.uvs.iter().flat_map(|p| p.to_array())),
+        json!({"componentType": 5126, "count": n, "type": "VEC2"}),
+    );
+    let mut primitives = Vec::new();
+    for (l, _) in level.labels.iter().enumerate() {
+        let tris: Vec<u32> = level
+            .indices
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .zip(&level.triangle_label)
+            .filter(|(_, lab)| **lab as usize == l)
+            .flat_map(|(t, _)| *t)
+            .collect();
+        if tris.is_empty() {
+            continue;
+        }
+        let count = tris.len();
+        let indices = push(
+            &mut bin,
+            tris.iter().flat_map(|i| i.to_le_bytes()).collect(),
+            json!({"componentType": 5125, "count": count, "type": "SCALAR"}),
+        );
+        let mut attributes = json!({"POSITION": position, "TEXCOORD_0": uv});
+        if let Some(nrm) = normal {
+            attributes["NORMAL"] = json!(nrm);
+        }
+        primitives.push(json!({"attributes": attributes, "indices": indices, "material": l}));
+    }
+    let doc = json!({
+        "asset": {"version": "2.0", "generator": "og bake projection"},
+        "scene": 0, "scenes": [{"nodes": [0]}], "nodes": [{"mesh": 0, "name": "level"}],
+        "meshes": [{"name": "level", "primitives": primitives}],
+        "materials": level.labels.iter().map(|l| json!({"name": l})).collect::<Vec<_>>(),
+        "buffers": [{"byteLength": bin.len()}],
+        "bufferViews": views, "accessors": accessors,
+    });
+    glb_container(&serde_json::to_vec(&doc).unwrap_or_default(), &bin)
+}
+
+/// The GLB container around a JSON chunk and a binary chunk.
+fn glb_container(json: &[u8], bin: &[u8]) -> Vec<u8> {
+    let mut js = json.to_vec();
+    while !js.len().is_multiple_of(4) {
+        js.push(b' ');
+    }
+    let mut bin = bin.to_vec();
+    while !bin.len().is_multiple_of(4) {
+        bin.push(0);
+    }
+    let mut out = Vec::with_capacity(28 + js.len() + bin.len());
+    out.extend(b"glTF");
+    out.extend(2u32.to_le_bytes());
+    out.extend(((12 + 8 + js.len() + 8 + bin.len()) as u32).to_le_bytes());
+    out.extend((js.len() as u32).to_le_bytes());
+    out.extend(b"JSON");
+    out.extend(js);
+    out.extend((bin.len() as u32).to_le_bytes());
+    out.extend(b"BIN\0");
+    out.extend(bin);
+    out
 }
 
 struct Run {
@@ -248,7 +410,12 @@ fn open_run(dir: &Path, a: &Args) -> Result<Run, String> {
 
 impl Run {
     fn level(&self) -> Result<Level, String> {
-        load_level(&self.dir.join("level.glb"))
+        match load_level(&self.dir.join("level.glb"))? {
+            (level, true) => Ok(level),
+            (_, false) => {
+                Err("the run's level.glb has no uvs: run `og bake projection init` again".into())
+            }
+        }
     }
     fn texels(&self) -> Result<Texels, String> {
         let f = std::fs::File::open(self.dir.join("texels.bin"))
@@ -347,9 +514,19 @@ fn init(dir: &Path, a: &Args) -> Result<Value, String> {
         return Err("--size must be 256..16384 and --view-size 128..4096".into());
     }
     let t0 = Instant::now();
-    let level = load_level(Path::new(src))?;
+    let (level, has_uvs) = load_level(Path::new(src))?;
     std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-    std::fs::copy(src, dir.join("level.glb")).map_err(|e| format!("{src}: {e}"))?;
+    // A level without uvs is charted here; the run's level.glb is then the
+    // charted geometry, which every later step and the export read.
+    let level = if has_uvs {
+        std::fs::copy(src, dir.join("level.glb")).map_err(|e| format!("{src}: {e}"))?;
+        level
+    } else {
+        let charted = unwrap_level(&level, size)?;
+        std::fs::write(dir.join("level.glb"), level_glb(&charted))
+            .map_err(|e| format!("level.glb: {e}"))?;
+        charted
+    };
     let texels = Texels::rasterise(&level, size, threads);
     let f =
         std::fs::File::create(dir.join("texels.bin")).map_err(|e| format!("texels.bin: {e}"))?;
@@ -358,7 +535,7 @@ fn init(dir: &Path, a: &Args) -> Result<Value, String> {
         .map_err(|e| format!("texels.bin: {e}"))?;
     let _ = std::fs::remove_file(dir.join("paint.bin"));
     let info = json!({
-        "size": size, "viewSize": view_size, "ratio": ratio,
+        "size": size, "viewSize": view_size, "ratio": ratio, "unwrapped": !has_uvs,
         "triangles": level.triangles(), "labels": level.labels,
         "bounds": [level.min.to_array(), level.max.to_array()],
         "texels": texels.len(), "uvCoverage": texels.len() as f64 / (size as f64 * size as f64),
@@ -671,20 +848,6 @@ pub fn with_texture(glb: &[u8], png: &[u8]) -> Result<Vec<u8>, String> {
             pbr["roughnessFactor"] = json!(0.9);
         }
     }
-    let mut text = serde_json::to_vec(&doc).map_err(|e| e.to_string())?;
-    while text.len() % 4 != 0 {
-        text.push(b' ');
-    }
-    let total = 12 + 8 + text.len() + 8 + bin.len();
-    let mut out = Vec::with_capacity(total);
-    out.extend_from_slice(b"glTF");
-    out.extend_from_slice(&2u32.to_le_bytes());
-    out.extend_from_slice(&(total as u32).to_le_bytes());
-    out.extend_from_slice(&(text.len() as u32).to_le_bytes());
-    out.extend_from_slice(&0x4E4F_534Au32.to_le_bytes());
-    out.extend_from_slice(&text);
-    out.extend_from_slice(&(bin.len() as u32).to_le_bytes());
-    out.extend_from_slice(&0x004E_4942u32.to_le_bytes());
-    out.extend_from_slice(&bin);
-    Ok(out)
+    let text = serde_json::to_vec(&doc).map_err(|e| e.to_string())?;
+    Ok(glb_container(&text, &bin))
 }
