@@ -491,15 +491,20 @@ fn shared_hash(snapshot: &[u8]) -> Result<u64, String> {
     Snapshot::decode(snapshot).map(|s| s.shared_hash())
 }
 
-pub fn og_net_hash(world: u32) -> String {
-    let bytes = if let Some(f) = running(world) {
+/// The world's snapshot bytes (og-ecs's format), mid-tick or between
+/// ticks: what og.net hashes, and `og replay` (og-host-node) hashes and diffs.
+pub fn world_snapshot_bytes(world: u32) -> Result<Vec<u8>, String> {
+    if let Some(f) = running(world) {
         // SAFETY: the frame is published while its system runs.
-        unsafe { f.ctx() }.snapshot()
-    } else {
-        match engine_of(world).and_then(|e| e.world().map(|w| w.snapshot())) {
-            Ok(b) => b,
-            Err(e) => return json!(format!("error: {e}")).to_string(),
-        }
+        return Ok(unsafe { f.ctx() }.snapshot());
+    }
+    engine_of(world).and_then(|e| e.world().map(|w| w.snapshot()))
+}
+
+pub fn og_net_hash(world: u32) -> String {
+    let bytes = match world_snapshot_bytes(world) {
+        Ok(b) => b,
+        Err(e) => return json!(format!("error: {e}")).to_string(),
     };
     match shared_hash(&bytes) {
         Ok(h) => json!(format!("{h:016x}")).to_string(),

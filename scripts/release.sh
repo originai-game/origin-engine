@@ -3,7 +3,7 @@
 # packages, release tarballs, the install test, and the publish.
 #
 #   scripts/release.sh check                    every occurrence of the version equals packages/engine's
-#   scripts/release.sh bump <version>           write the version everywhere (scripts/release-bump.ts), Cargo.lock through cargo update
+#   scripts/release.sh bump <version>           the golden replays (scripts/replay-gate.ts), then write the version everywhere (scripts/release-bump.ts), Cargo.lock through cargo update
 #   scripts/release.sh pack                     OG_RELEASE=1 packages/engine/scripts/pack.sh --linux-x64 (the engine with its knowledge/,
 #                                               this machine's platform package and linux-x64's), then @origingame/create-game:
 #                                               dist/release/<version>/*.tgz and manifest.json (sizes, sha256, the commit built from).
@@ -48,6 +48,10 @@ cmd_check() { bun scripts/release-bump.ts --check; }
 
 cmd_bump() {
   local v="${1:?scripts/release.sh bump <version>}"
+  # The golden replays first (docs/release.md §3): their hashes unchanged,
+  # or changelog.json's unreleased.simulation says "changed", before the
+  # bump moves unreleased into the version's entry.
+  bun scripts/replay-gate.ts || { og_err "release: the golden replays diverged (scripts/replay-gate.ts); set unreleased.simulation to \"changed\" in packages/engine/changelog.json if that is meant, and re-record with --update"; return 1; }
   bun scripts/release-bump.ts "$v" || return 1
   cargo update --workspace --offline -q || { og_err "release: cargo update --workspace failed (Cargo.lock)"; return 1; }
   # tools/wasm-determinism is its own workspace with its own lock on the

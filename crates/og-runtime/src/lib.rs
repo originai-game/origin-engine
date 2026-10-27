@@ -145,6 +145,7 @@ pub use net::{
     og_net_hash, og_net_status, og_net_submit, og_platform_room_create, og_platform_room_info,
     og_platform_room_join, og_platform_room_leave, og_platform_room_message,
     og_platform_room_peers, og_platform_room_send, og_room_deliver, og_room_set_host, og_room_take,
+    world_snapshot_bytes,
 };
 /// The counting allocator the hosts install (`#[global_allocator]`), for the probe's `memory`.
 pub use og_core::alloc::Counting as CountingAlloc;
@@ -165,7 +166,7 @@ pub use platform::{
 };
 #[cfg(not(feature = "publish"))]
 pub use record::{render_frame, render_restore, render_snapshot};
-pub use save::{og_world_restore, og_world_snapshot};
+pub use save::{og_world_restore, og_world_snapshot, save_snapshot_bytes};
 pub use skeleton2d::{og_anim_rig2d_info, og_anim_skeleton2d_boxes, og_load_rig2d};
 pub use stream::{
     og_stream_budget, og_stream_release, og_stream_request, og_stream_set_budget, og_stream_status,

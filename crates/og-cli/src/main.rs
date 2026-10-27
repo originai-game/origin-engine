@@ -27,6 +27,7 @@ mod project;
 mod publish;
 mod relay;
 mod render;
+mod replay;
 mod run;
 mod serve_relay;
 mod sfx;
@@ -59,6 +60,13 @@ commands:
                       or for the iPhone on 0.0.0.0 with the LAN URL printed; --host names the
                       address), pass the play gate and time the first frame and the frames;
                       report.md and device.json in --out (default <project>/og-out/device)
+  replay record [project] --commands \"t:action[:args];...\" | --commands-file <f> [--ticks N] [--seed S]
+      [--clock <UTC ms>] [--locale <tag>] [--keyframe-every K] --out <trace.json> [--json]
+  replay compare <trace.json> [project] [--json]
+                      record the world's portable hash after every tick of a scripted headless run
+                      (and its save every K ticks, default 30), or replay a trace with this engine
+                      and report the first divergent tick with the keyframe's diff; compare exits
+                      0 the same, 3 diverged
   render [project] --commands \"t:action[:args];...\" | --timeline <name> [--fps F] [--from S] [--to S]
       [--size WxH] [--out DIR|out.mp4|out.webm] [--frames png|jpg] [--audio] [--contact-sheet COLS]
       [--jobs N] [--seed S] [--json] [--no-check]
@@ -148,6 +156,7 @@ fn main() -> ExitCode {
         ["doctor", rest @ ..] => doctor::run(rest),
         ["upgrade", rest @ ..] => upgrade::run(rest),
         ["run", rest @ ..] => run::run(rest),
+        ["replay", rest @ ..] => replay::run(rest),
         ["render", rest @ ..] => render::run(rest),
         ["compare", rest @ ..] => compare::run(rest),
         ["migrate", rest @ ..] => migrate::run(rest),

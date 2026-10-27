@@ -39,6 +39,8 @@ mod host_e6;
 mod host_p2;
 #[cfg(not(feature = "publish"))]
 mod render;
+#[cfg(not(feature = "publish"))]
+mod replay;
 mod room;
 
 use napi::bindgen_prelude::{FromNapiValue, ToNapiValue, TypeName, ValidateNapiValue, ValueType};
