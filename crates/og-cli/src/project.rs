@@ -181,17 +181,37 @@ pub fn package_version(package: &Path) -> Option<String> {
     v["version"].as_str().map(str::to_string)
 }
 
+/// A version's numbers (major, minor, patch); a pre-release suffix is
+/// left out. `None` for anything else.
+pub fn semver(v: &str) -> Option<(u64, u64, u64)> {
+    let core = v.trim().trim_start_matches('v').split(['-', '+']).next()?;
+    let mut it = core.split('.').map(|p| p.parse::<u64>().ok());
+    let r = (it.next()??, it.next()??, it.next()??);
+    it.next().is_none().then_some(r)
+}
+
+/// Whether a game pinned at `pinned` runs as written on `installed`
+/// (docs/release.md §3): the same minor (major too) and not older. A patch
+/// is compatible by the version policy; another minor may carry breaks.
+pub fn compatible(pinned: &str, installed: &str) -> bool {
+    match (semver(pinned), semver(installed)) {
+        (Some(p), Some(i)) => p.0 == i.0 && p.1 == i.1 && i.2 >= p.2,
+        _ => false,
+    }
+}
+
 /// What `og run`, `og test`, `og build`, `og dev` and `og polish` print to
 /// stderr when the project pins another engine version than the installed
 /// package (docs/release.md §3): the installed package runs; the pin is the
 /// author's record of what the game was written against, and moving it is
-/// an explicit edit. `None` when they agree or either is unknown.
+/// an explicit edit (`og upgrade`). `None` when they agree, when the
+/// installed one is a compatible patch, or either is unknown.
 pub fn pin_notice(project: &Project, package: &Path) -> Option<String> {
     let pinned = project.engine.as_deref()?;
     let installed = package_version(package)?;
-    (pinned != installed).then(|| {
+    (pinned != installed && !compatible(pinned, &installed)).then(|| {
         format!(
-            "project.ogt pins engine \"{pinned}\" and the installed @origingame/engine is {installed}: the installed one runs; when the game is written against it, set `engine \"{installed}\"` in project.ogt, or install the pinned version (bun add @origingame/engine@{pinned})"
+            "project.ogt pins engine \"{pinned}\" and the installed @origingame/engine is {installed}, another minor (or older): the installed one runs; `og upgrade` moves the game to it and lists what to edit, or install the pinned version (bun add @origingame/engine@{pinned})"
         )
     })
 }

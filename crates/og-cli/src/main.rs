@@ -33,6 +33,7 @@ mod sfx;
 mod style;
 mod test;
 mod trace;
+mod upgrade;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -112,8 +113,13 @@ commands:
   relay [--port P] [--host <ip>]
                       a local WebSocket relay for rooms: `og run --room ws://127.0.0.1:P/<room>`
                       processes join <room> and play together (og.net's lockstep)
-  doctor              check bun, the engine package, the native addon, the wasm, a headless
-                      renderer, and (in the engine repository) the build toolchain, naming each fix
+  doctor [--json]     check bun, the engine package, the native addon, the wasm, a headless
+                      renderer, and (in the engine repository) the build toolchain, naming each fix;
+                      --json adds the pin: {pinned, installed, compatible} (same minor, installed >= pinned)
+  upgrade [project] [--to <version>] [--dry-run] [--json]
+                      move project.ogt's engine pin and package.json's dependency to the installed
+                      engine (or --to), apply the changelog's codemods for the versions crossed and
+                      list what needs a hand edit; exit 0 done, 3 hand edits listed, 1 failed
   api gen [--wiki] [--root <dir>]
                       regenerate the IDL outputs (packages/engine/{types,schema}, the hosts' glue,
                       the knowledge wiki); --wiki writes only the wiki
@@ -140,6 +146,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         ["doctor", rest @ ..] => doctor::run(rest),
+        ["upgrade", rest @ ..] => upgrade::run(rest),
         ["run", rest @ ..] => run::run(rest),
         ["render", rest @ ..] => render::run(rest),
         ["compare", rest @ ..] => compare::run(rest),

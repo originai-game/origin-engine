@@ -100,47 +100,89 @@ const TOOLS: &[Tool] = &[
     },
 ];
 
+/// Where the checks go: lines on stdout, or one JSON object (`--json`).
+struct Out {
+    json: bool,
+    checks: Vec<serde_json::Value>,
+    problems: usize,
+}
+
+impl Out {
+    /// One check: `status` (ok, missing, differs, broken, optional, skipped,
+    /// none), what it is about, the detail and, for a problem, its fix.
+    fn check(&mut self, status: &str, name: &str, detail: &str, fix: Option<String>) {
+        if matches!(status, "missing" | "differs" | "broken") {
+            self.problems += 1;
+        }
+        if self.json {
+            let mut c = serde_json::json!({ "status": status, "name": name, "detail": detail });
+            if let Some(f) = &fix {
+                c["fix"] = serde_json::json!(f);
+            }
+            self.checks.push(c);
+        } else {
+            println!("{status:<8} {name:<13} {detail}");
+            if let Some(f) = fix {
+                println!("         fix: {f}");
+            }
+        }
+    }
+
+    fn say(&self, line: &str) {
+        if !self.json {
+            println!("{line}");
+        }
+    }
+}
+
 pub fn run(args: &[&str]) -> ExitCode {
     // `og doctor --project <dir> [--json]`: the project's diagnostics.
     if args.contains(&"--project") {
         return crate::doctor_project::run(args);
     }
-    if let Some(a) = args.first() {
+    let json = args.contains(&"--json");
+    if let Some(a) = args.iter().find(|a| **a != "--json") {
         eprintln!(
-            "og doctor: unexpected argument `{a}`; og doctor takes none (or --project <dir> [--json])."
+            "og doctor: unexpected argument `{a}`; og doctor takes --json (or --project <dir> [--json])."
         );
         return ExitCode::from(2);
     }
+    let mut out = Out {
+        json,
+        checks: Vec::new(),
+        problems: 0,
+    };
     let cwd = std::env::current_dir().unwrap_or_else(|_| ".".into());
     let root = crate::find_root(&cwd);
     let toolchain = root.as_deref().and_then(rust_channel);
     let bindgen = root.as_deref().and_then(wasm_bindgen_lock);
     let tsrs = root.as_deref().and_then(tsrs_version);
 
-    println!("og doctor (og {})", crate::VERSION);
+    out.say(&format!("og doctor (og {})", crate::VERSION));
     match &root {
         Some(r) => {
-            println!("repository  {}", r.display());
-            println!(
+            out.say(&format!("repository  {}", r.display()));
+            out.say(&format!(
                 "pinned      rust {} (rust-toolchain.toml), wasm-bindgen {} (Cargo.lock), tsrs {} (TSRS_VERSION)",
                 toolchain.as_deref().unwrap_or("not pinned"),
                 bindgen.as_deref().unwrap_or("not locked"),
                 tsrs.as_deref().unwrap_or("not pinned")
-            );
+            ));
         }
-        None => println!(
+        None => out.say(&format!(
             "repository  none above {}; versions are not compared with pins",
             cwd.display()
-        ),
+        )),
     }
 
-    let mut problems = 0;
     let bun = version_of("bun", root.as_deref().unwrap_or(&cwd)).is_some();
     for tool in TOOLS {
         if tool.repo_only && root.is_none() {
-            println!(
-                "skipped  {:<13} {} (only inside the engine repository)",
-                tool.name, tool.role
+            out.check(
+                "skipped",
+                tool.name,
+                &format!("{} (only inside the engine repository)", tool.role),
+                None,
             );
             continue;
         }
@@ -148,7 +190,7 @@ pub fn run(args: &[&str]) -> ExitCode {
             Pin::RustToolchain => toolchain.as_deref(),
             Pin::WasmBindgenLock => bindgen.as_deref(),
             Pin::TsrsVersion => {
-                problems += tsrs_check(tool, tsrs.as_deref(), &cwd);
+                tsrs_check(&mut out, tool, tsrs.as_deref(), &cwd);
                 continue;
             }
             Pin::None => None,
@@ -157,60 +199,78 @@ pub fn run(args: &[&str]) -> ExitCode {
         let found = version_of(tool.name, root.as_deref().unwrap_or(&cwd));
         match (found, pin) {
             (None, _) if tool.name == "node" && bun => {
-                println!(
-                    "optional {:<13} not installed; bun loads the addon",
-                    tool.name
+                out.check(
+                    "optional",
+                    tool.name,
+                    "not installed; bun loads the addon",
+                    None,
                 );
             }
-            (None, _) => {
-                problems += 1;
-                println!("missing  {:<13} {}", tool.name, tool.role);
-                println!("         fix: {}", (tool.install)(pin));
-            }
-            (Some(v), Some(p)) if v != p => {
-                problems += 1;
-                println!("differs  {:<13} {v}, pinned {p}", tool.name);
-                println!("         fix: {}", (tool.install)(Some(p)));
-            }
-            (Some(v), _) => println!("ok       {:<13} {v}", tool.name),
+            (None, _) => out.check("missing", tool.name, tool.role, Some((tool.install)(pin))),
+            (Some(v), Some(p)) if v != p => out.check(
+                "differs",
+                tool.name,
+                &format!("{v}, pinned {p}"),
+                Some((tool.install)(Some(p))),
+            ),
+            (Some(v), _) => out.check("ok", tool.name, &v, None),
         }
     }
     // ffmpeg: og render's video (absent, og render writes frames only).
     match crate::render::ffmpeg() {
-        Some((bin, v)) => println!(
-            "ok       {:<13} {v} ({}; og render encodes video)",
+        Some((bin, v)) => out.check(
+            "ok",
             "ffmpeg",
-            bin.display()
+            &format!("{v} ({}; og render encodes video)", bin.display()),
+            None,
         ),
-        None => {
-            println!(
-                "optional {:<13} not found (OG_FFMPEG or PATH): og render writes frames only",
-                "ffmpeg"
-            );
-            println!(
-                "         fix: install ffmpeg (apt install ffmpeg, brew install ffmpeg) or set OG_FFMPEG for video and footage (type video)"
-            );
-        }
+        None => out.check(
+            "optional",
+            "ffmpeg",
+            "not found (OG_FFMPEG or PATH): og render writes frames only",
+            Some("install ffmpeg (apt install ffmpeg, brew install ffmpeg) or set OG_FFMPEG for video and footage (type video)".into()),
+        ),
     }
     // ffprobe: the cook reads a `type video` source's length and size with it.
     let probe = og_cook::cook::video::ffprobe_bin();
     match version_of_dash(&probe) {
-        Some(v) => println!(
-            "ok       {:<13} {v} ({}; og cook reads footage)",
+        Some(v) => out.check(
+            "ok",
             "ffprobe",
-            probe.display()
+            &format!("{v} ({}; og cook reads footage)", probe.display()),
+            None,
         ),
-        None => println!(
-            "optional {:<13} not found (OG_FFPROBE or PATH): og cook refuses `type video` assets",
-            "ffprobe"
+        None => out.check(
+            "optional",
+            "ffprobe",
+            "not found (OG_FFPROBE or PATH): og cook refuses `type video` assets",
+            None,
         ),
     }
-    problems += engine_checks(&cwd);
-    if problems == 0 {
+    let engine = engine_checks(&mut out, &cwd);
+    if out.json {
+        let report = serde_json::json!({
+            "og": crate::VERSION,
+            "repository": root.as_ref().map(|r| r.display().to_string()),
+            "checks": out.checks,
+            "engine": engine.version.as_ref().map(|v| serde_json::json!({ "version": v, "path": engine.path })),
+            "pin": engine.pin,
+            "renderer": engine.renderer,
+            "problems": out.problems,
+            "ok": out.problems == 0,
+        });
+        println!("{report}");
+    } else if out.problems == 0 {
         println!("all tools present.");
+    } else {
+        println!(
+            "{} problem(s); each line above names its fix.",
+            out.problems
+        );
+    }
+    if out.problems == 0 {
         ExitCode::SUCCESS
     } else {
-        println!("{problems} problem(s); each line above names its fix.");
         ExitCode::FAILURE
     }
 }
@@ -286,151 +346,184 @@ fn tsrs_version(root: &Path) -> Option<String> {
 /// The tsrs line: found by og check's chain, its package version against
 /// the pin inside the repository. A platform tsrs has no package for is
 /// not a problem: og check takes tsgo there.
-fn tsrs_check(tool: &Tool, pin: Option<&str>, cwd: &Path) -> usize {
+fn tsrs_check(out: &mut Out, tool: &Tool, pin: Option<&str>, cwd: &Path) {
     let package = crate::project::engine_package(Some(cwd));
     match crate::check::locate_tsrs(package.as_deref()) {
         Ok(Some(t)) => match pin {
-            Some(p) if t.package_version != p => {
-                println!(
-                    "differs  {:<13} {}, pinned {p} ({})",
-                    tool.name,
-                    t.package_version,
-                    t.path.display()
-                );
-                println!("         fix: {}", (tool.install)(Some(p)));
-                1
-            }
-            _ => {
-                println!(
-                    "ok       {:<13} {} (TypeScript {}, from {}: {})",
-                    tool.name,
+            Some(p) if t.package_version != p => out.check(
+                "differs",
+                tool.name,
+                &format!("{}, pinned {p} ({})", t.package_version, t.path.display()),
+                Some((tool.install)(Some(p))),
+            ),
+            _ => out.check(
+                "ok",
+                tool.name,
+                &format!(
+                    "{} (TypeScript {}, from {}: {})",
                     t.package_version,
                     t.version,
                     t.source,
                     t.path.display()
-                );
-                0
-            }
+                ),
+                None,
+            ),
         },
-        Ok(None) if crate::check::platform().is_none() => {
-            println!(
-                "optional {:<13} no tsrs package for this platform; og check uses tsgo {} through bun x",
-                tool.name,
+        Ok(None) if crate::check::platform().is_none() => out.check(
+            "optional",
+            tool.name,
+            &format!(
+                "no tsrs package for this platform; og check uses tsgo {} through bun x",
                 crate::check::TSGO_VERSION
-            );
-            0
-        }
-        Ok(None) => {
-            println!("missing  {:<13} {}", tool.name, tool.role);
-            println!("         fix: {}", (tool.install)(pin));
-            1
-        }
-        Err(e) => {
-            println!("broken   {:<13} {e}", tool.name);
-            println!("         fix: {}", (tool.install)(pin));
-            1
-        }
+            ),
+            None,
+        ),
+        Ok(None) => out.check("missing", tool.name, tool.role, Some((tool.install)(pin))),
+        Err(e) => out.check("broken", tool.name, &e, Some((tool.install)(pin))),
     }
+}
+
+/// What the engine checks found, for `--json`.
+#[derive(Default)]
+struct EngineReport {
+    version: Option<String>,
+    path: Option<String>,
+    /// `{ pinned, installed, compatible }` in a project with a pin.
+    pin: serde_json::Value,
+    renderer: serde_json::Value,
 }
 
 /// The engine package's checks (`packages/engine/src/node/doctor.ts`): the
 /// addon loads, the wasm is built, and whether a 64x64 frame renders headless.
-fn engine_checks(cwd: &Path) -> usize {
+fn engine_checks(out: &mut Out, cwd: &Path) -> EngineReport {
+    let mut found = EngineReport::default();
     let Some(package) = crate::project::engine_package(Some(cwd)) else {
-        println!(
-            "missing  {:<13} the engine package (@origingame/engine)",
-            "engine"
+        out.check(
+            "missing",
+            "engine",
+            "the engine package (@origingame/engine)",
+            Some(crate::project::NO_ENGINE.into()),
         );
-        println!("         fix: {}", crate::project::NO_ENGINE);
-        return 1;
+        return found;
     };
-    let out = crate::project::bun(&package, "src/node/doctor.ts").output();
-    let report: serde_json::Value = match out {
+    let output = crate::project::bun(&package, "src/node/doctor.ts").output();
+    let report: serde_json::Value = match output {
         Err(_) => {
-            println!(
-                "skipped  {:<13} {} (needs bun)",
+            out.check(
+                "skipped",
                 "engine",
-                package.display()
+                &format!("{} (needs bun)", package.display()),
+                None,
             );
-            return 0;
+            return found;
         }
         Ok(o) => match serde_json::from_slice(o.stdout.trim_ascii()) {
             Ok(v) => v,
             Err(_) => {
-                println!("broken   {:<13} {}", "engine", package.display());
-                println!(
-                    "         fix: reinstall @origingame/engine; its doctor printed: {}",
-                    String::from_utf8_lossy(&o.stderr).trim()
+                out.check(
+                    "broken",
+                    "engine",
+                    &package.display().to_string(),
+                    Some(format!(
+                        "reinstall @origingame/engine; its doctor printed: {}",
+                        String::from_utf8_lossy(&o.stderr).trim()
+                    )),
                 );
-                return 1;
+                return found;
             }
         },
     };
-    println!(
-        "ok       {:<13} {} {}",
+    let installed = report["version"].as_str().map(str::to_string);
+    found.version = installed.clone();
+    found.path = Some(package.display().to_string());
+    out.check(
+        "ok",
         "engine",
-        report["version"].as_str().unwrap_or("?"),
-        package.display()
+        &format!(
+            "{} {}",
+            installed.as_deref().unwrap_or("?"),
+            package.display()
+        ),
+        None,
     );
-    let mut problems = 0;
-    // In a project: its pin against the installed package (docs/release.md §3).
+    // In a project: its pin against the installed package (docs/release.md
+    // §3): compatible when the installed version is in the pin's minor and
+    // not older (a patch is compatible by the version policy).
     if let Ok(p) = crate::project::Project::open(cwd)
         && p.manifest
     {
-        match (p.engine.as_deref(), report["version"].as_str()) {
-            (Some(pinned), Some(installed)) if pinned != installed => {
-                problems += 1;
-                println!(
-                    "differs  {:<13} project.ogt pins engine \"{pinned}\", installed {installed}",
-                    "pin"
-                );
-                println!(
-                    "         fix: when the game is written against {installed}, set `engine \"{installed}\"` in project.ogt; otherwise bun add @origingame/engine@{pinned}"
+        match (p.engine.as_deref(), installed.as_deref()) {
+            (Some(pinned), Some(inst)) => {
+                let compatible = crate::project::compatible(pinned, inst);
+                found.pin = serde_json::json!({ "pinned": pinned, "installed": inst, "compatible": compatible });
+                if pinned == inst {
+                    out.check(
+                        "ok",
+                        "pin",
+                        &format!("project.ogt pins engine \"{pinned}\""),
+                        None,
+                    );
+                } else if compatible {
+                    out.check(
+                        "ok",
+                        "pin",
+                        &format!("project.ogt pins engine \"{pinned}\", installed {inst}: compatible (same minor, newer); `og upgrade` moves the pin"),
+                        None,
+                    );
+                } else {
+                    out.check(
+                        "differs",
+                        "pin",
+                        &format!("project.ogt pins engine \"{pinned}\", installed {inst}: not compatible (another minor, or older)"),
+                        Some(format!("`og upgrade` moves the game to {inst} (and lists what to edit); otherwise bun add @origingame/engine@{pinned}")),
+                    );
+                }
+            }
+            (Some(pinned), None) => {
+                found.pin =
+                    serde_json::json!({ "pinned": pinned, "installed": null, "compatible": false });
+                out.check(
+                    "ok",
+                    "pin",
+                    &format!("project.ogt pins engine \"{pinned}\""),
+                    None,
                 );
             }
-            (Some(pinned), _) => println!(
-                "ok       {:<13} project.ogt pins engine \"{pinned}\"",
-                "pin"
-            ),
             (None, _) => {
-                problems += 1;
-                println!(
-                    "missing  {:<13} project.ogt has no `engine \"<version>\"` line",
-                    "pin"
-                );
-                println!(
-                    "         fix: add `engine \"{}\"` to project.ogt (the version this game is written against)",
-                    report["version"].as_str().unwrap_or("?")
+                found.pin = serde_json::json!({ "pinned": null, "installed": installed, "compatible": false });
+                out.check(
+                    "missing",
+                    "pin",
+                    "project.ogt has no `engine \"<version>\"` line",
+                    Some(format!(
+                        "add `engine \"{}\"` to project.ogt (the version this game is written against)",
+                        installed.as_deref().unwrap_or("?")
+                    )),
                 );
             }
         }
     }
-    let mut line = |name: &str, ok: bool, detail: String, fix: &str| {
-        if ok {
-            println!("ok       {name:<13} {detail}");
-        } else {
-            problems += 1;
-            println!("missing  {name:<13} {detail}");
-            println!("         fix: {fix}");
-        }
-    };
     let addon = &report["addon"];
-    line(
-        "addon",
-        addon["ok"].as_bool().unwrap_or(false),
-        match addon["ok"].as_bool() {
-            Some(true) => format!(
+    let fix_addon = "install the package for this platform (npm installs @origingame/engine-<platform>-<arch> through optionalDependencies), or in a checkout run `bun run build` in packages/engine";
+    if addon["ok"].as_bool().unwrap_or(false) {
+        out.check(
+            "ok",
+            "addon",
+            &format!(
                 "{} (views {})",
                 addon["path"].as_str().unwrap_or(""),
                 addon["views"].as_str().unwrap_or("?")
             ),
-            _ => addon["reason"]
-                .as_str()
-                .unwrap_or("does not load")
-                .to_string(),
-        },
-        "install the package for this platform (npm installs @origingame/engine-<platform>-<arch> through optionalDependencies), or in a checkout run `bun run build` in packages/engine",
-    );
+            None,
+        );
+    } else {
+        out.check(
+            "missing",
+            "addon",
+            addon["reason"].as_str().unwrap_or("does not load"),
+            Some(fix_addon.into()),
+        );
+    }
     for (key, what) in [
         ("wasm", "wasm"),
         ("publishWasm", "wasm-publish"),
@@ -439,36 +532,45 @@ fn engine_checks(cwd: &Path) -> usize {
         ("lanesWasm2d", "wasm-lanes-2d"),
     ] {
         let w = &report[key];
-        line(
-            what,
-            w["ok"].as_bool().unwrap_or(false),
-            match w["bytes"].as_u64() {
-                Some(b) => format!("{} ({b} bytes)", w["path"].as_str().unwrap_or("")),
-                None => format!("no {}", w["path"].as_str().unwrap_or("wasm")),
-            },
-            "reinstall @origingame/engine, or in a checkout run `bun run build` in packages/engine",
-        );
+        let detail = match w["bytes"].as_u64() {
+            Some(b) => format!("{} ({b} bytes)", w["path"].as_str().unwrap_or("")),
+            None => format!("no {}", w["path"].as_str().unwrap_or("wasm")),
+        };
+        if w["ok"].as_bool().unwrap_or(false) {
+            out.check("ok", what, &detail, None);
+        } else {
+            out.check(
+                "missing",
+                what,
+                &detail,
+                Some("reinstall @origingame/engine, or in a checkout run `bun run build` in packages/engine".into()),
+            );
+        }
     }
     // No renderer is a supported configuration (the platform's engine and
     // probe sandboxes carry none): reported, never counted as a problem.
     let r = &report["renderer"];
+    found.renderer = r.clone();
     match r["ok"].as_bool() {
-        Some(true) => println!(
-            "ok       {:<13} {} (a 64x64 frame headless in {} ms)",
+        Some(true) => out.check(
+            "ok",
             "renderer",
-            r["tier"].as_str().unwrap_or("?"),
-            r["ms"]
+            &format!(
+                "{} (a 64x64 frame headless in {} ms)",
+                r["tier"].as_str().unwrap_or("?"),
+                r["ms"]
+            ),
+            None,
         ),
         _ => {
-            println!(
-                "none     {:<13} {}",
+            out.check(
+                "none",
                 "renderer",
-                r["reason"].as_str().unwrap_or("no adapter")
+                r["reason"].as_str().unwrap_or("no adapter"),
+                None,
             );
-            println!(
-                "         without one: og run, og test and the probe run the same; a screenshot is a frame unchecked and capture answers null; frames are verified where there is a GPU (Metal or Vulkan)"
-            );
+            out.say("         without one: og run, og test and the probe run the same; a screenshot is a frame unchecked and capture answers null; frames are verified where there is a GPU (Metal or Vulkan)");
         }
     }
-    problems
+    found
 }
