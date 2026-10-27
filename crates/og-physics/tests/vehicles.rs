@@ -332,6 +332,8 @@ fn full_lock_at_speed_tips_a_tall_car_only_with_roll_influence_and_a_high_centre
 }
 
 #[test]
+// Test reference values: libm checks the result, never the tick.
+#[allow(clippy::disallowed_methods)]
 fn a_car_on_rails_with_its_front_wheels_turned_scrubs_them() {
     // The chassis can move only along z (x and every rotation locked) and
     // its front wheels are steered a little, s = 0.05 × maxSteer: they

@@ -1785,6 +1785,8 @@ fn bounds_view(rs: &mut RenderState) {
 
 /// Debug labels: each world point projected to the play surface, the
 /// label centred above it in the UI's body font.
+// Render-only: the labels are drawn into the frame, never read by the tick.
+#[allow(clippy::disallowed_methods)]
 fn texts(rs: &mut RenderState, vp: (f32, f32)) {
     if rs.geo.texts.is_empty() || vp.0 <= 0.0 || vp.1 <= 0.0 {
         return;

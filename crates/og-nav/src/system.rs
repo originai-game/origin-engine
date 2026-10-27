@@ -977,7 +977,20 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
             let q = if angle <= max || angle < 1e-5 {
                 want
             } else {
-                have.slerp(want, max / angle)
+                // A yaw step about the plane's axis through og-core's
+                // deterministic math (glam's slerp uses the host's sinf and
+                // drifted an ulp between Windows and Linux): the current
+                // heading, turned towards `yaw` by at most `max`.
+                use std::f32::consts::{PI, TAU};
+                let heading = 2.0 * og_core::math::atan2(have.xyz().dot(axis), have.w);
+                let mut delta = yaw - heading;
+                while delta > PI {
+                    delta -= TAU;
+                }
+                while delta < -PI {
+                    delta += TAU;
+                }
+                og_core::math::quat_from_axis_angle(axis, heading + delta.clamp(-max, max))
             };
             changed_rot = q != t.quaternion;
             t.quaternion = q;

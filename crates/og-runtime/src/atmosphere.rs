@@ -196,6 +196,8 @@ pub(crate) fn derive(
 /// og.Fog, og.Sky, og.DayNight, og.Weather, og.Wind, og.Water, og.Water2D,
 /// og.Fluid2D, og.Fluid3D, og.Rope and og.Cloth into `rs.scene`. Returns the keys of
 /// the instances it added (cloth), for per-object motion.
+// Rendering only: drawn lines and fluid volumes.
+#[allow(clippy::disallowed_methods)]
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Vec<(u64, u32)> {
     let mut keys = Vec::new();
     let RenderState {

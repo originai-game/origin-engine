@@ -45,6 +45,8 @@ fn answer(text: String) -> Value {
 
 /// A 16 by 16 height field of quads over 8 by 8 metres, its height a
 /// lopsided bump (`lift` raises it all), as positions and indices.
+// Test reference values: libm checks the result, never the tick.
+#[allow(clippy::disallowed_methods)]
 fn terrain(lift: f32) -> Value {
     let n = 16;
     let mut positions = Vec::new();

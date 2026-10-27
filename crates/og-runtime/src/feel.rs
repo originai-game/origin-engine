@@ -2237,6 +2237,8 @@ fn flipped(mut uv: [f32; 4], mut anchor: Vec2, flip: u8) -> ([f32; 4], Vec2) {
 
 /// og.Sprite rows (with their flipbook frames, nine-slices, shadows and
 /// afterimages), then the floating texts and the tile layers.
+// Rendering only: a sprite's drawn rotation.
+#[allow(clippy::disallowed_methods)]
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let Some((feel, r)) = rs.feel.feel.clone() else {
         return;
@@ -2463,6 +2465,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     tile_layers(world, rs, &feel, &r, h, scaled_now);
 }
 
+// Rendering only: floating text's pop.
+#[allow(clippy::disallowed_methods)]
 fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
     let list = lock(&feel.shared).floating.clone();
     let ui = rs.ui.clone();
@@ -2687,6 +2691,8 @@ fn tile_layers(
 
 /// The camera feel on the frame only: trauma shake, punch, kick, and the
 /// zone the followed entity is in (visual: the world's camera is untouched).
+// Rendering only: the drawn camera's field of view.
+#[allow(clippy::disallowed_methods)]
 pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, aspect: f32) {
     let Some((_, r)) = rs.feel.feel.clone() else {
         return;

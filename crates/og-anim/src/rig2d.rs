@@ -4110,6 +4110,8 @@ armature flame {
     }
 
     #[test]
+    // Test reference values: libm checks the result, never the tick.
+    #[allow(clippy::disallowed_methods)]
     fn a_child_armature_is_posed_and_drawn_in_its_slot() {
         let r = Rig2dAsset::parse(NEST).expect("nested");
         assert_eq!(r.armatures.len(), 1);
@@ -4340,6 +4342,8 @@ ik curl {
 "#;
 
     #[test]
+    // Test reference values: libm checks the result, never the tick.
+    #[allow(clippy::disallowed_methods)]
     fn a_chain_of_any_length_reaches_and_curls_the_asked_way() {
         let r = Rig2dAsset::parse(TAIL).expect("a four-bone chain");
         assert_eq!(r.iks[0].bones, [1, 2, 3, 4]);

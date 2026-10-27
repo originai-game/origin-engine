@@ -28,9 +28,13 @@
 //! `slerp`, `Mat4::from_rotation_*`, `Vec2::from_angle`, `powf`, ...) call the
 //! host `libm` even with `scalar-math`, so they are for rendering, which never
 //! feeds back into the simulation; deterministic state builds rotations with
-//! [`quat_from_axis_angle`] and uses [`sin`], [`cos`], [`atan2`], [`exp`],
-//! [`ln`] and [`pow`]. `sqrt` (inside `length` and `normalize`) is exactly
-//! rounded by IEEE 754 and is safe.
+//! [`quat_from_axis_angle`] and [`quat_slerp`] and uses [`sin`], [`cos`],
+//! [`atan2`], [`acos`], [`exp`], [`ln`] and [`pow`]. `sqrt` (inside `length`
+//! and `normalize`) is exactly rounded by IEEE 754 and is safe. The root
+//! `clippy.toml` holds the rule: its `disallowed-methods` refuses those host
+//! calls in every crate that does not opt out in its own `clippy.toml` (the
+//! renderer, og-ui, audio, the cook, the bake, the og tool, the engine tests).
+//! Render-only code in a simulation crate takes a scoped `#[allow]`.
 
 pub use glam::*;
 
@@ -379,6 +383,40 @@ pub fn pow(x: f32, y: f32) -> f32 {
 pub fn quat_from_axis_angle(axis: Vec3, angle: f32) -> Quat {
     let (s, c) = sin_cos(angle * 0.5);
     Quat::from_xyzw(axis.x * s, axis.y * s, axis.z * s, c)
+}
+
+/// The arc cosine of `x` in `[0, pi]`, from [`atan2`] and `sqrt` (which IEEE
+/// 754 rounds exactly): `atan2(sqrt(1 - x^2), x)` in `f64`. NaN outside
+/// `[-1, 1]`, as `f32::acos`.
+pub fn acos(x: f32) -> f32 {
+    if !(-1.0..=1.0).contains(&x) {
+        return f32::NAN;
+    }
+    let x = f64::from(x);
+    let y = ((1.0 - x) * (1.0 + x)).sqrt();
+    let a = atan64(y / x.abs());
+    (if x >= 0.0 { a } else { PI - a }) as f32
+}
+
+/// The spherical interpolation from `a` to `b` at `t` (0 gives `a`, 1 `b`),
+/// along the shorter arc, built from the deterministic [`acos`] and [`sin`]:
+/// glam's `Quat::slerp` uses the host `libm`, so its results differ by an ulp
+/// between hosts and must not reach simulation state. Nearly equal rotations
+/// fall back to a normalised lerp, as glam's do.
+pub fn quat_slerp(a: Quat, b: Quat, t: f32) -> Quat {
+    let mut end = b;
+    let mut dot = a.dot(b);
+    if dot < 0.0 {
+        end = -end;
+        dot = -dot;
+    }
+    if dot > 1.0 - f32::EPSILON {
+        return a.lerp(end, t);
+    }
+    let theta = acos(dot);
+    let s1 = sin(theta * (1.0 - t));
+    let s2 = sin(theta * t);
+    (a * s1 + end * s2) * (1.0 / sin(theta))
 }
 
 /// A transform as `og.Transform` holds it: position, rotation and scale

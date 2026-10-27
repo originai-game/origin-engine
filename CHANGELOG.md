@@ -13,6 +13,32 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+No IDL member changed. The simulation changed: the golden replays are
+re-recorded (`unreleased.simulation` is `changed` in `changelog.json`).
+
+- Fixes: cross-platform yaw drift. A `NavAgent` with `faceMovement` turned
+  through glam's `Quat::slerp`, which uses the host's `sinf`, so its
+  rotation differed by up to 16 ulp between Windows and Linux while it
+  turned (0.6.2's golden replays on win32, ticks 62–65). The turn is now a
+  yaw step through og-core's deterministic math, which moves the turning
+  ticks' rotation by about an ulp on every host. `og.terrain.sample`'s
+  `slope` uses og-core's `acos` too.
+- Fixes (held): `camera.worldToScreen` and `camera.screenToRay`, which a
+  system may call inside the tick, answer the same bits on every host.
+  Their perspective was already built with og-core's `sin_cos`, not glam's
+  host-libm `perspective`; a test now pins their bits, and glam's
+  perspective constructors (`glam::camera::{rh,lh}::proj::*::perspective*`)
+  are on the disallowed list. The engine's one other use, the debug labels'
+  projection, is render-only and takes a scoped `#[allow]`.
+- engine (Rust): `og_core::math::quat_slerp` and `acos`, and a clippy
+  `disallowed-methods` list (the root `clippy.toml`) that refuses the host's
+  libm transcendentals and glam's libm-backed rotations in the simulation
+  crates. Crates that only render, cook or run tools opt out in their own
+  `clippy.toml`; render-only code in a simulation crate takes a scoped
+  `#[allow]`.
+
 ## 0.6.2 — 2026-10-27
 
 No IDL member changed; the simulation is unchanged (the golden replays).

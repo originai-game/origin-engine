@@ -784,3 +784,74 @@ fn a_navmesh_s_bounds_hold_every_polygon_up_to_the_high_terrace() {
     }
     assert!(lo.x < -9.0 && hi.x > 9.0 && lo.z < -9.0 && hi.z > 9.0);
 }
+
+/// The heading of a rotation about +Z (the Xy plane's facing), in (-π, π].
+fn heading_z(q: og_core::glam::Quat) -> f32 {
+    let mut h = 2.0 * og_core::math::atan2(q.z, q.w);
+    while h > std::f32::consts::PI {
+        h -= std::f32::consts::TAU;
+    }
+    while h <= -std::f32::consts::PI {
+        h += std::f32::consts::TAU;
+    }
+    h
+}
+
+/// A facing agent turns the short way, through ±π, by at most its turn
+/// speed a tick, until it faces where it walks: from a heading of 3.0 rad
+/// towards one of -3.0, the short turn is +0.28 rad across π, not -6.0.
+#[test]
+fn a_facing_agent_turns_the_short_way_at_its_turn_speed() {
+    let mut navs = Navs::default();
+    let h = navs.insert(Nav::Grid(Grid::new(32, 32, 1.0, Vec2::ZERO)));
+    let mut w = world_with(Arc::new(Mutex::new(navs)), Plane::Xy);
+    let start = Vec3::new(20.5, 16.5, 0.0);
+    let target = start + 10.0 * Vec3::new(og_core::math::cos(-3.0), og_core::math::sin(-3.0), 0.0);
+    let e = w
+        .spawn((
+            og_nav::system::Transform {
+                position: start,
+                quaternion: og_core::math::quat_from_axis_angle(Vec3::Z, 3.0),
+                ..Default::default()
+            },
+            NavAgent {
+                nav: h,
+                target,
+                seeking: true,
+                face_movement: true,
+                turn_speed: 8.0,
+                ..Default::default()
+            },
+        ))
+        .unwrap();
+    let max = 8.0 / 60.0;
+    let mut was = 3.0f32;
+    let mut first = None;
+    for _ in 0..30 {
+        w.step().unwrap();
+        let now = heading_z(w.get::<og_nav::system::Transform>(e).unwrap().quaternion);
+        let mut turned = now - was;
+        if turned > std::f32::consts::PI {
+            turned -= std::f32::consts::TAU;
+        } else if turned < -std::f32::consts::PI {
+            turned += std::f32::consts::TAU;
+        }
+        assert!(
+            turned.abs() <= max + 1e-4,
+            "turned {turned} in a tick, more than {max}"
+        );
+        first.get_or_insert(turned);
+        was = now;
+    }
+    assert!(
+        first.unwrap() > 0.1,
+        "the first tick turned {:?}: the long way",
+        first
+    );
+    let v = w.get::<NavAgent>(e).unwrap().velocity;
+    let facing = og_core::math::atan2(v.y, v.x);
+    assert!(
+        (heading_z(og_core::math::quat_from_axis_angle(Vec3::Z, facing)) - was).abs() < 1e-3,
+        "faces {was}, walks {facing}"
+    );
+}

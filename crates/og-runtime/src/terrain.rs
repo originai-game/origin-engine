@@ -630,7 +630,7 @@ pub fn og_terrain_sample(world: u32, desc: Option<String>) -> String {
         Ok(json!({
             "height": surface.y,
             "normal": j3(n),
-            "slope": n.y.clamp(-1.0, 1.0).acos().to_degrees(),
+            "slope": og_core::math::acos(n.y.clamp(-1.0, 1.0)).to_degrees(),
             "inside": inside,
         }))
     })())
