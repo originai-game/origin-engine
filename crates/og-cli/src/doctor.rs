@@ -369,15 +369,35 @@ fn tsrs_check(out: &mut Out, tool: &Tool, pin: Option<&str>, cwd: &Path) {
                 None,
             ),
         },
-        Ok(None) if crate::check::platform().is_none() => out.check(
-            "optional",
-            tool.name,
-            &format!(
-                "no tsrs package for this platform; og check uses tsgo {} through bun x",
-                crate::check::TSGO_VERSION
-            ),
-            None,
-        ),
+        Ok(None) if crate::check::platform().is_none() => {
+            // og check takes tsgo here: the install bun x runs it from.
+            let broken = crate::check::tsgo_install()
+                .and_then(|tree| Some((crate::check::tsgo_install_fault(&tree)?, tree)));
+            match broken {
+                Some((fault, tree)) => out.check(
+                    "broken",
+                    tool.name,
+                    &format!(
+                        "og check's tsgo {} in {} is incomplete: {fault}",
+                        crate::check::TSGO_VERSION,
+                        tree.display()
+                    ),
+                    Some(format!(
+                        "delete {}, or clear bun's cache with `bun pm cache rm`",
+                        tree.display()
+                    )),
+                ),
+                None => out.check(
+                    "optional",
+                    tool.name,
+                    &format!(
+                        "no tsrs package for this platform; og check uses tsgo {} through bun x",
+                        crate::check::TSGO_VERSION
+                    ),
+                    None,
+                ),
+            }
+        }
         Ok(None) => out.check("missing", tool.name, tool.role, Some((tool.install)(pin))),
         Err(e) => out.check("broken", tool.name, &e, Some((tool.install)(pin))),
     }

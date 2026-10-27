@@ -9,6 +9,9 @@
 //! (`scripts/install-tools.sh`). Without one (Windows, Intel macOS) the
 //! check falls back to tsgo, `bun x --package typescript@TSGO_VERSION tsc`,
 //! and says so; both report through the same parser and the same JSON.
+//! An install of it that bun x left incomplete (an interrupted install) is
+//! an error naming the directory and the fix, found before tsgo runs
+//! (`tsgo_install`) or read from tsgo's panic, never a Go stack trace.
 //!
 //! The project's `tsconfig.json` is the configuration. A project without
 //! one (a bare entry, a project.ogt project that never wrote one) is
@@ -45,6 +48,160 @@ const TEMPLATE_TSCONFIG: &str = include_str!("../../../templates/game/tsconfig.j
 
 const USAGE: &str =
     "usage: og check [project|entry|tsconfig.json] [--json] [--checkers N] [--tool tsrs|tsgo]";
+
+/// The lib files of tsgo's platform package at TSGO_VERSION, beside
+/// `lib.d.ts` (`lib.<name>.d.ts`). Its package.json lists only `lib`, so
+/// the names are pinned here with the version; a missing default lib is no
+/// error to tsgo, it reads as `Cannot find global type 'Array'` in the game.
+const TSGO_LIBS: &str = "decorators decorators.legacy dom.asynciterable dom dom.iterable \
+    es2015.collection es2015.core es2015 es2015.generator es2015.iterable es2015.promise \
+    es2015.proxy es2015.reflect es2015.symbol es2015.symbol.wellknown es2016.array.include \
+    es2016 es2016.full es2016.intl es2017.arraybuffer es2017 es2017.date es2017.full \
+    es2017.intl es2017.object es2017.sharedmemory es2017.string es2017.typedarrays \
+    es2018.asyncgenerator es2018.asynciterable es2018 es2018.full es2018.intl es2018.promise \
+    es2018.regexp es2019.array es2019 es2019.full es2019.intl es2019.object es2019.string \
+    es2019.symbol es2020.bigint es2020 es2020.date es2020.full es2020.intl es2020.number \
+    es2020.promise es2020.sharedmemory es2020.string es2020.symbol.wellknown es2021 \
+    es2021.full es2021.intl es2021.promise es2021.string es2021.weakref es2022.array es2022 \
+    es2022.error es2022.full es2022.intl es2022.object es2022.regexp es2022.string \
+    es2023.array es2023.collection es2023 es2023.full es2023.intl es2024.arraybuffer \
+    es2024.collection es2024 es2024.full es2024.object es2024.promise es2024.regexp \
+    es2024.sharedmemory es2024.string es2025.collection es2025 es2025.float16 es2025.full \
+    es2025.intl es2025.iterator es2025.promise es2025.regexp es5 es6 esnext.array \
+    esnext.collection esnext esnext.date esnext.decorators esnext.disposable esnext.error \
+    esnext.full esnext.intl esnext.sharedmemory esnext.temporal esnext.typedarrays \
+    scripthost webworker.asynciterable webworker webworker.importscripts webworker.iterable";
+
+/// The directory where `bun x` installed `typescript@TSGO_VERSION`, if it
+/// has (bun 1.4, `cache_dir` in src/runtime/cli/bunx_command.rs): on
+/// Windows `%TEMP%\bunx-<user id>-typescript@V`.
+#[cfg(windows)]
+pub fn tsgo_install() -> Option<PathBuf> {
+    let tmp = std::env::temp_dir();
+    let suffix = format!("-typescript@{TSGO_VERSION}");
+    std::fs::read_dir(&tmp)
+        .ok()?
+        .flatten()
+        .map(|e| tmp.join(e.file_name()))
+        .find(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n.starts_with("bunx-") && n.ends_with(&suffix))
+                && p.is_dir()
+        })
+}
+
+/// Elsewhere `<base>/.bunx-<uid>/typescript@V`, the base being the first
+/// that holds a `.bunx-<uid>` of the install cache (BUN_INSTALL_CACHE_DIR,
+/// `$BUN_INSTALL/install/cache`, `$XDG_CACHE_HOME` or `$HOME` +
+/// `/.bun/install/cache`) and the temporary directory. A cache directory
+/// set in bunfig.toml is not read: tsgo's own panic still names it.
+#[cfg(unix)]
+pub fn tsgo_install() -> Option<PathBuf> {
+    let var = |k| {
+        std::env::var_os(k)
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from)
+    };
+    let cache = var("BUN_INSTALL_CACHE_DIR")
+        .or_else(|| var("BUN_INSTALL").map(|d| d.join("install/cache")))
+        .or_else(|| {
+            var("XDG_CACHE_HOME")
+                .or_else(|| var("HOME"))
+                .map(|d| d.join(".bun/install/cache"))
+        });
+    // SAFETY: getuid has no preconditions and cannot fail.
+    let root = format!(".bunx-{}", unsafe { libc::getuid() });
+    cache
+        .into_iter()
+        .chain([std::env::temp_dir()])
+        .map(|base| base.join(&root))
+        .find(|r| r.is_dir())
+        .map(|r| r.join(format!("typescript@{TSGO_VERSION}")))
+        .filter(|t| t.is_dir())
+}
+
+/// What is wrong with the tsgo install in `tree`: the files it needs that
+/// are missing or empty, `None` when there are none.
+pub fn tsgo_install_fault(tree: &Path) -> Option<String> {
+    let os = match std::env::consts::OS {
+        "windows" => "win32",
+        "macos" => "darwin",
+        os => os,
+    };
+    let arch = match std::env::consts::ARCH {
+        "x86_64" => "x64",
+        "aarch64" => "arm64",
+        arch => arch,
+    };
+    let modules = tree.join("node_modules");
+    let lib = modules.join(format!("@typescript/typescript-{os}-{arch}/lib"));
+    let exe = if cfg!(windows) { "tsc.exe" } else { "tsc" };
+    let needed: Vec<PathBuf> = [
+        modules.join("typescript/package.json"),
+        modules.join("typescript/lib/tsc.js"),
+        lib.join(exe),
+        lib.join("lib.d.ts"),
+    ]
+    .into_iter()
+    .chain(
+        TSGO_LIBS
+            .split_whitespace()
+            .map(|n| lib.join(format!("lib.{n}.d.ts"))),
+    )
+    .collect();
+    let bad: Vec<String> = needed
+        .iter()
+        .filter(|p| std::fs::metadata(p).map_or(true, |m| m.len() == 0))
+        .map(|p| {
+            p.file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned()
+        })
+        .collect();
+    if bad.is_empty() {
+        return None;
+    }
+    let shown = bad.iter().take(3).cloned().collect::<Vec<_>>().join(", ");
+    let more = match bad.len() {
+        n if n > 3 => format!(" and {} more", n - 3),
+        _ => String::new(),
+    };
+    Some(format!(
+        "{} of its {} files missing or empty ({shown}{more})",
+        bad.len(),
+        needed.len()
+    ))
+}
+
+/// The error of a broken tsgo install, with the fix.
+pub fn broken_tsgo(tree: &Path, fault: &str) -> String {
+    format!(
+        "the TypeScript checker (tsgo {TSGO_VERSION}) that bun x installed in {} is incomplete, as an interrupted install leaves it: {fault}. Delete that directory, or clear bun's cache with `bun pm cache rm`, then rerun",
+        tree.display()
+    )
+}
+
+/// The install a tsgo panic on stderr blames: `panic: bundled:
+/// <tree>/node_modules/@typescript/typescript-<platform>/lib/lib.d.ts does
+/// not exist; this executable may be misplaced`, then a Go stack trace.
+/// The tree and the panic's own words.
+fn tsgo_panic(stderr: &str) -> Option<(PathBuf, String)> {
+    let line = stderr.lines().find(|l| l.starts_with("panic: "))?;
+    let missing = line
+        .strip_prefix("panic: bundled: ")?
+        .split(" does not exist")
+        .next()?;
+    let tree = Path::new(missing)
+        .ancestors()
+        .find(|a| a.file_name().is_some_and(|n| n == "node_modules"))?
+        .parent()?;
+    Some((
+        tree.to_path_buf(),
+        format!("tsgo stopped: {missing} does not exist"),
+    ))
+}
 
 pub const NO_TSRS: &str = "no tsrs: `bun install` in the project (@origingame/engine brings @tsrs/<platform>), run scripts/install-tools.sh in an engine checkout, or set OG_TSRS to the binary";
 
@@ -288,19 +445,27 @@ impl Checker {
         package: Option<&Path>,
         tool: Option<Tool>,
     ) -> Result<(Checker, Option<String>), String> {
-        let tsgo = Checker {
-            tool: Tool::Tsgo,
-            path: None,
-            version: TSGO_VERSION.into(),
+        // tsgo, unless the install bun x would run it from is broken.
+        let tsgo = |note: Option<String>| {
+            if let Some(tree) = tsgo_install()
+                && let Some(fault) = tsgo_install_fault(&tree)
+            {
+                return Err(broken_tsgo(&tree, &fault));
+            }
+            let checker = Checker {
+                tool: Tool::Tsgo,
+                path: None,
+                version: TSGO_VERSION.into(),
+            };
+            Ok((checker, note))
         };
         match tool {
-            Some(Tool::Tsgo) => Ok((tsgo, None)),
-            None if platform().is_none() && std::env::var_os("OG_TSRS").is_none() => Ok((
-                tsgo,
-                Some(format!(
+            Some(Tool::Tsgo) => tsgo(None),
+            None if platform().is_none() && std::env::var_os("OG_TSRS").is_none() => {
+                tsgo(Some(format!(
                     "no tsrs package for this platform; checking with tsgo {TSGO_VERSION} through bun x (needs the network or bun's cache)"
-                )),
-            )),
+                )))
+            }
             Some(Tool::Tsrs) => match locate_tsrs(package)? {
                 Some(t) => Ok((Checker::from(t), None)),
                 None => Err(NO_TSRS.into()),
@@ -308,12 +473,9 @@ impl Checker {
             // Only a missing tsrs falls back; a broken one is an error.
             None => match locate_tsrs(package)? {
                 Some(t) => Ok((Checker::from(t), None)),
-                None => Ok((
-                    tsgo,
-                    Some(format!(
-                        "{NO_TSRS}; checking with tsgo {TSGO_VERSION} through bun x (needs the network or bun's cache)"
-                    )),
-                )),
+                None => tsgo(Some(format!(
+                    "{NO_TSRS}; checking with tsgo {TSGO_VERSION} through bun x (needs the network or bun's cache)"
+                ))),
             },
         }
     }
@@ -342,7 +504,7 @@ impl Checker {
     }
 
     /// The check of `target` with `checkers` threads, to spawn (stdout
-    /// piped, stderr passed through).
+    /// piped; stderr passed through, tsgo's read for its panic first).
     pub fn command_for(&self, target: &Target, checkers: usize) -> Command {
         let mut c = self.command();
         c.arg("-p")
@@ -359,7 +521,10 @@ impl Checker {
             .current_dir(&target.root)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit());
+            .stderr(match self.tool {
+                Tool::Tsrs => Stdio::inherit(),
+                Tool::Tsgo => Stdio::piped(),
+            });
         c
     }
 
@@ -378,6 +543,14 @@ impl Checker {
         out: std::process::Output,
         ms: f64,
     ) -> Result<Report, String> {
+        // A tsgo whose install lost its lib files panics with a Go stack
+        // trace: the install and the fix instead.
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        if let Some((tree, words)) = tsgo_panic(&stderr) {
+            let fault = tsgo_install_fault(&tree).unwrap_or(words);
+            return Err(broken_tsgo(&tree, &fault));
+        }
+        eprint!("{stderr}");
         let raw = String::from_utf8_lossy(&out.stdout).into_owned();
         let diagnostics = outcome(out.status.code(), &raw).map_err(|e| {
             format!(

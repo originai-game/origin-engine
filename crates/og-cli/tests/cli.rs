@@ -1208,6 +1208,121 @@ fn check_never_reads_a_failing_tsrs_as_clean() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// tsgo as `bun x` left it after an interrupted install (studio-win's
+/// `%TEMP%\bunx-*-typescript@7.0.2`, 26 lib files gone): an empty lib.d.ts
+/// and only two other lib files.
+fn truncated_bunx_typescript(tree: &Path) {
+    let os = match std::env::consts::OS {
+        "windows" => "win32",
+        "macos" => "darwin",
+        os => os,
+    };
+    let arch = match std::env::consts::ARCH {
+        "x86_64" => "x64",
+        "aarch64" => "arm64",
+        arch => arch,
+    };
+    let modules = tree.join("node_modules");
+    let lib = modules.join(format!("@typescript/typescript-{os}-{arch}/lib"));
+    std::fs::create_dir_all(modules.join("typescript/lib")).unwrap();
+    std::fs::create_dir_all(&lib).unwrap();
+    std::fs::write(modules.join("typescript/package.json"), "{}").unwrap();
+    std::fs::write(modules.join("typescript/lib/tsc.js"), "//").unwrap();
+    let exe = if cfg!(windows) { "tsc.exe" } else { "tsc" };
+    std::fs::write(lib.join(exe), "tsgo").unwrap();
+    std::fs::write(lib.join("lib.d.ts"), "").unwrap();
+    for name in ["lib.es5.d.ts", "lib.dom.d.ts"] {
+        std::fs::write(lib.join(name), "interface Array<T> {}\n").unwrap();
+    }
+}
+
+/// tsgo 7.0.2's panic on that install, its stack cut short.
+#[cfg(unix)]
+fn tsgo_panic(tree: &Path) -> String {
+    let os = if cfg!(target_os = "macos") {
+        "darwin"
+    } else {
+        "linux"
+    };
+    let arch = if cfg!(target_arch = "aarch64") {
+        "arm64"
+    } else {
+        "x64"
+    };
+    format!(
+        "panic: bundled: {}/node_modules/@typescript/typescript-{os}-{arch}/lib/lib.d.ts does not exist; this executable may be misplaced [recovered, repanicked]\n\ngoroutine 1 [running]:\ngithub.com/microsoft/typescript-go/internal/bundled.init.OnceValue[...].func8.1.1()\n\tsync/oncefunc.go:63 +0x70\nmain.main()\n\tgithub.com/microsoft/typescript-go/cmd/tsgo/main.go:14 +0x13\n",
+        tree.display()
+    )
+}
+
+/// A truncated bunx TypeScript install is named, with its fix, instead of
+/// tsgo's Go stack trace: found where bun x keeps it before tsgo runs, and
+/// from tsgo's panic when it is somewhere og does not look.
+#[test]
+fn check_names_a_truncated_tsgo_install_and_its_fix() {
+    let (dir, game) = check_project();
+    // Where bun 1.4's `bun x` keeps typescript@7.0.2.
+    let base = dir.join(if cfg!(windows) { "tmp" } else { "cache" });
+    std::fs::create_dir_all(&base).unwrap();
+    #[cfg(unix)]
+    let tree = {
+        use std::os::unix::fs::MetadataExt;
+        let uid = std::fs::metadata(&base).unwrap().uid();
+        base.join(format!(".bunx-{uid}/typescript@7.0.2"))
+    };
+    #[cfg(windows)]
+    let tree = base.join("bunx-S-1-5-21-test-typescript@7.0.2");
+    truncated_bunx_typescript(&tree);
+    // The stand-in bun prints tsgo's panic and exits as tsgo does.
+    let bun = dir.join("bun");
+    std::fs::create_dir_all(&bun).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::write(bun.join("panic.txt"), tsgo_panic(&tree)).unwrap();
+        std::fs::write(
+            bun.join("bun"),
+            "#!/bin/sh\nPATH=/usr/bin:/bin\ncat \"$(dirname \"$0\")/panic.txt\" >&2\nexit 2\n",
+        )
+        .unwrap();
+        std::fs::set_permissions(bun.join("bun"), std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let check = |cache: &Path| {
+        let o = og()
+            .args(["check", "--tool", "tsgo"])
+            .arg(&game)
+            .current_dir(&dir)
+            .env("PATH", &bun)
+            .env("BUN_INSTALL_CACHE_DIR", cache)
+            .env("TMPDIR", cache)
+            .env("TMP", cache)
+            .env("TEMP", cache)
+            .output()
+            .unwrap();
+        let t = text(&o);
+        assert_eq!(o.status.code(), Some(1), "{t}");
+        for want in [
+            format!(
+                "og check: the TypeScript checker (tsgo 7.0.2) that bun x installed in {} is incomplete",
+                tree.display()
+            ),
+            "106 of its 111 files missing or empty (lib.d.ts, lib.decorators.d.ts, lib.decorators.legacy.d.ts and 103 more)".into(),
+            "Delete that directory, or clear bun's cache with `bun pm cache rm`, then rerun".into(),
+        ] {
+            assert!(t.contains(&want), "wanted `{want}` in:\n{t}");
+        }
+        for unwanted in ["panic:", "goroutine", "og check: ok"] {
+            assert!(!t.contains(unwanted), "`{unwanted}` in:\n{t}");
+        }
+    };
+    // Found before tsgo runs.
+    check(&base);
+    // Out of og's sight (a bunfig.toml cache directory): read from the panic.
+    #[cfg(unix)]
+    check(&dir.join("elsewhere"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// Without a tsconfig.json of its own, a bare entry and a project are
 /// checked with the template's options and `paths` to the engine package
 /// og resolved (here the checkout's): a type error in the entry, and one
