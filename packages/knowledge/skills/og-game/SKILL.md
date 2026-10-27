@@ -138,7 +138,12 @@ in this table owns it and the other points there.
 | `dist/` | `og build` output |
 
 The engine version in `project.ogt` is a pin. Upgrading it is an explicit
-change with its own run, never a side effect. Its `tick`, `seed`, `scenes`
+change with its own run, never a side effect: `og upgrade --json` moves the
+pin and package.json's dependency to the installed engine, applies the
+mechanical rewrites of the versions crossed and lists each line to edit by
+hand with its fix (exit 3 while any remain); then `bun install`, `og
+check`, `og test`. A newer patch of the pinned minor runs the game as
+written. Its `tick`, `seed`, `scenes`
 and `scene` are the defaults of the `GameDesc` fields of those names: what
 `og.game({...})` leaves unset takes the manifest's value (else 60, 0, none
 and `main`). Write each in one place; set in both to different values, the
