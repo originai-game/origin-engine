@@ -689,6 +689,13 @@ impl super::Adapter {
             super::PrivateCapabilities::TIMESTAMP_FROM_TIME_ELAPSED,
             timestamp_from_time_elapsed && !extensions.contains("GL_ARB_timer_query"),
         );
+        // WebGL2 compiles and links in the background with
+        // `KHR_parallel_shader_compile` (glow enables it with the context),
+        // so the pipelines made before a first use link at once.
+        private_caps.set(
+            super::PrivateCapabilities::PARALLEL_SHADER_COMPILE,
+            cfg!(webgl) && extensions.contains("KHR_parallel_shader_compile"),
+        );
         private_caps.set(
             super::PrivateCapabilities::TEXTURE_STORAGE,
             supported((3, 0), (4, 2)),

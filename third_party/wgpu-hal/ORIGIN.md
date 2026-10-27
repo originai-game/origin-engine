@@ -10,9 +10,9 @@ patching wgpu-hal alone is enough: `Cargo.lock` differs from the crates.io
 build only in wgpu-hal's `source` and `checksum` lines.
 
 The first commit that adds this copy is upstream unchanged (git normalised
-one CRLF file, `src/vulkan/descriptor.rs`, to LF). The one patch below is
-one commit after it and touches only `src/gles/`, so the Metal, Vulkan and
-DX12 backends are byte for byte 30.0.1. It reverts alone (`git log --
+one CRLF file, `src/vulkan/descriptor.rs`, to LF). Each patch below is its
+own commit after it and touches only `src/gles/`, so the Metal, Vulkan and
+DX12 backends are byte for byte 30.0.1. Each reverts alone (`git log --
 third_party/wgpu-hal`). Evidence: `tests/evidence/debt3/wgpu-hal-vendor/NOTES.md`.
 
 A second patch, a GLES queue that skipped GL calls setting what was already
@@ -57,6 +57,35 @@ v30.0.1 in `tests/evidence/debt/webgl2-gpu-timing/`):
 
 It costs about 1 kB brotli on a 3D module with the GL backend, publish
 included, since the choice is made at run time.
+
+### 2. Programs link in the background on WebGL2 (`KHR_parallel_shader_compile`)
+
+Upstream 30.0.1 reads each shader's `COMPILE_STATUS` right after
+`compileShader` and the program's `LINK_STATUS` and uniform locations
+right after `linkProgram`, so every pipeline waits for its own compile
+and link and ANGLE never has two programs at once. On ANGLE's D3D11
+backend (Chrome and Edge on Windows) a lit program takes 8 to 11 s there.
+The patch (`adapter.rs`, `device.rs`, `command.rs`, `mod.rs`):
+
+- `adapter.rs` sets the private capability `PARALLEL_SHADER_COMPILE` on
+  WebGL2 when the context lists `KHR_parallel_shader_compile` (glow
+  enables it with the context). Native GL is unchanged.
+- `device.rs`: with it, `create_program` starts the compiles and the link
+  and reads nothing; the shaders, the names to bind and the immediates
+  wait in `PendingLink`. `finish_link` reads the status (and, on a
+  failure, each shader's compile log), deletes the shaders, binds the
+  blocks and samplers and reads the uniform locations; without the
+  capability it runs at once, as upstream did.
+- `command.rs`, `mod.rs`: `PipelineInner::linked` finishes a pending link
+  the first time an encoder sets the pipeline (wgpu-core encodes a
+  command buffer's passes at `finish`, so every pipeline made while it
+  was recorded has been linking meanwhile), on the context of the
+  encoder's `AdapterShared`. A link that failed panics there, with the
+  log, where wgpu's default error handler would have panicked when the
+  pipeline was made.
+
+Evidence: `tests/evidence/release/windows-x64-webgl2/COLDSTART.md`. Carry it
+over like patch 1, or drop it when upstream defers the link reads itself.
 
 ## Moving wgpu to another version
 
