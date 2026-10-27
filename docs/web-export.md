@@ -523,7 +523,7 @@ earlier build; a build that fails after replacing it removes what it wrote.
 - **Pipelines behind the gate**: the renderer makes a pipeline when a pass
   first draws with it (og-render's README §Pipelines made on first use),
   so the first frame compiles only what it draws: on the WebGL2 fallback,
-  where every program compiles synchronously, the renderer's creation went
+  where every program is a long compile and link, the renderer's creation went
   from about 500 ms to 130 ms and the dogfood games' first frame from 1.1
   to 1.4 s to 0.7 s. After the first frame the Worker makes the rest, one
   a task in idle time, until none is left or the gate's tap starts play

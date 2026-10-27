@@ -17,7 +17,9 @@ pub struct ShaderSource {
     pub gl: bool,
     pub wgsl: String,
     /// Overrides set for this variant (the rest keep their defaults): the
-    /// lean lit pipelines' `DISCARD` false, which drops the fragment discard.
+    /// lean lit pipelines' `DISCARD` false, which drops the fragment discard;
+    /// the GL tier's lit pipelines' `AREA_LIGHTS` false, which drops the
+    /// rect lights.
     pub constants: Vec<(String, f64)>,
 }
 
@@ -206,6 +208,33 @@ pub fn shader_sources(full: bool) -> Vec<ShaderSource> {
                 gl: !full,
                 wgsl: crate::lit_source_with(&hooks, palette, tables, planar),
                 constants: vec![("DISCARD".to_string(), 0.0)],
+            });
+        }
+    }
+    // The GL tier's lit modules as a scene without rect lights has them
+    // made (`area::wgsl`): `AREA_LIGHTS` false, no rect-light shading.
+    if !full {
+        let palette = PaletteMode::Texture;
+        let example = crate::custom::example();
+        for (label, wgsl) in [
+            (
+                "pbr (texture palette, no rect lights)",
+                crate::lit_source_with(&hooks, palette, tables, crate::planar_slot(palette, 1)),
+            ),
+            (
+                "physical (texture palette, no rect lights)",
+                crate::physical_source_with(&hooks, palette, tables),
+            ),
+            (
+                "custom full lit=true (texture palette, no rect lights)",
+                crate::custom::lit_source(&example, true, palette, tables),
+            ),
+        ] {
+            out.push(ShaderSource {
+                label: label.to_string(),
+                gl: true,
+                wgsl,
+                constants: vec![("AREA_LIGHTS".to_string(), 0.0)],
             });
         }
     }

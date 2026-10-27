@@ -598,7 +598,7 @@ pub fn og_web_memory(engine: u32) -> String {
 
 /// Make one pipeline the engine's renderer has not used yet (og-render's
 /// `Renderer::warm`): the engine Worker calls it in idle time behind the
-/// play gate, until it answers false, so WebGL2's synchronous compiles of
+/// play gate, until it answers false, so WebGL2's compiles and links of
 /// the passes the first frame did not draw happen before play rather than
 /// in a frame of it.
 #[wasm_bindgen]

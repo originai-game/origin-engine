@@ -8,7 +8,8 @@
     "fixed": [
       "og check on a TypeScript install that bun x left incomplete (tsgo, where tsrs has no package): instead of tsgo's Go panic or Cannot find global type errors, it names the incomplete directory and the fix (delete it or bun pm cache rm, then rerun); og doctor reports it as broken.",
       "The knowledge package's scripts/mount.ts CLI mounts into an origin-agent checkout's knowledge/, where the platform's knowledge moved from OriginGame's packages/game-knowledge/production; installed, mount and summary are unchanged.",
-      "og-ui glass on WebGL2 in Chrome and Edge on Windows blurs as on metal, WebGPU and DX12: each pyramid level took its tap spacing from textureDimensions of a view whose base mip level is that level, which ANGLE on D3D11 answers with level 2b's size for base level b, so the blur was about twice as wide. Each level of the glass pyramid and of a view's glow chain now takes the size it reads from a uniform; native frames are unchanged."
+      "og-ui glass on WebGL2 in Chrome and Edge on Windows blurs as on metal, WebGPU and DX12: each pyramid level took its tap spacing from textureDimensions of a view whose base mip level is that level, which ANGLE on D3D11 answers with level 2b's size for base level b, so the blur was about twice as wide. Each level of the glass pyramid and of a view's glow chain now takes the size it reads from a uniform; native frames are unchanged.",
+      "WebGL2 starts about four times faster on Windows (ANGLE on D3D11): programs link in the background with KHR_parallel_shader_compile, read when a pass first draws with them, and the GL tier's lit programs leave the rect-light (LTC) code out until a scene has a rect light. fx-showcase's cold first frame went from 30.4-31.7 s to 7.0-7.5 s in Chrome 155 and from 30.3-31.2 s to 7.6-7.7 s in Edge 155; WebGPU, metal and DX12 are unchanged and no frame moved."
     ]
   },
   "versions": [

@@ -53,6 +53,37 @@ pub const RECT_SHADOW_FOV: f32 = 150.0;
 /// The most local shadow array layers cookies take.
 pub const MAX_COOKIE_LAYERS: usize = 24;
 
+/// area.wgsl as the lit modules of the light tables' tier read it. On the
+/// full tier it is the file. On the GL tier (WebGL2) its rect-light
+/// shading, `area_shade` and `rect_shadow`, returns nothing at once while
+/// the pipeline-overridable constant `AREA_LIGHTS` is false: a lit
+/// pipeline made before the scene has a rect light passes false
+/// ([`crate::Renderer`]'s `area_lights`), which is exact for every frame
+/// without one, and ANGLE's D3D11 backend links the lit program without
+/// the LTC evaluation and the rect shadow in 3.5 s instead of 8 to 10 s
+/// (tests/evidence/release/windows-x64-webgl2/COLDSTART.md). Each guard is
+/// added on the line it guards, so naga's lines stay the file's.
+pub(crate) fn wgsl(tables: crate::clusters::LightTables) -> std::borrow::Cow<'static, str> {
+    if tables == crate::clusters::LightTables::Storage {
+        return crate::AREA_WGSL.into();
+    }
+    let guard = |src: &str, at: &str, add: &str| {
+        assert_eq!(src.matches(at).count(), 1, "area.wgsl has one `{at}`");
+        src.replacen(at, &format!("{at} {add}"), 1)
+    };
+    let src = guard(
+        crate::AREA_WGSL,
+        "  o.specular = vec3<f32>(0.0);",
+        "if (!AREA_LIGHTS) { return o; }",
+    );
+    let src = guard(
+        &src,
+        "fn rect_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {",
+        "if (!AREA_LIGHTS) { return 1.0; }",
+    );
+    format!("override AREA_LIGHTS: bool = true; {src}").into()
+}
+
 const LTC: &[u8; 16384] = include_bytes!("../../../third_party/ltc/ltc32.bin");
 
 /// The LTC table's uniform buffer (frame binding 11).

@@ -568,7 +568,8 @@ impl Lightmaps {
 
     /// Makes the lightmapped pipeline of `family` for `key` from `module`
     /// (the family's lit module), its groups 1 and 2 laid out as
-    /// `material` and `fx`.
+    /// `material` and `fx`; `area_lights` false (the GL tier only) leaves
+    /// rect lights out, as `crate::pbr_pipeline`'s.
     #[allow(clippy::too_many_arguments)]
     pub fn ensure_pipeline(
         &mut self,
@@ -578,6 +579,7 @@ impl Lightmaps {
         module: &wgpu::ShaderModule,
         key: LitKey,
         samples: u32,
+        area_lights: bool,
     ) {
         if self.pipelines.contains_key(&(family, key)) {
             return;
@@ -598,7 +600,8 @@ impl Lightmaps {
                 })
             });
         let (side, blend, effects) = key;
-        let constants = [("EFFECTS", effects as u32 as f64)];
+        let constants = [("EFFECTS", effects as u32 as f64), crate::AREA_LIGHTS_OFF];
+        let constants = &constants[..if area_lights { 1 } else { 2 }];
         let vertices = if family == Family::Compact {
             crate::compact::LEAN_LAYOUT
         } else {
@@ -612,7 +615,7 @@ impl Lightmaps {
         let (vs, fs) = family.entries();
         let p = crate::hdr_pipeline_with(
             device,
-            &constants,
+            constants,
             crate::HdrPipeline {
                 alpha_to_coverage: false,
                 label: "lit lightmapped",

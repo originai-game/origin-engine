@@ -254,6 +254,12 @@ bitflags::bitflags! {
         /// `EXT_disjoint_timer_query_webgl2`, whose `TIMESTAMP_EXT` counter
         /// has no bits on ANGLE's Metal and D3D11 backends.
         const TIMESTAMP_FROM_TIME_ELAPSED = 1 << 21;
+        /// Programs link in the background (WebGL2's
+        /// `KHR_parallel_shader_compile`): a pipeline's compile and link
+        /// are started when it is made and its status and uniform
+        /// locations are read when it is first set ([`ProgramLink`]), so
+        /// the programs made before then compile and link at once.
+        const PARALLEL_SHADER_COMPILE = 1 << 22;
     }
 }
 
@@ -749,9 +755,28 @@ type SamplerBindMap = [Option<u8>; MAX_TEXTURE_SLOTS];
 struct PipelineInner {
     program: glow::Program,
     sampler_map: SamplerBindMap,
+    clip_distance_count: u32,
+    /// What the link gave, or the link still running.
+    link: Mutex<ProgramLink>,
+}
+
+/// A program's link: read when it is made, or, with
+/// [`PrivateCapabilities::PARALLEL_SHADER_COMPILE`], at its first use
+/// (`PipelineInner::linked`), which waits for the link only if it is
+/// still running then.
+#[derive(Debug)]
+enum ProgramLink {
+    Pending(device::PendingLink),
+    Linked(LinkedProgram),
+    /// Its link failed (the first use panicked).
+    Failed,
+}
+
+/// The uniform locations a linked program answered.
+#[derive(Clone, Debug)]
+struct LinkedProgram {
     first_instance_location: Option<glow::UniformLocation>,
     immediates_descs: ArrayVec<ImmediateDesc, MAX_IMMEDIATES_COMMANDS>,
-    clip_distance_count: u32,
 }
 
 #[cfg(send_sync)]
@@ -1138,6 +1163,8 @@ pub struct CommandEncoder {
     state: command::State,
     private_caps: PrivateCapabilities,
     counters: Arc<wgt::HalCounters>,
+    /// The context a pipeline's background link is finished on (`ProgramLink`).
+    shared: Arc<AdapterShared>,
 }
 
 impl fmt::Debug for CommandEncoder {

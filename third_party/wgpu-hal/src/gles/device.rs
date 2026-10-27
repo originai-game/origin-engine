@@ -247,6 +247,7 @@ impl super::Device {
         shader: &str,
         naga_stage: naga::ShaderStage,
         #[cfg_attr(target_arch = "wasm32", allow(unused))] label: Option<&str>,
+        check: bool,
     ) -> Result<glow::Shader, crate::PipelineError> {
         let target = match naga_stage {
             naga::ShaderStage::Vertex => glow::VERTEX_SHADER,
@@ -272,6 +273,11 @@ impl super::Device {
 
         log::debug!("\tCompiled shader {raw:?}");
 
+        if !check {
+            // PARALLEL_SHADER_COMPILE: the compile runs on; the program's
+            // link reports it (`finish_link`).
+            return Ok(raw);
+        }
         let compiled_ok = unsafe { gl.get_shader_compile_status(raw) };
         let msg = unsafe { gl.get_shader_info_log(raw) };
         if compiled_ok {
@@ -295,6 +301,7 @@ impl super::Device {
         stage: &crate::ProgrammableStage<super::ShaderModule>,
         context: CompilationContext,
         program: glow::Program,
+        check: bool,
     ) -> Result<glow::Shader, crate::PipelineError> {
         let source = 'outer: {
             use naga::back::glsl;
@@ -392,7 +399,15 @@ impl super::Device {
             Cow::Owned(output)
         };
 
-        unsafe { Self::compile_shader(gl, &source, naga_stage, stage.module.label.as_deref()) }
+        unsafe {
+            Self::compile_shader(
+                gl,
+                &source,
+                naga_stage,
+                stage.module.label.as_deref(),
+                check,
+            )
+        }
     }
 
     unsafe fn create_pipeline<'a>(
@@ -471,6 +486,7 @@ impl super::Device {
             naga::back::glsl::Version::Embedded { version, .. } => format!("{version} es"),
             naga::back::glsl::Version::Desktop(version) => format!("{version}"),
         };
+        let parallel = private_caps.contains(PrivateCapabilities::PARALLEL_SHADER_COMPILE);
         let program = unsafe { gl.create_program() }.unwrap();
         #[cfg(native)]
         if let Some(label) = label {
@@ -502,7 +518,7 @@ impl super::Device {
                 clip_distance_count: &mut clip_distance_count,
             };
 
-            let shader = Self::create_shader(gl, naga_stage, stage, context, program)?;
+            let shader = Self::create_shader(gl, naga_stage, stage, context, program, !parallel)?;
             shaders_to_delete.push(shader);
         }
 
@@ -516,6 +532,7 @@ impl super::Device {
                     &shader_src,
                     naga::ShaderStage::Fragment,
                     Some("(wgpu internal) dummy fragment shader"),
+                    !parallel,
                 )
             }?;
             shaders_to_delete.push(shader);
@@ -526,14 +543,66 @@ impl super::Device {
         }
         unsafe { gl.link_program(program) };
 
-        for shader in shaders_to_delete {
-            unsafe { gl.delete_shader(shader) };
-        }
+        let pending = PendingLink {
+            shaders: shaders_to_delete,
+            name_binding_map,
+            immediates_items,
+            has_stages,
+            label: label.map(String::from),
+        };
+        let link = if parallel {
+            // Its status and uniform locations are read at its first use,
+            // when the link has had the time it took to make the pipelines
+            // after it (`PipelineInner::linked`).
+            super::ProgramLink::Pending(pending)
+        } else {
+            super::ProgramLink::Linked(unsafe {
+                Self::finish_link(gl, program, pending, private_caps)
+            }?)
+        };
+
+        Ok(Arc::new(super::PipelineInner {
+            program,
+            sampler_map,
+            clip_distance_count,
+            link: parking_lot::Mutex::new(link),
+        }))
+    }
+
+    /// Reads a started link's status and the program's uniform locations
+    /// (waiting for the link if it is still running), and binds its
+    /// blocks and samplers to their slots.
+    unsafe fn finish_link(
+        gl: &glow::Context,
+        program: glow::Program,
+        pending: PendingLink,
+        private_caps: PrivateCapabilities,
+    ) -> Result<super::LinkedProgram, crate::PipelineError> {
+        let PendingLink {
+            shaders,
+            name_binding_map,
+            immediates_items,
+            has_stages,
+            label: _,
+        } = pending;
 
         log::debug!("\tLinked program {program:?}");
 
         let linked_ok = unsafe { gl.get_program_link_status(program) };
-        let msg = unsafe { gl.get_program_info_log(program) };
+        let mut msg = unsafe { gl.get_program_info_log(program) };
+        if !linked_ok {
+            // With PARALLEL_SHADER_COMPILE no compile status was read: a
+            // shader that did not compile says why here.
+            for &shader in shaders.iter() {
+                if !unsafe { gl.get_shader_compile_status(shader) } {
+                    msg.push('\n');
+                    msg.push_str(&unsafe { gl.get_shader_info_log(shader) });
+                }
+            }
+        }
+        for shader in shaders {
+            unsafe { gl.delete_shader(shader) };
+        }
         if !linked_ok {
             return Err(crate::PipelineError::Linkage(has_stages, msg));
         }
@@ -599,13 +668,66 @@ impl super::Device {
             None
         };
 
-        Ok(Arc::new(super::PipelineInner {
-            program,
-            sampler_map,
+        Ok(super::LinkedProgram {
             first_instance_location,
             immediates_descs: uniforms,
-            clip_distance_count,
-        }))
+        })
+    }
+}
+
+/// A program whose link has been started and not yet read
+/// ([`super::ProgramLink`]): its shaders (deleted once it is read) and
+/// what its status and uniform locations are read with.
+pub(super) struct PendingLink {
+    shaders: ArrayVec<glow::Shader, { crate::MAX_CONCURRENT_SHADER_STAGES }>,
+    name_binding_map: NameBindingMap,
+    immediates_items: ArrayVec<Vec<naga::back::glsl::ImmediateItem>, { crate::MAX_CONCURRENT_SHADER_STAGES }>,
+    has_stages: wgt::ShaderStages,
+    label: Option<String>,
+}
+
+impl core::fmt::Debug for PendingLink {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("PendingLink")
+            .field("label", &self.label)
+            .finish()
+    }
+}
+
+impl super::PipelineInner {
+    /// The program's uniform locations. A link still pending
+    /// (`PARALLEL_SHADER_COMPILE`) is read now, at the pipeline's first
+    /// use, which waits for it if it has not finished; a link that failed
+    /// panics there, as wgpu's default handler of the pipeline's error
+    /// would have when it was made.
+    pub(super) fn linked(&self, shared: &super::AdapterShared) -> super::LinkedProgram {
+        let mut link = self.link.lock();
+        if let super::ProgramLink::Linked(ref linked) = *link {
+            return linked.clone();
+        }
+        let super::ProgramLink::Pending(pending) =
+            core::mem::replace(&mut *link, super::ProgramLink::Failed)
+        else {
+            panic!("a pipeline whose program did not link was used again");
+        };
+        let label = pending.label.clone();
+        let gl = &shared.context.lock();
+        match unsafe { super::Device::finish_link(gl, self.program, pending, shared.private_caps) } {
+            Ok(linked) => {
+                *link = super::ProgramLink::Linked(linked.clone());
+                linked
+            }
+            Err(e) => panic!("the program of pipeline {label:?} did not link: {e}"),
+        }
+    }
+
+    /// Deletes the shaders of a link never read.
+    unsafe fn delete_pending_shaders(&self, gl: &glow::Context) {
+        if let super::ProgramLink::Pending(ref pending) = *self.link.lock() {
+            for &shader in pending.shaders.iter() {
+                unsafe { gl.delete_shader(shader) };
+            }
+        }
     }
 }
 
@@ -1266,6 +1388,7 @@ impl crate::Device for super::Device {
             state: Default::default(),
             private_caps: self.shared.private_caps,
             counters: Arc::clone(&self.counters),
+            shared: Arc::clone(&self.shared),
         })
     }
 
@@ -1605,6 +1728,7 @@ impl crate::Device for super::Device {
                 Ok(ref p) => p.program != pipeline.inner.program,
                 Err(_) => false,
             });
+            unsafe { pipeline.inner.delete_pending_shaders(gl) };
             unsafe { gl.delete_program(pipeline.inner.program) };
         }
 
@@ -1641,6 +1765,7 @@ impl crate::Device for super::Device {
                 Ok(ref p) => p.program != pipeline.inner.program,
                 Err(_) => false,
             });
+            unsafe { pipeline.inner.delete_pending_shaders(gl) };
             unsafe { gl.delete_program(pipeline.inner.program) };
         }
 

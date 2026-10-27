@@ -142,6 +142,15 @@ fn gl_tier_failures(s: &og_render::ShaderSource) -> Vec<String> {
 fn every_full_tier_module_validates_and_translates_to_msl_spirv_and_hlsl() {
     let sources = og_render::shader_sources(true);
     assert!(sources.len() >= 30, "{} modules", sources.len());
+    // The GL tier's rect-light switch (area.rs `wgsl`) is not in a module
+    // Metal, DX12 or WebGPU compile.
+    for s in &sources {
+        assert!(
+            !s.wgsl.contains("AREA_LIGHTS"),
+            "{}: AREA_LIGHTS on the full tier",
+            s.label
+        );
+    }
     let failures: Vec<String> = sources.iter().flat_map(full_tier_failures).collect();
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
@@ -202,6 +211,8 @@ const DYNAMIC_VECTOR_INDEXES: &[(&str, &str)] = &[
     ("pbr array maps (texture palette)", "object_id"),
     ("pbr lean (texture palette)", "object_id"),
     ("physical (texture palette)", "object_id"),
+    ("pbr (texture palette, no rect lights)", "object_id"),
+    ("physical (texture palette, no rect lights)", "object_id"),
     ("stylise object (texture palette)", "object_id"),
     ("stylise", "hatch_surface"),
     ("stylise", "dots_surface"),

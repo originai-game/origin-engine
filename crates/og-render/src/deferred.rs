@@ -1,8 +1,10 @@
 //! GPU objects made the first time a frame uses them.
 //!
-//! Every pipeline is a program to compile, and on WebGL2 wgpu compiles and
-//! links each one synchronously when it is made (ANGLE's compile, then the
-//! status read that waits for it): the renderer making all of its fixed
+//! Every pipeline is a program to compile, and on WebGL2 its link has to
+//! finish before a pass draws with it (without KHR_parallel_shader_compile
+//! wgpu even waits for it when the pipeline is made; with it, the link runs
+//! in the background until an encoder first sets the pipeline, third_party/
+//! wgpu-hal/ORIGIN.md patch 2): the renderer making all of its fixed
 //! pipelines up front cost the WebGL2 page 400 to 550 ms before its first
 //! frame (examples/WEB-FINDINGS.md #11), most of them for passes the first
 //! frame does not draw (water, metaballs, fluids, terrain, scatter,
