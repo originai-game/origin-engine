@@ -7,6 +7,7 @@
 // error, never a skip.
 
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 declare module "node:fs" {
@@ -55,7 +56,8 @@ export class Browser {
   }
 
   static async launch(o: { chrome?: string; width?: number; height?: number; flags?: string[] } = {}): Promise<Browser> {
-    const profile = mkdtempSync(join(process.env.TMPDIR ?? "/tmp", "og-cdp-"));
+    // os.tmpdir(): TMPDIR else /tmp on Unix, %TEMP% on Windows (where "/tmp" is \tmp on the current drive).
+    const profile = mkdtempSync(join(tmpdir(), "og-cdp-"));
     const proc = Bun.spawn(
       [
         o.chrome ?? chromePath(),
@@ -110,14 +112,32 @@ export class Browser {
   }
 
   async close(): Promise<void> {
+    // Chrome closes itself and every process it started: on Windows a kill
+    // ends the process Bun spawned and leaves the browser, its GPU and
+    // renderer processes running with the profile open. The kill stays for
+    // a browser that does not answer within 5 s.
+    const closed = await Promise.race([
+      this.send("Browser.close").then(() => this.#proc.exited).then(() => true, () => false),
+      new Promise<boolean>((r) => setTimeout(() => r(false), 5000)),
+    ]);
     try {
       this.#ws.close();
     } catch {
       /* already closed */
     }
-    this.#proc.kill();
+    if (!closed) this.#proc.kill();
     await this.#proc.exited;
-    rmSync(this.#profile, { recursive: true, force: true });
+    // Windows: the last child process can hold a file of the profile for a
+    // moment after the browser has exited (EBUSY).
+    for (let tries = 0; ; tries++) {
+      try {
+        rmSync(this.#profile, { recursive: true, force: true });
+        return;
+      } catch (e) {
+        if ((e as { code?: string }).code !== "EBUSY" || tries >= 50) throw e;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    }
   }
 }
 

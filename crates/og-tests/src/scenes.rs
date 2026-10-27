@@ -264,141 +264,198 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         update: None,
         applies: Applies::Every,
     };
-    match name {
+    // Each scene is built in a closure of its own, so its temporaries live
+    // in that closure's frame. Unoptimised, one function's frame holds every
+    // match arm's temporaries side by side (a RenderScene is 3.9 KB): this
+    // match built inline took 804 KB of stack, and a glTF import on top
+    // overflowed Windows' 1 MiB main thread in a debug og-gfx.
+    let scene: fn(&mut GfxScene, &str) -> Result<(), String> = match name {
         // The spike's reference scene (two glTF models x 25 on a checker
         // ground), drawn with the sky pass, mipmapped textures and CSM.
-        "gltf-reference" => g.scene = spike_gltf_scene()?,
+        "gltf-reference" => |g, _| {
+            g.scene = spike_gltf_scene()?;
+            Ok(())
+        },
         // 20,000 low-poly spheres submitted one by one: two batches in all.
-        "spheres-20k" => g.scene = sphere_field(20_000),
+        "spheres-20k" => |g, _| {
+            g.scene = sphere_field(20_000);
+            Ok(())
+        },
         // The same field with every sphere bobbing each frame (the bench's
         // sphere field, tools/bench/spheres): the renderer's per-instance
         // cost when every transform changes. Perf only (no reference).
-        "spheres-20k-moving" => {
+        "spheres-20k-moving" => |g, _| {
             g.scene = sphere_field(20_000);
             g.update = Some(bob_spheres);
-        }
+            Ok(())
+        },
         // A 400 m field with pillars from 3 m to 190 m: shadows in every cascade.
-        "cascades-200m" => g.scene = cascades_200m(true),
+        "cascades-200m" => |g, _| {
+            g.scene = cascades_200m(true);
+            Ok(())
+        },
         // Night: seven point and spot lights, the first two shadowed.
-        "point-spot-lights" => g.scene = point_spot_lights(),
+        "point-spot-lights" => |g, _| {
+            g.scene = point_spot_lights();
+            Ok(())
+        },
         // Thin geometry after 16 frames of TAA (static camera, converged).
-        "taa" => {
+        "taa" => |g, _| {
             g.scene = thin_geometry();
             g.desc.antialias = Antialias::Tier;
             g.frames = 16;
             g.applies = Applies::FullTier;
-        }
+            Ok(())
+        },
         // The same geometry with the GL tier's 4x MSAA.
-        "msaa" => {
+        "msaa" => |g, _| {
             g.scene = thin_geometry();
             g.desc.antialias = Antialias::Tier;
             g.applies = Applies::NoComputeTier;
-        }
+            Ok(())
+        },
         // The same geometry with FXAA, on every tier (the GL tier's
         // alternative to MSAA, what `Tier` picks without multisampled HDR).
-        "fxaa" => {
+        "fxaa" => |g, _| {
             g.scene = thin_geometry();
             g.desc.antialias = Antialias::Fxaa;
-        }
+            Ok(())
+        },
         // The same geometry under TAA with the camera sliding sideways:
         // Catmull-Rom history and a 0.5 sharpening pass, after 16 frames.
         // `Antialias::Taa` is TAA on every tier: the browser tiers judge a
         // moving camera's reprojection on WebGL2 against metal here (row
         // 68: the GL backend read TAA's depth as 0 until it was sampled).
-        "taa-sharp" => {
+        "taa-sharp" => |g, _| {
             g.scene = thin_geometry();
             g.desc.antialias = Antialias::Taa;
             g.desc.taa_history = og_render::TaaHistory::CatmullRom;
             g.desc.taa_sharpen = 0.5;
             g.frames = 16;
             g.update = Some(crate::shadow_scenes::pan_thin_geometry);
-        }
+            Ok(())
+        },
         // The sun's soft shadows (PCSS) with cascade blending: contact
         // shadows sharp, penumbrae widening with the caster's height.
-        "shadows-soft" => g.scene = crate::shadow_scenes::soft_shadows_scene(true),
+        "shadows-soft" => |g, _| {
+            g.scene = crate::shadow_scenes::soft_shadows_scene(true);
+            Ok(())
+        },
         // The same with hard shadows and no blending (evidence only, no reference).
-        "shadows-soft-off" => g.scene = crate::shadow_scenes::soft_shadows_scene(false),
+        "shadows-soft-off" => |g, _| {
+            g.scene = crate::shadow_scenes::soft_shadows_scene(false);
+            Ok(())
+        },
         // Cost measurements (evidence only, no references): point-spot-lights
         // and shadows-local-8 with each point shadow storage forced, and the
         // thin geometry without antialiasing.
-        "point-shadows-cube" => {
+        "point-shadows-cube" => |g, _| {
             g.scene = point_spot_lights();
             g.desc.point_shadows = og_render::PointShadows::Cube;
-        }
-        "shadows-local-8-cube" | "shadows-local-8-paraboloid" => {
+            Ok(())
+        },
+        "shadows-local-8-cube" | "shadows-local-8-paraboloid" => |g, name| {
             g.scene = crate::shadow_scenes::many_shadowed_lights(true);
             g.desc.point_shadows = if name.ends_with("cube") {
                 og_render::PointShadows::Cube
             } else {
                 og_render::PointShadows::Paraboloid
             };
-        }
-        "aa-off" => g.scene = thin_geometry(),
+            Ok(())
+        },
+        "aa-off" => |g, _| {
+            g.scene = thin_geometry();
+            Ok(())
+        },
         // taa-sharp's moving camera with a bilinear history and no
         // sharpening (evidence only, no reference).
-        "taa-motion" => {
+        "taa-motion" => |g, _| {
             g.scene = thin_geometry();
             g.desc.antialias = Antialias::Taa;
             g.frames = 16;
             g.update = Some(crate::shadow_scenes::pan_thin_geometry);
             g.applies = Applies::FullTier;
-        }
+            Ok(())
+        },
         // point-spot-lights with the point light's shadow in two paraboloid
         // hemispheres (WebGL2's default) instead of six cube faces.
-        "point-shadows-paraboloid" => {
+        "point-shadows-paraboloid" => |g, _| {
             g.scene = point_spot_lights();
             g.desc.point_shadows = og_render::PointShadows::Paraboloid;
-        }
+            Ok(())
+        },
         // A roofed room on a sunlit field: the sun reaches the floor only
         // through the door, and a shadowed point light inside a glass box
         // that casts no shadow lights the altar and the pillar (its shadow
         // in cube faces, or paraboloids on WebGL2, falls behind a post).
-        "shadows-crypt" => g.scene = crate::shadow_scenes::crypt_scene(),
+        "shadows-crypt" => |g, _| {
+            g.scene = crate::shadow_scenes::crypt_scene();
+            Ok(())
+        },
         // Per-instance shadow flags under a low sun: a model that casts as
         // added beside one that casts none, and behind a wall's shadow a
         // box and a model that receive beside a box and a model that do
         // not (lit as if unshadowed).
-        "shadow-flags" => g.scene = crate::shadow_scenes::shadow_flags_scene()?.scene,
+        "shadow-flags" => |g, _| {
+            g.scene = crate::shadow_scenes::shadow_flags_scene()?.scene;
+            Ok(())
+        },
         // meridian-loop #15: a 1,600 m ground as og.render.planeGeometry
         // makes it, its grid tile repeated every 10 m by `uvRepeat` 160.
-        "ground-grid" => g.scene = ground_grid(160.0),
+        "ground-grid" => |g, _| {
+            g.scene = ground_grid(160.0);
+            Ok(())
+        },
         // meridian-loop #7: neon-vector's outline over a 1,600 m ground
         // from a chase camera: lined where it ends, never washed.
-        "stylise-outline-ground" => {
-            g.scene = crate::stylise_scenes::outline_ground_scene(1.4, 120.0)
-        }
+        "stylise-outline-ground" => |g, _| {
+            g.scene = crate::stylise_scenes::outline_ground_scene(1.4, 120.0);
+            Ok(())
+        },
         // Eight shadowed lights (six point, two spot) and two more far
         // behind whose shadows are left out (the full tier's eight; WebGL2
         // draws four, its own frame).
-        "shadows-local-8" => {
+        "shadows-local-8" => |g, _| {
             g.scene = crate::shadow_scenes::many_shadowed_lights(true);
             g.applies = Applies::FullTier;
-        }
+            Ok(())
+        },
         // Emissive spheres over a dark ground with bloom.
-        "bloom" => {
+        "bloom" => |g, _| {
             g.scene = emissive_spheres();
             g.scene.post.bloom = Some(Bloom {
                 threshold: 1.0,
                 knee: 0.5,
                 intensity: 0.8,
             });
-        }
+            Ok(())
+        },
         // A dim scene brought to middle grey by metered exposure.
-        "exposure" => g.scene = dim_scene(1.0),
+        "exposure" => |g, _| {
+            g.scene = dim_scene(1.0);
+            Ok(())
+        },
         // 20,000 sprites, three textures (one an atlas), two layers.
-        "sprites-20k" => {
+        "sprites-20k" => |g, _| {
             g.scene = sprite_field(20_000)?;
             g.update = Some(move_sprites);
-        }
+            Ok(())
+        },
         // Sprites drawn from texture arrays: an eight-frame pixel-art
         // flipbook (nearest) in every frame, flipped and turned, and a
         // three-layer smooth array (linear, mipmapped) added, around one
         // plain textured sprite; one draw per array and blend.
-        "sprites-array" => g.scene = sprite_array_scene(),
+        "sprites-array" => |g, _| {
+            g.scene = sprite_array_scene();
+            Ok(())
+        },
         // Pixel figures standing in a 3D set, each with a drop shadow on
         // the ground along the sun (one without, one from a texture
         // array), beside a pillar and a crate casting their own.
-        "sprites-shadow" => g.scene = sprites_shadow_scene(),
+        "sprites-shadow" => |g, _| {
+            g.scene = sprites_shadow_scene();
+            Ok(())
+        },
         // Billboards (RenderScene::sprite_facing) in a 3D set seen from
         // above and to the side: a flat figure for comparison, upright
         // (cameraY) trees and figures casting sun-facing drop shadows, a
@@ -407,99 +464,128 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // first, one billboard behind the camera culled, and a
         // picture-in-picture view from the side that every billboard
         // faces too.
-        "sprites-billboard" => g.scene = billboard_scene(),
+        "sprites-billboard" => |g, _| {
+            g.scene = billboard_scene();
+            Ok(())
+        },
         // Drop shadows off the plane y = 0: figures on a hilly terrain
         // (each shadow on the plane of the slope under its feet), one on a
         // raised deck (its shadow at the deck's height), one beside a wall
         // whose cascaded shadow its drop shadow fades into, and one whose
         // shadow bends into a hollow narrower than itself (ShadowBend).
-        "sprites-shadow-terrain" => g.scene = sprites_shadow_terrain_scene(),
+        "sprites-shadow-terrain" => |g, _| {
+            g.scene = sprites_shadow_terrain_scene();
+            Ok(())
+        },
         // Texture arrays through every sprite path: glowing array sprites
         // (the glow pass), two 2D particle emitters drawing from arrays
         // (layers by age, and at random with the soft dot's round edge,
         // glowing), and overlay sprites from an array beside a plain one.
-        "sprites-array-fx" => {
+        "sprites-array-fx" => |g, _| {
             g.scene = sprite_array_fx_scene();
             g.frames = 60;
             g.update = Some(fx::tick_update);
-        }
+            Ok(())
+        },
         // MSDF text at several sizes, rotated, Latin and CJK.
-        "text-msdf" => g.scene = text_scene()?,
+        "text-msdf" => |g, _| {
+            g.scene = text_scene()?;
+            Ok(())
+        },
         // E4: a 256x256 tilemap with four layers (one animated, one at half
         // parallax) through og-tilemap's chunks, the camera panning 80x45
         // tiles of it (16 px tiles at 1280x720). Perf only (no reference).
-        "tilemap-256" => {
+        "tilemap-256" => |g, _| {
             g.scene = tilemap_256();
             g.update = Some(pan_tilemap);
-        }
+            Ok(())
+        },
         // The same map zoomed out until every chunk of every layer is in view
         // (the worst case: about 170,000 quads; for the record, not a budget).
-        "tilemap-256-all" => {
+        "tilemap-256-all" => |g, _| {
             g.scene = tilemap_256();
             g.scene.camera = Camera::orthographic_2d(Vec2::new(128.0, 128.0), 260.0);
-        }
+            Ok(())
+        },
         // Phase 3: 40,000 buildings in sixteen batches from the street
         // (walking down the avenue) and from the air. Perf only (no
         // reference; tests/evidence/P3/culling/).
-        "city-street" => {
+        "city-street" => |g, _| {
             g.scene = crate::culling_scenes::city_street();
             g.update = Some(crate::culling_scenes::walk);
-        }
-        "city-aerial" => g.scene = crate::culling_scenes::city_aerial(),
+            Ok(())
+        },
+        "city-aerial" => |g, _| {
+            g.scene = crate::culling_scenes::city_aerial();
+            Ok(())
+        },
         // Only the sky, the sun in view.
-        "sky-only" => g.scene = sky_only(),
+        "sky-only" => |g, _| {
+            g.scene = sky_only();
+            Ok(())
+        },
         // Everything at once: models, CSM, local lights, bloom, auto exposure,
         // world-space text and sprites, the tier's antialiasing.
-        "showcase" => {
+        "showcase" => |g, _| {
             g.scene = showcase()?;
             crate::fx_scenes::showcase_effects(&mut g.scene);
             g.desc.antialias = Antialias::Tier;
             g.frames = 16;
             g.update = Some(crate::fx_scenes::showcase_update);
-        }
+            Ok(())
+        },
         // The showcase under a screen-space HUD in the overlay: after TAA,
         // bloom, auto exposure and ACES, never tone mapped or blurred.
-        "overlay" => {
+        "overlay" => |g, _| {
             g.scene = showcase()?;
             crate::fx_scenes::showcase_effects(&mut g.scene);
             crate::fx_scenes::overlay_hud(&mut g.scene)?;
             g.desc.antialias = Antialias::Tier;
             g.frames = 16;
             g.update = Some(crate::fx_scenes::showcase_update);
-        }
+            Ok(())
+        },
         // Night camp: GPU particles (CPU on the no-compute tier) after 120 ticks.
-        "particles" => {
+        "particles" => |g, _| {
             g.scene = fx::particles_scene();
             g.frames = 120;
             g.update = Some(fx::tick_update);
-        }
+            Ok(())
+        },
         // The same simulated on the CPU path on any tier (no collision).
-        "particles-cpu" => {
+        "particles-cpu" => |g, _| {
             g.scene = fx::particles_scene();
             g.desc.particles = og_render::ParticleSimulation::Cpu;
             g.frames = 120;
             g.update = Some(fx::tick_update);
-        }
+            Ok(())
+        },
         // 2D: lights with soft shadows from crates, glow, 2D particles, flash.
-        "fx-2d" => {
+        "fx-2d" => |g, _| {
             g.scene = fx::fx_2d_scene()?;
             g.frames = 60;
             g.update = Some(fx::tick_update);
-        }
-        "trails-beams" => {
+            Ok(())
+        },
+        "trails-beams" => |g, _| {
             g.scene = fx::trails_scene();
             g.frames = 50;
             g.update = Some(fx::move_wisps);
-        }
-        "decals" => g.scene = fx::decals_scene(),
+            Ok(())
+        },
+        "decals" => |g, _| {
+            g.scene = fx::decals_scene();
+            Ok(())
+        },
         // The spike's scene through a teal-orange LUT, vignette, fringing and grain.
-        "post-grade" => {
+        "post-grade" => |g, _| {
             g.scene = spike_gltf_scene()?;
             fx::grade(&mut g.scene);
-        }
+            Ok(())
+        },
         // The bloom scene's saturated emissive spheres through AgX instead
         // of ACES: the brightest cores go to white instead of skewing hue.
-        "post-agx" => {
+        "post-agx" => |g, _| {
             g.scene = emissive_spheres();
             g.scene.post.bloom = Some(Bloom {
                 threshold: 1.0,
@@ -507,171 +593,361 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 intensity: 0.8,
             });
             g.scene.post.tonemap = Tonemap::Agx;
-        }
+            Ok(())
+        },
         // Spheres from mirror to rough, chrome and white, lit only by a
         // cooked HDR environment map (the synthetic studio), turned, as
         // the background too.
-        "environment-map" => g.scene = crate::ibl_scenes::environment_scene()?,
-        "ao-gtao" => g.scene = fx::ao_scene(og_render::AoMethod::Gtao),
-        "ao-ssao" => g.scene = fx::ao_scene(og_render::AoMethod::Ssao),
-        "dof-low" => g.scene = fx::dof_scene(og_render::DofQuality::Low)?,
-        "dof-high" => g.scene = fx::dof_scene(og_render::DofQuality::High)?,
-        "god-rays" => g.scene = fx::god_rays_scene(),
-        "motion-blur" => {
+        "environment-map" => |g, _| {
+            g.scene = crate::ibl_scenes::environment_scene()?;
+            Ok(())
+        },
+        "ao-gtao" => |g, _| {
+            g.scene = fx::ao_scene(og_render::AoMethod::Gtao);
+            Ok(())
+        },
+        "ao-ssao" => |g, _| {
+            g.scene = fx::ao_scene(og_render::AoMethod::Ssao);
+            Ok(())
+        },
+        "dof-low" => |g, _| {
+            g.scene = fx::dof_scene(og_render::DofQuality::Low)?;
+            Ok(())
+        },
+        "dof-high" => |g, _| {
+            g.scene = fx::dof_scene(og_render::DofQuality::High)?;
+            Ok(())
+        },
+        "god-rays" => |g, _| {
+            g.scene = fx::god_rays_scene();
+            Ok(())
+        },
+        "motion-blur" => |g, _| {
             g.scene = fx::motion_blur_scene();
             g.frames = 4;
             g.update = Some(fx::move_blur);
-        }
-        "stylised" => g.scene = fx::stylised_scene()?,
-        "skinning" => g.scene = fx::skinning_scene(),
+            Ok(())
+        },
+        "stylised" => |g, _| {
+            g.scene = fx::stylised_scene()?;
+            Ok(())
+        },
+        "skinning" => |g, _| {
+            g.scene = fx::skinning_scene();
+            Ok(())
+        },
         // kestrel-stair #11: per-instance flash and tint, a glTF model's
         // instances sharing its materials (`InstanceFx`).
-        "model-flash" => g.scene = fx::model_flash_scene()?,
+        "model-flash" => |g, _| {
+            g.scene = fx::model_flash_scene()?;
+            Ok(())
+        },
         // E5: fog over the colonnade by day, the day-night look at dusk
         // and at night (stars, moonlight), planar water.
-        "atmosphere-fog" => g.scene = crate::atmo_scenes::fog_scene(),
-        "atmosphere-dusk" => g.scene = crate::atmo_scenes::day_night_scene(18.2, true),
-        "atmosphere-night" => g.scene = crate::atmo_scenes::day_night_scene(23.0, false),
-        "water-3d" => g.scene = crate::atmo_scenes::water_scene(),
-        "water-2d" => g.scene = crate::atmo_scenes::water_2d_scene(),
-        "fluid-2d" => g.scene = crate::atmo_scenes::fluid_2d_scene(),
+        "atmosphere-fog" => |g, _| {
+            g.scene = crate::atmo_scenes::fog_scene();
+            Ok(())
+        },
+        "atmosphere-dusk" => |g, _| {
+            g.scene = crate::atmo_scenes::day_night_scene(18.2, true);
+            Ok(())
+        },
+        "atmosphere-night" => |g, _| {
+            g.scene = crate::atmo_scenes::day_night_scene(23.0, false);
+            Ok(())
+        },
+        "water-3d" => |g, _| {
+            g.scene = crate::atmo_scenes::water_scene();
+            Ok(())
+        },
+        "water-2d" => |g, _| {
+            g.scene = crate::atmo_scenes::water_2d_scene();
+            Ok(())
+        },
+        "fluid-2d" => |g, _| {
+            g.scene = crate::atmo_scenes::fluid_2d_scene();
+            Ok(())
+        },
         // Phase 2: ten fluids a frame, two groups (blended, layered).
-        "fluid-groups" => g.scene = crate::atmo_scenes::fluid_groups_scene(),
+        "fluid-groups" => |g, _| {
+            g.scene = crate::atmo_scenes::fluid_groups_scene();
+            Ok(())
+        },
         // Phase 2: 3D particle fluids as a screen-space surface (row 29).
-        "fluid-3d" => g.scene = crate::p2_scenes::fluid_3d_scene(),
+        "fluid-3d" => |g, _| {
+            g.scene = crate::p2_scenes::fluid_3d_scene();
+            Ok(())
+        },
         // Material shader hooks: dissolve by noise, wind-swayed grass.
-        "shader-hooks" => g.scene = crate::atmo_scenes::hooks_scene(45),
+        "shader-hooks" => |g, _| {
+            g.scene = crate::atmo_scenes::hooks_scene(45);
+            Ok(())
+        },
         // Phase 2: 256 point and spot lights over a night plaza (Forward+).
-        "lights-256" => g.scene = crate::p2_scenes::many_lights(256),
+        "lights-256" => |g, _| {
+            g.scene = crate::p2_scenes::many_lights(256);
+            Ok(())
+        },
         // Phase 2: the night colonnade with a waxing gibbous moon in view.
-        "atmosphere-moon" => g.scene = crate::p2_scenes::moon_scene(0.35, 2.4),
+        "atmosphere-moon" => |g, _| {
+            g.scene = crate::p2_scenes::moon_scene(0.35, 2.4);
+            Ok(())
+        },
         // Phase 2: every M6 material feature (metalness, roughness,
         // emissive, normal maps, clearcoat, alpha mask and blend,
         // double-sided, unlit, a non-uniformly scaled ellipsoid).
-        "materials" => g.scene = crate::p2_scenes::materials_scene(),
+        "materials" => |g, _| {
+            g.scene = crate::p2_scenes::materials_scene();
+            Ok(())
+        },
         // Every MeshPhysicalMaterial lobe (clearcoat maps, sheen,
         // iridescence, anisotropy) and transmission in front of textured
         // geometry.
-        "materials-physical" => g.scene = crate::physical_scenes::physical_scene(),
+        "materials-physical" => |g, _| {
+            g.scene = crate::physical_scenes::physical_scene();
+            Ok(())
+        },
         // The depth wave's geometry (docs/depth.md §1, geometry_scenes.rs):
         // the three.js primitives, a tube and a buffer-geometry height
         // field; lines of every kind; point clouds; wireframe materials;
         // debug draw over a bloomed frame.
-        "geometry-procedural" => g.scene = crate::geometry_scenes::procedural_scene(),
-        "lines" => g.scene = crate::geometry_scenes::lines_scene(),
-        "points" => g.scene = crate::geometry_scenes::points_scene(),
-        "wireframe" => g.scene = crate::geometry_scenes::wireframe_scene(),
-        "debug-overlay" => g.scene = crate::geometry_scenes::debug_scene()?,
+        "geometry-procedural" => |g, _| {
+            g.scene = crate::geometry_scenes::procedural_scene();
+            Ok(())
+        },
+        "lines" => |g, _| {
+            g.scene = crate::geometry_scenes::lines_scene();
+            Ok(())
+        },
+        "points" => |g, _| {
+            g.scene = crate::geometry_scenes::points_scene();
+            Ok(())
+        },
+        "wireframe" => |g, _| {
+            g.scene = crate::geometry_scenes::wireframe_scene();
+            Ok(())
+        },
+        "debug-overlay" => |g, _| {
+            g.scene = crate::geometry_scenes::debug_scene()?;
+            Ok(())
+        },
         // Round 3 (geom-1): og-geom's generators: an extruded, bevelled
         // gear with holes, a lathed vase, a swept horn, a CSG dice.
-        "geometry-shapes" => g.scene = crate::geometry_scenes::shapes_scene(),
+        "geometry-shapes" => |g, _| {
+            g.scene = crate::geometry_scenes::shapes_scene();
+            Ok(())
+        },
         // Render targets and secondary cameras (docs/depth.md §8): a
         // monitor showing a second camera's view (with an object on a layer
         // only it sees), a mirror reflecting the room, split-screen.
-        "views-monitor" => g.scene = crate::target_scenes::monitor_scene(),
-        "views-mirror" => g.scene = crate::target_scenes::mirror_scene(),
-        "views-split" => g.scene = crate::target_scenes::split_scene(),
+        "views-monitor" => |g, _| {
+            g.scene = crate::target_scenes::monitor_scene();
+            Ok(())
+        },
+        "views-mirror" => |g, _| {
+            g.scene = crate::target_scenes::mirror_scene();
+            Ok(())
+        },
+        "views-split" => |g, _| {
+            g.scene = crate::target_scenes::split_scene();
+            Ok(())
+        },
         // The monitor's camera drawing what the main pass draws over its
         // opaque scene: glass, a world sprite, particles and lines, each on
         // a layer the main camera leaves out.
-        "views-layers" => {
+        "views-layers" => |g, _| {
             use crate::target_scenes::{ViewKind, view_kinds_scene};
             g.scene = view_kinds_scene(&ViewKind::ALL, 3, 60);
-        }
+            Ok(())
+        },
         // A render target's depth texture shown full frame (every tier
         // draws it, from the view's depth prepass).
-        "views-depth" => g.scene = crate::target_scenes::depth_scene(),
+        "views-depth" => |g, _| {
+            g.scene = crate::target_scenes::depth_scene();
+            Ok(())
+        },
         // A full custom shader (`mode full`): a dissolve cut through a
         // sphere and a box, their shadows cut the same way.
-        "shader-full-dissolve" => g.scene = crate::target_scenes::full_dissolve_scene(0.45),
+        "shader-full-dissolve" => |g, _| {
+            g.scene = crate::target_scenes::full_dissolve_scene(0.45);
+            Ok(())
+        },
         // A custom post pass (`type post`): the room through a CRT curve.
-        "post-crt" => {
+        "post-crt" => |g, _| {
             g.scene = crate::target_scenes::room();
             let crt = g.scene.add_post(og_render::example_crt());
             g.scene.custom_post.push(crt);
-        }
+            Ok(())
+        },
         // The depth wave's light (docs/depth.md §7, light_scenes.rs): rect
         // lights (LTC), light cookies, volumetric fog, and natively a
         // Cornell box baked by og-bake with a light volume.
-        "rect-lights" => g.scene = crate::light_scenes::rect_lights_scene(),
-        "light-cookies" => g.scene = crate::light_scenes::light_cookies_scene(),
-        "volumetric-fog" => g.scene = crate::light_scenes::volumetric_fog_scene(),
+        "rect-lights" => |g, _| {
+            g.scene = crate::light_scenes::rect_lights_scene();
+            Ok(())
+        },
+        "light-cookies" => |g, _| {
+            g.scene = crate::light_scenes::light_cookies_scene();
+            Ok(())
+        },
+        "volumetric-fog" => |g, _| {
+            g.scene = crate::light_scenes::volumetric_fog_scene();
+            Ok(())
+        },
         #[cfg(not(target_arch = "wasm32"))]
-        "baked-cornell" => g.scene = crate::light_scenes::baked_cornell_scene(true)?,
+        "baked-cornell" => |g, _| {
+            g.scene = crate::light_scenes::baked_cornell_scene(true)?;
+            Ok(())
+        },
         #[cfg(not(target_arch = "wasm32"))]
-        "baked-batches" => g.scene = crate::light_scenes::baked_batches_scene(true)?,
+        "baked-batches" => |g, _| {
+            g.scene = crate::light_scenes::baked_batches_scene(true)?;
+            Ok(())
+        },
         // Materials sampling texture arrays: eight cubes of one tile
         // material (colour and normal arrays), each on its own layer or the
         // material's, one batch; a cube of layer 1 as plain 2D textures;
         // two blended panes of one array material; a sphere with only a
         // normal array.
-        "materials-array" => g.scene = crate::physical_scenes::array_scene(),
+        "materials-array" => |g, _| {
+            g.scene = crate::physical_scenes::array_scene();
+            Ok(())
+        },
         // The stylisation primitives (stylise_scenes.rs), each over a scene
         // the references know.
-        "stylise-pixel" => g.scene = crate::stylise_scenes::pixel_scene()?,
-        "stylise-palette" => g.scene = crate::stylise_scenes::palette_scene()?,
-        "stylise-print" => g.scene = crate::stylise_scenes::print_scene(),
-        "stylise-halftone" => g.scene = crate::stylise_scenes::halftone_scene()?,
-        "stylise-paint" => g.scene = crate::stylise_scenes::paint_scene(),
-        "stylise-bands" => g.scene = crate::stylise_scenes::bands_scene()?,
-        "stylise-retro" => g.scene = crate::stylise_scenes::retro_scene(),
-        "stylise-material" => g.scene = crate::stylise_scenes::material_scene(),
-        "stylise-ink-depth" => g.scene = crate::stylise_scenes::ink_depth_scene(),
-        "stylise-surface" => g.scene = crate::stylise_scenes::surface_scene(),
-        "stylise-object" => g.scene = crate::stylise_scenes::object_scene(),
-        "stylise-halftone-surface" => g.scene = crate::stylise_scenes::halftone_surface_scene()?,
-        "stylise-outline-voxels" => g.scene = crate::stylise_scenes::outline_voxels_scene(),
+        "stylise-pixel" => |g, _| {
+            g.scene = crate::stylise_scenes::pixel_scene()?;
+            Ok(())
+        },
+        "stylise-palette" => |g, _| {
+            g.scene = crate::stylise_scenes::palette_scene()?;
+            Ok(())
+        },
+        "stylise-print" => |g, _| {
+            g.scene = crate::stylise_scenes::print_scene();
+            Ok(())
+        },
+        "stylise-halftone" => |g, _| {
+            g.scene = crate::stylise_scenes::halftone_scene()?;
+            Ok(())
+        },
+        "stylise-paint" => |g, _| {
+            g.scene = crate::stylise_scenes::paint_scene();
+            Ok(())
+        },
+        "stylise-bands" => |g, _| {
+            g.scene = crate::stylise_scenes::bands_scene()?;
+            Ok(())
+        },
+        "stylise-retro" => |g, _| {
+            g.scene = crate::stylise_scenes::retro_scene();
+            Ok(())
+        },
+        "stylise-material" => |g, _| {
+            g.scene = crate::stylise_scenes::material_scene();
+            Ok(())
+        },
+        "stylise-ink-depth" => |g, _| {
+            g.scene = crate::stylise_scenes::ink_depth_scene();
+            Ok(())
+        },
+        "stylise-surface" => |g, _| {
+            g.scene = crate::stylise_scenes::surface_scene();
+            Ok(())
+        },
+        "stylise-object" => |g, _| {
+            g.scene = crate::stylise_scenes::object_scene();
+            Ok(())
+        },
+        "stylise-halftone-surface" => |g, _| {
+            g.scene = crate::stylise_scenes::halftone_surface_scene()?;
+            Ok(())
+        },
+        "stylise-outline-voxels" => |g, _| {
+            g.scene = crate::stylise_scenes::outline_voxels_scene();
+            Ok(())
+        },
         // Owed row 63: a .vox transform keyed across frames, cooked and
         // posed at frames 0 and 2 side by side.
         #[cfg(not(target_arch = "wasm32"))]
-        "vox-keyframes" => g.scene = crate::vox_scenes::keyframes_scene()?,
+        "vox-keyframes" => |g, _| {
+            g.scene = crate::vox_scenes::keyframes_scene()?;
+            Ok(())
+        },
         // A 2D rig posed by og-anim on three slopes (IK feet, a deformed
         // mesh cape), drawn as sprite-batch triangles under 2D lighting.
         #[cfg(not(target_arch = "wasm32"))]
-        "skeleton-2d" => g.scene = crate::skeleton_scenes::skeleton_scene()?,
+        "skeleton-2d" => |g, _| {
+            g.scene = crate::skeleton_scenes::skeleton_scene()?;
+            Ok(())
+        },
         // Render-lod (depth S6; depth_render_scenes.rs): a cooked tree at
         // three distances, each at the level its size on screen picks and
         // tinted as debugView lod tints it; a chrome sphere in a closed
         // room reflecting its reflection probe; SSR on a wet floor (the
         // full tier's).
         #[cfg(not(target_arch = "wasm32"))]
-        "lod-levels" => g.scene = crate::depth_render_scenes::lod_scene()?.0,
+        "lod-levels" => |g, _| {
+            g.scene = crate::depth_render_scenes::lod_scene()?.0;
+            Ok(())
+        },
         #[cfg(not(target_arch = "wasm32"))]
-        "probe-interior" => g.scene = crate::depth_render_scenes::probe_scene(true),
+        "probe-interior" => |g, _| {
+            g.scene = crate::depth_render_scenes::probe_scene(true);
+            Ok(())
+        },
         #[cfg(not(target_arch = "wasm32"))]
-        "ssr-wet-floor" => {
+        "ssr-wet-floor" => |g, _| {
             g.scene = crate::depth_render_scenes::ssr_scene(true);
             g.applies = Applies::FullTier;
-        }
+            Ok(())
+        },
         // Reflection probes picked per instance (two rooms sharing a
         // sphere mesh) and capturing skinned meshes, terrain, grass and a
         // translucent pane outdoors (probe_scenes.rs).
         #[cfg(not(target_arch = "wasm32"))]
-        "probe-two-rooms" => g.scene = crate::probe_scenes::two_rooms_scene(true),
+        "probe-two-rooms" => |g, _| {
+            g.scene = crate::probe_scenes::two_rooms_scene(true);
+            Ok(())
+        },
         #[cfg(not(target_arch = "wasm32"))]
-        "probe-outdoor" => {
+        "probe-outdoor" => |g, _| {
             g.scene = crate::probe_scenes::outdoor_scene(crate::probe_scenes::Outdoor {
                 content: true,
                 probe: Some(1.0),
-            })
-        }
-        "stylise-toon-physical" => g.scene = crate::stylise_scenes::toon_physical_scene(),
-        "stylise-bands-tint" => g.scene = crate::stylise_scenes::bands_tint_scene(),
+            });
+            Ok(())
+        },
+        "stylise-toon-physical" => |g, _| {
+            g.scene = crate::stylise_scenes::toon_physical_scene();
+            Ok(())
+        },
+        "stylise-bands-tint" => |g, _| {
+            g.scene = crate::stylise_scenes::bands_tint_scene();
+            Ok(())
+        },
         // Untonemapped sprites under TAA (its history carries the alpha).
         // A dark cave of tile layers lit by two Light2d with occluders,
         // a window's sky layer opting out (hollowbell FINDINGS #9).
-        "tilemap-lit" => g.scene = fx::tilemap_lit_scene(),
-        "sprites-untonemapped" => {
+        "tilemap-lit" => |g, _| {
+            g.scene = fx::tilemap_lit_scene();
+            Ok(())
+        },
+        "sprites-untonemapped" => |g, _| {
             g.scene = crate::stylise_scenes::untonemapped_sprites_scene();
             g.desc.antialias = Antialias::Tier;
             g.frames = 16;
             g.applies = Applies::FullTier;
-        }
+            Ok(())
+        },
         // Phase 2: skinned meshes drawn with a material shader that ripples,
         // bands and lifts them, their shadows and prepass displaced too.
-        "skinned-hooks" => g.scene = crate::p2_scenes::skinned_hooks_scene(),
+        "skinned-hooks" => |g, _| {
+            g.scene = crate::p2_scenes::skinned_hooks_scene();
+            Ok(())
+        },
         // Weather presets over the colonnade: particles, fog, dimmed light.
-        "weather-rain" | "weather-snow" => {
+        "weather-rain" | "weather-snow" => |g, name| {
             g.scene = crate::atmo_scenes::weather_scene(if name == "weather-rain" {
                 og_render::WEATHER_RAIN
             } else {
@@ -679,67 +955,136 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             });
             g.frames = crate::atmo_scenes::WEATHER_FRAMES;
             g.update = Some(fx::tick_update);
-        }
+            Ok(())
+        },
         // Phase 2: the 2 km island from three distances, and the lake's
         // planar reflection, shadows and underwater view.
-        "terrain-near" => g.scene = crate::terrain_scenes::island_view("near"),
-        "terrain-mid" => g.scene = crate::terrain_scenes::island_view("mid"),
-        "terrain-far" => g.scene = crate::terrain_scenes::island_view("far"),
-        "water-planar" => g.scene = crate::terrain_scenes::water_planar_scene(),
-        "water-shadows" => g.scene = crate::terrain_scenes::water_shadows_scene(),
-        "water-underwater" => g.scene = crate::terrain_scenes::water_underwater_scene(),
-        "terrain-grass" => g.scene = crate::terrain_scenes::grass_scene(),
+        "terrain-near" => |g, _| {
+            g.scene = crate::terrain_scenes::island_view("near");
+            Ok(())
+        },
+        "terrain-mid" => |g, _| {
+            g.scene = crate::terrain_scenes::island_view("mid");
+            Ok(())
+        },
+        "terrain-far" => |g, _| {
+            g.scene = crate::terrain_scenes::island_view("far");
+            Ok(())
+        },
+        "water-planar" => |g, _| {
+            g.scene = crate::terrain_scenes::water_planar_scene();
+            Ok(())
+        },
+        "water-shadows" => |g, _| {
+            g.scene = crate::terrain_scenes::water_shadows_scene();
+            Ok(())
+        },
+        "water-underwater" => |g, _| {
+            g.scene = crate::terrain_scenes::water_underwater_scene();
+            Ok(())
+        },
+        "terrain-grass" => |g, _| {
+            g.scene = crate::terrain_scenes::grass_scene();
+            Ok(())
+        },
         // Round 3: a terrain the cook generated (noise, erosion, a sea,
         // rivers, biomes), its water at the cooked sea level.
         #[cfg(not(target_arch = "wasm32"))]
-        "terrain-generated" => g.scene = crate::terrain_scenes::generated_scene()?,
+        "terrain-generated" => |g, _| {
+            g.scene = crate::terrain_scenes::generated_scene()?;
+            Ok(())
+        },
         // The rendering fields of the Grand View Garden fork merge
         // (fork_scenes.rs, tests/fork_fields.rs).
-        "water-mesh" => g.scene = crate::fork_scenes::water_mesh_scene(true),
-        "water-ripples" => g.scene = crate::fork_scenes::water_ripples_scene(),
-        "water-fresnel" => g.scene = crate::fork_scenes::water_fresnel_scene(),
-        "water-glint" => g.scene = crate::fork_scenes::water_glint_scene(),
-        "shadow-box" => g.scene = crate::fork_scenes::shadow_box_scene(),
-        "hemisphere-light" => g.scene = crate::fork_scenes::hemisphere_scene(),
-        "ao-direct" => g.scene = crate::fork_scenes::ao_direct_scene(),
-        "ao-screen-water" => g.scene = crate::fork_scenes::ao_screen_water_scene(true),
-        "post-sharpen" => g.scene = crate::fork_scenes::sharpen_scene(),
-        "bloom-unreal" => g.scene = crate::fork_scenes::bloom_unreal(build("bloom")?.scene),
-        "alpha-to-coverage" => {
+        "water-mesh" => |g, _| {
+            g.scene = crate::fork_scenes::water_mesh_scene(true);
+            Ok(())
+        },
+        "water-ripples" => |g, _| {
+            g.scene = crate::fork_scenes::water_ripples_scene();
+            Ok(())
+        },
+        "water-fresnel" => |g, _| {
+            g.scene = crate::fork_scenes::water_fresnel_scene();
+            Ok(())
+        },
+        "water-glint" => |g, _| {
+            g.scene = crate::fork_scenes::water_glint_scene();
+            Ok(())
+        },
+        "shadow-box" => |g, _| {
+            g.scene = crate::fork_scenes::shadow_box_scene();
+            Ok(())
+        },
+        "hemisphere-light" => |g, _| {
+            g.scene = crate::fork_scenes::hemisphere_scene();
+            Ok(())
+        },
+        "ao-direct" => |g, _| {
+            g.scene = crate::fork_scenes::ao_direct_scene();
+            Ok(())
+        },
+        "ao-screen-water" => |g, _| {
+            g.scene = crate::fork_scenes::ao_screen_water_scene(true);
+            Ok(())
+        },
+        "post-sharpen" => |g, _| {
+            g.scene = crate::fork_scenes::sharpen_scene();
+            Ok(())
+        },
+        "bloom-unreal" => |g, _| {
+            g.scene = crate::fork_scenes::bloom_unreal(build("bloom")?.scene);
+            Ok(())
+        },
+        "alpha-to-coverage" => |g, _| {
             g.scene = crate::fork_scenes::alpha_to_coverage_scene(true);
             g.desc.antialias = Antialias::Msaa4;
-        }
-        "hooks-eye-front" => g.scene = crate::fork_scenes::hooks_eye_front_scene(),
+            Ok(())
+        },
+        "hooks-eye-front" => |g, _| {
+            g.scene = crate::fork_scenes::hooks_eye_front_scene();
+            Ok(())
+        },
         // Material shaders read the planar reflection, and a second surface
         // gets one, only with the second slot (RenderOptions.planarReflections 2),
         // and only on the full tier: on WebGL2 the joint palette is a texture
         // and the lit pipelines have no unit left for the mirror
         // (og_render::planar_slot), so `planar_reflection` reads 0 there.
-        "hooks-planar" => {
+        "hooks-planar" => |g, _| {
             g.scene = crate::fork_scenes::hooks_planar_scene(true);
             g.desc.planar_reflections = 2;
             g.applies = Applies::FullTier;
-        }
-        "hooks-screen-ao" => g.scene = crate::fork_scenes::hooks_screen_ao_scene(),
-        "water-planar-two" => {
+            Ok(())
+        },
+        "hooks-screen-ao" => |g, _| {
+            g.scene = crate::fork_scenes::hooks_screen_ao_scene();
+            Ok(())
+        },
+        "water-planar-two" => |g, _| {
             g.scene = crate::fork_scenes::water_planar_two_scene();
             g.desc.planar_reflections = 2;
-        }
-        "terrain-hidden" => g.scene = crate::fork_scenes::terrain_flags_scene(false, true),
-        "terrain-scatter-unshadowed" => {
-            g.scene = crate::fork_scenes::terrain_flags_scene(true, false)
-        }
+            Ok(())
+        },
+        "terrain-hidden" => |g, _| {
+            g.scene = crate::fork_scenes::terrain_flags_scene(false, true);
+            Ok(())
+        },
+        "terrain-scatter-unshadowed" => |g, _| {
+            g.scene = crate::fork_scenes::terrain_flags_scene(true, false);
+            Ok(())
+        },
         // The spike's scene through the teal-orange LUT at 0.6, then the
         // colour adjustments baked with it: warmer, more contrast and
         // vibrance, teal shadows and warm highlights.
-        "post-adjust" => {
+        "post-adjust" => |g, _| {
             g.scene = spike_gltf_scene()?;
             fx::adjust(&mut g.scene);
-        }
+            Ok(())
+        },
         // The bloom scene's saturated emissive spheres through Khronos PBR
         // Neutral: the bodies keep their authored colour, which ACES darkens
         // and shifts, and the brightest cores roll to white.
-        "post-neutral" => {
+        "post-neutral" => |g, _| {
             g.scene = emissive_spheres();
             g.scene.post.bloom = Some(Bloom {
                 threshold: 1.0,
@@ -747,21 +1092,23 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 intensity: 0.8,
             });
             g.scene.post.tonemap = Tonemap::Neutral;
-        }
+            Ok(())
+        },
         // The spike's scene through a centred barrel lens (0.35): the
         // checker floor's lines bow outwards, the frame fitted to its
         // corners.
-        "post-lens" => {
+        "post-lens" => |g, _| {
             g.scene = spike_gltf_scene()?;
             g.scene.post.lens_distortion = Some(og_render::LensDistortion {
                 amount: 0.35,
                 ..Default::default()
             });
-        }
+            Ok(())
+        },
         // The grass scene in a gusting wind at tick 90 (strength 0.4 across
         // the meadow, gust 0.7): the tufts lean downwind, further where a
         // gust passes.
-        "terrain-grass-wind" => {
+        "terrain-grass-wind" => |g, _| {
             g.scene = crate::terrain_scenes::grass_scene();
             g.scene.wind = Some(og_render::Wind {
                 strength: 0.4,
@@ -770,12 +1117,13 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 gust: 0.7,
             });
             g.scene.tick = 90;
-        }
+            Ok(())
+        },
         // The bloom scene through a zoom blur towards a point left of and
         // above the centre (strength 0.15, 16 taps): the spheres streak
         // along the lines to it, and bloom, after the blur, glows round the
         // streaks.
-        "post-blur" => {
+        "post-blur" => |g, _| {
             g.scene = emissive_spheres();
             g.scene.post.bloom = Some(Bloom {
                 threshold: 1.0,
@@ -788,14 +1136,16 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 center: Vec2::new(0.42, 0.4),
                 ..Default::default()
             });
-        }
+            Ok(())
+        },
         other => {
             return Err(format!(
                 "unknown gfx scene '{other}' (known: {})",
                 SCENES.join(", ")
             ));
         }
-    }
+    };
+    scene(&mut g, name)?;
     Ok(g)
 }
 
