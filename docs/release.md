@@ -130,6 +130,14 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.6.2 released (2026-10-27 UTC).** All five npm packages are
+published, and `v0.6.2` is pushed at `49566391`. It is a patch that adds
+`changelog.json`, `og upgrade`, `og doctor --json`, `og replay` and the
+golden-replay patch gate. The tarballs and the registry install passed on
+Mac, Linux and Windows. The golden replays pass on linux and darwin; on
+win32, game-3d drifts at ticks 62–65, which is owed (§4 F) and fixed in
+0.6.3. See the [release receipt](../tests/evidence/release/0.6.2.md).
+
 **0.6.1 released (2026-10-27 UTC).** All five npm packages are
 published, and `v0.6.1` is pushed at `418d82f8`. It is a patch release: the
 five RedGPU ports are off by default, and it carries the Windows fixes
@@ -409,6 +417,23 @@ optimisation rows (§P) after them.
 | F6 | Each wave's end: `scripts/wave-end.sh` (`gate`, `web`, `conformance`, `release`), summary in `docs/phase-1.md` | the wave's section records the four stages |
 | F7 | **Started 2026-10-22 on the `studio-win` runner**; **native MSVC candidate verified 2026-10-23**, branch `windows-x64` (the coordinator merges). Release `@origingame/engine-win32-x64` carries `og.exe` and `origin-engine.node`, with embedded DXC. Workspace check/clippy pass; nextest runs every crate: 939 passed, five Metal-reference failures, 12 skipped. All 84 DX12 gfx scenes render; six exceed Metal tolerance, no new tier references committed. The 0.2.0 packed-tarball install test passes in 87.1 s (3D starter, runner, 2D starter, publish wasm, knowledge mount/check). Doctor reports `renderer dx12` and the explicit `tsgo 7.0.2 through bun x` fallback. Windows paths, LF/HDR checkout, process fixtures and mount permissions are portable; one TypeScript API. Evidence and exact frame differences: `tests/evidence/release/windows-x64.md`; device row `windows` below. No cloud path changed | **Merged 2026-10-23**; the six DX12 frame differences reviewed by the coordinator (`windows-x64.md` §The coordinator's review: star, texel-edge and caustic dither, nothing moved; no DX12 reference tier). The win32-x64 package's first publish landed with 0.3.0 (2026-10-23, packed on `studio-win` from d8bcf2d2, its tarball install test 115.3 s on DX12; `tests/evidence/release/0.3.0.md`). Still owed: the install test from the registry on Windows and one engine thread on the platform runner's Windows host; the Mac's registry run passed (76.9 s, Metal, `0.3.0.md`) |
 | F8 | **The depth wave** (`docs/depth.md`, started 2026-10-22): nine streams on branches `depth/<stream>`, each an orb thread, merged serially by the coordinator on `macrunner`: S1 runtime geometry, lines, points, debug draw and mesh raycast; S2 paths and the timeline asset; S3 the video producer (`og render`, `type video`); S4 the room ABI and deterministic lockstep with desync diagnosis; S5 the semantic frame, `expect`, trace, scene write-back and `cook --report`; S6 mesh LOD, reflection probes and SSR; S7 baked lightmaps, irradiance volumes, volumetric fog, area lights and cookies; S8 render targets, secondary cameras, layers, full custom shaders and custom post passes; S9 2D skeletal animation and the math layer | each stream merged through the functional lane with its Metal references recorded and its round in `docs/phase-1.md`; `docs/depth.md` §10's order; the wave's end measured once |
+
+**Owed, found 2026-10-27 (0.6.2's replay gate): cross-platform yaw
+drift.** The golden replays (`scripts/replay-gate.ts`) pass 2/2 on
+linux-x64 and darwin-arm64. On win32-x64, game-2d passes; game-3d's hashes
+differ at ticks 62–65 only, and all its keyframe saves are byte-identical
+to Linux's. At tick 62 the hash is Linux `810661cd9c33c9d3` and Windows
+`dc03b963…`. The only field that differs is the guard's
+`og.Transform.quaternion`, by 1 to 16 ulp, until the turn snaps to its
+target at tick 66. The cause is og-nav's faceMovement turn
+(`crates/og-nav/src/system.rs`), which calls glam's `Quat::slerp`, and that
+uses the host's `sinf` (the MSVC CRT versus glibc), against og-core
+math.rs's rule. 0.6.1 had it too, unseen: `og replay` is the first tool
+that measures it. 0.6.2 shipped with it by the owner's decision. The fix
+is 0.6.3: the turn as a yaw step through og-core, an `og_core::math::quat_slerp`,
+clippy `disallowed-methods` in the simulation crates, simulation
+"changed" and the goldens re-recorded. 0.6.3 publishes only when all 3
+platforms pass both goldens.
 
 **F7 complete, 2026-10-24:** the Windows registry install test now passes
 (117.0 s, DX12, published 0.3.0 packages only). The real-engine runner
