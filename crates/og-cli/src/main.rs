@@ -11,6 +11,7 @@
 mod api;
 mod bake_lightmaps;
 mod bake_probes;
+mod bake_projection;
 mod bundle;
 mod check;
 mod compare;
@@ -133,6 +134,9 @@ commands:
                       the knowledge wiki); --wiki writes only the wiki
   api check [--root <dir>]
                       exit 1 when a generated file differs from crates/og-api/api.ogt
+  bake projection <init|plan|prepare|project|holes|export> --run <dir> [options]
+                      texture a level from views an image model paints (CPU, native): the
+                      caller paints each prepared view; `og bake projection` lists the steps
   bake probes [project] [--commands \"t:action[:args];...\"] [--at S] [--size WxH]
                       render the baked og.ReflectionProbe captures on the native host into
                       cooked/probes/ (loaded instead of drawn on first use)
@@ -168,6 +172,7 @@ fn main() -> ExitCode {
         ["polish", rest @ ..] => polish::run(rest),
         ["build", rest @ ..] => bundle::run(rest),
         ["cook", rest @ ..] => cook::run(rest),
+        ["bake", "projection", rest @ ..] => bake_projection::run(rest),
         ["bake", "probes", rest @ ..] => bake_probes::run(rest),
         ["bake", rest @ ..] => bake_lightmaps::run(rest),
         ["api", rest @ ..] => api::run(rest),

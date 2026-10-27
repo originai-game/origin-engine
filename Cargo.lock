@@ -1742,6 +1742,7 @@ name = "og-cli"
 version = "0.6.3"
 dependencies = [
  "glam 0.34.1",
+ "gltf",
  "image",
  "libc",
  "og-api",

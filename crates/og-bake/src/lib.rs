@@ -16,6 +16,7 @@
 pub mod atlas;
 pub mod bvh;
 pub mod lightmap;
+pub mod projection;
 pub mod scene;
 pub mod trace;
 pub mod volume;

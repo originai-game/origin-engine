@@ -576,6 +576,33 @@ Baked lighting, volumetrics and area lights (depth S7).
   standard, lean and compact (`vs_lightmap_compact`), texture-array
   (`fs_lightmap_array`), material-shader (its module carries the same
   entry points) and physical (`lightmap_physical.wgsl`).
+- **Projection painting** (`og bake projection <step> --run <dir>`,
+  `og-bake/src/projection`). A native CPU tool, like the lightmap bake,
+  that turns a gray level glb into a textured one by painting
+  it from views: the trompe workflow (Patch-gg/trompe, Apache-2.0)
+  without Blender or a GPU. The image model stays outside the engine; a
+  driver (the platform's `level-texturing` skill) runs the steps and calls
+  it between `prepare` and `project`. `init` rasterises the level's
+  TEXCOORD_0 into texels (world position, normal, triangle) with a BVH
+  (a level without TEXCOORD_0 is charted by xatlas at one texel density
+  into one page first, and the run keeps that charted level);
+  `plan` picks cameras in paint order from walkable points on the
+  floors (ground, then roof passes and an aerial ring) by greedy coverage
+  of a probe render; `prepare` ray-casts a view, renders its clay (ambient
+  occlusion and a key light) and composites the texture painted so far
+  into `state.png` with `edit.png` (white where the view sees no paint)
+  and a mode (`first`, `fill`, `roof`) for the prompt; `project` takes the
+  model's picture, keeps the known pixels, colour-corrects and feathers
+  the new ones into them, drops what the model left unpainted (unchanged,
+  or flat gray over a whole patch, since some models redraw the whole
+  image) and writes each visible texel whose view is better than the one
+  that painted it (a texel is visible when the pixel's ray hits its
+  triangle, or within 1 cm and 0.5 % of depth with agreeing normals;
+  silhouette pixels count less); `holes` adds the view that sees the most
+  unpainted texels; `export` pads the uv gutters and writes the level with
+  the texture as every material's base colour. The run directory holds
+  everything (`run.json`, `plan.json`, `texels.bin`, `paint.bin`,
+  `views/K/`), so a run resumes and a view can be re-projected.
 - **Volumetric fog** (`og.Fog.volumetric`, `volumetric.rs`). The fog's
   density, height fog, `scattering` and `anisotropy` (Henyey–Greenstein)
   define a participating medium up to `volumetricDistance`. On the full

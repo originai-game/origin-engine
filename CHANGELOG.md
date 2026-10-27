@@ -13,6 +13,15 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+No IDL member changed; the simulation is unchanged (the golden replays).
+
+- og: `og bake projection` (`init`, `plan`, `prepare`, `project`,
+  `holes`, `export`), a gray level glb painted from views by an
+  image model the caller runs, into one texture and a textured glb, on the
+  CPU (docs/design.md §Projection painting).
+
 ## 0.6.3 — 2026-10-27
 
 No IDL member changed. The simulation changed: the golden replays are

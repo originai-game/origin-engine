@@ -4,7 +4,9 @@
   "unreleased": {
     "simulation": "unchanged",
     "breaking": [],
-    "added": [],
+    "added": [
+      { "member": "og bake projection", "summary": "og bake projection init|plan|prepare|project|holes|export --run <dir>: a gray level glb painted from planned views by an image model the caller runs, projected into one texture and exported as a textured glb, on the CPU." }
+    ],
     "fixed": []
   },
   "versions": [
