@@ -13,7 +13,7 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
-## Unreleased
+## 0.6.1 — 2026-10-27
 
 - render, `PostEffects`: `screenBlur` (`none`, `zoom`, `spin`,
   `directional`; RedGPU's zoom, radial and directional blurs, the spin
@@ -53,6 +53,16 @@ is one line here, written at the merge that changes
   (`build.sh --native`, `pack.sh --native`), one manifest over the five
   tarballs; `scripts/release.sh fetch <run-id>` brings them to the machine
   that runs `verify` and `publish` (docs/release.md §3). No API change.
+- Fixes: WebGL2 starts on Windows (Chrome and Edge, ANGLE on D3D11): the
+  GL tier's light, LTC and probe tables no longer index a uniform vector
+  by a variable, which FXC refused (X3003), and og-render's
+  `tests/shaders.rs` holds every GL-tier module to that; lit shaders
+  link there in 8–11 s on a cold start. The 2D publish build's refusal
+  of a 3D world names its scenes with `/` on Windows. A debug
+  `og-gfx` no longer overflows Windows' 1 MiB main-thread stack (the
+  test scenes are built one closure each). The web test harness runs on
+  Windows (the Chrome profile under the OS temp directory, Chrome closed
+  over CDP). No API change.
 
 ## 0.6.0 — 2026-10-26
 

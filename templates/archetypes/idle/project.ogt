@@ -3,7 +3,7 @@ version 1
 ---
 name "Spark Orb"
 id "idle"
-engine "0.6.0"
+engine "0.6.1"
 entry "src/main.ts"
 profile "2d"
 tick 60

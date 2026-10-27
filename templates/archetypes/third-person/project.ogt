@@ -3,7 +3,7 @@ version 1
 ---
 name "Ember Vale"
 id "third-person"
-engine "0.6.0"
+engine "0.6.1"
 entry "src/main.ts"
 profile "3d"
 tick 60
