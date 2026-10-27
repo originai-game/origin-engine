@@ -30,10 +30,11 @@ pub(crate) struct GlassPasses {
     down: crate::deferred::Deferred<wgpu::RenderPipeline>,
     blit: crate::deferred::Deferred<wgpu::RenderPipeline>,
     sampler: wgpu::Sampler,
-    /// `[decode, 0, 0, 0]` for the first level: 1 when the source holds
-    /// sRGB-encoded values (a non-sRGB output, which the tonemap encodes).
+    /// `[decode, 0, width, height]` for the first level: decode 1 when the
+    /// source holds sRGB-encoded values (a non-sRGB output, which the
+    /// tonemap encodes); the source's size (glass.wgsl's `GlassParams`).
     uniform: wgpu::Buffer,
-    /// Zeros: the later levels, already linear.
+    /// Zeros: the blit's.
     off: wgpu::Buffer,
     /// The overlay's sprite params for the pyramid: `[0, 0, 0, LEVELS]`,
     /// the level count the glass shader clamps its level of detail to.
@@ -283,10 +284,24 @@ impl GlassPasses {
                 },
             ],
         });
-        // Level 0 from the source, level k from level k - 1.
+        // Level 0 from the source, level k from level k - 1, each with the
+        // size of the level it reads.
         let mut down_groups = vec![group(&source_view, &self.uniform)];
         for k in 1..LEVELS as usize {
-            down_groups.push(group(&levels[k - 1], &self.off));
+            let params = wgpu::util::DeviceExt::create_buffer_init(
+                device,
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some("glass level params"),
+                    contents: bytemuck::bytes_of(&[
+                        0.0f32,
+                        0.0,
+                        (pw >> (k - 1)).max(1) as f32,
+                        (ph >> (k - 1)).max(1) as f32,
+                    ]),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                },
+            );
+            down_groups.push(group(&levels[k - 1], &params));
         }
         GlassTargets {
             size: (width, height),
@@ -341,7 +356,12 @@ impl GlassPasses {
         queue.write_buffer(
             &self.uniform,
             0,
-            bytemuck::cast_slice(&[f32::from(u8::from(decode)), 0.0, 0.0, 0.0]),
+            bytemuck::cast_slice(&[
+                f32::from(u8::from(decode)),
+                0.0,
+                targets.size.0 as f32,
+                targets.size.1 as f32,
+            ]),
         );
         for (k, view) in targets.levels.iter().enumerate() {
             fullscreen_pass(
