@@ -130,6 +130,18 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.6.5 released (2026-10-27 UTC).** All five npm packages are
+published, and `v0.6.5` is pushed at `76859981`. It is a patch with the
+simulation unchanged: og check names a truncated bunx TypeScript install
+and its fix; the knowledge mount targets origin-agent's `knowledge/`;
+og-ui glass and a view's glow chain match metal on Windows WebGL2; and
+WebGL2's cold start on Windows drops from about 30 s to 7 s (background
+links, and the GL tier's lit programs without rect-light code until a
+scene has one). The replay gate passes 3/3 platforms × 2/2 goldens, and the
+tarballs and the registry install passed on Mac, Linux and Windows. 0.6.4,
+published from an orb only, was verified from the registry on Mac and
+Windows afterwards. See the [release receipt](../tests/evidence/release/0.6.5.md).
+
 **0.6.4 released (2026-10-27 UTC).** All five npm packages are
 published, and `v0.6.4` is pushed at `397dbc79`. It is a patch with the
 simulation unchanged and no IDL member changed: it adds `og bake
