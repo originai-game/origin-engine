@@ -20,6 +20,7 @@ og-render = { path = "../og-render" }
 glam = { workspace = true }
 og-net = { path = "../og-net", features = ["ws"] }
 image = { workspace = true }
+gltf = { workspace = true }
 serde_json = "1"
 tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
 # `og style pack` starts a new style from the prototype's palette and radii.

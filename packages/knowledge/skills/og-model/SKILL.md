@@ -341,6 +341,16 @@ the optimisation pass, and review the asset's views against the factory's
 with `og compare` before deleting the factory: a region that moved is a
 part the asset places differently.
 
+**A gray level painted from views** is a different job from a prop: a
+blockout glb (uv-mapped, y up) whose surfaces get one texture painted by
+an image model from cameras a player could stand at. `og bake projection`
+does the engine half on the CPU (`init`, `plan`, `prepare` per view,
+`project` the model's picture, `holes`, `export` a textured glb;
+docs/design.md §Projection painting); the platform's `level-texturing`
+skill drives it and owns the model calls and the review. Check the
+exported glb lit, from the planned views and from one the plan did not
+take.
+
 ## 6. Budgets
 
 | Use | Triangles | Materials (draws) | Lathe and sweep segments |
