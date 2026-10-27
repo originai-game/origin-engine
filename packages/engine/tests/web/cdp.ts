@@ -73,11 +73,16 @@ export class Browser {
     );
     const portFile = join(profile, "DevToolsActivePort");
     const t0 = performance.now();
-    while (!existsSync(portFile) || readFileSync(portFile, "utf8").split("\n").length < 2) {
+    let lines: string[] = [];
+    while (lines.length < 2) {
       if (performance.now() - t0 > 20_000) throw new Error("Chrome did not open its DevTools port in 20 s");
       await new Promise((r) => setTimeout(r, 50));
+      // Not written yet, or still open in Chrome (EBUSY on Windows): try again.
+      try {
+        lines = readFileSync(portFile, "utf8").trim().split("\n");
+      } catch {}
     }
-    const [port, path] = readFileSync(portFile, "utf8").trim().split("\n");
+    const [port, path] = lines;
     const ws = new WebSocket(`ws://127.0.0.1:${port}${path}`);
     await new Promise<void>((resolve, reject) => {
       ws.addEventListener("open", () => resolve());
