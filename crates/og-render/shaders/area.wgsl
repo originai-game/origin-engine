@@ -14,7 +14,9 @@
 // spot's layer in color_kind.w - 2 (w >= 2), a point's six faces from
 // -cone.y - 1 (cone.y < 0).
 
-@group(0) @binding(11) var<uniform> ltc_table: array<vec4<u32>, 1024>;
+// In a struct so ANGLE keeps it a constant buffer (see clusters.rs).
+struct LtcWords { v: array<vec4<u32>, 1024> };
+@group(0) @binding(11) var<uniform> ltc_table: LtcWords;
 
 struct LtcSample {
   m: vec4<f32>,       // the inverse transform's a, b, c, d (three.js ltc_1)
@@ -35,7 +37,7 @@ fn ltc_pair(w: u32) -> vec2<f32> {
 }
 
 fn ltc_texel(x: u32, y: u32) -> LtcSample {
-  let t = ltc_table[y * 32u + x];
+  let t = ltc_table.v[y * 32u + x];
   var s: LtcSample;
   s.m = vec4<f32>(ltc_pair(t.x), ltc_pair(t.y));
   s.fresnel = ltc_pair(t.z);
@@ -304,18 +306,9 @@ fn surface_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>
 // every-light branch. A face read the main camera's first cluster before.
 fn surface_local_lights(frag: vec2<f32>, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
   var color = vec3<f32>(0.0);
-  if (frame.params.z < 0.5) { return color; }
-  if (frame.cluster.x > 0.0) {
-    let word = cluster_word(cluster_at(frag, p));
-    let first = word & 0xffffffu;
-    let count = word >> 24u;
-    for (var k = 0u; k < count; k++) {
-      color += surface_local_light(light_list[cluster_ref(first + k)], s, p, n, v);
-    }
-  } else {
-    for (var k = 0u; k < u32(frame.params.z); k++) {
-      color += surface_local_light(light_list[k], s, p, n, v);
-    }
+  let lights = frame_lights(frag, p);
+  for (var k = 0u; k < lights.y; k++) {
+    color += surface_local_light(frame_light(lights, k), s, p, n, v);
   }
   return color;
 }

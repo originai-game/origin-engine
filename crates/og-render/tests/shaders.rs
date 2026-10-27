@@ -155,6 +155,106 @@ fn every_gl_tier_module_validates_and_translates_to_glsl_es_300() {
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
 
+/// Every `v[i]` with `i` not a constant and `v` a vector or a matrix (or a
+/// pointer to one), as (function, the WGSL line it is on).
+fn dynamic_vector_indexes(label: &str, wgsl: &str) -> Vec<(String, String)> {
+    let module = naga::front::wgsl::parse_str(wgsl).expect("parses");
+    let info = Validator::new(ValidationFlags::all(), Capabilities::empty())
+        .validate(&module)
+        .unwrap_or_else(|e| panic!("{label}: {}", e.emit_to_string(wgsl)));
+    let mut found = Vec::new();
+    let mut scan = |name: &str, f: &naga::Function, fi: &naga::valid::FunctionInfo| {
+        for (h, e) in f.expressions.iter() {
+            let naga::Expression::Access { base, .. } = *e else {
+                continue;
+            };
+            let inner = match *fi[base].ty.inner_with(&module.types) {
+                naga::TypeInner::Pointer { base, .. } => &module.types[base].inner,
+                ref other => other,
+            };
+            let vector = match *inner {
+                naga::TypeInner::Vector { .. } | naga::TypeInner::Matrix { .. } => true,
+                naga::TypeInner::ValuePointer { size, .. } => size.is_some(),
+                _ => false,
+            };
+            if vector {
+                let line = f.expressions.get_span(h).location(wgsl).line_number;
+                let text = wgsl.lines().nth(line as usize - 1).unwrap_or("").trim();
+                found.push((name.to_string(), format!("line {line}: {text}")));
+            }
+        }
+    };
+    for (h, f) in module.functions.iter() {
+        scan(f.name.as_deref().unwrap_or("?"), f, &info[h]);
+    }
+    for (i, e) in module.entry_points.iter().enumerate() {
+        scan(&e.name, &e.function, info.get_entry_point(i));
+    }
+    found
+}
+
+/// The only functions of GL-tier modules (by module label) allowed to index
+/// a vector or a matrix with a dynamic index. Each indexes a local vector,
+/// not uniform data, and links in Chrome 155 on WebGL2 over ANGLE's D3D11
+/// backend (`tests/evidence/release/windows-x64-webgl2/NOTES.md`).
+const DYNAMIC_VECTOR_INDEXES: &[(&str, &str)] = &[
+    ("pbr (texture palette)", "object_id"),
+    ("pbr array maps (texture palette)", "object_id"),
+    ("pbr lean (texture palette)", "object_id"),
+    ("physical (texture palette)", "object_id"),
+    ("stylise object (texture palette)", "object_id"),
+    ("stylise", "hatch_surface"),
+    ("stylise", "dots_surface"),
+    ("terrain", "layer_weights"),
+    ("terrain", "terrain_look"),
+    ("terrain (layer arrays)", "layer_weights"),
+    ("terrain (layer arrays)", "terrain_look"),
+    ("pack", "fs"),
+    ("custom post (crt)", "post"),
+];
+
+/// No GL-tier module indexes a vector or a matrix with a dynamic index
+/// outside `DYNAMIC_VECTOR_INDEXES`, and every entry there is still used.
+/// ANGLE's D3D11 backend (Chrome and Edge on Windows) rewrites `v[i]` into
+/// a `dyn_index_*` helper. The light tables' (`cluster_table[c >> 2u][c &
+/// 3u]` and the references') were written twice in every lit shader, which
+/// FXC refuses (`X3003: redefinition`), so WebGL2 did not start
+/// (`tests/evidence/release/windows-x64-webgl2/NOTES.md`). The tables now
+/// read a whole vec4 by a dynamic array index and pick its word with masks
+/// (clusters.rs). A new site must be linked in Chrome or Edge on Windows on
+/// WebGL2 before it is listed.
+#[test]
+fn gl_tier_dynamic_vector_indexes_are_known() {
+    let mut used = std::collections::BTreeSet::new();
+    let mut failures = Vec::new();
+    for s in og_render::shader_sources(false).iter() {
+        for (function, at) in dynamic_vector_indexes(&s.label, &s.wgsl) {
+            let key = (s.label.as_str(), function.as_str());
+            match DYNAMIC_VECTOR_INDEXES.iter().find(|k| **k == key) {
+                Some(k) => {
+                    used.insert(*k);
+                }
+                None => failures.push(format!("{}: fn {function}, {at}", s.label)),
+            }
+        }
+    }
+    let stale: Vec<_> = DYNAMIC_VECTOR_INDEXES
+        .iter()
+        .filter(|k| !used.contains(*k))
+        .collect();
+    assert!(
+        failures.is_empty(),
+        "a dynamic index into a vector or matrix; ANGLE's D3D11 backend rewrites it into a \
+         dyn_index helper that FXC can refuse (X3003) or compile for minutes on WebGL2 in \
+         Chrome and Edge on Windows. Pick the component with masks or select, or index an \
+         array of scalars, or link it there and list it in DYNAMIC_VECTOR_INDEXES:\n{}",
+        failures.join("\n")
+    );
+    assert!(
+        stale.is_empty(),
+        "no longer indexed dynamically; remove from DYNAMIC_VECTOR_INDEXES: {stale:?}"
+    );
+}
 /// TAA reads the depth buffer (binding 2, `Depth32Float`) through a
 /// sampler on WebGL2, never with `texelFetch` alone: wgpu's GL backend binds
 /// no sampler object to a texture read only with `texelFetch`, a depth

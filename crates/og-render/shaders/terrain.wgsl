@@ -103,7 +103,14 @@ fn tile_ref(lvl: u32, u: vec2<f32>) -> TileRef {
   var r: TileRef;
   r.tile = clamp(floor(u / terrain.tiles.x), vec2<f32>(0.0), p.yz - 1.0);
   let i = u32(p.x + r.tile.y * p.y + r.tile.x);
-  let v = table.entries[i / 4u][i % 4u];
+  // Entry i: its vec4, then the lane by masks: no GL-tier shader indexes
+  // a uniform vector by a variable (ANGLE's D3D11 backend; clusters.rs,
+  // `LightTables::wgsl`).
+  let w = bitcast<vec4<u32>>(table.entries[i / 4u]);
+  let odd = 0u - (i & 1u);
+  let lo = w.x ^ ((w.x ^ w.y) & odd);
+  let hi = w.z ^ ((w.z ^ w.w) & odd);
+  let v = bitcast<f32>(lo ^ ((lo ^ hi) & (0u - ((i >> 1u) & 1u))));
   if (v < 255.5) {
     r.slot = -1.0;
     r.fade = 0.0;

@@ -40,8 +40,11 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
     textureSample(t3, pack_sampler, in.uv),
   );
   var o = pack.fallback;
+  // A local copy: no GL-tier shader indexes a uniform vector by a variable
+  // (ANGLE's D3D11 backend; clusters.rs, `LightTables::wgsl`).
+  var picks = pack.pick;
   for (var c = 0u; c < 4u; c++) {
-    let k = pack.pick[c];
+    let k = picks[c];
     if (k < 16u) {
       var v = s[k >> 2u][k & 3u];
       if (((pack.flags.x >> c) & 1u) != 0u) { v = srgb_encode(clamp(v, 0.0, 1.0)); }

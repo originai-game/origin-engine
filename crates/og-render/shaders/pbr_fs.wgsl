@@ -133,19 +133,12 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     color += (1.0 - shadow) * frame.shadow_tint.rgb * frame.shadow_tint.w * s.albedo * frame.light_color.rgb * n_dot_l;
   }
 
-  // Point and spot lights: those of this fragment's cluster, in scene order.
-  if (frame.params.z > 0.5 && frame.cluster.x > 0.0) {
-    let word = cluster_word(cluster_at(in.clip.xy, in.world_pos));
-    let first = word & 0xffffffu;
-    let count = word >> 24u;
-    for (var k = 0u; k < count; k++) {
-      color += local_light(light_list[cluster_ref(first + k)], s, in.world_pos, n, v, receives);
-    }
-  } else if (frame.params.z > 0.5) {
-    // A reflection probe's capture (probes.rs) has no clusters: every light.
-    for (var k = 0u; k < u32(frame.params.z); k++) {
-      color += local_light(light_list[k], s, in.world_pos, n, v, receives);
-    }
+  // Point and spot lights: those of this fragment's cluster, in scene
+  // order, or every light in a reflection probe's capture (probes.rs),
+  // which has no clusters. One loop, so local_light is inlined once.
+  let lights = frame_lights(in.clip.xy, in.world_pos);
+  for (var k = 0u; k < lights.y; k++) {
+    color += local_light(frame_light(lights, k), s, in.world_pos, n, v, receives);
   }
 
   // Image-based light (split sum).

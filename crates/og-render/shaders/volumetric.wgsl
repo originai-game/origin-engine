@@ -64,7 +64,7 @@ fn locals_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32) -> vec3<f
   let first = word & 0xffffffu;
   let count = min(word >> 24u, most);
   for (var k = 0u; k < count; k++) {
-    let light = light_list[cluster_ref(first + k)];
+    let light = light_at(cluster_ref(first + k));
     let to_light = light.position_range.xyz - p;
     let d2 = max(dot(to_light, to_light), 1e-4);
     let range = light.position_range.w;
