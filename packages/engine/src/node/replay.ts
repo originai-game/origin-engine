@@ -141,12 +141,15 @@ const extras = native();
  * The game's code as its bundle holds it: the sha256 of the bundle with what
  * names the machine left out (this package's absolute path in its engine
  * imports, the module-path comments the bundler writes relative to where og
- * ran), so the same game hashes the same in any checkout or install.
+ * ran), so the same game hashes the same in any checkout or install. The
+ * imports spell the path as a string literal: on Windows each `\` is doubled,
+ * and the rest of the path to the closing quote takes `/` as on POSIX.
  */
 function bundleHash(file: string): string {
   const pkg = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
   const text = readFileSync(file, "utf8")
-    .split(pkg + sep)
+    .split(JSON.stringify(pkg + sep).slice(1, -1))
+    .map((part, i) => (i === 0 ? part : part.replace(/^[^"]*/, (rest) => rest.replaceAll("\\\\", "/"))))
     .join("@origingame/engine/")
     .split("\n")
     .filter((line) => !line.startsWith("// "))
