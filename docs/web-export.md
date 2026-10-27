@@ -530,7 +530,12 @@ earlier build; a build that fails after replacing it removes what it wrote.
   (`og_web_warm`; the Worker's console says how many and how long:
   Lantern Vale's 29 on WebGL2 in about 0.7 s, its 35 on WebGPU in 0.17 s);
   a pass the warm-up did not reach is made by the frame that first draws
-  with it.
+  with it. On WebGL2 the lit programs leave the rect-light code out until
+  a frame has an `og.RectLight` (og-render's `area::wgsl`); a scene that
+  gets its first one during play links them again at that moment (about
+  5 to 8 s on ANGLE D3D11, waited for by the next lit frame), so a game
+  that will use one puts it in the first scene (at intensity 0 if it
+  should not shine yet), and the links happen at load.
 - **The WebGL2 state filter** (`src/web/gl-state.ts`): on the WebGL2
   fallback the Worker puts a mirror of the context's state in front of
   the context wgpu's GL backend draws through. A call that sets a value

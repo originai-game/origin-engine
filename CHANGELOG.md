@@ -48,7 +48,11 @@ No IDL member changed; the simulation is unchanged (the golden replays).
   cold first frame: 30.4–31.7 s → 7.0–7.5 s in Chrome 155, 30.3–31.2 s →
   7.6–7.7 s in Edge 155; its five stations 56–58 s → 16–17 s. WebGPU,
   metal and DX12 are unchanged and no frame moved
-  (`tests/evidence/release/windows-x64-webgl2/COLDSTART.md`).
+  (`tests/evidence/release/windows-x64-webgl2/COLDSTART.md`). The
+  trade-off: on WebGL2, a scene that gets its first rect light during play
+  links its lit programs again at that moment (about 5 to 8 s on ANGLE
+  D3D11, waited for by the next lit frame); to pay it at load instead,
+  put an `og.RectLight` in the first scene (one at intensity 0 counts).
 
 ## 0.6.4 — 2026-10-27
 
