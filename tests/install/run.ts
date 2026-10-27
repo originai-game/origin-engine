@@ -18,7 +18,7 @@
 //   5. the runner archetype through steps 1 to 4's test
 //   6. the 2D starter (`create-game --profile 2d`) through the same test
 //   7. the knowledge inside the engine package (knowledge/): its validate.ts,
-//      mount.ts --package into a stand-in platform tree, then --check
+//      mount.ts --package into a stand-in origin-agent knowledge/ tree, then --check
 //
 // --container builds tests/install/Dockerfile (node 22, bun) and runs this
 // script inside it with --host-only, the tarballs mounted read-only. With
@@ -219,16 +219,16 @@ function host(): void {
     if (!existsSync(join(knPkg, "knowledge.json"))) step.fail(`${enginePkg} carries no knowledge/`);
     run(step, ["bun", join(knPkg, "scripts", "validate.ts")], demo);
     const platform = join(work, "platform");
-    mkdirSync(join(platform, "packages/game-knowledge/production/game/skills/someone-else"), { recursive: true });
-    writeFileSync(join(platform, "packages/game-knowledge/production/game/skills/someone-else/SKILL.md"), "---\nname: someone-else\ndescription: not ours\n---\n");
-    mkdirSync(join(platform, "packages/game-knowledge/production/game-scaffold/three"), { recursive: true });
-    writeFileSync(join(platform, "packages/game-knowledge/production/game-scaffold/three/package.json"), "{}\n");
+    mkdirSync(join(platform, "knowledge/game/skills/someone-else"), { recursive: true });
+    writeFileSync(join(platform, "knowledge/game/skills/someone-else/SKILL.md"), "---\nname: someone-else\ndescription: not ours\n---\n");
+    mkdirSync(join(platform, "knowledge/game-scaffold/three"), { recursive: true });
+    writeFileSync(join(platform, "knowledge/game-scaffold/three/package.json"), "{}\n");
     const mounted = run(step, ["bun", join(knPkg, "scripts", "mount.ts"), platform, "--package", enginePkg], demo);
     if (!/text files: \d+/.test(mounted.stdout)) step.fail(`mount printed no summary:\n${mounted.stdout}`);
     run(step, ["bun", join(knPkg, "scripts", "mount.ts"), platform, "--package", enginePkg, "--check"], demo);
-    if (!existsSync(join(platform, "packages/game-knowledge/production/game/skills/og-game/SKILL.md"))) step.fail("the mount wrote no og-game skill");
-    if (!existsSync(join(platform, "packages/game-knowledge/production/game-scaffold/origin-engine-ts/project.ogt"))) step.fail("the mount wrote no scaffold overlay");
-    if (!existsSync(join(platform, "packages/game-knowledge/production/game/skills/someone-else/SKILL.md"))) step.fail("the mount removed someone else's skill");
+    if (!existsSync(join(platform, "knowledge/game/skills/og-game/SKILL.md"))) step.fail("the mount wrote no og-game skill");
+    if (!existsSync(join(platform, "knowledge/game-scaffold/origin-engine-ts/project.ogt"))) step.fail("the mount wrote no scaffold overlay");
+    if (!existsSync(join(platform, "knowledge/game/skills/someone-else/SKILL.md"))) step.fail("the mount removed someone else's skill");
 
     log(`PASS on ${PLATFORM}`);
     if (!KEEP) rmSync(work, { recursive: true, force: true });

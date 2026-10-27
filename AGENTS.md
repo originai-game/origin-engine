@@ -2,7 +2,7 @@
 
 Normative design: `docs/design.md`. Platform contracts this engine implements:
 `origingame/docs/game-workflow.md` (the production contract),
-`origingame/origin/packages/contracts/src/probe.ts` (the probe, protocol 5),
+`origin-agent/packages/contracts/src/probe.ts` (the probe, protocol 5),
 `origingame/docs/design-language.md` (tokens and components for the player
 shell and the marks only: a game's UI is the game's own style, og-ui never
 reads the platform's tokens). The execution package during the build-out is
@@ -27,6 +27,16 @@ what remains to launch, `docs/release.md`.
   and the last consumer of a version. No engine script targets E2B for
   development. No platform code imports engine internals; no engine code
   imports platform code.
+- The platform is two repositories since the agent-repo split
+  (2026-10-27): the private `originai-game/origin-agent` holds the agent's
+  server, runner, web, protocol, Stage, knowledge and iOS, including the
+  probe contract, the engine pin (`server/scripts/e2b/origin-engine.json`)
+  and the knowledge tree `knowledge/` that the engine's knowledge mounts
+  into; everything else stays in `originai-game/origingame`. origin-agent's
+  `scripts/knowledge/mount-engine.ts` imports `installed`, `mount` and
+  `summary` from `packages/knowledge/scripts/mount.ts`: their signatures
+  are a public contract, and changing them is a break (a minor version
+  with a `changelog.json` breaking entry).
 
 ## Non-negotiable contracts
 

@@ -24,6 +24,12 @@ No IDL member changed; the simulation is unchanged (the golden replays).
   verifies the install before tsgo runs, and reads tsgo's panic, and says
   which directory is incomplete and the fix: delete it or
   `bun pm cache rm`, then rerun. `og doctor` reports it as broken.
+- Fixes: the knowledge package's `scripts/mount.ts` CLI takes an
+  origin-agent checkout and mounts into its `knowledge/`, where the
+  platform's knowledge moved from OriginGame's
+  `packages/game-knowledge/production` in the agent-repo split. Its
+  exports `installed`, `mount` and `summary`, which origin-agent's
+  `mount-engine.ts` imports, are unchanged.
 
 ## 0.6.4 — 2026-10-27
 

@@ -1,7 +1,9 @@
 # @origingame/engine-knowledge
 
 What an agent needs to write a game on Origin Engine, as the platform's
-knowledge packs (`packages/game-knowledge/production` of OriginGame):
+knowledge packs (`knowledge/` of origin-agent, the platform's agent
+repository; `packages/game-knowledge/production` of OriginGame before the
+agent-repo split):
 
 | Part | Path | Mounted at (`knowledge.json`) |
 |---|---|---|
@@ -23,10 +25,14 @@ with their reason in `NOT_API`. `bun scripts/validate.ts --bundle`
 prints the text payload in the platform's `readProductionBundle` shape
 (`{ schemaVersion: 1, files }`).
 
-`bun scripts/mount.ts <origingame checkout> [--check] [--commit <rev>]`
-writes the payload into the platform checkout's
-`packages/game-knowledge/production` (text files only; it owns
-`game/skills/og-*/` and `game-scaffold/origin-engine-ts/` there and removes
-what the package no longer has); `--check` exits 1 on any difference and
-`--commit` mounts a commit instead of the working tree. What the platform
-side looks like: the repository's `docs/m7-platform-notes.md`.
+`bun scripts/mount.ts <origin-agent checkout> [--check] [--commit <rev> | --package <dir>]`
+writes the payload into the checkout's `knowledge/` (text files only; it
+owns `game/skills/og-*/` and `game-scaffold/origin-engine-ts/` there and
+removes what the package no longer has); `--check` exits 1 on any
+difference, `--commit` mounts a commit instead of the working tree and
+`--package` the knowledge of an installed engine. origin-agent itself runs
+`scripts/knowledge/mount-engine.ts`, which imports `installed`, `mount` and
+`summary` from the installed engine's `knowledge/scripts/mount.ts` with its
+own knowledge root: those three signatures are a public contract
+(AGENTS.md). What the platform side looked like at M7: the repository's
+`docs/m7-platform-notes.md`.
