@@ -3,7 +3,7 @@ version 1
 ---
 name "Lantern Vale"
 id "lantern-vale"
-engine "0.6.1"
+engine "0.6.2"
 entry "src/main.ts"
 profile "3d"
 tick 60

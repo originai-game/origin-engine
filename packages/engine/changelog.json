@@ -4,15 +4,36 @@
   "unreleased": {
     "simulation": "unchanged",
     "breaking": [],
-    "added": [
-      { "member": "og upgrade", "summary": "og upgrade [project] [--to <v>] [--json]: moves project.ogt's engine pin and package.json's dependency, applies the codemods of the versions crossed and lists what needs a hand edit; exit 0 done, 3 manual edits, 1 failed." },
-      { "member": "og replay", "summary": "og replay record and og replay compare: a game's per-tick world hashes recorded with one engine version and replayed with another; the first divergent tick and the entities, components and fields that differ." },
-      { "member": "og doctor --json", "summary": "og doctor --json: the checks as one object, with pin { pinned, installed, compatible }." },
-      { "member": "changelog.json", "summary": "This file, in the package: each version's kind, whether the simulation changed, its breaks with their fixes, additions and fixes." }
-    ],
+    "added": [],
     "fixed": []
   },
   "versions": [
+    {
+      "version": "0.6.2",
+      "date": "2026-10-27",
+      "kind": "patch",
+      "simulation": "unchanged",
+      "breaking": [],
+      "added": [
+        {
+          "member": "og upgrade",
+          "summary": "og upgrade [project] [--to <v>] [--json]: moves project.ogt's engine pin and package.json's dependency, applies the codemods of the versions crossed and lists what needs a hand edit; exit 0 done, 3 manual edits, 1 failed."
+        },
+        {
+          "member": "og replay",
+          "summary": "og replay record and og replay compare: a game's per-tick world hashes recorded with one engine version and replayed with another; the first divergent tick and the entities, components and fields that differ."
+        },
+        {
+          "member": "og doctor --json",
+          "summary": "og doctor --json: the checks as one object, with pin { pinned, installed, compatible }."
+        },
+        {
+          "member": "changelog.json",
+          "summary": "This file, in the package: each version's kind, whether the simulation changed, its breaks with their fixes, additions and fixes."
+        }
+      ],
+      "fixed": []
+    },
     {
       "version": "0.6.1",
       "date": "2026-10-27",
@@ -20,12 +41,30 @@
       "simulation": "unchanged",
       "breaking": [],
       "added": [
-        { "member": "PostEffects.screenBlur", "summary": "Zoom, spin and directional blurs of the frame with screenBlurStrength, screenBlurCenter, screenBlurAngle and screenBlurSamples; off at none or strength 0." },
-        { "member": "og.Wind", "summary": "Resource that sways og.TerrainScatter copies (strength, direction, speed, gust); visual only, off at strength 0." },
-        { "member": "TerrainScatter.sway", "summary": "How much og.Wind sways a scatter: 1 as it blows, 0 still." },
-        { "member": "PostEffects.lensDistortion", "summary": "Barrel or pincushion distortion with lensDistortionCenter; off at 0." },
-        { "member": "RenderSettings.toneMapping", "summary": "Variant neutral (Khronos PBR Neutral), appended; existing indices unchanged." },
-        { "member": "PostEffects.temperature", "summary": "Colour adjustments after the LUT: temperature, tint, brightness, contrast, balanceShadows, balanceMidtones, balanceHighlights, preserveLuminosity, hue, saturation, vibrance, grayscale, invert, threshold; each off at 0." }
+        {
+          "member": "PostEffects.screenBlur",
+          "summary": "Zoom, spin and directional blurs of the frame with screenBlurStrength, screenBlurCenter, screenBlurAngle and screenBlurSamples; off at none or strength 0."
+        },
+        {
+          "member": "og.Wind",
+          "summary": "Resource that sways og.TerrainScatter copies (strength, direction, speed, gust); visual only, off at strength 0."
+        },
+        {
+          "member": "TerrainScatter.sway",
+          "summary": "How much og.Wind sways a scatter: 1 as it blows, 0 still."
+        },
+        {
+          "member": "PostEffects.lensDistortion",
+          "summary": "Barrel or pincushion distortion with lensDistortionCenter; off at 0."
+        },
+        {
+          "member": "RenderSettings.toneMapping",
+          "summary": "Variant neutral (Khronos PBR Neutral), appended; existing indices unchanged."
+        },
+        {
+          "member": "PostEffects.temperature",
+          "summary": "Colour adjustments after the LUT: temperature, tint, brightness, contrast, balanceShadows, balanceMidtones, balanceHighlights, preserveLuminosity, hue, saturation, vibrance, grayscale, invert, threshold; each off at 0."
+        }
       ],
       "fixed": [
         "WebGL2 starts on Windows in Chrome and Edge (ANGLE on D3D11).",
@@ -40,7 +79,10 @@
       "simulation": "changed",
       "breaking": [],
       "added": [
-        { "member": "three.js parity", "summary": "The Grand View Garden fork's fields (§1–§51): every one off at its default; CHANGELOG.md lists them." }
+        {
+          "member": "three.js parity",
+          "summary": "The Grand View Garden fork's fields (§1–§51): every one off at its default; CHANGELOG.md lists them."
+        }
       ],
       "fixed": []
     },
@@ -51,7 +93,10 @@
       "simulation": "changed",
       "breaking": [],
       "added": [
-        { "member": "0.5.0", "summary": "API additions by stream; CHANGELOG.md lists them." }
+        {
+          "member": "0.5.0",
+          "summary": "API additions by stream; CHANGELOG.md lists them."
+        }
       ],
       "fixed": []
     },
@@ -62,7 +107,10 @@
       "simulation": "changed",
       "breaking": [],
       "added": [
-        { "member": "0.4.0", "summary": "API additions by stream; CHANGELOG.md lists them." }
+        {
+          "member": "0.4.0",
+          "summary": "API additions by stream; CHANGELOG.md lists them."
+        }
       ],
       "fixed": []
     },
@@ -72,15 +120,69 @@
       "kind": "minor",
       "simulation": "changed",
       "breaking": [
-        { "member": "og.load.skin", "change": "Renamed og.load.style (a skin is a style).", "fix": "Call og.load.style.", "find": ["og.load.skin"], "codemod": { "from": "og.load.skin", "to": "og.load.style" } },
-        { "member": "type skin", "change": "UI style files are `type style` and name every palette role and radius; `type skin` and `base` are refused.", "fix": "Rewrite the file as `type style` with every role of ThemeColor and every radius.", "find": ["type skin"] },
-        { "member": "ThemeColor", "change": "Palette roles renamed to the engine's 33; accent is primary (Tone, MeterKind, Ink).", "fix": "Use primary for accent and the new role names (backdrop, panel, ink, inkMuted, ...).", "find": ["accent"] },
-        { "member": "HueName", "change": "Removed; UiDesc.primaryColor replaces the accent and hue.", "fix": "Set UiDesc.primaryColor.", "find": ["HueName", "hue:"] },
-        { "member": "StylePart", "change": "capsule is hud.", "fix": "Name the part hud.", "find": ["capsule"] },
-        { "member": "og skin pack", "change": "Renamed og style pack.", "fix": "Run og style pack.", "find": ["og skin pack"], "codemod": { "from": "og skin pack", "to": "og style pack" } }
+        {
+          "member": "og.load.skin",
+          "change": "Renamed og.load.style (a skin is a style).",
+          "fix": "Call og.load.style.",
+          "find": [
+            "og.load.skin"
+          ],
+          "codemod": {
+            "from": "og.load.skin",
+            "to": "og.load.style"
+          }
+        },
+        {
+          "member": "type skin",
+          "change": "UI style files are `type style` and name every palette role and radius; `type skin` and `base` are refused.",
+          "fix": "Rewrite the file as `type style` with every role of ThemeColor and every radius.",
+          "find": [
+            "type skin"
+          ]
+        },
+        {
+          "member": "ThemeColor",
+          "change": "Palette roles renamed to the engine's 33; accent is primary (Tone, MeterKind, Ink).",
+          "fix": "Use primary for accent and the new role names (backdrop, panel, ink, inkMuted, ...).",
+          "find": [
+            "accent"
+          ]
+        },
+        {
+          "member": "HueName",
+          "change": "Removed; UiDesc.primaryColor replaces the accent and hue.",
+          "fix": "Set UiDesc.primaryColor.",
+          "find": [
+            "HueName",
+            "hue:"
+          ]
+        },
+        {
+          "member": "StylePart",
+          "change": "capsule is hud.",
+          "fix": "Name the part hud.",
+          "find": [
+            "capsule"
+          ]
+        },
+        {
+          "member": "og skin pack",
+          "change": "Renamed og style pack.",
+          "fix": "Run og style pack.",
+          "find": [
+            "og skin pack"
+          ],
+          "codemod": {
+            "from": "og skin pack",
+            "to": "og style pack"
+          }
+        }
       ],
       "added": [
-        { "member": "UI styles", "summary": "A game's UI wears a style; CHANGELOG.md lists the members." }
+        {
+          "member": "UI styles",
+          "summary": "A game's UI wears a style; CHANGELOG.md lists the members."
+        }
       ],
       "fixed": []
     },
@@ -91,7 +193,10 @@
       "simulation": "changed",
       "breaking": [],
       "added": [
-        { "member": "0.2.0", "summary": "API additions; CHANGELOG.md lists them." }
+        {
+          "member": "0.2.0",
+          "summary": "API additions; CHANGELOG.md lists them."
+        }
       ],
       "fixed": []
     },
@@ -102,7 +207,9 @@
       "simulation": "unchanged",
       "breaking": [],
       "added": [],
-      "fixed": ["The scaffold's .gitignore, which npm drops from tarballs, is stored as gitignore."]
+      "fixed": [
+        "The scaffold's .gitignore, which npm drops from tarballs, is stored as gitignore."
+      ]
     },
     {
       "version": "0.1.0",
@@ -111,7 +218,10 @@
       "simulation": "changed",
       "breaking": [],
       "added": [
-        { "member": "0.1.0", "summary": "The first published version." }
+        {
+          "member": "0.1.0",
+          "summary": "The first published version."
+        }
       ],
       "fixed": []
     }
