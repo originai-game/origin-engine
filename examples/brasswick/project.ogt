@@ -7,7 +7,7 @@ version 1
 name "Brasswick"
 id "brasswick"
 # The engine this game is written against (upgrades are explicit).
-engine "0.6.2"
+engine "0.6.3"
 entry "src/main.ts"
 profile "2d"
 tick 60

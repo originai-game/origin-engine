@@ -210,7 +210,7 @@ beforeAll(() => {
   for (const d of ["models", "textures", "audio", "scenes"]) mkdirSync(join(root, "assets", d), { recursive: true });
   writeFileSync(
     join(root, "project.ogt"),
-    'type project\nversion 1\n---\nname "Asset stream fixture"\nid "asset-stream-fixture"\nengine "0.6.2"\nentry "main.ts"\nprofile "3d"\ntick 60\nseed 1\n',
+    'type project\nversion 1\n---\nname "Asset stream fixture"\nid "asset-stream-fixture"\nengine "0.6.3"\nentry "main.ts"\nprofile "3d"\ntick 60\nseed 1\n',
   );
   writeFileSync(join(root, "main.ts"), MAIN);
   const colours: Array<[string, [number, number, number]]> = [

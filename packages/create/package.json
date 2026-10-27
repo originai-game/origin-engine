@@ -1,6 +1,6 @@
 {
   "name": "@origingame/create-game",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Scaffolds an Origin Engine game from the project template: npm create @origingame/game.",
   "license": "MIT",
   "repository": {

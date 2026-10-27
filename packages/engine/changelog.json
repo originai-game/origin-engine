@@ -2,16 +2,25 @@
   "schema": 1,
   "about": "Machine-readable changelog of @origingame/engine (docs/release.md §3). kind: patch (0.x.y, compatible) or minor (0.x.0, has breaks). simulation: changed when a game's world can step differently (the golden replays' hashes moved, scripts/replay-gate.ts), else unchanged; versions before 0.6.1 were not measured and say changed. breaking: what a game may have to edit, each with the fix; find lists the identifiers og upgrade searches the game's sources for, codemod a mechanical rewrite it applies. CHANGELOG.md has the prose.",
   "unreleased": {
-    "simulation": "changed",
+    "simulation": "unchanged",
     "breaking": [],
     "added": [],
-    "fixed": [
-      "A NavAgent with faceMovement turns the same on every host: its turn was glam's slerp on the host's sinf and drifted by up to 16 ulp between Windows and Linux for the ticks of a turn; it is now a yaw step through og-core's deterministic math, so the turning ticks' quaternions move by an ulp on every host.",
-      "og.terrain.sample's slope is computed with og-core's deterministic acos instead of the host's.",
-      "camera.worldToScreen and camera.screenToRay, which a system may call inside the tick, answer the same bits on every host: their perspective is built with og-core's sin/cos (not glam's host-libm perspective), now pinned by a test, and glam's perspective constructors are refused in the simulation crates."
-    ]
+    "fixed": []
   },
   "versions": [
+    {
+      "version": "0.6.3",
+      "date": "2026-10-27",
+      "kind": "patch",
+      "simulation": "changed",
+      "breaking": [],
+      "added": [],
+      "fixed": [
+        "A NavAgent with faceMovement turns the same on every host: its turn was glam's slerp on the host's sinf and drifted by up to 16 ulp between Windows and Linux for the ticks of a turn; it is now a yaw step through og-core's deterministic math, so the turning ticks' quaternions move by an ulp on every host.",
+        "og.terrain.sample's slope is computed with og-core's deterministic acos instead of the host's.",
+        "camera.worldToScreen and camera.screenToRay, which a system may call inside the tick, answer the same bits on every host: their perspective is built with og-core's sin/cos (not glam's host-libm perspective), now pinned by a test, and glam's perspective constructors are refused in the simulation crates."
+      ]
+    },
     {
       "version": "0.6.2",
       "date": "2026-10-27",
