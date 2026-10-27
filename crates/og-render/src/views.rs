@@ -456,7 +456,10 @@ pub(crate) struct ViewGlow {
     size: (u32, u32),
     /// Each level as a target, level 0 the one the glow sprites draw into.
     pub levels: Vec<wgpu::TextureView>,
-    uniform: wgpu::Buffer,
+    /// Each level's `[intensity, radius, width, height]` (views_glow.wgsl's
+    /// `GlowChain`), the size the level's own, not its view's
+    /// textureDimensions (wrong on WebGL2 on Windows).
+    uniforms: Vec<wgpu::Buffer>,
     /// Each level as the source of a pass (its group).
     groups: Vec<wgpu::BindGroup>,
 }
@@ -758,8 +761,10 @@ impl Views {
                         _ => view_glow(device, add.as_ref().expect("made above"), size, levels),
                     };
                     // The upsample's radius, one texel, as the frame's.
-                    let u = [intensity.max(0.0), 1.0, 0.0, 0.0];
-                    queue.write_buffer(&g.uniform, 0, bytemuck::cast_slice(&u));
+                    let u = [intensity.max(0.0), 1.0];
+                    for uniform in &g.uniforms {
+                        queue.write_buffer(uniform, 0, bytemuck::cast_slice(&u));
+                    }
                     Some(g)
                 }
             };
@@ -1136,15 +1141,27 @@ fn view_glow(device: &wgpu::Device, add: &GlowAdd, (w, h): (u32, u32), levels: u
             })
         })
         .collect();
-    let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("view glow"),
-        size: 16,
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-    });
+    let uniforms: Vec<wgpu::Buffer> = (0..levels.len() as u32)
+        .map(|level| {
+            wgpu::util::DeviceExt::create_buffer_init(
+                device,
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some("view glow"),
+                    contents: bytemuck::bytes_of(&[
+                        0.0f32,
+                        0.0,
+                        (w >> level).max(1) as f32,
+                        (h >> level).max(1) as f32,
+                    ]),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                },
+            )
+        })
+        .collect();
     let groups = levels
         .iter()
-        .map(|level| {
+        .zip(&uniforms)
+        .map(|(level, uniform)| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("view glow"),
                 layout: &add.layout,
@@ -1168,7 +1185,7 @@ fn view_glow(device: &wgpu::Device, add: &GlowAdd, (w, h): (u32, u32), levels: u
     ViewGlow {
         size: (w, h),
         levels,
-        uniform,
+        uniforms,
         groups,
     }
 }

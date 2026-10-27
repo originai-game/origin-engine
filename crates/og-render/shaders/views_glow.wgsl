@@ -3,9 +3,11 @@
 // over it (bloom_chain.wgsl, appended): 13-tap downsamples level by level,
 // tent upsamples added back, and level 0 added onto the view's HDR image
 // times the glow's intensity, as the tonemap adds the frame's (post.wgsl).
-// Each pass binds one level as `source`.
+// Each pass binds one level as `source`, with a uniform of its own.
 struct GlowChain {
-  params: vec4<f32>,  // x: intensity, y: upsample radius in texels
+  // x: intensity, y: upsample radius in texels, zw: the source level's size
+  // in pixels (bloom_chain.wgsl's `bloom_source_size`).
+  params: vec4<f32>,
 };
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var linear_sampler: sampler;
@@ -30,6 +32,12 @@ fn vs(@builtin(vertex_index) i: u32) -> VsOut {
 // so a tap is the level's colour, as the frame's without them.
 fn bloom_tap(uv: vec2<f32>) -> vec3<f32> {
   return textureSampleLevel(source, linear_sampler, uv, 0.0).rgb;
+}
+
+// Not textureDimensions: the level is read through a view whose base mip
+// level is that level (bloom_chain.wgsl).
+fn bloom_source_size() -> vec2<f32> {
+  return g.params.zw;
 }
 
 @fragment

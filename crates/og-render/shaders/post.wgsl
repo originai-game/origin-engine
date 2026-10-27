@@ -215,6 +215,12 @@ fn fs_srgb_encode(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(srgb_encode(clamp(finished(in.uv, in.pos.xy), vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
 }
 
+// The bloom chain's source size (bloom_chain.wgsl): each bloom level is a
+// texture of its own, so its size is the view's.
+fn bloom_source_size() -> vec2<f32> {
+  return vec2<f32>(textureDimensions(source));
+}
+
 // One tap of the 13-tap downsample (bloom_chain.wgsl): with untonemapped sprites (extra.y)
 // the lit image's colour weighted by its alpha, the tone-mapped fraction,
 // so those sprites neither bloom nor dim the bloom round them.

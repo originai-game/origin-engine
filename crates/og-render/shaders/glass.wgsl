@@ -9,7 +9,11 @@
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var source_sampler: sampler;
 struct GlassParams {
-  // x: 1 to decode sRGB from the source.
+  // x: 1 to decode sRGB from the source; zw: the source's size in pixels.
+  // Not textureDimensions: a level is sampled through its view's base mip
+  // level, and ANGLE on D3D11 (WebGL2 on Windows) answers textureSize with
+  // base level b as level 2b's size, which widened every level from the
+  // third on.
   params: vec4<f32>,
 };
 @group(0) @binding(2) var<uniform> glass: GlassParams;
@@ -45,7 +49,7 @@ fn tap(uv: vec2<f32>) -> vec3<f32> {
 
 @fragment
 fn fs_down(in: VsOut) -> @location(0) vec4<f32> {
-  let h = 1.0 / vec2<f32>(textureDimensions(source, 0));
+  let h = 1.0 / glass.params.zw;
   var c = tap(in.uv) * 4.0;
   c += tap(in.uv + vec2<f32>(-h.x, -h.y));
   c += tap(in.uv + vec2<f32>(h.x, -h.y));
