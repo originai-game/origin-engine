@@ -1,0 +1,257 @@
+file	module	chrome link ms	edge link ms	ok	lost
+000-vs-vs.glsl	pbr (texture palette)	26	27	true	false
+000-vs_skinned-vs.glsl	pbr (texture palette)	75	106	true	false
+000-vs_prepass-vs.glsl	pbr (texture palette)	32	44	true	false
+000-vs_prepass_skinned-vs.glsl	pbr (texture palette)	84	84	true	false
+000-fs-fs.glsl	pbr (texture palette)	9553	9704	true	false
+000-fs_prepass-fs.glsl	pbr (texture palette)	66	68	true	false
+000-vs_lean-vs.glsl	pbr (texture palette)	24	36	true	false
+000-vs_lean_compact-vs.glsl	pbr (texture palette)	25	36	true	false
+000-fs_lean-fs.glsl	pbr (texture palette)	10783	10119	true	false
+000-vs_prepass_lean-vs.glsl	pbr (texture palette)	31	44	true	false
+000-vs_prepass_lean_compact-vs.glsl	pbr (texture palette)	32	43	true	false
+000-fs_prepass_lean-fs.glsl	pbr (texture palette)	44	47	true	false
+000-vs_lightmap-vs.glsl	pbr (texture palette)	26	38	true	false
+000-vs_lightmap_compact-vs.glsl	pbr (texture palette)	25	36	true	false
+000-fs_lightmap-fs.glsl	pbr (texture palette)	6402	6796	true	false
+001-vs_standard-vs.glsl	pbr array maps (texture palette)	26	27	true	false
+001-vs_skinned-vs.glsl	pbr array maps (texture palette)	74	76	true	false
+001-vs_prepass_standard-vs.glsl	pbr array maps (texture palette)	32	33	true	false
+001-vs_prepass_skinned-vs.glsl	pbr array maps (texture palette)	84	84	true	false
+001-fs_standard-fs.glsl	pbr array maps (texture palette)	10005	9711	true	false
+001-fs_prepass_standard-fs.glsl	pbr array maps (texture palette)	67	86	true	false
+001-vs_lean-vs.glsl	pbr array maps (texture palette)	24	25	true	false
+001-vs_lean_compact-vs.glsl	pbr array maps (texture palette)	24	25	true	false
+001-fs_lean-fs.glsl	pbr array maps (texture palette)	8702	9279	true	false
+001-vs_prepass_lean-vs.glsl	pbr array maps (texture palette)	31	32	true	false
+001-vs_prepass_lean_compact-vs.glsl	pbr array maps (texture palette)	31	32	true	false
+001-fs_prepass_lean-fs.glsl	pbr array maps (texture palette)	44	57	true	false
+001-vs_lightmap-vs.glsl	pbr array maps (texture palette)	25	27	true	false
+001-vs_lightmap_compact-vs.glsl	pbr array maps (texture palette)	25	27	true	false
+001-fs_lightmap-fs.glsl	pbr array maps (texture palette)	6659	7065	true	false
+001-vs-vs.glsl	pbr array maps (texture palette)	27	27	true	false
+001-fs-fs.glsl	pbr array maps (texture palette)	9660	11022	true	false
+001-vs_prepass-vs.glsl	pbr array maps (texture palette)	34	45	true	false
+001-fs_prepass-fs.glsl	pbr array maps (texture palette)	67	87	true	false
+001-fs_lightmap_array-fs.glsl	pbr array maps (texture palette)	7023	6974	true	false
+002-vs-vs.glsl	physical (texture palette)	26	27	true	false
+002-vs_skinned-vs.glsl	physical (texture palette)	75	76	true	false
+002-vs_prepass-vs.glsl	physical (texture palette)	33	33	true	false
+002-vs_prepass_skinned-vs.glsl	physical (texture palette)	84	85	true	false
+002-vs_physical-vs.glsl	physical (texture palette)	27	28	true	false
+002-vs_physical_skinned-vs.glsl	physical (texture palette)	76	77	true	false
+002-fs-fs.glsl	physical (texture palette)	10399	10924	true	false
+002-vs_physical_lightmap-vs.glsl	physical (texture palette)	28	28	true	false
+002-fs_physical_lightmap-fs.glsl	physical (texture palette)	8103	7910	true	false
+003-vs-vs.glsl	shadow (texture palette)	13	21	true	false
+003-vs_lean-vs.glsl	shadow (texture palette)	11	20	true	false
+003-vs_lean_compact-vs.glsl	shadow (texture palette)	10	21	true	false
+003-vs_hooked-vs.glsl	shadow (texture palette)	13	23	true	false
+003-vs_skinned-vs.glsl	shadow (texture palette)	55	83	true	false
+003-vs_skinned_hooked-vs.glsl	shadow (texture palette)	56	85	true	false
+003-fs-fs.glsl	shadow (texture palette)	13	13	true	false
+003-fs_lean-fs.glsl	shadow (texture palette)	12	13	true	false
+003-fs_dissolve-fs.glsl	shadow (texture palette)	52	53	true	false
+003-fs_hooked-fs.glsl	shadow (texture palette)	51	54	true	false
+004-vs_standard-vs.glsl	shadow array maps (texture palette)	11	11	true	false
+004-vs_lean_standard-vs.glsl	shadow array maps (texture palette)	10	11	true	false
+004-vs_lean_compact-vs.glsl	shadow array maps (texture palette)	10	10	true	false
+004-vs_hooked-vs.glsl	shadow array maps (texture palette)	13	14	true	false
+004-vs_skinned-vs.glsl	shadow array maps (texture palette)	54	55	true	false
+004-vs_skinned_hooked-vs.glsl	shadow array maps (texture palette)	56	57	true	false
+004-fs-fs.glsl	shadow array maps (texture palette)	12	12	true	false
+004-fs_lean-fs.glsl	shadow array maps (texture palette)	12	12	true	false
+004-fs_dissolve-fs.glsl	shadow array maps (texture palette)	51	52	true	false
+004-fs_hooked-fs.glsl	shadow array maps (texture palette)	52	54	true	false
+004-vs-vs.glsl	shadow array maps (texture palette)	11	11	true	false
+004-vs_lean-vs.glsl	shadow array maps (texture palette)	10	11	true	false
+005-vs-vs.glsl	stylise object (texture palette)	25	26	true	false
+005-vs_skinned-vs.glsl	stylise object (texture palette)	75	75	true	false
+005-vs_prepass-vs.glsl	stylise object (texture palette)	32	33	true	false
+005-vs_prepass_skinned-vs.glsl	stylise object (texture palette)	83	87	true	false
+005-fs-fs.glsl	stylise object (texture palette)	9695	9399	true	false
+005-fs_prepass-fs.glsl	stylise object (texture palette)	65	65	true	false
+005-vs_lean-vs.glsl	stylise object (texture palette)	24	25	true	false
+005-vs_lean_compact-vs.glsl	stylise object (texture palette)	24	26	true	false
+005-fs_lean-fs.glsl	stylise object (texture palette)	10323	8903	true	false
+005-vs_prepass_lean-vs.glsl	stylise object (texture palette)	32	31	true	false
+005-vs_prepass_lean_compact-vs.glsl	stylise object (texture palette)	32	32	true	false
+005-fs_prepass_lean-fs.glsl	stylise object (texture palette)	44	44	true	false
+005-vs_lightmap-vs.glsl	stylise object (texture palette)	26	27	true	false
+005-vs_lightmap_compact-vs.glsl	stylise object (texture palette)	26	26	true	false
+005-fs_lightmap-fs.glsl	stylise object (texture palette)	8568	6965	true	false
+005-vs_object-vs.glsl	stylise object (texture palette)	25	36	true	false
+005-vs_object_skinned-vs.glsl	stylise object (texture palette)	75	75	true	false
+005-fs_object-fs.glsl	stylise object (texture palette)	10	33	true	false
+006-vs-vs.glsl	custom full lit=true (texture palette)	20	30	true	false
+006-vs_skinned-vs.glsl	custom full lit=true (texture palette)	67	97	true	false
+006-fs-fs.glsl	custom full lit=true (texture palette)	4383	3585	true	false
+006-vs_prepass-vs.glsl	custom full lit=true (texture palette)	24	34	true	false
+006-vs_prepass_skinned-vs.glsl	custom full lit=true (texture palette)	77	71	true	false
+006-fs_prepass-fs.glsl	custom full lit=true (texture palette)	41	55	true	false
+007-vs-vs.glsl	custom full lit=false (texture palette)	23	21	true	false
+007-vs_skinned-vs.glsl	custom full lit=false (texture palette)	71	69	true	false
+007-fs-fs.glsl	custom full lit=false (texture palette)	58	75	true	false
+007-vs_prepass-vs.glsl	custom full lit=false (texture palette)	24	24	true	false
+007-vs_prepass_skinned-vs.glsl	custom full lit=false (texture palette)	72	70	true	false
+007-fs_prepass-fs.glsl	custom full lit=false (texture palette)	41	40	true	false
+008-vs_hooked-vs.glsl	custom full shadow (texture palette)	17	27	true	false
+008-vs_skinned_hooked-vs.glsl	custom full shadow (texture palette)	60	87	true	false
+008-fs_hooked-fs.glsl	custom full shadow (texture palette)	32	32	true	false
+009-vs-vs.glsl	view resolve	5	13	true	false
+009-fs_color-fs.glsl	view resolve	21	20	true	false
+009-fs_linear-fs.glsl	view resolve	5	5	true	false
+010-vs-vs.glsl	view glow	5	4	true	false
+010-fs_down-fs.glsl	view glow	11	20	true	false
+010-fs_up-fs.glsl	view glow	9	22	true	false
+010-fs-fs.glsl	view glow	5	11	true	false
+011-vs-vs.glsl	custom post (crt)	5	5	true	false
+011-fs_custom_post-fs.glsl	custom post (crt)	10	10	true	false
+012-vs-vs.glsl	view resolve depth	1	1	true	false
+012-fs_depth-fs.glsl	view resolve depth	6	5	true	false
+013-vs-vs.glsl	lines	26	40	true	false
+013-fs-fs.glsl	lines	8	12	true	false
+014-vs_sky-vs.glsl	sky	5	12	true	false
+014-fs_sky-fs.glsl	sky	24	24	true	false
+014-fs_sky_look-fs.glsl	sky	65	65	true	false
+015-vs-vs.glsl	sprite	50	61	true	false
+015-fs-fs.glsl	sprite	214	207	true	false
+015-fs_untonemapped-fs.glsl	sprite	9	9	true	false
+015-vs_cover-vs.glsl	sprite	6	6	true	false
+015-fs_cover-fs.glsl	sprite	5	11	true	false
+015-fs_glow-fs.glsl	sprite	7	8	true	false
+015-fs_msdf-fs.glsl	sprite	25	25	true	false
+016-vs-vs.glsl	sprite array	39	50	true	false
+016-fs-fs.glsl	sprite array	216	205	true	false
+016-fs_untonemapped-fs.glsl	sprite array	9	18	true	false
+016-fs_glow-fs.glsl	sprite array	7	8	true	false
+017-vs-vs.glsl	sprite mesh	48	47	true	false
+017-fs-fs.glsl	sprite mesh	217	209	true	false
+017-fs_untonemapped-fs.glsl	sprite mesh	9	9	true	false
+017-vs_cover-vs.glsl	sprite mesh	6	6	true	false
+017-fs_cover-fs.glsl	sprite mesh	6	5	true	false
+017-fs_glow-fs.glsl	sprite mesh	7	8	true	false
+017-fs_msdf-fs.glsl	sprite mesh	25	25	true	false
+017-vs_mesh-vs.glsl	sprite mesh	16	24	true	false
+017-fs_mesh-fs.glsl	sprite mesh	25	38	true	false
+018-vs-vs.glsl	ribbon	13	21	true	false
+018-fs-fs.glsl	ribbon	19	19	true	false
+019-vs-vs.glsl	scatter	36	43	true	false
+019-fs-fs.glsl	scatter	4672	3787	true	false
+019-fs_prepass-fs.glsl	scatter	25	23	true	false
+020-vs_shadow-vs.glsl	scatter shadow	21	36	true	false
+020-fs_shadow-fs.glsl	scatter shadow	12	13	true	false
+021-vs-vs.glsl	terrain	305	328	true	false
+021-fs-fs.glsl	terrain	8341	7651	true	false
+021-fs_prepass-fs.glsl	terrain	477	419	true	false
+022-vs_shadow-vs.glsl	terrain shadow	293	316	true	false
+022-fs_shadow-fs.glsl	terrain shadow	10	10	true	false
+023-vs-vs.glsl	terrain (layer arrays)	301	302	true	false
+023-fs-fs.glsl	terrain (layer arrays)	8473	8450	true	false
+023-fs_prepass-fs.glsl	terrain (layer arrays)	443	458	true	false
+024-vs_shadow-vs.glsl	terrain shadow (layer arrays)	3	3	true	false
+024-fs_shadow-fs.glsl	terrain shadow (layer arrays)	1	1	true	false
+025-vs-vs.glsl	water	30	42	true	false
+025-vs_mesh-vs.glsl	water	17	27	true	false
+025-fs-fs.glsl	water	424	410	true	false
+025-fs_ao_depth-fs.glsl	water	9	10	true	false
+026-vs_field-vs.glsl	metaballs	15	24	true	false
+026-fs_field-fs.glsl	metaballs	5	11	true	false
+026-vs_composite-vs.glsl	metaballs	4	5	true	false
+026-fs_composite-fs.glsl	metaballs	12	13	true	false
+027-vs_sphere-vs.glsl	fluid 3d	18	29	true	false
+027-fs_depth-fs.glsl	fluid 3d	17	16	true	false
+027-fs_thick-fs.glsl	fluid 3d	14	14	true	false
+027-vs_full-vs.glsl	fluid 3d	6	7	true	false
+027-fs_composite-fs.glsl	fluid 3d	3822	3614	true	false
+028-vs-vs.glsl	fluid 3d blur	4	5	true	false
+028-fs-fs.glsl	fluid 3d blur	21	20	true	false
+029-vs_volumetric-vs.glsl	volumetric	6	6	true	false
+029-fs_raymarch-fs.glsl	volumetric	1673	1627	true	false
+030-vs-vs.glsl	cookie	4	5	true	false
+030-fs_cookie-fs.glsl	cookie	5	5	true	false
+031-vs-vs.glsl	particles	76	97	true	false
+031-fs-fs.glsl	particles	24	24	true	false
+032-vs-vs.glsl	post	5	5	true	false
+032-fs-fs.glsl	post	363	363	true	false
+032-fs_srgb_encode-fs.glsl	post	362	454	true	false
+032-fs_bloom_prefilter-fs.glsl	post	76	73	true	false
+032-fs_bloom_down-fs.glsl	post	68	67	true	false
+032-fs_bloom_up-fs.glsl	post	11	12	true	false
+033-vs-vs.glsl	luminance	4	4	true	false
+033-fs_meter-fs.glsl	luminance	9	8	true	false
+033-fs_reduce-fs.glsl	luminance	13	13	true	false
+034-vs-vs.glsl	exposure	4	4	true	false
+034-fs_adapt-fs.glsl	exposure	5	12	true	false
+035-vs-vs.glsl	taa	4	5	true	false
+035-fs-fs.glsl	taa	35	36	true	false
+035-fs_catmull_rom-fs.glsl	taa	51	52	true	false
+035-fs_sharpen-fs.glsl	taa	6	6	true	false
+036-vs-vs.glsl	fxaa	4	5	true	false
+036-fs-fs.glsl	fxaa	39	39	true	false
+036-fs_srgb_encode-fs.glsl	fxaa	41	65	true	false
+037-vs-vs.glsl	stylise	5	5	true	false
+037-fs_paint-fs.glsl	stylise	231	226	true	false
+037-fs_paint_srgb-fs.glsl	stylise	234	298	true	false
+037-fs_lines-fs.glsl	stylise	701	722	true	false
+037-fs_lines_srgb-fs.glsl	stylise	736	873	true	false
+037-fs_lens-fs.glsl	stylise	10	10	true	false
+037-fs_lens_srgb-fs.glsl	stylise	12	22	true	false
+037-fs_quantize-fs.glsl	stylise	41	41	true	false
+037-fs_quantize_srgb-fs.glsl	stylise	44	68	true	false
+037-fs_upscale-fs.glsl	stylise	8	8	true	false
+037-fs_upscale_srgb-fs.glsl	stylise	10	20	true	false
+038-vs-vs.glsl	fx post	5	5	true	false
+038-fs_gtao-fs.glsl	fx post	86	85	true	false
+038-fs_ssao-fs.glsl	fx post	217	210	true	false
+038-fs_ao_blur-fs.glsl	fx post	22	22	true	false
+038-fs_ao_upsample-fs.glsl	fx post	26	24	true	false
+038-fs_outline-fs.glsl	fx post	90	94	true	false
+038-fs_depth_bands-fs.glsl	fx post	37	37	true	false
+038-fs_dof_coc-fs.glsl	fx post	12	12	true	false
+038-fs_dof_blur-fs.glsl	fx post	14	14	true	false
+038-fs_dof_composite-fs.glsl	fx post	5	5	true	false
+038-fs_motion_blur-fs.glsl	fx post	18	18	true	false
+038-fs_screen_blur-fs.glsl	fx post	15	15	true	false
+038-fs_godrays_mask-fs.glsl	fx post	9	10	true	false
+038-fs_godrays_blur-fs.glsl	fx post	9	9	true	false
+038-fs_ssr-fs.glsl	fx post	79	79	true	false
+039-vs-vs.glsl	glass	4	5	true	false
+039-fs_down-fs.glsl	glass	18	19	true	false
+039-fs_blit-fs.glsl	glass	5	5	true	false
+040-vs-vs.glsl	overlay	7	17	true	false
+040-fs-fs.glsl	overlay	8	13	true	false
+040-fs_msdf-fs.glsl	overlay	18	19	true	false
+040-fs_glass-fs.glsl	overlay	11	12	true	false
+041-vs-vs.glsl	overlay array	7	7	true	false
+041-fs-fs.glsl	overlay array	7	12	true	false
+042-vs-vs.glsl	mipmap	4	4	true	false
+042-fs-fs.glsl	mipmap	5	5	true	false
+043-vs-vs.glsl	ibl	5	5	true	false
+043-fs_sky-fs.glsl	ibl	16	16	true	false
+043-fs_irradiance-fs.glsl	ibl	102	87	true	false
+043-fs_prefilter-fs.glsl	ibl	32	31	true	false
+043-fs_brdf_lut-fs.glsl	ibl	231	211	true	false
+043-fs_probe_copy-fs.glsl	ibl	8	8	true	false
+043-fs_downsample-fs.glsl	ibl	7	6	true	false
+043-fs_env_copy-fs.glsl	ibl	7	7	true	false
+043-fs_env_irradiance-fs.glsl	ibl	16	17	true	false
+044-vs-vs.glsl	lights 2d	13	23	true	false
+044-fs-fs.glsl	lights 2d	59	59	true	false
+045-vs-vs.glsl	pack	4	5	true	false
+045-fs-fs.glsl	pack	19	19	true	false
+046-vs-vs.glsl	pbr lean (texture palette)	25	26	true	false
+046-vs_skinned-vs.glsl	pbr lean (texture palette)	75	78	true	false
+046-vs_prepass-vs.glsl	pbr lean (texture palette)	31	34	true	false
+046-vs_prepass_skinned-vs.glsl	pbr lean (texture palette)	84	87	true	false
+046-fs-fs.glsl	pbr lean (texture palette)	9666	9882	true	false
+046-fs_prepass-fs.glsl	pbr lean (texture palette)	27	37	true	false
+046-vs_lean-vs.glsl	pbr lean (texture palette)	24	25	true	false
+046-vs_lean_compact-vs.glsl	pbr lean (texture palette)	25	26	true	false
+046-fs_lean-fs.glsl	pbr lean (texture palette)	8972	9504	true	false
+046-vs_prepass_lean-vs.glsl	pbr lean (texture palette)	36	32	true	false
+046-vs_prepass_lean_compact-vs.glsl	pbr lean (texture palette)	35	32	true	false
+046-fs_prepass_lean-fs.glsl	pbr lean (texture palette)	27	27	true	false
+046-vs_lightmap-vs.glsl	pbr lean (texture palette)	31	26	true	false
+046-vs_lightmap_compact-vs.glsl	pbr lean (texture palette)	27	27	true	false
+046-fs_lightmap-fs.glsl	pbr lean (texture palette)	6317	7849	true	false
