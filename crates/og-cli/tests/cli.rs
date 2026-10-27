@@ -1719,3 +1719,123 @@ fn migrate_three_rewrites_a_file_and_lists_what_is_not_mechanical() {
     assert_eq!(out.status.code(), Some(2), "{}", text(&out));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// `og upgrade` against the repository's engine package and its
+/// changelog.json: a patch is done (exit 0), crossing 0.3.0 rewrites
+/// `og.load.skin` and lists the `ThemeColor` line to edit by hand (exit 3),
+/// and a downgrade writes nothing (exit 1).
+#[test]
+fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
+    let dir = scratch_root();
+    std::fs::remove_dir_all(dir.join("crates")).unwrap();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    let manifest = |engine: &str| {
+        format!(
+            "type project\nversion 1\n---\nname \"u\"\nid \"u\"\nengine \"{engine}\"\nentry \"src/main.ts\"\n"
+        )
+    };
+    let write = |engine: &str| {
+        std::fs::write(dir.join("project.ogt"), manifest(engine)).unwrap();
+        std::fs::write(
+            dir.join("package.json"),
+            format!("{{\n  \"dependencies\": {{ \"@origingame/engine\": \"^{engine}\" }}\n}}\n"),
+        )
+        .unwrap();
+    };
+    let upgrade = |args: &[&str]| {
+        og().arg("upgrade")
+            .args(args)
+            .current_dir(&dir)
+            .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+            .output()
+            .unwrap()
+    };
+    let report = |out: &Output| -> serde_json::Value {
+        serde_json::from_slice(&out.stdout).unwrap_or_else(|e| panic!("{e}: {}", text(out)))
+    };
+
+    write("0.6.0");
+    std::fs::write(dir.join("src/main.ts"), "og.load.style(\"a\");\n").unwrap();
+    let out = upgrade(&["--to", "0.6.1", "--json"]);
+    let r = report(&out);
+    assert_eq!(out.status.code(), Some(0), "{r}");
+    assert_eq!(
+        (r["status"].as_str(), r["kind"].as_str()),
+        (Some("done"), Some("patch")),
+        "{r}"
+    );
+    let pinned = std::fs::read_to_string(dir.join("project.ogt")).unwrap();
+    assert_eq!(pinned, manifest("0.6.1"));
+    let pkg = std::fs::read_to_string(dir.join("package.json")).unwrap();
+    assert!(pkg.contains("\"@origingame/engine\": \"0.6.1\""), "{pkg}");
+    // doctor's pin: an older patch of the installed minor is compatible, an
+    // older minor is not.
+    let pin = |engine: &str| {
+        std::fs::write(dir.join("project.ogt"), manifest(engine)).unwrap();
+        let out = og()
+            .args(["doctor", "--json"])
+            .current_dir(&dir)
+            .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+            .output()
+            .unwrap();
+        report(&out)["pin"].clone()
+    };
+    let installed = pin("0.6.0")["installed"].as_str().unwrap().to_string();
+    assert!(installed.starts_with("0.6."), "{installed}");
+    assert_eq!(
+        pin("0.6.0"),
+        serde_json::json!({ "pinned": "0.6.0", "installed": installed, "compatible": true })
+    );
+    assert_eq!(pin("0.5.0")["compatible"], false);
+    assert_eq!(pin("0.99.0")["compatible"], false);
+    std::fs::write(dir.join("project.ogt"), manifest("0.6.1")).unwrap();
+
+    write("0.2.0");
+    let main = "const s = og.load.skin(\"ui/a.ogt\");\nconst c: ThemeColor = \"accent\";\n";
+    std::fs::write(dir.join("src/main.ts"), main).unwrap();
+    // A dry run reports the same and writes nothing.
+    let out = upgrade(&["--to", "0.6.1", "--json", "--dry-run"]);
+    assert_eq!(out.status.code(), Some(3), "{}", text(&out));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("src/main.ts")).unwrap(),
+        main
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.join("project.ogt")).unwrap(),
+        manifest("0.2.0")
+    );
+    let out = upgrade(&["--to", "0.6.1", "--json"]);
+    let r = report(&out);
+    assert_eq!(out.status.code(), Some(3), "{r}");
+    assert_eq!(
+        (r["status"].as_str(), r["kind"].as_str()),
+        (Some("manual"), Some("minor")),
+        "{r}"
+    );
+    assert_eq!(r["simulation"], "changed", "{r}");
+    assert_eq!(r["versions"][0], "0.3.0", "{r}");
+    let src = std::fs::read_to_string(dir.join("src/main.ts")).unwrap();
+    assert!(
+        src.starts_with("const s = og.load.style(\"ui/a.ogt\");"),
+        "{src}"
+    );
+    let hand = r["manual"].as_array().unwrap();
+    assert!(
+        hand.iter()
+            .any(|m| m["member"] == "ThemeColor" && m["file"] == "src/main.ts" && m["line"] == 2),
+        "{r}"
+    );
+    assert!(
+        hand.iter().all(|m| m["line"] != 1),
+        "the rewritten line is not a hand edit: {r}"
+    );
+
+    let out = upgrade(&["--to", "0.5.0"]);
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+    assert!(text(&out).contains("never downgrades"), "{}", text(&out));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("project.ogt")).unwrap(),
+        manifest("0.6.1")
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

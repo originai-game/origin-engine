@@ -178,6 +178,72 @@ held equal by `packages/knowledge`'s test: the three `package.json`
 installed package (`og doctor` as a line, `og run`/`test`/`build` as a
 warning: the installed package runs, the pin is the author's record of
 what the game was written against, and an upgrade is an explicit edit).
+A pin is **compatible** with the installed package when both are the same
+minor and the installed one is not older: that is no mismatch (`og
+doctor` says ok, the others say nothing), since a patch only adds and
+fixes. `og doctor --json` reports it as `pin: {pinned, installed,
+compatible}` (null outside a project).
+
+**`changelog.json`** (in the engine package, schema 1) is the machine
+reading of `CHANGELOG.md` the platform builds its "new engine version"
+card from: `{schema, about, unreleased, versions: [{version, date, kind:
+"patch"|"minor", simulation: "unchanged"|"changed", breaking: [{member,
+change, fix, find?: [identifier], codemod?: {from, to}}], added: [{member,
+summary}], fixed: [string]}]}`, newest first. Each merge that adds a
+`CHANGELOG.md` line adds its entry under `unreleased`; `release.sh bump`
+moves `unreleased` into `versions` as the new version, dated, its `kind`
+from the numbers, and refuses a patch whose `unreleased` has a breaking
+entry (release a minor). `simulation` says whether a game's ticks may
+differ from the version before (the replay gate below holds a patch's
+`unchanged`); the versions before 0.6.1 were never measured and say
+`changed`.
+
+**`og upgrade [project] [--to <v>] [--dry-run] [--json]`** moves a game
+to the installed engine (or `--to`, a version in its changelog): it
+rewrites `project.ogt`'s `engine` and `package.json`'s
+`@origingame/engine`, applies the `codemod` of every breaking entry of
+the versions crossed to `src/` and `assets/` text, and lists every line
+where another breaking entry's `find` identifiers appear (`manual`, with
+the change and its fix) or the entries with no identifiers (`review`).
+It never downgrades and does not install (`bun install` does, then `og
+check` and `og test`). Exit 0 done, 3 done with hand edits listed, 1
+failed with nothing written, 2 usage. The JSON is `{status:
+"done"|"manual"|"failed", project, from, to, installed, kind:
+"none"|"patch"|"minor", simulation, versions, dryRun, edited, codemods:
+[{version, member, file, from, to, count}], manual: [{version, member,
+change, fix, file, line, text}], review: [{version, member, change,
+fix}], reason?}`.
+
+**`og replay`** is the evidence that a version runs a game the same:
+`og replay record [project] --commands "…" | --commands-file <f>
+[--ticks N] [--seed S] [--clock <UTC ms>] [--locale <tag>]
+[--keyframe-every K] --out <trace.json> [--json]` plays the script
+headless and writes the trace `{schema: 1, kind: "og-replay", engine,
+project: {id, entry, bundleSha256}, seed, clock, locale, commands, ticks,
+startTick, table, hashes: [016x per tick], keyframes: [{tick, save}]}`
+(the hash is over the world's components and resources in `table`, the
+types and fields the recording saw, sorted, so a field a later version
+adds does not move it; a keyframe is an `og-save:1:` text every K ticks,
+default 30). `og replay compare <trace.json> [project] [--json]` replays
+it with the og at hand and prints `{same, recorded: {engine, ticks},
+replayed: {engine, ticks}, sourceChanged, ticksCompared,
+firstDivergentTick, keyframe: {tick, diff} | null, divergentKeyframes}`,
+the diff (the first keyframe at or after the divergence) naming the
+entities, components, resources and fields with the recorded and
+replayed values; exit 0 the same, 3 diverged, 1 failed, 2 usage.
+`sourceChanged` says the game's bundle is not the one recorded (the
+engine path and path comments left out of its hash), so a divergence is
+then the game's as much as the engine's.
+
+**The patch gate.** `tests/replay/golden/` holds the golden traces
+(`goldens.json`: `templates/game` and `templates/game-2d`, 300 ticks
+each), and `scripts/replay-gate.ts` compares each with the og in
+`packages/engine/native` (or `$OG`). `release.sh bump` runs it first: a
+golden that diverges fails the bump unless `changelog.json`'s
+`unreleased.simulation` is `"changed"`, and a golden whose template
+changed fails as "re-record" (`--update`). A change that moves the
+simulation on purpose sets `simulation: "changed"` in the same merge and
+re-records the goldens, so the published entry says it.
 
 **`scripts/release.sh`** (§4 row R3), one verb per step of the path:
 

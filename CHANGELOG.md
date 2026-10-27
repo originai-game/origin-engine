@@ -13,6 +13,30 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+No IDL member changed; the simulation is unchanged (the golden replays).
+
+- package: `changelog.json`, this changelog for machines (schema 1): each
+  version's `kind` (patch or minor), whether the `simulation` changed, its
+  breaking entries with their fix (a `codemod` or the identifiers to
+  `find`), additions and fixes. `release.sh bump` moves its `unreleased`
+  entry into the version and refuses a patch with a break.
+- og: `og upgrade [project] [--to <v>] [--dry-run] [--json]` moves the pin
+  in project.ogt and package.json's dependency, applies the codemods of
+  the versions crossed and lists each line to edit by hand; exit 0 done,
+  3 hand edits listed, 1 failed.
+- og: `og doctor --json`, the checks as one object with `pin: {pinned,
+  installed, compatible}`; a pin of the installed minor that is not newer
+  is compatible and no longer reported as a difference.
+- og: `og replay record` and `og replay compare`: a scripted headless
+  run's portable world hash per tick and a save every K ticks, replayed
+  with another version to the first divergent tick and the keyframe's
+  entity, component and field diff (docs/release.md §3).
+- release: the patch gate, `scripts/replay-gate.ts` over
+  `tests/replay/golden/` (the 3D and 2D starters), run by `release.sh
+  bump`: a divergence fails unless `unreleased.simulation` is `changed`.
+
 ## 0.6.1 — 2026-10-27
 
 - render, `PostEffects`: `screenBlur` (`none`, `zoom`, `spin`,

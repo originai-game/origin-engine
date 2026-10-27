@@ -75,6 +75,12 @@ fn encode(snapshot: &[u8], tick: u64) -> String {
     format!("{PREFIX}{VERSION}:{}", og_probe::base64::encode(&deflated))
 }
 
+/// The world snapshot a save's text holds (`og replay compare` diffs a
+/// recorded save against a replayed world), or why it is not a save.
+pub fn save_snapshot_bytes(save: &str) -> Result<Vec<u8>, String> {
+    decode(save)
+}
+
 /// What a save holds: the world snapshot.
 fn decode(save: &str) -> Result<Vec<u8>, String> {
     let not_a_save = || {

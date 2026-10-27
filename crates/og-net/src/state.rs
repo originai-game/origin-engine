@@ -24,6 +24,7 @@
 use og_core::hash::StableHasher;
 use og_core::reflect::{FieldSchema, FieldType, Layout, Schema};
 use serde_json::{Map, Value, json};
+use std::collections::BTreeMap;
 
 /// Resources that are each peer's own: never hashed, never diffed.
 pub const SESSION_RESOURCES: &[&str] = &[
@@ -368,6 +369,144 @@ impl Snapshot {
         h.finish()
     }
 
+    /// The portable hash's domain this snapshot spans: every type's name
+    /// with its field names, in snapshot order (`og replay record` keeps it
+    /// in the trace, `og replay compare` hashes a newer engine's world
+    /// within it).
+    pub fn portable_table(&self) -> BTreeMap<String, Vec<String>> {
+        self.types
+            .iter()
+            .map(|t| {
+                let fields = t.schema.fields.iter().map(|f| f.name.clone()).collect();
+                (t.name.clone(), fields)
+            })
+            .collect()
+    }
+
+    /// One record's fields within `fields`, each by name with its bytes; a
+    /// field the table names and this type no longer has hashes as missing.
+    fn portable_record(&self, h: &mut StableHasher, t: usize, bytes: &[u8], fields: &[String]) {
+        let ty = &self.types[t];
+        for name in fields {
+            h.write_str(name);
+            match ty.schema.fields.iter().position(|f| &f.name == name) {
+                Some(i) => {
+                    let b = bytes.get(ty.layout.range(i)).unwrap_or(&[]);
+                    h.write_u64(b.len() as u64);
+                    h.write(b);
+                }
+                None => h.write_u64(u64::MAX),
+            }
+        }
+    }
+
+    /// [`Snapshot::shared_hash`] within `table` (a [`Snapshot::portable_table`]),
+    /// independent of layout hashes and storage order: two engines' worlds
+    /// hash equal when every type and field the table names holds the same
+    /// bytes, whatever types or fields the newer one added; one the table
+    /// names that is gone hashes differently. Entities by id, their
+    /// components by type name, fields by name; resources, event queues and
+    /// state blocks by name (each peer's session left out); names; the
+    /// entity allocator.
+    pub fn portable_hash(&self, table: &BTreeMap<String, Vec<String>>) -> u64 {
+        let mut h = StableHasher::new();
+        let mut rows: Vec<&Row> = self.rows.iter().collect();
+        rows.sort_by_key(|r| r.entity);
+        h.write_u32(rows.len() as u32);
+        for row in rows {
+            h.write_u64(row.entity);
+            let mut parts: Vec<(&str, &[String], usize, &[u8])> = row
+                .components
+                .iter()
+                .filter_map(|(t, b)| {
+                    let name = self.type_name(*t);
+                    table
+                        .get(name)
+                        .map(|f| (name, f.as_slice(), *t, b.as_slice()))
+                })
+                .collect();
+            parts.sort_by_key(|p| p.0);
+            h.write_u32(parts.len() as u32);
+            for (name, fields, t, bytes) in parts {
+                h.write_str(name);
+                self.portable_record(&mut h, t, bytes, fields);
+            }
+        }
+        let mut resources: Vec<(&str, &[String], usize, &[u8])> = self
+            .resources
+            .iter()
+            .filter_map(|(t, b)| {
+                let name = self.type_name(*t);
+                if SESSION_RESOURCES.contains(&name) {
+                    return None;
+                }
+                table
+                    .get(name)
+                    .map(|f| (name, f.as_slice(), *t, b.as_slice()))
+            })
+            .collect();
+        resources.sort_by_key(|p| p.0);
+        h.write_u32(resources.len() as u32);
+        for (name, fields, t, bytes) in resources {
+            h.write_str(name);
+            self.portable_record(&mut h, t, bytes, fields);
+        }
+        let mut events: Vec<(&str, &[String], &Queue)> = self
+            .events
+            .iter()
+            .filter_map(|q| {
+                let name = self.type_name(q.ty);
+                if SESSION_EVENTS.contains(&name) {
+                    return None;
+                }
+                table.get(name).map(|f| (name, f.as_slice(), q))
+            })
+            .collect();
+        events.sort_by_key(|p| p.0);
+        h.write_u32(events.len() as u32);
+        for (name, fields, q) in events {
+            h.write_str(name);
+            for list in [&q.current, &q.pending] {
+                h.write_u32(list.len() as u32);
+                for e in list {
+                    self.portable_record(&mut h, q.ty, e, fields);
+                }
+            }
+        }
+        let mut blocks: Vec<&(String, Vec<u8>)> = self
+            .blocks
+            .iter()
+            .filter(|(n, _)| !SESSION_BLOCKS.contains(&n.as_str()))
+            .collect();
+        blocks.sort_by(|a, b| a.0.cmp(&b.0));
+        h.write_u32(blocks.len() as u32);
+        for (name, bytes) in blocks {
+            h.write_str(name);
+            h.write_u64(bytes.len() as u64);
+            h.write(bytes);
+        }
+        let mut names: Vec<&(u64, String)> = self.names.iter().collect();
+        names.sort();
+        h.write_u32(names.len() as u32);
+        for (e, name) in names {
+            h.write_u64(*e);
+            h.write_str(name);
+        }
+        h.write_u32(self.slots.len() as u32);
+        for (g, alive) in &self.slots {
+            h.write_u32(*g);
+            h.write(&[u8::from(*alive)]);
+        }
+        h.write_u32(self.free.len() as u32);
+        for f in &self.free {
+            h.write_u32(*f);
+        }
+        if let Some(s) = &self.resume {
+            h.write_str(s);
+        }
+        h.finish()
+    }
+
     /// An entity's probe id: its name, or `#index.generation`.
     pub fn entity_id(&self, entity: u64) -> String {
         match self.names.iter().find(|(e, _)| *e == entity) {
@@ -624,6 +763,130 @@ pub fn diff(local: &Snapshot, remote: &Snapshot) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn ty(name: &str, fields: &[&str]) -> Type {
+        let schema = Schema {
+            name: name.into(),
+            version: 1,
+            doc: String::new(),
+            fields: fields
+                .iter()
+                .map(|f| FieldSchema::new(*f, FieldType::F32))
+                .collect(),
+        };
+        Type {
+            name: name.into(),
+            hash: og_core::hash::hash_bytes(fields.join(",").as_bytes()),
+            layout: Layout::of(&schema),
+            schema,
+        }
+    }
+
+    fn floats(xs: &[f32]) -> Vec<u8> {
+        xs.iter().flat_map(|x| x.to_le_bytes()).collect()
+    }
+
+    /// Two entities with a Position each (one with a Speed too) and an
+    /// og.Time-like resource, in the older engine's types.
+    fn world() -> Snapshot {
+        Snapshot {
+            format: 3,
+            types: vec![
+                ty("Position", &["x", "y"]),
+                ty("Speed", &["v"]),
+                ty("Clock", &["t"]),
+            ],
+            slots: vec![(0, true), (0, true)],
+            free: vec![],
+            rows: vec![
+                Row {
+                    entity: 0,
+                    components: vec![(0, floats(&[1.0, 2.0]))],
+                },
+                Row {
+                    entity: 1,
+                    components: vec![(0, floats(&[3.0, 4.0])), (1, floats(&[5.0]))],
+                },
+            ],
+            resources: vec![(2, floats(&[0.5]))],
+            events: vec![],
+            names: vec![(1, "player".into())],
+            blocks: vec![("og.physics".into(), vec![1, 2, 3])],
+            resume: None,
+        }
+    }
+
+    #[test]
+    fn a_field_the_table_does_not_name_leaves_the_portable_hash_alone() {
+        let old = world();
+        let table = old.portable_table();
+        // The newer engine's Position gains `z` (between x and y) and Speed's hash moves.
+        let mut new = world();
+        new.types[0] = ty("Position", &["x", "z", "y"]);
+        new.types[1].hash ^= 1;
+        new.rows[0].components[0].1 = floats(&[1.0, 9.0, 2.0]);
+        new.rows[1].components[0].1 = floats(&[3.0, 7.0, 4.0]);
+        assert_eq!(old.portable_hash(&table), new.portable_hash(&table));
+        assert_ne!(old.shared_hash(), new.shared_hash());
+        // Within the newer table, `z` counts.
+        assert_ne!(
+            old.portable_hash(&new.portable_table()),
+            new.portable_hash(&new.portable_table())
+        );
+    }
+
+    #[test]
+    fn a_table_fields_value_or_a_removed_field_moves_the_portable_hash() {
+        let old = world();
+        let table = old.portable_table();
+        let mut moved = world();
+        moved.rows[1].components[0].1 = floats(&[3.0, 4.5]);
+        assert_ne!(old.portable_hash(&table), moved.portable_hash(&table));
+        let mut resource = world();
+        resource.resources[0].1 = floats(&[0.75]);
+        assert_ne!(old.portable_hash(&table), resource.portable_hash(&table));
+        let mut block = world();
+        block.blocks[0].1[0] = 9;
+        assert_ne!(old.portable_hash(&table), block.portable_hash(&table));
+        // Position loses `y`: the table still names it.
+        let mut removed = world();
+        removed.types[0] = ty("Position", &["x"]);
+        removed.rows[0].components[0].1 = floats(&[1.0]);
+        removed.rows[1].components[0].1 = floats(&[3.0]);
+        assert_ne!(old.portable_hash(&table), removed.portable_hash(&table));
+    }
+
+    #[test]
+    fn storage_order_leaves_the_portable_hash_alone() {
+        let old = world();
+        let table = old.portable_table();
+        // Types registered in another order, archetypes and rows stored in
+        // another order, an entity's components in another order.
+        let mut new = world();
+        new.types = vec![
+            ty("Clock", &["t"]),
+            ty("Speed", &["v"]),
+            ty("Position", &["x", "y"]),
+        ];
+        new.rows = vec![
+            Row {
+                entity: 1,
+                components: vec![(1, floats(&[5.0])), (2, floats(&[3.0, 4.0]))],
+            },
+            Row {
+                entity: 0,
+                components: vec![(2, floats(&[1.0, 2.0]))],
+            },
+        ];
+        new.resources = vec![(0, floats(&[0.5]))];
+        assert_eq!(old.portable_hash(&table), new.portable_hash(&table));
+        assert_ne!(old.shared_hash(), new.shared_hash());
+        // A component moved to the other entity is a different world.
+        let mut swapped = new.clone();
+        swapped.rows[0].components.remove(0);
+        swapped.rows[1].components.push((1, floats(&[5.0])));
+        assert_ne!(old.portable_hash(&table), swapped.portable_hash(&table));
+    }
 
     #[test]
     fn a_list_field_reads_as_its_elements_up_to_its_length() {

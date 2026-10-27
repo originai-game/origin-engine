@@ -1,0 +1,23 @@
+{
+  "about": "The golden replays scripts/replay-gate.ts compares (og replay compare) and re-records with --update: each trace, the project it plays (relative to the repository) and how it was recorded.",
+  "goldens": [
+    {
+      "trace": "game-3d.json",
+      "project": "templates/game",
+      "commands": "0.5:touch_move_to:Start;0.6:touch_start;0.7:touch_end;1.0:lure:-4:-1;3.0:lure:-1:-4",
+      "ticks": 300,
+      "seed": 1,
+      "clock": 1767225600000,
+      "keyframeEvery": 60
+    },
+    {
+      "trace": "game-2d.json",
+      "project": "templates/game-2d",
+      "commands": "0.5:key_down:ArrowRight;2.0:key_up:ArrowRight;2.3:key_down:Space;2.9:key_up:Space;3.5:key_down:ArrowLeft;4.0:key_up:ArrowLeft",
+      "ticks": 300,
+      "seed": 1,
+      "clock": 1767225600000,
+      "keyframeEvery": 60
+    }
+  ]
+}

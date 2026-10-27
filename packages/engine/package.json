@@ -45,7 +45,8 @@
     "dist/web-publish",
     "dist/web-publish-2d",
     "vendor",
-    "knowledge"
+    "knowledge",
+    "changelog.json"
   ],
   "engines": {
     "bun": ">=1.3"

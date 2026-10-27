@@ -13,6 +13,12 @@
 // benches), the inline project.ogt texts of the tests and scripts, and the
 // workspace crates' Cargo.toml (og --version prints og-cli's). Cargo.lock
 // follows through `cargo update --workspace --offline`, run by release.sh.
+//
+// packages/engine/changelog.json (the machine-readable changelog the
+// platform reads): a bump moves its `unreleased` entry into `versions` as
+// the new version, dated today (UTC), its kind from the numbers (patch in
+// the same minor, minor otherwise), and refuses a patch that carries a
+// break; --check requires an entry for the current version.
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -73,6 +79,55 @@ function sites(): Site[] {
   return s;
 }
 
+const CHANGELOG = "packages/engine/changelog.json";
+
+interface ChangeEntry {
+  version?: string;
+  date?: string;
+  kind?: "patch" | "minor";
+  simulation: "unchanged" | "changed";
+  breaking: unknown[];
+  added: unknown[];
+  fixed: unknown[];
+}
+interface Changelog {
+  schema: number;
+  unreleased: ChangeEntry;
+  versions: ChangeEntry[];
+}
+
+const minorOf = (v: string) => v.split(".").slice(0, 2).join(".");
+
+/** Problems with changelog.json for `version` (an entry, well formed); empty when fine. */
+function changelogProblems(log: Changelog, version: string): string[] {
+  const out: string[] = [];
+  const entry = log.versions.find((e) => e.version === version);
+  if (!entry) out.push(`${CHANGELOG}: no entry for ${version}`);
+  for (const e of [log.unreleased, ...log.versions]) {
+    const name = e.version ?? "unreleased";
+    if (e.simulation !== "unchanged" && e.simulation !== "changed") out.push(`${CHANGELOG} ${name}: simulation is "unchanged" or "changed"`);
+    if (e.version !== undefined && e.kind !== "patch" && e.kind !== "minor") out.push(`${CHANGELOG} ${name}: kind is "patch" or "minor"`);
+    if (e.kind === "patch" && e.breaking.length > 0) out.push(`${CHANGELOG} ${name}: a patch has no breaking entries`);
+  }
+  return out;
+}
+
+/** Moves the unreleased entry into versions as `target`. */
+function releaseChangelog(now: string, target: string): string | null {
+  const log = JSON.parse(read(CHANGELOG)) as Changelog;
+  if (log.versions.some((e) => e.version === target)) return null;
+  const kind = minorOf(now) === minorOf(target) ? "patch" : "minor";
+  const u = log.unreleased;
+  if (kind === "patch" && u.breaking.length > 0) {
+    return `${CHANGELOG}: unreleased has ${u.breaking.length} breaking entr${u.breaking.length === 1 ? "y" : "ies"}; ${target} is a patch of ${now}: release a minor (0.x.0) instead (docs/release.md §3)`;
+  }
+  const entry: ChangeEntry = { version: target, date: new Date().toISOString().slice(0, 10), kind, ...u };
+  log.versions.unshift(entry);
+  log.unreleased = { simulation: "unchanged", breaking: [], added: [], fixed: [] };
+  writeFileSync(join(ROOT, CHANGELOG), `${JSON.stringify(log, null, 2)}\n`);
+  return null;
+}
+
 function main(args: string[]): number {
   const want = args.find((a) => !a.startsWith("--"));
   const check = args.includes("--check");
@@ -86,6 +141,13 @@ function main(args: string[]): number {
     return 2;
   }
   const target = check ? now : want!;
+  if (!check) {
+    const refused = releaseChangelog(now, target);
+    if (refused) {
+      process.stderr.write(`release-bump: ${refused}\n`);
+      return 1;
+    }
+  }
   const wrong: string[] = [];
   let changed = 0;
   for (const site of sites()) {
@@ -103,6 +165,7 @@ function main(args: string[]): number {
     }
   }
   if (check) {
+    wrong.push(...changelogProblems(JSON.parse(read(CHANGELOG)) as Changelog, now));
     if (wrong.length) {
       process.stderr.write(`release-bump --check: ${wrong.length} occurrence(s) differ from packages/engine's ${now}:\n${wrong.map((w) => `  ${w}`).join("\n")}\n`);
       return 1;
