@@ -1,14 +1,15 @@
 //! Every WGSL module the renderer compiles (`og_render::shader_sources`), in
 //! every variant of each tier, through naga at build time: parsed and
-//! validated, its overrides resolved, then written as Metal's MSL and
-//! Vulkan's SPIR-V (the full tier) or GLSL ES 3.0 for WebGL2 (the GL tier),
+//! validated, its overrides resolved, then written as Metal's MSL,
+//! Vulkan's SPIR-V and DX12's HLSL (shader model 6; the full tier) or GLSL
+//! ES 3.0 for WebGL2 (the GL tier),
 //! as wgpu does when a pipeline is made. A shader error fails the gate
 //! instead of a player's renderer at startup (owed in og-render's README:
 //! shader cooking per backend). Broken once by a function returning an
 //! unknown identifier at the end of `scatter.wgsl`: both tiers' `scatter`
 //! modules fail with naga's message and the line.
 
-use naga::back::{glsl, msl, spv};
+use naga::back::{glsl, hlsl, msl, spv};
 use naga::valid::{Capabilities, ValidationFlags, Validator};
 
 /// What wgpu asks naga to allow on the full tier for these modules: the
@@ -65,6 +66,17 @@ fn full_tier_failures(s: &og_render::ShaderSource) -> Vec<String> {
     }
     if let Err(e) = spv::write_vec(&module, &info, &spv::Options::default(), None) {
         failures.push(format!("{label}: SPIR-V: {e}"));
+    }
+    // DX12: wgpu's dx12 backend compiles HLSL with DXC at shader model 6.
+    let options = hlsl::Options {
+        shader_model: hlsl::ShaderModel::V6_0,
+        ..Default::default()
+    };
+    let mut out = String::new();
+    if let Err(e) = hlsl::Writer::new(&mut out, &options, &hlsl::PipelineOptions::default())
+        .write(&module, &info, None)
+    {
+        failures.push(format!("{label}: HLSL: {e}"));
     }
     failures
 }
@@ -127,7 +139,7 @@ fn gl_tier_failures(s: &og_render::ShaderSource) -> Vec<String> {
 }
 
 #[test]
-fn every_full_tier_module_validates_and_translates_to_msl_and_spirv() {
+fn every_full_tier_module_validates_and_translates_to_msl_spirv_and_hlsl() {
     let sources = og_render::shader_sources(true);
     assert!(sources.len() >= 30, "{} modules", sources.len());
     let failures: Vec<String> = sources.iter().flat_map(full_tier_failures).collect();
