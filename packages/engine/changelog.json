@@ -5,7 +5,9 @@
     "simulation": "unchanged",
     "breaking": [],
     "added": [],
-    "fixed": []
+    "fixed": [
+      "og check on a TypeScript install that bun x left incomplete (tsgo, where tsrs has no package): instead of tsgo's Go panic or Cannot find global type errors, it names the incomplete directory and the fix (delete it or bun pm cache rm, then rerun); og doctor reports it as broken."
+    ]
   },
   "versions": [
     {

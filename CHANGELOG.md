@@ -13,6 +13,18 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+No IDL member changed; the simulation is unchanged (the golden replays).
+
+- Fixes: `og check` on a TypeScript install that `bun x` left incomplete
+  (tsgo, where tsrs has no package: Windows, Intel macOS). A lost
+  `lib.d.ts` made tsgo panic with a Go stack trace, and a lost default lib
+  read as `Cannot find global type` errors in the game. og check now
+  verifies the install before tsgo runs, and reads tsgo's panic, and says
+  which directory is incomplete and the fix: delete it or
+  `bun pm cache rm`, then rerun. `og doctor` reports it as broken.
+
 ## 0.6.4 — 2026-10-27
 
 No IDL member changed; the simulation is unchanged (the golden replays).
