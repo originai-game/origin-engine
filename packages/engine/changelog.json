@@ -6,7 +6,8 @@
     "breaking": [],
     "added": [],
     "fixed": [
-      "og check on a TypeScript install that bun x left incomplete (tsgo, where tsrs has no package): instead of tsgo's Go panic or Cannot find global type errors, it names the incomplete directory and the fix (delete it or bun pm cache rm, then rerun); og doctor reports it as broken."
+      "og check on a TypeScript install that bun x left incomplete (tsgo, where tsrs has no package): instead of tsgo's Go panic or Cannot find global type errors, it names the incomplete directory and the fix (delete it or bun pm cache rm, then rerun); og doctor reports it as broken.",
+      "WebGL2 starts about four times faster on Windows (ANGLE on D3D11): programs link in the background with KHR_parallel_shader_compile, read when a pass first draws with them, and the GL tier's lit programs leave the rect-light (LTC) code out until a scene has a rect light. fx-showcase's cold first frame went from 30.4-31.7 s to 7.0-7.5 s in Chrome 155 and from 30.3-31.2 s to 7.6-7.7 s in Edge 155; WebGPU, metal and DX12 are unchanged and no frame moved."
     ]
   },
   "versions": [

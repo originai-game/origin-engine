@@ -24,6 +24,16 @@ No IDL member changed; the simulation is unchanged (the golden replays).
   verifies the install before tsgo runs, and reads tsgo's panic, and says
   which directory is incomplete and the fix: delete it or
   `bun pm cache rm`, then rerun. `og doctor` reports it as broken.
+- Fixes: WebGL2's cold start on Windows (ANGLE on D3D11), where each lit
+  program took 6 to 11 s to link. Programs now link in the background
+  with `KHR_parallel_shader_compile` (wgpu-hal's GL backend reads a
+  link's status when a pass first draws with it, ORIGIN.md patch 2), and
+  the GL tier's lit programs leave the rect-light (LTC) code out until
+  the scene has a rect light, through a pipeline constant. fx-showcase's
+  cold first frame: 30.4–31.7 s → 7.0–7.5 s in Chrome 155, 30.3–31.2 s →
+  7.6–7.7 s in Edge 155; its five stations 56–58 s → 16–17 s. WebGPU,
+  metal and DX12 are unchanged and no frame moved
+  (`tests/evidence/release/windows-x64-webgl2/COLDSTART.md`).
 
 ## 0.6.4 — 2026-10-27
 
