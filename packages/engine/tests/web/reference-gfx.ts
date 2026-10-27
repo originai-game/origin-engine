@@ -21,7 +21,7 @@
 // served beside the module and handed to it before any scene opens; that
 // needs the og a build put in packages/engine/native/ (or $OG_BIN).
 //
-//   bun tests/web/reference-gfx.ts [--webgl] [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--perf-out <dir>] [--out <dir>] [--chrome <path>]
+//   bun tests/web/reference-gfx.ts [--webgl] [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>]]
 //
 // A scene with no reference on the tier (`taa` on WebGL2, `msaa` on
 // WebGPU: scenes::Applies) is listed as not applying, not rendered.
@@ -40,13 +40,15 @@
 // timing JSON to <dir>/<tier>[-cpu-culling]/ instead (evidence runs).
 // Writes <out>/<tier>/<scene>.png, <scene>.diff.png on a mismatch and
 // reference-gfx-<tier>.json (default dist/test-gfx/out). Exits 1 when a
-// scene does not match or does not render. Needs Chrome (cdp.ts),
+// scene does not match or does not render. Needs Chrome (cdp.ts) or, with
+// --firefox, Firefox (bidi.ts),
 // wasm-bindgen at the Cargo.lock version and the wasm32 target.
 
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Browser, chromePath } from "./cdp.ts";
+import { Firefox, firefoxPath } from "./bidi.ts";
 import { serve } from "./serve.ts";
 import { cookTextFonts } from "./text-fonts.ts";
 import { decodePng, encodePng, type Image } from "../../src/node/png.ts";
@@ -69,7 +71,8 @@ const tier = webgl ? "webgl2" : "webgpu";
 const record = args.includes("--record");
 const work = join(pkg, "dist", "test-gfx");
 const out = resolve(opt("--out") ?? join(work, "out"));
-const chrome = chromePath(args);
+const firefox = args.includes("--firefox") ? firefoxPath(args) : undefined;
+const chrome = firefox ? "" : chromePath(args);
 const refs = join(repo, "crates", "og-tests", "references");
 /** Where a scene's references live: og-ui's under crates/og-ui/references. */
 function referencesOf(scene: string): { root: string; name: string } {
@@ -131,7 +134,7 @@ import init, * as gfx from "/game/pkg/og-tests.js";
 try { await init(); globalThis.__gfx = gfx; } catch (e) { globalThis.__gfx_error = String(e && e.stack || e); }
 </script></body></html>`;
 const server = serve({ dist, isolate: false, extra: { "/gfx.html": html } });
-const browser = await Browser.launch({ chrome, width: 1280, height: 720 });
+const browser = firefox ? await Firefox.launch({ firefox, headless: webgl }) : await Browser.launch({ chrome, width: 1280, height: 720 });
 const log: string[] = [];
 const dir = join(out, tier);
 mkdirSync(dir, { recursive: true });
@@ -293,7 +296,7 @@ try {
         const perf = {
           scene,
           tier,
-          browser: "Chrome for Testing (cdp.ts)",
+          browser: firefox ? "Firefox (bidi.ts)" : "Chrome for Testing (cdp.ts)",
           adapter: o.adapter,
           culling: cpuCulling || webgl ? "cpu" : "auto",
           last_frame: t.stats,
@@ -311,7 +314,7 @@ try {
         // the GPU's name too), the adapter string stays in the file.
         const pdir = perfOut
           ? join(resolve(perfOut), `${tier}${cpuCulling && !webgl ? "-cpu-culling" : ""}`)
-          : join(repo, "crates", "og-tests", "perf", `${tier}-chrome-${slug(cpus()[0]?.model ?? "") || "unknown"}`);
+          : join(repo, "crates", "og-tests", "perf", `${tier}-${firefox ? "firefox" : "chrome"}-${slug(cpus()[0]?.model ?? "") || "unknown"}`);
         mkdirSync(pdir, { recursive: true });
         writeFileSync(join(pdir, `${scene}.json`), JSON.stringify(perf, null, 2) + "\n");
         row["frameMs"] = perf.frame_ms;
