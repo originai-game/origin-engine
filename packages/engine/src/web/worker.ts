@@ -793,7 +793,7 @@ export function startWorker(game: GameToken): void {
 
   /**
    * Behind the gate, in idle time: the renderer makes the pipelines the first frame did not
-   * draw with, one a task (og-render deferred.rs; WebGL2 compiles each synchronously), until
+   * draw with, one a task (og-render deferred.rs; each is a long link on WebGL2), until
    * none is left or play begins (a pipeline still unmade is made by the frame that first draws with it).
    */
   const warmBehindGate = () => {

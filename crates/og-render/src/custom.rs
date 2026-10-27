@@ -96,7 +96,7 @@ pub(crate) fn lit_source(
         crate::MATERIAL_DISSOLVE_WGSL,
         palette.wgsl(3),
         crate::LIGHTING_WGSL,
-        crate::AREA_WGSL,
+        crate::area::wgsl(tables),
         crate::INSTANCE_WGSL,
         fx_section(),
         user_section(shader),

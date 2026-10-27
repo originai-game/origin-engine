@@ -330,11 +330,12 @@ fn lit_source_with(
     planar: bool,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{}{SCREEN_AO_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{}{INSTANCE_WGSL}{PBR_WGSL}{}{SCREEN_AO_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3),
         lightmap::probe_wgsl(tables),
+        area::wgsl(tables),
         if planar { PLANAR_WGSL } else { PLANAR_STUB }
     )
 }
@@ -347,11 +348,12 @@ fn physical_source_with(
     tables: clusters::LightTables,
 ) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PLANAR_STUB}{SCREEN_AO_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{}{INSTANCE_WGSL}{PBR_WGSL}{PLANAR_STUB}{SCREEN_AO_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
         tables.wgsl(),
         particles_gpu::NOISE_WGSL,
         palette.wgsl(3),
-        lightmap::probe_wgsl(tables)
+        lightmap::probe_wgsl(tables),
+        area::wgsl(tables)
     )
 }
 
@@ -1564,6 +1566,10 @@ pub struct Renderer {
     frame_buffer: wgpu::Buffer,
     /// The local lights, the cluster table and its light references (`clusters.rs`).
     light_tables: clusters::LightTables,
+    /// Whether the lit pipelines shade rect lights: always on the full tier;
+    /// on the GL tier from the first frame whose scene has a rect light
+    /// (`area::wgsl`), whose lit pipelines are then made again with them.
+    area_lights: bool,
     light_buffers: [wgpu::Buffer; 3],
     /// Baked lighting: lightmap pages and uvs, the light volumes' buffer
     /// (frame binding 10).
@@ -1995,15 +2001,22 @@ fn cull_mode(side: Side) -> Option<wgpu::Face> {
     }
 }
 
-/// The lit pipeline for one (side, blending, skinned) combination.
+/// The pipeline constant a lit pipeline of the GL tier is made with while
+/// the scene has no rect light (the renderer's `area_lights`): area.wgsl's
+/// rect-light shading is left out of the program (`area::wgsl`).
+const AREA_LIGHTS_OFF: (&str, f64) = ("AREA_LIGHTS", 0.0);
+
+/// The lit pipeline for one (side, blending, skinned) combination;
+/// `area_lights` false (the GL tier only) leaves rect lights out.
 fn pbr_pipeline(
     device: &wgpu::Device,
     layouts: (&wgpu::PipelineLayout, &wgpu::PipelineLayout),
     module: &wgpu::ShaderModule,
     key: PbrKey,
     samples: u32,
+    area_lights: bool,
 ) -> wgpu::RenderPipeline {
-    lit_pipeline(device, layouts, module, key, samples, false)
+    lit_pipeline(device, layouts, module, key, samples, false, area_lights)
 }
 
 /// [`pbr_pipeline`] for the standard or the physical lit shader (whose
@@ -2015,6 +2028,7 @@ fn lit_pipeline(
     (side, transparent, skinned, effects): PbrKey,
     samples: u32,
     physical: bool,
+    area_lights: bool,
 ) -> wgpu::RenderPipeline {
     let plain = [Some(VERTEX_LAYOUT), Some(INSTANCE_LAYOUT)];
     let skin = [
@@ -2022,10 +2036,10 @@ fn lit_pipeline(
         Some(skin::SKINNED_INSTANCE_LAYOUT),
         Some(skin::SKIN_VERTEX_LAYOUT),
     ];
-    let constants = [("EFFECTS", effects as u32 as f64)];
+    let constants = [("EFFECTS", effects as u32 as f64), AREA_LIGHTS_OFF];
     hdr_pipeline_with(
         device,
-        &constants,
+        &constants[..if area_lights { 1 } else { 2 }],
         HdrPipeline {
             // Opaque lit pixels write alpha 1 (every sample); alpha-to-coverage materials write their coverage.
             alpha_to_coverage: !transparent,
@@ -2066,11 +2080,18 @@ fn lean_pipeline(
     module: &wgpu::ShaderModule,
     (side, effects, derivatives, compact): LeanKey,
     samples: u32,
+    area_lights: bool,
 ) -> wgpu::RenderPipeline {
-    let constants = [("EFFECTS", effects as u32 as f64), ("DISCARD", 0.0)];
+    let mut constants = vec![("EFFECTS", effects as u32 as f64)];
+    if !derivatives {
+        constants.push(("DISCARD", 0.0));
+    }
+    if !area_lights {
+        constants.push(AREA_LIGHTS_OFF);
+    }
     hdr_pipeline_with(
         device,
-        &constants[..if derivatives { 1 } else { 2 }],
+        &constants,
         HdrPipeline {
             alpha_to_coverage: false,
             label: if compact {
@@ -2847,6 +2868,7 @@ impl Renderer {
                 &[&shadow_bind_layout, &material_layout, &palette_layout],
             ),
         ];
+        let area_lights = light_tables == clusters::LightTables::Storage;
         let mut pbr_pipelines = HashMap::new();
         let key = (Side::Front, false, false, false);
         pbr_pipelines.insert(
@@ -2857,6 +2879,7 @@ impl Renderer {
                 &pbr_shader,
                 key,
                 samples,
+                area_lights,
             ),
         );
         let mut shadow_pipelines = HashMap::new();
@@ -3192,6 +3215,7 @@ impl Renderer {
             sprite_layout,
             frame_buffer,
             light_tables,
+            area_lights,
             light_buffers,
             lightmaps,
             ltc,
@@ -3415,8 +3439,15 @@ impl Renderer {
         if let Some(a) = &self.sprite_arrays {
             a.set_samples(samples);
         }
-        // Made as batches need them: made again at the new count. The
-        // plain lit pipeline is the one some passes take without a batch.
+        // Made as batches need them: made again at the new count.
+        self.forget_lit_pipelines();
+        self.sprite_meshes = None;
+    }
+
+    /// Forgets the lit pipelines, which batches make again as they need
+    /// them, at the current samples and `area_lights`; the plain
+    /// one, which some passes take without a batch, is made now.
+    fn forget_lit_pipelines(&mut self) {
         self.pbr_pipelines.clear();
         let key = (Side::Front, false, false, false);
         self.pbr_pipelines.insert(
@@ -3426,7 +3457,8 @@ impl Renderer {
                 (&self.pbr_layout, &self.pbr_skinned_layout),
                 &self.pbr_shader,
                 key,
-                samples,
+                self.samples,
+                self.area_lights,
             ),
         );
         self.lean_pipelines.clear();
@@ -3439,7 +3471,6 @@ impl Renderer {
             p.pipelines.clear();
         }
         self.lightmaps.forget_pipelines();
-        self.sprite_meshes = None;
     }
 
     /// The size the scene is drawn at this frame: the output's, or the
@@ -4926,6 +4957,7 @@ impl Renderer {
 
     /// Makes the lit, shadow and prepass pipelines this frame's batches need.
     fn ensure_pipelines(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
+        let area_lights = self.area_lights;
         let all = batches
             .iter()
             .map(|b| (b, false))
@@ -4938,7 +4970,14 @@ impl Renderer {
                 let layouts = (&a.layouts.0, &a.layouts.1);
                 let key = (b.side, b.blend, is_skinned, b.effects);
                 if !a.lit.contains_key(&key) {
-                    let p = pbr_pipeline(&self.device, layouts, &a.module, key, self.samples);
+                    let p = pbr_pipeline(
+                        &self.device,
+                        layouts,
+                        &a.module,
+                        key,
+                        self.samples,
+                        area_lights,
+                    );
                     a.lit.insert(key, p);
                 }
                 let key = (b.side, is_skinned);
@@ -4981,6 +5020,7 @@ impl Renderer {
                             key,
                             self.samples,
                             true,
+                            area_lights,
                         );
                         physical.pipelines.insert(key, p);
                     }
@@ -4992,6 +5032,7 @@ impl Renderer {
                             key,
                             self.samples,
                             true,
+                            area_lights,
                         );
                         self.cache.physical_hook_pipelines.insert((sh, key), p);
                     }
@@ -5007,6 +5048,7 @@ impl Renderer {
                         &self.cache.shaders[sh],
                         (b.side, b.blend, is_skinned, b.effects),
                         self.samples,
+                        area_lights,
                     );
                     self.cache.hook_pipelines.insert(key, p);
                 }
@@ -5049,6 +5091,7 @@ impl Renderer {
                         &self.pbr_shader,
                         key,
                         self.samples,
+                        area_lights,
                     );
                     self.lean_pipelines.insert(key, p);
                 }
@@ -5084,6 +5127,7 @@ impl Renderer {
                     &self.pbr_shader,
                     key,
                     self.samples,
+                    area_lights,
                 );
                 self.pbr_pipelines.insert(key, p);
             }
@@ -5636,6 +5680,17 @@ impl Renderer {
             self.probes
                 .ensure_targets(&self.device, &probe_frame, face_copy, face_fluid);
         }
+        // The GL tier's lit pipelines leave rect lights out until the scene
+        // has one (area::wgsl): made again with them from then on.
+        if !self.area_lights
+            && scene
+                .lights
+                .iter()
+                .any(|l| matches!(l.kind, LightKind::Rect { .. }))
+        {
+            self.area_lights = true;
+            self.forget_lit_pipelines();
+        }
         self.ensure_pipelines(
             &batches,
             &skinned_batches,
@@ -5688,6 +5743,7 @@ impl Renderer {
                     module,
                     (b.side, b.blend, b.effects),
                     self.samples,
+                    self.area_lights,
                 );
             }
         }
@@ -10435,7 +10491,7 @@ impl Renderer {
     /// false when every pipeline is made. The renderer makes a pipeline when
     /// a pass first sets it (deferred.rs), so a frame compiles only what it
     /// draws; a host with idle time (the web page behind its play gate,
-    /// where WebGL2 compiles each program synchronously) calls this until
+    /// where each WebGL2 program is a long ANGLE link) calls this until
     /// it answers false, so a pass met later does not stop a frame. The
     /// frames are the same either way.
     pub fn warm(&mut self) -> bool {
