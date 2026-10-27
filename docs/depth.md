@@ -30,7 +30,8 @@ a three.js name takes that name.
 - **An agent's loop** is `cargo check -p <crate>` and the unit tests of the
   crate it edits, `og api check` after an IDL change, and `og run --headless
   --commands` of the station or template it adds (the orbs render on
-  lavapipe: slow, CPU only, no Metal references). An agent never runs
+  lavapipe: slow, CPU only, a smoke check; read at 640×360 where it
+  can be, never recorded as a reference). An agent never runs
   `scripts/check.sh`, a test lane, `og test`, web-reference, a wasm or
   release build. A gfx test an agent adds names its reference frame and
   leaves the `metal` file to the coordinator, who records it at the merge

@@ -146,6 +146,17 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   suites, the wasm build, the size gate and determinism, and is what a
   commit to main must pass. Changes to rendering, animation, physics, the
   tick or the export run the full lane before they are called done.
+- **Real GPUs are the reference; lavapipe is a smoke check.** The
+  compatibility baseline is current hardware and browsers
+  (`docs/design.md` §8, the owner, 2026-10-27). Frames are judged on
+  `metal` (macrunner) and on DX12 with Chrome and Edge, WebGPU and
+  WebGL2 (studio-win); after each batch of merges the coordinator starts
+  both lanes, and a publish needs both green on its commit. An orb's
+  lavapipe frame shows that a change draws, read at 640×360 where it can
+  be; no `references/vulkan-cpu/` frame is recorded (a scene with no
+  frame of its tier is judged against `metal`). Shader changes are held
+  by og-render's `tests/shaders.rs`, which translates every module to
+  MSL, SPIR-V, HLSL and GLSL ES on any machine.
 - **When to run the gate.** Function first, measurement later. After a
   batch of merges on main, the one session that merges runs the
   functional lane (`scripts/check.sh functional`: fmt, clippy, every

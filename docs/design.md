@@ -1327,6 +1327,25 @@ line.
 | capture | readback | readback | readback | readback |
 | determinism | yes | yes | yes | yes |
 
+**The compatibility baseline (the owner, 2026-10-27).** During
+development features come first, and the engine targets current
+hardware and current browsers; old browsers, low-end GPUs and old
+drivers are not a target and are not tested.
+
+- Browsers: the current stable Chrome and Edge and the major before it,
+  Safari 26+, the current stable Firefox. WebGPU is the main path; WebGL2
+  is the fallback on those same browsers (WebGPU off or failing), not a
+  route to older ones.
+- Desktop: Windows 10/11 x64 on DX12 (in the browser, D3D12 for WebGPU and
+  ANGLE on D3D11 for WebGL2) with a current NVIDIA, AMD or Intel GPU and
+  driver; macOS on Apple silicon (Metal); Linux x64 with a Vulkan GPU.
+- Phones: a current iPhone in Safari. Mid-range and older Android
+  devices are deferred.
+- The reference GPUs are real ones: `metal` (macrunner) and DX12 with the
+  Windows browsers (studio-win). lavapipe is only the renderer of
+  machines without a GPU (orbs, CI): a smoke check that a frame draws, and
+  never a reference tier.
+
 Windows x64 uses the same native API: the MSVC-built
 `@origingame/engine-win32-x64` carries `og.exe` and `origin-engine.node`.
 Its automatic renderer is DX12, lanes use rayon, and capture uses GPU
