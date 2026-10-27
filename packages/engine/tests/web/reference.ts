@@ -58,7 +58,8 @@
 // dist/test-reference/out; on an error, with the engine's last log lines).
 // Exits 1 when a station does not match or has no reference (neither its
 // tier's nor metal's), the engine does not start or the probe does not
-// refuse. Needs Chrome (cdp.ts: a missing one is an error).
+// refuse. Needs Chrome (cdp.ts: a missing one is an error), or Firefox with
+// --firefox [<path>] (bidi.ts; WebGPU opens a window, WebGL2 is headless).
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
@@ -67,6 +68,7 @@ import { settingsOf, webBuild } from "../../src/node/web-build.ts";
 import { bundleGame } from "../../src/node/build.ts";
 import type { PlaytestDesc } from "../../src/playtest.ts";
 import { Browser, chromePath } from "./cdp.ts";
+import { Firefox, firefoxPath } from "./bidi.ts";
 import { serve } from "./serve.ts";
 import { cookProject } from "../support/og-bin.ts";
 import { compareFrames as compare, decodePng, TOLERANCE, type Image } from "../support/png.ts";
@@ -154,7 +156,8 @@ if (args.includes("--print")) {
   console.log(JSON.stringify({ project: project.slice(repo.length + 1), size: `${WIDTH}x${HEIGHT}`, script: SCRIPT, shots: STATIONS.map((s) => `${s.name}@${s.tick}`) }, null, 1));
   process.exit(0);
 }
-const chrome = chromePath(args);
+const firefox = args.includes("--firefox") ? firefoxPath(args) : undefined;
+const chrome = firefox ? "" : chromePath(args);
 
 /** An n× box filter, rounded (templates/ui-kit/tests/styles.ts `shrink`). */
 function shrink(img: Image, n: number): Image {
@@ -197,7 +200,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><title>reference<
 <style>html,body{margin:0;background:#14161b}canvas{display:block;width:${WIDTH}px;height:${HEIGHT}px}</style></head>
 <body><canvas></canvas><script type="module" src="/game/reference-page.js"></script></body></html>`;
 const server = serve({ dist, isolate: true, extra: { "/reference.html": html } });
-const browser = await Browser.launch({ chrome, width: WIDTH, height: HEIGHT });
+const browser = firefox ? await Firefox.launch({ firefox, headless: webgl }) : await Browser.launch({ chrome, width: WIDTH, height: HEIGHT });
 const log: string[] = [];
 const dir = join(out, tier);
 mkdirSync(dir, { recursive: true });
