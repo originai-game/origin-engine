@@ -13,6 +13,19 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+No IDL member changed. The simulation changed: the golden replays are
+re-recorded (`unreleased.simulation` is `changed` in `changelog.json`).
+
+- Fixes: cross-platform yaw drift. A `NavAgent` with `faceMovement` turned
+  through glam's `Quat::slerp`, which uses the host's `sinf`, so its
+  rotation differed by up to 16 ulp between Windows and Linux while it
+  turned (0.6.2's golden replays on win32, ticks 62–65). The turn is now a
+  yaw step through og-core's deterministic math, which moves the turning
+  ticks' rotation by about an ulp on every host. `og.terrain.sample`'s
+  `slope` uses og-core's `acos` too.
+
 ## 0.6.2 — 2026-10-27
 
 No IDL member changed; the simulation is unchanged (the golden replays).

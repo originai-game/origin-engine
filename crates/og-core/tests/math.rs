@@ -5,7 +5,10 @@
 //! host must reproduce them bit for bit; that is the cross-host contract.
 
 use og_core::Rng;
-use og_core::math::{Vec3, atan, atan2, cos, exp, ln, pow, quat_from_axis_angle, sin, sin_cos};
+use og_core::math::{
+    Quat, Vec3, acos, atan, atan2, cos, exp, ln, pow, quat_from_axis_angle, quat_slerp, sin,
+    sin_cos,
+};
 
 const SIN: &[(u32, u32)] = &[
     (0x00000000, 0x00000000), // sin(0.0)
@@ -145,6 +148,20 @@ const POW: &[(u32, u32, u32)] = &[
     (0xbf000000, 0xc0400000, 0xc1000000), // pow(-0.5, -3.0)
 ];
 
+const ACOS: &[(u32, u32)] = &[
+    (0x3f800000, 0x00000000), // acos(1.0)
+    (0xbf800000, 0x40490fdb), // acos(-1.0)
+    (0x00000000, 0x3fc90fdb), // acos(0.0)
+    (0x3f000000, 0x3f860a92), // acos(0.5)
+    (0xbf000000, 0x40060a92), // acos(-0.5)
+    (0x3f7ffffe, 0x3a000000), // acos(0.9999998807907104)
+    (0x3f3504f3, 0x3f490fdb), // acos(0.7071067690849304)
+    (0xbe800000, 0x3fe967ae), // acos(-0.25)
+    (0x3dcccccd, 0x3fbc3d91), // acos(0.10000000149011612)
+    (0x3f733333, 0x3ea29749), // acos(0.949999988079071)
+    (0x33d6bf95, 0x3fc90fda), // acos(1.0000000116860974e-07)
+];
+
 fn f(bits: u32) -> f32 {
     f32::from_bits(bits)
 }
@@ -188,6 +205,8 @@ fn sin_and_cos_match_the_vectors() {
 fn atan_and_atan2_match_the_vectors() {
     check1("atan", ATAN, atan);
     check2("atan2", ATAN2, atan2);
+    check1("acos", ACOS, acos);
+    assert!(acos(1.5).is_nan() && acos(f32::NAN).is_nan());
 }
 
 #[test]
@@ -333,6 +352,37 @@ fn deterministic_rotation_matches_its_definition() {
     let q = quat_from_axis_angle(Vec3::Y, 1.0);
     let (s, c) = sin_cos(0.5);
     assert_eq!((q.x, q.y, q.z, q.w), (0.0, s, 0.0, c));
+}
+
+/// `quat_slerp` turns along the arc by the share asked: from a turn of 0.3
+/// about +Y to one of 2.1, a quarter of the way is a turn of 0.75. Its bits
+/// are pinned, so a host whose results differ fails here (glam's `slerp`
+/// uses the host's `sinf` and did, by an ulp, on Windows).
+#[test]
+fn quat_slerp_turns_by_the_share_and_holds_its_bits() {
+    let a = quat_from_axis_angle(Vec3::Y, 0.3);
+    let b = quat_from_axis_angle(Vec3::Y, 2.1);
+    let q = quat_slerp(a, b, 0.25);
+    let want = quat_from_axis_angle(Vec3::Y, 0.75);
+    assert!(same(q, want), "{q:?} vs {want:?}");
+    let got = [q.x, q.y, q.z, q.w].map(f32::to_bits);
+    assert_eq!(got, PINNED_SLERP, "{got:#010x?}");
+    // The shorter arc: -b is the same rotation as b.
+    assert!(same(quat_slerp(a, -b, 0.25), want));
+    // The ends, and the lerp of nearly equal rotations.
+    assert!(same(quat_slerp(a, b, 0.0), a));
+    assert!(same(quat_slerp(a, b, 1.0), b));
+    assert_eq!(
+        quat_slerp(Quat::IDENTITY, Quat::IDENTITY, 0.5),
+        Quat::IDENTITY
+    );
+}
+
+const PINNED_SLERP: [u32; 4] = [0x00000000, 0x3ebb8813, 0x00000000, 0x3f6e35bf];
+
+/// The same rotation within 1e-6 per component (q and -q are one rotation).
+fn same(a: Quat, b: Quat) -> bool {
+    (a - b).length().min((a + b).length()) < 1e-6
 }
 
 /// `world_pose` down a chain of three: a grandparent moved and doubled, a
