@@ -74,7 +74,8 @@ RULE_COMMON="Cargo.toml Cargo.lock rust-toolchain.toml .cargo .config scripts"
 rule_gpu() {
   echo "$(og_crate_dirs -p og-tests -p og-ui -p og-render -e normal,build,dev | og_words) templates/ui-kit/assets $RULE_COMMON"
 }
-rule_wasm() { echo "crates $RULE_COMMON"; }
+# third_party: the vendored crates the wasm links (wgpu-hal's GLES backend is WebGL2's).
+rule_wasm() { echo "crates third_party $RULE_COMMON"; }
 # og api check: the IDL, the generator and what it reads, og's api command,
 # and every directory it writes (og_idl::OUTPUT_DIRS).
 rule_drift() {
