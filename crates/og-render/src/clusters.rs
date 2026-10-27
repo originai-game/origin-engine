@@ -76,21 +76,109 @@ impl LightTables {
 
     /// The WGSL declaring the buffers (group 0, bindings 7 to 9) and their
     /// accessors, placed after frame.wgsl in the lit shader.
+    ///
+    /// Both tiers hold the same bytes: the lights as [`MAX_LIGHTS`] records
+    /// of four vec4s, the table as one word per cluster (the first
+    /// reference, 24 bits, and the count, 8 bits), the references one byte
+    /// each, four to a word. The storage buffers declare them as they are
+    /// and index the word. A uniform array's element is 16 bytes, so on
+    /// WebGL2 the table and the references are vec4s of four words and the
+    /// lights flat vec4s, each array the one member of a struct. ANGLE's
+    /// D3D11 backend (Chrome and Edge on Windows) is why
+    /// (`tests/evidence/release/windows-x64-webgl2/NOTES.md`):
+    /// - it writes a `dyn_index_*` helper for each `v[i]` of uniform data,
+    ///   which FXC refuses as a redefinition (X3003): `lane` picks a word of
+    ///   a vec4 with masks instead;
+    /// - a light record read whole from a uniform array of structs made FXC
+    ///   compile the lit shader for 130 s: `light_at` reads four vec4s;
+    /// - a block holding only an array of 50 or more elements becomes a D3D
+    ///   StructuredBuffer, bound after the shader's textures; with the lit
+    ///   shader's fifteen, Chrome's GPU process crashed binding them at the
+    ///   first lit draws (`StateManager11::setShaderResourceInternal`). In a
+    ///   struct the array stays in a constant buffer, as area.wgsl's LTC
+    ///   table, lightmap.rs's probes and terrain.wgsl's tile table are.
     pub fn wgsl(self) -> String {
-        let space = match self {
-            LightTables::Storage => "storage, read",
-            LightTables::Uniform => "uniform",
+        let decls = match self {
+            LightTables::Storage => format!(
+                "@group(0) @binding(7) var<storage, read> light_list: array<LocalLight, {lights}>;
+@group(0) @binding(8) var<storage, read> cluster_table: array<u32, {table}>;
+@group(0) @binding(9) var<storage, read> cluster_refs: array<u32, {refs}>;
+
+fn light_at(i: u32) -> LocalLight {{
+  return light_list[i];
+}}
+
+fn cluster_word(c: u32) -> u32 {{
+  return cluster_table[c];
+}}
+
+fn cluster_ref(j: u32) -> u32 {{
+  return (cluster_refs[j >> 2u] >> ((j & 3u) * 8u)) & 255u;
+}}
+",
+                lights = MAX_LIGHTS,
+                table = CLUSTERS,
+                refs = self.ref_capacity() / 4,
+            ),
+            LightTables::Uniform => format!(
+                "struct LightWords {{ v: array<vec4<f32>, {lights}> }};
+struct ClusterTableWords {{ v: array<vec4<u32>, {table}> }};
+struct ClusterRefWords {{ v: array<vec4<u32>, {refs}> }};
+@group(0) @binding(7) var<uniform> light_list: LightWords;
+@group(0) @binding(8) var<uniform> cluster_table: ClusterTableWords;
+@group(0) @binding(9) var<uniform> cluster_refs: ClusterRefWords;
+
+fn light_at(i: u32) -> LocalLight {{
+  let b = i * 4u;
+  return LocalLight(light_list.v[b], light_list.v[b + 1u], light_list.v[b + 2u], light_list.v[b + 3u]);
+}}
+
+// Word `k` (0 to 3) of `v`, chosen with masks rather than `v[k]`.
+fn lane(v: vec4<u32>, k: u32) -> u32 {{
+  let odd = 0u - (k & 1u);
+  let lo = v.x ^ ((v.x ^ v.y) & odd);
+  let hi = v.z ^ ((v.z ^ v.w) & odd);
+  return lo ^ ((lo ^ hi) & (0u - (k >> 1u)));
+}}
+
+fn cluster_word(c: u32) -> u32 {{
+  return lane(cluster_table.v[c >> 2u], c & 3u);
+}}
+
+fn cluster_ref(j: u32) -> u32 {{
+  return (lane(cluster_refs.v[j >> 4u], (j >> 2u) & 3u) >> ((j & 3u) * 8u)) & 255u;
+}}
+",
+                lights = MAX_LIGHTS * 4,
+                table = CLUSTERS / 4,
+                refs = self.ref_capacity() / 16,
+            ),
         };
         format!(
             "// The local lights and their clusters (clusters.rs).
 const CLUSTER_X: u32 = {gx}u;
 const CLUSTER_Y: u32 = {gy}u;
 const CLUSTER_Z: u32 = {gz}u;
-@group(0) @binding(7) var<{space}> light_list: array<LocalLight, {lights}>;
-// Per cluster: the first reference (24 bits) and the count (8 bits).
-@group(0) @binding(8) var<{space}> cluster_table: array<vec4<u32>, {table}>;
-// Light indices, one byte each, four to a word.
-@group(0) @binding(9) var<{space}> cluster_refs: array<vec4<u32>, {refs}>;
+{decls}
+// The lights a fragment at pixel `frag` and world position `p` shades: x
+// its cluster's first reference and y their count, or, in a frame without
+// clusters (a reflection probe's capture, probes.rs), x NO_CLUSTER and y
+// every light of the frame. Read the k-th with `frame_light`.
+const NO_CLUSTER: u32 = 0xffffffffu;
+fn frame_lights(frag: vec2<f32>, p: vec3<f32>) -> vec2<u32> {{
+  if (frame.params.z < 0.5) {{ return vec2<u32>(0u); }}
+  if (frame.cluster.x > 0.0) {{
+    let word = cluster_word(cluster_at(frag, p));
+    return vec2<u32>(word & 0xffffffu, word >> 24u);
+  }}
+  return vec2<u32>(NO_CLUSTER, u32(frame.params.z));
+}}
+
+fn frame_light(lights: vec2<u32>, k: u32) -> LocalLight {{
+  var i = k;
+  if (lights.x != NO_CLUSTER) {{ i = cluster_ref(lights.x + k); }}
+  return light_at(i);
+}}
 
 // The cluster of a fragment at pixel `frag` and world position `p`.
 fn cluster_at(frag: vec2<f32>, p: vec3<f32>) -> u32 {{
@@ -102,22 +190,10 @@ fn cluster_at(frag: vec2<f32>, p: vec3<f32>) -> u32 {{
   let z = u32(clamp(s, 0.0, f32(CLUSTER_Z - 1u)));
   return (z * CLUSTER_Y + y) * CLUSTER_X + x;
 }}
-
-fn cluster_word(c: u32) -> u32 {{
-  return cluster_table[c >> 2u][c & 3u];
-}}
-
-fn cluster_ref(j: u32) -> u32 {{
-  let word = cluster_refs[j >> 4u][(j >> 2u) & 3u];
-  return (word >> ((j & 3u) * 8u)) & 255u;
-}}
 ",
             gx = CLUSTER_GRID[0],
             gy = CLUSTER_GRID[1],
             gz = CLUSTER_GRID[2],
-            lights = MAX_LIGHTS,
-            table = CLUSTERS / 4,
-            refs = self.ref_capacity() / 16,
         )
     }
 

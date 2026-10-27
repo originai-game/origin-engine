@@ -109,7 +109,7 @@ pub(crate) fn probe_wgsl(tables: LightTables) -> String {
         LightTables::Uniform => "uniform",
     };
     format!(
-        "{}\n@group(0) @binding(10) var<{space}> probe_data: array<vec4<f32>, {n}>;\n{}",
+        "{}\nstruct ProbeWords {{ v: array<vec4<f32>, {n}> }};\n@group(0) @binding(10) var<{space}> probe_data: ProbeWords;\n{}",
         format_args!("const PROBE_VOLUMES: u32 = {PROBE_VOLUMES}u;"),
         AMBIENT_WGSL,
         n = probe_capacity(tables),
@@ -122,9 +122,9 @@ const AMBIENT_WGSL: &str = r#"
 var<private> baked_lightmap: vec4<f32>;
 
 fn probe_irradiance(at: u32, n: vec3<f32>) -> vec3<f32> {
-  let r = probe_data[at];
-  let g = probe_data[at + 1u];
-  let b = probe_data[at + 2u];
+  let r = probe_data.v[at];
+  let g = probe_data.v[at + 1u];
+  let b = probe_data.v[at + 2u];
   return max(vec3<f32>(r.w + dot(r.xyz, n), g.w + dot(g.xyz, n), b.w + dot(b.xyz, n)), vec3<f32>(0.0));
 }
 
@@ -134,8 +134,8 @@ fn baked_volume(p: vec3<f32>, n: vec3<f32>) -> vec4<f32> {
   var sum = vec3<f32>(0.0);
   var weight = 0.0;
   for (var i = 0u; i < PROBE_VOLUMES; i++) {
-    let h0 = probe_data[2u * i];
-    let h1 = probe_data[2u * i + 1u];
+    let h0 = probe_data.v[2u * i];
+    let h1 = probe_data.v[2u * i + 1u];
     if (h0.w < 0.0) { break; }
     let packed = u32(h1.w);
     let c = vec3<u32>(packed & 127u, (packed >> 7u) & 127u, packed >> 14u);

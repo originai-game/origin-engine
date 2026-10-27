@@ -430,22 +430,13 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     diffuse += (1.0 - shadow) * frame.shadow_tint.rgb * frame.shadow_tint.w * s.albedo * frame.light_color.rgb * n_dot_l;
   }
 
-  if (frame.params.z > 0.5 && frame.cluster.x > 0.0) {
-    let word = cluster_word(cluster_at(in.clip.xy, in.world_pos));
-    let first = word & 0xffffffu;
-    let count = word >> 24u;
-    for (var c = 0u; c < count; c++) {
-      let o = physical_local(light_list[cluster_ref(first + c)], s, k, in.world_pos, n, v, receives);
-      diffuse += o.diffuse;
-      specular += o.specular;
-    }
-  } else if (frame.params.z > 0.5) {
-    // A reflection probe's capture (probes.rs) has no clusters: every light.
-    for (var c = 0u; c < u32(frame.params.z); c++) {
-      let o = physical_local(light_list[c], s, k, in.world_pos, n, v, receives);
-      diffuse += o.diffuse;
-      specular += o.specular;
-    }
+  // The cluster's lights, or every light in a reflection probe's capture
+  // (probes.rs), which has no clusters (pbr_fs.wgsl).
+  let lights = frame_lights(in.clip.xy, in.world_pos);
+  for (var c = 0u; c < lights.y; c++) {
+    let o = physical_local(frame_light(lights, c), s, k, in.world_pos, n, v, receives);
+    diffuse += o.diffuse;
+    specular += o.specular;
   }
 
   // Image-based light (split sum): an anisotropic surface reflects along
