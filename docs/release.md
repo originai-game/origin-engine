@@ -130,6 +130,16 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.6.4 released (2026-10-27 UTC).** All five npm packages are
+published, and `v0.6.4` is pushed at `397dbc79`. It is a patch with the
+simulation unchanged and no IDL member changed: it adds `og bake
+projection`, a gray level painted from views on the CPU, with xatlas
+charting for levels without uvs. The replay gate passes 2/2 goldens with
+both the dev and the release builds on linux-x64. The tarballs and the
+registry install passed on the orb's linux-x64, on the host and in the
+container; the Mac and Windows checks were not required for this patch.
+See the [release receipt](../tests/evidence/release/0.6.4.md).
+
 **0.6.3 released (2026-10-27 UTC).** All five npm packages are
 published, and `v0.6.3` is pushed at `b73124bd`. It is a patch with the
 simulation changed: it fixes the cross-platform yaw drift (§4 F) with a
