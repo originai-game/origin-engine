@@ -1,0 +1,501 @@
+another gate (pid 38173: scripts/check.sh fmt clippy test drift bun-functional (/Volumes/app/origin-engine)) is running on /Users/fan/.cache/og-gate, waiting
+Origin Engine gate: de04f53d rustc 1.99.1 (58cf8f9c3 2026-10-13) target=/Volumes/app/origin-engine-measure/target
+path-aware: working tree 3fd8d6518994; a step none of whose inputs changed since it last passed is skipped (--all runs everything)
+at most 2 step(s) at once (OG_GATE_JOBS); logs in target/evidence/gate/
+--> [1/2] wasm-build started (+1s; log target/evidence/gate/wasm-build.log)
+
+==> [1/2] wasm-build
+required: og-render og-host-web
+   Compiling foldhash v0.2.0
+   Compiling equivalent v1.0.3
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling libm v0.2.16
+   Compiling thiserror v2.0.21
+   Compiling zmij v1.0.23
+   Compiling serde_json v1.0.154
+   Compiling slab v0.4.12
+   Compiling num-traits v0.2.19
+   Compiling itoa v1.0.18
+   Compiling bytemuck v1.25.2
+   Compiling memchr v2.8.3
+   Compiling og-core-derive v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-core-derive)
+   Compiling cfg-if v1.0.5
+   Compiling smallvec v1.16.3
+   Compiling log v0.4.34
+   Compiling wasm-bindgen-shared v0.2.129
+   Compiling unicode-ident v1.0.27
+   Compiling once_cell v1.21.4
+   Compiling futures-task v0.3.34
+   Compiling pin-project-lite v0.2.17
+   Compiling futures-core v0.3.34
+   Compiling static_assertions v1.1.0
+   Compiling zerocopy v0.8.63
+   Compiling rustc-hash v1.1.0
+   Compiling profiling v1.0.18
+   Compiling futures-util v0.3.34
+   Compiling bit-vec v0.9.1
+   Compiling parking_lot_core v0.9.12
+   Compiling slotmap v1.1.1
+   Compiling raw-window-handle v0.6.2
+   Compiling bit-set v0.10.0
+   Compiling scopeguard v1.2.0
+   Compiling matrixmultiply v0.3.11
+   Compiling wasm-bindgen v0.2.129
+   Compiling lock_api v0.4.14
+   Compiling wide v1.7.1
+   Compiling wgpu-hal v30.0.1 (/Volumes/app/origin-engine-measure/third_party/wgpu-hal)
+   Compiling rawpointer v0.2.1
+   Compiling typenum v1.20.1
+   Compiling allocator-api2 v0.2.21
+   Compiling approx v0.5.1
+   Compiling num-integer v0.1.47
+   Compiling byteorder v1.5.0
+   Compiling hashbrown v0.16.1
+   Compiling heapless v0.8.0
+   Compiling num-rational v0.4.2
+   Compiling parking_lot v0.12.5
+   Compiling hash32 v0.3.1
+   Compiling ordered-float v5.5.0
+   Compiling wgpu-core v30.0.1
+   Compiling ena v0.14.4
+   Compiling wgpu v30.0.1
+   Compiling robust v1.2.0
+   Compiling og-lanes v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-lanes)
+   Compiling either v1.19.0
+   Compiling stable_deref_trait v1.2.1
+   Compiling downcast-rs v2.0.2
+   Compiling og-render v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+   Compiling simd-adler32 v0.3.10
+   Compiling adler2 v2.0.1
+   Compiling core_maths v0.1.1
+   Compiling unicode-segmentation v1.13.3
+   Compiling og-blob v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-blob)
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling rstar v0.13.0
+   Compiling unicode-bidi v0.3.18
+   Compiling ttf-parser v0.25.1
+   Compiling og-api v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-api)
+   Compiling glam v0.34.1
+   Compiling hashbrown v0.17.1
+   Compiling bitflags v2.13.2
+   Compiling glam v0.33.12
+   Compiling js-sys v0.3.106
+   Compiling rustybuzz v0.20.1
+   Compiling arrayvec v0.7.8
+   Compiling num-complex v0.4.6
+   Compiling serde_arrays v0.2.0
+   Compiling spade v2.15.1
+   Compiling indexmap v2.14.2
+   Compiling bincode v1.3.3
+   Compiling simba v0.10.2
+   Compiling naga-types v30.0.1
+   Compiling half v2.7.1
+   Compiling web-sys v0.3.106
+   Compiling wasm-bindgen-futures v0.4.79
+   Compiling naga v30.0.1
+   Compiling nalgebra v0.35.0
+   Compiling wgpu-types v30.0.1
+   Compiling glow v0.17.0
+   Compiling og-core v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-core)
+   Compiling og-ecs v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ecs)
+   Compiling og-tilemap v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-tilemap)
+   Compiling og-i18n v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-i18n)
+   Compiling og-geom v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+   Compiling og-net v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-net)
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling og-tween v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-tween)
+   Compiling og-nav v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-nav)
+   Compiling og-input v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-input)
+   Compiling og-anim v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-anim)
+   Compiling og-audio v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-audio)
+   Compiling og-timeline v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-timeline)
+   Compiling og-probe v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+   Compiling og-ai v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ai)
+   Compiling wgpu-core-deps-wasm v30.0.1
+   Compiling glamx v0.3.1
+   Compiling parry3d v0.31.1
+   Compiling parry2d v0.31.1
+   Compiling rapier2d v0.36.1
+   Compiling rapier3d v0.36.1
+   Compiling og-physics v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-physics)
+   Compiling og-ui v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+   Compiling og-cook v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+   Compiling og-runtime v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-runtime)
+   Compiling og-host-web v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-host-web)
+    Finished `wasm-gate` profile [optimized] target(s) in 45.43s
+publish variant publish: og-host-web (--no-default-features --features publish,physics3d,shaping)
+   Compiling og-core v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-core)
+   Compiling og-render v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+   Compiling spade v2.15.1
+   Compiling og-api v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-api)
+   Compiling og-ecs v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ecs)
+   Compiling og-tilemap v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-tilemap)
+   Compiling og-i18n v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-i18n)
+   Compiling og-net v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-net)
+   Compiling og-geom v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+   Compiling og-tween v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-tween)
+   Compiling og-nav v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-nav)
+   Compiling og-input v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-input)
+   Compiling og-anim v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-anim)
+   Compiling og-audio v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-audio)
+   Compiling og-physics v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-physics)
+   Compiling og-timeline v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-timeline)
+   Compiling og-probe v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+   Compiling og-ai v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ai)
+   Compiling og-cook v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+   Compiling og-ui v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+   Compiling og-runtime v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-runtime)
+   Compiling og-host-web v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-host-web)
+    Finished `wasm-gate` profile [optimized] target(s) in 19.51s
+publish variant publish2d: og-host-web (--no-default-features --features publish,physics2d,profile2d,shaping)
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling og-render v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+   Compiling serde_json v1.0.154
+   Compiling glam v0.34.1
+   Compiling hashbrown v0.17.1
+   Compiling bitflags v2.13.2
+   Compiling glam v0.33.12
+   Compiling rustybuzz v0.20.1
+   Compiling arrayvec v0.7.8
+   Compiling num-complex v0.4.6
+   Compiling spade v2.15.1
+   Compiling serde_arrays v0.2.0
+   Compiling bincode v1.3.3
+   Compiling indexmap v2.14.2
+   Compiling simba v0.10.2
+   Compiling naga-types v30.0.1
+   Compiling wgpu-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling nalgebra v0.35.0
+   Compiling og-core v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-core)
+   Compiling og-ecs v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ecs)
+   Compiling og-i18n v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-i18n)
+   Compiling og-tilemap v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-tilemap)
+   Compiling og-geom v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+   Compiling og-net v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-net)
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1 (/Volumes/app/origin-engine-measure/third_party/wgpu-hal)
+   Compiling og-tween v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-tween)
+   Compiling og-nav v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-nav)
+   Compiling og-input v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-input)
+   Compiling og-anim v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-anim)
+   Compiling og-audio v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-audio)
+   Compiling og-timeline v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-timeline)
+   Compiling og-probe v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+   Compiling og-ai v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ai)
+   Compiling wgpu-core-deps-wasm v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling glamx v0.3.1
+   Compiling parry2d v0.31.1
+   Compiling rapier2d v0.36.1
+   Compiling wgpu v30.0.1
+   Compiling og-physics v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-physics)
+   Compiling og-ui v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+   Compiling og-cook v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+   Compiling og-runtime v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-runtime)
+warning: field `physics_heightfields` is never read
+   --> crates/og-runtime/src/engine.rs:482:9
+    |
+416 | pub(crate) struct State {
+    |                   ----- field in this struct
+...
+482 |     pub physics_heightfields: IdMap<u64, og_physics::HeightfieldDesc>,
+    |         ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `og-runtime` (lib) generated 1 warning
+   Compiling og-host-web v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-host-web)
+    Finished `wasm-gate` profile [optimized] target(s) in 39.78s
+lanes variant lanes2d: og-host-web (--no-default-features --features publish,physics2d,profile2d,shaping, wasm atomics: scripts/wasm-lanes.sh)
+   Compiling compiler_builtins v0.1.160 (/Users/fan/.rustup/toolchains/1.99.1-aarch64-apple-darwin/lib/rustlib/src/rust/library/compiler-builtins/compiler-builtins)
+   Compiling core v0.0.0 (/Users/fan/.rustup/toolchains/1.99.1-aarch64-apple-darwin/lib/rustlib/src/rust/library/core)
+   Compiling libc v0.2.189
+   Compiling object v0.39.1
+   Compiling std v0.0.0 (/Users/fan/.rustup/toolchains/1.99.1-aarch64-apple-darwin/lib/rustlib/src/rust/library/std)
+   Compiling wgpu-hal v30.0.1 (/Volumes/app/origin-engine-measure/third_party/wgpu-hal)
+   Compiling og-core-derive v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-core-derive)
+   Compiling wgpu v30.0.1
+   Compiling og-render v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling thiserror v2.0.21
+   Compiling libm v0.2.16
+   Compiling num-traits v0.2.19
+   Compiling wasm-bindgen-shared v0.2.129
+   Compiling zmij v1.0.23
+   Compiling serde_json v1.0.154
+   Compiling crossbeam-utils v0.8.23
+   Compiling crossbeam-epoch v0.9.21
+   Compiling crossbeam-deque v0.8.8
+   Compiling rayon-core v1.13.0
+   Compiling wasm-bindgen v0.2.129
+   Compiling zerocopy v0.8.63
+   Compiling naga v30.0.1
+   Compiling parking_lot_core v0.9.12
+   Compiling slotmap v1.1.1
+   Compiling matrixmultiply v0.3.11
+   Compiling wgpu-core v30.0.1
+   Compiling rustc-std-workspace-core v1.99.0 (/Users/fan/.rustup/toolchains/1.99.1-aarch64-apple-darwin/lib/rustlib/src/rust/library/rustc-std-workspace-core)
+   Compiling alloc v0.0.0 (/Users/fan/.rustup/toolchains/1.99.1-aarch64-apple-darwin/lib/rustlib/src/rust/library/alloc)
+   Compiling adler2 v2.0.1
+   Compiling memchr v2.8.3
+   Compiling cfg-if v1.0.4
+   Compiling rustc-demangle v0.1.28
+   Compiling panic_abort v0.0.0 (/Users/fan/.rustup/toolchains/1.99.1-aarch64-apple-darwin/lib/rustlib/src/rust/library/panic_abort)
+   Compiling rustc-literal-escaper v0.0.8
+   Compiling unwind v0.0.0 (/Users/fan/.rustup/toolchains/1.99.1-aarch64-apple-darwin/lib/rustlib/src/rust/library/unwind)
+   Compiling dlmalloc v0.2.14
+   Compiling rustc-std-workspace-alloc v1.99.0 (/Users/fan/.rustup/toolchains/1.99.1-aarch64-apple-darwin/lib/rustlib/src/rust/library/rustc-std-workspace-alloc)
+   Compiling panic_unwind v0.0.0 (/Users/fan/.rustup/toolchains/1.99.1-aarch64-apple-darwin/lib/rustlib/src/rust/library/panic_unwind)
+   Compiling gimli v0.34.0
+   Compiling hashbrown v0.17.1
+   Compiling std_detect v0.1.5 (/Users/fan/.rustup/toolchains/1.99.1-aarch64-apple-darwin/lib/rustlib/src/rust/library/std_detect)
+   Compiling miniz_oxide v0.9.1
+   Compiling addr2line v0.27.1
+   Compiling proc_macro v0.0.0 (/Users/fan/.rustup/toolchains/1.99.1-aarch64-apple-darwin/lib/rustlib/src/rust/library/proc_macro)
+   Compiling bytemuck v1.25.2
+   Compiling cfg-if v1.0.5
+   Compiling unicode-ident v1.0.27
+   Compiling once_cell v1.21.4
+   Compiling slab v0.4.12
+   Compiling pin-project-lite v0.2.17
+   Compiling futures-task v0.3.34
+   Compiling futures-core v0.3.34
+   Compiling foldhash v0.2.0
+   Compiling itoa v1.0.18
+   Compiling equivalent v1.0.3
+   Compiling log v0.4.34
+   Compiling smallvec v1.16.3
+   Compiling futures-util v0.3.34
+   Compiling rustc-hash v1.1.0
+   Compiling static_assertions v1.1.0
+   Compiling either v1.19.0
+   Compiling unicode-width v0.2.2
+   Compiling bit-vec v0.9.1
+   Compiling raw-window-handle v0.6.2
+   Compiling scopeguard v1.2.0
+   Compiling profiling v1.0.18
+   Compiling lock_api v0.4.14
+   Compiling codespan-reporting v0.13.1
+   Compiling bit-set v0.10.0
+   Compiling crossbeam-channel v0.5.17
+   Compiling wide v1.7.1
+   Compiling rawpointer v0.2.1
+   Compiling parking_lot v0.12.5
+   Compiling allocator-api2 v0.2.21
+   Compiling typenum v1.20.1
+   Compiling robust v1.2.0
+   Compiling simd-adler32 v0.3.10
+   Compiling hashbrown v0.16.1
+   Compiling fdeflate v0.3.7
+   Compiling core_maths v0.1.1
+   Compiling approx v0.5.1
+   Compiling num-integer v0.1.47
+   Compiling miniz_oxide v0.8.9
+   Compiling ordered-float v5.5.0
+   Compiling glam v0.34.1
+   Compiling js-sys v0.3.106
+   Compiling bitflags v2.13.2
+   Compiling glam v0.33.12
+   Compiling num-rational v0.4.2
+   Compiling ena v0.14.4
+   Compiling arrayvec v0.7.8
+   Compiling num-complex v0.4.6
+   Compiling indexmap v2.14.2
+   Compiling spade v2.15.1
+   Compiling serde_arrays v0.2.0
+   Compiling downcast-rs v2.0.2
+   Compiling ttf-parser v0.25.1
+   Compiling unicode-bidi-mirroring v0.4.0
+   Compiling unicode-script v0.5.8
+   Compiling unicode-segmentation v1.13.3
+   Compiling unicode-properties v0.1.4
+   Compiling naga-types v30.0.1
+   Compiling unicode-ccc v0.4.0
+   Compiling bincode v1.3.3
+   Compiling og-blob v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-blob)
+   Compiling unicode-bidi v0.3.18
+   Compiling og-api v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-api)
+   Compiling half v2.7.1
+warning: unstable feature specified for `-Ctarget-feature`: `atomics`
+  |
+  = note: this feature is not stably supported; its behavior can change in the future
+
+warning: `og-blob` (lib) generated 1 warning
+warning: `og-api` (lib) generated 1 warning (1 duplicate)
+   Compiling rustybuzz v0.20.1
+   Compiling simba v0.10.2
+   Compiling og-core v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-core)
+   Compiling og-ecs v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ecs)
+   Compiling og-i18n v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-i18n)
+   Compiling og-tilemap v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-tilemap)
+   Compiling og-net v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-net)
+   Compiling og-geom v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+warning: `og-core` (lib) generated 1 warning (1 duplicate)
+   Compiling nalgebra v0.35.0
+warning: `og-i18n` (lib) generated 1 warning (1 duplicate)
+warning: `og-tilemap` (lib) generated 1 warning (1 duplicate)
+warning: `og-net` (lib) generated 1 warning (1 duplicate)
+warning: `og-geom` (lib) generated 1 warning (1 duplicate)
+   Compiling og-tween v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-tween)
+   Compiling og-nav v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-nav)
+   Compiling og-input v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-input)
+   Compiling og-audio v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-audio)
+warning: `og-ecs` (lib) generated 1 warning (1 duplicate)
+   Compiling web-sys v0.3.106
+   Compiling wasm-bindgen-futures v0.4.79
+   Compiling og-timeline v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-timeline)
+warning: `og-tween` (lib) generated 1 warning (1 duplicate)
+   Compiling og-probe v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+warning: `og-input` (lib) generated 1 warning (1 duplicate)
+warning: `og-nav` (lib) generated 1 warning (1 duplicate)
+   Compiling og-ai v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ai)
+warning: `og-audio` (lib) generated 1 warning (1 duplicate)
+warning: `og-timeline` (lib) generated 1 warning (1 duplicate)
+warning: `og-probe` (lib) generated 1 warning (1 duplicate)
+warning: `og-ai` (lib) generated 1 warning (1 duplicate)
+   Compiling glamx v0.3.1
+   Compiling wasm_sync v0.1.2
+   Compiling wgpu-types v30.0.1
+   Compiling glow v0.17.0
+   Compiling rayon v1.12.0
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wasm-bindgen-rayon v1.3.0
+   Compiling parry2d v0.31.1
+   Compiling og-lanes v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-lanes)
+   Compiling og-anim v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-anim)
+warning: `og-lanes` (lib) generated 1 warning (1 duplicate)
+   Compiling wgpu-core-deps-wasm v30.0.1
+warning: `wgpu-hal` (lib) generated 1 warning (1 duplicate)
+warning: `og-anim` (lib) generated 1 warning (1 duplicate)
+   Compiling rapier2d v0.36.1
+   Compiling og-physics v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-physics)
+warning: `og-physics` (lib) generated 1 warning (1 duplicate)
+   Compiling og-cook v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+   Compiling og-ui v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+warning: `og-render` (lib) generated 1 warning (1 duplicate)
+warning: `og-cook` (lib) generated 1 warning (1 duplicate)
+   Compiling og-runtime v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-runtime)
+warning: `og-ui` (lib) generated 1 warning (1 duplicate)
+warning: field `physics_heightfields` is never read
+   --> crates/og-runtime/src/engine.rs:482:9
+    |
+416 | pub(crate) struct State {
+    |                   ----- field in this struct
+...
+482 |     pub physics_heightfields: IdMap<u64, og_physics::HeightfieldDesc>,
+    |         ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `og-runtime` (lib) generated 2 warnings (1 duplicate)
+   Compiling og-host-web v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-host-web)
+warning: `og-host-web` (lib) generated 1 warning (1 duplicate)
+    Finished `wasm-gate` profile [optimized] target(s) in 1m 06s
+lanes variant lanes: og-host-web (--no-default-features --features publish,physics3d,shaping, wasm atomics: scripts/wasm-lanes.sh)
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling byteorder v1.5.0
+   Compiling stable_deref_trait v1.2.1
+   Compiling heapless v0.8.0
+   Compiling og-render v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-render)
+warning: unstable feature specified for `-Ctarget-feature`: `atomics`
+  |
+  = note: this feature is not stably supported; its behavior can change in the future
+
+warning: `og-lanes` (lib) generated 1 warning
+warning: `og-blob` (lib) generated 1 warning (1 duplicate)
+warning: `og-api` (lib) generated 1 warning (1 duplicate)
+   Compiling spade v2.15.1
+   Compiling hash32 v0.3.1
+   Compiling rstar v0.13.0
+   Compiling glam v0.34.1
+   Compiling serde_json v1.0.154
+   Compiling hashbrown v0.17.1
+   Compiling bitflags v2.13.2
+   Compiling glam v0.33.12
+   Compiling rustybuzz v0.20.1
+   Compiling arrayvec v0.7.8
+   Compiling num-complex v0.4.6
+   Compiling serde_arrays v0.2.0
+   Compiling bincode v1.3.3
+   Compiling indexmap v2.14.2
+   Compiling simba v0.10.2
+   Compiling naga-types v30.0.1
+   Compiling wgpu-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling nalgebra v0.35.0
+   Compiling og-core v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-core)
+   Compiling og-ecs v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ecs)
+   Compiling og-i18n v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-i18n)
+   Compiling og-tilemap v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-tilemap)
+   Compiling og-net v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-net)
+   Compiling og-geom v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-geom)
+warning: `og-core` (lib) generated 1 warning (1 duplicate)
+warning: `og-i18n` (lib) generated 1 warning (1 duplicate)
+warning: `og-tilemap` (lib) generated 1 warning (1 duplicate)
+warning: `og-net` (lib) generated 1 warning (1 duplicate)
+   Compiling wgpu-naga-bridge v30.0.1
+warning: `og-geom` (lib) generated 1 warning (1 duplicate)
+   Compiling wgpu-hal v30.0.1 (/Volumes/app/origin-engine-measure/third_party/wgpu-hal)
+   Compiling og-tween v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-tween)
+   Compiling og-nav v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-nav)
+   Compiling og-input v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-input)
+   Compiling og-anim v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-anim)
+   Compiling og-audio v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-audio)
+warning: `og-ecs` (lib) generated 1 warning (1 duplicate)
+   Compiling og-timeline v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-timeline)
+warning: `og-tween` (lib) generated 1 warning (1 duplicate)
+   Compiling og-probe v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-probe)
+warning: `og-input` (lib) generated 1 warning (1 duplicate)
+warning: `og-timeline` (lib) generated 1 warning (1 duplicate)
+warning: `og-nav` (lib) generated 1 warning (1 duplicate)
+   Compiling og-ai v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ai)
+warning: `og-audio` (lib) generated 1 warning (1 duplicate)
+   Compiling wgpu-core-deps-wasm v30.0.1
+warning: `wgpu-hal` (lib) generated 1 warning (1 duplicate)
+   Compiling wgpu-core v30.0.1
+   Compiling glamx v0.3.1
+warning: `og-probe` (lib) generated 1 warning (1 duplicate)
+   Compiling parry3d v0.31.1
+warning: `og-ai` (lib) generated 1 warning (1 duplicate)
+warning: `og-anim` (lib) generated 1 warning (1 duplicate)
+   Compiling wgpu v30.0.1
+   Compiling rapier3d v0.36.1
+   Compiling og-physics v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-physics)
+   Compiling og-ui v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-ui)
+   Compiling og-cook v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-cook)
+warning: `og-render` (lib) generated 1 warning (1 duplicate)
+warning: `og-ui` (lib) generated 1 warning (1 duplicate)
+warning: `og-cook` (lib) generated 1 warning (1 duplicate)
+   Compiling og-runtime v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-runtime)
+warning: `og-physics` (lib) generated 1 warning (1 duplicate)
+warning: `og-runtime` (lib) generated 1 warning (1 duplicate)
+   Compiling og-host-web v0.6.0 (/Volumes/app/origin-engine-measure/crates/og-host-web)
+warning: `og-host-web` (lib) generated 1 warning (1 duplicate)
+    Finished `wasm-gate` profile [optimized] target(s) in 45.00s
+artifact: /Volumes/app/origin-engine-measure/target/og-wasm/raw/og_host_web-lanes.wasm
+artifact: /Volumes/app/origin-engine-measure/target/og-wasm/raw/og_host_web-lanes2d.wasm
+artifact: /Volumes/app/origin-engine-measure/target/og-wasm/raw/og_host_web-publish.wasm
+artifact: /Volumes/app/origin-engine-measure/target/og-wasm/raw/og_host_web-publish2d.wasm
+artifact: /Volumes/app/origin-engine-measure/target/og-wasm/raw/og_host_web.wasm
+PASS wasm-build (217s)
+--> [2/2] wasm-opt started (+218s; log target/evidence/gate/wasm-opt.log)
+
+==> [2/2] wasm-opt
+og_host_web-lanes: 21193467 B raw -> 20739624 B bindgen -> 12314181 B wasm-opt -Oz
+og_host_web-lanes2d: 20023421 B raw -> 19605920 B bindgen -> 11375929 B wasm-opt -Oz
+og_host_web-publish: 20503518 B raw -> 19658353 B bindgen -> 11959709 B wasm-opt -Oz
+og_host_web-publish2d: 19283756 B raw -> 18429433 B bindgen -> 11002514 B wasm-opt -Oz
+og_host_web: 24171668 B raw -> 23449857 B bindgen -> 14289197 B wasm-opt -Oz
+size-gate measures the publish variant(s): /Volumes/app/origin-engine-measure/target/og-wasm/opt/og_host_web-lanes.wasm /Volumes/app/origin-engine-measure/target/og-wasm/opt/og_host_web-lanes2d.wasm /Volumes/app/origin-engine-measure/target/og-wasm/opt/og_host_web-publish.wasm /Volumes/app/origin-engine-measure/target/og-wasm/opt/og_host_web-publish2d.wasm
+PASS wasm-opt (115s)
+
+gate PASSED (2/2 steps, 333s)
+PASS wasm-build (217s)
+PASS wasm-opt (115s)
+EXIT 0
