@@ -6,7 +6,7 @@ version 1
 # bench (packages/engine/bench/lanes.ts) times it natively and in Chrome.
 name "Reference scene"
 id "reference-scene"
-engine "0.6.4"
+engine "0.6.5"
 entry "src/main.ts"
 profile "3d"
 tick 60
