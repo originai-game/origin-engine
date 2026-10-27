@@ -288,6 +288,41 @@ fn taa_reads_the_depth_buffer_through_a_sampler_on_gl() {
     assert!(read >= 2, "the resolves sample the depth ({read} reads)");
 }
 
+/// The modules whose passes read one level of a mip chain through a view
+/// whose base mip level is that level (the glass pyramid, a view's glow
+/// chain, mip generation, the IBL prefilter) never ask it for its size on
+/// WebGL2: ANGLE on D3D11 (Chrome and Edge on Windows) answers `textureSize`
+/// with base level b as level 2b's size, which blurred og-ui/glass about
+/// twice as wide as every other backend. Each pass takes the size it reads
+/// from a uniform instead.
+#[test]
+fn level_chain_passes_take_no_texture_size_on_gl() {
+    let sources = og_render::shader_sources(false);
+    let mut checked_entries = 0;
+    for label in ["glass", "view glow", "mipmap", "ibl"] {
+        let s = sources
+            .iter()
+            .find(|s| s.label == label)
+            .unwrap_or_else(|| panic!("the {label} module"));
+        let (module, info) = checked(&s.label, &s.wgsl, &s.constants, Capabilities::empty())
+            .unwrap_or_else(|e| panic!("{e}"));
+        for entry in module
+            .entry_points
+            .iter()
+            .filter(|e| e.stage == naga::ShaderStage::Fragment)
+        {
+            let glsl = glsl_es(&module, &info, entry).expect("translates");
+            assert!(
+                !glsl.contains("textureSize("),
+                "{label}::{} asks a level view for its size:\n{glsl}",
+                entry.name
+            );
+            checked_entries += 1;
+        }
+    }
+    assert!(checked_entries >= 6, "{checked_entries} fragment entries");
+}
+
 /// What the renderer compiles is `shaders/` without its comments (build.rs
 /// and the `wgsl!` macro): every file is there, line for line, each line
 /// the source's with only a `//` comment and the spaces before it gone. WGSL

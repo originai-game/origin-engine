@@ -13,6 +13,20 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+No IDL member changed; the simulation is unchanged (the golden replays).
+
+- Fixes: og-ui glass on WebGL2 in Chrome and Edge on Windows (ANGLE on
+  D3D11) blurred the panel about twice as wide as metal, WebGPU and DX12.
+  Each level of the glass pyramid is drawn from the one above, read
+  through a view whose base mip level is that level, and took its tap
+  spacing from `textureDimensions`, which ANGLE on D3D11 answers with
+  level 2b's size for base level b. The pyramid's levels, and a view's
+  glow chain (og.Glow in a viewport or texture view), which read their
+  levels the same way, now take the size from a uniform; native frames
+  are unchanged.
+
 ## 0.6.4 — 2026-10-27
 
 No IDL member changed; the simulation is unchanged (the golden replays).

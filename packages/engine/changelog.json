@@ -5,7 +5,9 @@
     "simulation": "unchanged",
     "breaking": [],
     "added": [],
-    "fixed": []
+    "fixed": [
+      "og-ui glass on WebGL2 in Chrome and Edge on Windows blurs as on metal, WebGPU and DX12: each pyramid level took its tap spacing from textureDimensions of a view whose base mip level is that level, which ANGLE on D3D11 answers with level 2b's size for base level b, so the blur was about twice as wide. Each level of the glass pyramid and of a view's glow chain now takes the size it reads from a uniform; native frames are unchanged."
+    ]
   },
   "versions": [
     {
