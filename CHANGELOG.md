@@ -3,9 +3,15 @@
 One version across `@origingame/engine` (the knowledge inside it as
 `knowledge/`), `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64`
 (`@origingame/engine-win32-x64` from F7) and `@origingame/create-game`
-(docs/release.md §3). Before 1.0.0 a minor
-bump carries API additions or changes, one line each, written at the merge
-that changes `crates/og-api/api.ogt`; a patch bump carries fixes and frames.
+(docs/release.md §3). Before 1.0.0 a minor bump (0.x.0) is a break: an
+IDL member removed or renamed, a type, default or saved value whose
+meaning changed, behaviour a game relied on changed; a game may need
+edits to upgrade, and the section says which. A patch bump (0.x.y) is
+everything compatible: new members that are off by default (an existing
+game draws and runs as before), variants appended to an enum, fixes,
+frames and speed. Either way every IDL member added, changed or removed
+is one line here, written at the merge that changes
+`crates/og-api/api.ogt`.
 
 ## Unreleased
 

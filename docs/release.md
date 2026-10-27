@@ -145,10 +145,20 @@ verification passed on Mac, Linux and Windows. Shipping 3D lanes wasm is
 3,223,281 B Brotli q11 (76.85% of 4 MiB). Hashes, commands, timings and
 remaining device/sandbox checks: [release receipt](../tests/evidence/release/0.5.0.md).
 
-**Version.** `0.1.0` is the first published version. Before `1.0.0` a
-minor bump carries API additions or changes (recorded in `CHANGELOG.md`,
-one line per IDL member added, changed or removed, written at the merge
-that changes `api.ogt`), a patch bump carries fixes and frames. Every
+**Version.** `0.1.0` is the first published version. Before `1.0.0` the
+minor number counts breaks and the patch number everything else (the
+owner, 2026-10-27: 0.1.0 to 0.6.0 in five days took a minor for every
+added field). A minor bump (`0.x.0`) is a release with a break: an IDL
+member removed or renamed, a field's type or default changed, a saved
+value or enum index whose meaning changed, or behaviour a game relied on
+changed, so a game may need edits to upgrade and `CHANGELOG.md` says
+which. A patch bump (`0.x.y`) is everything compatible: new members off
+by default (a game that does not set them draws and runs exactly as
+before, which the reference frames hold), variants appended to an enum,
+fixes, frames and speed. Either way `CHANGELOG.md` has one line per IDL
+member added, changed or removed, written at the merge that changes
+`api.ogt`; a release that is compatible but large may still take a minor
+when the owner names it. Every
 occurrence of the version is written by `scripts/release.sh bump` and
 held equal by `packages/knowledge`'s test: the three `package.json`
 (`optionalDependencies` included), `scaffold/origin-engine.json`,
