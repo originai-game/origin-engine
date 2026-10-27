@@ -130,6 +130,16 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.6.1 released (2026-10-27 UTC).** All five npm packages are
+published, and `v0.6.1` is pushed at `418d82f8`. It is a patch release: the
+five RedGPU ports are off by default, and it carries the Windows fixes
+(WebGL2 on ANGLE/D3D11, the debug og-gfx stack). Both real-GPU lanes
+(metal; DX12, Chrome and Edge) passed on its content. The tarballs from
+`release.yml` passed verify on Mac, Linux and Windows, and so did the
+registry install on all three. Shipping 3D lanes wasm is 3,260,792 B Brotli
+q11 (77.74 % of 4 MiB). The owed WebGL2-on-Windows follow-ups are in the
+[release receipt](../tests/evidence/release/0.6.1.md).
+
 **0.6.0 released (2026-10-26 UTC).** All five npm packages are published;
 `v0.6.0` is pushed at `34b492d0`. Metal functional and corrected Rumpus
 frames passed; the exact tarballs passed Mac/Linux/Windows consumer checks,
