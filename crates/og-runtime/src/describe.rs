@@ -298,6 +298,8 @@ impl SceneView for RuntimeView {
 /// from what still shows (its depth stays the nearest point the pass
 /// found). Its coverage drawn alone does not change, so its occlusion
 /// grows by the share the UI hides.
+// Tooling only: a description's id frame.
+#[allow(clippy::disallowed_methods)]
 pub(crate) fn hide_under(frame: &mut og_render::IdFrame, cover: &[[f32; 4]]) {
     if cover.is_empty() {
         return;

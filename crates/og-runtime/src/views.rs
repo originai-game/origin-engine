@@ -239,6 +239,8 @@ fn index(v: &Value) -> Option<usize> {
 
 /// The camera of an entity's world matrix: at its origin, looking down
 /// its local -Z with its +Y up, as og.Camera.
+// Rendering only: a view's projection.
+#[allow(clippy::disallowed_methods)]
 fn camera_of(m: Mat4, v: &Value) -> og_render::Camera {
     let position = m.transform_point3(Vec3::ZERO);
     let forward = m.transform_vector3(Vec3::NEG_Z).normalize_or(Vec3::NEG_Z);

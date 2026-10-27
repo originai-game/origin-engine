@@ -94,6 +94,8 @@ fn foot_track(s: &SkeletonAsset, c: &ClipAsset, foot: u32) -> Vec<Vec3> {
 /// the target's ground (the source's ground scaled onto the target) against
 /// the source foot's height above its own, scaled; and the largest slide
 /// (xz travel between planted frames against the source's, scaled).
+// Test reference values: libm checks the result, never the tick.
+#[allow(clippy::disallowed_methods)]
 fn contact_error(walk: &ClipAsset, out: &Retargeted, t: &SkeletonAsset) -> (f32, f32, usize) {
     let s = support::skeleton();
     let (sm, tm) = (HumanoidMap::detect(&s), HumanoidMap::detect(t));
@@ -418,6 +420,8 @@ fn hand_target() -> SkeletonAsset {
 }
 
 /// Angle between two directions.
+// Test reference values: libm checks the result, never the tick.
+#[allow(clippy::disallowed_methods)]
 fn angle(a: Vec3, b: Vec3) -> f32 {
     a.normalize().dot(b.normalize()).clamp(-1.0, 1.0).acos()
 }
@@ -604,6 +608,8 @@ fn unitys_legacy_thumb_names_start_at_the_metacarpal() {
 }
 
 /// The twist of `q` about unit `axis`, in radians.
+// Test reference values: libm checks the result, never the tick.
+#[allow(clippy::disallowed_methods)]
 fn twist(q: Quat, axis: Vec3) -> f32 {
     let p = Vec3::new(q.x, q.y, q.z).dot(axis);
     let (p, w) = if q.w < 0.0 { (-p, -q.w) } else { (p, q.w) };

@@ -74,6 +74,8 @@ fn value(text: String) -> Value {
     v["value"].clone()
 }
 
+// Test reference values: libm checks the result, never the tick.
+#[allow(clippy::disallowed_methods)]
 fn view_projection(c: &Camera) -> Mat4 {
     let aspect = W as f32 / H as f32;
     let view = glam::camera::rh::view::look_at_mat4(c.position, c.target, c.up);
@@ -164,6 +166,8 @@ fn run(engine: u32, seen: &RefCell<Vec<Camera>>, script: &str) -> (Vec<Camera>, 
 }
 
 #[test]
+// Test reference values: libm checks the result, never the tick.
+#[allow(clippy::disallowed_methods)]
 fn views_frame_the_entity_orthographically_from_their_side() {
     set_hooks(Rc::new(NoAssets));
     og_host_begin_bundle();

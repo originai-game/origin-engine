@@ -127,6 +127,8 @@ pub(crate) fn bounds(rs: &mut RenderState, h: &Hierarchy, of: &[u64]) -> Option<
 
 /// The camera that frames the box `lo`..`hi` from `preset` at `aspect`
 /// (width over height), MARGIN free on each side of the binding extent.
+// Tooling only: the review orbit camera.
+#[allow(clippy::disallowed_methods)]
 pub(crate) fn camera(preset: Preset, lo: Vec3, hi: Vec3, aspect: f32) -> Camera {
     let aspect = if aspect.is_finite() && aspect > 0.0 {
         aspect
@@ -201,6 +203,8 @@ pub(crate) fn apply(
 
 /// The camera's view-projection matrix (tests and the turntable's notes).
 #[cfg(test)]
+// Test reference values: libm checks the result, never the tick.
+#[allow(clippy::disallowed_methods)]
 fn view_projection(c: &Camera, aspect: f32) -> Mat4 {
     let view = glam::camera::rh::view::look_at_mat4(c.position, c.target, c.up);
     let proj = match c.projection {

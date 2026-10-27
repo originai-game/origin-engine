@@ -166,6 +166,8 @@ fn world(think_every: u32, active: bool) -> (World, Vec<Entity>) {
 }
 
 /// Mean ms per tick over `ticks`, after `warm` ticks, the heroes circling.
+// A cost example: its scene setup never runs in the tick.
+#[allow(clippy::disallowed_methods)]
 fn run(think_every: u32, active: bool, warm: u32, ticks: u32) -> f64 {
     let (mut w, heroes) = world(think_every, active);
     let mut total = 0.0;

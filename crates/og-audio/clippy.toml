@@ -1,0 +1,3 @@
+# Not a simulation crate: the mix is heard, never read by the tick.
+# The root clippy.toml's ban on host libm does not apply here.
+disallowed-methods = []

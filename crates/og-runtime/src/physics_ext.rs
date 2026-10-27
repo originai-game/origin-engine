@@ -581,6 +581,8 @@ pub fn og_physics_ragdoll_rig_from_skeleton(world: u32, skeleton: f64) -> String
 /// The ragdolls' drawing: each posed model (palette `palettes[e]`) whose
 /// entity has a rig from its skeleton gets its joints blended towards the
 /// bones' bodies by og.Ragdoll.blend.
+// Rendering only: the drawn ragdoll's skin palette.
+#[allow(clippy::disallowed_methods)]
 pub(crate) fn draw_ragdolls(
     world: &World,
     rs: &mut RenderState,

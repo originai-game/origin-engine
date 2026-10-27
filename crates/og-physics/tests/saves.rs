@@ -23,6 +23,8 @@ const HULL: u64 = 8;
 const TERRAIN: u64 = 9;
 
 /// A rolling 120 m square of 60 × 60 cells: 7,200 triangles.
+// Test reference values: libm checks the result, never the tick.
+#[allow(clippy::disallowed_methods)]
 fn ground_mesh() -> MeshDesc {
     let n = 61;
     let mut positions = Vec::new();

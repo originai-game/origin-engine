@@ -150,6 +150,8 @@ fn targets_2d(sway: f32) -> Vec<(Vec3, Quat)> {
 }
 
 /// The angle of a rotation about z (a 2D bone's rotation).
+// Test reference values: libm checks the result, never the tick.
+#[allow(clippy::disallowed_methods)]
 fn angle_z(q: Quat) -> f32 {
     2.0 * q.z.atan2(q.w)
 }

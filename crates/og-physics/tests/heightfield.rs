@@ -137,6 +137,8 @@ fn the_surface_follows_the_field_and_its_edits() {
 /// is grounded and never below the surface); a ball dropped on it comes to
 /// rest on it.
 #[test]
+// Test reference values: libm checks the result, never the tick.
+#[allow(clippy::disallowed_methods)]
 fn a_character_walks_up_a_field_and_a_ball_rests_on_it() {
     let (mut w, p) = world(Physics::default(), 1);
     let slope = 15f32.to_radians().tan();

@@ -8,6 +8,7 @@ mod ao_resolution;
 mod armed_emitters;
 mod baked_scenes;
 mod billboards;
+mod camera_projection;
 mod contact_hit;
 mod cookie_cap;
 mod drop_shadows;

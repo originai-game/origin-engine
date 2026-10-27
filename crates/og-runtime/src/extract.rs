@@ -1004,6 +1004,8 @@ fn backend_size(rs: &RenderState) -> (u32, u32) {
 }
 
 /// Rebuild the per-frame part of `rs.scene` from the world as of its tick.
+// Rendering only: the drawn cameras' field of view.
+#[allow(clippy::disallowed_methods)]
 pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let mut h = std::mem::take(&mut rs.hierarchy);
     h.refresh(world);

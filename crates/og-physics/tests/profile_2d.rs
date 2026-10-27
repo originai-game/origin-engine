@@ -14,6 +14,8 @@ use og_physics::*;
 use support::*;
 
 #[test]
+// Test reference values: libm checks the result, never the tick.
+#[allow(clippy::disallowed_methods)]
 fn a_circle_rolls_down_a_slope() {
     let (mut w, physics) = world(Physics::profile_2d(), 1);
     // A 30 m plank tilted 20 degrees, descending towards +x.

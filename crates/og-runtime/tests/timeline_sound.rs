@@ -69,6 +69,8 @@ track music {
 "#;
 
 /// A mono sine of `hz` at amplitude 0.5 for `seconds`, as a 48 kHz WAV.
+// Test reference values: libm checks the result, never the tick.
+#[allow(clippy::disallowed_methods)]
 fn sine_wav(hz: f32, seconds: f32) -> Vec<u8> {
     let n = (48_000.0 * seconds) as usize;
     let pcm: Vec<f32> = (0..n)

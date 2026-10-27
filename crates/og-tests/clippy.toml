@@ -1,0 +1,3 @@
+# Not a simulation crate: engine tests: reference values and render setups.
+# The root clippy.toml's ban on host libm does not apply here.
+disallowed-methods = []

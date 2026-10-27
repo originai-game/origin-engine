@@ -1,0 +1,38 @@
+# Determinism (AGENTS.md "Deterministic by construction", og-core's math.rs):
+# the host's libm rounds transcendental functions differently on Windows,
+# Linux, macOS and wasm, so simulation code calls og_core::math instead.
+# Crates that only render, cook or run tools allow this at their root; code
+# in a simulation crate that never feeds the tick takes a scoped #[allow].
+disallowed-methods = [
+  { path = "f32::sin", reason = "host libm: og_core::math::sin" },
+  { path = "f32::cos", reason = "host libm: og_core::math::cos" },
+  { path = "f32::sin_cos", reason = "host libm: og_core::math::sin_cos" },
+  { path = "f32::tan", reason = "host libm: og_core::math::sin_cos" },
+  { path = "f32::asin", reason = "host libm: og_core::math::atan2" },
+  { path = "f32::acos", reason = "host libm: og_core::math::acos" },
+  { path = "f32::atan", reason = "host libm: og_core::math::atan" },
+  { path = "f32::atan2", reason = "host libm: og_core::math::atan2" },
+  { path = "f32::exp", reason = "host libm: og_core::math::exp" },
+  { path = "f32::ln", reason = "host libm: og_core::math::ln" },
+  { path = "f32::powf", reason = "host libm: og_core::math::pow" },
+  { path = "f32::powi", reason = "host libm: og_core::math::pow, or multiply" },
+  { path = "glam::Quat::slerp", reason = "host libm: og_core::math::quat_slerp" },
+  { path = "glam::Quat::rotate_towards", reason = "host libm: og_core::math::quat_slerp" },
+  { path = "glam::Quat::from_axis_angle", reason = "host libm: og_core::math::quat_from_axis_angle" },
+  { path = "glam::Quat::from_euler", reason = "host libm: og_core::math::quat_from_axis_angle" },
+  { path = "glam::Vec2::from_angle", reason = "host libm: og_core::math::sin_cos" },
+  { path = "glam::camera::rh::proj::opengl::perspective", reason = "host libm: build it with og_core::math::sin_cos, as og-runtime's view_proj does" },
+  { path = "glam::camera::rh::proj::vulkan::perspective", reason = "host libm: build it with og_core::math::sin_cos, as og-runtime's view_proj does" },
+  { path = "glam::camera::rh::proj::vulkan::perspective_infinite", reason = "host libm: build it with og_core::math::sin_cos, as og-runtime's view_proj does" },
+  { path = "glam::camera::rh::proj::vulkan::perspective_infinite_reverse", reason = "host libm: build it with og_core::math::sin_cos, as og-runtime's view_proj does" },
+  { path = "glam::camera::rh::proj::directx::perspective", reason = "host libm: build it with og_core::math::sin_cos, as og-runtime's view_proj does" },
+  { path = "glam::camera::rh::proj::directx::perspective_infinite", reason = "host libm: build it with og_core::math::sin_cos, as og-runtime's view_proj does" },
+  { path = "glam::camera::rh::proj::directx::perspective_infinite_reverse", reason = "host libm: build it with og_core::math::sin_cos, as og-runtime's view_proj does" },
+  { path = "glam::camera::lh::proj::opengl::perspective", reason = "host libm: build it with og_core::math::sin_cos, as og-runtime's view_proj does" },
+  { path = "glam::camera::lh::proj::vulkan::perspective", reason = "host libm: build it with og_core::math::sin_cos, as og-runtime's view_proj does" },
+  { path = "glam::camera::lh::proj::vulkan::perspective_infinite", reason = "host libm: build it with og_core::math::sin_cos, as og-runtime's view_proj does" },
+  { path = "glam::camera::lh::proj::vulkan::perspective_infinite_reverse", reason = "host libm: build it with og_core::math::sin_cos, as og-runtime's view_proj does" },
+  { path = "glam::camera::lh::proj::directx::perspective", reason = "host libm: build it with og_core::math::sin_cos, as og-runtime's view_proj does" },
+  { path = "glam::camera::lh::proj::directx::perspective_infinite", reason = "host libm: build it with og_core::math::sin_cos, as og-runtime's view_proj does" },
+  { path = "glam::camera::lh::proj::directx::perspective_infinite_reverse", reason = "host libm: build it with og_core::math::sin_cos, as og-runtime's view_proj does" },
+]

@@ -1,0 +1,3 @@
+# Not a simulation crate: the cook processes assets offline, outside the tick.
+# The root clippy.toml's ban on host libm does not apply here.
+disallowed-methods = []
