@@ -1,10 +1,11 @@
-// Materialises the mounts knowledge.json declares into an OriginGame
-// platform checkout's production tree (packages/game-knowledge/production):
+// Materialises the mounts knowledge.json declares into the platform's
+// knowledge tree, `knowledge/` of an origin-agent checkout (before the
+// agent-repo split, OriginGame's packages/game-knowledge/production):
 // skills as game/skills/<name>/, the wiki as og-game's reference/, the
 // project template plus origin-engine.json and distribution.json as the
 // scaffold overlay game-scaffold/<overlay>/.
 //
-//   bun scripts/mount.ts <origingame checkout> [--check] [--commit <rev> | --package <dir>]
+//   bun scripts/mount.ts <origin-agent checkout> [--check] [--commit <rev> | --package <dir>]
 //
 // The package owns, in the platform tree, exactly the directories it mounts:
 // game/skills/<each of its skills>/ and game-scaffold/<overlay>/. Within
@@ -24,6 +25,11 @@
 // knowledge of an installed @origingame/engine (the directory `bun install`
 // put it in; the package carries this directory as knowledge/): what the
 // platform does at a pinned version (docs/release.md §4 L2).
+//
+// origin-agent's scripts/knowledge/mount-engine.ts imports `installed`,
+// `mount` and `summary` from the installed package and passes its own
+// knowledge root: their signatures are a public contract (AGENTS.md), and
+// changing them is a break.
 
 import { execFileSync } from "node:child_process";
 import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmdirSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -32,7 +38,8 @@ import { dirname, join, resolve } from "node:path";
 import { defaultRoots, isText, PACKAGE_ROOT, payload, walk, type Roots } from "./lib.ts";
 import { validate } from "./validate.ts";
 
-export const PRODUCTION = "packages/game-knowledge/production";
+/** The platform's knowledge tree, relative to an origin-agent checkout. */
+export const PRODUCTION = "knowledge";
 
 export interface Change {
   readonly kind: "added" | "changed" | "removed";
@@ -71,7 +78,7 @@ function executable(path: string): boolean {
 export function mount(roots: Roots, production: string, write: boolean): MountResult {
   for (const top of ["game/skills", "game-scaffold"]) {
     if (!existsSync(join(production, top)) || !statSync(join(production, top)).isDirectory()) {
-      throw new Error(`${production}: no ${top}/; pass the root of an OriginGame checkout (it holds ${PRODUCTION})`);
+      throw new Error(`${production}: no ${top}/; pass the root of an origin-agent checkout (its ${PRODUCTION}/ holds game/ and game-scaffold/)`);
     }
   }
   const problems = validate(roots);
@@ -189,7 +196,7 @@ if (import.meta.main) {
   const pkgDir = pi >= 0 ? args[pi + 1] : undefined;
   const positional = args.filter((a, i) => !a.startsWith("--") && !(ci >= 0 && i === ci + 1) && !(pi >= 0 && i === pi + 1));
   if ((ci >= 0 && !commit) || (pi >= 0 && !pkgDir) || (commit && pkgDir) || positional.length !== 1 || args.some((a) => a.startsWith("--") && a !== "--check" && a !== "--commit" && a !== "--package")) {
-    process.stderr.write("usage: bun scripts/mount.ts <origingame checkout> [--check] [--commit <rev> | --package <dir>]\n");
+    process.stderr.write("usage: bun scripts/mount.ts <origin-agent checkout> [--check] [--commit <rev> | --package <dir>]\n");
     process.exit(2);
   }
   const repo = join(PACKAGE_ROOT, "..", "..");

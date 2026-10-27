@@ -1,6 +1,6 @@
-// The mount writes the package into a platform production tree and owns
-// only what it mounts. Each test runs the CLI against a stand-in platform
-// checkout (a production tree with someone else's skill and overlay) and
+// The mount writes the package into the platform's knowledge tree and owns
+// only what it mounts. Each test runs the CLI against a stand-in origin-agent
+// checkout (a knowledge/ tree with someone else's skill and overlay) and
 // asserts on the files it leaves and the exit status --check returns.
 
 import { afterAll, expect, test } from "bun:test";
@@ -16,7 +16,7 @@ afterAll(() => {
 });
 
 const SCRIPT = join(import.meta.dir, "../scripts/mount.ts");
-const PROD = "packages/game-knowledge/production";
+const PROD = "knowledge";
 
 function platform(): string {
   const dir = mkdtempSync(join(tmpdir(), "og-mount-platform-"));
@@ -107,5 +107,5 @@ test("a path that is not a platform checkout is refused", () => {
   temps.push(dir);
   const r = mount(dir);
   expect(r.code).toBe(1);
-  expect(r.err).toContain("pass the root of an OriginGame checkout");
+  expect(r.err).toContain("pass the root of an origin-agent checkout");
 });
