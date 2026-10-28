@@ -13,6 +13,16 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+- render, `RenderScene::set_shader_param`: a changed parameter is written
+  into the material's uniform in place (`queue.write_buffer`) and keeps
+  its bind group, where it used to rebuild both. On the web each new
+  buffer and bind group cost about 1 ms in the browser's GPU process: the
+  Grand View Garden's ~500 materials updated 15 times a second drew at
+  1.5–2.5 fps in Chrome, 22–27 fps with this. Frames are unchanged; no
+  IDL member changed.
+
 ## 0.7.0 — 2026-10-28
 
 The art contract (docs/art.md §2.1, stream A1): a game's style as data

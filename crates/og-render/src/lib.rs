@@ -1138,6 +1138,10 @@ impl GpuMesh {
 
 struct GpuMaterial {
     revision: u64,
+    /// Its standard uniform (the group's binding 0) and the shader
+    /// parameters it holds: a parameter change is written into it in place.
+    factors: wgpu::Buffer,
+    params: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
     /// The standard group: every pass but a physical material's lit one.
     bind_group: wgpu::BindGroup,
     /// A physical material's group for its lit pass (`physical.rs`).
@@ -3866,14 +3870,26 @@ impl Renderer {
         let restyle = self.cache.material_style != scene.stylise.material;
         self.cache.material_style = scene.stylise.material;
         for (i, (material, revision)) in scene.materials().enumerate() {
-            if self
-                .cache
-                .materials
-                .get(i)
-                .is_some_and(|m| m.revision == revision)
+            if let Some(m) = self.cache.materials.get_mut(i)
+                && m.revision == revision
                 && !samples_replaced(material)
                 && !restyle
             {
+                // Only the shader's parameters changed: into the uniform as
+                // they are (MaterialUniform::custom), the group kept.
+                let params = scene
+                    .material_shader(MaterialHandle::from_index(i))
+                    .map(|h| h.1);
+                if m.params != params
+                    && let Some(p) = params
+                {
+                    self.queue.write_buffer(
+                        &m.factors,
+                        std::mem::offset_of!(material::MaterialUniform, custom) as u64,
+                        bytemuck::bytes_of(&p),
+                    );
+                    m.params = params;
+                }
                 continue;
             }
             let styled = material::styled(material, &scene.stylise.material);
@@ -3919,6 +3935,8 @@ impl Renderer {
             let transmissive = physical.is_some() && material.is_transmissive();
             let gpu = GpuMaterial {
                 revision,
+                params: hooked.map(|h| h.1),
+                factors,
                 bind_group,
                 physical,
                 array,
@@ -4390,7 +4408,7 @@ impl Renderer {
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("material"),
                 contents: bytemuck::bytes_of(&uniform),
-                usage: wgpu::BufferUsages::UNIFORM,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
         let entries = [
             factors.as_entire_binding(),
