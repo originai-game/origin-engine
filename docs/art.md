@@ -245,7 +245,7 @@ build (numbers cannot judge a style, og-taste §11).
   hand animation). `look.support` stays, now derived: `full` when every
   needed layer but `authored` is implemented, `content` when `authored`
   is needed, `partial` otherwise with `missing` naming what.
-- `look.family`: one of eight sample scenes (§3 stream A10) the style is
+- `look.family`: one of eight sample scenes (§3 stream A7, `examples/art-<family>`) the style is
   proven on.
 
 The showcase's 37-preset station stays as the frame regression it is; the
