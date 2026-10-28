@@ -79,9 +79,9 @@ art, `full` where it reads and the check passes, else `partial`.
 | `8bit-pixel` | pixel-side | [8bit-pixel.jpg](frames/8bit-pixel.jpg) | yes: flat 4-step blocks, tiny sprites on an exact grid, a banded sky: the early-console language of the preview | pass | full |
 | `voxel-worlds` | shape-3d | [voxel-worlds.jpg](frames/voxel-worlds.jpg) | yes: the tree, hero and hills are stepped cubes on one grid, single-colour faces | off: models/hero.ogt: normals 92.6% flat against >= 99.0% flat (ArtShape.normals flat) | partial |
 | `illuminated-manuscript` | paint-2d | [illuminated-manuscript.jpg](frames/illuminated-manuscript.jpg) | yes: parchment, gold sun, ink-outlined flat figures, an ornamental border and floral frieze | pass | content |
-| `rubber-hose-animation` | paint-2d | [rubber-hose-animation.jpg](frames/rubber-hose-animation.jpg) | no: the hose figure and inked props are there, but Stylise.posterize 4 turns the sepia print into olive and pink bands, and the inked line measures 5 to 7 px against ArtLine.width 3 | off: art/crate.png: line 6 px against 3 px (ArtLine.width); art/hero.png: line 7 px against 3 px (ArtLine.width); art/lantern.png: line 5 px against 3 px (ArtLine.width); art/tree.png: line 6 px against 3 px (ArtLine.width) | content |
+| `rubber-hose-animation` | paint-2d | [rubber-hose-animation.jpg](frames/rubber-hose-animation.jpg) | yes (since the preset tuning below): the sepia film print with grain and scratches, the hose figure and inked props in flat fills; the inked line still measures 5 to 7 px against ArtLine.width 3, the generated art's ink | off: art/crate.png: line 6 px against 3 px (ArtLine.width); art/hero.png: line 7 px against 3 px (ArtLine.width); art/lantern.png: line 5 px against 3 px (ArtLine.width); art/tree.png: line 6 px against 3 px (ArtLine.width) | content |
 | `pencil-hatching` | ink-3d | [pencil-hatching.jpg](frames/pencil-hatching.jpg) | yes: grey graphite hatching over every surface, contour lines, paper white | pass | full |
-| `gothic-contour` | paint-2d | [gothic-contour.jpg](frames/gothic-contour.jpg) | no: Stylise.posterize 5 crushes the misty blue-grey architecture into five flat grey bands; without it the frame reads | pass | content |
+| `gothic-contour` | paint-2d | [gothic-contour.jpg](frames/gothic-contour.jpg) | yes (since the preset tuning below): misty blue-grey spires fading into haze behind dark ornamental arches, the pale hooded figure, ink contours and the vignette | pass | content |
 | `lush-painted-worlds` | paint-2d | [lush-painted-worlds.jpg](frames/lush-painted-worlds.jpg) | yes: opaque warm-lit masses with cool shadow, brushwork in the foliage | pass | content |
 | `decorative-storybook` | paint-2d | [decorative-storybook.jpg](frames/decorative-storybook.jpg) | yes: flat patterned planes, ornamental trees and flowers, coloured line | pass | content |
 | `classical-painting-collage` | paint-2d | [classical-painting-collage.jpg](frames/classical-painting-collage.jpg) | yes: old-master fragments with cut seams under one varnish tone, cut-out figures | pass | content |
@@ -105,11 +105,11 @@ art, `full` where it reads and the check passes, else `partial`.
 | `layered-silhouette` | cinematic-3d | [layered-silhouette.jpg](frames/layered-silhouette.jpg) | yes: every form a flat dark silhouette in depth bands against a pale sky | pass | full |
 | `minimal-geometric` | shape-3d | [minimal-geometric.jpg](frames/minimal-geometric.jpg) | yes: flat untextured colour planes, baked one colour per face, no texture anywhere | off: models/hero.ogt: normals 98.0% flat against >= 99.0% flat (ArtShape.normals flat) | partial |
 | `neon-vector` | shape-3d | [neon-vector.jpg](frames/neon-vector.jpg) | yes: black faces under glowing cyan lines on a dark field, bloom on the lantern (neon-vector's own sources, tools/art-samples/neon.py) | pass | full |
-| `monochrome-dither-3d` | pixel-3d | [monochrome-dither-3d.jpg](frames/monochrome-dither-3d.jpg) | no: the dither cell is so coarse that the tree, hero and crate dissolve into a checkerboard | pass | partial |
+| `monochrome-dither-3d` | pixel-3d | [monochrome-dither-3d.jpg](frames/monochrome-dither-3d.jpg) | yes (since the Bayer fix below): two colours, a fine ordered dither carries the light: the tree, hero, crate, lantern and hills keep their forms in perspective | pass | full |
 | `luminous-layered-painting` | paint-2d | [luminous-layered-painting.jpg](frames/luminous-layered-painting.jpg) | yes: dark cool painted layers, the lantern and village the luminous focal points, mist into depth | pass | content |
 
-**13 full, 14 partial, 10 content.** Of the 10 content styles, 8 read as
-their style on the sample; the authored assets that carry each are its own
+**14 full, 13 partial, 10 content** (13, 14 and 10 before the preset
+tuning below). All 10 content styles read as their style on the sample; the authored assets that carry each are its own
 Painter set in `examples/art-paint-2d/styles/<slug>/art/` (watercolor-wash,
 also paint-2d, is not content: its set is the family's base in
 `assets/art/`).
@@ -144,7 +144,8 @@ voxelises).
    coordinator's call): `rubber-hose-animation`'s `Stylise.posterize 4`
    and `gothic-contour`'s `posterize 5` band the frame into olive/pink and
    flat greys (with `posterize 0` both read, checked by frame);
-   `monochrome-dither-3d`'s dither cell swallows every form.
+   `monochrome-dither-3d`'s dither cell swallows every form. Settled by
+   the preset tuning below.
 4. **Decimation within the silhouette bound cannot reach small budgets on
    round models:** the hero stops at 426 faces against faceted-low-poly's
    200, the hills at 596 against 300 and 200; the cook keeps them whole
@@ -171,3 +172,57 @@ voxelises).
   off (table).
 - Not run, per the stream rules: scripts/check.sh, test lanes, `og test`,
   web-reference, wasm or release builds.
+
+## Preset tuning (`art/preset-tuning`)
+
+Branch `art/preset-tuning` from `9ccaf706`, for finding 3. Frames taken
+with the branch's dev `og` and addon (`OG_NATIVE_ADDON`,
+`OG_ENGINE_PACKAGE`) on lavapipe at 1280x720, read at 640x360 beside
+the old frame and the preview: `tuning/<slug>.jpg` is before (`9ccaf706`)
+| after | preview.
+
+- **Why posterize bands.** Not the curve: `stylise.wgsl`'s `quantize`
+  rounds each channel to `posterize` uniform steps in display space,
+  which is the right space (ImageMagick's linear-space posterize of the
+  same backdrop bands worse). It is the per-channel rounding at a low
+  level count: a near-neutral colour whose channels sit closer than one
+  step (85 codes at 4, 64 at 5) lands on unequal steps and changes hue.
+  The rubber-hose backdrop's sepia `(189,151,104)` becomes `(170,170,85)`,
+  olive; gothic's blue-grey haze grey or violet. At `posterize 8` both
+  frames still shift (a purple tree, yellow and cyan patches), so no level
+  count keeps these palettes. Both presets drop `Stylise.posterize`: the
+  cel bands stay the toon material's (rubber-hose), the contours the ink
+  pass's, with the shadow tint and vignette (gothic).
+- **Why the dither swallowed the forms.** Not the cell: `bayer()` in
+  `stylise.wgsl` (and og-cook's mirror for texture conformance) took the
+  position's coarsest bit as the threshold's most significant, a
+  quadrant-clustered matrix (`0 2 8 10 / 3 1 11 9 / ...`), so a quarter
+  tone drew as one 4 x 4 block per 8 x 8: at 240 lines upscaled 3x, a
+  24 px period checkerboard. Fixed to the dispersed Bayer matrix
+  (`0 8 2 10 / 12 4 14 6 / ...`); the preset is unchanged (`bayer8` at
+  `pixelHeight 240` reads once the matrix is right; `bayer4` and
+  `pixelHeight 360` were tried and are not needed).
+  `palette::tests::bayer_matches_the_frame` pins the matrix and fails on
+  the old code.
+- **Frames.** `rubber-hose-animation`, `gothic-contour`,
+  `monochrome-dither-3d` read now (table above; style check unchanged:
+  rubber-hose's line is still off, the other two pass). The Bayer fix
+  also moves every other `bayer4`/`bayer8` style: `16bit-pixel`,
+  `detailed-pixel`, `luminous-pixel`, `monochrome-pixel` and
+  `pixel-3d-hybrid` were recaptured, read as before (monochrome-pixel's
+  sky is a fine pattern where it was a coarse checker), and their checks
+  are unchanged; their `frames/` and the contact sheet are refreshed.
+- **Reference frames that move** (not re-recorded here; Metal is the
+  coordinator's): `examples/art-paint-2d/references/metal/`
+  `rubber-hose-animation.png`, `gothic-contour.png`;
+  `examples/art-pixel-3d/references/metal/` `monochrome-dither-3d.png`,
+  `pixel-3d-hybrid.png`; `examples/art-pixel-side/references/metal/`
+  `16bit-pixel.png`, `detailed-pixel.png`, `luminous-pixel.png`,
+  `monochrome-pixel.png`; `templates/fx-showcase/references/metal/`
+  `looks-<slug>.png` for the same eight slugs (web-reference `--looks`
+  compares against them); `crates/og-tests/references/{metal,webgl2}/`
+  `stylise-pixel.png` (`Bayer4`); and the games on a `bayer4`/`bayer8`
+  look: `examples/hollowbell/references/metal/*` (16bit-pixel, its own
+  `bayer4`) and `examples/brasswick/references/metal/*` (detailed-pixel,
+  `bayer8`), every frame that draws the world through the look. `bayer2`
+  styles (8bit-pixel, low-resolution-3d, hollowbell's dawn) do not move.
