@@ -13,3 +13,11 @@ Stylise {
   hatchingScale 5
   posterize 6
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 4 to 8 light colours (or one ink); the preset's 1 px ink line.
+ArtPalette {
+  maxColors 8
+}
+ArtLine {
+  width 1
+}

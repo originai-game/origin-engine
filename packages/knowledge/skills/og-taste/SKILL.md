@@ -55,9 +55,11 @@ game can hold on every frame. Some premises and where they land:
 
 `npm create @origingame/game -- --premise "<one line>"` does this match
 for a new game and writes the result (`--look <slug>` names it instead):
-`assets/looks/<game>.ogt` extending the preset, named by `GameDesc.look`,
-with a README section on changing it. For a game that exists, write the
-same file by hand (§12) and add `look: "looks/<game>.ogt"` to `og.game`.
+`assets/looks/<game>.ogt` extending the preset, named by `GameDesc.look`
+and by project.ogt's `look` line, with a README section on changing it.
+For a game that exists, write the same file by hand (§12), add `look
+"looks/<game>.ogt"` to project.ogt (the cook reads the style's art
+contract from it) and leave `GameDesc.look` out, or name the same file.
 The entry also names the palette rules, the asset specs and the UI style
 its preset carries (the look's `ui` line, §12), so a game that extends a
 preset is dressed by it from the first frame. The game's UI follows the
@@ -507,6 +509,42 @@ bundle, naming the line. A look's top-level `antialias` takes `tier`,
 part of the look. A look in a streaming group applies once its group is
 resident. The mechanics (what each resource's fields do, presets, the
 built-in canvases) are og-game §15 and §16.
+
+**The art contract: what every asset holds.** Beside the frame's
+resources, a look carries seven art blocks that turn the entry's
+`palette` and `assets` prose into numbers every asset is made to, 2D and
+3D alike (og-game §15 has the fields). Each preset already holds its
+style's values; read them in `templates/looks/<slug>.ogt` (the comment
+above them says where each number comes from) and override only what the
+game decides differently.
+
+| Block | Holds | Where it comes from in the entry |
+|---|---|---|
+| `ArtPalette` | `colors` (a palette asset), `strict`, `maxColors`, `rampSteps`, `accents` (palette indices kept for signals), `dither` | `palette`: the colour count, the ramps, the indexed palette of a handheld or 1-bit style |
+| `ArtPixels` | `unit` (pixels per metre), `logicalHeight`, `spriteSizes`, `rotation`, `rotationSteps`, `snap` | `assets`: the logical resolution, sprite scale and tile size of pixel styles |
+| `ArtTexels` | `density` (texels per metre), `maxSize`, `filter`, `mips` | `assets`: texture density, the small nearest-filtered textures of early 3D |
+| `ArtShape` | `propFaces`, `characterFaces`, `normals`, `normalAngle`, `bevel`, `voxel`, `silhouette` | `assets`: the face budget, facets or soft forms, clay bevels, the voxel edge |
+| `ArtLine` | `width`, `color`, `place`, `distanceFalloff` | `assets`: the outline width and where it lies |
+| `ArtMotion` | `stepFps`, `maxFrames`, `squash` | animation on twos or threes, rubber-hose squash |
+| `ArtCamera` | `projection`, `fixedAngle`, `pitch`, `yaw`, `fovMin`, `fovMax`, `pixelPerfect` | a style that rules perspective in or out, a fixed isometric or side-on view |
+
+```text
+extends "topdown-tile-pixel"
+ArtPalette {
+  colors "palettes/meadow.hex"   # the game's own palette: every asset sits on it
+  accents 2 9                    # the player and danger; scenery stays off them
+}
+ArtPixels {
+  spriteSizes 16                 # one tile size, no 24-pixel stragglers
+}
+```
+
+Every field is no constraint at zero, so an override to `0` (or `false`,
+or the empty list) releases a constraint the preset sets. project.ogt's
+`look "looks/<game>.ogt"` names the look the cook reads the contract from;
+`create` writes it. Write the contract's numbers into every asset request
+(the palette as names and hex, the sizes, the line, the face budget), and
+check each asset against them, never only the frame.
 
 **Expand the art bible.** Fill the catalogue's `artBibleTemplate` with the
 chosen entry and the project's premise, camera and platform, and keep the

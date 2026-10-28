@@ -13,3 +13,13 @@ RenderSettings {
   bloomIntensity 0.4
   exposure 1.05
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: a free palette; at most a 1 px line, so not fixed; props of 1k to 8k
+# triangles hand-painted at 1 texel per screen pixel on 100 to 180 px
+# characters.
+ArtTexels {
+  density 128
+}
+ArtShape {
+  propFaces 8000
+}

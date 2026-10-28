@@ -12,3 +12,9 @@ Stylise {
   depthBandsFarColor "#c8d8ec"
   depthBandsFlatten 1
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: one hue in 4 to 6 values: at most 6 colours, a 6-step ramp; no line.
+ArtPalette {
+  maxColors 6
+  rampSteps 6
+}

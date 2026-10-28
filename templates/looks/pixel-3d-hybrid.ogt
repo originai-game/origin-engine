@@ -18,3 +18,22 @@ PostEffects {
   dofMaxBlur 0.01
   dofQuality low
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: sprites of 32 to 64 colours, 48 to 64 px characters on one pixel
+# size at 240 lines, nearest-filtered; set pieces of 2k to 20k triangles.
+ArtPalette {
+  maxColors 64
+}
+ArtPixels {
+  unit 32
+  logicalHeight 240
+  spriteSizes 48 64
+  rotation cleanEdge
+  snap true
+}
+ArtShape {
+  propFaces 20000
+}
+ArtCamera {
+  projection perspective
+}

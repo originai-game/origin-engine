@@ -183,7 +183,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `facts` | `FactsFn \| null` | `null` | — | — | — | The game's own facts for the probe's state(). |
 | `start` | `StartFn \| null` | `null` | — | — | — | Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it. |
 | `render` | `RenderOptions` | `{}` | — | — | — | How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer. |
-| `look` | `string` | `""` | — | — | — | A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Empty applies none. |
+| `look` | `string` | `""` | — | — | — | A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Left out or empty, project.ogt's `look "looks/<name>.ogt"` (the look whose art contract the cook reads) is applied when it has one, else none; the two naming different looks is refused (one value in two places). |
 
 ```ogt
 struct GameDesc {
@@ -213,7 +213,7 @@ struct GameDesc {
   field facts Option.FactsFn "The game's own facts for the probe's state()."
   field start Option.StartFn "Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it."
   field render RenderOptions "How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer."
-  field look String "A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Empty applies none."
+  field look String "A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Left out or empty, project.ogt's `look \"looks/<name>.ogt\"` (the look whose art contract the cook reads) is applied when it has one, else none; the two naming different looks is refused (one value in two places)."
 }
 ```
 

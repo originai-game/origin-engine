@@ -15,3 +15,24 @@ Stylise {
 RenderSettings {
   toneMapping none
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 2 colours plus at most 1 accent, on the preset's four-ink palette,
+# every texel one of them, shading by dither; 12 to 24 px characters at 160
+# lines; the silhouette is the outline.
+ArtPalette {
+  colors "@palettes/handheld4"
+  strict true
+  maxColors 3
+  dither bayer8
+}
+ArtPixels {
+  unit 16
+  logicalHeight 160
+  spriteSizes 12 16 24
+  rotation nearest
+  snap true
+}
+ArtCamera {
+  projection orthographic
+  pixelPerfect true
+}

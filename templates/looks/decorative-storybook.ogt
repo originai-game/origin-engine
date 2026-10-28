@@ -15,3 +15,16 @@ PostEffects {
   vignette true
   vignetteIntensity 0.3
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 16 to 32 colours; the preset's 2 px coloured line; flat-shaded low
+# poly where 3D.
+ArtPalette {
+  maxColors 32
+}
+ArtShape {
+  normals flat
+}
+ArtLine {
+  width 2
+  color "#2a1a10"
+}

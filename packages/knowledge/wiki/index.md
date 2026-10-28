@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 34 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 35 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -43,6 +43,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`path`](path.md) | `og.path.*` | kept | Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t. |
 | [`timeline`](timeline.md) | `og.timeline.*` | kept | Timelines: cutscenes and sequences as data, Unity's Timeline and Godot's AnimationPlayer as an `.ogt` the agent reads and diffs. A `type timeline` file has a `duration` in seconds, `path "<name>" { ... }` blocks (as og.path's) and `track <kind> ["<entity>"] { key <seconds> { ... } }` blocks; `og cook` cooks it (importing caption files) and og.load.timeline loads it. Tracks: `camera` (position and target keys, or `rail "<path>"` with `at` 0..1 along it, or `follow "<entity>"` with offsets; fov; eased), `transform "<entity>"` (position, rotation in degrees or quaternion, scale; eased), `animation "<entity>"` (clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model), `audio` (sound, volume, pitch, bus), `music` (sound, volume, fadeIn, fadeOut, end, loop, bus), `caption` (text from `key` to `end` with a UI type step `style` and an `anchor`; `captions "narration.srt" [offset]` imports a SubRip file or word timestamps `.json`), `event` (`do "<command-channel action>"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it), `transition` (kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from, over og.ui's screen cover) and `marker` (`name`, sending og.TimelineMarker when played past). |
 | [`net`](net.md) | `og.net.*` | kept | Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it. |
+| [`art`](art.md) | types and tokens | kept | A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): the palette its texels sit on (ArtPalette), one pixel size for 2D art (ArtPixels), one texel density for 3D surfaces (ArtTexels), the shape language of its models (ArtShape), its line (ArtLine), the step of its motion (ArtMotion) and its camera (ArtCamera). A style is the assets, not a filter on the frame: the look's render resources treat the frame, these say what the assets themselves must be. |
 
 ### `og-feel`
 
@@ -121,7 +122,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1243 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1262 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -157,6 +158,18 @@ Field units the docs and Tune use.
 | [`ArchetypeView.entity`](world.md#member-ArchetypeView-entity) | method | world | `og_archetype_view_entity` |
 | [`ArchetypeView.has`](world.md#member-ArchetypeView-has) | method | world | `og_archetype_view_has` |
 | [`ArchetypeView.tick`](world.md#member-ArchetypeView-tick) | property | world | `og_archetype_view_get_tick` |
+| [`ArtFilter`](art.md#type-ArtFilter) | enum | art | — |
+| [`ArtFilter()`](art.md#column-ArtFilter) | column kind | art | — |
+| [`ArtLinePlace`](art.md#type-ArtLinePlace) | enum | art | — |
+| [`ArtLinePlace()`](art.md#column-ArtLinePlace) | column kind | art | — |
+| [`ArtMips`](art.md#type-ArtMips) | enum | art | — |
+| [`ArtMips()`](art.md#column-ArtMips) | column kind | art | — |
+| [`ArtNormals`](art.md#type-ArtNormals) | enum | art | — |
+| [`ArtNormals()`](art.md#column-ArtNormals) | column kind | art | — |
+| [`ArtProjection`](art.md#type-ArtProjection) | enum | art | — |
+| [`ArtProjection()`](art.md#column-ArtProjection) | column kind | art | — |
+| [`ArtRotation`](art.md#type-ArtRotation) | enum | art | — |
+| [`ArtRotation()`](art.md#column-ArtRotation) | column kind | art | — |
 | [`Asset`](load.md#type-Asset) | handle | load | — |
 | [`Asset()`](load.md#column-Asset) | column kind | load | — |
 | [`AudioBus`](audio.md#type-AudioBus) | enum | audio | — |
@@ -503,6 +516,13 @@ Field units the docs and Tune use.
 | [`og.AnimationEvent`](anim.md#record-AnimationEvent) | event | anim | — |
 | [`og.AnimationGraph`](anim.md#record-AnimationGraph) | component | anim | — |
 | [`og.AnimationPlayer`](anim.md#record-AnimationPlayer) | component | anim | — |
+| [`og.ArtCamera`](art.md#record-ArtCamera) | resource | art | — |
+| [`og.ArtLine`](art.md#record-ArtLine) | resource | art | — |
+| [`og.ArtMotion`](art.md#record-ArtMotion) | resource | art | — |
+| [`og.ArtPalette`](art.md#record-ArtPalette) | resource | art | — |
+| [`og.ArtPixels`](art.md#record-ArtPixels) | resource | art | — |
+| [`og.ArtShape`](art.md#record-ArtShape) | resource | art | — |
+| [`og.ArtTexels`](art.md#record-ArtTexels) | resource | art | — |
 | [`og.AssetFailed`](load.md#record-AssetFailed) | event | load | — |
 | [`og.AssetReady`](load.md#record-AssetReady) | event | load | — |
 | [`og.atmosphere.timeOfDay`](atmosphere.md#fn-timeOfDay) | function | atmosphere | `og_atmosphere_time_of_day` |

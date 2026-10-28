@@ -17,3 +17,15 @@ PostEffects {
   filmGrain 0.03
   ao true
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: characters 3k to 15k triangles, props 500 to 5k, blunt bevelled
+# forms; stop motion on twos.
+ArtShape {
+  propFaces 5000
+  characterFaces 15000
+  normals smooth
+  bevel 0.02
+}
+ArtMotion {
+  stepFps 12
+}

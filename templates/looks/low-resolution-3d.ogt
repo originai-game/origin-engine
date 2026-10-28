@@ -18,3 +18,26 @@ Fog {
   color "#5a6070"
   density 0.03
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: dithered gradients; 64 to 256 px nearest-filtered textures (about 64
+# texels per metre on a 2 m model) at 240 lines; characters 300 to 1000
+# triangles, props under 300.
+ArtPalette {
+  dither bayer2
+}
+ArtPixels {
+  logicalHeight 240
+}
+ArtTexels {
+  density 64
+  maxSize 256
+  filter nearest
+  mips none
+}
+ArtShape {
+  propFaces 300
+  characterFaces 1000
+}
+ArtCamera {
+  projection perspective
+}

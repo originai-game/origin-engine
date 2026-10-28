@@ -1140,6 +1140,36 @@ pub fn cook_project_with_texture_cache(
     sources.retain(|s| !consumed.contains(&s.rel));
     ignored.retain(|r| !consumed.contains(r));
     let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
+    // The project's look (project.ogt's `look "looks/<id>.ogt"`): its art
+    // contract (docs/art.md §2.1), read before anything cooks. A line that
+    // names no look of the bundle is that asset's error.
+    let mut contract: Option<(String, crate::look::LookFile)> = None;
+    let project_look = std::fs::read_to_string(root.join("project.ogt"))
+        .ok()
+        .and_then(|t| Document::parse(&t).ok())
+        .map(|d| crate::look::project_look(&d.body))
+        .transpose()
+        .map_err(|e| CookError(format!("project.ogt:{e}")))?
+        .flatten();
+    if let Some(id) = project_look {
+        match sources.iter().find(|s| s.rel == id) {
+            Some(s) if s.kind == Kind::Look => {
+                if let Ok(c) = look::contract(s, &assets_dir, &|id| known.contains(id)) {
+                    contract = Some((id, c));
+                }
+            }
+            Some(_) => early_errors.push((
+                id,
+                "look",
+                "project.ogt's `look` names it, and it is not an .ogt of `type look`".into(),
+            )),
+            None => early_errors.push((
+                id.clone(),
+                "look",
+                format!("project.ogt's `look` names assets/{id}, which does not exist"),
+            )),
+        }
+    }
     // Streaming groups (phase 3): every scene's, read before anything cooks.
     let (groups, group_of) = plan_groups(&sources, &known, &mut early_errors);
     let schemas: BTreeMap<String, Schema> = options
@@ -1925,6 +1955,18 @@ pub fn cook_project_with_texture_cache(
                 r.notes.push(what);
             }
         }
+    }
+    // The project's look carries the art contract: say which of its
+    // resources it sets (conformance to them is docs/art.md §2.3).
+    if let Some((id, c)) = &contract
+        && let Some(r) = reports.iter_mut().find(|r| &r.source == id)
+    {
+        let set = c.resources();
+        r.notes.push(if set.is_empty() {
+            "the project's look (project.ogt): it sets no art resource, so the art contract constrains nothing".into()
+        } else {
+            format!("the project's look (project.ogt): its art contract sets {}", set.join(", "))
+        });
     }
     reports.sort_by(|a, b| a.source.cmp(&b.source));
     Ok(Report {

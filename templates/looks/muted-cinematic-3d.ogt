@@ -17,3 +17,9 @@ Fog {
   color "#6a6a70"
   density 0.02
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: greys and one accent with no palette yet; simplified 2k to 10k
+# triangles.
+ArtShape {
+  characterFaces 10000
+}

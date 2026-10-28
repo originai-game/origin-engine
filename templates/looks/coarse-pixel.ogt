@@ -14,3 +14,19 @@ Stylise {
 RenderSettings {
   toneMapping none
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 6 to 16 colours; 6 to 12 px characters at 90 lines; no outline.
+ArtPalette {
+  maxColors 16
+}
+ArtPixels {
+  unit 8
+  logicalHeight 90
+  spriteSizes 6 8 12
+  rotation nearest
+  snap true
+}
+ArtCamera {
+  projection orthographic
+  pixelPerfect true
+}

@@ -15,3 +15,17 @@ Stylise {
   inkThreshold 0.2
   inkWidth 1
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 2 to 4 colours; incised 1 px lines inside the figures in the
+# ground's colour; never perspective depth.
+ArtPalette {
+  maxColors 4
+}
+ArtLine {
+  width 1
+  color "#b0552a"
+  place inside
+}
+ArtCamera {
+  projection orthographic
+}

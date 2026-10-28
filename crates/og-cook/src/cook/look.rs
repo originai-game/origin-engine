@@ -941,6 +941,22 @@ pub(super) fn look_dependencies(s: &Source, root: &Path, known: &dyn Fn(&str) ->
     out.join("\n")
 }
 
+/// The art contract of the look `s` (project.ogt's `look`): the look
+/// flattened over its chain and checked, with only its art resources'
+/// blocks (`crate::look::ART_RESOURCES`), which the cook reads before any
+/// asset of the game cooks. An error is the look's own (its cook reports it
+/// too).
+pub(super) fn contract(
+    s: &Source,
+    root: &Path,
+    known: &dyn Fn(&str) -> bool,
+) -> Result<LookFile, String> {
+    let (mut look, _) = resolve(s, root, known, PRESETS)?;
+    look.blocks
+        .retain(|b| crate::look::ART_RESOURCES.contains(&b.resource.as_str()));
+    Ok(look)
+}
+
 /// Cooks one `type look` file.
 pub(super) fn cook_look(
     s: &Source,
@@ -1225,6 +1241,78 @@ mod tests {
             one("skin \"skins/x/skin.ogt\"\n", &[])
                 .unwrap_err()
                 .contains("'skin' is now 'ui'")
+        );
+    }
+
+    #[test]
+    fn the_art_contract_checks_like_the_frames_resources() {
+        let one = |body: &str, known: &[&str]| {
+            let root = project(&[("looks/b.ogt", &format!("{HEAD}{body}"))]);
+            cook(&root, "looks/b.ogt", known)
+        };
+        let l = one(
+            "Stylise {\n  posterize 4\n}\nArtPalette {\n  colors \"@palettes/dusk16\"\n  maxColors 16\n  accents 2 5\n  dither bayer4\n}\nArtPixels {\n  unit 16\n  spriteSizes 16 32\n  rotation cleanEdge\n}\nArtLine {\n  width 1\n  color \"#ffffff\"\n  place inside\n}\nArtCamera {\n  projection orthographic\n  pixelPerfect true\n}\n",
+            &["@palettes/dusk16.hex"],
+        )
+        .unwrap();
+        let block = |r: &str| l.blocks.iter().find(|b| b.resource == r).unwrap();
+        assert_eq!(
+            block("ArtPalette").get("colors").unwrap()[0].as_str(),
+            Some("@palettes/dusk16.hex")
+        );
+        let line: Vec<f64> = block("ArtLine")
+            .get("color")
+            .unwrap()
+            .iter()
+            .map(|v| v.as_number().unwrap().as_f64())
+            .collect();
+        assert_eq!(line, [1.0, 1.0, 1.0], "an sRGB colour is stored linear");
+        assert_eq!(
+            l.resources(),
+            ["Stylise", "ArtPalette", "ArtPixels", "ArtLine", "ArtCamera"]
+        );
+        let bad = |body: &str| one(body, &[]).unwrap_err();
+        let e = bad("ArtPixels {\n  rotation spin\n}\n");
+        assert!(
+            e.contains("one of free, nearest, cleanEdge, prerotated"),
+            "{e}"
+        );
+        let e = bad("ArtPalette {\n  maxColors 300\n}\n");
+        assert!(e.contains("outside 0 to 256"), "{e}");
+        let e = bad("ArtPalette {\n  accents 1.5\n}\n");
+        assert!(e.contains("not a u32"), "{e}");
+        let e = bad("ArtPixels {\n  spriteSizes 1 2 3 4 5 6 7 8 9\n}\n");
+        assert!(e.contains("holds at most 8, got 9"), "{e}");
+        let e = bad("ArtShape {\n  voxel -0.1\n}\n");
+        assert!(e.contains("outside 0 to"), "{e}");
+        let e = bad("ArtPalette {\n  colors \"palettes/p.png\"\n}\n");
+        assert!(e.contains("not a Palette"), "{e}");
+        let e = bad("ArtLine {\n  thickness 2\n}\n");
+        assert!(e.contains("ArtLine has no field 'thickness'"), "{e}");
+
+        // The contract is the look's art blocks alone, through its chain.
+        let root = project(&[
+            (
+                "looks/base.ogt",
+                &format!("{HEAD}Fog {{\n  enabled true\n}}\nArtShape {{\n  normals flat\n}}\n"),
+            ),
+            (
+                "looks/main.ogt",
+                &format!(
+                    "{HEAD}extends \"looks/base.ogt\"\nStylise {{\n  posterize 4\n}}\nArtMotion {{\n  stepFps 12\n}}\n"
+                ),
+            ),
+        ]);
+        let c = contract(&source(&root, "looks/main.ogt"), &root, &|_| false).unwrap();
+        assert_eq!(c.resources(), ["ArtShape", "ArtMotion"]);
+        let root = project(&[(
+            "looks/plain.ogt",
+            &format!("{HEAD}Stylise {{\n  posterize 4\n}}\n"),
+        )]);
+        let c = contract(&source(&root, "looks/plain.ogt"), &root, &|_| false).unwrap();
+        assert!(
+            c.blocks.is_empty(),
+            "a look without art blocks constrains nothing"
         );
     }
 

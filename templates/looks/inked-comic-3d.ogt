@@ -22,3 +22,18 @@ Stylise {
   inkThreshold 0.15
   inkWidth 1.5
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: a free, saturated palette; 10k to 30k triangles; the preset's 3 px
+# ink line, thinning with distance; hand-inked at 1 texel per screen pixel on
+# 300 px characters.
+ArtTexels {
+  density 128
+}
+ArtShape {
+  characterFaces 30000
+}
+ArtLine {
+  width 3
+  color "#0a0810"
+  distanceFalloff 8
+}

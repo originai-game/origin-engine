@@ -175,34 +175,39 @@ pub(crate) struct GameDecl {
     pub start: Option<u32>,
     /// GameDesc.look: applied before start runs; empty is none.
     pub look: String,
-    /// Which of tick, seed, scenes and scene GameDesc set: the others take
-    /// project.ogt's ([`with_project`]), else their defaults.
+    /// Which of tick, seed, scenes, scene and look GameDesc set: the others
+    /// take project.ogt's ([`with_project`]), else their defaults.
     pub given: Given,
 }
 
-/// Which of GameDesc's tick, seed, scenes and scene the game set.
+/// Which of GameDesc's tick, seed, scenes, scene and look the game set.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Given {
     pub tick: bool,
     pub seed: bool,
     pub scenes: bool,
     pub scene: bool,
+    pub look: bool,
 }
 
-/// project.ogt's `tick`, `seed`, `scenes` and `scene`, as the host read
-/// them (CreateOptions.project): the defaults of the GameDesc fields a game
-/// leaves unset.
+/// project.ogt's `tick`, `seed`, `scenes`, `scene` and `look`, as the host
+/// read them (CreateOptions.project): the defaults of the GameDesc fields a
+/// game leaves unset.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct ProjectGame {
     pub tick: Option<u32>,
     pub seed: Option<u32>,
     pub scenes: Option<BTreeMap<String, String>>,
     pub scene: Option<String>,
+    /// `look "looks/<id>.ogt"`: the look whose art contract the cook reads
+    /// (og-cook's `cook::look::project_look`), as an asset id.
+    pub look: Option<String>,
 }
 
-/// Reads `tick`, `seed`, `scenes` and `scene` from project.ogt's text; a
-/// value of the wrong kind is refused naming its line. Other keys are og's
-/// (`name`, `entry`, `profile`, `publish`, ...) and are not read here.
+/// Reads `tick`, `seed`, `scenes`, `scene` and `look` from project.ogt's
+/// text; a value of the wrong kind is refused naming its line. Other keys
+/// are og's (`name`, `entry`, `profile`, `publish`, ...) and are not read
+/// here.
 pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
     let doc = og_core::ogt::parse(text).map_err(|e| format!("project.ogt: {}", e.reason()))?;
     let b = &doc.body;
@@ -263,11 +268,13 @@ pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
             Some(out)
         }
     };
+    let look = og_cook::look::project_look(b).map_err(|e| format!("project.ogt:{e}"))?;
     Ok(ProjectGame {
         tick,
         seed,
         scenes,
         scene,
+        look,
     })
 }
 
@@ -298,6 +305,11 @@ pub(crate) fn with_project(mut game: GameDecl, p: &ProjectGame) -> Result<GameDe
     both("seed", g.seed, &mut game.seed, &p.seed)?;
     both("scenes", g.scenes, &mut game.scenes, &p.scenes)?;
     both("scene", g.scene, &mut game.scene, &p.scene)?;
+    // The same asset id written with or without `assets/` is one look.
+    if g.look {
+        game.look = og_cook::runtime::asset_id(&game.look).to_string();
+    }
+    both("look", g.look, &mut game.look, &p.look)?;
     Ok(game)
 }
 
@@ -730,6 +742,7 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
             seed: desc["seed"].is_u64(),
             scenes: desc["scenes"].is_object(),
             scene: desc["scene"].is_string(),
+            look: desc["look"].as_str().is_some_and(|l| !l.is_empty()),
         },
     };
     DECL.with(|d| {

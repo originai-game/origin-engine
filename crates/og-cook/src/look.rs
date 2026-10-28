@@ -1,8 +1,10 @@
 //! Looks (`.ogt` of `type look`): a frame's art direction as one
 //! git-diffable file. A look names the engine resources it sets (the IDL's
 //! `RenderSettings`, `PostEffects`, `Stylise`, `MaterialStyle`, `Fog`, `Sky`
-//! and `Environment`) with their fields by reflected name, the UI style, and
-//! the antialiasing it wants, and may build on another look:
+//! and `Environment` for the frame, and the art contract's `ArtPalette`,
+//! `ArtPixels`, `ArtTexels`, `ArtShape`, `ArtLine`, `ArtMotion` and
+//! `ArtCamera` for the assets) with their fields by reflected name, the UI
+//! style, and the antialiasing it wants, and may build on another look:
 //!
 //! ```text
 //! type look
@@ -33,6 +35,15 @@
 //! MaterialStyle {
 //!   toon true
 //! }
+//! ArtPalette {
+//!   colors "@palettes/dusk16"   # the palette the assets' texels sit on
+//!   rampSteps 4
+//!   accents 3 7                 # a list on its one line
+//! }
+//! ArtLine {
+//!   width 1
+//!   color "#1b1420"
+//! }
 //! ```
 //!
 //! This module reads and writes the text ([`LookFile`]) and merges a look
@@ -47,8 +58,10 @@ use og_core::ogt::{Block, Document, Entry, Value};
 /// The `.ogt` type of a look.
 pub const LOOK_TYPE: &str = "look";
 
-/// The resources a look may set, by IDL name (each registers as `og.<name>`).
-pub const LOOK_RESOURCES: [&str; 7] = [
+/// The resources a look may set, by IDL name (each registers as `og.<name>`):
+/// the frame's render resources, then the art contract (the IDL's `art`
+/// module, docs/art.md §2.1), what every asset of the style holds.
+pub const LOOK_RESOURCES: [&str; 14] = [
     "RenderSettings",
     "PostEffects",
     "Stylise",
@@ -56,6 +69,25 @@ pub const LOOK_RESOURCES: [&str; 7] = [
     "Fog",
     "Sky",
     "Environment",
+    "ArtPalette",
+    "ArtPixels",
+    "ArtTexels",
+    "ArtShape",
+    "ArtLine",
+    "ArtMotion",
+    "ArtCamera",
+];
+
+/// The art contract's resources among [`LOOK_RESOURCES`]: what the cook
+/// reads from the project's look (project.ogt's `look`).
+pub const ART_RESOURCES: [&str; 7] = [
+    "ArtPalette",
+    "ArtPixels",
+    "ArtTexels",
+    "ArtShape",
+    "ArtLine",
+    "ArtMotion",
+    "ArtCamera",
 ];
 
 /// Fields game code animates tick by tick: a look never sets them, and
@@ -295,6 +327,26 @@ impl LookFile {
     }
 }
 
+/// project.ogt's `look "looks/<id>.ogt"` (the project's `body`): the asset
+/// id of the look whose art contract the cook reads (docs/art.md §2.1),
+/// the look GameDesc.look applies when it names none; `None` without the
+/// line. A value that is not one quoted `.ogt` path is refused as
+/// `<line>: ...`.
+pub fn project_look(body: &Block) -> Result<Option<String>, String> {
+    let Some(e) = body.get("look") else {
+        return Ok(None);
+    };
+    match e.values.as_slice() {
+        [Value::String(s)] if s.ends_with(".ogt") && e.block.is_none() => {
+            Ok(Some(crate::runtime::asset_id(s).to_string()))
+        }
+        _ => Err(format!(
+            "{}: `look` names the game's look by its asset id, such as `look \"looks/main.ogt\"`",
+            e.line
+        )),
+    }
+}
+
 /// An sRGB `#rrggbb` (or `rrggbb`) colour as linear RGB, as three.js
 /// `Color.setHex` gives under its colour management.
 pub fn hex_to_linear(hex: &str) -> Option<[f64; 3]> {
@@ -417,6 +469,35 @@ mod tests {
         assert!(bad("antialias fxaa\n").contains("one of tier, off, msaa4, taa"));
         assert!(bad("palette \"p.hex\"\n").contains("not a look entry"));
         assert!(bad("Stylise {\n  posterize 4\n  posterize 5\n}\n").contains("set twice"));
+    }
+
+    #[test]
+    fn the_project_names_its_look_by_asset_id() {
+        let look = |body: &str| {
+            let doc = Document::parse(&format!("type project\nversion 1\n---\n{body}")).unwrap();
+            project_look(&doc.body)
+        };
+        assert_eq!(look("name \"P\"\n"), Ok(None));
+        assert_eq!(
+            look("look \"looks/main.ogt\"\n"),
+            Ok(Some("looks/main.ogt".into()))
+        );
+        assert_eq!(
+            look("look \"assets/looks/main.ogt\"\n"),
+            Ok(Some("looks/main.ogt".into())),
+            "with or without assets/, one id"
+        );
+        for bad in [
+            "look main\n",
+            "look \"looks/main.png\"\n",
+            "look \"a.ogt\" \"b.ogt\"\n",
+        ] {
+            let e = look(bad).unwrap_err();
+            assert!(
+                e.starts_with("4: `look` names the game's look"),
+                "{bad}: {e}"
+            );
+        }
     }
 
     #[test]

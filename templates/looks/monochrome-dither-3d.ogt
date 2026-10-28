@@ -14,3 +14,20 @@ Stylise {
 RenderSettings {
   toneMapping none
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 2 to 4 colours, ink and paper (the preset's 1-bit palette) with
+# dither as the only shading; 2k to 10k triangles at 240 lines.
+ArtPalette {
+  colors "@palettes/1bit"
+  maxColors 4
+  dither bayer8
+}
+ArtPixels {
+  logicalHeight 240
+}
+ArtShape {
+  characterFaces 10000
+}
+ArtCamera {
+  projection perspective
+}

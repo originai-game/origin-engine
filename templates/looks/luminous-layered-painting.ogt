@@ -16,3 +16,9 @@ RenderSettings {
   bloom true
   bloomIntensity 0.5
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: dark masses and luminous accents, no fixed palette; at most a 1 px
+# line, so not fixed; 3D props of 2k to 10k triangles.
+ArtShape {
+  propFaces 10000
+}

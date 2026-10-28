@@ -18,3 +18,17 @@ PostEffects {
   chromaticAberration 0.5
   filmGrain 0.03
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: a free graded palette; up to 100k triangles per hero; PBR textures
+# at up to 2 texels per screen pixel on 400 px characters; real lenses.
+ArtTexels {
+  density 512
+  filter linear
+  mips full
+}
+ArtShape {
+  characterFaces 100000
+}
+ArtCamera {
+  projection perspective
+}

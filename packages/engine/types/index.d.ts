@@ -249,6 +249,18 @@ export interface ColumnKinds {
   PathKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: PathKind };
   /** A TimelineAsset handle field (0 is none). */
   TimelineAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: TimelineAsset };
+  /** An ArtRotation field: the variant's index. */
+  ArtRotation: { readonly array: Uint32Array; readonly stride: 1; readonly value: ArtRotation };
+  /** An ArtFilter field: the variant's index. */
+  ArtFilter: { readonly array: Uint32Array; readonly stride: 1; readonly value: ArtFilter };
+  /** An ArtMips field: the variant's index. */
+  ArtMips: { readonly array: Uint32Array; readonly stride: 1; readonly value: ArtMips };
+  /** An ArtNormals field: the variant's index. */
+  ArtNormals: { readonly array: Uint32Array; readonly stride: 1; readonly value: ArtNormals };
+  /** An ArtLinePlace field: the variant's index. */
+  ArtLinePlace: { readonly array: Uint32Array; readonly stride: 1; readonly value: ArtLinePlace };
+  /** An ArtProjection field: the variant's index. */
+  ArtProjection: { readonly array: Uint32Array; readonly stride: 1; readonly value: ArtProjection };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -1603,7 +1615,7 @@ export interface GameDesc {
    */
   readonly render?: RenderOptions;
   /**
-   * A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Empty applies none.
+   * A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Left out or empty, project.ogt's `look "looks/<name>.ogt"` (the look whose art contract the cook reads) is applied when it has one, else none; the two naming different looks is refused (one value in two places).
    *
    * @default ""
    */
@@ -5580,7 +5592,7 @@ export interface LookInfo {
    */
   readonly extends: readonly string[];
   /**
-   * The resources it sets, by IDL name (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment). Applying it replaces each of them whole: the fields the look names take its values, the rest their defaults.
+   * The resources it sets, by IDL name (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment, and the art contract: ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion, ArtCamera). Applying it replaces each of them whole: the fields the look names take its values, the rest their defaults.
    */
   readonly resources: readonly string[];
   /**
@@ -23092,6 +23104,370 @@ export interface LockstepStatus {
 
 
 
+// ── art ─────────────────────────────────────────────────────────
+// A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): the palette its texels sit on (ArtPalette), one pixel size for 2D art (ArtPixels), one texel density for 3D surfaces (ArtTexels), the shape language of its models (ArtShape), its line (ArtLine), the step of its motion (ArtMotion) and its camera (ArtCamera). A style is the assets, not a filter on the frame: the look's render resources treat the frame, these say what the assets themselves must be.
+// Every field is no constraint at its zero value (0, false, the first variant, an empty list), so a look without these blocks, and every game made before them, cooks and draws exactly as before. The built-in presets (templates/looks/<slug>.ogt) carry each catalogue style's values and a game's look overrides them field by field. They are resources, so game code reads the contract too (a sprite snapping to ArtPixels.unit, a spawner picking colours from ArtPalette); project.ogt's `look` names the look whose contract the cook reads. Writing them changes neither the frame nor the simulation: the cook's conformance of assets, the runtime defaults from them and og style check are docs/art.md §2.3 to §2.5.
+
+/**
+ * How the style's pixel art turns (ArtPixels.rotation).
+ * - `"free"`: No constraint: sprites turn with their texture's filter.
+ * - `"nearest"`: Rotated with nearest sampling: pixels stay square and hard, with the jagged edges of a rotated grid.
+ * - `"cleanEdge"`: Rotated through the cleanEdge filter (torcado, MIT): no blur and no jaggies, the edges of the art redrawn at the angle.
+ * - `"prerotated"`: Rotations baked into the sheet, ArtPixels.rotationSteps of them per turn, each redrawn as pixel art: the sprite shows the nearest one and never turns between.
+ */
+export type ArtRotation = "free" | "nearest" | "cleanEdge" | "prerotated";
+
+/**
+ * An ArtRotation field: the variant's index.
+ *
+ * A `ArtRotation` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ArtRotation(value?: ArtRotation, options?: FieldOptions): FieldSpec<"ArtRotation">;
+
+/**
+ * How the style's textures are sampled (ArtTexels.filter).
+ * - `"any"`: No constraint: each texture's own import settings.
+ * - `"nearest"`: Nearest: texels stay square and crisp up close, as low-resolution 3D and pixel art.
+ * - `"linear"`: Linear: texels blend smoothly.
+ */
+export type ArtFilter = "any" | "nearest" | "linear";
+
+/**
+ * An ArtFilter field: the variant's index.
+ *
+ * A `ArtFilter` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ArtFilter(value?: ArtFilter, options?: FieldOptions): FieldSpec<"ArtFilter">;
+
+/**
+ * The mip maps of the style's textures (ArtTexels.mips).
+ * - `"any"`: No constraint: each texture's own import settings.
+ * - `"full"`: A full mip chain: no shimmer in the distance.
+ * - `"none"`: The base level only: texels stay as crisp far away as near, as on early 3D hardware.
+ */
+export type ArtMips = "any" | "full" | "none";
+
+/**
+ * An ArtMips field: the variant's index.
+ *
+ * A `ArtMips` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ArtMips(value?: ArtMips, options?: FieldOptions): FieldSpec<"ArtMips">;
+
+/**
+ * How the style's models are shaded across their faces (ArtShape.normals).
+ * - `"any"`: No constraint: each model's own normals.
+ * - `"smooth"`: Smooth: vertex normals averaged over the faces that share them, soft forms.
+ * - `"flat"`: Flat: one normal per face, every facet visible (faceted low poly, paper craft, voxels).
+ * - `"angle"`: Split where neighbouring faces meet at more than ArtShape.normalAngle: hard edges stay hard, curves stay smooth.
+ */
+export type ArtNormals = "any" | "smooth" | "flat" | "angle";
+
+/**
+ * An ArtNormals field: the variant's index.
+ *
+ * A `ArtNormals` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ArtNormals(value?: ArtNormals, options?: FieldOptions): FieldSpec<"ArtNormals">;
+
+/**
+ * Where the style's line lies against a shape (ArtLine.place).
+ * - `"outside"`: Round the shape: the line grows the silhouette by its width.
+ * - `"inside"`: On the shape's own edge pixels: its size is unchanged.
+ * - `"both"`: Centred on the edge: half outside, half inside.
+ */
+export type ArtLinePlace = "outside" | "inside" | "both";
+
+/**
+ * An ArtLinePlace field: the variant's index.
+ *
+ * A `ArtLinePlace` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ArtLinePlace(value?: ArtLinePlace, options?: FieldOptions): FieldSpec<"ArtLinePlace">;
+
+/**
+ * The projection of the style's camera (ArtCamera.projection).
+ * - `"any"`: No constraint: the camera as the game makes it.
+ * - `"perspective"`: Perspective: far things smaller.
+ * - `"orthographic"`: Orthographic: every distance at one scale (2D, isometric, top-down tactics).
+ */
+export type ArtProjection = "any" | "perspective" | "orthographic";
+
+/**
+ * An ArtProjection field: the variant's index.
+ *
+ * A `ArtProjection` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ArtProjection(value?: ArtProjection, options?: FieldOptions): FieldSpec<"ArtProjection">;
+
+/**
+ * The style's colours: the palette the assets' texels sit on, how many a single asset may use, how many shades a hue ramps through, which colours are kept for signals, and how two colours mix where a tone falls between them. The frame's own quantise is Stylise.palette; this is what the assets are made of, 2D and 3D alike. Every field is no constraint at its zero value.
+ *
+ * The `ArtPalette` resource (token `og.ArtPalette`).
+ */
+export interface ArtPalette {
+  /**
+   * The palette (og.load.palette of a `.hex` or GIMP `.gpl` file; a look names one under assets/ or a built-in `@palettes/<name>`); 0 is none, any colour.
+   */
+  colors: Palette;
+  /**
+   * Every opaque texel is exactly a colour of colors (indexed colour, as hand-placed pixel art); false lets texels between them (shading, filtering) and holds only the hues to the palette.
+   */
+  strict: boolean;
+  /**
+   * The most distinct colours one asset (a sprite sheet, a texture, a model's colours) may use; 0 is no limit.
+   *
+   * @range 0..256
+   */
+  maxColors: number;
+  /**
+   * The most shades one hue ramps through from its shadow to its highlight (3 or 4 for 8-bit art, 4 to 6 for 16-bit); 0 is no limit.
+   *
+   * @range 0..32
+   */
+  rampSteps: number;
+  /**
+   * The colours of colors kept for signals (the player, danger, the goal, a pickup), by their index in the palette (0 its first colour): scenery and backgrounds stay off them. A look gives them on one line (`accents 3 7`); empty keeps none.
+   *
+   * @capacity 8 elements (List.u32.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  accents: readonly number[];
+  /**
+   * How an asset mixes the two nearest colours where a tone falls between them: none in flat bands (the zero value), or an ordered or noise pattern as Stylise.dither.
+   */
+  dither: DitherPattern;
+}
+
+/**
+ * The style's pixel grid for 2D art: one logical pixel size for every sprite, tile and backdrop, the resolution the art is drawn for, the cell sizes sprites come in, how pixel art turns and whether it stands on whole pixels. The frame's grid is Stylise.pixelHeight; this is what the assets are drawn at. Every field is no constraint at its zero value.
+ *
+ * The `ArtPixels` resource (token `og.ArtPixels`).
+ */
+export interface ArtPixels {
+  /**
+   * Logical pixels per metre (per world unit in 2D): one pixel of every sprite, tile and backdrop covers 1/unit metres, so no two assets show pixels of different sizes (16 with 16-pixel tiles one metre wide); 0 is no constraint.
+   *
+   * @range 0..4096
+   */
+  unit: number;
+  /**
+   * The rows of the logical resolution the art is drawn for, as Stylise.pixelHeight counts them (180, 224, 240); 0 is no constraint.
+   *
+   * @range 0..2160
+   */
+  logicalHeight: number;
+  /**
+   * The cell sizes, in logical pixels, a sprite, a flipbook frame or a tile may have: each side is one of them (`spriteSizes 16 32` takes 16 x 16, 16 x 32 and 32 x 32). A look gives them on one line; empty is any size.
+   *
+   * @capacity 8 elements (List.u32.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  spriteSizes: readonly number[];
+  /**
+   * How pixel art turns: free (no constraint), nearest, cleanEdge, or prerotated in rotationSteps.
+   */
+  rotation: ArtRotation;
+  /**
+   * With rotation prerotated: the rotations baked per full turn (8 is one every 45 degrees); 0 is none.
+   *
+   * @range 0..64
+   */
+  rotationSteps: number;
+  /**
+   * Sprites and tiles stand on whole logical pixels: their positions are multiples of 1/unit metres, so no pixel of the art lies between two of the grid.
+   */
+  snap: boolean;
+}
+
+/**
+ * The style's texel density on 3D surfaces: one density for the whole world, so no model is sharper or blurrier than its neighbours, the largest texture, and how textures are filtered and mipped. Every field is no constraint at its zero value.
+ *
+ * The `ArtTexels` resource (token `og.ArtTexels`).
+ */
+export interface ArtTexels {
+  /**
+   * Texels per metre on the surfaces of 3D models (a 2 m character at 64 texels per metre takes a 128-texel-tall texture); 0 is no constraint.
+   *
+   * @range 0..16384
+   */
+  density: number;
+  /**
+   * The longest side of any texture of the style, in texels (256 for low-resolution 3D); 0 is no limit.
+   *
+   * @range 0..16384
+   */
+  maxSize: number;
+  /** How the style's textures are sampled: any (no constraint), nearest or linear. */
+  filter: ArtFilter;
+  /** Their mip maps: any (no constraint), full or none. */
+  mips: ArtMips;
+}
+
+/**
+ * The style's shape language for 3D models: triangle budgets, how faces are shaded, bevelled edges, a voxel grid and the smallest feature a silhouette keeps. Every field is no constraint at its zero value (normalAngle matters only with normals angle).
+ *
+ * The `ArtShape` resource (token `og.ArtShape`).
+ */
+export interface ArtShape {
+  /**
+   * The most triangles one prop may have (50 to 500 for faceted low poly); 0 is no budget.
+   *
+   * @range 0..
+   */
+  propFaces: number;
+  /**
+   * The most triangles one character may have; 0 is no budget.
+   *
+   * @range 0..
+   */
+  characterFaces: number;
+  /**
+   * How models are shaded across their faces: any (no constraint), smooth, flat, or angle (split past normalAngle).
+   */
+  normals: ArtNormals;
+  /**
+   * With normals angle: the angle between two faces past which their edge is shaded hard.
+   *
+   * @default 30
+   * @range 0..180
+   * @unit deg (degrees)
+   */
+  normalAngle: number;
+  /**
+   * Hard edges rounded by a chamfer of this radius (clay, toys, diorama pieces); 0 is none.
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  bevel: number;
+  /**
+   * Models built of cubes of this edge (voxel worlds); 0 is no voxel grid.
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  voxel: number;
+  /**
+   * The thinnest feature a model's silhouette keeps at the style's scale: thinner detail does not read and is left out; 0 is no constraint.
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  silhouette: number;
+}
+
+/**
+ * The style's line: the outline round its sprites and meshes, its colour, where it lies against the shape and how it thins with distance. The frame's own lines are MaterialStyle.outlineWidth and Stylise.ink; this is the line the assets carry. Every field is no constraint at its zero value (color matters only with a width).
+ *
+ * The `ArtLine` resource (token `og.ArtLine`).
+ */
+export interface ArtLine {
+  /**
+   * The line's width: in logical pixels round a sprite (1 is one dark pixel round the shape), in pixels at distanceFalloff round a mesh (as MaterialStyle.outlineWidth); 0 is no line.
+   *
+   * @range 0..32
+   */
+  width: number;
+  /**
+   * The line's colour (linear; a look may write an sRGB "#rrggbb").
+   *
+   * @default { r: 0.02, g: 0.02, b: 0.03 }
+   */
+  color: Color;
+  /** Where the line lies against the shape: outside (the zero value), inside, or both. */
+  place: ArtLinePlace;
+  /**
+   * Round a mesh: the distance at which the line is width wide, nearer wider and farther thinner (as MaterialStyle.outlineDistance); 0 keeps one width.
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  distanceFalloff: number;
+}
+
+/**
+ * The style's motion: animation held on steps as hand animation is, how many frames a clip may hold, and how much squash and stretch its movement takes. Every field is no constraint at its zero value.
+ *
+ * The `ArtMotion` resource (token `og.ArtMotion`).
+ */
+export interface ArtMotion {
+  /**
+   * Clips and flipbooks advance this many times a second whatever the tick, holding each pose between (12 is on twos at 24 fps, 8 on threes); 0 is smooth, no constraint.
+   *
+   * @range 0..120
+   * @unit hz (ticks or cycles per second)
+   */
+  stepFps: number;
+  /**
+   * The most frames one clip or flipbook may hold; 0 is no limit.
+   *
+   * @range 0..
+   */
+  maxFrames: number;
+  /**
+   * The default squash and stretch of the style's movement (og.tween presets, landings, hits): 0 rigid, 1 as rubber hose.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  squash: number;
+}
+
+/**
+ * The style's camera: its projection, a fixed angle (side-on, top-down, the isometric presets), the range of its field of view and whether a 2D camera moves by whole pixels. Every field is no constraint at its zero value (pitch and yaw matter only with fixedAngle).
+ *
+ * The `ArtCamera` resource (token `og.ArtCamera`).
+ */
+export interface ArtCamera {
+  /** The projection: any (no constraint), perspective or orthographic. */
+  projection: ArtProjection;
+  /** The camera keeps one angle, pitch and yaw: false is no constraint. */
+  fixedAngle: boolean;
+  /**
+   * With fixedAngle: how far below the horizon the camera looks (0 side-on, 90 straight down, 30 the 2:1 pixel isometric, 35.264 true isometric).
+   *
+   * @range -90..90
+   * @unit deg (degrees)
+   */
+  pitch: number;
+  /**
+   * With fixedAngle: its turn about the vertical axis (45 for isometric).
+   *
+   * @range -180..180
+   * @unit deg (degrees)
+   */
+  yaw: number;
+  /**
+   * The narrowest vertical field of view a perspective camera of the style takes; 0 is no limit.
+   *
+   * @range 0..179
+   * @unit deg (degrees)
+   */
+  fovMin: number;
+  /**
+   * The widest vertical field of view a perspective camera of the style takes; 0 is no limit.
+   *
+   * @range 0..179
+   * @unit deg (degrees)
+   */
+  fovMax: number;
+  /**
+   * A 2D camera moves and zooms by whole logical pixels only (ArtPixels.unit), as Stylise.pixelSnap does the frame's: pixel art never shimmers as it scrolls.
+   */
+  pixelPerfect: boolean;
+}
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -23478,7 +23854,7 @@ export declare namespace og {
      */
     function setShaderParam(world: World, material: Material, name: string, value: readonly number[]): Result<void>;
     /**
-     * Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its style, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes. A look that switches the stylisation (a Stylise pass on or off, the pixel grid, retro 3D, the material style) starts TAA's history over, as a camera cut does, so its first frame holds no ghost of the old look.
+     * Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its style, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes, except the art contract's (ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion, ArtCamera): one the system does not declare is left as it is, so a system that declares the frame's resources applies looks that carry a contract. A look that switches the stylisation (a Stylise pass on or off, the pixel grid, retro 3D, the material style) starts TAA's history over, as a camera cut does, so its first frame holds no ghost of the old look.
      *
      * @param world The world whose look changes.
      * @param look The look, from og.load.look.
@@ -23894,7 +24270,7 @@ export declare namespace og {
      */
     function style(world: World, path: string): Result<Style>;
     /**
-     * Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `ui` (a UI style: a built-in style's slug, such as `cartoon`, or the game's own style file's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment) with that resource's fields by name, an asset id where a field is a handle (`lut "luts/warm.cube"`, `palette "palettes/dusk.hex"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per path.
+     * Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `ui` (a UI style: a built-in style's slug, such as `cartoon`, or the game's own style file's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment, and the art contract's ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion, ArtCamera) with that resource's fields by name, an asset id where a field is a handle (`lut "luts/warm.cube"`, `palette "palettes/dusk.hex"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per path.
      *
      * @param world The world whose renderer owns it.
      * @param path The asset id, such as `looks/main.ogt`.
@@ -26180,4 +26556,32 @@ export declare namespace og {
      */
     function hash(world: World): string;
   }
+  /**
+   * The style's colours: the palette the assets' texels sit on, how many a single asset may use, how many shades a hue ramps through, which colours are kept for signals, and how two colours mix where a tone falls between them. The frame's own quantise is Stylise.palette; this is what the assets are made of, 2D and 3D alike. Every field is no constraint at its zero value.
+   */
+  const ArtPalette: ResourceType<{ readonly colors: FieldSpec<"Palette">; readonly strict: FieldSpec<"bool">; readonly maxColors: FieldSpec<"u32">; readonly rampSteps: FieldSpec<"u32">; readonly accents: ListSpec<"u32">; readonly dither: FieldSpec<"DitherPattern"> }, ArtPalette>;
+  /**
+   * The style's pixel grid for 2D art: one logical pixel size for every sprite, tile and backdrop, the resolution the art is drawn for, the cell sizes sprites come in, how pixel art turns and whether it stands on whole pixels. The frame's grid is Stylise.pixelHeight; this is what the assets are drawn at. Every field is no constraint at its zero value.
+   */
+  const ArtPixels: ResourceType<{ readonly unit: FieldSpec<"f32">; readonly logicalHeight: FieldSpec<"u32">; readonly spriteSizes: ListSpec<"u32">; readonly rotation: FieldSpec<"ArtRotation">; readonly rotationSteps: FieldSpec<"u32">; readonly snap: FieldSpec<"bool"> }, ArtPixels>;
+  /**
+   * The style's texel density on 3D surfaces: one density for the whole world, so no model is sharper or blurrier than its neighbours, the largest texture, and how textures are filtered and mipped. Every field is no constraint at its zero value.
+   */
+  const ArtTexels: ResourceType<{ readonly density: FieldSpec<"f32">; readonly maxSize: FieldSpec<"u32">; readonly filter: FieldSpec<"ArtFilter">; readonly mips: FieldSpec<"ArtMips"> }, ArtTexels>;
+  /**
+   * The style's shape language for 3D models: triangle budgets, how faces are shaded, bevelled edges, a voxel grid and the smallest feature a silhouette keeps. Every field is no constraint at its zero value (normalAngle matters only with normals angle).
+   */
+  const ArtShape: ResourceType<{ readonly propFaces: FieldSpec<"u32">; readonly characterFaces: FieldSpec<"u32">; readonly normals: FieldSpec<"ArtNormals">; readonly normalAngle: FieldSpec<"f32">; readonly bevel: FieldSpec<"f32">; readonly voxel: FieldSpec<"f32">; readonly silhouette: FieldSpec<"f32"> }, ArtShape>;
+  /**
+   * The style's line: the outline round its sprites and meshes, its colour, where it lies against the shape and how it thins with distance. The frame's own lines are MaterialStyle.outlineWidth and Stylise.ink; this is the line the assets carry. Every field is no constraint at its zero value (color matters only with a width).
+   */
+  const ArtLine: ResourceType<{ readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly place: FieldSpec<"ArtLinePlace">; readonly distanceFalloff: FieldSpec<"f32"> }, ArtLine>;
+  /**
+   * The style's motion: animation held on steps as hand animation is, how many frames a clip may hold, and how much squash and stretch its movement takes. Every field is no constraint at its zero value.
+   */
+  const ArtMotion: ResourceType<{ readonly stepFps: FieldSpec<"f32">; readonly maxFrames: FieldSpec<"u32">; readonly squash: FieldSpec<"f32"> }, ArtMotion>;
+  /**
+   * The style's camera: its projection, a fixed angle (side-on, top-down, the isometric presets), the range of its field of view and whether a 2D camera moves by whole pixels. Every field is no constraint at its zero value (pitch and yaw matter only with fixedAngle).
+   */
+  const ArtCamera: ResourceType<{ readonly projection: FieldSpec<"ArtProjection">; readonly fixedAngle: FieldSpec<"bool">; readonly pitch: FieldSpec<"f32">; readonly yaw: FieldSpec<"f32">; readonly fovMin: FieldSpec<"f32">; readonly fovMax: FieldSpec<"f32">; readonly pixelPerfect: FieldSpec<"bool"> }, ArtCamera>;
 }

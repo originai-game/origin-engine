@@ -6,6 +6,7 @@
 
 mod ao_resolution;
 mod armed_emitters;
+mod art_contract;
 mod baked_scenes;
 mod billboards;
 mod camera_projection;
