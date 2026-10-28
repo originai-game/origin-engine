@@ -598,16 +598,16 @@ entry's three checks handed to the critic that reads the frames.
 | Slug | Family | Style | Support | UI |
 |---|---|---|---|---|
 | `expressionist-painting` | Paint and line | Expressionist paint | content | `paper` |
-| `bold-comic-illustration` | Paint and line | Bold comic illustration | partial | `fantasy` |
-| `watercolor-wash` | Paint and line | Watercolour wash | partial | `paper` |
-| `pixel-3d-hybrid` | Pixel and retro | Pixel sprites in 3D sets | partial | `fantasy` |
+| `bold-comic-illustration` | Paint and line | Bold comic illustration | full | `fantasy` |
+| `watercolor-wash` | Paint and line | Watercolour wash | full | `paper` |
+| `pixel-3d-hybrid` | Pixel and retro | Pixel sprites in 3D sets | full | `fantasy` |
 | `faceted-low-poly` | 3D rendering | Faceted low poly | partial | `paper` |
 | `sculpted-clay` | 3D rendering | Sculpted clay | partial | `cartoon` |
-| `8bit-pixel` | Pixel and retro | Early console pixels | partial | `pixel` |
+| `8bit-pixel` | Pixel and retro | Early console pixels | full | `pixel` |
 | `voxel-worlds` | 3D rendering | Voxel worlds | partial | `pixel` |
 | `illuminated-manuscript` | Paint and line | Manuscript page | content | `paper` |
 | `rubber-hose-animation` | Paint and line | Rubber-hose cartoon | content | `cartoon` |
-| `pencil-hatching` | Paint and line | Pencil and hatching | partial | `paper` |
+| `pencil-hatching` | Paint and line | Pencil and hatching | full | `paper` |
 | `gothic-contour` | Paint and line | Gothic ornament | content | `fantasy` |
 | `lush-painted-worlds` | Paint and line | Lush opaque painting | content | `fantasy` |
 | `decorative-storybook` | Paint and line | Storybook ornament | content | `cartoon` |
@@ -616,22 +616,22 @@ entry's three checks handed to the critic that reads the frames.
 | `black-figure-pottery` | Paint and line | Black-figure pottery | content | `fantasy` |
 | `heavy-ink-shadows` | Paint and line | Heavy ink and shadow | partial | `fantasy` |
 | `monochrome-pixel` | Pixel and retro | One-ink pixels | partial | `pixel` |
-| `16bit-pixel` | Pixel and retro | Late console pixels | partial | `pixel` |
-| `detailed-pixel` | Pixel and retro | Dense illustrative pixels | partial | `fantasy` |
-| `luminous-pixel` | Pixel and retro | Glowing pixels on dark ground | partial | `neon` |
+| `16bit-pixel` | Pixel and retro | Late console pixels | full | `pixel` |
+| `detailed-pixel` | Pixel and retro | Dense illustrative pixels | full | `fantasy` |
+| `luminous-pixel` | Pixel and retro | Glowing pixels on dark ground | full | `neon` |
 | `topdown-tile-pixel` | Pixel and retro | Top-down tile worlds | partial | `fantasy` |
 | `low-resolution-3d` | 3D rendering | Low-resolution 3D | partial | `scifi` |
-| `coarse-pixel` | Pixel and retro | Minimal low-count pixels | partial | `pixel` |
-| `anime-cel-3d` | 3D rendering | Anime cel-shaded 3D | partial | `neon` |
-| `inked-comic-3d` | 3D rendering | Inked comic 3D | partial | `scifi` |
+| `coarse-pixel` | Pixel and retro | Minimal low-count pixels | full | `pixel` |
+| `anime-cel-3d` | 3D rendering | Anime cel-shaded 3D | full | `neon` |
+| `inked-comic-3d` | 3D rendering | Inked comic 3D | full | `scifi` |
 | `paper-craft` | Shape and material | Paper craft | partial | `paper` |
 | `miniature-diorama` | 3D rendering | Miniature diorama | partial | `cartoon` |
 | `painterly-3d` | 3D rendering | Painterly 3D | partial | `fantasy` |
 | `cinematic-realism` | 3D rendering | Cinematic realism | partial | `scifi` |
 | `muted-cinematic-3d` | 3D rendering | Muted theatrical light | partial | `scifi` |
-| `layered-silhouette` | Shape and material | Layered silhouettes | partial | `neon` |
+| `layered-silhouette` | Shape and material | Layered silhouettes | full | `neon` |
 | `minimal-geometric` | Shape and material | Minimal geometry | partial | `neon` |
-| `neon-vector` | Shape and material | Neon vector lines | partial | `neon` |
+| `neon-vector` | Shape and material | Neon vector lines | full | `neon` |
 | `monochrome-dither-3d` | 3D rendering | Monochrome dithered 3D | partial | `pixel` |
 | `luminous-layered-painting` | 3D rendering | Luminous layered depths | content | `fantasy` |
 

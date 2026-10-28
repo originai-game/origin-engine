@@ -1,0 +1,6 @@
+type tileset
+version 1
+---
+# Written by tools/art-samples/prepare.ts: one tile that repeats (the ground, the far layer), so the cook draws no line on the edges where it meets the next.
+texture "art/ground.png"
+grid 128 128 1 1

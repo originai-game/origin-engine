@@ -1,0 +1,6 @@
+type look
+version 1
+---
+# The family's first style; capture.ts rewrites `extends` per style.
+name "Sample"
+extends "faceted-low-poly"

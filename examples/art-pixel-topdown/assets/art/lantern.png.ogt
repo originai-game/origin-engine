@@ -1,0 +1,7 @@
+type import
+version 1
+---
+# Written by tools/art-samples/prepare.ts from the art brief's grid (32 x 32 logical pixels).
+conform {
+  size 32
+}

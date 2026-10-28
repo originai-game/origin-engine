@@ -1580,11 +1580,23 @@ pub(in crate::cook) fn primitive(
                 ..*x
             })
             .collect();
+        // The plan is made from the source's triangles, so a model within its
+        // budget before voxelising has no target: its voxels still answer to
+        // the budget, this primitive's share of it by source triangles.
+        let voxel_target = target.map(|t| {
+            if t != usize::MAX {
+                t
+            } else {
+                (budget as usize * (idx.len() / 3))
+                    .div_ceil(drawn_triangles(src).max(1))
+                    .max(1)
+            }
+        });
         let mut edge = c.voxel;
         for _ in 0..5 {
             match voxelise(&placed, idx, &surface, edge, &c.palette, c.max_colors) {
                 Some((nv, ni, count))
-                    if target.is_none_or(|t| ni.len() / 3 <= t) || edge >= c.voxel * 16.0 =>
+                    if voxel_target.is_none_or(|t| ni.len() / 3 <= t) || edge >= c.voxel * 16.0 =>
                 {
                     ch.distinct = nv
                         .iter()

@@ -1,0 +1,16 @@
+type project
+version 1
+---
+# A sample scene of the art wave (docs/art.md §2.6): the pixel-topdown family's
+# beats (a hero, a stepped tree, a crate, a lantern, ground and a far layer)
+# with assets made through artBrief and conformed by the cook to the look
+# this line names. tools/art-samples/capture.ts runs it under every style
+# of the family (look.family in the style catalogue).
+name "Art sample: pixel top-down"
+id "art-pixel-topdown"
+engine "0.6.6"
+entry "src/main.ts"
+profile "2d"
+look "looks/sample.ogt"
+tick 60
+seed 1

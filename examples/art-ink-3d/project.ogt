@@ -1,0 +1,21 @@
+type project
+version 1
+---
+# A sample scene of the art wave (docs/art.md §2.6): the ink-3d family's
+# beats (a hero, a stepped tree, a crate, a lantern, ground and a far layer)
+# with assets made through artBrief and conformed by the cook to the look
+# this line names. tools/art-samples/capture.ts runs it under every style
+# of the family (look.family in the style catalogue).
+name "Art sample: ink and line 3D"
+id "art-ink-3d"
+engine "0.6.6"
+entry "src/main.ts"
+profile "3d"
+look "looks/sample.ogt"
+tick 60
+# The far layer is 50 m of hills: under voxel-worlds its 0.1 m cells pass the
+# default 65,536 vertices (tests/evidence/art/samples/NOTES.md).
+budgets {
+  vertices 262144
+}
+seed 1

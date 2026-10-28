@@ -54,7 +54,6 @@
           "PostEffects.lut"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
           "the painting is content: painted portraits and backdrops"
         ]
       },
@@ -99,7 +98,7 @@
       "look": {
         "preset": "templates/looks/bold-comic-illustration.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform",
@@ -116,10 +115,7 @@
           "Stylise.ink",
           "MaterialStyle.shadowTint"
         ],
-        "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
-          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
-        ]
+        "missing": []
       },
       "ui": "fantasy",
       "palette": {
@@ -162,7 +158,7 @@
       "look": {
         "preset": "templates/looks/watercolor-wash.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform"
@@ -178,9 +174,7 @@
           "Stylise.paintCanvas",
           "Stylise.paintCanvasStrength"
         ],
-        "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
-        ]
+        "missing": []
       },
       "ui": "paper",
       "palette": {
@@ -223,7 +217,7 @@
       "look": {
         "preset": "templates/looks/pixel-3d-hybrid.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform",
@@ -241,10 +235,7 @@
           "billboard sprites",
           "SpriteDesc.dropShadow"
         ],
-        "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
-          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
-        ]
+        "missing": []
       },
       "ui": "fantasy",
       "palette": {
@@ -302,7 +293,10 @@
           "Sky"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+          "decimation that reaches propFaces 200 on a hero built of capsules and spheres: within ArtShape.silhouette it stops at 426 and the cook keeps it",
+          "corners of flat-shaded models measure 95 % flat against 99 % (tests/evidence/art/samples/NOTES.md, not settled)",
+          "og style check on the sample: models/hero.ogt: faces 426 against <= 200 (ArtShape.propFaces); normals 95.4% flat against >= 99.0% flat (ArtShape.normals flat)",
+          "og style check on the sample: models/hills.ogt: faces 596 against <= 200 (ArtShape.propFaces)"
         ]
       },
       "ui": "paper",
@@ -364,7 +358,7 @@
           "AnimationPlayer.stepFps"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+          "a clay surface: no fingerprint or soft subsurface look in the frame, and a 2 cm bevel does not show at play distance"
         ]
       },
       "ui": "cartoon",
@@ -408,7 +402,7 @@
       "look": {
         "preset": "templates/looks/8bit-pixel.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform",
@@ -424,10 +418,7 @@
           "Stylise.pixelSnap",
           "Antialias off"
         ],
-        "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
-          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
-        ]
+        "missing": []
       },
       "ui": "pixel",
       "palette": {
@@ -486,7 +477,8 @@
           "box instancing"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+          "corners of voxel models measure 93 % flat against 99 % although every voxel face is axis-aligned (tests/evidence/art/samples/NOTES.md, not settled)",
+          "og style check on the sample: models/hero.ogt: normals 92.6% flat against >= 99.0% flat (ArtShape.normals flat)"
         ]
       },
       "ui": "pixel",
@@ -546,7 +538,6 @@
           "RenderSettings.toneMapping none"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
           "the page is content: figures, borders and lettering"
         ]
       },
@@ -608,8 +599,8 @@
           "flipbooks"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
-          "the look is in frame-by-frame animation (flipbooks); the engine supplies the film treatment"
+          "the preset's frame: Stylise.posterize 4 bands the sepia film grade into olive and pink (without it the frame reads; tests/evidence/art/samples/NOTES.md)",
+          "frame-by-frame animation is content: flipbooks drawn on 12s"
         ]
       },
       "ui": "cartoon",
@@ -653,7 +644,7 @@
       "look": {
         "preset": "templates/looks/pencil-hatching.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform"
@@ -668,9 +659,7 @@
           "Stylise.paintCanvas",
           "Stylise.ink"
         ],
-        "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
-        ]
+        "missing": []
       },
       "ui": "paper",
       "palette": {
@@ -731,8 +720,8 @@
           "sprite layers"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
-          "ornament is content; Stylise.depthBands for layered haze"
+          "the preset's frame: Stylise.posterize 5 flattens layered haze into grey bands (without it the frame reads)",
+          "ornament is content: architecture and characters drawn for the style"
         ]
       },
       "ui": "fantasy",
@@ -794,7 +783,6 @@
           "RenderSettings.bloom"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
           "painted backdrops are content; Stylise.paint* for 3D props"
         ]
       },
@@ -856,7 +844,6 @@
           "sprite layers"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
           "illustration is content; Stylise.ink and paintCanvas"
         ]
       },
@@ -917,7 +904,6 @@
           "PostEffects.filmGrain"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
           "the source paintings and cut-outs are content (public-domain scans or original painting); no engine primitive is missing"
         ]
       },
@@ -978,7 +964,6 @@
           "sprites"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
           "the drawing is content; Stylise.ink can outline 3D props to match"
         ]
       },
@@ -1040,7 +1025,6 @@
           "unlit materials"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
           "silhouettes are content; Stylise.palette locks the colours"
         ]
       },
@@ -1101,7 +1085,7 @@
           "PostEffects.vignette"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+          "shadows as solid black ink masses: the frame posterises but keeps the lit colours in shadow (MaterialStyle.shadowTint and the posterize levels do not reach black on these assets)"
         ]
       },
       "ui": "fantasy",
@@ -1162,8 +1146,8 @@
           "Stylise.dither"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
-          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
+          "the sample's ground tile measures 1x2 texels per logical pixel with half rows (the generated tile, resampled, is off the grid): an asset fault the check names, not an engine gap",
+          "og style check on the sample: art/ground.png: grid 1x2 texels per pixel, half pixels at rows 2 4 against 1 texel(s) per pixel, no half pixels (ArtPixels)"
         ]
       },
       "ui": "pixel",
@@ -1207,7 +1191,7 @@
       "look": {
         "preset": "templates/looks/16bit-pixel.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform",
@@ -1223,10 +1207,7 @@
           "Antialias off",
           "sprite layers for parallax"
         ],
-        "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
-          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
-        ]
+        "missing": []
       },
       "ui": "pixel",
       "palette": {
@@ -1269,7 +1250,7 @@
       "look": {
         "preset": "templates/looks/detailed-pixel.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform",
@@ -1286,10 +1267,7 @@
           "PostEffects.glow",
           "RenderSettings.bloom"
         ],
-        "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
-          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
-        ]
+        "missing": []
       },
       "ui": "fantasy",
       "palette": {
@@ -1332,7 +1310,7 @@
       "look": {
         "preset": "templates/looks/luminous-pixel.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform",
@@ -1349,10 +1327,7 @@
           "PostEffects.glow",
           "RenderSettings.bloom"
         ],
-        "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
-          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
-        ]
+        "missing": []
       },
       "ui": "neon",
       "palette": {
@@ -1412,8 +1387,7 @@
           "Stylise.pixelSnap"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
-          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
+          "a tile set conformed per tile with walls, cliffs and paths (the sample has one grass tile and a far layer drawn as one picture)"
         ]
       },
       "ui": "fantasy",
@@ -1475,7 +1449,9 @@
           "Fog"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+          "the far hills (596 faces) stay over propFaces 300: decimation within ArtShape.silhouette cannot reach the budget, so the cook keeps them whole",
+          "a frame that reads as early 3D: logicalHeight 240 with nearest textures barely shows at 640x360 (vertex wobble and affine warp are not in the engine)",
+          "og style check on the sample: models/hills.ogt: faces 596 against <= 300 (ArtShape.propFaces)"
         ]
       },
       "ui": "scifi",
@@ -1519,7 +1495,7 @@
       "look": {
         "preset": "templates/looks/coarse-pixel.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform",
@@ -1534,10 +1510,7 @@
           "Stylise.palette",
           "Antialias off"
         ],
-        "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
-          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
-        ]
+        "missing": []
       },
       "ui": "pixel",
       "palette": {
@@ -1580,7 +1553,7 @@
       "look": {
         "preset": "templates/looks/anime-cel-3d.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform",
@@ -1598,10 +1571,7 @@
           "MaterialStyle.shadowTint",
           "MaterialStyle.outlineDistance"
         ],
-        "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
-          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
-        ]
+        "missing": []
       },
       "ui": "neon",
       "palette": {
@@ -1644,7 +1614,7 @@
       "look": {
         "preset": "templates/looks/inked-comic-3d.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform"
@@ -1661,9 +1631,7 @@
           "Stylise.hatchingSpace",
           "Stylise.hatchingDepth"
         ],
-        "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
-        ]
+        "missing": []
       },
       "ui": "scifi",
       "palette": {
@@ -1723,7 +1691,9 @@
           "soft shadows"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+          "paper: no card grain, folds or layered sheets in the frame (the assets must be built as sheets, og-model's paper fold recipe)",
+          "corners of flat-shaded models measure 98 % flat against 99 % (not settled)",
+          "og style check on the sample: models/hero.ogt: normals 98.0% flat against >= 99.0% flat (ArtShape.normals flat)"
         ]
       },
       "ui": "paper",
@@ -1785,8 +1755,7 @@
           "soft shadows"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
-          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
+          "toy-like materials and bevels the assets do not carry (the frame's tilt-shift alone does not make a diorama)"
         ]
       },
       "ui": "cartoon",
@@ -1847,7 +1816,7 @@
           "Fog"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+          "painted assets: brush-stroke textures and soft painted forms (the frame's paint filter does not show on these assets)"
         ]
       },
       "ui": "fantasy",
@@ -1910,7 +1879,9 @@
           "Antialias taa"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+          "realistic assets: scanned or generated models and textures at ArtTexels.density 512 (the sample's crate and ground measure 213 and 128 texels/m)",
+          "og style check on the sample: models/crate.glb: density 213.3 texels/m (p10 213.3, p90 213.3) against 256.0 to 1024.0 (ArtTexels.density 512 within x2)",
+          "og style check on the sample: models/ground.glb: density 128.0 texels/m (p10 128.0, p90 128.0) against 256.0 to 1024.0 (ArtTexels.density 512 within x2)"
         ]
       },
       "ui": "scifi",
@@ -1972,7 +1943,7 @@
           "PostEffects.filmGrain"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+          "detailed realistic assets: the grade alone over primitives reads as a blockout"
         ]
       },
       "ui": "scifi",
@@ -2016,7 +1987,7 @@
       "look": {
         "preset": "templates/looks/layered-silhouette.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform"
@@ -2032,9 +2003,7 @@
           "unlit materials",
           "PostEffects.godRays"
         ],
-        "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
-        ]
+        "missing": []
       },
       "ui": "neon",
       "palette": {
@@ -2094,7 +2063,8 @@
           "Antialias msaa4"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+          "corners of flat-shaded models measure 98 % flat against 99 % (tests/evidence/art/samples/NOTES.md, not settled)",
+          "og style check on the sample: models/hero.ogt: normals 98.0% flat against >= 99.0% flat (ArtShape.normals flat)"
         ]
       },
       "ui": "neon",
@@ -2138,7 +2108,7 @@
       "look": {
         "preset": "templates/looks/neon-vector.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform"
@@ -2156,9 +2126,7 @@
           "particles",
           "PostEffects.chromaticAberration"
         ],
-        "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
-        ]
+        "missing": []
       },
       "ui": "neon",
       "palette": {
@@ -2217,7 +2185,7 @@
           "Stylise.pixelHeight"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+          "the preset's frame: the dither's cell at logicalHeight 240 swallows every form of a scene at this distance (the frame's dither needs a finer cell or fewer levels)"
         ]
       },
       "ui": "pixel",
@@ -2281,7 +2249,7 @@
           "Stylise.paintRadius"
         ],
         "missing": [
-          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+          "the art is content: characters 60 to 150 px, drawn for the style"
         ]
       },
       "ui": "fantasy",
