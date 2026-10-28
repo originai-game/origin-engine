@@ -473,10 +473,51 @@ release one constraint for the whole game instead, set its field to zero
 in the game's look (og-taste §12): `ArtShape { propFaces 0 }` keeps every
 prop's triangles.
 
-**Checking the style.** `og style check` (coming with the art wave's
-check stream; until it lands in the engine you pin, the report above and
-the frames are the check) measures each asset and the frames against the
-contract: palette hit rate, distinct colours, pixel-grid alignment, texel
-density, faces against the budget, the line found, and lists every
-opt-out; `og build --publish` prints its summary as warnings and never
-refuses a build. Run it before calling a screen done.
+**Checking the style.** `og style check [project]` cooks the project and
+measures every cooked asset, from `cooked/` itself (not the cook's
+notes), against the contract of the look project.ogt names:
+
+| Asset | Measured | Judged against |
+|---|---|---|
+| sprite (any texture of a `profile "2d"` project, or one cooked as pixel art) | distinct colours, palette hit rate (opaque texels within ΔE00 2 of a palette colour), texels per logical pixel and the half pixels off that grid, the line's width round the silhouette (per tile for a tile set) | `ArtPalette.maxColors`, `strict` (100 %), the project's grid (its sprites' most common), `ArtLine.width` |
+| texture on a 3D surface | colours, palette hit rate, size, nearest or linear, mip levels | `maxColors`, `strict`, `ArtTexels.maxSize`, `filter`, `mips` |
+| model | triangles drawn (each primitive times its nodes), flat-normal share, texel density (texels per metre, area-weighted median), untextured colours | `ArtShape.propFaces` (`characterFaces` for a skinned model), `normals flat` (99 %), `ArtTexels.density` (within ×2), `maxColors` |
+
+A 2D rig's parts and a UI atlas keep their layout, so their line is not
+judged, nor a UI atlas's grid (the UI draws at its own scale). A
+lossy-encoded texture's colours are measured, not judged. The texel
+density spread across the models is printed. Every opt-out is listed with
+why; an opted-out asset is still measured, since it is still the game's
+art.
+
+Frames: name the screens the check captures in project.ogt, each a
+command script that reaches it (a `screenshot` is added at its last step
+when it has none):
+
+```text
+screens {
+  title "0.5:screenshot"
+  play "3.5:screenshot"
+  results "1:key_down:Escape;1.05:key_up:Escape;2:screenshot"
+}
+```
+
+or pass `--title`, `--play`, `--results` (and `--size 640x360`). Each is
+run with `og run --headless --commands` into `og-out/style/<screen>/` and
+measured: colours (and how few cover 95 % of the pixels), the palette hit
+rate, edge density, the share of hard one-pixel steps (pixel art and hard
+outlines are high, filtered and blurred edges low) and the frame's pixel
+grid. `--no-frames` skips them.
+
+`--critic` prints the style's three catalogue checks as written and the
+frames' paths, and nothing that names the style (no name, slug or look
+id): hand it to a blind critic, who answers each check from the frames.
+`--json` prints one document (`assets`, `optOuts`, `frames`, `summary`).
+The exit status is 0 when every asset meets the contract, 3 when one does
+not (each failed number against its term), 1 when the cook or a capture
+failed; a project whose project.ogt names no look has no contract, says
+so and exits 0. `og doctor --project` carries one `style` line of it, and
+`og build --publish` prints its summary as warnings: numbers cannot judge
+a style (og-taste §11), so neither ever refuses a build. Run it before
+calling a screen done, and read the frames yourself beside the style's
+preview: the numbers say what is off, the eye says whether it reads.

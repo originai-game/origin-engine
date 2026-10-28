@@ -101,6 +101,10 @@
       {
         "member": "artBrief",
         "summary": "Knowledge (scripts/brief.ts) and @origingame/create-game: artBrief(look, kind, subject, options?) compiles the flattened look and its catalogue entry into the request for one asset: prompt, references, generator parameters; readLook(dir) and presetLook(slug) read a look from disk. A public contract (docs/art.md §2.2)."
+      },
+      {
+        "member": "og style check",
+        "summary": "og style check [project] [--title|--play|--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]: every cooked asset measured against the look's art contract (palette hit rate within ΔE00 2, colours, pixel grid and half pixels, line, texel size, filter and mips, faces against the budget, flat-normal share, texel density and spread), every opt-out listed, and the title, play and results frames (project.ogt's screens block) measured; --critic prints the catalogue's three checks and the frames only. og doctor --project has a style line; og build --publish prints it as warnings, never refusing."
       }
     ],
     "fixed": []
