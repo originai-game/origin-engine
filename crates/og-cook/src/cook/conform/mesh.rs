@@ -73,7 +73,7 @@ use crate::format::kind;
 use crate::look::{LookBlock, LookFile, hex_to_linear};
 use glam::Vec3;
 use og_core::ogt::Value;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// How the contract shades models (`ArtShape.normals`).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -139,7 +139,14 @@ pub struct Conform {
     /// The assets kept as made, by asset id, with why: their own `conform
     /// off` or project.ogt's `conform { off ... }` (set by the cook).
     pub(in crate::cook) off: BTreeMap<String, String>,
+    /// The textures that are a mesh's though no model names them
+    /// (`super::TextureRole::Mesh`, set by the cook).
+    pub(in crate::cook) textures: BTreeSet<String>,
 }
+
+/// What a texture conformed as a mesh's by default says, before its
+/// changes: why, and how a HUD or UI image opts out.
+pub const DEFAULT_MESH_TEXTURE: &str = "conformed as a mesh texture (no model claims it; a HUD or UI image takes `conform ui` in its import settings)";
 
 /// What an output the contract leaves as it was reports.
 pub const UNCHANGED: &str = "meets the contract as it is";
@@ -247,6 +254,7 @@ impl Conform {
                 max_frames,
             }),
             off: BTreeMap::new(),
+            textures: BTreeSet::new(),
         };
         Ok((c.geometry() || c.textures() || c.motion.is_some()).then_some(c))
     }
@@ -331,11 +339,12 @@ impl Conform {
             return String::new();
         }
         format!(
-            "conform-texture-v1 density {} maxSize {} filter {:?} mips {:?} strict {} {}",
+            "conform-texture-v2 density {} maxSize {} filter {:?} mips {:?} maxColors {} strict {} {}",
             self.density,
             self.max_size,
             self.filter,
             self.mips,
+            self.max_colors,
             self.strict,
             if self.strict {
                 self.palette_desc()
@@ -1549,7 +1558,7 @@ pub(in crate::cook) fn hull_header(l: &Line, primitives: usize) -> Vec<u8> {
 // ── textures ─────────────────────────────────────────────────────────────
 
 /// The longest side of the model's default scene, in its units.
-fn extent(src: &GltfSource) -> f32 {
+pub(in crate::cook) fn extent(src: &GltfSource) -> f32 {
     use glam::{Mat4, Quat};
     let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
     if let Some(scene) = src.doc.default_scene().or_else(|| src.doc.scenes().next()) {
@@ -1671,12 +1680,14 @@ fn resample(img: &Image, w: u32, h: u32, k: u32) -> Image {
     }
 }
 
-/// A texture of the model `src` as the contract holds it: the image, the
-/// kind it cooks as, whether it has mips, and the report's line (`None`:
-/// unchanged).
+/// A mesh's texture as the contract holds it: the image, the kind it cooks
+/// as, whether it has mips, and the report's line (`None`: the contract
+/// leaves textures as they are). `extent` is the size in metres of the
+/// meshes that use it (ArtTexels.density's), `None` when unknown: then
+/// only ArtTexels.maxSize sizes it.
 pub(in crate::cook) fn texture(
     c: &Conform,
-    src: &GltfSource,
+    extent: Option<f32>,
     img: Image,
     k: u32,
     mips: bool,
@@ -1687,8 +1698,9 @@ pub(in crate::cook) fn texture(
     let mut what = Vec::new();
     let longest = img.width.max(img.height);
     let mut target = longest;
-    if c.density > 0.0 {
-        let size = extent(src);
+    if c.density > 0.0
+        && let Some(size) = extent
+    {
         let want = (c.density * size).max(4.0);
         let pow2 = 2f32.powf(want.log2().round()) as u32;
         if pow2 < target {
@@ -1731,6 +1743,40 @@ pub(in crate::cook) fn texture(
             "every opaque texel on ArtPalette.colors' {}",
             c.palette.len()
         ));
+    }
+    // A texture that cooks lossless (pixel art: `filter nearest`) shows
+    // its colours exactly, so it holds to ArtPalette.maxColors as a baked
+    // model does (a median cut, deterministic); a strict palette has
+    // already mapped it.
+    let lossless = k == kind::PIXEL || (c.filter == Filter::Nearest && k == kind::COLOR);
+    if lossless && c.max_colors > 0 && !(c.strict && !c.palette.is_empty()) {
+        let opaque: Vec<usize> = (0..img.rgba.len() / 4)
+            .filter(|&i| img.rgba[i * 4 + 3] > 0)
+            .collect();
+        let mut colors: Vec<[f32; 4]> = opaque
+            .iter()
+            .map(|&i| {
+                let p = &img.rgba[i * 4..i * 4 + 3];
+                [to_linear(p[0]), to_linear(p[1]), to_linear(p[2]), 1.0]
+            })
+            .collect();
+        let before = colors
+            .iter()
+            .map(|c| c.map(to_srgb))
+            .collect::<std::collections::BTreeSet<_>>()
+            .len();
+        if before > c.max_colors as usize {
+            let after = reduce(&mut colors, &[], c.max_colors);
+            for (&i, m) in opaque.iter().zip(&colors) {
+                for (px, v) in img.rgba[i * 4..i * 4 + 3].iter_mut().zip(m) {
+                    *px = to_srgb(*v);
+                }
+            }
+            what.push(format!(
+                "{before} → {after} colours (ArtPalette.maxColors {})",
+                c.max_colors
+            ));
+        }
     }
     let (mut k, mut mips) = (k, mips);
     if c.filter == Filter::Nearest && k == kind::COLOR {

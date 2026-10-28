@@ -878,6 +878,18 @@ fn conform_off(s: &Source, options: &CookOptions) -> bool {
         .is_some_and(|c| c.off.contains_key(&s.rel))
 }
 
+/// The art contract a texture `s` cooks under as a mesh's texture
+/// (`conform::TextureRole::Mesh`): none when it is not one, opted out, or
+/// the contract leaves textures as they are.
+fn mesh_texture<'a>(s: &Source, options: &'a CookOptions) -> Option<&'a conform::mesh::Conform> {
+    options
+        .mesh
+        .conform
+        .as_ref()
+        .filter(|c| c.textures.contains(&s.rel) && !c.texture_desc().is_empty())
+        .filter(|_| !conform_off(s, options))
+}
+
 /// The mesh options of a model `s` under the art contract: its import
 /// settings', with the contract unless the model opts out.
 fn mesh_for(s: &Source, options: &CookOptions) -> Result<MeshOptions, CookError> {
@@ -1347,9 +1359,22 @@ pub fn cook_project_with_texture_cache(
         }
     }
     // Conformance (docs/art.md §2.3): the 2D textures, to the contract.
-    let mut conformed =
+    let (mut conformed, mesh_textures) =
         conform::texture2d::conform(root, &assets_dir, &mut sources, &known, contract.as_ref())
             .map_err(CookError)?;
+    // In a 3D project a texture nothing else claims is a mesh's
+    // (`conform::TextureRole::Mesh`): the mesh pass holds it, unless it or
+    // project.ogt opts it out.
+    for s in sources.iter().filter(|s| mesh_textures.contains(&s.rel)) {
+        let why = own_conform_off(s).or_else(|| {
+            project_conform
+                .off_by(&s.rel)
+                .map(|p| format!("project.ogt's conform block: off \"{p}\""))
+        });
+        if let Some(why) = why {
+            mesh_off.insert(s.rel.clone(), why);
+        }
+    }
     // The 3D conformance reads the contract (docs/art.md §2.3): every
     // model, the textures it uses, clips and flipbooks are held to it.
     let mut with_contract = options.clone();
@@ -1366,6 +1391,7 @@ pub fn cook_project_with_texture_cache(
             Ok(m) => {
                 with_contract.mesh.conform = m.map(|mut m| {
                     m.off = mesh_off.clone();
+                    m.textures = mesh_textures.clone();
                     m
                 })
             }
@@ -1545,7 +1571,21 @@ pub fn cook_project_with_texture_cache(
             }
             Kind::Texture => match texture_kind(s) {
                 Ok(k) => {
-                    let st = stamp(&[b"texture", tex_desc.as_bytes(), &hash, &k.to_le_bytes()]);
+                    // A mesh's texture under the art contract: its desc too.
+                    let mesh = mesh_texture(s, options)
+                        .map(|c| c.texture_desc())
+                        .unwrap_or_default();
+                    let st = if mesh.is_empty() {
+                        stamp(&[b"texture", tex_desc.as_bytes(), &hash, &k.to_le_bytes()])
+                    } else {
+                        stamp(&[
+                            b"texture",
+                            tex_desc.as_bytes(),
+                            &hash,
+                            &k.to_le_bytes(),
+                            mesh.as_bytes(),
+                        ])
+                    };
                     outs.push((
                         s.rel.clone(),
                         format::Texture::NAME,
@@ -2310,9 +2350,14 @@ pub fn cook_project_with_texture_cache(
     }
     if let Some(c) = &options.mesh.conform {
         for (rel, why) in &c.off {
-            let applies = sources
-                .iter()
-                .any(|s| &s.rel == rel && (s.kind == Kind::Model || c.motion.is_some()));
+            let applies = sources.iter().any(|s| {
+                &s.rel == rel
+                    && match s.kind {
+                        Kind::Model => true,
+                        Kind::Flipbook => c.motion.is_some(),
+                        _ => !c.texture_desc().is_empty(),
+                    }
+            });
             let listed = conformed
                 .iter()
                 .any(|e| &e.source == rel && e.action == ConformAction::Off);
@@ -2417,7 +2462,9 @@ fn run(
                 .filter(|_| !conform_off(s, options))
             {
                 Some(c) => {
-                    let (img, k, mips, note) = conform::mesh::texture(c, g, img, *k, t.mipmaps);
+                    let extent = conform::mesh::extent(g);
+                    let (img, k, mips, note) =
+                        conform::mesh::texture(c, Some(extent), img, *k, t.mipmaps);
                     t.mipmaps = mips;
                     notes.extend(note.map(|n| format!("{}: {n}", p.id)));
                     (img, k)
@@ -2435,6 +2482,19 @@ fn run(
         Work::Texture(s, k) => {
             let img =
                 texture::decode(s.conformed.as_deref().unwrap_or(&s.bytes)).map_err(CookError)?;
+            if let Some(c) = mesh_texture(s, options) {
+                let mut t = options.texture.clone();
+                let (img, k, mips, note) = conform::mesh::texture(c, None, img, *k, t.mipmaps);
+                t.mipmaps = mips;
+                let mut notes = vec![format!("{}x{} as a mesh's texture", img.width, img.height)];
+                notes.extend(note.map(|n| match n.strip_prefix("conform: ") {
+                    Some(w) if w != conform::mesh::UNCHANGED => {
+                        format!("conform: {}; {w}", conform::mesh::DEFAULT_MESH_TEXTURE)
+                    }
+                    _ => n,
+                }));
+                return texture::cook(&img, k, &t, p.stamp).map(|b| (b, notes));
+            }
             let note = format!(
                 "{}x{} {}",
                 img.width,

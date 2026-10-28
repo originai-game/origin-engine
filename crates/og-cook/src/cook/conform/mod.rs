@@ -18,6 +18,8 @@ pub mod mesh;
 pub(super) mod texture2d;
 
 use og_core::ogt::{Block, Document, Entry};
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::Path;
 
 /// What conformance did to one asset, for the cook report (`og cook
 /// --report`, `Report::conform`): every change and every opt-out.
@@ -48,6 +50,58 @@ impl ConformAction {
             ConformAction::Off => "off",
         }
     }
+}
+
+/// What a texture is to conformance (docs/art.md §2.3): which pass holds
+/// it to the art contract, and how `og style check` judges it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TextureRole {
+    /// Drawn whole as a sprite (the 2D pass).
+    Sprite,
+    /// A flipbook's frames or a tile set's tiles (the 2D pass).
+    Sheet,
+    /// A layout the cook does not move: a UI style's atlas, a 2D rig's
+    /// parts, a map's own tile set, an image with `conform ui` (the 2D
+    /// pass: palette and alpha).
+    Fixed,
+    /// On a mesh: in a 3D project, a texture nothing else claims (the mesh
+    /// pass, sized by ArtTexels.maxSize). A model's own textures are its
+    /// outputs (`<model>#tex<n>`), not sources of their own.
+    Mesh,
+    /// A normal or linear map: data, not art.
+    Data,
+}
+
+/// The role of every texture of the project at `root` that cooks on its
+/// own (`.ktx2` files, which the cook passes through, and images whose
+/// import settings do not read are left out): the decision the cook's
+/// passes make, read from the project's sources as the cook reads them,
+/// for `og style check`.
+pub fn texture_roles(root: &Path) -> Result<BTreeMap<String, TextureRole>, String> {
+    let assets = root.join("assets");
+    let mut sources = super::scan(&assets).map_err(|e| e.0)?.sources;
+    let project = std::fs::read_to_string(root.join("project.ogt"))
+        .ok()
+        .and_then(|t| Document::parse(&t).ok());
+    let project_off = match &project {
+        Some(d) => ProjectConform::parse(&d.body).map_err(|e| format!("project.ogt:{e}"))?,
+        None => ProjectConform::default(),
+    };
+    let two_d = texture2d::profile_2d(project.as_ref());
+    let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
+    let sheets = texture2d::strip_sheets(&mut sources);
+    let uses = texture2d::uses(&sources, &known, &sheets, &project_off);
+    let mut out = BTreeMap::new();
+    for s in &sources {
+        if s.kind != super::Kind::Texture || s.rel.to_ascii_lowercase().ends_with(".ktx2") {
+            continue;
+        }
+        let used = uses.get(&s.rel).map_or(&[][..], Vec::as_slice);
+        if let Ok((role, _)) = texture2d::texture_role(s, used, two_d) {
+            out.insert(s.rel.clone(), role);
+        }
+    }
+    Ok(out)
 }
 
 /// project.ogt's `conform { off "sprites/raw/*" "ui/logo.png" }`: the
