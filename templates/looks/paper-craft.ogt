@@ -17,3 +17,14 @@ Stylise {
 PostEffects {
   ao true
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 8 to 16 paper colours; characters of 200 to 600 triangles, props
+# under 2k, planar folds; no line (folds and shadows).
+ArtPalette {
+  maxColors 16
+}
+ArtShape {
+  propFaces 2000
+  characterFaces 600
+  normals flat
+}

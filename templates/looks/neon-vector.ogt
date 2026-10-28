@@ -14,3 +14,9 @@ RenderSettings {
   bloomIntensity 1.2
   toneMapping agx
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: black plus 2 to 4 saturated hues; the line is the shape (geometry,
+# not an outline).
+ArtPalette {
+  maxColors 5
+}

@@ -17,3 +17,5 @@ PostEffects {
   vignetteIntensity 0.5
   filmGrain 0.025
 }
+# The art contract (docs/art.md §2.1): none; the catalogue fixes no number (the
+# source paintings' own palette, cut edges, scans at 1x): the art is authored.

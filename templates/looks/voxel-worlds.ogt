@@ -11,3 +11,19 @@ PostEffects {
   ao true
   aoIntensity 1.2
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: a 32 to 64 colour voxel palette, a colour per voxel; cubes of one
+# size (characters 16 to 32 voxels tall), greedy-meshed under 5k triangles.
+ArtPalette {
+  maxColors 64
+}
+ArtTexels {
+  filter nearest
+  mips none
+}
+ArtShape {
+  propFaces 5000
+  characterFaces 5000
+  normals flat
+  voxel 0.1
+}

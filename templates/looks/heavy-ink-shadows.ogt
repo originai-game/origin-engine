@@ -15,3 +15,16 @@ Stylise {
   inkWidth 2
   posterize 3
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 12 to 24 muted colours plus black; a rough 3 to 6 px black line (its
+# middle); 2k to 10k triangles.
+ArtPalette {
+  maxColors 25
+}
+ArtShape {
+  characterFaces 10000
+}
+ArtLine {
+  width 4.5
+  color "#000000"
+}

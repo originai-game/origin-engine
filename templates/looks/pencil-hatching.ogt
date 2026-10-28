@@ -12,3 +12,13 @@ Stylise {
   inkThreshold 0.12
   inkWidth 1.5
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: a graphite ramp on paper; the preset's 1.5 px pencil line; 2k to 10k
+# triangles.
+ArtShape {
+  characterFaces 10000
+}
+ArtLine {
+  width 1.5
+  color 0.04 0.035 0.03
+}

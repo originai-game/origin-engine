@@ -15,3 +15,15 @@ Stylise {
 RenderSettings {
   exposure 1.15
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 12 to 24 colours, no line (pigment rims instead); soft low shapes;
+# washes at 0.5 to 1 texel per screen pixel on 160 px characters.
+ArtPalette {
+  maxColors 24
+}
+ArtTexels {
+  density 64
+}
+ArtShape {
+  normals smooth
+}

@@ -13,3 +13,9 @@ Stylise {
 RenderSettings {
   exposure 1.1
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: the palette is free (3 to 5 masses a scene) and the edges are paint,
+# so neither is fixed; portraits up to 1024 px painted at 1.5x.
+ArtTexels {
+  maxSize 2048
+}

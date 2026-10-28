@@ -16,3 +16,16 @@ PostEffects {
   vignetteIntensity 0.4
   vignetteColor "#4a3418"
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 10 to 16 colours; the preset's 2 px iron-gall line; flat figures,
+# never perspective.
+ArtPalette {
+  maxColors 16
+}
+ArtLine {
+  width 2
+  color "#3a2410"
+}
+ArtCamera {
+  projection orthographic
+}

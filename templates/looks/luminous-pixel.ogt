@@ -16,3 +16,20 @@ RenderSettings {
   bloomThreshold 0.7
   bloomIntensity 0.9
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 24 to 48 colours; 24 to 40 px characters at 216 lines; rim light
+# instead of an outline.
+ArtPalette {
+  maxColors 48
+}
+ArtPixels {
+  unit 16
+  logicalHeight 216
+  spriteSizes 24 32 40
+  rotation cleanEdge
+  snap true
+}
+ArtCamera {
+  projection orthographic
+  pixelPerfect true
+}

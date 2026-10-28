@@ -18,3 +18,9 @@ PostEffects {
   vignette true
   vignetteIntensity 0.6
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: a cool desaturated base whose accents have no palette yet; the
+# preset's 2 px clean contour.
+ArtLine {
+  width 2
+}

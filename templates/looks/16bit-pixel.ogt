@@ -14,3 +14,25 @@ Stylise {
 RenderSettings {
   toneMapping none
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 32 to 64 colours in 4- to 6-step ramps; 32 to 48 px characters on 16
+# x 16 tiles at the preset's 224 lines; a 1-pixel dark line inside the sprite.
+ArtPalette {
+  maxColors 64
+  rampSteps 6
+}
+ArtPixels {
+  unit 16
+  logicalHeight 224
+  spriteSizes 16 32 48
+  rotation cleanEdge
+  snap true
+}
+ArtLine {
+  width 1
+  place inside
+}
+ArtCamera {
+  projection orthographic
+  pixelPerfect true
+}

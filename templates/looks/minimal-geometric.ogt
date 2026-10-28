@@ -13,3 +13,11 @@ Stylise {
 RenderSettings {
   toneMapping none
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 3 to 6 colours; geometric primitives with flat faces.
+ArtPalette {
+  maxColors 6
+}
+ArtShape {
+  normals flat
+}

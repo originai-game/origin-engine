@@ -15,3 +15,21 @@ Stylise {
   inkWidth 1.5
   posterize 6
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 20 to 40 colours; the preset's 3 px ink line; 5k to 20k triangles
+# per character with smooth forms under the cel bands; hand-painted at 1 texel
+# per screen pixel on 200 px characters.
+ArtPalette {
+  maxColors 40
+}
+ArtTexels {
+  density 128
+}
+ArtShape {
+  characterFaces 20000
+  normals smooth
+}
+ArtLine {
+  width 3
+  color "#0a0810"
+}

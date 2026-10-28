@@ -15,3 +15,24 @@ MaterialStyle {
 RenderSettings {
   toneMapping agx
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 24 to 48 colours, two tones per material; 15k to 40k triangles with
+# smooth normals for the cel bands; the preset's 2.5 px line, thinning with
+# distance; flat or lightly painted at 1 texel per screen pixel on 300 px
+# characters.
+ArtPalette {
+  maxColors 48
+  rampSteps 2
+}
+ArtTexels {
+  density 128
+}
+ArtShape {
+  characterFaces 40000
+  normals smooth
+}
+ArtLine {
+  width 2.5
+  color "#141028"
+  distanceFalloff 10
+}

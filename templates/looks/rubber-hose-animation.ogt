@@ -17,3 +17,17 @@ Stylise {
 RenderSettings {
   toneMapping none
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 12 to 24 colours; the preset's 3 px ink line; drawn at 24 fps and
+# played on twos, constant squash and stretch.
+ArtPalette {
+  maxColors 24
+}
+ArtLine {
+  width 3
+  color "#101010"
+}
+ArtMotion {
+  stepFps 12
+  squash 1
+}

@@ -16,3 +16,17 @@ PostEffects {
 RenderSettings {
   toneMapping agx
 }
+# The art contract (docs/art.md §2.1), from the catalogue entry's palette and
+# assets: 24 to 48 soft pastels; buildings of 500 to 3k triangles with rounded
+# bevels; simple colour textures.
+ArtPalette {
+  maxColors 48
+}
+ArtTexels {
+  maxSize 256
+}
+ArtShape {
+  propFaces 3000
+  normals smooth
+  bevel 0.02
+}
