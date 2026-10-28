@@ -497,3 +497,41 @@ fn a_replaced_texture_reaches_the_sprites_that_draw_it() {
         "no such texture"
     );
 }
+
+/// The pixel at device pixel (x, y).
+fn px(img: &RgbaImage, x: u32, y: u32) -> [u8; 3] {
+    let i = ((y * img.width + x) * 4) as usize;
+    [img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]]
+}
+
+/// An overlay sprite on a texture turned nearest before the first frame
+/// draws on that frame, crisp. Broken once (fixed in 1bb65d66): the
+/// overlay's sprite groups were made before the frame synced the texture
+/// filters, the sync dropped the group whose texture had just turned
+/// nearest, and the overlay pass panicked ("made before the pass") on the
+/// first frame a UI texture cooked as `kind pixel` drew.
+#[test]
+fn an_overlay_sprite_on_a_nearest_texture_draws_on_its_first_frame() {
+    let mut scene = flat();
+    let t = scene.add_texture(TextureData {
+        width: 2,
+        height: 1,
+        rgba: vec![255, 0, 0, 255, 0, 0, 255, 255],
+        color_space: ColorSpace::Srgb,
+        mips: Mips::None,
+    });
+    scene.set_texture_filter(t, TextureFilter::Nearest);
+    let mut overlay = og_render::Overlay::new(1280.0, 720.0, 1.0);
+    overlay.sprites.push(Sprite {
+        texture: Some(t),
+        position: Vec3::new(640.0, 360.0, 0.0),
+        size: Vec2::new(400.0, 100.0),
+        ..Default::default()
+    });
+    scene.overlay = Some(overlay);
+    let (img, stats) = frame(&scene, 1);
+    assert_eq!(stats.overlay_draws, 1);
+    // Just left and right of the middle: one texel each, never a blend.
+    assert_eq!(px(&img, 620, 360), [255, 0, 0]);
+    assert_eq!(px(&img, 660, 360), [0, 0, 255]);
+}
