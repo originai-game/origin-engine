@@ -632,8 +632,9 @@ export async function webBuild(project: string, entry: string, out: string, publ
   }
   cpSync(vendor, join(out, "basis"), { recursive: true });
   cpSync(cooked, join(out, "cooked"), { recursive: true });
-  // The cook's own timings (og cook --report) are not the game's.
+  // The cook's own timings and art-contract log (og cook --report) are not the game's.
   rmSync(join(out, "cooked", ".cook-times.ogt"), { force: true });
+  rmSync(join(out, "cooked", ".conform.ogt"), { force: true });
   // Streaming groups: a grouped output is read from its group's pack, so its own file is not shipped.
   const split = streamGroupsOf(readFileSync(join(cooked, ".cook.ogt"), "utf8"));
   for (const f of split.grouped) rmSync(join(out, "cooked", f), { force: true });
