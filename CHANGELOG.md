@@ -95,6 +95,19 @@ world's registry, so `world_hash` moves; the replays' portable hash does not.
   reads a project's look from disk, `presetLook(slug)` a preset's; both
   packages carry the presets and built-in palettes under `presets/`. A
   public contract (the knowledge README's §The art brief).
+- `og style check [project]` (stream A6, docs/art.md §2.5): cooks, then
+  measures every cooked asset against the look's art contract (colours
+  and `maxColors`, the palette hit rate within ΔE00 2 where `strict`, the
+  pixel grid and its half pixels, the line found, `maxSize`, `filter`,
+  `mips`, faces against `propFaces`/`characterFaces`, the flat-normal
+  share, texel density and its spread), lists every opt-out, and measures
+  the title, play and results frames (project.ogt's new `screens` block
+  or `--title`/`--play`/`--results`, captured by `og run --headless
+  --commands`: colours, palette hit rate, edges). `--critic` prints only
+  the catalogue's three checks and the frames' paths, `--json` one
+  document; exit 0 within the contract or with no look, 3 off it.
+  `og doctor --project` has a `style` line, and `og build --publish`
+  prints the summary as warnings, never refusing a build.
 
 ## 0.6.6 — 2026-10-28
 
