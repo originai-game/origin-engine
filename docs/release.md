@@ -130,6 +130,17 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.7.1 released (2026-10-28 UTC).** All five npm packages are
+published, and `v0.7.1` is pushed at `57263610`. It is a patch with the
+simulation unchanged and no IDL member changed: the dispersed Bayer
+matrix for `bayer4`/`bayer8`, rubber-hose-animation and gothic-contour
+without posterize, the mesh conformance's sliver faces and voxel normals,
+and `set_shader_param` in place. The replay gate passes 2/2 goldens with
+the tarball binaries on darwin-arm64 and win32-x64. The tarballs passed on
+Mac, Linux and Windows, and the registry install on Mac and Linux;
+Windows' registry run is pending. See the
+[release receipt](../tests/evidence/release/0.7.1.md).
+
 **0.7.0 released (2026-10-28 UTC).** All five npm packages are
 published, and `v0.7.0` is pushed at `7757383a`. It is a minor release
 with the simulation unchanged: the art wave (docs/art.md, A1–A7). It
