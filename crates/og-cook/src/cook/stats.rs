@@ -1001,6 +1001,14 @@ pub fn cook_report_json(report: &Report, cooked: &Path, budgets: &Budgets) -> Va
         "assets": assets,
     });
     out["flags"] = Value::Array(total_flags(&out, budgets));
+    // What the art contract changed and what opted out (docs/art.md §2.3).
+    if !report.conform.is_empty() {
+        out["conform"] = report
+            .conform
+            .iter()
+            .map(|e| json!({ "source": e.source, "action": e.action.name(), "what": e.what }))
+            .collect();
+    }
     out
 }
 

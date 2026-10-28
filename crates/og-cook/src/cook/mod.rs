@@ -586,6 +586,17 @@ impl Report {
         for i in &self.ignored {
             s.push_str(&format!("- `{i}`: not an asset, ignored\n"));
         }
+        if !self.conform.is_empty() {
+            s.push_str("\n## The art contract\n\nWhat conforming to the project's look changed, and what opted out (docs/art.md §2.3).\n\n| asset | | what |\n|---|---|---|\n");
+            for e in &self.conform {
+                s.push_str(&format!(
+                    "| {} | {} | {} |\n",
+                    e.source,
+                    e.action.name(),
+                    e.what
+                ));
+            }
+        }
         for r in &self.removed {
             s.push_str(&format!("- `cooked/{r}`: removed (stale)\n"));
         }
@@ -621,6 +632,9 @@ impl Report {
             "elapsed_ms": self.elapsed_ms, "source_bytes": self.source_bytes(), "cooked_bytes": self.cooked_bytes(),
             "by_kind": kinds, "assets": assets, "ignored": self.ignored, "removed": self.removed,
             "warnings": self.warnings,
+            "conform": self.conform.iter().map(|e| json!({
+                "source": e.source, "action": e.action.name(), "what": e.what
+            })).collect::<Vec<_>>(),
         }))
         .expect("the report serializes")
     }

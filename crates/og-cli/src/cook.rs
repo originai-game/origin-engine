@@ -254,6 +254,26 @@ pub fn summary(r: &Report) -> String {
     s
 }
 
+/// The art contract's lines (`og cook --report`): how many assets it
+/// changed and how many opted out, then one line each (docs/art.md §2.3).
+pub fn conform_lines(r: &Report) -> Vec<String> {
+    if r.conform.is_empty() {
+        return Vec::new();
+    }
+    let count =
+        |a: og_cook::cook::ConformAction| r.conform.iter().filter(|e| e.action == a).count();
+    let mut out = vec![format!(
+        "og cook: the art contract changed {} asset(s), {} met it as they were, {} opted out:",
+        count(og_cook::cook::ConformAction::Changed),
+        count(og_cook::cook::ConformAction::Unchanged),
+        count(og_cook::cook::ConformAction::Off)
+    )];
+    for e in &r.conform {
+        out.push(format!("  {} ({}): {}", e.source, e.action.name(), e.what));
+    }
+    out
+}
+
 /// One line per asset cooked in this run, slowest first: its time (its
 /// outputs' summed) and how many outputs it cooked.
 pub fn cooked_lines(r: &Report) -> Vec<String> {
@@ -492,6 +512,9 @@ pub fn run(args: &[&str]) -> ExitCode {
                 println!("{}", summary(&r));
                 if slowest {
                     for line in slowest_lines(&r) {
+                        println!("{line}");
+                    }
+                    for line in conform_lines(&r) {
                         println!("{line}");
                     }
                 }
