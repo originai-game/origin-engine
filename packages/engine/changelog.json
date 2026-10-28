@@ -76,6 +76,18 @@
       {
         "member": "project.ogt look",
         "summary": "project.ogt's look \"looks/<id>.ogt\" names the look whose art contract the cook reads before any asset cooks; create writes it beside GameDesc.look."
+      },
+      {
+        "member": "og.ArtLine.brush",
+        "summary": "The brush the cook draws a 2D line with (og.ArtBrush); diamond at zero."
+      },
+      {
+        "member": "og.ArtBrush",
+        "summary": "New enum: diamond, circle, square."
+      },
+      {
+        "member": "og cook conform",
+        "summary": "The cook conforms sprites, flipbooks, tile sets and UI images to the look's art contract (pixel grid, 1-bit alpha, Oklab palette with dither, line, prerotated cells, painted 2D) and writes <id>#index for palette swaps; conform off and project.ogt conform { off } opt out; og cook --report lists every change. Byte-identical without a contract."
       }
     ],
     "fixed": []
