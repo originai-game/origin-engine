@@ -441,7 +441,12 @@ producing an asset on Origin Engine:
    the same way (the triangles before and after against the budget, flat
    or smooth normals, the voxel edge, the bevel, a texture's new size and
    filter, a clip stepped to `stepFps`), and frames dropped past
-   `maxFrames` are the cook's warnings too. In a 3D project an image no
+   `maxFrames` are the cook's warnings too. Decimation never breaks a
+   model: it keeps every part closed and connected and moves the surface
+   at most `ArtShape.silhouette` (else 5 % of the model's radius). A model
+   that cannot meet the budget within that is kept as close as it can get,
+   with a warning that it is over budget, and `og style check` reports it
+   off: make a lighter model rather than a lower budget. In a 3D project an image no
    model, flipbook, tile set, rig or UI style names is conformed as a
    mesh texture (`ArtTexels.maxSize`, `filter`, `mips`, the palette),
    and its line says so: a HUD or UI image takes `conform ui` in its
