@@ -24,11 +24,16 @@
 //!    face budget the edge doubles (at most four times). Skinned or morphed
 //!    primitives are not voxelised (a voxel has no source vertex to skin).
 //! 2. **Decimate** to the budget (`propFaces`, or `characterFaces` for a
-//!    model with a skin): the model's drawn triangles (each primitive
-//!    times the nodes that draw it) are scaled by one fraction, so their
-//!    sum is within the budget. meshoptimizer's simplify over the vertices,
-//!    then over the positions alone (flat-shaded and seamed meshes), then
-//!    its sloppy simplifier, and as a last resort the largest triangles.
+//!    model with a skin), counted over the model's drawn triangles (each
+//!    primitive times the nodes that draw it), never destroying it:
+//!    meshoptimizer's edge collapses with the topology kept (no sloppy
+//!    simplifier, open borders and so material seams locked, uv seams
+//!    held), the surface moved at most `ArtShape.silhouette`, else
+//!    [`SHAPE_ERROR`] of the model's bounding radius. Each primitive goes as
+//!    far as that bound lets it, and the budget's remainder is shared in
+//!    proportion to what each has left, so the model lands at the budget
+//!    ([`Plan`]). When even that is past the budget, every primitive stops
+//!    at its bound and the cook warns that the model is over budget.
 //! 3. **Bevel** at `ArtShape.bevel`: every hard edge (faces meeting past
 //!    30°, or `normalAngle` with `normals angle`) chamfered: the faces
 //!    inset by the radius from their hard edges, a quad bridging each hard
@@ -123,6 +128,10 @@ pub struct Motion {
 pub struct Conform {
     pub prop_faces: u32,
     pub character_faces: u32,
+    /// `ArtShape.silhouette`: the thinnest feature a model keeps, in
+    /// metres; the most decimation may move its surface (0: a fraction of
+    /// the model's bounding radius, [`SHAPE_ERROR`]).
+    pub silhouette: f32,
     pub normals: Normals,
     pub bevel: f32,
     pub voxel: f32,
@@ -227,6 +236,7 @@ impl Conform {
         let c = Conform {
             prop_faces: num(shape, "propFaces") as u32,
             character_faces: num(shape, "characterFaces") as u32,
+            silhouette: num(shape, "silhouette") as f32,
             normals,
             bevel: num(shape, "bevel") as f32,
             voxel: num(shape, "voxel") as f32,
@@ -316,9 +326,10 @@ impl Conform {
             return String::new();
         }
         format!(
-            "conform-mesh-v1 faces {} {} normals {:?} bevel {} voxel {} bakes {} {} line {:?}",
+            "conform-mesh-v2 faces {} {} silhouette {} normals {:?} bevel {} voxel {} bakes {} {} line {:?}",
             self.prop_faces,
             self.character_faces,
+            self.silhouette,
             self.normals,
             self.bevel,
             self.voxel,
@@ -728,42 +739,278 @@ fn by_position(v: &[FVertex], idx: &[u32]) -> Vec<u32> {
     idx.iter().map(|&i| rep[i as usize]).collect()
 }
 
-/// Simplifies to at most `target` triangles.
-fn decimate(v: &mut Vec<FVertex>, idx: &mut Vec<u32>, src: &mut Vec<u32>, target: usize) {
-    let target = target.max(1);
-    if idx.len() / 3 <= target {
-        return;
-    }
+/// Without `ArtShape.silhouette`, the most decimation may move a model's
+/// surface: this fraction of its bounding radius (half its longest side).
+pub const SHAPE_ERROR: f32 = 0.05;
+
+/// `idx` simplified towards `target` triangles (0: as far as `error`
+/// allows) with its topology kept: meshoptimizer's edge collapses, never
+/// its sloppy simplifier, the open borders (a primitive's edges against
+/// its neighbours of other materials) locked, the surface moved at most
+/// `error` (in the vertices' units). First over the vertices, so every
+/// attribute seam holds; then, when that stops above the target (a flat-
+/// shaded or seamed mesh splits every corner), welded by position with
+/// the uv seams of a `textured` mesh locked. The indices, and whether the
+/// second pass made them (its corners' normals no longer belong to them).
+fn simplified(
+    v: &[FVertex],
+    idx: &[u32],
+    target: usize,
+    error: f32,
+    textured: bool,
+) -> (Vec<u32>, bool) {
     let want = target * 3;
     let a = adapter(v);
-    let none = meshopt::SimplifyOptions::None;
-    let mut out = meshopt::simplify(idx, &a, want, 1.0, none, None);
-    if out.len() > want {
-        let shadow = by_position(v, idx);
-        out = meshopt::simplify(&shadow, &a, want, 1.0, none, None);
-        if out.len() > want {
-            out = meshopt::simplify_sloppy(&shadow, &a, want, 1.0, None);
+    let opts = meshopt::SimplifyOptions::LockBorder | meshopt::SimplifyOptions::ErrorAbsolute;
+    let out = meshopt::simplify(idx, &a, want, error, opts, None);
+    if out.len() <= want {
+        return (out, false);
+    }
+    let shadow = by_position(v, idx);
+    // A position whose corners disagree on their uv is a seam.
+    let mut uv_at: BTreeMap<[u32; 3], [u32; 2]> = BTreeMap::new();
+    let mut seam = vec![false; v.len()];
+    if textured {
+        let mut split: BTreeSet<[u32; 3]> = BTreeSet::new();
+        for &i in idx {
+            let x = &v[i as usize];
+            let uv = x.uv.map(f32::to_bits);
+            if *uv_at.entry(pkey(x.p)).or_insert(uv) != uv {
+                split.insert(pkey(x.p));
+            }
+        }
+        for (i, x) in v.iter().enumerate() {
+            seam[i] = split.contains(&pkey(x.p));
         }
     }
-    if out.len() > want || out.len() < 3 {
-        // The largest triangles, in their order.
-        let mut tris: Vec<(usize, f32)> = idx
-            .as_chunks::<3>()
-            .0
+    let welded = meshopt::simplify_with_locks(&shadow, &a, &seam, want, error, opts, None);
+    if welded.len() >= out.len() {
+        return (out, false);
+    }
+    (reattach(v, idx, &shadow, &welded, &seam), true)
+}
+
+/// The corners of `welded` (over `shadow`, the first vertex at each
+/// position) given back their own vertices: a triangle the source has
+/// takes its corners; elsewhere a corner on a uv seam takes, of the
+/// vertices at its position, the one whose uv is nearest the triangle's
+/// other corners'.
+fn reattach(v: &[FVertex], idx: &[u32], shadow: &[u32], welded: &[u32], seam: &[bool]) -> Vec<u32> {
+    let mut source: BTreeMap<[u32; 3], [u32; 3]> = BTreeMap::new();
+    let mut at: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
+    for (t, s) in idx.as_chunks::<3>().0.iter().zip(shadow.as_chunks::<3>().0) {
+        for k in 0..3 {
+            source
+                .entry([s[k], s[(k + 1) % 3], s[(k + 2) % 3]])
+                .or_insert([t[k], t[(k + 1) % 3], t[(k + 2) % 3]]);
+            let list = at.entry(s[k]).or_default();
+            if !list.contains(&t[k]) {
+                list.push(t[k]);
+            }
+        }
+    }
+    let uv = |i: u32| glam::Vec2::from(v[i as usize].uv);
+    let mut out = Vec::with_capacity(welded.len());
+    for t in welded.as_chunks::<3>().0 {
+        if let Some(o) = source.get(t) {
+            out.extend(o);
+            continue;
+        }
+        let plain: Vec<glam::Vec2> = t
             .iter()
-            .enumerate()
-            .map(|(i, t)| (i, cross(v, t).length()))
+            .filter(|&&r| !seam[r as usize])
+            .map(|&r| uv(r))
             .collect();
-        tris.sort_by(|x, y| y.1.total_cmp(&x.1).then(x.0.cmp(&y.0)));
-        let mut keep: Vec<usize> = tris.iter().take(target).map(|t| t.0).collect();
-        keep.sort_unstable();
-        out = keep
-            .iter()
-            .flat_map(|&t| idx[t * 3..t * 3 + 3].to_vec())
-            .collect();
+        for &r in t {
+            let pick = match (seam[r as usize], plain.is_empty()) {
+                (true, false) => {
+                    let mean = plain.iter().sum::<glam::Vec2>() / plain.len() as f32;
+                    at[&r]
+                        .iter()
+                        .copied()
+                        .min_by(|a, b| uv(*a).distance(mean).total_cmp(&uv(*b).distance(mean)))
+                        .unwrap_or(r)
+                }
+                _ => r,
+            };
+            out.push(pick);
+        }
+    }
+    out
+}
+
+/// Simplifies to at most `target` triangles where it can within `error`
+/// ([`simplified`]); whether the corners' normals must be made again.
+fn decimate(
+    v: &mut Vec<FVertex>,
+    idx: &mut Vec<u32>,
+    src: &mut Vec<u32>,
+    target: usize,
+    error: f32,
+    textured: bool,
+) -> bool {
+    if idx.len() / 3 <= target {
+        return false;
+    }
+    let (mut out, welded) = simplified(v, idx, target, error, textured);
+    if out.len() < 3 || out.len() >= idx.len() {
+        return false;
     }
     compact(v, &mut out, src);
     *idx = out;
+    welded
+}
+
+/// Which primitive a plan's target is for: its position and index
+/// accessors (a primitive drawn from two meshes is one).
+type PrimKey = (Option<usize>, Option<usize>);
+
+fn prim_key(p: &gltf::Primitive) -> PrimKey {
+    (
+        p.get(&gltf::Semantic::Positions).map(|a| a.index()),
+        p.indices().map(|a| a.index()),
+    )
+}
+
+/// How a model meets its face budget, made once per model
+/// (`GltfSource::conform_plan`): each primitive's target and the most its
+/// surface may move.
+#[derive(Debug, Default)]
+pub(in crate::cook) struct Plan {
+    /// Triangles per primitive; none: the model is within its budget.
+    targets: BTreeMap<PrimKey, usize>,
+    /// The error bound in metres and what set it.
+    error: (f32, String),
+    /// The triangles drawn at the error bound, when that is past the
+    /// budget: then each primitive stops there.
+    over: Option<usize>,
+}
+
+fn textured(p: &gltf::Primitive) -> bool {
+    let m = p.material();
+    m.pbr_metallic_roughness().base_color_texture().is_some()
+        || m.normal_texture().is_some()
+        || m.emissive_texture().is_some()
+        || m.occlusion_texture().is_some()
+        || m.pbr_metallic_roughness()
+            .metallic_roughness_texture()
+            .is_some()
+}
+
+/// A primitive's error bound in its own units: `metres` over the scale of
+/// the node that places it.
+fn local_error(src: &GltfSource, p: &gltf::Primitive, metres: f32) -> f32 {
+    let (s, _, _) = placement_of(src, p).to_scale_rotation_translation();
+    let scale = s.abs().max_element();
+    if scale > 0.0 { metres / scale } else { metres }
+}
+
+impl Plan {
+    /// The budget shared over the model's primitives (each counted once
+    /// per node drawing it): every primitive simplified as far as the
+    /// error bound lets it (`floor`), then the budget's remainder handed
+    /// out in proportion to what each has left, so the model lands at the
+    /// budget, not below it; or, when even the floors are past it, at the
+    /// floors.
+    fn of(c: &Conform, src: &GltfSource) -> Plan {
+        let metres = if c.silhouette > 0.0 {
+            (c.silhouette, "ArtShape.silhouette".to_string())
+        } else {
+            (
+                SHAPE_ERROR * extent(src) / 2.0,
+                format!("{:.0} % of its bounding radius", SHAPE_ERROR * 100.0),
+            )
+        };
+        let mut plan = Plan {
+            error: metres.clone(),
+            ..Plan::default()
+        };
+        let (budget, _) = c.budget(src);
+        let drawn = drawn_triangles(src);
+        if budget == 0 || drawn <= budget as usize {
+            return plan;
+        }
+        let mut uses = vec![0usize; src.doc.meshes().count()];
+        if let Some(scene) = src.doc.default_scene().or_else(|| src.doc.scenes().next()) {
+            let mut stack: Vec<gltf::Node> = scene.nodes().collect();
+            while let Some(n) = stack.pop() {
+                if let Some(m) = n.mesh() {
+                    uses[m.index()] += 1;
+                }
+                stack.extend(n.children());
+            }
+        }
+        // Per primitive: (times drawn, triangles, floor).
+        let mut prims: BTreeMap<PrimKey, (usize, usize, usize)> = BTreeMap::new();
+        for m in src.doc.meshes() {
+            for p in m
+                .primitives()
+                .filter(|p| p.mode() == gltf::mesh::Mode::Triangles)
+            {
+                let key = prim_key(&p);
+                if let Some(e) = prims.get_mut(&key) {
+                    e.0 += uses[m.index()].max(1);
+                    continue;
+                }
+                let reader = p.reader(|b| Some(&src.buffers[b.index()].0[..]));
+                let Some(pos) = reader.read_positions().map(|x| x.collect::<Vec<_>>()) else {
+                    continue;
+                };
+                let uvs: Vec<[f32; 2]> = reader
+                    .read_tex_coords(0)
+                    .map(|u| u.into_f32().collect())
+                    .unwrap_or_default();
+                let v: Vec<FVertex> = pos
+                    .iter()
+                    .enumerate()
+                    .map(|(i, p)| FVertex {
+                        p: *p,
+                        n: [0.0, 0.0, 1.0],
+                        uv: uvs.get(i).copied().unwrap_or([0.0; 2]),
+                        c: [1.0; 4],
+                        t: [0.0; 4],
+                        key: [0, 0],
+                    })
+                    .collect();
+                let mut idx: Vec<u32> = reader
+                    .read_indices()
+                    .map(|i| i.into_u32().collect())
+                    .unwrap_or_else(|| (0..v.len() as u32).collect());
+                idx.truncate(idx.len() / 3 * 3);
+                if idx.iter().any(|&i| i as usize >= v.len()) {
+                    continue;
+                }
+                let tris = idx.len() / 3;
+                let (out, _) =
+                    simplified(&v, &idx, 0, local_error(src, &p, metres.0), textured(&p));
+                let floor = if out.len() >= 3 {
+                    (out.len() / 3).min(tris)
+                } else {
+                    tris
+                };
+                prims.insert(key, (uses[m.index()].max(1), tris, floor));
+            }
+        }
+        let floors: usize = prims.values().map(|(u, _, f)| u * f).sum();
+        let full: usize = prims.values().map(|(u, t, _)| u * t).sum();
+        let budget = budget as usize;
+        if floors >= budget {
+            plan.over = Some(floors);
+        }
+        for (k, (_, t, f)) in prims {
+            let share = if floors >= budget || full <= floors {
+                0
+            } else {
+                ((t - f) as u64 * (budget - floors) as u64 / (full - floors) as u64) as usize
+            };
+            plan.targets.insert(k, f + share);
+        }
+        plan
+    }
+
+    fn get<'a>(c: &Conform, src: &'a GltfSource) -> &'a Plan {
+        src.conform_plan.get_or_init(|| Plan::of(c, src))
+    }
 }
 
 /// Chamfers the hard edges by `radius`; answers (hard edges, triangles
@@ -1308,14 +1555,16 @@ pub(in crate::cook) fn primitive(
     let skinned = v.iter().any(|x| x.key != [0, 0]);
     let surface = Surface::of(src, prim);
     let (budget, _) = c.budget(src);
+    let plan = Plan::get(c, src);
     let target = (budget > 0).then(|| {
-        let total = drawn_triangles(src).max(1);
-        if total <= budget as usize {
-            usize::MAX
-        } else {
-            ((idx.len() / 3) as u64 * budget as u64 / total as u64) as usize
-        }
+        plan.targets
+            .get(&prim_key(prim))
+            .copied()
+            .unwrap_or(usize::MAX)
     });
+    let error = local_error(src, prim, plan.error.0);
+    let textured = textured(prim);
+    let mut reshade = false;
     if c.voxel > 0.0 && skinned {
         ch.skipped
             .push("not voxelised: it is skinned or morphed".into());
@@ -1373,7 +1622,7 @@ pub(in crate::cook) fn primitive(
             .push("not voxelised: wider than 256 voxels of 16 times the edge".into());
     }
     if let Some(t) = target.filter(|&t| t != usize::MAX) {
-        decimate(v, idx, sources, t);
+        reshade |= decimate(v, idx, sources, t, error, textured);
     }
     if c.bevel > 0.0 {
         let hard = match c.normals {
@@ -1389,10 +1638,17 @@ pub(in crate::cook) fn primitive(
                 && idx.len() / 3 > t
             {
                 (*v, *idx, *sources) = before;
-                decimate(v, idx, sources, t.saturating_sub(b.1).max(t / 2));
+                reshade |= decimate(
+                    v,
+                    idx,
+                    sources,
+                    t.saturating_sub(b.1).max(t / 2),
+                    error,
+                    textured,
+                );
                 ch.bevel = bevel(v, idx, sources, c.bevel, hard);
                 if idx.len() / 3 > t {
-                    decimate(v, idx, sources, t);
+                    reshade |= decimate(v, idx, sources, t, error, textured);
                     ch.skipped
                         .push("the chamfers were simplified to stay within the budget".into());
                 }
@@ -1430,6 +1686,11 @@ pub(in crate::cook) fn primitive(
     if c.normals != Normals::Any {
         shade(v, idx, sources, c.normals);
         ch.normals = true;
+    } else if reshade && !ch.normals {
+        // Simplified welded by position: the corners' normals are their
+        // position's first vertex's, so each face's are made again.
+        shade(v, idx, sources, Normals::Angle(30.0));
+        ch.normals = true;
     }
     ch.faces.1 = idx.len() / 3;
     ch
@@ -1456,16 +1717,24 @@ pub(in crate::cook) fn notes(c: &Conform, src: &GltfSource, changes: &[Changes])
     }
     let mut what = vec![format!("{before} → {after} triangles")];
     let (budget, name) = c.budget(src);
+    let mut warning = None;
     if budget > 0 {
         let drawn = drawn_triangles(src);
+        let plan = Plan::get(c, src);
         what.push(format!(
             "ArtShape.{name} {budget} ({drawn} drawn before{})",
-            if drawn > budget as usize {
-                ", decimated"
-            } else {
-                ", within"
+            match plan.over {
+                Some(_) => ", over budget",
+                None if drawn > budget as usize => ", decimated",
+                None => ", within",
             }
         ));
+        if let Some(floor) = plan.over {
+            warning = Some(format!(
+                "conform: warning: over budget: ArtShape.{name} {budget} is not met without losing the shape: simplified as far as {} ({:.3} m) lets it, {floor} triangles drawn (ArtShape.silhouette sets the bound; a lighter source meets it)",
+                plan.error.1, plan.error.0
+            ));
+        }
     }
     if c.normals != Normals::Any {
         what.push(format!("normals {:?}", c.normals).to_lowercase());
@@ -1511,6 +1780,7 @@ pub(in crate::cook) fn notes(c: &Conform, src: &GltfSource, changes: &[Changes])
         what.push(format!("outline hull data for ArtLine width {}", l.width));
     }
     let mut out = vec![format!("conform: {}", what.join("; "))];
+    out.extend(warning);
     let mut skipped: Vec<&String> = changes.iter().flat_map(|x| &x.skipped).collect();
     skipped.sort();
     skipped.dedup();

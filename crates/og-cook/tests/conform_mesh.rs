@@ -12,7 +12,7 @@
 use og_cook::cook::{ConformAction, ConformEntry};
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use crate::support;
@@ -660,7 +660,12 @@ fn project_conform_off_keeps_models_their_textures_clips_and_flipbooks_as_made()
     for id in ["models/ball.glb", "models/walker.glb"] {
         assert_eq!(entry(&report_on, id).action, ConformAction::Changed, "{id}");
     }
-    assert!(triangles(&on, "models/ball.glb")[0].len() <= 100);
+    // Simplified (within the shape's error, so not necessarily to 100:
+    // its uv seam and poles hold).
+    assert!(
+        triangles(&on, "models/ball.glb")[0].len()
+            < triangles(&control, "models/ball.glb")[0].len()
+    );
     let tex = |root: &Path| {
         let t = Bundle::open(&root.join("cooked"))
             .unwrap()
@@ -937,5 +942,205 @@ fn a_texture_no_model_claims_is_a_mesh_texture_in_3d_unless_its_own_line_says_ot
         notes(&report, "textures/stone.png")
             .iter()
             .all(|n| !n.contains("as a mesh's texture"))
+    );
+}
+
+/// A glb of one mesh per part, each its own material, drawn once each.
+fn glb_parts(parts: &[Mesh]) -> Vec<u8> {
+    let mut bin: Vec<u8> = Vec::new();
+    let (mut views, mut accessors, mut meshes) = (Vec::new(), Vec::new(), Vec::new());
+    let mut add = |bin: &mut Vec<u8>, bytes: Vec<u8>| {
+        views.push(
+            serde_json::json!({ "buffer": 0, "byteOffset": bin.len(), "byteLength": bytes.len() }),
+        );
+        bin.extend(bytes);
+        views.len() - 1
+    };
+    let f = |v: &[f32]| v.iter().flat_map(|x| x.to_le_bytes()).collect::<Vec<u8>>();
+    for (k, (p, n, uv, idx)) in parts.iter().enumerate() {
+        let (lo, hi) = p
+            .iter()
+            .fold(([f32::MAX; 3], [f32::MIN; 3]), |(lo, hi), v| {
+                (
+                    [0, 1, 2].map(|i| lo[i].min(v[i])),
+                    [0, 1, 2].map(|i| hi[i].max(v[i])),
+                )
+            });
+        let a = accessors.len();
+        accessors.push(serde_json::json!({ "bufferView": add(&mut bin, f(&p.concat())), "componentType": 5126, "count": p.len(), "type": "VEC3", "min": lo, "max": hi }));
+        accessors.push(serde_json::json!({ "bufferView": add(&mut bin, f(&n.concat())), "componentType": 5126, "count": n.len(), "type": "VEC3" }));
+        accessors.push(serde_json::json!({ "bufferView": add(&mut bin, f(&uv.concat())), "componentType": 5126, "count": uv.len(), "type": "VEC2" }));
+        accessors.push(serde_json::json!({ "bufferView": add(&mut bin, idx.iter().flat_map(|x| x.to_le_bytes()).collect()), "componentType": 5125, "count": idx.len(), "type": "SCALAR" }));
+        meshes.push(serde_json::json!({ "primitives": [{ "attributes": { "POSITION": a, "NORMAL": a + 1, "TEXCOORD_0": a + 2 }, "indices": a + 3, "material": k }] }));
+    }
+    let json = serde_json::json!({
+        "asset": { "version": "2.0" },
+        "buffers": [{ "byteLength": bin.len() }],
+        "bufferViews": views,
+        "accessors": accessors,
+        "meshes": meshes,
+        "materials": (0..parts.len()).map(|k| serde_json::json!({ "pbrMetallicRoughness": { "baseColorFactor": [0.2 + 0.05 * k as f32, 0.5, 0.7, 1.0] } })).collect::<Vec<_>>(),
+        "nodes": (0..parts.len()).map(|k| serde_json::json!({ "mesh": k })).collect::<Vec<_>>(),
+        "scenes": [{ "nodes": (0..parts.len()).collect::<Vec<_>>() }],
+        "scene": 0,
+    });
+    let mut text = serde_json::to_vec(&json).unwrap();
+    while !text.len().is_multiple_of(4) {
+        text.push(b' ');
+    }
+    let mut out = Vec::new();
+    out.extend_from_slice(b"glTF");
+    out.extend_from_slice(&2u32.to_le_bytes());
+    out.extend_from_slice(&((28 + text.len() + bin.len()) as u32).to_le_bytes());
+    out.extend_from_slice(&(text.len() as u32).to_le_bytes());
+    out.extend_from_slice(b"JSON");
+    out.extend_from_slice(&text);
+    out.extend_from_slice(&(bin.len() as u32).to_le_bytes());
+    out.extend_from_slice(b"BIN\0");
+    out.extend_from_slice(&bin);
+    out
+}
+
+/// A triangle soup's edges used by one triangle only, and its connected
+/// pieces, both by position (a flat-shaded or seamed mesh splits its
+/// corners; the surface is what counts).
+fn open_edges_and_pieces(tris: &[[[f32; 3]; 3]]) -> (usize, usize) {
+    // On a 0.1 mm grid: the fixture's seam and poles meet to within float
+    // error, the cooked positions to within their 16-bit quantisation.
+    let key = |p: [f32; 3]| p.map(|x| (x * 1e4).round() as i64);
+    let mut ids: BTreeMap<[i64; 3], usize> = BTreeMap::new();
+    let mut id = |p: [f32; 3]| {
+        let n = ids.len();
+        *ids.entry(key(p)).or_insert(n)
+    };
+    let t: Vec<[usize; 3]> = tris.iter().map(|t| t.map(&mut id)).collect();
+    let mut edges: BTreeMap<(usize, usize), usize> = BTreeMap::new();
+    let mut parent: Vec<usize> = (0..ids.len()).collect();
+    fn find(p: &mut [usize], x: usize) -> usize {
+        let mut r = x;
+        while p[r] != r {
+            r = p[r];
+        }
+        p[x] = r;
+        r
+    }
+    for f in &t {
+        for k in 0..3 {
+            let (a, b) = (f[k], f[(k + 1) % 3]);
+            if a != b {
+                *edges.entry((a.min(b), a.max(b))).or_default() += 1;
+            }
+            let (ra, rb) = (find(&mut parent, a), find(&mut parent, b));
+            parent[ra] = rb;
+        }
+    }
+    let used: BTreeSet<usize> = t.iter().flatten().copied().collect();
+    let pieces: BTreeSet<usize> = used.iter().map(|&v| find(&mut parent, v)).collect();
+    (edges.values().filter(|&&n| n == 1).count(), pieces.len())
+}
+
+fn positions(tris: &[[og_render::Vertex; 3]]) -> Vec<[[f32; 3]; 3]> {
+    tris.iter().map(|t| t.map(|v| v.position)).collect()
+}
+
+fn source_tris(m: &Mesh) -> Vec<[[f32; 3]; 3]> {
+    m.3.chunks(3)
+        .map(|t| [0, 1, 2].map(|k| m.0[t[k] as usize]))
+        .collect()
+}
+
+#[test]
+fn decimation_keeps_every_part_closed_and_whole_and_lands_at_the_budget() {
+    // A hull and ten small closed parts, each its own mesh and material
+    // (a dropship's panels and lights): proportional shares give a small
+    // part a handful of triangles, which only a destructive simplifier
+    // reaches.
+    let mut parts = vec![sphere(0.5, [0.0, 0.5, 0.0], 48, 24)];
+    for k in 0..10 {
+        let a = k as f32 * std::f32::consts::TAU / 10.0;
+        parts.push(sphere(0.06, [0.6 * a.cos(), 0.5, 0.6 * a.sin()], 12, 6));
+    }
+    let drawn: usize = parts.iter().map(|m| m.3.len() / 3).sum();
+    assert!(drawn > 2600);
+    for m in &parts {
+        // The fixture: every part closed and one piece.
+        assert_eq!(open_edges_and_pieces(&source_tris(m)), (0, 1));
+    }
+    let root = project(
+        "closed",
+        &[
+            ("project.ogt", PROJECT.as_bytes().to_vec()),
+            (
+                "assets/looks/main.ogt",
+                look("ArtShape {\n  propFaces 500\n  normals flat\n}\n").into_bytes(),
+            ),
+            ("assets/models/parts.glb", glb_parts(&parts)),
+        ],
+    );
+    let report = cook(&root);
+    let cooked = triangles(&root, "models/parts.glb");
+    assert_eq!(cooked.len(), parts.len(), "no part is lost");
+    let total: usize = cooked.iter().map(Vec::len).sum();
+    for (i, p) in cooked.iter().enumerate() {
+        assert_eq!(
+            open_edges_and_pieces(&positions(p)),
+            (0, 1),
+            "part {i} ({} triangles) is no longer one closed piece",
+            p.len()
+        );
+    }
+    // At the budget, not far below it.
+    assert!(total <= 500 && total > 450, "{total} triangles");
+    let e = entry(&report, "models/parts.glb");
+    assert!(
+        e.what.contains("decimated") && !e.what.contains("over budget"),
+        "{e:?}"
+    );
+    assert!(report.warnings.is_empty(), "{:?}", report.warnings);
+}
+
+#[test]
+fn a_model_that_cannot_meet_the_budget_within_its_silhouette_is_kept_and_warned_about() {
+    let (r, c) = (0.5f32, [0.0f32, 0.5, 0.0]);
+    let s = sphere(r, c, 48, 24);
+    let root = project(
+        "over",
+        &[
+            ("project.ogt", PROJECT.as_bytes().to_vec()),
+            (
+                "assets/looks/main.ogt",
+                look("ArtShape {\n  propFaces 20\n  silhouette 0.002\n  normals flat\n}\n")
+                    .into_bytes(),
+            ),
+            ("assets/models/ball.glb", glb(&s, 1, [1.0; 4], None)),
+        ],
+    );
+    let report = cook(&root);
+    let tris = &triangles(&root, "models/ball.glb")[0];
+    assert!(tris.len() > 20, "{} triangles", tris.len());
+    assert!(tris.len() < s.3.len() / 3, "simplified as far as it may");
+    assert_eq!(open_edges_and_pieces(&positions(tris)), (0, 1));
+    // The surface moved at most the silhouette: each face's centre lies
+    // within it of the source's faces, which sit at most one ring step's
+    // sag inside the sphere (r (1 - cos 7.5°)).
+    let sag = r * (1.0 - (std::f32::consts::PI / 24.0).cos());
+    for t in tris {
+        let m = [0, 1, 2].map(|k| (t[0].position[k] + t[1].position[k] + t[2].position[k]) / 3.0);
+        let d = (0..3).map(|k| (m[k] - c[k]).powi(2)).sum::<f32>().sqrt();
+        assert!(
+            d <= r + 1e-3 && d >= r - sag - 0.002 - 1e-3,
+            "a face {:.4} m from the centre of a {r} m sphere",
+            d
+        );
+    }
+    let e = entry(&report, "models/ball.glb");
+    assert!(e.what.contains("over budget"), "{e:?}");
+    assert!(
+        report.warnings.iter().any(|w| w
+            .starts_with("assets/models/ball.glb: warning: over budget")
+            && w.contains("propFaces 20")
+            && w.contains("ArtShape.silhouette")),
+        "{:?}",
+        report.warnings
     );
 }
