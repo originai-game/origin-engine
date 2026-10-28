@@ -30,6 +30,7 @@
 mod ai;
 mod anim;
 mod api;
+mod art;
 mod assets;
 mod atmosphere;
 mod baked;

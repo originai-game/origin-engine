@@ -276,6 +276,8 @@ pub(crate) struct RenderState {
     pub baked: super::baked::BakedState,
     /// The review camera in force (`view`, `turntable`: `super::review`).
     pub review: Option<super::review::ReviewView>,
+    /// The art contract's runtime defaults (`super::art`).
+    pub art: super::art::ArtState,
 }
 
 impl RenderState {
@@ -320,6 +322,7 @@ impl RenderState {
             views: Default::default(),
             baked: Default::default(),
             review: None,
+            art: Default::default(),
         }
     }
 }
@@ -1009,6 +1012,8 @@ fn backend_size(rs: &RenderState) -> (u32, u32) {
 pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let mut h = std::mem::take(&mut rs.hierarchy);
     h.refresh(world);
+    // The art contract this frame (nothing without project.ogt's `look`).
+    super::art::frame(world, rs);
     // A review camera frames what the last frame drew for its entity, so
     // the models below pick their levels for it (once more at the end).
     let ids = std::mem::take(&mut rs.ids.instances);
@@ -1034,6 +1039,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.sprite_fx.clear();
     scene.sprite_arrays.clear();
     scene.sprite_shadows.clear();
+    scene.sprite_outlines.clear();
     scene.text_outlines.clear();
     scene.tile_layers.clear();
     scene.trail_layers.clear();

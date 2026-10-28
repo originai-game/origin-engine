@@ -458,8 +458,8 @@ pub(crate) struct State {
     /// advance, frame and probe call is refused with it.
     pub start_failed: Option<String>,
     /// project.ogt's game values (CreateOptions.project), for a reload's
-    /// assembly (none in a publish build, which does not reload).
-    #[cfg_attr(feature = "publish", allow(dead_code))]
+    /// assembly, and its `look`, which turns the art contract's runtime
+    /// defaults on (`super::art`).
     pub project: Option<ProjectGame>,
     /// GameDesc.look, until it has been applied (just before start).
     pub boot_look: Option<String>,
@@ -1095,7 +1095,8 @@ pub(crate) fn assemble(
     // og.path and og.timeline after tweens, before og-anim (an animation
     // track sets players) and physics.
     super::timeline::install(&mut world, engine_id, &layouts, &ui)?;
-    let anim = super::anim::install(&mut world)?;
+    let contract = project.is_some_and(|p| p.look.is_some());
+    let anim = super::anim::install(&mut world, super::art::step_default(contract, &layouts))?;
     let feel_records = super::feel::Records::of(&world, &layouts)?;
     super::feel::install_middle(&mut world, engine_id, &feel, &feel_records)?;
     super::e6::mount_back(&mut world, engine_id, profile, &physics)?;
@@ -1652,6 +1653,7 @@ fn render(eng: &Engine) -> Result<bool, String> {
     let notes = {
         let world = eng.world()?;
         let mut rs = eng.render.borrow_mut();
+        rs.art.contract = super::art::contract(eng);
         super::extract::extract(world, &mut rs);
         super::probes::load_bakes(eng, &mut rs);
         let rs = &mut *rs;

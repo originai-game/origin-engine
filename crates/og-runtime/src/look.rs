@@ -301,6 +301,11 @@ pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
         }
         super::engine::write_resource_value(eng.id, &schema, &Value::Object(whole))
             .map_err(|e| format!("{resource}: {e}"))?;
+        // Under the project's art contract, the look's camera preset
+        // reaches the main camera (super::art::apply_camera).
+        if resource == "ArtCamera" {
+            super::art::apply_camera(eng, fields)?;
+        }
     }
     if let Some(style) = style {
         // Every other field keeps the last UiDesc's value (og.ui.configure merges).

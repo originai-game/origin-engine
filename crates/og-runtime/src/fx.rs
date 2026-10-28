@@ -35,6 +35,11 @@ pub(crate) struct FxLayouts {
     pub skeleton: Option<Layout>,
     pub stylise: Option<Layout>,
     pub material_style: Option<Layout>,
+    /// The art contract's resources the runtime reads (`super::art`).
+    pub art_line: Option<Layout>,
+    pub art_pixels: Option<Layout>,
+    pub art_camera: Option<Layout>,
+    pub art_palette: Option<Layout>,
 }
 
 impl FxLayouts {
@@ -51,6 +56,10 @@ impl FxLayouts {
             skeleton: get("og.Skeleton"),
             stylise: get("og.Stylise"),
             material_style: get("og.MaterialStyle"),
+            art_line: get("og.ArtLine"),
+            art_pixels: get("og.ArtPixels"),
+            art_camera: get("og.ArtCamera"),
+            art_palette: get("og.ArtPalette"),
         }
     }
 }
@@ -449,20 +458,31 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
 /// Pixel snap (`Stylise.pixelSnap`): on a logical pixel grid with the 2D
 /// camera (orthographic, looking down -z), the camera and every world
 /// sprite move by whole logical pixels, so a scrolling scene never swims
-/// between pixel rows and sprites keep their edges.
+/// between pixel rows and sprites keep their edges. Under a project's art
+/// contract, `ArtCamera.pixelPerfect` does the same on the contract's grid.
 pub(crate) fn snap_to_grid(rs: &mut RenderState) {
+    let art = &rs.art.frame;
     let scene = &mut rs.scene;
-    let Some(p) = scene.stylise.pixel.filter(|p| p.snap && p.height > 0) else {
-        return;
+    // The frame's grid (Stylise.pixelHeight with pixelSnap), else the art
+    // contract's (ArtCamera.pixelPerfect: ArtPixels.logicalHeight rows of
+    // the view, or 1 / ArtPixels.unit world units).
+    let rows = match scene.stylise.pixel.filter(|p| p.snap && p.height > 0) {
+        Some(p) => Some(p.height),
+        None if art.pixel_perfect && art.logical_height > 0 => Some(art.logical_height),
+        None => None,
     };
     let og_render::Projection::Orthographic { height } = scene.camera.projection else {
         return;
+    };
+    let unit = match rows {
+        Some(rows) => height / rows as f32,
+        None if art.pixel_perfect && art.unit > 0.0 => 1.0 / art.unit,
+        None => return,
     };
     let forward = (scene.camera.target - scene.camera.position).normalize_or_zero();
     if forward.z > -0.999 {
         return;
     }
-    let unit = height / p.height as f32;
     if unit <= 0.0 {
         return;
     }
