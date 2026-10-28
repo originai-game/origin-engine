@@ -45,6 +45,10 @@ what remains to launch, `docs/release.md`.
   symlink: boolean }` and `Roots { pkg: string; template: string; engine:
   string }`, are the same public contract beside `installed`, `mount`
   and `summary`: kept stable, and a change to any of them is a break.
+  The art brief is the same kind of contract (`docs/art.md` §2.2):
+  `packages/knowledge/scripts/brief.ts`'s `artBrief`, `readLook` and
+  `presetLook`, re-exported by `@origingame/create-game`, which the
+  platform calls for every asset request.
 - Engine-level game knowledge lives here, not in the platform (the
   owner's decision of 2026-10-28): a skill that uses only `og` and the
   engine API is this knowledge package's (`packages/knowledge/skills/`,
