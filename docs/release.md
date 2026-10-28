@@ -130,6 +130,19 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.6.6 released (2026-10-28 UTC).** All five npm packages are
+published, and `v0.6.6` is pushed at `71b2f032`. It is a knowledge-only
+patch with the simulation unchanged and no crate changed: the craft
+skills architecture-discipline, component-forge, level-texturing,
+localization, recipe-craft and visual-acceptance move from origin-agent
+into the knowledge package under the same names, and `payload` and
+`defaultRoots` of `knowledge/scripts/lib.ts` join `installed`, `mount`
+and `summary` as public contract, for origin-agent reading the knowledge
+from the installed package. The replay gate passes 3/3 platforms × 2/2
+goldens with the tarball binaries, and the tarballs and the registry
+install passed on Mac, Linux and Windows. See the
+[release receipt](../tests/evidence/release/0.6.6.md).
+
 **0.6.5 released (2026-10-27 UTC).** All five npm packages are
 published, and `v0.6.5` is pushed at `76859981`. It is a patch with the
 simulation unchanged: og check names a truncated bunx TypeScript install
