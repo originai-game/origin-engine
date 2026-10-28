@@ -445,6 +445,36 @@ fn voxels_sit_on_the_grid_of_their_edge() {
     }
 }
 
+/// og-model §5's generators under `normals flat`, as the art samples' hero
+/// is made: lathed parts with poles (sphere, capsule, cone) and a part
+/// turned 45° about z. Every decoded corner sits on its face's normal:
+/// a pole's zero-area triangle decodes as a sliver facing any way, and a
+/// turned part's voxel normals came back turned twice (90° off).
+#[test]
+fn flat_normals_hold_on_poles_and_on_turned_voxelised_parts() {
+    const MODEL: &str = "type model\nversion 1\n---\nmaterial \"m\" {\n  color 0.5 0.4 0.3\n}\npart \"head\" {\n  material \"m\"\n  position 0 1.55 0\n  sphereGeometry {\n    radius 0.17\n    widthSegments 16\n    heightSegments 12\n  }\n}\npart \"hood\" {\n  material \"m\"\n  position 0 1.8 0\n  coneGeometry {\n    radius 0.25\n    height 0.55\n    radialSegments 16\n  }\n}\npart \"arm\" {\n  material \"m\"\n  position 0.33 1.12 0.12\n  quaternion 0 0 0.3827 0.9239\n  capsuleGeometry {\n    radius 0.07\n    height 0.4\n    radialSegments 10\n  }\n}\npart \"lamp\" {\n  material \"m\"\n  position 0.6 0.8 0\n  quaternion 0 0 0.3827 0.9239\n  boxGeometry {\n    width 0.4\n    height 0.2\n    depth 0.2\n  }\n}\n";
+    for (name, shape) in [
+        ("flat-poles", "ArtShape {\n  normals flat\n}\n"),
+        (
+            "flat-voxels",
+            "ArtShape {\n  normals flat\n  voxel 0.1\n}\n",
+        ),
+    ] {
+        let root = project(
+            name,
+            &[
+                ("project.ogt", PROJECT.as_bytes().to_vec()),
+                ("assets/looks/main.ogt", look(shape).into_bytes()),
+                ("assets/models/hero.ogt", MODEL.as_bytes().to_vec()),
+            ],
+        );
+        cook(&root);
+        let tris: Vec<[og_render::Vertex; 3]> = triangles(&root, "models/hero.ogt").concat();
+        assert!(!tris.is_empty());
+        assert_eq!(flat_share(&tris), 1.0, "{name}");
+    }
+}
+
 #[test]
 fn a_model_within_its_budget_still_holds_its_voxels_to_it() {
     // A 6 m ball of 48 triangles is far under propFaces 300, so no
