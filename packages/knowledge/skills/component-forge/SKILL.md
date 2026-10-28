@@ -23,8 +23,11 @@ generated or imported work. Where the route is open, compare:
    already paid for. Import it under `assets/` (og-game §5), reference it
    by relative path and keep its licence and source beside it.
 2. **Generate.** An asset made by a generative tool you have, through that
-   tool's own interface. A route the game's owner asked for is kept;
-   saving effort is not permission to replace the outcome they chose.
+   tool's own interface, requested with the art brief (og-taste §1: the
+   look compiled into the prompt, references and parameters for one asset)
+   and cooked under the look's contract (og-build §8). A route the game's
+   owner asked for is kept; saving effort is not permission to replace the
+   outcome they chose.
 3. **Forge third**, and deliberately: build the unit as code when it must
    be *parametric*: when someone will move its proportions under Tune,
    when it repeats at scale as instances, or when nothing finished carries
@@ -69,7 +72,14 @@ prone to. Inferred is not measured: keep the two apart in what you report.
   by every part that has it), and repeats share their geometry and
   material so the engine instances them. A unit whose parts depend on
   nothing the game computes becomes a `type model` asset once its passes
-  close (og-model §5).
+  close (og-model §5). Build in the look's shape language from the first
+  pass (og-model §5's recipe for faceted, voxel, clay, paper or wireframe
+  styles), under its `ArtShape` budget, not restyled at the end.
+- **The look's contract** holds a forged unit as it holds an asset: its
+  colours come from the look's palette (`ArtPalette`), a 2D unit's parts
+  stand on its pixel grid (`ArtPixels`), and a material's outline follows
+  `ArtLine`. Read the numbers from the art brief of the unit's kind
+  (og-taste §1) and put them in the spec.
 - **2D**: the same rule draws flat parts as sprites or quads in the play
   camera, one entity per part; draw order is checked, not assumed
   (og-feel §10).
@@ -91,7 +101,8 @@ Run the unit, render it from the shipping camera and judge the frame
   outline. Compare the interior too (`og compare` with a region `--mask`,
   per region), or the measurement approves work that is not there.
 - **Flat regions keep their colour.** A region the reference holds as one
-  flat colour comes back as one flat colour, within a stated ΔE00.
+  flat colour comes back as one flat colour, within a stated ΔE00, and on
+  the look's palette when it has one.
   Gradient creep across a region that should be flat is the usual sign a
   material was chosen by feel.
 - **No self-intersection.** Parts that pass through each other read as one

@@ -26,6 +26,13 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statS
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// The art brief (docs/art.md §2.2): a game's look compiled into the request
+// for one asset. bin/brief.ts is a copy of the knowledge package's
+// scripts/brief.ts (scripts/pack-template.ts writes it; the tests hold it
+// equal); README §The art brief.
+export { ART_KINDS, ART_RESOURCES, artBrief, colourName, parseLook, parsePalette, presetLook, readLook } from "./brief.ts";
+export type { ArtBlocks, ArtBrief, ArtKind, ArtResource, ArtValue, BriefLook, BriefOptions, BriefPalette, BriefReference, BriefStyle, ImageParams, ModelParams, PaletteColour, ReadLookOptions } from "./brief.ts";
+
 /** Directories of a template copy that are build output, never scaffolded. */
 export const SKIPPED = new Set(["cooked", "dist", "node_modules", "og-out", ".og"]);
 

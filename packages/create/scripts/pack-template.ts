@@ -58,3 +58,17 @@ cpSync(catalogue, join(looksTarget, "catalogue.json"));
 rmSync(join(pkg, "previews"), { recursive: true, force: true });
 cpSync(join(pkg, "..", "knowledge", "previews"), join(pkg, "previews"), { recursive: true });
 console.log(`pack-template: ${catalogue} -> ${looksTarget}/catalogue.json, previews/`);
+
+// The art brief: bin/brief.ts is the knowledge package's scripts/brief.ts,
+// byte for byte (create.ts re-exports it; tests/create.test.ts fails on a
+// difference), and the look presets with the built-in palettes it reads
+// under ./presets/.
+const brief = join(pkg, "..", "knowledge", "scripts", "brief.ts");
+cpSync(brief, join(pkg, "bin", "brief.ts"));
+const looksDir = join(pkg, "..", "..", "templates", "looks");
+const presetsTarget = join(pkg, "presets");
+rmSync(presetsTarget, { recursive: true, force: true });
+mkdirSync(join(presetsTarget, "assets"), { recursive: true });
+for (const name of readdirSync(looksDir)) if (name.endsWith(".ogt")) cpSync(join(looksDir, name), join(presetsTarget, name));
+cpSync(join(looksDir, "assets", "palettes"), join(presetsTarget, "assets", "palettes"), { recursive: true });
+console.log(`pack-template: ${brief} -> bin/brief.ts, ${looksDir} -> presets/`);

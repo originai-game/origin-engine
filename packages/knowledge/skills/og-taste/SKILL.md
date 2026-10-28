@@ -1,6 +1,6 @@
 ---
 name: og-taste
-description: Art direction for a game on Origin Engine — choosing a style from the premise (genre, mood, era, audience) out of a 37-style catalogue and binding it as a look (post stack, stylisation, material defaults, the UI style) with a palette and a type ramp; composition and hierarchy on the play surface, colour, typography, motion, feedback and consistency; atmosphere (fog, sky, time of day, weather, water); the anti-patterns that make a game look like a web form; and the checklist to run (with og run captures and dump_ui) before calling a game done. Use when starting a game's look, building or reviewing any screen or HUD, or when a game "works but looks generic".
+description: Art direction for a game on Origin Engine — choosing a style from the premise (genre, mood, era, audience) out of a 37-style catalogue and binding it as a look (post stack, stylisation, material defaults, the UI style, and the art contract every asset is made to) with a palette and a type ramp; every asset request compiled from the look by the art brief (artBrief); composition and hierarchy on the play surface, colour, typography, motion, feedback and consistency; atmosphere (fog, sky, time of day, weather, water); the anti-patterns that make a game look like a web form; and the checklist to run (with og run captures and dump_ui) before calling a game done. Use when starting a game's look, building or reviewing any screen or HUD, or when a game "works but looks generic".
 ---
 
 A game is judged in its first second, before anyone reads a word. The
@@ -101,6 +101,37 @@ table's `fonts` line, og-i18n). For a quick re-colour without a copy,
 pressed and soft tones and the ink on it. The art direction of the world
 (sprites, backgrounds) and the style must agree: a pixel-art world in a
 neon UI reads as two games.
+
+**The look is the contract.** Once chosen, the look is more than the
+frame: its art blocks (§12) say what every asset of the game is (the
+palette its colours sit on, one pixel size or texel density, the line, the
+shape language, the motion step), and the cook makes every asset meet them
+(og-build §8). So every asset request goes through the **art brief**, never
+a prompt written by hand: `artBrief(look, kind, subject)` compiles the
+game's look and its catalogue entry into the request for one asset, the
+prompt (the style's direction, the palette as named colours with hex, the
+sizes, the line, the shape language, what to avoid), the reference images
+(the style's preview, then the game's accepted assets) and the generator's
+parameters (transparent and size for an image; the face budget and texture
+size for a model). In a game it is the engine package's
+`knowledge/scripts/brief.ts`:
+
+```sh
+bun node_modules/@origingame/engine/knowledge/scripts/brief.ts character "the courier, running, side-on" --project . \
+  --reference assets/sprites/keeper.png
+```
+
+The kinds are `sprite`, `tileset`, `portrait`, `backdrop`, `prop`,
+`character`, `texture` and `icon`; a prop or character of a 3D game is a
+model, of a 2D game a sprite. Hand the generator the brief's prompt,
+references and parameters as they are, adding only what the subject needs
+(a pose, a material, a mood), never a palette, a size or a style of your
+own: asking for one asset never redesigns the style. An accepted asset
+goes back in as a `--reference` of the next request, so the game's own
+assets hold the style as much as the preview does. When an asset comes
+back off the contract (a colour off the palette, a soft edge on pixel art,
+too many triangles), fix the request or the asset; do not loosen the look
+to fit it.
 
 ## 2. Composition and hierarchy
 
@@ -349,11 +380,11 @@ the frame.
 **Read `look.support` before promising a style.** `full`: every layer the
 style needs but `authored` is in the engine. `partial`: what `missing`
 names is not yet; until then the assets must hold the style by hand (the
-palette, the sizes and the line written into each request and checked on
-each asset); say so to whoever asked for it. `content`: the look lives in
-authored art (painted backdrops, frame-by-frame animation, hand-placed
-pixels); the engine frames it with the look, but the assets carry it, so
-budget for them. `preview` (`previews/<slug>.webp` in the engine
+art brief of §1 writes the palette, the sizes and the line into each
+request; check each asset that comes back); say so to whoever asked for
+it. `content`: the look lives in authored art (painted backdrops,
+frame-by-frame animation, hand-placed pixels); the engine frames it with
+the look, but the assets carry it, so budget for them. `preview` (`previews/<slug>.webp` in the engine
 package's `knowledge/`) shows the style as a game.
 
 **Read `look.profiles` before matching.** It names the project profiles a
@@ -542,14 +573,20 @@ ArtPixels {
 Every field is no constraint at zero, so an override to `0` (or `false`,
 or the empty list) releases a constraint the preset sets. project.ogt's
 `look "looks/<game>.ogt"` names the look the cook reads the contract from;
-`create` writes it. Write the contract's numbers into every asset request
-(the palette as names and hex, the sizes, the line, the face budget), and
-check each asset against them, never only the frame.
+`create` writes it. The art brief (§1) writes the contract's numbers into
+every asset request (the palette as names and hex, the sizes, the line, the
+face budget), the cook conforms each asset to them and lists what it
+changed (og-build §8), and you check each asset against them in the game,
+never only the frame.
 
 **Expand the art bible.** Fill the catalogue's `artBibleTemplate` with the
 chosen entry and the project's premise, camera and platform, and keep the
-result with the game. It is the brief for every asset request after it:
-asking for one asset never redesigns the style. Then hold the game to the
+result with the game. The bible keeps the brief's template: under the
+filled text, write the brief of each kind the game will need (the command
+of §1 with its kind and a placeholder subject, and the parameters it
+printed), so every later request starts from the same text and numbers.
+Asking for one asset never redesigns the style; when the look changes,
+run the briefs again and replace them in the bible. Then hold the game to the
 style's three `checks` on real frames (`og run --headless --commands` with
 screenshots of the title, play and results), as §10 holds the UI, and
 make a playtest fact of `og.render.look(world)?.name` so a later change

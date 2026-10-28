@@ -115,13 +115,61 @@ for retexture). It is a pure function with tests, written in TypeScript
 in the knowledge package (`scripts/brief.ts`), so the platform and an
 agent in a sandbox read the same.
 
+As built (stream A5, `tests/evidence/art/brief/NOTES.md`):
+
+- **The signature**, a public contract documented in the knowledge
+  README's §The art brief: `artBrief(look: BriefLook, kind: ArtKind,
+  subject: string, options?: { references?, metres? }): ArtBrief`.
+  `BriefLook` is `{ extends, art, profile?, palette?, style?, preview? }`:
+  the art blocks flattened over the `extends` chain, the preset slug the
+  chain reaches, the palette `ArtPalette.colors` names (else the frame's
+  `Stylise.palette`) as named colours, and the catalogue entry. `ArtBrief`
+  is `{ kind, subject, style, medium, prompt, avoid, palette, references,
+  image?, model? }`; `image` is `{ transparent, width, height, grid,
+  tiling }`, `model` `{ faceBudget, textureSize, normals, voxel, bevel,
+  filter, mips, metres }`.
+- **Reading a look from disk**: `readLook(projectDir)` takes project.ogt's
+  `look` line and `profile`, follows `extends` as the cook does (a slug is
+  the game's own `assets/looks/<slug>.ogt` first, then the preset; a path
+  another look under `assets/`), merges field by field, reads the palette
+  file (`.hex`, `.gpl`, `@palettes/*`) and finds the entry and its
+  preview. `presetLook(slug)` reads a preset alone, for the platform's
+  style step before a game exists. The presets and built-in palettes are
+  `templates/looks` in the repository and `presets/` in both published
+  packages (copied at prepack, not mounted for the platform).
+- **What it decides**: a prop or character of a 3D game is a model
+  (`ArtShape.propFaces`/`characterFaces` as the face budget, the texture
+  `ArtTexels.density` x its size to a power of two within `maxSize`); of a
+  2D game a sprite. 2D cells are `ArtPixels.unit` x the size snapped up to
+  `spriteSizes` (a character half as wide as tall, an icon the smallest
+  cell, a portrait twice the largest, a tile set 4 x 4 one-metre tiles, a
+  backdrop `logicalHeight` rows at 16:9), drawn at the whole multiple
+  nearest 1024 px so the cook's dominant-colour downscale lands on the
+  grid. Palette colours are named from their OKLCH (a `.gpl`'s own names
+  kept); accents, strictness, `maxColors`, `rampSteps` and the dither are
+  written out; the entry's prose (palette size and rules, asset specs,
+  outline) stands in where the look's field is zero. So the same kind
+  gives different requests: a `prop` is a 16 x 16 sprite drawn at 64x in
+  `16bit-pixel` and a 200-triangle model with a 64-texel nearest texture
+  in `faceted-low-poly`.
+- **The re-export**: `@origingame/create-game` re-exports the functions
+  and types from `bin/brief.ts`, a byte-for-byte copy its prepack writes
+  and its tests hold equal; its package.json gains `main`. On the command
+  line: `bun <knowledge>/scripts/brief.ts <kind> "<subject>" [--project
+  <dir> | --look <slug>] [--reference <path>]... [--metres <n>] [--json]`.
+
 The skills change with it: `producing-game-assets` (platform knowledge,
 mounted from origin-agent; its engine side is the "consumer on Origin
-Engine" section, owned here through og-build), `og-model` (one recipe per
-shape language: faceted, voxel, clay bevel, paper fold, wireframe for
-neon vector) and `og-taste` (§1 and §12: the look is the contract; every
-asset request goes through the brief; the art bible keeps the brief's
-template). og-build teaches `og style check` (§2.5).
+Engine" section, owned here through og-build: og-build §8, request, import,
+cook and read the report, opt out, check), `og-model` (§5: one recipe per
+shape language, faceted, voxel, clay bevel, paper fold, wireframe for neon
+vector, with the og-geom generators; §6: the look's budget over the table)
+and `og-taste` (§1: the look is the contract and every asset request goes
+through the brief, with the command; §12: the cook conforms, the art bible
+keeps the brief of each kind). og-build §8 names `og style check` (§2.5)
+as coming until stream A6 lands. The craft skills `visual-acceptance`,
+`level-texturing`, `component-forge` and `recipe-craft` judge and make
+assets against the brief and the cook's report.
 
 ### 2.3 Conform: the cook makes every asset meet the contract
 

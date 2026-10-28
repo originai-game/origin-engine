@@ -5,7 +5,8 @@ import { afterAll, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { pickStyle, premiseProfile, readCatalogue, words } from "../bin/create.ts";
+import { artBrief, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, words } from "../bin/create.ts";
+import { cpSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { SKIN_ELSEWHERE } from "../../knowledge/scripts/validate.ts";
 
@@ -353,4 +354,39 @@ test("what a scaffold ships never calls a UI style a skin", () => {
     }
   }
   expect(found).toEqual([]);
+});
+
+test("the art brief is re-exported: bin/brief.ts is the knowledge package's, and a scaffold's look briefs", () => {
+  // A copy, byte for byte (scripts/pack-template.ts writes it): edit packages/knowledge/scripts/brief.ts and run the prepack.
+  expect(readFileSync(join(pkg, "bin", "brief.ts"), "utf8")).toBe(readFileSync(join(pkg, "..", "knowledge", "scripts", "brief.ts"), "utf8"));
+  // A 2D game on 16bit-pixel (16 px per metre, cells of 16, 32, 48): its 2 m courier is 32 tall, 16 wide, drawn at 1024 / 32 = 32.
+  expect(cli("briefed", "--profile", "2d", "--look", "16bit-pixel", "--no-prompt").code).toBe(0);
+  const two = readLook(join(scratch, "briefed"));
+  expect([two.extends, two.profile]).toEqual(["16bit-pixel", "2d"]);
+  expect(artBrief(two, "character", "the courier").image?.grid).toEqual({ width: 16, height: 32, scale: 32 });
+  // The 3D template on faceted-low-poly: a prop is a model of at most 200 triangles with a 64-texel texture.
+  expect(cli("faceted", "--profile", "3d", "--look", "faceted-low-poly", "--no-prompt").code).toBe(0);
+  const three = artBrief(readLook(join(scratch, "faceted")), "prop", "a signpost");
+  expect([three.medium, three.model?.faceBudget, three.model?.textureSize]).toEqual(["model", 200, 64]);
+});
+
+test("the published package briefs from its own presets, catalogue and previews", () => {
+  // The package as npm lays it out: what the prepack copies, with no engine repository beside it.
+  const r = Bun.spawnSync(["bun", join(pkg, "scripts", "pack-template.ts")]);
+  expect(r.exitCode).toBe(0);
+  const installed = join(scratch, "node_modules", "@origingame", "create-game");
+  for (const part of ["bin", "looks", "previews", "presets", "package.json"]) cpSync(join(pkg, part), join(installed, part), { recursive: true });
+  const r2 = Bun.spawnSync(["bun", join(installed, "bin", "brief.ts"), "sprite", "a bat", "--look", "monochrome-pixel", "--json"], { cwd: scratch });
+  expect(new TextDecoder().decode(r2.stderr)).toBe("");
+  const brief = JSON.parse(new TextDecoder().decode(r2.stdout)) as { palette: { hex: string }[]; references: { path: string }[] };
+  // monochrome-pixel's palette is @palettes/handheld4 (templates/looks/assets/palettes/handheld4.hex), read from presets/.
+  expect(brief.palette.map((c) => c.hex)).toEqual(
+    readFileSync(join(pkg, "..", "..", "templates", "looks", "assets", "palettes", "handheld4.hex"), "utf8")
+      .split("\n")
+      .filter((l) => /^[0-9a-f]{6}$/i.test(l.trim()))
+      .map((l) => `#${l.trim().toLowerCase()}`),
+  );
+  expect(brief.references[0]!.path).toBe(join(installed, "previews", "monochrome-pixel.webp"));
+  // The repository's own copy reads the same preset from templates/looks.
+  expect(presetLook("monochrome-pixel").palette?.colours.map((c) => c.hex)).toEqual(brief.palette.map((c) => c.hex));
 });

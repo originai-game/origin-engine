@@ -82,6 +82,19 @@ world's registry, so `world_hash` moves; the replays' portable hash does not.
   art contract cooks its 2D art conformed (a behaviour change, for the
   release's breaking entry); without a look, or with every art block at
   zero, `cooked/` is byte-identical to before.
+- Knowledge and create, the art brief (stream A5, docs/art.md §2.2):
+  `artBrief(look, kind, subject)` in the knowledge's `scripts/brief.ts`,
+  re-exported by `@origingame/create-game` (which now has a `main`):
+  the request for one asset (`sprite`, `tileset`, `portrait`, `backdrop`,
+  `prop`, `character`, `texture`, `icon`) from the flattened look and its
+  catalogue entry: the prompt (direction, the palette as named colours with
+  hex, the sizes from `ArtPixels` and `ArtTexels`, the line, the shape
+  language, what to avoid), the references (the style's preview, the
+  game's accepted assets) and the generator's parameters (transparent and
+  size; the face budget and texture size of a model). `readLook(dir)`
+  reads a project's look from disk, `presetLook(slug)` a preset's; both
+  packages carry the presets and built-in palettes under `presets/`. A
+  public contract (the knowledge README's §The art brief).
 
 ## 0.6.6 — 2026-10-28
 

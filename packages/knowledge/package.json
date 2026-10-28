@@ -24,7 +24,8 @@
     "knowledge.json",
     "scripts",
     "README.md",
-    "previews"
+    "previews",
+    "presets"
   ],
   "scripts": {
     "prepack": "bun scripts/pack.ts",
