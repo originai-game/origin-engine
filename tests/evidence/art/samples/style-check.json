@@ -1,0 +1,208 @@
+{
+ "expressionist-painting": {
+  "family": "paint-2d",
+  "ok": true,
+  "off": []
+ },
+ "bold-comic-illustration": {
+  "family": "ink-3d",
+  "ok": true,
+  "off": []
+ },
+ "watercolor-wash": {
+  "family": "paint-2d",
+  "ok": true,
+  "off": []
+ },
+ "pixel-3d-hybrid": {
+  "family": "pixel-3d",
+  "ok": true,
+  "off": []
+ },
+ "faceted-low-poly": {
+  "family": "shape-3d",
+  "ok": false,
+  "off": [
+   "models/hero.ogt: faces 426 against <= 200 (ArtShape.propFaces); normals 95.4% flat against >= 99.0% flat (ArtShape.normals flat)",
+   "models/hills.ogt: faces 596 against <= 200 (ArtShape.propFaces)"
+  ]
+ },
+ "sculpted-clay": {
+  "family": "shape-3d",
+  "ok": true,
+  "off": []
+ },
+ "8bit-pixel": {
+  "family": "pixel-side",
+  "ok": true,
+  "off": []
+ },
+ "voxel-worlds": {
+  "family": "shape-3d",
+  "ok": false,
+  "off": [
+   "models/hero.ogt: normals 92.6% flat against >= 99.0% flat (ArtShape.normals flat)"
+  ]
+ },
+ "illuminated-manuscript": {
+  "family": "paint-2d",
+  "ok": true,
+  "off": []
+ },
+ "rubber-hose-animation": {
+  "family": "paint-2d",
+  "ok": false,
+  "off": [
+   "art/crate.png: line 6 px against 3 px (ArtLine.width)",
+   "art/hero.png: line 7 px against 3 px (ArtLine.width)",
+   "art/lantern.png: line 5 px against 3 px (ArtLine.width)",
+   "art/tree.png: line 6 px against 3 px (ArtLine.width)"
+  ]
+ },
+ "pencil-hatching": {
+  "family": "ink-3d",
+  "ok": true,
+  "off": []
+ },
+ "gothic-contour": {
+  "family": "paint-2d",
+  "ok": true,
+  "off": []
+ },
+ "lush-painted-worlds": {
+  "family": "paint-2d",
+  "ok": true,
+  "off": []
+ },
+ "decorative-storybook": {
+  "family": "paint-2d",
+  "ok": true,
+  "off": []
+ },
+ "classical-painting-collage": {
+  "family": "paint-2d",
+  "ok": true,
+  "off": []
+ },
+ "detailed-doodle": {
+  "family": "paint-2d",
+  "ok": true,
+  "off": []
+ },
+ "black-figure-pottery": {
+  "family": "paint-2d",
+  "ok": true,
+  "off": []
+ },
+ "heavy-ink-shadows": {
+  "family": "ink-3d",
+  "ok": true,
+  "off": []
+ },
+ "monochrome-pixel": {
+  "family": "pixel-side",
+  "ok": false,
+  "off": [
+   "art/ground.png: grid 1x2 texels per pixel, half pixels at rows 2 4 against 1 texel(s) per pixel, no half pixels (ArtPixels)"
+  ]
+ },
+ "16bit-pixel": {
+  "family": "pixel-side",
+  "ok": true,
+  "off": []
+ },
+ "detailed-pixel": {
+  "family": "pixel-side",
+  "ok": true,
+  "off": []
+ },
+ "luminous-pixel": {
+  "family": "pixel-side",
+  "ok": true,
+  "off": []
+ },
+ "topdown-tile-pixel": {
+  "family": "pixel-topdown",
+  "ok": true,
+  "off": []
+ },
+ "low-resolution-3d": {
+  "family": "pixel-3d",
+  "ok": false,
+  "off": [
+   "models/hills.ogt: faces 596 against <= 300 (ArtShape.propFaces)"
+  ]
+ },
+ "coarse-pixel": {
+  "family": "pixel-side",
+  "ok": true,
+  "off": []
+ },
+ "anime-cel-3d": {
+  "family": "toon-3d",
+  "ok": true,
+  "off": []
+ },
+ "inked-comic-3d": {
+  "family": "toon-3d",
+  "ok": true,
+  "off": []
+ },
+ "paper-craft": {
+  "family": "shape-3d",
+  "ok": false,
+  "off": [
+   "models/hero.ogt: normals 98.0% flat against >= 99.0% flat (ArtShape.normals flat)"
+  ]
+ },
+ "miniature-diorama": {
+  "family": "shape-3d",
+  "ok": true,
+  "off": []
+ },
+ "painterly-3d": {
+  "family": "cinematic-3d",
+  "ok": true,
+  "off": []
+ },
+ "cinematic-realism": {
+  "family": "cinematic-3d",
+  "ok": false,
+  "off": [
+   "models/crate.glb: density 213.3 texels/m (p10 213.3, p90 213.3) against 256.0 to 1024.0 (ArtTexels.density 512 within x2)",
+   "models/ground.glb: density 128.0 texels/m (p10 128.0, p90 128.0) against 256.0 to 1024.0 (ArtTexels.density 512 within x2)"
+  ]
+ },
+ "muted-cinematic-3d": {
+  "family": "cinematic-3d",
+  "ok": true,
+  "off": []
+ },
+ "layered-silhouette": {
+  "family": "cinematic-3d",
+  "ok": true,
+  "off": []
+ },
+ "minimal-geometric": {
+  "family": "shape-3d",
+  "ok": false,
+  "off": [
+   "models/hero.ogt: normals 98.0% flat against >= 99.0% flat (ArtShape.normals flat)"
+  ]
+ },
+ "neon-vector": {
+  "family": "shape-3d",
+  "ok": true,
+  "off": []
+ },
+ "monochrome-dither-3d": {
+  "family": "pixel-3d",
+  "ok": true,
+  "off": []
+ },
+ "luminous-layered-painting": {
+  "family": "paint-2d",
+  "ok": true,
+  "off": []
+ }
+}
