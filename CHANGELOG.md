@@ -30,6 +30,12 @@ No IDL member changed; the simulation is unchanged (the golden replays).
   or `gateway` resumes under the new names. The validator resolves a
   section reference to any skill it ships (`recipe-craft §2`, and
   `og-i18n §6`, which it read as the citing skill's own).
+- Knowledge: `payload(roots)` and `defaultRoots(pkg?)` of the knowledge's
+  `scripts/lib.ts`, with the `PayloadFile` and `Roots` shapes, are a
+  public contract beside `installed`, `mount` and `summary` (AGENTS.md):
+  the platform reads the knowledge straight from the installed
+  `@origingame/engine` with `payload(installed(dir).roots)` instead of a
+  mounted copy. Nothing about them changed.
 
 ## 0.6.5 — 2026-10-27
 

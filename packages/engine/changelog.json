@@ -5,7 +5,8 @@
     "simulation": "unchanged",
     "breaking": [],
     "added": [
-      "Knowledge: the craft skills architecture-discipline, component-forge, level-texturing (with scripts/texture-level.ts), localization, recipe-craft and visual-acceptance move from origin-agent into the knowledge package under the same names, free of platform tools and pointing to the og-* skills and the wiki for the API; texture-level.ts's providers are handoff (default), http (an OpenAI-compatible image endpoint) and dashscope, and runs that say agent or gateway resume."
+      "Knowledge: the craft skills architecture-discipline, component-forge, level-texturing (with scripts/texture-level.ts), localization, recipe-craft and visual-acceptance move from origin-agent into the knowledge package under the same names, free of platform tools and pointing to the og-* skills and the wiki for the API; texture-level.ts's providers are handoff (default), http (an OpenAI-compatible image endpoint) and dashscope, and runs that say agent or gateway resume.",
+      "Knowledge: payload(roots) and defaultRoots(pkg?) of knowledge/scripts/lib.ts, with the PayloadFile and Roots shapes, are a public contract beside installed, mount and summary: the platform reads the knowledge straight from the installed package with payload(installed(dir).roots). Nothing about them changed."
     ],
     "fixed": []
   },

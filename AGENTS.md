@@ -36,7 +36,25 @@ what remains to launch, `docs/release.md`.
   `scripts/knowledge/mount-engine.ts` imports `installed`, `mount` and
   `summary` from `packages/knowledge/scripts/mount.ts`: their signatures
   are a public contract, and changing them is a break (a minor version
-  with a `changelog.json` breaking entry).
+  with a `changelog.json` breaking entry). The platform also reads the
+  knowledge straight from the installed package, with no mounted copy,
+  through `packages/knowledge/scripts/lib.ts`: `payload(roots: Roots):
+  PayloadFile[]` (every mounted file at its production path, sorted by
+  path) and `defaultRoots(pkg?: string): Roots`, with the shapes
+  `PayloadFile { path: string; source: string; bytes: Uint8Array;
+  symlink: boolean }` and `Roots { pkg: string; template: string; engine:
+  string }`, are the same public contract beside `installed`, `mount`
+  and `summary`: kept stable, and a change to any of them is a break.
+- Engine-level game knowledge lives here, not in the platform (the
+  owner's decision of 2026-10-28): a skill that uses only `og` and the
+  engine API is this knowledge package's (`packages/knowledge/skills/`,
+  mounted at `game/skills/<name>/`), including the craft skills that moved
+  from origin-agent (architecture-discipline, component-forge,
+  level-texturing, localization, recipe-craft, visual-acceptance). They
+  name no platform tool or service; the platform's own skills and
+  instructions stay in origin-agent. A skill's name is a contract: games
+  pin `skill:<name>` packs by content hash, so a skill is never renamed,
+  and a changed body is a new pack version.
 
 ## Non-negotiable contracts
 

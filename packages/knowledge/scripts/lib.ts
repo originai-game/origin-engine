@@ -3,6 +3,11 @@
 // platform's production layout (`game/…`, `game-scaffold/…`) through
 // knowledge.json, and the helpers read what the platform's own tooling
 // reads (SKILL.md front matter, pack names and hashes).
+//
+// `payload`, `defaultRoots` and the `PayloadFile` and `Roots` shapes are a
+// public contract (AGENTS.md): the platform reads the knowledge straight from
+// the installed @origingame/engine with them (`payload(installed(dir).roots)`,
+// scripts/mount.ts), so changing them is a break.
 
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";

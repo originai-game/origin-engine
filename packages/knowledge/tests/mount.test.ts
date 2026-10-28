@@ -9,6 +9,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, write
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defaultRoots, isText, payload } from "../scripts/lib.ts";
+import { installed } from "../scripts/mount.ts";
 
 const temps: string[] = [];
 afterAll(() => {
@@ -108,4 +109,31 @@ test("a path that is not a platform checkout is refused", () => {
   const r = mount(dir);
   expect(r.code).toBe(1);
   expect(r.err).toContain("pass the root of an origin-agent checkout");
+});
+
+test("an installed engine's knowledge is read in place: installed(dir).roots through payload", () => {
+  // The published layout: @origingame/engine with the knowledge as knowledge/ and the template's text in its scaffold/template/.
+  const dir = mkdtempSync(join(tmpdir(), "og-mount-installed-"));
+  temps.push(dir);
+  const roots = defaultRoots();
+  const version = (JSON.parse(readFileSync(join(roots.engine, "package.json"), "utf8")) as { version: string }).version;
+  writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "@origingame/engine", version }));
+  cpSync(roots.pkg, join(dir, "knowledge"), { recursive: true, filter: (s) => !s.includes("node_modules") });
+  cpSync(roots.template, join(dir, "knowledge/scaffold/template"), { recursive: true, filter: (s) => !/\/(cooked|dist|node_modules|og-out)(\/|$)/.test(s) });
+  const found = installed(dir);
+  expect(found.roots).toEqual({ pkg: join(dir, "knowledge"), template: join(dir, "knowledge/scaffold/template"), engine: dir });
+  expect(found.revision).toBe(`@origingame/engine@${version} (knowledge)`);
+  const files = payload(found.roots);
+  for (const f of files) expect(Object.keys(f).sort()).toEqual(["bytes", "path", "source", "symlink"]);
+  expect(files.map((f) => f.path)).toEqual([...files.map((f) => f.path)].sort());
+  // Every skill at game/skills/<name>/, with the files beside its SKILL.md.
+  const script = files.find((f) => f.path === "game/skills/level-texturing/scripts/texture-level.ts")!;
+  expect(script.source).toBe(join(dir, "knowledge/skills/level-texturing/scripts/texture-level.ts"));
+  expect(Buffer.from(script.bytes).equals(readFileSync(join(roots.pkg, "skills/level-texturing/scripts/texture-level.ts")))).toBeTrue();
+  const skills = new Set(files.map((f) => /^game\/skills\/([^/]+)\/SKILL\.md$/.exec(f.path)?.[1]).filter(Boolean));
+  for (const s of ["architecture-discipline", "component-forge", "level-texturing", "localization", "recipe-craft", "visual-acceptance", "og-game"]) expect(skills.has(s)).toBeTrue();
+  // The same text as the repository's payload, path for path.
+  const here = new Map(text.map((f) => [f.path, Buffer.from(f.bytes).toString("utf8")]));
+  const there = new Map(files.filter((f) => isText(f.bytes)).map((f) => [f.path, Buffer.from(f.bytes).toString("utf8")]));
+  expect([...there.keys()]).toEqual([...here.keys()]);
 });

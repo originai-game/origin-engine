@@ -34,5 +34,9 @@ difference, `--commit` mounts a commit instead of the working tree and
 `scripts/knowledge/mount-engine.ts`, which imports `installed`, `mount` and
 `summary` from the installed engine's `knowledge/scripts/mount.ts` with its
 own knowledge root: those three signatures are a public contract
-(AGENTS.md). What the platform side looked like at M7: the repository's
-`docs/m7-platform-notes.md`.
+(AGENTS.md). So are `payload(roots)` and `defaultRoots(pkg?)` of
+`scripts/lib.ts` and the `PayloadFile` and `Roots` shapes they use, for a
+platform that reads the knowledge straight from the installed package
+(`payload(installed(dir).roots)`: every file at its production path, with
+its source and bytes) instead of mounting a copy. What the platform side
+looked like at M7: the repository's `docs/m7-platform-notes.md`.
