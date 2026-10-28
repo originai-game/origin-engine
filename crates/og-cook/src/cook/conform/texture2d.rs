@@ -1234,7 +1234,7 @@ fn run(art: &Art, src: &Rgba, role: &Role, size: Option<u32>) -> Done {
         let mut drawn = 0usize;
         for &c in &new_cells {
             let cell = img.crop(c);
-            for (k, m) in draw_line(&cell, inner, outer, art.brush)
+            for (k, m) in draw_line(&cell, inner, outer, art.brush, tiles)
                 .into_iter()
                 .enumerate()
             {
@@ -1296,7 +1296,7 @@ fn run(art: &Art, src: &Rgba, role: &Role, size: Option<u32>) -> Done {
                         (Some((p, _)), Some(i)) => p.rgb[i],
                         _ => art.line_rgb,
                     };
-                    for (t, m) in draw_line(&turned, inner, outer, art.brush)
+                    for (t, m) in draw_line(&turned, inner, outer, art.brush, tiles)
                         .into_iter()
                         .enumerate()
                     {
@@ -1353,10 +1353,10 @@ fn cell_origins(cells: &[Rect], w: u32, h: u32) -> Vec<(u32, u32)> {
 
 /// The texels of a cell that take the line: inside and outside widths,
 /// both from the shape before either is drawn.
-fn draw_line(cell: &Rgba, inner: f64, outer: f64, brush: Brush) -> Vec<bool> {
+fn draw_line(cell: &Rgba, inner: f64, outer: f64, brush: Brush, tile: bool) -> Vec<bool> {
     let alpha = |x: u32, y: u32| cell.at(x, y)[3];
-    let a = outline::mask(cell.w, cell.h, &alpha, inner, brush, true);
-    let b = outline::mask(cell.w, cell.h, &alpha, outer, brush, false);
+    let a = outline::mask(cell.w, cell.h, &alpha, inner, brush, true, !tile);
+    let b = outline::mask(cell.w, cell.h, &alpha, outer, brush, false, !tile);
     a.into_iter().zip(b).map(|(a, b)| a || b).collect()
 }
 

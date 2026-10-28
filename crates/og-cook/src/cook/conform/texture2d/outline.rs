@@ -9,7 +9,9 @@
 //! opaque (inside) and a texel of the other kind lies under the brush
 //! round it, the brush being a diamond, a circle or a square of the
 //! line's width; for the inside line the cell's edge counts as
-//! transparent. The cell is the texture the shader saw, so a line never
+//! transparent, except in a tile, which continues into its neighbours:
+//! there only the tile's own texels count, so a full tile takes no line
+//! and a seam never shows between two. The cell is the texture the shader saw, so a line never
 //! crosses into a neighbouring frame. The line's colour is opaque (the
 //! shader's `color.a` 1): the texel becomes that colour, alpha 1.
 
@@ -40,14 +42,15 @@ impl Brush {
 }
 
 /// `has_contrary_neighbour`: whether under the brush round (x, y) a texel
-/// (or, inside, the edge) is of the other kind. `transparent(x, y)` is
-/// `None` outside the cell.
+/// (or, inside, the edge when `edge_clear`) is of the other kind.
+/// `transparent(x, y)` is `None` outside the cell.
 fn contrary(
     x: i64,
     y: i64,
     width: f64,
     brush: Brush,
     inside: bool,
+    edge_clear: bool,
     transparent: &dyn Fn(i64, i64) -> Option<bool>,
 ) -> bool {
     let reach = width.ceil();
@@ -60,8 +63,10 @@ fn contrary(
         };
         let mut j = -offset.ceil();
         while j <= offset.ceil() {
-            let other = transparent(x + i as i64, y + j as i64).unwrap_or(true);
-            if other == inside {
+            // Off the cell: transparent when `edge_clear`, else no texel.
+            let other = transparent(x + i as i64, y + j as i64)
+                .map_or(edge_clear && inside, |t| t == inside);
+            if other {
                 return true;
             }
             j += 1.0;
@@ -72,7 +77,9 @@ fn contrary(
 }
 
 /// The texels of a `w` x `h` cell (alpha by `alpha(x, y)`) that take a
-/// line of `width` with `brush`, inside or outside the shape.
+/// line of `width` with `brush`, inside or outside the shape; the cell's
+/// edge counts as transparent when `edge_clear` (a sprite's frame, not a
+/// tile).
 pub fn mask(
     w: u32,
     h: u32,
@@ -80,6 +87,7 @@ pub fn mask(
     width: f64,
     brush: Brush,
     inside: bool,
+    edge_clear: bool,
 ) -> Vec<bool> {
     let mut out = vec![false; (w * h) as usize];
     if width <= 0.0 {
@@ -100,6 +108,7 @@ pub fn mask(
                     width,
                     brush,
                     inside,
+                    edge_clear,
                     &transparent,
                 )
             {
@@ -149,7 +158,7 @@ mod tests {
 
     #[test]
     fn a_diamond_outline_takes_the_four_sides_only() {
-        let m = mask(7, 5, &shape(), 1.0, Brush::Diamond, false);
+        let m = mask(7, 5, &shape(), 1.0, Brush::Diamond, false, true);
         // Each transparent texel with a shape texel up, down, left or right.
         assert_eq!(
             marked(&m, 7),
@@ -159,7 +168,7 @@ mod tests {
 
     #[test]
     fn a_square_outline_fills_the_corners() {
-        let m = mask(7, 5, &shape(), 1.0, Brush::Square, false);
+        let m = mask(7, 5, &shape(), 1.0, Brush::Square, false, true);
         // Every transparent texel of the 3x3 neighbourhoods round the shape.
         assert_eq!(
             marked(&m, 7),
@@ -185,7 +194,7 @@ mod tests {
         // One texel at (3, 3) of a 7 x 7 cell: a disc of radius 2.5 takes
         // offsets with i^2 + j^2 <= 6.25 column by column (floor(sqrt)).
         let one = |x: u32, y: u32| if (x, y) == (3, 3) { 255 } else { 0 };
-        let m = mask(7, 7, &one, 2.0, Brush::Circle, false);
+        let m = mask(7, 7, &one, 2.0, Brush::Circle, false, true);
         let got = marked(&m, 7);
         assert_eq!(got.len(), 20, "{got:?}");
         assert!(got.contains(&(1, 2)) && got.contains(&(5, 4)));
@@ -196,7 +205,7 @@ mod tests {
     fn an_inline_counts_the_cells_edge_as_outside() {
         // A shape filling a 3 x 2 cell: every texel is on the edge.
         let full = |_: u32, _: u32| 255u8;
-        let m = mask(3, 2, &full, 1.0, Brush::Diamond, true);
+        let m = mask(3, 2, &full, 1.0, Brush::Diamond, true, true);
         assert!(m.iter().all(|b| *b));
         // In a 4 x 4 cell with a 2 x 2 block in the middle, inside: the
         // block itself, outside: its 8 side neighbours.
@@ -207,10 +216,20 @@ mod tests {
                 0
             }
         };
-        let m = mask(4, 4, &block, 1.0, Brush::Diamond, true);
+        let m = mask(4, 4, &block, 1.0, Brush::Diamond, true, true);
         assert_eq!(marked(&m, 4), vec![(1, 1), (2, 1), (1, 2), (2, 2)]);
-        let m = mask(4, 4, &block, 1.0, Brush::Diamond, false);
+        let m = mask(4, 4, &block, 1.0, Brush::Diamond, false, true);
         assert_eq!(marked(&m, 4).len(), 8);
+        // A tile's edge is not: a full tile takes no line, and the block
+        // in a tile takes the same inline as in a sprite's cell.
+        assert!(
+            mask(3, 2, &full, 1.0, Brush::Diamond, true, false)
+                .iter()
+                .all(|b| !*b)
+        );
+        let notch = |x: u32, y: u32| if (x, y) == (0, 0) { 0 } else { 255 };
+        let m = mask(3, 2, &notch, 1.0, Brush::Diamond, true, false);
+        assert_eq!(marked(&m, 3), vec![(1, 0), (0, 1)]);
         assert_eq!(split(1.0, "both"), (1.0, 0.0));
         assert_eq!(split(3.0, "both"), (2.0, 1.0));
         assert_eq!(split(2.0, "outside"), (0.0, 2.0));

@@ -214,8 +214,8 @@ conformed; `.ktx2` sources are cooked as they are.
 4. *The line* (`ArtLine.width`, `color`, `place`, `brush`): drawn into each
    cell, never across into a neighbour, by a port of Pixelorama's
    OutlineInline (`texture2d/outline.rs`, MIT, `third_party/pixelorama/`):
-   a clear texel (outside) or an opaque one (inside; the cell's edge counts
-   as clear) takes the line when a texel of the other kind lies under the
+   a clear texel (outside) or an opaque one (inside; a sprite cell's edge
+   counts as clear, a tile's does not, so tiles never seam) takes the line when a texel of the other kind lies under the
    brush round it, a diamond (|dx| + |dy| <= width), a circle (radius
    width + 0.5) or a square of the line's width; `both` draws the larger
    half inside. With a palette the line takes its nearest colour (an
