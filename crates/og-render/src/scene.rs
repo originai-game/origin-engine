@@ -2870,7 +2870,10 @@ impl RenderScene {
 
     /// Sets parameter `name` of `material`'s shader (as many numbers as its
     /// type takes; missing ones are 0). False when the material has no
-    /// shader or the shader no such parameter.
+    /// shader or the shader no such parameter. Leaves the material's
+    /// revision: the renderer writes changed parameters into the material's
+    /// uniform in place (a new buffer and bind group per change cost the
+    /// browser's GPU process about 1 ms each).
     pub fn set_shader_param(
         &mut self,
         material: MaterialHandle,
@@ -2888,10 +2891,7 @@ impl RenderScene {
         for (d, s) in v.iter_mut().zip(value.iter().take(kind.count())) {
             *d = *s;
         }
-        if params[slot] != v {
-            params[slot] = v;
-            self.material_revisions[i] += 1;
-        }
+        params[slot] = v;
         true
     }
 

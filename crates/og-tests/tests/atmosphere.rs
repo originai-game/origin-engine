@@ -432,11 +432,13 @@ fn metaballs_merge_within_reach() {
 /// The dissolve shader cuts holes by its amount: a white quad over a
 /// black background keeps every pixel at amount 0 and loses a share at 0.6
 /// (with no edge glow, a hole is background); unknown parameters are
-/// refused. The grass shader moves the grass with the clock and nothing
+/// refused. A parameter set between two frames of one renderer draws as
+/// one set before the first (the renderer writes it into the material in
+/// place). The grass shader moves the grass with the clock and nothing
 /// else.
 #[test]
 fn shader_hooks_dissolve_and_sway() {
-    let with_amount = |amount: f32| {
+    let scene = |amount: f32| {
         let mut s = RenderScene::new();
         let shader = s.add_shader(atmo::dissolve_shader());
         let quad = s.add_mesh(og_render::shapes::cuboid(Vec3::new(4.0, 4.0, 0.1)));
@@ -459,8 +461,9 @@ fn shader_hooks_dissolve_and_sway() {
             target: Vec3::ZERO,
             ..Default::default()
         };
-        frame(&s)
+        (s, m)
     };
+    let with_amount = |amount: f32| frame(&scene(amount).0);
     let lit = |img: &RgbaImage| {
         (260..460)
             .flat_map(|y| (540..740).map(move |x| (x, y)))
@@ -473,6 +476,15 @@ fn shader_hooks_dissolve_and_sway() {
         cut < whole * 3 / 4 && cut > whole / 20,
         "amount 0.6 cuts holes: {whole} -> {cut}"
     );
+    let (mut s, m) = scene(0.0);
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut draw = |s: &RenderScene| {
+        r.render(s, &RenderTarget::Offscreen).expect("render");
+        r.read_offscreen().expect("capture")
+    };
+    assert_eq!(lit(&draw(&s)), whole, "the first frame at amount 0");
+    assert!(s.set_shader_param(m, "amount", &[0.6]));
+    assert_eq!(lit(&draw(&s)), cut, "amount 0.6 set after the first frame");
     let early = frame(&atmo::hooks_scene(0));
     let late = frame(&atmo::hooks_scene(40));
     let grass = diff(&early, &late, 0, 500, 1280, 720);
