@@ -441,6 +441,12 @@
       "value": "ArtLinePlace"
     },
     {
+      "name": "ArtBrush",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "ArtBrush"
+    },
+    {
       "name": "ArtProjection",
       "array": "Uint32Array",
       "stride": 1,
@@ -8308,6 +8314,11 @@
           "name": "distanceFalloff",
           "column": "f32",
           "default": 0
+        },
+        {
+          "name": "brush",
+          "column": "ArtBrush",
+          "default": "diamond"
         }
       ]
     },

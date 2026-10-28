@@ -32,6 +32,8 @@ module art {
 | [`ArtNormals()`](#column-ArtNormals) | column kind | An ArtNormals field: the variant's index. |
 | [`ArtLinePlace`](#type-ArtLinePlace) | enum | Where the style's line lies against a shape (ArtLine.place). |
 | [`ArtLinePlace()`](#column-ArtLinePlace) | column kind | An ArtLinePlace field: the variant's index. |
+| [`ArtBrush`](#type-ArtBrush) | enum | The brush a sprite's baked line is drawn with (ArtLine.brush), as Pixelorama's outline effect draws it: which texels within ArtLine.width of the shape's edge take the line. |
+| [`ArtBrush()`](#column-ArtBrush) | column kind | An ArtBrush field: the variant's index. |
 | [`ArtProjection`](#type-ArtProjection) | enum | The projection of the style's camera (ArtCamera.projection). |
 | [`ArtProjection()`](#column-ArtProjection) | column kind | An ArtProjection field: the variant's index. |
 | [`og.ArtPalette`](#record-ArtPalette) | resource | The style's colours: the palette the assets' texels sit on, how many a single asset may use, how many shades a hue ramps through, which colours are kept for signals, and how two colours mix where a tone falls between them. The frame's own quantise is Stylise.palette; this is what the assets are made of, 2D and 3D alike. Every field is no constraint at its zero value. |
@@ -79,7 +81,7 @@ resource ArtPalette {
 }
 ```
 
-<sub>`api.ogt` line 15215</sub>
+<sub>`api.ogt` line 15229</sub>
 
 <a id="record-ArtPixels"></a>
 
@@ -119,7 +121,7 @@ resource ArtPixels {
 }
 ```
 
-<sub>`api.ogt` line 15231</sub>
+<sub>`api.ogt` line 15245</sub>
 
 <a id="record-ArtTexels"></a>
 
@@ -152,7 +154,7 @@ resource ArtTexels {
 }
 ```
 
-<sub>`api.ogt` line 15250</sub>
+<sub>`api.ogt` line 15264</sub>
 
 <a id="record-ArtShape"></a>
 
@@ -203,7 +205,7 @@ resource ArtShape {
 }
 ```
 
-<sub>`api.ogt` line 15264</sub>
+<sub>`api.ogt` line 15278</sub>
 
 <a id="record-ArtLine"></a>
 
@@ -219,6 +221,7 @@ Token `og.ArtLine`, registered under the schema name `og.ArtLine`; its value typ
 | `color` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The line's colour (linear; a look may write an sRGB "#rrggbb"). |
 | `place` | `ArtLinePlace` | `"outside"` | — | — | — | Where the line lies against the shape: outside (the zero value), inside, or both. |
 | `distanceFalloff` | `number` | `0` | ≥ 0 | `m` | — | Round a mesh: the distance at which the line is width wide, nearer wider and farther thinner (as MaterialStyle.outlineDistance); 0 keeps one width. |
+| `brush` | `ArtBrush` | `"diamond"` | — | — | — | Round a sprite: the brush the cook draws the line into its cells with: diamond (the zero value), circle or square (docs/art.md §2.3). |
 
 ```ogt
 resource ArtLine {
@@ -235,10 +238,11 @@ resource ArtLine {
     min 0
     unit m
   }
+  field brush ArtBrush "Round a sprite: the brush the cook draws the line into its cells with: diamond (the zero value), circle or square (docs/art.md §2.3)."
 }
 ```
 
-<sub>`api.ogt` line 15293</sub>
+<sub>`api.ogt` line 15307</sub>
 
 <a id="record-ArtMotion"></a>
 
@@ -273,7 +277,7 @@ resource ArtMotion {
 }
 ```
 
-<sub>`api.ogt` line 15309</sub>
+<sub>`api.ogt` line 15324</sub>
 
 <a id="record-ArtCamera"></a>
 
@@ -322,7 +326,7 @@ resource ArtCamera {
 }
 ```
 
-<sub>`api.ogt` line 15326</sub>
+<sub>`api.ogt` line 15341</sub>
 
 ## Types
 
@@ -455,6 +459,31 @@ enum ArtLinePlace {
 
 <sub>`api.ogt` line 15187</sub>
 
+<a id="type-ArtBrush"></a>
+
+### `ArtBrush` (enum)
+
+The brush a sprite's baked line is drawn with (ArtLine.brush), as Pixelorama's outline effect draws it: which texels within ArtLine.width of the shape's edge take the line.
+
+A string: one of the variants below. The zero value is `"diamond"`.
+
+| Variant | Doc |
+|---|---|
+| `"diamond"` | The texels within width steps along the grid (\|dx\| + \|dy\| at most width): a 1-pixel line touches the four sides and leaves the corners, the classic pixel-art outline. |
+| `"circle"` | The texels within a disc of radius width + 0.5: rounder corners on wide lines. |
+| `"square"` | Every texel within width across and down: the line fills the corners, so a 1-pixel line touches all eight neighbours. |
+
+```ogt
+enum ArtBrush {
+  doc "The brush a sprite's baked line is drawn with (ArtLine.brush), as Pixelorama's outline effect draws it: which texels within ArtLine.width of the shape's edge take the line."
+  variant diamond "The texels within width steps along the grid (|dx| + |dy| at most width): a 1-pixel line touches the four sides and leaves the corners, the classic pixel-art outline."
+  variant circle "The texels within a disc of radius width + 0.5: rounder corners on wide lines."
+  variant square "Every texel within width across and down: the line fills the corners, so a 1-pixel line touches all eight neighbours."
+}
+```
+
+<sub>`api.ogt` line 15201</sub>
+
 <a id="type-ArtProjection"></a>
 
 ### `ArtProjection` (enum)
@@ -478,7 +507,7 @@ enum ArtProjection {
 }
 ```
 
-<sub>`api.ogt` line 15201</sub>
+<sub>`api.ogt` line 15215</sub>
 
 ## Column kinds
 
@@ -491,6 +520,7 @@ Each is a factory, `ArtRotation(value?, options?)`, that makes one field of a co
 | <a id="column-ArtMips"></a>`ArtMips` | `ArtMips` | `Uint32Array` | 1 | An ArtMips field: the variant's index. |
 | <a id="column-ArtNormals"></a>`ArtNormals` | `ArtNormals` | `Uint32Array` | 1 | An ArtNormals field: the variant's index. |
 | <a id="column-ArtLinePlace"></a>`ArtLinePlace` | `ArtLinePlace` | `Uint32Array` | 1 | An ArtLinePlace field: the variant's index. |
+| <a id="column-ArtBrush"></a>`ArtBrush` | `ArtBrush` | `Uint32Array` | 1 | An ArtBrush field: the variant's index. |
 | <a id="column-ArtProjection"></a>`ArtProjection` | `ArtProjection` | `Uint32Array` | 1 | An ArtProjection field: the variant's index. |
 
 ```ogt
@@ -549,6 +579,17 @@ column ArtLinePlace {
 <sub>`api.ogt` line 15194</sub>
 
 ```ogt
+column ArtBrush {
+  doc "An ArtBrush field: the variant's index."
+  array Uint32Array
+  stride 1
+  value ArtBrush
+}
+```
+
+<sub>`api.ogt` line 15208</sub>
+
+```ogt
 column ArtProjection {
   doc "An ArtProjection field: the variant's index."
   array Uint32Array
@@ -557,4 +598,4 @@ column ArtProjection {
 }
 ```
 
-<sub>`api.ogt` line 15208</sub>
+<sub>`api.ogt` line 15222</sub>
