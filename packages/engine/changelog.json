@@ -6,7 +6,7 @@
     "breaking": [
       {
         "member": "cook: the art contract's conformance",
-        "change": "A project whose look (project.ogt look, or one extending a preset) sets art blocks now cooks its assets conformed to them: 2D art to the pixel grid, the palette and the line (and, with stream A3, models, mesh textures and clips to the shape, texel and motion contract). Frames of such a game change.",
+        "change": "A project whose look (project.ogt look, or one extending a preset) sets art blocks now cooks its assets conformed to them: 2D art to the pixel grid, the palette and the line (and, with stream A3, models, mesh textures and clips to the shape, texel and motion contract). Frames of such a game change. With stream A4 such a project (one naming its look in project.ogt) also draws under the contract's runtime defaults: cleanEdge pixel-art rotation, the line on sprites the cook did not line, ArtCamera's preset on an applied look, ArtMotion.stepFps as the animation step.",
         "fix": "Keep it (the style is the point), or opt an asset out with conform off in its import settings or project.ogt conform { off ... }, or set the preset's art blocks to zero in the game's look.",
         "find": [
           "extends"
@@ -97,6 +97,34 @@
       {
         "member": "og cook conform",
         "summary": "The cook conforms sprites, flipbooks, tile sets and UI images to the look's art contract (pixel grid, 1-bit alpha, Oklab palette with dither, line, prerotated cells, painted 2D) and writes <id>#index for palette swaps; conform off and project.ogt conform { off } opt out; og cook --report lists every change. Byte-identical without a contract."
+      },
+      {
+        "member": "og.Sprite.outline",
+        "summary": "A pixel outline this many logical pixels wide (0 to 4), drawn by the sprite shader from the texture's alpha; 0 is none, or under the project's art contract the look's ArtLine.width for a texture the cook did not line."
+      },
+      {
+        "member": "og.Sprite.outlineColor",
+        "summary": "The outline's linear colour; at its default, the art contract's ArtLine.color."
+      },
+      {
+        "member": "og.Sprite.palette",
+        "summary": "A palette swap: the sprite draws its texture's index texture (the cook's <id>#index) through a row of this palette texture of N rows; 0 is none."
+      },
+      {
+        "member": "og.Sprite.paletteRow",
+        "summary": "The row of Sprite.palette drawn."
+      },
+      {
+        "member": "og.Tilemap.palette",
+        "summary": "A palette swap of every tile layer through a row of this palette texture; 0 is none."
+      },
+      {
+        "member": "og.Tilemap.paletteRow",
+        "summary": "The row of Tilemap.palette drawn."
+      },
+      {
+        "member": "art contract at run time",
+        "summary": "Under project.ogt's look (stream A4): ArtPixels.rotation cleanEdge draws pixel-art textures through the new cleanEdge sampler (og-render TextureFilter::CleanEdge), ArtLine defaults Sprite.outline, ArtCamera sets the camera's projection, angle and field of view when a look is applied and pixelPerfect snaps the 2D camera by logical pixels, ArtMotion.stepFps defaults AnimationPlayer.stepFps, and a strict ArtPalette tints the UI's icons to their nearest palette colour. Without the look line nothing changes."
       }
     ],
     "fixed": []

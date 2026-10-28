@@ -20,7 +20,7 @@ module tilemap {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 9076</sub>
+<sub>`api.ogt` line 9085</sub>
 
 ## Contents
 
@@ -69,7 +69,7 @@ fn setTile {
 }
 ```
 
-<sub>`api.ogt` line 9186</sub>
+<sub>`api.ogt` line 9197</sub>
 
 <a id="fn-getTile"></a>
 
@@ -105,7 +105,7 @@ fn getTile {
 }
 ```
 
-<sub>`api.ogt` line 9193</sub>
+<sub>`api.ogt` line 9204</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -137,7 +137,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 9203</sub>
+<sub>`api.ogt` line 9214</sub>
 
 <a id="fn-cellCenter"></a>
 
@@ -171,7 +171,7 @@ fn cellCenter {
 }
 ```
 
-<sub>`api.ogt` line 9211</sub>
+<sub>`api.ogt` line 9222</sub>
 
 ## Components, resources and events
 
@@ -193,6 +193,8 @@ Token `og.Tilemap`, registered under the schema name `og.Tilemap`; its value typ
 | `collision` | `boolean` | `true` | — | — | — | Give the layers marked collision static colliders (rectangles merged from the solid tiles). |
 | `colliderLayers` | `number` | `1` | — | — | — | The collision layers of those colliders, as bits (Collider.layers), for every collision layer of the map that names none of its own (a map layer's `colliderLayers`, with its `colliderMask`, puts a layer of grates on a one-way layer while the walls stay here). |
 | `friction` | `number` | `0.5` | 0 … 2 | — | — | The colliders' friction. |
+| `palette` | `Texture` | `0` | — | — | — | A palette swap of every layer (og.Sprite.palette): the tile sets' index textures (the cook's `<id>#index`) drawn through row paletteRow of this texture of N rows; 0 is none. |
+| `paletteRow` | `number` | `0` | — | — | — | The row of `palette` drawn (past the last, the last). |
 
 ```ogt
 component Tilemap {
@@ -223,10 +225,12 @@ component Tilemap {
     min 0
     max 2
   }
+  field palette Texture "A palette swap of every layer (og.Sprite.palette): the tile sets' index textures (the cook's `<id>#index`) drawn through row paletteRow of this texture of N rows; 0 is none."
+  field paletteRow u32 "The row of `palette` drawn (past the last, the last)."
 }
 ```
 
-<sub>`api.ogt` line 9092</sub>
+<sub>`api.ogt` line 9101</sub>
 
 ## Types
 
@@ -242,7 +246,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TilemapAsset "A loaded map: its layers, tilesets and objects."
 ```
 
-<sub>`api.ogt` line 9083</sub>
+<sub>`api.ogt` line 9092</sub>
 
 <a id="type-TileLayerInfo"></a>
 
@@ -279,7 +283,7 @@ struct TileLayerInfo {
 }
 ```
 
-<sub>`api.ogt` line 9122</sub>
+<sub>`api.ogt` line 9133</sub>
 
 <a id="type-TileObject"></a>
 
@@ -314,7 +318,7 @@ struct TileObject {
 }
 ```
 
-<sub>`api.ogt` line 9136</sub>
+<sub>`api.ogt` line 9147</sub>
 
 <a id="type-TilemapInfo"></a>
 
@@ -349,7 +353,7 @@ struct TilemapInfo {
 }
 ```
 
-<sub>`api.ogt` line 9152</sub>
+<sub>`api.ogt` line 9163</sub>
 
 <a id="type-SetTileDesc"></a>
 
@@ -381,7 +385,7 @@ struct SetTileDesc {
 }
 ```
 
-<sub>`api.ogt` line 9167</sub>
+<sub>`api.ogt` line 9178</sub>
 
 <a id="type-TileCell"></a>
 
@@ -404,7 +408,7 @@ struct TileCell {
 }
 ```
 
-<sub>`api.ogt` line 9179</sub>
+<sub>`api.ogt` line 9190</sub>
 
 ## Column kinds
 
@@ -423,4 +427,4 @@ column TilemapAsset {
 }
 ```
 
-<sub>`api.ogt` line 9085</sub>
+<sub>`api.ogt` line 9094</sub>
