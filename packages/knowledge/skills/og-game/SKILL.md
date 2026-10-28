@@ -122,6 +122,17 @@ Mistakes the games made, or would have, before reading the right page:
 | **og-i18n** | languages: string tables, messages, fonts, line breaking, right to left | i18n |
 | **og-platform-sdk** | the platform from inside the game: saves, settings, leaderboards, telemetry, points, AI marks | platform |
 
+Beside them, six craft skills teach no module and name no API of their
+own; they point to the skills above for every call:
+**architecture-discipline** (the project's layers, when to split, the first
+playable, loud failure, tuning in data), **component-forge** (a unit built
+as code from a measured reference: the route, decomposition, gates,
+assembly), **level-texturing** (a gray level painted from views with `og
+bake projection`), **localization** (the discipline beside og-i18n),
+**recipe-craft** (the retrieval ladder for example code, vendoring and
+distilling) and **visual-acceptance** (judging frames against references,
+baselines and the play camera).
+
 Each module's page names its skill, and `reference/index.md` groups the
 modules the same way. When two skills seem to touch the same thing, the one
 in this table owns it and the other points there.

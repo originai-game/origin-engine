@@ -13,6 +13,24 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+No IDL member changed; the simulation is unchanged (the golden replays).
+
+- Knowledge: six craft skills move from origin-agent into the knowledge
+  package, mounted at `game/skills/<name>/` under the names games already
+  pin: `architecture-discipline`, `component-forge`, `level-texturing`
+  (with its `scripts/texture-level.ts`), `localization`, `recipe-craft`
+  and `visual-acceptance`. They name no platform tool or service and
+  point to the og-* skills and the wiki for every API; `localization` is
+  the craft beside og-i18n's API. texture-level.ts's providers are now
+  `handoff` (the default: it prints the view to paint and exits 3) and
+  `http` (any OpenAI-compatible image endpoint, `--endpoint`,
+  `OG_IMAGE_API_KEY`) beside `dashscope`; a run whose settings say `agent`
+  or `gateway` resumes under the new names. The validator resolves a
+  section reference to any skill it ships (`recipe-craft §2`, and
+  `og-i18n §6`, which it read as the citing skill's own).
+
 ## 0.6.5 — 2026-10-27
 
 No IDL member changed; the simulation is unchanged (the golden replays).

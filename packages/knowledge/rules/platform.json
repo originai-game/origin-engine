@@ -28,23 +28,18 @@
     },
     "namePattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
     "existing": [
-      "architecture-discipline",
       "canvas2d-substrate",
-      "component-forge",
       "coordinating-game-production",
       "gameplay-research",
-      "localization",
       "og-platform",
       "origin-engine-substrate",
       "parameter-sweeps",
       "performance-budget",
       "playtest-instruments",
       "producing-game-assets",
-      "recipe-craft",
       "store-compliance",
       "threejs-substrate",
-      "vgpu-effects",
-      "visual-acceptance"
+      "vgpu-effects"
     ],
     "source": "packages/game-knowledge/production/game/skills/*/SKILL.md (every skill's front matter: name equals its directory); agent-server/src/core/knowledge.ts (frontMatterDescription: the runner reads description)"
   },

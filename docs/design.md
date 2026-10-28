@@ -581,7 +581,8 @@ Baked lighting, volumetrics and area lights (depth S7).
   that turns a gray level glb into a textured one by painting
   it from views: the trompe workflow (Patch-gg/trompe, Apache-2.0)
   without Blender or a GPU. The image model stays outside the engine; a
-  driver (the platform's `level-texturing` skill) runs the steps and calls
+  driver (the knowledge package's `level-texturing` skill, with its
+  `scripts/texture-level.ts`) runs the steps and calls
   it between `prepare` and `project`. `init` rasterises the level's
   TEXCOORD_0 into texels (world position, normal, triangle) with a BVH
   (a level without TEXCOORD_0 is charted by xatlas at one texel density

@@ -4,7 +4,9 @@
   "unreleased": {
     "simulation": "unchanged",
     "breaking": [],
-    "added": [],
+    "added": [
+      "Knowledge: the craft skills architecture-discipline, component-forge, level-texturing (with scripts/texture-level.ts), localization, recipe-craft and visual-acceptance move from origin-agent into the knowledge package under the same names, free of platform tools and pointing to the og-* skills and the wiki for the API; texture-level.ts's providers are handoff (default), http (an OpenAI-compatible image endpoint) and dashscope, and runs that say agent or gateway resume."
+    ],
     "fixed": []
   },
   "versions": [

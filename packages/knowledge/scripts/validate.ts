@@ -44,7 +44,7 @@ export function readRules(pkg: string): Rules {
 }
 
 /** The skills this package ships. */
-export const SKILLS = ["og-ai", "og-audio", "og-build", "og-core", "og-feel", "og-game", "og-i18n", "og-model", "og-platform-sdk", "og-taste", "og-ui"] as const;
+export const SKILLS = ["og-ai", "og-audio", "og-build", "og-core", "og-feel", "og-game", "og-i18n", "og-model", "og-platform-sdk", "og-taste", "og-ui", "architecture-discipline", "component-forge", "level-texturing", "localization", "recipe-craft", "visual-acceptance"] as const;
 
 /**
  * The guides this package ships: hand-written pages in guides/, mounted
@@ -347,13 +347,15 @@ function coherence(files: readonly PayloadFile[], problems: string[]): void {
 
 /**
  * Every section reference of one text (`og-feel §4`, or `§4` for its own,
- * `three-to-og §2` for a guide's) names a numbered `## N.` section that
+ * `three-to-og §2` for a guide's, `recipe-craft §2` for any other skill
+ * or guide `sections` holds) names a numbered `## N.` section that
  * exists: `at` names the text in the messages, `own` the text itself.
  */
 export function sectionRefs(at: string, own: string, text: string, sections: ReadonlyMap<string, ReadonlySet<string>>): string[] {
   const problems: string[] = [];
   const prose = text.replace(/^```[\s\S]*?^```/gm, "");
-  for (const m of prose.matchAll(/(og(?:-[a-z]+)+|three-to-og) §([A-Za-z][\w ]*)/g)) problems.push(`${at}: refers to ${m[1]} §${m[2]!.split(" ")[0]} by name; refer to a skill's sections by their numbers (## N.)`);
+  const owner = new RegExp(`(og(?:-[a-z0-9]+)+${[...sections.keys()].map((n) => `|${n}`).join("")}) §([A-Za-z][\\w ]*)`, "g");
+  for (const m of prose.matchAll(owner)) problems.push(`${at}: refers to ${m[1]} §${m[2]!.split(" ")[0]} by name; refer to a skill's sections by their numbers (## N.)`);
   for (const m of prose.matchAll(/§(\d+)/g)) {
     // The text this § belongs to: walk back over a list of §s ("og-feel
     // §9–§11", "og-taste §4, §10") to the word before it.
@@ -362,7 +364,7 @@ export function sectionRefs(at: string, own: string, text: string, sections: Rea
     while (i >= 0 && (before[i] === "" || /^\(?§\d+(\.\d+)?[–,;)]*$/.test(before[i]!) || before[i] === "and" || before[i] === "or")) i--;
     const word = (before[i] ?? "").replace(/^[(`*]+/, "");
     let target: string | undefined = own;
-    if (/^og-[a-z]+(?:-[a-z]+)*$/.test(word) || (GUIDES as readonly string[]).includes(word)) target = word;
+    if (/^og-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(word) || sections.has(word)) target = word;
     else if (/\.md\b|\//.test(word) || /^design/.test(word)) target = undefined;
     if (target === undefined) continue;
     const have = sections.get(target);

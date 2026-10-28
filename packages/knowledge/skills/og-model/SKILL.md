@@ -346,8 +346,9 @@ blockout glb (y up; uvs optional, charted by xatlas when missing) whose surfaces
 an image model from cameras a player could stand at. `og bake projection`
 does the engine half on the CPU (`init`, `plan`, `prepare` per view,
 `project` the model's picture, `holes`, `export` a textured glb;
-docs/design.md §Projection painting); the platform's `level-texturing`
-skill drives it and owns the model calls and the review. Check the
+docs/design.md §Projection painting); the `level-texturing` skill
+drives it (its `scripts/texture-level.ts`) and owns the model calls and
+the review. Check the
 exported glb lit, from the planned views and from one the plan did not
 take.
 

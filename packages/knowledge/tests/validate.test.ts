@@ -44,7 +44,16 @@ const edit = (path: string, f: (s: string) => string) => writeFileSync(path, f(r
 test("the committed package is valid against the platform rules", () => {
   expect(validate(real)).toEqual([]);
   const names = Object.keys(packs(payload(real)));
-  expect(names).toEqual(["scaffold:origin-engine-ts", "skill:og-ai", "skill:og-audio", "skill:og-build", "skill:og-core", "skill:og-feel", "skill:og-game", "skill:og-i18n", "skill:og-model", "skill:og-platform-sdk", "skill:og-taste", "skill:og-ui"]);
+  expect(names).toEqual([
+    "scaffold:origin-engine-ts",
+    "skill:architecture-discipline",
+    "skill:component-forge",
+    "skill:level-texturing",
+    "skill:localization",
+    "skill:og-ai", "skill:og-audio", "skill:og-build", "skill:og-core", "skill:og-feel", "skill:og-game", "skill:og-i18n", "skill:og-model", "skill:og-platform-sdk", "skill:og-taste", "skill:og-ui",
+    "skill:recipe-craft",
+    "skill:visual-acceptance",
+  ]);
 });
 
 test("the bundle is the platform's production layout, text only", () => {
@@ -157,6 +166,13 @@ test("a section reference names a numbered section that exists", () => {
   ]);
   const own = added((r) => edit(join(r.pkg, "skills/og-audio/SKILL.md"), (s) => `${s}\nAs §8 says.\n`));
   expect(own).toEqual(["skills/og-audio/SKILL.md: refers to its own §8, which it does not have (its sections: 1, 2, 3, 4, 5, 6, 7)"]);
+  // A skill whose name has a digit, or none of og-, is the owner of its §, not the text that names it.
+  const other = added((r) => edit(join(r.pkg, "skills/og-audio/SKILL.md"), (s) => `${s}\nSee og-i18n §9, recipe-craft §1 and §9, and localization §Checking.\n`));
+  expect(other).toEqual([
+    "skills/og-audio/SKILL.md: refers to localization §Checking by name; refer to a skill's sections by their numbers (## N.)",
+    "skills/og-audio/SKILL.md: refers to og-i18n §9, which does not exist there (its sections: 1, 2, 3, 4, 5, 6)",
+    "skills/og-audio/SKILL.md: refers to recipe-craft §9, which does not exist there (its sections: 1, 2, 3, 4)",
+  ]);
 });
 
 test("a skill or wiki page that calls a UI style a skin is refused; the glTF, collision and 2D skeleton skins pass", () => {
