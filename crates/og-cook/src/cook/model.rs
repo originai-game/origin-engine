@@ -342,15 +342,15 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
 /// Full-precision vertex before quantisation.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-struct FVertex {
-    p: [f32; 3],
-    n: [f32; 3],
-    uv: [f32; 2],
-    c: [f32; 4],
-    t: [f32; 4],
+pub(super) struct FVertex {
+    pub(super) p: [f32; 3],
+    pub(super) n: [f32; 3],
+    pub(super) uv: [f32; 2],
+    pub(super) c: [f32; 4],
+    pub(super) t: [f32; 4],
     /// A hash of the source vertex's skin and morph data (zero without
     /// either), so welding never merges vertices that skin or morph apart.
-    key: [u32; 2],
+    pub(super) key: [u32; 2],
 }
 
 /// The quantised vertex (unused attributes stay zero and are not stored).
@@ -520,6 +520,10 @@ pub(super) struct CookedPrimitive {
     bvh_tris: Vec<u32>,
     /// The source (glTF accessor) vertex of every cooked vertex.
     pub sources: Vec<u32>,
+    /// What the art contract changed (`conform::mesh`), and with an
+    /// `ArtLine` the outline hull's normal of every cooked vertex.
+    conformed: Option<super::conform::mesh::Changes>,
+    hull: Vec<[i16; 2]>,
 }
 
 /// zlib at the best level (the BVH sections: about 2.5 times smaller).
@@ -741,6 +745,30 @@ pub(super) fn cook_primitive(
         })
         .collect();
     let mut sources: Vec<u32> = (0..positions.len() as u32).collect();
+    // The art contract (docs/art.md §2.3, `conform::mesh`): the vertices
+    // made to meet it before they are welded.
+    let conformed = match &opts.conform {
+        Some(c) if c.applies(src) => {
+            let ch = super::conform::mesh::primitive(
+                c,
+                src,
+                prim,
+                &mut verts,
+                &mut indices,
+                &mut sources,
+            );
+            given[0] = 0..indices.len();
+            if ch.normals {
+                normals = Some(Vec::new());
+                tangents = None;
+            }
+            if ch.colors {
+                colors = Some(Vec::new());
+            }
+            Some(ch)
+        }
+        _ => None,
+    };
     let want_tangents = opts.tangents && normal_mapped && uvs.is_some();
     let generate_tangents = want_tangents && tangents.is_none();
     if normals.is_none() || generate_tangents {
@@ -1021,6 +1049,20 @@ pub(super) fn cook_primitive(
     } else {
         (Vec::new(), Vec::new())
     };
+    let hull = match &opts.conform {
+        Some(c) if c.line.is_some() && conformed.is_some() => {
+            let deq: Vec<[f32; 3]> = ordered
+                .iter()
+                .map(|v| [0, 1, 2].map(|a| lo[a] + v.p[a] as f32 / 65535.0 * scale[a]))
+                .collect();
+            let lod0 = &all[..lods[0].index_count as usize];
+            super::conform::mesh::hull_normals(&deq, lod0)
+                .into_iter()
+                .map(|n| oct_encode(Vec3::from(n)))
+                .collect()
+        }
+        _ => Vec::new(),
+    };
     let vertices = encode_vertices(&packed, vertex_count, stride)?;
     let index_bytes =
         meshopt::encode_index_buffer(&all, vertex_count).map_err(|e| format!("meshopt: {e}"))?;
@@ -1066,6 +1108,8 @@ pub(super) fn cook_primitive(
         bvh_nodes,
         bvh_tris,
         sources: ordered_sources,
+        conformed,
+        hull,
     }))
 }
 
@@ -1232,13 +1276,22 @@ pub fn cook(
             })
             .map_or(NONE, |i| i as u32)
     };
+    // An untextured style's colours are baked into the vertices
+    // (`conform::mesh`): its materials draw white without a base texture.
+    let baked = opts
+        .conform
+        .as_ref()
+        .is_some_and(|c| c.bakes() && c.applies(src));
     let mut materials = Vec::new();
     for m in doc.materials() {
         let pbr = m.pbr_metallic_roughness();
         let e = m.emissive_factor();
         let strength = m.emissive_strength().unwrap_or(1.0);
         let (name_offset, name_len) = strings.add(m.name().unwrap_or(""));
-        let b = pbr.base_color_factor();
+        let mut b = pbr.base_color_factor();
+        if baked {
+            b = [1.0, 1.0, 1.0, b[3]];
+        }
         let p =
             og_render::gltf::physical_extensions(doc, &m, |t, k| tex_of(Some(t), texture_kind(k)));
         let t = |x: Option<u32>| x.unwrap_or(NONE);
@@ -1292,7 +1345,12 @@ pub fn cook(
             },
             alpha_cutoff: m.alpha_cutoff().unwrap_or(0.5),
             double_sided: m.double_sided() as u32,
-            base_color_texture: tex_of(pbr.base_color_texture().map(|t| t.texture()), kind::COLOR),
+            base_color_texture: tex_of(
+                pbr.base_color_texture()
+                    .map(|t| t.texture())
+                    .filter(|_| !baked),
+                kind::COLOR,
+            ),
             metallic_roughness_texture: tex_of(
                 pbr.metallic_roughness_texture().map(|t| t.texture()),
                 kind::LINEAR,
@@ -1307,10 +1365,11 @@ pub fn cook(
     // The default material (glTF's, matching og-render's gltf bridge).
     let default_material = materials.len() as u32;
     let (name_offset, name_len) = strings.add("default");
+    let grey = if baked { 1.0 } else { 0.8 };
     materials.push(MaterialRow {
-        base_r: 0.8,
-        base_g: 0.8,
-        base_b: 0.8,
+        base_r: grey,
+        base_g: grey,
+        base_b: grey,
         base_a: 1.0,
         roughness: 0.6,
         normal_scale: 1.0,
@@ -1344,6 +1403,8 @@ pub fn cook(
     let mut bvh_nodes: Vec<BvhNodeRow> = Vec::new();
     let mut bvh_tris: Vec<u32> = Vec::new();
     let lod_meshes = msft_lod(doc, &mut notes);
+    let mut changes = Vec::new();
+    let mut hulls: Vec<u8> = Vec::new();
     for mesh in doc.meshes() {
         let first = prims.len() as u32;
         for (pi, prim) in mesh.primitives().enumerate() {
@@ -1397,6 +1458,9 @@ pub fn cook(
                     vertices.extend_from_slice(&c.vertices);
                     indices.extend_from_slice(&c.indices);
                     lods.extend_from_slice(&c.lods);
+                    changes.extend(c.conformed.take());
+                    hulls.extend((c.hull.len() as u32).to_le_bytes());
+                    hulls.extend(c.hull.iter().flatten().flat_map(|x| x.to_le_bytes()));
                     prims.push(c.row);
                 }
                 None => notes.push(format!("{what}: no geometry")),
@@ -1530,6 +1594,18 @@ pub fn cook(
         .raw("indices", indices, 16)
         .raw("bvh_nodes", zlib(bytemuck::cast_slice(&bvh_nodes)), 4)
         .raw("bvh_tris", zlib(bytemuck::cast_slice(&bvh_tris)), 4);
+    // The art contract's outline hull (`conform::mesh` gives the layout).
+    if let Some(c) = &opts.conform
+        && let Some(l) = &c.line
+        && !changes.is_empty()
+    {
+        let mut section = super::conform::mesh::hull_header(l, prims.len());
+        section.extend(hulls);
+        w.raw("outline", section, 4);
+    }
+    if let Some(c) = &opts.conform {
+        notes.extend(super::conform::mesh::notes(c, src, &changes));
+    }
     let bvh_bytes = w_len_of_bvh(&bvh_nodes, &bvh_tris);
     let tris: usize = prims
         .iter()

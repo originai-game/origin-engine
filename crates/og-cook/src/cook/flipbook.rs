@@ -227,7 +227,7 @@ pub(super) fn sheet(s: &Source) -> Result<og_anim::FlipbookSheet, String> {
     // The resolved texture id and its size.
     doc.body
         .entries
-        .retain(|e| e.key != "texture" && e.key != "size");
+        .retain(|e| e.key != "texture" && e.key != "size" && e.key != "conform");
     doc.body.entries.insert(
         0,
         Entry::new("size")
@@ -300,8 +300,14 @@ pub(super) fn sheet(s: &Source) -> Result<og_anim::FlipbookSheet, String> {
 }
 
 /// Cooks a flipbook sheet blob.
-pub(super) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let sheet = sheet(s).map_err(CookError)?;
+pub(super) fn cook(
+    s: &Source,
+    motion: Option<&super::conform::mesh::Motion>,
+    stamp: u64,
+) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    let mut sheet = sheet(s).map_err(CookError)?;
+    // The art contract's motion (docs/art.md §2.3, `conform::mesh`).
+    let conformed = motion.map(|m| m.flipbook(&mut sheet)).unwrap_or_default();
     let text = sheet.to_text();
     let note = format!(
         "{} frames, {} clips ({}) over {} ({}x{})",
@@ -330,7 +336,9 @@ pub(super) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), Coo
         row_hash::<FlipbookMeta>(),
     )
     .raw("text", text.into_bytes(), 4);
-    Ok((w.finish(), vec![note]))
+    let mut notes = vec![note];
+    notes.extend(conformed);
+    Ok((w.finish(), notes))
 }
 
 /// The texture array output of an `array true` sheet.

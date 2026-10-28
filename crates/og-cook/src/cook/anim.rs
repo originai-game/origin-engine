@@ -922,6 +922,16 @@ fn cook_with(
             30.0
         });
         let rate = rate.clamp(1.0, 120.0);
+        // The art contract's motion (docs/art.md §2.3, `conform::mesh`):
+        // sampled at its step rate and held from pose to pose.
+        let (rate, step) = match mesh.conform.as_ref().and_then(|c| c.motion.as_ref()) {
+            Some(m) => {
+                let (r, step, n) = m.clip(rate, duration, &name);
+                notes.extend(n);
+                (r, step)
+            }
+            None => (rate, false),
+        };
         let frames = og_anim::ClipAsset::frames_for(duration, rate);
         let channel_first = store.channels.len() as u32;
         for c in &source {
@@ -941,7 +951,11 @@ fn cook_with(
             store.push(
                 c.node,
                 c.path,
-                c.interpolation,
+                if step {
+                    interpolation::STEP
+                } else {
+                    c.interpolation
+                },
                 c.lanes as u32,
                 frames,
                 &data,
