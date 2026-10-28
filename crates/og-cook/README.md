@@ -144,12 +144,124 @@ refused (the namespace is the engine's). Tests: `look_builtins.rs`, and
 `cook::look`'s `the_built_ins_are_the_template_assets` (the table lists the
 directory, PNGs within 64 KB, palettes of their named size).
 
+### Art conformance
+
+The cook makes the assets meet the project's art contract (docs/art.md
+§2.3): the look project.ogt's `look "looks/<id>.ogt"` names, flattened,
+its art blocks (`cook::look::contract`). `src/cook/conform/` holds one pass
+per kind of asset, each called once from `cook_project` before planning;
+2D textures are `conform/texture2d.rs` (3D textures, models and clips are
+`conform/mesh.rs`, stream A3). A pass never writes a source: it rewrites
+the in-memory sources the rest of the cook reads (the conformed image in
+`Source::conformed`, a sheet's re-laid-out frames or tiles in its text,
+each extra output as a source of its own), so stamps, the manifest and the
+shared texture cache see a conformed asset as any other, its stamp carrying
+the contract's hash (the look's text, the palette's and canvas's bytes, the
+pass's version). Without a look, or with a look whose art blocks are all at
+zero, nothing is conformed and `cooked/` is byte-identical to a cook
+without the pass (`tests/conform_2d.rs`).
+
+**Which textures are 2D.** Those a flipbook or a tile set names (their
+cells are the frames or the tiles), those a 2D rig, a UI style (`atlas`,
+`icons`) or a map's own embedded tileset names (a layout the cook cannot
+move: palette and 1-bit alpha only, no resample, no line), and of the
+rest, `kind pixel` textures and, in a `profile "2d"` project, every PNG or
+JPEG. An image's import settings say `conform sprite` or `conform ui` for
+one the cook would not find (a HUD image in a 3D game), and `conform off`
+to keep it as drawn. Normal and linear textures are data and never
+conformed; `.ktx2` sources are cooked as they are.
+
+**What, cell by cell, in order** (each step only when the contract asks):
+
+1. *Painted 2D*: `Stylise`'s paint fields in the texture's texels
+   (Kuwahara with `paintAnisotropy`, `paintBleed`, `paintEdgeDarkening`,
+   the canvas grain at `paintCanvasScale` canvas texels per texel), the
+   frame's paint pass ported (`texture2d/paint.rs`). Only with an art
+   contract: a look that sets the paint fields and no art block keeps them
+   a frame treatment, as before.
+2. *The pixel grid* (`ArtPixels` sets `unit`, `logicalHeight` or
+   `spriteSizes`): the cell size is, of the candidate longer sides not past
+   the cell's own (`spriteSizes`; a tile set's tiles `unit`; an import's
+   `conform { size N }`), the smallest whose downscale draws the cell back
+   within 0.02 mean Oklab distance of the largest's, so art drawn at 2x or
+   3x finds its own grid and detail no smaller size holds takes the
+   largest. The downscale is a dominant-colour box filter
+   (`texture2d/resample.rs`): every source texel counts for the one target
+   texel its centre falls in; the target takes the colour most of its
+   box's opaque texels share (texels within 8 per channel count as one,
+   their mean taken), and is opaque when at least half its box is. Never
+   upscaled. Alpha becomes 1 bit (128 and up opaque; a clear texel is
+   0 0 0 0). A sheet's cells keep their grid (margins and spacing scaled,
+   a spacing at least 1) or, off a grid, pack in rows one texel apart; the
+   flipbook's frames and size and the tile set's tile size, margin,
+   spacing and colliders are written to follow. A cell whose sides are not
+   of `spriteSizes` is a warning in the report.
+3. *The palette* (`ArtPalette`): with `colors` and `strict`, every opaque
+   texel goes to the nearest colour by Oklab distance (fixed point, so the
+   same on every machine), mixed with the next nearest where it falls
+   between them by the palette's `dither` (the frame's thresholds:
+   `bayer2/4/8`, the engine's blue-noise tile, interleaved gradient noise;
+   read from each cell's corner, so a frame carries its pattern); then
+   `rampSteps` keeps the most used shades of each hue family (greys, and
+   the twelve hues of the colour wheel by nearest Oklch hue) and
+   `maxColors` the most used overall, and the texels map again onto what
+   is kept. Tiles keep off `accents`. Without `strict`, `colors` holds the
+   hues only (each texel takes its nearest colour's hue, its own lightness
+   and chroma). Without `colors`, `maxColors` and `rampSteps` make the
+   asset's own palette: its colours exactly when it has few enough, else a
+   median cut in Oklab; ramps merge their two nearest shades until they
+   fit.
+4. *The line* (`ArtLine.width`, `color`, `place`, `brush`): drawn into each
+   cell, never across into a neighbour, by a port of Pixelorama's
+   OutlineInline (`texture2d/outline.rs`, MIT, `third_party/pixelorama/`):
+   a clear texel (outside) or an opaque one (inside; the cell's edge counts
+   as clear) takes the line when a texel of the other kind lies under the
+   brush round it, a diamond (|dx| + |dy| <= width), a circle (radius
+   width + 0.5) or a square of the line's width; `both` draws the larger
+   half inside. With a palette the line takes its nearest colour (an
+   asset's own palette gains the line's colour).
+5. *Rotations* (`ArtPixels.rotation prerotated`, `rotationSteps` N of 2 or
+   more): each cell before its line, turned by k x 360 / N degrees
+   counter-clockwise as seen, by a port of torcado's cleanEdge
+   (`texture2d/cleanedge.rs`, MIT, `third_party/cleanedge/`), which never
+   blends, then lined.
+
+**What it writes beside the texture** (each an output of its own,
+`og.load.texture` / `og.load.palette` by id):
+
+| Id | When | Format |
+|---|---|---|
+| `<id>` | conformed | the conformed image; `kind pixel` (RGBA8, lossless, no mips) when the pixel grid or a palette applied, else its own kind |
+| `<id>#index` | a palette mapped every texel (strict `colors`, or the asset's own palette) and holds at most 255 colours | **the index texture**, for runtime palette swaps (docs/art.md §2.4, stream A4): the conformed texture's size and layout; `kind pixel` (RGBA8 sRGB, sampled nearest); RGB is the conformed colour (so it draws as the texture does), **alpha is the palette index plus one**, 0 a clear texel. Alpha is never sRGB-decoded, so a shader reads `index = round(a * 255) - 1` exactly. The palette is `ArtPalette.colors` in file order, or `<id>#palette` |
+| `<id>#palette` | the index is to the asset's own palette | that palette (`og.Palette`), sorted dark to light by Oklab L, the line's colour last when it was added |
+| `<id>#rotations` | `rotation prerotated` | one row per cell (in the sheet's frame order; one row for a sprite), N columns, column k turned by k x 360 / N degrees counter-clockwise; every cell `w` x `h` texels: the turned cell's diagonal, rounded up to the parity of the cell's own side, the art centred; `kind pixel` |
+| `<id>#rotations-index` | rotations and an index | the rotations' index texture, as `#index` |
+
+**Opt-outs and the report.** `conform off` in an image's import settings,
+or in a flipbook's, tile set's or 2D rig's own `.ogt` (its texture), and
+project.ogt's block
+
+```text
+conform {
+  off "sprites/photos/*" "ui/logo.png"   # asset ids; * within a path segment, ** across, a trailing / a folder
+}
+```
+
+keep an asset as drawn. `Report::conform` lists every asset the contract
+changed (with what: sizes, colours before and after, the line, the extra
+outputs), every one it left as it was and every opt-out with its reason;
+each is also a note on its asset. `og cook --report` prints them, the
+Markdown report (`--report out.md`) tables them, `--json` and
+`cook-report.json` carry them as `conform`.
+
 ### Import settings
 
 ```text
 type import
 version 1
 ---
+conform off            # the art contract leaves this image as drawn; or `conform sprite` / `conform ui`
+                       # (its role when the cook would not find it), with an optional block: conform { size 32 }
 texture {
   kind normal          # color (default) | normal | linear | pixel (sprite sheets and tilesets: RGBA8 lossless, sRGB, no mips, sampled nearest)
 }
