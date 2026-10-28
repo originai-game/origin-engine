@@ -2,7 +2,7 @@
 // template file with the game's name and id, a directory that is not empty is
 // refused unless --force, and build output is never copied.
 import { afterAll, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { artBrief, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, words } from "../bin/create.ts";
@@ -14,7 +14,8 @@ declare const Bun: { spawnSync(cmd: string[], o?: { cwd?: string }): { exitCode:
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const template = join(pkg, "..", "..", "templates", "game");
-const scratch = mkdtempSync(join(tmpdir(), "og-create-"));
+// realpath: macOS hands out /var/folders/..., which is /private/var/folders/... once resolved.
+const scratch = realpathSync(mkdtempSync(join(tmpdir(), "og-create-")));
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
 function cli(...args: string[]) {
