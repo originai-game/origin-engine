@@ -3,7 +3,16 @@
   "about": "Machine-readable changelog of @origingame/engine (docs/release.md §3). kind: patch (0.x.y, compatible) or minor (0.x.0, has breaks). simulation: changed when a game's world can step differently (the golden replays' hashes moved, scripts/replay-gate.ts), else unchanged; versions before 0.6.1 were not measured and say changed. breaking: what a game may have to edit, each with the fix; find lists the identifiers og upgrade searches the game's sources for, codemod a mechanical rewrite it applies. CHANGELOG.md has the prose.",
   "unreleased": {
     "simulation": "unchanged",
-    "breaking": [],
+    "breaking": [
+      {
+        "member": "cook: the art contract's conformance",
+        "change": "A project whose look (project.ogt look, or one extending a preset) sets art blocks now cooks its assets conformed to them: 2D art to the pixel grid, the palette and the line (and, with stream A3, models, mesh textures and clips to the shape, texel and motion contract). Frames of such a game change.",
+        "fix": "Keep it (the style is the point), or opt an asset out with conform off in its import settings or project.ogt conform { off ... }, or set the preset's art blocks to zero in the game's look.",
+        "find": [
+          "extends"
+        ]
+      }
+    ],
     "added": [
       {
         "member": "og.ArtPalette",
@@ -76,6 +85,18 @@
       {
         "member": "project.ogt look",
         "summary": "project.ogt's look \"looks/<id>.ogt\" names the look whose art contract the cook reads before any asset cooks; create writes it beside GameDesc.look."
+      },
+      {
+        "member": "og.ArtLine.brush",
+        "summary": "The brush the cook draws a 2D line with (og.ArtBrush); diamond at zero."
+      },
+      {
+        "member": "og.ArtBrush",
+        "summary": "New enum: diamond, circle, square."
+      },
+      {
+        "member": "og cook conform",
+        "summary": "The cook conforms sprites, flipbooks, tile sets and UI images to the look's art contract (pixel grid, 1-bit alpha, Oklab palette with dither, line, prerotated cells, painted 2D) and writes <id>#index for palette swaps; conform off and project.ogt conform { off } opt out; og cook --report lists every change. Byte-identical without a contract."
       }
     ],
     "fixed": []

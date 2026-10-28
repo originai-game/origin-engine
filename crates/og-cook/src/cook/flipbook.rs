@@ -79,6 +79,17 @@ pub(super) fn dependency_hashes(s: &Source) -> String {
         .join("\n")
 }
 
+/// The bytes of the texture `id` the sheet names: the image the art
+/// contract conformed it to (`conform/texture2d.rs`, whose cells the
+/// sheet's text then follows), else the file.
+fn texture_bytes(s: &Source, id: &str) -> Result<Vec<u8>, String> {
+    match &s.conformed {
+        Some(b) => Ok(b.to_vec()),
+        None => std::fs::read(assets_root(s).join(id))
+            .map_err(|_| format!("texture `{id}` is not in assets/")),
+    }
+}
+
 /// Splits a name into text and number runs for a natural order ("run 2" before "run 10").
 fn natural(name: &str) -> Vec<(String, u64)> {
     let mut out = Vec::new();
@@ -219,8 +230,7 @@ pub(super) fn sheet(s: &Source) -> Result<og_anim::FlipbookSheet, String> {
     let root = assets_root(s);
     let texture = string_of(&doc, "texture").ok_or("a flipbook sheet needs `texture \"path\"`")?;
     let texture_id = resolve(s, &texture);
-    let image = std::fs::read(root.join(&texture_id))
-        .map_err(|_| format!("texture `{texture_id}` is not in assets/"))?;
+    let image = texture_bytes(s, &texture_id)?;
     let (w, h) = image::load_from_memory(&image)
         .map(|i| (i.width(), i.height()))
         .map_err(|e| format!("texture `{texture_id}`: {e}"))?;
@@ -414,8 +424,7 @@ pub(super) fn cook_layer(
     stamp: u64,
 ) -> Result<Vec<u8>, CookError> {
     check_array(sheet).map_err(CookError)?;
-    let bytes = std::fs::read(assets_root(s).join(&sheet.texture))
-        .map_err(|_| CookError(format!("texture `{}` is not in assets/", sheet.texture)))?;
+    let bytes = texture_bytes(s, &sheet.texture).map_err(CookError)?;
     let img = super::texture::decode(&bytes)
         .map_err(|e| CookError(format!("texture `{}`: {e}", sheet.texture)))?;
     let [x, y, w, h] = sheet.frames[n].rect;

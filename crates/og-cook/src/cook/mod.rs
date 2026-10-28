@@ -13,6 +13,8 @@
 pub mod anim;
 pub mod audio;
 pub mod bc6h;
+mod conform;
+pub use conform::{ConformAction, ConformEntry};
 pub mod cube_source;
 mod e6;
 mod environment;
@@ -404,6 +406,9 @@ pub struct Report {
     /// Problems that do not stop the cook: a locale's missing string keys,
     /// a Tiled map's custom property the importer does not read.
     pub warnings: Vec<String>,
+    /// What the art contract changed in each asset it conformed, and every
+    /// asset that opted out (docs/art.md §2.3), by asset id.
+    pub conform: Vec<conform::ConformEntry>,
     pub elapsed_ms: f64,
 }
 
@@ -581,6 +586,17 @@ impl Report {
         for i in &self.ignored {
             s.push_str(&format!("- `{i}`: not an asset, ignored\n"));
         }
+        if !self.conform.is_empty() {
+            s.push_str("\n## The art contract\n\nWhat conforming to the project's look changed, and what opted out (docs/art.md §2.3).\n\n| asset | | what |\n|---|---|---|\n");
+            for e in &self.conform {
+                s.push_str(&format!(
+                    "| {} | {} | {} |\n",
+                    e.source,
+                    e.action.name(),
+                    e.what
+                ));
+            }
+        }
         for r in &self.removed {
             s.push_str(&format!("- `cooked/{r}`: removed (stale)\n"));
         }
@@ -616,6 +632,9 @@ impl Report {
             "elapsed_ms": self.elapsed_ms, "source_bytes": self.source_bytes(), "cooked_bytes": self.cooked_bytes(),
             "by_kind": kinds, "assets": assets, "ignored": self.ignored, "removed": self.removed,
             "warnings": self.warnings,
+            "conform": self.conform.iter().map(|e| json!({
+                "source": e.source, "action": e.action.name(), "what": e.what
+            })).collect::<Vec<_>>(),
         }))
         .expect("the report serializes")
     }
@@ -698,6 +717,10 @@ struct Source {
     /// A WAV's QOA encoding, made once by the first of its outputs to cook
     /// (a sound cooked in chunks has one output per chunk).
     encoded: std::sync::OnceLock<Result<std::sync::Arc<audio::Encoded>, String>>,
+    /// The image the art contract conformed it to (`conform/`): a
+    /// texture's own, a flipbook's texture's; read instead of the file,
+    /// which is never written. `None`: as on disk.
+    conformed: Option<std::sync::Arc<Vec<u8>>>,
 }
 
 impl Source {
@@ -1044,6 +1067,7 @@ pub fn cook_project_with_texture_cache(
             gltf: None,
             error: None,
             encoded: std::sync::OnceLock::new(),
+            conformed: None,
         });
     }
     let mut consumed: BTreeSet<String> = BTreeSet::new();
@@ -1170,6 +1194,10 @@ pub fn cook_project_with_texture_cache(
             )),
         }
     }
+    // Conformance (docs/art.md §2.3): the 2D textures, to the contract.
+    let conformed =
+        conform::texture2d::conform(root, &assets_dir, &mut sources, &known, contract.as_ref())
+            .map_err(CookError)?;
     // Streaming groups (phase 3): every scene's, read before anything cooks.
     let (groups, group_of) = plan_groups(&sources, &known, &mut early_errors);
     let schemas: BTreeMap<String, Schema> = options
@@ -1968,8 +1996,16 @@ pub fn cook_project_with_texture_cache(
             format!("the project's look (project.ogt): its art contract sets {}", set.join(", "))
         });
     }
+    // What conformance changed and what opted out, on each asset too.
+    for e in &conformed {
+        if let Some(r) = reports.iter_mut().find(|r| r.source == e.source) {
+            r.notes
+                .push(format!("art contract: {}: {}", e.action.name(), e.what));
+        }
+    }
     reports.sort_by(|a, b| a.source.cmp(&b.source));
     Ok(Report {
+        conform: conformed,
         warnings,
         root: root.display().to_string(),
         cooker: COOKER_VERSION.to_string(),
@@ -2053,7 +2089,8 @@ fn run(
             ktx2_source::cook(&s.bytes, explicit, &options.texture, p.stamp)
         }
         Work::Texture(s, k) => {
-            let img = texture::decode(&s.bytes).map_err(CookError)?;
+            let img =
+                texture::decode(s.conformed.as_deref().unwrap_or(&s.bytes)).map_err(CookError)?;
             let note = format!(
                 "{}x{} {}",
                 img.width,

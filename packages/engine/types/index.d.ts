@@ -259,6 +259,8 @@ export interface ColumnKinds {
   ArtNormals: { readonly array: Uint32Array; readonly stride: 1; readonly value: ArtNormals };
   /** An ArtLinePlace field: the variant's index. */
   ArtLinePlace: { readonly array: Uint32Array; readonly stride: 1; readonly value: ArtLinePlace };
+  /** An ArtBrush field: the variant's index. */
+  ArtBrush: { readonly array: Uint32Array; readonly stride: 1; readonly value: ArtBrush };
   /** An ArtProjection field: the variant's index. */
   ArtProjection: { readonly array: Uint32Array; readonly stride: 1; readonly value: ArtProjection };
 }
@@ -23196,6 +23198,23 @@ export type ArtLinePlace = "outside" | "inside" | "both";
 export declare function ArtLinePlace(value?: ArtLinePlace, options?: FieldOptions): FieldSpec<"ArtLinePlace">;
 
 /**
+ * The brush a sprite's baked line is drawn with (ArtLine.brush), as Pixelorama's outline effect draws it: which texels within ArtLine.width of the shape's edge take the line.
+ * - `"diamond"`: The texels within width steps along the grid (|dx| + |dy| at most width): a 1-pixel line touches the four sides and leaves the corners, the classic pixel-art outline.
+ * - `"circle"`: The texels within a disc of radius width + 0.5: rounder corners on wide lines.
+ * - `"square"`: Every texel within width across and down: the line fills the corners, so a 1-pixel line touches all eight neighbours.
+ */
+export type ArtBrush = "diamond" | "circle" | "square";
+
+/**
+ * An ArtBrush field: the variant's index.
+ *
+ * A `ArtBrush` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ArtBrush(value?: ArtBrush, options?: FieldOptions): FieldSpec<"ArtBrush">;
+
+/**
  * The projection of the style's camera (ArtCamera.projection).
  * - `"any"`: No constraint: the camera as the game makes it.
  * - `"perspective"`: Perspective: far things smaller.
@@ -23394,6 +23413,10 @@ export interface ArtLine {
    * @unit m (metres)
    */
   distanceFalloff: number;
+  /**
+   * Round a sprite: the brush the cook draws the line into its cells with: diamond (the zero value), circle or square (docs/art.md §2.3).
+   */
+  brush: ArtBrush;
 }
 
 /**
@@ -26575,7 +26598,7 @@ export declare namespace og {
   /**
    * The style's line: the outline round its sprites and meshes, its colour, where it lies against the shape and how it thins with distance. The frame's own lines are MaterialStyle.outlineWidth and Stylise.ink; this is the line the assets carry. Every field is no constraint at its zero value (color matters only with a width).
    */
-  const ArtLine: ResourceType<{ readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly place: FieldSpec<"ArtLinePlace">; readonly distanceFalloff: FieldSpec<"f32"> }, ArtLine>;
+  const ArtLine: ResourceType<{ readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly place: FieldSpec<"ArtLinePlace">; readonly distanceFalloff: FieldSpec<"f32">; readonly brush: FieldSpec<"ArtBrush"> }, ArtLine>;
   /**
    * The style's motion: animation held on steps as hand animation is, how many frames a clip may hold, and how much squash and stretch its movement takes. Every field is no constraint at its zero value.
    */

@@ -149,6 +149,7 @@ mod tests {
             ignored: vec![],
             removed: vec![],
             warnings: vec![],
+            conform: vec![],
             elapsed_ms: 6.0,
         };
         let e = cook_events(&report, 1010.0, 1000.0);

@@ -941,6 +941,17 @@ pub(super) fn look_dependencies(s: &Source, root: &Path, known: &dyn Fn(&str) ->
     out.join("\n")
 }
 
+/// The look `s` flattened over its chain and checked, every block: what
+/// conformance reads beside the contract (`Stylise`'s paint fields, which
+/// painted 2D styles apply in texel space, `conform/texture2d.rs`).
+pub(super) fn flattened(
+    s: &Source,
+    root: &Path,
+    known: &dyn Fn(&str) -> bool,
+) -> Result<LookFile, String> {
+    resolve(s, root, known, PRESETS).map(|(look, _)| look)
+}
+
 /// The art contract of the look `s` (project.ogt's `look`): the look
 /// flattened over its chain and checked, with only its art resources'
 /// blocks (`crate::look::ART_RESOURCES`), which the cook reads before any
@@ -1051,6 +1062,7 @@ mod tests {
             gltf: None,
             error: None,
             encoded: Default::default(),
+            conformed: None,
         }
     }
 

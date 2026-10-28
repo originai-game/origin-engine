@@ -5770,6 +5770,18 @@ impl Renderer {
                 );
             }
         }
+        // Texture filters: a sprite group made with the other sampler is remade;
+        // before any group is made this frame (the overlay's, first, below).
+        for i in 0..self.cache.textures.len() {
+            let f = scene.texture_filter(TextureHandle::from_index(i));
+            if self.cache.filters.len() <= i {
+                self.cache.filters.resize(i + 1, TextureFilter::Linear);
+            }
+            if self.cache.filters[i] != f {
+                self.cache.filters[i] = f;
+                self.cache.sprite_groups[i] = None;
+            }
+        }
         self.particles
             .ensure_pipelines(&self.device, &particle_frame, self.samples);
         let fonts = &self.cache.fonts;
@@ -5875,17 +5887,6 @@ impl Renderer {
                 )));
             }
             self.ribbon_group(run.texture);
-        }
-        // Texture filters: a sprite group made with the other sampler is remade.
-        for i in 0..self.cache.textures.len() {
-            let f = scene.texture_filter(TextureHandle::from_index(i));
-            if self.cache.filters.len() <= i {
-                self.cache.filters.resize(i + 1, TextureFilter::Linear);
-            }
-            if self.cache.filters[i] != f {
-                self.cache.filters[i] = f;
-                self.cache.sprite_groups[i] = None;
-            }
         }
         let lit_range = scene.lighting_2d.map(|l| (l.min_layer, l.max_layer));
         let view = match camera.projection {

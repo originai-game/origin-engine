@@ -62,6 +62,26 @@ world's registry, so `world_hash` moves; the replays' portable hash does not.
 - Cook: project.ogt's `look` names the look whose art contract the cook
   reads before any asset cooks; its report notes what the contract sets.
   `create` writes the line beside `GameDesc.look`.
+- `og.ArtLine.brush` (stream A2): the brush the cook draws a 2D line
+  with, of the new enum `og.ArtBrush` (diamond, circle, square); diamond
+  at zero.
+- **Breaking** (the release is 0.7.0, a minor): a project whose look sets
+  art blocks cooks its assets conformed to them, so its frames change.
+  Fix: keep it, or `conform off` per asset, project.ogt's
+  `conform { off ... }`, or the preset's art blocks set to zero in the
+  game's look.
+- Cook, 2D conformance (stream A2, docs/art.md §2.3): with a look whose
+  art blocks set a value, sprites, flipbooks, tile sets and UI images are
+  conformed in the cook (the pixel grid by a dominant-colour downscale,
+  1-bit alpha, the palette in Oklab with its dither, `maxColors` and
+  `rampSteps`, the line, prerotated cells by cleanEdge, painted 2D in
+  texel space), with an `<id>#index` texture for palette swaps beside
+  them; sources are never written. `conform off` in import settings and
+  project.ogt's `conform { off ... }` opt out; `og cook --report` lists
+  every change and opt-out. A game whose look extends a preset with an
+  art contract cooks its 2D art conformed (a behaviour change, for the
+  release's breaking entry); without a look, or with every art block at
+  zero, `cooked/` is byte-identical to before.
 
 ## 0.6.6 — 2026-10-28
 
