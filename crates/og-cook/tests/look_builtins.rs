@@ -2,7 +2,9 @@
 //! `"@canvas/<name>"` or `"@palettes/<name>"` (itself or through a preset it
 //! extends) cooks with the built-in in the game's bundle under its reserved
 //! id, loadable as any other texture or palette; a built-in nobody names
-//! stays out; a game's own path starting with `@` is refused.
+//! stays out; a game's own path starting with `@` is refused. The art
+//! contract's blocks (the IDL's `art` resources) cook as the frame's do, and
+//! project.ogt's `look` names the look whose contract the cook reads.
 
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};
@@ -81,4 +83,74 @@ fn a_games_own_at_path_is_refused() {
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     let errors = report.errors().join("\n");
     assert!(errors.contains("engine's built-in assets"), "{errors}");
+}
+
+#[test]
+fn the_project_look_carries_the_art_contract() {
+    // monochrome-pixel's contract names @palettes/handheld4 (as its
+    // Stylise does): the built-in is in the bundle, the contract in the
+    // cooked look, and the cook report says what the contract sets.
+    let root = project(
+        "contract",
+        &[(
+            "looks/main.ogt",
+            "type look\nversion 1\n---\nextends \"monochrome-pixel\"\nArtPalette {\n  maxColors 2\n}\n",
+        )],
+    );
+    let manifest = |look: &str| {
+        std::fs::write(
+            root.join("project.ogt"),
+            format!("type project\nversion 1\n---\nname \"C\"\n{look}"),
+        )
+        .unwrap()
+    };
+    manifest("look \"looks/main.ogt\"\n");
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let main = report
+        .assets
+        .iter()
+        .find(|a| a.source == "looks/main.ogt")
+        .unwrap();
+    assert!(
+        main.notes.iter().any(|n| n
+            == "the project's look (project.ogt): its art contract sets ArtPalette, ArtPixels, ArtCamera"),
+        "{:?}",
+        main.notes
+    );
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let bytes = bundle.read("looks/main.ogt").unwrap();
+    let text = bundle
+        .look("looks/main.ogt", bytes.as_slice())
+        .unwrap()
+        .to_text();
+    for line in [
+        "ArtPalette {",
+        "colors \"@palettes/handheld4.hex\"",
+        "maxColors 2",
+        "strict true",
+        "spriteSizes 12 16 24",
+        "projection orthographic",
+    ] {
+        assert!(text.contains(line), "{line} in {text}");
+    }
+
+    // A project look that is not in the bundle is that asset's error; a
+    // malformed line fails the cook with its line.
+    manifest("look \"looks/none.ogt\"\n");
+    let errors = cook_project(&root, &CookOptions::default())
+        .unwrap()
+        .errors()
+        .join("\n");
+    assert!(
+        errors.contains("assets/looks/none.ogt: project.ogt's `look` names assets/looks/none.ogt, which does not exist"),
+        "{errors}"
+    );
+    manifest("look 3\n");
+    let e = cook_project(&root, &CookOptions::default()).unwrap_err();
+    assert!(
+        e.0.contains("project.ogt:5: `look` names the game's look"),
+        "{}",
+        e.0
+    );
 }

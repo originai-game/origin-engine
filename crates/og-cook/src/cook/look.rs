@@ -941,6 +941,22 @@ pub(super) fn look_dependencies(s: &Source, root: &Path, known: &dyn Fn(&str) ->
     out.join("\n")
 }
 
+/// The art contract of the look `s` (project.ogt's `look`): the look
+/// flattened over its chain and checked, with only its art resources'
+/// blocks (`crate::look::ART_RESOURCES`), which the cook reads before any
+/// asset of the game cooks. An error is the look's own (its cook reports it
+/// too).
+pub(super) fn contract(
+    s: &Source,
+    root: &Path,
+    known: &dyn Fn(&str) -> bool,
+) -> Result<LookFile, String> {
+    let (mut look, _) = resolve(s, root, known, PRESETS)?;
+    look.blocks
+        .retain(|b| crate::look::ART_RESOURCES.contains(&b.resource.as_str()));
+    Ok(look)
+}
+
 /// Cooks one `type look` file.
 pub(super) fn cook_look(
     s: &Source,
@@ -1273,6 +1289,31 @@ mod tests {
         assert!(e.contains("not a Palette"), "{e}");
         let e = bad("ArtLine {\n  thickness 2\n}\n");
         assert!(e.contains("ArtLine has no field 'thickness'"), "{e}");
+
+        // The contract is the look's art blocks alone, through its chain.
+        let root = project(&[
+            (
+                "looks/base.ogt",
+                &format!("{HEAD}Fog {{\n  enabled true\n}}\nArtShape {{\n  normals flat\n}}\n"),
+            ),
+            (
+                "looks/main.ogt",
+                &format!(
+                    "{HEAD}extends \"looks/base.ogt\"\nStylise {{\n  posterize 4\n}}\nArtMotion {{\n  stepFps 12\n}}\n"
+                ),
+            ),
+        ]);
+        let c = contract(&source(&root, "looks/main.ogt"), &root, &|_| false).unwrap();
+        assert_eq!(c.resources(), ["ArtShape", "ArtMotion"]);
+        let root = project(&[(
+            "looks/plain.ogt",
+            &format!("{HEAD}Stylise {{\n  posterize 4\n}}\n"),
+        )]);
+        let c = contract(&source(&root, "looks/plain.ogt"), &root, &|_| false).unwrap();
+        assert!(
+            c.blocks.is_empty(),
+            "a look without art blocks constrains nothing"
+        );
     }
 
     #[test]
