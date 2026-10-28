@@ -14,10 +14,11 @@
 //! blob and its `#anim` (which cooks the same primitives) agree vertex for
 //! vertex. In order:
 //!
-//! 1. **Voxelise** at `ArtShape.voxel` (metres, the primitive's own
-//!    units): the surface sampled into a grid aligned to the origin, the
+//! 1. **Voxelise** at `ArtShape.voxel` (metres, the model's units): the
+//!    surface, placed by the first node that draws it, sampled into one
+//!    grid aligned to the model's origin (so turned parts step), the
 //!    inside filled, and the grid meshed by the `.vox` importer's greedy
-//!    mesher (`vox::mesh_model`); each cell's colour is the surface's
+//!    mesher (`vox::mesh_model`) and brought back under the node; each cell's colour is the surface's
 //!    (base colour factor × texture × vertex colour), mapped to
 //!    `ArtPalette.colors` (Oklab nearest) or cut to `maxColors`. Past the
 //!    face budget the edge doubles (at most four times). Skinned or morphed
@@ -34,7 +35,7 @@
 //!    edge and a fan closing each corner where three or more meet. The
 //!    radius is held to a quarter of the shortest hard edge.
 //! 4. **Bake vertex colours** where the style is untextured (`normals
-//!    flat` without `ArtTexels.density`, or voxels): the base colour
+//!    flat` and no ArtTexels density, maxSize or filter, or voxels): the base colour
 //!    texture times the factor sampled over each face (flat) or at each
 //!    vertex, mapped to the palette or cut to `maxColors`; the model's
 //!    materials then draw white with no base colour texture.
@@ -263,8 +264,15 @@ impl Conform {
     }
 
     /// The style is untextured: models carry their colour in vertices.
+    /// Flat shading with no ArtTexels constraint (a style that asks for a
+    /// texel density, a size or a filter keeps its textures, as faceted
+    /// low poly's 64-texel nearest ones), or voxels.
     pub fn bakes(&self) -> bool {
-        self.voxel > 0.0 || (self.normals == Normals::Flat && self.density <= 0.0)
+        self.voxel > 0.0
+            || (self.normals == Normals::Flat
+                && self.density <= 0.0
+                && self.max_size == 0
+                && self.filter == Filter::Any)
     }
 
     /// Whether this model is conformed: not one with authored levels of
@@ -1192,6 +1200,47 @@ fn voxelise(
     Some((out_v, out_i, count))
 }
 
+/// The model-space transform of the first node of the default scene that
+/// draws `prim`'s mesh (identity when none does): voxels sit on one grid
+/// across the model's parts, not one per part.
+fn placement_of(src: &GltfSource, prim: &gltf::Primitive) -> glam::Mat4 {
+    use glam::{Mat4, Quat};
+    let key = |p: &gltf::Primitive| {
+        (
+            p.get(&gltf::Semantic::Positions).map(|a| a.index()),
+            p.indices().map(|a| a.index()),
+        )
+    };
+    let Some(mesh) = src
+        .doc
+        .meshes()
+        .find(|m| m.primitives().any(|p| key(&p) == key(prim)))
+    else {
+        return Mat4::IDENTITY;
+    };
+    let Some(scene) = src.doc.default_scene().or_else(|| src.doc.scenes().next()) else {
+        return Mat4::IDENTITY;
+    };
+    let mut stack: Vec<(gltf::Node, Mat4)> = scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
+    stack.reverse();
+    while let Some((node, parent)) = stack.pop() {
+        let (t, r, s) = node.transform().decomposed();
+        let world = parent
+            * Mat4::from_scale_rotation_translation(
+                Vec3::from(s),
+                Quat::from_array(r),
+                Vec3::from(t),
+            );
+        if node.mesh().is_some_and(|m| m.index() == mesh.index()) {
+            return world;
+        }
+        let mut children: Vec<_> = node.children().map(|c| (c, world)).collect();
+        children.reverse();
+        stack.extend(children);
+    }
+    Mat4::IDENTITY
+}
+
 /// The triangles a model draws (each primitive times the default scene's
 /// nodes that draw its mesh, at least once): the face budget's measure.
 fn drawn_triangles(src: &GltfSource) -> usize {
@@ -1256,9 +1305,19 @@ pub(in crate::cook) fn primitive(
             .push("not voxelised: it is skinned or morphed".into());
     }
     if c.voxel > 0.0 && !skinned {
+        // Voxelised in model space, then brought back under the node.
+        let place = placement_of(src, prim);
+        let inverse = place.inverse();
+        let placed: Vec<FVertex> = v
+            .iter()
+            .map(|x| FVertex {
+                p: place.transform_point3(pos(x)).to_array(),
+                ..*x
+            })
+            .collect();
         let mut edge = c.voxel;
         for _ in 0..5 {
-            match voxelise(v, idx, &surface, edge, &c.palette, c.max_colors) {
+            match voxelise(&placed, idx, &surface, edge, &c.palette, c.max_colors) {
                 Some((nv, ni, count))
                     if target.is_none_or(|t| ni.len() / 3 <= t) || edge >= c.voxel * 16.0 =>
                 {
@@ -1268,7 +1327,18 @@ pub(in crate::cook) fn primitive(
                         .collect::<std::collections::BTreeSet<_>>()
                         .len();
                     *sources = vec![0; nv.len()];
-                    *v = nv;
+                    *v = nv
+                        .into_iter()
+                        .map(|x| FVertex {
+                            p: inverse.transform_point3(pos(&x)).to_array(),
+                            n: inverse
+                                .transpose()
+                                .transform_vector3(Vec3::from(x.n))
+                                .normalize_or(Vec3::Y)
+                                .to_array(),
+                            ..x
+                        })
+                        .collect();
                     *idx = ni;
                     ch.voxel = Some((edge, count));
                     ch.normals = true;
