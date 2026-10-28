@@ -40,3 +40,82 @@ platform that reads the knowledge straight from the installed package
 (`payload(installed(dir).roots)`: every file at its production path, with
 its source and bytes) instead of mounting a copy. What the platform side
 looked like at M7: the repository's `docs/m7-platform-notes.md`.
+
+## The art brief
+
+`scripts/brief.ts` compiles a game's look into the request for one asset
+(docs/art.md §2.2 in the engine repository). Every asset request goes
+through it (og-taste §1), so the palette, the sizes, the line and the shape
+language a style holds reach the generator, and the cook's conformance has
+little left to change. `@origingame/create-game` re-exports the same
+functions (its `bin/brief.ts` is a byte-for-byte copy of this file).
+
+```ts
+import { artBrief, readLook, presetLook } from "@origingame/create-game/bin/create.ts";
+// or, in a game: node_modules/@origingame/engine/knowledge/scripts/brief.ts
+
+const look = readLook("path/to/game");           // project.ogt's look, flattened
+const brief = artBrief(look, "sprite", "a lantern keeper with a long coat", {
+  references: ["assets/sprites/courier.png"],    // accepted assets of the game
+});
+brief.prompt;      // the request as text, one statement per line
+brief.references;  // [{ role: "style", path: ".../previews/<slug>.webp" }, { role: "accepted", path }]
+brief.image;       // { transparent, width, height, grid: { width, height, scale } | null, tiling }
+brief.model;       // for a 3D prop or character: { faceBudget, textureSize, normals, voxel, bevel, filter, mips, metres }
+```
+
+These names and shapes are a public contract, kept stable (a change is a
+break, with a `changelog.json` breaking entry):
+
+- `artBrief(look: BriefLook, kind: ArtKind, subject: string, options?:
+  BriefOptions): ArtBrief`, pure. `kind` is one of `ART_KINDS`: `sprite`,
+  `tileset`, `portrait`, `backdrop`, `prop`, `character`, `texture`,
+  `icon`. `options.references` are the game's accepted assets (paths or
+  URLs), passed on after the style's preview; `options.metres` is the
+  asset's size (a prop 1, a character 2, a texture's tile 2 by default).
+- `BriefLook { extends: string | null; art: ArtBlocks; profile?: "2d" |
+  "3d"; palette?: BriefPalette | null; style?: BriefStyle | null; preview?:
+  string }`: the flattened art blocks (`ArtBlocks`, by resource name of
+  `ART_RESOURCES`, each field as the look writes it), the preset slug the
+  `extends` chain reaches, the palette `ArtPalette.colors` names (else
+  `Stylise.palette`) as named colours (`BriefPalette { id, from, colours:
+  PaletteColour[] }`, `PaletteColour { name, hex }`), and the catalogue
+  entry (`BriefStyle`, the fields of a `looks/catalogue.json` style the
+  brief reads).
+- `ArtBrief { kind, subject, style, medium: "image" | "model", prompt,
+  avoid, palette, references: BriefReference[], image?: ImageParams,
+  model?: ModelParams }`.
+- `readLook(projectDir, options?)`: a project's look from disk:
+  project.ogt's `look "looks/<id>.ogt"` and `profile`, the look's
+  `extends` chain through the game's own looks (a slug names the game's
+  `assets/looks/<slug>.ogt` first, a path another look under `assets/`) to
+  the preset, merged field by field as the cook merges it, the palette
+  file, the entry and its preview. `presetLook(slug, options?)`: a preset
+  alone, for a game not written yet (the platform's style step).
+- `parsePalette(file, text)` and `colourName(hex)`: a `.hex` or `.gpl`
+  palette as named colours.
+
+What it decides, from the look's numbers (a field at zero constrains
+nothing, and the entry's prose stands in for it):
+
+| Kind | 2D game, or a 2D kind | 3D game (`prop`, `character`) |
+|---|---|---|
+| `sprite`, `prop`, `character` | pixel art on a cell of `ArtPixels.unit` x the size, snapped up to `spriteSizes` (a character half as wide as tall), transparent | a model: `ArtShape.propFaces` or `characterFaces` as the face budget, `normals`, `voxel`, `bevel` |
+| `tileset` | 4 x 4 tiles of one metre, opaque, tiling | the same |
+| `icon`, `portrait` | the smallest cell; a portrait twice the largest, transparent | the same |
+| `backdrop` | `logicalHeight` rows at 16:9, opaque | the same |
+| `texture` | `ArtTexels.density` x 2 m to a power of two, at most `maxSize`; without texels, `unit` x 2 m of pixel art | the same |
+
+Pixel art is drawn at the whole multiple of its grid nearest 1024 px
+(`image.grid.scale`) and textures sampled `nearest` likewise, so the cook's
+dominant-colour downscale (docs/art.md §2.3) lands on the grid; without a
+grid an image is 1024 x 1024 (a backdrop 1536 x 864). A model's texture is
+`ArtTexels.density` x its size to a power of two, at most `maxSize` (1024
+when neither is set). On the command line: `bun scripts/brief.ts <kind>
+"<subject>" [--project <dir> | --look <slug>] [--reference <path>]...
+[--metres <n>] [--json]`.
+
+Outside the engine repository the presets and palettes are read from
+`presets/` (copied from `templates/looks` by `scripts/pack.ts`, not
+mounted for the platform), the catalogue from `looks/` and the previews
+from `previews/`.
