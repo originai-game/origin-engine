@@ -1,7 +1,11 @@
 type look
 version 1
 ---
-# Flat cel shading with thick outlines and four tones, no shadows to speak of.
+# Flat cel shading with thick outlines, no shadows to speak of: the cel
+# bands are the toon material's, the flat fills the art's. No Stylise
+# posterize: it rounds each channel on its own, so a sepia print's close
+# channels land on different steps and turn olive and pink (at 4 tones,
+# still visibly at 8; tests/evidence/art/samples/NOTES.md).
 name "Rubber-hose animation"
 ui "cartoon"
 MaterialStyle {
@@ -10,9 +14,6 @@ MaterialStyle {
   outlineColor "#101010"
   shadowTint "#ffffff"
   shadowTintAmount 1
-}
-Stylise {
-  posterize 4
 }
 RenderSettings {
   toneMapping none

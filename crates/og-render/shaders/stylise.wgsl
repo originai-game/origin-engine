@@ -654,18 +654,22 @@ fn fs_lines_srgb(in: VsOut) -> @location(0) vec4<f32> {
 
 fn bayer(px: vec2<u32>, n: u32) -> f32 {
   // The ordered dither threshold of an n x n Bayer matrix (n 2, 4, 8),
-  // bit-interleaved as the recursive definition gives it, in 0..1.
-  var x = px.x % n;
-  var y = px.y % n;
+  // bit-interleaved as the recursive definition M(2n) = 4 M(n) + M(2)
+  // gives it, in 0..1: the finest bit of the position is the most
+  // significant of the threshold, so neighbouring pixels hold thresholds
+  // half the range apart (dispersed). Taking the coarsest bit first would
+  // cluster each level into one quadrant's block.
+  let x = px.x % n;
+  let y = px.y % n;
   var v = 0u;
   var bits = 0u;
-  var size = n;
-  while (size > 1u) {
-    size = size >> 1u;
+  var size = 1u;
+  while (size < n) {
     let bx = (x / size) & 1u;
     let by = (y / size) & 1u;
     v = (v << 2u) | ((bx ^ by) << 1u) | by;
     bits += 2u;
+    size = size << 1u;
   }
   return (f32(v) + 0.5) / f32(1u << bits);
 }

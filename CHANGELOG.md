@@ -22,6 +22,22 @@ is one line here, written at the merge that changes
   Grand View Garden's ~500 materials updated 15 times a second drew at
   1.5–2.5 fps in Chrome, 22–27 fps with this. Frames are unchanged; no
   IDL member changed.
+- render and cook, `dither bayer4`/`bayer8` (`Stylise.dither`,
+  `ArtPalette.dither`): the threshold matrix is the dispersed Bayer matrix
+  (4 × 4: 0 8 2 10 / 12 4 14 6 / ...). It used to take the position's
+  coarsest bit as the threshold's most significant, a quadrant-clustered
+  matrix that drew a tone as blocks of the matrix's size (a 1-bit frame at
+  240 lines turned into a 24 px checkerboard that swallowed every form).
+  Every frame dithered with `bayer4` or `bayer8`, and every texture the
+  cook conforms with them, changes; `bayer2` does not. No IDL member
+  changed.
+- looks: `rubber-hose-animation` (`posterize 4`) and `gothic-contour`
+  (`posterize 5`) drop `Stylise.posterize`. Posterize rounds each channel
+  on its own in display space, so a near-neutral colour whose channels
+  sit closer than a step apart lands on unequal steps: the sepia print
+  turned olive and pink, the blue-grey haze flat grey and violet (still
+  visible at 8 tones). The cel bands stay the toon material's, the
+  contours the ink pass's. Frames of games on these presets change.
 
 ## 0.7.0 — 2026-10-28
 

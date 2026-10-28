@@ -5,7 +5,10 @@
     "simulation": "unchanged",
     "breaking": [],
     "added": [],
-    "fixed": []
+    "fixed": [
+      "Stylise.dither and ArtPalette.dither bayer4 and bayer8 use the dispersed Bayer matrix; they drew a quadrant-clustered one whose tones showed as blocks of the matrix's size. Frames and cook-conformed textures dithered with them change; bayer2 does not.",
+      "The rubber-hose-animation and gothic-contour presets no longer posterize: per-channel steps turned their sepia and blue-grey art into olive, pink and violet bands. Their frames change."
+    ]
   },
   "versions": [
     {

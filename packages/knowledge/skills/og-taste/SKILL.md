@@ -632,7 +632,7 @@ entry's three checks handed to the critic that reads the frames.
 | `layered-silhouette` | Shape and material | Layered silhouettes | full | `neon` |
 | `minimal-geometric` | Shape and material | Minimal geometry | full | `neon` |
 | `neon-vector` | Shape and material | Neon vector lines | full | `neon` |
-| `monochrome-dither-3d` | 3D rendering | Monochrome dithered 3D | partial | `pixel` |
+| `monochrome-dither-3d` | 3D rendering | Monochrome dithered 3D | full | `pixel` |
 | `luminous-layered-painting` | 3D rendering | Luminous layered depths | content | `fantasy` |
 
 Use the catalogue as a vocabulary, never as a list of games to copy: every

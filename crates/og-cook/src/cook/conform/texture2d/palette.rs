@@ -67,13 +67,15 @@ static BLUE_NOISE: &[u8; 4096] = include_bytes!("../../../../../og-render/data/b
 /// The ordered threshold of an n x n Bayer matrix, as stylise.wgsl's `bayer`.
 pub fn bayer(x: u32, y: u32, n: u32) -> f64 {
     let (x, y) = (x % n, y % n);
-    let (mut v, mut bits, mut size) = (0u32, 0u32, n);
-    while size > 1 {
-        size >>= 1;
+    // The finest bit of the position first, so it ends the most
+    // significant: M(2n) = 4 M(n) + M(2), a dispersed matrix.
+    let (mut v, mut bits, mut size) = (0u32, 0u32, 1u32);
+    while size < n {
         let bx = (x / size) & 1;
         let by = (y / size) & 1;
         v = (v << 2) | ((bx ^ by) << 1) | by;
         bits += 2;
+        size <<= 1;
     }
     (f64::from(v) + 0.5) / f64::from(1u32 << bits)
 }
@@ -323,12 +325,25 @@ mod tests {
             .map(|&(x, y)| bayer(x, y, 2))
             .collect();
         assert_eq!(m, [0.125, 0.625, 0.875, 0.375]);
-        // Every level of the 4 x 4 once.
-        let mut v: Vec<u32> = (0..16)
+        // The 4 x 4 is the dispersed Bayer matrix, each level next to the
+        // one half the range away, not a quadrant-clustered one (0 2 8 10
+        // / 3 1 11 9 / ..., whose quarter tone is one 2 x 2 block).
+        let v: Vec<u32> = (0..16)
             .map(|i| (bayer(i % 4, i / 4, 4) * 16.0) as u32)
             .collect();
+        assert_eq!(v, [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]);
+        // The 8 x 8 holds every level once, and a quarter tone (thresholds
+        // below 1/4) is every other pixel of every other row.
+        let mut v: Vec<u32> = (0..64)
+            .map(|i| (bayer(i % 8, i / 8, 8) * 64.0) as u32)
+            .collect();
+        let quarter: Vec<(u32, u32)> = (0..64u32)
+            .filter(|&i| v[i as usize] < 16)
+            .map(|i| (i % 8, i / 8))
+            .collect();
+        assert!(quarter.iter().all(|&(x, y)| x % 2 == 0 && y % 2 == 0));
         v.sort();
-        assert_eq!(v, (0..16).collect::<Vec<_>>());
+        assert_eq!(v, (0..64).collect::<Vec<_>>());
     }
 
     #[test]
