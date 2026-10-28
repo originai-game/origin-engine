@@ -469,6 +469,12 @@ fn textures_are_resampled_to_the_density_and_capped_at_max_size() {
         let tex = bundle.load_texture("models/ball.glb#tex0").unwrap();
         assert_eq!((tex.meta.width, tex.meta.height), (want, want));
         assert_eq!(tex.is_pixel_art(), pixel);
+        // The model names it as pixel art, so its loader samples it nearest.
+        let (model, _) = bundle.load_model_with_textures("models/ball.glb").unwrap();
+        assert_eq!(
+            model.textures[0].kind == og_cook::format::kind::PIXEL,
+            pixel
+        );
     }
 }
 

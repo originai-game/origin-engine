@@ -1263,8 +1263,18 @@ pub fn cook_project_with_texture_cache(
                 // (and left out) when it changes nothing here.
                 let contract = options.mesh.conform.as_ref().filter(|_| !conform_off(s));
                 let model_desc = contract
-                    .filter(|c| c.applies(g))
-                    .map(|c| c.model_desc())
+                    .map(|c| {
+                        let mut d = if c.applies(g) {
+                            c.model_desc()
+                        } else {
+                            String::new()
+                        };
+                        // Its colour textures' kind is in the blob.
+                        if c.filter == conform::mesh::Filter::Nearest {
+                            d.push_str(" textures nearest");
+                        }
+                        d
+                    })
                     .unwrap_or_default();
                 let texture_desc = contract.map(|c| c.texture_desc()).unwrap_or_default();
                 let with = |parts: &[&[u8]], desc: &str, extra: &[u8]| {

@@ -1550,12 +1550,22 @@ pub fn cook(
         ));
     }
     let mut texture_refs = Vec::new();
+    // `ArtTexels.filter nearest` cooks colour textures as pixel art
+    // (`conform::mesh::texture`): the loader samples them nearest.
+    let nearest = opts
+        .conform
+        .as_ref()
+        .is_some_and(|c| c.filter == super::conform::mesh::Filter::Nearest);
     for (i, u) in src.textures.iter().enumerate().filter(|_| !proxy) {
         let (id_offset, id_len) = strings.add(&texture_ids[i]);
         texture_refs.push(TextureRefRow {
             id_offset,
             id_len,
-            kind: u.kind,
+            kind: if nearest && u.kind == kind::COLOR {
+                kind::PIXEL
+            } else {
+                u.kind
+            },
         });
     }
     let meta = ModelMeta {
