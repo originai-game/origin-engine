@@ -240,6 +240,8 @@ fn without_a_look_or_with_zero_art_blocks_the_cook_is_byte_identical() {
         vec![
             ("assets/models/ball.glb", ball.clone()),
             ("assets/models/walker.glb", walker()),
+            // A texture no model claims: a mesh's in a 3D project.
+            ("assets/textures/stone.png", png(256)),
             ("assets/looks/main.ogt", look(look_text).into_bytes()),
         ]
     };
@@ -783,4 +785,157 @@ fn the_report_lists_the_mesh_pass_beside_the_texture_pass_and_keeps_it_when_up_t
         format!("{:?}", first.conform)
     );
     assert_eq!(second.warnings, first.warnings);
+}
+
+/// A 3D project's look holding textures to 64 texels, nearest, no mips,
+/// and the dusk16 palette strictly.
+const TEXELS: &str = "ArtTexels {\n  maxSize 64\n  filter nearest\n  mips none\n}\nArtPalette {\n  colors \"@palettes/dusk16\"\n  strict true\n}\n";
+
+fn stone(name: &str, profile: &str, import: Option<&str>) -> PathBuf {
+    let mut files = vec![
+        ("project.ogt", format!("{PROJECT}{profile}").into_bytes()),
+        ("assets/looks/main.ogt", look(TEXELS).into_bytes()),
+        ("assets/textures/stone.png", png(256)),
+    ];
+    if let Some(i) = import {
+        files.push((
+            "assets/textures/stone.png.ogt",
+            format!("type import\nversion 1\n---\n{i}").into_bytes(),
+        ));
+    }
+    project(name, &files)
+}
+
+#[test]
+fn a_texture_no_model_claims_is_a_mesh_texture_in_3d_unless_its_own_line_says_otherwise() {
+    use og_cook::cook::conform::{TextureRole, texture_roles};
+    let texture = |root: &Path| {
+        let t = Bundle::open(&root.join("cooked"))
+            .unwrap()
+            .load_texture("textures/stone.png")
+            .unwrap();
+        (t.meta.width, t.meta.height, t.is_pixel_art(), t.meta.levels)
+    };
+    let role = |root: &Path| texture_roles(root).unwrap()["textures/stone.png"];
+
+    // Unclaimed in a 3D project: 256 → maxSize 64, nearest, one level.
+    let mesh = stone("stone-mesh", "", None);
+    let report = cook(&mesh);
+    assert_eq!(texture(&mesh), (64, 64, true, 1));
+    assert_eq!(role(&mesh), TextureRole::Mesh);
+    let e = entry(&report, "textures/stone.png");
+    assert_eq!(e.action, ConformAction::Changed);
+    assert!(
+        e.what
+            .starts_with(og_cook::cook::conform::mesh::DEFAULT_MESH_TEXTURE)
+            && e.what.contains("256x256 → 64x64")
+            && e.what.contains("ArtPalette.colors"),
+        "{e:?}"
+    );
+
+    // Not strict: a lossless (nearest) texture holds to maxColors.
+    let gradient = image::RgbaImage::from_fn(64, 64, |x, y| {
+        image::Rgba([(x * 4) as u8, (y * 4) as u8, ((x + y) * 2) as u8, 255])
+    });
+    let mut bytes = std::io::Cursor::new(Vec::new());
+    gradient
+        .write_to(&mut bytes, image::ImageFormat::Png)
+        .unwrap();
+    let few = project(
+        "stone-few",
+        &[
+            ("project.ogt", PROJECT.as_bytes().to_vec()),
+            (
+                "assets/looks/main.ogt",
+                look("ArtTexels {\n  filter nearest\n}\nArtPalette {\n  maxColors 8\n}\n")
+                    .into_bytes(),
+            ),
+            ("assets/textures/stone.png", bytes.into_inner()),
+        ],
+    );
+    let report = cook(&few);
+    let t = Bundle::open(&few.join("cooked"))
+        .unwrap()
+        .load_texture("textures/stone.png")
+        .unwrap()
+        .to_texture_data()
+        .unwrap();
+    let distinct: std::collections::BTreeSet<&[u8]> = t.rgba.chunks(4).map(|p| &p[..3]).collect();
+    assert!(
+        distinct.len() > 1 && distinct.len() <= 8,
+        "{} colours",
+        distinct.len()
+    );
+    assert!(
+        entry(&report, "textures/stone.png")
+            .what
+            .contains("4096 → 8 colours (ArtPalette.maxColors 8)"),
+        "{:?}",
+        report.conform
+    );
+
+    // `conform ui`: the 2D pass's fixed layout (palette, size kept).
+    let ui = stone("stone-ui", "", Some("conform ui\n"));
+    let report = cook(&ui);
+    let (w, h, ..) = texture(&ui);
+    assert_eq!((w, h), (256, 256));
+    assert_eq!(role(&ui), TextureRole::Fixed);
+    let e = entry(&report, "textures/stone.png");
+    assert!(
+        e.what.contains("conform ui") && !e.what.contains("mesh texture"),
+        "{e:?}"
+    );
+
+    // `conform off`: the bytes of a project without a look, listed off.
+    let off = stone("stone-off", "", Some("conform off\n"));
+    let report = cook(&off);
+    let control = project(
+        "stone-control",
+        &[
+            ("assets/textures/stone.png", png(256)),
+            (
+                "assets/textures/stone.png.ogt",
+                b"type import\nversion 1\n---\nconform off\n".to_vec(),
+            ),
+        ],
+    );
+    cook(&control);
+    let (fa, fb) = (cooked_files(&off), cooked_files(&control));
+    let k = fa
+        .keys()
+        .find(|k| k.contains("stone"))
+        .unwrap_or_else(|| panic!("{:?}", fa.keys()));
+    assert!(fa[k] == fb[k], "{k} differs from the control");
+    let e = entry(&report, "textures/stone.png");
+    assert_eq!(e.action, ConformAction::Off);
+    assert!(
+        e.what
+            .contains("conform off (assets/textures/stone.png.ogt)"),
+        "{e:?}"
+    );
+
+    // project.ogt's pattern does the same.
+    let pattern = stone("stone-pattern", "conform {\n  off \"textures/\"\n}\n", None);
+    let report = cook(&pattern);
+    assert_eq!(texture(&pattern).0, 256);
+    let e = entry(&report, "textures/stone.png");
+    assert_eq!(e.action, ConformAction::Off);
+    assert!(e.what.contains("off \"textures/\""), "{e:?}");
+
+    // A 2D project: a sprite, the 2D pass's; the mesh pass leaves it.
+    let two_d = stone("stone-2d", "profile \"2d\"\n", None);
+    let report = cook(&two_d);
+    assert_eq!(role(&two_d), TextureRole::Sprite);
+    for e in report
+        .conform
+        .iter()
+        .filter(|e| e.source == "textures/stone.png")
+    {
+        assert!(!e.what.contains("mesh texture"), "{e:?}");
+    }
+    assert!(
+        notes(&report, "textures/stone.png")
+            .iter()
+            .all(|n| !n.contains("as a mesh's texture"))
+    );
 }

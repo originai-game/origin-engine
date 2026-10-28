@@ -146,3 +146,78 @@ and the branch's dev `og` and addon (`OG_NATIVE_ADDON`, the file named
   the entries before A2's note loop, and the `Work::Model` off note
   removed), plus one line in `packages/engine/src/node/web-build.ts`.
   `conform/mod.rs` is untouched.
+
+## Follow-up `art/conform-3d-3` (from f4005931): textures no model claims
+
+**The finding.** A6's check on game-3d under faceted-low-poly found
+`textures/stone.png` cooked at 512², linear, 10 mips. Nothing in the
+template names it: the scene has no material, and `main.ts` builds
+`stone` as a colour-only `standardMaterial`. Scenes and `type model`
+cannot name a texture (lit-material maps are TypeScript handles), and the
+cook does not read game code. The coordinator chose option A: in a 3D
+project, a colour texture nothing else claims is a mesh's.
+
+- **One classification, `og_cook::cook::conform::texture_roles(root)`**
+  (`TextureRole`: Sprite, Sheet, Fixed, Mesh, Data). It reads the project
+  with the cook's own scan (`scan`, factored out of `cook_project` with
+  no change in behaviour) and A2's claim code (`texture2d::uses`, now a
+  function). It decides with `texture2d::texture_role`, which the 2D pass
+  calls too. The order: the image's own `conform ui`/`conform sprite`;
+  who names it (a style, rig or map's tile set: Fixed; a flipbook or tile
+  set: Sheet); normal or linear: Data; a 2D project or `kind pixel`:
+  Sprite; else Mesh. `og style check`'s `measure()` uses it (the one edit
+  to A6's file), so the check judges a texture as the pass that conformed
+  it. A `.ktx2` has no role and keeps A6's old rule.
+- **The mesh pass holds Mesh textures**, via `Conform.textures` and
+  `Work::Texture`: `maxSize` (the extent is unknown, so density is not
+  applied), `filter`, `mips`, the palette where `strict`. Both opt-outs
+  apply (an own `conform off` in the import settings, project.ogt's
+  patterns) and are listed as Off. The entry begins "conformed as a mesh
+  texture (no model claims it; a HUD or UI image takes `conform ui` in
+  its import settings)". `mesh::texture` now takes the extent as
+  `Option<f32>`.
+- **maxColors on lossless mesh textures.** `filter nearest` cooks a
+  texture as lossless RGBA8, where the check judges its colours. Such a
+  texture (a model's `#tex<n>` too) now holds to `ArtPalette.maxColors`
+  with the same median cut that holds baked vertex colours, unless a
+  strict palette already mapped it. The texture desc is now
+  `conform-texture-v2`, adding `maxColors`. Without this, stone.png
+  measured 499 colours against 32.
+- **og-build §8:** the sentence on default mesh textures and `conform
+  ui`. The stale "notes beginning conform:" paragraph now describes the
+  `conform` entries (follow-up 2). The check's table rows say how a
+  texture is classified.
+
+Tests (`tests/conform_mesh.rs`):
+`a_texture_no_model_claims_is_a_mesh_texture_in_3d_unless_its_own_line_says_otherwise`.
+
+| Case | Result |
+|---|---|
+| Unclaimed in a 3D project | 256² becomes 64², nearest, 1 level; role Mesh; a Changed entry with the default text and palette mapping |
+| A 4,096-colour gradient under `filter nearest` and `maxColors 8` | 2 to 8 colours, and "4096 → 8 colours" |
+| `conform ui` | Stays 256² and is A2's: role Fixed, the entry says "conform ui", with no mesh text |
+| `conform off` | Bytes equal a no-look control; Off entry |
+| project.ogt's `off "textures/"` | Stays 256²; Off entry naming the pattern |
+| A 2D project | Role Sprite; no mesh-pass note or entry |
+
+The byte-identity test gains an unclaimed png.
+
+Verification:
+
+- og-cook nextest 219/219.
+- `cargo clippy -p og-cook -p og-cli --all-targets -D warnings` clean.
+- og-cli `style_check` unit 7/7 and CLI 2/2.
+- Knowledge `validate.test.ts` 25/25.
+- `og style check` with the branch's dev `og`, on template copies with a
+  `look` line:
+  - **game-3d with faceted-low-poly: exit 0**, 4 assets, 0 off.
+    `textures/stone.png` is ok: 32 colours against 32, 64x64, nearest,
+    1 level. The play frame at 2 s (`--play 2:screenshot`, 640×360,
+    lavapipe, `OG_ENGINE_PACKAGE` and the dev addon) is the title card
+    over the flat-shaded dropship and walkers, with A6's numbers
+    unchanged: 2,738 colours, 742, edges 3.4 %, 8.5 % hard, contrast 0.35.
+    stone.png is not drawn, so no frame moves.
+  - **game-2d with 16bit-pixel: exit 0**, the same 5 sprites ok as A6
+    measured.
+
+No shipped project names a look, so no reference frame moves.

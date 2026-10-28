@@ -47,6 +47,7 @@
 //! build, and `og doctor --project` has one line of it.
 
 use crate::compare::{delta_e00, lab};
+use og_cook::cook::conform::TextureRole;
 use og_cook::format::{codec, kind};
 use og_cook::look::LookFile;
 use og_cook::runtime::{Bundle, CookedModel, MANIFEST};
@@ -1107,6 +1108,7 @@ pub fn measure(
         })
         .as_deref()
         == Some("2d");
+    let roles = og_cook::cook::conform::texture_roles(root)?;
     let fixed = fixed_layouts(root, &bundle);
     let tiles = tile_cells(&bundle);
     let mut assets = Vec::new();
@@ -1136,7 +1138,15 @@ pub fn measure(
             let data = t.to_texture_data().map_err(|e| e.to_string())?;
             let img = Image::from_rgba(data.width, data.height, &data.rgba);
             let lossy = t.meta.codec != codec::RGBA8;
-            let sprite = model.is_none() && (profile_2d || t.is_pixel_art());
+            // The cook's role for it (`texture_roles`), so the check judges
+            // a texture as the pass that conformed it; a `.ktx2`, which no
+            // pass touches, by the profile and its filter.
+            let sprite = model.is_none()
+                && match roles.get(&asset.source) {
+                    Some(TextureRole::Sprite | TextureRole::Sheet | TextureRole::Fixed) => true,
+                    Some(TextureRole::Mesh | TextureRole::Data) => false,
+                    None => profile_2d || t.is_pixel_art(),
+                };
             let mut a = if sprite {
                 let cells = tiles.get(&o.id).map_or(&[][..], Vec::as_slice);
                 let layout = fixed.iter().find(|(f, _)| f == &o.id);

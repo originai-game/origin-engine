@@ -30,7 +30,7 @@ mod palette;
 mod resample;
 
 use super::super::{Kind, Source, flipbook, look, settings_block, tilemap};
-use super::{AssetConform, ConformAction, ConformEntry, ProjectConform};
+use super::{AssetConform, ConformAction, ConformEntry, ProjectConform, TextureRole};
 use crate::look::LookFile;
 use og_core::hash::StableHasher;
 use og_core::ogt::{Document, Value};
@@ -456,7 +456,7 @@ enum Role {
 
 /// One asset that names a texture.
 #[derive(Clone, Debug)]
-struct Use {
+pub(super) struct Use {
     by: usize,
     kind: UseKind,
     off: bool,
@@ -517,27 +517,9 @@ fn style_images(s: &Source, known: &BTreeSet<String>) -> Vec<String> {
 
 const IMAGE_ROLES: [&str; 2] = ["sprite", "ui"];
 
-type SheetText = (usize, Vec<u8>, Arc<Vec<u8>>, u64);
-
-/// Conforms the 2D textures of `sources` to the project's look
-/// (`contract`: its id and art blocks), in place. Called once by
-/// `cook_project` before planning; returns the report's lines.
-pub(in crate::cook) fn conform(
-    root: &Path,
-    assets: &Path,
-    sources: &mut Vec<Source>,
-    known: &BTreeSet<String>,
-    contract: Option<&(String, LookFile)>,
-) -> Result<Vec<ConformEntry>, String> {
-    let project = std::fs::read_to_string(root.join("project.ogt"))
-        .ok()
-        .and_then(|t| Document::parse(&t).ok());
-    let project_off = match &project {
-        Some(d) => ProjectConform::parse(&d.body).map_err(|e| format!("project.ogt:{e}"))?,
-        None => ProjectConform::default(),
-    };
-    let two_d = project
-        .as_ref()
+/// Whether project.ogt's `profile` is `2d`.
+pub(super) fn profile_2d(project: Option<&Document>) -> bool {
+    project
         .and_then(|d| {
             d.body
                 .get("profile")?
@@ -546,12 +528,13 @@ pub(in crate::cook) fn conform(
                 .as_str()
                 .map(|p| p == "2d")
         })
-        .unwrap_or(false);
+        .unwrap_or(false)
+}
 
-    // A sheet's own `conform` line is read here and taken out of its text
-    // (its importer does not know it), with or without a look.
-    let mut sheet_conform: BTreeMap<usize, AssetConform> = BTreeMap::new();
-    let mut entries = Vec::new();
+/// Reads each sheet's own `conform` line and takes it out of its text
+/// (its importer does not know it), with or without a look.
+pub(super) fn strip_sheets(sources: &mut [Source]) -> BTreeMap<usize, AssetConform> {
+    let mut sheet_conform = BTreeMap::new();
     for (i, s) in sources.iter_mut().enumerate() {
         if !matches!(s.kind, Kind::Flipbook | Kind::Tileset | Kind::Rig2d) {
             continue;
@@ -567,19 +550,17 @@ pub(in crate::cook) fn conform(
             s.hash = rehash(s, &[]);
         }
     }
+    sheet_conform
+}
 
-    let Some((look_id, contract)) = contract else {
-        return Ok(entries);
-    };
-    let Some(look_source) = sources.iter().find(|s| &s.rel == look_id) else {
-        return Ok(entries);
-    };
-    let full = look::flattened(look_source, assets, &|id| known.contains(id))?;
-    let Some(art) = Art::of(&full, contract, assets)? else {
-        return Ok(entries);
-    };
-
-    // Who names which texture.
+/// Who names which texture: flipbooks, tile sets, 2D rigs, UI styles and
+/// maps' own tile sets, by texture id.
+pub(super) fn uses(
+    sources: &[Source],
+    known: &BTreeSet<String>,
+    sheet_conform: &BTreeMap<usize, AssetConform>,
+    project_off: &ProjectConform,
+) -> BTreeMap<String, Vec<Use>> {
     let mut uses: BTreeMap<String, Vec<Use>> = BTreeMap::new();
     for (i, s) in sources.iter().enumerate() {
         if s.error.is_some() {
@@ -642,6 +623,94 @@ pub(in crate::cook) fn conform(
         }
     }
 
+    uses
+}
+
+/// What the texture `s` is to conformance (docs/art.md §2.3), and its own
+/// `conform` line: the one decision the cook and `og style check` share
+/// (`super::texture_roles`). Its own role wins (`conform ui`, `conform
+/// sprite`); then who names it (a UI style, a 2D rig or a map's own tile
+/// set: a fixed layout; a flipbook or a tile set: its sheet); then a
+/// normal or linear map is data; then in a 2D project, or as pixel art, a
+/// sprite; else, in a 3D project with nothing claiming it, a mesh's.
+pub(super) fn texture_role(
+    s: &Source,
+    used: &[Use],
+    two_d: bool,
+) -> Result<(TextureRole, Option<AssetConform>), String> {
+    let own = match s
+        .settings
+        .as_ref()
+        .map(|(_, d)| AssetConform::of(&d.body, &IMAGE_ROLES))
+    {
+        Some(r) => r?,
+        None => None,
+    };
+    let kind = super::super::texture_kind(s).unwrap_or(crate::format::kind::COLOR);
+    let role = match own.as_ref().and_then(|c| c.role.as_deref()) {
+        Some("ui") => TextureRole::Fixed,
+        Some(_) => TextureRole::Sprite,
+        None if used.iter().any(|u| matches!(u.kind, UseKind::Fixed(_))) => TextureRole::Fixed,
+        None if !used.is_empty() => TextureRole::Sheet,
+        None if kind == crate::format::kind::NORMAL || kind == crate::format::kind::LINEAR => {
+            TextureRole::Data
+        }
+        None if two_d || kind == crate::format::kind::PIXEL => TextureRole::Sprite,
+        None => TextureRole::Mesh,
+    };
+    Ok((role, own))
+}
+
+type SheetText = (usize, Vec<u8>, Arc<Vec<u8>>, u64);
+
+/// Conforms the 2D textures of `sources` to the project's look
+/// (`contract`: its id and art blocks), in place. Called once by
+/// `cook_project` before planning; returns the report's lines and the
+/// textures whose role is the mesh pass's ([`TextureRole::Mesh`]).
+pub(in crate::cook) fn conform(
+    root: &Path,
+    assets: &Path,
+    sources: &mut Vec<Source>,
+    known: &BTreeSet<String>,
+    contract: Option<&(String, LookFile)>,
+) -> Result<(Vec<ConformEntry>, BTreeSet<String>), String> {
+    let project = std::fs::read_to_string(root.join("project.ogt"))
+        .ok()
+        .and_then(|t| Document::parse(&t).ok());
+    let project_off = match &project {
+        Some(d) => ProjectConform::parse(&d.body).map_err(|e| format!("project.ogt:{e}"))?,
+        None => ProjectConform::default(),
+    };
+    let two_d = profile_2d(project.as_ref());
+    let sheet_conform = strip_sheets(sources);
+    let mut entries = Vec::new();
+
+    let Some((look_id, contract)) = contract else {
+        return Ok((entries, BTreeSet::new()));
+    };
+    let uses = uses(sources, known, &sheet_conform, &project_off);
+    // The mesh pass's textures, whatever the 2D blocks say.
+    let mesh: BTreeSet<String> = sources
+        .iter()
+        .filter(|s| {
+            s.kind == Kind::Texture
+                && s.error.is_none()
+                && !s.rel.to_ascii_lowercase().ends_with(".ktx2")
+        })
+        .filter(|s| {
+            let used = uses.get(&s.rel).map_or(&[][..], Vec::as_slice);
+            matches!(texture_role(s, used, two_d), Ok((TextureRole::Mesh, _)))
+        })
+        .map(|s| s.rel.clone())
+        .collect();
+    let Some(look_source) = sources.iter().find(|s| &s.rel == look_id) else {
+        return Ok((entries, mesh));
+    };
+    let full = look::flattened(look_source, assets, &|id| known.contains(id))?;
+    let Some(art) = Art::of(&full, contract, assets)? else {
+        return Ok((entries, mesh));
+    };
+
     // Each texture: its role, conformed, and what it writes.
     let mut extra: Vec<Source> = Vec::new();
     // A sheet's new text, the conformed image it reads, the look's hash.
@@ -655,37 +724,29 @@ pub(in crate::cook) fn conform(
             continue;
         }
         let used: Vec<Use> = uses.get(&s.rel).cloned().unwrap_or_default();
-        let own = match s
-            .settings
-            .as_ref()
-            .map(|(_, d)| AssetConform::of(&d.body, &IMAGE_ROLES))
-        {
-            Some(Err(e)) => {
+        let (role, own) = match texture_role(s, &used, two_d) {
+            Ok(r) => r,
+            Err(e) => {
                 sources[i].error = Some(e);
                 continue;
             }
-            Some(Ok(c)) => c,
-            None => None,
         };
         let kind = super::super::texture_kind(s).unwrap_or(crate::format::kind::COLOR);
         let data = kind == crate::format::kind::NORMAL || kind == crate::format::kind::LINEAR;
-        let role = if let Some(r) = own.as_ref().and_then(|c| c.role.as_deref()) {
-            Some(if r == "ui" {
-                Role::Fixed("its import settings (conform ui)".into())
-            } else {
-                Role::Sprite
-            })
-        } else if let Some(u) = used.iter().find(|u| matches!(u.kind, UseKind::Fixed(_))) {
-            let UseKind::Fixed(what) = u.kind else {
-                unreachable!()
-            };
-            Some(Role::Fixed(format!("{what} ({})", sources[u.by].rel)))
-        } else if !used.is_empty() {
-            sheet_role(s, &used)
-        } else if !data && (two_d || kind == crate::format::kind::PIXEL) {
-            Some(Role::Sprite)
-        } else {
-            None
+        let role = match role {
+            TextureRole::Fixed if own.as_ref().is_some_and(|c| c.role.is_some()) => {
+                Some(Role::Fixed("its import settings (conform ui)".into()))
+            }
+            TextureRole::Fixed => used.iter().find_map(|u| match u.kind {
+                UseKind::Fixed(what) => {
+                    Some(Role::Fixed(format!("{what} ({})", sources[u.by].rel)))
+                }
+                _ => None,
+            }),
+            TextureRole::Sheet => sheet_role(s, &used),
+            TextureRole::Sprite => Some(Role::Sprite),
+            // The mesh pass's (`conform::mesh`), or data.
+            TextureRole::Mesh | TextureRole::Data => None,
         };
         let Some(role) = role else { continue };
         let off_why = if own.as_ref().is_some_and(|c| c.off) {
@@ -884,7 +945,7 @@ pub(in crate::cook) fn conform(
     }
     sources.extend(extra);
     entries.sort_by(|a, b| a.source.cmp(&b.source));
-    Ok(entries)
+    Ok((entries, mesh))
 }
 
 /// A sheet texture's role: its cells when every sheet that names it agrees
