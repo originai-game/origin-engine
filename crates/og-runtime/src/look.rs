@@ -245,7 +245,9 @@ pub(crate) fn resolve(eng: &Engine) {
 
 /// `og.render.applyLook`: every resource the look names replaced whole
 /// (its fields from the look, the rest at their defaults, the animated ones
-/// kept), then its style given to the UI with the last UiDesc.
+/// kept), then its style given to the UI with the last UiDesc. Inside a
+/// system, an art resource the system did not declare among its writes is
+/// left as it is rather than refused.
 pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
     let (values, style) = {
         let rs = eng.render.borrow();
@@ -265,6 +267,20 @@ pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
     };
     for (resource, fields) in &values {
         let schema = format!("og.{resource}");
+        // The art contract (ArtPalette and the rest) is the game's, read by
+        // the cook before any code runs: a look applied inside a system
+        // writes it only where the system declared it, and otherwise leaves
+        // it as it is, so a system that declares the frame's resources (as
+        // every game before the art contract does) applies its looks as
+        // before.
+        if og_cook::look::ART_RESOURCES.contains(&resource.as_str())
+            && let Some(f) = super::engine::running(eng.id)
+            && !eng.state.borrow().systems[f.system]
+                .writes
+                .contains(&schema)
+        {
+            continue;
+        }
         let layout = eng
             .state
             .borrow()

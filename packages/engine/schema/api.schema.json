@@ -3179,7 +3179,7 @@
         },
         {
           "name": "applyLook",
-          "doc": "Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its style, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes. A look that switches the stylisation (a Stylise pass on or off, the pixel grid, retro 3D, the material style) starts TAA's history over, as a camera cut does, so its first frame holds no ghost of the old look.",
+          "doc": "Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its style, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes, except the art contract's (ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion, ArtCamera): one the system does not declare is left as it is, so a system that declares the frame's resources applies looks that carry a contract. A look that switches the stylisation (a Stylise pass on or off, the pixel grid, retro 3D, the material style) starts TAA's history over, as a camera cut does, so its first frame holds no ghost of the old look.",
           "params": [
             {
               "name": "world",
@@ -4735,7 +4735,7 @@
         },
         {
           "name": "look",
-          "doc": "Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `ui` (a UI style: a built-in style's slug, such as `cartoon`, or the game's own style file's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment) with that resource's fields by name, an asset id where a field is a handle (`lut \"luts/warm.cube\"`, `palette \"palettes/dusk.hex\"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per path.",
+          "doc": "Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `ui` (a UI style: a built-in style's slug, such as `cartoon`, or the game's own style file's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment, and the art contract's ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion, ArtCamera) with that resource's fields by name, an asset id where a field is a handle (`lut \"luts/warm.cube\"`, `palette \"palettes/dusk.hex\"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per path.",
           "params": [
             {
               "name": "world",
@@ -11569,6 +11569,37 @@
       ],
       "interfaces": [],
       "callbacks": []
+    },
+    {
+      "name": "art",
+      "doc": "A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): the palette its texels sit on (ArtPalette), one pixel size for 2D art (ArtPixels), one texel density for 3D surfaces (ArtTexels), the shape language of its models (ArtShape), its line (ArtLine), the step of its motion (ArtMotion) and its camera (ArtCamera). A style is the assets, not a filter on the frame: the look's render resources treat the frame, these say what the assets themselves must be.\nEvery field is no constraint at its zero value (0, false, the first variant, an empty list), so a look without these blocks, and every game made before them, cooks and draws exactly as before. The built-in presets (templates/looks/<slug>.ogt) carry each catalogue style's values and a game's look overrides them field by field. They are resources, so game code reads the contract too (a sprite snapping to ArtPixels.unit, a spawner picking colours from ArtPalette); project.ogt's `look` names the look whose contract the cook reads. Writing them changes neither the frame nor the simulation: the cook's conformance of assets, the runtime defaults from them and og style check are docs/art.md §2.3 to §2.5.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "ArtRotation",
+        "ArtRotation",
+        "ArtFilter",
+        "ArtFilter",
+        "ArtMips",
+        "ArtMips",
+        "ArtNormals",
+        "ArtNormals",
+        "ArtLinePlace",
+        "ArtLinePlace",
+        "ArtProjection",
+        "ArtProjection",
+        "ArtPalette",
+        "ArtPixels",
+        "ArtTexels",
+        "ArtShape",
+        "ArtLine",
+        "ArtMotion",
+        "ArtCamera"
+      ],
+      "consts": [],
+      "functions": [],
+      "interfaces": [],
+      "callbacks": []
     }
   ],
   "$defs": {
@@ -16953,7 +16984,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The resources it sets, by IDL name (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment). Applying it replaces each of them whole: the fields the look names take its values, the rest their defaults."
+          "description": "The resources it sets, by IDL name (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment, and the art contract: ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion, ArtCamera). Applying it replaces each of them whole: the fields the look names take its values, the rest their defaults."
         },
         "style": {
           "anyOf": [
@@ -39454,6 +39485,434 @@
         "waits",
         "desync"
       ],
+      "additionalProperties": false
+    },
+    "ArtRotation": {
+      "x-og-kind": "enum",
+      "x-og-module": "art",
+      "description": "How the style's pixel art turns (ArtPixels.rotation).",
+      "type": "string",
+      "enum": [
+        "free",
+        "nearest",
+        "cleanEdge",
+        "prerotated"
+      ],
+      "x-og-variants": {
+        "free": "No constraint: sprites turn with their texture's filter.",
+        "nearest": "Rotated with nearest sampling: pixels stay square and hard, with the jagged edges of a rotated grid.",
+        "cleanEdge": "Rotated through the cleanEdge filter (torcado, MIT): no blur and no jaggies, the edges of the art redrawn at the angle.",
+        "prerotated": "Rotations baked into the sheet, ArtPixels.rotationSteps of them per turn, each redrawn as pixel art: the sprite shows the nearest one and never turns between."
+      }
+    },
+    "ArtFilter": {
+      "x-og-kind": "enum",
+      "x-og-module": "art",
+      "description": "How the style's textures are sampled (ArtTexels.filter).",
+      "type": "string",
+      "enum": [
+        "any",
+        "nearest",
+        "linear"
+      ],
+      "x-og-variants": {
+        "any": "No constraint: each texture's own import settings.",
+        "nearest": "Nearest: texels stay square and crisp up close, as low-resolution 3D and pixel art.",
+        "linear": "Linear: texels blend smoothly."
+      }
+    },
+    "ArtMips": {
+      "x-og-kind": "enum",
+      "x-og-module": "art",
+      "description": "The mip maps of the style's textures (ArtTexels.mips).",
+      "type": "string",
+      "enum": [
+        "any",
+        "full",
+        "none"
+      ],
+      "x-og-variants": {
+        "any": "No constraint: each texture's own import settings.",
+        "full": "A full mip chain: no shimmer in the distance.",
+        "none": "The base level only: texels stay as crisp far away as near, as on early 3D hardware."
+      }
+    },
+    "ArtNormals": {
+      "x-og-kind": "enum",
+      "x-og-module": "art",
+      "description": "How the style's models are shaded across their faces (ArtShape.normals).",
+      "type": "string",
+      "enum": [
+        "any",
+        "smooth",
+        "flat",
+        "angle"
+      ],
+      "x-og-variants": {
+        "any": "No constraint: each model's own normals.",
+        "smooth": "Smooth: vertex normals averaged over the faces that share them, soft forms.",
+        "flat": "Flat: one normal per face, every facet visible (faceted low poly, paper craft, voxels).",
+        "angle": "Split where neighbouring faces meet at more than ArtShape.normalAngle: hard edges stay hard, curves stay smooth."
+      }
+    },
+    "ArtLinePlace": {
+      "x-og-kind": "enum",
+      "x-og-module": "art",
+      "description": "Where the style's line lies against a shape (ArtLine.place).",
+      "type": "string",
+      "enum": [
+        "outside",
+        "inside",
+        "both"
+      ],
+      "x-og-variants": {
+        "outside": "Round the shape: the line grows the silhouette by its width.",
+        "inside": "On the shape's own edge pixels: its size is unchanged.",
+        "both": "Centred on the edge: half outside, half inside."
+      }
+    },
+    "ArtProjection": {
+      "x-og-kind": "enum",
+      "x-og-module": "art",
+      "description": "The projection of the style's camera (ArtCamera.projection).",
+      "type": "string",
+      "enum": [
+        "any",
+        "perspective",
+        "orthographic"
+      ],
+      "x-og-variants": {
+        "any": "No constraint: the camera as the game makes it.",
+        "perspective": "Perspective: far things smaller.",
+        "orthographic": "Orthographic: every distance at one scale (2D, isometric, top-down tactics)."
+      }
+    },
+    "ArtPalette": {
+      "x-og-kind": "resource",
+      "x-og-module": "art",
+      "description": "The style's colours: the palette the assets' texels sit on, how many a single asset may use, how many shades a hue ramps through, which colours are kept for signals, and how two colours mix where a tone falls between them. The frame's own quantise is Stylise.palette; this is what the assets are made of, 2D and 3D alike. Every field is no constraint at its zero value.",
+      "type": "object",
+      "properties": {
+        "colors": {
+          "$ref": "#/$defs/Palette",
+          "description": "The palette (og.load.palette of a `.hex` or GIMP `.gpl` file; a look names one under assets/ or a built-in `@palettes/<name>`); 0 is none, any colour.",
+          "default": 0
+        },
+        "strict": {
+          "type": "boolean",
+          "description": "Every opaque texel is exactly a colour of colors (indexed colour, as hand-placed pixel art); false lets texels between them (shading, filtering) and holds only the hues to the palette.",
+          "default": false
+        },
+        "maxColors": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most distinct colours one asset (a sprite sheet, a texture, a model's colours) may use; 0 is no limit.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 256
+        },
+        "rampSteps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most shades one hue ramps through from its shadow to its highlight (3 or 4 for 8-bit art, 4 to 6 for 16-bit); 0 is no limit.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 32
+        },
+        "accents": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "maxItems": 8,
+          "description": "The colours of colors kept for signals (the player, danger, the goal, a pickup), by their index in the palette (0 its first colour): scenery and backgrounds stay off them. A look gives them on one line (`accents 3 7`); empty keeps none.",
+          "default": []
+        },
+        "dither": {
+          "$ref": "#/$defs/DitherPattern",
+          "description": "How an asset mixes the two nearest colours where a tone falls between them: none in flat bands (the zero value), or an ordered or noise pattern as Stylise.dither.",
+          "default": "none"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArtPixels": {
+      "x-og-kind": "resource",
+      "x-og-module": "art",
+      "description": "The style's pixel grid for 2D art: one logical pixel size for every sprite, tile and backdrop, the resolution the art is drawn for, the cell sizes sprites come in, how pixel art turns and whether it stands on whole pixels. The frame's grid is Stylise.pixelHeight; this is what the assets are drawn at. Every field is no constraint at its zero value.",
+      "type": "object",
+      "properties": {
+        "unit": {
+          "type": "number",
+          "description": "Logical pixels per metre (per world unit in 2D): one pixel of every sprite, tile and backdrop covers 1/unit metres, so no two assets show pixels of different sizes (16 with 16-pixel tiles one metre wide); 0 is no constraint.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 4096
+        },
+        "logicalHeight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The rows of the logical resolution the art is drawn for, as Stylise.pixelHeight counts them (180, 224, 240); 0 is no constraint.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 2160
+        },
+        "spriteSizes": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "maxItems": 8,
+          "description": "The cell sizes, in logical pixels, a sprite, a flipbook frame or a tile may have: each side is one of them (`spriteSizes 16 32` takes 16 x 16, 16 x 32 and 32 x 32). A look gives them on one line; empty is any size.",
+          "default": []
+        },
+        "rotation": {
+          "$ref": "#/$defs/ArtRotation",
+          "description": "How pixel art turns: free (no constraint), nearest, cleanEdge, or prerotated in rotationSteps.",
+          "default": "free"
+        },
+        "rotationSteps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "With rotation prerotated: the rotations baked per full turn (8 is one every 45 degrees); 0 is none.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 64
+        },
+        "snap": {
+          "type": "boolean",
+          "description": "Sprites and tiles stand on whole logical pixels: their positions are multiples of 1/unit metres, so no pixel of the art lies between two of the grid.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArtTexels": {
+      "x-og-kind": "resource",
+      "x-og-module": "art",
+      "description": "The style's texel density on 3D surfaces: one density for the whole world, so no model is sharper or blurrier than its neighbours, the largest texture, and how textures are filtered and mipped. Every field is no constraint at its zero value.",
+      "type": "object",
+      "properties": {
+        "density": {
+          "type": "number",
+          "description": "Texels per metre on the surfaces of 3D models (a 2 m character at 64 texels per metre takes a 128-texel-tall texture); 0 is no constraint.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 16384
+        },
+        "maxSize": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The longest side of any texture of the style, in texels (256 for low-resolution 3D); 0 is no limit.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 16384
+        },
+        "filter": {
+          "$ref": "#/$defs/ArtFilter",
+          "description": "How the style's textures are sampled: any (no constraint), nearest or linear.",
+          "default": "any"
+        },
+        "mips": {
+          "$ref": "#/$defs/ArtMips",
+          "description": "Their mip maps: any (no constraint), full or none.",
+          "default": "any"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArtShape": {
+      "x-og-kind": "resource",
+      "x-og-module": "art",
+      "description": "The style's shape language for 3D models: triangle budgets, how faces are shaded, bevelled edges, a voxel grid and the smallest feature a silhouette keeps. Every field is no constraint at its zero value (normalAngle matters only with normals angle).",
+      "type": "object",
+      "properties": {
+        "propFaces": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most triangles one prop may have (50 to 500 for faceted low poly); 0 is no budget.",
+          "default": 0,
+          "minimum": 0
+        },
+        "characterFaces": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most triangles one character may have; 0 is no budget.",
+          "default": 0,
+          "minimum": 0
+        },
+        "normals": {
+          "$ref": "#/$defs/ArtNormals",
+          "description": "How models are shaded across their faces: any (no constraint), smooth, flat, or angle (split past normalAngle).",
+          "default": "any"
+        },
+        "normalAngle": {
+          "type": "number",
+          "description": "With normals angle: the angle between two faces past which their edge is shaded hard.",
+          "default": 30,
+          "minimum": 0,
+          "maximum": 180,
+          "x-og-unit": "deg"
+        },
+        "bevel": {
+          "type": "number",
+          "description": "Hard edges rounded by a chamfer of this radius (clay, toys, diorama pieces); 0 is none.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "voxel": {
+          "type": "number",
+          "description": "Models built of cubes of this edge (voxel worlds); 0 is no voxel grid.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "silhouette": {
+          "type": "number",
+          "description": "The thinnest feature a model's silhouette keeps at the style's scale: thinner detail does not read and is left out; 0 is no constraint.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArtLine": {
+      "x-og-kind": "resource",
+      "x-og-module": "art",
+      "description": "The style's line: the outline round its sprites and meshes, its colour, where it lies against the shape and how it thins with distance. The frame's own lines are MaterialStyle.outlineWidth and Stylise.ink; this is the line the assets carry. Every field is no constraint at its zero value (color matters only with a width).",
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "number",
+          "description": "The line's width: in logical pixels round a sprite (1 is one dark pixel round the shape), in pixels at distanceFalloff round a mesh (as MaterialStyle.outlineWidth); 0 is no line.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 32
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The line's colour (linear; a look may write an sRGB \"#rrggbb\").",
+          "default": {
+            "r": 0.02,
+            "g": 0.02,
+            "b": 0.03
+          }
+        },
+        "place": {
+          "$ref": "#/$defs/ArtLinePlace",
+          "description": "Where the line lies against the shape: outside (the zero value), inside, or both.",
+          "default": "outside"
+        },
+        "distanceFalloff": {
+          "type": "number",
+          "description": "Round a mesh: the distance at which the line is width wide, nearer wider and farther thinner (as MaterialStyle.outlineDistance); 0 keeps one width.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArtMotion": {
+      "x-og-kind": "resource",
+      "x-og-module": "art",
+      "description": "The style's motion: animation held on steps as hand animation is, how many frames a clip may hold, and how much squash and stretch its movement takes. Every field is no constraint at its zero value.",
+      "type": "object",
+      "properties": {
+        "stepFps": {
+          "type": "number",
+          "description": "Clips and flipbooks advance this many times a second whatever the tick, holding each pose between (12 is on twos at 24 fps, 8 on threes); 0 is smooth, no constraint.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 120,
+          "x-og-unit": "hz"
+        },
+        "maxFrames": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most frames one clip or flipbook may hold; 0 is no limit.",
+          "default": 0,
+          "minimum": 0
+        },
+        "squash": {
+          "type": "number",
+          "description": "The default squash and stretch of the style's movement (og.tween presets, landings, hits): 0 rigid, 1 as rubber hose.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArtCamera": {
+      "x-og-kind": "resource",
+      "x-og-module": "art",
+      "description": "The style's camera: its projection, a fixed angle (side-on, top-down, the isometric presets), the range of its field of view and whether a 2D camera moves by whole pixels. Every field is no constraint at its zero value (pitch and yaw matter only with fixedAngle).",
+      "type": "object",
+      "properties": {
+        "projection": {
+          "$ref": "#/$defs/ArtProjection",
+          "description": "The projection: any (no constraint), perspective or orthographic.",
+          "default": "any"
+        },
+        "fixedAngle": {
+          "type": "boolean",
+          "description": "The camera keeps one angle, pitch and yaw: false is no constraint.",
+          "default": false
+        },
+        "pitch": {
+          "type": "number",
+          "description": "With fixedAngle: how far below the horizon the camera looks (0 side-on, 90 straight down, 30 the 2:1 pixel isometric, 35.264 true isometric).",
+          "default": 0,
+          "minimum": -90,
+          "maximum": 90,
+          "x-og-unit": "deg"
+        },
+        "yaw": {
+          "type": "number",
+          "description": "With fixedAngle: its turn about the vertical axis (45 for isometric).",
+          "default": 0,
+          "minimum": -180,
+          "maximum": 180,
+          "x-og-unit": "deg"
+        },
+        "fovMin": {
+          "type": "number",
+          "description": "The narrowest vertical field of view a perspective camera of the style takes; 0 is no limit.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 179,
+          "x-og-unit": "deg"
+        },
+        "fovMax": {
+          "type": "number",
+          "description": "The widest vertical field of view a perspective camera of the style takes; 0 is no limit.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 179,
+          "x-og-unit": "deg"
+        },
+        "pixelPerfect": {
+          "type": "boolean",
+          "description": "A 2D camera moves and zooms by whole logical pixels only (ArtPixels.unit), as Stylise.pixelSnap does the frame's: pixel art never shimmers as it scrolls.",
+          "default": false
+        }
+      },
       "additionalProperties": false
     }
   }

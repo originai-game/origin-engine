@@ -409,6 +409,42 @@
       "array": "Uint32Array",
       "stride": 2,
       "value": "TimelineAsset"
+    },
+    {
+      "name": "ArtRotation",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "ArtRotation"
+    },
+    {
+      "name": "ArtFilter",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "ArtFilter"
+    },
+    {
+      "name": "ArtMips",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "ArtMips"
+    },
+    {
+      "name": "ArtNormals",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "ArtNormals"
+    },
+    {
+      "name": "ArtLinePlace",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "ArtLinePlace"
+    },
+    {
+      "name": "ArtProjection",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "ArtProjection"
     }
   ],
   "components": [
@@ -8091,6 +8127,253 @@
           "column": "bool",
           "default": false,
           "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "ArtPalette",
+      "schema": "og.ArtPalette",
+      "module": "art",
+      "fields": [
+        {
+          "name": "colors",
+          "column": "Palette",
+          "default": 0
+        },
+        {
+          "name": "strict",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "maxColors",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "rampSteps",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "accents",
+          "column": "u32",
+          "list": 8,
+          "default": []
+        },
+        {
+          "name": "dither",
+          "column": "DitherPattern",
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "ArtPixels",
+      "schema": "og.ArtPixels",
+      "module": "art",
+      "fields": [
+        {
+          "name": "unit",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "logicalHeight",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "spriteSizes",
+          "column": "u32",
+          "list": 8,
+          "default": []
+        },
+        {
+          "name": "rotation",
+          "column": "ArtRotation",
+          "default": "free"
+        },
+        {
+          "name": "rotationSteps",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "snap",
+          "column": "bool",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "name": "ArtTexels",
+      "schema": "og.ArtTexels",
+      "module": "art",
+      "fields": [
+        {
+          "name": "density",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "maxSize",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "filter",
+          "column": "ArtFilter",
+          "default": "any"
+        },
+        {
+          "name": "mips",
+          "column": "ArtMips",
+          "default": "any"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "name": "ArtShape",
+      "schema": "og.ArtShape",
+      "module": "art",
+      "fields": [
+        {
+          "name": "propFaces",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "characterFaces",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "normals",
+          "column": "ArtNormals",
+          "default": "any"
+        },
+        {
+          "name": "normalAngle",
+          "column": "f32",
+          "default": 30
+        },
+        {
+          "name": "bevel",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "voxel",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "silhouette",
+          "column": "f32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "name": "ArtLine",
+      "schema": "og.ArtLine",
+      "module": "art",
+      "fields": [
+        {
+          "name": "width",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "color",
+          "column": "Color",
+          "default": {
+            "r": 0.02,
+            "g": 0.02,
+            "b": 0.03
+          }
+        },
+        {
+          "name": "place",
+          "column": "ArtLinePlace",
+          "default": "outside"
+        },
+        {
+          "name": "distanceFalloff",
+          "column": "f32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "ArtMotion",
+      "schema": "og.ArtMotion",
+      "module": "art",
+      "fields": [
+        {
+          "name": "stepFps",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "maxFrames",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "squash",
+          "column": "f32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "name": "ArtCamera",
+      "schema": "og.ArtCamera",
+      "module": "art",
+      "fields": [
+        {
+          "name": "projection",
+          "column": "ArtProjection",
+          "default": "any"
+        },
+        {
+          "name": "fixedAngle",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "pitch",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "yaw",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "fovMin",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "fovMax",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "pixelPerfect",
+          "column": "bool",
+          "default": false
         }
       ]
     }

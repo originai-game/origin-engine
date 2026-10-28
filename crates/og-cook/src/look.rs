@@ -1,8 +1,10 @@
 //! Looks (`.ogt` of `type look`): a frame's art direction as one
 //! git-diffable file. A look names the engine resources it sets (the IDL's
 //! `RenderSettings`, `PostEffects`, `Stylise`, `MaterialStyle`, `Fog`, `Sky`
-//! and `Environment`) with their fields by reflected name, the UI style, and
-//! the antialiasing it wants, and may build on another look:
+//! and `Environment` for the frame, and the art contract's `ArtPalette`,
+//! `ArtPixels`, `ArtTexels`, `ArtShape`, `ArtLine`, `ArtMotion` and
+//! `ArtCamera` for the assets) with their fields by reflected name, the UI
+//! style, and the antialiasing it wants, and may build on another look:
 //!
 //! ```text
 //! type look
@@ -33,6 +35,15 @@
 //! MaterialStyle {
 //!   toon true
 //! }
+//! ArtPalette {
+//!   colors "@palettes/dusk16"   # the palette the assets' texels sit on
+//!   rampSteps 4
+//!   accents 3 7                 # a list on its one line
+//! }
+//! ArtLine {
+//!   width 1
+//!   color "#1b1420"
+//! }
 //! ```
 //!
 //! This module reads and writes the text ([`LookFile`]) and merges a look
@@ -47,8 +58,10 @@ use og_core::ogt::{Block, Document, Entry, Value};
 /// The `.ogt` type of a look.
 pub const LOOK_TYPE: &str = "look";
 
-/// The resources a look may set, by IDL name (each registers as `og.<name>`).
-pub const LOOK_RESOURCES: [&str; 7] = [
+/// The resources a look may set, by IDL name (each registers as `og.<name>`):
+/// the frame's render resources, then the art contract (the IDL's `art`
+/// module, docs/art.md §2.1), what every asset of the style holds.
+pub const LOOK_RESOURCES: [&str; 14] = [
     "RenderSettings",
     "PostEffects",
     "Stylise",
@@ -56,6 +69,25 @@ pub const LOOK_RESOURCES: [&str; 7] = [
     "Fog",
     "Sky",
     "Environment",
+    "ArtPalette",
+    "ArtPixels",
+    "ArtTexels",
+    "ArtShape",
+    "ArtLine",
+    "ArtMotion",
+    "ArtCamera",
+];
+
+/// The art contract's resources among [`LOOK_RESOURCES`]: what the cook
+/// reads from the project's look (project.ogt's `look`).
+pub const ART_RESOURCES: [&str; 7] = [
+    "ArtPalette",
+    "ArtPixels",
+    "ArtTexels",
+    "ArtShape",
+    "ArtLine",
+    "ArtMotion",
+    "ArtCamera",
 ];
 
 /// Fields game code animates tick by tick: a look never sets them, and
