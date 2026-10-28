@@ -105,3 +105,44 @@ and the branch's dev `og` and addon (`OG_NATIVE_ADDON`, the file named
   call).
 - The `outline` section is data only. Nothing reads it yet (A4's runtime
   mesh outline).
+
+## Follow-up `art/conform-3d-2` (from c52344b2)
+
+- **project.ogt's `conform { off ... }` is honoured by the 3D pass.** The
+  cook reads `ProjectConform` (A2's) before the 2D pass and gives
+  `Conform.off` every model and flipbook kept as made: its own
+  `conform off`, or the first project pattern that matches its id. A
+  model under an off pattern keeps its geometry, its `#tex<n>` textures
+  and its clips (the control's bytes). A flipbook under one keeps its
+  source durations. The asset's stamp drops the contract, as for its own
+  `conform off`.
+- **The mesh pass reports in `Report.conform`.** Per asset, one
+  `ConformEntry`: `Changed` with its outputs' lines joined by "; "
+  (model, textures, clips), `Unchanged` ("meets the contract as it is"),
+  or `Off` with why (`conform off (assets/<id>.ogt)`, or `project.ogt's
+  conform block: off "<pattern>"`). Assets A2 already lists as Off are not
+  listed twice. `og cook --report` and its JSON read the one list. No
+  `conform:` note is left in an asset's notes; each asset still gets
+  A2's `art contract: <action>: <what>` note from the entry. Frames
+  dropped past ArtMotion.maxFrames are also in `Report.warnings`
+  (`assets/<id>: warning: ...`).
+- **`cooked/.conform.ogt`** (type `conform-log` v1) keeps each conformed
+  output's lines by id and stamp, so an up-to-date cook lists the same
+  entries and warnings. It is written only under a contract and is
+  removed when empty, so a project with no look, or with zero art
+  blocks, still cooks byte-identically. `og build` (web-build.ts) leaves
+  it out of the export, beside `.cook-times.ogt`.
+- **Tests** (`tests/conform_mesh.rs`):
+  `project_conform_off_keeps_models_their_textures_clips_and_flipbooks_as_made`
+  (a folder pattern and an id pattern: model and walker bytes equal the
+  no-look control and differ when on, `#tex0` 128 rather than 32, coin
+  durations 0.125 rather than 1/6, three Off entries naming their
+  pattern). It fails when the project block is ignored.
+  `the_report_lists_the_mesh_pass_beside_the_texture_pass_and_keeps_it_when_up_to_date`
+  (Changed and Unchanged entries, no `conform:` notes, the warning,
+  markdown and JSON, and an up-to-date second cook with the same entries
+  and warnings). The six earlier tests now read the entries.
+- **Shared edits:** `cook/mod.rs` only (the project block read, the log,
+  the entries before A2's note loop, and the `Work::Model` off note
+  removed), plus one line in `packages/engine/src/node/web-build.ts`.
+  `conform/mod.rs` is untouched.
