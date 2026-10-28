@@ -5,7 +5,9 @@
     "simulation": "unchanged",
     "breaking": [],
     "added": [],
-    "fixed": []
+    "fixed": [
+      "Stylise.dither and ArtPalette.dither bayer4 and bayer8 use the dispersed Bayer matrix; they drew a quadrant-clustered one whose tones showed as blocks of the matrix's size. Frames and cook-conformed textures dithered with them change; bayer2 does not."
+    ]
   },
   "versions": [
     {

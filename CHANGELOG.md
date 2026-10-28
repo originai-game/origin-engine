@@ -22,6 +22,15 @@ is one line here, written at the merge that changes
   Grand View Garden's ~500 materials updated 15 times a second drew at
   1.5–2.5 fps in Chrome, 22–27 fps with this. Frames are unchanged; no
   IDL member changed.
+- render and cook, `dither bayer4`/`bayer8` (`Stylise.dither`,
+  `ArtPalette.dither`): the threshold matrix is the dispersed Bayer matrix
+  (4 × 4: 0 8 2 10 / 12 4 14 6 / ...). It used to take the position's
+  coarsest bit as the threshold's most significant, a quadrant-clustered
+  matrix that drew a tone as blocks of the matrix's size (a 1-bit frame at
+  240 lines turned into a 24 px checkerboard that swallowed every form).
+  Every frame dithered with `bayer4` or `bayer8`, and every texture the
+  cook conforms with them, changes; `bayer2` does not. No IDL member
+  changed.
 
 ## 0.7.0 — 2026-10-28
 
