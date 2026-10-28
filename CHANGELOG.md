@@ -13,6 +13,56 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+The art contract (docs/art.md §2.1, stream A1): a game's style as data
+every asset holds, beside the frame's look. Data only: nothing conforms to
+it or reads it yet (the cook's conformance and the runtime defaults are
+streams A2 to A4), so every existing game cooks and draws as before; the
+simulation is unchanged (the golden replays). The new records join every
+world's registry, so `world_hash` moves; the replays' portable hash does not.
+
+- `og.ArtPalette` (new resource, module `art`): the palette the assets'
+  texels sit on: `colors`, `strict`, `maxColors`, `rampSteps`, `accents`
+  (palette indices kept for signals), `dither`; no constraint at zero.
+- `og.ArtPixels` (new resource): the pixel grid of 2D art: `unit` (logical
+  pixels per metre), `logicalHeight`, `spriteSizes`, `rotation`,
+  `rotationSteps`, `snap`; no constraint at zero.
+- `og.ArtTexels` (new resource): texel density on 3D surfaces: `density`,
+  `maxSize`, `filter`, `mips`; no constraint at zero.
+- `og.ArtShape` (new resource): the shape language of models:
+  `propFaces`, `characterFaces`, `normals`, `normalAngle`, `bevel`,
+  `voxel`, `silhouette`; no constraint at zero.
+- `og.ArtLine` (new resource): the line the assets carry: `width`,
+  `color`, `place`, `distanceFalloff`; no line at width 0.
+- `og.ArtMotion` (new resource): `stepFps` (animation on twos or threes),
+  `maxFrames` per clip, `squash`; no constraint at zero.
+- `og.ArtCamera` (new resource): `projection`, `fixedAngle`, `pitch`,
+  `yaw`, `fovMin`, `fovMax`, `pixelPerfect`; no constraint at zero.
+- `og.ArtRotation` (new enum): free, nearest, cleanEdge, prerotated.
+- `og.ArtFilter` (new enum): any, nearest, linear.
+- `og.ArtMips` (new enum): any, full, none.
+- `og.ArtNormals` (new enum): any, smooth, flat, angle.
+- `og.ArtLinePlace` (new enum): outside, inside, both.
+- `og.ArtProjection` (new enum): any, perspective, orthographic.
+- `GameDesc.look`: left out or empty, project.ogt's new `look
+  "looks/<id>.ogt"` line is applied when it has one (as `tick`, `seed`,
+  `scenes` and `scene` default to the manifest); the two naming different
+  looks is refused. A project without the line runs as before.
+- `LookInfo.resources`: names the art resources a look sets too.
+- `og.render.applyLook`: inside a system, an art resource the system does
+  not declare among its writes is left as it is instead of refusing the
+  look, so a system declaring only the frame's resources applies a preset
+  that carries a contract as before.
+- `og.load.look`: a look's blocks include the seven art resources, checked
+  against their records as the frame's are.
+- Looks: a look sets the art resources by block as it sets the render
+  ones; the 37 presets in `templates/looks/` carry their catalogue style's
+  values (from each entry's `palette` and `assets`).
+- Cook: project.ogt's `look` names the look whose art contract the cook
+  reads before any asset cooks; its report notes what the contract sets.
+  `create` writes the line beside `GameDesc.look`.
+
 ## 0.6.6 — 2026-10-28
 
 No IDL member changed; the simulation is unchanged (the golden replays).

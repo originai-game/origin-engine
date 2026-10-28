@@ -4,7 +4,80 @@
   "unreleased": {
     "simulation": "unchanged",
     "breaking": [],
-    "added": [],
+    "added": [
+      {
+        "member": "og.ArtPalette",
+        "summary": "New resource (module art): the palette the assets' texels sit on: colors, strict, maxColors, rampSteps, accents, dither; no constraint at zero."
+      },
+      {
+        "member": "og.ArtPixels",
+        "summary": "New resource: the pixel grid of 2D art: unit, logicalHeight, spriteSizes, rotation, rotationSteps, snap; no constraint at zero."
+      },
+      {
+        "member": "og.ArtTexels",
+        "summary": "New resource: texel density on 3D surfaces: density, maxSize, filter, mips; no constraint at zero."
+      },
+      {
+        "member": "og.ArtShape",
+        "summary": "New resource: the shape language of models: propFaces, characterFaces, normals, normalAngle, bevel, voxel, silhouette; no constraint at zero."
+      },
+      {
+        "member": "og.ArtLine",
+        "summary": "New resource: the line the assets carry: width, color, place, distanceFalloff; no line at width 0."
+      },
+      {
+        "member": "og.ArtMotion",
+        "summary": "New resource: stepFps, maxFrames, squash; no constraint at zero."
+      },
+      {
+        "member": "og.ArtCamera",
+        "summary": "New resource: projection, fixedAngle, pitch, yaw, fovMin, fovMax, pixelPerfect; no constraint at zero."
+      },
+      {
+        "member": "og.ArtRotation",
+        "summary": "New enum: free, nearest, cleanEdge, prerotated."
+      },
+      {
+        "member": "og.ArtFilter",
+        "summary": "New enum: any, nearest, linear."
+      },
+      {
+        "member": "og.ArtMips",
+        "summary": "New enum: any, full, none."
+      },
+      {
+        "member": "og.ArtNormals",
+        "summary": "New enum: any, smooth, flat, angle."
+      },
+      {
+        "member": "og.ArtLinePlace",
+        "summary": "New enum: outside, inside, both."
+      },
+      {
+        "member": "og.ArtProjection",
+        "summary": "New enum: any, perspective, orthographic."
+      },
+      {
+        "member": "GameDesc.look",
+        "summary": "Left out or empty, project.ogt's look \"looks/<id>.ogt\" line is applied when it has one; the two naming different looks is refused. A project without the line runs as before."
+      },
+      {
+        "member": "LookInfo.resources",
+        "summary": "Names the art resources a look sets too."
+      },
+      {
+        "member": "og.render.applyLook",
+        "summary": "Inside a system, an art resource the system does not declare among its writes is left as it is instead of refusing the look."
+      },
+      {
+        "member": "og.load.look",
+        "summary": "A look's blocks include the seven art resources, checked against their records as the frame's are; the 37 presets carry their catalogue style's values."
+      },
+      {
+        "member": "project.ogt look",
+        "summary": "project.ogt's look \"looks/<id>.ogt\" names the look whose art contract the cook reads before any asset cooks; create writes it beside GameDesc.look."
+      }
+    ],
     "fixed": []
   },
   "versions": [
