@@ -233,7 +233,7 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
       "looks/catalogue.json: a-new-look: preview is previews/" + cat.styles[4]!.slug + ".webp, expected previews/a-new-look.webp",
       "looks/catalogue.json: a-new-look: look.preset is templates/looks/" + cat.styles[4]!.slug + ".ogt, expected templates/looks/a-new-look.ogt",
       "skills/og-taste/SKILL.md: the style catalogue (§12) does not list `a-new-look`",
-      `skills/og-taste/SKILL.md: §12's row for \`${b}\` reads ${row(b!)}; the catalogue says ${row(b!).replace(/, partial, /, ", planned, ")}`,
+      `skills/og-taste/SKILL.md: §12's row for \`${b}\` reads ${row(b!)}; the catalogue says ${row(b!).replace(`, ${cat.styles[1]!.look.support}, `, ", planned, ")}`,
     ].sort(),
   );
 });
