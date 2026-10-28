@@ -13,8 +13,16 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
-## Unreleased
+## 0.7.1 — 2026-10-28
 
+A patch with the simulation unchanged (the golden replays); no IDL member
+changed.
+
+- cook, the mesh conformance (`ArtShape.normals flat`): faces thinner than
+  the position grid are dropped, and flat normals hold on lathe poles and
+  on voxelised parts turned by their placement (normals brought back
+  through the placement's transpose). Conformed models re-cook (model desc
+  `conform-mesh-v3`); voxel-worlds' turned parts shade differently.
 - render, `RenderScene::set_shader_param`: a changed parameter is written
   into the material's uniform in place (`queue.write_buffer`) and keeps
   its bind group, where it used to rebuild both. On the web each new
