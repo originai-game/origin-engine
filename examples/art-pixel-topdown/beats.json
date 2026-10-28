@@ -1,0 +1,39 @@
+[
+ {
+  "asset": "art/hero.png",
+  "kind": "character",
+  "subject": "a lantern keeper: a small traveller in a hooded green coat carrying a lit hand lamp",
+  "metres": 2
+ },
+ {
+  "asset": "art/tree.png",
+  "kind": "sprite",
+  "subject": "a stepped pine tree: a brown trunk under three stacked tiers of foliage, each tier smaller than the one below",
+  "metres": 4
+ },
+ {
+  "asset": "art/crate.png",
+  "kind": "prop",
+  "subject": "a wooden supply crate with plank sides and a darker frame",
+  "metres": 1.25
+ },
+ {
+  "asset": "art/lantern.png",
+  "kind": "sprite",
+  "subject": "an iron street lantern on a tall post, its glass lit warm orange",
+  "metres": 3.5
+ },
+ {
+  "asset": "art/ground.png",
+  "kind": "texture",
+  "subject": "grass with a few small flowers and pebbles, seen from above",
+  "metres": 2,
+  "tile": true
+ },
+ {
+  "asset": "art/backdrop.png",
+  "kind": "backdrop",
+  "subject": "seen from above: a stone cliff edge dropping to a river, a dense forest canopy beyond and the roofs of a distant village",
+  "tile": true
+ }
+]

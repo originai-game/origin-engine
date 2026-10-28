@@ -1,0 +1,10 @@
+{
+  "pixel-side": { "profile": "2d", "style": "16bit-pixel", "name": "Art sample: pixel side-on" },
+  "pixel-topdown": { "profile": "2d", "style": "topdown-tile-pixel", "name": "Art sample: pixel top-down" },
+  "paint-2d": { "profile": "2d", "style": "watercolor-wash", "name": "Art sample: painted 2D" },
+  "pixel-3d": { "profile": "3d", "style": "pixel-3d-hybrid", "name": "Art sample: pixel in 3D" },
+  "ink-3d": { "profile": "3d", "style": "bold-comic-illustration", "name": "Art sample: ink and line 3D" },
+  "shape-3d": { "profile": "3d", "style": "faceted-low-poly", "name": "Art sample: shape and paper 3D" },
+  "toon-3d": { "profile": "3d", "style": "anime-cel-3d", "name": "Art sample: toon and comic 3D" },
+  "cinematic-3d": { "profile": "3d", "style": "cinematic-realism", "name": "Art sample: cinematic 3D" }
+}

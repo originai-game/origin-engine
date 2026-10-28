@@ -1,0 +1,111 @@
+type model
+version 1
+---
+# neon-vector's version (tools/art-samples/neon.py): black faces, glowing hues.
+# The lantern keeper (og-model §5): a hooded traveller carrying a lit lamp,
+# about 1.8 m, facing +Z, its feet on y = 0. Moderate counts: the look's
+# ArtShape decides the facets, voxels or bevel at cook time.
+material "coat" {
+  color 0.02 0.02 0.04
+  roughness 1
+  emissive 0.1 0.9 1
+  emissiveIntensity 0.6
+}
+material "skin" {
+  color 0.02 0.02 0.04
+  roughness 1
+  emissive 1 0.3 0.8
+  emissiveIntensity 0.6
+}
+material "boot" {
+  color 0.02 0.02 0.04
+  roughness 1
+  emissive 0.1 0.9 1
+  emissiveIntensity 0.6
+}
+material "iron" {
+  color 0.02 0.02 0.04
+  roughness 1
+  emissive 0.1 0.9 1
+  emissiveIntensity 0.6
+}
+material "flame" {
+  color 0.02 0.02 0.04
+  roughness 1
+  emissive 1 0.3 0.8
+  emissiveIntensity 0.6
+}
+part "leg-left" {
+  material "boot"
+  position -0.12 0.3 0
+  capsuleGeometry {
+    radius 0.09
+    height 0.45
+    radialSegments 12
+  }
+}
+part "leg-right" {
+  material "boot"
+  position 0.12 0.3 0
+  capsuleGeometry {
+    radius 0.09
+    height 0.45
+    radialSegments 12
+  }
+}
+part "coat" {
+  material "coat"
+  position 0 0.95 0
+  cylinderGeometry {
+    radiusTop 0.2
+    radiusBottom 0.38
+    height 0.9
+    radialSegments 16
+  }
+}
+part "head" {
+  material "skin"
+  position 0 1.55 0.04
+  sphereGeometry {
+    radius 0.17
+    widthSegments 16
+    heightSegments 12
+  }
+}
+part "hood" {
+  material "coat"
+  position 0 1.62 -0.03
+  coneGeometry {
+    radius 0.25
+    height 0.55
+    radialSegments 16
+  }
+}
+part "arm" {
+  material "coat"
+  position 0.33 1.12 0.12
+  quaternion 0 0 0.3827 0.9239
+  capsuleGeometry {
+    radius 0.07
+    height 0.4
+    radialSegments 10
+  }
+}
+part "lamp" {
+  material "iron"
+  position 0.5 0.82 0.2
+  boxGeometry {
+    width 0.16
+    height 0.22
+    depth 0.16
+  }
+}
+part "lamp-light" {
+  material "flame"
+  position 0.5 0.82 0.2
+  sphereGeometry {
+    radius 0.1
+    widthSegments 10
+    heightSegments 8
+  }
+}
