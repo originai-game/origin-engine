@@ -14,9 +14,11 @@
 // (platformer, side-scroller, metroidvania, pixel art) without saying 3D.
 //
 // Every game gets its look, `assets/looks/<id>.ogt`, named by GameDesc.look
-// in the entry: it extends the style catalogue's preset given by --look, or
-// the one whose premise best matches --premise (asked for on a terminal when
-// neither is given), else the template's own. The catalogue is
+// in the entry and by project.ogt's `look` line (the look whose art contract
+// the cook reads, docs/art.md §2.1): it extends the style catalogue's preset
+// given by --look, or the one whose premise best matches --premise (asked
+// for on a terminal when neither is given), else the template's own. The
+// catalogue is
 // ./looks/catalogue.json in the published package (prepack) or
 // ../../knowledge/looks/catalogue.json in the engine repository.
 
@@ -239,6 +241,22 @@ function setOgt(text: string, key: string, value: string): string {
   return text.replace(line, `${key} ${ogtString(value)}`);
 }
 
+/**
+ * project.ogt naming the game's look (`look "looks/<id>.ogt"`, the look whose
+ * art contract the cook reads): a template's own line is replaced, else the
+ * line is added after `entry` (or at the end).
+ */
+function projectLook(text: string, lookId: string): string {
+  const line = `look ${ogtString(lookId)}`;
+  const own = /^look[ \t]+"(?:[^"\\]|\\.)*"[ \t]*$/m;
+  if (own.test(text)) return text.replace(own, line);
+  const block = `# The game's look: its art contract the cook reads, GameDesc.look's default.\n${line}`;
+  const entry = /^entry[ \t]+"(?:[^"\\]|\\.)*"[ \t]*$/m.exec(text);
+  if (!entry) return `${text.replace(/\n*$/, "\n")}${block}\n`;
+  const at = entry.index + entry[0].length;
+  return `${text.slice(0, at)}\n${block}${text.slice(at)}`;
+}
+
 /** Every file under `root`, relative, skipping build output. */
 function files(root: string, at = root): string[] {
   const out: string[] = [];
@@ -295,8 +313,11 @@ function lookText(name: string, style: Style | undefined, slug: string | null, i
   else head.push("# It extends no preset yet: the frame is the engine's defaults plus the lines below.");
   head.push(
     "# A block below (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog,",
-    "# Sky, Environment) wins over the preset field by field. For another",
-    "# style, set `extends` to another catalogue slug and run og cook.",
+    "# Sky, Environment, and the art contract's ArtPalette, ArtPixels, ArtTexels,",
+    "# ArtShape, ArtLine, ArtMotion, ArtCamera) wins over the preset field by",
+    "# field. project.ogt's `look` line names this file: the cook reads its art",
+    "# contract. For another style, set `extends` to another catalogue slug and",
+    "# run og cook.",
     `name ${ogtString(name)}`,
   );
   if (slug) head.push(`extends ${ogtString(slug)}`);
@@ -312,11 +333,19 @@ function lookReadme(look: CreatedLook, style: Style | undefined, entry: string, 
     "",
     "The game's art direction is data, in one file a reader can diff:",
     `\`${look.file}\` (an \`.ogt\` of \`type look\`), named by`,
-    `\`look: "${look.id}"\` in the \`og.game({...})\` of \`${entry}\`. It is applied`,
+    `\`look: "${look.id}"\` in the \`og.game({...})\` of \`${entry}\` and by`,
+    `\`look "${look.id}"\` in \`project.ogt\`. It is applied`,
     "after the first scene spawns and before `start` runs, and sets tone",
     "mapping and exposure, the post stack, the stylisation (`Stylise`),",
     "material defaults (`MaterialStyle`: toon, outlines, flat shading), fog,",
     "sky, the environment map and the UI style (its `ui` line).",
+    "",
+    "It is also the art contract every asset is made to: the palette",
+    "(`ArtPalette`), the pixel grid (`ArtPixels`), texel density",
+    "(`ArtTexels`), the shape language (`ArtShape`), the line (`ArtLine`),",
+    "animation timing (`ArtMotion`) and the camera (`ArtCamera`). The cook",
+    "reads it from `project.ogt`'s `look` line; a field left at zero",
+    "constrains nothing.",
     "",
   ];
   if (look.extends && style) {
@@ -454,6 +483,8 @@ function writeLook(dir: string, name: string, id: string, choice: ReturnType<typ
   mkdirSync(join(dir, "assets", "looks"), { recursive: true });
   writeFileSync(join(dir, file), lookText(name, style, slug, id, base.body));
   if (!written.includes(file)) written.push(file);
+  const manifest = join(dir, "project.ogt");
+  writeFileSync(manifest, projectLook(readFileSync(manifest, "utf8"), lookId));
 
   if (source !== undefined) {
     let next: string | undefined;

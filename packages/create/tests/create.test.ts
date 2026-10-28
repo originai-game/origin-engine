@@ -57,8 +57,9 @@ test("scaffolds every template file with the game's name and id", () => {
   expect(manifest.split("\n")).toContain('name "Space Run"');
   expect(manifest.split("\n")).toContain('id "space-run"');
   expect(manifest.startsWith("type project\n")).toBeTrue();
-  // Everything but the name and id lines is the template's.
-  const strip = (t: string) => t.split("\n").filter((l) => !/^(name|id) "/.test(l));
+  // Everything but the name and id lines and the look the game names is the template's.
+  expect(manifest).toContain('\nentry "src/main.ts"\n# The game\'s look: its art contract the cook reads, GameDesc.look\'s default.\nlook "looks/space-run.ogt"\n');
+  const strip = (t: string) => t.split("\n").filter((l) => !/^(name|id|look) "|^# The game's look:/.test(l));
   expect(strip(manifest)).toEqual(strip(readFileSync(join(template, "project.ogt"), "utf8")));
   expect(JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).name).toBe("space-run");
 });
@@ -94,11 +95,13 @@ test("build output in the template is never copied", () => {
   // A template with cooked/, dist/ and node_modules/ next to its sources.
   const fake = join(scratch, "fake-template");
   for (const d of ["cooked", "dist", "node_modules/x", "src"]) mkdirSync(join(fake, d), { recursive: true });
-  writeFileSync(join(fake, "project.ogt"), 'type project\nversion 1\n---\nname "T"\nid "t"\n');
+  writeFileSync(join(fake, "project.ogt"), 'type project\nversion 1\n---\nname "T"\nid "t"\nlook "looks/t.ogt"\n');
   for (const f of ["cooked/a.ogb", "dist/game.js", "node_modules/x/i.js", "src/main.ts"]) writeFileSync(join(fake, f), "x");
   const r = Bun.spawnSync(["bun", "-e", `import { create } from ${JSON.stringify(join(pkg, "bin", "create.ts"))}; create({ dir: ${JSON.stringify(join(scratch, "clean"))}, name: "Clean", template: ${JSON.stringify(fake)} });`]);
   expect(r.exitCode).toBe(0);
   expect(walk(join(scratch, "clean")).sort()).toEqual(["README.md", "assets/looks/clean.ogt", "project.ogt", "src/main.ts"]);
+  // A template's own project look line is replaced by the game's, not doubled.
+  expect(readFileSync(join(scratch, "clean", "project.ogt"), "utf8")).toBe('type project\nversion 1\n---\nname "Clean"\nid "clean"\nlook "looks/clean.ogt"\n');
 });
 
 test("--archetype scaffolds an archetype game instead of the template", () => {
@@ -213,10 +216,13 @@ test("the template's look becomes the game's: renamed to its id, named by GameDe
   expect(topLevel(look, "extends")).toBe(topLevel(readFileSync(join(template, "assets", "looks", "origin-game.ogt"), "utf8"), "extends"));
   expect(existsSync(join(scratch, "lantern", "assets", "looks", "origin-game.ogt"))).toBeFalse();
   expect(lookKeys(read("lantern", "src", "main.ts"))).toEqual(["looks/lantern.ogt"]);
+  // project.ogt names the same look, once: the cook reads its art contract.
+  expect([...read("lantern", "project.ogt").matchAll(/^look "([^"]+)"$/gm)].map((m) => m[1])).toEqual(["looks/lantern.ogt"]);
   const readme = read("lantern", "README.md");
   expect(readme).toContain("## The look");
   expect(readme).toContain("`assets/looks/lantern.ogt`");
   expect(readme).toContain('look: "looks/lantern.ogt"');
+  expect(readme).toContain('`look "looks/lantern.ogt"` in `project.ogt`');
   expect(readme).toContain("extends \"<slug>\"");
 });
 
