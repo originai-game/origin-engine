@@ -846,19 +846,36 @@ fn settings_block<'a>(s: &'a Source, key: &str) -> Option<&'a og_core::ogt::Bloc
     s.settings.as_ref()?.1.body.get(key)?.block.as_ref()
 }
 
-/// `conform off` (docs/art.md §2.3): the asset keeps its source as made,
-/// whatever the project's art contract. Written at the top of the asset's
-/// own `.ogt` (a `type model`, a flipbook) or of its import settings.
-fn conform_off(s: &Source) -> bool {
+/// An asset's own `conform off` (docs/art.md §2.3), at the top of its
+/// `.ogt` (a `type model`, a flipbook) or of its import settings: why it
+/// keeps its source as made. Read before the 2D pass takes the line out
+/// of a sheet's text.
+fn own_conform_off(s: &Source) -> Option<String> {
     let off = |b: &og_core::ogt::Block| {
         b.get("conform")
             .and_then(|e| e.values.first())
             .and_then(|v| v.as_word())
             == Some("off")
     };
-    s.settings.as_ref().is_some_and(|(_, d)| off(&d.body))
-        || (s.rel.ends_with(".ogt")
-            && Document::parse(&String::from_utf8_lossy(&s.bytes)).is_ok_and(|d| off(&d.body)))
+    if s.settings.as_ref().is_some_and(|(_, d)| off(&d.body)) {
+        Some(format!("conform off (assets/{}.ogt)", s.rel))
+    } else if s.rel.ends_with(".ogt")
+        && Document::parse(&String::from_utf8_lossy(&s.bytes)).is_ok_and(|d| off(&d.body))
+    {
+        Some(format!("conform off (assets/{})", s.rel))
+    } else {
+        None
+    }
+}
+
+/// Whether the 3D pass keeps `s` as made: its own `conform off` or
+/// project.ogt's `conform { off ... }` (`conform::mesh::Conform::off`).
+fn conform_off(s: &Source, options: &CookOptions) -> bool {
+    options
+        .mesh
+        .conform
+        .as_ref()
+        .is_some_and(|c| c.off.contains_key(&s.rel))
 }
 
 /// The mesh options of a model `s` under the art contract: its import
@@ -868,10 +885,65 @@ fn mesh_for(s: &Source, options: &CookOptions) -> Result<MeshOptions, CookError>
         .mesh
         .for_model(settings_block(s, "model"))
         .map_err(CookError)?;
-    if conform_off(s) {
+    if conform_off(s, options) {
         m.conform = None;
     }
     Ok(m)
+}
+
+/// `cooked/.conform.ogt`: per conformed output (id and stamp), what the 3D
+/// pass said of it when it last cooked, so an up-to-date output is still
+/// reported. Written only when it holds something.
+const CONFORM_LOG: &str = ".conform.ogt";
+
+type ConformLog = BTreeMap<(String, u64), Vec<String>>;
+
+fn read_conform_log(cooked: &Path) -> ConformLog {
+    let mut out = ConformLog::new();
+    let Some(doc) = std::fs::read_to_string(cooked.join(CONFORM_LOG))
+        .ok()
+        .and_then(|t| Document::parse(&t).ok())
+        .filter(|d| d.ty == "conform-log" && d.version == 1)
+    else {
+        return out;
+    };
+    for e in doc.body.get_all("output") {
+        let strings: Vec<&str> = e.values.iter().filter_map(|v| v.as_str()).collect();
+        if let [id, stamp, what @ ..] = strings.as_slice()
+            && let Ok(stamp) = u64::from_str_radix(stamp, 16)
+        {
+            out.insert(
+                (id.to_string(), stamp),
+                what.iter().map(|w| w.to_string()).collect(),
+            );
+        }
+    }
+    out
+}
+
+fn conform_log_text(log: &ConformLog) -> String {
+    use og_core::ogt::{Entry, Value};
+    let mut doc = Document::new("conform-log", 1);
+    for ((id, stamp), what) in log {
+        let mut e = Entry::new("output")
+            .with(Value::String(id.clone()))
+            .with(Value::String(format!("{stamp:016x}")));
+        for w in what {
+            e = e.with(Value::String(w.clone()));
+        }
+        doc.body.push(e);
+    }
+    doc.to_text().expect("the log is strings")
+}
+
+/// The 3D pass's line in one of an output's notes (`conform: ...`, a
+/// texture's `<id>: conform: ...`), without its prefix.
+fn conform_note<'a>(id: &str, note: &'a str) -> Option<&'a str> {
+    let n = note
+        .strip_prefix(id)
+        .and_then(|r| r.strip_prefix(": "))
+        .unwrap_or(note);
+    n.strip_prefix("conform: ")
 }
 
 fn texture_kind(s: &Source) -> Result<u32, String> {
@@ -1227,8 +1299,31 @@ pub fn cook_project_with_texture_cache(
             )),
         }
     }
+    // What the 3D pass keeps as made (docs/art.md §2.3): read before the
+    // 2D pass, which takes a sheet's own `conform` line out of its text.
+    let project_conform = std::fs::read_to_string(root.join("project.ogt"))
+        .ok()
+        .and_then(|t| Document::parse(&t).ok())
+        .map(|d| conform::ProjectConform::parse(&d.body))
+        .transpose()
+        .map_err(|e| CookError(format!("project.ogt:{e}")))?
+        .unwrap_or_default();
+    let mut mesh_off: BTreeMap<String, String> = BTreeMap::new();
+    for s in sources
+        .iter()
+        .filter(|s| matches!(s.kind, Kind::Model | Kind::Flipbook))
+    {
+        let why = own_conform_off(s).or_else(|| {
+            project_conform
+                .off_by(&s.rel)
+                .map(|p| format!("project.ogt's conform block: off \"{p}\""))
+        });
+        if let Some(why) = why {
+            mesh_off.insert(s.rel.clone(), why);
+        }
+    }
     // Conformance (docs/art.md §2.3): the 2D textures, to the contract.
-    let conformed =
+    let mut conformed =
         conform::texture2d::conform(root, &assets_dir, &mut sources, &known, contract.as_ref())
             .map_err(CookError)?;
     // The 3D conformance reads the contract (docs/art.md §2.3): every
@@ -1244,7 +1339,12 @@ pub fn cook_project_with_texture_cache(
             crate::look::parse_palette(p, &String::from_utf8_lossy(&bytes))
         };
         match conform::mesh::Conform::of(c, &palette) {
-            Ok(m) => with_contract.mesh.conform = m,
+            Ok(m) => {
+                with_contract.mesh.conform = m.map(|mut m| {
+                    m.off = mesh_off.clone();
+                    m
+                })
+            }
             Err(e) => early_errors.push((id.clone(), "look", e)),
         }
     }
@@ -1288,7 +1388,11 @@ pub fn cook_project_with_texture_cache(
                 let g = s.gltf.as_ref().expect("loaded");
                 // The art contract's part of each output's stamp: empty
                 // (and left out) when it changes nothing here.
-                let contract = options.mesh.conform.as_ref().filter(|_| !conform_off(s));
+                let contract = options
+                    .mesh
+                    .conform
+                    .as_ref()
+                    .filter(|_| !conform_off(s, options));
                 let model_desc = contract
                     .map(|c| {
                         let mut d = if c.applies(g) {
@@ -1553,7 +1657,7 @@ pub fn cook_project_with_texture_cache(
                     .conform
                     .as_ref()
                     .and_then(|c| c.motion.as_ref())
-                    .filter(|_| !conform_off(s))
+                    .filter(|_| !conform_off(s, options))
                     .map(|m| m.describe());
                 let st = match &motion {
                     Some(m) => stamp(&[b"flipbook", &hash, deps.as_bytes(), m.as_bytes()]),
@@ -1848,19 +1952,38 @@ pub fn cook_project_with_texture_cache(
         }
     }
     let mut new_outputs: BTreeMap<usize, Vec<NewOutput>> = BTreeMap::new();
+    // The 3D pass's lines per output: this cook's, or for an output that
+    // was up to date the ones its last cook recorded.
+    let old_log = read_conform_log(&cooked_dir);
+    let mut log = ConformLog::new();
     for (i, p) in plan.iter().enumerate() {
         let r = &mut reports[p.source];
+        let key = (p.id.clone(), p.stamp);
         let (bytes, cooked, ms, start_ms, worker) =
             match results[i].lock().expect("no poisoning").take() {
                 Some((Ok((bytes, notes)), ms, start, worker)) => {
-                    r.notes.extend(notes);
+                    let mut mine = Vec::new();
+                    for n in notes {
+                        match conform_note(&p.id, &n) {
+                            Some(what) => mine.push(what.to_string()),
+                            None => r.notes.push(n),
+                        }
+                    }
+                    if !mine.is_empty() {
+                        log.insert(key, mine);
+                    }
                     (Some(bytes), true, ms, start, worker)
                 }
                 Some((Err(e), ..)) => {
                     r.error = Some(e.0);
                     continue;
                 }
-                None => (None, false, 0.0, 0.0, 0),
+                None => {
+                    if let Some(w) = old_log.get(&key) {
+                        log.insert(key, w.clone());
+                    }
+                    (None, false, 0.0, 0.0, 0)
+                }
             };
         let (size, hash) = match &bytes {
             Some(b) => (b.len() as u64, hash_bytes(b)),
@@ -2043,6 +2166,19 @@ pub fn cook_project_with_texture_cache(
             times.assets.insert(r.source.clone(), r.cook_ms);
         }
     }
+    let log_path = cooked_dir.join(CONFORM_LOG);
+    if log.is_empty() {
+        if log_path.exists() {
+            std::fs::remove_file(&log_path)
+                .map_err(|e| CookError(format!("{}: {e}", log_path.display())))?;
+        }
+    } else {
+        let text = conform_log_text(&log);
+        if std::fs::read_to_string(&log_path).ok().as_deref() != Some(text.as_str()) {
+            std::fs::write(&log_path, text)
+                .map_err(|e| CookError(format!("{}: {e}", log_path.display())))?;
+        }
+    }
     if times != old_times {
         let path = cooked_dir.join(COOK_TIMES);
         std::fs::write(&path, times.to_text())
@@ -2108,6 +2244,65 @@ pub fn cook_project_with_texture_cache(
             format!("the project's look (project.ogt): its art contract sets {}", set.join(", "))
         });
     }
+    // The 3D pass's entries (docs/art.md §2.3): per asset, what its
+    // outputs' lines say, and what it keeps as made; its warnings (frames
+    // dropped past ArtMotion.maxFrames) are the cook's too.
+    let failed = |rel: &str| reports.iter().any(|r| r.source == rel && r.error.is_some());
+    let mut mesh: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+    for p in &plan {
+        if let Some(w) = log.get(&(p.id.clone(), p.stamp)) {
+            mesh.entry(sources[p.source].rel.as_str())
+                .or_default()
+                .extend(w.iter().map(String::as_str));
+        }
+    }
+    let mut mine: Vec<ConformEntry> = Vec::new();
+    for (rel, lines) in mesh {
+        if failed(rel) {
+            continue;
+        }
+        let mut changed: Vec<&str> = Vec::new();
+        for l in lines {
+            if l != conform::mesh::UNCHANGED && !changed.contains(&l) {
+                changed.push(l);
+            }
+            if l.starts_with("warning: ") {
+                warnings.push(format!("assets/{rel}: {l}"));
+            }
+        }
+        mine.push(ConformEntry {
+            source: rel.to_string(),
+            action: if changed.is_empty() {
+                ConformAction::Unchanged
+            } else {
+                ConformAction::Changed
+            },
+            what: if changed.is_empty() {
+                conform::mesh::UNCHANGED.to_string()
+            } else {
+                changed.join("; ")
+            },
+        });
+    }
+    if let Some(c) = &options.mesh.conform {
+        for (rel, why) in &c.off {
+            let applies = sources
+                .iter()
+                .any(|s| &s.rel == rel && (s.kind == Kind::Model || c.motion.is_some()));
+            let listed = conformed
+                .iter()
+                .any(|e| &e.source == rel && e.action == ConformAction::Off);
+            if applies && !listed && !failed(rel) {
+                mine.push(ConformEntry {
+                    source: rel.clone(),
+                    action: ConformAction::Off,
+                    what: why.clone(),
+                });
+            }
+        }
+    }
+    mine.sort_by(|a, b| a.source.cmp(&b.source));
+    conformed.extend(mine);
     // What conformance changed and what opted out, on each asset too.
     for e in &conformed {
         if let Some(r) = reports.iter_mut().find(|r| r.source == e.source) {
@@ -2164,11 +2359,7 @@ fn run(
                     }
                 }
             }
-            let mut notes = n.notes;
-            if options.mesh.conform.is_some() && mesh.conform.is_none() {
-                notes.push("conform: off (`conform off`): kept as made".into());
-            }
-            Ok((blob, notes))
+            Ok((blob, n.notes))
         }
         Work::Proxy(s) => {
             let g = s.gltf.as_ref().expect("loaded");
@@ -2195,7 +2386,12 @@ fn run(
                 p.id, img.width, img.height
             )];
             let mut t = options.texture.clone();
-            let (img, k) = match options.mesh.conform.as_ref().filter(|_| !conform_off(s)) {
+            let (img, k) = match options
+                .mesh
+                .conform
+                .as_ref()
+                .filter(|_| !conform_off(s, options))
+            {
                 Some(c) => {
                     let (img, k, mips, note) = conform::mesh::texture(c, g, img, *k, t.mipmaps);
                     t.mipmaps = mips;
@@ -2419,7 +2615,7 @@ fn run(
                 .conform
                 .as_ref()
                 .and_then(|c| c.motion.as_ref())
-                .filter(|_| !conform_off(s)),
+                .filter(|_| !conform_off(s, options)),
             p.stamp,
         ),
         Work::Rig2d(s) => rig2d::cook(s, p.stamp),
