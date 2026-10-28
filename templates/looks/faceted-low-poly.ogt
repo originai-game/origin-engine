@@ -27,7 +27,7 @@ ArtTexels {
   mips none
 }
 ArtShape {
-  propFaces 500
+  propFaces 200
   characterFaces 1500
   normals flat
 }
