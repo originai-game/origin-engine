@@ -23,8 +23,8 @@
   "family": "shape-3d",
   "ok": false,
   "off": [
-   "models/hero.ogt: faces 426 against <= 200 (ArtShape.propFaces); normals 95.4% flat against >= 99.0% flat (ArtShape.normals flat)",
-   "models/hills.ogt: faces 596 against <= 200 (ArtShape.propFaces)"
+   "models/hero.ogt: faces 332 against <= 200 (ArtShape.propFaces)",
+   "models/hills.ogt: faces 500 against <= 200 (ArtShape.propFaces)"
   ]
  },
  "sculpted-clay": {
@@ -39,10 +39,8 @@
  },
  "voxel-worlds": {
   "family": "shape-3d",
-  "ok": false,
-  "off": [
-   "models/hero.ogt: normals 92.6% flat against >= 99.0% flat (ArtShape.normals flat)"
-  ]
+  "ok": true,
+  "off": []
  },
  "illuminated-manuscript": {
   "family": "paint-2d",
@@ -150,10 +148,8 @@
  },
  "paper-craft": {
   "family": "shape-3d",
-  "ok": false,
-  "off": [
-   "models/hero.ogt: normals 98.0% flat against >= 99.0% flat (ArtShape.normals flat)"
-  ]
+  "ok": true,
+  "off": []
  },
  "miniature-diorama": {
   "family": "shape-3d",
@@ -185,10 +181,8 @@
  },
  "minimal-geometric": {
   "family": "shape-3d",
-  "ok": false,
-  "off": [
-   "models/hero.ogt: normals 98.0% flat against >= 99.0% flat (ArtShape.normals flat)"
-  ]
+  "ok": true,
+  "off": []
  },
  "neon-vector": {
   "family": "shape-3d",

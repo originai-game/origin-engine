@@ -293,10 +293,9 @@
           "Sky"
         ],
         "missing": [
-          "decimation that reaches propFaces 200 on a hero built of capsules and spheres: within ArtShape.silhouette it stops at 426 and the cook keeps it",
-          "corners of flat-shaded models measure 95 % flat against 99 % (tests/evidence/art/samples/NOTES.md, not settled)",
-          "og style check on the sample: models/hero.ogt: faces 426 against <= 200 (ArtShape.propFaces); normals 95.4% flat against >= 99.0% flat (ArtShape.normals flat)",
-          "og style check on the sample: models/hills.ogt: faces 596 against <= 200 (ArtShape.propFaces)"
+          "decimation that reaches propFaces 200 on a hero built of capsules and spheres: within ArtShape.silhouette it stops at 332 and the cook keeps it",
+          "og style check on the sample: models/hero.ogt: faces 332 against <= 200 (ArtShape.propFaces)",
+          "og style check on the sample: models/hills.ogt: faces 500 against <= 200 (ArtShape.propFaces)"
         ]
       },
       "ui": "paper",
@@ -462,7 +461,7 @@
       "look": {
         "preset": "templates/looks/voxel-worlds.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform"
@@ -476,10 +475,7 @@
           "PostEffects.ao",
           "box instancing"
         ],
-        "missing": [
-          "corners of voxel models measure 93 % flat against 99 % although every voxel face is axis-aligned (tests/evidence/art/samples/NOTES.md, not settled)",
-          "og style check on the sample: models/hero.ogt: normals 92.6% flat against >= 99.0% flat (ArtShape.normals flat)"
-        ]
+        "missing": []
       },
       "ui": "pixel",
       "palette": {
@@ -1691,9 +1687,7 @@
           "soft shadows"
         ],
         "missing": [
-          "paper: no card grain, folds or layered sheets in the frame (the assets must be built as sheets, og-model's paper fold recipe)",
-          "corners of flat-shaded models measure 98 % flat against 99 % (not settled)",
-          "og style check on the sample: models/hero.ogt: normals 98.0% flat against >= 99.0% flat (ArtShape.normals flat)"
+          "paper: no card grain, folds or layered sheets in the frame (the assets must be built as sheets, og-model's paper fold recipe)"
         ]
       },
       "ui": "paper",
@@ -2046,7 +2040,7 @@
       "look": {
         "preset": "templates/looks/minimal-geometric.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform"
@@ -2062,10 +2056,7 @@
           "RenderSettings.toneMapping none",
           "Antialias msaa4"
         ],
-        "missing": [
-          "corners of flat-shaded models measure 98 % flat against 99 % (tests/evidence/art/samples/NOTES.md, not settled)",
-          "og style check on the sample: models/hero.ogt: normals 98.0% flat against >= 99.0% flat (ArtShape.normals flat)"
-        ]
+        "missing": []
       },
       "ui": "neon",
       "palette": {

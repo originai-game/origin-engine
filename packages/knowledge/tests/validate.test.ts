@@ -267,11 +267,11 @@ test("a field written as `key: value` or in a token's object literal is one the 
 test("og-taste §12's table is held to the catalogue, row by row", () => {
   const p = added((r) =>
     edit(join(r.pkg, "skills/og-taste/SKILL.md"), (s) =>
-      s.replace("| `voxel-worlds` | 3D rendering | Voxel worlds | partial | `pixel` |", "| `voxel-worlds` | 3D rendering | Voxel worlds | content | `cartoon` |").replace(/^\| `neon-vector` \|.*\n/m, "Also `neon-vector`.\n"),
+      s.replace("| `voxel-worlds` | 3D rendering | Voxel worlds | full | `pixel` |", "| `voxel-worlds` | 3D rendering | Voxel worlds | content | `cartoon` |").replace(/^\| `neon-vector` \|.*\n/m, "Also `neon-vector`.\n"),
     ),
   );
   expect(p.sort()).toEqual([
-    "skills/og-taste/SKILL.md: §12's row for `voxel-worlds` reads 3D rendering, Voxel worlds, content, cartoon; the catalogue says 3D rendering, Voxel worlds, partial, pixel",
+    "skills/og-taste/SKILL.md: §12's row for `voxel-worlds` reads 3D rendering, Voxel worlds, content, cartoon; the catalogue says 3D rendering, Voxel worlds, full, pixel",
     "skills/og-taste/SKILL.md: §12's table has no row for `neon-vector` (| slug | family | style | support | ui |)",
   ]);
 });

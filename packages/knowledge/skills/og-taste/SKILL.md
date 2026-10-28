@@ -604,7 +604,7 @@ entry's three checks handed to the critic that reads the frames.
 | `faceted-low-poly` | 3D rendering | Faceted low poly | partial | `paper` |
 | `sculpted-clay` | 3D rendering | Sculpted clay | partial | `cartoon` |
 | `8bit-pixel` | Pixel and retro | Early console pixels | full | `pixel` |
-| `voxel-worlds` | 3D rendering | Voxel worlds | partial | `pixel` |
+| `voxel-worlds` | 3D rendering | Voxel worlds | full | `pixel` |
 | `illuminated-manuscript` | Paint and line | Manuscript page | content | `paper` |
 | `rubber-hose-animation` | Paint and line | Rubber-hose cartoon | content | `cartoon` |
 | `pencil-hatching` | Paint and line | Pencil and hatching | full | `paper` |
@@ -630,7 +630,7 @@ entry's three checks handed to the critic that reads the frames.
 | `cinematic-realism` | 3D rendering | Cinematic realism | partial | `scifi` |
 | `muted-cinematic-3d` | 3D rendering | Muted theatrical light | partial | `scifi` |
 | `layered-silhouette` | Shape and material | Layered silhouettes | full | `neon` |
-| `minimal-geometric` | Shape and material | Minimal geometry | partial | `neon` |
+| `minimal-geometric` | Shape and material | Minimal geometry | full | `neon` |
 | `neon-vector` | Shape and material | Neon vector lines | full | `neon` |
 | `monochrome-dither-3d` | 3D rendering | Monochrome dithered 3D | partial | `pixel` |
 | `luminous-layered-painting` | 3D rendering | Luminous layered depths | content | `fantasy` |

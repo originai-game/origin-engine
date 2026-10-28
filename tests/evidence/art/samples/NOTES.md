@@ -74,10 +74,10 @@ art, `full` where it reads and the check passes, else `partial`.
 | `bold-comic-illustration` | ink-3d | [bold-comic-illustration.jpg](frames/bold-comic-illustration.jpg) | yes: thick black outlines on every form, flat posterised fills, a printed-colour sky | pass | full |
 | `watercolor-wash` | paint-2d | [watercolor-wash.jpg](frames/watercolor-wash.jpg) | yes: translucent washes with pooled rims on white paper, the cook's texel-space paint on every sprite | pass | full |
 | `pixel-3d-hybrid` | pixel-3d | [pixel-3d-hybrid.jpg](frames/pixel-3d-hybrid.jpg) | yes: conformed pixel sprites (hero, tree) stand as billboards with drop shadows among low-detail 3D props, dithered and depth-blurred | pass | full |
-| `faceted-low-poly` | shape-3d | [faceted-low-poly.jpg](frames/faceted-low-poly.jpg) | no: the tree's facets read, but the hero is kept whole at 426 faces (over propFaces 200) and stays round, and the crate keeps its wood texture | off: models/hero.ogt: faces 426 against <= 200 (ArtShape.propFaces); normals 95.4% flat against >= 99.0% flat (ArtShape.normals flat); models/hills.ogt: faces 596 against <= 200 (ArtShape.propFaces) | partial |
+| `faceted-low-poly` | shape-3d | [faceted-low-poly.jpg](frames/faceted-low-poly.jpg) | no: the tree's facets read, but the hero is kept whole at 332 faces (over propFaces 200) and stays round, and the crate keeps its wood texture | off: models/hero.ogt: faces 332 against <= 200 (ArtShape.propFaces); models/hills.ogt: faces 500 against <= 200 (ArtShape.propFaces) | partial |
 | `sculpted-clay` | shape-3d | [sculpted-clay.jpg](frames/sculpted-clay.jpg) | no: the 2 cm bevel is too small to see at this distance and the surfaces are plain PBR: nothing reads as clay | pass | partial |
 | `8bit-pixel` | pixel-side | [8bit-pixel.jpg](frames/8bit-pixel.jpg) | yes: flat 4-step blocks, tiny sprites on an exact grid, a banded sky: the early-console language of the preview | pass | full |
-| `voxel-worlds` | shape-3d | [voxel-worlds.jpg](frames/voxel-worlds.jpg) | yes: the tree, hero and hills are stepped cubes on one grid, single-colour faces | off: models/hero.ogt: normals 92.6% flat against >= 99.0% flat (ArtShape.normals flat) | partial |
+| `voxel-worlds` | shape-3d | [voxel-worlds.jpg](frames/voxel-worlds.jpg) | yes: the tree, hero and hills are stepped cubes on one grid, single-colour faces | pass | full |
 | `illuminated-manuscript` | paint-2d | [illuminated-manuscript.jpg](frames/illuminated-manuscript.jpg) | yes: parchment, gold sun, ink-outlined flat figures, an ornamental border and floral frieze | pass | content |
 | `rubber-hose-animation` | paint-2d | [rubber-hose-animation.jpg](frames/rubber-hose-animation.jpg) | no: the hose figure and inked props are there, but Stylise.posterize 4 turns the sepia print into olive and pink bands, and the inked line measures 5 to 7 px against ArtLine.width 3 | off: art/crate.png: line 6 px against 3 px (ArtLine.width); art/hero.png: line 7 px against 3 px (ArtLine.width); art/lantern.png: line 5 px against 3 px (ArtLine.width); art/tree.png: line 6 px against 3 px (ArtLine.width) | content |
 | `pencil-hatching` | ink-3d | [pencil-hatching.jpg](frames/pencil-hatching.jpg) | yes: grey graphite hatching over every surface, contour lines, paper white | pass | full |
@@ -97,18 +97,18 @@ art, `full` where it reads and the check passes, else `partial`.
 | `coarse-pixel` | pixel-side | [coarse-pixel.jpg](frames/coarse-pixel.jpg) | yes: a few huge pixels per figure, one dominant night-blue mass, the lamp the only warm point | pass | full |
 | `anime-cel-3d` | toon-3d | [anime-cel-3d.jpg](frames/anime-cel-3d.jpg) | yes: two-tone cel bands, dark outlines on every model, a clean sky | pass | full |
 | `inked-comic-3d` | toon-3d | [inked-comic-3d.jpg](frames/inked-comic-3d.jpg) | yes: heavy ink contours and hatched fills over the whole frame | pass | full |
-| `paper-craft` | shape-3d | [paper-craft.jpg](frames/paper-craft.jpg) | no: flat facets and outlines draw, but there is no paper grain, fold or layered card | off: models/hero.ogt: normals 98.0% flat against >= 99.0% flat (ArtShape.normals flat) | partial |
+| `paper-craft` | shape-3d | [paper-craft.jpg](frames/paper-craft.jpg) | no: flat facets and outlines draw, but there is no paper grain, fold or layered card | pass | partial |
 | `miniature-diorama` | shape-3d | [miniature-diorama.jpg](frames/miniature-diorama.jpg) | no: the tilt-shift blur reads as miniature, but the props are plain PBR, not toy-like or bevelled | pass | partial |
 | `painterly-3d` | cinematic-3d | [painterly-3d.jpg](frames/painterly-3d.jpg) | no: no brush marks: the textures and primitives draw as plain lit 3D | pass | partial |
 | `cinematic-realism` | cinematic-3d | [cinematic-realism.jpg](frames/cinematic-realism.jpg) | no: primitive blockouts with photo textures under a filmic grade: not realistic assets | off: models/crate.glb: density 213.3 texels/m (p10 213.3, p90 213.3) against 256.0 to 1024.0 (ArtTexels.density 512 within x2); models/ground.glb: density 128.0 texels/m (p10 128.0, p90 128.0) against 256.0 to 1024.0 (ArtTexels.density 512 within x2) | partial |
 | `muted-cinematic-3d` | cinematic-3d | [muted-cinematic-3d.jpg](frames/muted-cinematic-3d.jpg) | no: the muted grade draws, but the primitives read as a blockout | pass | partial |
 | `layered-silhouette` | cinematic-3d | [layered-silhouette.jpg](frames/layered-silhouette.jpg) | yes: every form a flat dark silhouette in depth bands against a pale sky | pass | full |
-| `minimal-geometric` | shape-3d | [minimal-geometric.jpg](frames/minimal-geometric.jpg) | yes: flat untextured colour planes, baked one colour per face, no texture anywhere | off: models/hero.ogt: normals 98.0% flat against >= 99.0% flat (ArtShape.normals flat) | partial |
+| `minimal-geometric` | shape-3d | [minimal-geometric.jpg](frames/minimal-geometric.jpg) | yes: flat untextured colour planes, baked one colour per face, no texture anywhere | pass | full |
 | `neon-vector` | shape-3d | [neon-vector.jpg](frames/neon-vector.jpg) | yes: black faces under glowing cyan lines on a dark field, bloom on the lantern (neon-vector's own sources, tools/art-samples/neon.py) | pass | full |
 | `monochrome-dither-3d` | pixel-3d | [monochrome-dither-3d.jpg](frames/monochrome-dither-3d.jpg) | no: the dither cell is so coarse that the tree, hero and crate dissolve into a checkerboard | pass | partial |
 | `luminous-layered-painting` | paint-2d | [luminous-layered-painting.jpg](frames/luminous-layered-painting.jpg) | yes: dark cool painted layers, the lantern and village the luminous focal points, mist into depth | pass | content |
 
-**13 full, 14 partial, 10 content.** Of the 10 content styles, 8 read as
+**15 full, 12 partial, 10 content.** Of the 10 content styles, 8 read as
 their style on the sample; the authored assets that carry each are its own
 Painter set in `examples/art-paint-2d/styles/<slug>/art/` (watercolor-wash,
 also paint-2d, is not content: its set is the family's base in
@@ -132,22 +132,37 @@ voxelises).
    voxels at the first edge that fit the 256-cell grid: the 40 m ground
    cooked to 147,318 faces against voxel-worlds' propFaces 5000. Each
    primitive's voxels now answer to its share of the budget.
-2. **Not settled: flat share under `normals flat`.** The hero measures
-   95.4 % (faceted), 98.0 % (paper, minimal) and 92.6 % (voxel) flat
-   against 99 %, though under voxel-worlds every face is axis-aligned.
-   The check compares decoded normals with face normals from decoded
-   positions within 1°; my hypothesis is quantisation or slivers in the
-   cooked mesh, not verified. It holds voxel-worlds and minimal-geometric
-   (both read) at partial. Worth a look at og-cook's normal encoding and
-   the check's sliver handling.
+2. **Fixed (branch `art/flat-normals`): flat share under `normals flat`.**
+   The hero measured 95.4 % (faceted), 98.0 % (paper, minimal) and 92.6 %
+   (voxel) flat against 99 %. The check was right: every off corner was
+   1.7° to 90° from its face (none near the 1° tolerance; 16-bit
+   octahedral normals err by under 0.01°), and two cook faults made
+   them. (a) A lathe's pole triangles (og-model's sphere, capsule and
+   cone: two corners at the pole, area about 1e-8 m²) have no normal of
+   their own; quantised to the 16-bit grid they decode as slivers facing
+   any way. They draw nothing (thinner than one grid step) except through
+   the outline hull, where their arbitrary hull normals drew a brown band
+   across the hero's neck. `shade` now drops every face thinner than one
+   grid step. (b) Voxels are made in model space and brought back under
+   the part's node; their normals went back through the inverse's
+   transpose, which is the inverse transpose of the placement, not of its
+   inverse. A part turned 45° (the arm, the hills' turned blocks) got
+   normals turned 90° off their faces. They now go back through the
+   placement's transpose. Every model of the four styles measures 100 %
+   flat; voxel-worlds and minimal-geometric are `full`. Frames move (read
+   at 640x360 on lavapipe): voxel-worlds on the turned parts (909 px),
+   paper-craft and minimal-geometric under the hero's head (70 and 29 px,
+   the neck band gone), faceted-low-poly and sculpted-clay by a level on
+   12 and 10 px; `references/metal` of those styles wants recording again.
 3. **Preset frames that work against their own style** (A1's files, the
    coordinator's call): `rubber-hose-animation`'s `Stylise.posterize 4`
    and `gothic-contour`'s `posterize 5` band the frame into olive/pink and
    flat greys (with `posterize 0` both read, checked by frame);
    `monochrome-dither-3d`'s dither cell swallows every form.
 4. **Decimation within the silhouette bound cannot reach small budgets on
-   round models:** the hero stops at 426 faces against faceted-low-poly's
-   200, the hills at 596 against 300 and 200; the cook keeps them whole
+   round models:** the hero stops at 332 faces against faceted-low-poly's
+   200, the hills at 596 against low-resolution-3d's 300 and 500 against
+   faceted-low-poly's 200; the cook keeps them whole
    and the check reports them (the honest off of `dda9b360`).
 5. **Samples' own limits,** named in `missing`: top-down needs a real tile
    set (walls, cliffs, paths); monochrome-pixel's generated ground tile is

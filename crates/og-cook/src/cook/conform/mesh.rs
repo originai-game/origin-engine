@@ -326,7 +326,7 @@ impl Conform {
             return String::new();
         }
         format!(
-            "conform-mesh-v2 faces {} {} silhouette {} normals {:?} bevel {} voxel {} bakes {} {} line {:?}",
+            "conform-mesh-v3 faces {} {} silhouette {} normals {:?} bevel {} voxel {} bakes {} {} line {:?}",
             self.prop_faces,
             self.character_faces,
             self.silhouette,
@@ -1250,10 +1250,45 @@ fn bevel(
     Some((hard_edges.len(), added))
 }
 
-/// Sets every corner's normal as the contract shades: corners unwelded,
-/// the cook welds what came out the same.
+/// Drops the triangles (of unwelded corners) thinner than one step of the
+/// grid the cook stores positions on (65,535 steps over the primitive's
+/// widest extent): such a face has no normal to keep. It draws nothing,
+/// and quantising its corners turns it any way (a lathe's pole triangle,
+/// two corners at the pole, decodes as a sliver whose face is not the
+/// normal the cook gave it).
+fn drop_degenerate(v: &mut Vec<FVertex>, idx: &mut Vec<u32>, src: &mut Vec<u32>) {
+    let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
+    for x in v.iter() {
+        lo = lo.min(pos(x));
+        hi = hi.max(pos(x));
+    }
+    let step = (hi - lo).max_element() / 65535.0;
+    let keep: Vec<bool> = v
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|t| {
+            let [a, b, c] = t.each_ref().map(pos);
+            let longest = a.distance(b).max(b.distance(c)).max(c.distance(a));
+            (b - a).cross(c - a).length() > step * longest
+        })
+        .collect();
+    if keep.iter().all(|&k| k) {
+        return;
+    }
+    let mut k = keep.iter().flat_map(|&k| [k; 3]);
+    v.retain(|_| k.next().unwrap_or(true));
+    let mut k = keep.iter().flat_map(|&k| [k; 3]);
+    src.retain(|_| k.next().unwrap_or(true));
+    *idx = (0..v.len() as u32).collect();
+}
+
+/// Sets every corner's normal as the contract shades: corners unwelded
+/// (faces too thin to have a normal dropped), the cook welds what came out
+/// the same.
 fn shade(v: &mut Vec<FVertex>, idx: &mut Vec<u32>, src: &mut Vec<u32>, normals: Normals) {
     unweld(v, idx, src);
+    drop_degenerate(v, idx, src);
     let tris = v.len() / 3;
     let face: Vec<Vec3> = (0..tris)
         .map(|f| cross(v, &idx[f * 3..f * 3 + 3]))
@@ -1570,9 +1605,12 @@ pub(in crate::cook) fn primitive(
             .push("not voxelised: it is skinned or morphed".into());
     }
     if c.voxel > 0.0 && !skinned {
-        // Voxelised in model space, then brought back under the node.
+        // Voxelised in model space, then brought back under the node:
+        // positions by the placement's inverse, normals by that inverse's
+        // inverse transpose, the placement's transpose.
         let place = placement_of(src, prim);
         let inverse = place.inverse();
+        let normal_back = glam::Mat3::from_mat4(place).transpose();
         let placed: Vec<FVertex> = v
             .iter()
             .map(|x| FVertex {
@@ -1608,9 +1646,7 @@ pub(in crate::cook) fn primitive(
                         .into_iter()
                         .map(|x| FVertex {
                             p: inverse.transform_point3(pos(&x)).to_array(),
-                            n: inverse
-                                .transpose()
-                                .transform_vector3(Vec3::from(x.n))
+                            n: (normal_back * Vec3::from(x.n))
                                 .normalize_or(Vec3::Y)
                                 .to_array(),
                             ..x
