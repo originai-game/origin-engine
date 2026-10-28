@@ -1,6 +1,6 @@
 ---
 name: og-game
-description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/ (glTF and MagicaVoxel models), the og.load loaders, streaming groups, sprites, texture arrays and drop shadows, skeletal and stepped animation, effects and physical materials, looks (the frame's art direction as data: og.Stylise, og.MaterialStyle, presets), tone mapping, exposure, environment maps, shadows and antialiasing, fog, sky, day and night, weather and water, terrain, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D and 3D fluids, ragdolls) and its queries, footage and og render's videos, and the performance budget; the entry point, with the map of the other nine skills and the modules each teaches. Use first, and when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
+description: Building a game on Origin Engine — the project layout, components and systems on the ECS, the game entry, scenes as .ogt text, assets cooked from assets/ to cooked/ (glTF and MagicaVoxel models), the og.load loaders, streaming groups, sprites, texture arrays and drop shadows, skeletal and stepped animation, effects and physical materials, looks (the frame's art direction as data: og.Stylise, og.MaterialStyle, presets, the art contract), tone mapping, exposure, environment maps, shadows and antialiasing, fog, sky, day and night, weather and water, terrain, material shaders in WGSL, physics beyond rigid bodies (joints, character and platformer controllers, vehicles, ropes, cloth, 2D and 3D fluids, ragdolls) and its queries, footage and og render's videos, and the performance budget; the entry point, with the map of the other nine skills and the modules each teaches. Use first, and when creating, structuring or extending a TypeScript Origin Engine game (a project with a project.ogt; not a Godot project.godot).
 ---
 
 An Origin Engine project is plain files: TypeScript in `src/`, source assets
@@ -141,7 +141,7 @@ in this table owns it and the other points there.
 
 | Path | What it is |
 |---|---|
-| `project.ogt` | The manifest: `name`, `id`, the pinned `engine` version, `entry`, `profile` (`2d` or `3d`), `tick`, `seed`, `scenes`, the first `scene`, `publish` settings |
+| `project.ogt` | The manifest: `name`, `id`, the pinned `engine` version, `entry`, `profile` (`2d` or `3d`), `tick`, `seed`, `scenes`, the first `scene`, the game's `look`, `publish` settings |
 | `src/main.ts` | The game entry: its default export is `og.game({...})` |
 | `assets/` | Source assets: glTF and `.vox` models, PNG/JPEG textures, WAV sounds, TTF/OTF fonts, `.ogt` scenes and looks, and `<file>.ogt` import settings |
 | `cooked/` | `og cook` output (`.ogb` blobs and `.cook.ogt`); never committed, the only thing the runtime reads |
@@ -154,11 +154,13 @@ pin and package.json's dependency to the installed engine, applies the
 mechanical rewrites of the versions crossed and lists each line to edit by
 hand with its fix (exit 3 while any remain); then `bun install`, `og
 check`, `og test`. A newer patch of the pinned minor runs the game as
-written. Its `tick`, `seed`, `scenes`
-and `scene` are the defaults of the `GameDesc` fields of those names: what
-`og.game({...})` leaves unset takes the manifest's value (else 60, 0, none
-and `main`). Write each in one place; set in both to different values, the
-engine refuses to start and names both.
+written. Its `tick`, `seed`, `scenes`,
+`scene` and `look` are the defaults of the `GameDesc` fields of those
+names: what `og.game({...})` leaves unset takes the manifest's value (else
+60, 0, none, `main` and no look). Write each in one place; set in both to
+different values, the engine refuses to start and names both. `look
+"looks/<id>.ogt"` is also what the cook reads the game's art contract from
+(§15), before any asset cooks, so a game with a look names it here.
 
 `og check` type-checks the project (tsrs, a Rust port of TypeScript 7,
 installed with the engine package; where it has no package, tsgo through
@@ -2035,7 +2037,8 @@ cloth's points (about 1 ms per 1,000) are the ones to count (§13).
 A **look** is an `.ogt` of `type look` under `assets/looks/` that sets the
 whole treatment of the frame at once: the resources `RenderSettings`,
 `PostEffects`, `Stylise`, `MaterialStyle`, `Fog`, `Sky` and `Environment`
-(one block each, fields by name), the UI style (`ui`) and the `antialias`.
+(one block each, fields by name), the UI style (`ui`) and the `antialias`;
+and, in the same file, the art contract the assets hold (below).
 Choosing one for a premise is og-taste §1 and §12; this is the mechanism.
 
 ```text
@@ -2107,6 +2110,61 @@ og.render.look(world)?.name;                                              // the
   primitive groups this device draws; a look using another still applies,
   without that primitive. A look in a streaming group applies once the
   group is resident (§6).
+
+### The art contract: what the assets hold
+
+The render resources treat the frame; seven more resources of the `art`
+module, set in the same look, say what the game's **assets** must be
+(docs/art.md in the engine repository): `og.ArtPalette` (the palette the
+texels sit on: `colors` a palette asset or `"@palettes/<name>"`, `strict`
+indexed colour, `maxColors` per asset, `rampSteps` per hue, `accents`
+kept for signals by palette index, `dither`), `og.ArtPixels` (2D: `unit`
+logical pixels per metre, `logicalHeight`, `spriteSizes` the allowed cell
+sides, `rotation` free, nearest, cleanEdge or prerotated with
+`rotationSteps`, `snap`), `og.ArtTexels` (3D: `density` texels per metre,
+`maxSize`, `filter`, `mips`), `og.ArtShape` (`propFaces` and
+`characterFaces` triangle budgets, `normals` smooth, flat or angle past
+`normalAngle`, `bevel`, `voxel` edge, `silhouette` thinnest feature),
+`og.ArtLine` (`width`, `color`, `place` outside, inside or both,
+`distanceFalloff`), `og.ArtMotion` (`stepFps` for animation on twos,
+`maxFrames` per clip, `squash`) and `og.ArtCamera` (`projection`,
+`fixedAngle` with `pitch` and `yaw`, `fovMin`/`fovMax`, `pixelPerfect`).
+Every field, with its range and unit, is in `reference/art.md`.
+
+```text
+extends "16bit-pixel"            # the preset carries the style's contract
+ArtPalette {
+  colors "palettes/harbour.hex"   # the game's own palette, under assets/
+  maxColors 32
+  accents 3 7                     # palette indices kept for the player and danger
+}
+ArtPixels {
+  unit 16                         # 16-pixel tiles one metre wide
+  spriteSizes 16 32
+}
+ArtMotion {
+  stepFps 12                      # on twos
+}
+```
+
+- Every field is **no constraint at zero** (0, false, the first variant,
+  an empty list): a look without these blocks constrains nothing, and a
+  game made before them cooks and draws as it did. The presets carry each
+  catalogue style's values (og-taste §12); the game's look overrides them
+  field by field, as the frame's. Lists take one line (`spriteSizes 16
+  32`), and the cook checks every field as it checks the frame's.
+- `project.ogt`'s `look "looks/<id>.ogt"` names the look whose contract
+  the cook reads (`create` writes it beside `GameDesc.look`); the cook's
+  report on that look lists the art resources it sets. Without the line
+  the cook reads no contract.
+- They are resources, so game code reads the contract too (a system lists
+  them among its `reads`): `must(world.resource(og.ArtPixels)).unit` to
+  snap a sprite, `og.ArtPalette`'s `accents` to colour the player. Setting them changes neither
+  the frame nor the simulation; `og.load.lookInfo(...).resources` names
+  them among the look's blocks.
+- A system that applies a look writes only the art resources it declares
+  among its writes; the others keep their values, so a system declaring
+  only the frame's resources applies a preset with a contract unchanged.
 
 ## 16. Light, exposure, shadows and antialiasing
 
