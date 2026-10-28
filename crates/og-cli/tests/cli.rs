@@ -1895,11 +1895,12 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
             .unwrap();
         report(&out)["pin"].clone()
     };
-    let installed = pin("0.6.0")["installed"].as_str().unwrap().to_string();
-    assert!(installed.starts_with("0.6."), "{installed}");
+    let installed = pin("0.5.0")["installed"].as_str().unwrap().to_string();
+    let minor = installed.rsplit_once('.').unwrap().0;
+    let first_patch = format!("{minor}.0");
     assert_eq!(
-        pin("0.6.0"),
-        serde_json::json!({ "pinned": "0.6.0", "installed": installed, "compatible": true })
+        pin(&first_patch),
+        serde_json::json!({ "pinned": first_patch, "installed": installed, "compatible": true })
     );
     assert_eq!(pin("0.5.0")["compatible"], false);
     assert_eq!(pin("0.99.0")["compatible"], false);
