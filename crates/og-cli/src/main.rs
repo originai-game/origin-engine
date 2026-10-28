@@ -33,6 +33,7 @@ mod run;
 mod serve_relay;
 mod sfx;
 mod style;
+mod style_check;
 mod test;
 mod trace;
 mod upgrade;
@@ -119,6 +120,15 @@ commands:
   style pack <dir> [--out <dir>]
                       pack a UI style's art drawn by hand (<part>.9.png nine-patches, other PNGs)
                       into atlas.png and the style file's atlas, slice and ornament lines
+  style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH]
+      [--no-frames] [--critic] [--json]
+                      cook, then measure every cooked asset against the art contract of the look
+                      project.ogt names (palette hit rate, colours, pixel grid, texel density,
+                      faces against the budget, flat normals, the line) and list every opt-out;
+                      capture the title, play and results screens (project.ogt's screens block or
+                      the flags) and measure their colours, palette and edges; --critic prints only
+                      the catalogue's three checks and the frames, for a blind critic; exit 0 within
+                      the contract or no look, 3 off it
   relay [--port P] [--host <ip>]
                       a local WebSocket relay for rooms: `og run --room ws://127.0.0.1:P/<room>`
                       processes join <room> and play together (og.net's lockstep)

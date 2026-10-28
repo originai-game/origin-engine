@@ -1954,3 +1954,106 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A project directory under the temp dir with `files` written in it.
+fn style_project(name: &str, files: &[(&str, Vec<u8>)]) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("og-style-{}-{name}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    for (path, bytes) in files {
+        let p = dir.join(path);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, bytes).unwrap();
+    }
+    dir
+}
+
+#[test]
+fn style_check_without_a_look_says_there_is_no_contract_and_exits_0() {
+    let dir = style_project(
+        "nolook",
+        &[(
+            "project.ogt",
+            b"type project\nversion 1\n---\nname \"x\"\nentry \"src/main.ts\"\n".to_vec(),
+        )],
+    );
+    let out = og().args(["style", "check"]).arg(&dir).output().unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    assert!(text(&out).contains("no art contract"), "{}", text(&out));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A 2D project whose look holds sprites to a strict two-colour palette:
+/// `on.png` is drawn on it, `off.png` (opted out with `conform off`, so the
+/// cook keeps it) has a quarter of its texels 3 ΔE00 off it (grey 136
+/// against the palette's 128). The check measures the cooked texels: the
+/// opted-out sprite is listed, measured and off the contract.
+#[test]
+fn style_check_measures_cooked_sprites_and_lists_opt_outs() {
+    let png = |off: bool| {
+        let mut img = image::RgbaImage::new(4, 4);
+        for (x, y, p) in img.enumerate_pixels_mut() {
+            *p = if x == 0 && off {
+                image::Rgba([136, 136, 136, 255])
+            } else if y < 2 {
+                image::Rgba([128, 128, 128, 255])
+            } else {
+                image::Rgba([200, 40, 40, 255])
+            };
+        }
+        let mut out = std::io::Cursor::new(Vec::new());
+        img.write_to(&mut out, image::ImageFormat::Png).unwrap();
+        out.into_inner()
+    };
+    let pixel = b"type import\nversion 1\n---\ntexture {\n  kind pixel\n}\n".to_vec();
+    let dir = style_project(
+        "measure",
+        &[
+            (
+                "project.ogt",
+                b"type project\nversion 1\n---\nname \"x\"\nentry \"src/main.ts\"\nprofile \"2d\"\nlook \"looks/main.ogt\"\n".to_vec(),
+            ),
+            (
+                "assets/looks/main.ogt",
+                b"type look\nversion 1\n---\nArtPalette {\n  colors \"palettes/two.hex\"\n  strict true\n}\n".to_vec(),
+            ),
+            ("assets/palettes/two.hex", b"808080\nc82828\n".to_vec()),
+            ("assets/on.png", png(false)),
+            ("assets/on.png.ogt", pixel.clone()),
+            ("assets/off.png", png(true)),
+            (
+                "assets/off.png.ogt",
+                b"type import\nversion 1\n---\nconform off\ntexture {\n  kind pixel\n}\n".to_vec(),
+            ),
+        ],
+    );
+    let out = og()
+        .args(["style", "check", "--json", "--no-frames"])
+        .arg(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(3), "{}", text(&out));
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let asset = |id: &str| {
+        v["assets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|a| a["asset"] == id)
+            .cloned()
+            .unwrap_or_else(|| panic!("{id} in {v}"))
+    };
+    assert_eq!(asset("on.png")["measures"]["paletteHit"], 1.0);
+    assert_eq!(asset("on.png")["ok"], true);
+    assert_eq!(asset("off.png")["measures"]["paletteHit"], 0.75);
+    assert_eq!(asset("off.png")["ok"], false);
+    assert!(asset("off.png")["optedOut"].is_string());
+    assert!(
+        v["optOuts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|o| o["asset"] == "off.png"),
+        "{v}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

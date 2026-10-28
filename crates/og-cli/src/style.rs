@@ -26,7 +26,7 @@ use image::{Rgba, RgbaImage};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og style pack <dir> [--out <dir>]";
+const USAGE: &str = "usage: og style pack <dir> [--out <dir>]\n       og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]";
 
 /// The parts a nine-patch can dress (og-ui's `StylePart` names) and `soft`.
 const SLICES: [&str; 13] = [
@@ -59,6 +59,7 @@ struct Piece {
 
 pub fn run(args: &[&str]) -> ExitCode {
     match args {
+        ["check", rest @ ..] => crate::style_check::run(rest),
         ["pack", rest @ ..] => match pack(rest) {
             Ok(()) => ExitCode::SUCCESS,
             Err(e) => {

@@ -4,7 +4,10 @@
 //! `budgets { }`, read now, so a budget moved since the cook applies), then
 //! prints one finding per problem — each with its severity, a code, the
 //! asset, the budget, the limit and the value where they apply, and the fix
-//! — as lines, or with `--json` as one JSON document. The exit status is 1
+//! — as lines, or with `--json` as one JSON document. One more line is the
+//! style (`code` `style`): the cooked assets measured against the look's
+//! art contract, as `og style check` measures them (`info` when they meet
+//! it or the project names no look, `warning` when one does not). The exit status is 1
 //! when any finding is an error (an asset over a budget, an asset that
 //! failed to cook, no report), 0 otherwise.
 
@@ -163,6 +166,9 @@ pub fn findings(root: &Path) -> Vec<Value> {
         }
         out.push(f);
     }
+    // The style against the look's art contract (docs/art.md §2.5): the
+    // assets as cooked, the opt-outs of this report.
+    out.push(crate::style_check::doctor_finding(root, Some(&report)));
     out
 }
 
@@ -220,18 +226,19 @@ pub fn run(args: &[&str]) -> ExitCode {
     let root = Path::new(&dir);
     let found = findings(root);
     let errors = found.iter().filter(|f| f["severity"] == "error").count();
+    let warnings = found.iter().filter(|f| f["severity"] == "warning").count();
     if as_json {
         let doc = json!({
             "project": root.display().to_string(),
             "report": crate::cook::COOK_REPORT,
             "errors": errors,
-            "warnings": found.len() - errors,
+            "warnings": warnings,
             "findings": found,
         });
         println!("{doc}");
     } else {
         println!("og doctor --project {}", root.display());
-        if found.is_empty() {
+        if errors + warnings == 0 {
             println!("ok          every asset within the project's budgets");
         }
         for f in &found {
