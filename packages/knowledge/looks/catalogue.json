@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "about": "Origin Engine's style catalogue: 37 art styles in the engine's own words, each with what a critic checks on a rendered frame, the premises it fits, the look preset it maps to (an .ogt of type look; `extends \"<slug>\"` in a game's own look builds on it), the built-in UI style its look's `ui` line names, palette and asset specs, and an art-bible direction the agent expands per project. `look.support` says how faithfully the engine renders the style today: full (every primitive draws), partial or planned (the primitives in `missing` are still to land), content (the look lives in authored art; the engine frames it). og-taste §12 explains how to use it. The descriptions are original; no game or studio is the reference for a style.",
+  "schemaVersion": 2,
+  "about": "Origin Engine's style catalogue: 37 art styles in the engine's own words, each with what a critic checks on a rendered frame, the premises it fits, the look preset it maps to (an .ogt of type look; `extends \"<slug>\"` in a game's own look builds on it), the built-in UI style its look's `ui` line names, palette and asset specs, and an art-bible direction the agent expands per project. `preview` is a picture of the style as a game, 960x540 (previews/<slug>.webp against the root of the package that carries the catalogue: @origingame/engine/knowledge and @origingame/create-game; not in the platform mount, whose payload is text). `look.layers` names what the style needs: frame (the look's render resources), conform (the cook makes the assets meet the look's art contract), runtime (sprite outline, palette swap, pixel-art rotation, camera presets), authored (art no conformance makes); `look.support` follows from them: full when every layer but authored is implemented, content when authored art is needed, partial otherwise, with `missing` naming what (docs/art.md). `look.family` is the sample scene the style is proven on. og-taste §12 explains how to use it. The descriptions are original; no game or studio is the reference for a style.",
   "categories": {
     "pixel": "Pixel and retro",
     "paint": "Paint and line",
@@ -22,6 +22,7 @@
       "name": "Expressionist paint",
       "category": "paint",
       "descriptor": "Visible brush marks, clashing colour masses and distorted faces turn every frame into an emotional painting.",
+      "preview": "previews/expressionist-painting.webp",
       "checks": [
         "Large areas show brush-stroke texture rather than flat fills or gradients.",
         "Colours are non-naturalistic: shadows carry saturated hues (greens, violets) instead of grey.",
@@ -37,6 +38,12 @@
         "preset": "templates/looks/expressionist-painting.ogt",
         "presetReady": true,
         "support": "content",
+        "layers": [
+          "frame",
+          "conform",
+          "authored"
+        ],
+        "family": "paint-2d",
         "profiles": [
           "2d",
           "3d"
@@ -47,8 +54,8 @@
           "PostEffects.lut"
         ],
         "missing": [
-          "the painting is content: painted portraits and backdrops",
-          "Stylise.paint* for 3D parts to match the painted art"
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
+          "the painting is content: painted portraits and backdrops"
         ]
       },
       "ui": "paper",
@@ -77,6 +84,7 @@
       "name": "Bold comic illustration",
       "category": "paint",
       "descriptor": "Strong contours, sharply grouped values and saturated accents against deep shadow, for instant readability in motion.",
+      "preview": "previews/bold-comic-illustration.webp",
       "checks": [
         "Every character has a continuous dark contour at least 2 px wide at 1080p.",
         "Shadows are hard-edged shapes, two or three values per material.",
@@ -91,7 +99,13 @@
       "look": {
         "preset": "templates/looks/bold-comic-illustration.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform",
+          "runtime"
+        ],
+        "family": "ink-3d",
         "profiles": [
           "2d",
           "3d"
@@ -102,7 +116,10 @@
           "Stylise.ink",
           "MaterialStyle.shadowTint"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
+          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
+        ]
       },
       "ui": "fantasy",
       "palette": {
@@ -130,6 +147,7 @@
       "name": "Watercolour wash",
       "category": "paint",
       "descriptor": "Transparent layers, pooled pigment at the edges and open paper space give scenes a soft, breathing quality.",
+      "preview": "previews/watercolor-wash.webp",
       "checks": [
         "Colour regions show darker rims where they meet other colours (pigment pooling).",
         "A paper grain is visible in flat areas at 100 %.",
@@ -144,7 +162,12 @@
       "look": {
         "preset": "templates/looks/watercolor-wash.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "paint-2d",
         "profiles": [
           "2d",
           "3d"
@@ -155,7 +178,9 @@
           "Stylise.paintCanvas",
           "Stylise.paintCanvasStrength"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "paper",
       "palette": {
@@ -183,6 +208,7 @@
       "name": "Pixel sprites in 3D sets",
       "category": "pixel",
       "descriptor": "Pixel-art characters and props stand in lit 3D sets with depth of field, shadows and reflections, while their own edges stay crisp.",
+      "preview": "previews/pixel-3d-hybrid.webp",
       "checks": [
         "Sprite edges stay on their own pixel grid while the 3D set is smoothly shaded behind them.",
         "Foreground and background blur by depth (depth of field visible at the frame's top and bottom).",
@@ -197,7 +223,13 @@
       "look": {
         "preset": "templates/looks/pixel-3d-hybrid.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform",
+          "runtime"
+        ],
+        "family": "pixel-3d",
         "profiles": [
           "3d"
         ],
@@ -209,7 +241,10 @@
           "billboard sprites",
           "SpriteDesc.dropShadow"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
+          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
+        ]
       },
       "ui": "fantasy",
       "palette": {
@@ -237,6 +272,7 @@
       "name": "Faceted low poly",
       "category": "render",
       "descriptor": "Visible polygon facets and simplified meshes, broad colour fields in place of textures, depth from silhouettes and layers.",
+      "preview": "previews/faceted-low-poly.webp",
       "checks": [
         "Facets are visible: each triangle shades flat with a hard edge to its neighbour.",
         "Surfaces carry flat colour, not detailed textures.",
@@ -251,7 +287,12 @@
       "look": {
         "preset": "templates/looks/faceted-low-poly.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "shape-3d",
         "profiles": [
           "3d"
         ],
@@ -260,7 +301,9 @@
           "Fog",
           "Sky"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "paper",
       "palette": {
@@ -288,6 +331,7 @@
       "name": "Sculpted clay",
       "category": "render",
       "descriptor": "Tactile, slightly lumpy surfaces with blunt edges and fingerprint irregularity, often moving with the stutter of stop motion.",
+      "preview": "previews/sculpted-clay.webp",
       "checks": [
         "Surfaces show soft bumps and irregularities (normal or displacement detail) at close range.",
         "Edges are rounded and blunt; no sharp machined corners.",
@@ -302,7 +346,12 @@
       "look": {
         "preset": "templates/looks/sculpted-clay.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "shape-3d",
         "profiles": [
           "3d"
         ],
@@ -314,7 +363,9 @@
           "PostEffects.depthOfField",
           "AnimationPlayer.stepFps"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "cartoon",
       "palette": {
@@ -342,6 +393,7 @@
       "name": "Early console pixels",
       "category": "pixel",
       "descriptor": "Tiny sprites, a handful of hard colour steps per ramp and tiles that repeat on a strict grid, read at a glance like the first home consoles.",
+      "preview": "previews/8bit-pixel.webp",
       "checks": [
         "Zoomed to 400 %, every edge in the play area sits on one logical pixel grid: no half pixels, no smoothing.",
         "A capture holds at most 16 distinct colours outside the UI, and each sprite uses at most 4.",
@@ -356,7 +408,13 @@
       "look": {
         "preset": "templates/looks/8bit-pixel.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform",
+          "runtime"
+        ],
+        "family": "pixel-side",
         "profiles": [
           "2d"
         ],
@@ -366,7 +424,10 @@
           "Stylise.pixelSnap",
           "Antialias off"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
+          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
+        ]
       },
       "ui": "pixel",
       "palette": {
@@ -395,6 +456,7 @@
       "name": "Voxel worlds",
       "category": "render",
       "descriptor": "Cubes build characters, architecture and terrain, visible in stepped silhouettes and broken edges, under any lighting.",
+      "preview": "previews/voxel-worlds.webp",
       "checks": [
         "Silhouettes are stepped: every edge is made of axis-aligned cubes.",
         "The cube size is consistent across characters and environment (or in clear multiples).",
@@ -409,7 +471,12 @@
       "look": {
         "preset": "templates/looks/voxel-worlds.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "shape-3d",
         "profiles": [
           "3d"
         ],
@@ -418,7 +485,9 @@
           "PostEffects.ao",
           "box instancing"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "pixel",
       "palette": {
@@ -446,6 +515,7 @@
       "name": "Manuscript page",
       "category": "paint",
       "descriptor": "Scenes composed like a decorated page: flat figures, ink lines, ornamental borders and lettering woven into the image.",
+      "preview": "previews/illuminated-manuscript.webp",
       "checks": [
         "The frame has an ornamental border or margin occupying at least 5 % of its area.",
         "Figures are flat (no cast shadows or form shading beyond line).",
@@ -461,6 +531,12 @@
         "preset": "templates/looks/illuminated-manuscript.ogt",
         "presetReady": true,
         "support": "content",
+        "layers": [
+          "frame",
+          "conform",
+          "authored"
+        ],
+        "family": "paint-2d",
         "profiles": [
           "2d"
         ],
@@ -470,8 +546,8 @@
           "RenderSettings.toneMapping none"
         ],
         "missing": [
-          "the page is content: figures, borders and lettering",
-          "Stylise.paintCanvas for the vellum grain"
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
+          "the page is content: figures, borders and lettering"
         ]
       },
       "ui": "paper",
@@ -500,6 +576,7 @@
       "name": "Rubber-hose cartoon",
       "category": "paint",
       "descriptor": "Round-headed characters with bendy tube limbs, pie-cut eyes and constant squash and stretch, inked like early theatrical cartoons.",
+      "preview": "previews/rubber-hose-animation.webp",
       "checks": [
         "Limbs bend in smooth curves without elbows or knees.",
         "Animation shows squash and stretch on every anticipation and landing.",
@@ -515,6 +592,12 @@
         "preset": "templates/looks/rubber-hose-animation.ogt",
         "presetReady": true,
         "support": "content",
+        "layers": [
+          "frame",
+          "conform",
+          "authored"
+        ],
+        "family": "paint-2d",
         "profiles": [
           "2d"
         ],
@@ -525,6 +608,7 @@
           "flipbooks"
         ],
         "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
           "the look is in frame-by-frame animation (flipbooks); the engine supplies the film treatment"
         ]
       },
@@ -554,6 +638,7 @@
       "name": "Pencil and hatching",
       "category": "paint",
       "descriptor": "Shadow built from line density and direction over paper, in greys or sepia, whether drawn flat or wrapped around 3D forms.",
+      "preview": "previews/pencil-hatching.webp",
       "checks": [
         "Shadows are made of parallel lines whose density increases with darkness; no smooth gradients.",
         "Paper grain is visible in light areas.",
@@ -568,7 +653,12 @@
       "look": {
         "preset": "templates/looks/pencil-hatching.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "ink-3d",
         "profiles": [
           "3d"
         ],
@@ -578,7 +668,9 @@
           "Stylise.paintCanvas",
           "Stylise.ink"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "paper",
       "palette": {
@@ -606,6 +698,7 @@
       "name": "Gothic ornament",
       "category": "paint",
       "descriptor": "Clean-contoured simple characters inside intricate, curling architecture and misty depth, dark but delicate.",
+      "preview": "previews/gothic-contour.webp",
       "checks": [
         "Characters are simple shapes with minimal facial detail and clean outlines.",
         "Backgrounds contain dense curling ornament or pointed arches in at least two depth layers.",
@@ -621,6 +714,12 @@
         "preset": "templates/looks/gothic-contour.ogt",
         "presetReady": true,
         "support": "content",
+        "layers": [
+          "frame",
+          "conform",
+          "authored"
+        ],
+        "family": "paint-2d",
         "profiles": [
           "2d"
         ],
@@ -632,6 +731,7 @@
           "sprite layers"
         ],
         "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
           "ornament is content; Stylise.depthBands for layered haze"
         ]
       },
@@ -661,6 +761,7 @@
       "name": "Lush opaque painting",
       "category": "paint",
       "descriptor": "Opaque, weighty colour masses with selective brushwork and rich warm-cool contrast build dense painted environments.",
+      "preview": "previews/lush-painted-worlds.webp",
       "checks": [
         "Large areas are opaque painted masses with visible but selective brushwork.",
         "Lit surfaces are warm and shadows cool (or the reverse) across the whole frame.",
@@ -676,6 +777,12 @@
         "preset": "templates/looks/lush-painted-worlds.ogt",
         "presetReady": true,
         "support": "content",
+        "layers": [
+          "frame",
+          "conform",
+          "authored"
+        ],
+        "family": "paint-2d",
         "profiles": [
           "2d",
           "3d"
@@ -687,6 +794,7 @@
           "RenderSettings.bloom"
         ],
         "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
           "painted backdrops are content; Stylise.paint* for 3D props"
         ]
       },
@@ -716,6 +824,7 @@
       "name": "Storybook ornament",
       "category": "paint",
       "descriptor": "Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds.",
+      "preview": "previews/decorative-storybook.webp",
       "checks": [
         "Contours are thin and gentle, slightly darker than the fill rather than black.",
         "Vegetation and props carry repeating decorative patterns.",
@@ -731,6 +840,12 @@
         "preset": "templates/looks/decorative-storybook.ogt",
         "presetReady": true,
         "support": "content",
+        "layers": [
+          "frame",
+          "conform",
+          "authored"
+        ],
+        "family": "paint-2d",
         "profiles": [
           "2d",
           "3d"
@@ -741,6 +856,7 @@
           "sprite layers"
         ],
         "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
           "illustration is content; Stylise.ink and paintCanvas"
         ]
       },
@@ -770,6 +886,7 @@
       "name": "Old-master collage",
       "category": "paint",
       "descriptor": "Figures and landscapes from classical painting recombined into moving scenes, oil surfaces meeting visible cut seams.",
+      "preview": "previews/classical-painting-collage.webp",
       "checks": [
         "Surfaces show oil-painting texture (craquelure, glazing, brushwork).",
         "Cut edges between elements are visible and deliberate.",
@@ -785,6 +902,12 @@
         "preset": "templates/looks/classical-painting-collage.ogt",
         "presetReady": true,
         "support": "content",
+        "layers": [
+          "frame",
+          "conform",
+          "authored"
+        ],
+        "family": "paint-2d",
         "profiles": [
           "2d"
         ],
@@ -794,6 +917,7 @@
           "PostEffects.filmGrain"
         ],
         "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
           "the source paintings and cut-outs are content (public-domain scans or original painting); no engine primitive is missing"
         ]
       },
@@ -823,6 +947,7 @@
       "name": "Fine-line doodle worlds",
       "category": "paint",
       "descriptor": "Countless tiny people and objects drawn with simple, slightly irregular lines, like a giant hand-drawn map.",
+      "preview": "previews/detailed-doodle.webp",
       "checks": [
         "Lines are thin (1 to 2 px) and slightly irregular.",
         "A capture shows at least 30 separate small figures or objects.",
@@ -838,6 +963,12 @@
         "preset": "templates/looks/detailed-doodle.ogt",
         "presetReady": true,
         "support": "content",
+        "layers": [
+          "frame",
+          "conform",
+          "authored"
+        ],
+        "family": "paint-2d",
         "profiles": [
           "2d"
         ],
@@ -847,6 +978,7 @@
           "sprites"
         ],
         "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
           "the drawing is content; Stylise.ink can outline 3D props to match"
         ]
       },
@@ -876,6 +1008,7 @@
       "name": "Black-figure pottery",
       "category": "paint",
       "descriptor": "Flat dark silhouettes with fine incised detail on ochre grounds, framed by meanders and horizontal bands.",
+      "preview": "previews/black-figure-pottery.webp",
       "checks": [
         "The capture is within an ochre-and-black palette plus at most one extra colour.",
         "Figures are solid silhouettes with thin lighter detail lines inside.",
@@ -891,6 +1024,12 @@
         "preset": "templates/looks/black-figure-pottery.ogt",
         "presetReady": true,
         "support": "content",
+        "layers": [
+          "frame",
+          "conform",
+          "authored"
+        ],
+        "family": "paint-2d",
         "profiles": [
           "2d",
           "3d"
@@ -901,6 +1040,7 @@
           "unlit materials"
         ],
         "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
           "silhouettes are content; Stylise.palette locks the colours"
         ]
       },
@@ -930,6 +1070,7 @@
       "name": "Heavy ink and shadow",
       "category": "paint",
       "descriptor": "Solid black shadows, rough hatching and muted colour shape distorted figures, with highlights saved for danger.",
+      "preview": "previews/heavy-ink-shadows.webp",
       "checks": [
         "At least 30 % of a capture is solid black or near-black.",
         "Transitions from light to shadow use rough hatching, not gradients.",
@@ -944,7 +1085,12 @@
       "look": {
         "preset": "templates/looks/heavy-ink-shadows.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "ink-3d",
         "profiles": [
           "3d"
         ],
@@ -954,7 +1100,9 @@
           "Stylise.ink",
           "PostEffects.vignette"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "fantasy",
       "palette": {
@@ -982,6 +1130,7 @@
       "name": "One-ink pixels",
       "category": "pixel",
       "descriptor": "Black and white (or one ink on one paper) pixels where silhouette and negative space do the work, with at most one accent for signals.",
+      "preview": "previews/monochrome-pixel.webp",
       "checks": [
         "A capture contains 2 main colours covering at least 95 % of pixels; any third colour marks an interactable or danger.",
         "Every sprite reads as a silhouette on the ground: no mid-tones inside shapes.",
@@ -996,7 +1145,13 @@
       "look": {
         "preset": "templates/looks/monochrome-pixel.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform",
+          "runtime"
+        ],
+        "family": "pixel-side",
         "profiles": [
           "2d"
         ],
@@ -1006,7 +1161,10 @@
           "Stylise.posterize",
           "Stylise.dither"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
+          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
+        ]
       },
       "ui": "pixel",
       "palette": {
@@ -1034,6 +1192,7 @@
       "name": "Late console pixels",
       "category": "pixel",
       "descriptor": "Fuller sprites with ramped shading, parallax layers behind the action and saturated colour, the richer pixel language of the following hardware generation.",
+      "preview": "previews/16bit-pixel.webp",
       "checks": [
         "Background layers scroll at visibly different rates and never at the playfield's speed.",
         "Shading on sprites steps through 4 to 6 tones per material with no smooth gradients.",
@@ -1048,7 +1207,13 @@
       "look": {
         "preset": "templates/looks/16bit-pixel.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform",
+          "runtime"
+        ],
+        "family": "pixel-side",
         "profiles": [
           "2d"
         ],
@@ -1058,7 +1223,10 @@
           "Antialias off",
           "sprite layers for parallax"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
+          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
+        ]
       },
       "ui": "pixel",
       "palette": {
@@ -1086,6 +1254,7 @@
       "name": "Dense illustrative pixels",
       "category": "pixel",
       "descriptor": "Pixel art pushed towards illustration: rich clusters, subtle hue shifts and detailed scenery, with the pixel grid still visible on close look.",
+      "preview": "previews/detailed-pixel.webp",
       "checks": [
         "At 400 %, single-pixel clusters form textures (bark, stone, cloth) rather than flat fills.",
         "Each material shows at least 6 tones with visible hue shifts between them.",
@@ -1100,7 +1269,13 @@
       "look": {
         "preset": "templates/looks/detailed-pixel.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform",
+          "runtime"
+        ],
+        "family": "pixel-side",
         "profiles": [
           "2d"
         ],
@@ -1111,7 +1286,10 @@
           "PostEffects.glow",
           "RenderSettings.bloom"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
+          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
+        ]
       },
       "ui": "fantasy",
       "palette": {
@@ -1139,6 +1317,7 @@
       "name": "Glowing pixels on dark ground",
       "category": "pixel",
       "descriptor": "Pixel scenes built on dark bases where saturated light sources, rim highlights and glow carry the composition.",
+      "preview": "previews/luminous-pixel.webp",
       "checks": [
         "Mean luminance of a play capture is below 0.25 while the brightest 2 % of pixels are above 0.8.",
         "Light sources show a halo (bloom or glow) wider than the source itself.",
@@ -1153,7 +1332,13 @@
       "look": {
         "preset": "templates/looks/luminous-pixel.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform",
+          "runtime"
+        ],
+        "family": "pixel-side",
         "profiles": [
           "2d"
         ],
@@ -1164,7 +1349,10 @@
           "PostEffects.glow",
           "RenderSettings.bloom"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
+          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
+        ]
       },
       "ui": "neon",
       "palette": {
@@ -1192,6 +1380,7 @@
       "name": "Top-down tile worlds",
       "category": "pixel",
       "descriptor": "Overhead or three-quarter tile maps with upright sprites, where steps, cliffs and overlap make height and paths readable.",
+      "preview": "previews/topdown-tile-pixel.webp",
       "checks": [
         "Walkable floor, walls and drops are distinguishable in a greyscale capture.",
         "Characters are drawn upright and are occluded by tall tiles in front of them (y-sorting works).",
@@ -1206,7 +1395,13 @@
       "look": {
         "preset": "templates/looks/topdown-tile-pixel.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform",
+          "runtime"
+        ],
+        "family": "pixel-topdown",
         "profiles": [
           "2d"
         ],
@@ -1216,7 +1411,10 @@
           "Stylise.pixelHeight",
           "Stylise.pixelSnap"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
+          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
+        ]
       },
       "ui": "fantasy",
       "palette": {
@@ -1244,6 +1442,7 @@
       "name": "Low-resolution 3D",
       "category": "render",
       "descriptor": "Simplified models, small textures and pixelated output recall early 3D consoles, often with modern lighting on top.",
+      "preview": "previews/low-resolution-3d.webp",
       "checks": [
         "The frame is rendered at 240 to 360 logical lines and scaled up with nearest filtering.",
         "Textures show large visible texels (64 to 256 px textures on whole characters).",
@@ -1258,7 +1457,12 @@
       "look": {
         "preset": "templates/looks/low-resolution-3d.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "pixel-3d",
         "profiles": [
           "3d"
         ],
@@ -1270,7 +1474,9 @@
           "Stylise.dither",
           "Fog"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "scifi",
       "palette": {
@@ -1298,6 +1504,7 @@
       "name": "Minimal low-count pixels",
       "category": "pixel",
       "descriptor": "Very few pixels per figure, no faces and almost no texture: silhouettes, empty space and a few colour masses carry mood and story.",
+      "preview": "previews/coarse-pixel.webp",
       "checks": [
         "Characters are at most 12 logical pixels tall and have no facial features.",
         "At least 40 % of a capture is a flat background mass.",
@@ -1312,7 +1519,13 @@
       "look": {
         "preset": "templates/looks/coarse-pixel.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform",
+          "runtime"
+        ],
+        "family": "pixel-side",
         "profiles": [
           "2d"
         ],
@@ -1321,7 +1534,10 @@
           "Stylise.palette",
           "Antialias off"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
+          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
+        ]
       },
       "ui": "pixel",
       "palette": {
@@ -1349,6 +1565,7 @@
       "name": "Anime cel-shaded 3D",
       "category": "render",
       "descriptor": "3D models drawn with the hard shadow shapes and contour lines of 2D animation, framed and timed like an anime cut.",
+      "preview": "previews/anime-cel-3d.webp",
       "checks": [
         "Shadows on characters are one or two hard-edged bands, no smooth gradients.",
         "Characters have a dark contour whose width is consistent at the same distance.",
@@ -1363,7 +1580,13 @@
       "look": {
         "preset": "templates/looks/anime-cel-3d.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform",
+          "runtime"
+        ],
+        "family": "toon-3d",
         "profiles": [
           "3d"
         ],
@@ -1375,7 +1598,10 @@
           "MaterialStyle.shadowTint",
           "MaterialStyle.outlineDistance"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
+          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
+        ]
       },
       "ui": "neon",
       "palette": {
@@ -1403,6 +1629,7 @@
       "name": "Inked comic 3D",
       "category": "render",
       "descriptor": "Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth.",
+      "preview": "previews/inked-comic-3d.webp",
       "checks": [
         "Thick black outlines on silhouettes and major creases.",
         "Ink marks (hatching or strokes) are painted onto surfaces.",
@@ -1417,7 +1644,12 @@
       "look": {
         "preset": "templates/looks/inked-comic-3d.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "toon-3d",
         "profiles": [
           "3d"
         ],
@@ -1429,7 +1661,9 @@
           "Stylise.hatchingSpace",
           "Stylise.hatchingDepth"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "scifi",
       "palette": {
@@ -1457,6 +1691,7 @@
       "name": "Paper craft",
       "category": "shape",
       "descriptor": "Folded planes, visible sheet thickness and layered cut paper become the world's construction.",
+      "preview": "previews/paper-craft.webp",
       "checks": [
         "Surfaces are flat planes with crisp folds; no smooth organic curvature.",
         "Paper grain or fibre is visible on lit surfaces.",
@@ -1471,7 +1706,12 @@
       "look": {
         "preset": "templates/looks/paper-craft.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "shape-3d",
         "profiles": [
           "3d"
         ],
@@ -1482,7 +1722,9 @@
           "Stylise.paintCanvas",
           "soft shadows"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "paper",
       "palette": {
@@ -1510,6 +1752,7 @@
       "name": "Miniature diorama",
       "category": "render",
       "descriptor": "High, often isometric framing, small rounded architecture and soft shadows make the world look like a tabletop model.",
+      "preview": "previews/miniature-diorama.webp",
       "checks": [
         "Depth of field blurs the frame's top and bottom bands (tilt-shift).",
         "Shadows are soft with strong ambient occlusion in corners.",
@@ -1524,7 +1767,13 @@
       "look": {
         "preset": "templates/looks/miniature-diorama.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform",
+          "runtime"
+        ],
+        "family": "shape-3d",
         "profiles": [
           "3d"
         ],
@@ -1535,7 +1784,10 @@
           "Sky",
           "soft shadows"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets",
+          "the runtime pieces of docs/art.md §2.4 (sprite outline, palette swap, pixel-art rotation, camera presets)"
+        ]
       },
       "ui": "cartoon",
       "palette": {
@@ -1563,6 +1815,7 @@
       "name": "Painterly 3D",
       "category": "render",
       "descriptor": "3D spaces whose simplified materials, shaped forms and painterly colour step away from the photographic.",
+      "preview": "previews/painterly-3d.webp",
       "checks": [
         "Surfaces show brushy, broad colour regions rather than photo detail.",
         "Forms are deliberately shaped and exaggerated (architecture leans, props chunky).",
@@ -1577,7 +1830,12 @@
       "look": {
         "preset": "templates/looks/painterly-3d.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "cinematic-3d",
         "profiles": [
           "3d"
         ],
@@ -1588,7 +1846,9 @@
           "PostEffects.lut",
           "Fog"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "fantasy",
       "palette": {
@@ -1616,6 +1876,7 @@
       "name": "Cinematic realism",
       "category": "render",
       "descriptor": "Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control.",
+      "preview": "previews/cinematic-realism.webp",
       "checks": [
         "Materials respond physically: metals reflect the environment, rough surfaces scatter.",
         "Lighting is naturalistic with soft shadows and indirect fill (ambient occlusion visible).",
@@ -1630,7 +1891,12 @@
       "look": {
         "preset": "templates/looks/cinematic-realism.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "cinematic-3d",
         "profiles": [
           "3d"
         ],
@@ -1643,7 +1909,9 @@
           "RenderSettings.toneMapping agx",
           "Antialias taa"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "scifi",
       "palette": {
@@ -1671,6 +1939,7 @@
       "name": "Muted theatrical light",
       "category": "render",
       "descriptor": "Simplified 3D forms in restrained colour, lit by local beams and haze like a stage, where tonal layers tell the story.",
+      "preview": "previews/muted-cinematic-3d.webp",
       "checks": [
         "A capture's average saturation is low (below 0.25) with at most one saturated accent.",
         "Light arrives in local beams or pools (god rays or spot lights) with haze between layers.",
@@ -1685,7 +1954,12 @@
       "look": {
         "preset": "templates/looks/muted-cinematic-3d.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "cinematic-3d",
         "profiles": [
           "3d"
         ],
@@ -1697,7 +1971,9 @@
           "PostEffects.vignette",
           "PostEffects.filmGrain"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "scifi",
       "palette": {
@@ -1725,6 +2001,7 @@
       "name": "Layered silhouettes",
       "category": "shape",
       "descriptor": "Foregrounds as solid contours against lighter, hazier layers behind, so shape and value carry the depth.",
+      "preview": "previews/layered-silhouette.webp",
       "checks": [
         "The nearest layer is a near-uniform dark silhouette with no visible surface detail.",
         "At least three depth layers are visible, each lighter than the one in front.",
@@ -1739,7 +2016,12 @@
       "look": {
         "preset": "templates/looks/layered-silhouette.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "cinematic-3d",
         "profiles": [
           "2d",
           "3d"
@@ -1750,7 +2032,9 @@
           "unlit materials",
           "PostEffects.godRays"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "neon",
       "palette": {
@@ -1778,6 +2062,7 @@
       "name": "Minimal geometry",
       "category": "shape",
       "descriptor": "Rectangles, circles and triangles in a small set of colours, ordered by proportion, rhythm and empty space.",
+      "preview": "previews/minimal-geometric.webp",
       "checks": [
         "Every element in a capture is a basic geometric shape or a simple composition of them.",
         "A capture uses at most 6 colours.",
@@ -1792,7 +2077,12 @@
       "look": {
         "preset": "templates/looks/minimal-geometric.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "shape-3d",
         "profiles": [
           "2d",
           "3d"
@@ -1803,7 +2093,9 @@
           "RenderSettings.toneMapping none",
           "Antialias msaa4"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "neon",
       "palette": {
@@ -1831,6 +2123,7 @@
       "name": "Neon vector lines",
       "category": "shape",
       "descriptor": "Thin glowing lines, grids and bright particles on dark fields, like a vector display.",
+      "preview": "previews/neon-vector.webp",
       "checks": [
         "Mean luminance of a capture is below 0.15 and line pixels are near full brightness.",
         "Lines glow: a halo wider than the line itself (bloom).",
@@ -1845,7 +2138,12 @@
       "look": {
         "preset": "templates/looks/neon-vector.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "shape-3d",
         "profiles": [
           "2d",
           "3d"
@@ -1858,7 +2156,9 @@
           "particles",
           "PostEffects.chromaticAberration"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "neon",
       "palette": {
@@ -1886,6 +2186,7 @@
       "name": "Monochrome dithered 3D",
       "category": "render",
       "descriptor": "3D scenes reduced to one or two colours where dot patterns carry every tonal transition while perspective stays real.",
+      "preview": "previews/monochrome-dither-3d.webp",
       "checks": [
         "A capture contains at most 2 to 4 colours.",
         "Gradients are rendered as a visible ordered or noise dither pattern.",
@@ -1900,7 +2201,12 @@
       "look": {
         "preset": "templates/looks/monochrome-dither-3d.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "partial",
+        "layers": [
+          "frame",
+          "conform"
+        ],
+        "family": "pixel-3d",
         "profiles": [
           "3d"
         ],
@@ -1910,7 +2216,9 @@
           "Stylise.dither",
           "Stylise.pixelHeight"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "pixel",
       "palette": {
@@ -1938,6 +2246,7 @@
       "name": "Luminous layered depths",
       "category": "render",
       "descriptor": "Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses.",
+      "preview": "previews/luminous-layered-painting.webp",
       "checks": [
         "At least four parallax layers are visible, foreground darkest.",
         "Luminous focal points (glows, light shafts) stand against dark masses.",
@@ -1952,7 +2261,13 @@
       "look": {
         "preset": "templates/looks/luminous-layered-painting.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "content",
+        "layers": [
+          "frame",
+          "conform",
+          "authored"
+        ],
+        "family": "paint-2d",
         "profiles": [
           "2d",
           "3d"
@@ -1965,7 +2280,9 @@
           "PostEffects.glow",
           "Stylise.paintRadius"
         ],
-        "missing": []
+        "missing": [
+          "the cook's asset conformance to the look's art contract (docs/art.md §2.3): palette, pixel or texel density, shape language, line and motion carried by the assets"
+        ]
       },
       "ui": "fantasy",
       "palette": {

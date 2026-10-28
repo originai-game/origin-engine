@@ -23,7 +23,8 @@
     "rules",
     "knowledge.json",
     "scripts",
-    "README.md"
+    "README.md",
+    "previews"
   ],
   "scripts": {
     "prepack": "bun scripts/pack.ts",

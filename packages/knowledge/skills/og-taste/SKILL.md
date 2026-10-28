@@ -334,13 +334,25 @@ scale, face budget, outline width, texture density) and an art-bible
 direction. Match the premise's four answers against `premise`, shortlist
 two, and choose by the checks you can actually hold for the whole game.
 
-**Read `look.support` before promising a style.** `full`: every primitive
-the style needs draws today. `partial` and `planned`: the frame will lack
-what `missing` names until those primitives land; say so to whoever asked
-for the style, and either accept the gap or pick a neighbour. `content`:
-the look lives in authored art (painted backdrops, frame-by-frame
-animation, hand-placed pixels); the engine frames it with the look, but
-the assets carry it, so budget for them.
+**A style is the assets, not a filter.** The look's render resources
+treat the frame; what makes most styles is in the assets: facets, voxels,
+a palette every texel sits on, one pixel size, a line drawn into every
+sprite. `look.layers` says what a style needs: `frame` (the look's render
+resources), `conform` (the assets meet the look's art contract),
+`runtime` (sprite outline, palette swap, pixel-art rotation, camera
+presets), `authored` (art no conformance makes). Make every asset inside
+the style (the art bible, §1) and look at it in the game, never only at
+the frame.
+
+**Read `look.support` before promising a style.** `full`: every layer the
+style needs but `authored` is in the engine. `partial`: what `missing`
+names is not yet; until then the assets must hold the style by hand (the
+palette, the sizes and the line written into each request and checked on
+each asset); say so to whoever asked for it. `content`: the look lives in
+authored art (painted backdrops, frame-by-frame animation, hand-placed
+pixels); the engine frames it with the look, but the assets carry it, so
+budget for them. `preview` (`previews/<slug>.webp` in the engine
+package's `knowledge/`) shows the style as a game.
 
 **Read `look.profiles` before matching.** It names the project profiles a
 style draws for: `["2d"]` for flipbooks, hand-placed pixels and paper
@@ -511,42 +523,42 @@ entry's three checks handed to the critic that reads the frames.
 | Slug | Family | Style | Support | UI |
 |---|---|---|---|---|
 | `expressionist-painting` | Paint and line | Expressionist paint | content | `paper` |
-| `bold-comic-illustration` | Paint and line | Bold comic illustration | full | `fantasy` |
-| `watercolor-wash` | Paint and line | Watercolour wash | full | `paper` |
-| `pixel-3d-hybrid` | Pixel and retro | Pixel sprites in 3D sets | full | `fantasy` |
-| `faceted-low-poly` | 3D rendering | Faceted low poly | full | `paper` |
-| `sculpted-clay` | 3D rendering | Sculpted clay | full | `cartoon` |
-| `8bit-pixel` | Pixel and retro | Early console pixels | full | `pixel` |
-| `voxel-worlds` | 3D rendering | Voxel worlds | full | `pixel` |
+| `bold-comic-illustration` | Paint and line | Bold comic illustration | partial | `fantasy` |
+| `watercolor-wash` | Paint and line | Watercolour wash | partial | `paper` |
+| `pixel-3d-hybrid` | Pixel and retro | Pixel sprites in 3D sets | partial | `fantasy` |
+| `faceted-low-poly` | 3D rendering | Faceted low poly | partial | `paper` |
+| `sculpted-clay` | 3D rendering | Sculpted clay | partial | `cartoon` |
+| `8bit-pixel` | Pixel and retro | Early console pixels | partial | `pixel` |
+| `voxel-worlds` | 3D rendering | Voxel worlds | partial | `pixel` |
 | `illuminated-manuscript` | Paint and line | Manuscript page | content | `paper` |
 | `rubber-hose-animation` | Paint and line | Rubber-hose cartoon | content | `cartoon` |
-| `pencil-hatching` | Paint and line | Pencil and hatching | full | `paper` |
+| `pencil-hatching` | Paint and line | Pencil and hatching | partial | `paper` |
 | `gothic-contour` | Paint and line | Gothic ornament | content | `fantasy` |
 | `lush-painted-worlds` | Paint and line | Lush opaque painting | content | `fantasy` |
 | `decorative-storybook` | Paint and line | Storybook ornament | content | `cartoon` |
 | `classical-painting-collage` | Paint and line | Old-master collage | content | `paper` |
 | `detailed-doodle` | Paint and line | Fine-line doodle worlds | content | `paper` |
 | `black-figure-pottery` | Paint and line | Black-figure pottery | content | `fantasy` |
-| `heavy-ink-shadows` | Paint and line | Heavy ink and shadow | full | `fantasy` |
-| `monochrome-pixel` | Pixel and retro | One-ink pixels | full | `pixel` |
-| `16bit-pixel` | Pixel and retro | Late console pixels | full | `pixel` |
-| `detailed-pixel` | Pixel and retro | Dense illustrative pixels | full | `fantasy` |
-| `luminous-pixel` | Pixel and retro | Glowing pixels on dark ground | full | `neon` |
-| `topdown-tile-pixel` | Pixel and retro | Top-down tile worlds | full | `fantasy` |
-| `low-resolution-3d` | 3D rendering | Low-resolution 3D | full | `scifi` |
-| `coarse-pixel` | Pixel and retro | Minimal low-count pixels | full | `pixel` |
-| `anime-cel-3d` | 3D rendering | Anime cel-shaded 3D | full | `neon` |
-| `inked-comic-3d` | 3D rendering | Inked comic 3D | full | `scifi` |
-| `paper-craft` | Shape and material | Paper craft | full | `paper` |
-| `miniature-diorama` | 3D rendering | Miniature diorama | full | `cartoon` |
-| `painterly-3d` | 3D rendering | Painterly 3D | full | `fantasy` |
-| `cinematic-realism` | 3D rendering | Cinematic realism | full | `scifi` |
-| `muted-cinematic-3d` | 3D rendering | Muted theatrical light | full | `scifi` |
-| `layered-silhouette` | Shape and material | Layered silhouettes | full | `neon` |
-| `minimal-geometric` | Shape and material | Minimal geometry | full | `neon` |
-| `neon-vector` | Shape and material | Neon vector lines | full | `neon` |
-| `monochrome-dither-3d` | 3D rendering | Monochrome dithered 3D | full | `pixel` |
-| `luminous-layered-painting` | 3D rendering | Luminous layered depths | full | `fantasy` |
+| `heavy-ink-shadows` | Paint and line | Heavy ink and shadow | partial | `fantasy` |
+| `monochrome-pixel` | Pixel and retro | One-ink pixels | partial | `pixel` |
+| `16bit-pixel` | Pixel and retro | Late console pixels | partial | `pixel` |
+| `detailed-pixel` | Pixel and retro | Dense illustrative pixels | partial | `fantasy` |
+| `luminous-pixel` | Pixel and retro | Glowing pixels on dark ground | partial | `neon` |
+| `topdown-tile-pixel` | Pixel and retro | Top-down tile worlds | partial | `fantasy` |
+| `low-resolution-3d` | 3D rendering | Low-resolution 3D | partial | `scifi` |
+| `coarse-pixel` | Pixel and retro | Minimal low-count pixels | partial | `pixel` |
+| `anime-cel-3d` | 3D rendering | Anime cel-shaded 3D | partial | `neon` |
+| `inked-comic-3d` | 3D rendering | Inked comic 3D | partial | `scifi` |
+| `paper-craft` | Shape and material | Paper craft | partial | `paper` |
+| `miniature-diorama` | 3D rendering | Miniature diorama | partial | `cartoon` |
+| `painterly-3d` | 3D rendering | Painterly 3D | partial | `fantasy` |
+| `cinematic-realism` | 3D rendering | Cinematic realism | partial | `scifi` |
+| `muted-cinematic-3d` | 3D rendering | Muted theatrical light | partial | `scifi` |
+| `layered-silhouette` | Shape and material | Layered silhouettes | partial | `neon` |
+| `minimal-geometric` | Shape and material | Minimal geometry | partial | `neon` |
+| `neon-vector` | Shape and material | Neon vector lines | partial | `neon` |
+| `monochrome-dither-3d` | 3D rendering | Monochrome dithered 3D | partial | `pixel` |
+| `luminous-layered-painting` | 3D rendering | Luminous layered depths | content | `fantasy` |
 
 Use the catalogue as a vocabulary, never as a list of games to copy: every
 design, character and composition stays original (the platform's rule),

@@ -207,12 +207,15 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
       b.look.missing = [];
       c.look.primitives = [...c.look.primitives, "Stylise.posterise"];
       c.look.profiles = ["2d", "4d"];
+      c.look.layers = ["conform", "authored"];
+      c.look.family = "pixel-moon";
+      c.preview = "previews/nowhere.webp";
       cat.styles.push({ ...cat.styles[3] });
       cat.styles.push({ ...cat.styles[4], slug: "a-new-look" });
       return JSON.stringify(cat, null, 2);
     }),
   );
-  const cat = JSON.parse(readFileSync(join(real.pkg, "looks/catalogue.json"), "utf8")) as { styles: { slug: string }[] };
+  const cat = JSON.parse(readFileSync(join(real.pkg, "looks/catalogue.json"), "utf8")) as { styles: { slug: string; look: { support: string } }[] };
   const [a, b, c, d] = cat.styles.map((s) => s.slug);
   const taste = readFileSync(join(real.pkg, "skills/og-taste/SKILL.md"), "utf8");
   const row = (slug: string) => new RegExp(`^\\| \`${slug}\` \\| (.*) \\|$`, "m").exec(taste)![1]!.split(" | ").map((x) => x.replaceAll("`", "")).join(", ");
@@ -222,10 +225,15 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
       `looks/catalogue.json: ${b}: support planned must name what is missing (the primitive or the authored art)`,
       `looks/catalogue.json: ${c}: names Stylise.posterise, which the generated API does not have`,
       `looks/catalogue.json: ${c}: look.profiles must name the profiles the style draws for, one or both of 2d, 3d (create matches a premise only among the game's)`,
+      `looks/catalogue.json: ${c}: look.layers must include frame and name only frame, conform, runtime, authored, each once`,
+      `looks/catalogue.json: ${c}: support ${cat.styles[2]!.look.support} disagrees with look.layers (content exactly when authored art is needed)`,
+      `looks/catalogue.json: ${c}: look.family pixel-moon is none of pixel-side, pixel-topdown, pixel-3d, paint-2d, ink-3d, shape-3d, toon-3d, cinematic-3d`,
+      `looks/catalogue.json: ${c}: preview is previews/nowhere.webp, expected previews/${c}.webp`,
       `looks/catalogue.json: ${d}: a second style with this slug`,
+      "looks/catalogue.json: a-new-look: preview is previews/" + cat.styles[4]!.slug + ".webp, expected previews/a-new-look.webp",
       "looks/catalogue.json: a-new-look: look.preset is templates/looks/" + cat.styles[4]!.slug + ".ogt, expected templates/looks/a-new-look.ogt",
       "skills/og-taste/SKILL.md: the style catalogue (§12) does not list `a-new-look`",
-      `skills/og-taste/SKILL.md: §12's row for \`${b}\` reads ${row(b!)}; the catalogue says ${row(b!).replace(/, full, /, ", planned, ")}`,
+      `skills/og-taste/SKILL.md: §12's row for \`${b}\` reads ${row(b!)}; the catalogue says ${row(b!).replace(/, partial, /, ", planned, ")}`,
     ].sort(),
   );
 });
@@ -259,11 +267,11 @@ test("a field written as `key: value` or in a token's object literal is one the 
 test("og-taste §12's table is held to the catalogue, row by row", () => {
   const p = added((r) =>
     edit(join(r.pkg, "skills/og-taste/SKILL.md"), (s) =>
-      s.replace("| `voxel-worlds` | 3D rendering | Voxel worlds | full | `pixel` |", "| `voxel-worlds` | 3D rendering | Voxel worlds | partial | `cartoon` |").replace(/^\| `neon-vector` \|.*\n/m, "Also `neon-vector`.\n"),
+      s.replace("| `voxel-worlds` | 3D rendering | Voxel worlds | partial | `pixel` |", "| `voxel-worlds` | 3D rendering | Voxel worlds | content | `cartoon` |").replace(/^\| `neon-vector` \|.*\n/m, "Also `neon-vector`.\n"),
     ),
   );
   expect(p.sort()).toEqual([
-    "skills/og-taste/SKILL.md: §12's row for `voxel-worlds` reads 3D rendering, Voxel worlds, partial, cartoon; the catalogue says 3D rendering, Voxel worlds, full, pixel",
+    "skills/og-taste/SKILL.md: §12's row for `voxel-worlds` reads 3D rendering, Voxel worlds, content, cartoon; the catalogue says 3D rendering, Voxel worlds, partial, pixel",
     "skills/og-taste/SKILL.md: §12's table has no row for `neon-vector` (| slug | family | style | support | ui |)",
   ]);
 });

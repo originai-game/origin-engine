@@ -25,7 +25,8 @@
     "template-2d",
     "archetypes",
     "looks",
-    "README.md"
+    "README.md",
+    "previews"
   ],
   "scripts": {
     "prepack": "bun scripts/pack-template.ts",

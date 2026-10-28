@@ -515,12 +515,13 @@ function apiNames(roots: Roots, files: readonly PayloadFile[], problems: string[
 /** A style catalogue entry (looks/catalogue.json; og-taste §12). */
 interface Style {
   slug: string;
+  preview: string;
   name: string;
   category: string;
   descriptor: string;
   checks: string[];
   premise: Record<string, string>;
-  look: { preset: string; presetReady: boolean; support: string; profiles: string[]; primitives: string[]; missing: string[] };
+  look: { preset: string; presetReady: boolean; support: string; layers: string[]; family: string; profiles: string[]; primitives: string[]; missing: string[] };
   ui: string;
   palette: { size: string; rules: string };
   assets: Record<string, string>;
@@ -531,6 +532,10 @@ interface Style {
 export const SUPPORT = ["full", "partial", "planned", "content"] as const;
 /** What `look.profiles` may name: the project profiles a style draws for (create's premise match never offers a style outside the game's). */
 export const PROFILES = ["2d", "3d"] as const;
+/** What `look.layers` may name (docs/art.md §2.6): the look's render resources, the cook's asset conformance, the runtime pieces, authored art. */
+export const LAYERS = ["frame", "conform", "runtime", "authored"] as const;
+/** The sample scenes a style is proven on (`look.family`, docs/art.md §3 A7). */
+export const FAMILIES = ["pixel-side", "pixel-topdown", "pixel-3d", "paint-2d", "ink-3d", "shape-3d", "toon-3d", "cinematic-3d"] as const;
 /** The placeholders the art-bible template may use. */
 export const BIBLE_FIELDS = ["title", "premise", "camera", "platform", "name", "descriptor", "direction", "palette", "assets", "ui", "avoid", "game", "slug", "checks"] as const;
 const PREMISE = ["genre", "mood", "era", "audience"];
@@ -559,7 +564,7 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
     problems.push(`${at}: not JSON (${(e as Error).message})`);
     return;
   }
-  if (cat.schemaVersion !== 1) problems.push(`${at}: schemaVersion ${cat.schemaVersion}, expected 1`);
+  if (cat.schemaVersion !== 2) problems.push(`${at}: schemaVersion ${cat.schemaVersion}, expected 2`);
   const categories = Object.keys(cat.categories ?? {});
   const packs = cat.ui ?? [];
   for (const p of packs) {
@@ -582,6 +587,8 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
     if (seen.has(s.slug)) problems.push(`${id}: a second style with this slug`);
     seen.add(s.slug);
     for (const k of ["name", "descriptor", "ui"] as const) if (!text(s[k])) problems.push(`${id}: no ${k}`);
+    if (s.preview !== `previews/${s.slug}.webp`) problems.push(`${id}: preview is ${s.preview}, expected previews/${s.slug}.webp`);
+    else if (!existsSync(join(roots.pkg, s.preview))) problems.push(`${id}: ${s.preview} does not exist (a 960x540 picture of the style as a game)`);
     if (!categories.includes(s.category)) problems.push(`${id}: category ${s.category} is none of ${categories.join(", ")}`);
     if (!packs.includes(s.ui)) problems.push(`${id}: ui ${s.ui} is none of the built-in styles (${packs.join(", ")})`);
     if (!Array.isArray(s.checks) || s.checks.length !== 3 || !s.checks.every(text)) problems.push(`${id}: needs exactly three checks a critic can judge on a frame`);
@@ -600,6 +607,10 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
     if (profiles.length === 0 || new Set(profiles).size !== profiles.length || !profiles.every((p) => (PROFILES as readonly string[]).includes(p))) {
       problems.push(`${id}: look.profiles must name the profiles the style draws for, one or both of ${PROFILES.join(", ")} (create matches a premise only among the game's)`);
     }
+    const layers = Array.isArray(look.layers) ? look.layers : [];
+    if (!layers.includes("frame") || new Set(layers).size !== layers.length || !layers.every((l) => (LAYERS as readonly string[]).includes(l))) problems.push(`${id}: look.layers must include frame and name only ${LAYERS.join(", ")}, each once`);
+    if (layers.includes("authored") !== (look.support === "content")) problems.push(`${id}: support ${look.support} disagrees with look.layers (content exactly when authored art is needed)`);
+    if (!(FAMILIES as readonly string[]).includes(look.family)) problems.push(`${id}: look.family ${look.family} is none of ${FAMILIES.join(", ")}`);
     const missing = look.missing ?? [];
     if (look.support === "full" && missing.length > 0) problems.push(`${id}: support full, yet it names missing primitives`);
     if (look.support !== "full" && !missing.some(text)) problems.push(`${id}: support ${look.support} must name what is missing (the primitive or the authored art)`);

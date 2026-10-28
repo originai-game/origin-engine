@@ -42,7 +42,10 @@ if (existsSync(archetypes)) {
   for (const a of readdirSync(archTarget)) if (existsSync(join(archTarget, a, "project.ogt"))) undot(join(archTarget, a));
   console.log(`pack-template: ${archetypes} -> ${archTarget}`);
 }
-// The style catalogue the look is chosen from, under ./looks/.
+// The style catalogue the look is chosen from, under ./looks/, and each
+// style's preview under ./previews/: the catalogue's `preview`
+// (previews/<slug>.webp) resolves against the package root here as in the
+// knowledge package.
 const catalogue = join(pkg, "..", "knowledge", "looks", "catalogue.json");
 const looksTarget = join(pkg, "looks");
 rmSync(looksTarget, { recursive: true, force: true });
@@ -52,4 +55,6 @@ if (!existsSync(catalogue)) {
 }
 mkdirSync(looksTarget, { recursive: true });
 cpSync(catalogue, join(looksTarget, "catalogue.json"));
-console.log(`pack-template: ${catalogue} -> ${looksTarget}/catalogue.json`);
+rmSync(join(pkg, "previews"), { recursive: true, force: true });
+cpSync(join(pkg, "..", "knowledge", "previews"), join(pkg, "previews"), { recursive: true });
+console.log(`pack-template: ${catalogue} -> ${looksTarget}/catalogue.json, previews/`);
