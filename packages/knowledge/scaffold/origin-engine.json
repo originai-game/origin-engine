@@ -4,13 +4,13 @@
   "substrate": "origin-engine-ts",
   "engine": {
     "package": "@origingame/engine",
-    "version": "0.6.6",
+    "version": "0.7.0",
     "repository": "origingame/origin-engine"
   },
   "template": {
     "source": "templates/game",
     "create": "@origingame/create-game",
-    "version": "0.6.6"
+    "version": "0.7.0"
   },
   "probe": {
     "protocol": 5,

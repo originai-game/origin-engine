@@ -8,7 +8,7 @@ version 1
 # of the family (look.family in the style catalogue).
 name "Art sample: painted 2D"
 id "art-paint-2d"
-engine "0.6.6"
+engine "0.7.0"
 entry "src/main.ts"
 profile "2d"
 look "looks/sample.ogt"

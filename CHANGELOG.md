@@ -13,7 +13,7 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
-## Unreleased
+## 0.7.0 — 2026-10-28
 
 The art contract (docs/art.md §2.1, stream A1): a game's style as data
 every asset holds, beside the frame's look. Data only: nothing conforms to

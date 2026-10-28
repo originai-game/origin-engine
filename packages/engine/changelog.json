@@ -3,141 +3,150 @@
   "about": "Machine-readable changelog of @origingame/engine (docs/release.md §3). kind: patch (0.x.y, compatible) or minor (0.x.0, has breaks). simulation: changed when a game's world can step differently (the golden replays' hashes moved, scripts/replay-gate.ts), else unchanged; versions before 0.6.1 were not measured and say changed. breaking: what a game may have to edit, each with the fix; find lists the identifiers og upgrade searches the game's sources for, codemod a mechanical rewrite it applies. CHANGELOG.md has the prose.",
   "unreleased": {
     "simulation": "unchanged",
-    "breaking": [
-      {
-        "member": "cook: the art contract's conformance",
-        "change": "A project whose look (project.ogt look, or one extending a preset) sets art blocks now cooks its assets conformed to them: 2D art to the pixel grid, the palette and the line (and, with stream A3, models, mesh textures and clips to the shape, texel and motion contract). Frames of such a game change. With stream A4 such a project (one naming its look in project.ogt) also draws under the contract's runtime defaults: cleanEdge pixel-art rotation, the line on sprites the cook did not line, ArtCamera's preset on an applied look, ArtMotion.stepFps as the animation step. At run time, a look with art blocks also sets the camera from ArtCamera when applied, defaults Sprite.outline from ArtLine, draws pixel art through cleanEdge under ArtPixels.rotation cleanEdge, and defaults AnimationPlayer.stepFps from ArtMotion.stepFps, which changes the ticks of a game whose animation drives play (rubber-hose-animation, sculpted-clay).",
-        "fix": "Keep it (the style is the point), or opt an asset out with conform off in its import settings or project.ogt conform { off ... }, or set the preset's art blocks to zero in the game's look. At run time: a player whose own AnimationPlayer.stepFps is above 0 keeps it, and ArtMotion { stepFps 0 } in the game's look turns the default off; the camera preset is applied with the look, before GameDesc.start, so camera code in start or later wins.",
-        "find": [
-          "extends"
-        ]
-      }
-    ],
-    "added": [
-      {
-        "member": "og.ArtPalette",
-        "summary": "New resource (module art): the palette the assets' texels sit on: colors, strict, maxColors, rampSteps, accents, dither; no constraint at zero."
-      },
-      {
-        "member": "og.ArtPixels",
-        "summary": "New resource: the pixel grid of 2D art: unit, logicalHeight, spriteSizes, rotation, rotationSteps, snap; no constraint at zero."
-      },
-      {
-        "member": "og.ArtTexels",
-        "summary": "New resource: texel density on 3D surfaces: density, maxSize, filter, mips; no constraint at zero."
-      },
-      {
-        "member": "og.ArtShape",
-        "summary": "New resource: the shape language of models: propFaces, characterFaces, normals, normalAngle, bevel, voxel, silhouette; no constraint at zero."
-      },
-      {
-        "member": "og.ArtLine",
-        "summary": "New resource: the line the assets carry: width, color, place, distanceFalloff; no line at width 0."
-      },
-      {
-        "member": "og.ArtMotion",
-        "summary": "New resource: stepFps, maxFrames, squash; no constraint at zero."
-      },
-      {
-        "member": "og.ArtCamera",
-        "summary": "New resource: projection, fixedAngle, pitch, yaw, fovMin, fovMax, pixelPerfect; no constraint at zero."
-      },
-      {
-        "member": "og.ArtRotation",
-        "summary": "New enum: free, nearest, cleanEdge, prerotated."
-      },
-      {
-        "member": "og.ArtFilter",
-        "summary": "New enum: any, nearest, linear."
-      },
-      {
-        "member": "og.ArtMips",
-        "summary": "New enum: any, full, none."
-      },
-      {
-        "member": "og.ArtNormals",
-        "summary": "New enum: any, smooth, flat, angle."
-      },
-      {
-        "member": "og.ArtLinePlace",
-        "summary": "New enum: outside, inside, both."
-      },
-      {
-        "member": "og.ArtProjection",
-        "summary": "New enum: any, perspective, orthographic."
-      },
-      {
-        "member": "GameDesc.look",
-        "summary": "Left out or empty, project.ogt's look \"looks/<id>.ogt\" line is applied when it has one; the two naming different looks is refused. A project without the line runs as before."
-      },
-      {
-        "member": "LookInfo.resources",
-        "summary": "Names the art resources a look sets too."
-      },
-      {
-        "member": "og.render.applyLook",
-        "summary": "Inside a system, an art resource the system does not declare among its writes is left as it is instead of refusing the look."
-      },
-      {
-        "member": "og.load.look",
-        "summary": "A look's blocks include the seven art resources, checked against their records as the frame's are; the 37 presets carry their catalogue style's values."
-      },
-      {
-        "member": "project.ogt look",
-        "summary": "project.ogt's look \"looks/<id>.ogt\" names the look whose art contract the cook reads before any asset cooks; create writes it beside GameDesc.look."
-      },
-      {
-        "member": "og.ArtLine.brush",
-        "summary": "The brush the cook draws a 2D line with (og.ArtBrush); diamond at zero."
-      },
-      {
-        "member": "og.ArtBrush",
-        "summary": "New enum: diamond, circle, square."
-      },
-      {
-        "member": "og cook conform",
-        "summary": "The cook conforms sprites, flipbooks, tile sets and UI images to the look's art contract (pixel grid, 1-bit alpha, Oklab palette with dither, line, prerotated cells, painted 2D) and writes <id>#index for palette swaps; conform off and project.ogt conform { off } opt out; og cook --report lists every change. Byte-identical without a contract."
-      },
-      {
-        "member": "artBrief",
-        "summary": "Knowledge (scripts/brief.ts) and @origingame/create-game: artBrief(look, kind, subject, options?) compiles the flattened look and its catalogue entry into the request for one asset: prompt, references, generator parameters; readLook(dir) and presetLook(slug) read a look from disk. A public contract (docs/art.md §2.2)."
-      },
-      {
-        "member": "og style check",
-        "summary": "og style check [project] [--title|--play|--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]: every cooked asset measured against the look's art contract (palette hit rate within ΔE00 2, colours, pixel grid and half pixels, line, texel size, filter and mips, faces against the budget, flat-normal share, texel density and spread), every opt-out listed, and the title, play and results frames (project.ogt's screens block) measured; --critic prints the catalogue's three checks and the frames only. og doctor --project has a style line; og build --publish prints it as warnings, never refusing."
-      },
-      {
-        "member": "og.Sprite.outline",
-        "summary": "A pixel outline this many logical pixels wide (0 to 4), drawn by the sprite shader from the texture's alpha; 0 is none, or under the project's art contract the look's ArtLine.width for a texture the cook did not line."
-      },
-      {
-        "member": "og.Sprite.outlineColor",
-        "summary": "The outline's linear colour; at its default, the art contract's ArtLine.color."
-      },
-      {
-        "member": "og.Sprite.palette",
-        "summary": "A palette swap: the sprite draws its texture's index texture (the cook's <id>#index) through a row of this palette texture of N rows; 0 is none."
-      },
-      {
-        "member": "og.Sprite.paletteRow",
-        "summary": "The row of Sprite.palette drawn."
-      },
-      {
-        "member": "og.Tilemap.palette",
-        "summary": "A palette swap of every tile layer through a row of this palette texture; 0 is none."
-      },
-      {
-        "member": "og.Tilemap.paletteRow",
-        "summary": "The row of Tilemap.palette drawn."
-      },
-      {
-        "member": "art contract at run time",
-        "summary": "Under project.ogt's look (stream A4): ArtPixels.rotation cleanEdge draws pixel-art textures through the new cleanEdge sampler (og-render TextureFilter::CleanEdge), ArtLine defaults Sprite.outline, ArtCamera sets the camera's projection, angle and field of view when a look is applied and pixelPerfect snaps the 2D camera by logical pixels, ArtMotion.stepFps defaults AnimationPlayer.stepFps, and a strict ArtPalette tints the UI's icons to their nearest palette colour. Without the look line nothing changes."
-      }
-    ],
+    "breaking": [],
+    "added": [],
     "fixed": []
   },
   "versions": [
+    {
+      "version": "0.7.0",
+      "date": "2026-10-28",
+      "kind": "minor",
+      "simulation": "unchanged",
+      "breaking": [
+        {
+          "member": "cook: the art contract's conformance",
+          "change": "A project whose look (project.ogt look, or one extending a preset) sets art blocks now cooks its assets conformed to them: 2D art to the pixel grid, the palette and the line (and, with stream A3, models, mesh textures and clips to the shape, texel and motion contract). Frames of such a game change. With stream A4 such a project (one naming its look in project.ogt) also draws under the contract's runtime defaults: cleanEdge pixel-art rotation, the line on sprites the cook did not line, ArtCamera's preset on an applied look, ArtMotion.stepFps as the animation step. At run time, a look with art blocks also sets the camera from ArtCamera when applied, defaults Sprite.outline from ArtLine, draws pixel art through cleanEdge under ArtPixels.rotation cleanEdge, and defaults AnimationPlayer.stepFps from ArtMotion.stepFps, which changes the ticks of a game whose animation drives play (rubber-hose-animation, sculpted-clay).",
+          "fix": "Keep it (the style is the point), or opt an asset out with conform off in its import settings or project.ogt conform { off ... }, or set the preset's art blocks to zero in the game's look. At run time: a player whose own AnimationPlayer.stepFps is above 0 keeps it, and ArtMotion { stepFps 0 } in the game's look turns the default off; the camera preset is applied with the look, before GameDesc.start, so camera code in start or later wins.",
+          "find": [
+            "extends"
+          ]
+        }
+      ],
+      "added": [
+        {
+          "member": "og.ArtPalette",
+          "summary": "New resource (module art): the palette the assets' texels sit on: colors, strict, maxColors, rampSteps, accents, dither; no constraint at zero."
+        },
+        {
+          "member": "og.ArtPixels",
+          "summary": "New resource: the pixel grid of 2D art: unit, logicalHeight, spriteSizes, rotation, rotationSteps, snap; no constraint at zero."
+        },
+        {
+          "member": "og.ArtTexels",
+          "summary": "New resource: texel density on 3D surfaces: density, maxSize, filter, mips; no constraint at zero."
+        },
+        {
+          "member": "og.ArtShape",
+          "summary": "New resource: the shape language of models: propFaces, characterFaces, normals, normalAngle, bevel, voxel, silhouette; no constraint at zero."
+        },
+        {
+          "member": "og.ArtLine",
+          "summary": "New resource: the line the assets carry: width, color, place, distanceFalloff; no line at width 0."
+        },
+        {
+          "member": "og.ArtMotion",
+          "summary": "New resource: stepFps, maxFrames, squash; no constraint at zero."
+        },
+        {
+          "member": "og.ArtCamera",
+          "summary": "New resource: projection, fixedAngle, pitch, yaw, fovMin, fovMax, pixelPerfect; no constraint at zero."
+        },
+        {
+          "member": "og.ArtRotation",
+          "summary": "New enum: free, nearest, cleanEdge, prerotated."
+        },
+        {
+          "member": "og.ArtFilter",
+          "summary": "New enum: any, nearest, linear."
+        },
+        {
+          "member": "og.ArtMips",
+          "summary": "New enum: any, full, none."
+        },
+        {
+          "member": "og.ArtNormals",
+          "summary": "New enum: any, smooth, flat, angle."
+        },
+        {
+          "member": "og.ArtLinePlace",
+          "summary": "New enum: outside, inside, both."
+        },
+        {
+          "member": "og.ArtProjection",
+          "summary": "New enum: any, perspective, orthographic."
+        },
+        {
+          "member": "GameDesc.look",
+          "summary": "Left out or empty, project.ogt's look \"looks/<id>.ogt\" line is applied when it has one; the two naming different looks is refused. A project without the line runs as before."
+        },
+        {
+          "member": "LookInfo.resources",
+          "summary": "Names the art resources a look sets too."
+        },
+        {
+          "member": "og.render.applyLook",
+          "summary": "Inside a system, an art resource the system does not declare among its writes is left as it is instead of refusing the look."
+        },
+        {
+          "member": "og.load.look",
+          "summary": "A look's blocks include the seven art resources, checked against their records as the frame's are; the 37 presets carry their catalogue style's values."
+        },
+        {
+          "member": "project.ogt look",
+          "summary": "project.ogt's look \"looks/<id>.ogt\" names the look whose art contract the cook reads before any asset cooks; create writes it beside GameDesc.look."
+        },
+        {
+          "member": "og.ArtLine.brush",
+          "summary": "The brush the cook draws a 2D line with (og.ArtBrush); diamond at zero."
+        },
+        {
+          "member": "og.ArtBrush",
+          "summary": "New enum: diamond, circle, square."
+        },
+        {
+          "member": "og cook conform",
+          "summary": "The cook conforms sprites, flipbooks, tile sets and UI images to the look's art contract (pixel grid, 1-bit alpha, Oklab palette with dither, line, prerotated cells, painted 2D) and writes <id>#index for palette swaps; conform off and project.ogt conform { off } opt out; og cook --report lists every change. Byte-identical without a contract."
+        },
+        {
+          "member": "artBrief",
+          "summary": "Knowledge (scripts/brief.ts) and @origingame/create-game: artBrief(look, kind, subject, options?) compiles the flattened look and its catalogue entry into the request for one asset: prompt, references, generator parameters; readLook(dir) and presetLook(slug) read a look from disk. A public contract (docs/art.md §2.2)."
+        },
+        {
+          "member": "og style check",
+          "summary": "og style check [project] [--title|--play|--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]: every cooked asset measured against the look's art contract (palette hit rate within ΔE00 2, colours, pixel grid and half pixels, line, texel size, filter and mips, faces against the budget, flat-normal share, texel density and spread), every opt-out listed, and the title, play and results frames (project.ogt's screens block) measured; --critic prints the catalogue's three checks and the frames only. og doctor --project has a style line; og build --publish prints it as warnings, never refusing."
+        },
+        {
+          "member": "og.Sprite.outline",
+          "summary": "A pixel outline this many logical pixels wide (0 to 4), drawn by the sprite shader from the texture's alpha; 0 is none, or under the project's art contract the look's ArtLine.width for a texture the cook did not line."
+        },
+        {
+          "member": "og.Sprite.outlineColor",
+          "summary": "The outline's linear colour; at its default, the art contract's ArtLine.color."
+        },
+        {
+          "member": "og.Sprite.palette",
+          "summary": "A palette swap: the sprite draws its texture's index texture (the cook's <id>#index) through a row of this palette texture of N rows; 0 is none."
+        },
+        {
+          "member": "og.Sprite.paletteRow",
+          "summary": "The row of Sprite.palette drawn."
+        },
+        {
+          "member": "og.Tilemap.palette",
+          "summary": "A palette swap of every tile layer through a row of this palette texture; 0 is none."
+        },
+        {
+          "member": "og.Tilemap.paletteRow",
+          "summary": "The row of Tilemap.palette drawn."
+        },
+        {
+          "member": "art contract at run time",
+          "summary": "Under project.ogt's look (stream A4): ArtPixels.rotation cleanEdge draws pixel-art textures through the new cleanEdge sampler (og-render TextureFilter::CleanEdge), ArtLine defaults Sprite.outline, ArtCamera sets the camera's projection, angle and field of view when a look is applied and pixelPerfect snaps the 2D camera by logical pixels, ArtMotion.stepFps defaults AnimationPlayer.stepFps, and a strict ArtPalette tints the UI's icons to their nearest palette colour. Without the look line nothing changes."
+        }
+      ],
+      "fixed": []
+    },
     {
       "version": "0.6.6",
       "date": "2026-10-28",
