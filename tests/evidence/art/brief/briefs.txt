@@ -1,0 +1,87 @@
+=== bun scripts/brief.ts prop "a lantern keeper's lantern" --look 16bit-pixel
+A game prop sprite of a lantern keeper's lantern.
+Style: Late console pixels. Fuller sprites with ramped shading, parallax layers behind the action and saturated colour, the richer pixel language of the following hardware generation. Volume from stepped shading, layered parallax for depth, lively multi-frame animation, saturated colour kept to the characters and pickups so the playfield reads.
+Palette: at most 64 distinct colours in this asset; at most 6 shades per hue from shadow to highlight; 32 to 64 colours; ramps of 4 to 6 steps; hue-shifted shadows (cooler) and highlights (warmer); saturated accents on characters, calmer backgrounds.
+Size: pixel art on a 16 x 16 logical-pixel grid (16 pixels per metre), for a screen 224 logical pixels tall, drawn at 64x: every logical pixel one 64 x 64 block of one flat colour, hard edges, no anti-aliasing.
+Cells: each side of a sprite cell is one of 16, 32, 48 logical pixels.
+Background: fully transparent, nothing outside the subject.
+Line: a 1-pixel dark cool grey #272730 line on the shape's own edge pixels (corners left open).
+View: orthographic, no perspective.
+Reference: the image shows the style; match its palette, line and rendering, not its content.
+Avoid: anti-aliased or mixed-resolution sprites; parallax layers that match the playfield speed; blur; anti-aliased or blurred edges; soft gradients; pixels of more than one size; a background or ground shadow; text, letters or watermarks.
+
+image: {"transparent":true,"width":1024,"height":1024,"grid":{"width":16,"height":16,"scale":64},"tiling":false}
+references:
+  style: previews/16bit-pixel.webp
+
+=== bun scripts/brief.ts prop "a lantern keeper's lantern" --look faceted-low-poly
+A 3D model of a lantern keeper's lantern, a game prop about 1 m across, its base on the ground.
+Style: Faceted low poly. Visible polygon facets and simplified meshes, broad colour fields in place of textures, depth from silhouettes and layers. Planar facets, flat material colours, soft fog for distance, silhouettes designed from few polygons.
+Palette: at most 32 distinct colours in this asset; 16 to 32 colours; colour per material, gradients only from lighting and fog.
+Shape: at most 200 triangles; flat-shaded facets, every face one colour with a hard edge to its neighbour.
+Texture: 64 x 64 texels, sampled nearest, no mip maps.
+Line: none, no outline.
+Reference: the image shows the style; match its palette, line and rendering, not its content.
+Avoid: smooth normals; detailed textures; high polygon counts that hide the facets; smooth shading across facets; text, letters or watermarks.
+
+model: {"faceBudget":200,"textureSize":64,"normals":"flat","voxel":0,"bevel":0,"filter":"nearest","mips":"none","metres":1}
+references:
+  style: previews/faceted-low-poly.webp
+
+=== bun scripts/brief.ts character "a lantern keeper's lantern" --look monochrome-pixel
+A game character sprite of a lantern keeper's lantern, full body, standing.
+Style: One-ink pixels. Black and white (or one ink on one paper) pixels where silhouette and negative space do the work, with at most one accent for signals. Two values, crisp silhouettes, patterns in place of shading, negative space as composition, one accent with one meaning.
+Palette: only these 4 colours, each pixel exactly one of them: dark muted green #14261b, deep green #3d6234, lime #84a440, pale lime #c9da8f; at most 3 distinct colours in this asset; tones between two colours mixed by a bayer8 dither pattern, never a smooth gradient; 2 colours plus at most 1 accent; pick ink and paper first; shading only through dither or pattern; the accent means one thing.
+Size: pixel art on a 16 x 24 logical-pixel grid (16 pixels per metre), for a screen 160 logical pixels tall, drawn at 43x: every logical pixel one 43 x 43 block of one flat colour, hard edges, no anti-aliasing.
+Cells: each side of a sprite cell is one of 12, 16, 24 logical pixels.
+Background: fully transparent, nothing outside the subject.
+Line: the silhouette is the outline.
+View: orthographic, no perspective.
+Reference: the image shows the style; match its palette, line and rendering, not its content.
+Avoid: grey anti-aliasing; decorative accent colours; dense textures that break silhouettes; anti-aliased or blurred edges; soft gradients; pixels of more than one size; a background or ground shadow; text, letters or watermarks.
+
+image: {"transparent":true,"width":688,"height":1032,"grid":{"width":16,"height":24,"scale":43},"tiling":false}
+references:
+  style: previews/monochrome-pixel.webp
+
+=== bun scripts/brief.ts character "a lantern keeper's lantern" --look voxel-worlds
+A 3D game character of a lantern keeper's lantern, full body in a neutral standing pose, about 2 m tall, facing the front.
+Style: Voxel worlds. Cubes build characters, architecture and terrain, visible in stepped silhouettes and broken edges, under any lighting. Everything from cubes of one size, palette-coloured faces, strong ambient occlusion in corners, destruction that reveals the grid.
+Palette: at most 64 distinct colours in this asset; 32 to 64 colours (a voxel palette); one palette for the whole world; shade by light, not by palette steps.
+Shape: at most 5000 triangles; flat-shaded facets, every face one colour with a hard edge to its neighbour; built of 0.1 m cubes on one grid, each cube one colour.
+Texture: 1024 x 1024 texels, sampled nearest, no mip maps.
+Line: none, no outline.
+Reference: the image shows the style; match its palette, line and rendering, not its content.
+Avoid: mixed voxel sizes; smooth shading; textures inside voxels; smooth shading across facets; text, letters or watermarks.
+
+model: {"faceBudget":5000,"textureSize":1024,"normals":"flat","voxel":0.1,"bevel":0,"filter":"nearest","mips":"none","metres":2}
+references:
+  style: previews/voxel-worlds.webp
+
+=== bun scripts/brief.ts texture "a lantern keeper's lantern" --look low-resolution-3d
+A seamless tiling surface texture of a lantern keeper's lantern, seen straight on and evenly lit.
+Style: Low-resolution 3D. Simplified models, small textures and pixelated output recall early 3D consoles, often with modern lighting on top. A low-resolution frame with nearest upscaling, wobbling vertices and warped textures, short fog, modern light where it helps mood.
+Palette: tones between two colours mixed by a bayer2 dither pattern, never a smooth gradient; free, but posterised to 32 levels per channel; fog colour equals the clear colour; dithered gradients.
+Size: 128 x 128 texels covering 2 m (64 texels per metre), sampled nearest: drawn at 8x, every texel one 8 x 8 block of one flat colour, no mip maps: as crisp far away as near.
+Tiling: the left edge continues the right and the top the bottom, with no seam.
+Line: none, no outline.
+Reference: the image shows the style; match its palette, line and rendering, not its content.
+Avoid: high-resolution textures; smooth anti-aliased edges; long draw distance; fine detail smaller than one texel; text, letters or watermarks.
+
+image: {"transparent":false,"width":1024,"height":1024,"grid":{"width":128,"height":128,"scale":8},"tiling":true}
+references:
+  style: previews/low-resolution-3d.webp
+
+=== bun scripts/brief.ts backdrop "a lantern keeper's lantern" --look watercolor-wash
+A backdrop of a lantern keeper's lantern: a full-frame background layer with no characters in it.
+Style: Watercolour wash. Transparent layers, pooled pigment at the edges and open paper space give scenes a soft, breathing quality. Layered translucent washes, edges that pool and bloom, white paper as light, depth by overlapping washes and haze.
+Palette: at most 24 distinct colours in this asset; 12 to 24 colours; light values dominate; two or three pigments mixed into the rest; no pure black.
+Size: 1536 x 864 pixels (resolution native output; scale characters 80 to 160 px).
+Line: none (pigment rims instead).
+Reference: the image shows the style; match its palette, line and rendering, not its content.
+Avoid: opaque paint; hard black outlines; everything equally soft (the player must stay crisp); text, letters or watermarks.
+
+image: {"transparent":false,"width":1536,"height":864,"grid":null,"tiling":false}
+references:
+  style: previews/watercolor-wash.webp
+
