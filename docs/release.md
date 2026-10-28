@@ -138,8 +138,7 @@ conformance, the runtime defaults, the art brief, `og style check` and the
 family sample scenes. It has one breaking entry: a look that sets the art
 blocks now conforms the assets. The replay gate passes 2/2 goldens with
 the tarball binaries on darwin-arm64 and win32-x64. The tarballs passed on
-Mac, Linux and Windows, and the registry install passed on Mac and Linux;
-Windows' registry run is pending. See the
+Mac, Linux and Windows, and so did the registry install. See the
 [release receipt](../tests/evidence/release/0.7.0.md).
 
 **0.6.6 released (2026-10-28 UTC).** All five npm packages are
