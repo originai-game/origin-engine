@@ -67,6 +67,10 @@ world's registry, so `world_hash` moves; the replays' portable hash does not.
   at zero.
 - **Breaking** (the release is 0.7.0, a minor): a project whose look sets
   art blocks cooks its assets conformed to them, so its frames change.
+  At run time such a look also sets the camera (`ArtCamera`), the sprite
+  outline (`ArtLine`), cleanEdge rotation and the animation step
+  (`ArtMotion.stepFps`, which changes the ticks of a game whose
+  animation drives play).
   Fix: keep it, or `conform off` per asset, project.ogt's
   `conform { off ... }`, or the preset's art blocks set to zero in the
   game's look.
@@ -108,6 +112,26 @@ world's registry, so `world_hash` moves; the replays' portable hash does not.
   document; exit 0 within the contract or with no look, 3 off it.
   `og doctor --project` has a `style` line, and `og build --publish`
   prints the summary as warnings, never refusing a build.
+- `og.Sprite.outline` (stream A4): a pixel outline this many logical
+  pixels wide (0 to 4), drawn by the sprite shader from the texture's
+  alpha; 0 is none, or, under the project's art contract, the look's
+  `ArtLine.width` for a texture the cook did not line.
+- `og.Sprite.outlineColor`: the outline's linear colour; at its default,
+  the contract's `ArtLine.color`.
+- `og.Sprite.palette`: a palette swap; the sprite draws its texture's
+  `<id>#index` through a row of this palette texture of N rows; 0 is none.
+- `og.Sprite.paletteRow`: the row of `Sprite.palette` drawn.
+- `og.Tilemap.palette`: a palette swap of every tile layer; 0 is none.
+- `og.Tilemap.paletteRow`: the row of `Tilemap.palette` drawn.
+- Art contract at run time (stream A4, docs/art.md §2.4), only under
+  project.ogt's `look`: `ArtPixels.rotation cleanEdge` draws pixel-art
+  textures through the new cleanEdge sampler, `ArtLine` defaults
+  `Sprite.outline`, `ArtCamera` sets the camera's projection, angle and
+  field of view when a look is applied (`pixelPerfect` snaps a 2D camera
+  by logical pixels), `ArtMotion.stepFps` defaults
+  `AnimationPlayer.stepFps`, and a strict `ArtPalette` tints the UI's
+  icons to the nearest palette colour. A game without the line draws as
+  before; one with it changes frames (the release's breaking entry).
 
 ## 0.6.6 — 2026-10-28
 

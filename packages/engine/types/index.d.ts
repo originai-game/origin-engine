@@ -6520,6 +6520,24 @@ export interface Sprite {
    * @default 1
    */
   layers: number;
+  /**
+   * A pixel outline this many logical pixels wide, drawn by the sprite shader round the texture's opaque texels (a diamond of whole logical pixels outside the art, the quad grown to hold it; a sheet's neighbouring frame never lines it), for a sprite whose line cannot be baked by the cook: scaled, tinted or made at run time. A logical pixel is 1 / ArtPixels.unit world units when the art contract sets a unit, else one texel of the region. 0 is none, or, under the project's art contract (project.ogt's `look`), the look's ArtLine.width for a sprite whose texture the cook did not line (one not cooked as pixel art) when the contract sets ArtPixels.unit. Untextured sprites take none.
+   *
+   * @range 0..4
+   */
+  outline: number;
+  /**
+   * The outline's linear colour; at its default, the art contract's ArtLine.color when the line comes from the contract.
+   *
+   * @default { r: 0.02, g: 0.02, b: 0.03 }
+   */
+  outlineColor: Color;
+  /**
+   * A palette swap (docs/art.md §2.4): a texture of N rows of colours (load it as `kind pixel`), row r's texel i the colour palette index i takes in row r. The sprite then draws its texture's index texture (the cook's `<id>#index`, written beside a texture the art contract maps to a palette; a texture that is itself an index texture is drawn as it is) through row paletteRow: team colours, a hit flash in palette, a day and a night ramp. Flipbook frames swap too. 0 is none; a texture without an index texture draws as it is, with a warning.
+   */
+  palette: Texture;
+  /** The row of `palette` drawn (past the last, the last). */
+  paletteRow: number;
 }
 
 /**
@@ -13966,6 +13984,12 @@ export interface Tilemap {
    * @range 0..2
    */
   friction: number;
+  /**
+   * A palette swap of every layer (og.Sprite.palette): the tile sets' index textures (the cook's `<id>#index`) drawn through row paletteRow of this texture of N rows; 0 is none.
+   */
+  palette: Texture;
+  /** The row of `palette` drawn (past the last, the last). */
+  paletteRow: number;
 }
 
 /** One layer of a map. */
@@ -23739,7 +23763,7 @@ export declare namespace og {
    * A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.
    * Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.
    */
-  const Sprite: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly array: FieldSpec<"TextureArray">; readonly arrayLayer: FieldSpec<"u32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly anchor: FieldSpec<"Vector2">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly layer: FieldSpec<"i32">; readonly sortY: FieldSpec<"bool">; readonly facing: FieldSpec<"SpriteFacing">; readonly flipX: FieldSpec<"bool">; readonly flipY: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly glow: FieldSpec<"f32">; readonly blend: FieldSpec<"SpriteBlend">; readonly castShadow: FieldSpec<"bool">; readonly sliceX: FieldSpec<"Vector2">; readonly sliceY: FieldSpec<"Vector2">; readonly sliceScale: FieldSpec<"f32">; readonly shadow: FieldSpec<"f32">; readonly shadowSize: FieldSpec<"Vector2">; readonly shadowOffset: FieldSpec<"Vector2">; readonly dropShadow: FieldSpec<"f32">; readonly dropShadowHeight: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32"> }, Sprite>;
+  const Sprite: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly array: FieldSpec<"TextureArray">; readonly arrayLayer: FieldSpec<"u32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly anchor: FieldSpec<"Vector2">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly layer: FieldSpec<"i32">; readonly sortY: FieldSpec<"bool">; readonly facing: FieldSpec<"SpriteFacing">; readonly flipX: FieldSpec<"bool">; readonly flipY: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly glow: FieldSpec<"f32">; readonly blend: FieldSpec<"SpriteBlend">; readonly castShadow: FieldSpec<"bool">; readonly sliceX: FieldSpec<"Vector2">; readonly sliceY: FieldSpec<"Vector2">; readonly sliceScale: FieldSpec<"f32">; readonly shadow: FieldSpec<"f32">; readonly shadowSize: FieldSpec<"Vector2">; readonly shadowOffset: FieldSpec<"Vector2">; readonly dropShadow: FieldSpec<"f32">; readonly dropShadowHeight: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32">; readonly outline: FieldSpec<"f32">; readonly outlineColor: FieldSpec<"Color">; readonly palette: FieldSpec<"Texture">; readonly paletteRow: FieldSpec<"u32"> }, Sprite>;
   /**
    * Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
    */
@@ -24914,7 +24938,7 @@ export declare namespace og {
   /**
    * Draws a loaded map with its top-left corner at the entity's position (z included) and gives its collision layers static colliders. The og.tilemap system adopts it in the first tick it exists: from then on og.tilemap.setTile and getTile reach it.
    */
-  const Tilemap: ComponentType<{ readonly map: FieldSpec<"TilemapAsset">; readonly layer: FieldSpec<"i32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly collision: FieldSpec<"bool">; readonly colliderLayers: FieldSpec<"u32">; readonly friction: FieldSpec<"f32"> }, Tilemap>;
+  const Tilemap: ComponentType<{ readonly map: FieldSpec<"TilemapAsset">; readonly layer: FieldSpec<"i32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly collision: FieldSpec<"bool">; readonly colliderLayers: FieldSpec<"u32">; readonly friction: FieldSpec<"f32">; readonly palette: FieldSpec<"Texture">; readonly paletteRow: FieldSpec<"u32"> }, Tilemap>;
   /**
    * Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component.
    * Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.

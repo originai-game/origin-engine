@@ -3641,9 +3641,10 @@ impl Renderer {
         let Some(gpu) = self.cache.texture_arrays[i].as_ref() else {
             return;
         };
-        let sampler = match filter {
-            TextureFilter::Nearest => &self.sprite_sampler_nearest,
-            TextureFilter::Linear => &self.sprite_sampler,
+        let sampler = if filter.is_nearest() {
+            &self.sprite_sampler_nearest
+        } else {
+            &self.sprite_sampler
         };
         let group = self.sprite_arrays.as_ref().expect("made above").bind_group(
             &self.device,
@@ -4873,19 +4874,30 @@ impl Renderer {
         let Some(t) = texture else {
             return &self.white_sprite_group;
         };
-        let nearest = self.cache.filters.get(t.index()) == Some(&TextureFilter::Nearest);
+        let filter = self
+            .cache
+            .filters
+            .get(t.index())
+            .copied()
+            .unwrap_or_default();
         let slot = &mut self.cache.sprite_groups[t.index()];
         if slot.is_none() {
             *slot = Some(sprite_bind_group(
                 &self.device,
                 &self.sprite_layout,
                 &self.cache.textures[t.index()].view,
-                if nearest {
+                if filter.is_nearest() {
                     &self.sprite_sampler_nearest
                 } else {
                     &self.sprite_sampler
                 },
-                [0.0; 4],
+                // sprite.wgsl's `msdf.w`: 1 samples through cleanEdge.
+                [
+                    0.0,
+                    0.0,
+                    0.0,
+                    (filter == TextureFilter::CleanEdge) as u32 as f32,
+                ],
             ));
         }
         slot.as_ref().expect("made above")

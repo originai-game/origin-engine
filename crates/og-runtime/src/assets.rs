@@ -678,24 +678,7 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
         super::stream::add_texture(eng, &group, &id, handle);
         return Ok(i);
     }
-    let pixel;
-    let formats = texture_formats(eng);
-    let data = {
-        let assets = eng.assets.borrow();
-        let (bytes, bundle) = assets.blob(&id)?;
-        let tex = bundle
-            .texture(&id, bytes.bytes())
-            .map_err(|e| e.to_string())?;
-        pixel = tex.is_pixel_art();
-        match hooks().map(|h| h.texture(&tex, formats.as_ref())) {
-            Some(Fetch::Ready(d)) => d,
-            Some(Fetch::Pending) => {
-                return Err(format!("{id}: the texture is still being transcoded"));
-            }
-            Some(Fetch::Failed(e)) => return Err(format!("{id}: {e}")),
-            None => return Err("no host is installed to decode textures".into()),
-        }
-    };
+    let (data, pixel) = decode_texture(eng, &id)?;
     let mut rs = eng.render.borrow_mut();
     let handle = rs.scene.add_texture_source(data);
     if pixel {
@@ -704,11 +687,60 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
     }
     rs.textures.push(handle);
     let i = rs.textures.len() - 1;
+    drop(rs);
     eng.assets
         .borrow_mut()
         .by_path
         .insert(format!("texture:{id}"), i);
+    link_index(eng, &id, handle);
     Ok(i)
+}
+
+/// A cooked texture decoded through the host's texture hook, and whether
+/// its kind is pixel art (sampled nearest).
+fn decode_texture(eng: &Engine, id: &str) -> Result<(og_render::TextureSource, bool), String> {
+    let formats = texture_formats(eng);
+    let assets = eng.assets.borrow();
+    let (bytes, bundle) = assets.blob(id)?;
+    let tex = bundle
+        .texture(id, bytes.bytes())
+        .map_err(|e| e.to_string())?;
+    let pixel = tex.is_pixel_art();
+    match hooks().map(|h| h.texture(&tex, formats.as_ref())) {
+        Some(Fetch::Ready(d)) => Ok((d, pixel)),
+        Some(Fetch::Pending) => Err(format!("{id}: the texture is still being transcoded")),
+        Some(Fetch::Failed(e)) => Err(format!("{id}: {e}")),
+        None => Err("no host is installed to decode textures".into()),
+    }
+}
+
+/// A palette swap's index texture (docs/art.md §2.4,
+/// `super::art::ArtState::index_of`): `texture` itself when its id is an
+/// index texture (`<id>#index`), else the cook's `<id>#index` beside it,
+/// added to the renderer only (never a Texture handle of the game's, so
+/// the handles a game holds are the same with and without the contract).
+fn link_index(eng: &Engine, id: &str, texture: og_render::TextureHandle) {
+    let index = if id.ends_with("#index") {
+        Some(texture)
+    } else {
+        let name = format!("{id}#index");
+        let known = eng.assets.borrow().blob(&name).is_ok();
+        match known.then(|| decode_texture(eng, &name)) {
+            Some(Ok((data, pixel))) => {
+                let mut rs = eng.render.borrow_mut();
+                let h = rs.scene.add_texture_source(data);
+                if pixel {
+                    rs.scene
+                        .set_texture_filter(h, og_render::TextureFilter::Nearest);
+                }
+                Some(h)
+            }
+            _ => None,
+        }
+    };
+    if let Some(index) = index {
+        eng.render.borrow_mut().art.index_of.insert(texture, index);
+    }
 }
 
 /// Reads and decodes a cooked texture array's layers through the host's

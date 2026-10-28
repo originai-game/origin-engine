@@ -288,6 +288,75 @@ fn a_stepped_player_holds_each_pose_for_its_step() {
     assert_eq!(smooth_changes, 60);
 }
 
+/// A resource standing in for og-runtime's ArtMotion: the step after a
+/// field of four bytes, so the offset is read, not assumed 0.
+#[derive(Clone, Copy, Debug, Default, PartialEq, og_core::Reflect)]
+#[reflect(name = "test.Motion")]
+struct Motion {
+    max_frames: u32,
+    step_fps: f32,
+}
+
+/// A player whose own `stepFps` is 0 takes the resource's step
+/// ([`StepDefault`], the art contract's ArtMotion.stepFps), read every
+/// tick: held poses while it is 12, smooth again when it goes back to 0,
+/// and the component itself is never written with it. A player with its
+/// own step keeps it. Ways this could fail: the default is ignored (60
+/// pose changes), written into the component (it would read 12), read at
+/// the wrong offset (`max_frames`' 7 instead of 12: 7 or 8 changes), or
+/// read once at install (smooth never comes back).
+#[test]
+fn a_player_without_its_own_step_takes_the_contracts() {
+    let mut w = World::new(&WorldDesc {
+        tick_rate: 60,
+        seed: 1,
+    })
+    .unwrap();
+    w.register::<Motion>().unwrap();
+    w.insert_resource(Motion {
+        max_frames: 7,
+        step_fps: 12.0,
+    })
+    .unwrap();
+    let anim = install_with(
+        &mut w,
+        Some(StepDefault {
+            resource: "test.Motion".into(),
+            offset: 4,
+        }),
+    )
+    .unwrap();
+    register(&anim);
+    let plain = spawn(&mut w, AnimationPlayer::new(WALK));
+    let own = spawn(
+        &mut w,
+        AnimationPlayer {
+            step_fps: 4.0,
+            ..AnimationPlayer::new(WALK)
+        },
+    );
+    let count = |w: &mut World, ticks: u32| {
+        let (mut changes, mut own_changes) = (0, 0);
+        let (mut last, mut own_last) = (anim.pose(plain), anim.pose(own));
+        for _ in 0..ticks {
+            w.step().unwrap();
+            let (p, o) = (anim.pose(plain), anim.pose(own));
+            changes += (p != last) as u32;
+            own_changes += (o != own_last) as u32;
+            (last, own_last) = (p, o);
+        }
+        (changes, own_changes)
+    };
+    let (changes, own_changes) = count(&mut w, 60);
+    assert!((12..=13).contains(&changes), "{changes} pose changes at 12");
+    assert!((4..=5).contains(&own_changes), "{own_changes} at its own 4");
+    let p: AnimationPlayer = w.get(plain).unwrap();
+    assert_eq!(p.step_fps, 0.0, "the component keeps its own 0");
+    w.resource_mut::<Motion>().unwrap().step_fps = 0.0;
+    let (changes, _) = count(&mut w, 60);
+    assert_eq!(changes, 60, "smooth again without a step");
+}
+
 #[test]
 fn stepped_time_floors_to_the_step_and_ends_on_the_last_frame() {
     assert_eq!(stepped(0.49, 0.0, 1.0, true), 0.49);

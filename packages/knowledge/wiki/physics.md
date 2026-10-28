@@ -18,7 +18,7 @@ module physics {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 6035</sub>
+<sub>`api.ogt` line 6044</sub>
 
 ## Contents
 
@@ -149,7 +149,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 7367</sub>
+<sub>`api.ogt` line 7376</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -179,7 +179,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 7374</sub>
+<sub>`api.ogt` line 7383</sub>
 
 <a id="fn-overlap"></a>
 
@@ -209,7 +209,7 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 7381</sub>
+<sub>`api.ogt` line 7390</sub>
 
 <a id="fn-applyForce"></a>
 
@@ -245,7 +245,7 @@ fn applyForce {
 }
 ```
 
-<sub>`api.ogt` line 7388</sub>
+<sub>`api.ogt` line 7397</sub>
 
 <a id="fn-applyImpulse"></a>
 
@@ -281,7 +281,7 @@ fn applyImpulse {
 }
 ```
 
-<sub>`api.ogt` line 7399</sub>
+<sub>`api.ogt` line 7408</sub>
 
 <a id="fn-applyTorque"></a>
 
@@ -313,7 +313,7 @@ fn applyTorque {
 }
 ```
 
-<sub>`api.ogt` line 7410</sub>
+<sub>`api.ogt` line 7419</sub>
 
 <a id="fn-applyTorqueImpulse"></a>
 
@@ -345,7 +345,7 @@ fn applyTorqueImpulse {
 }
 ```
 
-<sub>`api.ogt` line 7418</sub>
+<sub>`api.ogt` line 7427</sub>
 
 <a id="fn-setMesh"></a>
 
@@ -377,7 +377,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 7426</sub>
+<sub>`api.ogt` line 7435</sub>
 
 <a id="fn-ropePoints"></a>
 
@@ -407,7 +407,7 @@ fn ropePoints {
 }
 ```
 
-<sub>`api.ogt` line 7487</sub>
+<sub>`api.ogt` line 7496</sub>
 
 <a id="fn-clothPoints"></a>
 
@@ -437,7 +437,7 @@ fn clothPoints {
 }
 ```
 
-<sub>`api.ogt` line 7494</sub>
+<sub>`api.ogt` line 7503</sub>
 
 <a id="fn-fluidParticles"></a>
 
@@ -467,7 +467,7 @@ fn fluidParticles {
 }
 ```
 
-<sub>`api.ogt` line 7501</sub>
+<sub>`api.ogt` line 7510</sub>
 
 <a id="fn-fluid3dParticles"></a>
 
@@ -497,7 +497,7 @@ fn fluid3dParticles {
 }
 ```
 
-<sub>`api.ogt` line 7508</sub>
+<sub>`api.ogt` line 7517</sub>
 
 <a id="fn-waterHeight"></a>
 
@@ -531,7 +531,7 @@ fn waterHeight {
 }
 ```
 
-<sub>`api.ogt` line 7515</sub>
+<sub>`api.ogt` line 7524</sub>
 
 <a id="fn-vehicleWheels"></a>
 
@@ -561,7 +561,7 @@ fn vehicleWheels {
 }
 ```
 
-<sub>`api.ogt` line 7524</sub>
+<sub>`api.ogt` line 7533</sub>
 
 <a id="fn-ragdollRigFromSkeleton"></a>
 
@@ -591,7 +591,7 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 7531</sub>
+<sub>`api.ogt` line 7540</sub>
 
 <a id="fn-setRagdollRig"></a>
 
@@ -623,7 +623,7 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 7538</sub>
+<sub>`api.ogt` line 7547</sub>
 
 <a id="fn-ragdollPose"></a>
 
@@ -653,7 +653,7 @@ fn ragdollPose {
 }
 ```
 
-<sub>`api.ogt` line 7546</sub>
+<sub>`api.ogt` line 7555</sub>
 
 <a id="fn-stats"></a>
 
@@ -681,7 +681,7 @@ fn stats {
 }
 ```
 
-<sub>`api.ogt` line 7574</sub>
+<sub>`api.ogt` line 7583</sub>
 
 ## Components, resources and events
 
@@ -753,7 +753,7 @@ component RigidBody {
 }
 ```
 
-<sub>`api.ogt` line 6060</sub>
+<sub>`api.ogt` line 6069</sub>
 
 <a id="record-Collider"></a>
 
@@ -840,7 +840,7 @@ component Collider {
 }
 ```
 
-<sub>`api.ogt` line 6105</sub>
+<sub>`api.ogt` line 6114</sub>
 
 <a id="record-Velocity"></a>
 
@@ -869,7 +869,7 @@ component Velocity {
 }
 ```
 
-<sub>`api.ogt` line 6164</sub>
+<sub>`api.ogt` line 6173</sub>
 
 <a id="record-Physics"></a>
 
@@ -923,7 +923,7 @@ resource Physics {
 }
 ```
 
-<sub>`api.ogt` line 6176</sub>
+<sub>`api.ogt` line 6185</sub>
 
 <a id="record-CollisionStarted"></a>
 
@@ -961,7 +961,7 @@ event CollisionStarted {
 }
 ```
 
-<sub>`api.ogt` line 6210</sub>
+<sub>`api.ogt` line 6219</sub>
 
 <a id="record-CollisionEnded"></a>
 
@@ -984,7 +984,7 @@ event CollisionEnded {
 }
 ```
 
-<sub>`api.ogt` line 6227</sub>
+<sub>`api.ogt` line 6236</sub>
 
 <a id="record-SensorEntered"></a>
 
@@ -1007,7 +1007,7 @@ event SensorEntered {
 }
 ```
 
-<sub>`api.ogt` line 6233</sub>
+<sub>`api.ogt` line 6242</sub>
 
 <a id="record-SensorExited"></a>
 
@@ -1030,7 +1030,7 @@ event SensorExited {
 }
 ```
 
-<sub>`api.ogt` line 6239</sub>
+<sub>`api.ogt` line 6248</sub>
 
 <a id="record-Contact"></a>
 
@@ -1055,7 +1055,7 @@ event Contact {
 }
 ```
 
-<sub>`api.ogt` line 6245</sub>
+<sub>`api.ogt` line 6254</sub>
 
 <a id="record-Joint"></a>
 
@@ -1160,7 +1160,7 @@ component Joint {
 }
 ```
 
-<sub>`api.ogt` line 6262</sub>
+<sub>`api.ogt` line 6271</sub>
 
 <a id="record-CharacterController"></a>
 
@@ -1281,7 +1281,7 @@ component CharacterController {
 }
 ```
 
-<sub>`api.ogt` line 6332</sub>
+<sub>`api.ogt` line 6341</sub>
 
 <a id="record-PlatformerController"></a>
 
@@ -1533,7 +1533,7 @@ component PlatformerController {
 }
 ```
 
-<sub>`api.ogt` line 6419</sub>
+<sub>`api.ogt` line 6428</sub>
 
 <a id="record-CharacterEvent"></a>
 
@@ -1563,7 +1563,7 @@ event CharacterEvent {
 }
 ```
 
-<sub>`api.ogt` line 6621</sub>
+<sub>`api.ogt` line 6630</sub>
 
 <a id="record-Vehicle"></a>
 
@@ -1722,7 +1722,7 @@ component Vehicle {
 }
 ```
 
-<sub>`api.ogt` line 6637</sub>
+<sub>`api.ogt` line 6646</sub>
 
 <a id="record-Rope"></a>
 
@@ -1811,7 +1811,7 @@ component Rope {
 }
 ```
 
-<sub>`api.ogt` line 6755</sub>
+<sub>`api.ogt` line 6764</sub>
 
 <a id="record-Cloth"></a>
 
@@ -1917,7 +1917,7 @@ component Cloth {
 }
 ```
 
-<sub>`api.ogt` line 6821</sub>
+<sub>`api.ogt` line 6830</sub>
 
 <a id="record-Fluid2D"></a>
 
@@ -2041,7 +2041,7 @@ component Fluid2D {
 }
 ```
 
-<sub>`api.ogt` line 6897</sub>
+<sub>`api.ogt` line 6906</sub>
 
 <a id="record-Fluid3D"></a>
 
@@ -2210,7 +2210,7 @@ component Fluid3D {
 }
 ```
 
-<sub>`api.ogt` line 6986</sub>
+<sub>`api.ogt` line 6995</sub>
 
 <a id="record-WaterSurface"></a>
 
@@ -2275,7 +2275,7 @@ component WaterSurface {
 }
 ```
 
-<sub>`api.ogt` line 7112</sub>
+<sub>`api.ogt` line 7121</sub>
 
 <a id="record-WaterLine"></a>
 
@@ -2352,7 +2352,7 @@ component WaterLine {
 }
 ```
 
-<sub>`api.ogt` line 7155</sub>
+<sub>`api.ogt` line 7164</sub>
 
 <a id="record-Splash"></a>
 
@@ -2383,7 +2383,7 @@ event Splash {
 }
 ```
 
-<sub>`api.ogt` line 7208</sub>
+<sub>`api.ogt` line 7217</sub>
 
 <a id="record-Ragdoll"></a>
 
@@ -2451,7 +2451,7 @@ component Ragdoll {
 }
 ```
 
-<sub>`api.ogt` line 7220</sub>
+<sub>`api.ogt` line 7229</sub>
 
 ## Types
 
@@ -2479,7 +2479,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 7265</sub>
+<sub>`api.ogt` line 7274</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -2514,7 +2514,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 7273</sub>
+<sub>`api.ogt` line 7282</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -2541,7 +2541,7 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 7289</sub>
+<sub>`api.ogt` line 7298</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -2583,7 +2583,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 7299</sub>
+<sub>`api.ogt` line 7308</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -2622,7 +2622,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 7321</sub>
+<sub>`api.ogt` line 7330</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -2649,7 +2649,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 7339</sub>
+<sub>`api.ogt` line 7348</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -2679,7 +2679,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 7349</sub>
+<sub>`api.ogt` line 7358</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -2703,7 +2703,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 7360</sub>
+<sub>`api.ogt` line 7369</sub>
 
 <a id="type-WheelPose"></a>
 
@@ -2737,7 +2737,7 @@ struct WheelPose {
 }
 ```
 
-<sub>`api.ogt` line 7434</sub>
+<sub>`api.ogt` line 7443</sub>
 
 <a id="type-RagdollBoneDesc"></a>
 
@@ -2780,7 +2780,7 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 7450</sub>
+<sub>`api.ogt` line 7459</sub>
 
 <a id="type-RagdollRigDesc"></a>
 
@@ -2804,7 +2804,7 @@ struct RagdollRigDesc {
 }
 ```
 
-<sub>`api.ogt` line 7472</sub>
+<sub>`api.ogt` line 7481</sub>
 
 <a id="type-BonePose"></a>
 
@@ -2827,7 +2827,7 @@ struct BonePose {
 }
 ```
 
-<sub>`api.ogt` line 7479</sub>
+<sub>`api.ogt` line 7488</sub>
 
 <a id="type-PhysicsPhase"></a>
 
@@ -2852,7 +2852,7 @@ struct PhysicsPhase {
 }
 ```
 
-<sub>`api.ogt` line 7553</sub>
+<sub>`api.ogt` line 7562</sub>
 
 <a id="type-PhysicsStats"></a>
 
@@ -2883,7 +2883,7 @@ struct PhysicsStats {
 }
 ```
 
-<sub>`api.ogt` line 7562</sub>
+<sub>`api.ogt` line 7571</sub>
 
 ## Constants
 
@@ -2934,238 +2934,238 @@ struct PhysicsStats {
 const BODY_DYNAMIC u32 0 "RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick."
 ```
 
-<sub>`api.ogt` line 6041</sub>
+<sub>`api.ogt` line 6050</sub>
 
 ```ogt
 const BODY_STATIC u32 1 "RigidBody.kind: never moves; collides with dynamic bodies."
 ```
 
-<sub>`api.ogt` line 6042</sub>
+<sub>`api.ogt` line 6051</sub>
 
 ```ogt
 const BODY_KINEMATIC u32 2 "RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it."
 ```
 
-<sub>`api.ogt` line 6043</sub>
+<sub>`api.ogt` line 6052</sub>
 
 ```ogt
 const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
 ```
 
-<sub>`api.ogt` line 6044</sub>
+<sub>`api.ogt` line 6053</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Y u32 2 "RigidBody.lock bit: no translation along y."
 ```
 
-<sub>`api.ogt` line 6045</sub>
+<sub>`api.ogt` line 6054</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Z u32 4 "RigidBody.lock bit: no translation along z."
 ```
 
-<sub>`api.ogt` line 6046</sub>
+<sub>`api.ogt` line 6055</sub>
 
 ```ogt
 const LOCK_ROTATION_X u32 8 "RigidBody.lock bit: no rotation about x."
 ```
 
-<sub>`api.ogt` line 6047</sub>
+<sub>`api.ogt` line 6056</sub>
 
 ```ogt
 const LOCK_ROTATION_Y u32 16 "RigidBody.lock bit: no rotation about y."
 ```
 
-<sub>`api.ogt` line 6048</sub>
+<sub>`api.ogt` line 6057</sub>
 
 ```ogt
 const LOCK_ROTATION_Z u32 32 "RigidBody.lock bit: no rotation about z (the 2D profile's only rotation)."
 ```
 
-<sub>`api.ogt` line 6049</sub>
+<sub>`api.ogt` line 6058</sub>
 
 ```ogt
 const SHAPE_BOX u32 0 "Collider.shape: a box of `size` (both profiles)."
 ```
 
-<sub>`api.ogt` line 6050</sub>
+<sub>`api.ogt` line 6059</sub>
 
 ```ogt
 const SHAPE_SPHERE u32 1 "Collider.shape: a sphere of `radius` (a circle in 2D)."
 ```
 
-<sub>`api.ogt` line 6051</sub>
+<sub>`api.ogt` line 6060</sub>
 
 ```ogt
 const SHAPE_CAPSULE u32 2 "Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles)."
 ```
 
-<sub>`api.ogt` line 6052</sub>
+<sub>`api.ogt` line 6061</sub>
 
 ```ogt
 const SHAPE_CYLINDER u32 3 "Collider.shape: a cylinder along y of `radius` and `height` (3D only)."
 ```
 
-<sub>`api.ogt` line 6053</sub>
+<sub>`api.ogt` line 6062</sub>
 
 ```ogt
 const SHAPE_CONVEX u32 4 "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
 ```
 
-<sub>`api.ogt` line 6054</sub>
+<sub>`api.ogt` line 6063</sub>
 
 ```ogt
 const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies)."
 ```
 
-<sub>`api.ogt` line 6055</sub>
+<sub>`api.ogt` line 6064</sub>
 
 ```ogt
 const SHAPE_HEIGHTFIELD u32 6 "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
 ```
 
-<sub>`api.ogt` line 6056</sub>
+<sub>`api.ogt` line 6065</sub>
 
 ```ogt
 const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
 ```
 
-<sub>`api.ogt` line 6057</sub>
+<sub>`api.ogt` line 6066</sub>
 
 ```ogt
 const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 ```
 
-<sub>`api.ogt` line 6058</sub>
+<sub>`api.ogt` line 6067</sub>
 
 ```ogt
 const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
 ```
 
-<sub>`api.ogt` line 6252</sub>
+<sub>`api.ogt` line 6261</sub>
 
 ```ogt
 const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
 ```
 
-<sub>`api.ogt` line 6253</sub>
+<sub>`api.ogt` line 6262</sub>
 
 ```ogt
 const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
 ```
 
-<sub>`api.ogt` line 6254</sub>
+<sub>`api.ogt` line 6263</sub>
 
 ```ogt
 const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
 ```
 
-<sub>`api.ogt` line 6255</sub>
+<sub>`api.ogt` line 6264</sub>
 
 ```ogt
 const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
 ```
 
-<sub>`api.ogt` line 6256</sub>
+<sub>`api.ogt` line 6265</sub>
 
 ```ogt
 const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
 ```
 
-<sub>`api.ogt` line 6257</sub>
+<sub>`api.ogt` line 6266</sub>
 
 ```ogt
 const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
 ```
 
-<sub>`api.ogt` line 6258</sub>
+<sub>`api.ogt` line 6267</sub>
 
 ```ogt
 const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
 ```
 
-<sub>`api.ogt` line 6259</sub>
+<sub>`api.ogt` line 6268</sub>
 
 ```ogt
 const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
 ```
 
-<sub>`api.ogt` line 6260</sub>
+<sub>`api.ogt` line 6269</sub>
 
 ```ogt
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>`api.ogt` line 6614</sub>
+<sub>`api.ogt` line 6623</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>`api.ogt` line 6615</sub>
+<sub>`api.ogt` line 6624</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>`api.ogt` line 6616</sub>
+<sub>`api.ogt` line 6625</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>`api.ogt` line 6617</sub>
+<sub>`api.ogt` line 6626</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>`api.ogt` line 6618</sub>
+<sub>`api.ogt` line 6627</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>`api.ogt` line 6619</sub>
+<sub>`api.ogt` line 6628</sub>
 
 ```ogt
 const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
 ```
 
-<sub>`api.ogt` line 6633</sub>
+<sub>`api.ogt` line 6642</sub>
 
 ```ogt
 const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
 ```
 
-<sub>`api.ogt` line 6634</sub>
+<sub>`api.ogt` line 6643</sub>
 
 ```ogt
 const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
 ```
 
-<sub>`api.ogt` line 6635</sub>
+<sub>`api.ogt` line 6644</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>`api.ogt` line 6816</sub>
+<sub>`api.ogt` line 6825</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>`api.ogt` line 6817</sub>
+<sub>`api.ogt` line 6826</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>`api.ogt` line 6818</sub>
+<sub>`api.ogt` line 6827</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>`api.ogt` line 6819</sub>
+<sub>`api.ogt` line 6828</sub>

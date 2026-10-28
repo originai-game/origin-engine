@@ -42,6 +42,12 @@ pub(crate) struct SpriteInstance {
     /// the camera that draws it, or upright facing the sun (a faced
     /// sprite's drop shadow).
     facing: u32,
+    /// A pixel outline ([`crate::SpriteOutline`]): xy one logical pixel in
+    /// uv units along u and v, z the width in logical pixels (0: none, the
+    /// quad as it is), w unused.
+    outline: [f32; 4],
+    /// The outline's linear colour and alpha.
+    outline_color: [u8; 4],
 }
 
 /// [`SpriteInstance::facing`]: the world's xy plane facing +z.
@@ -131,6 +137,9 @@ fn sprite_radius(s: &Sprite) -> f32 {
 /// An instance that stands where it is drawn.
 const NO_GROUND: [f32; 4] = [0.0; 4];
 
+/// An instance without a pixel outline.
+const NO_OUTLINE: [f32; 4] = [0.0; 4];
+
 pub(crate) const SPRITE_STRIDE: u64 = std::mem::size_of::<SpriteInstance>() as u64;
 
 /// The instance as the sprite pipelines read it: every field, the layer
@@ -138,7 +147,7 @@ pub(crate) const SPRITE_STRIDE: u64 = std::mem::size_of::<SpriteInstance>() as u
 pub(crate) const SPRITE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: SPRITE_STRIDE,
     step_mode: wgpu::VertexStepMode::Instance,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3, 6 => Float32x4, 7 => Uint32, 8 => Uint32],
+    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Unorm8x4, 5 => Float32x3, 6 => Float32x4, 7 => Uint32, 8 => Uint32, 9 => Float32x4, 10 => Unorm8x4],
 };
 
 /// [`SPRITE_LAYOUT`], for the array sprite pipelines.
@@ -350,7 +359,24 @@ fn sprite_instance(
         ground: NO_GROUND,
         layer: 0,
         facing: FACING_NONE,
+        outline: NO_OUTLINE,
+        outline_color: [0; 4],
     }
+}
+
+/// Gives `inst` the pixel outline `o` for a texture of `size` texels
+/// (none without a texture, or at width 0).
+fn outline(inst: &mut SpriteInstance, o: &crate::SpriteOutline, size: Option<(u32, u32)>) {
+    let Some((w, h)) = size else {
+        return;
+    };
+    let width = o.width.min(crate::MAX_SPRITE_OUTLINE);
+    if width.is_nan() || width <= 0.0 || w == 0 || h == 0 {
+        return;
+    }
+    let pixel = if o.pixel > 0.0 { o.pixel } else { 1.0 };
+    inst.outline = [pixel / w as f32, pixel / h as f32, width, 0.0];
+    inst.outline_color = o.color.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
 }
 
 /// A 2D particle as the batch draws it: its sprite, blend and glow, the
@@ -510,6 +536,8 @@ fn tile_instances(
                     ground: NO_GROUND,
                     layer: 0,
                     facing: FACING_NONE,
+                    outline: NO_OUTLINE,
+                    outline_color: [0; 4],
                 });
             }
             for a in &c.animated {
@@ -607,6 +635,18 @@ pub(crate) fn build<'a>(
         shadows.insert(s.sprite, (s.opacity.clamp(0.0, 1.0), s.ground));
     }
     let ground = shadow_ground(scene.light.direction_to_light).filter(|_| !shadows.is_empty());
+    // Pixel outlines by sprite index (the last entry wins).
+    let mut lines: HashMap<u32, &crate::SpriteOutline> = HashMap::new();
+    for o in &scene.sprite_outlines {
+        if o.sprite as usize >= scene.sprites.len() {
+            return Err(RenderError::InvalidHandle(format!(
+                "sprite_outlines: sprite {} of {}",
+                o.sprite,
+                scene.sprites.len()
+            )));
+        }
+        lines.insert(o.sprite, o);
+    }
     let mut shadow_count = 0u32;
     let mut culled = 0u32;
     let outlines: HashMap<u32, &crate::TextOutline> =
@@ -648,6 +688,9 @@ pub(crate) fn build<'a>(
             None => ([1.0, 1.0, 1.0, 0.0], 0.0, SpriteBlend::Alpha, true),
         };
         let mut inst = sprite_instance(s, flash, glow, lit(s.layer), false);
+        if let Some(o) = lines.get(&(i as u32)) {
+            outline(&mut inst, o, s.texture.and_then(|t| scene.texture_size(t)));
+        }
         let facing = facing_of(&scene.sprite_facing, i);
         inst.facing = facing_code(facing);
         let faced = facing != SpriteFacing::None;
@@ -855,6 +898,8 @@ pub(crate) fn build<'a>(
                     ground: NO_GROUND,
                     layer: 0,
                     facing: FACING_NONE,
+                    outline: NO_OUTLINE,
+                    outline_color: [0; 4],
                 };
                 if facing == SpriteFacing::None {
                     keyed.push((text.layer, 0.0, RunSource::Font(text.font), false, inst));

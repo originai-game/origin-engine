@@ -1574,6 +1574,7 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState) {
         .overlay
         .get_or_insert_with(|| og_render::Overlay::new(vp.width.max(1.0), vp.height.max(1.0), 0.0));
     let first_text = overlay.texts.len();
+    let first_sprite = overlay.sprites.len();
     frame.emit(
         &og_ui::EmitDesc {
             atlas,
@@ -1595,6 +1596,24 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState) {
         }
     }
     overlay.texts.extend(more);
+    // Icons on a strict art palette (super::art): the icon atlas is a
+    // distance field the cook leaves as it is, so its tint is moved to
+    // the palette here.
+    let icons = ui.icons();
+    let icon_fonts: Vec<og_render::FontHandle> = icons
+        .font
+        .as_ref()
+        .and_then(|f| f.handle)
+        .map(|h| rs.ui_pages.get(&h).cloned().unwrap_or_else(|| vec![h]))
+        .unwrap_or_default();
+    if let Some(overlay) = rs.scene.overlay.as_mut() {
+        super::art::palette_icons(
+            &rs.art.frame,
+            overlay,
+            (first_sprite, first_text),
+            (icons.texture, &icon_fonts),
+        );
+    }
 }
 
 // ── ui: the game widget set ─────────────────────────────────────────────────

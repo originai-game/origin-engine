@@ -480,6 +480,26 @@ fn invalid(reason: String) -> Error {
 /// set players and parameters, before the ones that read the moved
 /// transforms (and before physics, which then sees root motion as a move).
 pub fn install(world: &mut World) -> Result<AnimationSystem> {
+    install_with(world, None)
+}
+
+/// Where a player whose own `stepFps` is 0 takes its stepped playback
+/// from: an `f32` field of a resource, read every tick inside the system
+/// (og-runtime's `ArtMotion.stepFps` under a project's art contract,
+/// docs/art.md §2.4), so it follows the world as a look changes it and a
+/// replay or restore sees what the tick saw. The component is never
+/// written with it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StepDefault {
+    /// The resource's registered name.
+    pub resource: String,
+    /// The field's byte offset in the resource's packed value.
+    pub offset: usize,
+}
+
+/// [`install`], with players defaulting their step to `step` (none: 0,
+/// smooth, as [`install`]).
+pub fn install_with(world: &mut World, step: Option<StepDefault>) -> Result<AnimationSystem> {
     world.register::<Transform>()?;
     world.register::<Skeleton>()?;
     world.register::<AnimationPlayer>()?;
@@ -521,8 +541,17 @@ pub fn install(world: &mut World) -> Result<AnimationSystem> {
         .query(QueryDesc::new().read::<FootLock>())
         .query(QueryDesc::new().read::<SpringBone>())
         .query(QueryDesc::new().read::<SpringCollider>());
+    let mut desc = desc;
+    let step = match step {
+        Some(st) => {
+            let id = world.id_by_name(&st.resource)?;
+            desc.reads.push(st.resource);
+            Some((id, st.offset))
+        }
+        None => None,
+    };
     let s = shared.clone();
-    world.add_system(desc, move |ctx| run(ctx, &s))?;
+    world.add_system(desc, move |ctx| run(ctx, &s, step))?;
     world.add_state_block(SYSTEM_NAME, Box::new(AnimState(shared.clone())))?;
     Ok(AnimationSystem { shared })
 }
@@ -1063,6 +1092,9 @@ struct Work {
 /// from the world), then what its lane computed from that alone.
 struct Eval {
     work: Work,
+    /// The stepped playback of a player whose own `stepFps` is 0 (the art
+    /// contract's ArtMotion.stepFps, [`StepDefault`]); 0 none.
+    step_default: f32,
     graph_asset: Option<Arc<GraphAsset>>,
     root: Option<RootMotion>,
     mesh: u32,
@@ -1158,6 +1190,7 @@ fn gather(
             pose,
             stance: Vec::new(),
         },
+        step_default: 0.0,
         graph_asset,
         root,
         mesh,
@@ -1168,6 +1201,7 @@ fn gather(
 /// One entity's lane: its graph and player evaluated into `work.pose`, from
 /// what [`gather`] read and the shared assets only.
 fn evaluate(sh: &Shared, ev: &mut Eval, dt: f32) -> Result<(Trs, Vec<Fired>)> {
+    let step_default = ev.step_default;
     let w = &mut ev.work;
     let (e, skeleton) = (w.entity, w.skeleton.asset);
     let mut events: Vec<Fired> = Vec::new();
@@ -1208,6 +1242,7 @@ fn evaluate(sh: &Shared, ev: &mut Eval, dt: f32) -> Result<(Trs, Vec<Fired>)> {
                 ev.root.as_ref(),
                 ev.mesh,
                 dt,
+                step_default,
                 &mut events,
                 &mut w.stance,
             )? {
@@ -1227,9 +1262,25 @@ fn evaluate(sh: &Shared, ev: &mut Eval, dt: f32) -> Result<(Trs, Vec<Fired>)> {
 /// milliseconds on a loaded machine, so only crowds of 128 or more split.
 const GRAIN: usize = 64;
 
-fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
+fn run(
+    ctx: &mut SystemContext<'_>,
+    shared: &Mutex<Shared>,
+    step: Option<(og_ecs::SchemaId, usize)>,
+) -> Result<()> {
     // Scaled time: slow motion plays slower, a hit stop holds the pose.
     let dt = ctx.scaled_dt();
+    // The stepped playback of players without their own (StepDefault).
+    let step_default = match step {
+        Some((id, at)) => {
+            let bytes = ctx.resource_bytes(id)?;
+            bytes
+                .get(at..at + 4)
+                .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+                .filter(|v| v.is_finite() && *v > 0.0)
+                .unwrap_or(0.0)
+        }
+        None => 0.0,
+    };
     let skeletons = entities(ctx, 0)?;
     let with = |q: usize| -> Result<BTreeSet<u64>> {
         Ok(entities(ctx, q)?.iter().map(|e| e.to_bits()).collect())
@@ -1251,7 +1302,10 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     let mut unread = None;
     for &e in &skeletons {
         match gather(ctx, &sh, e, &players, &graphs, &blends, &transforms) {
-            Ok(ev) => evals.push(ev),
+            Ok(mut ev) => {
+                ev.step_default = step_default;
+                evals.push(ev)
+            }
             Err(err) => {
                 unread = Some(err);
                 break;
@@ -2152,10 +2206,18 @@ fn eval_player(
     root: Option<&RootMotion>,
     mesh: u32,
     dt: f32,
+    step_default: f32,
     events: &mut Vec<Fired>,
     stance: &mut Stance,
 ) -> Result<Option<(Pose, Trs)>> {
     let seek = comp.time != ps.written;
+    // The player's own step, else the art contract's (never written back:
+    // the component keeps 0, so a look without one plays smooth again).
+    let step_fps = if comp.step_fps > 0.0 {
+        comp.step_fps
+    } else {
+        step_default
+    };
     if comp.clip != ps.clip {
         if ps.clip != 0 && comp.fade > 0.0 && sh.clips.contains_key(&ps.clip) {
             ps.prev_clip = ps.clip;
@@ -2223,7 +2285,7 @@ fn eval_player(
             weight: (1.0 - alpha) * comp.weight,
         };
         leaf.events(events);
-        let held = stepped(t1, comp.step_fps, pc.duration, ps.prev_looping);
+        let held = stepped(t1, step_fps, pc.duration, ps.prev_looping);
         stance.push(((ps.prev_clip, false), held, (1.0 - alpha) * wt));
         blend.push(
             leaf.pose_at(skel, root, mesh, held),
@@ -2249,7 +2311,7 @@ fn eval_player(
         weight: alpha * comp.weight,
     };
     leaf.events(events);
-    let held = stepped(t1, comp.step_fps, clip.duration, comp.looping);
+    let held = stepped(t1, step_fps, clip.duration, comp.looping);
     stance.push(((ps.clip, false), held, alpha * wt));
     blend.push(
         leaf.pose_at(skel, root, mesh, held),

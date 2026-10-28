@@ -1497,6 +1497,9 @@ pub struct RenderScene {
     /// on the ground plane y = 0 cast along [`RenderScene::light`], drawn
     /// before every sprite of its layer.
     pub sprite_shadows: Vec<SpriteShadow>,
+    /// Pixel outlines of single world sprites, by sprite index (the last
+    /// entry for an index wins; [`SpriteOutline`]).
+    pub sprite_outlines: Vec<SpriteOutline>,
     /// Three.js layer masks of the instances, by index in `instances`
     /// (bit `n` set: on layer `n`): an index past the end is on layer 0
     /// alone (mask 1), as every object is in three.js. A camera draws the
@@ -1552,6 +1555,11 @@ pub struct RenderScene {
     pub custom_post: Vec<crate::PostHandle>,
     /// How each texture is sampled by sprites, tiles and text (by texture index).
     texture_filters: Vec<TextureFilter>,
+    /// The textures [`RenderScene::paletted_texture`] made, by (index
+    /// texture, palette texture, row): the revisions of both it was made
+    /// at, and the texture.
+    paletted:
+        std::collections::HashMap<(TextureHandle, TextureHandle, u32), (u64, u64, TextureHandle)>,
     /// Live slots and generations of the removable kinds.
     mesh_slots: Slots,
     texture_slots: Slots,
@@ -1666,7 +1674,9 @@ impl RenderScene {
             trail_layers: Vec::new(),
             sprite_arrays: Vec::new(),
             sprite_shadows: Vec::new(),
+            sprite_outlines: Vec::new(),
             texture_filters: Vec::new(),
+            paletted: std::collections::HashMap::new(),
             mesh_slots: Slots::default(),
             texture_slots: Slots::default(),
             material_slots: Slots::default(),
@@ -1699,6 +1709,77 @@ impl RenderScene {
             .get(texture.index())
             .copied()
             .unwrap_or_default()
+    }
+
+    /// A palette swap (docs/art.md §2.4): the texture `index` shows through
+    /// row `row` of `palette`, for a sprite or a tile layer to draw instead
+    /// of `index`. `index` is an index texture as the cook writes
+    /// `<id>#index` (og-cook README §Art conformance): alpha the palette
+    /// index plus one, 0 a clear texel. `palette` is N rows of colours,
+    /// row r's texel i the colour index i takes in that row (team colours,
+    /// a hit flash in palette, a day and a night ramp), its alpha too (0
+    /// hides that index). A row past the last is the last; an index past the
+    /// row's width keeps the index texture's own colour (the one the cook
+    /// mapped it to), opaque. The texture is made once per (index, palette,
+    /// row), sampled as `index` is ([`RenderScene::set_texture_filter`]),
+    /// and made again when either is replaced. Both must be RGBA8 (a
+    /// [`TextureData`] or an RGBA8 upload's first level): `InvalidData`
+    /// otherwise, `InvalidHandle` for a removed or foreign one.
+    pub fn paletted_texture(
+        &mut self,
+        index: TextureHandle,
+        palette: TextureHandle,
+        row: u32,
+    ) -> Result<TextureHandle, crate::RenderError> {
+        for t in [index, palette] {
+            if !self.texture_slots.live(t.index(), t.generation()) {
+                return Err(crate::RenderError::InvalidHandle(format!(
+                    "palette swap: texture {}",
+                    t.index()
+                )));
+            }
+        }
+        let revs = (
+            self.texture_revisions[index.index()],
+            self.texture_revisions[palette.index()],
+        );
+        let key = (index, palette, row);
+        if let Some(&(a, b, made)) = self.paletted.get(&key) {
+            if (a, b) == revs && self.texture_slots.live(made.index(), made.generation()) {
+                self.set_texture_filter(made, self.texture_filter(index));
+                return Ok(made);
+            }
+            self.remove_texture(made);
+        }
+        let rgba = |t: TextureHandle| -> Result<(u32, u32, &[u8], ColorSpace), crate::RenderError> {
+            match &self.textures[t.index()] {
+                TextureSource::Rgba(d) => Ok((d.width, d.height, &d.rgba[..], d.color_space)),
+                TextureSource::Encoded(u) if u.desc.format == crate::TextureFormat::Rgba8 => Ok((
+                    u.desc.width,
+                    u.desc.height,
+                    &u.levels[0][..],
+                    u.desc.color_space,
+                )),
+                _ => Err(crate::RenderError::InvalidData(format!(
+                    "palette swap: texture {} is not RGBA8 (cook it as kind pixel)",
+                    t.index()
+                ))),
+            }
+        };
+        let (w, h, idx, _) = rgba(index)?;
+        let (pw, ph, pal, space) = rgba(palette)?;
+        let data = TextureData {
+            width: w,
+            height: h,
+            rgba: palette_swap(idx, (pw, ph, pal), row),
+            color_space: space,
+            mips: Mips::None,
+        };
+        let filter = self.texture_filter(index);
+        let made = self.add_texture(data);
+        self.set_texture_filter(made, filter);
+        self.paletted.insert(key, (revs.0, revs.1, made));
+        Ok(made)
     }
 
     /// Adds a mesh with a per-vertex skin (four joints and weights each),
@@ -2882,6 +2963,71 @@ pub enum TextureFilter {
     Linear,
     /// The nearest texel: crisp pixel art at any scale.
     Nearest,
+    /// torcado's cleanEdge (MIT, `third_party/cleanedge/`): pixel art
+    /// turned or scaled without blur or jaggies. Each sample reads the 5x5
+    /// texels round it and returns one of them, never a blend, chosen by
+    /// the edges and 2:1 and 1:1 slopes it finds there, so a turned sprite
+    /// keeps its palette and its edges are redrawn at the angle. Texels
+    /// outside the sprite's region (a sheet's neighbouring frame) read as
+    /// clear. Sprites and tile layers drawn with the sprite shader
+    /// (sprite.wgsl) only: texture arrays, the overlay and particles take
+    /// it as [`TextureFilter::Nearest`].
+    CleanEdge,
+}
+
+impl TextureFilter {
+    /// Whether the GPU sampler is nearest (both pixel-art filters are).
+    pub fn is_nearest(self) -> bool {
+        self != TextureFilter::Linear
+    }
+}
+
+/// A pixel outline round one world sprite ([`RenderScene::sprite_outlines`]),
+/// drawn by the sprite shader from the texture's alpha: the clear texels
+/// within `width` logical pixels (a diamond, |dx| + |dy| <= width, as a
+/// hand-drawn pixel-art line) of an opaque one take `color`. The quad grows
+/// by `width` on every side so the line fits outside the art; texels
+/// outside the sprite's region read as clear, so a sheet's neighbouring
+/// frame never shows. A logical pixel is `pixel` texels of the texture
+/// (1: one texel), so a sprite drawn at twice its art's size keeps a line
+/// of the style's width rather than doubling it; the test runs at the
+/// centre of each logical pixel, so the line is made of whole logical
+/// pixels. Untextured sprites take none.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SpriteOutline {
+    /// The index in [`RenderScene::sprites`].
+    pub sprite: u32,
+    /// The line's width in logical pixels (at most [`MAX_SPRITE_OUTLINE`];
+    /// 0 none).
+    pub width: f32,
+    /// Texels of the texture per logical pixel (0 is 1).
+    pub pixel: f32,
+    /// Linear RGBA; the alpha times the sprite's opacity.
+    pub color: [f32; 4],
+}
+
+/// The widest [`SpriteOutline::width`], in logical pixels.
+pub const MAX_SPRITE_OUTLINE: f32 = 4.0;
+
+/// The texels of an index texture (`index`, RGBA8: alpha the palette index
+/// plus one, 0 clear) through row `row` of `palette` (width, height,
+/// RGBA8), as [`RenderScene::paletted_texture`] draws them.
+pub(crate) fn palette_swap(index: &[u8], palette: (u32, u32, &[u8]), row: u32) -> Vec<u8> {
+    let (pw, ph, pal) = palette;
+    let row = row.min(ph.saturating_sub(1)) as usize;
+    let mut out = Vec::with_capacity(index.len());
+    for t in index.as_chunks::<4>().0 {
+        let a = t[3] as usize;
+        if a == 0 {
+            out.extend_from_slice(&[0; 4]);
+        } else if a - 1 < pw as usize && ph > 0 {
+            let at = (row * pw as usize + a - 1) * 4;
+            out.extend_from_slice(&pal[at..at + 4]);
+        } else {
+            out.extend_from_slice(&[t[0], t[1], t[2], 255]);
+        }
+    }
+    out
 }
 
 /// A sprite's drop shadow ([`RenderScene::sprite_shadows`]): the sprite's

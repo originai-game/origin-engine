@@ -70,5 +70,8 @@ pub use skeleton2d::{
     IkTarget2D, SKELETON2D_SYSTEM, Skeleton2D, Skeleton2DEvent, Skeleton2dBox, Skeleton2dSystem,
     install_skeleton2d, skeleton_frame, skeleton_pose,
 };
-pub use system::{AnimOutput, AnimationSystem, JointPalette, PaletteSink, SYSTEM_NAME, install};
+pub use system::{
+    AnimOutput, AnimationSystem, JointPalette, PaletteSink, SYSTEM_NAME, StepDefault, install,
+    install_with,
+};
 pub use xform::{Trs, nlerp, rotation_arc, twist_y, unit};

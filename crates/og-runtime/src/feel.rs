@@ -343,6 +343,10 @@ slots!(
         drop_shadow_height: "dropShadowHeight",
         layers: "layers",
         facing: "facing",
+        outline: "outline",
+        outline_color: "outlineColor",
+        palette: "palette",
+        palette_row: "paletteRow",
     }
 );
 
@@ -374,6 +378,8 @@ slots!(
         color: "color",
         opacity: "opacity",
         layer: "layer",
+        palette: "palette",
+        palette_row: "paletteRow",
     }
 );
 
@@ -2063,6 +2069,9 @@ struct SpriteOut {
     tone_mapped: bool,
     /// `Sprite.facing`: a billboard ([`og_render::RenderScene::sprite_facing`]).
     facing: og_render::SpriteFacing,
+    /// `Sprite.outline`: its width and logical pixel (texels) and colour
+    /// ([`og_render::SpriteOutline`]).
+    outline: Option<(f32, f32, [f32; 3])>,
 }
 
 /// A floating text's facing as the og.sprite state block stores it (its
@@ -2117,6 +2126,14 @@ fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
         scene
             .sprite_order
             .push(og_render::SpriteOrder { sprite: index, key });
+    }
+    if let Some((width, pixel, [r, g, b])) = s.outline {
+        scene.sprite_outlines.push(og_render::SpriteOutline {
+            sprite: index,
+            width,
+            pixel,
+            color: [r, g, b, 1.0],
+        });
     }
     if s.cast_shadow {
         scene
@@ -2263,6 +2280,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let textures = rs.textures.clone();
     let arrays = &rs.texture_arrays;
     let scene = &mut rs.scene;
+    let (art, notes) = (&mut rs.art, &mut rs.notes);
     // og.Sprite rows' sprites by index, for the probe's id pass.
     let mut drawn: Vec<(u32, u64)> = Vec::new();
     for (e, bytes) in &sprites {
@@ -2315,8 +2333,19 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let additive = v.text(&s.blend).as_deref() == Some("additive");
         let tone_mapped = on(&v, &s.tone_mapped, true);
         let facing = facing_named(v.text(&s.facing).as_deref());
+        // A palette swap: the texture's index texture through a row of
+        // `palette` (its afterimages too).
+        let palette = v
+            .num(&s.palette)
+            .and_then(super::assets::index_of)
+            .and_then(|i| textures.get(i).copied());
+        let row = v.uint(&s.palette_row).unwrap_or(0) as u32;
+        let mut swap = |scene: &mut og_render::RenderScene, t| match palette {
+            Some(p) => super::art::paletted(scene, (&mut *art, &mut *notes), t, p, row),
+            None => t,
+        };
         let base = og_render::Sprite {
-            texture: image.texture(),
+            texture: image.texture().map(|t| swap(scene, t)),
             position: pos,
             size: size * scale,
             anchor,
@@ -2358,6 +2387,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     drop_shadow_height: 0.0,
                     tone_mapped: true,
                     facing: og_render::SpriteFacing::None,
+                    outline: None,
                 },
             );
         }
@@ -2382,11 +2412,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                         v2_of(&v, &s.anchor, Vec2::splat(0.5)),
                     ));
                 let (guv, ganchor) = flipped(guv, ganchor, g.flip);
+                let gtexture = gimage.texture().map(|t| swap(scene, t));
                 push(
                     scene,
                     SpriteOut {
                         sprite: og_render::Sprite {
-                            texture: gimage.texture(),
+                            texture: gtexture,
                             position: g.position,
                             size: size * g.scale,
                             anchor: ganchor,
@@ -2406,6 +2437,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                         drop_shadow_height: 0.0,
                         tone_mapped,
                         facing,
+                        outline: None,
                     },
                 );
             }
@@ -2424,6 +2456,23 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                 f(&v, &s.slice_scale, 0.0625),
             ),
             _ => vec![base],
+        };
+        // Its pixel outline (its own, or the art contract's), on a sprite
+        // drawn whole.
+        let outline = if pieces.len() == 1 {
+            super::art::outline(
+                &art.frame,
+                scene,
+                base.texture,
+                (
+                    f(&v, &s.outline, 0.0),
+                    rgb_of(&v, &s.outline_color, Vec3::from(super::art::OUTLINE_COLOR)).into(),
+                ),
+                base.uv_rect,
+                base.size,
+            )
+        } else {
+            None
         };
         let cast = on(&v, &s.cast_shadow, false);
         let drop_shadow = f(&v, &s.drop_shadow, 0.0).clamp(0.0, 1.0);
@@ -2450,6 +2499,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     drop_shadow_height,
                     tone_mapped,
                     facing,
+                    outline,
                 },
             );
         }
@@ -2576,6 +2626,8 @@ fn tile_layers(
         scene,
         feel: fr,
         textures,
+        art,
+        notes,
         ..
     } = rs;
     let mut keep = BTreeSet::new();
@@ -2600,6 +2652,12 @@ fn tile_layers(
         let tint = rgb_of(&v, &r.slots.tilemap.color, Vec3::ONE);
         let opacity = f(&v, &r.slots.tilemap.opacity, 1.0);
         let base = v.int(&r.slots.tilemap.layer).unwrap_or(-10) as i32;
+        // A palette swap of every layer (Tilemap.palette).
+        let palette = v
+            .num(&r.slots.tilemap.palette)
+            .and_then(super::assets::index_of)
+            .and_then(|i| textures.get(i).copied());
+        let row = v.uint(&r.slots.tilemap.palette_row).unwrap_or(0) as u32;
         let (cw, ch) = live.state.chunks();
         let world_size = asset.asset.world_size();
         for (li, layer) in asset.asset.layers.iter().enumerate() {
@@ -2671,6 +2729,10 @@ fn tile_layers(
                 origin.y + layer.offset.y + cam.y * (1.0 - p.y),
                 origin.z,
             );
+            let texture = match palette {
+                Some(p) => super::art::paletted(scene, (&mut *art, &mut *notes), texture, p, row),
+                None => texture,
+            };
             scene.tile_layers.push(og_render::TileLayer {
                 texture,
                 chunks,

@@ -94,8 +94,11 @@ pub(crate) fn register_records(
 }
 
 /// Puts og-anim on a world being assembled: after the game's systems.
-pub(crate) fn install(world: &mut og_ecs::World) -> Result<AnimationSystem, String> {
-    og_anim::install(world).map_err(|e| e.reason().to_string())
+pub(crate) fn install(
+    world: &mut og_ecs::World,
+    step: Option<og_anim::StepDefault>,
+) -> Result<AnimationSystem, String> {
+    og_anim::install_with(world, step).map_err(|e| e.reason().to_string())
 }
 
 fn system(eng: &Engine) -> Result<AnimationSystem, String> {

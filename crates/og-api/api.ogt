@@ -4047,6 +4047,15 @@ module render {
     field layers u32 "Three.js layers, as Mesh.layers: a world sprite is drawn by the cameras whose masks share a bit with it (a screen sprite draws on every camera's frame)." {
       default 1
     }
+    field outline f32 "A pixel outline this many logical pixels wide, drawn by the sprite shader round the texture's opaque texels (a diamond of whole logical pixels outside the art, the quad grown to hold it; a sheet's neighbouring frame never lines it), for a sprite whose line cannot be baked by the cook: scaled, tinted or made at run time. A logical pixel is 1 / ArtPixels.unit world units when the art contract sets a unit, else one texel of the region. 0 is none, or, under the project's art contract (project.ogt's `look`), the look's ArtLine.width for a sprite whose texture the cook did not line (one not cooked as pixel art) when the contract sets ArtPixels.unit. Untextured sprites take none." {
+      min 0
+      max 4
+    }
+    field outlineColor Color "The outline's linear colour; at its default, the art contract's ArtLine.color when the line comes from the contract." {
+      default 0.02 0.02 0.03
+    }
+    field palette Texture "A palette swap (docs/art.md §2.4): a texture of N rows of colours (load it as `kind pixel`), row r's texel i the colour palette index i takes in row r. The sprite then draws its texture's index texture (the cook's `<id>#index`, written beside a texture the art contract maps to a palette; a texture that is itself an index texture is drawn as it is) through row paletteRow: team colours, a hit flash in palette, a day and a night ramp. Flipbook frames swap too. 0 is none; a texture without an index texture draws as it is, with a warning."
+    field paletteRow u32 "The row of `palette` drawn (past the last, the last)."
   }
 
   component Afterimage {
@@ -9117,6 +9126,8 @@ module tilemap {
       min 0
       max 2
     }
+    field palette Texture "A palette swap of every layer (og.Sprite.palette): the tile sets' index textures (the cook's `<id>#index`) drawn through row paletteRow of this texture of N rows; 0 is none."
+    field paletteRow u32 "The row of `palette` drawn (past the last, the last)."
   }
 
   struct TileLayerInfo {
