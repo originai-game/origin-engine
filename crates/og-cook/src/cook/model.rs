@@ -25,6 +25,9 @@ pub struct GltfSource {
     pub external: Vec<(String, Vec<u8>)>,
     pub textures: Vec<TextureUse>,
     pub warnings: Vec<String>,
+    /// How the art contract's face budget is shared over its primitives
+    /// (`conform::mesh`), made by the first output that needs it.
+    pub(super) conform_plan: std::sync::OnceLock<super::conform::mesh::Plan>,
 }
 
 fn base64_decode(s: &str) -> Option<Vec<u8>> {
@@ -336,6 +339,7 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
         external,
         textures,
         warnings,
+        conform_plan: Default::default(),
     })
 }
 

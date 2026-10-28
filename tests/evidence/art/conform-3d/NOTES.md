@@ -221,3 +221,109 @@ Verification:
     measured.
 
 No shipped project names a look, so no reference frame moves.
+
+## Follow-up `art/conform-3d-4` (from a0fc69f5): decimation never destroys a model
+
+**The defect.** The Metal functional lane cooked templates/game's HUSK
+dropship 16,512 → 96 triangles against propFaces 200, and it drew as
+scattered fragments with a broken shadow (intro-4 3.08 %, intro-8 4.59 %
+outliers). The dropship has 33 primitives in 26 meshes. The budget was
+split in proportion, so a 26-triangle stripe got 0 (then 1) triangles,
+and `decimate` ran meshopt with an unbounded error (1.0, relative), then
+`simplify_sloppy`, then kept "the largest triangles". The last two tear
+a mesh apart. Flooring each share also left the total far below the
+budget.
+
+**The fix** (`conform/mesh.rs`):
+
+- `simplified`: meshopt edge collapses only, with `LockBorder |
+  ErrorAbsolute`. Open borders stay put, so a primitive's edges against
+  its neighbours of other materials hold. The first pass runs over the
+  vertices, so every attribute seam holds. When it stops short (a
+  flat-shaded or seamed mesh splits every corner), a second pass runs
+  welded by position, with the uv seams of a textured primitive locked
+  (`simplify_with_locks`). Its corners get their own vertices back
+  (`reattach`), and their normals are made again (angle 30°) when the
+  look leaves normals as authored. No sloppy simplifier, no
+  largest-triangle fallback.
+- The error bound is `ArtShape.silhouette` (now parsed, and part of the
+  model desc, `conform-mesh-v2`), else `SHAPE_ERROR` = 5 % of the
+  model's bounding radius (half its longest side). It is converted into
+  each primitive's units by its node's scale.
+- `Plan`, made once per model (`GltfSource::conform_plan`): each
+  primitive is simplified as far as the bound lets it (its floor). Then
+  the budget's remainder is shared in proportion to what each primitive
+  has left, so the model lands at the budget, not below it. When the
+  floors are already past the budget, every primitive stops at its
+  floor. The report then says "over budget" in the Changed entry, plus a
+  cook warning (`warning: over budget: ArtShape.propFaces 200 is not met
+  without losing the shape ...`), and `og style check` reports the model
+  off.
+- **Per node or per instance (item 3):** the budget counts drawn
+  triangles, each primitive times the nodes that draw it, once for the
+  whole model. A primitive's target is shared by all its instances, so a
+  model drawn by N nodes is not cut to budget/N per node.
+  `a_model_past_the_face_budget_is_decimated_counting_every_node_that_draws_it`
+  (1 and 2 nodes) still holds.
+
+**The bound.** The dropship's floor barely moves with it: 5,146
+triangles at 1 %, 4,682 at 2 %, 4,486 at 4 %, 4,496 at 6 %. Its many
+small open panels keep their locked borders. 5 % is the default because
+a textured uv sphere then still reaches low-poly counts (960 → 236; its
+seam meridian and poles hold), where 2 % stopped at 614.
+
+**templates/game (with `look "looks/origin-game.ogt"`, as the scaffold
+writes):**
+
+- The dropship now cooks 16,512 → 4,510 triangles, over budget, with the
+  warning.
+- `og style check` reports the dropship off (faces 4,510 against 200)
+  and exits 3. The walker, the paper atlas and stone are ok.
+- The model is ten times its prop budget at any bound that keeps its
+  shape: the source, not the cook, is what misses the contract.
+
+**Frames** (`intro-lavapipe.jpg`; lavapipe, 640×360, dev addon,
+`0:timeline:play:intro;4:screenshot;8:screenshot`; top row a0fc69f5,
+bottom this branch):
+
+- **intro-4, before:** the dropship is a bare grey slab with two
+  windows, dark slashes across it, legs hanging loose under it, and a
+  shadow in scraps.
+- **intro-4, after:** a whole flat-shaded dropship. The hull carries its
+  callsign and the gold logo panel, there are hazard stripes along the
+  belly, a red beacon and the fan rims on the deck, the nose wedge, and
+  the winch cable hanging down. Its shadow is one shape, with the fan
+  rings in it.
+- **intro-8:** the same, seen from behind the walker: the hull, stripes,
+  nozzles and cyan nav lights are whole.
+- The UI, captions, camera, walker and wall are unchanged.
+- intro-4 differs from the base in 2.0 % of pixels, intro-8 in 1.8 %
+  (AE, fuzz 8 %).
+- **Frames that move intentionally: `templates/game/references/metal/intro-4.png`
+  and `intro-8.png`,** to re-record on Metal (they were recorded with
+  the fragments).
+
+**Tests** (`tests/conform_mesh.rs`, expectations from the fixtures):
+
+- `decimation_keeps_every_part_closed_and_whole_and_lands_at_the_budget`:
+  a 2,208-triangle hull and ten 120-triangle parts, each its own mesh
+  and material, under propFaces 500. Every part is still one closed
+  piece (0 open edges and 1 component by position, as the fixture is),
+  no part is lost, and the total is in (450, 500]. On the old code the
+  hull opened 15 edges.
+- `a_model_that_cannot_meet_the_budget_within_its_silhouette_is_kept_and_warned_about`:
+  a 48×24 sphere under propFaces 20 with silhouette 0.002. It is kept
+  above 20 and closed, every face centre is within r(1 − cos 7.5°) +
+  0.002 m of the sphere, and there is an over-budget entry and warning.
+  The old code cut it to 12 triangles.
+- The project-off test's on case asserted ≤ 100 triangles on a textured
+  uv sphere. That relied on the destructive path, so it now asserts
+  fewer triangles than the unconformed control. The other budget tests
+  hold unchanged.
+
+Verification:
+
+- og-cook nextest 221/221.
+- clippy `-D warnings` and fmt clean (og-cook, og-cli).
+- Knowledge `validate.test.ts` 25/25. og-build §8 gets the sentence on
+  decimation and over-budget models.
