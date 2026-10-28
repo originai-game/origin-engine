@@ -17,6 +17,15 @@ scenes {
   main "scenes/main.ogt"
 }
 scene main
+# The look's cook contract (og-build §8) holds every asset; an opt-out keeps
+# one as made and `og cook --report` lists it. The dropship is the intro's
+# hero set piece: its panels keep it near 4.5k triangles at any silhouette
+# error, past faceted-low-poly's 200, so it stays whole as made, and `og
+# style check` still names it off the contract: a game replaces it with a
+# set piece made for its own look (og-model §5).
+conform {
+  off "models/dropship.glb"
+}
 publish {
   # `og build --publish` keeps only the player-facing probe members
   # (hello, tick, state, pick, entity, input, capture).
