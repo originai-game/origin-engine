@@ -130,6 +130,18 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.7.0 released (2026-10-28 UTC).** All five npm packages are
+published, and `v0.7.0` is pushed at `7757383a`. It is a minor release
+with the simulation unchanged: the art wave (docs/art.md, A1–A7). It
+adds the art contract's seven look resources, the cook's 2D and 3D
+conformance, the runtime defaults, the art brief, `og style check` and the
+family sample scenes. It has one breaking entry: a look that sets the art
+blocks now conforms the assets. The replay gate passes 2/2 goldens with
+the tarball binaries on darwin-arm64 and win32-x64. The tarballs passed on
+Mac, Linux and Windows, and the registry install passed on Mac and Linux;
+Windows' registry run is pending. See the
+[release receipt](../tests/evidence/release/0.7.0.md).
+
 **0.6.6 released (2026-10-28 UTC).** All five npm packages are
 published, and `v0.6.6` is pushed at `71b2f032`. It is a knowledge-only
 patch with the simulation unchanged and no crate changed: the craft
