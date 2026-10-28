@@ -446,6 +446,48 @@ fn voxels_sit_on_the_grid_of_their_edge() {
 }
 
 #[test]
+fn a_model_within_its_budget_still_holds_its_voxels_to_it() {
+    // A 6 m ball of 48 triangles is far under propFaces 300, so no
+    // decimation is planned; at 0.1 m its shell alone is about
+    // 4 pi 6^2 / 0.01 = 45,000 cell faces, so the edge must double until
+    // the ball meets 300 faces (or the edge reaches 16 times, 1.6 m).
+    let s = sphere(6.0, [0.0, 6.0, 0.0], 8, 4);
+    let root = project(
+        "voxel-budget",
+        &[
+            ("project.ogt", PROJECT.as_bytes().to_vec()),
+            (
+                "assets/looks/main.ogt",
+                look("ArtShape {\n  propFaces 300\n  normals flat\n  voxel 0.1\n}\n").into_bytes(),
+            ),
+            (
+                "assets/models/hill.glb",
+                glb(&s, 1, [0.3, 0.6, 0.3, 1.0], None),
+            ),
+        ],
+    );
+    let report = cook(&root);
+    let what = &entry(&report, "models/hill.glb").what;
+    let edge: f32 = what
+        .split("voxelised at ")
+        .nth(1)
+        .and_then(|x| x.split(' ').next()?.parse().ok())
+        .unwrap_or_else(|| panic!("{what}"));
+    let faces: usize = triangles(&root, "models/hill.glb")
+        .iter()
+        .map(Vec::len)
+        .sum();
+    assert!(
+        edge > 0.1,
+        "the edge stayed at {edge} m with {faces} faces: {what}"
+    );
+    assert!(
+        faces <= 300 || edge >= 1.6 - 1e-4,
+        "{faces} faces at {edge} m: {what}"
+    );
+}
+
+#[test]
 fn textures_are_resampled_to_the_density_and_capped_at_max_size() {
     // A 2 m wide model (two nodes 3 m apart: 5 m extent), a 256 texture.
     let s = sphere(1.0, [0.0, 1.0, 0.0], 16, 8);
