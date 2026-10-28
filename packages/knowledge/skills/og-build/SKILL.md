@@ -1,6 +1,6 @@
 ---
 name: og-build
-description: The Origin Engine build loop — og cook, og run with a scripted command channel (inputs, captures, dumps, get and set), screenshots and world dumps read as evidence, og dev hot reload, og test playtests, og polish's taste and feel scores (the one list of what it measures and where each finding is fixed), og build for publishing, og run --device for the first frame and frame times on a real browser or phone, and big games: streaming groups and what they may hold, .vox models, compressed animation, chunked music, the lanes and cross-origin isolation. Use whenever a change to a project with a project.ogt must be run, observed, scored or shipped (not a Godot project.godot).
+description: The Origin Engine build loop — og cook, og run with a scripted command channel (inputs, captures, dumps, get and set), screenshots and world dumps read as evidence, og dev hot reload, og test playtests, og polish's taste and feel scores (the one list of what it measures and where each finding is fixed), the cook's art conformance (what og cook --report says it changed, conform off, og style check), og build for publishing, og run --device for the first frame and frame times on a real browser or phone, and big games: streaming groups and what they may hold, .vox models, compressed animation, chunked music, the lanes and cross-origin isolation. Use whenever a change to a project with a project.ogt must be run, observed, scored or shipped (not a Godot project.godot).
 ---
 
 The `og` tool is the whole loop: it cooks assets, runs the game headless on
@@ -32,7 +32,8 @@ a number and a sound (taste 98, feel 79).
 
 1. **Cook** after any change under `assets/`: `og cook`. It is incremental
    (only changed sources re-cook) and writes `cooked/`, the only thing the
-   runtime reads. A load that names an uncooked path, or a blob whose cook
+   runtime reads. With project.ogt's `look` line it also makes every asset
+   meet the look's art contract (§8). A load that names an uncooked path, or a blob whose cook
    stamp does not match the manifest, is refused with the path; cook again.
 2. **Run with a script**: `og run . --headless --commands "<script>"`. The
    script is `t:action[:args];...` with `t` in simulation seconds from the
@@ -406,3 +407,76 @@ cross-origin isolated page: `project.ogt`'s `publish { isolation
 required | preferred | off }` (`preferred` by default: lanes where the
 host serves COOP/COEP, one thread otherwise, the same game either way).
 The lanes build caps memory at 2 GiB. `dump_lanes` reports what ran where.
+
+## 8. Art conformance: the assets meet the look
+
+The game's look carries an art contract (og-taste §12: `ArtPalette`,
+`ArtPixels`, `ArtTexels`, `ArtShape`, `ArtLine`, `ArtMotion`,
+`ArtCamera`), and project.ogt's `look "looks/<game>.ogt"` names it. With
+that line, `og cook` makes every asset meet the contract as it cooks it:
+the source under `assets/` is never written, the cooked blob conforms, and
+the same sources and look give the same bytes. Without the line, or with
+every art block at zero, nothing changes. This is the consumer's half of
+producing an asset on Origin Engine:
+
+1. **Request it through the brief.** `bun
+   node_modules/@origingame/engine/knowledge/scripts/brief.ts <kind>
+   "<subject>" --project .` prints the prompt, the references and the
+   generator's parameters for one asset in the game's style (og-taste §1);
+   generate with them as they are.
+2. **Import it** under `assets/` as any asset (og-game §5): a sprite
+   sheet with its flipbook, a tile set, a glTF model, a texture.
+3. **Cook and read the report.** `og cook --report` ends with the art
+   contract's lines for 2D art:
+
+   ```text
+   og cook: the art contract changed 2 asset(s), 1 met it as they were, 1 opted out:
+     sprites/courier.png (changed): 32x40 cells to 26x32 by the dominant-colour box (270x82 to 222x66 texels); alpha to 1 bit (96 texels); line 1 px inside (diamond) in #272730: 210 texels; index texture sprites/courier.png#index
+     sprites/courier.ogt (changed): its cells follow sprites/courier.png's conformed layout (222x66 texels)
+     sprites/coin.png (unchanged): meets the contract as it is
+     ui/logo.png (off): conform off (assets/ui/logo.png.ogt)
+   ```
+
+   Models, the textures on them, their clips and every flipbook carry their
+   changes as notes on the asset beginning "conform:" (the triangles
+   before and after against the budget, flat or smooth normals, the voxel
+   edge, the bevel, a texture's new size and filter, a clip stepped to
+   `stepFps`); one beginning "conform: warning:" says what was dropped
+   (frames past `maxFrames`).
+   `og cook --report out.md` tables every note per asset, and
+   `og-out/cook-report.json` (and `--json`) carries the 2D entries as
+   `conform`. A note shows on the cook that made the output: after
+   `og cook` found nothing to do, change the look or the asset (or delete
+   its outputs in `cooked/`) to see it again.
+4. **Look at it in the game** (visual-acceptance §2): the conformed sprite
+   or model in the play camera, beside the style's preview. A large change
+   in the report (a sprite halved, a model cut to a fifth of its
+   triangles) means the request missed the contract: fix the request and
+   generate again rather than leaving the cook to rescue it.
+
+**Opting out.** An asset that must stay exactly as made (a photograph, a
+logo, licensed art, a hero model the style deliberately breaks) takes
+`conform off`: in an image's import settings (the `type import` file
+beside it), in a flipbook's, tile set's, 2D rig's or `type model`'s own
+`.ogt`, or in a glTF's import settings. For 2D art, project.ogt's block
+names paths at once:
+
+```text
+conform {
+  off "sprites/photos/*" "ui/logo.png"
+}
+```
+
+Asset ids, `*` within a path segment, `**` across, a trailing `/` a
+folder. Every opt-out is listed by `og cook --report` with its reason. To
+release one constraint for the whole game instead, set its field to zero
+in the game's look (og-taste §12): `ArtShape { propFaces 0 }` keeps every
+prop's triangles.
+
+**Checking the style.** `og style check` (coming with the art wave's
+check stream; until it lands in the engine you pin, the report above and
+the frames are the check) measures each asset and the frames against the
+contract: palette hit rate, distinct colours, pixel-grid alignment, texel
+density, faces against the budget, the line found, and lists every
+opt-out; `og build --publish` prints its summary as warnings and never
+refuses a build. Run it before calling a screen done.

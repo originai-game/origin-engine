@@ -72,6 +72,19 @@ aerial ring, then `--holes` views chosen for the most unpainted texels.
 `--dry` writes every prompt without a model call; read them before
 spending.
 
+**In the game's style.** The `--style` text is the level's share of the
+art brief, never words of your own: take the Style and Palette lines of
+`bun node_modules/@origingame/engine/knowledge/scripts/brief.ts texture
+"<the level's materials>" --project .` (og-taste §1), and keep that one
+text for the whole run, roofs included (`--roof-style` from a second
+brief naming the roofs). Pass the style's preview to the image model with
+each view where it takes references. The exported glb is cooked under the
+look like any model (og-build §8): with `ArtTexels` set, its texture is
+resampled to the density over the level's size and held to `maxSize`, so a
+`--size` above what the look keeps only spends model calls; with
+`ArtShape`, its geometry is held to the budget too, so a level that must
+keep its triangles takes `conform off` in its import settings.
+
 Budget: the model calls scale with the surface a player can see, not with
 triangles. A village square (1 000 triangles, 4096² texture) takes about
 27 calls, 35–50 s each with the pro model (about $1.10 at $0.04 an image);

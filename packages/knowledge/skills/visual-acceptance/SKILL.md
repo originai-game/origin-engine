@@ -36,6 +36,19 @@ landmarks, proportions, colour and material regions, detail, deformation
 and motion. A mood board alone cannot specify a hero model (og-model §2 has
 the detail inventory).
 
+In a game with a look, each asset is also judged against the art
+contract it was requested under (og-taste §1, §12): the art brief that
+made it (its palette, pixel grid or texel size, line, face budget) is the
+criterion, and the style's preview and the game's accepted assets are its
+references. Read what the cook changed (`og cook --report`, og-build §8)
+before reading the frame: a sprite the cook halved or a model it cut to a
+fifth of its triangles was requested off the contract, and the fix is the
+request, not a looser look. Every opt-out (`conform off`) is a claim to
+check: say why that asset may break the style. `og style check`, when the
+engine you pin has it (og-build §8), gives the contract's numbers per
+asset and per frame; numbers cannot judge a style (og-taste §11), so open
+the frames too.
+
 Then look at it in the game's own camera and lighting, at play scale, and
 judge the whole frame against the chosen direction: massing, palette,
 atmosphere, ground cover, readable navigation, threats, interaction prompts
@@ -68,7 +81,8 @@ to whoever owns the direction.
 
 Record the reference and its version, the build or commit judged, the
 camera, viewport, tick and seed, the exact command, the numbers it printed
-and the path of every frame you opened. A frame nobody opened is not
+and the path of every frame you opened; for an asset, the brief it was
+requested with and what the cook's report said it changed. A frame nobody opened is not
 evidence, and a frame from a debug camera is not the shipping camera. A
 later edit makes the conclusion stale; it does not make it retroactively
 true.

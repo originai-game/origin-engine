@@ -9,7 +9,9 @@ found code from silently becoming load-bearing code.
 Research about games (genre conventions, norms, formulas) is not code and is
 never a rung of this ladder; finished art (models, textures, sounds) is an
 asset decision with its own licence and provenance, recorded beside the
-file in `assets/`.
+file in `assets/`, and held to the game's look like generated art: checked
+against the art brief of its kind (og-taste §1) and conformed by the cook
+(og-build §8), or opted out with `conform off` and the reason.
 
 ## 1. The retrieval ladder
 

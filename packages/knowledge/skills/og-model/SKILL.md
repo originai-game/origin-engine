@@ -320,6 +320,68 @@ Keep the numbers of the spec in the code (the profile's points, the
 heights, the taper's keys) and nowhere else, so a refine-code is an edit
 of a number the spec names.
 
+**One recipe per shape language.** A model is built in the game's style
+from its first pass, not restyled at the end: read the look's `ArtShape`
+(og-taste §12) before the blockout. The art brief prints it for the model
+(`brief.ts prop "<subject>" --project .`, og-taste §1: the face budget,
+`normals`, `voxel`, `bevel`, the texture size), and the spec takes its
+numbers. The cook holds the contract on a `type model` asset and every
+glTF anyway (decimation to the budget, flat or smooth normals, the bevel,
+voxels: og-build §8), but a model built in its shape language from the
+start loses nothing to that pass, while a smooth 10,000-triangle model cut
+to 200 does.
+
+| Shape language (styles) | The contract | Build with | Materials |
+|---|---|---|---|
+| **Faceted** (`faceted-low-poly`, `minimal-geometric`, `low-resolution-3d`) | `normals flat`, `propFaces` 50 to 500 | every generator at its lowest counts that still keep the silhouette: `og.render.icosahedronGeometry` with `detail` 0 for rocks, canopies and gems, `latheGeometry` with `segments` 5 to 8, `cylinderGeometry` with `radialSegments` 5 to 7, `extrudeGeometry` with `bevelEnabled: false` and `curveSegments` 2 to 4; facets placed where the light turns, never at random | `flatShading: true`, one flat colour per material from the palette, no map (or one small palette texture) |
+| **Voxel** (`voxel-worlds`) | `voxel` (the cube edge), `normals flat` | one `og.render.boxGeometry` of the edge placed on the grid by `mergeGeometries` (every position a whole multiple of the edge, in the model's own space), one merge per palette colour; a turned part stays on the grid (rebuild its cells, never rotate the merge); or a `.vox` model from a voxel editor (og-build §7) | `flatShading: true`, one palette colour per merge |
+| **Clay bevel** (`sculpted-clay`, `miniature-diorama`) | `bevel` (metres), `normals smooth` | soft volumes: lathes whose profiles round every corner with two or three extra points, `og.render.capsuleGeometry` for limbs, `extrudeGeometry` with `bevelThickness` and `bevelSize` at the contract's bevel and `bevelSegments` 3 or more, lumps of `sphereGeometry` merged; no knife edge anywhere | matte (`roughness` 0.6 to 0.9, `metalness` 0), saturated flat colours; a fingerprint or tool texture only where the style's checks ask for it |
+| **Paper fold** (`paper-craft`) | `normals flat` | sheets, not solids: `extrudeGeometry` of an og.Shape outline at a card's thickness (`depth` 0.002 to 0.01, `bevelEnabled: false`), each panel its own part turned about its fold line (a pivot on the crease), or `shapeGeometry` for a single sheet; volumes are boxes and prisms folded from those panels | `flatShading: true`, `roughness` 1, one flat colour per sheet, `side: "double"` on single sheets |
+| **Wireframe** (`neon-vector`) | a palette of black and 2 to 4 hues; the line is the shape | edges, not faces: `og.render.tubeGeometry` through the `points` of each line that draws the silhouette (`radius` 0.01 to 0.03, `radialSegments` 4 to 6), merged per hue; or a low-poly solid with `wireframe: true` for one-pixel lines (every triangle edge shows, so keep it to the polyhedra) | `unlit: true`, `emissive` at a palette hue with `emissiveIntensity` 2 to 4 so the look's bloom lights it; faces, where there are any, near-black |
+
+The voxel and the wireframe recipes, as a factory's parts:
+
+```ts
+/** A voxel tree: cells on a 0.1 m grid (ArtShape.voxel), one merge per palette colour. */
+function voxelTree(world: World, root: Entity, bark: Material, leaf: Material) {
+  const edge = 0.1;
+  const cube = must(og.render.boxGeometry(world, { width: edge, height: edge, depth: edge }));
+  const cells = (pick: (x: number, y: number, z: number) => boolean, size: number, height: number) => {
+    const parts = [];
+    for (let x = -size; x <= size; x++) for (let z = -size; z <= size; z++) for (let y = 0; y < height; y++) {
+      if (pick(x, y, z)) parts.push({ geometry: cube, position: { x: x * edge, y: (y + 0.5) * edge, z: z * edge } });
+    }
+    return must(og.render.mergeGeometries(world, { parts }));
+  };
+  const trunk = cells((x, y, z) => x === 0 && z === 0 && y < 8, 0, 8);
+  const crown = cells((x, y, z) => y >= 6 && x * x + (y - 9) * (y - 9) + z * z <= 9, 3, 13);
+  for (const [name, geometry, material] of [["trunk", trunk, bark], ["crown", crown, leaf]] as const) {
+    const e = must(world.spawn({ name, parent: root }));
+    world.insert(e, og.Mesh, { geometry, material });
+  }
+}
+
+/** A neon gate: glowing tubes along the lines of its silhouette, one hue. */
+function neonGate(world: World, root: Entity) {
+  const glow = must(og.render.standardMaterial(world, { color: { r: 0, g: 0, b: 0 }, unlit: true, emissive: { r: 0.25, g: 0.94, b: 1 }, emissiveIntensity: 3 }));
+  const line = (points: { x: number; y: number; z: number }[]) => must(og.render.tubeGeometry(world, { points, radius: 0.02, radialSegments: 5, tubularSegments: points.length * 4 }));
+  const frame = must(og.render.mergeGeometries(world, {
+    parts: [
+      { geometry: line([{ x: -1, y: 0, z: 0 }, { x: -1, y: 2, z: 0 }, { x: 0, y: 2.6, z: 0 }, { x: 1, y: 2, z: 0 }, { x: 1, y: 0, z: 0 }]) },
+      { geometry: line([{ x: -1, y: 1.2, z: 0 }, { x: 1, y: 1.2, z: 0 }]) },
+    ],
+  }));
+  const e = must(world.spawn({ name: "gate", parent: root }));
+  world.insert(e, og.Mesh, { geometry: frame, material: glow });
+}
+```
+
+Judge it in the game's look (pass 6): a faceted model whose facets do not
+read under the look's light has too many of them or facets in the wrong
+places; a clay model with one hard edge reads as plastic; voxels off the
+grid read as noise; a neon line too thin to bloom disappears at play
+distance.
+
 **The same model as an asset: `type model`.** A prop whose parts depend on
 nothing the game computes belongs in an asset once its passes are
 closed: an `.ogt` of `type model` under `assets/` (og-game §18 has the
@@ -361,6 +423,9 @@ take.
 | background and repeated set dressing | ≤ 1,000 | 1 | 8 to 12 |
 | stylised character | ≤ 15,000 | ≤ 4 | 24 to 32 |
 
+- The game's look wins over this table: its `ArtShape.propFaces` and
+  `characterFaces` (og-taste §12, printed by the art brief) are the budget
+  the cook decimates to, so build under them, not under the row above.
 - Count with `og.render.geometryInfo(world, g).triangles` over the parts,
   and in a frame with `dump_render` (the main pass's triangles).
 - A draw is a mesh and material pair: parts that never move and share a
