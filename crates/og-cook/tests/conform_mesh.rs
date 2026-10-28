@@ -9,6 +9,7 @@
 //! welded corner; voxels off the grid by half a cell; a stepped clip
 //! interpolating between its poses; `conform off` ignored.
 
+use og_cook::cook::{ConformAction, ConformEntry};
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};
 use std::collections::BTreeMap;
@@ -190,6 +191,20 @@ fn notes(report: &og_cook::cook::Report, source: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// The art contract's entry for `source` in the report (one per asset).
+fn entry<'a>(report: &'a og_cook::cook::Report, source: &str) -> &'a ConformEntry {
+    let mut it = report.conform.iter().filter(|e| e.source == source);
+    let e = it
+        .next()
+        .unwrap_or_else(|| panic!("no entry for {source}: {:?}", report.conform));
+    assert!(
+        it.next().is_none(),
+        "one entry for {source}: {:?}",
+        report.conform
+    );
+    e
+}
+
 /// Per primitive of the model: its LOD 0 triangles as three vertices each.
 fn triangles(root: &Path, id: &str) -> Vec<Vec<[og_render::Vertex; 3]>> {
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
@@ -243,6 +258,7 @@ fn without_a_look_or_with_zero_art_blocks_the_cook_is_byte_identical() {
                 .iter()
                 .all(|n| !n.starts_with("conform"))
         );
+        assert!(report.conform.is_empty(), "{:?}", report.conform);
         let (a, b) = (cooked_files(&before), cooked_files(&after));
         assert_eq!(
             a.keys().collect::<Vec<_>>(),
@@ -281,12 +297,9 @@ fn a_model_past_the_face_budget_is_decimated_counting_every_node_that_draws_it()
             "{nodes} node(s): {tris} triangles each"
         );
         assert!(tris * nodes > 250, "decimated far below the budget: {tris}");
-        let n = notes(&report, "models/ball.glb");
-        assert!(
-            n.iter()
-                .any(|x| x.starts_with("conform:") && x.contains("propFaces 500")),
-            "{n:?}"
-        );
+        let e = entry(&report, "models/ball.glb");
+        assert_eq!(e.action, ConformAction::Changed);
+        assert!(e.what.contains("propFaces 500"), "{e:?}");
     }
 }
 
@@ -346,9 +359,9 @@ fn normals_flat_shades_every_face_with_its_own_normal_and_bakes_its_colour() {
     assert_eq!(model.materials[0].base_color, [1.0; 4]);
     assert_eq!(model.materials[0].base_color_texture, None);
     assert!(
-        notes(&report, "models/ball.glb")
-            .iter()
-            .any(|n| n.contains("normals flat"))
+        entry(&report, "models/ball.glb")
+            .what
+            .contains("normals flat")
     );
 }
 
@@ -379,18 +392,12 @@ fn voxels_sit_on_the_grid_of_their_edge() {
     }
     // The ball fills its grid: at least the cells whose centre is inside
     // it, at most the cells that touch it.
-    let n = notes(&report, "models/ball.glb");
-    let voxels: usize = n
-        .iter()
-        .find_map(|x| {
-            x.split("voxelised at 0.1 m (")
-                .nth(1)?
-                .split(' ')
-                .next()?
-                .parse()
-                .ok()
-        })
-        .unwrap_or_else(|| panic!("{n:?}"));
+    let what = &entry(&report, "models/ball.glb").what;
+    let voxels: usize = what
+        .split("voxelised at 0.1 m (")
+        .nth(1)
+        .and_then(|x| x.split(' ').next()?.parse().ok())
+        .unwrap_or_else(|| panic!("{what}"));
     let (c, r) = ([0.033f64, 0.51, -0.017], 0.47f64);
     let (mut inside, mut touching) = (0, 0);
     for x in -10..10 {
@@ -504,9 +511,9 @@ fn a_stepped_clip_holds_each_pose_at_the_step_rate_and_drops_frames_past_the_lim
         );
     }
     assert!(
-        notes(&report, "models/walker.glb")
-            .iter()
-            .any(|n| n.contains("stepped at 12 fps"))
+        entry(&report, "models/walker.glb")
+            .what
+            .contains("stepped at 12 fps")
     );
     let root = project(
         "motion-max",
@@ -517,10 +524,20 @@ fn a_stepped_clip_holds_each_pose_at_the_step_rate_and_drops_frames_past_the_lim
     for c in &bundle.load_animation("models/walker.glb").unwrap().clips {
         assert!(c.frames <= 5, "{}: {} frames", c.name, c.frames);
     }
+    // Frames dropped are a warning of the cook, and in the entry.
     assert!(
-        notes(&report, "models/walker.glb")
+        report
+            .warnings
             .iter()
-            .any(|n| n.contains("warning") && n.contains("maxFrames 5"))
+            .any(|w| w.starts_with("assets/models/walker.glb: warning: ")
+                && w.contains("maxFrames 5")),
+        "{:?}",
+        report.warnings
+    );
+    assert!(
+        entry(&report, "models/walker.glb")
+            .what
+            .contains("maxFrames 5")
     );
 }
 
@@ -556,10 +573,16 @@ fn conform_off_keeps_a_model_as_made_and_the_report_says_so() {
     let (fa, fb) = (cooked_files(&a), cooked_files(&b));
     let model = fa.keys().find(|k| k.contains("ball")).unwrap();
     assert!(fa[model] == fb[model]);
+    let e = entry(&report, "models/ball.glb");
+    assert_eq!(e.action, ConformAction::Off);
+    assert!(
+        e.what.contains("conform off (assets/models/ball.glb.ogt)"),
+        "{e:?}"
+    );
     assert!(
         notes(&report, "models/ball.glb")
             .iter()
-            .any(|n| n.starts_with("conform: off"))
+            .any(|n| n.starts_with("art contract: off"))
     );
 }
 
@@ -574,4 +597,190 @@ fn conformed_output_is_deterministic() {
     cook(&a);
     cook(&b);
     assert!(cooked_files(&a) == cooked_files(&b));
+}
+
+/// project.ogt with the look and `conform` lines.
+fn project_with(conform: &str) -> Vec<u8> {
+    format!("{PROJECT}conform {{\n{conform}}}\n").into_bytes()
+}
+
+/// A flipbook of three frames at 8 fps: 0.125 s each, which 12 fps steps
+/// hold for two steps (1/6 s).
+fn coin() -> [(&'static str, Vec<u8>); 2] {
+    [
+        ("assets/sprites/coin.png", png(24)),
+        (
+            "assets/sprites/coin.ogt",
+            b"type flipbook\nversion 1\n---\ntexture \"coin.png\"\ngrid 8 8 3 3\nclip spin {\n  frames 0 1 2\n  fps 8\n}\n".to_vec(),
+        ),
+    ]
+}
+
+fn coin_durations(root: &Path) -> Vec<f32> {
+    let b = Bundle::open(&root.join("cooked")).unwrap();
+    let bytes = b.read("sprites/coin.ogt").unwrap();
+    b.flipbook("sprites/coin.ogt", bytes.as_slice())
+        .unwrap()
+        .clips[0]
+        .durations
+        .clone()
+}
+
+#[test]
+fn project_conform_off_keeps_models_their_textures_clips_and_flipbooks_as_made() {
+    const LOOK: &str = "ArtShape {\n  propFaces 100\n  normals flat\n}\nArtTexels {\n  maxSize 32\n}\nArtMotion {\n  stepFps 12\n}\n";
+    let ball = glb(
+        &sphere(0.5, [0.0, 0.5, 0.0], 32, 16),
+        1,
+        [1.0; 4],
+        Some(&png(128)),
+    );
+    let files = |project: Vec<u8>| {
+        let mut f = vec![
+            ("project.ogt", project),
+            ("assets/looks/main.ogt", look(LOOK).into_bytes()),
+            ("assets/models/ball.glb", ball.clone()),
+            ("assets/models/walker.glb", walker()),
+        ];
+        f.extend(coin());
+        f
+    };
+    // The control: no look at all, so nothing is conformed.
+    let control = project(
+        "project-off-control",
+        &files(b"type project\nversion 1\n---\n".to_vec()),
+    );
+    cook(&control);
+    // Conformed: all of it moves.
+    let on = project("project-off-on", &files(PROJECT.as_bytes().to_vec()));
+    let report_on = cook(&on);
+    let (fc, fo) = (cooked_files(&control), cooked_files(&on));
+    for id in ["models/ball.glb", "models/walker.glb"] {
+        assert_eq!(entry(&report_on, id).action, ConformAction::Changed, "{id}");
+    }
+    assert!(triangles(&on, "models/ball.glb")[0].len() <= 100);
+    let tex = |root: &Path| {
+        let t = Bundle::open(&root.join("cooked"))
+            .unwrap()
+            .load_texture("models/ball.glb#tex0")
+            .unwrap();
+        (t.meta.width, t.meta.height)
+    };
+    assert_eq!(tex(&on), (32, 32));
+    let held = 2.0f32 / 12.0;
+    assert!(coin_durations(&on).iter().all(|d| (d - held).abs() < 1e-5));
+    assert_eq!(
+        entry(&report_on, "sprites/coin.ogt").action,
+        ConformAction::Changed
+    );
+
+    // Off by pattern: models/ by a folder, the flipbook by its id.
+    let off = project(
+        "project-off",
+        &files(project_with(
+            "  off \"models/\"\n  off \"sprites/coin.ogt\"\n",
+        )),
+    );
+    let report = cook(&off);
+    let fx = cooked_files(&off);
+    // The model, its texture and its clips: the control's bytes.
+    let mut same = 0;
+    for (k, v) in &fc {
+        if k.contains("ball") || k.contains("walker") {
+            assert!(fx.get(k) == Some(v), "{k} differs from the control");
+            same += 1;
+        }
+    }
+    assert!(same >= 2, "{:?}", fc.keys());
+    assert_eq!(tex(&off), (128, 128));
+    // ...where conforming moves every one of them.
+    for k in fc
+        .keys()
+        .filter(|k| k.contains("ball") || k.contains("walker"))
+    {
+        assert!(fo.get(k) != fc.get(k), "{k}: conformed when on");
+    }
+    // The flipbook keeps 8 fps.
+    assert!(
+        coin_durations(&off)
+            .iter()
+            .all(|d| (d - 0.125).abs() < 1e-5)
+    );
+    for (id, pattern) in [
+        ("models/ball.glb", "off \"models/\""),
+        ("models/walker.glb", "off \"models/\""),
+        ("sprites/coin.ogt", "off \"sprites/coin.ogt\""),
+    ] {
+        let e = entry(&report, id);
+        assert_eq!(e.action, ConformAction::Off, "{id}");
+        assert!(
+            e.what.contains("project.ogt") && e.what.contains(pattern),
+            "{id}: {e:?}"
+        );
+    }
+    assert!(report.warnings.is_empty(), "{:?}", report.warnings);
+}
+
+#[test]
+fn the_report_lists_the_mesh_pass_beside_the_texture_pass_and_keeps_it_when_up_to_date() {
+    let files = vec![
+        ("project.ogt", PROJECT.as_bytes().to_vec()),
+        (
+            "assets/looks/main.ogt",
+            look("ArtShape {\n  propFaces 200\n}\nArtMotion {\n  stepFps 12\n  maxFrames 5\n}\n")
+                .into_bytes(),
+        ),
+        // Past the budget: decimated.
+        (
+            "assets/models/ball.glb",
+            glb(&sphere(0.5, [0.0, 0.5, 0.0], 32, 16), 1, [1.0; 4], None),
+        ),
+        // Inside it, smooth as asked for nothing: as made.
+        (
+            "assets/models/cube.glb",
+            glb(&sphere(0.5, [0.0, 0.5, 0.0], 4, 2), 1, [1.0; 4], None),
+        ),
+        ("assets/models/walker.glb", walker()),
+    ];
+    let root = project("report", &files);
+    let first = cook(&root);
+    let ball = entry(&first, "models/ball.glb");
+    assert_eq!(ball.action, ConformAction::Changed);
+    assert!(ball.what.contains("propFaces 200"), "{ball:?}");
+    let cube = entry(&first, "models/cube.glb");
+    assert_eq!(cube.action, ConformAction::Unchanged, "{cube:?}");
+    // No `conform:` line is left among the notes: the entry is the record.
+    for a in &first.assets {
+        assert!(
+            a.notes.iter().all(|n| !n.starts_with("conform:")),
+            "{:?}",
+            a.notes
+        );
+    }
+    assert!(first.warnings.iter().any(|w| w.contains("maxFrames 5")));
+    let md = first.to_markdown();
+    assert!(
+        md.contains("`models/ball.glb`: art contract: changed"),
+        "{md}"
+    );
+    let json = first.to_json();
+    assert!(
+        json.contains("\"conform\"") && json.contains("models/cube.glb"),
+        "{json}"
+    );
+    // Up to date: nothing cooks again, the same entries and warnings.
+    let second = cook(&root);
+    assert!(
+        second
+            .assets
+            .iter()
+            .flat_map(|a| &a.outputs)
+            .all(|o| !o.cooked),
+        "nothing cooks twice"
+    );
+    assert_eq!(
+        format!("{:?}", second.conform),
+        format!("{:?}", first.conform)
+    );
+    assert_eq!(second.warnings, first.warnings);
 }

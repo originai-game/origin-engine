@@ -136,7 +136,13 @@ pub struct Conform {
     pub max_colors: u32,
     pub line: Option<Line>,
     pub motion: Option<Motion>,
+    /// The assets kept as made, by asset id, with why: their own `conform
+    /// off` or project.ogt's `conform { off ... }` (set by the cook).
+    pub(in crate::cook) off: BTreeMap<String, String>,
 }
+
+/// What an output the contract leaves as it was reports.
+pub const UNCHANGED: &str = "meets the contract as it is";
 
 fn field<'a>(b: Option<&'a LookBlock>, f: &str) -> Option<&'a [Value]> {
     b.and_then(|b| b.get(f))
@@ -240,6 +246,7 @@ impl Conform {
                 step_fps,
                 max_frames,
             }),
+            off: BTreeMap::new(),
         };
         Ok((c.geometry() || c.textures() || c.motion.is_some()).then_some(c))
     }
@@ -1427,6 +1434,17 @@ pub(in crate::cook) fn notes(c: &Conform, src: &GltfSource, changes: &[Changes])
     let (before, after): (usize, usize) = changes
         .iter()
         .fold((0, 0), |(a, b), x| (a + x.faces.0, b + x.faces.1));
+    let changed = c.line.is_some()
+        || changes.iter().any(|x| {
+            x.faces.0 != x.faces.1
+                || x.normals
+                || x.colors
+                || x.voxel.is_some()
+                || x.bevel.is_some()
+        });
+    if !changed {
+        return vec![format!("conform: {UNCHANGED}")];
+    }
     let mut what = vec![format!("{before} → {after} triangles")];
     let (budget, name) = c.budget(src);
     if budget > 0 {
@@ -1725,7 +1743,11 @@ pub(in crate::cook) fn texture(
         mips = false;
         what.push("mips none".into());
     }
-    let note = (!what.is_empty()).then(|| format!("conform: {}", what.join("; ")));
+    let note = Some(if what.is_empty() {
+        format!("conform: {UNCHANGED}")
+    } else {
+        format!("conform: {}", what.join("; "))
+    });
     (img, k, mips, note)
 }
 
