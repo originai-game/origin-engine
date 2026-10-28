@@ -437,17 +437,19 @@ producing an asset on Origin Engine:
      ui/logo.png (off): conform off (assets/ui/logo.png.ogt)
    ```
 
-   Models, the textures on them, their clips and every flipbook carry their
-   changes as notes on the asset beginning "conform:" (the triangles
-   before and after against the budget, flat or smooth normals, the voxel
-   edge, the bevel, a texture's new size and filter, a clip stepped to
-   `stepFps`); one beginning "conform: warning:" says what was dropped
-   (frames past `maxFrames`).
-   `og cook --report out.md` tables every note per asset, and
-   `og-out/cook-report.json` (and `--json`) carries the 2D entries as
-   `conform`. A note shows on the cook that made the output: after
-   `og cook` found nothing to do, change the look or the asset (or delete
-   its outputs in `cooked/`) to see it again.
+   Models, the textures on them, their clips and every flipbook are listed
+   the same way (the triangles before and after against the budget, flat
+   or smooth normals, the voxel edge, the bevel, a texture's new size and
+   filter, a clip stepped to `stepFps`), and frames dropped past
+   `maxFrames` are the cook's warnings too. In a 3D project an image no
+   model, flipbook, tile set, rig or UI style names is conformed as a
+   mesh texture (`ArtTexels.maxSize`, `filter`, `mips`, the palette),
+   and its line says so: a HUD or UI image takes `conform ui` in its
+   import settings (the 2D pass's palette and alpha, its size kept), a
+   sprite `conform sprite`.
+   `og cook --report out.md` tables every line per asset, and
+   `og-out/cook-report.json` (and `--json`) carries them as `conform`,
+   also after a cook that found nothing to do.
 4. **Look at it in the game** (visual-acceptance §2): the conformed sprite
    or model in the play camera, beside the style's preview. A large change
    in the report (a sprite halved, a model cut to a fifth of its
@@ -479,8 +481,8 @@ notes), against the contract of the look project.ogt names:
 
 | Asset | Measured | Judged against |
 |---|---|---|
-| sprite (any texture of a `profile "2d"` project, or one cooked as pixel art) | distinct colours, palette hit rate (opaque texels within ΔE00 2 of a palette colour), texels per logical pixel and the half pixels off that grid, the line's width round the silhouette (per tile for a tile set) | `ArtPalette.maxColors`, `strict` (100 %), the project's grid (its sprites' most common), `ArtLine.width` |
-| texture on a 3D surface | colours, palette hit rate, size, nearest or linear, mip levels | `maxColors`, `strict`, `ArtTexels.maxSize`, `filter`, `mips` |
+| sprite (as the cook classifies it: any texture of a `profile "2d"` project, one a flipbook, tile set, 2D rig or UI style names, one with `conform ui` or `conform sprite`, or one imported as `kind pixel`) | distinct colours, palette hit rate (opaque texels within ΔE00 2 of a palette colour), texels per logical pixel and the half pixels off that grid, the line's width round the silhouette (per tile for a tile set) | `ArtPalette.maxColors`, `strict` (100 %), the project's grid (its sprites' most common), `ArtLine.width` |
+| texture on a 3D surface (a model's, or in a 3D project one nothing else names) | colours, palette hit rate, size, nearest or linear, mip levels | `maxColors`, `strict`, `ArtTexels.maxSize`, `filter`, `mips` |
 | model | triangles drawn (each primitive times its nodes), flat-normal share, texel density (texels per metre, area-weighted median), untextured colours | `ArtShape.propFaces` (`characterFaces` for a skinned model), `normals flat` (99 %), `ArtTexels.density` (within ×2), `maxColors` |
 
 A 2D rig's parts and a UI atlas keep their layout, so their line is not
