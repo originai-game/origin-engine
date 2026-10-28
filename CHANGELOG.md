@@ -31,6 +31,13 @@ is one line here, written at the merge that changes
   Every frame dithered with `bayer4` or `bayer8`, and every texture the
   cook conforms with them, changes; `bayer2` does not. No IDL member
   changed.
+- looks: `rubber-hose-animation` (`posterize 4`) and `gothic-contour`
+  (`posterize 5`) drop `Stylise.posterize`. Posterize rounds each channel
+  on its own in display space, so a near-neutral colour whose channels
+  sit closer than a step apart lands on unequal steps: the sepia print
+  turned olive and pink, the blue-grey haze flat grey and violet (still
+  visible at 8 tones). The cel bands stay the toon material's, the
+  contours the ink pass's. Frames of games on these presets change.
 
 ## 0.7.0 — 2026-10-28
 

@@ -1,14 +1,15 @@
 type look
 version 1
 ---
-# Thick ink contours, five tones, tinted shadows and a dark vignette.
+# Thick ink contours, tinted shadows and a dark vignette. No posterize:
+# rounding each channel on its own crushes the blue-grey haze into flat
+# grey and violet bands (tests/evidence/art/samples/NOTES.md).
 name "Gothic ornamental linework"
 ui "fantasy"
 Stylise {
   ink true
   inkThreshold 0.08
   inkWidth 2
-  posterize 5
 }
 MaterialStyle {
   shadowTint "#1a1030"
