@@ -1014,44 +1014,19 @@ fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSettings, String
     Ok(f)
 }
 
-/// Cooks `<root>/assets` into `<root>/cooked`. Per-asset failures are in the
-/// report ([`Report::ok`]); an `Err` means the cook could not run at all.
-pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookError> {
-    let cache = texture_cache::default_path();
-    cook_project_with_texture_cache(root, options, cache.as_deref())
+/// The project's assets as the cook first reads them: every file under
+/// `assets/` and the built-in ones its looks name, classified, with its
+/// import settings attached; the files it ignores; the errors found.
+struct Scan {
+    sources: Vec<Source>,
+    ignored: Vec<String>,
+    early_errors: Vec<(String, &'static str, String)>,
 }
 
-/// Cook with an explicit shared texture cache directory, or `None` to disable it.
-/// This does not read cache environment variables; useful for isolated callers/tests.
-pub fn cook_project_with_texture_cache(
-    root: &Path,
-    options: &CookOptions,
-    texture_cache: Option<&Path>,
-) -> Result<Report, CookError> {
-    let started = Instant::now();
-    let assets_dir = root.join("assets");
-    let cooked_dir = root.join("cooked");
+fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
     let mut files = Vec::new();
-    walk(&assets_dir, "", &mut files)
+    walk(assets_dir, "", &mut files)
         .map_err(|e| CookError(format!("{}: {e}", assets_dir.display())))?;
-    let threads = if options.threads == 0 {
-        std::thread::available_parallelism().map_or(4, |n| n.get())
-    } else {
-        options.threads
-    };
-    let texture_encoder = texture::encoder_name(&options.texture);
-    // The project's budgets (project.ogt's `budgets { }`, the defaults
-    // without one): a `type model` past them is refused, not cooked.
-    let budgets = std::fs::read_to_string(root.join("project.ogt"))
-        .ok()
-        .and_then(|t| Document::parse(&t).ok())
-        .and_then(|d| stats::Budgets::from_project(&d.body).ok())
-        .unwrap_or_default();
-    let budget_desc = format!(
-        "budgets triangles {} vertices {}",
-        budgets.triangles, budgets.vertices
-    );
-
     // The engine's built-in assets the looks name join the bundle under
     // their reserved ids (`@canvas/paper.png`, every file of
     // `@styles/pixel/`), once each, read from the cook itself.
@@ -1061,7 +1036,7 @@ pub fn cook_project_with_texture_cache(
             && let Ok(text) = std::fs::read_to_string(path)
             && Document::parse(&text).is_ok_and(|d| d.ty == crate::look::LOOK_TYPE)
         {
-            for (id, bytes) in look::builtin_files(rel, &text, &assets_dir) {
+            for (id, bytes) in look::builtin_files(rel, &text, assets_dir) {
                 builtins.insert(id.to_string(), bytes);
             }
         }
@@ -1175,9 +1150,58 @@ pub fn cook_project_with_texture_cache(
             conformed: None,
         });
     }
-    let mut consumed: BTreeSet<String> = BTreeSet::new();
     for s in sources.iter_mut() {
         s.settings = settings.remove(&s.rel);
+    }
+    Ok(Scan {
+        sources,
+        ignored,
+        early_errors,
+    })
+}
+
+/// Cooks `<root>/assets` into `<root>/cooked`. Per-asset failures are in the
+/// report ([`Report::ok`]); an `Err` means the cook could not run at all.
+pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookError> {
+    let cache = texture_cache::default_path();
+    cook_project_with_texture_cache(root, options, cache.as_deref())
+}
+
+/// Cook with an explicit shared texture cache directory, or `None` to disable it.
+/// This does not read cache environment variables; useful for isolated callers/tests.
+pub fn cook_project_with_texture_cache(
+    root: &Path,
+    options: &CookOptions,
+    texture_cache: Option<&Path>,
+) -> Result<Report, CookError> {
+    let started = Instant::now();
+    let assets_dir = root.join("assets");
+    let cooked_dir = root.join("cooked");
+    let threads = if options.threads == 0 {
+        std::thread::available_parallelism().map_or(4, |n| n.get())
+    } else {
+        options.threads
+    };
+    let texture_encoder = texture::encoder_name(&options.texture);
+    // The project's budgets (project.ogt's `budgets { }`, the defaults
+    // without one): a `type model` past them is refused, not cooked.
+    let budgets = std::fs::read_to_string(root.join("project.ogt"))
+        .ok()
+        .and_then(|t| Document::parse(&t).ok())
+        .and_then(|d| stats::Budgets::from_project(&d.body).ok())
+        .unwrap_or_default();
+    let budget_desc = format!(
+        "budgets triangles {} vertices {}",
+        budgets.triangles, budgets.vertices
+    );
+
+    let Scan {
+        mut sources,
+        mut ignored,
+        mut early_errors,
+    } = scan(&assets_dir)?;
+    let mut consumed: BTreeSet<String> = BTreeSet::new();
+    for s in sources.iter_mut() {
         // A MagicaVoxel file is a model: meshed into a glTF binary here (its
         // import settings' `model { voxScale voxOrigin }` applied), so the
         // rest of the cook sees a .glb.
