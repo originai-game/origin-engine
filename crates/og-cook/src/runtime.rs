@@ -1410,6 +1410,13 @@ impl CookedModel {
             .iter()
             .map(|t| scene.add_texture_source(t.clone()))
             .collect();
+        // Pixel art (an art contract's `ArtTexels.filter nearest`) is
+        // sampled nearest, as og.load.texture samples it.
+        for (h, t) in handles.iter().zip(&self.textures) {
+            if t.kind == crate::format::kind::PIXEL {
+                scene.set_texture_filter(*h, og_render::TextureFilter::Nearest);
+            }
+        }
         // A material with physical extensions is added as the standard
         // material it draws as, the others in their glTF shape.
         let materials: Vec<MaterialHandle> = (0..self.materials.len())

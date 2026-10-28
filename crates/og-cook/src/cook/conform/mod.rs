@@ -8,10 +8,13 @@
 //!
 //! One module per kind of asset, each called once from `cook_project`:
 //! `texture2d` (textures used by sprites, flipbooks, tile sets and UI
-//! images: stream A2). What they share is here: the report's lines and
+//! images: stream A2) and `mesh` (models, the textures they use, clips and
+//! flipbooks' timing: stream A3, held through `MeshOptions.conform`, its
+//! changes notes starting `conform:` on the asset's report). What they share is here: the report's lines and
 //! the opt-outs (`conform off` in an asset's `.ogt`, project.ogt's
 //! `conform { off "<path>" }`).
 
+pub mod mesh;
 pub(super) mod texture2d;
 
 use og_core::ogt::{Block, Document, Entry};

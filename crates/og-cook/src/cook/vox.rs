@@ -761,15 +761,15 @@ fn looped_frame(looped: bool, first: u32, last: u32, frame: u32) -> u32 {
 
 /// A greedy-meshed quad: its four corners (voxel units, MagicaVoxel's
 /// frame), its outward normal and its colour index.
-struct Quad {
-    corners: [[f32; 3]; 4],
-    normal: [f32; 3],
-    color: u8,
+pub(super) struct Quad {
+    pub(super) corners: [[f32; 3]; 4],
+    pub(super) normal: [f32; 3],
+    pub(super) color: u8,
 }
 
 /// Greedy meshing of one model: per axis and direction, per slice, maximal
 /// rectangles of one colour whose face is exposed.
-fn mesh_model(m: &VoxModel) -> Vec<Quad> {
+pub(super) fn mesh_model(m: &VoxModel) -> Vec<Quad> {
     let [sx, sy, sz] = m.size.map(|v| v as usize);
     let mut grid = vec![0u8; sx * sy * sz];
     let idx = |x: usize, y: usize, z: usize| x + sx * (y + sy * z);

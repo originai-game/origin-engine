@@ -8,6 +8,7 @@ mod animation;
 mod behaviour;
 mod compressed;
 mod conform_2d;
+mod conform_mesh;
 mod cook_report;
 mod environment;
 mod flipbook;

@@ -1145,9 +1145,11 @@ pub(super) fn build(text: &str) -> Result<Built, String> {
                     add_node(n, pivot, &mut nodes, &mut children, &mut roots);
                 }
             }
+            // `conform off`: the art contract leaves it as made (cook/conform).
+            "conform" if e.values.first().and_then(|v| v.as_word()) == Some("off") => {}
             k => {
                 return Err(format!(
-                    "line {}: '{k}' is not part of a model (material, pivot, part)",
+                    "line {}: '{k}' is not part of a model (material, pivot, part, conform off)",
                     e.line
                 ));
             }

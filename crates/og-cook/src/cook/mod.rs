@@ -13,7 +13,7 @@
 pub mod anim;
 pub mod audio;
 pub mod bc6h;
-mod conform;
+pub mod conform;
 pub use conform::{ConformAction, ConformEntry};
 pub mod cube_source;
 mod e6;
@@ -87,6 +87,10 @@ pub struct MeshOptions {
     /// import settings turn it off (`model { raycast false }`) for a model
     /// no ray is cast at, saving its bytes (about 13 per triangle).
     pub raycast: bool,
+    /// The project's art contract as models are held to it (docs/art.md
+    /// §2.3, `conform::mesh`): set by the cook from project.ogt's `look`
+    /// for every asset that does not opt out; `None` conforms nothing.
+    pub conform: Option<conform::mesh::Conform>,
 }
 
 impl Default for MeshOptions {
@@ -99,6 +103,7 @@ impl Default for MeshOptions {
             tangents: true,
             lods: None,
             raycast: true,
+            conform: None,
         }
     }
 }
@@ -841,6 +846,34 @@ fn settings_block<'a>(s: &'a Source, key: &str) -> Option<&'a og_core::ogt::Bloc
     s.settings.as_ref()?.1.body.get(key)?.block.as_ref()
 }
 
+/// `conform off` (docs/art.md §2.3): the asset keeps its source as made,
+/// whatever the project's art contract. Written at the top of the asset's
+/// own `.ogt` (a `type model`, a flipbook) or of its import settings.
+fn conform_off(s: &Source) -> bool {
+    let off = |b: &og_core::ogt::Block| {
+        b.get("conform")
+            .and_then(|e| e.values.first())
+            .and_then(|v| v.as_word())
+            == Some("off")
+    };
+    s.settings.as_ref().is_some_and(|(_, d)| off(&d.body))
+        || (s.rel.ends_with(".ogt")
+            && Document::parse(&String::from_utf8_lossy(&s.bytes)).is_ok_and(|d| off(&d.body)))
+}
+
+/// The mesh options of a model `s` under the art contract: its import
+/// settings', with the contract unless the model opts out.
+fn mesh_for(s: &Source, options: &CookOptions) -> Result<MeshOptions, CookError> {
+    let mut m = options
+        .mesh
+        .for_model(settings_block(s, "model"))
+        .map_err(CookError)?;
+    if conform_off(s) {
+        m.conform = None;
+    }
+    Ok(m)
+}
+
 fn texture_kind(s: &Source) -> Result<u32, String> {
     match settings_block(s, "texture").and_then(|b| b.get("kind")) {
         None => Ok(format::kind::COLOR),
@@ -1198,6 +1231,24 @@ pub fn cook_project_with_texture_cache(
     let conformed =
         conform::texture2d::conform(root, &assets_dir, &mut sources, &known, contract.as_ref())
             .map_err(CookError)?;
+    // The 3D conformance reads the contract (docs/art.md §2.3): every
+    // model, the textures it uses, clips and flipbooks are held to it.
+    let mut with_contract = options.clone();
+    if let Some((id, c)) = &contract {
+        let palette = |p: &str| -> Result<Vec<[u8; 3]>, String> {
+            let bytes = match look::builtin(p) {
+                Some((_, b)) => b.to_vec(),
+                None => std::fs::read(assets_dir.join(crate::runtime::asset_id(p)))
+                    .map_err(|e| e.to_string())?,
+            };
+            crate::look::parse_palette(p, &String::from_utf8_lossy(&bytes))
+        };
+        match conform::mesh::Conform::of(c, &palette) {
+            Ok(m) => with_contract.mesh.conform = m,
+            Err(e) => early_errors.push((id.clone(), "look", e)),
+        }
+    }
+    let options = &with_contract;
     // Streaming groups (phase 3): every scene's, read before anything cooks.
     let (groups, group_of) = plan_groups(&sources, &known, &mut early_errors);
     let schemas: BTreeMap<String, Schema> = options
@@ -1235,16 +1286,47 @@ pub fn cook_project_with_texture_cache(
         match s.kind {
             Kind::Model => {
                 let g = s.gltf.as_ref().expect("loaded");
+                // The art contract's part of each output's stamp: empty
+                // (and left out) when it changes nothing here.
+                let contract = options.mesh.conform.as_ref().filter(|_| !conform_off(s));
+                let model_desc = contract
+                    .map(|c| {
+                        let mut d = if c.applies(g) {
+                            c.model_desc()
+                        } else {
+                            String::new()
+                        };
+                        // Its colour textures' kind is in the blob.
+                        if c.filter == conform::mesh::Filter::Nearest {
+                            d.push_str(" textures nearest");
+                        }
+                        d
+                    })
+                    .unwrap_or_default();
+                let texture_desc = contract.map(|c| c.texture_desc()).unwrap_or_default();
+                let with = |parts: &[&[u8]], desc: &str, extra: &[u8]| {
+                    let mut v: Vec<&[u8]> = parts.to_vec();
+                    if !desc.is_empty() {
+                        v.push(desc.as_bytes());
+                        v.push(extra);
+                    }
+                    stamp(&v)
+                };
                 let mut ids = Vec::new();
                 for (i, u) in g.textures.iter().enumerate() {
                     let id = format!("{}#tex{i}", s.rel);
                     let image_hash = hash_bytes(&g.images[u.image]).to_le_bytes();
-                    let st = stamp(&[
-                        b"texture",
-                        tex_desc.as_bytes(),
-                        &image_hash,
-                        &u.kind.to_le_bytes(),
-                    ]);
+                    // A density is per metre of the model: its hash too.
+                    let st = with(
+                        &[
+                            b"texture",
+                            tex_desc.as_bytes(),
+                            &image_hash,
+                            &u.kind.to_le_bytes(),
+                        ],
+                        &texture_desc,
+                        &hash,
+                    );
                     outs.push((
                         id.clone(),
                         format::Texture::NAME,
@@ -1257,29 +1339,41 @@ pub fn cook_project_with_texture_cache(
                 // A model written as text is refused past the budgets, so
                 // they are among its inputs.
                 let st = if ext(&s.rel) == "ogt" {
-                    stamp(&[
-                        b"model",
-                        NODE_ROWS,
-                        mesh_desc.as_bytes(),
-                        &hash,
-                        joined.as_bytes(),
-                        budget_desc.as_bytes(),
-                    ])
+                    with(
+                        &[
+                            b"model",
+                            NODE_ROWS,
+                            mesh_desc.as_bytes(),
+                            &hash,
+                            joined.as_bytes(),
+                            budget_desc.as_bytes(),
+                        ],
+                        &model_desc,
+                        &[],
+                    )
                 } else {
-                    stamp(&[
-                        b"model",
-                        NODE_ROWS,
-                        mesh_desc.as_bytes(),
-                        &hash,
-                        joined.as_bytes(),
-                    ])
+                    with(
+                        &[
+                            b"model",
+                            NODE_ROWS,
+                            mesh_desc.as_bytes(),
+                            &hash,
+                            joined.as_bytes(),
+                        ],
+                        &model_desc,
+                        &[],
+                    )
                 };
                 outs.insert(
                     0,
                     (s.rel.clone(), format::Model::NAME, st, Work::Model(s, ids)),
                 );
                 if group_of.contains_key(&s.rel) {
-                    let st = stamp(&[b"proxy", NODE_ROWS, mesh_desc.as_bytes(), &hash]);
+                    let st = with(
+                        &[b"proxy", NODE_ROWS, mesh_desc.as_bytes(), &hash],
+                        &model_desc,
+                        &[],
+                    );
                     outs.push((
                         format!("{}#proxy", s.rel),
                         format::Model::NAME,
@@ -1291,14 +1385,22 @@ pub fn cook_project_with_texture_cache(
                     match anim_settings(s) {
                         Ok(a) => {
                             let deps = anim::dependencies(&assets_root(s), &a);
-                            let st = stamp(&[
-                                b"animation",
-                                NODE_ROWS,
-                                mesh_desc.as_bytes(),
-                                a.describe().as_bytes(),
-                                &hash,
-                                deps.as_bytes(),
-                            ]);
+                            let motion = contract
+                                .and_then(|c| c.motion.as_ref())
+                                .map(|m| m.describe())
+                                .unwrap_or_default();
+                            let st = with(
+                                &[
+                                    b"animation",
+                                    NODE_ROWS,
+                                    mesh_desc.as_bytes(),
+                                    a.describe().as_bytes(),
+                                    &hash,
+                                    deps.as_bytes(),
+                                ],
+                                &format!("{model_desc}{motion}"),
+                                &[],
+                            );
                             outs.insert(
                                 1,
                                 (
@@ -1446,7 +1548,17 @@ pub fn cook_project_with_texture_cache(
             }
             Kind::Flipbook => {
                 let deps = flipbook::dependency_hashes(s);
-                let st = stamp(&[b"flipbook", &hash, deps.as_bytes()]);
+                let motion = options
+                    .mesh
+                    .conform
+                    .as_ref()
+                    .and_then(|c| c.motion.as_ref())
+                    .filter(|_| !conform_off(s))
+                    .map(|m| m.describe());
+                let st = match &motion {
+                    Some(m) => stamp(&[b"flipbook", &hash, deps.as_bytes(), m.as_bytes()]),
+                    None => stamp(&[b"flipbook", &hash, deps.as_bytes()]),
+                };
                 outs.push((s.rel.clone(), format::Flipbook::NAME, st, Work::Flipbook(s)));
                 // `array true`: the frames as the layers of a texture array.
                 if let Ok(sheet) = flipbook::sheet(s)
@@ -2031,10 +2143,7 @@ fn run(
     match p.work.as_ref().expect("planned work") {
         Work::Model(s, ids) => {
             let g = s.gltf.as_ref().expect("loaded");
-            let mesh = options
-                .mesh
-                .for_model(settings_block(s, "model"))
-                .map_err(CookError)?;
+            let mesh = mesh_for(s, options)?;
             let (blob, n) = model::cook(g, ids, &mesh, p.stamp, false)?;
             // A model written as text is held to the project's budgets by
             // the cook itself: past them it is refused, not flagged.
@@ -2055,14 +2164,15 @@ fn run(
                     }
                 }
             }
-            Ok((blob, n.notes))
+            let mut notes = n.notes;
+            if options.mesh.conform.is_some() && mesh.conform.is_none() {
+                notes.push("conform: off (`conform off`): kept as made".into());
+            }
+            Ok((blob, notes))
         }
         Work::Proxy(s) => {
             let g = s.gltf.as_ref().expect("loaded");
-            let mesh = options
-                .mesh
-                .for_model(settings_block(s, "model"))
-                .map_err(CookError)?;
+            let mesh = mesh_for(s, options)?;
             model::cook(g, &[], &mesh, p.stamp, true).map(|(b, mut n)| {
                 n.notes.retain(|x| x.contains("triangles"));
                 (
@@ -2073,14 +2183,28 @@ fn run(
         }
         Work::Animation(s, a) => {
             let g = s.gltf.as_ref().expect("loaded");
-            anim::cook(g, &s.bytes, &options.mesh, a, p.stamp, &assets_root(s))
+            let mesh = mesh_for(s, options)?;
+            anim::cook(g, &s.bytes, &mesh, a, p.stamp, &assets_root(s))
         }
         Work::GltfTexture(s, image, k) => {
             let g = s.gltf.as_ref().expect("loaded");
             let img = texture::decode(&g.images[*image])
                 .map_err(|e| CookError(format!("{}: image {image}: {e}", p.id)))?;
-            let note = format!("{}: {}x{} image {image}", p.id, img.width, img.height);
-            texture::cook(&img, *k, &options.texture, p.stamp).map(|b| (b, vec![note]))
+            let mut notes = vec![format!(
+                "{}: {}x{} image {image}",
+                p.id, img.width, img.height
+            )];
+            let mut t = options.texture.clone();
+            let (img, k) = match options.mesh.conform.as_ref().filter(|_| !conform_off(s)) {
+                Some(c) => {
+                    let (img, k, mips, note) = conform::mesh::texture(c, g, img, *k, t.mipmaps);
+                    t.mipmaps = mips;
+                    notes.extend(note.map(|n| format!("{}: {n}", p.id)));
+                    (img, k)
+                }
+                None => (img, *k),
+            };
+            texture::cook(&img, k, &t, p.stamp).map(|b| (b, notes))
         }
         Work::Texture(s, k) if s.rel.ends_with(".ktx2") => {
             let explicit = settings_block(s, "texture")
@@ -2288,7 +2412,16 @@ fn run(
         Work::Tilemap(s, m) => {
             tilemap::cook_tilemap(&s.rel, &s.bytes, m, &|id| known.contains(id), p.stamp)
         }
-        Work::Flipbook(s) => flipbook::cook(s, p.stamp),
+        Work::Flipbook(s) => flipbook::cook(
+            s,
+            options
+                .mesh
+                .conform
+                .as_ref()
+                .and_then(|c| c.motion.as_ref())
+                .filter(|_| !conform_off(s)),
+            p.stamp,
+        ),
         Work::Rig2d(s) => rig2d::cook(s, p.stamp),
         Work::FlipbookArray(s, sheet) => flipbook::cook_array(s, sheet, &options.texture, p.stamp),
         Work::FlipbookLayer(s, sheet, n) => {
