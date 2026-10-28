@@ -97,6 +97,10 @@
       {
         "member": "og cook conform",
         "summary": "The cook conforms sprites, flipbooks, tile sets and UI images to the look's art contract (pixel grid, 1-bit alpha, Oklab palette with dither, line, prerotated cells, painted 2D) and writes <id>#index for palette swaps; conform off and project.ogt conform { off } opt out; og cook --report lists every change. Byte-identical without a contract."
+      },
+      {
+        "member": "artBrief",
+        "summary": "Knowledge (scripts/brief.ts) and @origingame/create-game: artBrief(look, kind, subject, options?) compiles the flattened look and its catalogue entry into the request for one asset: prompt, references, generator parameters; readLook(dir) and presetLook(slug) read a look from disk. A public contract (docs/art.md §2.2)."
       }
     ],
     "fixed": []

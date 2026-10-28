@@ -16,6 +16,7 @@
     "access": "public"
   },
   "type": "module",
+  "main": "bin/create.ts",
   "bin": {
     "create-game": "bin/create.ts"
   },
@@ -26,7 +27,8 @@
     "archetypes",
     "looks",
     "README.md",
-    "previews"
+    "previews",
+    "presets"
   ],
   "scripts": {
     "prepack": "bun scripts/pack-template.ts",

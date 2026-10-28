@@ -53,8 +53,26 @@ is, what it extends and how to change it. For an archetype, a preset moves
 the frames its `references/` hold; create says so and how to record them
 again.
 
+## The art brief
+
+The package also exports the art brief (`import { artBrief, readLook,
+presetLook } from "@origingame/create-game"`): a game's look compiled into
+the request for one asset of a kind (`sprite`, `tileset`, `portrait`,
+`backdrop`, `prop`, `character`, `texture`, `icon`): the prompt (the
+style's direction, the palette as named colours with hex, the sizes, the
+line, the shape language, what to avoid), the reference images (the
+style's preview, then the game's accepted assets) and the generator's
+parameters (transparent and size for an image, the face budget and texture
+size for a model). `readLook(dir)` reads a scaffold's look (project.ogt's
+`look` line down to its preset); `presetLook(slug)` a preset alone, before
+the game exists. `bin/brief.ts` is a byte-for-byte copy of the knowledge
+package's `scripts/brief.ts`, whose README (§The art brief) documents the
+signature and shapes, a public contract kept stable. The prepack copies it
+with the presets and built-in palettes it reads (`presets/`), and the
+tests fail when the copy differs.
+
 The published package carries the 3D template under `template/`, the 2D
-starter under `template-2d/` and the style catalogue under `looks/`, copied by the `prepack` script
+starter under `template-2d/`, the style catalogue under `looks/` and the look presets under `presets/`, copied by the `prepack` script
 (`scripts/pack-template.ts`); build output (`cooked/`,
 `dist/`, `node_modules/`) is never copied. The template's `gitattributes`
 (media through Git LFS) is written as the project's `.gitattributes`: under
