@@ -504,6 +504,22 @@ fn px(img: &RgbaImage, x: u32, y: u32) -> [u8; 3] {
     [img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]]
 }
 
+/// A `w`x`h` texture clear but for the texels `on` lists, each of a colour.
+fn texels(w: u32, h: u32, on: &[(u32, u32, [u8; 4])]) -> TextureData {
+    let mut rgba = vec![0u8; (w * h * 4) as usize];
+    for &(x, y, c) in on {
+        let i = ((y * w + x) * 4) as usize;
+        rgba[i..i + 4].copy_from_slice(&c);
+    }
+    TextureData {
+        width: w,
+        height: h,
+        rgba,
+        color_space: ColorSpace::Srgb,
+        mips: Mips::None,
+    }
+}
+
 /// An overlay sprite on a texture turned nearest before the first frame
 /// draws on that frame, crisp. Broken once (fixed in 1bb65d66): the
 /// overlay's sprite groups were made before the frame synced the texture
@@ -534,4 +550,196 @@ fn an_overlay_sprite_on_a_nearest_texture_draws_on_its_first_frame() {
     // Just left and right of the middle: one texel each, never a blend.
     assert_eq!(px(&img, 620, 360), [255, 0, 0]);
     assert_eq!(px(&img, 660, 360), [0, 0, 255]);
+}
+
+/// A pixel outline (`SpriteOutline`) is drawn from the texture's alpha
+/// round the art, a diamond of whole logical pixels, outside the quad
+/// where the art touches its edge, and never from a sheet's neighbouring
+/// frame; `pixel` keeps the line one logical pixel wide on a sprite drawn
+/// at twice its art. Ways this could fail: the quad is not grown (the line
+/// left of the edge is missing), the line takes the corners (a square
+/// brush), the region is not clipped (the next frame's texel lines the
+/// edge), or the width is counted in texels (twice as wide when scaled).
+#[test]
+fn a_sprite_outline_lines_the_art_by_logical_pixels() {
+    const RED: [u8; 4] = [255, 0, 0, 255];
+    const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
+    // An 8x4 sheet of two 4x4 frames: frame 0 has one texel at (0, 2), on
+    // its left edge; frame 1 one at (4, 2), just across the frames' border.
+    let draw = |size: f32, pixel: f32| {
+        let mut scene = flat();
+        let t = scene.add_texture(texels(8, 4, &[(0, 2, RED), (4, 2, [0, 0, 255, 255])]));
+        scene.set_texture_filter(t, TextureFilter::Nearest);
+        scene.add_sprite(Sprite {
+            texture: Some(t),
+            size: Vec2::splat(size),
+            uv_rect: [0.0, 0.0, 0.5, 1.0],
+            ..Default::default()
+        });
+        scene.sprite_outlines.push(og_render::SpriteOutline {
+            sprite: 0,
+            width: 1.0,
+            pixel,
+            color: GREEN,
+        });
+        frame(&scene, 1).0
+    };
+    // Frame 0 at one unit per texel: texel (x, y) is centred at
+    // (-1.5 + x, 1.5 - y).
+    let img = draw(4.0, 1.0);
+    let texel = |x: f32, y: f32| at(&img, -1.5 + x, 1.5 - y);
+    assert_eq!(texel(0.0, 2.0), [255, 0, 0], "the art");
+    assert_eq!(texel(-1.0, 2.0), [0, 255, 0], "left of the quad's edge");
+    assert_eq!(texel(1.0, 2.0), [0, 255, 0]);
+    assert_eq!(texel(0.0, 1.0), [0, 255, 0]);
+    assert_eq!(texel(0.0, 3.0), [0, 255, 0]);
+    assert_eq!(texel(1.0, 3.0), [0, 0, 0], "a diamond leaves the corners");
+    assert_eq!(texel(2.0, 2.0), [0, 0, 0], "one pixel wide");
+    assert_eq!(texel(3.0, 2.0), [0, 0, 0], "not lined by the next frame");
+    assert_eq!(texel(4.0, 2.0), [0, 0, 0], "the next frame is not drawn");
+    // Twice the size, a logical pixel half a texel: the line is one unit
+    // wide left of the art (two units a texel), not two.
+    let img = draw(8.0, 0.5);
+    // The art's texel spans x -4..-2, y -2..0.
+    assert_eq!(at(&img, -3.0, -1.0), [255, 0, 0]);
+    assert_eq!(at(&img, -4.5, -1.0), [0, 255, 0]);
+    assert_eq!(
+        at(&img, -5.5, -1.0),
+        [0, 0, 0],
+        "one logical pixel, not a texel"
+    );
+    // Without an entry, nothing changes.
+    let mut scene = flat();
+    let t = scene.add_texture(texels(4, 4, &[(0, 2, RED)]));
+    scene.add_sprite(Sprite {
+        texture: Some(t),
+        size: Vec2::splat(4.0),
+        ..Default::default()
+    });
+    let plain = frame(&scene, 1).0;
+    assert_eq!(at(&plain, -1.5 + 1.0, 1.5 - 2.0), [0, 0, 0]);
+}
+
+/// `TextureFilter::CleanEdge` redraws a staircase as a slope without a
+/// blended pixel: a turned sprite shows only the texture's colours (linear
+/// blends them), and on a 45° staircase the corner of a step is filled
+/// where nearest leaves it clear. Ways this could fail: the filter is not
+/// reached (the step stays square), it blends (a colour that is not in the
+/// texture), or it reads outside the region.
+#[test]
+fn clean_edge_turns_pixel_art_without_blending() {
+    const RED: [u8; 4] = [255, 0, 0, 255];
+    // A 4x4 staircase: texel (x, y) red where x <= y (y down).
+    let mut on = Vec::new();
+    for y in 0..4 {
+        for x in 0..=y {
+            on.push((x, y, RED));
+        }
+    }
+    let draw = |filter: TextureFilter, rotation: f32| {
+        let mut scene = flat();
+        let t = scene.add_texture(texels(4, 4, &on));
+        scene.set_texture_filter(t, filter);
+        scene.add_sprite(Sprite {
+            texture: Some(t),
+            size: Vec2::splat(8.0),
+            rotation,
+            ..Default::default()
+        });
+        frame(&scene, 1).0
+    };
+    // Texel (x, y) spans x -4 + 2x .. -2 + 2x, y 4 - 2y .. 2 - 2y.
+    let point = |img: &RgbaImage, x: f32, y: f32| at(img, -4.0 + 2.0 * x, 4.0 - 2.0 * y);
+    let nearest = draw(TextureFilter::Nearest, 0.0);
+    let clean = draw(TextureFilter::CleanEdge, 0.0);
+    // The lower-left corner of the clear step (1, 0): clear when nearest,
+    // filled by the slope through cleanEdge.
+    assert_eq!(point(&nearest, 1.15, 0.85), [0, 0, 0]);
+    assert_eq!(
+        point(&clean, 1.15, 0.85),
+        [255, 0, 0],
+        "the step's corner is filled"
+    );
+    // Deep inside either side, both agree.
+    assert_eq!(point(&clean, 0.5, 3.5), [255, 0, 0]);
+    assert_eq!(point(&clean, 3.5, 0.5), [0, 0, 0]);
+    // Turned 30 degrees: every pixel is red or the black background,
+    // where linear filtering blends.
+    let blended = |img: &RgbaImage| {
+        img.pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| p[0] != 0 && p[0] != 255)
+            .count()
+    };
+    let turned = draw(TextureFilter::CleanEdge, std::f32::consts::FRAC_PI_6);
+    assert_eq!(blended(&turned), 0, "cleanEdge never blends");
+    assert!(blended(&draw(TextureFilter::Linear, std::f32::consts::FRAC_PI_6)) > 100);
+}
+
+/// A palette swap (`RenderScene::paletted_texture`): an index texture as
+/// the cook writes `<id>#index` (alpha the palette index plus one) drawn
+/// through a row of a palette texture. Ways this could fail: the index is
+/// read off by one (alpha, not alpha - 1), the row is ignored (row 0
+/// drawn), an index past the palette's width is dropped instead of keeping
+/// the cooked colour, or a replaced palette keeps the old texture.
+#[test]
+fn a_palette_swap_draws_an_index_texture_through_a_row() {
+    let mut scene = flat();
+    // Indices 0, 1, clear, and 2 (past a palette two wide: its own colour).
+    let index = scene.add_texture(texels(
+        4,
+        1,
+        &[
+            (0, 0, [9, 9, 9, 1]),
+            (1, 0, [9, 9, 9, 2]),
+            (3, 0, [200, 100, 50, 3]),
+        ],
+    ));
+    scene.set_texture_filter(index, TextureFilter::Nearest);
+    // Row 0 red and green, row 1 blue and white.
+    let palette = scene.add_texture(texels(
+        2,
+        2,
+        &[
+            (0, 0, [255, 0, 0, 255]),
+            (1, 0, [0, 255, 0, 255]),
+            (0, 1, [0, 0, 255, 255]),
+            (1, 1, [255, 255, 255, 255]),
+        ],
+    ));
+    let row1 = scene.paletted_texture(index, palette, 1).expect("swap");
+    assert_eq!(
+        scene.paletted_texture(index, palette, 1),
+        Ok(row1),
+        "made once"
+    );
+    assert_eq!(scene.texture_filter(row1), TextureFilter::Nearest);
+    let draw = |scene: &mut RenderScene, t| {
+        scene.sprites.clear();
+        scene.add_sprite(Sprite {
+            texture: Some(t),
+            size: Vec2::new(8.0, 2.0),
+            ..Default::default()
+        });
+        let img = frame(scene, 1).0;
+        [-3.0, -1.0, 1.0, 3.0].map(|x| at(&img, x, 0.0))
+    };
+    assert_eq!(
+        draw(&mut scene, row1),
+        [[0, 0, 255], [255, 255, 255], [0, 0, 0], [200, 100, 50]]
+    );
+    let row0 = scene.paletted_texture(index, palette, 0).expect("swap");
+    assert_eq!(draw(&mut scene, row0)[..2], [[255, 0, 0], [0, 255, 0]]);
+    let past = scene.paletted_texture(index, palette, 7).expect("swap");
+    assert_eq!(
+        draw(&mut scene, past)[..2],
+        [[0, 0, 255], [255, 255, 255]],
+        "the last row"
+    );
+    // A new palette: the swap follows it.
+    assert!(scene.set_texture(palette, texels(1, 1, &[(0, 0, [0, 255, 255, 255])])));
+    let again = scene.paletted_texture(index, palette, 0).expect("swap");
+    assert_eq!(draw(&mut scene, again)[..2], [[0, 255, 255], [9, 9, 9]]);
 }
