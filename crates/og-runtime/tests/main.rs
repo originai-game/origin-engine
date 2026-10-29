@@ -29,6 +29,7 @@ mod restored_event;
 mod review_views;
 mod scene_string;
 mod shadow_flags;
+mod sky_off;
 mod sprite_arrays;
 mod stream_chunked;
 mod stream_fetch;

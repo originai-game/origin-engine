@@ -1358,6 +1358,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // keeps at most MAX_LIGHTS.
     let forward = |m: Mat4| m.transform_vector3(Vec3::NEG_Z).normalize_or_zero();
     let layouts = &rs.draw;
+    // The environment's sky is the built-in one each frame until the
+    // directional light (its sun) and og.Sky or og.DayNight (atmosphere.rs)
+    // set it: kept from the last frame, a Sky turned off went on lighting
+    // the scene and filling its background.
+    scene.environment.sky = og_render::ProceduralSky::default();
     if let Some(dl) = &layouts.directional
         && let Some((e, v)) = rows(world, dl).into_iter().next()
     {
