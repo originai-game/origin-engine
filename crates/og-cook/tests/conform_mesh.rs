@@ -519,10 +519,12 @@ fn a_model_within_its_budget_still_holds_its_voxels_to_it() {
 
 #[test]
 fn textures_are_resampled_to_the_density_and_capped_at_max_size() {
-    // A 2 m wide model (two nodes 3 m apart: 5 m extent), a 256 texture.
+    // A ball of radius 1 m (two nodes 3 m apart), a 256 texture laid once
+    // over it: one side of the texture spans about 4.1 m of its surface
+    // (the area-weighted median of sqrt(2 pi^2 sin theta) over its bands).
     let s = sphere(1.0, [0.0, 1.0, 0.0], 16, 8);
     for (blocks, want, pixel) in [
-        // 5 m × 16 texels a metre = 80, rounded to a power of two: 64.
+        // 4.1 m × 16 texels a metre = 66, rounded to a power of two: 64.
         (
             "ArtTexels {\n  density 16\n}\nArtShape {\n  normals smooth\n}\n",
             64u32,
@@ -555,6 +557,54 @@ fn textures_are_resampled_to_the_density_and_capped_at_max_size() {
         assert_eq!(
             model.textures[0].kind == og_cook::format::kind::PIXEL,
             pixel
+        );
+    }
+}
+
+/// A `side` m square on the ground whose UVs run from 0 to `uv` across it.
+fn plane(side: f32, uv: f32) -> Mesh {
+    let h = side / 2.0;
+    (
+        vec![[-h, 0.0, -h], [h, 0.0, -h], [h, 0.0, h], [-h, 0.0, h]],
+        vec![[0.0, 1.0, 0.0]; 4],
+        vec![[0.0, 0.0], [uv, 0.0], [uv, uv], [0.0, uv]],
+        vec![0, 2, 1, 0, 3, 2],
+    )
+}
+
+#[test]
+fn a_texture_is_sized_by_the_surface_its_uvs_lay_it_over_not_the_model_extent() {
+    // ArtTexels.density counts texels per metre of the surface, as og
+    // style check measures them through the UVs. A 4 m ground repeating
+    // its 256 texture every metre draws it over 1 m: 16 texels a metre is
+    // a 16 texture. A 4 m plane that shows a quarter of its texture (an
+    // atlas: a crate's face) spreads one texture side over 16 m: 16 a
+    // metre is 256, the texture kept. The model's 4 m extent gives 64 to
+    // both, four times too dense on the ground and a quarter too sparse
+    // on the atlas.
+    for (uv, want) in [(4.0, 16u32), (0.25, 256)] {
+        let root = project(
+            &format!("texel-span-{want}"),
+            &[
+                ("project.ogt", PROJECT.as_bytes().to_vec()),
+                (
+                    "assets/looks/main.ogt",
+                    look("ArtTexels {\n  density 16\n}\nArtShape {\n  normals smooth\n}\n")
+                        .into_bytes(),
+                ),
+                (
+                    "assets/models/ground.glb",
+                    glb(&plane(4.0, uv), 1, [1.0; 4], Some(&png(256))),
+                ),
+            ],
+        );
+        cook(&root);
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let tex = bundle.load_texture("models/ground.glb#tex0").unwrap();
+        assert_eq!(
+            (tex.meta.width, tex.meta.height),
+            (want, want),
+            "uv 0 to {uv}"
         );
     }
 }

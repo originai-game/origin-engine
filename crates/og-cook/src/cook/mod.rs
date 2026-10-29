@@ -2481,7 +2481,13 @@ fn run(
                 .filter(|_| !conform_off(s, options))
             {
                 Some(c) => {
-                    let extent = conform::mesh::extent(g);
+                    // The span of the image's longest side, from the span of
+                    // a side of its square equivalent (the check's measure).
+                    let (w, h) = (img.width as f32, img.height as f32);
+                    let extent = conform::mesh::texel_span(g, *image).map_or_else(
+                        || conform::mesh::extent(g),
+                        |s| s * w.max(h) / (w * h).sqrt(),
+                    );
                     let (img, k, mips, note) =
                         conform::mesh::texture(c, Some(extent), img, *k, t.mipmaps);
                     t.mipmaps = mips;
