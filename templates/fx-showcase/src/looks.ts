@@ -76,6 +76,9 @@ function build(world: World): void {
   put("looks-wall", kit.box, { color: { r: 0.6, g: 0.62, b: 0.7 }, roughness: 0.9 }, { x: x0, y: 2, z: -14 }, { x: 30, y: 4, z: 0.5 });
 }
 
+/** The sky before the last preset was applied (applyLookPreset, resetLooks). */
+let presetSky: Record<string, unknown> | null = null;
+
 /** The station's own settings (a look replaces RenderSettings whole). */
 function settle(world: World): void {
   const settings = must(world.resource(og.RenderSettings));
@@ -92,6 +95,11 @@ export function applyLookPreset(world: World, slug: string): void {
   const file = LOOK_PRESETS.includes(slug as (typeof LOOK_PRESETS)[number]) || slug === "none" ? slug : "none";
   resetLooks(world);
   if (file !== "none") {
+    // A preset that names Sky replaces the station's sky whole; the none
+    // look cannot know the sky the station had, so a copy of its values
+    // (the resource and its vectors are live views) is kept here and
+    // given back by the next reset.
+    presetSky = JSON.parse(JSON.stringify(must(world.resource(og.Sky)))) as Record<string, unknown>;
     const look = must(og.load.look(world, `looks/${file}.ogt`));
     must(og.render.applyLook(world, look));
   }
@@ -102,6 +110,10 @@ export function applyLookPreset(world: World, slug: string): void {
 export function resetLooks(world: World): void {
   const look = must(og.load.look(world, "looks/none.ogt"));
   must(og.render.applyLook(world, look));
+  if (presetSky !== null) {
+    Object.assign(must(world.resource(og.Sky)), presetSky);
+    presetSky = null;
+  }
   // A look owns only what it names: the none look has no `ui` line, so the
   // style the last preset dressed the HUD in stays until the UI is told
   // otherwise. Null is the prototype style (UiDesc.style).
