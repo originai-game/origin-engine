@@ -51,6 +51,18 @@ is one line here, written at the merge that changes
   before anything is decimated, and the report says `built at N % of its
   segments`. A conformed `type model` past its budget re-cooks; no IDL
   member changed.
+- render, IDL: `MaterialStyle.surface` (`MaterialSurface`: none, clay,
+  paper, plastic), `surfaceStrength` (default 1) and `surfaceScale` (m, 0
+  the surface's own): a made surface on every lit standard material,
+  drawn by the lit shader in each mesh's own space (normal detail by its
+  screen-space surface gradient, colour grain, an energy-conserving
+  wrapped light, roughness; clay and plastic take the base texture's
+  coarse mip for its detail), fading where the pattern spans under four
+  pixels. Unlit, `styled false` and physical materials keep their own.
+  None by default: no frame moves without a look that sets it. Presets:
+  `sculpted-clay` (surface clay, rim 0.1, bevel 0.05), `paper-craft`
+  (surface paper, no posterize), `miniature-diorama` (surface plastic,
+  bevel 0.05); their frames change.
 
 ## 0.7.1 — 2026-10-28
 

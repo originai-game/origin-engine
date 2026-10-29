@@ -61,6 +61,7 @@ struct Frame {
   view_up: vec4<f32>,         // xyz: up
   hemi_sky: vec4<f32>,        // rgb: the hemisphere light's sky colour, w: intensity / pi (0: off)
   hemi_ground: vec4<f32>,     // rgb: its ground colour
+  material_surface: vec4<f32>,  // the material style's surface: x 0 none, 1 clay, 2 paper, 3 plastic; y strength; z scale (m)
 };
 
 // The hemisphere light (three.js HemisphereLight) as irradiance in the IBL's units: added beside the environment's

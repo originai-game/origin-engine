@@ -171,6 +171,8 @@ export interface ColumnKinds {
   Look: { readonly array: Uint32Array; readonly stride: 2; readonly value: Look };
   /** A DitherPattern field: the variant's index. */
   DitherPattern: { readonly array: Uint32Array; readonly stride: 1; readonly value: DitherPattern };
+  /** A MaterialSurface field: the variant's index. */
+  MaterialSurface: { readonly array: Uint32Array; readonly stride: 1; readonly value: MaterialSurface };
   /** A StyliseSpace field: the variant's index. */
   StyliseSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: StyliseSpace };
   /** A ReflectionProbeMode field: the variant's index. */
@@ -5186,6 +5188,24 @@ export type DitherPattern = "none" | "bayer2" | "bayer4" | "bayer8" | "blueNoise
 export declare function DitherPattern(value?: DitherPattern, options?: FieldOptions): FieldSpec<"DitherPattern">;
 
 /**
+ * A made surface MaterialStyle.surface lays on every lit material: the hand-made materials of the shape styles, drawn by the material's shading itself (its normal, its colour and how it takes the light) in each mesh's own space, so a moving object carries it.
+ * - `"none"`: No surface: each material as declared.
+ * - `"clay"`: Modelling clay: soft lumps and thumb-pressed dimples bend the normal, the light wraps past the terminator as through a soft body and warms there, and the surface stays matte (roughness at least 0.75).
+ * - `"paper"`: Paper and card: a fibre grain darkens and lifts the colour in fine streaks and bends the normal so lit faces catch it, the light wraps a little as through a sheet, and the surface is fully rough.
+ * - `"plastic"`: Toy plastic or painted wood: a satin sheen (roughness held between 0.3 and 0.45, no metal), a soft wrap of the light and a faint moulding ripple, so pieces read as small and handled.
+ */
+export type MaterialSurface = "none" | "clay" | "paper" | "plastic";
+
+/**
+ * A MaterialSurface field: the variant's index.
+ *
+ * A `MaterialSurface` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function MaterialSurface(value?: MaterialSurface, options?: FieldOptions): FieldSpec<"MaterialSurface">;
+
+/**
  * Where Stylise lays a pattern (the paint canvas, the hatching, the halftone).
  * - `"screen"`: Over the frame in logical pixels, as a print or a sheet of paper over the screen: the pattern stays put while the camera moves and the scene slides under it.
  * - `"surface"`: On the surfaces, through the depth-normal prepass's position and normal (three world planes blended by the normal): the pattern sticks to the scene as the camera moves and wraps round forms, a tonal art map's strokes on the objects. Hatching and halftone keep about their pixel spacing by fading between whole octaves of world spacing; the sky keeps the screen pattern. The frame runs the prepass PostEffects.outline uses.
@@ -5587,6 +5607,26 @@ export interface MaterialStyle {
    * Shade every lit material with face normals, as StandardMaterialDesc.flatShading: visible facets for low-poly, paper-craft and voxel looks.
    */
   flatShading: boolean;
+  /**
+   * A made surface on every lit material (clay, paper, plastic): its normal detail, colour grain and light response, in each mesh's own space; none is no change. Unlit materials, materials with StandardMaterialDesc.styled false and those with a MeshPhysicalMaterial lobe keep their own shading.
+   */
+  surface: MaterialSurface;
+  /**
+   * How strongly the surface shows: its bumps, grain and wrapped light; 0 is none.
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  surfaceStrength: number;
+  /**
+   * The size of the surface's pattern in metres of the mesh's own space (a clay lump, the paper's fibre); 0 takes the surface's own (clay 0.12, paper 0.15, plastic 0.3).
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  surfaceScale: number;
 }
 
 /** A loaded look: where it came from and what applying it sets. */
@@ -6863,7 +6903,7 @@ export interface RenderCapabilities {
   /** The render target height in device pixels. */
   readonly height: number;
   /**
-   * The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, shadowDarkness, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn.
+   * The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, shadowDarkness, rim, outline, outlineDistance, flatShading and surface of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn.
    */
   readonly stylise: readonly string[];
   /**
@@ -23738,7 +23778,7 @@ export declare namespace og {
   /**
    * Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
    */
-  const MaterialStyle: ResourceType<{ readonly toon: FieldSpec<"bool">; readonly gradientMap: FieldSpec<"Texture">; readonly shadowTint: FieldSpec<"Color">; readonly shadowTintAmount: FieldSpec<"f32">; readonly shadowDarkness: FieldSpec<"f32">; readonly rimColor: FieldSpec<"Color">; readonly rimIntensity: FieldSpec<"f32">; readonly rimPower: FieldSpec<"f32">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDistance: FieldSpec<"f32">; readonly flatShading: FieldSpec<"bool"> }, MaterialStyle>;
+  const MaterialStyle: ResourceType<{ readonly toon: FieldSpec<"bool">; readonly gradientMap: FieldSpec<"Texture">; readonly shadowTint: FieldSpec<"Color">; readonly shadowTintAmount: FieldSpec<"f32">; readonly shadowDarkness: FieldSpec<"f32">; readonly rimColor: FieldSpec<"Color">; readonly rimIntensity: FieldSpec<"f32">; readonly rimPower: FieldSpec<"f32">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDistance: FieldSpec<"f32">; readonly flatShading: FieldSpec<"bool">; readonly surface: FieldSpec<"MaterialSurface">; readonly surfaceStrength: FieldSpec<"f32">; readonly surfaceScale: FieldSpec<"f32"> }, MaterialStyle>;
   /**
    * 2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.
    */

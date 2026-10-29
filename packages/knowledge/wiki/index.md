@@ -122,7 +122,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1264 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1266 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -450,6 +450,8 @@ Field units the docs and Tune use.
 | [`mat4`](math.md#value-mat4) | value | math | — |
 | [`Material`](render.md#type-Material) | handle | render | — |
 | [`Material()`](render.md#column-Material) | column kind | render | — |
+| [`MaterialSurface`](render.md#type-MaterialSurface) | enum | render | — |
+| [`MaterialSurface()`](render.md#column-MaterialSurface) | column kind | render | — |
 | [`Matrix4`](math.md#type-Matrix4) | struct | math | — |
 | [`Matrix4()`](reflect.md#column-Matrix4) | column kind | reflect | — |
 | [`Matrix4Math`](math.md#type-Matrix4Math) | interface | math | — |

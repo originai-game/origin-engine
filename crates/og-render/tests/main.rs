@@ -5,5 +5,6 @@
 
 mod profile2d;
 mod shaders;
+mod surface;
 mod tier;
 mod webgl2;
