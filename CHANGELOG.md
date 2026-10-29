@@ -13,7 +13,10 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
-## Unreleased
+## 0.7.3 — 2026-10-29
+
+A knowledge-only patch with the simulation unchanged (the golden replays);
+no IDL member and no crate changed.
 
 - Knowledge, level-texturing: `texture-level.ts` paints with
   `gemini-nano-banana-2.1` by default (it was `qwen-image-2.1-pro`, still

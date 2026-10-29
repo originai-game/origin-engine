@@ -8,7 +8,7 @@ version 1
 # of the family (look.family in the style catalogue).
 name "Art sample: ink and line 3D"
 id "art-ink-3d"
-engine "0.7.2"
+engine "0.7.3"
 entry "src/main.ts"
 profile "3d"
 look "looks/sample.ogt"

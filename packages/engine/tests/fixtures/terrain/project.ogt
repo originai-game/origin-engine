@@ -4,7 +4,7 @@ version 1
 # The fixture terrain.test.ts cooks and loads (assets/terrain/hill.ogt).
 name "Terrain fixture"
 id "terrain-fixture"
-engine "0.7.2"
+engine "0.7.3"
 entry "main.ts"
 profile "3d"
 tick 60

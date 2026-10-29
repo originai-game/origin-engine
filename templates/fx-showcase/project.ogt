@@ -5,7 +5,7 @@ version 1
 # five stations, with a screen-space HUD (see README.md).
 name "Effects showcase"
 id "fx-showcase"
-engine "0.7.2"
+engine "0.7.3"
 entry "src/main.ts"
 profile "3d"
 tick 60
