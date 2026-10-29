@@ -95,6 +95,7 @@ export const ArtNormals = ((value = "any" as Api.ArtNormals, options) => spec("A
 export const ArtLinePlace = ((value = "outside" as Api.ArtLinePlace, options) => spec("ArtLinePlace", value, options)) as typeof Api.ArtLinePlace;
 export const ArtBrush = ((value = "diamond" as Api.ArtBrush, options) => spec("ArtBrush", value, options)) as typeof Api.ArtBrush;
 export const ArtProjection = ((value = "any" as Api.ArtProjection, options) => spec("ArtProjection", value, options)) as typeof Api.ArtProjection;
+export const MaterialSurface = ((value = "none" as Api.MaterialSurface, options) => spec("MaterialSurface", value, options)) as typeof Api.MaterialSurface;
 export const SkeletonAsset = ((value = 0 as Api.SkeletonAsset, options) => spec("SkeletonAsset", value, options)) as typeof Api.SkeletonAsset;
 export const ClipAsset = ((value = 0 as Api.ClipAsset, options) => spec("ClipAsset", value, options)) as typeof Api.ClipAsset;
 export const GraphAsset = ((value = 0 as Api.GraphAsset, options) => spec("GraphAsset", value, options)) as typeof Api.GraphAsset;
