@@ -1266,3 +1266,111 @@ fn a_model_that_cannot_meet_the_budget_within_its_silhouette_is_kept_and_warned_
         report.warnings
     );
 }
+
+/// A `type model` of one sphere of radius 1 (`seg` × `rings`) at the
+/// origin, with `extra` lines at its top.
+fn ball_text(seg: u32, rings: u32, extra: &str) -> Vec<u8> {
+    format!(
+        "type model\nversion 1\n---\n{extra}part \"ball\" {{\n  sphereGeometry {{\n    radius 1\n    widthSegments {seg}\n    heightSegments {rings}\n  }}\n}}\n"
+    )
+    .into_bytes()
+}
+
+#[test]
+fn a_type_model_past_its_budget_is_built_at_fewer_segments_not_decimated() {
+    // 24 × 12 draws 576 triangles; a silhouette of 1 mm lets the
+    // decimation take almost nothing, so only a coarser build meets 120.
+    let root = project(
+        "segments",
+        &[
+            ("project.ogt", PROJECT.as_bytes().to_vec()),
+            (
+                "assets/looks/main.ogt",
+                look("ArtShape {\n  propFaces 120\n  silhouette 0.001\n  normals flat\n}\n")
+                    .into_bytes(),
+            ),
+            ("assets/models/ball.ogt", ball_text(24, 12, "")),
+        ],
+    );
+    let report = cook(&root);
+    let tris = &triangles(&root, "models/ball.ogt")[0];
+    assert!(tris.len() <= 120, "{} triangles", tris.len());
+    // The coarsest sphere is 5 × 3 (20 faces with area): the budget's
+    // most, not the floor.
+    assert!(
+        tris.len() > 60,
+        "built far below the budget: {}",
+        tris.len()
+    );
+    // A sphere of its own: closed, one piece, every corner on the
+    // surface (a decimated one moves its corners off it).
+    assert_eq!(open_edges_and_pieces(&positions(tris)), (0, 1));
+    for t in tris {
+        for v in t {
+            let d = v.position.iter().map(|x| x * x).sum::<f32>().sqrt();
+            assert!((d - 1.0).abs() < 2e-3, "a corner {d:.4} m from the centre");
+        }
+    }
+    let e = entry(&report, "models/ball.ogt");
+    assert!(
+        e.what
+            .contains("of its segments for the budget (576 drawn as written)"),
+        "{e:?}"
+    );
+    assert!(!e.what.contains("over budget"), "{e:?}");
+    assert!(
+        !report.warnings.iter().any(|w| w.contains("over budget")),
+        "{:?}",
+        report.warnings
+    );
+}
+
+#[test]
+fn a_model_that_says_conform_character_is_held_to_the_character_budget() {
+    use og_cook::cook::conform::characters;
+    // 16 × 12 draws 384 triangles: past propFaces 100, within
+    // characterFaces 1000. A glb says so in its import settings.
+    let s = sphere(0.5, [0.0, 0.5, 0.0], 16, 12);
+    let root = project(
+        "character",
+        &[
+            ("project.ogt", PROJECT.as_bytes().to_vec()),
+            (
+                "assets/looks/main.ogt",
+                look("ArtShape {\n  propFaces 100\n  characterFaces 1000\n  silhouette 0.001\n}\n")
+                    .into_bytes(),
+            ),
+            (
+                "assets/models/hero.ogt",
+                ball_text(16, 12, "conform character\n"),
+            ),
+            ("assets/models/prop.ogt", ball_text(16, 12, "")),
+            ("assets/models/walker.glb", glb(&s, 1, [1.0; 4], None)),
+            (
+                "assets/models/walker.glb.ogt",
+                b"type import\nversion 1\n---\nconform character\n".to_vec(),
+            ),
+        ],
+    );
+    let report = cook(&root);
+    for id in ["models/hero.ogt", "models/walker.glb"] {
+        let tris = triangles(&root, id)[0].len();
+        // Kept whole: 384 less the 32 pole triangles with no area.
+        assert!(tris >= 352, "{id}: {tris} triangles");
+        assert_eq!(entry(&report, id).action, ConformAction::Unchanged, "{id}");
+    }
+    assert!(triangles(&root, "models/prop.ogt")[0].len() <= 100);
+    assert!(
+        entry(&report, "models/prop.ogt")
+            .what
+            .contains("propFaces 100")
+    );
+    // og style check judges by the same reading.
+    assert_eq!(
+        characters(&root).unwrap(),
+        BTreeSet::from([
+            "models/hero.ogt".to_string(),
+            "models/walker.glb".to_string()
+        ])
+    );
+}

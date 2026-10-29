@@ -41,6 +41,16 @@ is one line here, written at the merge that changes
   texture no model claims, normal maps and data maps are not painted.
   Mesh textures under such a look re-cook (`paint 1` in their desc);
   painterly-3d's, sculpted-clay's and paper-craft's sample frames change.
+- cook, the mesh conformance: a model that says `conform character` (at
+  the top of its `type model` text, or in a glTF's import settings) is
+  held to `ArtShape.characterFaces`, as a skinned one is, and `og style
+  check` judges it the same way; a rigid or generator-built hero used to
+  be held to `propFaces`. A `type model` past its face budget is built
+  again with fewer segments (every generator's counts scaled by one
+  factor, held at a sphere's 5 × 3 and a cylinder's, cone's or lathe's 5)
+  before anything is decimated, and the report says `built at N % of its
+  segments`. A conformed `type model` past its budget re-cooks; no IDL
+  member changed.
 
 ## 0.7.1 — 2026-10-28
 

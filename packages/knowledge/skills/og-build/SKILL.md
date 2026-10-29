@@ -446,7 +446,14 @@ producing an asset on Origin Engine:
    at most `ArtShape.silhouette` (else 5 % of the model's radius). A model
    that cannot meet the budget within that is kept as close as it can get,
    with a warning that it is over budget, and `og style check` reports it
-   off: make a lighter model rather than a lower budget. In a 3D project an image no
+   off: make a lighter model rather than a lower budget. A `type model`
+   past its budget is first built again with fewer segments (every
+   generator's counts scaled down together, a sphere to 5 × 3 at the
+   least, a cylinder, cone or lathe to 5 round), so its facets are the
+   generators' own; the line says `built at N % of its segments`. A model
+   is held to `characterFaces` when it has a skin or says `conform
+   character` (at the top of its `type model` text, or in a glTF's import
+   settings), `propFaces` otherwise. In a 3D project an image no
    model, flipbook, tile set, rig or UI style names is conformed as a
    mesh texture (`ArtTexels.maxSize`, `filter`, `mips`, the palette),
    and its line says so: a HUD or UI image takes `conform ui` in its
@@ -488,7 +495,7 @@ notes), against the contract of the look project.ogt names:
 |---|---|---|
 | sprite (as the cook classifies it: any texture of a `profile "2d"` project, one a flipbook, tile set, 2D rig or UI style names, one with `conform ui` or `conform sprite`, or one imported as `kind pixel`) | distinct colours, palette hit rate (opaque texels within ΔE00 2 of a palette colour), texels per logical pixel and the half pixels off that grid, the line's width round the silhouette (per tile for a tile set) | `ArtPalette.maxColors`, `strict` (100 %), the project's grid (its sprites' most common), `ArtLine.width` |
 | texture on a 3D surface (a model's, or in a 3D project one nothing else names) | colours, palette hit rate, size, nearest or linear, mip levels | `maxColors`, `strict`, `ArtTexels.maxSize`, `filter`, `mips` |
-| model | triangles drawn (each primitive times its nodes), flat-normal share, texel density (texels per metre, area-weighted median), untextured colours | `ArtShape.propFaces` (`characterFaces` for a skinned model), `normals flat` (99 %), `ArtTexels.density` (within ×2), `maxColors` |
+| model | triangles drawn (each primitive times its nodes), flat-normal share, texel density (texels per metre, area-weighted median), untextured colours | `ArtShape.propFaces` (`characterFaces` for a skinned model or one with `conform character`), `normals flat` (99 %), `ArtTexels.density` (within ×2), `maxColors` |
 
 A 2D rig's parts and a UI atlas keep their layout, so their line is not
 judged, nor a UI atlas's grid (the UI draws at its own scale). A
