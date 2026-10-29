@@ -28,6 +28,14 @@ pub struct GltfSource {
     /// How the art contract's face budget is shared over its primitives
     /// (`conform::mesh`), made by the first output that needs it.
     pub(super) conform_plan: std::sync::OnceLock<super::conform::mesh::Plan>,
+    /// The model says it is a character (`conform character`,
+    /// [`super::conform::character`]): the art contract holds it to
+    /// `ArtShape.characterFaces`, as one with a skin.
+    pub character: bool,
+    /// A `type model` built again at fewer segments for its face budget
+    /// (`model_text::to_glb_within`): the factor and the triangles it
+    /// drew as written, for the cook report.
+    pub(super) segments: Option<(f64, usize)>,
 }
 
 fn base64_decode(s: &str) -> Option<Vec<u8>> {
@@ -340,6 +348,8 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
         textures,
         warnings,
         conform_plan: Default::default(),
+        character: false,
+        segments: None,
     })
 }
 

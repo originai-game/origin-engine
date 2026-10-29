@@ -3332,6 +3332,21 @@ module render {
     value DitherPattern
   }
 
+  enum MaterialSurface {
+    doc "A made surface MaterialStyle.surface lays on every lit material: the hand-made materials of the shape styles, drawn by the material's shading itself (its normal, its colour and how it takes the light) in each mesh's own space, so a moving object carries it."
+    variant none "No surface: each material as declared."
+    variant clay "Modelling clay: soft lumps and thumb-pressed dimples bend the normal, the light wraps past the terminator as through a soft body and warms there, and the surface stays matte (roughness at least 0.75)."
+    variant paper "Paper and card: a fibre grain darkens and lifts the colour in fine streaks and bends the normal so lit faces catch it, the light wraps a little as through a sheet, and the surface is fully rough."
+    variant plastic "Toy plastic or painted wood: a satin sheen (roughness held between 0.3 and 0.45, no metal), a soft wrap of the light and a faint moulding ripple, so pieces read as small and handled."
+  }
+
+  column MaterialSurface {
+    doc "A MaterialSurface field: the variant's index."
+    array Uint32Array
+    stride 1
+    value MaterialSurface
+  }
+
   enum StyliseSpace {
     doc "Where Stylise lays a pattern (the paint canvas, the hatching, the halftone)."
     variant screen "Over the frame in logical pixels, as a print or a sheet of paper over the screen: the pattern stays put while the camera moves and the scene slides under it."
@@ -3582,6 +3597,18 @@ module render {
       unit m
     }
     field flatShading bool "Shade every lit material with face normals, as StandardMaterialDesc.flatShading: visible facets for low-poly, paper-craft and voxel looks."
+    field surface MaterialSurface "A made surface on every lit material (clay, paper, plastic): its normal detail, colour grain and light response, in each mesh's own space; none is no change. Unlit materials, materials with StandardMaterialDesc.styled false and those with a MeshPhysicalMaterial lobe keep their own shading."
+    field surfaceStrength f32 "How strongly the surface shows: its bumps, grain and wrapped light; 0 is none." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field surfaceScale f32 "The size of the surface's pattern in metres of the mesh's own space (a clay lump, the paper's fibre); 0 takes the surface's own (clay 0.12, paper 0.15, plastic 0.3)." {
+      min 0
+      unit m
+    }
   }
 
   struct LookInfo {
@@ -4262,7 +4289,7 @@ module render {
     field pointShadows PointShadows "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
     field width u32 "The render target width in device pixels."
     field height u32 "The render target height in device pixels."
-    field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, shadowDarkness, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
+    field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, shadowDarkness, rim, outline, outlineDistance, flatShading and surface of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
     field ssr bool "Whether PostEffects.ssr draws: true on the full tier, false on WebGL2, where smooth surfaces reflect the reflection probes and the environment instead."
     field reflectionProbes u32 "How many og.ReflectionProbe components one frame samples (MAX_REFLECTION_PROBES on every tier)."
     field renderTargetDepth bool "Whether a render target made with `depth` gets its view's depth drawn: true on every tier with a renderer (WebGPU, Vulkan, Metal and WebGL2 alike), false without one. The depth comes from the view's own depth prepass of its opaque meshes into a linear-depth colour target, never from its depth buffer, which WebGL2 cannot read in a shader."

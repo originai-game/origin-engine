@@ -1222,7 +1222,23 @@ pub fn cook_project_with_texture_cache(
         mut early_errors,
     } = scan(&assets_dir)?;
     let mut consumed: BTreeSet<String> = BTreeSet::new();
+    // The `type model` texts, built again under the art contract's face
+    // budget once the look is read (below).
+    let mut model_texts: BTreeMap<String, String> = BTreeMap::new();
     for s in sources.iter_mut() {
+        // A model that says it is a character (`conform character`), read
+        // from its text or import settings before a text becomes a glb.
+        let character = if s.kind == Kind::Model {
+            match conform::character(s) {
+                Ok(c) => c,
+                Err(e) => {
+                    s.error = Some(e);
+                    continue;
+                }
+            }
+        } else {
+            false
+        };
         // A MagicaVoxel file is a model: meshed into a glTF binary here (its
         // import settings' `model { voxScale voxOrigin }` applied), so the
         // rest of the cook sees a .glb.
@@ -1240,8 +1256,12 @@ pub fn cook_project_with_texture_cache(
         // A model written as text (`type model`): its parts built and
         // written as a glTF binary here, so the rest of the cook sees a .glb.
         if s.kind == Kind::Model && ext(&s.rel) == "ogt" {
-            match model_text::to_glb(&String::from_utf8_lossy(&s.bytes)) {
-                Ok(glb) => s.bytes = glb,
+            let text = String::from_utf8_lossy(&s.bytes).to_string();
+            match model_text::to_glb(&text) {
+                Ok(glb) => {
+                    s.bytes = glb;
+                    model_texts.insert(s.rel.clone(), text);
+                }
                 Err(e) => {
                     s.error = Some(e);
                     continue;
@@ -1251,7 +1271,8 @@ pub fn cook_project_with_texture_cache(
         if s.kind == Kind::Model {
             let dir = s.path.parent().unwrap_or(Path::new("."));
             match model::load(&s.bytes, dir) {
-                Ok(g) => {
+                Ok(mut g) => {
+                    g.character = character;
                     let base = s
                         .rel
                         .rsplit_once('/')
@@ -1415,6 +1436,44 @@ pub fn cook_project_with_texture_cache(
                 })
             }
             Err(e) => early_errors.push((id.clone(), "look", e)),
+        }
+    }
+    // A `type model` past its face budget is built again at the style's
+    // segment counts (`model_text::to_glb_within`) before the 3D pass
+    // decimates what is left. Its stamp already carries the budget
+    // (`Conform::model_desc`).
+    if let Some(c) = &with_contract.mesh.conform {
+        for s in sources
+            .iter_mut()
+            .filter(|s| s.error.is_none() && !c.off.contains_key(&s.rel))
+        {
+            let (Some(text), Some(g)) = (model_texts.get(&s.rel), &s.gltf) else {
+                continue;
+            };
+            if !c.applies(g) {
+                continue;
+            }
+            let (budget, _) = c.budget(g);
+            let character = g.character;
+            let written = conform::mesh::drawn_triangles(g);
+            let rebuilt = model_text::to_glb_within(text, budget).and_then(|(glb, detail)| {
+                if detail >= 1.0 {
+                    return Ok(None);
+                }
+                let dir = s.path.parent().unwrap_or(Path::new("."));
+                let mut g = model::load(&glb, dir)?;
+                g.character = character;
+                g.segments = Some((detail, written));
+                Ok(Some((glb, g)))
+            });
+            match rebuilt {
+                Ok(Some((glb, g))) => {
+                    s.bytes = glb;
+                    s.gltf = Some(g);
+                }
+                Ok(None) => {}
+                Err(e) => s.error = Some(e),
+            }
         }
     }
     let options = &with_contract;

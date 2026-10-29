@@ -224,6 +224,7 @@ pub fn material_scene() -> RenderScene {
         outline_width: 3.0,
         outline_distance: 8.0,
         flat_shading: true,
+        ..Default::default()
     };
     scene
 }

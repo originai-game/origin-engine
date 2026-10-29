@@ -71,6 +71,10 @@ pub(crate) struct FrameUniform {
     /// the irradiance the IBL scale multiplies); rgb ground colour.
     pub hemi_sky: [f32; 4],
     pub hemi_ground: [f32; 4],
+    /// `MaterialStyle`'s surface (`MaterialStyle::surface_uniform`): x the
+    /// surface (0 none, 1 clay, 2 paper, 3 plastic), y its strength, z its
+    /// scale in metres, w unused.
+    pub material_surface: [f32; 4],
 }
 
 /// The camera's matrices for one frame.

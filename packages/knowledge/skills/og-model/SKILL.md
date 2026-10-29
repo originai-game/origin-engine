@@ -425,7 +425,11 @@ take.
 
 - The game's look wins over this table: its `ArtShape.propFaces` and
   `characterFaces` (og-taste §12, printed by the art brief) are the budget
-  the cook decimates to, so build under them, not under the row above.
+  the cook decimates to, so build under them, not under the row above. A
+  character's `type model` says `conform character` at its top (a skinned
+  glTF needs nothing), else the cook holds it to `propFaces`; a `type
+  model` past its budget is built again with fewer segments before
+  anything is decimated (og-build §8).
 - Count with `og.render.geometryInfo(world, g).triangles` over the parts,
   and in a frame with `dump_render` (the main pass's triangles).
 - A draw is a mesh and material pair: parts that never move and share a

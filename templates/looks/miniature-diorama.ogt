@@ -16,6 +16,10 @@ PostEffects {
 RenderSettings {
   toneMapping agx
 }
+# Toy pieces: satin plastic or painted wood, a little more colour.
+MaterialStyle {
+  surface plastic
+}
 # The art contract (docs/art.md §2.1), from the catalogue entry's palette and
 # assets: 24 to 48 soft pastels; buildings of 500 to 3k triangles with rounded
 # bevels; simple colour textures.
@@ -28,5 +32,6 @@ ArtTexels {
 ArtShape {
   propFaces 3000
   normals smooth
-  bevel 0.02
+  # Rounded edges at a radius that reads from the table's height.
+  bevel 0.05
 }

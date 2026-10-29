@@ -182,6 +182,21 @@ impl<'a> Fields<'a> {
         Ok(v)
     }
 
+    /// A segment count as [`Fields::uint`] reads it, scaled by `detail`
+    /// (1: as written; under it, the generator is built coarser for the art
+    /// contract's face budget, [`to_glb_within`]), never below `floor` (the
+    /// count that still keeps the form) nor above what the text says.
+    fn segments(
+        &self,
+        k: &str,
+        (default, min, max): (u32, u32, u32),
+        floor: u32,
+        detail: f64,
+    ) -> Result<u32, String> {
+        let n = self.uint(k, default, min, max)?;
+        Ok(scaled(n, floor, detail))
+    }
+
     fn uint(&self, k: &str, default: u32, min: u32, max: u32) -> Result<u32, String> {
         let v = self.num(k, default as f64)?;
         if v.fract() != 0.0 || v < min as f64 || v > max as f64 {
@@ -223,6 +238,22 @@ impl<'a> Fields<'a> {
             None => Ok(None),
         }
     }
+}
+
+/// `n` segments at `detail`: `n × detail` rounded, held between the lower
+/// of `floor` and `n`, and `n`.
+fn scaled(n: u32, floor: u32, detail: f64) -> u32 {
+    if detail >= 1.0 {
+        return n;
+    }
+    ((n as f64 * detail).round() as u32).clamp(floor.min(n), n)
+}
+
+/// A polyhedron's `detail` (subdivisions, each edge cut in `detail + 1`)
+/// at `detail` as [`scaled`] holds a segment count: down to the solid
+/// itself.
+fn subdivisions(d: u32, detail: f64) -> u32 {
+    scaled(d + 1, 1, detail) - 1
 }
 
 // ── shapes and paths ────────────────────────────────────────────────────────
@@ -458,7 +489,7 @@ fn geometry_entry<'a>(block: &'a Block, what: &str, line: usize) -> Result<&'a E
 }
 
 /// A geometry block, built.
-fn geometry(e: &Entry) -> Result<Mesh, String> {
+fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
     let empty = Block::new();
     let b = e.block.as_ref().unwrap_or(&empty);
     let name = e.key.as_str();
@@ -488,8 +519,8 @@ fn geometry(e: &Entry) -> Result<Mesh, String> {
             )?;
             let r = f32s(f.size("radius", 1.0)?);
             let mut m = og_render::shapes::sphere(
-                f.uint("widthSegments", 32, 3, 512)?,
-                f.uint("heightSegments", 16, 2, 512)?,
+                f.segments("widthSegments", (32, 3, 512), 5, detail)?,
+                f.segments("heightSegments", (16, 2, 512), 3, detail)?,
             );
             for v in &mut m.vertices {
                 for c in &mut v.position {
@@ -518,8 +549,8 @@ fn geometry(e: &Entry) -> Result<Mesh, String> {
                     radius_top: f32s(f.size("radiusTop", 1.0)?),
                     radius_bottom: f32s(f.size("radiusBottom", 1.0)?),
                     height: f32s(f.size("height", 1.0)?),
-                    radial_segments: f.uint("radialSegments", 32, 3, 1 << 16)?,
-                    height_segments: f.uint("heightSegments", 1, 1, 1 << 16)?,
+                    radial_segments: f.segments("radialSegments", (32, 3, 1 << 16), 5, detail)?,
+                    height_segments: f.segments("heightSegments", (1, 1, 1 << 16), 1, detail)?,
                     open_ended: f.flag("openEnded", false)?,
                     theta_start: f32s(f.num("thetaStart", 0.0)?),
                     theta_length: f32s(f.num("thetaLength", tau)?),
@@ -541,8 +572,8 @@ fn geometry(e: &Entry) -> Result<Mesh, String> {
             from_render(og_render::geometry::primitives::cone(
                 f32s(f.size("radius", 1.0)?),
                 f32s(f.size("height", 1.0)?),
-                f.uint("radialSegments", 32, 3, 1 << 16)?,
-                f.uint("heightSegments", 1, 1, 1 << 16)?,
+                f.segments("radialSegments", (32, 3, 1 << 16), 5, detail)?,
+                f.segments("heightSegments", (1, 1, 1 << 16), 1, detail)?,
                 f.flag("openEnded", false)?,
             ))
         }
@@ -561,9 +592,9 @@ fn geometry(e: &Entry) -> Result<Mesh, String> {
             from_render(og_render::geometry::primitives::capsule(
                 f32s(f.size("radius", 1.0)?),
                 f32s(f.size("height", 1.0)?),
-                f.uint("capSegments", 4, 1, 1 << 16)?,
-                f.uint("radialSegments", 8, 3, 1 << 16)?,
-                f.uint("heightSegments", 1, 1, 1 << 16)?,
+                f.segments("capSegments", (4, 1, 1 << 16), 1, detail)?,
+                f.segments("radialSegments", (8, 3, 1 << 16), 5, detail)?,
+                f.segments("heightSegments", (1, 1, 1 << 16), 1, detail)?,
             ))
         }
         "torusGeometry" => {
@@ -575,14 +606,14 @@ fn geometry(e: &Entry) -> Result<Mesh, String> {
             from_render(og_render::geometry::primitives::torus(
                 f32s(f.size("radius", 1.0)?),
                 f32s(f.size("tube", 0.4)?),
-                f.uint("radialSegments", 12, 2, 1 << 16)?,
-                f.uint("tubularSegments", 48, 3, 1 << 16)?,
+                f.segments("radialSegments", (12, 2, 1 << 16), 3, detail)?,
+                f.segments("tubularSegments", (48, 3, 1 << 16), 6, detail)?,
                 f32s(f.num("arc", tau)?),
             ))
         }
         "shapeGeometry" => {
             let f = Fields::new(b, name, &keys(&["shape", "curveSegments"]))?;
-            let d = f.uint("curveSegments", 12, 1, 1 << 12)?;
+            let d = f.segments("curveSegments", (12, 1, 1 << 12), 2, detail)?;
             og_geom::shape_geometry(&shapes(&f, d, &[[0.0, 0.5], [-0.5, -0.5], [0.5, -0.5]])?)
         }
         "extrudeGeometry" => {
@@ -602,7 +633,7 @@ fn geometry(e: &Entry) -> Result<Mesh, String> {
                     "extrudePath",
                 ]),
             )?;
-            let d = f.uint("curveSegments", 12, 1, 1 << 12)?;
+            let d = f.segments("curveSegments", (12, 1, 1 << 12), 2, detail)?;
             let s = shapes(&f, d, &[[0.5, 0.5], [-0.5, 0.5], [-0.5, -0.5], [0.5, -0.5]])?;
             let thickness = f.size("bevelThickness", 0.2)?;
             let o = og_geom::Extrude {
@@ -613,7 +644,7 @@ fn geometry(e: &Entry) -> Result<Mesh, String> {
                 // three.js's default, as the runtime's: thickness - 0.1.
                 bevel_size: f.num("bevelSize", thickness - 0.1)?,
                 bevel_offset: f.num("bevelOffset", 0.0)?,
-                bevel_segments: f.uint("bevelSegments", 3, 1, 1 << 12)?,
+                bevel_segments: f.segments("bevelSegments", (3, 1, 1 << 12), 1, detail)?,
             };
             match f.block("extrudePath")? {
                 Some(pb) => {
@@ -642,7 +673,7 @@ fn geometry(e: &Entry) -> Result<Mesh, String> {
                 }
                 l.points = a.chunks(2).map(|c| DVec2::new(c[0], c[1])).collect();
             }
-            l.segments = f.uint("segments", 12, 1, 1 << 16)?;
+            l.segments = f.segments("segments", (12, 1, 1 << 16), 5, detail)?;
             l.phi_start = f.num("phiStart", 0.0)?;
             l.phi_length = f.num("phiLength", tau)?;
             og_geom::lathe(&l)
@@ -675,7 +706,7 @@ fn geometry(e: &Entry) -> Result<Mesh, String> {
                 vertices,
                 indices,
                 radius: f.size("radius", 1.0)?,
-                detail: f.uint("detail", 0, 0, 64)?,
+                detail: subdivisions(f.uint("detail", 0, 0, 64)?, detail),
             })?
         }
         "icosahedronGeometry"
@@ -689,7 +720,10 @@ fn geometry(e: &Entry) -> Result<Mesh, String> {
                 "octahedronGeometry" => og_geom::octahedron,
                 _ => og_geom::tetrahedron,
             };
-            make(f.size("radius", 1.0)?, f.uint("detail", 0, 0, 64)?)
+            make(
+                f.size("radius", 1.0)?,
+                subdivisions(f.uint("detail", 0, 0, 64)?, detail),
+            )
         }
         "sweepGeometry" => {
             let f = Fields::new(
@@ -705,7 +739,7 @@ fn geometry(e: &Entry) -> Result<Mesh, String> {
                     "curveSegments",
                 ]),
             )?;
-            let d = f.uint("curveSegments", 12, 1, 1 << 12)?;
+            let d = f.segments("curveSegments", (12, 1, 1 << 12), 2, detail)?;
             let section = match f.block("section")? {
                 Some(sb) => path2(sb, None)?.get_points(d),
                 None => {
@@ -731,7 +765,7 @@ fn geometry(e: &Entry) -> Result<Mesh, String> {
             };
             let s = og_geom::Sweep {
                 section,
-                steps: f.uint("steps", 64, 1, 1 << 16)?,
+                steps: f.segments("steps", (64, 1, 1 << 16), 6, detail)?,
                 scale: keys_of("scale")?,
                 twist: keys_of("twist")?,
                 caps: f.flag("caps", true)?,
@@ -764,7 +798,7 @@ fn geometry(e: &Entry) -> Result<Mesh, String> {
                     .block
                     .as_ref()
                     .ok_or_else(|| at(e, "is a placed geometry block"))?;
-                placed_geometry(ob, &format!("{name}.{k}"), e.line)
+                placed_geometry(ob, &format!("{name}.{k}"), e.line, detail)
             };
             let none = Placement::default();
             og_geom::csg(&operand("a")?, none, &operand("b")?, none, op)?
@@ -779,7 +813,7 @@ fn geometry(e: &Entry) -> Result<Mesh, String> {
                         .block
                         .as_ref()
                         .ok_or_else(|| at(e, "is a placed geometry block"))?;
-                    placed_geometry(pb, &format!("{name}.part[{i}]"), e.line)
+                    placed_geometry(pb, &format!("{name}.part[{i}]"), e.line, detail)
                 })
                 .collect::<Result<_, _>>()?;
             let _ = f;
@@ -864,13 +898,13 @@ const PLACEMENT: [&str; 4] = ["position", "quaternion", "scale", "mirror"];
 
 /// A geometry block with its placement, baked into one mesh (a CSG
 /// operand, a merged part).
-fn placed_geometry(block: &Block, what: &str, line: usize) -> Result<Mesh, String> {
+fn placed_geometry(block: &Block, what: &str, line: usize, detail: f64) -> Result<Mesh, String> {
     let g = geometry_entry(block, what, line)?;
     let mut allowed: Vec<&str> = PLACEMENT.to_vec();
     allowed.push(g.key.as_str());
     let f = Fields::new(block, what, &allowed)?;
     let (p, m) = placement(&f)?;
-    let mesh = geometry(g).map_err(|e| format!("{what}: {e}"))?;
+    let mesh = geometry(g, detail).map_err(|e| format!("{what}: {e}"))?;
     og_geom::merge(&[og_geom::Part {
         mesh: &mesh,
         placement: p,
@@ -969,6 +1003,8 @@ fn node(name: &str, p: &Placement) -> serde_json::Value {
 pub(super) struct Built {
     pub json: serde_json::Value,
     pub bin: Bin,
+    /// Its triangles as drawn: each part's times its placements.
+    pub drawn: usize,
 }
 
 /// A `type model` text as a glTF binary.
@@ -977,7 +1013,44 @@ pub fn to_glb(text: &str) -> Result<Vec<u8>, String> {
     b.bin.finish(b.json)
 }
 
+/// A `type model` text as a glTF binary within a face `budget` (the art
+/// contract's `ArtShape.propFaces` or `characterFaces`; 0 is none): when
+/// the text as written draws more triangles, its generators are built at
+/// fewer segments (every count scaled by one factor, each held at the
+/// count that still keeps its form: a sphere 5 × 3, a cylinder, cone or
+/// lathe 5 round), the most the budget holds. A recipe is built at the
+/// style's count, not built dense and then decimated: a 24 × 12 sphere
+/// cut to a 200-triangle budget by edge collapses keeps its poles' fans
+/// and loses its outline first, while the same sphere built 8 × 5 is the
+/// faceted form itself. Also the factor (1 as written); what is still
+/// past the budget at the floors is left to the decimation.
+pub fn to_glb_within(text: &str, budget: u32) -> Result<(Vec<u8>, f64), String> {
+    let b = build(text)?;
+    if budget == 0 || b.drawn <= budget as usize {
+        return Ok((b.bin.finish(b.json)?, 1.0));
+    }
+    // The drawn count only falls with the factor: the largest factor on a
+    // 1/256 grid whose model fits, else the floors.
+    let (mut lo, mut hi) = (0u32, 256u32);
+    while hi - lo > 1 {
+        let mid = (lo + hi) / 2;
+        if build_at(text, mid as f64 / 256.0)?.drawn <= budget as usize {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    let detail = lo as f64 / 256.0;
+    let b = build_at(text, detail)?;
+    Ok((b.bin.finish(b.json)?, detail))
+}
+
 pub(super) fn build(text: &str) -> Result<Built, String> {
+    build_at(text, 1.0)
+}
+
+/// [`build`] with every segment count at `detail` ([`Fields::segments`]).
+fn build_at(text: &str, detail: f64) -> Result<Built, String> {
     let doc = Document::parse(text).map_err(|e| e.to_string())?;
     if doc.ty != MODEL_TYPE {
         return Err(format!("expected `type model`, not `type {}`", doc.ty));
@@ -993,6 +1066,7 @@ pub(super) fn build(text: &str) -> Result<Built, String> {
     // A mesh already written, by its bits and material: a part repeated
     // under another name draws the same mesh.
     let mut written: BTreeMap<(Vec<u32>, usize), usize> = BTreeMap::new();
+    let mut drawn = 0;
     let add_node = |n: serde_json::Value,
                     parent: Option<usize>,
                     nodes: &mut Vec<serde_json::Value>,
@@ -1105,7 +1179,8 @@ pub(super) fn build(text: &str) -> Result<Built, String> {
                         .ok_or_else(|| at(a, "is a placement block"))?;
                     places.push(placement(&Fields::new(ab, "at", &PLACEMENT)?)?);
                 }
-                let mesh = geometry(g).map_err(|x| format!("{what}: {x}"))?;
+                let mesh = geometry(g, detail).map_err(|x| format!("{what}: {x}"))?;
+                drawn += mesh.indices.len() / 3 * places.len();
                 for (k, (p, m)) in places.iter().enumerate() {
                     // A mirror is baked (the node keeps a positive scale and
                     // its triangles their winding); the rest is the node's.
@@ -1145,11 +1220,18 @@ pub(super) fn build(text: &str) -> Result<Built, String> {
                     add_node(n, pivot, &mut nodes, &mut children, &mut roots);
                 }
             }
-            // `conform off`: the art contract leaves it as made (cook/conform).
-            "conform" if e.values.first().and_then(|v| v.as_word()) == Some("off") => {}
+            // `conform off`: the art contract leaves it as made;
+            // `conform character`: it is held to ArtShape.characterFaces
+            // (cook/conform).
+            "conform"
+                if e.block.is_none()
+                    && matches!(
+                        e.values.as_slice(),
+                        [v] if matches!(v.as_word(), Some("off" | "character"))
+                    ) => {}
             k => {
                 return Err(format!(
-                    "line {}: '{k}' is not part of a model (material, pivot, part, conform off)",
+                    "line {}: '{k}' is not part of a model (material, pivot, part, conform off, conform character)",
                     e.line
                 ));
             }
@@ -1184,7 +1266,7 @@ pub(super) fn build(text: &str) -> Result<Built, String> {
     if json.to_string().contains("KHR_materials_emissive_strength") {
         json["extensionsUsed"] = serde_json::json!(["KHR_materials_emissive_strength"]);
     }
-    Ok(Built { json, bin })
+    Ok(Built { json, bin, drawn })
 }
 
 /// One mesh's attributes in the binary chunk, as a glTF mesh.

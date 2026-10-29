@@ -2790,6 +2790,8 @@
         "Look",
         "DitherPattern",
         "DitherPattern",
+        "MaterialSurface",
+        "MaterialSurface",
         "StyliseSpace",
         "StyliseSpace",
         "Stylise",
@@ -16501,6 +16503,24 @@
         "interleavedGradient": "Interleaved gradient noise: computed per pixel without a texture; a finer diagonal structure than blueNoise up close."
       }
     },
+    "MaterialSurface": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "A made surface MaterialStyle.surface lays on every lit material: the hand-made materials of the shape styles, drawn by the material's shading itself (its normal, its colour and how it takes the light) in each mesh's own space, so a moving object carries it.",
+      "type": "string",
+      "enum": [
+        "none",
+        "clay",
+        "paper",
+        "plastic"
+      ],
+      "x-og-variants": {
+        "none": "No surface: each material as declared.",
+        "clay": "Modelling clay: soft lumps and thumb-pressed dimples bend the normal, the light wraps past the terminator as through a soft body and warms there, and the surface stays matte (roughness at least 0.75).",
+        "paper": "Paper and card: a fibre grain darkens and lifts the colour in fine streaks and bends the normal so lit faces catch it, the light wraps a little as through a sheet, and the surface is fully rough.",
+        "plastic": "Toy plastic or painted wood: a satin sheen (roughness held between 0.3 and 0.45, no metal), a soft wrap of the light and a faint moulding ripple, so pieces read as small and handled."
+      }
+    },
     "StyliseSpace": {
       "x-og-kind": "enum",
       "x-og-module": "render",
@@ -16961,6 +16981,27 @@
           "type": "boolean",
           "description": "Shade every lit material with face normals, as StandardMaterialDesc.flatShading: visible facets for low-poly, paper-craft and voxel looks.",
           "default": false
+        },
+        "surface": {
+          "$ref": "#/$defs/MaterialSurface",
+          "description": "A made surface on every lit material (clay, paper, plastic): its normal detail, colour grain and light response, in each mesh's own space; none is no change. Unlit materials, materials with StandardMaterialDesc.styled false and those with a MeshPhysicalMaterial lobe keep their own shading.",
+          "default": "none"
+        },
+        "surfaceStrength": {
+          "type": "number",
+          "description": "How strongly the surface shows: its bumps, grain and wrapped light; 0 is none.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "surfaceScale": {
+          "type": "number",
+          "description": "The size of the surface's pattern in metres of the mesh's own space (a clay lump, the paper's fibre); 0 takes the surface's own (clay 0.12, paper 0.15, plastic 0.3).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
         }
       },
       "additionalProperties": false
@@ -18546,7 +18587,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, shadowDarkness, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
+          "description": "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, shadowDarkness, rim, outline, outlineDistance, flatShading and surface of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
         },
         "ssr": {
           "type": "boolean",

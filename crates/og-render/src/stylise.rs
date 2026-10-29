@@ -17,8 +17,8 @@
 /// halftone laid on surfaces, [`StyliseSpace::Surface`]) and `objectSpace`
 /// (laid in each instance's own space, [`StyliseSpace::Object`])
 /// ([`Stylise`]);
-/// `toon`, `shadowTint`, `shadowDarkness`, `rim`, `outline`, `outlineDistance` and
-/// `flatShading` ([`MaterialStyle`]).
+/// `toon`, `shadowTint`, `shadowDarkness`, `rim`, `outline`, `outlineDistance`,
+/// `flatShading` and `surface` ([`MaterialStyle`]).
 pub const STYLISE_DRAWN: &[&str] = &[
     "pixel",
     "posterize",
@@ -40,6 +40,7 @@ pub const STYLISE_DRAWN: &[&str] = &[
     "outline",
     "outlineDistance",
     "flatShading",
+    "surface",
 ];
 
 pub use crate::scene::PaletteHandle;
@@ -334,6 +335,50 @@ pub struct MaterialStyle {
     /// The distance at which outlines are `outline_width` wide (0: constant).
     pub outline_distance: f32,
     pub flat_shading: bool,
+    /// A made surface on every lit material (the IDL's `MaterialSurface`).
+    pub surface: MaterialSurface,
+    /// How strongly it shows (0: not at all).
+    pub surface_strength: f32,
+    /// Its pattern's size in metres of the mesh's own space (0: the
+    /// surface's own, [`MaterialSurface::scale`]).
+    pub surface_scale: f32,
+}
+
+/// A made surface the material style lays on every lit material: its
+/// normal detail, colour grain and light response, drawn by the lit
+/// shader (`pbr_fs.wgsl`, `material_surface`) in each mesh's own space.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MaterialSurface {
+    #[default]
+    None,
+    /// Lumps, thumb prints, wrapped warm light, matte.
+    Clay,
+    /// Fibre grain in colour and normal, a little wrap, fully rough.
+    Paper,
+    /// A satin sheen, a soft wrap, a faint moulding ripple.
+    Plastic,
+}
+
+impl MaterialSurface {
+    /// The variant by its IDL index (`none`, `clay`, `paper`, `plastic`).
+    pub fn from_index(i: usize) -> MaterialSurface {
+        match i {
+            1 => MaterialSurface::Clay,
+            2 => MaterialSurface::Paper,
+            3 => MaterialSurface::Plastic,
+            _ => MaterialSurface::None,
+        }
+    }
+
+    /// Its pattern's own size in metres.
+    pub fn scale(self) -> f32 {
+        match self {
+            MaterialSurface::None => 0.0,
+            MaterialSurface::Clay => 0.12,
+            MaterialSurface::Paper => 0.15,
+            MaterialSurface::Plastic => 0.3,
+        }
+    }
 }
 
 impl MaterialStyle {
@@ -345,6 +390,31 @@ impl MaterialStyle {
             || self.rim_intensity > 0.0
             || self.outline_width > 0.0
             || self.flat_shading
+            || self.surface_on()
+    }
+
+    /// Whether a surface is laid on the materials.
+    pub fn surface_on(&self) -> bool {
+        self.surface != MaterialSurface::None && self.surface_strength > 0.0
+    }
+
+    /// The frame's `material_surface` (frame.wgsl): x the surface (0 none,
+    /// 1 clay, 2 paper, 3 plastic), y its strength, z its scale in metres.
+    pub(crate) fn surface_uniform(&self) -> [f32; 4] {
+        if !self.surface_on() {
+            return [0.0; 4];
+        }
+        let scale = if self.surface_scale > 0.0 {
+            self.surface_scale
+        } else {
+            self.surface.scale()
+        };
+        [
+            self.surface as u32 as f32,
+            self.surface_strength.clamp(0.0, 1.0),
+            scale.max(1e-3),
+            0.0,
+        ]
     }
 }
 

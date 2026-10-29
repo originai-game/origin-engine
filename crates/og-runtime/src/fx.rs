@@ -640,6 +640,12 @@ fn stylise(
             outline_width: f(&m, "outlineWidth", 0.0),
             outline_distance: f(&m, "outlineDistance", 0.0),
             flat_shading: on(&m, "flatShading", false),
+            surface: og_render::MaterialSurface::from_index(variant(
+                &m["surface"],
+                &["none", "clay", "paper", "plastic"],
+            )),
+            surface_strength: f(&m, "surfaceStrength", 1.0),
+            surface_scale: f(&m, "surfaceScale", 0.0),
         };
     }
     out
@@ -1224,5 +1230,25 @@ mod tests {
             &[],
         );
         assert_eq!(off.material.shadow_darkness, 0.0);
+    }
+
+    #[test]
+    fn the_material_style_s_surface_reaches_the_renderer() {
+        let m = |v: Value| stylise(None, Some(Arc::new(v)), &[], &[]).material;
+        // As the resource decodes it (the variant's index) and as a look
+        // names it (the variant's name).
+        let clay = m(serde_json::json!({ "surface": 1, "surfaceStrength": 0.5 }));
+        assert_eq!(clay.surface, og_render::MaterialSurface::Clay);
+        assert_eq!(clay.surface_strength, 0.5);
+        assert!(clay.is_active());
+        let paper = m(serde_json::json!({ "surface": "paper", "surfaceScale": 0.3 }));
+        assert_eq!(paper.surface, og_render::MaterialSurface::Paper);
+        assert_eq!((paper.surface_strength, paper.surface_scale), (1.0, 0.3));
+        assert_eq!(
+            m(serde_json::json!({ "surface": 3 })).surface,
+            og_render::MaterialSurface::Plastic
+        );
+        // None is no change.
+        assert!(!m(serde_json::json!({})).is_active());
     }
 }

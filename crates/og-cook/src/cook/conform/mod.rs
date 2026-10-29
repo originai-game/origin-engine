@@ -104,6 +104,42 @@ pub fn texture_roles(root: &Path) -> Result<BTreeMap<String, TextureRole>, Strin
     Ok(out)
 }
 
+/// The models of the project at `root` that say they are characters
+/// ([`character`]), by asset id: what the cook holds to
+/// `ArtShape.characterFaces` besides the skinned ones, read from the
+/// project's sources as the cook reads them, for `og style check`.
+pub fn characters(root: &Path) -> Result<BTreeSet<String>, String> {
+    let sources = super::scan(&root.join("assets")).map_err(|e| e.0)?.sources;
+    let mut out = BTreeSet::new();
+    for s in sources.iter().filter(|s| s.kind == super::Kind::Model) {
+        if character(s).map_err(|e| format!("assets/{}: {e}", s.rel))? {
+            out.insert(s.rel.clone());
+        }
+    }
+    Ok(out)
+}
+
+/// Whether a model says it is a character: `conform character` at the top
+/// of its `type model` text or of its import settings (a glTF's, a
+/// `.vox`'s). A character is held to `ArtShape.characterFaces` as a
+/// skinned model is (docs/art.md §2.3): a hero built of generators, or a
+/// rigid figure, has no skin to tell the cook. `conform off` is also
+/// read here; another word is an error.
+pub(super) fn character(s: &super::Source) -> Result<bool, String> {
+    let text;
+    let body = if s.rel.ends_with(".ogt") {
+        text = Document::parse(&String::from_utf8_lossy(&s.bytes)).map_err(|e| e.to_string())?;
+        &text.body
+    } else {
+        match &s.settings {
+            Some((_, d)) => &d.body,
+            None => return Ok(false),
+        }
+    };
+    Ok(AssetConform::of(body, &["character"])?
+        .is_some_and(|c| c.role.as_deref() == Some("character")))
+}
+
 /// project.ogt's `conform { off "sprites/raw/*" "ui/logo.png" }`: the
 /// assets no pass conforms, by asset id or pattern (`*` within one path
 /// segment, `**` across segments, a trailing `/` a whole folder).

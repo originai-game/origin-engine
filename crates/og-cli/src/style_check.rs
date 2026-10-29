@@ -20,7 +20,8 @@
 //!   `ArtTexels.maxSize`, `filter` and `mips`;
 //! - **models**: the triangles drawn (each primitive times the nodes that
 //!   draw it) against `ArtShape.propFaces` (`characterFaces` for a model
-//!   with a skin), the flat-normal share (corners on their face's normal;
+//!   with a skin or one that says `conform character`, as the cook holds
+//!   it), the flat-normal share (corners on their face's normal;
 //!   judged when `normals flat`), the texel density (texels per metre over
 //!   the model's surface, area-weighted, against `ArtTexels.density` within
 //!   a factor of two) and, where untextured, the colours of its faces.
@@ -1118,6 +1119,7 @@ pub fn measure(
         .as_deref()
         == Some("2d");
     let roles = og_cook::cook::conform::texture_roles(root)?;
+    let characters = og_cook::cook::conform::characters(root)?;
     let fixed = fixed_layouts(root, &bundle);
     let tiles = tile_cells(&bundle);
     let mut assets = Vec::new();
@@ -1177,15 +1179,16 @@ pub fn measure(
             Some((t.meta.width, t.meta.height))
         };
         let measures = measure_model(&m, &size);
-        let character = asset
-            .outputs
-            .iter()
-            .filter(|x| x.ty == "og.Animation")
-            .any(|x| {
-                bundle
-                    .load_animation(&x.id)
-                    .is_ok_and(|a| !a.skin_streams.is_empty())
-            });
+        let character = characters.contains(&asset.source)
+            || asset
+                .outputs
+                .iter()
+                .filter(|x| x.ty == "og.Animation")
+                .any(|x| {
+                    bundle
+                        .load_animation(&x.id)
+                        .is_ok_and(|a| !a.skin_streams.is_empty())
+                });
         if let Some([median, ..]) = measures.density {
             medians.push(median);
         }

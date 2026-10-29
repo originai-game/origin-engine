@@ -3,7 +3,9 @@ version 1
 ---
 # The lantern keeper (og-model §5): a hooded traveller carrying a lit lamp,
 # about 1.8 m, facing +Z, its feet on y = 0. Moderate counts: the look's
-# ArtShape decides the facets, voxels or bevel at cook time.
+# ArtShape decides the facets, voxels or bevel at cook time. A character
+# (beats.json), so the cook holds it to ArtShape.characterFaces.
+conform character
 material "coat" {
   color 0.16 0.36 0.16
   roughness 0.85

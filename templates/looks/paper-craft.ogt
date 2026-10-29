@@ -1,16 +1,17 @@
 type look
 version 1
 ---
-# Flat facets with a fine contour, twelve tones, ambient occlusion in the folds and a paper grain over all of it (the engine's @canvas/paper).
+# Flat facets with a fine contour, ambient occlusion in the folds, the engine's paper surface on every material and a paper grain over all of it (the engine's @canvas/paper). No posterize: its per-channel rounding turns near-neutral card colours another hue.
 name "Folded paper & papercraft"
 ui "paper"
 MaterialStyle {
   flatShading true
   outlineWidth 1
   outlineColor "#5a4a3a"
+  # The engine's paper: fibre grain in the colour and the normal, fully rough.
+  surface paper
 }
 Stylise {
-  posterize 12
   paintCanvas "@canvas/paper"
   paintCanvasStrength 0.5
 }

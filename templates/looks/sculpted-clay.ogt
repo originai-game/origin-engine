@@ -5,9 +5,11 @@ version 1
 name "Sculpted clay & stop-motion"
 ui "cartoon"
 MaterialStyle {
-  rimIntensity 0.35
+  rimIntensity 0.1
   rimPower 2.5
   rimColor "#fff2e0"
+  # The engine's clay: lumps and thumb dents, warm wrapped light, matte.
+  surface clay
 }
 Stylise {
   paintRadius 2
@@ -24,7 +26,8 @@ ArtShape {
   propFaces 5000
   characterFaces 15000
   normals smooth
-  bevel 0.02
+  # Blunt edges at a radius that reads at play distance.
+  bevel 0.05
 }
 ArtMotion {
   stepFps 12

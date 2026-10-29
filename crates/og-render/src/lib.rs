@@ -189,8 +189,8 @@ pub use skin::{
 pub use sprite_mesh::{SpriteMesh, SpriteMeshVertex};
 pub use stylise::{
     DEFAULT_CANVAS_WORLD_SCALE, DepthBands, DitherPattern, Halftone, Hatching, Ink,
-    MAX_PALETTE_COLORS, MaterialStyle, Paint, Palette, PaletteHandle, PixelFit, PixelScale,
-    Quantize, Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace,
+    MAX_PALETTE_COLORS, MaterialStyle, MaterialSurface, Paint, Palette, PaletteHandle, PixelFit,
+    PixelScale, Quantize, Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace,
 };
 pub use targets::{RenderTargetDesc, RenderTargetHandle, TargetFormat, TargetKind, TargetTexture};
 pub use terrain::{
@@ -3967,10 +3967,15 @@ impl Renderer {
                 }),
             };
             let gpu = GpuMaterial {
+                // The material style's surface reads the mesh's own
+                // position, which the lean stages do not hand on.
                 lean: gpu.occluder
                     && gpu.physical.is_none()
                     && !gpu.effects
                     && !gpu.outline
+                    && !(scene.stylise.material.surface_on()
+                        && material.unlit == 0
+                        && material.styled != 0)
                     && material.textures().iter().all(Option::is_none),
                 ..gpu
             };
@@ -7012,6 +7017,7 @@ impl Renderer {
                 let g = scene.hemisphere.1;
                 [g[0], g[1], g[2], 0.0]
             },
+            material_surface: scene.stylise.material.surface_uniform(),
         };
         let mut shadow_slots = vec![bytemuck::Zeroable::zeroed(); SHADOW_SLOTS];
         for (i, c) in cascades.iter().enumerate() {

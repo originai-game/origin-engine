@@ -24,8 +24,11 @@
 //!    face budget the edge doubles (at most four times). Skinned or morphed
 //!    primitives are not voxelised (a voxel has no source vertex to skin).
 //! 2. **Decimate** to the budget (`propFaces`, or `characterFaces` for a
-//!    model with a skin), counted over the model's drawn triangles (each
-//!    primitive times the nodes that draw it), never destroying it:
+//!    model with a skin or that says `conform character`), counted over
+//!    the model's drawn triangles (each primitive times the nodes that
+//!    draw it), never destroying it. A `type model` past it was built
+//!    again at fewer segments first (`model_text::to_glb_within`), so
+//!    only what its floors leave over is decimated here:
 //!    meshoptimizer's edge collapses with the topology kept (no sloppy
 //!    simplifier, open borders and so material seams locked, uv seams
 //!    held), the surface moved at most `ArtShape.silhouette`, else
@@ -396,9 +399,10 @@ impl Conform {
         )
     }
 
-    /// The face budget of a model: a character's when it has a skin.
-    fn budget(&self, src: &GltfSource) -> (u32, &'static str) {
-        if src.doc.skins().next().is_some() {
+    /// The face budget of a model: a character's when it has a skin or
+    /// says it is one (`conform character`).
+    pub(in crate::cook) fn budget(&self, src: &GltfSource) -> (u32, &'static str) {
+        if src.character || src.doc.skins().next().is_some() {
             (self.character_faces, "characterFaces")
         } else {
             (self.prop_faces, "propFaces")
@@ -1572,7 +1576,7 @@ fn placement_of(src: &GltfSource, prim: &gltf::Primitive) -> glam::Mat4 {
 
 /// The triangles a model draws (each primitive times the default scene's
 /// nodes that draw its mesh, at least once): the face budget's measure.
-fn drawn_triangles(src: &GltfSource) -> usize {
+pub(in crate::cook) fn drawn_triangles(src: &GltfSource) -> usize {
     let mut uses = vec![0usize; src.doc.meshes().count()];
     if let Some(scene) = src.doc.default_scene().or_else(|| src.doc.scenes().next()) {
         let mut stack: Vec<gltf::Node> = scene.nodes().collect();
@@ -1784,6 +1788,7 @@ pub(in crate::cook) fn notes(c: &Conform, src: &GltfSource, changes: &[Changes])
         .iter()
         .fold((0, 0), |(a, b), x| (a + x.faces.0, b + x.faces.1));
     let changed = c.line.is_some()
+        || src.segments.is_some()
         || changes.iter().any(|x| {
             x.faces.0 != x.faces.1
                 || x.normals
@@ -1795,6 +1800,12 @@ pub(in crate::cook) fn notes(c: &Conform, src: &GltfSource, changes: &[Changes])
         return vec![format!("conform: {UNCHANGED}")];
     }
     let mut what = vec![format!("{before} → {after} triangles")];
+    if let Some((detail, written)) = src.segments {
+        what.push(format!(
+            "built at {:.0} % of its segments for the budget ({written} drawn as written)",
+            detail * 100.0
+        ));
+    }
     let (budget, name) = c.budget(src);
     let mut warning = None;
     if budget > 0 {

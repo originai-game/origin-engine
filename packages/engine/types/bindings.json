@@ -195,6 +195,12 @@
       "value": "DitherPattern"
     },
     {
+      "name": "MaterialSurface",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "MaterialSurface"
+    },
+    {
       "name": "StyliseSpace",
       "array": "Uint32Array",
       "stride": 1,
@@ -7583,6 +7589,22 @@
           "name": "flatShading",
           "column": "bool",
           "default": false
+        },
+        {
+          "name": "surface",
+          "column": "MaterialSurface",
+          "default": "none"
+        },
+        {
+          "name": "surfaceStrength",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "surfaceScale",
+          "column": "f32",
+          "default": 0
         }
       ]
     },

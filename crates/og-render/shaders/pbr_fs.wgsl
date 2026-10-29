@@ -109,6 +109,41 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     }
   }
   n = surface_normal(hook, params, n);
+  // The material style's made surface (MaterialStyle.surface, frame.wgsl
+  // material_surface), in the mesh's own space; a material with styled
+  // false (mode 8) keeps its own. The branch is on uniforms only, so the
+  // screen derivatives below are taken in uniform control flow.
+  let ms = frame.material_surface;
+  var wrap = 0.0;
+  var wrap_tint = vec3<f32>(1.0);
+  if (ms.x > 0.5 && (mode & 8u) == 0u) {
+    let kind = u32(ms.x + 0.5);
+    if (kind != 2u) {
+      // Clay and toys are painted or moulded, not photographed: the base
+      // texture's detail gives way to its local average (a coarse mip).
+      let coarse = look_tint(material.base_color * textureSampleBias(base_color_tex, material_sampler, uv, 6.0) * in.color, in.look).rgb;
+      s.albedo = mix(s.albedo, coarse, select(0.5, 0.7, kind == 3u) * ms.y);
+    }
+    // The pattern fades where it spans fewer than about four pixels, so a
+    // far surface keeps its form instead of shimmering grain (the pixel's
+    // footprint in the mesh's own space, where the pattern lies).
+    let footprint = max(length(dpdx(in.local_pos)), length(dpdy(in.local_pos)));
+    let fade = clamp((ms.z / max(footprint, 1e-6) - 3.0) / 6.0, 0.0, 1.0);
+    let made = material_surface(kind, ms.y, in.local_pos / ms.z, s, fade);
+    s = made.s;
+    wrap = made.wrap;
+    wrap_tint = made.tint;
+    // The height (metres) bends the normal by its screen-space surface
+    // gradient (Mikkelsen 2010): no tangents needed, so it holds on every
+    // generated, decimated or bevelled mesh.
+    let hm = made.height * ms.z;
+    let r1 = cross(dpy, n);
+    let r2 = cross(n, dpx);
+    let det = dot(dpx, r1);
+    let grad = sign(det) * (dpdx(hm) * r1 + dpdy(hm) * r2);
+    n = normalize(abs(det) * n - grad);
+    s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
+  }
   s.coat = material.coat.x;
   s.coat_roughness = clamp(material.coat.y, 0.04, 1.0);
   s.coat_normal = n_vertex * face;
@@ -124,6 +159,17 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     color = toon_light(s, n, v, l, shadow) * frame.light_color.rgb;
   } else {
     color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
+  }
+  if (wrap > 0.0) {
+    // Light wrapped past the terminator, as through a soft body or a
+    // sheet (the surface's): energy-conserving wrap, (n.l + w) / (1 + w)²,
+    // so the lit side gives up what the terminator gains; what is gained
+    // is tinted as it passes. Shadowed where the face is lit.
+    let raw = dot(n, l);
+    let wrapped = max(raw + wrap, 0.0) / ((1.0 + wrap) * (1.0 + wrap));
+    let extra = wrapped - max(raw, 0.0);
+    let gain = max(extra, 0.0) * wrap_tint + vec3<f32>(min(extra, 0.0));
+    color += s.albedo / PI * (1.0 - s.metallic) * gain * frame.light_color.rgb * select(1.0, shadow, raw > 0.0);
   }
   // Caustics where the surface lies under the frame's water (0 without).
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world_pos);
@@ -229,3 +275,58 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   return vec4<f32>(apply_fog(color, in.world_pos), alpha);
 }
 
+
+// A made surface: what it does to the shading surface, the height that
+// bends its normal (in units of the pattern's scale) and its wrapped light.
+struct MadeSurface {
+  s: Surface,
+  height: f32,
+  wrap: f32,
+  tint: vec3<f32>,
+};
+
+// MaterialStyle.surface at strength `k` on the point `p` (the mesh's own
+// position over the pattern's scale): 1 clay, 2 paper, 3 plastic. `detail`
+// (0 to 1) is how much of the pattern this pixel resolves: the height and
+// the colour grain go with it, the light response stays.
+fn material_surface(kind: u32, k: f32, p: vec3<f32>, surface: Surface, detail: f32) -> MadeSurface {
+  let kd = k * detail;
+  var o: MadeSurface;
+  o.s = surface;
+  o.tint = vec3<f32>(1.0);
+  if (kind == 1u) {
+    // Clay: soft lumps over two octaves, thumb-pressed dents, matte, the
+    // light wrapping warm past the terminator.
+    let lump = value_noise3(p, 11u) * 0.65 + value_noise3(p * 2.3 + 7.1, 12u) * 0.35;
+    let dent = smoothstep(0.6, 0.85, value_noise3(p * 1.6 + 3.7, 13u));
+    o.height = (lump * 0.45 - dent * 0.3) * kd;
+    o.s.roughness = max(o.s.roughness, 0.75);
+    o.s.metallic = 0.0;
+    o.s.albedo = o.s.albedo * (1.0 + (lump - 0.5) * 0.25 * kd - dent * 0.12 * kd);
+    o.wrap = 0.5 * k;
+    o.tint = vec3<f32>(1.0, 0.72, 0.55);
+  } else if (kind == 2u) {
+    // Paper: a mottled fibre grain with streaks along one direction, in
+    // the colour and the normal, fully rough, a little light through.
+    let mottle = value_noise3(p, 21u);
+    let fibre = value_noise3(p * vec3<f32>(3.0, 0.5, 3.0) + 1.3, 22u);
+    let g = mottle * 0.55 + fibre * 0.45;
+    o.height = g * 0.2 * kd;
+    o.s.roughness = 1.0;
+    o.s.metallic = 0.0;
+    o.s.albedo = o.s.albedo * (1.0 + (g - 0.5) * 0.6 * kd);
+    o.wrap = 0.25 * k;
+    o.tint = vec3<f32>(1.0, 0.96, 0.88);
+  } else {
+    // Toy plastic or painted wood: a satin sheen, a little more colour,
+    // a faint moulding ripple, a soft wrap.
+    o.height = value_noise3(p, 31u) * 0.04 * kd;
+    o.s.roughness = mix(o.s.roughness, clamp(o.s.roughness, 0.3, 0.45), k);
+    o.s.metallic = o.s.metallic * (1.0 - k);
+    let luma = dot(o.s.albedo, vec3<f32>(0.2126, 0.7152, 0.0722));
+    o.s.albedo = max(mix(vec3<f32>(luma), o.s.albedo, 1.0 + 0.35 * k), vec3<f32>(0.0));
+    o.wrap = 0.3 * k;
+    o.tint = vec3<f32>(1.0, 0.9, 0.82);
+  }
+  return o;
+}
