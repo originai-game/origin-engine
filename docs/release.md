@@ -130,6 +130,17 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.7.2 released (2026-10-29 UTC).** All five npm packages are
+published, and `v0.7.2` is pushed at `ccda9a97`. It is recorded as a
+patch with the simulation unchanged: additive, off-by-default members
+(`MaterialStyle.shadowDarkness`, `surface` and `MaterialSurface`), the
+cook's texel-space painting and `conform character`, and the
+heavy-ink-shadows, low-resolution-3d and surface-NaN fixes. The replay
+gate passes 2/2 goldens with the tarball binaries on darwin-arm64 and
+win32-x64. The tarballs passed on Mac, Linux and Windows, and so did the
+registry install. See the
+[release receipt](../tests/evidence/release/0.7.2.md).
+
 **0.7.1 released (2026-10-28 UTC).** All five npm packages are
 published, and `v0.7.1` is pushed at `57263610`. It is a patch with the
 simulation unchanged and no IDL member changed: the dispersed Bayer
