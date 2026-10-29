@@ -1063,7 +1063,7 @@
       "look": {
         "preset": "templates/looks/heavy-ink-shadows.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform"
@@ -1073,14 +1073,13 @@
           "3d"
         ],
         "primitives": [
+          "MaterialStyle.shadowDarkness",
           "Stylise.posterize",
-          "Stylise.hatching",
           "Stylise.ink",
+          "Fog",
           "PostEffects.vignette"
         ],
-        "missing": [
-          "shadows as solid black ink masses: the frame posterises but keeps the lit colours in shadow (MaterialStyle.shadowTint and the posterize levels do not reach black on these assets)"
-        ]
+        "missing": []
       },
       "ui": "fantasy",
       "palette": {
@@ -1425,7 +1424,7 @@
       "look": {
         "preset": "templates/looks/low-resolution-3d.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform"
@@ -1440,13 +1439,10 @@
           "Stylise.affineTexturing",
           "Stylise.depthBits",
           "Stylise.dither",
-          "Fog"
+          "Fog",
+          "Sky"
         ],
-        "missing": [
-          "the far hills (596 faces) stay over propFaces 300: decimation within ArtShape.silhouette cannot reach the budget, so the cook keeps them whole",
-          "a frame that reads as early 3D: logicalHeight 240 with nearest textures barely shows at 640x360 (vertex wobble and affine warp are not in the engine)",
-          "og style check on the sample: models/hills.ogt: faces 596 against <= 300 (ArtShape.propFaces)"
-        ]
+        "missing": []
       },
       "ui": "scifi",
       "palette": {
@@ -1791,10 +1787,11 @@
       "look": {
         "preset": "templates/looks/painterly-3d.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "content",
         "layers": [
           "frame",
-          "conform"
+          "conform",
+          "authored"
         ],
         "family": "cinematic-3d",
         "profiles": [
@@ -1808,7 +1805,7 @@
           "Fog"
         ],
         "missing": [
-          "painted assets: brush-stroke textures and soft painted forms (the frame's paint filter does not show on these assets)"
+          "hand-painted textures and shaped, exaggerated forms on the characters and props (the cook paints a model's own colour textures; untextured blockouts stay flat)"
         ]
       },
       "ui": "fantasy",
