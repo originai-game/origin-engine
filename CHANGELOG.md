@@ -28,6 +28,11 @@ is one line here, written at the merge that changes
   light lifts every shadowed surface above the lowest step. The preset
   now sets `shadowDarkness 1`, six posterize steps, a near-black sky, a
   dark red fog and muted grading. Its frames change.
+- looks, `low-resolution-3d`: a short dark fog (density 0.07) the colour
+  of a matching flat sky, the clear colour the catalogue asks for, so the
+  draw distance ends in it as on early consoles. Its `vertexSnap` and
+  `affineTexturing` were already drawn (`retro_clip`, `stylised_uv`).
+  Its frames change.
 
 ## 0.7.1 — 2026-10-28
 
