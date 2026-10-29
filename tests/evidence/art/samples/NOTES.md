@@ -74,8 +74,8 @@ art, `full` where it reads and the check passes, else `partial`.
 | `bold-comic-illustration` | ink-3d | [bold-comic-illustration.jpg](frames/bold-comic-illustration.jpg) | yes: thick black outlines on every form, flat posterised fills, a printed-colour sky | pass | full |
 | `watercolor-wash` | paint-2d | [watercolor-wash.jpg](frames/watercolor-wash.jpg) | yes: translucent washes with pooled rims on white paper, the cook's texel-space paint on every sprite | pass | full |
 | `pixel-3d-hybrid` | pixel-3d | [pixel-3d-hybrid.jpg](frames/pixel-3d-hybrid.jpg) | yes: conformed pixel sprites (hero, tree) stand as billboards with drop shadows among low-detail 3D props, dithered and depth-blurred | pass | full |
-| `faceted-low-poly` | shape-3d | [faceted-low-poly.jpg](frames/faceted-low-poly.jpg) | no: the tree's facets read, but the hero is kept whole at 332 faces (over propFaces 200) and stays round, and the crate keeps its wood texture | off: models/hero.ogt: faces 332 against <= 200 (ArtShape.propFaces); models/hills.ogt: faces 500 against <= 200 (ArtShape.propFaces) | partial |
-| `sculpted-clay` | shape-3d | [sculpted-clay.jpg](frames/sculpted-clay.jpg) | no: the 2 cm bevel is too small to see at this distance and the surfaces are plain PBR: nothing reads as clay | pass | partial |
+| `faceted-low-poly` | shape-3d | [faceted-low-poly.jpg](frames/faceted-low-poly.jpg) | yes (since art/shape-3d-full): flat facets on every model, the hills built at the budget's segments as broad faceted planes, the hero flat-shaded within characterFaces; the crate keeps its 64-texel palette texture as the preset allows | pass | full |
+| `sculpted-clay` | shape-3d | [sculpted-clay.jpg](frames/sculpted-clay.jpg) | yes (since art/shape-3d-full): matte lumpy plasticine on every model (`MaterialStyle.surface clay`), the crate pressed from clay, blunt 5 cm bevels; the sample's colours stay its own cool greens | pass | full |
 | `8bit-pixel` | pixel-side | [8bit-pixel.jpg](frames/8bit-pixel.jpg) | yes: flat 4-step blocks, tiny sprites on an exact grid, a banded sky: the early-console language of the preview | pass | full |
 | `voxel-worlds` | shape-3d | [voxel-worlds.jpg](frames/voxel-worlds.jpg) | yes: the tree, hero and hills are stepped cubes on one grid, single-colour faces | pass | full |
 | `illuminated-manuscript` | paint-2d | [illuminated-manuscript.jpg](frames/illuminated-manuscript.jpg) | yes: parchment, gold sun, ink-outlined flat figures, an ornamental border and floral frieze | pass | content |
@@ -97,8 +97,8 @@ art, `full` where it reads and the check passes, else `partial`.
 | `coarse-pixel` | pixel-side | [coarse-pixel.jpg](frames/coarse-pixel.jpg) | yes: a few huge pixels per figure, one dominant night-blue mass, the lamp the only warm point | pass | full |
 | `anime-cel-3d` | toon-3d | [anime-cel-3d.jpg](frames/anime-cel-3d.jpg) | yes: two-tone cel bands, dark outlines on every model, a clean sky | pass | full |
 | `inked-comic-3d` | toon-3d | [inked-comic-3d.jpg](frames/inked-comic-3d.jpg) | yes: heavy ink contours and hatched fills over the whole frame | pass | full |
-| `paper-craft` | shape-3d | [paper-craft.jpg](frames/paper-craft.jpg) | no: flat facets and outlines draw, but there is no paper grain, fold or layered card | pass | partial |
-| `miniature-diorama` | shape-3d | [miniature-diorama.jpg](frames/miniature-diorama.jpg) | no: the tilt-shift blur reads as miniature, but the props are plain PBR, not toy-like or bevelled | pass | partial |
+| `paper-craft` | shape-3d | [paper-craft.jpg](frames/paper-craft.jpg) | yes (since art/shape-3d-full): folded card cones, cut card hills stood in layers, a raised card plateau and path with their contact shadows, fibre grain on lit faces (its own sheet sources) | pass | content |
+| `miniature-diorama` | shape-3d | [miniature-diorama.jpg](frames/miniature-diorama.jpg) | yes (since art/shape-3d-full): tilt-shift over toy pieces, satin plastic and painted wood (`MaterialStyle.surface plastic`), rounded 5 cm bevels; the sample's camera looks down about 22°, under the style's 30 to 60 | pass | full |
 | `painterly-3d` | cinematic-3d | [painterly-3d.jpg](frames/painterly-3d.jpg) | no: the crate's and ground's textures carry brush strokes (the cook's texel-space paint), but the hero, tree, lantern and hills are flat-coloured blockouts with no painted texture and realistic proportions: nothing for a brush to work on | pass | content |
 | `cinematic-realism` | cinematic-3d | [cinematic-realism.jpg](frames/cinematic-realism.jpg) | yes (art/samples-full): scanned and generated models (a Meshy lantern keeper, Poly Haven crate, street lamp, hand lantern and stump, a stand of Meshy pines) on a Poly Haven forest ground under a low dusk sun: long soft shadows, warm lamp pools, a hazed ridge, AgX grade, grain and vignette | pass | full |
 | `muted-cinematic-3d` | cinematic-3d | [muted-cinematic-3d.jpg](frames/muted-cinematic-3d.jpg) | yes (art/samples-full): the same real models in grey haze between depth layers, the lamp and hand lantern the only warm accent (mean saturation 0.07), soft volume and no outlines | pass | full |
@@ -404,4 +404,89 @@ coordinator's): `examples/art-pixel-topdown/references/metal/topdown-tile-pixel.
 `examples/art-cinematic-3d/references/metal/cinematic-realism.png` and
 `muted-cinematic-3d.png`. monochrome-pixel's frame does not move, and
 the og-cook fix moves no sample (above). The contact sheet is not
+
+## art/shape-3d-full: faceted-low-poly, sculpted-clay, paper-craft, miniature-diorama
+
+Branch `art/shape-3d-full` from `16c1eb00`, rebased onto `63717bdc` (G2
+and G3) before the frames. Captured on lavapipe at 640x360 (`capture.ts --size
+640x360 --only <slug>`) with the branch's `og` and addon, and the before
+frames with `63717bdc`'s; `shape-3d/<slug>.jpg` is before | after |
+preview. The table's totals above are not recounted here (these four:
+three to full, one to content; the coordinator recounts at the merge).
+
+- **faceted-low-poly → full.** Cause, two cook faults, not the preset's
+  budget: (a) the hero is a character (its brief asks for one, 300 to
+  1500 triangles), but the cook and `og style check` knew a character
+  only by its skin, so a hero built of generators was held to
+  `propFaces 200`; (b) a `type model` was built at its written segment
+  counts and then decimated, and edge collapses within the silhouette
+  bound cannot take four 24 x 12 spheres (2,376 drawn) to 200. Fix: a
+  model that says `conform character` (its `type model` text, or a
+  glTF's import settings) is held to `characterFaces` by the cook and by
+  `og style check` (`conform::characters`, one reading for both); a
+  `type model` past its budget is built again with every segment count
+  scaled by one factor, the largest that fits (held at a sphere's 5 x 3
+  and a cylinder's, cone's or lathe's 5), before the decimation sees it
+  (`model_text::to_glb_within`). The sample's hero says `conform
+  character` (952 triangles against 1500); the hills are built at 23 % of
+  their segments (192 drawn against 200), broad facets as in the
+  preview. The preset is unchanged. Before, the check was off (hero 332,
+  hills 500 against 200); now every asset passes.
+- **sculpted-clay → full.** Cause: nothing in the engine made a clay
+  surface, and a 2 cm chamfer is under a pixel at play distance. Fix: the
+  look's `MaterialStyle.surface` (new IDL field, `MaterialSurface` none,
+  clay, paper, plastic, with `surfaceStrength` and `surfaceScale`), drawn
+  in `pbr_fs.wgsl`'s material shading, not in `stylise.wgsl`: in each
+  mesh's own space, normal detail through its screen-space surface
+  gradient (no tangents, so it holds on generated, decimated and bevelled
+  meshes), colour grain, an energy-conserving wrapped light tinted where
+  it passes, roughness held matte, and for clay and plastic the base
+  texture's coarse mip in place of its photographic detail; it fades where
+  the pattern spans under four pixels. Clay: two octaves of lumps and
+  thumb-pressed dents, warm wrap. The preset sets `surface clay`, its rim
+  down to 0.1 (at 0.35 it washed the frame white at grazing angles) and
+  `bevel 0.05`. The sample's colours stay the family's cool greens; a
+  clay game's own palette is its materials'.
+- **paper-craft → content.** The engine part is `surface paper` (fibre
+  streaks and mottling in the colour and the normal, fully rough, a
+  little light through), and the preset drops `posterize 12`: its
+  per-channel rounding turned the card colours another hue (a tan path
+  drew pink), the finding of the preset tuning above. Folds and layered
+  sheets are the assets' construction, which no conformance makes from
+  solids, so the style brings its own sources built with og-model's
+  paper fold recipe: `examples/art-shape-3d/styles/paper-craft/models/`
+  (six-sided folded cones for the tree, the hero folded, four cut card
+  hill sheets stood one behind the other, a table card under a raised
+  plateau and path). With them the frame reads; by the catalogue's own
+  definition (authored: art no conformance makes) that is `content`.
+  neon-vector is `full` with its own sources too: if the coordinator
+  counts recipe-built sources as the produce stage rather than authored
+  art, paper-craft is `full` on the same footing.
+- **miniature-diorama → full.** Cause: the props were plain PBR. Fix:
+  `surface plastic` (a satin sheen at roughness 0.3 to 0.45, no metal,
+  colour lifted a third, a soft wrap, a faint moulding ripple, painted
+  texture detail) and `bevel 0.05` in the preset. The style's third
+  check (camera 30 to 60° down) is the sample's camera at about 22°, the
+  family's shared view; `ArtCamera` can pin it for a game.
+
+Tests (each fails on the old code): og-cook
+`conform_mesh::a_type_model_past_its_budget_is_built_at_fewer_segments_not_decimated`
+and `a_model_that_says_conform_character_is_held_to_the_character_budget`;
+og-render `surface::a_made_surface_bends_a_lit_ball_and_is_off_at_zero_strength`
+(also fails when a surfaced material draws through the lean pipeline,
+which has no local position); og-runtime
+`fx::tests::the_material_style_s_surface_reaches_the_renderer`.
+
+Reference frames that move (not re-recorded; Metal is the
+coordinator's): `examples/art-shape-3d/references/metal/`
+`faceted-low-poly.png`, `sculpted-clay.png`, `paper-craft.png`,
+`miniature-diorama.png`; `templates/fx-showcase/references/metal/`
+`looks-sculpted-clay.png`, `looks-paper-craft.png`,
+`looks-miniature-diorama.png` and `references/webgl2/looks-paper-craft.png`
+(the presets changed); `examples/rumpus-isle/references/metal/*`, every
+frame that draws the island (its look extends miniature-diorama, so its
+materials take the plastic surface). No other family's cook changes (each
+3D style's cook report compared with `63717bdc`'s: voxel-worlds' hero only
+names characterFaces, the same 354 triangles), and no og-tests reference
+moves (the surface is none in every scene). The contact sheet is not
 regenerated here.

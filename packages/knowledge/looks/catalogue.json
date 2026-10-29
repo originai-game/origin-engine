@@ -278,7 +278,7 @@
       "look": {
         "preset": "templates/looks/faceted-low-poly.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform"
@@ -292,11 +292,7 @@
           "Fog",
           "Sky"
         ],
-        "missing": [
-          "decimation that reaches propFaces 200 on a hero built of capsules and spheres: within ArtShape.silhouette it stops at 332 and the cook keeps it",
-          "og style check on the sample: models/hero.ogt: faces 332 against <= 200 (ArtShape.propFaces)",
-          "og style check on the sample: models/hills.ogt: faces 500 against <= 200 (ArtShape.propFaces)"
-        ]
+        "missing": []
       },
       "ui": "paper",
       "palette": {
@@ -339,7 +335,7 @@
       "look": {
         "preset": "templates/looks/sculpted-clay.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform"
@@ -354,11 +350,10 @@
           "StandardMaterialDesc.normalMap",
           "PostEffects.ao",
           "PostEffects.depthOfField",
-          "AnimationPlayer.stepFps"
+          "AnimationPlayer.stepFps",
+          "MaterialStyle.surface"
         ],
-        "missing": [
-          "a clay surface: no fingerprint or soft subsurface look in the frame, and a 2 cm bevel does not show at play distance"
-        ]
+        "missing": []
       },
       "ui": "cartoon",
       "palette": {
@@ -1659,10 +1654,11 @@
       "look": {
         "preset": "templates/looks/paper-craft.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "content",
         "layers": [
           "frame",
-          "conform"
+          "conform",
+          "authored"
         ],
         "family": "shape-3d",
         "profiles": [
@@ -1673,10 +1669,11 @@
           "MaterialStyle.flatShading",
           "PostEffects.ao",
           "Stylise.paintCanvas",
-          "soft shadows"
+          "soft shadows",
+          "MaterialStyle.surface"
         ],
         "missing": [
-          "paper: no card grain, folds or layered sheets in the frame (the assets must be built as sheets, og-model's paper fold recipe)"
+          "the art is content: models built as card sheets with og-model's paper fold recipe (examples/art-shape-3d/styles/paper-craft: folded cones, cut card hills stood in layers, a card plateau); the engine draws the card grain (MaterialStyle.surface paper) on whatever it is given"
         ]
       },
       "ui": "paper",
@@ -1720,7 +1717,7 @@
       "look": {
         "preset": "templates/looks/miniature-diorama.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform",
@@ -1735,11 +1732,10 @@
           "PostEffects.ao",
           "RenderSettings.bloom",
           "Sky",
-          "soft shadows"
+          "soft shadows",
+          "MaterialStyle.surface"
         ],
-        "missing": [
-          "toy-like materials and bevels the assets do not carry (the frame's tilt-shift alone does not make a diorama)"
-        ]
+        "missing": []
       },
       "ui": "cartoon",
       "palette": {
