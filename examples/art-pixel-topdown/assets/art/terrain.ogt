@@ -1,0 +1,167 @@
+type tileset
+version 1
+---
+# Written by tools/art-samples/tiles.py from sources/terrain-sheet.png: tiles 0-3 grass,
+# 4-7 path, 8-9 cliff face, 10 steps, 11 the cliff's foot, 12-13 water, 14 bush, 15 stump;
+# 16-62 the path terrain's 47 blob shapes, 63-109 the pond's, 110-156 the ledge's;
+# 157-158 the cliff face's west end (face, foot).
+texture "art/terrain.png"
+grid 32 32 16 10
+filter nearest
+solid 8 9 11 12 13 14 15 157 158
+terrain path {
+  mode blob47
+  rule 0 16
+  rule 1 17
+  rule 4 18
+  rule 5 19
+  rule 7 20
+  rule 16 21
+  rule 17 22
+  rule 20 23
+  rule 21 24
+  rule 23 25
+  rule 28 26
+  rule 29 27
+  rule 31 28
+  rule 64 29
+  rule 65 30
+  rule 68 31
+  rule 69 32
+  rule 71 33
+  rule 80 34
+  rule 81 35
+  rule 84 36
+  rule 85 37
+  rule 87 38
+  rule 92 39
+  rule 93 40
+  rule 95 41
+  rule 112 42
+  rule 113 43
+  rule 116 44
+  rule 117 45
+  rule 119 46
+  rule 124 47
+  rule 125 48
+  rule 127 49
+  rule 193 50
+  rule 197 51
+  rule 199 52
+  rule 209 53
+  rule 213 54
+  rule 215 55
+  rule 221 56
+  rule 223 57
+  rule 241 58
+  rule 245 59
+  rule 247 60
+  rule 253 61
+  rule 255 62
+  default 62
+  edge filled
+}
+terrain pond {
+  mode blob47
+  rule 0 63
+  rule 1 64
+  rule 4 65
+  rule 5 66
+  rule 7 67
+  rule 16 68
+  rule 17 69
+  rule 20 70
+  rule 21 71
+  rule 23 72
+  rule 28 73
+  rule 29 74
+  rule 31 75
+  rule 64 76
+  rule 65 77
+  rule 68 78
+  rule 69 79
+  rule 71 80
+  rule 80 81
+  rule 81 82
+  rule 84 83
+  rule 85 84
+  rule 87 85
+  rule 92 86
+  rule 93 87
+  rule 95 88
+  rule 112 89
+  rule 113 90
+  rule 116 91
+  rule 117 92
+  rule 119 93
+  rule 124 94
+  rule 125 95
+  rule 127 96
+  rule 193 97
+  rule 197 98
+  rule 199 99
+  rule 209 100
+  rule 213 101
+  rule 215 102
+  rule 221 103
+  rule 223 104
+  rule 241 105
+  rule 245 106
+  rule 247 107
+  rule 253 108
+  rule 255 109
+  default 109
+  edge filled
+}
+terrain ledge {
+  mode blob47
+  rule 0 110
+  rule 1 111
+  rule 4 112
+  rule 5 113
+  rule 7 114
+  rule 16 115
+  rule 17 116
+  rule 20 117
+  rule 21 118
+  rule 23 119
+  rule 28 120
+  rule 29 121
+  rule 31 122
+  rule 64 123
+  rule 65 124
+  rule 68 125
+  rule 69 126
+  rule 71 127
+  rule 80 128
+  rule 81 129
+  rule 84 130
+  rule 85 131
+  rule 87 132
+  rule 92 133
+  rule 93 134
+  rule 95 135
+  rule 112 136
+  rule 113 137
+  rule 116 138
+  rule 117 139
+  rule 119 140
+  rule 124 141
+  rule 125 142
+  rule 127 143
+  rule 193 144
+  rule 197 145
+  rule 199 146
+  rule 209 147
+  rule 213 148
+  rule 215 149
+  rule 221 150
+  rule 223 151
+  rule 241 152
+  rule 245 153
+  rule 247 154
+  rule 253 155
+  rule 255 156
+  default 156
+  edge filled
+}

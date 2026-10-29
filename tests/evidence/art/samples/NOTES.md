@@ -88,11 +88,11 @@ art, `full` where it reads and the check passes, else `partial`.
 | `detailed-doodle` | paint-2d | [detailed-doodle.jpg](frames/detailed-doodle.jpg) | yes: fine irregular line over everything, tiny houses and mills, very little colour | pass | content |
 | `black-figure-pottery` | paint-2d | [black-figure-pottery.jpg](frames/black-figure-pottery.jpg) | yes: black silhouettes with incised detail on ochre, meander bands top and bottom | pass | content |
 | `heavy-ink-shadows` | ink-3d | [heavy-ink-shadows.jpg](frames/heavy-ink-shadows.jpg) | yes (since art/render-full): solid black masses where the sun does not reach (MaterialStyle.shadowDarkness 1), thick ink on every form, muted posterised fills under a near-black sky and blood-red haze; 36 % of the frame is near-black | pass | full |
-| `monochrome-pixel` | pixel-side | [monochrome-pixel.jpg](frames/monochrome-pixel.jpg) | yes: the handheld greens in Bayer dither, silhouettes on pale ground, one ink on one paper | off: art/ground.png: grid 1x2 texels per pixel, half pixels at rows 2 4 against 1 texel(s) per pixel, no half pixels (ArtPixels) | partial |
+| `monochrome-pixel` | pixel-side | [monochrome-pixel.jpg](frames/monochrome-pixel.jpg) | yes (art/samples-full): the handheld greens in Bayer dither, silhouettes on pale ground, one ink on one paper (the frame as before; only the check moved: the ground tile was on its grid, the grid detector counted its flat rows) | pass | full |
 | `16bit-pixel` | pixel-side | [16bit-pixel.jpg](frames/16bit-pixel.jpg) | yes: ramped shading, the cook's 1-px inside line on every sprite, parallax far layer, saturated keeper against calmer scenery | pass | full |
 | `detailed-pixel` | pixel-side | [detailed-pixel.jpg](frames/detailed-pixel.jpg) | yes: dense hue-shifted clusters at 32 px per metre, the grid still visible, scenery rich but quieter | pass | full |
 | `luminous-pixel` | pixel-side | [luminous-pixel.jpg](frames/luminous-pixel.jpg) | yes: near-black masses, cyan rim light, the lantern and windows the only warm glows | pass | full |
-| `topdown-tile-pixel` | pixel-topdown | [topdown-tile-pixel.jpg](frames/topdown-tile-pixel.jpg) | no: upright three-quarter sprites on one repeated grass tile: no tile grid of walls, cliffs and paths, so height and paths do not read as in the preview | pass | partial |
+| `topdown-tile-pixel` | pixel-topdown | [topdown-tile-pixel.jpg](frames/topdown-tile-pixel.jpg) | yes (art/samples-full): a strict 16 px tile grid seen from above: a raised ledge with its cliff face and stone steps, an auto-tiled dirt path and pond, grass with bushes and stumps, upright y-sorted sprites standing on it; floor, path, wall face and water stay apart in greyscale | pass | full |
 | `low-resolution-3d` | pixel-3d | [low-resolution-3d.jpg](frames/low-resolution-3d.jpg) | yes (since art/render-full): a 240-line frame with nearest texels and a Bayer-dithered sixteen-tone grade, short dark fog the colour of the sky closing the draw distance, faceted 6 x 4 hills (the style's own source, 264 faces); vertices snap to the grid and textures interpolate affinely (stylise-retro holds both) | pass | full |
 | `coarse-pixel` | pixel-side | [coarse-pixel.jpg](frames/coarse-pixel.jpg) | yes: a few huge pixels per figure, one dominant night-blue mass, the lamp the only warm point | pass | full |
 | `anime-cel-3d` | toon-3d | [anime-cel-3d.jpg](frames/anime-cel-3d.jpg) | yes: two-tone cel bands, dark outlines on every model, a clean sky | pass | full |
@@ -100,16 +100,16 @@ art, `full` where it reads and the check passes, else `partial`.
 | `paper-craft` | shape-3d | [paper-craft.jpg](frames/paper-craft.jpg) | no: flat facets and outlines draw, but there is no paper grain, fold or layered card | pass | partial |
 | `miniature-diorama` | shape-3d | [miniature-diorama.jpg](frames/miniature-diorama.jpg) | no: the tilt-shift blur reads as miniature, but the props are plain PBR, not toy-like or bevelled | pass | partial |
 | `painterly-3d` | cinematic-3d | [painterly-3d.jpg](frames/painterly-3d.jpg) | no: the crate's and ground's textures carry brush strokes (the cook's texel-space paint), but the hero, tree, lantern and hills are flat-coloured blockouts with no painted texture and realistic proportions: nothing for a brush to work on | pass | content |
-| `cinematic-realism` | cinematic-3d | [cinematic-realism.jpg](frames/cinematic-realism.jpg) | no: primitive blockouts with photo textures under a filmic grade: not realistic assets | off: models/crate.glb: density 213.3 texels/m (p10 213.3, p90 213.3) against 256.0 to 1024.0 (ArtTexels.density 512 within x2); models/ground.glb: density 128.0 texels/m (p10 128.0, p90 128.0) against 256.0 to 1024.0 (ArtTexels.density 512 within x2) | partial |
-| `muted-cinematic-3d` | cinematic-3d | [muted-cinematic-3d.jpg](frames/muted-cinematic-3d.jpg) | no: the muted grade draws, but the primitives read as a blockout | pass | partial |
+| `cinematic-realism` | cinematic-3d | [cinematic-realism.jpg](frames/cinematic-realism.jpg) | yes (art/samples-full): scanned and generated models (a Meshy lantern keeper, Poly Haven crate, street lamp, hand lantern and stump, a stand of Meshy pines) on a Poly Haven forest ground under a low dusk sun: long soft shadows, warm lamp pools, a hazed ridge, AgX grade, grain and vignette | pass | full |
+| `muted-cinematic-3d` | cinematic-3d | [muted-cinematic-3d.jpg](frames/muted-cinematic-3d.jpg) | yes (art/samples-full): the same real models in grey haze between depth layers, the lamp and hand lantern the only warm accent (mean saturation 0.07), soft volume and no outlines | pass | full |
 | `layered-silhouette` | cinematic-3d | [layered-silhouette.jpg](frames/layered-silhouette.jpg) | yes: every form a flat dark silhouette in depth bands against a pale sky | pass | full |
 | `minimal-geometric` | shape-3d | [minimal-geometric.jpg](frames/minimal-geometric.jpg) | yes: flat untextured colour planes, baked one colour per face, no texture anywhere | pass | full |
 | `neon-vector` | shape-3d | [neon-vector.jpg](frames/neon-vector.jpg) | yes: black faces under glowing cyan lines on a dark field, bloom on the lantern (neon-vector's own sources, tools/art-samples/neon.py) | pass | full |
 | `monochrome-dither-3d` | pixel-3d | [monochrome-dither-3d.jpg](frames/monochrome-dither-3d.jpg) | yes (since the Bayer fix below): two colours, a fine ordered dither carries the light: the tree, hero, crate, lantern and hills keep their forms in perspective | pass | full |
 | `luminous-layered-painting` | paint-2d | [luminous-layered-painting.jpg](frames/luminous-layered-painting.jpg) | yes: dark cool painted layers, the lantern and village the luminous focal points, mist into depth | pass | content |
 
-**18 full, 8 partial, 11 content** (13, 14 and 10 at A7; the flat-normal fix, G2 and the
-preset tuning below moved six to full; painterly-3d moved to content). The 10 paint-2d content styles read as their style on the sample; the authored assets that carry each are its own
+**22 full, 4 partial, 11 content** (13, 14 and 10 at A7; the flat-normal fix, G2, G3 and the
+preset tuning below moved ten to full; painterly-3d moved to content). The 10 paint-2d content styles read as their style on the sample; the authored assets that carry each are its own
 Painter set in `examples/art-paint-2d/styles/<slug>/art/` (watercolor-wash,
 also paint-2d, is not content: its set is the family's base in
 `assets/art/`).
@@ -290,3 +290,118 @@ coordinator's): `examples/art-ink-3d/references/metal/heavy-ink-shadows.png`,
 project look, so the cook's paint does not reach it). No og-tests
 reference moves: `shadowDarkness` is 0 in every scene. The contact sheet
 is not regenerated here.
+
+## art/samples-full: monochrome-pixel, topdown-tile-pixel, cinematic-realism, muted-cinematic-3d
+
+Branch `art/samples-full` from `16c1eb00`, rebased onto `08c9da54` (G2)
+before the final frames. Frames taken with the branch's dev `og` and
+addon on lavapipe at 1280x720, read at 640x360 beside the preview;
+`full/<slug>.jpg` is before (`08c9da54`) | after | preview. The four rows
+of the table above are this stream's; the totals line is the
+coordinator's to recount (these four: partial to full).
+
+- **monochrome-pixel → full. Cause: the check, not the asset or the
+  cook.** A7 read `art/ground.png: grid 1x2, half pixels at rows 2 4` as
+  an asset fault. The cooked tile (32 x 32) is one texel per logical
+  pixel: A2's conformance had put it on the grid (`128x128 cells to 32x32
+  by the dominant-colour box`, two colours of the handheld palette). Its
+  grass is in the top five rows, solid ink below, so its row boundaries
+  are at rows 1 to 5 only. `og style check`'s grid detector counted all 31
+  row positions: the 26 flat rows carried no boundary on or off any grid,
+  which let a period of 2 pass with rows 2 and 4 as its "half pixels".
+  Fix (`og-cli/src/style_check.rs`, `axis_grid`): only the positions from
+  the first boundary to the last are evidence.
+  `a_tile_of_flat_ground_under_a_fringe_is_not_taken_for_a_coarser_grid`
+  (the tile's own rows) fails on the old code (ky 2, half rows 2 4). The
+  frame does not move; the check passes.
+- **topdown-tile-pixel → full.** Cause: the sample had no tile set (one
+  grass tile and a far layer drawn as one picture). Now
+  `examples/art-pixel-topdown` is an `og.Tilemap` (`assets/maps/meadow.ogt`,
+  20 x 12 tiles of one metre) on `art/terrain.ogt`: 16 plain tiles from one
+  generated 4 x 4 sheet (grass, path, cliff face, steps, the cliff's foot,
+  water, bush, stump; brief kind `tileset`; Painter, `generate_image`
+  failing as below), sampled onto its 64 x 64 logical grid
+  (`sources/terrain-sheet.png`), and three blob47 terrains (path, pond,
+  raised ledge) that `tools/art-samples/tiles.py` draws from those
+  swatches, 157 tiles at 2 texels a pixel. The cook conforms the atlas
+  per tile (`conform { size 16 }`: `prepare.ts` writes a tile set's tile,
+  not its 64 px sheet); the sprites stand on the map with `sortY`. Check:
+  pass (`terrain.png` 63 colours, one texel per pixel). In greyscale the
+  floor, path, wall face and water stay apart.
+  **Engine gap:** the brief's `tileset` kind asks for a 4 x 4 sheet, and
+  nothing in the engine turns swatches into a terrain's 47 (or 16)
+  transition tiles: a game following the brief gets swatches that
+  `terrain` rules cannot use. tiles.py does it outside the engine (ragged
+  edges, rounded outer and notched inner corners, the rim shading per
+  terrain). It belongs in the cook (a terrain from a fill and a ground
+  swatch) or in the brief (a blob template sheet).
+- **cinematic-realism and muted-cinematic-3d → full.** Cause: the family's
+  primitives under the grade read as a blockout, and the crate and ground
+  measured 213 and 128 texels/m (their 256 and 512 texel sources) against
+  density 512. Change: a second asset set of the family,
+  `examples/art-cinematic-3d/sets/realistic/` (its README lists every
+  source and how it was packed), named by both styles
+  (`styles/<slug>/set`, read by `capture.ts`), so painterly-3d and
+  layered-silhouette keep the base set. Poly Haven's crate, street lamp,
+  hand lantern, stump and forest ground (CC0, from the origin asset
+  catalogue); a hero and a pine from Meshy through `generate_3d`; a far
+  ridge from `make3d.py`; a low dusk sun, a procedural dusk sky and the
+  lamps' lights in the set's `src/main.ts`. Checks pass: crate 695,
+  ground 512, hero 491, hand lantern 456, stump 395, street lamp 332,
+  pine 319 texels/m (256 to 1024); muted-cinematic-3d's mean saturation
+  0.07 (its check: below 0.25). The hero keeps 21,110 faces under
+  muted-cinematic-3d: it has no skin, so `characterFaces 10000` does not
+  count it as a character and the look sets no `propFaces`.
+  **Engine fix on the way (`og-cook`):** the cook sized a model's
+  texture as if laid once across the model's longest side; the check
+  measures through the UVs. Poly Haven's crate with its 2k diffuse was cut
+  to 512 "over the model's 1.06 m" and then measured 174 texels/m. The
+  cook now takes the span each image covers from the triangles that
+  sample it (`conform::mesh::texel_span`), and `conform-texture` moves to
+  v3 so the shared texture cache does not serve the old sizes.
+  `a_texture_is_sized_by_the_surface_its_uvs_lay_it_over_not_the_model_extent`
+  fails on the old code (64 against 16). Captured with the old and the
+  new rule (texture cache off), bold-comic-illustration, anime-cel-3d,
+  inked-comic-3d, low-resolution-3d, painterly-3d and layered-silhouette
+  are pixel-identical: the base set's textures are below either size.
+
+**Full, not content.** The catalogue: full when every layer but
+`authored` is implemented, content when authored art is needed. None of
+the four has the `authored` layer, and none is carried by art drawn for
+it. monochrome-pixel's set is its own Painter set like every pixel-side
+style's (the brief differs per style; the cook does the grid, palette and
+dither). The top-down tiles are one generated sheet composed by a
+generic script, not drawn per style; what the script does is the engine
+gap above, a tooling gap rather than authored art. The realistic set is
+catalogue scans and generated models, taken unmodified by two styles
+whose looks make the difference (density 512 for one, characterFaces
+10000 and the stage grade for the other, though the unrigged hero is not
+held to the character budget), as a game gets its assets
+through the brief. The honest limit: realism needs realistic inputs. The
+style's layers cannot make a blockout realistic, so its proof needs a
+set the family's primitives are not, and the frame is a sparse forest on
+one ground material, plainer than the preview's.
+
+**Assets and bytes.** 5,166,508 bytes of models
+(`sets/realistic/assets/models/`: pine 1.77 MB, the 2k colour map the
+density needs at 3.6 m; hero 0.82 MB; crate 0.72 MB; stump 0.56 MB; ground
+0.44 MB; street lamp 0.39 MB; hand lantern 0.29 MB; ridge 0.18 MB); 47,530
+bytes for the tile set (atlas 37,349 and its source sheet 10,181); the
+evidence frames and strips about 0.5 MB. The topdown sample dropped its
+ground and far layer.
+
+**Generators.** The origin MCP's `generate_image` still answers
+`Downstream HTTP 503 model_not_found` (`gpt-image-2.5-sunburst` and
+`-flare`: "no channel") on 2026-10-29, so the tile sheet is Painter's.
+`generate_tripo_3d` answered `code 2010: provider credits insufficient`
+for both models. `generate_3d` (Meshy, meshy-6) made the hero (415k
+triangles, though target_polycount said 20000) and the pine (2.7M); both
+are simplified with gltf-transform. The catalogue's realistic search
+found no realistic pine or hooded character.
+
+**Reference frames that move** (not re-recorded; Metal is the
+coordinator's): `examples/art-pixel-topdown/references/metal/topdown-tile-pixel.png`,
+`examples/art-cinematic-3d/references/metal/cinematic-realism.png` and
+`muted-cinematic-3d.png`. monochrome-pixel's frame does not move, and
+the og-cook fix moves no sample (above). The contact sheet is not
+regenerated here.

@@ -1122,7 +1122,7 @@
       "look": {
         "preset": "templates/looks/monochrome-pixel.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform",
@@ -1138,10 +1138,7 @@
           "Stylise.posterize",
           "Stylise.dither"
         ],
-        "missing": [
-          "the sample's ground tile measures 1x2 texels per logical pixel with half rows (the generated tile, resampled, is off the grid): an asset fault the check names, not an engine gap",
-          "og style check on the sample: art/ground.png: grid 1x2 texels per pixel, half pixels at rows 2 4 against 1 texel(s) per pixel, no half pixels (ArtPixels)"
-        ]
+        "missing": []
       },
       "ui": "pixel",
       "palette": {
@@ -1363,7 +1360,7 @@
       "look": {
         "preset": "templates/looks/topdown-tile-pixel.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform",
@@ -1379,9 +1376,7 @@
           "Stylise.pixelHeight",
           "Stylise.pixelSnap"
         ],
-        "missing": [
-          "a tile set conformed per tile with walls, cliffs and paths (the sample has one grass tile and a far layer drawn as one picture)"
-        ]
+        "missing": []
       },
       "ui": "fantasy",
       "palette": {
@@ -1849,7 +1844,7 @@
       "look": {
         "preset": "templates/looks/cinematic-realism.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform"
@@ -1867,11 +1862,7 @@
           "RenderSettings.toneMapping agx",
           "Antialias taa"
         ],
-        "missing": [
-          "realistic assets: scanned or generated models and textures at ArtTexels.density 512 (the sample's crate and ground measure 213 and 128 texels/m)",
-          "og style check on the sample: models/crate.glb: density 213.3 texels/m (p10 213.3, p90 213.3) against 256.0 to 1024.0 (ArtTexels.density 512 within x2)",
-          "og style check on the sample: models/ground.glb: density 128.0 texels/m (p10 128.0, p90 128.0) against 256.0 to 1024.0 (ArtTexels.density 512 within x2)"
-        ]
+        "missing": []
       },
       "ui": "scifi",
       "palette": {
@@ -1914,7 +1905,7 @@
       "look": {
         "preset": "templates/looks/muted-cinematic-3d.ogt",
         "presetReady": true,
-        "support": "partial",
+        "support": "full",
         "layers": [
           "frame",
           "conform"
@@ -1931,9 +1922,7 @@
           "PostEffects.vignette",
           "PostEffects.filmGrain"
         ],
-        "missing": [
-          "detailed realistic assets: the grade alone over primitives reads as a blockout"
-        ]
+        "missing": []
       },
       "ui": "scifi",
       "palette": {

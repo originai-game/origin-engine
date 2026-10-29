@@ -1,0 +1,90 @@
+type tilemap
+version 1
+---
+# The pixel top-down sample's map (README.md): 20 x 12 tiles of one metre,
+# the view's width. A raised ledge across the top with its cliff face and
+# steps below, a path down the steps and west, a pond at the bottom right.
+# The path, the pond and the ledge are blob47 terrains of art/terrain.ogt:
+# each filled cell takes the tile drawn for its neighbours.
+size 20 12
+tile 16 16
+unit 1
+tileset "art/terrain.ogt"
+layer ground {
+  z -4
+  legend "a" 0
+  legend "b" 1
+  legend "c" 2
+  legend "d" 3
+  legend "8" 8
+  legend "9" 9
+  legend "S" 10
+  legend "F" 11
+  legend "B" 14
+  legend "T" 15
+  legend "e" 157
+  legend "f" 158
+  row "aBBaacaaaaaaaaaaaaaa"
+  row "BBaabaaaaaaaaaaaaaaa"
+  row "aacaaaaaaaaaaaaaaaaa"
+  row "aaaaBaae989898SS9898"
+  row "acaaaabfFFFFFFSSFFFF"
+  row "aaaadaaaaaaaaaaaaaBa"
+  row "aaaaaaaaaaaaaaaaaaaB"
+  row "BaaaaaaacaaaaaaaTaaa"
+  row "BBaaaaaaaaaaabaaaaaa"
+  row "BaaaaaacaaaaaaaaaaaB"
+  row "aaaaaaTaaaaaaaaaaaaa"
+  row "aBaaaaaaaaaaaaaaaaaa"
+}
+layer ledge {
+  z -3
+  terrain ledge
+  legend "#" 1
+  row ".......#############"
+  row ".......#############"
+  row ".......#############"
+  row "...................."
+  row "...................."
+  row "...................."
+  row "...................."
+  row "...................."
+  row "...................."
+  row "...................."
+  row "...................."
+  row "...................."
+}
+layer path {
+  z -2
+  terrain path
+  legend "#" 1
+  row "..............##...."
+  row "..............##...."
+  row "..............##...."
+  row "...................."
+  row "...................."
+  row ".............####..."
+  row "...#############...."
+  row "...###########......"
+  row "...##..............."
+  row "...##..............."
+  row "..###..............."
+  row "..###..............."
+}
+layer pond {
+  z -2
+  terrain pond
+  legend "#" 1
+  row "...................."
+  row "...................."
+  row "...................."
+  row "...................."
+  row "...................."
+  row "...................."
+  row "...................."
+  row "...................."
+  row "...................."
+  row "............######.."
+  row "..........##########"
+  row ".........###########"
+}

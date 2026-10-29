@@ -355,15 +355,24 @@ pub fn palette_hit(counts: &HashMap<[u8; 3], u64>, palette: &[[u8; 3]]) -> Optio
 /// least three positions on it that do and two of them one logical pixel
 /// apart (so a sprite of few, large blocks is not taken for a coarse
 /// grid); and the positions off it that carry one (half pixels).
+///
+/// Only the positions from the first boundary to the last count: a run
+/// of one flat colour (a tile's solid ground under a fringe of grass) has
+/// no boundary on or off any grid, so it is no evidence for a period.
 fn axis_grid(counts: &[u64]) -> (u32, Vec<u32>) {
     let len = counts.len() as u32;
     let edge = |i: u32| i > 0 && counts[i as usize] > 0;
+    let Some(first) = (1..len).find(|&i| edge(i)) else {
+        return (1, Vec::new());
+    };
+    let last = (1..len).rfind(|&i| edge(i)).unwrap_or(first);
+    let span = first..last + 1;
     for k in (2..=GRID_MAX.min(len / 2)).rev() {
         for o in 0..k {
             let on = |i: u32| (i + k - o % k).is_multiple_of(k);
-            let positions = (1..len).filter(|&i| !on(i)).count();
-            let off: Vec<u32> = (1..len).filter(|&i| !on(i) && edge(i)).collect();
-            let hits: Vec<u32> = (1..len).filter(|&i| on(i) && edge(i)).collect();
+            let positions = span.clone().filter(|&i| !on(i)).count();
+            let off: Vec<u32> = span.clone().filter(|&i| !on(i) && edge(i)).collect();
+            let hits: Vec<u32> = span.clone().filter(|&i| on(i) && edge(i)).collect();
             let adjacent = hits.windows(2).any(|w| w[1] - w[0] == k);
             if positions > 0
                 && (off.len() as f64) <= GRID_OFF * positions as f64
@@ -1993,6 +2002,32 @@ mod tests {
         assert!(!ok(&assets[1]));
         judge_grids(&c, &mut ones, Some(1));
         assert!(!ok(&ones[0]) && !ok(&ones[1]));
+    }
+
+    #[test]
+    fn a_tile_of_flat_ground_under_a_fringe_is_not_taken_for_a_coarser_grid() {
+        // monochrome-pixel's cooked ground (32x32, one texel per pixel):
+        // grass in its top five rows, solid ink below. Its row boundaries
+        // are rows 1 to 5; the 26 flat rows carry none, and counted as off
+        // a period of 2 they let rows 2 and 4 pass as its half pixels.
+        let key = [('#', [20, 38, 27]), ('.', [201, 218, 143])];
+        let mut rows = vec![
+            "................................",
+            ".##....#....###......#....####..",
+            "###.#.####.####.###.###.##.####.",
+            "######.############.############",
+            "##############..##.#############",
+        ];
+        rows.resize(32, "################################");
+        let g = grid(&art(&rows, &key));
+        assert_eq!((g.ky, g.half_rows.len()), (1, 0), "{g:?}");
+        // The same tile drawn at 2 texels per pixel still reads as 2 down.
+        let wide = scaled(&rows, 2);
+        let g = grid(&art(
+            &wide.iter().map(String::as_str).collect::<Vec<_>>(),
+            &key,
+        ));
+        assert_eq!((g.ky, g.half_rows.len()), (2, 0), "{g:?}");
     }
 
     #[test]

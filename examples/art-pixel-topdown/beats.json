@@ -24,16 +24,9 @@
   "metres": 3.5
  },
  {
-  "asset": "art/ground.png",
-  "kind": "texture",
-  "subject": "grass with a few small flowers and pebbles, seen from above",
-  "metres": 2,
-  "tile": true
- },
- {
-  "asset": "art/backdrop.png",
-  "kind": "backdrop",
-  "subject": "seen from above: a stone cliff edge dropping to a river, a dense forest canopy beyond and the roofs of a distant village",
-  "tile": true
+  "asset": "art/terrain.png",
+  "kind": "tileset",
+  "subject": "a top-down meadow: grass, a packed-dirt path, a grey stone cliff with its wall face and stone steps, a pond, a bush and a stump",
+  "source": "sources/terrain-sheet.png, made into the atlas and its auto-tiling terrains by tools/art-samples/tiles.py"
  }
 ]

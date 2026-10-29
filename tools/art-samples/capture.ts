@@ -44,10 +44,19 @@ for (const s of catalogue.styles) {
   }
   const dir = join(scratch, s.slug);
   rmSync(dir, { recursive: true, force: true });
-  cpSync(example, dir, { recursive: true, filter: (p) => !/\/(cooked|og-out|node_modules)$/.test(p) && !["references", "styles"].some((d) => p === join(example, d)) });
+  cpSync(example, dir, { recursive: true, filter: (p) => !/\/(cooked|og-out|node_modules)$/.test(p) && !["references", "styles", "sets"].some((d) => p === join(example, d)) });
   // A style briefed on its own (its direction differs from the family's base) brings its own sources: styles/<slug>/ laid over assets/.
+  // A style that takes one of the family's other asset sets names it in styles/<slug>/set: sets/<name>/ laid over the project
+  // (its assets, beats.json and src/models.ts), the same set for every style that names it.
   const own = join(example, "styles", s.slug);
-  if (existsSync(own)) cpSync(own, join(dir, "assets"), { recursive: true });
+  const set = join(own, "set");
+  if (existsSync(set)) {
+    const from = join(example, "sets", readFileSync(set, "utf8").trim());
+    // The set's models stand in for the family's: the base ones are not cooked beside them.
+    if (existsSync(join(from, "assets/models"))) rmSync(join(dir, "assets/models"), { recursive: true, force: true });
+    cpSync(from, dir, { recursive: true });
+  }
+  else if (existsSync(own)) cpSync(own, join(dir, "assets"), { recursive: true });
   writeFileSync(join(dir, "assets/looks/sample.ogt"), `type look\nversion 1\n---\nname "Sample: ${s.slug}"\nextends "${s.slug}"\n`);
   writeFileSync(join(out, `${s.slug}.briefs.txt`), prepare(dir) + "\n");
   const run = spawnSync(og, ["run", dir, "--headless", "--size", size, "--out", out, "--commands", `${AT}:screenshot:${s.slug}.png;${AT + 0.1}:quit`], { encoding: "utf8" });

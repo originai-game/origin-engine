@@ -59,8 +59,8 @@
 //!
 //! Textures a model uses: resampled (an area filter, in linear light, the
 //! colour alpha-weighted, normals renormalised) down to `ArtTexels.density`
-//! texels per metre over the model's longest side (rounded to a power of
-//! two) and `maxSize`; mapped to the palette where `ArtPalette.strict`;
+//! texels per metre over the surface it covers (the span its UVs give a
+//! side, [`texel_span`]; rounded to a power of two) and `maxSize`; mapped to the palette where `ArtPalette.strict`;
 //! `filter nearest` cooks a colour texture as pixel art (RGBA8, no mips,
 //! nearest), `mips none` without mips.
 //!
@@ -381,7 +381,7 @@ impl Conform {
             )
         });
         format!(
-            "conform-texture-v2 density {} maxSize {} filter {:?} mips {:?} maxColors {} strict {} {}{paint}",
+            "conform-texture-v3 density {} maxSize {} filter {:?} mips {:?} maxColors {} strict {} {}{paint}",
             self.density,
             self.max_size,
             self.filter,
@@ -1908,8 +1908,32 @@ pub(in crate::cook) fn hull_header(l: &Line, primitives: usize) -> Vec<u8> {
 
 /// The longest side of the model's default scene, in its units.
 pub(in crate::cook) fn extent(src: &GltfSource) -> f32 {
-    use glam::{Mat4, Quat};
     let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
+    for (p, world) in scene_primitives(src) {
+        let b = p.bounding_box();
+        for k in 0..8 {
+            let corner = Vec3::new(
+                if k & 1 == 0 { b.min[0] } else { b.max[0] },
+                if k & 2 == 0 { b.min[1] } else { b.max[1] },
+                if k & 4 == 0 { b.min[2] } else { b.max[2] },
+            );
+            let w = world.transform_point3(corner);
+            lo = lo.min(w);
+            hi = hi.max(w);
+        }
+    }
+    if lo.x > hi.x {
+        0.0
+    } else {
+        (hi - lo).max_element()
+    }
+}
+
+/// The primitives of the model's default scene, each with its node's
+/// placement.
+fn scene_primitives(src: &GltfSource) -> Vec<(gltf::Primitive<'_>, glam::Mat4)> {
+    use glam::{Mat4, Quat};
+    let mut out = Vec::new();
     if let Some(scene) = src.doc.default_scene().or_else(|| src.doc.scenes().next()) {
         let mut stack: Vec<(gltf::Node, Mat4)> =
             scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
@@ -1922,27 +1946,101 @@ pub(in crate::cook) fn extent(src: &GltfSource) -> f32 {
                     Vec3::from(t),
                 );
             if let Some(mesh) = node.mesh() {
-                for p in mesh.primitives() {
-                    let b = p.bounding_box();
-                    for k in 0..8 {
-                        let corner = Vec3::new(
-                            if k & 1 == 0 { b.min[0] } else { b.max[0] },
-                            if k & 2 == 0 { b.min[1] } else { b.max[1] },
-                            if k & 4 == 0 { b.min[2] } else { b.max[2] },
-                        );
-                        let w = world.transform_point3(corner);
-                        lo = lo.min(w);
-                        hi = hi.max(w);
-                    }
-                }
+                out.extend(mesh.primitives().map(|p| (p, world)));
             }
             stack.extend(node.children().map(|c| (c, world)));
         }
     }
-    if lo.x > hi.x {
-        0.0
-    } else {
-        (hi - lo).max_element()
+    out
+}
+
+/// The metres one side of glTF image `image` spans on the model's surface
+/// (ArtTexels.density's: a texture of `n` texels a side draws `n / span`
+/// texels per metre): over the triangles that sample it, in their UV set,
+/// the area-weighted median of `sqrt(world area / uv area)`, the measure
+/// `og style check` takes. A texture laid once across the model spans its
+/// longest side; an atlas of a crate's six faces less, a ground repeated
+/// ten times across 40 m 4 m. `None` with no triangle to measure (no UVs,
+/// or none that sample it): [`extent`] stands in.
+pub(in crate::cook) fn texel_span(src: &GltfSource, image: usize) -> Option<f32> {
+    let mut spans: Vec<(f64, f64)> = Vec::new();
+    for (p, world) in scene_primitives(src) {
+        if let Some(set) = uv_set(&p.material(), image) {
+            primitive_spans(src, &p, world, set, &mut spans);
+        }
+    }
+    spans.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let half = spans.iter().map(|x| x.1).sum::<f64>() / 2.0;
+    let mut acc = 0.0;
+    spans.iter().find_map(|(span, area)| {
+        acc += area;
+        (acc >= half).then_some(*span as f32)
+    })
+}
+
+/// The UV set through which `material` samples glTF image `image`, if any
+/// of its maps does.
+fn uv_set(material: &gltf::Material, image: usize) -> Option<u32> {
+    let pbr = material.pbr_metallic_roughness();
+    let is = |t: gltf::Texture| t.source().index() == image;
+    pbr.base_color_texture()
+        .filter(|i| is(i.texture()))
+        .map(|i| i.tex_coord())
+        .or_else(|| {
+            pbr.metallic_roughness_texture()
+                .filter(|i| is(i.texture()))
+                .map(|i| i.tex_coord())
+        })
+        .or_else(|| {
+            material
+                .normal_texture()
+                .filter(|i| is(i.texture()))
+                .map(|i| i.tex_coord())
+        })
+        .or_else(|| {
+            material
+                .occlusion_texture()
+                .filter(|i| is(i.texture()))
+                .map(|i| i.tex_coord())
+        })
+        .or_else(|| {
+            material
+                .emissive_texture()
+                .filter(|i| is(i.texture()))
+                .map(|i| i.tex_coord())
+        })
+}
+
+/// Each triangle of `p` (placed by `world`) with its span in metres per UV
+/// unit of set `set` and its area in square metres.
+fn primitive_spans(
+    src: &GltfSource,
+    p: &gltf::Primitive,
+    world: glam::Mat4,
+    set: u32,
+    out: &mut Vec<(f64, f64)>,
+) {
+    let reader = p.reader(|b| Some(&src.buffers[b.index()].0[..]));
+    let (Some(pos), Some(uv)) = (reader.read_positions(), reader.read_tex_coords(set)) else {
+        return;
+    };
+    let pos: Vec<Vec3> = pos.map(|q| world.transform_point3(Vec3::from(q))).collect();
+    let uv: Vec<glam::Vec2> = uv.into_f32().map(glam::Vec2::from).collect();
+    let idx: Vec<u32> = match reader.read_indices() {
+        Some(i) => i.into_u32().collect(),
+        None => (0..pos.len() as u32).collect(),
+    };
+    for t in idx.as_chunks::<3>().0 {
+        let [a, b, c] = t.map(|i| i as usize);
+        if a.max(b).max(c) >= pos.len().min(uv.len()) {
+            continue;
+        }
+        let area = f64::from((pos[b] - pos[a]).cross(pos[c] - pos[a]).length()) / 2.0;
+        let (e, f) = (uv[b] - uv[a], uv[c] - uv[a]);
+        let uv_area = f64::from((e.x * f.y - e.y * f.x).abs()) / 2.0;
+        if area > 1e-12 && uv_area > 1e-12 {
+            out.push(((area / uv_area).sqrt(), area));
+        }
     }
 }
 
@@ -2055,7 +2153,7 @@ pub(in crate::cook) fn texture(
         if pow2 < target {
             target = pow2;
             what.push(format!(
-                "ArtTexels.density {} over the model's {size:.2} m",
+                "ArtTexels.density {} over the {size:.2} m a side spans on the model",
                 c.density
             ));
         }

@@ -99,10 +99,8 @@
  },
  "monochrome-pixel": {
   "family": "pixel-side",
-  "ok": false,
-  "off": [
-   "art/ground.png: grid 1x2 texels per pixel, half pixels at rows 2 4 against 1 texel(s) per pixel, no half pixels (ArtPixels)"
-  ]
+  "ok": true,
+  "off": []
  },
  "16bit-pixel": {
   "family": "pixel-side",
@@ -161,11 +159,8 @@
  },
  "cinematic-realism": {
   "family": "cinematic-3d",
-  "ok": false,
-  "off": [
-   "models/crate.glb: density 213.3 texels/m (p10 213.3, p90 213.3) against 256.0 to 1024.0 (ArtTexels.density 512 within x2)",
-   "models/ground.glb: density 128.0 texels/m (p10 128.0, p90 128.0) against 256.0 to 1024.0 (ArtTexels.density 512 within x2)"
-  ]
+  "ok": true,
+  "off": []
  },
  "muted-cinematic-3d": {
   "family": "cinematic-3d",
