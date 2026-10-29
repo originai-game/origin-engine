@@ -27,14 +27,19 @@ whole level's surface.
   height. A level with no floor (a facade, a floating island) needs
   `--aerial` views.
 - An image model that repaints a picture while keeping its edges. Measured
-  on gray level renders (2026-10): `qwen-image-2.1-pro` (the default, about
-  35–50 s a view) and `qwen-image-3.0-pro` keep the geometry;
-  `qwen-image-2.1-turbo` keeps it but paints thin materials;
-  `qwen-image-2.0(-pro)` and `wan2.5-i2i-preview` move edges and add
-  columns, so their paint lands on the wrong surfaces. None of them takes
-  a mask, so the engine composites instead: known pixels are kept, new
-  ones are colour-corrected into them, and what the model left gray is not
-  projected.
+  on gray level renders (2026-10): `gemini-nano-banana-2.1` (the default,
+  40–60 s a view) returns the painted part of a view nearly unchanged
+  (mean pixel difference about 5), so seams stay quiet; on a whole village
+  it matched `qwen-image-2.1-pro` (34 calls, 70.6 % coverage) with more
+  weathered walls, and now and then paints a door surround or a smudge on
+  a flat wall. `qwen-image-2.1-pro` and `qwen-image-3.0-pro` keep every
+  edge but repaint the whole frame (mean difference 15–35);
+  `qwen-image-2.1-turbo` paints thin materials; `qwen-image-2.0(-pro)`,
+  `wan2.5-i2i-preview` and `gpt-image-2.5` (even given a mask) move edges
+  or redraw the scene, so their paint lands on the wrong surfaces. The
+  script sends no mask, so the engine composites instead: known pixels
+  are kept, new ones are colour-corrected into them, and what the model
+  left gray is not projected.
 
 ## 2. The loop
 
@@ -87,7 +92,7 @@ keep its triangles takes `conform off` in its import settings.
 
 Budget: the model calls scale with the surface a player can see, not with
 triangles. A village square (1 000 triangles, 4096² texture) takes about
-27 calls, 35–50 s each with the pro model (about $1.10 at $0.04 an image);
+27 calls, 40–60 s each (about $1.00 at roughly $0.037 a 1024² view);
 the engine adds about 3 s a view. A 240 m town needs hundreds of street
 views (the plan predicts about 22 % of it from 200), so texture a large
 level a district at a time, or stop at the views players actually stand

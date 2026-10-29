@@ -5,7 +5,9 @@
     "simulation": "unchanged",
     "breaking": [],
     "added": [],
-    "fixed": []
+    "fixed": [
+      "level-texturing's texture-level.ts paints with gemini-nano-banana-2.1 by default (qwen-image-2.1-pro stays one --model away); its http provider sends Qwen's seed and prompt_extend only to Qwen models and the view's size to the others, which Gemini's route requires; a resumed run keeps its model."
+    ]
   },
   "versions": [
     {

@@ -7,7 +7,7 @@
 //
 //   bun texture-level.ts --level level.glb --run runs/village --style "materials..." \
 //     [--roof-style "..."] [--light overcast|indoor] [--views 36] [--aerial 6] [--roofs 12] [--holes 8] [--size 4096] \
-//     [--model qwen-image-2.1-pro] [--provider handoff|http|dashscope] [--endpoint <url>] [--resume] [--dry]
+//     [--model gemini-nano-banana-2.1] [--provider handoff|http|dashscope] [--endpoint <url>] [--resume] [--dry]
 //
 // `handoff` (the default) calls no model itself: it stops at the first view
 // that needs painting, prints one JSON line
@@ -17,7 +17,9 @@
 // again with --resume: the view is projected and the next one printed.
 // `http` posts to an OpenAI-compatible image endpoint, `<endpoint>/v1/images/generations`
 // (--endpoint, else OG_IMAGE_ENDPOINT), with OG_IMAGE_API_KEY as the bearer
-// token and the state image as a data URL in `image`. `dashscope` calls
+// token and the state image as a data URL in `image`; a Qwen-Image model also
+// gets its `seed` and `prompt_extend`, any other the view's `size`, the field
+// OpenAI-compatible routes such as Gemini's accept. `dashscope` calls
 // Alibaba Model Studio directly with DASHSCOPE_API_KEY. --dry writes every
 // prompt and stops before any model call. `agent` and `gateway` are the
 // earlier names of handoff and http, still read from a run's settings.json.
@@ -31,7 +33,7 @@ const { values: a } = parseArgs({
     "roof-style": { type: "string", default: "old terracotta clay roof tiles in neat rows running down the slope, weathered" },
     views: { type: "string", default: "36" }, aerial: { type: "string", default: "0" }, roofs: { type: "string", default: "0" },
     holes: { type: "string", default: "0" }, size: { type: "string", default: "4096" }, spacing: { type: "string", default: "4" },
-    model: { type: "string", default: "qwen-image-2.1-pro" }, provider: { type: "string" }, endpoint: { type: "string" },
+    model: { type: "string", default: "gemini-nano-banana-2.1" }, provider: { type: "string" }, endpoint: { type: "string" },
     og: { type: "string", default: process.env.OG_BIN ?? "og" }, resume: { type: "boolean" }, dry: { type: "boolean" },
     limit: { type: "string" }, light: { type: "string", default: "overcast" },
   },
@@ -80,13 +82,16 @@ export function prompt(mode: string, parts: string, floor: boolean, look: string
 
 // ---- providers ---------------------------------------------------------------
 async function paint(statePng: string, text: string, seed: number): Promise<Uint8Array> {
-  const dataUrl = "data:image/png;base64," + Buffer.from(readFileSync(statePng)).toString("base64");
+  const png = readFileSync(statePng);
+  const dataUrl = "data:image/png;base64," + Buffer.from(png).toString("base64");
+  const qwen = /^qwen-/.test(model);
   if (provider === "dashscope") {
+    if (!qwen && !/^wan/.test(model)) throw new Error(`dashscope serves Qwen and Wan models, not ${model}: pass --model qwen-image-2.1-pro`);
     const key = process.env.DASHSCOPE_API_KEY ?? process.env.DASHSCOPE_SINGAPORE_API_KEY;
     const base = process.env.DASHSCOPE_BASE ?? "https://dashscope-intl.aliyuncs.com/api/v1";
     const r = await fetch(`${base}/services/aigc/multimodal-generation/generation`, {
       method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: a.model, input: { messages: [{ role: "user", content: [{ image: dataUrl }, { text }] }] },
+      body: JSON.stringify({ model, input: { messages: [{ role: "user", content: [{ image: dataUrl }, { text }] }] },
         parameters: { n: 1, prompt_extend: false, watermark: false, seed } }),
     });
     const j: any = await r.json();
@@ -98,7 +103,9 @@ async function paint(statePng: string, text: string, seed: number): Promise<Uint
   if (!base) throw new Error("http: no endpoint (--endpoint or OG_IMAGE_ENDPOINT)");
   const r = await fetch(`${base}/v1/images/generations`, {
     method: "POST", headers: { Authorization: `Bearer ${process.env.OG_IMAGE_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: a.model, prompt: text, image: dataUrl, n: 1, seed, prompt_extend: false }),
+    // Only fields the model's route accepts: Gemini's refuses Qwen's extras.
+    body: JSON.stringify({ model, prompt: text, image: dataUrl, n: 1,
+      ...(qwen ? { seed, prompt_extend: false } : { size: `${png.readUInt32BE(16)}x${png.readUInt32BE(20)}` }) }),
   });
   const j: any = await r.json();
   const d = j?.data?.[0];
@@ -120,6 +127,8 @@ if (!a.resume) {
   console.log(`init: ${init.run.triangles} triangles, ${init.run.texels} texels; plan: ${plan.views} views (${plan.ground} ground, ${plan.roof} roof, ${plan.aerial} aerial)`);
 }
 const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
+// A resumed run keeps the model it started with, whatever the default is now.
+const model: string = settings.model;
 // Runs started before the rename say agent or gateway.
 const RENAMED: Record<string, string> = { agent: "handoff", gateway: "http" };
 const provider: string = RENAMED[a.provider ?? settings.provider] ?? a.provider ?? settings.provider;
@@ -145,7 +154,7 @@ async function doView(k: number) {
   let img: Uint8Array | undefined;
   if (provider === "handoff") {
     if (!existsSync(painted)) {
-      console.log(JSON.stringify({ paint: { view: k, kind: p.kind, mode: p.mode, state: p.state, prompt: text, painted, model: settings.model } }));
+      console.log(JSON.stringify({ paint: { view: k, kind: p.kind, mode: p.mode, state: p.state, prompt: text, painted, model } }));
       process.exit(3);
     }
     img = readFileSync(painted);
@@ -157,7 +166,7 @@ async function doView(k: number) {
   calls++;
   if (provider !== "handoff") writeFileSync(painted, img);
   const pr = og("project", "--view", String(k), "--image", painted);
-  const rec = { view: k, kind: p.kind, mode: p.mode, model: settings.model, modelSeconds: (Date.now() - t) / 1000,
+  const rec = { view: k, kind: p.kind, mode: p.mode, model, modelSeconds: (Date.now() - t) / 1000,
     unknown: p.unknownFraction, written: pr.written, left: pr.left, coverage: pr.coverage };
   appendFileSync(logPath, JSON.stringify(rec) + "\n");
   console.log(`view ${k} ${p.kind}/${p.mode}: ${rec.modelSeconds.toFixed(0)} s, ${pr.written} texels, coverage ${(pr.coverage * 100).toFixed(1)} %`);

@@ -13,6 +13,18 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+- Knowledge, level-texturing: `texture-level.ts` paints with
+  `gemini-nano-banana-2.1` by default (it was `qwen-image-2.1-pro`, still
+  one `--model` away). On the village it matched Qwen's 34 calls and
+  70.6 % coverage, and its fill views return the painted part nearly
+  unchanged (mean pixel difference about 5 against 15–35). The `http`
+  provider sends only the fields a model's route accepts: Qwen's `seed`
+  and `prompt_extend`, otherwise the view's `size` (Gemini's route refused
+  the old request with "does not support seed"); `dashscope` refuses a
+  model it does not serve. A resumed run keeps the model it started with.
+
 ## 0.7.2 — 2026-10-29
 
 A patch with the simulation unchanged (the golden replays): the IDL
