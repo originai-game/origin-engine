@@ -26,6 +26,10 @@ the art brief it was requested with (kind, subject, metres).
 - **`styles/<slug>/`**: a style whose direction differs from its family's
   base brings its own sources, laid over `assets/` when it runs (the
   pixel-side and paint-2d styles, neon-vector's black-and-glow models).
+- **`sets/<name>/`**: another asset set of the family that several styles
+  share, named by `styles/<slug>/set` and laid over the project (its
+  models in place of the family's): cinematic-3d's `realistic` set for
+  cinematic-realism and muted-cinematic-3d.
 
 ## The tools
 
@@ -44,6 +48,9 @@ the art brief it was requested with (kind, subject, metres).
 - `tiles.py`: the pixel top-down tile set: a generated 4 x 4 sheet sampled
   onto its logical grid, then an atlas of its tiles and three blob47
   terrains (path, pond, ledge) with the tile set's text.
+- `pack.py`: a downloaded model (glTF or glb) packed into one glb sized to
+  its beat, its maps re-encoded and sized (the cinematic-3d family's
+  realistic set, `examples/art-cinematic-3d/sets/realistic/README.md`).
 - `make3d.py`: writes the crate and ground glbs around their textures;
   `neon.py`: neon-vector's sources from the base models.
 - `catalogue.py <capture-dir> <evidence-dir>`: `look.support` and

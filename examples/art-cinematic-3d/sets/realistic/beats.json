@@ -1,0 +1,57 @@
+[
+ {
+  "asset": "models/hero.glb",
+  "kind": "character",
+  "subject": "a lantern keeper: a small traveller in a hooded green coat carrying a lit hand lamp",
+  "metres": 1.8,
+  "source": "Meshy (origin MCP generate_3d, meshy-6 text_preview + text_refine, PBR), simplified to 21k triangles"
+ },
+ {
+  "asset": "models/pine.glb",
+  "kind": "prop",
+  "subject": "a stepped pine tree: a trunk under three stacked tiers of foliage, each smaller than the one below",
+  "metres": 3.4,
+  "source": "Meshy (origin MCP generate_3d, meshy-6), simplified"
+ },
+ {
+  "asset": "models/crate.glb",
+  "kind": "prop",
+  "subject": "a wooden supply crate with plank sides and a darker frame",
+  "metres": 1.2,
+  "source": "Poly Haven wooden_crate_01 (CC0, origin asset catalogue grp_4824f0a4cc69401f82)"
+ },
+ {
+  "asset": "models/street-lamp.glb",
+  "kind": "prop",
+  "subject": "an iron street lantern on a tall post, its glass lit warm orange",
+  "metres": 2.6,
+  "source": "Poly Haven street_lamp_01 (CC0, origin asset catalogue grp_72afdda491b8739f3d)"
+ },
+ {
+  "asset": "models/ground.glb",
+  "kind": "texture",
+  "subject": "meadow grass with patches of packed earth, seen from above",
+  "metres": 4,
+  "source": "Poly Haven forest_ground_04 (CC0, origin asset catalogue grp_4cde219f95811c3035), 1024 texels every 2 m"
+ },
+ {
+  "asset": "models/ridge.glb",
+  "kind": "backdrop",
+  "subject": "a ridge of rounded hills and a small village behind the scene",
+  "source": "tools/art-samples/make3d.py ridge"
+ },
+ {
+  "asset": "models/hand-lantern.glb",
+  "kind": "prop",
+  "subject": "a brass hand lantern, its glass lit warm",
+  "metres": 0.42,
+  "source": "Poly Haven Lantern_01 (CC0, origin asset catalogue grp_17d5a11495f4dfec62)"
+ },
+ {
+  "asset": "models/stump.glb",
+  "kind": "prop",
+  "subject": "a cut tree stump with its roots",
+  "metres": 0.7,
+  "source": "Poly Haven tree_stump_01 (CC0, origin asset catalogue grp_b97febd8d60e25c469)"
+ }
+]
