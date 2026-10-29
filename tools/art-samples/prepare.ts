@@ -47,6 +47,12 @@ export function prepare(dir: string): string {
       const name = b.asset.replace(/\.\w+$/, "");
       writeFileSync(join(dir, "assets", `${name}.ogt`), `type tileset\nversion 1\n---\n# Written by tools/art-samples/prepare.ts: one tile that repeats (the ground, the far layer), so the cook draws no line on the edges where it meets the next.\ntexture "${b.asset}"\ngrid ${sw} ${sh} 1 1\n`);
     }
+    if (b.kind === "tileset" && grid) {
+      // A tile set's cell is one tile (the brief's grid is the whole 4 x 4 sheet); the map, not cells.ts, sizes it.
+      const tile = grid.width / 4;
+      writeFileSync(settings, `type import\nversion 1\n---\n# Written by tools/art-samples/prepare.ts from the art brief's grid (tiles of ${tile} x ${grid.height / 4} logical pixels).\nconform {\n  size ${tile}\n}\n`);
+      continue;
+    }
     if (grid && unit > 0) {
       // The brief's cell: its long side is the size the cook draws the image to.
       const long = Math.max(grid.width, grid.height);
