@@ -62,7 +62,12 @@ is one line here, written at the merge that changes
   None by default: no frame moves without a look that sets it. Presets:
   `sculpted-clay` (surface clay, rim 0.1, bevel 0.05), `paper-craft`
   (surface paper, no posterize), `miniature-diorama` (surface plastic,
-  bevel 0.05); their frames change.
+  bevel 0.05); their frames change. Where the shading normal lies in the
+  face (a smooth mesh's silhouette, a rim turning away) the surface's bump
+  fades out and keeps the normal: it had normalised a zero vector there,
+  and the NaN spread through the post effects into black blots.
+  `examples/rumpus-isle`'s look, which extends miniature-diorama, sets
+  `surface none` to keep its own painted colours.
 
 ## 0.7.1 — 2026-10-28
 

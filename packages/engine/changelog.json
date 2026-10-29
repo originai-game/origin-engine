@@ -12,7 +12,8 @@
     ],
     "fixed": [
       "The heavy-ink-shadows preset draws its shadows as solid black ink (MaterialStyle.shadowDarkness 1; shadowTint at amount 0 had no effect, and posterize never reaches black because the ambient light lifts every shadow), with a near-black sky, a blood-red haze and muted colour. Its frames change.",
-      "The low-resolution-3d preset ends its draw distance in a short dark fog the colour of its sky (the clear colour), so the 240-line frame reads as early-console 3D; its vertex snapping and affine texturing were already drawn. Its frames change."
+      "The low-resolution-3d preset ends its draw distance in a short dark fog the colour of its sky (the clear colour), so the 240-line frame reads as early-console 3D; its vertex snapping and affine texturing were already drawn. Its frames change.",
+      "MaterialStyle.surface no longer draws black blots where a mesh's shading normal lies in its face (a smooth silhouette or a rim turning away): the bump fades out there and the normal stays, instead of a NaN the post effects spread. Rumpus Isle's look sets surface none to keep its own colours under miniature-diorama."
     ]
   },
   "versions": [
