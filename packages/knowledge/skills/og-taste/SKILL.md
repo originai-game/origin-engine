@@ -602,7 +602,7 @@ entry's three checks handed to the critic that reads the frames.
 | `watercolor-wash` | Paint and line | Watercolour wash | full | `paper` |
 | `pixel-3d-hybrid` | Pixel and retro | Pixel sprites in 3D sets | full | `fantasy` |
 | `faceted-low-poly` | 3D rendering | Faceted low poly | full | `paper` |
-| `sculpted-clay` | 3D rendering | Sculpted clay | full | `cartoon` |
+| `sculpted-clay` | 3D rendering | Sculpted clay | content | `cartoon` |
 | `8bit-pixel` | Pixel and retro | Early console pixels | full | `pixel` |
 | `voxel-worlds` | 3D rendering | Voxel worlds | full | `pixel` |
 | `illuminated-manuscript` | Paint and line | Manuscript page | content | `paper` |
@@ -625,7 +625,7 @@ entry's three checks handed to the critic that reads the frames.
 | `anime-cel-3d` | 3D rendering | Anime cel-shaded 3D | full | `neon` |
 | `inked-comic-3d` | 3D rendering | Inked comic 3D | full | `scifi` |
 | `paper-craft` | Shape and material | Paper craft | content | `paper` |
-| `miniature-diorama` | 3D rendering | Miniature diorama | full | `cartoon` |
+| `miniature-diorama` | 3D rendering | Miniature diorama | content | `cartoon` |
 | `painterly-3d` | 3D rendering | Painterly 3D | content | `fantasy` |
 | `cinematic-realism` | 3D rendering | Cinematic realism | full | `scifi` |
 | `muted-cinematic-3d` | 3D rendering | Muted theatrical light | full | `scifi` |

@@ -335,10 +335,11 @@
       "look": {
         "preset": "templates/looks/sculpted-clay.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "content",
         "layers": [
           "frame",
-          "conform"
+          "conform",
+          "authored"
         ],
         "family": "shape-3d",
         "profiles": [
@@ -353,7 +354,9 @@
           "AnimationPlayer.stepFps",
           "MaterialStyle.surface"
         ],
-        "missing": []
+        "missing": [
+          "sculpted forms: chunky, rounded, hand-modelled characters and props (the engine draws the clay surface, MaterialStyle.surface clay, and bevels on whatever it is given; primitive blockouts stay primitives and do not read as clay at play distance)"
+        ]
       },
       "ui": "cartoon",
       "palette": {
@@ -1717,11 +1720,12 @@
       "look": {
         "preset": "templates/looks/miniature-diorama.ogt",
         "presetReady": true,
-        "support": "full",
+        "support": "content",
         "layers": [
           "frame",
           "conform",
-          "runtime"
+          "runtime",
+          "authored"
         ],
         "family": "shape-3d",
         "profiles": [
@@ -1735,7 +1739,9 @@
           "soft shadows",
           "MaterialStyle.surface"
         ],
-        "missing": []
+        "missing": [
+          "a tabletop scene: toy-scale props and buildings on a bounded base seen from 30 to 60 degrees above (the engine draws tilt-shift, plastic and painted-wood surfaces and bevels; a low camera over a few primitives does not read as a model)"
+        ]
       },
       "ui": "cartoon",
       "palette": {

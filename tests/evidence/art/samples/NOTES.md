@@ -75,7 +75,7 @@ art, `full` where it reads and the check passes, else `partial`.
 | `watercolor-wash` | paint-2d | [watercolor-wash.jpg](frames/watercolor-wash.jpg) | yes: translucent washes with pooled rims on white paper, the cook's texel-space paint on every sprite | pass | full |
 | `pixel-3d-hybrid` | pixel-3d | [pixel-3d-hybrid.jpg](frames/pixel-3d-hybrid.jpg) | yes: conformed pixel sprites (hero, tree) stand as billboards with drop shadows among low-detail 3D props, dithered and depth-blurred | pass | full |
 | `faceted-low-poly` | shape-3d | [faceted-low-poly.jpg](frames/faceted-low-poly.jpg) | yes (since art/shape-3d-full): flat facets on every model, the hills built at the budget's segments as broad faceted planes, the hero flat-shaded within characterFaces; the crate keeps its 64-texel palette texture as the preset allows | pass | full |
-| `sculpted-clay` | shape-3d | [sculpted-clay.jpg](frames/sculpted-clay.jpg) | yes (since art/shape-3d-full): matte lumpy plasticine on every model (`MaterialStyle.surface clay`), the crate pressed from clay, blunt 5 cm bevels; the sample's colours stay its own cool greens | pass | full |
+| `sculpted-clay` | shape-3d | [sculpted-clay.jpg](frames/sculpted-clay.jpg) | no (coordinator review): the surface draws (matte lumpy plasticine on every model (`MaterialStyle.surface clay`), the crate pressed from clay, blunt 5 cm bevels; the sample's colours stay its own cool greens ), but primitive blockouts with a clay skin do not read as sculpted forms next to the preview | pass | content |
 | `8bit-pixel` | pixel-side | [8bit-pixel.jpg](frames/8bit-pixel.jpg) | yes: flat 4-step blocks, tiny sprites on an exact grid, a banded sky: the early-console language of the preview | pass | full |
 | `voxel-worlds` | shape-3d | [voxel-worlds.jpg](frames/voxel-worlds.jpg) | yes: the tree, hero and hills are stepped cubes on one grid, single-colour faces | pass | full |
 | `illuminated-manuscript` | paint-2d | [illuminated-manuscript.jpg](frames/illuminated-manuscript.jpg) | yes: parchment, gold sun, ink-outlined flat figures, an ornamental border and floral frieze | pass | content |
@@ -98,7 +98,7 @@ art, `full` where it reads and the check passes, else `partial`.
 | `anime-cel-3d` | toon-3d | [anime-cel-3d.jpg](frames/anime-cel-3d.jpg) | yes: two-tone cel bands, dark outlines on every model, a clean sky | pass | full |
 | `inked-comic-3d` | toon-3d | [inked-comic-3d.jpg](frames/inked-comic-3d.jpg) | yes: heavy ink contours and hatched fills over the whole frame | pass | full |
 | `paper-craft` | shape-3d | [paper-craft.jpg](frames/paper-craft.jpg) | yes (since art/shape-3d-full): folded card cones, cut card hills stood in layers, a raised card plateau and path with their contact shadows, fibre grain on lit faces (its own sheet sources) | pass | content |
-| `miniature-diorama` | shape-3d | [miniature-diorama.jpg](frames/miniature-diorama.jpg) | yes (since art/shape-3d-full): tilt-shift over toy pieces, satin plastic and painted wood (`MaterialStyle.surface plastic`), rounded 5 cm bevels; the sample's camera looks down about 22°, under the style's 30 to 60 | pass | full |
+| `miniature-diorama` | shape-3d | [miniature-diorama.jpg](frames/miniature-diorama.jpg) | no (coordinator review): the surfaces and blur draw (tilt-shift over toy pieces, satin plastic and painted wood (`MaterialStyle.surface plastic`), rounded 5 cm bevels; the sample's camera looks down about 22°, under the style's 30 to 60 ), but a low camera over a few primitives does not read as a tabletop model | pass | content |
 | `painterly-3d` | cinematic-3d | [painterly-3d.jpg](frames/painterly-3d.jpg) | no: the crate's and ground's textures carry brush strokes (the cook's texel-space paint), but the hero, tree, lantern and hills are flat-coloured blockouts with no painted texture and realistic proportions: nothing for a brush to work on | pass | content |
 | `cinematic-realism` | cinematic-3d | [cinematic-realism.jpg](frames/cinematic-realism.jpg) | yes (art/samples-full): scanned and generated models (a Meshy lantern keeper, Poly Haven crate, street lamp, hand lantern and stump, a stand of Meshy pines) on a Poly Haven forest ground under a low dusk sun: long soft shadows, warm lamp pools, a hazed ridge, AgX grade, grain and vignette | pass | full |
 | `muted-cinematic-3d` | cinematic-3d | [muted-cinematic-3d.jpg](frames/muted-cinematic-3d.jpg) | yes (art/samples-full): the same real models in grey haze between depth layers, the lamp and hand lantern the only warm accent (mean saturation 0.07), soft volume and no outlines | pass | full |
@@ -108,8 +108,8 @@ art, `full` where it reads and the check passes, else `partial`.
 | `monochrome-dither-3d` | pixel-3d | [monochrome-dither-3d.jpg](frames/monochrome-dither-3d.jpg) | yes (since the Bayer fix below): two colours, a fine ordered dither carries the light: the tree, hero, crate, lantern and hills keep their forms in perspective | pass | full |
 | `luminous-layered-painting` | paint-2d | [luminous-layered-painting.jpg](frames/luminous-layered-painting.jpg) | yes: dark cool painted layers, the lantern and village the luminous focal points, mist into depth | pass | content |
 
-**25 full, 0 partial, 12 content** (13, 14 and 10 at A7; the flat-normal fix, G1, G2, G3 and the
-preset tuning below moved twelve to full; painterly-3d and paper-craft moved to content). The 10 paint-2d content styles read as their style on the sample; the authored assets that carry each are its own
+**23 full, 0 partial, 14 content** (13, 14 and 10 at A7; the flat-normal fix, G1, G2, G3 and the
+preset tuning below moved ten to full; painterly-3d, paper-craft, sculpted-clay and miniature-diorama moved to content: the engine draws their surfaces, and the forms that carry them are authored). The 10 paint-2d content styles read as their style on the sample; the authored assets that carry each are its own
 Painter set in `examples/art-paint-2d/styles/<slug>/art/` (watercolor-wash,
 also paint-2d, is not content: its set is the family's base in
 `assets/art/`).
@@ -490,3 +490,11 @@ materials take the plastic surface). No other family's cook changes (each
 names characterFaces, the same 354 triangles), and no og-tests reference
 moves (the surface is none in every scene). The contact sheet is not
 regenerated here.
+
+### Coordinator review of art/shape-3d-full
+
+`sculpted-clay` and `miniature-diorama` are `content`, not `full`: their
+engine pieces (`MaterialStyle.surface` clay and plastic, bevels, tilt-shift)
+draw and `og style check` passes, but beside the preview their frames barely
+move from the blockout. The style is carried by sculpted forms and a
+tabletop scene, which are authored art, as `painterly-3d`'s are.
