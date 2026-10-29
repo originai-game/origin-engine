@@ -141,7 +141,14 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     let r2 = cross(n, dpx);
     let det = dot(dpx, r1);
     let grad = sign(det) * (dpdx(hm) * r1 + dpdy(hm) * r2);
-    n = normalize(abs(det) * n - grad);
+    // det is n · (dpx × dpy): where the shading normal lies in the face (a
+    // smooth mesh's silhouette, a rim turning away) the frame is degenerate,
+    // abs(det) n - grad tends to zero and its normalize to NaN, which the
+    // frame's blurs spread into a black disc. The bump fades out as the
+    // normal turns into the face, and where nothing is left the normal stays.
+    let facing = abs(det) / max(length(cross(dpx, dpy)), 1e-20);
+    let bumped = abs(det) * n - grad * smoothstep(0.02, 0.1, facing);
+    n = select(n, normalize(bumped), dot(bumped, bumped) > 1e-30);
     s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   }
   s.coat = material.coat.x;

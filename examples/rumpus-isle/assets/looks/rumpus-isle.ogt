@@ -39,6 +39,9 @@ Sky {
   sunSize 0
 }
 MaterialStyle {
+  # Its own painted colours, as its references were made: the preset's toy
+  # plastic surface (more saturation, a coarse-mip albedo) is held off.
+  surface none
   shadowTint "#3a4f9a"
   shadowTintAmount 0.35
 }

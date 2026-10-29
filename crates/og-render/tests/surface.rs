@@ -74,3 +74,71 @@ fn a_made_surface_bends_a_lit_ball_and_is_off_at_zero_strength() {
     );
     assert!(b > a * 1.5 + 0.5, "clay {b:.2} against plain {a:.2}");
 }
+
+/// A quad facing the camera whose normals lie in its own plane (what a
+/// smooth-shaded mesh has at its silhouette, and a bevel's rim where the
+/// faces turn away): the made surface's bump has no gradient frame there
+/// (Mikkelsen's determinant is zero), so it keeps the shading normal and
+/// lights the quad like the plain material instead of drawing it black.
+#[test]
+fn a_made_surface_keeps_the_normal_where_it_lies_in_the_face() {
+    let desc = RenderDesc {
+        width: 96,
+        height: 96,
+        ..Default::default()
+    };
+    let scene = |surface: MaterialSurface| {
+        let mut scene = RenderScene::new();
+        let mut quad = shapes::plane_xy(2.0, 2.0);
+        for v in &mut quad.vertices {
+            v.normal = [0.0, 1.0, 0.0];
+        }
+        let quad = scene.add_mesh(quad);
+        let paint = scene.add_material(Material {
+            base_color: [0.4, 0.7, 0.3, 1.0],
+            roughness: 0.6,
+            ..Default::default()
+        });
+        scene.add_instance(quad, paint, Mat4::IDENTITY);
+        scene.camera = Camera {
+            position: Vec3::new(0.0, 0.0, 2.0),
+            target: Vec3::ZERO,
+            ..Default::default()
+        };
+        scene.stylise.material = MaterialStyle {
+            surface,
+            surface_strength: 1.0,
+            ..Default::default()
+        };
+        scene
+    };
+    let Ok(plain) = render_to_rgba(&desc, &scene(MaterialSurface::None)) else {
+        eprintln!("no adapter: skipped");
+        return;
+    };
+    let centre = |rgba: &[u8]| {
+        let i = (48 * 96 + 48) * 4;
+        [rgba[i], rgba[i + 1], rgba[i + 2]]
+    };
+    let lit = centre(&plain.pixels);
+    assert!(
+        lit.iter().any(|&c| c > 40),
+        "the plain quad is lit ({lit:?})"
+    );
+    for surface in [
+        MaterialSurface::Clay,
+        MaterialSurface::Paper,
+        MaterialSurface::Plastic,
+    ] {
+        let made = render_to_rgba(&desc, &scene(surface)).expect("renders");
+        let c = centre(&made.pixels);
+        let (a, b) = (
+            lit.iter().map(|&v| v as i32).sum::<i32>(),
+            c.iter().map(|&v| v as i32).sum::<i32>(),
+        );
+        assert!(
+            b * 2 > a,
+            "{surface:?} drew the quad {c:?} against plain {lit:?}"
+        );
+    }
+}
