@@ -13,7 +13,11 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
-## Unreleased
+## 0.7.2 — 2026-10-29
+
+A patch with the simulation unchanged (the golden replays): the IDL
+members below are new and off by default, so a game that does not set them
+draws and runs as before.
 
 - render, `MaterialStyle.shadowDarkness` (new, off at 0): where the sun
   does not reach (the toon ramp's dark band, the side turned away, a cast
