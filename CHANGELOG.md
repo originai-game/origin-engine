@@ -33,6 +33,14 @@ is one line here, written at the merge that changes
   draw distance ends in it as on early consoles. Its `vertexSnap` and
   `affineTexturing` were already drawn (`retro_clip`, `stylised_uv`).
   Its frames change.
+- cook, the mesh conformance: under a look with `Stylise` paint fields
+  (and an art contract that conforms models) a model's own colour
+  textures are painted in texel space as painted 2D sprites are (the
+  Kuwahara along edges, bleed, pigment pooling, the canvas grain), after
+  their `ArtTexels` resample, so the strokes stay on the surface. A
+  texture no model claims, normal maps and data maps are not painted.
+  Mesh textures under such a look re-cook (`paint 1` in their desc);
+  painterly-3d's, sculpted-clay's and paper-craft's sample frames change.
 
 ## 0.7.1 — 2026-10-28
 

@@ -12,7 +12,7 @@
 use super::colour;
 
 /// The paint fields, at their frame meaning.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Paint {
     pub radius: f64,
     pub anisotropy: f64,
