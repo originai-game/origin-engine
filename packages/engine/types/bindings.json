@@ -7534,6 +7534,12 @@
           "tunable": true
         },
         {
+          "name": "shadowDarkness",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "rimColor",
           "column": "Color",
           "default": {

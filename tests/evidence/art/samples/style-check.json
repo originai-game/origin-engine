@@ -126,10 +126,8 @@
  },
  "low-resolution-3d": {
   "family": "pixel-3d",
-  "ok": false,
-  "off": [
-   "models/hills.ogt: faces 596 against <= 300 (ArtShape.propFaces)"
-  ]
+  "ok": true,
+  "off": []
  },
  "coarse-pixel": {
   "family": "pixel-side",

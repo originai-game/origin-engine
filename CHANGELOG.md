@@ -13,6 +13,35 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+- render, `MaterialStyle.shadowDarkness` (new, off at 0): where the sun
+  does not reach (the toon ramp's dark band, the side turned away, a cast
+  shadow) a lit surface loses that share of the sun's light and of the
+  ambient light (the environment map and the hemisphere light), so 1 draws
+  every shadow as a solid black mass; point, spot and rect lights, the
+  emissive and `shadowTint` still show inside it. `RenderCapabilities.stylise`
+  lists `shadowDarkness`.
+- looks, `heavy-ink-shadows`: shadows are solid black ink. Its
+  `shadowTint "#000000"` at `shadowTintAmount 0` did nothing, and
+  `posterize 3` never reached black because the environment's ambient
+  light lifts every shadowed surface above the lowest step. The preset
+  now sets `shadowDarkness 1`, six posterize steps, a near-black sky, a
+  dark red fog and muted grading. Its frames change.
+- looks, `low-resolution-3d`: a short dark fog (density 0.07) the colour
+  of a matching flat sky, the clear colour the catalogue asks for, so the
+  draw distance ends in it as on early consoles. Its `vertexSnap` and
+  `affineTexturing` were already drawn (`retro_clip`, `stylised_uv`).
+  Its frames change.
+- cook, the mesh conformance: under a look with `Stylise` paint fields
+  (and an art contract that conforms models) a model's own colour
+  textures are painted in texel space as painted 2D sprites are (the
+  Kuwahara along edges, bleed, pigment pooling, the canvas grain), after
+  their `ArtTexels` resample, so the strokes stay on the surface. A
+  texture no model claims, normal maps and data maps are not painted.
+  Mesh textures under such a look re-cook (`paint 1` in their desc);
+  painterly-3d's, sculpted-clay's and paper-craft's sample frames change.
+
 ## 0.7.1 — 2026-10-28
 
 A patch with the simulation unchanged (the golden replays); no IDL member

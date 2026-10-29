@@ -632,6 +632,7 @@ fn stylise(
             gradient_map: texture(&m["gradientMap"]),
             shadow_tint: rgb(&m["shadowTint"], Vec3::new(0.18, 0.16, 0.32)),
             shadow_tint_amount: f(&m, "shadowTintAmount", 0.0),
+            shadow_darkness: f(&m, "shadowDarkness", 0.0),
             rim_color: rgb(&m["rimColor"], Vec3::ONE),
             rim_intensity: f(&m, "rimIntensity", 0.0),
             rim_power: f(&m, "rimPower", 3.0),
@@ -1202,4 +1203,26 @@ pub(crate) fn load_emitter(eng: &super::engine::Engine, path: &str) -> Result<us
     }
     rs.fx.by_path.insert(key, i);
     Ok(i)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A look's MaterialStyle.shadowDarkness reaches the renderer's
+    /// material style; unset it is 0 (off), so no look moves without it.
+    #[test]
+    fn material_style_carries_the_shadow_darkness() {
+        let m = Arc::new(serde_json::json!({ "toon": true, "shadowDarkness": 0.75 }));
+        let s = stylise(None, Some(m), &[], &[]);
+        assert_eq!(s.material.shadow_darkness, 0.75);
+        assert!(s.material.toon);
+        let off = stylise(
+            None,
+            Some(Arc::new(serde_json::json!({ "toon": true }))),
+            &[],
+            &[],
+        );
+        assert_eq!(off.material.shadow_darkness, 0.0);
+    }
 }

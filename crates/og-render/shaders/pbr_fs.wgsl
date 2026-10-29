@@ -127,6 +127,10 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   }
   // Caustics where the surface lies under the frame's water (0 without).
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world_pos);
+  // The material style's shadow darkness: where the sun does not reach, the
+  // surface loses that share of the sun's ramp and of the ambient light.
+  let keep = shadow_keep(n_dot_l * shadow, mode);
+  color *= keep;
   // The material style's shadow tint: shadowed sunlight moves towards a
   // colour instead of black (the cool or warm shadow of illustration).
   if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0 && (mode & 8u) == 0u) {
@@ -157,7 +161,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let ao_sample = textureSample(ao_tex, material_sampler, uv).r;
   // What the material's AO and envMapIntensity keep of the image-based light (the environment's intensity is in
   // diffuse_ibl and specular_ibl already).
-  var ibl_scale = material.flags.z;
+  var ibl_scale = material.flags.z * keep;
   if (material.flags.y >= 0.0) {
     // Ambient occlusion darkens only the image-based light.
     ibl_scale *= mix(1.0, ao_sample, material.flags.y);

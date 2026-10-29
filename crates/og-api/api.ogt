@@ -3552,6 +3552,12 @@ module render {
       unit ratio
       tunable true
     }
+    field shadowDarkness f32 "How far shadowed surfaces fall towards black: where the sun does not reach (the toon ramp's dark band, the side turned away, a cast shadow) a surface loses this share of the sun's ramp and of the ambient light (the Environment's map and its hemisphere light) as well, so 1 draws every shadow as a solid black mass (the ink shadows of noir comics) and the toon ramp's middle band keeps half its light; point, spot and rect lights and the emissive still show inside it, and shadowTint's light is added after it. 0 is off." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
     field rimColor Color "Rim (fresnel) light for materials without their own (linear)." {
       default 1 1 1
     }
@@ -4256,7 +4262,7 @@ module render {
     field pointShadows PointShadows "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
     field width u32 "The render target width in device pixels."
     field height u32 "The render target height in device pixels."
-    field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
+    field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, shadowDarkness, rim, outline, outlineDistance and flatShading of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
     field ssr bool "Whether PostEffects.ssr draws: true on the full tier, false on WebGL2, where smooth surfaces reflect the reflection probes and the environment instead."
     field reflectionProbes u32 "How many og.ReflectionProbe components one frame samples (MAX_REFLECTION_PROBES on every tier)."
     field renderTargetDepth bool "Whether a render target made with `depth` gets its view's depth drawn: true on every tier with a renderer (WebGPU, Vulkan, Metal and WebGL2 alike), false without one. The depth comes from the view's own depth prepass of its opaque meshes into a linear-depth colour target, never from its depth buffer, which WebGL2 cannot read in a shader."

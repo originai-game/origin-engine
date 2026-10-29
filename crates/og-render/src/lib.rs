@@ -6995,7 +6995,7 @@ impl Renderer {
             },
             outline_style: [
                 scene.stylise.material.outline_distance.max(0.0),
-                0.0,
+                scene.stylise.material.shadow_darkness.clamp(0.0, 1.0),
                 0.0,
                 0.0,
             ],

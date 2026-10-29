@@ -881,13 +881,22 @@ fn conform_off(s: &Source, options: &CookOptions) -> bool {
 /// The art contract a texture `s` cooks under as a mesh's texture
 /// (`conform::TextureRole::Mesh`): none when it is not one, opted out, or
 /// the contract leaves textures as they are.
-fn mesh_texture<'a>(s: &Source, options: &'a CookOptions) -> Option<&'a conform::mesh::Conform> {
+///
+/// Without the look's paint: paint is for a model's own colour textures,
+/// and one no model claims (a sprite in a 3D game, the look's own canvas)
+/// keeps its strokes as drawn.
+fn mesh_texture(s: &Source, options: &CookOptions) -> Option<conform::mesh::Conform> {
     options
         .mesh
         .conform
         .as_ref()
-        .filter(|c| c.textures.contains(&s.rel) && !c.texture_desc().is_empty())
+        .filter(|c| c.textures.contains(&s.rel))
         .filter(|_| !conform_off(s, options))
+        .map(|c| conform::mesh::Conform {
+            paint: None,
+            ..c.clone()
+        })
+        .filter(|c| !c.texture_desc().is_empty())
 }
 
 /// The mesh options of a model `s` under the art contract: its import
@@ -1309,6 +1318,9 @@ pub fn cook_project_with_texture_cache(
     // contract (docs/art.md §2.1), read before anything cooks. A line that
     // names no look of the bundle is that asset's error.
     let mut contract: Option<(String, crate::look::LookFile)> = None;
+    // Its `Stylise` paint fields, which the 3D pass paints a model's colour
+    // textures with in texel space (painterly 3D).
+    let mut mesh_paint = None;
     let project_look = std::fs::read_to_string(root.join("project.ogt"))
         .ok()
         .and_then(|t| Document::parse(&t).ok())
@@ -1320,6 +1332,12 @@ pub fn cook_project_with_texture_cache(
         match sources.iter().find(|s| s.rel == id) {
             Some(s) if s.kind == Kind::Look => {
                 if let Ok(c) = look::contract(s, &assets_dir, &|id| known.contains(id)) {
+                    if let Ok(full) = look::flattened(s, &assets_dir, &|id| known.contains(id)) {
+                        match conform::texture2d::paint_of(&full, &assets_dir) {
+                            Ok(p) => mesh_paint = p.active().then_some(p),
+                            Err(e) => early_errors.push((id.clone(), "look", e)),
+                        }
+                    }
                     contract = Some((id, c));
                 }
             }
@@ -1390,6 +1408,7 @@ pub fn cook_project_with_texture_cache(
         match conform::mesh::Conform::of(c, &palette) {
             Ok(m) => {
                 with_contract.mesh.conform = m.map(|mut m| {
+                    m.paint = mesh_paint.clone();
                     m.off = mesh_off.clone();
                     m.textures = mesh_textures.clone();
                     m
@@ -2484,7 +2503,7 @@ fn run(
                 texture::decode(s.conformed.as_deref().unwrap_or(&s.bytes)).map_err(CookError)?;
             if let Some(c) = mesh_texture(s, options) {
                 let mut t = options.texture.clone();
-                let (img, k, mips, note) = conform::mesh::texture(c, None, img, *k, t.mipmaps);
+                let (img, k, mips, note) = conform::mesh::texture(&c, None, img, *k, t.mipmaps);
                 t.mipmaps = mips;
                 let mut notes = vec![format!("{}x{} as a mesh's texture", img.width, img.height)];
                 notes.extend(note.map(|n| match n.strip_prefix("conform: ") {

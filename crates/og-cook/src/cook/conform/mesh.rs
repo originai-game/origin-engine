@@ -71,6 +71,7 @@
 //! and past `maxFrames` a clip keeps every k-th frame, the dropped
 //! frames' time added to the one kept before them, with a warning.
 
+use crate::cook::conform::texture2d::paint::Paint;
 use crate::cook::model::{FVertex, GltfSource};
 use crate::cook::texture::Image;
 use crate::cook::vox::{VoxModel, mesh_model};
@@ -145,6 +146,11 @@ pub struct Conform {
     pub max_colors: u32,
     pub line: Option<Line>,
     pub motion: Option<Motion>,
+    /// The look's `Stylise` paint fields read as texel space, applied to
+    /// the colour textures models use (painterly 3D: the stroke follows
+    /// the surface); `None` when the look sets none (set by the cook from
+    /// the flattened look, `texture2d::paint_of`).
+    pub(in crate::cook) paint: Option<Paint>,
     /// The assets kept as made, by asset id, with why: their own `conform
     /// off` or project.ogt's `conform { off ... }` (set by the cook).
     pub(in crate::cook) off: BTreeMap<String, String>,
@@ -156,6 +162,9 @@ pub struct Conform {
 /// What a texture conformed as a mesh's by default says, before its
 /// changes: why, and how a HUD or UI image opts out.
 pub const DEFAULT_MESH_TEXTURE: &str = "conformed as a mesh texture (no model claims it; a HUD or UI image takes `conform ui` in its import settings)";
+
+/// Moves painted mesh textures' stamps when the paint steps change.
+const PAINT_VERSION: u32 = 1;
 
 /// What an output the contract leaves as it was reports.
 pub const UNCHANGED: &str = "meets the contract as it is";
@@ -263,6 +272,7 @@ impl Conform {
                 step_fps,
                 max_frames,
             }),
+            paint: None,
             off: BTreeMap::new(),
             textures: BTreeSet::new(),
         };
@@ -286,6 +296,7 @@ impl Conform {
             || self.filter != Filter::Any
             || self.mips != Mips::Any
             || (self.strict && !self.palette.is_empty())
+            || self.paint.is_some()
     }
 
     /// The style is untextured: models carry their colour in vertices.
@@ -349,8 +360,28 @@ impl Conform {
         if !self.textures() {
             return String::new();
         }
+        let paint = self.paint.as_ref().map_or(String::new(), |p| {
+            let mut h = og_core::hash::StableHasher::new();
+            if let Some((grain, w, gh)) = &p.canvas {
+                h.write_str(&format!("{w}x{gh}"));
+                for g in grain {
+                    h.write(&g.to_bits().to_le_bytes());
+                }
+            }
+            format!(
+                " paint {} radius {} anisotropy {} edge {} bleed {} canvas {} scale {} {:016x}",
+                PAINT_VERSION,
+                p.radius,
+                p.anisotropy,
+                p.edge,
+                p.bleed,
+                p.canvas_strength,
+                p.canvas_scale,
+                h.finish()
+            )
+        });
         format!(
-            "conform-texture-v2 density {} maxSize {} filter {:?} mips {:?} maxColors {} strict {} {}",
+            "conform-texture-v2 density {} maxSize {} filter {:?} mips {:?} maxColors {} strict {} {}{paint}",
             self.density,
             self.max_size,
             self.filter,
@@ -2044,6 +2075,13 @@ pub(in crate::cook) fn texture(
         img = resample(&img, w, h, k);
     }
     let color = k == kind::COLOR || k == kind::PIXEL;
+    // Painterly 3D: the frame's paint fields in the texture's own texels,
+    // after it is at its density, so a stroke is a few texels of the
+    // surface wherever the camera stands.
+    if let Some(p) = c.paint.as_ref().filter(|_| color) {
+        p.apply(img.rgba.as_chunks_mut::<4>().0, img.width, img.height);
+        what.push(format!("painted in texel space ({})", p.describe()));
+    }
     if c.strict && !c.palette.is_empty() && color {
         let lab = palette_lab(&c.palette);
         let mut cache: BTreeMap<[u8; 3], [u8; 3]> = BTreeMap::new();
@@ -2125,6 +2163,45 @@ mod tests {
 
     fn of(text: &str) -> Option<Conform> {
         Conform::of(&look(text), &|_| Ok(vec![[255, 0, 0], [0, 0, 255]])).unwrap()
+    }
+
+    /// Painterly 3D: a look's Stylise paint fields paint a model's colour
+    /// texture in its texels (a speck in a flat region is smoothed into it),
+    /// leave its normal map alone, and move its stamp; without them the
+    /// texture keeps its texels.
+    #[test]
+    fn the_paint_fields_paint_a_mesh_colour_texture_in_texel_space() {
+        let speckled = || {
+            let mut rgba = vec![120u8; 8 * 8 * 4];
+            rgba.chunks_mut(4).for_each(|p| p[3] = 255);
+            rgba[(3 * 8 + 3) * 4..(3 * 8 + 3) * 4 + 3].copy_from_slice(&[250, 20, 20]);
+            Image {
+                width: 8,
+                height: 8,
+                rgba,
+            }
+        };
+        let plain = of("ArtTexels {\n  density 64\n}\n").unwrap();
+        let (img, _, _, _) = texture(&plain, None, speckled(), kind::COLOR, true);
+        assert_eq!(img.rgba, speckled().rgba, "no paint fields: untouched");
+        let mut painted = plain.clone();
+        painted.paint = Some(Paint {
+            radius: 2.0,
+            ..Paint::default()
+        });
+        assert_ne!(painted.texture_desc(), plain.texture_desc());
+        let (img, _, _, note) = texture(&painted, None, speckled(), kind::COLOR, true);
+        let at = (3 * 8 + 3) * 4;
+        // Every sector holds the texel itself, so the speck is diluted into
+        // its flat surround (250 → about 150), not kept.
+        assert!(
+            img.rgba[at] < 170 && img.rgba[at + 1] > 90,
+            "the speck is painted over: {:?}",
+            &img.rgba[at..at + 3]
+        );
+        assert!(note.unwrap().contains("painted in texel space"));
+        let (img, _, _, _) = texture(&painted, None, speckled(), kind::NORMAL, true);
+        assert_eq!(img.rgba, speckled().rgba, "a normal map is data");
     }
 
     #[test]

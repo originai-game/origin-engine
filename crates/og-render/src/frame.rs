@@ -54,7 +54,7 @@ pub(crate) struct FrameUniform {
     /// towards, w: how far (0: off).
     pub shadow_tint: [f32; 4],
     /// `MaterialStyle`: x: the distance at which outlines are their width
-    /// (0: constant), yzw: unused.
+    /// (0: constant), y: the shadow darkness (0: off), zw: unused.
     pub outline_style: [f32; 4],
     /// The reflection probe of the frame group a draw binds (`probes.rs`):
     /// the box's min corner (w: 1 with a probe), its max corner (w: the

@@ -614,19 +614,19 @@ entry's three checks handed to the critic that reads the frames.
 | `classical-painting-collage` | Paint and line | Old-master collage | content | `paper` |
 | `detailed-doodle` | Paint and line | Fine-line doodle worlds | content | `paper` |
 | `black-figure-pottery` | Paint and line | Black-figure pottery | content | `fantasy` |
-| `heavy-ink-shadows` | Paint and line | Heavy ink and shadow | partial | `fantasy` |
+| `heavy-ink-shadows` | Paint and line | Heavy ink and shadow | full | `fantasy` |
 | `monochrome-pixel` | Pixel and retro | One-ink pixels | partial | `pixel` |
 | `16bit-pixel` | Pixel and retro | Late console pixels | full | `pixel` |
 | `detailed-pixel` | Pixel and retro | Dense illustrative pixels | full | `fantasy` |
 | `luminous-pixel` | Pixel and retro | Glowing pixels on dark ground | full | `neon` |
 | `topdown-tile-pixel` | Pixel and retro | Top-down tile worlds | partial | `fantasy` |
-| `low-resolution-3d` | 3D rendering | Low-resolution 3D | partial | `scifi` |
+| `low-resolution-3d` | 3D rendering | Low-resolution 3D | full | `scifi` |
 | `coarse-pixel` | Pixel and retro | Minimal low-count pixels | full | `pixel` |
 | `anime-cel-3d` | 3D rendering | Anime cel-shaded 3D | full | `neon` |
 | `inked-comic-3d` | 3D rendering | Inked comic 3D | full | `scifi` |
 | `paper-craft` | Shape and material | Paper craft | partial | `paper` |
 | `miniature-diorama` | 3D rendering | Miniature diorama | partial | `cartoon` |
-| `painterly-3d` | 3D rendering | Painterly 3D | partial | `fantasy` |
+| `painterly-3d` | 3D rendering | Painterly 3D | content | `fantasy` |
 | `cinematic-realism` | 3D rendering | Cinematic realism | partial | `scifi` |
 | `muted-cinematic-3d` | 3D rendering | Muted theatrical light | partial | `scifi` |
 | `layered-silhouette` | Shape and material | Layered silhouettes | full | `neon` |

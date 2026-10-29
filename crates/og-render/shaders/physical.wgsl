@@ -426,6 +426,10 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   var diffuse = sun.diffuse * frame.light_color.rgb * shadow;
   var specular = sun.specular * frame.light_color.rgb * shadow;
   diffuse += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world_pos);
+  // The material style's shadow darkness (pbr.wgsl shadow_keep).
+  let keep = shadow_keep(n_dot_l * shadow, mode);
+  diffuse *= keep;
+  specular *= keep;
   if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0 && (mode & 8u) == 0u) {
     diffuse += (1.0 - shadow) * frame.shadow_tint.rgb * frame.shadow_tint.w * s.albedo * frame.light_color.rgb * n_dot_l;
   }
@@ -456,7 +460,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let env_brdf = f_ibl * lut.x + lut.y;
   let ao_sample = maps.b;
-  var ibl_scale = material.flags.z;
+  var ibl_scale = material.flags.z * keep;
   if (material.flags.y >= 0.0) {
     ibl_scale *= mix(1.0, ao_sample, material.flags.y);
   }

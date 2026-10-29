@@ -25,7 +25,7 @@
 mod cleanedge;
 mod colour;
 mod outline;
-mod paint;
+pub(in crate::cook) mod paint;
 mod palette;
 mod resample;
 
@@ -187,6 +187,31 @@ fn named(assets: &Path, id: &str) -> Option<Vec<u8>> {
     }
 }
 
+/// The look's `Stylise` paint fields read as texel space (docs/art.md
+/// §2.3): the 2D pass paints sprites with them, the 3D pass a model's
+/// colour textures (`mesh::Conform::paint`). Inactive when the look sets
+/// none of them.
+pub(in crate::cook) fn paint_of(full: &LookFile, assets: &Path) -> Result<Paint, String> {
+    let mut paint = Paint {
+        radius: num(full, "Stylise", "paintRadius"),
+        anisotropy: num(full, "Stylise", "paintAnisotropy"),
+        edge: num(full, "Stylise", "paintEdgeDarkening"),
+        bleed: num(full, "Stylise", "paintBleed"),
+        canvas: None,
+        canvas_strength: num(full, "Stylise", "paintCanvasStrength"),
+        canvas_scale: num(full, "Stylise", "paintCanvasScale"),
+    };
+    if let Some([Value::String(id)]) = block(full, "Stylise", "paintCanvas")
+        && paint.canvas_strength > 0.0
+        && let Some(bytes) = named(assets, id)
+    {
+        let img = Rgba::decode(&bytes).map_err(|e| format!("Stylise.paintCanvas {id}: {e}"))?;
+        let grain = img.px.iter().map(|p| colour::to_linear(p[0])).collect();
+        paint.canvas = Some((grain, img.w, img.h));
+    }
+    Ok(paint)
+}
+
 impl Art {
     /// The contract of the flattened look `full` (every block), or `None`
     /// when it constrains no 2D texture.
@@ -215,23 +240,12 @@ impl Art {
         }
         .map(colour::to_srgb8);
         // Painted 2D: the frame's paint fields, read in texel space.
-        let mut paint = Paint {
-            radius: num(full, "Stylise", "paintRadius"),
-            anisotropy: num(full, "Stylise", "paintAnisotropy"),
-            edge: num(full, "Stylise", "paintEdgeDarkening"),
-            bleed: num(full, "Stylise", "paintBleed"),
-            canvas: None,
-            canvas_strength: num(full, "Stylise", "paintCanvasStrength"),
-            canvas_scale: num(full, "Stylise", "paintCanvasScale"),
-        };
+        let paint = paint_of(full, assets)?;
         if let Some([Value::String(id)]) = block(full, "Stylise", "paintCanvas")
-            && paint.canvas_strength > 0.0
+            && paint.canvas.is_some()
             && let Some(bytes) = named(assets, id)
         {
             h.write(&bytes);
-            let img = Rgba::decode(&bytes).map_err(|e| format!("Stylise.paintCanvas {id}: {e}"))?;
-            let grain = img.px.iter().map(|p| colour::to_linear(p[0])).collect();
-            paint.canvas = Some((grain, img.w, img.h));
         }
         for b in full.blocks.iter().filter(|b| b.resource == "Stylise") {
             for (f, v, _) in b.fields.iter().filter(|(f, _, _)| f.starts_with("paint")) {

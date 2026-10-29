@@ -87,19 +87,19 @@ art, `full` where it reads and the check passes, else `partial`.
 | `classical-painting-collage` | paint-2d | [classical-painting-collage.jpg](frames/classical-painting-collage.jpg) | yes: old-master fragments with cut seams under one varnish tone, cut-out figures | pass | content |
 | `detailed-doodle` | paint-2d | [detailed-doodle.jpg](frames/detailed-doodle.jpg) | yes: fine irregular line over everything, tiny houses and mills, very little colour | pass | content |
 | `black-figure-pottery` | paint-2d | [black-figure-pottery.jpg](frames/black-figure-pottery.jpg) | yes: black silhouettes with incised detail on ochre, meander bands top and bottom | pass | content |
-| `heavy-ink-shadows` | ink-3d | [heavy-ink-shadows.jpg](frames/heavy-ink-shadows.jpg) | no: outlines and posterised fills draw, but the shadows stay coloured: no solid black masses as in the preview | pass | partial |
+| `heavy-ink-shadows` | ink-3d | [heavy-ink-shadows.jpg](frames/heavy-ink-shadows.jpg) | yes (since art/render-full): solid black masses where the sun does not reach (MaterialStyle.shadowDarkness 1), thick ink on every form, muted posterised fills under a near-black sky and blood-red haze; 36 % of the frame is near-black | pass | full |
 | `monochrome-pixel` | pixel-side | [monochrome-pixel.jpg](frames/monochrome-pixel.jpg) | yes: the handheld greens in Bayer dither, silhouettes on pale ground, one ink on one paper | off: art/ground.png: grid 1x2 texels per pixel, half pixels at rows 2 4 against 1 texel(s) per pixel, no half pixels (ArtPixels) | partial |
 | `16bit-pixel` | pixel-side | [16bit-pixel.jpg](frames/16bit-pixel.jpg) | yes: ramped shading, the cook's 1-px inside line on every sprite, parallax far layer, saturated keeper against calmer scenery | pass | full |
 | `detailed-pixel` | pixel-side | [detailed-pixel.jpg](frames/detailed-pixel.jpg) | yes: dense hue-shifted clusters at 32 px per metre, the grid still visible, scenery rich but quieter | pass | full |
 | `luminous-pixel` | pixel-side | [luminous-pixel.jpg](frames/luminous-pixel.jpg) | yes: near-black masses, cyan rim light, the lantern and windows the only warm glows | pass | full |
 | `topdown-tile-pixel` | pixel-topdown | [topdown-tile-pixel.jpg](frames/topdown-tile-pixel.jpg) | no: upright three-quarter sprites on one repeated grass tile: no tile grid of walls, cliffs and paths, so height and paths do not read as in the preview | pass | partial |
-| `low-resolution-3d` | pixel-3d | [low-resolution-3d.jpg](frames/low-resolution-3d.jpg) | no: nearest textures and a slight pixel grid draw, but at this distance the scene reads as plain 3D, not early console; the far hills stay over the face budget | off: models/hills.ogt: faces 596 against <= 300 (ArtShape.propFaces) | partial |
+| `low-resolution-3d` | pixel-3d | [low-resolution-3d.jpg](frames/low-resolution-3d.jpg) | yes (since art/render-full): a 240-line frame with nearest texels and a Bayer-dithered sixteen-tone grade, short dark fog the colour of the sky closing the draw distance, faceted 6 x 4 hills (the style's own source, 264 faces); vertices snap to the grid and textures interpolate affinely (stylise-retro holds both) | pass | full |
 | `coarse-pixel` | pixel-side | [coarse-pixel.jpg](frames/coarse-pixel.jpg) | yes: a few huge pixels per figure, one dominant night-blue mass, the lamp the only warm point | pass | full |
 | `anime-cel-3d` | toon-3d | [anime-cel-3d.jpg](frames/anime-cel-3d.jpg) | yes: two-tone cel bands, dark outlines on every model, a clean sky | pass | full |
 | `inked-comic-3d` | toon-3d | [inked-comic-3d.jpg](frames/inked-comic-3d.jpg) | yes: heavy ink contours and hatched fills over the whole frame | pass | full |
 | `paper-craft` | shape-3d | [paper-craft.jpg](frames/paper-craft.jpg) | no: flat facets and outlines draw, but there is no paper grain, fold or layered card | pass | partial |
 | `miniature-diorama` | shape-3d | [miniature-diorama.jpg](frames/miniature-diorama.jpg) | no: the tilt-shift blur reads as miniature, but the props are plain PBR, not toy-like or bevelled | pass | partial |
-| `painterly-3d` | cinematic-3d | [painterly-3d.jpg](frames/painterly-3d.jpg) | no: no brush marks: the textures and primitives draw as plain lit 3D | pass | partial |
+| `painterly-3d` | cinematic-3d | [painterly-3d.jpg](frames/painterly-3d.jpg) | no: the crate's and ground's textures carry brush strokes (the cook's texel-space paint), but the hero, tree, lantern and hills are flat-coloured blockouts with no painted texture and realistic proportions: nothing for a brush to work on | pass | content |
 | `cinematic-realism` | cinematic-3d | [cinematic-realism.jpg](frames/cinematic-realism.jpg) | no: primitive blockouts with photo textures under a filmic grade: not realistic assets | off: models/crate.glb: density 213.3 texels/m (p10 213.3, p90 213.3) against 256.0 to 1024.0 (ArtTexels.density 512 within x2); models/ground.glb: density 128.0 texels/m (p10 128.0, p90 128.0) against 256.0 to 1024.0 (ArtTexels.density 512 within x2) | partial |
 | `muted-cinematic-3d` | cinematic-3d | [muted-cinematic-3d.jpg](frames/muted-cinematic-3d.jpg) | no: the muted grade draws, but the primitives read as a blockout | pass | partial |
 | `layered-silhouette` | cinematic-3d | [layered-silhouette.jpg](frames/layered-silhouette.jpg) | yes: every form a flat dark silhouette in depth bands against a pale sky | pass | full |
@@ -108,8 +108,8 @@ art, `full` where it reads and the check passes, else `partial`.
 | `monochrome-dither-3d` | pixel-3d | [monochrome-dither-3d.jpg](frames/monochrome-dither-3d.jpg) | yes (since the Bayer fix below): two colours, a fine ordered dither carries the light: the tree, hero, crate, lantern and hills keep their forms in perspective | pass | full |
 | `luminous-layered-painting` | paint-2d | [luminous-layered-painting.jpg](frames/luminous-layered-painting.jpg) | yes: dark cool painted layers, the lantern and village the luminous focal points, mist into depth | pass | content |
 
-**16 full, 11 partial, 10 content** (13, 14 and 10 at A7; the flat-normal fix and the
-preset tuning below moved four to full). All 10 content styles read as their style on the sample; the authored assets that carry each are its own
+**18 full, 8 partial, 11 content** (13, 14 and 10 at A7; the flat-normal fix, G2 and the
+preset tuning below moved six to full; painterly-3d moved to content). The 10 paint-2d content styles read as their style on the sample; the authored assets that carry each are its own
 Painter set in `examples/art-paint-2d/styles/<slug>/art/` (watercolor-wash,
 also paint-2d, is not content: its set is the family's base in
 `assets/art/`).
@@ -241,3 +241,52 @@ the old frame and the preview: `tuning/<slug>.jpg` is before (`9ccaf706`)
   `bayer4`) and `examples/brasswick/references/metal/*` (detailed-pixel,
   `bayer8`), every frame that draws the world through the look. `bayer2`
   styles (8bit-pixel, low-resolution-3d, hollowbell's dawn) do not move.
+
+## art/render-full: low-resolution-3d, heavy-ink-shadows, painterly-3d
+
+Captured on lavapipe (`capture.ts --only <slug>`, read at 640x360) with
+the branch's `og` and addon. The table's totals above predate this stream
+and the parallel G1 and G3 streams; the coordinator recounts at the merge
+(these three: two to full, one to content).
+
+- **heavy-ink-shadows → full.** Cause: `shadowTint "#000000"` at
+  `shadowTintAmount 0` is off, and `posterize 3` never reaches black: the
+  environment's ambient light (and the toon ramp's 0.22 dark band) lifts
+  every shadowed surface above the lowest step, so the shadow side kept
+  its lit hue. Fix: `MaterialStyle.shadowDarkness` (new, 0 off;
+  `pbr.wgsl` `shadow_keep`, in the standard and physical lit shaders):
+  where the sun does not reach, a surface loses that share of the sun's
+  ramp and of the ambient light. The preset sets 1, six posterize steps,
+  a near-black sky, a dark red fog and muted grading. 36 % of the frame
+  is near-black (luminance under 12 %; 3 % before).
+- **low-resolution-3d → full.** Vertex snapping and affine texturing were
+  already in the engine (`retro_clip`, `stylised_uv`; og-tests'
+  `stylise-retro`): turning them off moves the sample's frame. What did
+  not read was the scene: a long pale fog and sky. The preset's fog is now
+  short (0.07) and dark, the colour of a flat sky (the clear colour, as
+  the catalogue asks). The hills: four 24 x 12 spheres (2,376 triangles
+  drawn) cannot be decimated to `propFaces 300` within the silhouette
+  bound, so the style brings its own source as its brief asks for a prop:
+  `examples/art-pixel-3d/styles/low-resolution-3d/models/hills.ogt`, 6 x 4
+  spheres, 264 faces (the family's other styles keep theirs).
+- **painterly-3d → content.** The frame's paint filter cannot show on
+  these assets at any radius: a Kuwahara over flat-coloured blockouts and
+  a smooth grass texture returns them as they were (radius 5, surface
+  canvas and a warm grade still read as smoothed 3D). The engine part is
+  the cook: under a look with `Stylise` paint fields the mesh conformance
+  paints a model's own colour textures in texel space, as watercolor-wash's
+  sprites are painted, so the crate and ground carry strokes. The
+  preview's hand-painted textures and shaped forms on the hero, tree and
+  props are authored art.
+
+Reference frames that move (not re-recorded; Metal is the
+coordinator's): `examples/art-ink-3d/references/metal/heavy-ink-shadows.png`,
+`examples/art-pixel-3d/references/metal/low-resolution-3d.png`,
+`examples/art-cinematic-3d/references/metal/painterly-3d.png`,
+`examples/art-shape-3d/references/metal/sculpted-clay.png` and
+`paper-craft.png` (their crate and ground textures are painted now);
+`templates/fx-showcase/references/metal/looks-heavy-ink-shadows.png` and
+`looks-low-resolution-3d.png` (the presets changed; the showcase has no
+project look, so the cook's paint does not reach it). No og-tests
+reference moves: `shadowDarkness` is 0 in every scene. The contact sheet
+is not regenerated here.
