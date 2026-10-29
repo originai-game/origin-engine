@@ -130,6 +130,17 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.7.3 released (2026-10-29 UTC).** All five npm packages are
+published, and `v0.7.3` is pushed at `77d7b7e7`. It is a knowledge-only
+patch with the simulation unchanged and no crate or IDL member changed:
+level-texturing's `texture-level.ts` paints with
+`gemini-nano-banana-2.1` by default, and its `http` provider sends each
+model only the fields its route accepts. The replay gate passes 2/2
+goldens with the tarball binaries on linux-x64. The tarballs and the
+registry install passed on the orb's linux-x64, on the host and in the
+container. The Mac and Windows checks were not required for this patch.
+See the [release receipt](../tests/evidence/release/0.7.3.md).
+
 **0.7.2 released (2026-10-29 UTC).** All five npm packages are
 published, and `v0.7.2` is pushed at `ccda9a97`. It is recorded as a
 patch with the simulation unchanged: additive, off-by-default members
