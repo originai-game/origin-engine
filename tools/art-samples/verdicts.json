@@ -2,12 +2,12 @@
   "about": "The coordinator-readable verdict per style (docs/art.md §2.6, stream A7): whether its frame on its family's sample scene, read at 640x360 beside previews/<slug>.webp, reads as the style without being told, why, and for a style that is not full what is still not there (look.missing). catalogue.py derives look.support from these, the layers and og style check's result.",
   "styles": {
     "8bit-pixel": { "reads": true, "why": "flat 4-step blocks, tiny sprites on an exact grid, a banded sky: the early-console language of the preview" },
-    "monochrome-pixel": { "reads": true, "why": "the handheld greens in Bayer dither, silhouettes on pale ground, one ink on one paper", "missing": ["the sample's ground tile measures 1x2 texels per logical pixel with half rows (the generated tile, resampled, is off the grid): an asset fault the check names, not an engine gap"] },
+    "monochrome-pixel": { "reads": true, "why": "the handheld greens in Bayer dither, silhouettes on pale ground, one ink on one paper (the frame as before; only the check moved: the ground tile was on its grid, the grid detector counted its flat rows)" },
     "16bit-pixel": { "reads": true, "why": "ramped shading, the cook's 1-px inside line on every sprite, parallax far layer, saturated keeper against calmer scenery" },
     "detailed-pixel": { "reads": true, "why": "dense hue-shifted clusters at 32 px per metre, the grid still visible, scenery rich but quieter" },
     "luminous-pixel": { "reads": true, "why": "near-black masses, cyan rim light, the lantern and windows the only warm glows" },
     "coarse-pixel": { "reads": true, "why": "a few huge pixels per figure, one dominant night-blue mass, the lamp the only warm point" },
-    "topdown-tile-pixel": { "reads": false, "why": "upright three-quarter sprites on one repeated grass tile: no tile grid of walls, cliffs and paths, so height and paths do not read as in the preview", "missing": ["a tile set conformed per tile with walls, cliffs and paths (the sample has one grass tile and a far layer drawn as one picture)"] },
+    "topdown-tile-pixel": { "reads": true, "why": "a strict 16 px tile grid seen from above: a raised ledge with its cliff face and stone steps, an auto-tiled dirt path and pond, grass with bushes and stumps, upright y-sorted sprites standing on it; floor, path, wall face and water stay apart in greyscale" },
     "expressionist-painting": { "reads": true, "why": "clashing violet and orange brush masses, broken edges, the figures painted into the scene" },
     "watercolor-wash": { "reads": true, "why": "translucent washes with pooled rims on white paper, the cook's texel-space paint on every sprite" },
     "illuminated-manuscript": { "reads": true, "why": "parchment, gold sun, ink-outlined flat figures, an ornamental border and floral frieze" },
@@ -35,8 +35,8 @@
     "anime-cel-3d": { "reads": true, "why": "two-tone cel bands, dark outlines on every model, a clean sky" },
     "inked-comic-3d": { "reads": true, "why": "heavy ink contours and hatched fills over the whole frame" },
     "painterly-3d": { "reads": false, "why": "the crate's and ground's textures carry brush strokes (the cook's texel-space paint), but the hero, tree, lantern and hills are flat-coloured blockouts with no painted texture and realistic proportions: nothing for a brush to work on", "missing": ["hand-painted textures and shaped, exaggerated forms on the characters and props (the cook paints a model's own colour textures; untextured blockouts stay flat)"]},
-    "cinematic-realism": { "reads": false, "why": "primitive blockouts with photo textures under a filmic grade: not realistic assets", "missing": ["realistic assets: scanned or generated models and textures at ArtTexels.density 512 (the sample's crate and ground measure 213 and 128 texels/m)"] },
-    "muted-cinematic-3d": { "reads": false, "why": "the muted grade draws, but the primitives read as a blockout", "missing": ["detailed realistic assets: the grade alone over primitives reads as a blockout"] },
+    "cinematic-realism": { "reads": true, "why": "scanned and generated models (a Meshy lantern keeper, Poly Haven crate, street lamp, hand lantern and stump, a stand of Meshy pines) on a Poly Haven forest ground under a low dusk sun: long soft shadows, warm lamp pools, a hazed ridge, AgX grade, grain and vignette" },
+    "muted-cinematic-3d": { "reads": true, "why": "the same real models in grey haze between depth layers, the lamp and hand lantern the only warm accent (mean saturation 0.07), soft volume and no outlines" },
     "layered-silhouette": { "reads": true, "why": "every form a flat dark silhouette in depth bands against a pale sky" }
   }
 }
