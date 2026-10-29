@@ -2089,7 +2089,8 @@ og.render.look(world)?.name;                                              // the
   and `depthBits`. The UI and screen sprites stay unstylised.
 - **`og.MaterialStyle`** sets every lit material that leaves the field at
   its default: `toon` (with a `gradientMap`), `shadowTint` and
-  `shadowTintAmount`, `rimIntensity`, `outlineWidth` (with
+  `shadowTintAmount`, `shadowDarkness` (1: every shadow a solid black
+  mass, no sun and no ambient light there), `rimIntensity`, `outlineWidth` (with
   `outlineDistance` to thin lines with depth) and `flatShading`. Unlit and
   shader materials, sprites and the UI are untouched, and so is a material
   made with `styled: false` (exactly as declared under any look). The

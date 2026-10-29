@@ -17,7 +17,7 @@
 /// halftone laid on surfaces, [`StyliseSpace::Surface`]) and `objectSpace`
 /// (laid in each instance's own space, [`StyliseSpace::Object`])
 /// ([`Stylise`]);
-/// `toon`, `shadowTint`, `rim`, `outline`, `outlineDistance` and
+/// `toon`, `shadowTint`, `shadowDarkness`, `rim`, `outline`, `outlineDistance` and
 /// `flatShading` ([`MaterialStyle`]).
 pub const STYLISE_DRAWN: &[&str] = &[
     "pixel",
@@ -35,6 +35,7 @@ pub const STYLISE_DRAWN: &[&str] = &[
     "objectSpace",
     "toon",
     "shadowTint",
+    "shadowDarkness",
     "rim",
     "outline",
     "outlineDistance",
@@ -320,6 +321,11 @@ pub struct MaterialStyle {
     /// The linear colour shadowed light moves towards, and how far.
     pub shadow_tint: [f32; 3],
     pub shadow_tint_amount: f32,
+    /// How far shadowed surfaces fall towards black: their share of the
+    /// sun (the toon ramp's dark side, the side turned away, the cast
+    /// shadow) loses this much of the sun's ramp and the ambient light
+    /// (environment and hemisphere) too; 1 is a solid black mass, 0 off.
+    pub shadow_darkness: f32,
     pub rim_color: [f32; 3],
     pub rim_intensity: f32,
     pub rim_power: f32,
@@ -335,6 +341,7 @@ impl MaterialStyle {
     pub fn is_active(&self) -> bool {
         self.toon
             || self.shadow_tint_amount > 0.0
+            || self.shadow_darkness > 0.0
             || self.rim_intensity > 0.0
             || self.outline_width > 0.0
             || self.flat_shading
@@ -587,6 +594,16 @@ mod tests {
         assert!(!Stylise::default().is_active());
         let mut s = Stylise::default();
         s.material.outline_width = 1.0;
+        assert!(s.is_active());
+    }
+
+    /// Shadow darkness alone is a material style: a look that sets only it
+    /// (heavy-ink-shadows' black masses) reaches the lit shaders.
+    #[test]
+    fn shadow_darkness_alone_is_active() {
+        let mut s = Stylise::default();
+        s.material.shadow_darkness = 1.0;
+        assert!(s.material.is_active());
         assert!(s.is_active());
     }
 }

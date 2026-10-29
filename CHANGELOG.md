@@ -13,6 +13,22 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+- render, `MaterialStyle.shadowDarkness` (new, off at 0): where the sun
+  does not reach (the toon ramp's dark band, the side turned away, a cast
+  shadow) a lit surface loses that share of the sun's light and of the
+  ambient light (the environment map and the hemisphere light), so 1 draws
+  every shadow as a solid black mass; point, spot and rect lights, the
+  emissive and `shadowTint` still show inside it. `RenderCapabilities.stylise`
+  lists `shadowDarkness`.
+- looks, `heavy-ink-shadows`: shadows are solid black ink. Its
+  `shadowTint "#000000"` at `shadowTintAmount 0` did nothing, and
+  `posterize 3` never reached black because the environment's ambient
+  light lifts every shadowed surface above the lowest step. The preset
+  now sets `shadowDarkness 1`, six posterize steps, a near-black sky, a
+  dark red fog and muted grading. Its frames change.
+
 ## 0.7.1 — 2026-10-28
 
 A patch with the simulation unchanged (the golden replays); no IDL member

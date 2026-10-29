@@ -1,19 +1,37 @@
 type look
 version 1
 ---
-# Cel bands with near-black shadows, thick ink and three tones.
+# Cel bands whose dark side and cast shadows are solid black ink
+# (MaterialStyle.shadowDarkness 1: no sun and no ambient light there), thick
+# ink, six muted tones, a near-black sky and a blood-red haze.
 name "Heavy ink and shadow"
 ui "fantasy"
 MaterialStyle {
   toon true
-  shadowTint "#000000"
-  shadowTintAmount 0
+  shadowDarkness 1
 }
 Stylise {
   ink true
   inkThreshold 0.1
   inkWidth 2
-  posterize 3
+  posterize 6
+}
+Sky {
+  enabled true
+  zenith 0.01 0.01 0.012
+  horizon 0.12 0.03 0.025
+  ground 0.01 0.01 0.01
+}
+Fog {
+  enabled true
+  color "#3a0a08"
+  density 0.03
+}
+PostEffects {
+  saturation -0.6
+  contrast 0.25
+  vignette true
+  vignetteIntensity 0.6
 }
 # The art contract (docs/art.md §2.1), from the catalogue entry's palette and
 # assets: 12 to 24 muted colours plus black; a rough 3 to 6 px black line (its

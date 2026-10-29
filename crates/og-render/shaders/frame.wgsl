@@ -48,7 +48,7 @@ struct Frame {
   // Stylisation (stylise.rs): the retro-3D vertex path and the material style.
   stylise: vec4<f32>,         // xy: the vertex snap grid in cells (0: none), z: affine texturing, w: depth bits (0: full)
   shadow_tint: vec4<f32>,     // rgb: the tint shadowed light moves towards, w: amount (0: off)
-  outline_style: vec4<f32>,   // x: the distance at which outlines are their width (0: constant)
+  outline_style: vec4<f32>,   // x: the distance at which outlines are their width (0: constant), y: shadow darkness (0: off)
   // A reflection probe (probes.rs): set in the frame group bound for a
   // draw inside the probe's box, whose irradiance_map is then the
   // environment's prefiltered cube and prefiltered_map the probe's.

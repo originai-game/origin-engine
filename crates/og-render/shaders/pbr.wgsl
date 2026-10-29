@@ -371,6 +371,23 @@ fn toon_light(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, shadow: f32)
   return kd * band + s.f0 * spec * (1.0 - s.roughness);
 }
 
+// The material style's shadow darkness (frame.outline_style.y): what a
+// surface keeps of the sun's ramp and of the ambient light, from the sun it
+// receives (N·L times the shadow). Toon: 1 in the ramp's lit band, 1 - d
+// in its darkest, between in proportion to the ramp; otherwise the side
+// turned away and the cast shadow, over a short terminator. 1 when off or
+// for an unstyled material (mode 8).
+fn shadow_keep(sun: f32, mode: u32) -> f32 {
+  let d = frame.outline_style.y;
+  if (d <= 0.0 || (mode & 8u) != 0u) { return 1.0; }
+  var lit = smoothstep(0.0, 0.25, sun);
+  if (EFFECTS && material.toon.x > 0.5) {
+    let dark = toon_ramp(0.0);
+    lit = clamp((toon_ramp(sun) - dark) / max(1.0 - dark, 1e-3), 0.0, 1.0);
+  }
+  return 1.0 - d * (1.0 - lit);
+}
+
 // `receives`: the instance is darkened by the light's shadow map
 // (look_receives).
 fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, receives: bool) -> vec3<f32> {

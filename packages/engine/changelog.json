@@ -4,8 +4,12 @@
   "unreleased": {
     "simulation": "unchanged",
     "breaking": [],
-    "added": [],
-    "fixed": []
+    "added": [
+      "MaterialStyle.shadowDarkness (0 to 1, 0 off): where the sun does not reach (the toon ramp's dark band, the side turned away, a cast shadow) a lit surface loses that share of the sun and of the ambient light, so 1 draws shadows as solid black masses; local lights, emissive and shadowTint still show. RenderCapabilities.stylise names it shadowDarkness."
+    ],
+    "fixed": [
+      "The heavy-ink-shadows preset draws its shadows as solid black ink (MaterialStyle.shadowDarkness 1; shadowTint at amount 0 had no effect, and posterize never reaches black because the ambient light lifts every shadow), with a near-black sky, a blood-red haze and muted colour. Its frames change."
+    ]
   },
   "versions": [
     {
