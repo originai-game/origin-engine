@@ -1732,9 +1732,19 @@ impl Probe {
                     .ok_or_else(|| {
                         format!("ticks is a whole number in [0, {PLAYTEST_MAX_TICKS}]")
                     })?;
-                self.advance(world, ticks)
-                    .map(|_| ())
-                    .map_err(|e| e.reason().to_owned())
+                // The script's steps after this one that are already due
+                // wait for the steps: `0:advance:300;0:dump_world;0:quit`
+                // dumps tick 300 and quits there, instead of the nested pump
+                // running them (quit included) before the first step.
+                let now = world.time().tick;
+                let later = self.queue.split_off(&(now + 1, 0));
+                let due = std::mem::replace(&mut self.queue, later);
+                let advanced = self.advance(world, ticks);
+                let tick = world.time().tick;
+                for ((_, seq), step) in due {
+                    self.queue.insert((tick, seq), step);
+                }
+                advanced.map(|_| ()).map_err(|e| e.reason().to_owned())
             }
             "quit" => {
                 self.quit = true;

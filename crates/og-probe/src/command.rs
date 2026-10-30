@@ -329,7 +329,7 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
     (
         "advance",
         "advance:<ticks>",
-        "Take fixed steps now (at most 3600), running the steps scheduled on the way.",
+        "Take fixed steps now (at most 3600), running the steps scheduled on the way; the script's steps at the same time after it run once it has stepped.",
     ),
     (
         "listen",

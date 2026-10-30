@@ -13436,7 +13436,7 @@ module commands {
     variant seed "`seed:<n>`: reseed the Rng resource."
     variant pause "`pause`: hold the clock; advance still steps."
     variant resume "`resume`: release the clock."
-    variant advance "`advance:<ticks>`: take fixed steps."
+    variant advance "`advance:<ticks>`: take fixed steps; the steps the script schedules for the same time after it run once it has stepped (a time is seconds: `0:advance:300;0:screenshot` shoots tick 300)."
     variant quit "`quit`: exit."
     variant describe "`describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera."
     variant expect "`expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=), `entity:<id>:<path>==<value>` (a field of its dump_entity: `render.lod==2`, `og.Transform.position.y>0`), `timings:<path>==<value>` (state().timings: `triangles<=1500000`). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked, as are an entity's `render.*` fields and the renderer's timings (`triangles`, `render`, `passes`)."

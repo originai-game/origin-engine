@@ -88,6 +88,21 @@ fn a_scripted_run_seeds_advances_dumps_and_quits() {
 }
 
 #[test]
+fn steps_after_an_advance_at_the_same_time_run_once_it_has_stepped() {
+    let mut h = build(1, false);
+    h.probe
+        .schedule(&h.world, "0:advance:30;0:dump_world;0:quit")
+        .unwrap();
+    run(&mut h, 10_000);
+    assert!(h.probe.quit_requested());
+    assert_eq!(h.probe.tick(&h.world), 30, "quit waits for the advance");
+    let dumps = json_outputs(&mut h);
+    assert_eq!(dumps.len(), 1);
+    assert_eq!(dumps[0].0, 30);
+    assert_eq!(dumps[0].3["tick"], json!(30));
+}
+
+#[test]
 fn help_lists_every_action_core_and_registered() {
     let mut h = build(1, false);
     h.probe
