@@ -26,6 +26,10 @@
 //! asked for (default: none, the base table). Native runs
 //! are always headless: `--headless` is accepted, and without it the run is
 //! paced by the wall clock instead of as fast as it can go.
+//! With `ORIGIN_FRAMES_SOCKET` set (Origin Runner sets it when Origin
+//! Desktop draws the game), the run also shows its frames in that window
+//! through shared GPU memory and renders at the size it asks for
+//! (og-render's `shared_frames`); `og dev` does the same.
 //!
 //! `og run --device chrome|android[:serial]|iphone[:udid] [project]
 //! [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl]

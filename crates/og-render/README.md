@@ -655,6 +655,28 @@ fx-showcase on WebGL2:
   multiple of six layers becomes a cube map (array): the local shadow map
   (twelve layers, 48 once grown) gets a spare layer to stay a 2D array.
 
+## Shared frames
+
+`shared_frames` (macOS, Linux, Windows) shows the renderer's frames in
+another process's window, Origin Desktop's Preview (`docs/design.md` §2.6,
+Shared frames). `FrameLink::connect(path, &renderer)` connects on a thread
+of its own to the socket a host names in `SOCKET_ENV`
+(`ORIGIN_FRAMES_SOCKET`), and again whenever the host comes back; it never
+blocks or fails. Each loop frame, after `render(&scene,
+&RenderTarget::Offscreen)`, `present(&renderer)` copies the offscreen
+target into a free slot on the GPU (`Presented::Slot`; `Busy` when the host
+holds every slot, `NoHost` before its slots exist) and sends `Msg::Ready`
+when the copy has finished; `take_resize()` is the size the host asked for,
+which the caller applies with `resize` before its next frame (the link then
+sends `Rehello` and the next generation's `Hello`). The renderer draws in
+`OUTPUT_FORMAT` (`Bgra8UnormSrgb` on macOS, `Rgba8UnormSrgb` elsewhere),
+`SLOT_FORMAT` seen as sRGB, so the copy is byte for byte; captures read it
+as RGBA either way. The wire (`Msg`, each platform's `Hello`, `send`,
+`recv`) is Origin Desktop's `shared-frame` contract; the host's side
+(`recv_hello`, `import_slot`) is here for the tests
+(`tests/shared_frames.rs`), which play the host on a second device. The
+native host (`og-host-node`) links when the variable is set.
+
 ## Testing
 
 `crates/og-tests` is the gfx reference harness. Each named scene renders

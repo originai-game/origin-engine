@@ -13,6 +13,16 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+- Native host, shared frames: with `ORIGIN_FRAMES_SOCKET` set (Origin
+  Runner sets it when Origin Desktop draws the Session's engine), `og run`
+  and `og dev` show their frames in the desktop window through shared GPU
+  memory (IOSurfaces on macOS, Vulkan opaque fds on Linux, D3D12 shared
+  handles on Windows; og-render's `shared_frames`, the desktop's
+  `shared-frame` protocol) and render at the size the window asks for.
+  Without the variable nothing changes; no IDL member changed.
+
 ## 0.7.3 — 2026-10-29
 
 A knowledge-only patch with the simulation unchanged (the golden replays);

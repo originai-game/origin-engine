@@ -689,6 +689,29 @@ style `ramp` takes a fifth number. The cook's `color_textures uastc`
 (project.ogt, §2.5) packs colour textures as UASTC where ETC1S's 4×4
 block loss shows on foliage and bark, overridable for the web export.
 
+**Shared frames.** A native engine process can show its frames in another
+process's window with no copy through the CPU: Origin Desktop's Preview,
+while its built-in runner runs a Session's engine. The runner names the
+window's socket in `ORIGIN_FRAMES_SOCKET`; with it set, the native host
+(`og run`, `og dev`) draws in the slots' format and links its renderer
+(og-render's `shared_frames`, `FrameLink`) to the socket: five shareable
+textures per generation (IOSurfaces passed by Mach rendezvous on macOS,
+Vulkan opaque fds on Linux, D3D12 NT handles on Windows) sent with one
+`Hello`, each loop frame copied on the GPU from the offscreen target into a
+free slot and announced `Ready` when the copy has finished, `Release` giving
+slots back, `Resize` applied before the next frame (the play surface follows
+the render target, as the web host's canvas does) and answered with
+`Rehello` and the next generation. The wire is the desktop's `shared-frame`
+contract (origin-agent `desktop/crates/shared-frame`), implemented here,
+since neither side links the other. The engine never waits for the window:
+the handshake runs on the link's thread, a frame with no free slot is not
+shown there, and a window that is not listening (or goes away) leaves the
+process drawing offscreen as before, reconnecting when it comes back.
+Without the variable nothing changes. Synchronisation is the CPU's (the
+copy's completion, the window's release after its own later frame); GPU
+signals (`MTLSharedEvent`, exported semaphores, shared fences) replace it
+later.
+
 ### 2.7 Animation, physics, navigation, audio, UI **(D)**
 
 - **Animation**: glTF skins and clips, a blend tree asset (`.ogt`), state

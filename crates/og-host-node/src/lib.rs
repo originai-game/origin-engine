@@ -479,6 +479,23 @@ struct OffscreenBackend {
     missing: u32,
     /// The last frame's `FrameStats::triangles`.
     triangles: u64,
+    /// The window drawing this engine's frames, when the process was told
+    /// one (`ORIGIN_FRAMES_SOCKET`, og-render's `shared_frames`).
+    #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+    frames: Option<og_render::shared_frames::FrameLink>,
+}
+
+impl OffscreenBackend {
+    /// The frame drawn offscreen, where the probe reads it.
+    fn draw(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
+        self.renderer
+            .render(scene, &og_render::RenderTarget::Offscreen)
+            .map(|s| {
+                self.missing = s.missing_glyphs;
+                self.triangles = s.triangles;
+            })
+            .map_err(|e| e.to_string())
+    }
 }
 
 impl Drop for OffscreenBackend {
@@ -503,14 +520,20 @@ impl RenderBackend for OffscreenBackend {
     fn info(&self) -> Option<og_render::RenderInfo> {
         Some(self.renderer.info().clone())
     }
+    /// The loop's frame: at the size the window asked for since the last
+    /// one (as the web host takes its canvas's), drawn offscreen, then
+    /// shown in the window when one draws this engine's frames.
     fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
-        self.renderer
-            .render(scene, &og_render::RenderTarget::Offscreen)
-            .map(|s| {
-                self.missing = s.missing_glyphs;
-                self.triangles = s.triangles;
-            })
-            .map_err(|e| e.to_string())
+        #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+        if let Some((w, h)) = self.frames.as_mut().and_then(|f| f.take_resize()) {
+            self.renderer.resize(w, h);
+        }
+        self.draw(scene)?;
+        #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+        if let Some(frames) = self.frames.as_mut() {
+            frames.present(&self.renderer);
+        }
+        Ok(())
     }
     fn missing_glyphs(&self) -> u32 {
         self.missing
@@ -556,7 +579,7 @@ impl RenderBackend for OffscreenBackend {
             self.renderer.resize(size.0, size.1);
         }
         let image = self
-            .render(scene)
+            .draw(scene)
             .ok()
             .and_then(|_| self.renderer.read_offscreen().ok());
         if size != target {
@@ -617,11 +640,27 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
         _ => std::env::var_os("HOME")
             .map(|h| std::path::PathBuf::from(h).join(".cache/origin-engine/pipelines")),
     });
+    // A window that draws this process's frames (Origin Desktop's
+    // Preview): the renderer outputs the format its slots copy from.
+    #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+    let frames_socket =
+        std::env::var_os(og_render::shared_frames::SOCKET_ENV).filter(|p| !p.is_empty());
+    #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+    let desc = og_render::RenderDesc {
+        output_format: match frames_socket {
+            Some(_) => Some(og_render::shared_frames::OUTPUT_FORMAT),
+            None => desc.output_format,
+        },
+        ..desc
+    };
     let answer = og_render::Renderer::new_blocking(&desc)
         .map_err(|e| e.to_string())
         .and_then(|renderer| {
             let tier = renderer.info().backend_tier();
             let device = renderer.device().clone();
+            #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+            let frames = frames_socket
+                .map(|path| og_render::shared_frames::FrameLink::connect(path, &renderer));
             og_runtime::set_render_backend(
                 engine,
                 Some(Box::new(OffscreenBackend {
@@ -630,6 +669,8 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
                     tier: tier.clone(),
                     missing: 0,
                     triangles: 0,
+                    #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+                    frames,
                 })),
             )?;
             DEVICES.with(|d| d.borrow_mut().insert(engine, device));

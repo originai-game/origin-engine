@@ -4,7 +4,12 @@
   "unreleased": {
     "simulation": "unchanged",
     "breaking": [],
-    "added": [],
+    "added": [
+      {
+        "member": "ORIGIN_FRAMES_SOCKET (native host)",
+        "summary": "With the variable set (Origin Runner sets it when Origin Desktop draws the Session's engine), og run and og dev show their frames in the desktop window through shared GPU memory and render at the size the window asks for; without it nothing changes."
+      }
+    ],
     "fixed": []
   },
   "versions": [
