@@ -5,6 +5,8 @@
 
 mod profile2d;
 mod shaders;
+#[cfg(any(target_os = "macos", target_os = "linux", windows))]
+mod shared_frames;
 mod surface;
 mod tier;
 mod webgl2;

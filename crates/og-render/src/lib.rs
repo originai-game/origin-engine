@@ -139,6 +139,8 @@ mod weather;
 pub mod gltf;
 #[cfg(not(target_arch = "wasm32"))]
 mod headless;
+#[cfg(any(target_os = "macos", target_os = "linux", windows))]
+pub mod shared_frames;
 
 pub use area::{CookieLayers, LightCookie, MAX_COOKIE_LAYERS, RECT_SHADOW_FOV, cookie_layers};
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
