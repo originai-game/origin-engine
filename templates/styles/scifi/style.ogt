@@ -69,22 +69,36 @@ fonts {
   body "ChakraPetch-Medium.ttf"
   display "Orbitron-Bold.ttf"
   numeric "JetBrainsMono-Regular.ttf"
+  cjk "@styles/cjk/NotoSansSC-Regular.ttf"
+  cjkDisplay "@styles/cjk/NotoSansSC-Bold.ttf"
 }
 icons "icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
 }
 slice panel 4 4 96 96 18 tint
+tone panel 0.027 0.027 0.027 0.94
 slice card 104 4 64 64 12 tint
+tone card 0.040 0.040 0.040 0.94
 slice button 172 4 48 48 12 tint
+tone button 0.074 0.074 0.074 0.95
 slice buttonHover 224 4 48 48 12 tint
+tone buttonHover 0.147 0.147 0.147 0.96
 slice buttonPressed 276 4 48 48 12 tint
+tone buttonPressed 0.319 0.319 0.319 1.00
 slice buttonDisabled 328 4 48 48 12 tint
+tone buttonDisabled 0.054 0.054 0.054 0.85
 slice field 4 104 48 48 8 tint
+tone field 0.018 0.018 0.018 0.94
 slice slot 56 104 48 48 10 tint
+tone slot 0.033 0.033 0.033 0.90
 slice tooltip 108 104 32 32 8 tint
+tone tooltip 0.033 0.033 0.033 0.96
 slice hud 144 104 32 32 10 tint
+tone hud 0.040 0.040 0.040 0.94
 slice track 180 104 32 16 5 tint
+tone track 0.072 0.072 0.072 0.90
 slice fill 216 104 32 16 2 tint
+tone fill 0.790 0.790 0.790 1.00
 soft 252 104 64 64 24
 corner 320 104 32 32 18 18 primary 4
 corners panel card slot

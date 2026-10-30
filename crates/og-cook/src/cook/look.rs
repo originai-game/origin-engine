@@ -236,6 +236,46 @@ pub const BUILTINS: &[(&str, &[u8])] = &[
 /// wins over the built-in of that slug.
 pub const STYLES: &[(&str, &[u8])] = &[
     (
+        "@styles/cjk/FusionPixel12-zhHans.ttf",
+        include_bytes!("../../../../templates/styles/cjk/FusionPixel12-zhHans.ttf"),
+    ),
+    (
+        "@styles/cjk/FusionPixel12-zhHans.ttf.ogt",
+        include_bytes!("../../../../templates/styles/cjk/FusionPixel12-zhHans.ttf.ogt"),
+    ),
+    (
+        "@styles/cjk/NotoSansSC-Bold.ttf",
+        include_bytes!("../../../../templates/styles/cjk/NotoSansSC-Bold.ttf"),
+    ),
+    (
+        "@styles/cjk/NotoSansSC-Bold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/cjk/NotoSansSC-Bold.ttf.ogt"),
+    ),
+    (
+        "@styles/cjk/NotoSansSC-Regular.ttf",
+        include_bytes!("../../../../templates/styles/cjk/NotoSansSC-Regular.ttf"),
+    ),
+    (
+        "@styles/cjk/NotoSansSC-Regular.ttf.ogt",
+        include_bytes!("../../../../templates/styles/cjk/NotoSansSC-Regular.ttf.ogt"),
+    ),
+    (
+        "@styles/cjk/NotoSerifSC-SemiBold.ttf",
+        include_bytes!("../../../../templates/styles/cjk/NotoSerifSC-SemiBold.ttf"),
+    ),
+    (
+        "@styles/cjk/NotoSerifSC-SemiBold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/cjk/NotoSerifSC-SemiBold.ttf.ogt"),
+    ),
+    (
+        "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+        include_bytes!("../../../../templates/styles/cjk/ZCOOLKuaiLe-Regular.ttf"),
+    ),
+    (
+        "@styles/cjk/ZCOOLKuaiLe-Regular.ttf.ogt",
+        include_bytes!("../../../../templates/styles/cjk/ZCOOLKuaiLe-Regular.ttf.ogt"),
+    ),
+    (
         "@styles/cartoon/Fredoka-SemiBold.ttf",
         include_bytes!("../../../../templates/styles/cartoon/Fredoka-SemiBold.ttf"),
     ),
@@ -316,12 +356,12 @@ pub const STYLES: &[(&str, &[u8])] = &[
         include_bytes!("../../../../templates/styles/neon/ChakraPetch-BoldItalic.ttf.ogt"),
     ),
     (
-        "@styles/neon/Orbitron-Medium.ttf",
-        include_bytes!("../../../../templates/styles/neon/Orbitron-Medium.ttf"),
+        "@styles/neon/ChakraPetch-SemiBold.ttf",
+        include_bytes!("../../../../templates/styles/neon/ChakraPetch-SemiBold.ttf"),
     ),
     (
-        "@styles/neon/Orbitron-Medium.ttf.ogt",
-        include_bytes!("../../../../templates/styles/neon/Orbitron-Medium.ttf.ogt"),
+        "@styles/neon/ChakraPetch-SemiBold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/neon/ChakraPetch-SemiBold.ttf.ogt"),
     ),
     (
         "@styles/neon/Rajdhani-Bold.ttf",
@@ -523,6 +563,47 @@ pub fn style_files(id: &str) -> Vec<(&'static str, &'static [u8])> {
         .collect()
 }
 
+/// The shared built-in Chinese companions (`@styles/cjk/`, each with its
+/// import settings) a style's text names as `cjk` and `cjkDisplay`.
+pub fn companion_files(style_text: &str) -> Vec<(&'static str, &'static [u8])> {
+    let Ok(file) = og_ui::parse_style(style_text) else {
+        return Vec::new();
+    };
+    let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
+    for r in file.fonts[4..].iter().flatten() {
+        let settings = format!("{r}.ogt");
+        for f in STYLES.iter().filter(|(f, _)| *f == r || *f == settings) {
+            if !out.contains(f) {
+                out.push(*f);
+            }
+        }
+    }
+    out
+}
+
+/// Whether the project under `root` (its assets directory) shows Chinese:
+/// a string table (`type strings`) of a `zh` locale. A style's Chinese
+/// companions join the bundle only then (each is 1 to 3 MB of outlines).
+pub fn shows_chinese(root: &Path) -> bool {
+    fn walk(dir: &Path) -> bool {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return false;
+        };
+        entries.flatten().any(|e| {
+            let p = e.path();
+            if p.is_dir() {
+                return walk(&p);
+            }
+            p.extension().is_some_and(|x| x == "ogt")
+                && std::fs::read_to_string(&p).is_ok_and(|t| {
+                    t.lines().any(|l| l.trim() == "type strings")
+                        && t.lines().any(|l| l.trim_start().starts_with("locale \"zh"))
+                })
+        })
+    }
+    walk(root)
+}
+
 /// The built-in asset `name` names (`"@canvas/paper"` or its full id
 /// `"@canvas/paper.png"`): its bundle id and bytes.
 pub fn builtin(name: &str) -> Option<(&'static str, &'static [u8])> {
@@ -562,7 +643,17 @@ pub(super) fn builtin_files(
     if let Some(ui) = &look.ui
         && let Ok(id) = resolve_style(ui, &|id| root.join(id).is_file())
     {
-        out.extend(style_files(&id));
+        let files = style_files(&id);
+        let style = files
+            .iter()
+            .find(|(f, _)| *f == id)
+            .map(|(_, b)| String::from_utf8_lossy(b).to_string());
+        out.extend(files);
+        if let Some(text) = style
+            && shows_chinese(root)
+        {
+            out.extend(companion_files(&text));
+        }
     }
     out
 }
@@ -1444,6 +1535,46 @@ mod tests {
         );
         assert_eq!(builtin("@canvas/pap"), None);
         assert_eq!(builtin("canvas/paper"), None);
+    }
+
+    /// A built-in style's Chinese companions join the bundle of a game that
+    /// shows Chinese (a `zh` string table) and only then: a game in English
+    /// does not carry megabytes of outlines it never draws.
+    #[test]
+    fn a_styles_chinese_companions_ride_with_a_chinese_game_only() {
+        let look = ("looks/x.ogt", "type look\nversion 1\n---\nui \"paper\"\n");
+        let cjk = |files: &[(&str, &str)]| -> Vec<&'static str> {
+            let root = project(files);
+            builtin_files(look.0, look.1, &root)
+                .into_iter()
+                .map(|(id, _)| id)
+                .filter(|id| id.starts_with("@styles/cjk/"))
+                .collect()
+        };
+        let english = cjk(&[
+            look,
+            (
+                "strings/en.ogt",
+                "type strings\nversion 1\n---\nlocale \"en\"\n",
+            ),
+        ]);
+        assert!(english.is_empty(), "{english:?}");
+        let chinese = cjk(&[
+            look,
+            (
+                "strings/zh.ogt",
+                "type strings\nversion 1\n---\nlocale \"zh-CN\"\n",
+            ),
+        ]);
+        assert_eq!(
+            chinese,
+            [
+                "@styles/cjk/NotoSansSC-Regular.ttf",
+                "@styles/cjk/NotoSansSC-Regular.ttf.ogt",
+                "@styles/cjk/NotoSerifSC-SemiBold.ttf",
+                "@styles/cjk/NotoSerifSC-SemiBold.ttf.ogt",
+            ]
+        );
     }
 
     #[test]

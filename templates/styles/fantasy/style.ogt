@@ -69,22 +69,36 @@ fonts {
   body "Newsreader-Medium.ttf"
   display "Cinzel-Bold.ttf"
   numeric "Cinzel-Bold.ttf"
+  cjk "@styles/cjk/NotoSerifSC-SemiBold.ttf"
+  cjkDisplay "@styles/cjk/NotoSerifSC-SemiBold.ttf"
 }
 icons "icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
 }
 slice panel 4 4 96 96 16 authored
+tone panel 0.861 0.736 0.478 1.00
 slice card 104 4 64 64 10 authored
+tone card 0.860 0.735 0.478 1.00
 slice button 172 4 48 48 10 tint
+tone button 0.789 0.789 0.789 1.00
 slice buttonHover 224 4 48 48 10 tint
+tone buttonHover 0.890 0.890 0.890 1.00
 slice buttonPressed 276 4 48 48 10 tint
+tone buttonPressed 0.693 0.693 0.693 1.00
 slice buttonDisabled 328 4 48 48 10 tint
+tone buttonDisabled 0.630 0.630 0.630 1.00
 slice field 4 104 48 48 8 tint
+tone field 0.912 0.912 0.912 1.00
 slice slot 56 104 48 48 10 tint
+tone slot 0.808 0.808 0.808 1.00
 slice tooltip 108 104 32 32 8 tint
+tone tooltip 0.934 0.934 0.934 1.00
 slice hud 144 104 32 32 12 tint
+tone hud 0.848 0.848 0.848 1.00
 slice track 180 104 32 16 6 tint
+tone track 0.692 0.692 0.692 1.00
 slice fill 216 104 32 16 6 tint
+tone fill 0.788 0.788 0.788 1.00
 soft 252 104 64 64 24
 corner 320 104 32 32 28 28 authored 6
 corners panel

@@ -69,22 +69,36 @@ fonts {
   body "Fredoka-SemiBold.ttf"
   display "LilitaOne-Regular.ttf"
   numeric "LilitaOne-Regular.ttf"
+  cjk "@styles/cjk/ZCOOLKuaiLe-Regular.ttf"
+  cjkDisplay "@styles/cjk/ZCOOLKuaiLe-Regular.ttf"
 }
 icons "icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
 }
 slice panel 4 4 96 96 16 tint
+tone panel 0.933 0.933 0.933 1.00
 slice card 104 4 64 64 14 tint
+tone card 0.922 0.922 0.922 1.00
 slice button 172 4 48 48 12 tint
+tone button 0.830 0.830 0.830 1.00
 slice buttonHover 224 4 48 48 12 tint
+tone buttonHover 0.913 0.913 0.913 1.00
 slice buttonPressed 276 4 48 48 12 tint
+tone buttonPressed 0.711 0.711 0.711 1.00
 slice buttonDisabled 328 4 48 48 12 tint
+tone buttonDisabled 0.711 0.711 0.711 1.00
 slice field 4 104 48 48 10 tint
+tone field 0.890 0.890 0.890 1.00
 slice slot 56 104 48 48 10 tint
+tone slot 0.828 0.828 0.828 1.00
 slice tooltip 108 104 32 32 10 tint
+tone tooltip 0.944 0.944 0.944 1.00
 slice hud 144 104 32 32 10 tint
+tone hud 0.890 0.890 0.890 1.00
 slice track 180 104 32 16 7 tint
+tone track 0.738 0.738 0.738 1.00
 slice fill 216 104 32 16 7 tint
+tone fill 0.839 0.839 0.839 1.00
 soft 252 104 64 64 24
 divider 4 172 128 24 48 16 primary
 flourish 136 172 64 24 22 10 primary 2

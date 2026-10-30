@@ -988,6 +988,90 @@ fn anim_settings(s: &Source) -> Result<anim::AnimSettings, String> {
 }
 
 /// `assets/`, from a source's path and its path under it.
+/// The atlas bytes a style names: a built-in style's from the cook itself,
+/// a game's from its assets.
+fn style_atlas(id: &str, root: &Path) -> Option<Vec<u8>> {
+    if id.starts_with('@') {
+        look::STYLES
+            .iter()
+            .find(|(f, _)| *f == id)
+            .map(|(_, b)| b.to_vec())
+    } else {
+        std::fs::read(root.join(id)).ok()
+    }
+}
+
+/// `tone` lines for the tinted frames of a style that sets none: the mean
+/// of each frame's centre in the atlas, linear grey (premultiplied, over
+/// its coverage) and alpha, where it is not white and opaque.
+fn style_tones(file: &og_ui::StyleFile, root: &Path) -> Vec<String> {
+    let Some(img) = file
+        .atlas
+        .as_deref()
+        .and_then(|id| style_atlas(crate::runtime::asset_id(id), root))
+        .and_then(|b| image::load_from_memory(&b).ok())
+        .map(|i| i.to_rgba8())
+    else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for part in og_ui::style_file::StylePart::ALL {
+        let Some(sl) = file.theme.art.slices[part.index()] else {
+            continue;
+        };
+        if sl.tone != og_ui::style_file::Slice::WHITE {
+            continue;
+        }
+        let t = slice_tone(&img, &sl);
+        if t.iter().any(|v| *v < 0.98) {
+            out.push(format!(
+                "tone {} {:.3} {:.3} {:.3} {:.2}",
+                part.name(),
+                t[0],
+                t[1],
+                t[2],
+                t[3]
+            ));
+        }
+    }
+    out
+}
+
+/// The mean of a slice's centre in `img`: linear RGB over its coverage
+/// (premultiplied, then divided by the mean alpha) and the mean alpha.
+pub fn slice_tone(img: &image::RgbaImage, sl: &og_ui::style_file::Slice) -> [f32; 4] {
+    let (w, h) = (img.width() as f32, img.height() as f32);
+    let lin = |v: f32| {
+        if v <= 0.04045 {
+            v / 12.92
+        } else {
+            ((v + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    let (u0, v0) = (sl.uv[0] + sl.border_uv[0], sl.uv[1] + sl.border_uv[1]);
+    let (u1, v1) = (sl.uv[2] - sl.border_uv[2], sl.uv[3] - sl.border_uv[3]);
+    let (x0, y0) = ((u0 * w).round() as u32, (v0 * h).round() as u32);
+    let x1 = ((u1 * w).round() as u32).max(x0 + 1).min(img.width());
+    let y1 = ((v1 * h).round() as u32).max(y0 + 1).min(img.height());
+    let (mut rgb, mut alpha, mut n) = ([0.0f64; 3], 0.0f64, 0.0f64);
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let p = img.get_pixel(x, y).0;
+            let a = f64::from(p[3]) / 255.0;
+            for k in 0..3 {
+                rgb[k] += f64::from(lin(f32::from(p[k]) / 255.0)) * a;
+            }
+            alpha += a;
+            n += 1.0;
+        }
+    }
+    if n == 0.0 {
+        return og_ui::style_file::Slice::WHITE;
+    }
+    let c = rgb.map(|v| (v / alpha.max(1e-6)) as f32);
+    [c[0], c[1], c[2], (alpha / n) as f32]
+}
+
 fn assets_root(s: &Source) -> PathBuf {
     let mut root = s.path.clone();
     for _ in s.rel.split('/') {
@@ -1058,6 +1142,16 @@ fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
             && Document::parse(&text).is_ok_and(|d| d.ty == crate::look::LOOK_TYPE)
         {
             for (id, bytes) in look::builtin_files(rel, &text, assets_dir) {
+                builtins.insert(id.to_string(), bytes);
+            }
+        }
+        // A game's own style may name the shared Chinese companions too.
+        if ext(rel) == "ogt"
+            && let Ok(text) = std::fs::read_to_string(path)
+            && Document::parse(&text).is_ok_and(|d| d.ty == og_ui::style_file::STYLE_TYPE)
+            && look::shows_chinese(assets_dir)
+        {
+            for (id, bytes) in look::companion_files(&text) {
                 builtins.insert(id.to_string(), bytes);
             }
         }
@@ -1758,7 +1852,16 @@ pub fn cook_project_with_texture_cache(
                     .into_iter()
                     .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
                     .collect();
-                let st = stamp(&[b"style", &hash, refs.join("\n").as_bytes()]);
+                let atlas = og_ui::parse_style(&text)
+                    .ok()
+                    .and_then(|mut f| {
+                        f.resolve(&s.rel, |id| known.contains(crate::runtime::asset_id(id)));
+                        f.atlas
+                    })
+                    .and_then(|id| style_atlas(crate::runtime::asset_id(&id), &assets_root(s)))
+                    .map(|b| hash_bytes(&b).to_le_bytes())
+                    .unwrap_or_default();
+                let st = stamp(&[b"style", &hash, refs.join("\n").as_bytes(), &atlas]);
                 outs.push((s.rel.clone(), format::Style::NAME, st, Work::Style(s)));
             }
             Kind::Tileset => {
@@ -2737,10 +2840,12 @@ fn run(
                 .map_err(|_| CookError("a style is text (UTF-8)".into()))?;
             let mut file = og_ui::parse_style(text).map_err(CookError)?;
             file.resolve(&s.rel, |id| known.contains(crate::runtime::asset_id(id)));
+            let companions: Vec<String> = file.fonts[4..].iter().flatten().cloned().collect();
             let missing: Vec<String> = file
                 .references()
                 .into_iter()
-                .filter(|r| !known.contains(crate::runtime::asset_id(r)))
+                // A Chinese companion is cooked in only for a game that shows Chinese.
+                .filter(|r| !known.contains(crate::runtime::asset_id(r)) && !companions.contains(r))
                 .collect();
             if !missing.is_empty() {
                 let dir = s.rel.rsplit_once('/').map_or("", |(d, _)| d);
@@ -2749,6 +2854,18 @@ fn run(
                     missing.join(", ")
                 )));
             }
+            // Each tinted frame's centre as the atlas draws it, for a style
+            // that did not measure it (og-ui picks button label ink by it).
+            let tones = style_tones(&file, &assets_root(s));
+            let text = if tones.is_empty() {
+                text.to_string()
+            } else {
+                format!(
+                    "{text}\n# Measured by og cook from the atlas (each tinted frame's centre).\n{}\n",
+                    tones.join("\n")
+                )
+            };
+            let text = text.as_str();
             let mut w = og_blob::BlobWriter::new(
                 format::Style::type_hash(),
                 format::Style::schema_version(),

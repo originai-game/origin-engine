@@ -133,6 +133,9 @@ string "results.time" "タイム {time}"
 - What the engine ships: `fonts/NotoSansSC-Regular-subset.ttf`, in every
   project (Simplified Chinese: GB2312's 6,763 hanzi, kana and Latin-1,
   2.5 MB), the source for a Chinese subset and the styles' CJK `fallback`.
+  The built-in UI styles bring their own Chinese faces (`cjk`,
+  `cjkDisplay`: og-ui §7) into a game with a `zh` table: a Chinese game on
+  a built-in style needs no font of its own for its UI.
   The ui-kit's `NotoSansJP-subset.otf`, `NotoSansKR-subset.otf` and its
   Arabic, Hebrew and Devanagari subsets hold only the ui-kit's own strings
   (the Japanese one 246 characters, 74 of them kanji): they are no source

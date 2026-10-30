@@ -883,6 +883,8 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                 None => Vec::new(),
             },
             fallback: style_font(3)?,
+            cjk: style_font(4)?,
+            cjk_display: style_font(5)?,
             // The locale's chain (og.i18n) stays.
             chain: Vec::new(),
         };
@@ -1001,8 +1003,8 @@ pub(crate) struct LoadedStyle {
     pub id: String,
     pub file: og_ui::StyleFile,
     pub atlas: Option<og_render::TextureHandle>,
-    /// Font asset handles: body, display, numeric, fallback.
-    pub fonts: [Option<f64>; 4],
+    /// Font asset handles: body, display, numeric, fallback, cjk, cjkDisplay.
+    pub fonts: [Option<f64>; 6],
     pub icons: Option<og_render::TextureHandle>,
     pub sounds: [u64; 6],
 }
@@ -1044,8 +1046,15 @@ pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
         };
         let atlas = file.atlas.as_deref().map(texture).transpose()?;
         let icons = file.icons.as_ref().map(|i| texture(&i.0)).transpose()?;
-        let mut fonts = [None; 4];
+        let mut fonts = [None; 6];
         for (k, p) in file.fonts.iter().enumerate() {
+            // A Chinese companion is in the bundle only when the game shows Chinese.
+            if k >= 4
+                && let Some(p) = p
+                && eng.assets.borrow().bundle_for(p).is_err()
+            {
+                continue;
+            }
             if let Some(p) = p {
                 let i = super::assets::load_font(eng, p)?;
                 fonts[k] = Some(super::assets::handle(i) as f64);

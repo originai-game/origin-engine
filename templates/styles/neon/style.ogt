@@ -68,36 +68,47 @@ durations {
 fonts {
   body "Rajdhani-Bold.ttf"
   display "ChakraPetch-BoldItalic.ttf"
-  numeric "Orbitron-Medium.ttf"
+  numeric "ChakraPetch-SemiBold.ttf"
+  cjk "@styles/cjk/NotoSansSC-Bold.ttf"
+  cjkDisplay "@styles/cjk/NotoSansSC-Bold.ttf"
 }
 icons "icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
 }
 slice panel 4 4 96 96 22 authored
+tone panel 0.006 0.003 0.018 0.93
 slice card 104 4 64 64 14 tint
+tone card 0.010 0.010 0.010 0.86
 slice button 172 4 48 48 16 tint
+tone button 0.040 0.040 0.040 0.90
 slice buttonHover 224 4 48 48 16 tint
+tone buttonHover 0.084 0.084 0.084 0.94
 slice buttonPressed 276 4 48 48 16 tint
+tone buttonPressed 0.262 0.262 0.262 1.00
 slice buttonDisabled 328 4 48 48 16 tint
+tone buttonDisabled 0.027 0.027 0.027 0.80
 slice field 4 104 48 48 10 tint
+tone field 0.007 0.007 0.007 0.94
 slice slot 56 104 48 48 12 tint
+tone slot 0.014 0.014 0.014 0.88
 slice tooltip 108 104 32 32 10 tint
+tone tooltip 0.014 0.014 0.014 0.94
 slice hud 144 104 32 32 14 tint
+tone hud 0.014 0.014 0.014 0.90
 slice track 180 104 32 16 6 tint
+tone track 0.034 0.034 0.034 0.90
 slice fill 216 104 32 16 6 tint
+tone fill 0.791 0.791 0.791 1.00
 soft 252 104 64 64 24
 corner 320 104 32 32 20 20 primary 2
 corners card
 divider 4 172 128 24 128 24 primary
 flourish 136 172 64 24 36 16 primary 0
-tile 204 172 64 64 48 48 0.12 10 panel
-shadow panel 0 0 0 0 "#00000000"
-glow button 6 primary 0.35
-glow hud 4 primary 0.25
-glow panel 14 primary 0.18
-glow slot 3 focus 0.2
-textGlow display 2.0 primary 0.7
-textGlow numeric 1.2 focus 0.5
+tile 204 172 64 64 48 48 0.05 10 panel
+shadow panel 0 6 18 0 "#000000a0"
+glow button 4 primary 0.22
+glow slot 3 focus 0.16
+textGlow display 1.4 primary 0.45
 press 0.96 0.96 0
 hover 0 1.04
 motion {

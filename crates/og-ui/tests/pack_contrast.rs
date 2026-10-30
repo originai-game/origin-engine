@@ -660,6 +660,78 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
 /// neutral badge, `inkMuted` on `control`, whose ground scifi's and neon's mid
 /// fills made 2.15:1 and 2.81:1 (scifi's moves its fill: no ink reaches
 /// 4.5:1 on it from the light side).
+/// A game's own primary colour (`og.ui.configure({ primaryColor })`) over
+/// each pack: the primary button's label reads at 7:1 on the fill as drawn
+/// (the token times the slice's art, over a panel), whatever the colour.
+/// Ways this could fail: the label's ink picked against the flat token, so
+/// a light primary on a dark neon or scifi body takes dark ink on a dark
+/// fill (a run-3 game's gold primary read 1.5:1 on neon); the accent
+/// badge's ink (`highlight`, the style's) left on the game's wash.
+#[test]
+fn a_games_primary_colour_keeps_its_button_label_readable_on_every_pack() {
+    let primaries = [
+        ("gold", Srgba::rgb(255, 199, 94)),
+        ("navy", Srgba::rgb(26, 51, 153)),
+        ("mint", Srgba::rgb(110, 220, 170)),
+        ("crimson", Srgba::rgb(190, 30, 50)),
+    ];
+    let mut failing = Vec::new();
+    for (name, dir) in packs() {
+        let file = parse_style(&std::fs::read_to_string(dir.join("style.ogt")).expect("style.ogt"))
+            .expect("parses");
+        let atlas = image::open(dir.join("atlas.png"))
+            .expect("atlas.png")
+            .to_rgba8();
+        let tex = atlas_handle();
+        for (cname, c) in primaries {
+            let theme = file.theme(Some(tex), [0; 6]).with_primary(c);
+            let mut scene = RenderScene::new();
+            let mut ui = ui_with_font(add_test_font(&mut scene));
+            ui.set_theme(theme);
+            let panel = theme.palette.panel;
+            for _ in 0..40 {
+                ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+                ui.panel(
+                    "G",
+                    PanelDesc {
+                        background: Some(panel),
+                        ..PanelDesc::default()
+                    },
+                    |ui| {
+                        ui.badge("New", "New best", Tone::Primary);
+                        ui.button(
+                            "Play",
+                            "Play",
+                            // Large, as a title's play button: its label's
+                            // centre sits on the slice's middle, not a seam.
+                            ButtonDesc {
+                                variant: ButtonVariant::Primary,
+                                size: ControlSize::Large,
+                                ..ButtonDesc::default()
+                            },
+                        );
+                    },
+                );
+                ui.end();
+            }
+            let (ink, ground) = measured(&ui, "Play", rgb(theme.palette.backdrop), tex, &atlas);
+            let r = ratio(ink, ground);
+            if r < 7.0 {
+                failing.push(format!("{name} with {cname}: {r:.2}:1"));
+            }
+            let (ink, ground) = measured(&ui, "New best", rgb(theme.palette.backdrop), tex, &atlas);
+            let r = ratio(ink, ground);
+            if r < 4.5 {
+                failing.push(format!("{name} with {cname}, its accent badge: {r:.2}:1"));
+            }
+        }
+    }
+    assert!(
+        failing.is_empty(),
+        "primary labels under 7:1 as drawn: {failing:?}"
+    );
+}
+
 #[test]
 fn every_style_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
     let mut rows = Vec::new();

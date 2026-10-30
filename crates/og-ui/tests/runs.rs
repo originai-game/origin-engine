@@ -23,6 +23,10 @@
 //! - a mixed label's runs placed by the role face's extents alone, so a
 //!   taller fallback face rises out of the line box (or each run on a
 //!   baseline of its own) → `a_mixed_labels_runs_share_a_baseline_that_holds_every_face`
+//! - a style's Chinese companion passed over for the locale's face (which
+//!   cooked the same characters), the role's Latin given to the companion,
+//!   or the display role taking the body's companion →
+//!   `a_styles_cjk_companion_draws_its_chinese`
 //! - a `[wave]`, `[shake]` or `[pulse]` span that mixes faces drawn still,
 //!   or its runs drawn from the wrong face when they move →
 //!   `a_moving_span_that_mixes_faces_moves`
@@ -438,4 +442,86 @@ fn a_moving_span_that_mixes_faces_moves() {
     ui.end();
     let still = commands(ui.frame());
     assert_eq!(still.len(), 2, "{still:?}");
+}
+
+#[test]
+fn a_styles_cjk_companion_draws_its_chinese() {
+    let mut scene = RenderScene::new();
+    let f = faces(&mut scene);
+    // The style's body and display companions as the engine ships them: an
+    // atlas without the Chinese (ASCII here) and the font file, whose
+    // glyphs render at run time.
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../templates/game/assets/fonts/NotoSansSC-Regular-subset.ttf"
+    );
+    let file = FontFile::new(Arc::new(
+        std::fs::read(path).expect("the template's Chinese font"),
+    ))
+    .expect("a font rustybuzz reads");
+    let (png, json, csv) = test_font_files();
+    let ascii: String = csv
+        .lines()
+        .filter(|l| {
+            l.split(',')
+                .next()
+                .and_then(|c| c.trim().parse::<u32>().ok())
+                .is_some_and(|c| c < 0x80)
+        })
+        .map(|l| format!("{l}\n"))
+        .collect();
+    let companion = |scene: &mut RenderScene| {
+        let mut c = add_font(
+            scene,
+            &FontFiles {
+                png: &png,
+                json: &json,
+                csv: &ascii,
+            },
+        );
+        c.metrics = c.metrics.clone().with_file(Some(file.clone()));
+        c
+    };
+    let (text_cjk, title_cjk) = (companion(&mut scene), companion(&mut scene));
+    assert!(!text_cjk.metrics.in_atlas('原') && text_cjk.metrics.has('原'));
+    let mut fonts = Fonts {
+        body: f.latin.clone(),
+        display: Some(f.latin.clone()),
+        cjk: Some(text_cjk.clone()),
+        cjk_display: Some(title_cjk.clone()),
+        // The locale's face has every character cooked.
+        chain: vec![f.cjk.clone()],
+        ..Fonts::default()
+    };
+    fonts.link();
+    for (role, companion) in [(FontRole::Body, &text_cjk), (FontRole::Display, &title_cjk)] {
+        let font = fonts.for_text(role, "Score 原点");
+        assert!(
+            font.metrics.is_mixed(),
+            "{role:?}: Latin and Chinese laid out per run"
+        );
+        assert_eq!(runs(&font.metrics, "Score 原点"), [0, 0, 0, 0, 0, 0, 1, 1]);
+        assert_eq!(
+            font.handle_of(0),
+            f.latin.handle,
+            "{role:?}: Latin from the role's face"
+        );
+        assert_eq!(
+            font.handle_of(1),
+            companion.handle,
+            "{role:?}: Chinese from its companion"
+        );
+        // A label all in Chinese takes the companion too, not the locale's face.
+        let whole = fonts.for_text(role, "原点");
+        assert_eq!(runs(&whole.metrics, "原点"), [1, 1]);
+        assert_eq!(whole.handle_of(1), companion.handle);
+    }
+    // Without companions the locale's face sets a Chinese label whole, as before.
+    let mut plain = Fonts {
+        body: f.latin.clone(),
+        chain: vec![f.cjk.clone()],
+        ..Fonts::default()
+    };
+    plain.link();
+    assert_eq!(plain.for_text(FontRole::Body, "原点").handle, f.cjk.handle);
 }

@@ -42,6 +42,12 @@ pub struct FontMetrics {
     /// This font with the UI's other fonts after it (`runs`): what a text
     /// of this role takes when it mixes scripts ([`crate::Fonts::link`]).
     pub(crate) mixed: Option<Arc<UiFont>>,
+    /// How many of `runs`, first first, a character takes when their atlas
+    /// or file has it, ahead of a later font's atlas: the style's CJK
+    /// companion ([`crate::Fonts::companions`]), whose glyphs render at run
+    /// time, keeps its Chinese over a locale face that cooked the same
+    /// characters. 0: the atlas first, as for every other font.
+    pub(crate) prefer: usize,
 }
 
 /// One glyph of a line as drawn, left to right.
@@ -133,6 +139,7 @@ impl FontMetrics {
             file: None,
             runs: None,
             mixed: None,
+            prefer: 0,
         }
     }
 
@@ -148,6 +155,7 @@ impl FontMetrics {
             file: None,
             runs: None,
             mixed: None,
+            prefer: 0,
         }
     }
 
@@ -250,10 +258,18 @@ impl FontMetrics {
         {
             return p;
         }
-        (0..n)
-            .find(|&k| m(k).in_atlas(c))
+        self.preferred(|k| m(k).own_has(c))
+            .or_else(|| (0..n).find(|&k| m(k).in_atlas(c)))
             .or_else(|| (0..n).find(|&k| m(k).own_has(c)))
             .unwrap_or(prev.unwrap_or(0))
+    }
+
+    /// The first of this font and its `prefer` preferred runs (none when
+    /// `prefer` is 0) that `takes`.
+    fn preferred(&self, takes: impl Fn(usize) -> bool) -> Option<usize> {
+        (self.prefer > 0)
+            .then(|| (0..=self.prefer).find(|&k| takes(k)))
+            .flatten()
     }
 
     /// The font (as [`FontMetrics::font_of`]) that draws a grapheme
@@ -279,8 +295,8 @@ impl FontMetrics {
             return k;
         }
         let n = runs.len() + 1;
-        (0..n)
-            .find(|&f| drawn().all(|c| m(f).in_atlas(c)))
+        self.preferred(|f| drawn().all(|c| m(f).own_has(c)))
+            .or_else(|| (0..n).find(|&f| drawn().all(|c| m(f).in_atlas(c))))
             .or_else(|| (0..n).find(|&f| drawn().all(|c| m(f).own_has(c))))
             .unwrap_or(k)
     }
@@ -688,6 +704,7 @@ impl UiFont {
         let mut f = self.clone();
         f.metrics.runs = None;
         f.metrics.mixed = None;
+        f.metrics.prefer = 0;
         f
     }
 }

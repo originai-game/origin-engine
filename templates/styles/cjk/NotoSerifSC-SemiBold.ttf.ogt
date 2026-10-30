@@ -1,0 +1,12 @@
+type import
+version 1
+---
+# A style's Chinese companion: CJK punctuation cooked, every other character
+# rendered from the outlines at run time (og-ui README §Text), so a game pays
+# only for the characters it shows. px_range 8 holds a style's textWeight.
+font {
+  charset cjk-punct
+  em_px 48
+  px_range 8
+  runtime true
+}

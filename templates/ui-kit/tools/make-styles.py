@@ -21,7 +21,9 @@ templates/styles/<name>/ (the cook compiles them in; a look names one with
   alpha is coverage.
 - style.ogt: the style (og-ui's `parse_style` grammar): every palette role,
   the radii, the type ramp, the fonts, the atlas and its slices, the motion.
-  No CJK fallback font: a game adds its own (UiDesc.fallbackFonts).
+  Chinese comes from the pack's companions, `cjk` (body and numbers) and
+  `cjkDisplay` (titles), shared Simplified Chinese faces in
+  templates/styles/cjk/ chosen to match each pack's Latin voice.
 
 The fonts next to them are SIL OFL 1.1 files copied (or subset to Latin-1
 with fontTools) by hand; LICENSES.md and OFL.txt in each directory say which.
@@ -360,7 +362,7 @@ def pixel_pack():
         ramp=dict(xs=(12, 16), meta=(13, 18), caption=(13, 18), sm=(14, 18), body=(16, 20), reading=(16, 22), base=(16, 22),
                   lg=(18, 24), xl=(22, 28), xl2=(24, 28), xl3=(28, 32), displaySm=(32, 36), displayMd=(36, 40), displayLg=(44, 48)),
         durations=dict(instant=80, fast=120, base=160, slow=320),
-        fonts=dict(body="DotGothic16-Regular.ttf", display="DotGothic16-Regular.ttf", numeric="DotGothic16-Regular.ttf"),
+        fonts=dict(body="DotGothic16-Regular.ttf", display="DotGothic16-Regular.ttf", numeric="DotGothic16-Regular.ttf", cjk="FusionPixel12-zhHans.ttf", cjkDisplay="FusionPixel12-zhHans.ttf"),
         slices=dict(panel=(8,), card=(4,), button=(6,), buttonHover=(6,), buttonPressed=(6,), buttonDisabled=(6,),
                     field=(4,), slot=(4,), tooltip=(4,), hud=(4,), track=(4,), fill=(4,)),
         scale=1, divider=(128, 24, "line"), flourish=(32, 12, "primary", 0),
@@ -425,7 +427,7 @@ def cartoon_pack():
         ramp=dict(body=(15, 20), meta=(13, 18), caption=(13, 18), lg=(19, 26), xl=(22, 28), xl2=(26, 30), xl3=(30, 34),
                   displaySm=(32, 36), displayMd=(40, 44), displayLg=(52, 56)),
         durations=dict(instant=110, fast=160, base=280, slow=420),
-        fonts=dict(body="Fredoka-SemiBold.ttf", display="LilitaOne-Regular.ttf", numeric="LilitaOne-Regular.ttf"),
+        fonts=dict(body="Fredoka-SemiBold.ttf", display="LilitaOne-Regular.ttf", numeric="LilitaOne-Regular.ttf", cjk="ZCOOLKuaiLe-Regular.ttf", cjkDisplay="ZCOOLKuaiLe-Regular.ttf"),
         slices=dict(panel=(16,), card=(14,), button=(12,), buttonHover=(12,), buttonPressed=(12,), buttonDisabled=(12,),
                     field=(10,), slot=(10,), tooltip=(10,), hud=(10,), track=(7,), fill=(7,)),
         scale=1, divider=(48, 16, "primary"), flourish=(22, 10, "primary", 2),
@@ -529,7 +531,7 @@ def fantasy_pack():
         ramp=dict(body=(15, 22), meta=(13, 18), caption=(13, 18), reading=(16, 24), lg=(19, 26), xl=(22, 28), xl2=(24, 30),
                   xl3=(28, 32), displaySm=(28, 34), displayMd=(34, 40), displayLg=(42, 48)),
         durations=dict(fast=200, base=300, slow=480),
-        fonts=dict(body="Newsreader-Medium.ttf", display="Cinzel-Bold.ttf", numeric="Cinzel-Bold.ttf"),
+        fonts=dict(body="Newsreader-Medium.ttf", display="Cinzel-Bold.ttf", numeric="Cinzel-Bold.ttf", cjk="NotoSerifSC-SemiBold.ttf", cjkDisplay="NotoSerifSC-SemiBold.ttf"),
         slices=dict(panel=(16, "authored"), card=(10, "authored"), button=(10,), buttonHover=(10,), buttonPressed=(10,),
                     buttonDisabled=(10,), field=(8,), slot=(10,), tooltip=(8,), hud=(12,), track=(6,), fill=(6,)),
         scale=1, corner=(28, 28, "authored", 6), corners=["panel"], divider=(112, 20, "authored"), flourish=(48, 18, "authored", 0),
@@ -616,7 +618,7 @@ def scifi_pack():
         ramp=dict(body=(14, 20), meta=(12, 16), caption=(12, 16), lg=(17, 24), xl=(19, 26), xl2=(22, 28), xl3=(26, 30),
                   displaySm=(26, 32), displayMd=(32, 38), displayLg=(38, 44)),
         durations=dict(instant=90, fast=140, base=220, slow=360),
-        fonts=dict(body="ChakraPetch-Medium.ttf", display="Orbitron-Bold.ttf", numeric="JetBrainsMono-Regular.ttf"),
+        fonts=dict(body="ChakraPetch-Medium.ttf", display="Orbitron-Bold.ttf", numeric="JetBrainsMono-Regular.ttf", cjk="NotoSansSC-Regular.ttf", cjkDisplay="NotoSansSC-Bold.ttf"),
         slices=dict(panel=(18,), card=(12,), button=(12,), buttonHover=(12,), buttonPressed=(12,), buttonDisabled=(12,),
                     field=(8,), slot=(10,), tooltip=(8,), hud=(10,), track=(5,), fill=(2,)),
         scale=1, corner=(18, 18, "primary", 4), corners=["panel", "card", "slot"], divider=(128, 24, "primary"), flourish=(32, 14, "primary", 0),
@@ -692,7 +694,7 @@ def paper_pack():
         ramp=dict(body=(15, 22), meta=(13, 18), caption=(13, 18), reading=(16, 25), lg=(19, 26), xl=(22, 30),
                   xl2=(26, 32), xl3=(30, 36), displaySm=(30, 36), displayMd=(38, 44), displayLg=(48, 54)),
         durations=dict(fast=180, base=260, slow=420),
-        fonts=dict(body="InstrumentSans-Regular.ttf", display="Newsreader-SemiBold.ttf", numeric="PTMono-Regular.ttf"),
+        fonts=dict(body="InstrumentSans-Regular.ttf", display="Newsreader-SemiBold.ttf", numeric="PTMono-Regular.ttf", cjk="NotoSansSC-Regular.ttf", cjkDisplay="NotoSerifSC-SemiBold.ttf"),
         slices=dict(panel=(12,), card=(10,), button=(12,), buttonHover=(12,), buttonPressed=(12,), buttonDisabled=(12,),
                     field=(8,), slot=(8,), tooltip=(8,), hud=(14,), track=(7,), fill=(7,)),
         scale=1, divider=(120, 18, "ink"), flourish=(22, 10, "primary", 2),
@@ -724,7 +726,9 @@ def neon_pack():
             cv.rgba[..., c] = body * (rgb[c] if isinstance(rgb, tuple) else 1)
         cv.rgba[..., 3] = inside * body_a
         ring = np.abs(d)
-        glow = np.where(ring < line / 2, 1.0, np.exp(-((ring - line / 2) / halo) ** 2) * 0.7)
+        # A tube's halo stays near its line: neon marks the edge, it does
+        # not wash the screen (the catalogue's "avoid glow on everything").
+        glow = np.where(ring < line / 2, 1.0, np.exp(-((ring - line / 2) / halo) ** 2) * 0.5)
         cv.paint(glow, rgb)
         return cv.image()
 
@@ -735,16 +739,16 @@ def neon_pack():
         d = sd_box(cv.px, cv.py, m, m, w - m, h - m, r)
         cv.paint(cv.inside(d), hexc("#120a24"), 0.93)
         ring = np.abs(d)
-        cv.paint(np.where(ring < 1.2, 1.0, np.exp(-((ring - 1.2) / 4) ** 2) * 0.75), MAGENTA)
+        cv.paint(np.where(ring < 1.0, 0.85, np.exp(-((ring - 1.0) / 2.5) ** 2) * 0.4), MAGENTA)
         d2 = sd_box(cv.px, cv.py, m + 5, m + 5, w - m - 5, h - m - 5, max(0, r - 4))
-        cv.paint(cv.inside(np.abs(d2) - 0.5), CYAN, 0.75)
+        cv.paint(cv.inside(np.abs(d2) - 0.5), CYAN, 0.35)
         return cv.image()
 
     p["panel"] = two_tone(96, 96, 14)
     p["card"] = tube(64, 64, 10, line=1.6, halo=3.0, body=0.1, body_a=0.86)
-    p["button"] = tube(48, 48, 12, line=2.0, halo=3.5, body=0.22, body_a=0.9)
-    p["buttonHover"] = tube(48, 48, 12, line=2.6, halo=4.5, body=0.32, body_a=0.94)
-    p["buttonPressed"] = tube(48, 48, 12, line=3.0, halo=5.0, body=0.55, body_a=1.0)
+    p["button"] = tube(48, 48, 12, line=1.8, halo=2.2, body=0.22, body_a=0.9)
+    p["buttonHover"] = tube(48, 48, 12, line=2.2, halo=3.0, body=0.32, body_a=0.94)
+    p["buttonPressed"] = tube(48, 48, 12, line=2.6, halo=3.2, body=0.55, body_a=1.0)
     p["buttonDisabled"] = tube(48, 48, 12, line=1.2, halo=1.5, body=0.18, body_a=0.8)
     p["field"] = tube(48, 48, 6, line=1.4, halo=2.5, body=0.08, body_a=0.94)
     p["slot"] = tube(48, 48, 8, line=1.4, halo=2.5, body=0.12, body_a=0.88)
@@ -787,14 +791,17 @@ def neon_pack():
         ramp=dict(body=(15, 20), meta=(13, 18), caption=(13, 18), lg=(19, 24), xl=(22, 28), xl2=(26, 30), xl3=(30, 34),
                   displaySm=(32, 36), displayMd=(40, 44), displayLg=(50, 54)),
         durations=dict(instant=90, fast=140, base=220, slow=380),
-        fonts=dict(body="Rajdhani-Bold.ttf", display="ChakraPetch-BoldItalic.ttf", numeric="Orbitron-Medium.ttf"),
+        fonts=dict(body="Rajdhani-Bold.ttf", display="ChakraPetch-BoldItalic.ttf", numeric="ChakraPetch-SemiBold.ttf", cjk="NotoSansSC-Bold.ttf", cjkDisplay="NotoSansSC-Bold.ttf"),
         slices=dict(panel=(22, "authored"), card=(14,), button=(16,), buttonHover=(16,), buttonPressed=(16,), buttonDisabled=(16,),
                     field=(10,), slot=(12,), tooltip=(10,), hud=(14,), track=(6,), fill=(6,)),
         scale=1, corner=(20, 20, "primary", 2), corners=["card"], divider=(128, 24, "primary"), flourish=(36, 16, "primary", 0),
-        tile=(48, 48, 0.12, 10, ["panel"]),
-        shadows=dict(panel=(0, 0, 0, 0, "#00000000")),
-        glows=dict(button=(6, "primary", 0.35), hud=(4, "primary", 0.25), panel=(14, "primary", 0.18), slot=(3, "focus", 0.2)),
-        text=dict(textGlow=[("display", 2.0, "primary", 0.7), ("numeric", 1.2, "focus", 0.5)]),
+        # Glow marks what is lit, not everything (the catalogue's "avoid glow
+        # on everything"): the primary button and the display title glow;
+        # panels, the HUD and numbers stay crisp, the grid tile a whisper.
+        tile=(48, 48, 0.05, 10, ["panel"]),
+        shadows=dict(panel=(0, 6, 18, 0, "#000000a0")),
+        glows=dict(button=(4, "primary", 0.22), slot=(3, "focus", 0.16)),
+        text=dict(textGlow=[("display", 1.4, "primary", 0.45)]),
         press=(0.96, 0.96, 0), hover=(0, 1.04),
         motion=dict(enter="pop", stagger=35, toast="slideLeft", progress=260, shake=7, pop=0.16),
         icons="neon",
@@ -827,7 +834,7 @@ def region(name):
     return f"{x} {y} {w} {h}"
 
 
-def style_text(s, d):
+def style_text(s, d, parts=None):
     n = s["name"]
     L = [
         "type style",
@@ -849,6 +856,9 @@ def style_text(s, d):
         f'  body "{s["fonts"]["body"]}"',
         f'  display "{s["fonts"]["display"]}"',
         f'  numeric "{s["fonts"]["numeric"]}"',
+        # Chinese in the style's voice: the shared companions (templates/styles/cjk).
+        f'  cjk "@styles/cjk/{s["fonts"]["cjk"]}"',
+        f'  cjkDisplay "@styles/cjk/{s["fonts"]["cjkDisplay"]}"',
         "}",
         f'icons "icons.png" 8 4 {{',
         "  names " + " ".join(f'"{i}"' for i in ICONS),
@@ -858,6 +868,17 @@ def style_text(s, d):
         border = spec[0]
         mode = spec[1] if len(spec) > 1 else "tint"
         L.append(f"slice {part} {region(part)} {border} {mode}")
+        # A frame whose centre is not white and opaque: its mean, linear
+        # RGB and alpha, so og-ui picks label ink that reads on what it
+        # draws (og cook measures it the same way for a style without it).
+        if parts is not None:
+            c = to8(parts[part])[border:-border or None, border:-border or None] / 255.0
+            lin = np.where(c[..., :3] <= 0.04045, c[..., :3] / 12.92, ((c[..., :3] + 0.055) / 1.055) ** 2.4)
+            a = c[..., 3:4]
+            rgb = (lin * a).reshape(-1, 3).sum(0) / max(float(a.sum()), 1e-6)
+            alpha = float(a.mean())
+            if min(*rgb, alpha) < 0.98:
+                L.append(f"tone {part} {rgb[0]:.3f} {rgb[1]:.3f} {rgb[2]:.3f} {alpha:.2f}")
     L.append(f"soft {region('soft')} 24")
     if s.get("corner"):
         w, h, ink, off = s["corner"]
@@ -963,7 +984,7 @@ def main():
         build_atlas(parts).save(os.path.join(d, "atlas.png"), optimize=True)
         icon_sheet(s["icons"]).save(os.path.join(d, "icons.png"), optimize=True)
         with open(os.path.join(d, "style.ogt"), "w") as f:
-            f.write(style_text(s, d))
+            f.write(style_text(s, d, parts))
         for name in ("atlas.png", "icons.png"):
             with open(os.path.join(d, name + ".ogt"), "w") as f:
                 f.write("type import\nversion 1\n---\n# Sharp art: UASTC.\ntexture {\n  kind "

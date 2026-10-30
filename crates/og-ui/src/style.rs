@@ -11,6 +11,11 @@ pub use crate::theme::{
 /// drawn on (a badge, a meter's label): WCAG's 4.5:1 for body text.
 pub const READABLE: f32 = 4.5;
 
+/// The contrast a button's label holds on its fill as drawn: WCAG AAA's
+/// 7:1, the packs' bar (a small MSDF label over shaded art reads about a
+/// third lower in the frame, where og polish holds it to 4.5:1).
+pub const BUTTON_READABLE: f32 = 7.0;
+
 impl Srgba {
     /// Linear RGBA (straight alpha), what og-render's sprites and text take.
     pub fn linear(self) -> [f32; 4] {
@@ -51,6 +56,22 @@ impl Srgba {
             mix(self.rgb[1], below.rgb[1]),
             mix(self.rgb[2], below.rgb[2]),
         )
+    }
+
+    /// A colour from linear RGBA (straight alpha), rounded to 8-bit sRGB.
+    pub fn from_linear(c: [f32; 4]) -> Srgba {
+        let e = |v: f32| {
+            let s = if v <= 0.003_130_8 {
+                v * 12.92
+            } else {
+                1.055 * v.powf(1.0 / 2.4) - 0.055
+            };
+            (s.clamp(0.0, 1.0) * 255.0).round() as u8
+        };
+        Srgba {
+            rgb: [e(c[0]), e(c[1]), e(c[2])],
+            alpha: c[3].clamp(0.0, 1.0),
+        }
     }
 
     /// This colour composited over an opaque `below` in linear light, as
@@ -381,9 +402,12 @@ impl Theme {
     /// This theme with a game's own primary colour: its hover and active
     /// tones 15 % towards either end of the scale (a dark primary lightens
     /// hovered and darkens pressed, a light one the other way),
-    /// its soft wash at the palette's alpha, and the ink on it whichever of
-    /// the palette's `ink` and `inkInverse` reads better. `highlight` and
-    /// `focus` are the style's own and stay.
+    /// its soft wash at the palette's alpha, its `highlight` (the accent
+    /// ink on that wash: the primary moved towards the scheme's ink until it
+    /// reads 5:1 there, so a gold game's badges are gold, not the style's
+    /// pink), and the ink on
+    /// it whichever of the palette's `ink` and `inkInverse` reads better.
+    /// `focus` is the style's own and stays.
     pub fn with_primary(mut self, primary: Srgba) -> Theme {
         let a = Srgba {
             alpha: 1.0,
@@ -403,6 +427,21 @@ impl Theme {
             alpha: p.primary_soft.alpha,
             ..a
         };
+        // The accent ink: the primary moved towards the scheme's ink as
+        // little as it takes to read on its own wash over a panel (with a
+        // margin: the wash sits on frame art, not the flat panel).
+        let wash = p.primary_soft.over_linear(p.panel);
+        p.highlight = a
+            .readable_on(wash, READABLE + 0.5)
+            .filter(|c| {
+                (c.luminance() > wash.luminance()) == (p.ink.luminance() > wash.luminance())
+            })
+            .unwrap_or_else(|| {
+                (1..=20)
+                    .map(|n| a.mix(p.ink, n as f32 * 0.05))
+                    .find(|c| c.contrast(wash) >= READABLE + 0.5)
+                    .unwrap_or(p.ink)
+            });
         p.on_primary = if a.contrast(p.ink) >= a.contrast(p.ink_inverse) {
             p.ink
         } else {

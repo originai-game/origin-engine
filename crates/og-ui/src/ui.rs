@@ -120,6 +120,14 @@ pub struct Fonts {
     /// Levels and scores (`FontRole::Rounded`).
     pub rounded: Option<UiFont>,
     pub fallback: Option<UiFont>,
+    /// The style's Chinese companions: `cjk` beside body and the numeric
+    /// role, `cjk_display` beside display and rounded (`cjk` when unset).
+    /// A text of a role with a companion takes its Latin from the role's
+    /// face and its Chinese from the companion, ahead of the locale's and
+    /// the game's fonts, so Chinese matches the style's voice instead of
+    /// a neutral fallback face ([`Fonts::for_text`]).
+    pub cjk: Option<UiFont>,
+    pub cjk_display: Option<UiFont>,
     /// The active locale's fonts, first first.
     pub chain: Vec<UiFont>,
     /// The game's fonts for other scripts (`UiDesc.fallbackFonts`), tried
@@ -163,6 +171,15 @@ impl Fonts {
         };
         if cooked(f) {
             return f;
+        }
+        // The style's companion draws what the role's face lacks.
+        if let Some(c) = self.companion(role)
+            && let Some(m) = f.metrics.mixed.as_deref()
+            && text
+                .chars()
+                .any(|ch| !ch.is_whitespace() && !f.metrics.in_atlas(ch) && c.metrics.has(ch))
+        {
+            return m;
         }
         if let Some(c) = self.chain.iter().find(|c| cooked(c)) {
             return c;
@@ -213,19 +230,44 @@ impl Fonts {
             .chain(self.fallback.as_ref())
             .map(UiFont::alone)
             .collect();
-        let others: Option<std::sync::Arc<[UiFont]>> = (!others.is_empty()).then(|| others.into());
+        let linked = |companion: Option<&UiFont>| -> Option<std::sync::Arc<[UiFont]>> {
+            let all: Vec<UiFont> = companion
+                .map(UiFont::alone)
+                .into_iter()
+                .chain(others.iter().cloned())
+                .collect();
+            (!all.is_empty()).then(|| all.into())
+        };
+        let text_runs = linked(self.companion(FontRole::Body));
+        let display_runs = linked(self.companion(FontRole::Display));
+        let (text_prefer, display_prefer) = (
+            usize::from(self.companion(FontRole::Body).is_some()),
+            usize::from(self.companion(FontRole::Display).is_some()),
+        );
         let roles = [
-            Some(&mut self.body),
-            self.display.as_mut(),
-            self.mono.as_mut(),
-            self.rounded.as_mut(),
+            (Some(&mut self.body), &text_runs, text_prefer),
+            (self.display.as_mut(), &display_runs, display_prefer),
+            (self.mono.as_mut(), &text_runs, text_prefer),
+            (self.rounded.as_mut(), &display_runs, display_prefer),
         ];
-        for f in roles.into_iter().flatten() {
-            f.metrics.mixed = others.as_ref().map(|o| {
+        for (f, runs, prefer) in roles {
+            let Some(f) = f else { continue };
+            f.metrics.mixed = runs.as_ref().map(|o| {
                 let mut m = f.alone();
                 m.metrics.runs = Some(o.clone());
+                m.metrics.prefer = prefer;
                 std::sync::Arc::new(m)
             });
+        }
+    }
+
+    /// The style's Chinese companion of `role` ([`Fonts::cjk`]).
+    pub fn companion(&self, role: FontRole) -> Option<&UiFont> {
+        match role {
+            FontRole::Body | FontRole::Mono => self.cjk.as_ref(),
+            FontRole::Display | FontRole::Rounded => {
+                self.cjk_display.as_ref().or(self.cjk.as_ref())
+            }
         }
     }
 }
@@ -1486,11 +1528,23 @@ impl Ui {
     /// Text in MSDF, wrapping at its width unless `nowrap`.
     pub fn label(&mut self, id: impl Into<Id>, text: &str, desc: LabelDesc) {
         let t = self.theme;
+        // A centred or end-aligned label left to fit its text in a column
+        // takes the column's width, as a CSS block does: aligned in a box
+        // only as wide as its text, it would sit at the column's start.
+        let in_column = self
+            .stack
+            .last()
+            .is_some_and(|&p| self.nodes[p].el.direction == Direction::Column);
+        let width = if desc.align != TextAlign::Start && desc.width == Size::fit() && in_column {
+            Size::grow()
+        } else {
+            desc.width
+        };
         let i = self.leaf(
             "label",
             id.into(),
             Element {
-                width: desc.width,
+                width,
                 ..Element::default()
             },
         );
@@ -1592,9 +1646,6 @@ impl Ui {
                 ),
             }
         };
-        let mut content = self.text_content(text, t.type_ramp.body, fg);
-        content.align = TextAlign::Center;
-        content.wrap = false;
         let part = if desc.disabled {
             StylePart::ButtonDisabled
         } else if r.pressed {
@@ -1604,6 +1655,51 @@ impl Ui {
         } else {
             StylePart::Button
         };
+        // A style's tinted button art darkens (or fades) the fill: the label
+        // reads at 7:1 on the fill as drawn (the packs' bar, which keeps 4.5:1
+        // in the frame once MSDF strokes thin it), so a game's own primary colour over a
+        // dark neon body keeps a light label instead of the flat token's ink.
+        // A fill in the middle of the scale (a game's crimson) that neither
+        // end of the scale reads 7:1 on moves away from the better ink, as
+        // little as it takes, so the colour stays the game's.
+        let (bg, fg) = match (bg, t.art.slice(part)) {
+            // Only art whose centre the style measured (`tone`): untoned
+            // art is the style's to judge.
+            (Some(fill), Some(s))
+                if s.tone != Slice::WHITE
+                    && !desc.disabled
+                    && desc.variant != ButtonVariant::Danger =>
+            {
+                let behind = self.behind(i);
+                let drawn = |c: Srgba| s.drawn(c).unwrap_or(c).over_linear(behind);
+                let bar = crate::style::BUTTON_READABLE;
+                match fg.readable_on(drawn(fill), bar) {
+                    Some(ink) => (Some(fill), ink),
+                    None => {
+                        let ground = drawn(fill);
+                        let ink = if p.ink.contrast(ground) >= p.ink_inverse.contrast(ground) {
+                            p.ink
+                        } else {
+                            p.ink_inverse
+                        };
+                        let away = if ink.luminance() > ground.luminance() {
+                            Srgba::BLACK
+                        } else {
+                            Srgba::WHITE
+                        };
+                        let moved = (1..=20)
+                            .map(|n| fill.mix(away, n as f32 * 0.05))
+                            .find(|c| ink.contrast(drawn(*c)) >= bar)
+                            .unwrap_or(away);
+                        (Some(moved), ink)
+                    }
+                }
+            }
+            _ => (bg, fg),
+        };
+        let mut content = self.text_content(text, t.type_ramp.body, fg);
+        content.align = TextAlign::Center;
+        content.wrap = false;
         let press = self.button_motion(i, r, refused);
         let n = &mut self.nodes[i];
         n.el.background = bg;
@@ -2579,6 +2675,24 @@ impl Ui {
             let (r, c) = (&n.rect, &n.clip);
             let outside =
                 r.x > c.right() || r.right() < c.x || r.y > c.bottom() || r.bottom() < c.y;
+            // A control laid out past the screen's edge with no scroller to
+            // bring it back (a menu taller than a landscape phone): the
+            // player cannot reach it, so the frame says which and by how much.
+            if n.el.interactive && scroller_of[i] == 0 && !r.is_empty() && !n.inert {
+                let cut = (screen.x - r.x)
+                    .max(r.right() - screen.right())
+                    .max(screen.y - r.y)
+                    .max(r.bottom() - screen.bottom());
+                if cut > 1.0 {
+                    self.warnings.push(format!(
+                        "'{}' is laid out {:.0} px past the {}x{} screen and nothing scrolls to it: fit the screen (a smaller type step, fewer rows, a row instead of a column) or put it in a scroll container",
+                        self.path_of(i),
+                        cut,
+                        screen.width,
+                        screen.height
+                    ));
+                }
+            }
             let mut flags = 0u8;
             if n.scrolls() && !n.el.interactive {
                 flags |= HIT_SCROLL;
@@ -3765,7 +3879,16 @@ impl Ui {
         let mut fills = Vec::new();
         let mut j = self.nodes[i].parent;
         while j != NONE {
-            if let Some(bg) = self.nodes[j].el.background {
+            if let Some(mut bg) = self.nodes[j].el.background {
+                // A styled frame draws its art's centre (`tone`), not the flat fill.
+                if let Some(d) = self.nodes[j]
+                    .el
+                    .frame
+                    .and_then(|f| self.theme.art.slice(f))
+                    .and_then(|s| s.drawn(bg))
+                {
+                    bg = d;
+                }
                 fills.push(bg);
                 if bg.alpha >= 1.0 {
                     break;

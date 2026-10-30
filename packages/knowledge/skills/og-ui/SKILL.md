@@ -478,6 +478,15 @@ Fonts (the one rule for every label, field and button):
 
 1. The role's font (body, display, mono, rounded; the style's or
    `og.ui.configure`'s) when it has every character: the whole label in it.
+   A style with Chinese companions (`fonts { cjk cjkDisplay }`; every
+   built-in style has them, matched to its Latin voice: Noto Serif SC for
+   fantasy, ZCOOL KuaiLe for cartoon, Fusion Pixel for pixel, Noto Sans SC
+   Bold for neon) sets a label's Chinese in its companion and its Latin in
+   the role's face, ahead of steps 2 and 3, so a Chinese title is not
+   Noto Sans Regular beside a display face. The cook brings the companions
+   only into a game with a `zh` string table. A game's own style names
+   them as `cjk "@styles/cjk/NotoSerifSC-SemiBold.ttf"` (the faces:
+   templates/styles/cjk/LICENSES.md).
 2. Else the first of the locale's fonts (its string table's `fonts` line)
    that has every character: the whole label in that face, its Latin and
    digits too. A CJK subset that carries Latin-1, as the archetypes cook

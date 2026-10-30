@@ -5009,7 +5009,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `anchor` | `Anchor` | `"topLeft"` | — | — | — | Where it sits. |
-| `margin` | `number \| null` | `null` | — | — | — | The inset from the safe area's edges; null is the density's gutter. |
+| `margin` | `number \| null` | `null` | — | — | — | The inset from the safe area's edges, the same on every edge: a margin wide enough to keep a top-left HUD over a centred portrait play field also pushes it that far down (use offsetX for the sideways shift, or a width); null is the density's gutter. |
 | `offsetX` | `number` | `0` | — | `cssPx` | — | Moves it right after placing. |
 | `offsetY` | `number` | `0` | — | `cssPx` | — | Moves it down after placing. |
 | `direction` | `Direction` | `"row"` | — | — | — | Which way it lays out its children. |
@@ -5030,7 +5030,7 @@ struct AnchorDesc {
   doc "An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls)."
   desc true
   field anchor Anchor "Where it sits."
-  field margin Option.f32 "The inset from the safe area's edges; null is the density's gutter."
+  field margin Option.f32 "The inset from the safe area's edges, the same on every edge: a margin wide enough to keep a top-left HUD over a centred portrait play field also pushes it that far down (use offsetX for the sideways shift, or a width); null is the density's gutter."
   field offsetX f32 "Moves it right after placing." {
     unit cssPx
   }

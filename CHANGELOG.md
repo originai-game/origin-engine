@@ -13,6 +13,33 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+A patch: no IDL member added or removed (`AnchorDesc.margin`'s doc now says
+it insets every edge). Games on a built-in style look different, as below.
+
+- UI styles speak Chinese in their own voice: a style's `fonts` block takes
+  `cjk` and `cjkDisplay`, Simplified Chinese companions that set a label's
+  Chinese beside the role's Latin face, ahead of the locale's fonts. Every
+  built-in style names one matched to its Latin (templates/styles/cjk:
+  Noto Sans SC, Noto Serif SC, ZCOOL KuaiLe, Fusion Pixel; OFL), cooked in
+  only for a game with a `zh` string table, rendered at run time.
+- Button labels read on what is drawn: a style's `tone <part> r g b a` (the
+  frame art's centre; `og cook` measures it from the atlas when a style
+  does not set it) is what a button's label ink, and the ground any widget
+  reads through it, are judged against, at 7:1. A game's `primaryColor`
+  over a dark neon or scifi body keeps a light label, and a mid-scale
+  colour (crimson) moves away from its ink as little as it takes. The
+  accent `highlight` now follows the game's primary and reads 5:1 on its
+  wash.
+- A centred or end-aligned label in a column takes the column's width (it
+  sat at the start in a box as wide as its text).
+- `og.ui:` warns when a control is laid out past the screen's edge with no
+  scroll container to bring it back, naming it and by how much.
+- The neon style: its glow marks the button and the title only (no panel,
+  HUD or number glow; tighter tube halos, a fainter grid), and its numbers
+  are Chakra Petch SemiBold (Orbitron read 0 as Ø and 1 as 7).
+
 ## 0.7.4 — 2026-10-30
 
 A patch with the simulation unchanged (the golden replays): no IDL member

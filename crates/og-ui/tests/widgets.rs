@@ -1105,10 +1105,28 @@ fn a_game_primary_derives_its_hover_press_and_ink() {
         lemon.on_primary, dark.palette.ink_inverse,
         "dark ink on lemon"
     );
-    assert_eq!(
-        lemon.highlight, dark.palette.highlight,
-        "highlight is the style's own"
-    );
+    // The accent ink follows the game's colour (not the style's) and reads
+    // on its own wash over a panel; a hue in the middle of the scale moves
+    // towards the scheme's ink until it does.
+    for c in [
+        Srgba::rgb(0xf0, 0xe0, 0x60),
+        Srgba::rgb(0xbe, 0x1e, 0x32),
+        Srgba::rgb(0x20, 0x30, 0x80),
+    ] {
+        for base in [Theme::dark(), Theme::light()] {
+            let q = base.with_primary(c).palette;
+            assert_ne!(
+                q.highlight, base.palette.highlight,
+                "{c:?}: highlight follows the primary"
+            );
+            let wash = q.primary_soft.over_linear(q.panel);
+            assert!(
+                q.highlight.contrast(wash) >= 5.0,
+                "{c:?}: the accent reads {:.2}:1 on its wash",
+                q.highlight.contrast(wash)
+            );
+        }
+    }
     let hc = Theme::high_contrast(Scheme::Dark);
     assert_eq!(
         hc.palette.ink_muted, dark.palette.ink,
@@ -2356,4 +2374,57 @@ fn a_focused_zoom_view_takes_keys() {
     rig.key(UiKey::Equal, b);
     rig.idle(1, b);
     assert_eq!(zoom(&rig).zoom, 1.0);
+}
+
+/// A menu taller than the screen (a title menu on a landscape phone): the
+/// frame names the control the player cannot reach; the same menu in a
+/// scroll container, or on a screen it fits, raises nothing.
+#[test]
+fn a_control_past_the_screen_edge_with_nothing_to_scroll_to_it_is_named() {
+    let menu = |ui: &mut Ui, scrolls: bool| {
+        let rows = |ui: &mut Ui| {
+            for k in 0..6u32 {
+                ui.button(ui_idi("Item", k), "Play", ButtonDesc::default());
+            }
+        };
+        if scrolls {
+            ui.scroll(
+                "Menu",
+                ScrollDesc {
+                    height: Size::Fixed(110.0),
+                    ..ScrollDesc::default()
+                },
+                rows,
+            );
+        } else {
+            ui.column("Menu", Element::default(), rows);
+        }
+    };
+    let warnings = |w: f32, h: f32, scrolls: bool| {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.begin(InputFrame::default(), Viewport::new(w, h));
+        menu(&mut ui, scrolls);
+        ui.end().warnings.clone()
+    };
+    let short = warnings(800.0, 120.0, false);
+    let cut: Vec<&String> = short
+        .iter()
+        .filter(|w| w.contains("past the 800x120 screen"))
+        .collect();
+    assert!(
+        cut.iter().any(|w| w.contains("Item#5")),
+        "the last row is named: {short:?}"
+    );
+    assert!(
+        !cut.iter().any(|w| w.contains("Item#0")),
+        "the first row fits: {short:?}"
+    );
+    assert!(
+        warnings(800.0, 600.0, false).is_empty(),
+        "a screen it fits raises nothing"
+    );
+    assert!(
+        warnings(800.0, 120.0, true).is_empty(),
+        "a scroll container reaches every row"
+    );
 }

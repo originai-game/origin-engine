@@ -17586,7 +17586,7 @@ export interface AnchorDesc {
    */
   readonly anchor?: Anchor;
   /**
-   * The inset from the safe area's edges; null is the density's gutter.
+   * The inset from the safe area's edges, the same on every edge: a margin wide enough to keep a top-left HUD over a centred portrait play field also pushes it that far down (use offsetX for the sideways shift, or a width); null is the density's gutter.
    *
    * @default null
    */

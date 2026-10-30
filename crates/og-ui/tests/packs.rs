@@ -92,16 +92,24 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
             .unwrap_or_else(|e| panic!("{name}: style.ogt: {e}"));
         let mut file = parse_style(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
         assert_eq!(file.name, name);
-        // A built-in style names only its own files: it is cooked into any
-        // game as `@styles/<name>/`, where nothing else of the game is.
+        // A built-in style names only its own files and the shared built-in
+        // Chinese companions: it is cooked into any game as `@styles/<name>/`
+        // (with `@styles/cjk/`), where nothing else of the game is.
         let styles = root().join("../../styles");
         file.resolve(&format!("{name}/style.ogt"), |id| styles.join(id).exists());
         for r in file.references() {
+            let shared = r.strip_prefix("@styles/").filter(|r| r.starts_with("cjk/"));
+            let path = shared.map_or_else(|| r.clone(), str::to_string);
             assert!(
-                r.starts_with(&format!("{name}/")) && styles.join(&r).exists(),
-                "{name} names {r}, which is not beside its style file"
+                (shared.is_some() || r.starts_with(&format!("{name}/")))
+                    && styles.join(&path).exists(),
+                "{name} names {r}, which is neither beside its style file nor a shared companion"
             );
         }
+        assert!(
+            file.fonts[4].is_some() && file.fonts[5].is_some(),
+            "{name} names its Chinese companions"
+        );
         let atlas = image::open(dir.join("atlas.png"))
             .expect("atlas.png")
             .to_rgba8();

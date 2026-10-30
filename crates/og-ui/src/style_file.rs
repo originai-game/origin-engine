@@ -142,6 +142,36 @@ pub struct Slice {
     /// The middle of the region on screen (its width and height between
     /// the corners), CSS px: one tile when `control` tiles.
     pub middle: [f32; 2],
+    /// The mean of the art's centre in linear light, RGB and alpha (`tone
+    /// <part> <grey> [alpha]` or `tone <part> <r> <g> <b> <alpha>`; `og
+    /// cook` measures it from the atlas for a style that does not set it;
+    /// white and opaque when unknown): what the frame really draws where its
+    /// label sits ([`Slice::drawn`]), so a widget picks ink that reads on it
+    /// (a neon button's dark body under a game's gold primary).
+    pub tone: [f32; 4],
+}
+
+impl Slice {
+    /// A tone that changes nothing: white, opaque.
+    pub const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+
+    /// What the frame draws at its centre for `fill` (straight alpha): the
+    /// fill times the art's tone when it tints, the art's own tone when it
+    /// is authored; `None` when the tone is unknown (white and opaque on a
+    /// tinting frame draws the fill itself).
+    pub fn drawn(&self, fill: crate::Srgba) -> Option<crate::Srgba> {
+        if self.tone == Self::WHITE {
+            return self.tint.then_some(fill);
+        }
+        let t = self.tone;
+        let c = if self.tint {
+            let l = fill.linear();
+            [l[0] * t[0], l[1] * t[1], l[2] * t[2], l[3] * t[3]]
+        } else {
+            t
+        };
+        Some(crate::Srgba::from_linear(c))
+    }
 }
 
 /// Which ink an ornament takes.
@@ -407,8 +437,10 @@ pub struct StyleFile {
     /// The atlas texture's asset id.
     pub atlas: Option<String>,
     /// Font asset ids: body, display, numeric (the mono role), fallback
-    /// (characters the others lack, such as CJK).
-    pub fonts: [Option<String>; 4],
+    /// (characters the others lack, a last resort), cjk and cjkDisplay (the
+    /// style's own Simplified Chinese faces beside body and display: see
+    /// [`crate::Fonts::companions`]).
+    pub fonts: [Option<String>; 6],
     /// The icon texture's asset id, its grid and names.
     pub icons: Option<(String, u32, u32, Vec<String>)>,
     /// Sound asset ids by [`UiSound`].
@@ -686,12 +718,15 @@ fn role_index(p: &P, w: &str) -> Result<usize, String> {
 ///   body "styles/fantasy/Newsreader.ttf"
 ///   numeric "styles/fantasy/Newsreader.ttf"   # the mono role
 ///   fallback "fonts/NotoSansSC-Regular-subset.ttf"
+///   cjk "@styles/cjk/NotoSerifSC-SemiBold.ttf"         # Chinese in body text, beside the body face
+///   cjkDisplay "@styles/cjk/NotoSerifSC-SemiBold.ttf"  # Chinese in titles (display and rounded roles)
 /// }
 /// icons "styles/fantasy/icons.png" 8 4 {
 ///   names "heart" "star"
 /// }
 /// slice panel 0 0 64 64 20 [20 20 20] [tint|authored] [stretch|repeat|round]
 ///                                             # region, corner insets in texels; how edges fill
+/// tone button 0.04 0.9                       # the slice centre's mean, linear: grey and alpha, or r g b a
 /// soft 192 0 32 32 12                         # a blurred white rect: soft shadows and glows
 /// scale 1                                     # CSS px per atlas texel for slice corners
 /// corner 64 0 24 24 24 24 primary [offset]   # region, size on screen, ink (authored, primary, ink, muted, line, focus)
@@ -852,8 +887,12 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                         "display" => 1,
                         "numeric" | "mono" => 2,
                         "fallback" => 3,
+                        "cjk" => 4,
+                        "cjkDisplay" => 5,
                         _ => {
-                            return Err(q.err("is a font role: body, display, numeric or fallback"));
+                            return Err(q.err(
+                                "is a font role: body, display, numeric, fallback, cjk or cjkDisplay",
+                            ));
                         }
                     };
                     file.fonts[i] = Some(q.string(0)?.to_string());
@@ -946,11 +985,33 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                     tint,
                     fill,
                     middle,
+                    tone: Slice::WHITE,
                 };
                 match part {
                     Some(part) => theme.art.slices[part.index()] = Some(s),
                     None => theme.art.soft = Some(s),
                 }
+            }
+            "tone" => {
+                let w = p.word(0)?;
+                let part = StylePart::from_name(w)
+                    .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?;
+                let slice = theme.art.slices[part.index()].as_mut().ok_or_else(|| {
+                    p.err(&format!("names '{w}', which has no slice line before it"))
+                })?;
+                let n = e.values.len() - 1;
+                let tone = match n {
+                    1 | 2 => {
+                        let v = p.num(1)?;
+                        [v, v, v, p.num_or(2, 1.0)?]
+                    }
+                    4 => [p.num(1)?, p.num(2)?, p.num(3)?, p.num(4)?],
+                    _ => return Err(p.err("takes a grey and an alpha, or r g b and an alpha")),
+                };
+                if tone.iter().any(|v| !(0.0..=1.0).contains(v)) {
+                    return Err(p.err("takes values from 0 to 1 (linear light)"));
+                }
+                slice.tone = tone;
             }
             "corner" | "divider" | "flourish" => {
                 needs_atlas()?;
