@@ -130,6 +130,16 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.7.4 released (2026-10-30 UTC).** All five npm packages are
+published, and `v0.7.4` is pushed at `92c53a9a`. It is a patch with the
+simulation unchanged and no IDL member changed: with
+`ORIGIN_FRAMES_SOCKET` set, `og run` and `og dev` show their frames in
+Origin Desktop's window through shared GPU memory (og-render's
+`shared_frames`). The functional lane passed 5/5 before the bump and the
+replay gate 2/2 goldens. The tarballs and the registry install passed on
+macrunner (darwin-arm64, Metal) and in its linux-x64 container. See the
+[release receipt](../tests/evidence/release/0.7.4.md).
+
 **0.7.3 released (2026-10-29 UTC).** All five npm packages are
 published, and `v0.7.3` is pushed at `77d7b7e7`. It is a knowledge-only
 patch with the simulation unchanged and no crate or IDL member changed:
