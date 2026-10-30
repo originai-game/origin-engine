@@ -13,7 +13,10 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
-## Unreleased
+## 0.7.4 — 2026-10-30
+
+A patch with the simulation unchanged (the golden replays): no IDL member
+changed, and without `ORIGIN_FRAMES_SOCKET` a game runs and draws as before.
 
 - Native host, shared frames: with `ORIGIN_FRAMES_SOCKET` set (Origin
   Runner sets it when Origin Desktop draws the Session's engine), `og run`
