@@ -658,6 +658,19 @@ publication fail. This closes the retired-tool failure in that scenario,
 not L5/M7: adaptation, models, artwork, cover requirements and readiness
 are not exercised, and the Portal and Identity remain fixtures.
 
+### Audit refresh, 2026-10-30
+
+Read-only reread of origin-agent `main` at `2404142` and platform `main`
+at `e20eb068c`. Two rows of the 2026-10-24 audit no longer hold, and the
+thread runtime has moved:
+
+| Item | Current evidence | Remaining work |
+|---|---|---|
+| Creation style, ask 12 | On origin-agent `main` (no `style-step` branch remains): `0c54d85` creates a Game with its style (the Library's picker, `web/src/lib/agent/library/StylePicker.svelte`; `server/src/core/styles.ts` reads the pinned package's catalogue, writes the look, the art bible and the design graph's art direction node), `cd2f6cc` lets the style change until the first build, `89e00b4` adds `critique_style` (the blind critic judges captured frames against the entry's three checks) | Exercised end to end by the L5 acceptance, not by a separate test |
+| Rooms, ask 16 | Platform `b9b6796cf` (2026-10-25) runs Rooms as its own service (`rooms-service/src/player-relay.ts`, the relay, tickets, per-sender order); the framed Player's client (`sdk/src/player-rooms.ts`) is in origin-agent's `vendor/platform` snapshot. The engine's shell already speaks it when the Player's hello lists `room.join` | Deployment, and a two-Player acceptance through a `?room=` Play link |
+| Where the thread runtime lives | `agent-server/` of the platform became Origin Server in origin-agent (`server/`): the pin is `server/package.json` (`@origingame/engine` 0.7.4), the InstaBox snapshot scripts are `server/scripts/instabox/`, the image layout `server/scripts/sandbox/origin-engine.ts`, the local stack `scripts/workspace-stack/` | The L and D rows above name the old paths; read them as these |
+| L5, D5 | Still no `m7-local-*` or `m7-instabox-*` receipt | Unchanged: the first row to close |
+
 ## 5. The author's and the agent's loop, after this
 
 ```sh

@@ -273,7 +273,7 @@ gate, record `metal` frames or publish. Evidence:
 | A5 | `art/brief` | A1 | engine | §2.2: `artBrief` in the knowledge package and its re-export from create-game, the skill changes (og-taste, og-model recipes, og-build, the consumer section) |
 | A6 | `art/check` | A2, A3 | engine | §2.5: `og style check`, the doctor line, the publish summary, `--critic` |
 | A7 | `art/samples` | A2, A3, A4 | engine | the eight family scenes (pixel side-on, pixel top-down, pixel-in-3D, painted 2D, ink and line 3D, shape and paper 3D, toon and comic 3D, cinematic 3D) in a new fx-showcase station or `examples/art-<family>`, each with assets made through `artBrief` and the cook's conformance; one frame per style; `look.family` filled |
-| P1 | `style-step` | A0 (catalogue 2, previews on main) | origin-agent | §4 |
+| P1 | `style-step` (merged into origin-agent `main` 2026-10-28: `0c54d85`, `cd2f6cc`, `89e00b4`) | A0 (catalogue 2, previews on main) | origin-agent | §4 |
 | R | release 0.7.0 | all | engine (macrunner) | §5 |
 
 Order: A0 now (the coordinator); A1 and P1 at once; after A1 merges, A2,
