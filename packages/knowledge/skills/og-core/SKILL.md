@@ -300,6 +300,13 @@ it is declared.
 
 ## 7. Where the API is described
 
+Look one thing up rather than reading pages: `og api find <words>` lists the
+entries that match (name, module, first sentence and field docs), one line
+each, and `og api show <name>` prints one in full — signature, fields with
+defaults, ranges and units, and its doc (`og api show og.CharacterController`,
+`og api show og.physics.raycast`). Both read the wiki below, for the engine
+installed.
+
 The generated wiki (`reference/index.md` next to the `og-game` skill, or
 `wiki/index.md` in `@origingame/engine-knowledge`) has one page per module
 with every signature quoted from the IDL, grouped by the skill that teaches

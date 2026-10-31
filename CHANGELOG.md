@@ -13,6 +13,17 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+A patch: no IDL member added or removed.
+
+- `og api find <words>` and `og api show <name>` answer one API question at
+  a time from the installed engine's wiki: find lists the matching entries
+  (name, module, first sentence, then field and parameter docs) one line
+  each, show prints one entry in full without its IDL source. og-core §7
+  and og-game §25 teach them, so an agent looks an API up instead of
+  reading a module's whole page (render.md is 440 KB).
+
 ## 0.7.5 — 2026-10-31
 
 A patch with the simulation unchanged (the golden replays): no IDL member

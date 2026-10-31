@@ -9,6 +9,7 @@
 //! (the play page), `og cook`, `og doctor` and `og api` (the IDL outputs).
 
 mod api;
+mod api_lookup;
 mod bake_lightmaps;
 mod bake_probes;
 mod bake_projection;
@@ -139,6 +140,11 @@ commands:
                       move project.ogt's engine pin and package.json's dependency to the installed
                       engine (or --to), apply the changelog's codemods for the versions crossed and
                       list what needs a hand edit; exit 0 done, 3 hand edits listed, 1 failed
+  api find <words> [--kind fn|record|type|member|const|value|column] [--limit N]
+                      the API reference entries matching every word (name, module, first
+                      sentence), best first, one line each
+  api show <name>     one API entry in full: signature, fields, doc (og.CharacterController,
+                      og.physics.raycast, BODY_STATIC; og. may be left out)
   api gen [--wiki] [--root <dir>]
                       regenerate the IDL outputs (packages/engine/{types,schema}, the hosts' glue,
                       the knowledge wiki); --wiki writes only the wiki

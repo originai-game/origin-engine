@@ -16,13 +16,14 @@ pub fn run(args: &[&str]) -> ExitCode {
                 Err(code) => code,
             }
         }
+        [cmd @ ("find" | "show"), rest @ ..] => crate::api_lookup::run(cmd, rest),
         ["check", rest @ ..] => match root_option(rest) {
             Ok(root) => api_check(&root),
             Err(code) => code,
         },
         _ => {
             eprintln!(
-                "og api: expected `og api gen` or `og api check`; run `og --help` for the options."
+                "og api: expected `og api find`, `og api show`, `og api gen` or `og api check`; run `og --help` for the options."
             );
             ExitCode::from(2)
         }

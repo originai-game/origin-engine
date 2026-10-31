@@ -3185,6 +3185,9 @@ textures between lanterns to stay under it.
 
 ## 25. Where to look things up
 
+`og api find <words>` and `og api show <name>` (og-core §7) answer one API
+question at a time from the wiki below.
+
 `reference/index.md` (the generated wiki shipped with this skill) maps every
 module (grouped by skill, as in §1), type and function to its page, with the IDL text, defaults, ranges
 and units of every field.

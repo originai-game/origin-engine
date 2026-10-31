@@ -4,7 +4,12 @@
   "unreleased": {
     "simulation": "unchanged",
     "breaking": [],
-    "added": [],
+    "added": [
+      {
+        "member": "og api find / og api show",
+        "summary": "Look the API up one entry at a time: og api find <words> lists the reference entries matching the words (name, module, first sentence, then field and parameter docs), one line each; og api show <name> prints one entry in full (signature, fields with defaults, ranges and units, doc) without its IDL source. Both read the wiki of the installed engine package. og-core §7 and og-game §25 teach them."
+      }
+    ],
     "fixed": []
   },
   "versions": [
