@@ -8,6 +8,10 @@
       {
         "member": "og.PointerLock, og.Pointers.movement, PointerInput.movementX/movementY, og.PointerMove.movementX/movementY, InjectedInput pointerLock, mouse_move and pointer_lock actions",
         "summary": "Mouse-look: og.Pointers.movement is the mouse's relative movement this tick (movementX/Y of pointer 0's events summed, zero next tick); og.PointerLock { wanted, locked } lets a game ask for the pointer lock, which the web shell requests on the next press on the canvas, exits when wanted goes false and reports back from pointerlockchange (absolute positions held while locked). Injected pointer events and og.PointerMove carry movementX/Y (0 when omitted); the command channel's mouse_move:dx,dy and pointer_lock:on|off script them. Native runs are headless and never lock. Off by default; the simulation of existing games is unchanged."
+      },
+      {
+        "member": "og cook (sounds)",
+        "summary": "og cook takes .mp3, .ogg (Vorbis) and .flac sounds beside .wav: decoded to 16-bit PCM in the cook (pure Rust, symphonia; no ffmpeg or afconvert) and encoded to QOA like a WAV, chunked and streamed the same way, under the source's asset id (audio/theme.mp3, audio/theme.mp3#chunk3). An undecodable file is refused naming the file and its format. The cook only: the runtime and the wasm are unchanged."
       }
     ],
     "fixed": [

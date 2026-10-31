@@ -121,6 +121,10 @@ at 1.0 is a mix bug, not loudness.
   `tests/timing.og.ts`).
 - A crossfade: the new track `startAt: nextBar` with `fade: 2`, the old one
   `playing: false` with the same `fade`.
+- Music and sounds can stay as the generator returned them: `og cook`
+  reads `.wav`, `.mp3`, `.ogg` (Vorbis; not Opus) and `.flac` and decodes
+  each to QOA itself, with no ffmpeg or other converter. The asset id keeps
+  the extension: `og.load.sound(world, "music/theme.mp3")`.
 - Long tracks stream in chunks: a sound whose cooked file passes 1 MiB
   (about 27 s of 48 kHz stereo) is cooked in chunks of whole frames, and
   the engine keeps only from half a second behind each playhead to four
@@ -128,7 +132,7 @@ at 1.0 is a mix bug, not loudness.
   the track's import settings:
 
   ```text
-  # assets/music/theme.wav.ogt
+  # assets/music/theme.mp3.ogt
   type import
   version 1
   ---

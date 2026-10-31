@@ -150,7 +150,7 @@ in this table owns it and the other points there.
 |---|---|
 | `project.ogt` | The manifest: `name`, `id`, the pinned `engine` version, `entry`, `profile` (`2d` or `3d`), `tick`, `seed`, `scenes`, the first `scene`, the game's `look`, the `screens` `og style check` captures (og-build §8), `publish` settings |
 | `src/main.ts` | The game entry: its default export is `og.game({...})` |
-| `assets/` | Source assets: glTF and `.vox` models, PNG/JPEG textures, WAV sounds, TTF/OTF fonts, `.ogt` scenes and looks, and `<file>.ogt` import settings |
+| `assets/` | Source assets: glTF and `.vox` models, PNG/JPEG textures, WAV/MP3/Ogg Vorbis/FLAC sounds, TTF/OTF fonts, `.ogt` scenes and looks, and `<file>.ogt` import settings |
 | `cooked/` | `og cook` output (`.ogb` blobs and `.cook.ogt`); never committed, the only thing the runtime reads |
 | `tests/*.og.ts` | Playtest scripts `og test` runs headless |
 | `dist/` | `og build` output |
@@ -307,9 +307,10 @@ registered schema and refuses a model path that does not exist.
 
 - Put sources in `assets/`; `og cook` turns them into `cooked/`: glTF into
   meshopt-compressed meshes with LODs, textures into KTX2 Basis Universal
-  (ETC1S for colour, UASTC for normal and linear maps), WAV into QOA, fonts
-  into MSDF atlases, scenes into component tables. Import settings live next
-  to the source as `<file>.ogt` (`texture { kind normal }`,
+  (ETC1S for colour, UASTC for normal and linear maps), WAV, MP3, Ogg
+  Vorbis and FLAC into QOA, fonts into MSDF atlases, scenes into component
+  tables. Import settings live next to the source as `<file>.ogt`
+  (`texture { kind normal }`,
   `font { charset latin chars "开始游戏" }`). The prose here writes a
   block on one line for short; in a file, as in every `.ogt`, a `{` ends
   its key's line and a `}` stands alone on its own (the parser refuses

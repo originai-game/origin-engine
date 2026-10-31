@@ -15,7 +15,7 @@
 //! | texture (`og.Texture`; a PNG, JPEG or KTX2 source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
 //! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: its frames are the texture array `<id>#frames`, its sound `<id>#audio` |
-//! | sound (`og.Sound`; a `.wav`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) |
+//! | sound (`og.Sound`; a `.wav`, `.mp3`, `.ogg` (Vorbis) or `.flac`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) |
 //! | sound chunk (`og.SoundChunk`, `<id>#chunk<n>` of a sound cooked in chunks) | [`SoundChunkMeta`] | `qoa` (the chunk's QOA frames) |
 //! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `kerning` [`KernRow`] (sorted by left, right), `atlas.<n>` (KTX2 RGBA8, zlib), `ttf` (the font file, when shaped or `runtime`) |
 //! | scene (`og.Scene`) | [`SceneMeta`] | `entities` [`EntityRow`], `refs` [`RefRow`], `components` [`ComponentRow`], `strings`, per component `c.<Type>` rows and `s.<Type>` its schema JSON |

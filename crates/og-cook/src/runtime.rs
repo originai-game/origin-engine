@@ -1751,7 +1751,7 @@ impl CookedTextureArray {
     }
 }
 
-/// The id of chunk `n` of a sound cooked in chunks (`audio/theme.wav#chunk3`).
+/// The id of chunk `n` of a sound cooked in chunks (`audio/theme.mp3#chunk3`).
 pub fn chunk_id(id: &str, n: u32) -> String {
     format!("{}#chunk{n}", asset_id(id))
 }

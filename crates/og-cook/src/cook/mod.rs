@@ -1,7 +1,7 @@
 //! The cook: `assets/` → `cooked/`, incremental by hash.
 //!
 //! [`cook_project`] walks `<root>/assets`, classifies each file by extension
-//! (`.glb`/`.gltf` models, `.png`/`.jpg` textures, `.wav` sounds,
+//! (`.glb`/`.gltf` models, `.png`/`.jpg` textures, `.wav`/`.mp3`/`.ogg`/`.flac` sounds,
 //! `.ttf`/`.otf` fonts, `.ogt` scenes; `<file>.ogt` of type `import` holds a
 //! file's import settings), computes every output's cook stamp (FNV-1a of the
 //! cooker version, the options that kind of output depends on and its own
@@ -719,7 +719,7 @@ struct Source {
     hash: u64,
     gltf: Option<model::GltfSource>,
     error: Option<String>,
-    /// A WAV's QOA encoding, made once by the first of its outputs to cook
+    /// A sound file's QOA encoding, made once by the first of its outputs to cook
     /// (a sound cooked in chunks has one output per chunk).
     encoded: std::sync::OnceLock<Result<std::sync::Arc<audio::Encoded>, String>>,
     /// The image the art contract conformed it to (`conform/`): a
@@ -731,7 +731,11 @@ struct Source {
 impl Source {
     fn encoded(&self, per_chunk: Option<u32>) -> Result<std::sync::Arc<audio::Encoded>, CookError> {
         self.encoded
-            .get_or_init(|| audio::encode(&self.bytes, per_chunk).map(std::sync::Arc::new))
+            .get_or_init(|| {
+                audio::decode(&self.rel, &self.bytes)
+                    .and_then(|pcm| audio::encode(&pcm, per_chunk))
+                    .map(std::sync::Arc::new)
+            })
             .clone()
             .map_err(CookError)
     }
@@ -1184,7 +1188,7 @@ fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
         let kind = match ext(rel).as_str() {
             "glb" | "gltf" | "vox" => Kind::Model,
             "png" | "jpg" | "jpeg" | "ktx2" => Kind::Texture,
-            "wav" => Kind::Sound,
+            e if audio::EXTENSIONS.contains(&e) => Kind::Sound,
             "ttf" | "otf" => Kind::Font,
             "cube" => Kind::Lut,
             "tmj" | "ldtk" => Kind::Tilemap,
@@ -1780,8 +1784,8 @@ pub fn cook_project_with_texture_cache(
                         continue;
                     }
                 };
-                // An unreadable header fails in the cook, with its reason.
-                let chunking = audio::shape(&s.bytes)
+                // An unreadable file fails in the cook, with its reason.
+                let chunking = audio::shape(&s.rel, &s.bytes)
                     .ok()
                     .and_then(|(rate, ch, frames)| settings.chunking(rate, ch, frames));
                 let shape =
@@ -2938,7 +2942,9 @@ fn run(
         }
         Work::VideoAudio(src, plan) => {
             let wav = video::audio_wav(src, plan)?;
-            let e = audio::encode(&wav, None).map_err(CookError)?;
+            let pcm =
+                audio::wav(&format!("{}'s sound track", src.display()), &wav).map_err(CookError)?;
+            let e = audio::encode(&pcm, None).map_err(CookError)?;
             audio::cook(&e, None, p.stamp)
                 .map(|(b, n)| (b, vec![format!("the video's sound: {n}")]))
         }

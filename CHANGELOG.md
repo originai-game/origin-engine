@@ -15,6 +15,11 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- `og cook` takes `.mp3`, `.ogg` (Vorbis) and `.flac` sounds beside `.wav`:
+  decoded to 16-bit PCM in the cook (pure Rust, symphonia; no ffmpeg) and
+  encoded to QOA like a WAV, chunked and streamed the same way, under the
+  source's own asset id (`audio/theme.mp3`, `audio/theme.mp3#chunk3`). An
+  undecodable file is refused with its name and format.
 - Mouse-look: `og.Pointers.movement` (the mouse's relative movement this
   tick, CSS px: pointer 0's `movementX`/`movementY` summed, zero next tick)
   and `og.PointerLock` (`wanted`, which the game writes; `locked`, read

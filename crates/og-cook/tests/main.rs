@@ -27,6 +27,7 @@ mod scene_write_back;
 mod sfx;
 mod shader;
 mod sound_chunks;
+mod sound_formats;
 mod stream;
 mod strings;
 mod support;

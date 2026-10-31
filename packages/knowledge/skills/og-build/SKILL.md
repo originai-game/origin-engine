@@ -326,7 +326,7 @@ What `og cook` takes is decided by the file: `.glb`/`.gltf` and MagicaVoxel
 voxScale voxOrigin }` for the size and origin, frames as clips; og-game §5)
 are models; `.ogt` files by their `type` (scene,
 look, environment, texture-array, flipbook, particles, terrain, shader…);
-`.cube` LUTs, `.hex` and `.gpl` palettes, images, WAVs and fonts by
+`.cube` LUTs, `.hex` and `.gpl` palettes, images, sounds (WAV, MP3, Ogg Vorbis, FLAC) and fonts by
 extension. A look's built-in `@canvas/…` and `@palettes/…` assets are added
 to the bundle only when a look names them; a game's own `assets/@canvas/`
 is refused.
