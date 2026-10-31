@@ -145,6 +145,21 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.7.7 released (2026-10-31 UTC).** All five npm packages are
+published, and `v0.7.7` is pushed at `94a9c8b2` after the `ci` gate
+passed on it. It is a patch with the simulation unchanged, with mouse-look
+members added off by default and none removed: `og.PointerLock` and
+`og.Pointers.movement` (the web shell's lock was run in headed Chrome on
+the Mac satellite: a press locked it, movement arrived while the position
+held, Escape released it); `og cook` takes MP3, Ogg Vorbis and FLAC
+sounds; `og` carries each built-in CJK font once, about 9.9 MB smaller
+than 0.7.6's with symphonia in. The replay gate passed 2/2 goldens and
+`check.sh quick` 5/5. The tarballs and the registry install passed on a
+darwin-arm64 Mac satellite (Metal) and in the linux-x64 container,
+including the install test's new step: an MP3 sound cooks and plays with
+the installed `og`. See the
+[release receipt](../tests/evidence/release/0.7.7.md).
+
 **0.7.6 released (2026-10-31 UTC).** All five npm packages are
 published, and `v0.7.6` is pushed at `bff867c7`. It is a patch with the
 simulation unchanged and no IDL member added or removed: `og api find
