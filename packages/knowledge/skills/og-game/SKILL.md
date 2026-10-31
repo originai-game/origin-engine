@@ -655,8 +655,9 @@ These are the checks to use before opening frames. All of them run from
   `rig2d`, `flipbook`, `shader`, `post`, `emitter`, `look`, `palette`,
   `lut`, `environment`, `video`, `terrain`, `streamPack`). **`og doctor
   --project . [--json]`** checks it against `budgets { }` in project.ogt
-  and exits 1 on an over-budget asset, naming the asset, the limit, the
-  value and the fix. The keys are `triangles` 100000, `vertices` 65536,
+  and warns on an over-budget asset, naming the asset, the limit, the
+  value and the fix; it exits 1 only on an asset that failed to cook, a
+  missing report or a texture past `textureSize` (the device limit). The keys are `triangles` 100000, `vertices` 65536,
   `textureSize` 2048, `bones` 128, `clips` 64, `assetBytes` 8 MiB,
   `totalBytes` 64 MiB, `soundSeconds` 600, `videoSeconds` 300,
   `fontGlyphs` 8192, `navPolygons` 65536, `sceneEntities` 10000 and

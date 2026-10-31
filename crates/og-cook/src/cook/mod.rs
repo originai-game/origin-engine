@@ -1303,7 +1303,7 @@ pub fn cook_project_with_texture_cache(
     };
     let texture_encoder = texture::encoder_name(&options.texture);
     // The project's budgets (project.ogt's `budgets { }`, the defaults
-    // without one): a `type model` past them is refused, not cooked.
+    // without one): a `type model` past them is cooked with a warning.
     let budgets = std::fs::read_to_string(root.join("project.ogt"))
         .ok()
         .and_then(|t| Document::parse(&t).ok())
@@ -2446,6 +2446,16 @@ pub fn cook_project_with_texture_cache(
             r.notes.push(what);
         }
     }
+    // A text model past the project's triangle or vertex budget: cooked, and said.
+    for r in reports.iter().filter(|r| r.kind == "model") {
+        for n in r
+            .notes
+            .iter()
+            .filter(|n| n.starts_with("warning: over budget: "))
+        {
+            warnings.push(format!("assets/{}: {n}", r.source));
+        }
+    }
     // A video's frames past the budget: footage is the heaviest asset a game has.
     for r in reports.iter_mut().filter(|r| r.kind == "video") {
         let frames = format!("{}#frames#layer", r.source);
@@ -2593,9 +2603,10 @@ fn run(
         Work::Model(s, ids) => {
             let g = s.gltf.as_ref().expect("loaded");
             let mesh = mesh_for(s, options)?;
-            let (blob, n) = model::cook(g, ids, &mesh, p.stamp, false)?;
-            // A model written as text is held to the project's budgets by
-            // the cook itself: past them it is refused, not flagged.
+            let (blob, mut n) = model::cook(g, ids, &mesh, p.stamp, false)?;
+            // A model written as text past the project's budgets is cooked
+            // and flagged: the budgets are reported numbers, never a reason
+            // a model is not made (indices are u32; nothing breaks past them).
             if ext(&s.rel) == "ogt" {
                 for (what, value, limit, key) in [
                     (
@@ -2607,9 +2618,9 @@ fn run(
                     ("vertices", n.vertices, budgets.vertices, "vertices"),
                 ] {
                     if value as u64 > limit {
-                        return Err(CookError(format!(
-                            "{what}: {value} is over the {key} budget of {limit} (project.ogt's budgets.{key}): lower the parts' segments, curveSegments, steps or detail, or raise the budget"
-                        )));
+                        n.notes.push(format!(
+                            "warning: over budget: {what}: {value} is over the {key} budget of {limit} (project.ogt's budgets.{key}); cooked as written"
+                        ));
                     }
                 }
             }

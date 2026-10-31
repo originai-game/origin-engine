@@ -303,7 +303,7 @@ fn a_part_placed_three_times_is_one_mesh_under_three_nodes_of_its_pivot() {
 }
 
 #[test]
-fn past_the_project_s_budgets_it_is_refused_and_a_scene_names_it() {
+fn past_the_project_s_budgets_it_is_cooked_with_a_warning_and_a_scene_names_it() {
     let text = gear_text();
     let root = project(
         "og-cook-model-text-budget",
@@ -316,12 +316,16 @@ fn past_the_project_s_budgets_it_is_refused_and_a_scene_names_it() {
         ],
     );
     let report = cook_project(&root, &CookOptions::default()).unwrap();
-    let errors = format!("{:?}", report.errors());
+    // The budgets are reported numbers: the model is made, and the cook says it is over.
+    assert!(report.errors().is_empty(), "{:?}", report.errors());
     assert!(
-        errors.contains("over the triangles budget of 500"),
-        "{errors}"
+        report.warnings.iter().any(|w| w
+            .starts_with("assets/models/gear.ogt: warning: over budget")
+            && w.contains("over the triangles budget of 500")),
+        "{:?}",
+        report.warnings
     );
-    assert!(!root.join("cooked/models/gear.ogt.ogb").exists());
+    assert!(root.join("cooked/models/gear.ogt.ogb").exists());
 
     let root = cooked(
         "og-cook-model-text-scene",

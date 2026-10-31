@@ -252,7 +252,7 @@ every screen that matters.
 | feel | Hit feedback | each damage moment (a fact named `hp`, `health`, `lives`… falling, or `hits`, `damage`, `kills`… rising): hit stop, shake, floating text and a sound within 8 ticks | three of the four, per moment (a moment with three owes no fourth: a bump that holds, shakes and sounds is not asked for a number) | og-feel §3, §4, §7, og-audio §1 |
 | feel | Idle frames | ticks after the first ten where nothing moves or animates, no UI moves, no sound starts or plays, no tween, text or particle runs | at most 10 % | og-feel §9, og-taste §5 |
 | feel | Sound on input | inputs answered by a sound within 6 ticks | every action | og-audio §1 |
-| feel | Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan` on a GPU); the probe's own screenshots (render, read back, PNG) are not the game's step and are left out. Without a renderer the row says `n/a (no renderer)`, as do contrast, text size and HUD occupancy, which read frames | 8.3 ms (half the frame) | og-build §9 |
+| feel | Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan` on a GPU); the probe's own screenshots (render, read back, PNG) are not the game's step and are left out. Without a renderer the row says `n/a (no renderer)`, as do contrast, text size and HUD occupancy, which read frames | reported, not scored into feel (8.3 ms is half the frame) | og-build §9 |
 
 The report also lists clipped samples in the mix (og-audio §4), and a UI
 style finding (no score) when a shot's `dump_ui` reports `style` empty: the
@@ -541,8 +541,8 @@ preview: the numbers say what is off, the eye says whether it reads.
 
 ## 9. Performance
 
-A frame is 16.7 ms at 60 Hz; keep step + render under half of it on a
-desktop so phones have room. `og run --json` prints `advanceMs`, the
+A frame is 16.7 ms at 60 Hz. Measure step + render and report it; it is
+not a target to cut quality for in this phase (optimisation comes later). `og run --json` prints `advanceMs`, the
 run's `frames` (step and render median, p95 and max) and its `systems`
 (each system's mean milliseconds a tick, slowest first: the game's and the
 engine's own, physics, the UI's end of frame, animation and the rest, which the

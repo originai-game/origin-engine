@@ -889,7 +889,8 @@ function scores(ms: PlaytestMeasures[], missingKeys: number, hasLocales: boolean
     return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null;
   };
   s.taste = mean([s.contrast, s.textSize, s.hud, s.transitions, s.uiSounds, s.locale]);
-  s.feel = mean([s.latency, s.hitFeedback, s.idle, s.frameTime, s.inputSound]);
+  // Frame time is reported on its own row and never moves the feel score: a heavy, rich scene is not a worse-feeling one.
+  s.feel = mean([s.latency, s.hitFeedback, s.idle, s.inputSound]);
   return s;
 }
 

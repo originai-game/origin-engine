@@ -8,8 +8,9 @@
 //! style (`code` `style`): the cooked assets measured against the look's
 //! art contract, as `og style check` measures them (`info` when they meet
 //! it or the project names no look, `warning` when one does not). The exit status is 1
-//! when any finding is an error (an asset over a budget, an asset that
-//! failed to cook, no report), 0 otherwise.
+//! when any finding is an error (an asset that failed to cook, no report, a
+//! texture past the device limit), 0 otherwise: an asset over one of the
+//! project's own budgets is a warning, a number to read, never a gate.
 
 use og_cook::cook::stats::{self, Budgets};
 use serde_json::{Value, json};
@@ -117,8 +118,15 @@ pub fn findings(root: &Path) -> Vec<Value> {
             out.push(f);
         }
         for fl in stats::asset_flags(a, &budgets) {
+            // Budgets are reported numbers, not gates; only the texture size is a
+            // device limit (WebGL2 guarantees no larger MAX_TEXTURE_SIZE).
+            let severity = if fl["budget"].as_str() == Some("textureSize") {
+                "error"
+            } else {
+                "warning"
+            };
             let mut f = finding(
-                "error",
+                severity,
                 "over-budget",
                 fl["message"].as_str().unwrap_or("").to_string(),
                 fix_for(fl["budget"].as_str().unwrap_or("")),
@@ -156,7 +164,7 @@ pub fn findings(root: &Path) -> Vec<Value> {
     }
     for fl in stats::total_flags(&report, &budgets) {
         let mut f = finding(
-            "error",
+            "warning",
             "over-budget",
             fl["message"].as_str().unwrap_or("").to_string(),
             fix_for("totalBytes"),

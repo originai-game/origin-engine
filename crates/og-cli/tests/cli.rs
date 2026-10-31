@@ -2248,3 +2248,42 @@ fn style_check_measures_cooked_sprites_and_lists_opt_outs() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A project's own budgets are numbers `og doctor --project` reports: an asset
+/// over one is a warning and the exit status stays 0.
+#[test]
+fn doctor_project_reports_an_asset_over_a_budget_without_failing() {
+    let dir = scratch_root();
+    std::fs::create_dir_all(dir.join("assets/scenes")).unwrap();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
+    std::fs::write(
+        dir.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\nbudgets {\n  sceneEntities 1\n}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("assets/scenes/main.ogt"),
+        "type scene\nversion 1\n---\nname \"Main\"\nentity \"a\" {\n  Transform {\n    position 1 2 3\n  }\n}\nentity \"b\" {\n  Transform {\n    position 4 5 6\n  }\n}\n",
+    )
+    .unwrap();
+    let out = og().args(["cook", "--report"]).arg(&dir).output().unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let out = og()
+        .args(["doctor", "--project"])
+        .arg(&dir)
+        .arg("--json")
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let doc: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let over: Vec<&serde_json::Value> = doc["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f["code"] == "over-budget")
+        .collect();
+    assert_eq!(over.len(), 1, "{doc}");
+    assert_eq!(over[0]["severity"], "warning");
+    assert_eq!(over[0]["budget"], "sceneEntities");
+}
