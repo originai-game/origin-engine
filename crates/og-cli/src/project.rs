@@ -66,16 +66,18 @@ impl Project {
                 path.to_path_buf(),
             )
         } else if path.is_file() {
-            let dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
+            // Walked up from the absolute path: a relative one's last ancestor is the empty path,
+            // so `og run src/main.ts` in the project found its project.ogt at "", which then
+            // opened as nothing ("og run:  is neither a game entry…", M7 run 13).
+            let abs = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+            let dir = abs.parent().unwrap_or(Path::new(".")).to_path_buf();
             let root = dir
                 .ancestors()
                 .find(|d| d.join("project.ogt").is_file())
                 .map(Path::to_path_buf);
             return Ok(match root {
                 Some(r) => Project {
-                    entry: PathBuf::from(typescript_path(
-                        &path.canonicalize().unwrap_or_else(|_| path.to_path_buf()),
-                    )),
+                    entry: PathBuf::from(typescript_path(&abs)),
                     ..Project::open(&r)?
                 },
                 None => Project {

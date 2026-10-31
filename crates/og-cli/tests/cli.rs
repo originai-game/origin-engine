@@ -80,6 +80,34 @@ fn every_command_answers_help_with_its_usage() {
     assert!(!String::from_utf8_lossy(&out.stdout).contains("bake lightmaps"));
 }
 
+/// An entry file named relative to the project directory opens its
+/// project: `og cook src/main.ts` there cooks it (the walk up for
+/// project.ogt once ended at the empty path, M7 run 13).
+#[test]
+fn an_entry_relative_to_the_project_opens_its_project() {
+    let dir = std::env::temp_dir().join(format!("og-cli-entry-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::create_dir_all(dir.join("assets")).unwrap();
+    std::fs::write(
+        dir.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"entry\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    std::fs::write(dir.join("src/main.ts"), "export {};\n").unwrap();
+    let out = og()
+        .args(["cook", "src/main.ts"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(out.status.success(), "{out:?}");
+    assert!(
+        String::from_utf8_lossy(&out.stdout).contains("og cook: "),
+        "{out:?}"
+    );
+}
+
 #[test]
 fn api_check_passes_on_the_repository() {
     let out = og()
