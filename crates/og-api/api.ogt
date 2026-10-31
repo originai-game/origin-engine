@@ -803,7 +803,7 @@ module world {
     doc "How to spawn an entity. `{}` spawns an unnamed entity at the origin with a Transform."
     desc true
     field name String "A unique name; the probe and the command channel address the entity by it. Empty leaves it unnamed."
-    field parent Option.Entity "The parent entity; the new entity's Transform is then relative to it."
+    field parent Option.Entity "The parent entity; the new entity's Transform is then relative to it. It gives the new entity an og.Parent, so inside a system og.Parent must be among the system's writes (as og.Transform must, unless `bare`)."
     field position Vector3 "The initial Transform.position." {
       unit m
     }
@@ -981,7 +981,7 @@ module world {
     doc "One archetype's columns for this tick. Views are invalidated by structural changes; using a stale view throws with the tick and the system it belonged to."
     prop count u32 "The number of entities in the archetype."
     prop tick u32 "The tick this view belongs to."
-    prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1."
+    prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1. These are not handles: for a handle use entity(i) (world.despawn, get, set, insert and remove refuse a bare index, naming the call)."
     fn entity {
       doc "The handle of entity i."
       param index u32 "The row, from 0 to count - 1."

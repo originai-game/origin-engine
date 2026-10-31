@@ -5,7 +5,12 @@
     "simulation": "unchanged",
     "breaking": [],
     "added": [],
-    "fixed": []
+    "fixed": [
+      {
+        "member": "World.despawn/get/set/insert/remove/has/alive/nameOf, every API call taking an Entity, SpawnDesc.parent, world.spawn in a system",
+        "summary": "A value that is not an entity number (null from world.find, undefined, a Result) is thrown naming the call and parameter on both hosts (`world.set: entity is null (world.find returns null when no entity has the name)`), not napi's conversion error natively or a coercion to 0 on the web; a non-number SpawnDesc.parent is refused instead of ignored; a dead handle is refused as `world.despawn: no live entity has the handle N`, with the hint `Archetype.entities holds (index, generation) pairs; use a.entity(i) for a handle` (and one engine log line per system and call) for a bare index; world.spawn's undeclared og.Parent or og.Transform write says spawn wrote it (`... (world.spawn with parent writes og.Parent; add og.Parent to the system's writes)`)."
+      }
+    ]
   },
   "versions": [
     {

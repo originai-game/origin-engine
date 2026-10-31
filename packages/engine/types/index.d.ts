@@ -1191,7 +1191,7 @@ export interface SpawnDesc {
    */
   readonly name?: string;
   /**
-   * The parent entity; the new entity's Transform is then relative to it.
+   * The parent entity; the new entity's Transform is then relative to it. It gives the new entity an og.Parent, so inside a system og.Parent must be among the system's writes (as og.Transform must, unless `bare`).
    *
    * @default null
    */
@@ -1424,7 +1424,9 @@ export interface ArchetypeView {
   readonly count: number;
   /** The tick this view belongs to. */
   readonly tick: number;
-  /** The entities as (index, generation) pairs: entity i is at 2i and 2i + 1. */
+  /**
+   * The entities as (index, generation) pairs: entity i is at 2i and 2i + 1. These are not handles: for a handle use entity(i) (world.despawn, get, set, insert and remove refuse a bare index, naming the call).
+   */
   readonly entities: Uint32Array;
   /**
    * The handle of entity i.

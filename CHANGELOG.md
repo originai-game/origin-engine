@@ -13,6 +13,18 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+- Entity arguments say what went wrong: a value that is not an entity
+  number (`null` from `world.find`, `undefined`, a Result) is thrown naming
+  the call and parameter, alike on both hosts (`world.set: entity is null
+  (world.find returns null when no entity has the name)`), a non-number
+  `SpawnDesc.parent` is refused instead of ignored, a dead handle is refused
+  as `world.despawn: no live entity has the handle N` (for a bare index with
+  `Archetype.entities holds (index, generation) pairs; use a.entity(i) for a
+  handle`, logged once per system and call), and `world.spawn` in a system
+  that did not declare `og.Parent` or `og.Transform` says spawn wrote it.
+
 ## 0.7.7 — 2026-10-31
 
 A patch with the simulation unchanged (the golden replays): IDL members

@@ -713,7 +713,7 @@ prop tick u32 "The tick this view belongs to."
 
 #### `ArchetypeView.entities` (property)
 
-The entities as (index, generation) pairs: entity i is at 2i and 2i + 1.
+The entities as (index, generation) pairs: entity i is at 2i and 2i + 1. These are not handles: for a handle use entity(i) (world.despawn, get, set, insert and remove refuse a bare index, naming the call).
 
 ```ts
 readonly entities: Uint32Array
@@ -722,7 +722,7 @@ readonly entities: Uint32Array
 Binding symbol `og_archetype_view_get_entities` · publish builds: kept
 
 ```ogt
-prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1."
+prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1. These are not handles: for a handle use entity(i) (world.despawn, get, set, insert and remove refuse a bare index, naming the call)."
 ```
 
 <sub>`api.ogt` line 984</sub>
@@ -848,7 +848,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `name` | `string` | `""` | — | — | — | A unique name; the probe and the command channel address the entity by it. Empty leaves it unnamed. |
-| `parent` | `Entity \| null` | `null` | — | — | — | The parent entity; the new entity's Transform is then relative to it. |
+| `parent` | `Entity \| null` | `null` | — | — | — | The parent entity; the new entity's Transform is then relative to it. It gives the new entity an og.Parent, so inside a system og.Parent must be among the system's writes (as og.Transform must, unless `bare`). |
 | `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The initial Transform.position. |
 | `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | The initial Transform.quaternion. |
 | `scale` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | — | — | The initial Transform.scale. |
@@ -859,7 +859,7 @@ struct SpawnDesc {
   doc "How to spawn an entity. `{}` spawns an unnamed entity at the origin with a Transform."
   desc true
   field name String "A unique name; the probe and the command channel address the entity by it. Empty leaves it unnamed."
-  field parent Option.Entity "The parent entity; the new entity's Transform is then relative to it."
+  field parent Option.Entity "The parent entity; the new entity's Transform is then relative to it. It gives the new entity an og.Parent, so inside a system og.Parent must be among the system's writes (as og.Transform must, unless `bare`)."
   field position Vector3 "The initial Transform.position." {
     unit m
   }

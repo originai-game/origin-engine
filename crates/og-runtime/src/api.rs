@@ -39,6 +39,50 @@ fn entity(n: f64) -> Result<Entity, String> {
     Ok(Entity::from_bits(n as u64))
 }
 
+/// Entity `n`, an argument of `call` that must name a live entity (`alive`
+/// answers for the running system or the world, or why it cannot), or the refusal each such
+/// call words alike. A number below 2^32 has generation 0, which no entity
+/// ever has: a bare index, most often read from `Archetype.entities`, so the
+/// refusal says so, and the engine log carries it once per system and call
+/// (`og run` prints it), so a Result the game ignores still shows.
+fn live(
+    eng: &Engine,
+    call: &str,
+    n: f64,
+    alive: impl FnOnce(Entity) -> Result<bool, String>,
+) -> Result<Entity, String> {
+    if let Ok(e) = entity(n)
+        && alive(e)?
+    {
+        return Ok(e);
+    }
+    let mut reason = format!("{call}: no live entity has the handle {n}");
+    if n.fract() == 0.0 && (0.0..4_294_967_296.0).contains(&n) {
+        reason.push_str(
+            " (Archetype.entities holds (index, generation) pairs; use a.entity(i) for a handle)",
+        );
+        let frame = running(eng.id);
+        let mut st = eng.state.borrow_mut();
+        let who = frame
+            .and_then(|f| st.systems.get(f.system))
+            .map(|s| format!("system '{}', ", s.name))
+            .unwrap_or_default();
+        if st
+            .undeclared_logged
+            .insert(format!("{who}{call} bare index"))
+        {
+            let tick = match frame {
+                // SAFETY: the frame is published while its system runs.
+                Some(f) => unsafe { f.ctx() }.time().tick,
+                None => eng.world().map(|w| w.time().tick).unwrap_or(0),
+            };
+            st.log
+                .push(json!({ "tick": tick, "warning": true, "text": format!("{who}{reason}") }));
+        }
+    }
+    Err(reason)
+}
+
 fn entity_number(e: Entity) -> Value {
     json!(e.to_bits())
 }
@@ -191,7 +235,26 @@ fn forget_name(eng: &Engine, e: Entity) {
     }
 }
 
-fn spawn(eng: &Engine, desc: &Value) -> Result<Entity, String> {
+/// A desc's `parent` (SpawnDesc, of `call`): none when absent or null, else
+/// its number; anything else is refused as the runtime refuses a value that
+/// is not an entity where one is expected (generated/abi.ts `notEntity`).
+fn spawn_parent(call: &str, desc: &Value) -> Result<Option<f64>, String> {
+    let pass = "pass the number world.spawn, world.find or a.entity(i) returned";
+    let what = match desc.get("parent") {
+        None | Some(Value::Null) => return Ok(None),
+        Some(Value::Number(n)) => return Ok(n.as_f64()),
+        Some(Value::Object(o)) if o.contains_key("ok") => {
+            "a Result, not an entity (world.spawn answers { ok, value }: pass its value)"
+                .to_string()
+        }
+        Some(Value::String(_)) => format!("a string, not an entity ({pass})"),
+        Some(Value::Bool(_)) => format!("a boolean, not an entity ({pass})"),
+        Some(_) => format!("an object, not an entity ({pass})"),
+    };
+    Err(format!("{call}: parent is {what}"))
+}
+
+fn spawn(eng: &Engine, call: &str, desc: &Value) -> Result<Entity, String> {
     let name = desc["name"].as_str().unwrap_or_default().to_string();
     if !name.is_empty() {
         if eng.state.borrow().names.contains_key(&name) {
@@ -214,7 +277,7 @@ fn spawn(eng: &Engine, desc: &Value) -> Result<Entity, String> {
         }
         components.push((id, layout.encode(None, Some(&Value::Object(value)))?));
     }
-    if let Some(p) = desc.get("parent").and_then(Value::as_f64) {
+    if let Some(p) = spawn_parent(call, desc)? {
         let parent = entity(p)?;
         if !eng.world()?.is_alive(parent) {
             return Err(format!("the parent {parent} is not alive"));
@@ -250,13 +313,33 @@ fn spawn_in_system(eng: &Engine, f: &super::engine::Frame, desc: &Value) -> Resu
         }
         components.push((id, layout.encode(None, Some(&Value::Object(value)))?));
     }
-    if let Some(p) = desc.get("parent").and_then(Value::as_f64) {
+    if let Some(p) = spawn_parent("world.spawn", desc)? {
         let (layout, id) = running_record(eng, "og.Parent", RecordKind::Component)?;
         components.push((id, layout.encode(None, Some(&json!({ "entity": p })))?));
     }
     queued_structural();
     // SAFETY: the frame is published while its system runs.
-    let e = unsafe { f.ctx() }.spawn_bytes(components).map_err(err)?;
+    let e = unsafe { f.ctx() }
+        .spawn_bytes(components)
+        .map_err(|e| {
+            // The system never named og.Transform or og.Parent itself: say
+            // that spawn writes them.
+            let access = e.kind() == og_core::ErrorKind::Access;
+            let reason = err(e);
+            let cause = if !access {
+                None
+            } else if reason.ends_with("access to 'og.Parent'") {
+                Some("world.spawn with parent writes og.Parent; add og.Parent to the system's writes")
+            } else if reason.ends_with("access to 'og.Transform'") {
+                Some("world.spawn writes og.Transform unless the desc says bare: true; add og.Transform to the system's writes")
+            } else {
+                None
+            };
+            match cause {
+                Some(c) => format!("{reason} ({c})"),
+                None => reason,
+            }
+        })?;
     if !name.is_empty() {
         set_name(eng, e, &name);
     }
@@ -275,7 +358,7 @@ pub fn og_world_spawn(world: u32, desc: Option<String>) -> String {
     result((|| {
         let eng = engine(world)?;
         let desc = parse(desc.as_deref())?;
-        spawn(&eng, &desc).map(entity_number)
+        spawn(&eng, "world.spawn", &desc).map(entity_number)
     })())
 }
 
@@ -312,18 +395,20 @@ fn with_descendants(world: &World, root: Entity) -> Result<Vec<Entity>, String> 
 
 pub fn og_world_despawn(world: u32, entity_id: f64) -> String {
     result_void((|| {
-        let e = entity(entity_id)?;
+        let eng = engine(world)?;
         if let Some(f) = running(world) {
-            queued_structural();
             // SAFETY: the frame is published while its system runs.
+            let e = live(&eng, "world.despawn", entity_id, |e| {
+                Ok(unsafe { f.ctx() }.is_alive(e))
+            })?;
+            queued_structural();
+            // SAFETY: as above.
             return unsafe { f.ctx() }.despawn(e).map_err(err);
         }
-        let eng = engine(world)?;
-        let w = eng.world()?;
-        if !w.is_alive(e) {
-            return Err(format!("entity {e} is not alive"));
-        }
-        let all = with_descendants(w, e)?;
+        let e = live(&eng, "world.despawn", entity_id, |e| {
+            Ok(eng.world()?.is_alive(e))
+        })?;
+        let all = with_descendants(eng.world()?, e)?;
         before_structural(&eng);
         for d in all {
             eng.world()?.despawn(d).map_err(err)?;
@@ -382,7 +467,10 @@ pub fn og_world_insert(world: u32, entity_id: f64, comp: String, value: Option<S
     if let Some(f) = running(world) {
         return result_void((|| {
             let eng = engine(world)?;
-            let e = entity(entity_id)?;
+            // SAFETY: the frame is published while its system runs.
+            let e = live(&eng, "world.insert", entity_id, |e| {
+                Ok(unsafe { f.ctx() }.is_alive(e))
+            })?;
             let (layout, id) = running_record(&eng, &comp, RecordKind::Component)?;
             let bytes = layout.encode(None, Some(&parse(value.as_deref())?))?;
             queued_structural();
@@ -392,13 +480,11 @@ pub fn og_world_insert(world: u32, entity_id: f64, comp: String, value: Option<S
     }
     result_void((|| {
         let eng = engine(world)?;
-        let e = entity(entity_id)?;
+        let e = live(&eng, "world.insert", entity_id, |e| {
+            Ok(eng.world()?.is_alive(e))
+        })?;
         let (layout, id) = component(&eng, &comp)?;
         let value = parse(value.as_deref())?;
-        let w = eng.world()?;
-        if !w.is_alive(e) {
-            return Err(format!("entity {e} is not alive"));
-        }
         let bytes = layout.encode(None, Some(&value))?;
         before_structural(&eng);
         eng.world()?.insert_bytes(e, id, &bytes).map_err(err)
@@ -409,7 +495,10 @@ pub fn og_world_remove(world: u32, entity_id: f64, comp: String) -> String {
     if let Some(f) = running(world) {
         return result_void((|| {
             let eng = engine(world)?;
-            let e = entity(entity_id)?;
+            // SAFETY: the frame is published while its system runs.
+            let e = live(&eng, "world.remove", entity_id, |e| {
+                Ok(unsafe { f.ctx() }.is_alive(e))
+            })?;
             let (_, id) = running_record(&eng, &comp, RecordKind::Component)?;
             queued_structural();
             // SAFETY: the frame is published while its system runs.
@@ -418,7 +507,9 @@ pub fn og_world_remove(world: u32, entity_id: f64, comp: String) -> String {
     }
     result_void((|| {
         let eng = engine(world)?;
-        let e = entity(entity_id)?;
+        let e = live(&eng, "world.remove", entity_id, |e| {
+            Ok(eng.world()?.is_alive(e))
+        })?;
         let (_, id) = component(&eng, &comp)?;
         before_structural(&eng);
         eng.world()?.remove_id(e, id).map_err(err)
@@ -429,7 +520,10 @@ pub fn og_world_get(world: u32, entity_id: f64, comp: String) -> String {
     if let Some(f) = running(world) {
         return result((|| {
             let eng = engine(world)?;
-            let e = entity(entity_id)?;
+            // SAFETY: the frame is published while its system runs.
+            let e = live(&eng, "world.get", entity_id, |e| {
+                Ok(unsafe { f.ctx() }.is_alive(e))
+            })?;
             let (layout, id) = running_record(&eng, &comp, RecordKind::Component)?;
             // SAFETY: the frame is published while its system runs.
             let bytes = unsafe { f.ctx() }
@@ -440,7 +534,9 @@ pub fn og_world_get(world: u32, entity_id: f64, comp: String) -> String {
     }
     result((|| {
         let eng = engine(world)?;
-        let e = entity(entity_id)?;
+        let e = live(&eng, "world.get", entity_id, |e| {
+            Ok(eng.world()?.is_alive(e))
+        })?;
         let (layout, id) = component(&eng, &comp)?;
         let bytes = eng.world()?.get_bytes(e, id).map_err(err)?;
         Ok(layout.decode(&bytes))
@@ -462,7 +558,10 @@ pub fn og_world_set(world: u32, entity_id: f64, comp: String, value: String) -> 
     if let Some(f) = running(world) {
         return result_void((|| {
             let eng = engine(world)?;
-            let e = entity(entity_id)?;
+            // SAFETY: the frame is published while its system runs.
+            let e = live(&eng, "world.set", entity_id, |e| {
+                Ok(unsafe { f.ctx() }.is_alive(e))
+            })?;
             let (layout, id) = running_record(&eng, &comp, RecordKind::Component)?;
             let value = parse(Some(&value))?;
             // SAFETY: the frame is published while its system runs.
@@ -475,7 +574,9 @@ pub fn og_world_set(world: u32, entity_id: f64, comp: String, value: String) -> 
     }
     result_void((|| {
         let eng = engine(world)?;
-        let e = entity(entity_id)?;
+        let e = live(&eng, "world.set", entity_id, |e| {
+            Ok(eng.world()?.is_alive(e))
+        })?;
         let (layout, id) = component(&eng, &comp)?;
         let value = parse(Some(&value))?;
         let w = eng.world()?;
@@ -712,7 +813,7 @@ pub fn og_world_instantiate(world: u32, asset: f64, desc: Option<String>) -> Str
                 _ => return Err(format!("{} is a bundle, not a scene or a glTF", entry.path)),
             }
         };
-        let root = spawn(&eng, &desc)?;
+        let root = spawn(&eng, "world.instantiate", &desc)?;
         match scene {
             Some(s) => {
                 if let Err(e) = assets::spawn_scene(&eng, &s, Some(root)) {

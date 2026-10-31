@@ -1203,3 +1203,157 @@ export const SYMBOLS: readonly string[] = [
   "og_room_deliver",
   "og_room_set_host",
 ];
+
+/** Why `value`, passed as `param` of `call` where an entity is expected, is not one. */
+function notEntity(call: string, param: string, value: unknown): never {
+  const pass = "pass the number world.spawn, world.find or a.entity(i) returned";
+  const what =
+    value === null ? "null (world.find returns null when no entity has the name)"
+    : value === undefined ? `undefined (${pass})`
+    : typeof value === "object" && "ok" in value ? "a Result, not an entity (world.spawn answers { ok, value }: pass its value)"
+    : `${/^[aeiou]/.test(typeof value) ? "an" : "a"} ${typeof value}, not an entity (${pass})`;
+  throw new Error(`${call}: ${param} is ${what}`);
+}
+
+/** `abi` with every binding that takes an `Entity` checking it is a number first (`notEntity`). */
+export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
+  return {
+    ...abi,
+    og_world_despawn(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("world.despawn", "entity", entity);
+      return abi.og_world_despawn(world, entity);
+    },
+    og_world_alive(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("world.alive", "entity", entity);
+      return abi.og_world_alive(world, entity);
+    },
+    og_world_has(world: number, entity: number, component: string) {
+      if (typeof entity !== "number") notEntity("world.has", "entity", entity);
+      return abi.og_world_has(world, entity, component);
+    },
+    og_world_insert(world: number, entity: number, component: string, value: string | undefined) {
+      if (typeof entity !== "number") notEntity("world.insert", "entity", entity);
+      return abi.og_world_insert(world, entity, component, value);
+    },
+    og_world_remove(world: number, entity: number, component: string) {
+      if (typeof entity !== "number") notEntity("world.remove", "entity", entity);
+      return abi.og_world_remove(world, entity, component);
+    },
+    og_world_get(world: number, entity: number, component: string) {
+      if (typeof entity !== "number") notEntity("world.get", "entity", entity);
+      return abi.og_world_get(world, entity, component);
+    },
+    og_world_set(world: number, entity: number, component: string, value: string) {
+      if (typeof entity !== "number") notEntity("world.set", "entity", entity);
+      return abi.og_world_set(world, entity, component, value);
+    },
+    og_world_name_of(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("world.nameOf", "entity", entity);
+      return abi.og_world_name_of(world, entity);
+    },
+    og_physics_apply_force(world: number, entity: number, force: string, point: string | undefined) {
+      if (typeof entity !== "number") notEntity("og.physics.applyForce", "entity", entity);
+      return abi.og_physics_apply_force(world, entity, force, point);
+    },
+    og_physics_apply_impulse(world: number, entity: number, impulse: string, point: string | undefined) {
+      if (typeof entity !== "number") notEntity("og.physics.applyImpulse", "entity", entity);
+      return abi.og_physics_apply_impulse(world, entity, impulse, point);
+    },
+    og_physics_apply_torque(world: number, entity: number, torque: string) {
+      if (typeof entity !== "number") notEntity("og.physics.applyTorque", "entity", entity);
+      return abi.og_physics_apply_torque(world, entity, torque);
+    },
+    og_physics_apply_torque_impulse(world: number, entity: number, torque: string) {
+      if (typeof entity !== "number") notEntity("og.physics.applyTorqueImpulse", "entity", entity);
+      return abi.og_physics_apply_torque_impulse(world, entity, torque);
+    },
+    og_physics_rope_points(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.physics.ropePoints", "entity", entity);
+      return abi.og_physics_rope_points(world, entity);
+    },
+    og_physics_cloth_points(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.physics.clothPoints", "entity", entity);
+      return abi.og_physics_cloth_points(world, entity);
+    },
+    og_physics_fluid_particles(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.physics.fluidParticles", "entity", entity);
+      return abi.og_physics_fluid_particles(world, entity);
+    },
+    og_physics_fluid3d_particles(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.physics.fluid3dParticles", "entity", entity);
+      return abi.og_physics_fluid3d_particles(world, entity);
+    },
+    og_physics_water_height(world: number, entity: number, x: number, z: number) {
+      if (typeof entity !== "number") notEntity("og.physics.waterHeight", "entity", entity);
+      return abi.og_physics_water_height(world, entity, x, z);
+    },
+    og_physics_vehicle_wheels(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.physics.vehicleWheels", "entity", entity);
+      return abi.og_physics_vehicle_wheels(world, entity);
+    },
+    og_physics_set_ragdoll_rig(world: number, entity: number, desc: string | undefined) {
+      if (typeof entity !== "number") notEntity("og.physics.setRagdollRig", "entity", entity);
+      return abi.og_physics_set_ragdoll_rig(world, entity, desc);
+    },
+    og_physics_ragdoll_pose(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.physics.ragdollPose", "entity", entity);
+      return abi.og_physics_ragdoll_pose(world, entity);
+    },
+    og_anim_skeleton2d_boxes(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.anim.skeleton2dBoxes", "entity", entity);
+      return abi.og_anim_skeleton2d_boxes(world, entity);
+    },
+    og_tween_cancel_entity(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.tween.cancelEntity", "entity", entity);
+      return abi.og_tween_cancel_entity(world, entity);
+    },
+    og_tilemap_get_tile(world: number, entity: number, layer: string, x: number, y: number) {
+      if (typeof entity !== "number") notEntity("og.tilemap.getTile", "entity", entity);
+      return abi.og_tilemap_get_tile(world, entity, layer, x, y);
+    },
+    og_tilemap_cell_at(world: number, entity: number, point: string) {
+      if (typeof entity !== "number") notEntity("og.tilemap.cellAt", "entity", entity);
+      return abi.og_tilemap_cell_at(world, entity, point);
+    },
+    og_tilemap_cell_center(world: number, entity: number, x: number, y: number) {
+      if (typeof entity !== "number") notEntity("og.tilemap.cellCenter", "entity", entity);
+      return abi.og_tilemap_cell_center(world, entity, x, y);
+    },
+    og_nav_path_of(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.nav.pathOf", "entity", entity);
+      return abi.og_nav_path_of(world, entity);
+    },
+    og_ai_get(world: number, entity: number, key: string) {
+      if (typeof entity !== "number") notEntity("og.ai.get", "entity", entity);
+      return abi.og_ai_get(world, entity, key);
+    },
+    og_ai_set(world: number, entity: number, key: string, value: string) {
+      if (typeof entity !== "number") notEntity("og.ai.set", "entity", entity);
+      return abi.og_ai_set(world, entity, key, value);
+    },
+    og_ai_restart(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.ai.restart", "entity", entity);
+      return abi.og_ai_restart(world, entity);
+    },
+    og_ai_describe(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.ai.describe", "entity", entity);
+      return abi.og_ai_describe(world, entity);
+    },
+    og_timeline_play(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.timeline.play", "entity", entity);
+      return abi.og_timeline_play(world, entity);
+    },
+    og_timeline_pause(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.timeline.pause", "entity", entity);
+      return abi.og_timeline_pause(world, entity);
+    },
+    og_timeline_seek(world: number, entity: number, time: number) {
+      if (typeof entity !== "number") notEntity("og.timeline.seek", "entity", entity);
+      return abi.og_timeline_seek(world, entity, time);
+    },
+    og_timeline_stop(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.timeline.stop", "entity", entity);
+      return abi.og_timeline_stop(world, entity);
+    },
+  };
+}

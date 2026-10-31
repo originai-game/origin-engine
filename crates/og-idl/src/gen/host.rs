@@ -706,5 +706,93 @@ pub fn abi_ts(ix: &Index<'_>) -> String {
         out.push_str(&format!("  \"{name}\",\n"));
     }
     out.push_str("];\n");
+    entity_checks(ix, &all, &mut out);
     out
+}
+
+/// `checkEntities` of abi.ts: every binding with an `Entity` parameter
+/// wrapped in a `typeof` check, so a value that is not a number (null from
+/// world.find, undefined, a Result) is refused naming the call and the
+/// parameter, alike on both hosts, before napi's conversion error or
+/// wasm-bindgen's coercion to 0 or NaN.
+fn entity_checks(ix: &Index<'_>, all: &[Binding<'_>], out: &mut String) {
+    out.push_str(
+        "\n/** Why `value`, passed as `param` of `call` where an entity is expected, is not one. */\n\
+         function notEntity(call: string, param: string, value: unknown): never {\n\
+         \x20 const pass = \"pass the number world.spawn, world.find or a.entity(i) returned\";\n\
+         \x20 const what =\n\
+         \x20   value === null ? \"null (world.find returns null when no entity has the name)\"\n\
+         \x20   : value === undefined ? `undefined (${pass})`\n\
+         \x20   : typeof value === \"object\" && \"ok\" in value ? \"a Result, not an entity (world.spawn answers { ok, value }: pass its value)\"\n\
+         \x20   : `${/^[aeiou]/.test(typeof value) ? \"an\" : \"a\"} ${typeof value}, not an entity (${pass})`;\n\
+         \x20 throw new Error(`${call}: ${param} is ${what}`);\n\
+         }\n\n\
+         /** `abi` with every binding that takes an `Entity` checking it is a number first (`notEntity`). */\n\
+         export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {\n\
+         \x20 return {\n\
+         \x20   ...abi,\n",
+    );
+    for b in all {
+        let Some(f) = b.function else { continue };
+        let (params, _) = signature(ix, b);
+        // The receiver (world, an interface object) comes first.
+        let offset = params.len() - f.params.len();
+        let checked: Vec<(usize, &Param)> = f
+            .params
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| {
+                p.ty.name() == "Entity" && !f.generics.iter().any(|g| g.name == "Entity")
+            })
+            .map(|(i, p)| (i + offset, p))
+            .collect();
+        if checked.is_empty() {
+            continue;
+        }
+        let call = match b.owner {
+            Some(owner) => {
+                let mut c = owner.chars();
+                let first = c.next().map(|c| c.to_ascii_lowercase()).unwrap_or_default();
+                format!("{first}{}.{}", c.as_str(), b.name)
+            }
+            None => b.path.clone(),
+        };
+        let names: Vec<&str> = params.iter().map(|p| p.name.as_str()).collect();
+        let tests: Vec<String> = checked
+            .iter()
+            .map(|(i, p)| {
+                let n = names[*i];
+                let bad = if params[*i].optional {
+                    format!("{n} !== undefined && typeof {n} !== \"number\"")
+                } else {
+                    format!("typeof {n} !== \"number\"")
+                };
+                format!(
+                    "      if ({bad}) notEntity(\"{call}\", \"{}\", {n});\n",
+                    p.name
+                )
+            })
+            .collect();
+        out.push_str(&format!(
+            "    {}({}) {{\n{}      return abi.{}({});\n    }},\n",
+            b.symbol,
+            names
+                .iter()
+                .zip(&params)
+                .map(|(n, p)| {
+                    let ty = p.wire.ts();
+                    if p.optional {
+                        format!("{n}: {ty} | undefined")
+                    } else {
+                        format!("{n}: {ty}")
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(", "),
+            tests.concat(),
+            b.symbol,
+            names.join(", ")
+        ));
+    }
+    out.push_str("  };\n}\n");
 }

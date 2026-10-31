@@ -11,7 +11,7 @@
 import bindings from "../types/bindings.json" with { type: "json" };
 import type * as Api from "@origingame/engine";
 import type { Dispatcher, HostAbi } from "./generated/abi.ts";
-import { SYMBOLS } from "./generated/abi.ts";
+import { SYMBOLS, checkEntities } from "./generated/abi.ts";
 import { noPlatform, type PlatformAnswer, type PlatformCall, type PlatformHost } from "./platform-local.ts";
 
 // ── host binding ──────────────────────────────────────────────────────────
@@ -67,7 +67,9 @@ export function bindHost(binding: HostBinding): void {
   if (missing.length > 0) {
     throw new Error(`the ${binding.name} host lacks ${missing.length} binding symbol(s): ${missing.join(", ")}; rebuild it from the same api.ogt`);
   }
-  host = binding;
+  // Entity arguments are checked here, so null or undefined is refused
+  // naming the call on both hosts alike (generated/abi.ts).
+  host = { ...binding, abi: checkEntities(binding.abi) };
   publishBuild = null;
   binding.abi.og_host_set_dispatcher(dispatch);
   for (const declare of queue.splice(0)) declare(binding.abi);

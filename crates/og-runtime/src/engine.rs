@@ -502,7 +502,8 @@ pub(crate) struct State {
     /// tree only when it changes.
     pub a11y_digest: u64,
     /// Undeclared accesses already logged (`system access name`), so each is
-    /// logged once per system (`api::undeclared`).
+    /// logged once per system (`api::undeclared`), and the calls handed a
+    /// bare index for an entity (`api::live`), once per system and call.
     pub undeclared_logged: BTreeSet<String>,
     /// og-anim on this world, and its assets (replayed into a reload's world).
     pub anim: Option<og_anim::AnimationSystem>,
