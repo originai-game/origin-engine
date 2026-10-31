@@ -12,6 +12,13 @@ next for each part.
 
 ## What works
 
+`examples/<name>` in this package's skills is a game in the engine's
+source repository (https://github.com/originai-game/origin-engine/tree/main/examples),
+not installed with the package; read one there when a skill points to it.
+What a game starts from is installed: the archetypes of
+`@origingame/create-game` (`npm create @origingame/game -- --archetype <name>`,
+or Origin's `engine_scaffold`).
+
 Three games were written from this package alone: `examples/lantern-vale`
 (a 3D top-down adventure), `examples/hollowbell` (a 2D platformer) and
 `examples/kestrel-stair` (a 3D third-person action-adventure). What they
