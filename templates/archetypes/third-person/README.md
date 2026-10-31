@@ -61,7 +61,7 @@ og build . --publish         # dist/: the play page as it ships (behind "tap to 
   `og.DayNight` running from late afternoon to night as the run's clock.
 - **Screens on og.ui with tokens and MSDF text** (og-ui §2–§6, og-taste):
   the engine's fantasy pack as `assets/styles/ember` (Cinzel and Newsreader,
-  Noto Sans SC as the fallback, every font an MSDF atlas at cook time); the
+  Noto Serif SC as the Chinese companion, every font MSDF text); the
   title over an orbit of the vale, the HUD (hearts and beacons top-left,
   the dusk clock and Pause top-right, the kindling prompt and its progress
   at the bottom; on a touch screen a joystick, Jump and Kindle), toasts,
@@ -78,8 +78,8 @@ og build . --publish         # dist/: the play page as it ships (behind "tap to 
 - **Tune**: every `Tuning` field is tunable (speeds, wading, kindling,
   dusk, the sentinels' pace and sight, the hit stop, the camera).
 - **Languages** (og-i18n): every string is a key of `assets/strings/en.ogt`
-  and `zh-CN.ogt`; the Chinese font is Noto Sans SC subset to exactly the
-  table's characters.
+  and `zh-CN.ogt`; Chinese is drawn in the fantasy pack's companion (`cjk`,
+  Noto Serif SC SemiBold), which draws every GB2312 character.
 - **The platform** (og-platform-sdk): settings through
   `loadSettings`/`saveSettings`; the record (`{runs, wins, best}`) read on
   the first ticks and written at the revision read; one call at a time
@@ -183,10 +183,8 @@ stages.
    colours, the style's palette in `assets/styles/ember/style.ogt`.
 4. **The characters**: another CC0 humanoid in `assets/models/` with the
    clip library retargeted onto it (`src/anim.ts`), the graphs' thresholds.
-5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs the script
-   run again to subset the font (with fontTools and the project template's
-   Noto Sans SC; without them the script fails naming the characters the
-   committed font lacks).
+5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs nothing
+   more: the style's Chinese companions draw every GB2312 character.
 
 ## Commands (for scripts and agents)
 
@@ -228,7 +226,7 @@ language. The playtests read the same values from the `Game` resource with
 
 Nothing here is downloaded. `tools/make-assets.py` regenerates the vale's
 heightmap and control map, the sounds and music, the `og sfx` presets, the
-sentinels' minds and the font subset byte for byte; the characters, the
+sentinels' minds byte for byte; the characters, the
 clip library, the textures and the beacon's effects are the engine's own
 CC0 assets. `LICENSES.md` lists every file; the style's are in
 `assets/styles/ember/LICENSES.md`.

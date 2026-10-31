@@ -8,6 +8,6 @@
 | `Fredoka-SemiBold.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Fredoka SemiBold (Google Fonts); unmodified. Copyright 2016 The Fredoka Project Authors (https://github.com/hafontia/Fredoka-One) |
 | `LilitaOne-Regular.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Lilita One (Google Fonts); unmodified (Reserved Font Name "Lilita One"). Copyright (c) 2011 Juan Montoreano (juan@remolacha.biz), with Reserved Font Names "Lilita One" |
 
-Characters these fonts lack (Chinese, Japanese, Korean) are drawn with the
-style's `fallback` font, `fonts/NotoSansSC-Regular-subset.ttf` (the platform's
-subset, OFL 1.1, `assets/fonts/OFL.txt`).
+Chinese is drawn with the style's companions (`fonts { cjk cjkDisplay }`),
+the engine's built-in `@styles/cjk/` faces (licences in the engine's
+`templates/styles/cjk/LICENSES.md`).

@@ -130,12 +130,15 @@ string "results.time" "タイム {time}"
 - Latin and Cyrillic: the style's font. Every other script: a subset of a
   Noto face for that script holding exactly the characters your tables
   use, named first in that table's `fonts` line.
-- What the engine ships: `fonts/NotoSansSC-Regular-subset.ttf`, in every
-  project (Simplified Chinese: GB2312's 6,763 hanzi, kana and Latin-1,
-  2.5 MB), the source for a Chinese subset and the styles' CJK `fallback`.
+- What the engine ships: `fonts/NotoSansSC-Regular-subset.ttf`, in a
+  project made from `templates/game` (Simplified Chinese: GB2312's 6,763
+  hanzi, kana and Latin-1, 2.5 MB), the source for a Chinese subset and
+  the styles' CJK `fallback`; an archetype project has no such file.
   The built-in UI styles bring their own Chinese faces (`cjk`,
   `cjkDisplay`: og-ui §7) into a game with a `zh` table: a Chinese game on
-  a built-in style needs no font of its own for its UI.
+  a built-in style needs no font of its own for its UI. Every archetype
+  with a `zh` table names the same `@styles/cjk/` companions in its style,
+  so an archetype game needs no Chinese font or subsetting of its own.
   The ui-kit's `NotoSansJP-subset.otf`, `NotoSansKR-subset.otf` and its
   Arabic, Hebrew and Devanagari subsets hold only the ui-kit's own strings
   (the Japanese one 246 characters, 74 of them kanji): they are no source

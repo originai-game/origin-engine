@@ -1,6 +1,6 @@
 # Three-Lane Beat's style (the engine's sci-fi style pack, recoloured): licences
 
-The palette, the body sizes and the fallback font in `style.ogt` are this
+The palette and the body sizes in `style.ogt` are this
 game's edits by hand; the rest is the pack as `templates/styles/scifi` ships it.
 
 | File | Licence | Origin |
@@ -12,6 +12,6 @@ game's edits by hand; the rest is the pack as `templates/styles/scifi` ships it.
 | `JetBrainsMono-Regular.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | JetBrains Mono (github.com/JetBrains/JetBrainsMono); unmodified. Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono) |
 | `Orbitron-Bold.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Orbitron Bold (github.com/theleagueof/orbitron); unmodified. Copyright 2018 The Orbitron Project Authors (https://github.com/theleagueof/orbitron), with Reserved Font Name: "Orbitron". |
 
-Characters these fonts lack (Chinese, Japanese, Korean) are drawn with the
-style's `fallback` font, `fonts/NotoSansSC-subset.ttf` (Noto Sans SC subset to
-this game's Chinese strings, OFL 1.1, `assets/fonts/OFL.txt`).
+Chinese is drawn with the style's companions (`fonts { cjk cjkDisplay }`),
+the engine's built-in `@styles/cjk/` faces (licences in the engine's
+`templates/styles/cjk/LICENSES.md`).

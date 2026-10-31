@@ -14,17 +14,14 @@
   ring, the supernova, the sparks drifting up from the orb, the stars),
 - assets/audio/*.wav: the tap, a purchase, a milestone, the supernova and
   the orbit's music loop; *.ogt: the UI's og sfx presets,
-- assets/fonts/NotoSansSC-subset.ttf + .ogt: Noto Sans SC subset to the
-  characters of assets/strings/zh-CN.ogt (needs fontTools and the project
-  template's font; skipped with a note when either is missing).
 
-Standard library only except the font subset; deterministic.
+Standard library only; deterministic.
 """
 import colorsys, math, os, struct, sys, zlib
 
 here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, here)
-from oglite import Canvas, png_bytes, write_wav, tone, noise, mix, concat, subset_font  # noqa: E402
+from oglite import Canvas, png_bytes, write_wav, tone, noise, mix, concat  # noqa: E402
 
 root = os.path.dirname(here)
 assets = os.path.join(root, "assets")
@@ -399,29 +396,6 @@ def sounds():
         write(f"audio/{name}.ogt", f'type sfx\nversion 1\n---\n# og sfx\'s "{preset}" preset, synthesised by og cook (the UI\'s {name[3:]} sound).\npreset "{preset}"\nseed 0\npitch 1\nlength 1\nvolume 0.8\n')
 
 
-# ── the font ───────────────────────────────────────────────────────────────
-
-def zh_characters():
-    text = open(os.path.join(assets, "strings", "zh-CN.ogt"), encoding="utf-8").read()
-    # And the punctuation the UI draws itself: the en dash (a grade or a
-    # count not yet known) and the ellipsis (a cut label), which the zh-CN
-    # screens showed as missing glyphs before og-ui warned about them.
-    chars = sorted({ch for ch in text if ord(ch) > 0x2E7F} | set("–…"))
-    return "".join(chars)
-
-
-def font():
-    chars = zh_characters()
-    src = os.path.join(root, "..", "..", "game", "assets", "fonts", "NotoSansSC-Regular-subset.ttf")
-    try:
-        subset_font(src, os.path.join(assets, "fonts", "NotoSansSC-subset.ttf"), chars)
-    except Exception as e:  # noqa: BLE001
-        print(f"font subset skipped ({e}); the committed assets/fonts/NotoSansSC-subset.ttf stays")
-    write("fonts/NotoSansSC-subset.ttf.ogt", "type import\nversion 1\n---\n"
-          "# Latin-1, CJK punctuation and every character of assets/strings/zh-CN.ogt (tools/make-assets.py).\n"
-          f'font {{\n  charset latin cjk-punct\n  chars "{chars}"\n  em_px 32\n  px_range 4\n}}\n')
-
-
 def main():
     write("sprites/orb.png", orb())
     write("sprites/orb.png.ogt", LINEAR)
@@ -441,7 +415,6 @@ def main():
     write("fx/drift.ogt", DRIFT)
     write("fx/stars.ogt", STARS)
     sounds()
-    font()
 
 
 if __name__ == "__main__":

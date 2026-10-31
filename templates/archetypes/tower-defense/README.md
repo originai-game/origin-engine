@@ -70,8 +70,8 @@ og build . --publish         # dist/: the play page as it ships
   effects (`og.AudioBusFx`).
 - **Languages** (og-i18n §1–§5): every string is a key of
   `assets/strings/en.ogt` and `zh-CN.ogt`; the settings switch with
-  `og.i18n.setLocale`; the Chinese font is Noto Sans SC subset to exactly
-  the table's characters.
+  `og.i18n.setLocale`; Chinese is drawn in the cartoon pack's companion
+  (`cjk`, ZCOOL KuaiLe), which draws every GB2312 character.
 - **The platform** (og-platform-sdk §1–§4): settings through
   `loadSettings`/`saveSettings`, the best score read on tick 0 and written
   at the revision read, the board and a `round.over` event.
@@ -178,8 +178,8 @@ The visitors' numbers are `KINDS` and the waves `WAVES` in `src/systems.ts`.
    gate, D the doorstep), then `python3 tools/make-assets.py && og cook .`.
 4. **The look**: `assets/styles/pathguard/style.ogt`'s palette and the art
    in `tools/make-assets.py`.
-5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs the
-   script run again to subset the font.
+5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs nothing
+   more: the style's Chinese companions draw every GB2312 character.
 
 ## Commands (for scripts and agents)
 
@@ -224,7 +224,7 @@ in the engine repository).
 `tools/make-assets.py` regenerates every asset byte for byte (two runs
 give the same bytes): the tileset, the map, the sprite sheet, the glow and
 particle textures and emitters, the sounds and the music, the `og sfx`
-preset files of the UI's sounds, and the font subset. `LICENSES.md` lists
+preset files of the UI's sounds. `LICENSES.md` lists
 them; the style's are in `assets/styles/pathguard/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)

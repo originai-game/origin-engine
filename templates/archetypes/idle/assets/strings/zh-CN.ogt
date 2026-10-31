@@ -4,7 +4,6 @@ version 1
 # 星火球的简体中文字符串（og.i18n）；每个键都与 en.ogt 一一对应。
 # 大数：num.step 为每个单位的位数（万进制为 4），num.1–num.4 为单位，之后用 num.sci。
 locale "zh-CN"
-fonts "fonts/NotoSansSC-subset.ttf"
 string "title.name" "星火球"
 string "title.tagline" "点亮星火球，唤醒火花，照亮夜空"
 string "title.play" "开始"

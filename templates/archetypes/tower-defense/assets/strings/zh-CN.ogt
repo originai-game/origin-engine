@@ -3,7 +3,6 @@ version 1
 ---
 # 小径守卫的简体中文字符串（og.i18n）；每个键都与 en.ogt 一一对应。
 locale "zh-CN"
-fonts "fonts/NotoSansSC-subset.ttf"
 string "title.name" "小径守卫"
 string "title.tagline" "守住花园小径，直到黑夜过去"
 string "title.play" "开始"

@@ -14,17 +14,14 @@
   assets/sprites/glow.png (the lamp's light),
 - assets/audio/*.wav: steps, hits, hurts, pickups, the stairs, the
   guardian, the fall and the win, and the tomb's music loop,
-- assets/fonts/NotoSansSC-subset.ttf + .ogt: Noto Sans SC subset to the
-  characters of assets/strings/zh-CN.ogt (needs fontTools and the project
-  template's font; skipped with a note when either is missing).
 
-Standard library only except the font subset; deterministic.
+Standard library only; deterministic.
 """
 import math, os, sys
 
 here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, here)
-from oglite import png_bytes, write_wav, tone, noise, mix, concat, subset_font  # noqa: E402
+from oglite import png_bytes, write_wav, tone, noise, mix, concat  # noqa: E402
 
 root = os.path.dirname(here)
 assets = os.path.join(root, "assets")
@@ -485,21 +482,6 @@ def sounds():
         write(f"audio/{name}.ogt", f'type sfx\nversion 1\n---\n# og sfx\'s "{preset}" preset, synthesised by og cook.\npreset "{preset}"\nseed 0\npitch 1\nlength 1\nvolume 0.8\n')
 
 
-# ── the font ───────────────────────────────────────────────────────────────
-
-def font():
-    text = open(os.path.join(assets, "strings", "zh-CN.ogt"), encoding="utf-8").read()
-    chars = "".join(sorted({ch for ch in text if ord(ch) > 0x2E7F}))
-    src = os.path.join(root, "..", "..", "game", "assets", "fonts", "NotoSansSC-Regular-subset.ttf")
-    try:
-        subset_font(src, os.path.join(assets, "fonts", "NotoSansSC-subset.ttf"), chars)
-    except Exception as e:  # noqa: BLE001
-        print(f"font subset skipped ({e}); the committed assets/fonts/NotoSansSC-subset.ttf stays")
-    write("fonts/NotoSansSC-subset.ttf.ogt", "type import\nversion 1\n---\n"
-          "# Latin-1, CJK punctuation and every character of assets/strings/zh-CN.ogt (tools/make-assets.py).\n"
-          f'font {{\n  charset latin cjk-punct\n  chars "{chars}"\n  em_px 32\n  px_range 4\n}}\n')
-
-
 def main():
     write("tiles/tomb.png", tileset().png())
     write("tiles/tomb.png.ogt", PIXEL)
@@ -511,7 +493,6 @@ def main():
     write("sprites/glow.png", glow())
     write("sprites/glow.png.ogt", LINEAR)
     sounds()
-    font()
 
 
 if __name__ == "__main__":

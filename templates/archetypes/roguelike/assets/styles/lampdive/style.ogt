@@ -74,7 +74,8 @@ fonts {
   body "styles/lampdive/DotGothic16-Regular.ttf"
   display "styles/lampdive/DotGothic16-Regular.ttf"
   numeric "styles/lampdive/DotGothic16-Regular.ttf"
-  fallback "fonts/NotoSansSC-subset.ttf"
+  cjk "@styles/cjk/FusionPixel12-zhHans.ttf"
+  cjkDisplay "@styles/cjk/FusionPixel12-zhHans.ttf"
 }
 icons "styles/lampdive/icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"

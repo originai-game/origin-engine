@@ -50,8 +50,9 @@ og build . --publish         # dist/: the play page as it ships
   tables, so English groups by thousands (`9,999`, `12.3K`, `1.20M`,
   `4.56e15`) and Chinese by ten-thousands (`12.3万`, `1.23亿`, `4.56亿亿`);
   `{n, number}` groups the small ones. Every string is a key of
-  `assets/strings/en.ogt` and `zh-CN.ogt`; the Chinese font is Noto Sans SC
-  subset to exactly the table's characters.
+  `assets/strings/en.ogt` and `zh-CN.ogt`; Chinese is drawn in the neon
+  pack's companion (`cjk`, Noto Sans SC Bold), which draws every GB2312
+  character.
 - **A satisfying tap** (og-feel §5–§7, §9): the orb squashes and flashes,
   the sparks made rise from where the finger landed, a burst of sparks is
   thrown out, and the chime climbs a quarter tone a tap through a quick run
@@ -174,8 +175,8 @@ pure functions, the stars come from an og.Rng stream forked by name, and
    style's palette is `assets/styles/sparkorb/style.ogt`, the art
    `tools/make-assets.py`: `python3 tools/make-assets.py && og cook .`.
 5. **Words and numbers**: `assets/strings/*.ogt` (a locale's `num.step`
-   and units make its big numbers); a new Chinese string needs the script
-   run again to subset the font.
+   and units make its big numbers); a new Chinese string needs nothing
+   more: the style's Chinese companions draw every GB2312 character.
 
 ## Commands (for scripts and agents)
 
@@ -221,7 +222,7 @@ in the engine repository).
 `tools/make-assets.py` regenerates every asset byte for byte (two runs
 give the same bytes): the orb, the glow, the spark and the motes, the
 emitters, the sounds and the music, the `og sfx` preset files of the UI's
-sounds, the font subset and the style's recoloured atlas. `LICENSES.md`
+sounds and the style's recoloured atlas. `LICENSES.md`
 lists them; the style's are in `assets/styles/sparkorb/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)

@@ -10,6 +10,5 @@
 | `assets/audio/*.wav` | CC0 1.0 | self-made: synthesised tones, noise and the night music loop, same script |
 | `assets/audio/*.ogt` | CC0 1.0 | `og sfx` presets (click, select, back, error, levelup) that `og cook` synthesises, written by the same script |
 | `assets/strings/*.ogt` | CC0 1.0 | self-made: the English and Chinese string tables |
-| `assets/fonts/NotoSansSC-subset.ttf` | SIL Open Font License 1.1 (`assets/fonts/OFL.txt`) | Noto Sans SC Regular, subset to Latin-1 and the characters of `assets/strings/zh-CN.ogt` by the same script from the project template's `assets/fonts/NotoSansSC-Regular-subset.ttf` |
 | `assets/styles/pathguard/*` | CC0 1.0 art, SIL OFL 1.1 fonts | the engine's cartoon style pack (`templates/styles/cartoon`, `assets/styles/pathguard/LICENSES.md`) with this game's palette |
 | `references/*/*.png` | CC0 1.0 | frames of this game recorded by `tests/frames.og.ts` |

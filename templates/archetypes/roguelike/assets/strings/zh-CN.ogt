@@ -3,7 +3,6 @@ version 1
 ---
 # 提灯下潜的简体中文字符串（og.i18n）；每个键都与 en.ogt 一一对应。
 locale "zh-CN"
-fonts "fonts/NotoSansSC-subset.ttf"
 string "title.name" "提灯下潜"
 string "title.tagline" "向下两层，一盏灯，没有第二次机会"
 string "title.play" "下潜"

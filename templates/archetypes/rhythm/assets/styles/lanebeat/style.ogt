@@ -2,7 +2,7 @@ type style
 version 1
 ---
 # Three-Lane Beat's style: the engine's sci-fi style pack (templates/ui-kit/tools/make-styles.py,
-# CC0 art, OFL fonts; LICENSES.md) with this game's palette and its Chinese fallback font, by hand.
+# CC0 art, OFL fonts; LICENSES.md) with this game's palette, by hand.
 name "lanebeat"
 scheme dark
 atlas "styles/lanebeat/atlas.png" 384 256
@@ -70,7 +70,8 @@ fonts {
   body "styles/lanebeat/ChakraPetch-Medium.ttf"
   display "styles/lanebeat/Orbitron-Bold.ttf"
   numeric "styles/lanebeat/JetBrainsMono-Regular.ttf"
-  fallback "fonts/NotoSansSC-subset.ttf"
+  cjk "@styles/cjk/NotoSansSC-Regular.ttf"
+  cjkDisplay "@styles/cjk/NotoSansSC-Bold.ttf"
 }
 icons "styles/lanebeat/icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"

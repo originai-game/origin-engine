@@ -70,7 +70,8 @@ fonts {
   body "styles/pathguard/Fredoka-SemiBold.ttf"
   display "styles/pathguard/LilitaOne-Regular.ttf"
   numeric "styles/pathguard/LilitaOne-Regular.ttf"
-  fallback "fonts/NotoSansSC-subset.ttf"
+  cjk "@styles/cjk/ZCOOLKuaiLe-Regular.ttf"
+  cjkDisplay "@styles/cjk/ZCOOLKuaiLe-Regular.ttf"
 }
 icons "styles/pathguard/icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
@@ -96,8 +97,8 @@ shadow button 0 5 0 0 "#0b1a12cc"
 shadow hud 0 4 0 0 "#0b1a1299"
 shadow slot 0 3 0 0 "#0b1a1266"
 textShadow display 0 4 0 "#0b1a12"
-# Body text gets a hairline of its own ink to the right: the Chinese fallback
-# (Noto Sans SC Regular) reads at the weight of the Latin face.
+# Body text gets a hairline of its own ink to the right, in Latin and in the
+# Chinese companion alike.
 textShadow body 1 0 0 "#20302a"
 press 1.08 0.88 3
 hover -3 1.04

@@ -69,7 +69,8 @@ fonts {
   body "styles/ember/Newsreader-Medium.ttf"
   display "styles/ember/Cinzel-Bold.ttf"
   numeric "styles/ember/Cinzel-Bold.ttf"
-  fallback "fonts/NotoSansSC-subset.ttf"
+  cjk "@styles/cjk/NotoSerifSC-SemiBold.ttf"
+  cjkDisplay "@styles/cjk/NotoSerifSC-SemiBold.ttf"
 }
 icons "styles/ember/icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"

@@ -74,8 +74,9 @@ og build . --publish         # dist/: the play page as it ships
   the music bus ducked under the effects and a reverb on the effects bus
   (`og.AudioBusFx`).
 - **Languages** (og-i18n §1–§5): every string is a key of
-  `assets/strings/en.ogt` and `zh-CN.ogt`; the Chinese font is Noto Sans SC
-  subset to exactly the table's characters.
+  `assets/strings/en.ogt` and `zh-CN.ogt`; Chinese is drawn in the pixel
+  pack's companion (`cjk`, Fusion Pixel 12), which draws every GB2312
+  character.
 - **The platform** (og-platform-sdk §1–§4): settings through
   `loadSettings`/`saveSettings`; the dive record (`{dives, relics}`) read on
   tick 0 and written at the revision read; a write refused as stale
@@ -190,8 +191,8 @@ next tick).
    case.
 4. **The look**: `assets/styles/lampdive/style.ogt`'s palette and the art in
    `tools/make-assets.py`, then `python3 tools/make-assets.py && og cook .`.
-5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs the
-   script run again to subset the font.
+5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs nothing
+   more: the style's Chinese companions draw every GB2312 character.
 
 ## Commands (for scripts and agents)
 
@@ -237,7 +238,7 @@ in the engine repository).
 `tools/make-assets.py` regenerates every asset byte for byte (two runs
 give the same bytes): the tileset, the map, the sprite sheet and the glow,
 the sounds and the music, the `og sfx` preset files of the UI's sounds and
-the footstep, and the font subset. `LICENSES.md` lists them; the style's
+the footstep. `LICENSES.md` lists them; the style's
 are in `assets/styles/lampdive/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)

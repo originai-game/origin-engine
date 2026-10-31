@@ -3,7 +3,6 @@ version 1
 ---
 # 三道节拍的简体中文字符串（og.i18n）；每个键都与 en.ogt 一一对应。
 locale "zh-CN"
-fonts "fonts/NotoSansSC-subset.ttf"
 string "title.name" "三道节拍"
 string "title.tagline" "霓虹脉冲 · 120 BPM · 三条轨道，一种律动"
 string "title.play" "开始"

@@ -3,7 +3,7 @@ version 1
 ---
 # Spark Orb's style: the engine's neon style pack (templates/ui-kit/tools/make-styles.py, CC0 art,
 # OFL fonts; LICENSES.md) with this game's palette (the orb's gold as the one accent on night
-# violet) and its Chinese fallback font, edited by hand.
+# violet), edited by hand.
 name "sparkorb"
 scheme dark
 atlas "styles/sparkorb/atlas.png" 384 256
@@ -71,7 +71,8 @@ fonts {
   body "styles/sparkorb/Rajdhani-Bold.ttf"
   display "styles/sparkorb/ChakraPetch-BoldItalic.ttf"
   numeric "styles/sparkorb/Orbitron-Medium.ttf"
-  fallback "fonts/NotoSansSC-subset.ttf"
+  cjk "@styles/cjk/NotoSansSC-Bold.ttf"
+  cjkDisplay "@styles/cjk/NotoSansSC-Bold.ttf"
 }
 icons "styles/sparkorb/icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"

@@ -171,8 +171,8 @@ og.music (before og.audio) writes the clock and sends og.MusicBeat.
 3. **The difficulty**: the windows, the scroll and the groove in `Tuning`.
 4. **The look**: `assets/styles/lanebeat/style.ogt`'s palette, the lanes'
    colours (`LANE_COLOURS`) and the art in `tools/make-assets.py`.
-5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs the
-   script run again to subset the font.
+5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs nothing
+   more: the style's Chinese companions draw every GB2312 character.
 
 ## Commands (for scripts and agents)
 
@@ -221,7 +221,7 @@ in the engine repository).
 give the same bytes): the chart and the stems from one set of note lists,
 the click, the taps, the miss, the clear and the fail, the note, the ring,
 the lane's glow, the spark, the hit's burst, the `og sfx` preset files of
-the UI's sounds and the font subset. `LICENSES.md` lists them; the style's
+the UI's sounds. `LICENSES.md` lists them; the style's
 are in `assets/styles/lanebeat/LICENSES.md`.
 
 ## Known limits (engine gaps, not design)

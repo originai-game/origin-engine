@@ -3,7 +3,6 @@ version 1
 ---
 # 余烬谷的简体中文字符串（og.i18n）；每个键都与 en.ogt 一一对应。
 locale "zh-CN"
-fonts "fonts/NotoSansSC-subset.ttf"
 string "title.name" "余烬谷"
 string "title.tagline" "在夜幕降临前点燃四座烽火"
 string "title.play" "出发"
