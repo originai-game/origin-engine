@@ -28,6 +28,28 @@ pub struct Entry {
 pub fn entries(page: &str, text: &str) -> Vec<Entry> {
     let lines: Vec<&str> = text.lines().collect();
     let mut out = Vec::new();
+    // The page's module overview (`# The `input` module` to its contents): `og api show input`.
+    if let Some(h) = lines
+        .iter()
+        .position(|l| l.starts_with("# The `") && l.ends_with("` module"))
+    {
+        let end = lines[h..]
+            .iter()
+            .position(|l| l.starts_with("## "))
+            .map_or(lines.len(), |n| h + n);
+        let summary = lines[h + 1..end]
+            .iter()
+            .find(|l| !l.trim().is_empty())
+            .map(|l| first_sentence(l))
+            .unwrap_or_default();
+        out.push(Entry {
+            name: between(lines[h], '`', '`').unwrap_or_default().to_string(),
+            kind: "module".to_string(),
+            page: page.to_string(),
+            summary,
+            body: lines[h..end].join("\n").trim().to_string(),
+        });
+    }
     let mut i = 0;
     while i < lines.len() {
         let line = lines[i];
@@ -219,15 +241,28 @@ fn rank<'a>(all: &'a [Entry], query: &str, kind: Option<&str>, every: bool) -> V
     scored.into_iter().map(|(_, e)| e).collect()
 }
 
-/// The entries named `name` (with or without `og.`, any case).
+/// The entries named `name` (with or without `og.`, any case); a module's
+/// own name as written (`input`, not `Input` or `og.Input`) is its overview.
 pub fn show<'a>(all: &'a [Entry], name: &str) -> Vec<&'a Entry> {
+    let module: Vec<&Entry> = all
+        .iter()
+        .filter(|e| e.kind == "module" && e.name == name.trim())
+        .collect();
+    if !module.is_empty() {
+        return module;
+    }
     let want = bare(name);
-    let exact: Vec<&Entry> = all.iter().filter(|e| bare(&e.name) == want).collect();
+    let all: Vec<&Entry> = all.iter().filter(|e| e.kind != "module").collect();
+    let exact: Vec<&Entry> = all
+        .iter()
+        .copied()
+        .filter(|e| bare(&e.name) == want)
+        .collect();
     if !exact.is_empty() {
         return exact;
     }
     // `CharacterController` names `og.CharacterController`; `raycast` names `og.physics.raycast`.
-    all.iter()
+    all.into_iter()
         .filter(|e| bare(&e.name).rsplit('.').next() == Some(want.as_str()))
         .collect()
 }
@@ -299,7 +334,9 @@ pub fn load(dir: &Path) -> std::io::Result<Vec<Entry>> {
     Ok(all)
 }
 
-const KINDS: [&str; 7] = ["fn", "record", "type", "member", "const", "value", "column"];
+const KINDS: [&str; 8] = [
+    "module", "fn", "record", "type", "member", "const", "value", "column",
+];
 
 /// `og api find <words> [--kind K] [--limit N]` or `og api show <name>`.
 pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
@@ -347,7 +384,7 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
             if cmd == "find" {
                 "words to look for, e.g. `og api find character controller`"
             } else {
-                "a name, e.g. `og api show og.CharacterController`"
+                "a name, e.g. `og api show og.CharacterController`, or a module, e.g. `og api show input`"
             }
         );
         return ExitCode::from(2);
@@ -416,7 +453,8 @@ mod tests {
             })
             .sum();
         let all = wiki();
-        assert_eq!(all.len(), anchors);
+        let modules = all.iter().filter(|e| e.kind == "module").count();
+        assert_eq!(all.len() - modules, anchors);
         let unnamed: Vec<_> = all
             .iter()
             .filter(|e| e.name.is_empty() || e.summary.is_empty())
@@ -465,6 +503,32 @@ mod tests {
             find(&all, "character controller zzzqx", None)[0].name,
             "og.CharacterController"
         );
+    }
+
+    /// A module's name shows its overview (the prose a skill used to point at
+    /// on the wiki page); the resource of the same name stays one `og.` away.
+    #[test]
+    fn show_of_a_module_name_is_its_overview_without_idl() {
+        let all = wiki();
+        let module = show(&all, "input");
+        assert_eq!(
+            module.len(),
+            1,
+            "{:?}",
+            module.iter().map(|e| &e.name).collect::<Vec<_>>()
+        );
+        let text = render(module[0]);
+        assert!(
+            text.contains("# The `input` module") && text.contains("og.PointerLock.wanted"),
+            "{text}"
+        );
+        assert!(
+            !text.contains("```ogt") && !text.contains("## Contents"),
+            "{text}"
+        );
+        let resource = show(&all, "og.Input");
+        assert!(resource.iter().all(|e| e.kind == "record") && !resource.is_empty());
+        assert!(all.iter().filter(|e| e.kind == "module").count() > 20);
     }
 
     #[test]

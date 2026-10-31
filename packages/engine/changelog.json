@@ -8,6 +8,10 @@
       {
         "member": "og style eject, og style list",
         "summary": "og style eject <slug> [<name>] [--project <dir>] [--force] writes a built-in UI style (style.ogt, atlas, icons, fonts with their import settings, licences), byte for byte from the copy og carries, into the game's assets/styles/<name>/ (default the slug), refusing to overwrite without --force, and prints the look's ui \"styles/<name>/style.ogt\" line; the ejected style cooks to the built-in's blobs, and its cjk fonts stay the shared @styles/cjk/ built-ins. og style list names the built-in slugs with their signatures. The og-ui and og-taste skills use it in place of copying templates/styles/, which the installed package does not have."
+      },
+      {
+        "member": "og api show <module>",
+        "summary": "og api show with a module's name as written (input, physics) prints the module's overview from its wiki page (what the module is for and how its parts fit, without the IDL); og.Input and og.physics.raycast still print the entry. The skills name `og api show <module>` where they pointed at a wiki page."
       }
     ],
     "fixed": [

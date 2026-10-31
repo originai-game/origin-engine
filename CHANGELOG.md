@@ -31,6 +31,8 @@ is one line here, written at the merge that changes
   prints the look's `ui "styles/<name>/style.ogt"` line; `og style list`
   names the built-ins. The og-ui and og-taste skills use it instead of
   copying `templates/styles/`, which the installed package lacks.
+- `og api show <module>` (`og api show input`) prints the module's overview
+  from its wiki page; a symbol's name still prints its entry.
 
 ## 0.7.7 — 2026-10-31
 
