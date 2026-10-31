@@ -7,7 +7,7 @@ version 1
 # for this project and for tools/bench/three-complex.js alike.
 name "Complex scene"
 id "complex-scene"
-engine "0.7.5"
+engine "0.7.6"
 entry "src/main.ts"
 profile "3d"
 tick 60

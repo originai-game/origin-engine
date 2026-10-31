@@ -3,7 +3,7 @@ version 1
 ---
 name "Coin Duel"
 id "arena"
-engine "0.7.5"
+engine "0.7.6"
 entry "src/main.ts"
 profile "2d"
 tick 60

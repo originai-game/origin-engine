@@ -4,15 +4,24 @@
   "unreleased": {
     "simulation": "unchanged",
     "breaking": [],
-    "added": [
-      {
-        "member": "og api find / og api show",
-        "summary": "Look the API up one entry at a time: og api find <words> lists the reference entries matching the words (name, module, first sentence, then field and parameter docs), one line each; og api show <name> prints one entry in full (signature, fields with defaults, ranges and units, doc) without its IDL source. Both read the wiki of the installed engine package. og-core §7 and og-game §25 teach them."
-      }
-    ],
+    "added": [],
     "fixed": []
   },
   "versions": [
+    {
+      "version": "0.7.6",
+      "date": "2026-10-31",
+      "kind": "patch",
+      "simulation": "unchanged",
+      "breaking": [],
+      "added": [
+        {
+          "member": "og api find / og api show",
+          "summary": "Look the API up one entry at a time: og api find <words> lists the reference entries matching the words (name, module, first sentence, then field and parameter docs), one line each; og api show <name> prints one entry in full (signature, fields with defaults, ranges and units, doc) without its IDL source. Both read the wiki of the installed engine package. og-core §7 and og-game §25 teach them."
+        }
+      ],
+      "fixed": []
+    },
     {
       "version": "0.7.5",
       "date": "2026-10-31",

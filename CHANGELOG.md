@@ -13,9 +13,10 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
-## Unreleased
+## 0.7.6 — 2026-10-31
 
-A patch: no IDL member added or removed.
+A patch with the simulation unchanged (the golden replays): no IDL member
+added or removed.
 
 - `og api find <words>` and `og api show <name>` answer one API question at
   a time from the installed engine's wiki: find lists the matching entries
