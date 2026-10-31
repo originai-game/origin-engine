@@ -1,11 +1,10 @@
 {
   "schemaVersion": 1,
-  "about": "Where each part of @origingame/engine-knowledge lands in the platform's production tree (packages/game-knowledge/production): skills as game/skills/<name>/, the style catalogue (looks/) beside og-taste as its looks/, the generated API wiki as the og-game skill's reference/, the hand-written guides (guides/: three-to-og) as its guides/, and the project template as one scaffold overlay. `@template/` is templates/game in the engine repository and scaffold/template/ (text files, copied at prepack) in the published package.",
+  "about": "Where each part of @origingame/engine-knowledge lands in the platform's production tree (packages/game-knowledge/production): skills as game/skills/<name>/, the style catalogue (looks/) beside og-taste as its looks/, the hand-written guides (guides/: three-to-og) as the og-game skill's guides/, and the project template as one scaffold overlay. The generated API wiki (wiki/) is not mounted: `og api` reads it from the engine package's knowledge/wiki. `@template/` is templates/game in the engine repository and scaffold/template/ (text files, copied at prepack) in the published package.",
   "overlay": "origin-engine-ts",
   "mounts": [
     { "from": "skills/", "to": "game/skills/" },
     { "from": "looks/", "to": "game/skills/og-taste/looks/" },
-    { "from": "wiki/", "to": "game/skills/og-game/reference/" },
     { "from": "guides/", "to": "game/skills/og-game/guides/" },
     { "from": "@template/", "to": "game-scaffold/origin-engine-ts/" },
     { "from": "scaffold/origin-engine.json", "to": "game-scaffold/origin-engine-ts/origin-engine.json" },

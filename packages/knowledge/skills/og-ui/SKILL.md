@@ -7,7 +7,7 @@ description: Game screens and HUDs on Origin Engine with og.ui — which screen 
 tick, the engine lays it out, draws it in the game's UI style (a look's
 `ui` line; the `prototype` placeholder without one, never the platform's
 tokens) and answers the probe (`dump_ui`, `touch_move_to`, `move_to_text`). The API
-reference is `reference/ui.md`; this skill is how to use it well.
+reference is `og api show ui`; this skill is how to use it well.
 
 ## What works
 

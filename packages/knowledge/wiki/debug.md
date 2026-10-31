@@ -8,7 +8,7 @@ Development only: not in publish builds, where every member does nothing and ans
 
 - **TypeScript**: functions are the namespace `og.debug`; components, resources and events are tokens on `og`.
 - **Publish builds**: dropped (members may override).
-- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
+- **Skill**: `og-render`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt

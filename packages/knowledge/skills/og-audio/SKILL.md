@@ -6,7 +6,7 @@ description: Sound on Origin Engine — one-shot voices for game events, the pro
 Audio on Origin Engine is world state: an entity with `og.AudioSource`
 plays while `playing` is true, the tick sends commands to the mixer, and
 the same script renders the same samples on every host. The API is in
-`reference/audio.md`; this skill is how much of each to use.
+`og api show audio`; this skill is how much of each to use.
 
 ## What works
 

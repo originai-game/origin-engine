@@ -785,14 +785,14 @@ function judge(kind: string, m: Measured, served: Served): { scores: { firstFram
       measure: "frame time",
       where: m.tier,
       detail: `p95 display interval ${m.interval.p95} ms (p99 ${m.interval.p99}, max ${m.interval.max}): frames are missed`,
-      fix: "og-game §14: fewer draws and particles, less per-tick TypeScript; og polish names the step and render cost",
+      fix: "og-build §9: fewer draws and particles, less per-tick TypeScript; og polish names the step and render cost",
     });
   if (m.work.p95 > 16.7)
     findings.push({
       measure: "engine work",
       where: m.tier,
       detail: `p95 engine work per frame ${m.work.p95} ms, over a 60 Hz frame`,
-      fix: "og-game §14: the tick or the render submission is too heavy for this device",
+      fix: "og-build §9: the tick or the render submission is too heavy for this device",
     });
   if (!m.device.crossOriginIsolated)
     findings.push({

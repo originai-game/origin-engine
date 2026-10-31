@@ -8,7 +8,7 @@ The day-night clock is a function of the tick (DayNight.start plus the simulated
 
 - **TypeScript**: functions are the namespace `og.atmosphere`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
+- **Skill**: `og-render`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt

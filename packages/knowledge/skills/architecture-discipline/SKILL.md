@@ -91,4 +91,4 @@ number inline in a system breaks live tuning: the Tune panel and the
 probe's `bounds` show the field while the game obeys the inline number, and
 whoever is tuning is told a lie about the game they are playing. Move a
 number into a field the moment someone may want to change it, and write a
-tuned value back to the scene with `save_scene` (og-game §21).
+tuned value back to the scene with `save_scene` (og-game §9).

@@ -10,7 +10,7 @@ Every tick each peer hashes its world without its own session (og.Input, og.Poin
 
 - **TypeScript**: functions are the namespace `og.net`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
+- **Skill**: `og-net`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt

@@ -1238,7 +1238,7 @@ export interface RestoreDesc {
 }
 
 /**
- * A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §17), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did.
+ * A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §8), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did.
  *
  * The payload of the `WorldRestored` event (token `og.WorldRestored`).
  */
@@ -8775,7 +8775,7 @@ export interface BakedScene {
 // ── shapes ──────────────────────────────────────────────────────
 // Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js's Shape and Path, built by the same calls (moveTo, lineTo, quadraticCurveTo, bezierCurveTo, splineThru, arc, absarc, ellipse, absellipse, closePath) and flattened to points by getPoints, so a three.js outline is a paste. og.render.shapeGeometry, extrudeGeometry and sweepGeometry take them; only their points cross to the engine.
 // They are TypeScript values, not world state: make them in start or a command and let the geometry made from them be what the world keeps. Points come from basic arithmetic (no Math.sin), so they are the same on every host.
-// A prop of these parts belongs in an asset: an `.ogt` of `type model` names each part's geometry by its og.render call (`extrudeGeometry { shape { absarc 0 0 1 0 6.283185307179586 false } depth 0.2 }`), its shapes as og.Shape's calls one a line with `hole { }` blocks, places parts as mergeGeometries does (`position`, `quaternion`, `scale`, `mirror`, or several `at { }` blocks: one mesh drawn instanced), gives each a `material` and hangs it from a named `pivot` (a node). og cook builds it into the model blob a glTF cooks to (levels of detail, raycast BVH, nodes), refuses it past project.ogt's triangle and vertex budgets, and og dev re-cooks it on an edit; og.load.gltf and a scene's `model` line take it as any model. The og-game skill §18 has a whole example.
+// A prop of these parts belongs in an asset: an `.ogt` of `type model` names each part's geometry by its og.render call (`extrudeGeometry { shape { absarc 0 0 1 0 6.283185307179586 false } depth 0.2 }`), its shapes as og.Shape's calls one a line with `hole { }` blocks, places parts as mergeGeometries does (`position`, `quaternion`, `scale`, `mirror`, or several `at { }` blocks: one mesh drawn instanced), gives each a `material` and hangs it from a named `pivot` (a node). og cook builds it into the model blob a glTF cooks to (levels of detail, raycast BVH, nodes), refuses it past project.ogt's triangle and vertex budgets, and og dev re-cooks it on an edit; og.load.gltf and a scene's `model` line take it as any model. og-model §9 has a whole example.
 
 /** A shape's holes, as three.js Shape.holes: an array; push a path to add a hole. */
 export interface PathList {
@@ -13261,7 +13261,7 @@ export interface Animation {
  */
 export interface GraphDesc {
   /**
-   * The graph's `.ogt` text (`type animgraph`, `version 1`; og-game §9 has every line).
+   * The graph's `.ogt` text (`type animgraph`, `version 1`; og-anim §5 has every line).
    *
    * @default ""
    */
@@ -23629,7 +23629,7 @@ export interface ArtCamera {
  */
 export declare namespace og {
   /**
-   * A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §17), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did.
+   * A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §8), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did.
    */
   const WorldRestored: EventType<WorldRestored>;
   /**
@@ -23983,7 +23983,7 @@ export declare namespace og {
      */
     function updateMaterial(world: World, material: Material, desc?: StandardMaterialDesc): Result<void>;
     /**
-     * Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest.
+     * Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; og-render §9 has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest.
      *
      * @param world The world whose renderer owns the material.
      * @param shader The shader.
@@ -24378,7 +24378,7 @@ export declare namespace og {
      */
     function environment(world: World, path: string): Result<EnvironmentMap>;
     /**
-     * A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the og-game skill's Effects section gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path.
+     * A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (og-render §2 gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path.
      *
      * @param world The world whose renderer owns it.
      * @param path The asset id, such as `fx/sparks.ogt`.
@@ -24386,7 +24386,7 @@ export declare namespace og {
      */
     function emitter(world: World, path: string): Result<ParticleEmitter>;
     /**
-     * A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; the og-game skill's Full custom shaders section), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path.
+     * A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; og-render §10), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path.
      *
      * @param world The world whose renderer owns it.
      * @param path The asset id, such as `shaders/dissolve.ogt`.
@@ -24394,7 +24394,7 @@ export declare namespace og {
      */
     function shader(world: World, path: string): Result<Shader>;
     /**
-     * A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path.
+     * A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (og-render §10 has the contract). The cook compiles it for every back end. Loaded once per path.
      *
      * @param world The world whose renderer owns it.
      * @param path The asset id, such as `post/crt.ogt`.
@@ -25459,7 +25459,7 @@ export declare namespace og {
      */
     function saveSettings(world: World, value: unknown): Result<number>;
     /**
-     * Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game. og-game §17.
+     * Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game. og-game §8.
      *
      * @param world The world.
      * @param desc The slot, the text and what a title shows of it.

@@ -10,7 +10,7 @@ The rapier world persists between ticks and is world state: snapshots, restore a
 
 - **TypeScript**: functions are the namespace `og.physics`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
+- **Skill**: `og-physics`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt

@@ -8,7 +8,7 @@ Make one with og.path.create, or declare it in a scene (`path "<name>" { kind ca
 
 - **TypeScript**: functions are the namespace `og.path`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
+- **Skill**: `og-anim`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt

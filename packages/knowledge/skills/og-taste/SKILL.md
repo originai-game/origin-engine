@@ -1,6 +1,6 @@
 ---
 name: og-taste
-description: Art direction for a game on Origin Engine — choosing a style from the premise (genre, mood, era, audience) out of a 37-style catalogue and binding it as a look (post stack, stylisation, material defaults, the UI style, and the art contract every asset is made to) with a palette and a type ramp; every asset request compiled from the look by the art brief (artBrief); composition and hierarchy on the play surface, colour, typography, motion, feedback and consistency; atmosphere (fog, sky, time of day, weather, water); the anti-patterns that make a game look like a web form; and the checklist to run (with og run captures and dump_ui) before calling a game done. Use when starting a game's look, building or reviewing any screen or HUD, or when a game "works but looks generic".
+description: Art direction for a game on Origin Engine — choosing a style from the premise (genre, mood, era, audience) out of a 37-style catalogue and binding it as a look (post stack, stylisation, material defaults, the UI style, and the art contract every asset is made to) with a palette and a type ramp; the look's mechanism (og.Stylise, og.MaterialStyle, extends, applying a look at a tick) and the art contract's fields; every asset request compiled from the look by the art brief (artBrief); composition and hierarchy on the play surface, colour, typography, motion, feedback and consistency; atmosphere (fog, sky, time of day, weather, water); the anti-patterns that make a game look like a web form; and the checklist to run (with og run captures and dump_ui) before calling a game done. Use when starting a game's look, building or reviewing any screen or HUD, or when a game "works but looks generic".
 ---
 
 A game is judged in its first second, before anyone reads a word. The
@@ -443,8 +443,8 @@ the game's own is a path under `assets/` as before.
 **Fit the pixel grid to the screens.** `Stylise.pixelHeight` sets the
 whole-number scale from the output's height alone, the width follows the
 aspect, and what the grid does not cover is a border in
-`Camera.background` (the rule is `Stylise.pixelHeight`'s doc, og-game
-§15). So choose the height by the screens the game meets, not by the era
+`Camera.background` (the rule is `Stylise.pixelHeight`'s doc,
+§13). So choose the height by the screens the game meets, not by the era
 alone. The scale per output (✓ fills it, ≈ fills it but for one column, b
 leaves a border):
 
@@ -531,19 +531,16 @@ others alone, so an area look that names only `Fog` and `Sky` keeps the
 game's grade. A copy of a preset under the preset's own name
 (`assets/looks/<slug>.ogt` with `extends "<slug>"`) overrides it for every
 look of the game that extends that slug. Colours may be written as sRGB
-`"#rrggbb"`; the cook stores them linear. The cook refuses a field the
-resource does not have, a value out of range and an asset not in the
-bundle, naming the line. A look's top-level `antialias` takes `tier`,
-`off`, `msaa4` or `taa` (FXAA is `GameDesc.render`'s, og-game §16), and an
+`"#rrggbb"`; the cook stores them linear. A look's top-level `antialias` takes `tier`,
+`off`, `msaa4` or `taa` (FXAA is `GameDesc.render`'s, og-render §3), and an
 `Environment` block sets an environment map (`map "env/dusk.ogt"`) as
-part of the look. A look in a streaming group applies once its group is
-resident. The mechanics (what each resource's fields do, presets, the
-built-in canvases) are og-game §15 and §16.
+part of the look. The mechanics (what each resource's fields do, presets,
+the built-in canvases) are §13, and light and exposure og-render §3.
 
 **The art contract: what every asset holds.** Beside the frame's
 resources, a look carries seven art blocks that turn the entry's
 `palette` and `assets` prose into numbers every asset is made to, 2D and
-3D alike (og-game §15 has the fields). Each preset already holds its
+3D alike (§14 has the fields). Each preset already holds its
 style's values; read them in `templates/looks/<slug>.ogt` (the comment
 above them says where each number comes from) and override only what the
 game decides differently.
@@ -637,3 +634,138 @@ entry's three checks handed to the critic that reads the frames.
 Use the catalogue as a vocabulary, never as a list of games to copy: every
 design, character and composition stays original (the platform's rule),
 and the descriptors deliberately name no game or studio.
+
+## 13. Looks: the mechanism
+
+A **look** is an `.ogt` of `type look` under `assets/looks/` that sets the
+whole treatment of the frame at once: the resources `RenderSettings`,
+`PostEffects`, `Stylise`, `MaterialStyle`, `Fog`, `Sky` and `Environment`
+(one block each, fields by name), the UI style (`ui`) and the `antialias`;
+and, in the same file, the art contract the assets hold (below).
+Choosing one for a premise is §1 and §12; this is the mechanism.
+
+```text
+type look
+version 1
+---
+name "Harbour"
+extends "anime-cel-3d"           # a built-in preset (templates/looks/<slug>.ogt) or another look's id
+ui "styles/harbour/style.ogt"     # the game's own UI style, or a built-in by slug (ui "fantasy")
+Stylise {
+  ink true
+  inkWidth 1.5
+}
+MaterialStyle {
+  shadowTint "#3b3566"           # sRGB written, stored linear
+  shadowTintAmount 0.6
+}
+```
+
+```ts
+export default og.game({ look: "looks/harbour.ogt", start, systems });   // GameDesc.look: applied after the first scene, before start
+
+const flashback = must(og.load.look(world, "looks/flashback.ogt"));      // at any tick
+must(og.render.applyLook(world, flashback));
+og.render.look(world)?.name;                                              // the look last applied (LookInfo)
+```
+
+- Applying a look replaces each resource it names **whole** (the fields it
+  sets, the rest their defaults; `PostEffects.flash` and `shakeTrauma`
+  keep theirs) and leaves the others alone, then configures the UI with
+  its style. Write per-game tweaks in `start` after it, or in the look. A
+  system that applies one declares those resources among its writes.
+- `extends` flattens at cook time, field by field (a field written wins);
+  `assets/looks/<slug>.ogt` of the game's own replaces the preset of that
+  slug for every look that extends it. The cook refuses an unknown field,
+  a value out of range and an asset not in the bundle, naming the line.
+- `og.load.lookInfo` (and `og.render.look`) answer `LookInfo`: `name`,
+  `extends`, `resources`, `style`, `antialias`. A look's `antialias` (tier,
+  off, msaa4 or taa) is the renderer's when `GameDesc.render` names none.
+- **`og.Stylise`** moves the frame away from the photographic, every
+  primitive off at zero: the pixel grid (`pixelHeight`, `pixelUpscale`,
+  `pixelSnap`), fewer tones or a fixed palette through a dither
+  (`posterize`, `palette` from `og.load.palette` of a `.hex` or `.gpl`,
+  `dither`, `ditherStrength`), `halftone`, `hatching`, painterly
+  smoothing (`paintRadius`, `paintEdgeDarkening`, `paintBleed`,
+  `paintCanvas`), `ink` lines (with `inkDepth` for silhouettes and
+  creases), `depthBands`, and early-3D `vertexSnap`, `affineTexturing`
+  and `depthBits`. The UI and screen sprites stay unstylised.
+- **`og.MaterialStyle`** sets every lit material that leaves the field at
+  its default: `toon` (with a `gradientMap`), `shadowTint` and
+  `shadowTintAmount`, `shadowDarkness` (1: every shadow a solid black
+  mass, no sun and no ambient light there), `rimIntensity`, `outlineWidth` (with
+  `outlineDistance` to thin lines with depth) and `flatShading`. Unlit and
+  shader materials, sprites and the UI are untouched, and so is a material
+  made with `styled: false` (exactly as declared under any look). The
+  style's `toon` passes by a material with a physical lobe (`clearcoat`,
+  `sheen`, `transmission`, `iridescence`, `anisotropy`, an `ior` other
+  than 1.5), which keeps its physical shading and takes the rest; give it
+  `toon: true` itself to make it toon anyway. An outline is a hull
+  outline: each object's silhouette and its creases against other objects
+  (the ground under it), never the edges between its own faces, so `.vox`
+  models and flat-shaded meshes keep clean faces; for lines on every
+  crease, `Stylise.inkDepth`.
+- Built-in assets a look may name without owning a copy:
+  `"@canvas/paper"`, `"@canvas/linen"`, `"@canvas/watercolor"` for
+  `Stylise.paintCanvas`, and `"@palettes/lcd2"`, `"@palettes/handheld4"`,
+  `"@palettes/dusk16"`, `"@palettes/bright32"`, `"@palettes/1bit"` for
+  `Stylise.palette`.
+- `RenderCapabilities.stylise` (`og.render.capabilities(world)`) names the
+  primitive groups this device draws; a look using another still applies,
+  without that primitive. A look in a streaming group applies once the
+  group is resident (og-game §6).
+
+## 14. The art contract: the fields
+
+The render resources treat the frame; seven more resources of the `art`
+module, set in the same look, say what the game's **assets** must be
+(docs/art.md in the engine repository): `og.ArtPalette` (the palette the
+texels sit on: `colors` a palette asset or `"@palettes/<name>"`, `strict`
+indexed colour, `maxColors` per asset, `rampSteps` per hue, `accents`
+kept for signals by palette index, `dither`), `og.ArtPixels` (2D: `unit`
+logical pixels per metre, `logicalHeight`, `spriteSizes` the allowed cell
+sides, `rotation` free, nearest, cleanEdge or prerotated with
+`rotationSteps`, `snap`), `og.ArtTexels` (3D: `density` texels per metre,
+`maxSize`, `filter`, `mips`), `og.ArtShape` (`propFaces` and
+`characterFaces` triangle budgets, `normals` smooth, flat or angle past
+`normalAngle`, `bevel`, `voxel` edge, `silhouette` thinnest feature),
+`og.ArtLine` (`width`, `color`, `place` outside, inside or both,
+`distanceFalloff`), `og.ArtMotion` (`stepFps` for animation on twos,
+`maxFrames` per clip, `squash`) and `og.ArtCamera` (`projection`,
+`fixedAngle` with `pitch` and `yaw`, `fovMin`/`fovMax`, `pixelPerfect`).
+Every field, with its range and unit, is in `og api show art`.
+
+```text
+extends "16bit-pixel"            # the preset carries the style's contract
+ArtPalette {
+  colors "palettes/harbour.hex"   # the game's own palette, under assets/
+  maxColors 32
+  accents 3 7                     # palette indices kept for the player and danger
+}
+ArtPixels {
+  unit 16                         # 16-pixel tiles one metre wide
+  spriteSizes 16 32
+}
+ArtMotion {
+  stepFps 12                      # on twos
+}
+```
+
+- Every field is **no constraint at zero** (0, false, the first variant,
+  an empty list): a look without these blocks constrains nothing, and a
+  game made before them cooks and draws as it did. The presets carry each
+  catalogue style's values (§12); the game's look overrides them
+  field by field, as the frame's. Lists take one line (`spriteSizes 16
+  32`), and the cook checks every field as it checks the frame's.
+- `project.ogt`'s `look "looks/<id>.ogt"` names the look whose contract
+  the cook reads (`create` writes it beside `GameDesc.look`); the cook's
+  report on that look lists the art resources it sets. Without the line
+  the cook reads no contract.
+- They are resources, so game code reads the contract too (a system lists
+  them among its `reads`): `must(world.resource(og.ArtPixels)).unit` to
+  snap a sprite, `og.ArtPalette`'s `accents` to colour the player. Setting them changes neither
+  the frame nor the simulation; `og.load.lookInfo(...).resources` names
+  them among the look's blocks.
+- A system that applies a look writes only the art resources it declares
+  among its writes; the others keep their values, so a system declaring
+  only the frame's resources applies a preset with a contract unchanged.

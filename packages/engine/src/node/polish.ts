@@ -810,7 +810,7 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
   const rendered = rec.tier !== "none";
   const frame = { tier: rec.tier, rendered, stepMedianMs: r2(median(step)), stepP95Ms: r2(pct(step, 0.95)), renderMedianMs: r2(median(render)), renderP95Ms: r2(pct(render, 0.95)), frameP95Ms: r2(pct(total, 0.95)), frameMaxMs: r2(Math.max(0, ...total)) };
   // Without a renderer there is no frame time to judge: the step alone is not a frame.
-  if (rendered && frame.frameP95Ms > 16.7) findings.push({ measure: "frame time", where: rec.playtest, detail: `p95 step + render ${frame.frameP95Ms} ms on ${rec.tier} (the frame is 16.7 ms)`, fix: "og-game §14 (performance): fewer draws and particles, cheaper systems; og run --json measures" });
+  if (rendered && frame.frameP95Ms > 16.7) findings.push({ measure: "frame time", where: rec.playtest, detail: `p95 step + render ${frame.frameP95Ms} ms on ${rec.tier} (the frame is 16.7 ms)`, fix: "og-build §9 (performance): fewer draws and particles, cheaper systems; og run --json measures" });
   const audio = audioStats(rec.wav, rec.rate);
   if (audio.clipped > 0) findings.push({ measure: "audio clipping", where: rec.playtest, detail: `${audio.clipped} samples at full scale (peak ${audio.peak})`, fix: "og-audio §4 (the mix): lower the loud sources or put a limiter on master" });
 

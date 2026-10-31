@@ -1,7 +1,7 @@
 {
   "name": "@origingame/engine-knowledge",
   "version": "0.7.7",
-  "description": "Origin Engine knowledge for agents: the API wiki generated from api.ogt, the eleven og-* skills and the six craft skills (architecture-discipline, component-forge, level-texturing, localization, recipe-craft, visual-acceptance), the guides (three-to-og), the style catalogue and the project scaffold description, laid out for the OriginGame platform's knowledge packs. Not published on its own: @origingame/engine carries it as knowledge/ (docs/release.md §2).",
+  "description": "Origin Engine knowledge for agents: the API wiki generated from api.ogt (read by og api), the sixteen og-* skills and the six craft skills (architecture-discipline, component-forge, level-texturing, localization, recipe-craft, visual-acceptance), the guides (three-to-og), the style catalogue and the project scaffold description, laid out for the OriginGame platform's knowledge packs. Not published on its own: @origingame/engine carries it as knowledge/ (docs/release.md §2).",
   "license": "MIT",
   "private": true,
   "repository": {

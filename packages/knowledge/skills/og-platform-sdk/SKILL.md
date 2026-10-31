@@ -10,7 +10,7 @@ opens the published page itself at the top level, to its play origin over
 same-origin HTTP), falling back to the browser's own storage; `og run`
 from a local JSON store. No credential, URL or cookie reaches game code,
 and every call works (or answers `unavailable`) everywhere, so the game
-never branches on where it runs. The API is in `reference/platform.md`;
+never branches on where it runs. The API is in `og api show platform`;
 the platform's `og-platform` skill is the Player and readiness side.
 
 ## What works
@@ -80,13 +80,13 @@ if (answer.ok && typeof answer.data.value === "number") run.best[i] = Math.max(r
 
 | Need | Call | Notes |
 |---|---|---|
-| Progress, unlocks, a best score | `storeGet(world, key)`, `storeSet(world, { key, value, revision })`; the whole world: `world.snapshot()` text through `saveSlot(world, { slot, text, meta })` (as many keys as it needs, the manifest last, one request) and `loadSlot(world, { slot, metaOnly })`, back with `world.restore` (og-game §17) | one key per independent thing; values ≤ 64 KiB, at most 64 keys and 1 MiB per player and game; pass the revision you read to refuse a stale write (`conflict`, whose `error.revision` is where the key is now: read again and merge), `create: true` to write only a key never written, no revision for "the last write wins" |
+| Progress, unlocks, a best score | `storeGet(world, key)`, `storeSet(world, { key, value, revision })`; the whole world: `world.snapshot()` text through `saveSlot(world, { slot, text, meta })` (as many keys as it needs, the manifest last, one request) and `loadSlot(world, { slot, metaOnly })`, back with `world.restore` (og-game §8) | one key per independent thing; values ≤ 64 KiB, at most 64 keys and 1 MiB per player and game; pass the revision you read to refuse a stale write (`conflict`, whose `error.revision` is where the key is now: read again and merge), `create: true` to write only a key never written, no revision for "the last write wins" |
 | Volume, controls, language | `loadSettings(world)`, `saveSettings(world, settings)` | the key `og.settings`, last save wins, local fallback when offline |
 | A leaderboard | `leaderboardSubmit(world, { board, score })`, `leaderboardTop`, `leaderboardAround` | the board keeps the player's best; show "around me" as well as the top |
 | Analytics | `telemetry(world, "round.over", { score, coins })` | one-way; a name of 1–64 letters, digits, `.` and `_` (the Player files it as `game.custom.<name>`), at most 16 scalar attributes; never personal data |
 | Origin Point | `point(world, { reason, amount })` | the platform decides what it grants (today nothing under a Player: `{ granted: 0, balance: null }` until an approved point policy; show nothing that depends on it) |
 | AI-generated content shown | `aiMark(world, { kind, label })` | disclosure, not permission |
-| Play with others in one room | `roomCreate(world, { name })`, `roomJoin(world, room)`, `roomLeave`, `roomSend(world, data, to?)`, `roomPeers`, `roomInfo`; the answers as `og.RoomJoined`, `og.RoomPeerJoined`, `og.RoomPeerLeft`, `og.RoomMessage` (read one with `roomMessage`) | natively `og relay` with `og run --room ws://127.0.0.1:P/<room>`; on the web the Player's rooms, when its hello lists `room.join` (`roomInfo(world).host` is `none` otherwise and joins are refused). A message is this peer's host input only: for a game both peers simulate, use og.net's lockstep (`og.Lockstep`, `og.PlayerInput`, og-game §20) and send nothing yourself |
+| Play with others in one room | `roomCreate(world, { name })`, `roomJoin(world, room)`, `roomLeave`, `roomSend(world, data, to?)`, `roomPeers`, `roomInfo`; the answers as `og.RoomJoined`, `og.RoomPeerJoined`, `og.RoomPeerLeft`, `og.RoomMessage` (read one with `roomMessage`) | natively `og relay` with `og run --room ws://127.0.0.1:P/<room>`; on the web the Player's rooms, when its hello lists `room.join` (`roomInfo(world).host` is `none` otherwise and joins are refused). A message is this peer's host input only: for a game both peers simulate, use og.net's lockstep (`og.Lockstep`, `og.PlayerInput`, og-net §1) and send nothing yourself |
 
 A payload keeps the number it was given: an `f32` field's value is single
 precision promoted to a JSON number (`f32(2.7)` sends `2.700000047683716`),

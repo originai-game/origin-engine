@@ -6,11 +6,11 @@ Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js
 
 They are TypeScript values, not world state: make them in start or a command and let the geometry made from them be what the world keeps. Points come from basic arithmetic (no Math.sin), so they are the same on every host.
 
-A prop of these parts belongs in an asset: an `.ogt` of `type model` names each part's geometry by its og.render call (`extrudeGeometry { shape { absarc 0 0 1 0 6.283185307179586 false } depth 0.2 }`), its shapes as og.Shape's calls one a line with `hole { }` blocks, places parts as mergeGeometries does (`position`, `quaternion`, `scale`, `mirror`, or several `at { }` blocks: one mesh drawn instanced), gives each a `material` and hangs it from a named `pivot` (a node). og cook builds it into the model blob a glTF cooks to (levels of detail, raycast BVH, nodes), refuses it past project.ogt's triangle and vertex budgets, and og dev re-cooks it on an edit; og.load.gltf and a scene's `model` line take it as any model. The og-game skill §18 has a whole example.
+A prop of these parts belongs in an asset: an `.ogt` of `type model` names each part's geometry by its og.render call (`extrudeGeometry { shape { absarc 0 0 1 0 6.283185307179586 false } depth 0.2 }`), its shapes as og.Shape's calls one a line with `hole { }` blocks, places parts as mergeGeometries does (`position`, `quaternion`, `scale`, `mirror`, or several `at { }` blocks: one mesh drawn instanced), gives each a `material` and hangs it from a named `pivot` (a node). og cook builds it into the model blob a glTF cooks to (levels of detail, raycast BVH, nodes), refuses it past project.ogt's triangle and vertex budgets, and og dev re-cooks it on an edit; og.load.gltf and a scene's `model` line take it as any model. og-model §9 has a whole example.
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
+- **Skill**: `og-model`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt

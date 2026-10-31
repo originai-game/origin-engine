@@ -1,13 +1,13 @@
 ---
 name: og-build
-description: The Origin Engine build loop — og cook, og run with a scripted command channel (inputs, captures, dumps, get and set), screenshots and world dumps read as evidence, og dev hot reload, og test playtests, og polish's taste and feel scores (the one list of what it measures and where each finding is fixed), the cook's art conformance (what og cook --report says it changed, conform off, og style check), og build for publishing, og run --device for the first frame and frame times on a real browser or phone, and big games: streaming groups and what they may hold, .vox models, compressed animation, chunked music, the lanes and cross-origin isolation. Use whenever a change to a project with a project.ogt must be run, observed, scored or shipped (not a Godot project.godot).
+description: The Origin Engine build loop — og cook, og run with a scripted command channel (inputs, captures, dumps, get and set), screenshots and world dumps read as evidence, og dev hot reload, og test playtests, og polish's taste and feel scores (the one list of what it measures and where each finding is fixed), the cook's art conformance (what og cook --report says it changed, conform off, og style check), og build for publishing, og run --device for the first frame and frame times on a real browser or phone, big games: streaming groups and what they may hold, .vox models, compressed animation, chunked music, the lanes and cross-origin isolation, performance (the frame budget and what costs it), and og render's videos and contact sheets of a scripted run. Use whenever a change to a project with a project.ogt must be run, observed, scored or shipped (not a Godot project.godot).
 ---
 
 The `og` tool is the whole loop: it cooks assets, runs the game headless on
 the native host with a command script, serves the probe, reloads on save,
 runs playtests, scores them and builds the publishable bundle. Nothing here
 needs a browser or a Rust toolchain. The command channel is
-`reference/commands.md`, the probe `reference/probe.md`.
+`og api show commands`, the probe `og api show probe`.
 
 ## What works
 
@@ -66,7 +66,7 @@ a number and a sound (taste 98, feel 79).
    `quit`, and `help` for the list. Modules add their own: `dump_ai` and
    `dump_nav` (og-ai §5), `dump_platform` (og-platform-sdk §4), `locale:<tag>`
    (og-i18n §6), `dump_stream` and `terrain_stream:<stream|resident>[:<MiB>]`
-   (og-game §6 and §11). Unknown actions warn and the script continues; read the
+   (og-game §6, og-render §7). Unknown actions warn and the script continues; read the
    warnings.
 3. **Read what it wrote.** Screenshots are PNG files, dumps are JSON files
    (`<action>-<tick>.png|json` unless the step names a path), written
@@ -249,7 +249,7 @@ every screen that matters.
 | feel | Hit feedback | each damage moment (a fact named `hp`, `health`, `lives`… falling, or `hits`, `damage`, `kills`… rising): hit stop, shake, floating text and a sound within 8 ticks | three of the four, per moment (a moment with three owes no fourth: a bump that holds, shakes and sounds is not asked for a number) | og-feel §3, §4, §7, og-audio §1 |
 | feel | Idle frames | ticks after the first ten where nothing moves or animates, no UI moves, no sound starts or plays, no tween, text or particle runs | at most 10 % | og-feel §9, og-taste §5 |
 | feel | Sound on input | inputs answered by a sound within 6 ticks | every action | og-audio §1 |
-| feel | Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan` on a GPU); the probe's own screenshots (render, read back, PNG) are not the game's step and are left out. Without a renderer the row says `n/a (no renderer)`, as do contrast, text size and HUD occupancy, which read frames | 8.3 ms (half the frame) | og-game §14 |
+| feel | Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan` on a GPU); the probe's own screenshots (render, read back, PNG) are not the game's step and are left out. Without a renderer the row says `n/a (no renderer)`, as do contrast, text size and HUD occupancy, which read frames | 8.3 ms (half the frame) | og-build §9 |
 
 The report also lists clipped samples in the mix (og-audio §4), and a UI
 style finding (no score) when a shot's `dump_ui` reports `style` empty: the
@@ -313,7 +313,7 @@ reference, with a clean console).
 the play gate and writes `og-out/device/report.md`: the first frame against
 its budget (2.0 s, 1.5 s on an iPhone), the frame-time percentiles on the
 tier the device chose, the device itself, and a fix per finding (og-game
-§6 for a slow first frame, og-game §14 for missed frames). Run it on the
+§6 for a slow first frame, og-build §9 for missed frames). Run it on the
 phone you ship for: og polish's native numbers are not a phone's. `og doctor`
 names each missing tool (bun, the native addon, the wasm artifact) with its
 fix, and says whether this machine has a renderer (none is not a problem:
@@ -368,7 +368,7 @@ resident.
 ```text
 animation {
   compress true        # quantised clips, keyframes the curve rebuilds dropped
-  tolerance 0.0001     # the most a sampled value may move (og-game §9)
+  tolerance 0.0001     # the most a sampled value may move (og-anim §4)
 }
 sound {
   stream true          # cooked in chunks (the default past 1 MiB of QOA, about 27 s of stereo)
@@ -399,7 +399,7 @@ licences, the icons), never a download. Compare the boot line before and
 after a change; `--json` carries the same as `downloads`.
 
 **The lanes** spread physics, skinning, culling and extraction over the
-cores with results identical to one thread (og-game §14). Natively
+cores with results identical to one thread (§9). Natively
 `OG_LANES=off` (or `1`) runs serial and `OG_LANES=<n>` uses n threads; a
 world hash must not change between them, which is a check worth a
 playtest of its own on a physics-heavy game. On the web the lanes need a
@@ -535,3 +535,64 @@ so and exits 0. `og doctor --project` carries one `style` line of it, and
 a style (og-taste §11), so neither ever refuses a build. Run it before
 calling a screen done, and read the frames yourself beside the style's
 preview: the numbers say what is off, the eye says whether it reads.
+
+## 9. Performance
+
+A frame is 16.7 ms at 60 Hz; keep step + render under half of it on a
+desktop so phones have room. `og run --json` prints `advanceMs`, the
+run's `frames` (step and render median, p95 and max) and its `systems`
+(each system's mean milliseconds a tick, slowest first: the game's and the
+engine's own, physics, the UI's end of frame, animation and the rest, which the
+probe's `dump_world` also reports as `ms`), `og
+polish` the p95 step and render time of every playtest (§5), and
+`og run --device` the first frame and frame times in a real browser or
+phone (§6). The usual costs:
+draws (share geometry and one material per look), particle systems (cap
+`maxParticles` in the emitter's .ogt, despawn emitters that are done),
+per-tick TypeScript over many entities (iterate archetype columns, never
+`world.get` per entity; spread expensive work over ticks, as og.ai's
+`thinkEvery` does), and loads in the middle of play (load in `start`).
+Point and spot lights are clustered (Forward+): a pixel shades only the
+lights whose `distance` reaches it, so a few hundred lamps, torches or
+neon signs cost little; keep each `distance` as short as the look allows.
+Up to `MAX_LIGHTS` (256) in view are drawn, the brightest kept past that,
+and up to `RenderCapabilities.maxShadowedLights` with `castShadow` (8 on
+the full tier, 4 on WebGL2) cast shadows (shadows are the expensive part;
+og-render §3).
+Engine work spreads over the cores on the lanes: physics from about 500
+bodies, skinning, extraction and culling, with results identical to one
+thread, so world hashes and replays do not change. Game systems stay on
+the engine thread. On the web the lanes need cross-origin isolation
+(`publish { isolation preferred }`, the default, in `project.ogt`;
+§7); without it the same game runs on one thread.
+Simulated matter is paid for per point on the CPU every tick: a 3D fluid's
+particles (about 1 ms per 1,000 at two substeps) and a self-colliding
+cloth's points (about 1 ms per 1,000) are the ones to count (og-physics §2).
+
+## 10. Videos out: `og render`
+
+**Videos out.** `og render` plays a command script headless and makes a
+video of it: a frame every `tick / fps` ticks (the fps divides the tick
+rate; the error names the nearest that do), read back without the
+probe's round trip.
+
+```sh
+og render . --commands "0.5:type:s;2:key_down:Space" --fps 30 --to 8 \
+  --size 1280x720 --out og-out/intro.mp4 --audio --contact-sheet 6 --jobs 4
+```
+
+It writes `intro.mp4` (H.264; `.webm` is VP9) with the run's audio,
+`intro.frames.json` (each frame's tick, time and SHA-256, and the
+audio's), and `intro.contact-sheet.png`: a grid of frames over the range,
+each labelled with its time and tick. **Review the contact sheet first**:
+one image shows whether the scene moves as the script meant, without
+playing anything. `--out <dir>` (or `--frames png|jpg`) writes the
+frames too; without ffmpeg the frames are what you get. Two runs of one
+script give the same SHA-256s, so a frame that changed is a change you
+made. `--jobs N` splits the range over processes (each starts from a
+snapshot of the world) and gives the same frames, faster.
+`--timeline <name>` renders a timeline (`type timeline`) over its
+duration once timelines exist (stream S2 of docs/depth.md); until then
+use `--commands`. On a CPU-only machine (lavapipe) a 1280×720 frame of the
+3D template takes about 0.4 s in one job, 2.6× less with `--jobs 4`:
+render at 640×360 (about 0.1 s) to iterate, full size once.

@@ -10,7 +10,7 @@ An og.Timeline component plays one on its entity, run by the engine's og.timelin
 
 - **TypeScript**: functions are the namespace `og.timeline`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
+- **Skill**: `og-anim`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt

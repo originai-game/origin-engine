@@ -8,7 +8,7 @@ an effect, a system. This is how one is produced when the reference is a
 picture and the output has to be code whose numbers someone can dial.
 
 The 3D build itself (the generators, the eight passes, the review frames
-and `og compare`) is og-model's; the generators' API is og-game §18; a
+and `og compare`) is og-model's; the generators' API is og-model §8; a
 screen is og-ui's. This skill is the decision to forge, and the discipline
 that holds for every forged unit, 2D or 3D, model or screen.
 

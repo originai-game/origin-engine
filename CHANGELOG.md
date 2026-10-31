@@ -33,6 +33,10 @@ is one line here, written at the merge that changes
   copying `templates/styles/`, which the installed package lacks.
 - `og api show <module>` (`og api show input`) prints the module's overview
   from its wiki page; a symbol's name still prints its entry.
+- The og-game skill is a 40 KB entry point; its chapters moved into
+  og-render, og-physics, og-2d, og-anim and og-net (new) and og-build,
+  og-model, og-taste. Skills point at `og api show <module>`; the API wiki
+  is no longer mounted under og-game.
 
 ## 0.7.7 — 2026-10-31
 

@@ -1,7 +1,7 @@
 // Materialises the mounts knowledge.json declares into the platform's
 // knowledge tree, `knowledge/` of an origin-agent checkout (before the
 // agent-repo split, OriginGame's packages/game-knowledge/production):
-// skills as game/skills/<name>/, the wiki as og-game's reference/, the
+// skills as game/skills/<name>/ (the guides as og-game's guides/), the
 // project template plus origin-engine.json and distribution.json as the
 // scaffold overlay game-scaffold/<overlay>/.
 //

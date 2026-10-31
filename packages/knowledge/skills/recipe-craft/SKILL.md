@@ -19,9 +19,9 @@ When a mechanic, effect or UI pattern is needed, look in this order:
 
 1. **The engine itself.** Origin Engine owns the world, the tick,
    rendering, animation, physics, navigation, audio, UI, loading and the
-   probe. Look in og-game's `reference/index.md` (generated from the IDL of
-   the engine the game pins, so it is exact) and in og-game §1's table of
-   skills before writing any of them: a hand-integrated capsule, a
+   probe. Look in `og api find <words>` and `og api show <module>`
+   (generated from the IDL of the engine installed, so it is exact) and in
+   og-game §1's table of skills before writing any of them: a hand-integrated capsule, a
    home-grown A* or a second renderer is fresh authorship the engine
    already made unnecessary, and it runs outside the engine's determinism
    and performance guarantees. A missing engine feature is asked for as
@@ -35,9 +35,9 @@ When a mechanic, effect or UI pattern is needed, look in this order:
    module whose dependencies are nothing but `@origingame/engine` (or
    nothing at all, for plain-data logic) fits an Origin Engine game; one
    that needs a renderer package or a browser API is reference only.
-3. **The pinned reference.** The engine's API pages are og-game's
-   `reference/`, at the version in `project.ogt`; never trust a recalled
-   signature over them. Engine vocabulary follows three.js's naming
+3. **The pinned reference.** The engine's API is `og api show <exact
+   name>`, at the version installed for `project.ogt`; never trust a
+   recalled signature over it. Engine vocabulary follows three.js's naming
    (`position`, `quaternion`, `metalness`) but nothing else of three.js
    applies: its examples are not this API (`guides/three-to-og.md` beside
    og-game maps one onto the other).

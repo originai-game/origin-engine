@@ -86,7 +86,7 @@ KiB (11 KiB for a few entities, 25 KiB for a 2D level of 189, 78 KB for a
 store's 64 KiB a key: save it with `og.platform.saveSlot(world, { slot,
 text, meta })`, which spreads it over as many keys as it needs and writes
 the slot's manifest last, so a save cut short leaves the last one whole,
-and read it back with `og.platform.loadSlot` (og-game §17, og-platform-sdk
+and read it back with `og.platform.loadSlot` (og-game §8, og-platform-sdk
 §2).
 
 ### Recording, replaying and ghosts
@@ -303,7 +303,7 @@ it is declared.
   arguments and answer new plain objects, so there are no classes to
   construct and a result is written into a column as any other value;
   they use only arithmetic and `sqrt`, so a system using them stays
-  deterministic. Signatures: `reference/math.md`.
+  deterministic. Signatures: `og api show math`.
 
 ## 7. Where the API is described
 
@@ -314,13 +314,13 @@ defaults, ranges and units, and its doc (`og api show og.CharacterController`,
 `og api show og.physics.raycast`). Both read the wiki below, for the engine
 installed.
 
-The generated wiki (`reference/index.md` next to the `og-game` skill, or
-`wiki/index.md` in `@origingame/engine-knowledge`) has one page per module
-with every signature quoted from the IDL, grouped by the skill that teaches
-it. This skill's are the ECS and its rules: `reference/world.md` (entities,
-queries, resources, events), `reference/system.md` (systems and their
-order), `reference/reflect.md` (components, resources and their column
-factories), `reference/rng.md` (seeded streams) and `reference/math.md`
-(vectors, quaternions, colours as data). When the wiki and memory disagree,
-the wiki is right: it is regenerated from the same IDL the engine is built
+The generated wiki (`wiki/index.md` in `@origingame/engine-knowledge`) has
+one page per module with every signature quoted from the IDL, grouped by
+the skill that teaches it; `og api show <module>` prints a module's
+overview. This skill's are the ECS and its rules: `og api show world`
+(entities, queries, resources, events), `og api show system` (systems and
+their order), `og api show reflect` (components, resources and their
+column factories), `og api show rng` (seeded streams) and
+`og api show math` (vectors, quaternions, colours as data). When the wiki
+and memory disagree, the wiki is right: it is regenerated from the same IDL the engine is built
 from. The other skills, and which modules each teaches, are og-game §1.

@@ -7,7 +7,7 @@ Every string a player reads comes from a table, never from a literal in a
 system. `og.i18n` picks the table for the locale the host asks for (the
 browser's language, `og run --locale`) or the player chooses, formats the
 message, and hands og.ui the fonts and the direction for it. The API is in
-`reference/i18n.md`. This skill is the API; the `localization` skill is the
+`og api show i18n`. This skill is the API; the `localization` skill is the
 craft around it (keys from the first string, keeping every table complete,
 honest translation, font budgets, the per-locale check at each milestone)
 and points here for every call.

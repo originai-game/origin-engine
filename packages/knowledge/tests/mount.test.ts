@@ -72,16 +72,16 @@ test("--check names an edited, a missing and a stray file and writes nothing; a 
   const prod = join(p, PROD);
   writeFileSync(join(prod, "game/skills/og-core/SKILL.md"), "edited by hand\n");
   rmSync(join(prod, "game-scaffold/origin-engine-ts/project.ogt"));
-  writeFileSync(join(prod, "game/skills/og-game/reference/retired.md"), "a page the wiki no longer has\n");
+  writeFileSync(join(prod, "game/skills/og-game/guides/retired.md"), "a guide the package no longer has\n");
   const check = mount(p, "--check");
   expect(check.code).toBe(1);
   expect(check.out).toContain("changed game/skills/og-core/SKILL.md");
   expect(check.out).toContain("added   game-scaffold/origin-engine-ts/project.ogt");
-  expect(check.out).toContain("removed game/skills/og-game/reference/retired.md");
+  expect(check.out).toContain("removed game/skills/og-game/guides/retired.md");
   expect(readFileSync(join(prod, "game/skills/og-core/SKILL.md"), "utf8")).toBe("edited by hand\n");
   expect(mount(p).code).toBe(0);
   expect(mount(p, "--check").code).toBe(0);
-  expect(existsSync(join(prod, "game/skills/og-game/reference/retired.md"))).toBeFalse();
+  expect(existsSync(join(prod, "game/skills/og-game/guides/retired.md"))).toBeFalse();
 });
 
 test("an invalid package mounts nothing", () => {

@@ -10,7 +10,7 @@ Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another 
 
 - **TypeScript**: functions are the namespace `og.anim`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
+- **Skill**: `og-anim`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
@@ -1500,14 +1500,14 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `text` | `string` | `""` | — | — | — | The graph's `.ogt` text (`type animgraph`, `version 1`; og-game §9 has every line). |
+| `text` | `string` | `""` | — | — | — | The graph's `.ogt` text (`type animgraph`, `version 1`; og-anim §5 has every line). |
 | `clips` | `readonly ClipInfo[]` | `[]` | — | — | — | The clips a `clip <motion> "<name>"` line may name, by ClipInfo.name: usually og.load.animation's `clips`. |
 
 ```ogt
 struct GraphDesc {
   doc "A blend-tree graph to register."
   desc true
-  field text String "The graph's `.ogt` text (`type animgraph`, `version 1`; og-game §9 has every line)."
+  field text String "The graph's `.ogt` text (`type animgraph`, `version 1`; og-anim §5 has every line)."
   field clips List.ClipInfo "The clips a `clip <motion> \"<name>\"` line may name, by ClipInfo.name: usually og.load.animation's `clips`."
 }
 ```

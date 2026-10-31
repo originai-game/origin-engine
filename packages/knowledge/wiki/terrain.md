@@ -10,7 +10,7 @@ Its tiles stream (phase 3): the cook stores the field as a pyramid of tiles, eac
 
 - **TypeScript**: functions are the namespace `og.terrain`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
+- **Skill**: `og-render`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt

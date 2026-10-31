@@ -12,7 +12,7 @@ Cells count from the top-left corner, x right and y down (Tiled's); the map's to
 
 - **TypeScript**: functions are the namespace `og.tilemap`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
+- **Skill**: `og-2d`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt

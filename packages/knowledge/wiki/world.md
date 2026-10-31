@@ -26,7 +26,7 @@ module world {
 | [`Entity()`](#column-Entity) | column kind | An Entity field: (index, generation) pairs. |
 | [`SpawnDesc`](#type-SpawnDesc) | desc struct | How to spawn an entity. `{}` spawns an unnamed entity at the origin with a Transform. |
 | [`RestoreDesc`](#type-RestoreDesc) | desc struct | How world.restore takes a save. |
-| [`og.WorldRestored`](#record-WorldRestored) | event | A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §17), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did. |
+| [`og.WorldRestored`](#record-WorldRestored) | event | A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §8), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did. |
 | [`QueryDesc`](#type-QueryDesc) | desc struct | Which entities a query matches. |
 | [`World`](#type-World) | interface | The world a system, a command or a game callback is handed. Game code never holds a world beyond the call it was passed to. |
 | [`Query`](#type-Query) | interface | A set of matched archetypes. Iterate archetypes, never entities one by one. |
@@ -38,7 +38,7 @@ module world {
 
 ### `og.WorldRestored` (event)
 
-A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §17), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did.
+A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §8), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did.
 
 Token `og.WorldRestored`, registered under the schema name `og.WorldRestored`; its value type is `WorldRestored`.
 
@@ -49,7 +49,7 @@ Token `og.WorldRestored`, registered under the schema name `og.WorldRestored`; i
 
 ```ogt
 event WorldRestored {
-  doc "A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §17), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did."
+  doc "A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §8), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did."
   field from u32 "The tick the world was at when the restore applied." {
     unit ticks
   }

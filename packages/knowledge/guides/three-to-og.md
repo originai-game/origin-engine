@@ -38,7 +38,7 @@ Three rules follow from the model and catch every port:
   Vector3 object with methods. `vec3`, `quat`, `mat4` and `color` are
   three.js's methods as pure functions (`vec3.add(a, b)` returns a new
   value; `a.add(b)` does not exist), so a result can go straight into a
-  component (`reference/math.md`).
+  component (`og api show math`).
 - **Every call that can fail answers a Result.** The examples here use
   a `must` helper, as the templates do:
   `function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T { if (!r.ok) throw new Error(r.reason); return r.value; }`.
@@ -103,7 +103,7 @@ The geometry classes keep their parameters, names and defaults; the
 positional arguments become a desc object of the same names, and the
 result is a Geometry handle (a Result) that draws through og.Mesh, carries
 a BVH for `og.render.raycast` and is a `Collider.mesh` at once
-(og-game §18 has the details).
+(og-render §12 has the details).
 
 | three.js | Origin Engine | Not carried over |
 |---|---|---|
@@ -118,7 +118,7 @@ a BVH for `og.render.raycast` and is a `Collider.mesh` at once
 | `CircleGeometry(radius, segments, thetaStart, thetaLength)` | `og.render.circleGeometry` | — |
 | `TubeGeometry(new CatmullRomCurve3(points), tubularSegments, radius, radialSegments, closed)` | `og.render.tubeGeometry(world, { points, ... })`, or `path` an og.path | other Curve classes: write the curve as an og.path |
 | `LatheGeometry(points, segments, phiStart, phiLength)` | `og.render.latheGeometry` (points `{ x, y }`) | — |
-| `Shape`, `Path` | `og.Shape`, `og.Path2` (the root `shapes` module, `reference/shapes.md`): the same calls | — |
+| `Shape`, `Path` | `og.Shape`, `og.Path2` (the root `shapes` module, `og api show shapes`): the same calls | — |
 | `ShapeGeometry(shapes, curveSegments)` | `og.render.shapeGeometry(world, { shapes, curveSegments })` | — |
 | `ExtrudeGeometry(shapes, { depth, bevelEnabled, ... })` | `og.render.extrudeGeometry(world, { shapes, depth, bevelEnabled, ... })`; `extrudePath` an og.path | `UVGenerator` |
 | `PolyhedronGeometry(vertices, indices, radius, detail)` | `og.render.polyhedronGeometry` | — |
@@ -136,7 +136,7 @@ than in code: an `.ogt` of `type model` names each part by its
 `og.render` call with the desc's fields, places it as `mergeGeometries`
 does and gives it a material and a pivot; the cook builds it into the
 model blob a glTF cooks to, with levels of detail and the BVH, and
-`og.load.gltf` loads it (og-game §18 has the grammar). The og-model
+`og.load.gltf` loads it (og-model §9 has the grammar). The og-model
 skill builds such props from a reference image.
 
 `og.render.geometryInfo` answers what `geometry.attributes.position.count`
@@ -173,7 +173,7 @@ and `anisotropy`.
 | `ShaderMaterial`, `RawShaderMaterial`, `onBeforeCompile` | §10 |
 
 Toon, rim, outline, dissolve and hit flash are fields of the same desc
-(og-game §10). One geometry has one material: three.js's material arrays
+(og-render §1). One geometry has one material: three.js's material arrays
 and geometry groups become one entity per group.
 
 ## 6. Lights, the camera and the frame
@@ -192,11 +192,11 @@ and geometry groups become one entity per group.
 | `OrthographicCamera(left, right, top, bottom, near, far)` | og.Camera with `orthographic: true` and `height` the visible world height (`top - bottom`); the width follows the aspect |
 | `camera.position.set(x, y, z)`, `camera.lookAt(x, y, z)` | `camera.position = { x, y, z }`, `camera.lookAt({ x, y, z })` on the resource handle |
 | `scene.background = new THREE.Color(0x87ceeb)` | `camera.background = color.fromHex(0x87ceeb)` (og.Camera's `background`) |
-| `scene.fog = new THREE.Fog(color, near, far)` | og.Fog's `color`, `start`, `end` (`density` for FogExp2), with `enabled` true (og-game §11) |
+| `scene.fog = new THREE.Fog(color, near, far)` | og.Fog's `color`, `start`, `end` (`density` for FogExp2), with `enabled` true (og-render §6) |
 | `new THREE.WebGLRenderer({ antialias: true })` | `GameDesc.render` (`render: { antialias: "msaa4" }`); the engine owns the canvas, on an OffscreenCanvas in a Worker on the web |
-| `renderer.toneMapping`, `toneMappingExposure` | RenderSettings.toneMapping (`"aces"` by default, `"agx"`, `"neutral"` for `NeutralToneMapping`, `"none"`) and `exposure` (og-game §16) |
-| a second camera into a `WebGLRenderTarget` | og.CameraView with `target` from `og.render.renderTarget` (og-game §23) |
-| `EffectComposer` and its passes | og.PostEffects (bloom, AO, depth of field, outline, LUTs and more, og-game §10) and custom post passes (§10 here) |
+| `renderer.toneMapping`, `toneMappingExposure` | RenderSettings.toneMapping (`"aces"` by default, `"agx"`, `"neutral"` for `NeutralToneMapping`, `"none"`) and `exposure` (og-render §3) |
+| a second camera into a `WebGLRenderTarget` | og.CameraView with `target` from `og.render.renderTarget` (og-render §11) |
+| `EffectComposer` and its passes | og.PostEffects (bloom, AO, depth of field, outline, LUTs and more, og-render §1) and custom post passes (§10 here) |
 
 Light intensities are three.js's physical units in spirit (a point
 light's `intensity` is its radiance at one metre) but not calibrated
@@ -213,7 +213,7 @@ call names an asset id, the path under `assets/` (og-game §5, §6).
 | three.js | Origin Engine |
 |---|---|
 | `new GLTFLoader().load(url, (gltf) => scene.add(gltf.scene))` | `const ship = must(og.load.gltf(world, "models/ship.glb"))`, then `world.instantiate(ship, { name: "ship", position })` once `og.load.status(world, ship)` is `"ready"`, or the `AssetReady` event; a scene's `model` line instantiates it for you |
-| `gltf.animations` with an `AnimationMixer` | og.AnimationPlayer or og.AnimationGraph on the instance (og-game §9) |
+| `gltf.animations` with an `AnimationMixer` | og.AnimationPlayer or og.AnimationGraph on the instance (og-anim §1) |
 | `DRACOLoader`, `KTX2Loader`, `MeshoptDecoder` | the cook compresses; give it the uncompressed glTF (it reads no Draco) |
 | `new THREE.TextureLoader().load("textures/crate.png")` | `og.load.texture(world, "textures/crate.png")` |
 | `RGBELoader`, `EXRLoader`, `CubeTextureLoader` for the environment | an `.ogt` of `type environment` naming the `.hdr`, `.exr` or cube, loaded with `og.load.environment` (prefiltered at cook time) |
@@ -293,16 +293,16 @@ if (hits.length > 0) og.debug.sphere(world, hits[0].point, 0.05);
   nearest hit.
 - For gameplay against colliders (ground checks, bullets) use
   `og.physics.raycast`, which reads the physics world instead
-  (og-game §13).
+  (og-physics §1).
 
 ## 10. The gaps, named
 
 - **ShaderMaterial and RawShaderMaterial** have no one-line counterpart.
   A shader is an asset of `type shader` written in WGSL, compiled by the
   cook for every back end: four hooks into the lit shader (vertex offset,
-  surface colour, normal, emissive; og-game §12) for what most
+  surface colour, normal, emissive; og-render §9) for what most
   `onBeforeCompile` and ShaderMaterial uses do, or `mode full lit` /
-  `mode full unlit` for the whole vertex and fragment stages (og-game §23),
+  `mode full unlit` for the whole vertex and fragment stages (og-render §10),
   made with `og.render.shaderMaterial` and fed with
   `og.render.setShaderParam`. A screen-space effect (an EffectComposer
   ShaderPass) is a `type post` asset in PostEffects.custom. GLSL is

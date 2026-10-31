@@ -8,10 +8,10 @@ has weight, and the camera helps the player read what comes next. On
 Origin Engine all of it is deterministic data: tweens, flipbooks, the time
 scale, camera trauma and floating texts live in the world's state blocks,
 so a replay shows the same juice and `og test` can check it. This skill's
-modules are `reference/time.md` (time scale, hit stop), `reference/tween.md`,
-`reference/camera.md` and `reference/systems.md` (the camera controllers the
-engine ships in TypeScript); sprites, flipbooks, tilemaps and floating text
-are og-game's (§8, §10). This skill is how much of each to use, and how to
+modules are `og api show time` (time scale, hit stop), `og api show tween`,
+`og api show camera` and `og api show systems` (the camera controllers the
+engine ships in TypeScript); sprites, flipbooks and tilemaps are og-2d §1,
+floating text og-render §1. This skill is how much of each to use, and how to
 prove it.
 
 ## What works

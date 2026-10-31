@@ -11,7 +11,7 @@ evidence and the defects still open, against the exact build.
 
 The engine's frame tools (`og run --commands`, `describe`, `expect`,
 `og compare`, the probe's `capture` and `sweep`) are og-build §1, §2 and
-§4, og-game §21 and og-model §3; this skill is how to use them as a
+§4, og-game §9 and og-model §3; this skill is how to use them as a
 reviewer. The look itself (the style, colour, hierarchy) is og-taste's.
 
 ## 1. Numbers and regressions first

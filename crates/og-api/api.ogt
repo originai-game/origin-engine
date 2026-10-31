@@ -821,7 +821,7 @@ module world {
   }
 
   event WorldRestored {
-    doc "A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §17), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did."
+    doc "A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §8), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did."
     field from u32 "The tick the world was at when the restore applied." {
       unit ticks
     }
@@ -2272,7 +2272,7 @@ module camera {
 # ── render ────────────────────────────────────────────────────────────────
 
 module render {
-  skill og-game
+  skill og-render
   doc "What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call."
 
   handle Geometry "Vertex and index data, as three.js BufferGeometry. Comes from a loaded glTF."
@@ -4406,7 +4406,7 @@ module render {
   }
 
   fn shaderMaterial {
-    doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; the og-game skill's Material shaders section has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest."
+    doc "Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive; og-render §9 has their WGSL contract), its parameters at their defaults. The hooks apply to skinned meshes too, and shadows and the depth prepass (ambient occlusion, outlines, depth of field) see the mesh where vertex_offset moved it and cut where surface_color's alpha falls below alphaTest."
     param world World "The world whose renderer owns the material."
     param shader Shader "The shader."
     param desc StandardMaterialDesc "The base material; omitted parameters take three.js defaults. A dissolve sets alphaTest so that alpha below it is cut."
@@ -5525,10 +5525,10 @@ module render {
 # ── shapes ────────────────────────────────────────────────────────────────
 
 module shapes {
-  skill og-game
+  skill og-model
   doc "Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js's Shape and Path, built by the same calls (moveTo, lineTo, quadraticCurveTo, bezierCurveTo, splineThru, arc, absarc, ellipse, absellipse, closePath) and flattened to points by getPoints, so a three.js outline is a paste. og.render.shapeGeometry, extrudeGeometry and sweepGeometry take them; only their points cross to the engine."
   doc "They are TypeScript values, not world state: make them in start or a command and let the geometry made from them be what the world keeps. Points come from basic arithmetic (no Math.sin), so they are the same on every host."
-  doc "A prop of these parts belongs in an asset: an `.ogt` of `type model` names each part's geometry by its og.render call (`extrudeGeometry { shape { absarc 0 0 1 0 6.283185307179586 false } depth 0.2 }`), its shapes as og.Shape's calls one a line with `hole { }` blocks, places parts as mergeGeometries does (`position`, `quaternion`, `scale`, `mirror`, or several `at { }` blocks: one mesh drawn instanced), gives each a `material` and hangs it from a named `pivot` (a node). og cook builds it into the model blob a glTF cooks to (levels of detail, raycast BVH, nodes), refuses it past project.ogt's triangle and vertex budgets, and og dev re-cooks it on an edit; og.load.gltf and a scene's `model` line take it as any model. The og-game skill §18 has a whole example."
+  doc "A prop of these parts belongs in an asset: an `.ogt` of `type model` names each part's geometry by its og.render call (`extrudeGeometry { shape { absarc 0 0 1 0 6.283185307179586 false } depth 0.2 }`), its shapes as og.Shape's calls one a line with `hole { }` blocks, places parts as mergeGeometries does (`position`, `quaternion`, `scale`, `mirror`, or several `at { }` blocks: one mesh drawn instanced), gives each a `material` and hangs it from a named `pivot` (a node). og cook builds it into the model blob a glTF cooks to (levels of detail, raycast BVH, nodes), refuses it past project.ogt's triangle and vertex budgets, and og dev re-cooks it on an edit; og.load.gltf and a scene's `model` line take it as any model. og-model §9 has a whole example."
   place root
 
   interface PathList {
@@ -5939,21 +5939,21 @@ module load {
   }
 
   fn emitter {
-    doc "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (the og-game skill's Effects section gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array \"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path."
+    doc "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (og-render §2 gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array \"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path."
     param world World "The world whose renderer owns it."
     param path String "The asset id, such as `fx/sparks.ogt`."
     returns Result.ParticleEmitter "Refused for a path not in the bundle, or a texture or texture array it cannot load."
   }
 
   fn shader {
-    doc "A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; the og-game skill's Full custom shaders section), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path."
+    doc "A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; og-render §10), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path."
     param world World "The world whose renderer owns it."
     param path String "The asset id, such as `shaders/dissolve.ogt`."
     returns Result.Shader "Refused for a path not in the bundle or not a shader."
   }
 
   fn post {
-    doc "A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (the og-game skill's Custom post passes section has the contract). The cook compiles it for every back end. Loaded once per path."
+    doc "A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (og-render §10 has the contract). The cook compiles it for every back end. Loaded once per path."
     param world World "The world whose renderer owns it."
     param path String "The asset id, such as `post/crt.ogt`."
     returns Result.Post "Refused for a path not in the bundle or not a post pass."
@@ -6105,7 +6105,7 @@ module load {
 # ── physics ───────────────────────────────────────────────────────────────
 
 module physics {
-  skill og-game
+  skill og-physics
   doc "Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back."
   doc "The profile is the project's (`profile \"2d\"` or `\"3d\"` in project.ogt). In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform."
   doc "The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1."
@@ -7653,7 +7653,7 @@ module physics {
 # ── atmosphere ────────────────────────────────────────────────────────────
 
 module atmosphere {
-  skill og-game
+  skill og-render
   doc "Fog, a procedural sky, the day-night cycle, weather, the wind that sways vegetation and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before."
   doc "The day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it."
 
@@ -8113,7 +8113,7 @@ module atmosphere {
 # ── anim ──────────────────────────────────────────────────────────────────
 
 module anim {
-  skill og-game
+  skill og-anim
   doc "Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics."
   doc "Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none."
   doc "Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again."
@@ -8647,7 +8647,7 @@ module anim {
   struct GraphDesc {
     doc "A blend-tree graph to register."
     desc true
-    field text String "The graph's `.ogt` text (`type animgraph`, `version 1`; og-game §9 has every line)."
+    field text String "The graph's `.ogt` text (`type animgraph`, `version 1`; og-anim §5 has every line)."
     field clips List.ClipInfo "The clips a `clip <motion> \"<name>\"` line may name, by ClipInfo.name: usually og.load.animation's `clips`."
   }
 
@@ -9146,7 +9146,7 @@ module tween {
 # ── tilemap ───────────────────────────────────────────────────────────────
 
 module tilemap {
-  skill og-game
+  skill og-2d
   doc "Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component."
   doc "Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them."
   doc "With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it)."
@@ -10644,7 +10644,7 @@ module platform {
   }
 
   fn saveSlot {
-    doc "Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game. og-game §17."
+    doc "Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game. og-game §8."
     param world World "The world."
     param desc SaveSlotDesc "The slot, the text and what a title shows of it."
     returns Result.u32 "Refused for a malformed slot name, a text over 512 KiB or a meta over 4 KiB. The answer arrives when the manifest is written: data `{ slot, parts, bytes, revision }`; an error is the first refused part's, or the manifest's (`conflict`: another save of the slot landed meanwhile; the slot holds that one)."
@@ -14240,7 +14240,7 @@ module probe {
 # ── terrain ───────────────────────────────────────────────────────────────
 
 module terrain {
-  skill og-game
+  skill og-render
   doc "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry."
   doc "Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Terrain is 3D: the 2D profile's publish and lanes modules leave it out (RenderCapabilities.world3d is false), where every call here answers a refusal naming that field. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike)."
   doc "Its tiles stream (phase 3): the cook stores the field as a pyramid of tiles, each compressed on its own, and every frame the renderer keeps on the GPU only the tiles the camera's clipmap wants, within each terrain's tile budget (16 MiB by default), decoded off the frame (a worker thread natively, the browser's DecompressionStream on the Web) a few at a time, the most needed first; until a tile arrives its area draws from the coarser level that holds it, then fades in. Nothing a tick reads depends on which tiles are resident (collision and og.terrain.sample read the whole field), so a run's world hash is the same streamed or not. The probe's `terrain_stream:resident` decodes every wanted tile before each frame instead (`terrain_stream:stream[:<MiB>]` streams again, within that budget), and `dump_stream`'s `terrain` gives the tiles resident, waiting, decoding and cached."
@@ -14672,7 +14672,7 @@ module stream {
 # ── video ─────────────────────────────────────────────────────────────────
 
 module video {
-  skill og-game
+  skill og-render
   doc "Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg into a texture array of its frames and its sound, loaded with og.load.video and played by og.VideoPlayer. The frame shown is a Texture (VideoInfo.texture, also VideoPlayer.texture) any material map, og.Sprite or UI image draws, and the sound plays on the entity's og.AudioSource in step with it."
   doc "Playback is simulation: the og.video system (after the game's systems, before og.audio) advances VideoPlayer.time by the tick's dt times `speed` (not the time scale, so the picture stays with its sound), so the frame at a tick is the same on both hosts, in every run and after a snapshot is restored. With a 30 Hz tick a player started at 0 shows the source's frame 3 s in at tick 90."
 
@@ -14735,7 +14735,7 @@ module video {
 # ── debug ─────────────────────────────────────────────────────────────────
 
 module debug {
-  skill og-game
+  skill og-render
   doc "Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds, levels of detail, and the lit image's terms: shadow cascades, ambient occlusion, albedo, image-based and direct light) the command channel's `debug:` actions switch."
   doc "Development only: not in publish builds, where every member does nothing and answers its default, so a game may leave its debug draws in. Debug draw is rendering: it never feeds back into the simulation, and its draws are not world state (a snapshot or a replay does not carry them)."
   publish false
@@ -14837,7 +14837,7 @@ module debug {
 # ── path (depth S2) ───────────────────────────────────────────────────────
 
 module path {
-  skill og-game
+  skill og-anim
   doc "Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t."
   doc "Make one with og.path.create, or declare it in a scene (`path \"<name>\" { kind catmullRom; closed false; point x y z ... }`) and find it by name with og.path.find; a timeline's camera rides one with `rail \"<name>\"`. og.PathFollower moves an entity along one, og.CameraRail.path moves the camera along one, og.render.tubeGeometry makes a tube along one (TubeGeometryDesc.path). Paths are assets: they are not world state, and a hot reload registers them again."
 
@@ -14966,7 +14966,7 @@ module path {
 # ── timeline (depth S2) ───────────────────────────────────────────────────
 
 module timeline {
-  skill og-game
+  skill og-anim
   doc "Timelines: cutscenes and sequences as data, Unity's Timeline and Godot's AnimationPlayer as an `.ogt` the agent reads and diffs. A `type timeline` file has a `duration` in seconds, `path \"<name>\" { ... }` blocks (as og.path's) and `track <kind> [\"<entity>\"] { key <seconds> { ... } }` blocks; `og cook` cooks it (importing caption files) and og.load.timeline loads it. Tracks: `camera` (position and target keys, or `rail \"<path>\"` with `at` 0..1 along it, or `follow \"<entity>\"` with offsets; fov; eased), `transform \"<entity>\"` (position, rotation in degrees or quaternion, scale; eased), `animation \"<entity>\"` (clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model), `audio` (sound, volume, pitch, bus), `music` (sound, volume, fadeIn, fadeOut, end, loop, bus), `caption` (text from `key` to `end` with a UI type step `style` and an `anchor`; `captions \"narration.srt\" [offset]` imports a SubRip file or word timestamps `.json`), `event` (`do \"<command-channel action>\"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it), `transition` (kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from, over og.ui's screen cover) and `marker` (`name`, sending og.TimelineMarker when played past)."
   doc "Between two keys that set a value the later key's `ease` (og.tween's Ease names, linear when it gives none) mixes them; before the first and after the last the value is held. Every value is evaluated at the timeline's time, never accumulated over ticks, and that time is kept exactly (in steps of a thousandth of a tick), so seeking to a time and playing to it give the same world: a seek is how a video render starts at any frame."
   doc "An og.Timeline component plays one on its entity, run by the engine's og.timeline system after the game's systems (and tweens) and before og.anim and physics, so what it sets is what animation, physics and the frame see that tick. While one with a camera track plays (or is paused) it owns og.Camera, and hands back the camera it found when it stops or ends. Its event keys' actions run at the start of the next tick, as og.ai's commands do. The command channel plays them too: `timeline:play:<name>` (`timelines/<name>.ogt`, or an asset id), `timeline:seek:<seconds>[:<name>]`, `timeline:pause[:<name>]`, `timeline:resume[:<name>]`, `timeline:stop[:<name>]`."
@@ -15078,7 +15078,7 @@ module timeline {
 # ── net ───────────────────────────────────────────────────────────────────
 
 module net {
-  skill og-game
+  skill og-net
   doc "Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it."
   doc "Inputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone."
   doc "Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input)."
@@ -15198,7 +15198,7 @@ module net {
 # ── art ───────────────────────────────────────────────────────────────────
 
 module art {
-  skill og-game
+  skill og-taste
   doc "A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): the palette its texels sit on (ArtPalette), one pixel size for 2D art (ArtPixels), one texel density for 3D surfaces (ArtTexels), the shape language of its models (ArtShape), its line (ArtLine), the step of its motion (ArtMotion) and its camera (ArtCamera). A style is the assets, not a filter on the frame: the look's render resources treat the frame, these say what the assets themselves must be."
   doc "Every field is no constraint at its zero value (0, false, the first variant, an empty list), so a look without these blocks, and every game made before them, cooks and draws exactly as before. The built-in presets (templates/looks/<slug>.ogt) carry each catalogue style's values and a game's look overrides them field by field. They are resources, so game code reads the contract too (a sprite snapping to ArtPixels.unit, a spawner picking colours from ArtPalette); project.ogt's `look` names the look whose contract the cook reads. Writing them changes neither the frame nor the simulation: the cook's conformance of assets, the runtime defaults from them and og style check are docs/art.md §2.3 to §2.5."
 

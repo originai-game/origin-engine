@@ -9,7 +9,7 @@ behaviour it runs, ticked by `og.ai`), `og.Perception` (what it sees and
 hears), and a behaviour in `assets/ai/<name>.ogt`. Game code does not move
 enemies or switch their states by hand; it sets facts (components,
 resources) the behaviour checks, and handles the commands it raises. The
-API is in `reference/nav.md` and `reference/ai.md`; this skill is how to
+API is in `og api show nav` and `og api show ai`; this skill is how to
 use them.
 
 ## What works
