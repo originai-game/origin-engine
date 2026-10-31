@@ -356,7 +356,8 @@ outlines, fog and sky, the UI style and the antialiasing) in one diffable
 file. The engine ships the primitives and the presets; the taste is in
 which one you pick and how you tune it.
 
-**Pick from the catalogue.** `looks/catalogue.json` (beside this skill)
+**Pick from the catalogue.** `looks/catalogue.json` (this skill's file:
+`skill {name: "og-taste", file: "looks/catalogue.json"}`)
 describes 37 styles in four families (pixel and retro, paint and line,
 shape and material, 3D rendering). For each: a one-line descriptor, three
 checks a critic can judge on a captured frame, the premises it fits

@@ -676,7 +676,8 @@ the skill that teaches it (as in §1); `og api show <exact name>` gives a
 type or function with the IDL text, defaults, ranges and units of every
 field.
 
-`guides/three-to-og.md` (beside this skill) maps three.js's classes and
+`guides/three-to-og.md` (this skill's file: `skill {name: "og-game", file:
+"guides/three-to-og.md"}`) maps three.js's classes and
 idioms to the engine's: the scene graph to entities and og.Parent,
 Object3D to og.Transform, the geometry classes to og-model §8's generators, the
 materials to StandardMaterialDesc, the loaders to og.load, the render

@@ -45,13 +45,15 @@ whole level's surface.
 
 `scripts/texture-level.ts` (bun), beside this file, drives one run
 directory; everything is in it, so a run resumes and a view can be
-re-projected. In a project the script is in the installed engine package,
-`node_modules/@origingame/engine/knowledge/skills/level-texturing/scripts/`;
-it runs the `og` on the PATH, or the one `--og` (or `OG_BIN`) names, such
-as the project's `node_modules/.bin/og`.
+re-projected. The script is in the installed engine package, under
+`knowledge/skills/level-texturing/scripts/`: the package is
+`$OG_ENGINE_PACKAGE` on an Origin executor (a Game there has no
+`node_modules`) and `node_modules/@origingame/engine` in a project
+installed with npm. It runs the `og` on the PATH, or the one `--og` (or
+`OG_BIN`) names.
 
 ```sh
-bun node_modules/@origingame/engine/knowledge/skills/level-texturing/scripts/texture-level.ts \
+bun "$OG_ENGINE_PACKAGE/knowledge/skills/level-texturing/scripts/texture-level.ts" \
   --level assets/models/village.glb --run runs/village \
   --style "a Mediterranean hill village: weathered limestone and ochre plaster walls, wooden doors and shutters, worn cobblestone paving" \
   --views 14 --roofs 4 --aerial 3 --holes 3
