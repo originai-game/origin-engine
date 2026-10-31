@@ -14,6 +14,6 @@
     "polish": "og polish ."
   },
   "dependencies": {
-    "@origingame/engine": "0.7.4"
+    "@origingame/engine": "0.7.5"
   }
 }

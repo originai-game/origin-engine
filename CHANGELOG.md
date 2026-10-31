@@ -13,10 +13,11 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
-## Unreleased
+## 0.7.5 — 2026-10-31
 
-A patch: no IDL member added or removed (`AnchorDesc.margin`'s doc now says
-it insets every edge). Games on a built-in style look different, as below.
+A patch with the simulation unchanged (the golden replays): no IDL member
+added or removed (`AnchorDesc.margin`'s doc now says it insets every edge).
+Games on a built-in style look different, as below.
 
 - UI styles speak Chinese in their own voice: a style's `fonts` block takes
   `cjk` and `cjkDisplay`, Simplified Chinese companions that set a label's

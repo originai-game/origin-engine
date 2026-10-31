@@ -5,7 +5,7 @@ version 1
 # reference source of crates/og-ui/references (see README.md).
 name "UI kit"
 id "ui-kit"
-engine "0.7.4"
+engine "0.7.5"
 entry "src/main.ts"
 profile "2d"
 tick 60

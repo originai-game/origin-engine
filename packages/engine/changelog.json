@@ -9,6 +9,33 @@
   },
   "versions": [
     {
+      "version": "0.7.5",
+      "date": "2026-10-31",
+      "kind": "patch",
+      "simulation": "unchanged",
+      "breaking": [],
+      "added": [
+        {
+          "member": "UI style fonts cjk and cjkDisplay",
+          "summary": "A style's fonts block takes cjk and cjkDisplay, Simplified Chinese companions that set a label's Chinese beside the role's Latin face, ahead of the locale's fonts. Every built-in style names one matched to its Latin (templates/styles/cjk: Noto Sans SC, Noto Serif SC, ZCOOL KuaiLe, Fusion Pixel; OFL), cooked in only for a game with a zh string table, rendered at run time."
+        },
+        {
+          "member": "UI style tone <part> r g b a",
+          "summary": "The frame art's centre colour (og cook measures it from the atlas when a style does not set it): a button's label ink, and the ground any widget reads through it, are judged against it at 7:1."
+        },
+        {
+          "member": "og.ui: off-screen control warning",
+          "summary": "og.ui: warns when a control is laid out past the screen's edge with no scroll container to bring it back, naming it and by how much."
+        }
+      ],
+      "fixed": [
+        "Button labels read on what is drawn: a game's primaryColor over a dark neon or scifi body keeps a light label, and a mid-scale colour (crimson) moves away from its ink as little as it takes. The accent highlight now follows the game's primary and reads 5:1 on its wash. Games on a built-in style look different.",
+        "A centred or end-aligned label in a column takes the column's width (it sat at the start in a box as wide as its text).",
+        "The neon style: its glow marks the button and the title only (no panel, HUD or number glow; tighter tube halos, a fainter grid), and its numbers are Chakra Petch SemiBold (Orbitron read 0 as Ø and 1 as 7).",
+        "AnchorDesc.margin's doc says it insets every edge; no IDL member added or removed."
+      ]
+    },
+    {
       "version": "0.7.4",
       "date": "2026-10-30",
       "kind": "patch",
