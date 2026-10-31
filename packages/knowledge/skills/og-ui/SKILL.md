@@ -338,11 +338,16 @@ built-in style by slug (`pixel`, `cartoon`, `fantasy`, `scifi`, `paper`,
 `neon`; `og cook` bundles the one a look names). `ui
 "styles/<name>/style.ogt"` is the game's own, and a game's
 `assets/styles/<slug>/style.ogt` wins over the built-in of that slug.
-To make one from a built-in, copy `templates/styles/<slug>/` of the
-engine repository into the game's `assets/styles/<name>/` and change it
-at will: a style's ids are read relative to its file first, then from
-`assets/`. A style file must name every palette role and all four radii;
-`og cook` lists the ones missing. Loading one by hand:
+To make one from a built-in, run `og style eject <slug> <name>` (`og style
+list` names the slugs): it writes the built-in's style.ogt, atlas, icons,
+fonts with their import settings and licences into `assets/styles/<name>/`
+(never over existing files without `--force`) and prints the `ui
+"styles/<name>/style.ogt"` line for the look. Then edit palette roles,
+radii and fonts in `assets/styles/<name>/style.ogt`; a style's ids are read
+relative to its file first, then from `assets/`, and its `cjk` fonts stay
+the shared built-in `@styles/cjk/` ones. A style file must name every
+palette role and all four radii; `og cook` lists the ones missing. Loading
+one by hand:
 
 ```ts
 const style = og.load.style(world, "styles/fantasy/style.ogt");   // atlas, fonts, icons load with it

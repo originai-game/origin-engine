@@ -674,6 +674,141 @@ fn cook_defaults_the_engine_component_fields_a_scene_omits() {
     assert_eq!(lanes(1, "scale"), [2.0, 2.0, 2.0]);
 }
 
+/// A fresh project whose one look names the UI style `ui`, optionally with a
+/// Chinese string table.
+fn look_project(ui: &str, chinese: bool) -> PathBuf {
+    let dir = scratch_root();
+    std::fs::create_dir_all(dir.join("assets/looks")).unwrap();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
+    std::fs::write(
+        dir.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("assets/looks/x.ogt"),
+        format!("type look\nversion 1\n---\nui \"{ui}\"\n"),
+    )
+    .unwrap();
+    if chinese {
+        std::fs::create_dir_all(dir.join("assets/strings")).unwrap();
+        std::fs::write(
+            dir.join("assets/strings/zh.ogt"),
+            "type strings\nversion 1\n---\nlocale \"zh-CN\"\n",
+        )
+        .unwrap();
+    }
+    dir
+}
+
+/// `og style eject scifi keeper` writes the built-in style's whole pack
+/// (templates/styles/scifi, byte for byte) into the game's
+/// assets/styles/keeper/, refuses to overwrite it without --force, and the
+/// ejected style cooks to the built-in's blobs (only the cook stamp in the
+/// header differs): the same palette, atlas, icons and fonts. Its `cjk`
+/// fonts stay the shared built-ins, bundled for a game that shows Chinese.
+///
+/// Ways it could fail: a file of the pack is left out or altered, an
+/// existing file is overwritten, or the ejected copy cooks differently
+/// (an id resolved elsewhere, a font's import settings lost).
+#[test]
+fn style_eject_writes_the_built_in_pack_that_cooks_the_same() {
+    let mine = look_project("styles/keeper/style.ogt", true);
+    let out = og()
+        .args(["style", "eject", "scifi", "keeper", "--project"])
+        .arg(&mine)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    assert!(
+        text(&out).contains("ui \"styles/keeper/style.ogt\""),
+        "{}",
+        text(&out)
+    );
+    let template = repo().join("templates/styles/scifi");
+    let ejected = mine.join("assets/styles/keeper");
+    let names = |d: &Path| -> Vec<String> {
+        let mut v: Vec<String> = std::fs::read_dir(d)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+            .collect();
+        v.sort();
+        v
+    };
+    assert_eq!(names(&ejected), names(&template));
+    for f in names(&template) {
+        assert!(
+            std::fs::read(ejected.join(&f)).unwrap() == std::fs::read(template.join(&f)).unwrap(),
+            "{f} differs from templates/styles/scifi"
+        );
+    }
+
+    // An existing pack is kept unless --force.
+    std::fs::write(ejected.join("style.ogt"), "edited").unwrap();
+    let again = og()
+        .args(["style", "eject", "scifi", "keeper", "--project"])
+        .arg(&mine)
+        .output()
+        .unwrap();
+    assert_eq!(again.status.code(), Some(1), "{}", text(&again));
+    assert!(text(&again).contains("--force"), "{}", text(&again));
+    assert_eq!(
+        std::fs::read_to_string(ejected.join("style.ogt")).unwrap(),
+        "edited"
+    );
+    let forced = og()
+        .args(["style", "eject", "scifi", "keeper", "--force", "--project"])
+        .arg(&mine)
+        .output()
+        .unwrap();
+    assert_eq!(forced.status.code(), Some(0), "{}", text(&forced));
+
+    let builtin = look_project("scifi", true);
+    for dir in [&mine, &builtin] {
+        let out = og().arg("cook").arg(dir).output().unwrap();
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    }
+    let a = og_cook::runtime::Bundle::open(&mine.join("cooked")).unwrap();
+    let b = og_cook::runtime::Bundle::open(&builtin.join("cooked")).unwrap();
+    assert!(
+        a.output("@styles/scifi/style.ogt").is_err(),
+        "the ejected style replaces the built-in in the bundle"
+    );
+    // The blob header's cook stamp (bytes 32..40) hashes the source id.
+    let unstamped = |bundle: &og_cook::runtime::Bundle, id: &str| -> Vec<u8> {
+        let mut v = bundle
+            .read(id)
+            .unwrap_or_else(|e| panic!("{id}: {e}"))
+            .to_vec();
+        v[32..40].fill(0);
+        v
+    };
+    for f in [
+        "style.ogt",
+        "atlas.png",
+        "icons.png",
+        "ChakraPetch-Medium.ttf",
+        "Orbitron-Bold.ttf",
+        "JetBrainsMono-Regular.ttf",
+    ] {
+        assert!(
+            unstamped(&a, &format!("styles/keeper/{f}"))
+                == unstamped(&b, &format!("@styles/scifi/{f}")),
+            "{f}: the ejected copy cooks differently from the built-in"
+        );
+    }
+    for f in ["NotoSansSC-Regular.ttf", "NotoSansSC-Bold.ttf"] {
+        let id = format!("@styles/cjk/{f}");
+        assert!(
+            unstamped(&a, &id) == unstamped(&b, &id),
+            "{id}: the ejected style's Chinese companion"
+        );
+    }
+    let _ = std::fs::remove_dir_all(&mine);
+    let _ = std::fs::remove_dir_all(&builtin);
+}
+
 /// A copy of tests/fixtures/style-pack (three nine-patches, a corner and a
 /// style file) in a fresh directory.
 fn style_fixture() -> PathBuf {

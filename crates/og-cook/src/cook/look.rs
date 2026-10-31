@@ -509,6 +509,61 @@ pub static STYLES: &[(&str, &[u8])] = &[
     ),
 ];
 
+/// The built-in styles' licence files (`LICENSES.md`, the fonts' `OFL.txt`),
+/// by the bundle id they would have: never cooked into a game's bundle,
+/// only written beside the rest by `og style eject`, since a copied font
+/// travels with its licence.
+pub static STYLE_LICENCES: &[(&str, &[u8])] = &[
+    (
+        "@styles/cartoon/LICENSES.md",
+        include_bytes!("../../../../templates/styles/cartoon/LICENSES.md"),
+    ),
+    (
+        "@styles/cartoon/OFL.txt",
+        include_bytes!("../../../../templates/styles/cartoon/OFL.txt"),
+    ),
+    (
+        "@styles/fantasy/LICENSES.md",
+        include_bytes!("../../../../templates/styles/fantasy/LICENSES.md"),
+    ),
+    (
+        "@styles/fantasy/OFL.txt",
+        include_bytes!("../../../../templates/styles/fantasy/OFL.txt"),
+    ),
+    (
+        "@styles/neon/LICENSES.md",
+        include_bytes!("../../../../templates/styles/neon/LICENSES.md"),
+    ),
+    (
+        "@styles/neon/OFL.txt",
+        include_bytes!("../../../../templates/styles/neon/OFL.txt"),
+    ),
+    (
+        "@styles/paper/LICENSES.md",
+        include_bytes!("../../../../templates/styles/paper/LICENSES.md"),
+    ),
+    (
+        "@styles/paper/OFL.txt",
+        include_bytes!("../../../../templates/styles/paper/OFL.txt"),
+    ),
+    (
+        "@styles/pixel/LICENSES.md",
+        include_bytes!("../../../../templates/styles/pixel/LICENSES.md"),
+    ),
+    (
+        "@styles/pixel/OFL.txt",
+        include_bytes!("../../../../templates/styles/pixel/OFL.txt"),
+    ),
+    (
+        "@styles/scifi/LICENSES.md",
+        include_bytes!("../../../../templates/styles/scifi/LICENSES.md"),
+    ),
+    (
+        "@styles/scifi/OFL.txt",
+        include_bytes!("../../../../templates/styles/scifi/OFL.txt"),
+    ),
+];
+
 /// The built-in styles' slugs.
 pub fn style_slugs() -> Vec<&'static str> {
     let mut out: Vec<&'static str> = STYLES
@@ -1535,6 +1590,34 @@ mod tests {
         );
         assert_eq!(builtin("@canvas/pap"), None);
         assert_eq!(builtin("canvas/paper"), None);
+    }
+
+    /// Every file of a built-in style's directory is compiled in, as a
+    /// cooked file or a licence, so `og style eject` writes the whole pack.
+    #[test]
+    fn every_built_in_style_file_is_compiled_in() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
+        for slug in style_slugs() {
+            let mut on_disk: Vec<String> = std::fs::read_dir(dir.join(slug))
+                .unwrap()
+                .map(|e| {
+                    format!(
+                        "@styles/{slug}/{}",
+                        e.unwrap().file_name().to_string_lossy()
+                    )
+                })
+                .collect();
+            on_disk.sort();
+            let prefix = format!("@styles/{slug}/");
+            let mut ids: Vec<String> = STYLES
+                .iter()
+                .chain(STYLE_LICENCES)
+                .filter(|(id, _)| id.starts_with(&prefix))
+                .map(|(id, _)| id.to_string())
+                .collect();
+            ids.sort();
+            assert_eq!(ids, on_disk, "{slug}");
+        }
     }
 
     /// A built-in style's Chinese companions join the bundle of a game that

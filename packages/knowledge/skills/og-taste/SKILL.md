@@ -66,7 +66,7 @@ preset is dressed by it from the first frame. The game's UI follows the
 game's art, never the Origin platform's: without a style it draws in the
 engine's placeholder `prototype` (greys, near-square corners, a cyan focus
 ring), and `og polish` warns when a game ships in it. The six built-in
-styles in the engine's `templates/styles/` are starting points, not the
+styles (`og style list`) are starting points, not the
 only looks:
 
 | Style | Premises it fits | Signature | Start look (§12) |
@@ -84,10 +84,9 @@ ui "styles/harbour/style.ogt"    # or the game's own
 ```
 
 Make it the game's own by changing the style file, never by passing colours
-to individual calls: copy the built-in's directory into the game's
-`assets/styles/<game>/` (`cp -R .../templates/styles/fantasy
-assets/styles/<game>`) and name it in the look (`ui
-"styles/<game>/style.ogt"`). Nothing in it needs rewriting: the ids in a
+to individual calls: write the built-in into the game's
+`assets/styles/<game>/` with `og style eject fantasy <game>` and name it in
+the look (`ui "styles/<game>/style.ogt"`). Nothing in it needs rewriting: the ids in a
 style file are read relative to the file first (`atlas "atlas.png"`, `body
 "Newsreader-Medium.ttf"`), then from `assets/`. A style is complete: it
 names every palette role and the four radii (`small`, `control`, `bar`,

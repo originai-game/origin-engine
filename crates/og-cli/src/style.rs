@@ -21,12 +21,20 @@
 //! regions of its `corner`, `divider`, `flourish` and `tile` lines (moved to
 //! where those images now sit); without one it starts a style of the slices.
 //! `--out` defaults to the input directory.
+//!
+//! `og style list` names the built-in styles; `og style eject <slug>
+//! [<name>] [--project <dir>] [--force]` writes one, byte for byte from the
+//! copy compiled into `og` (its `style.ogt`, atlas, icons, fonts with their
+//! import settings, licences), into the game's `assets/styles/<name>/`, a
+//! game's own style to change at will. Its Chinese companions stay the
+//! shared built-in `@styles/cjk/` fonts, which the cook bundles for a game
+//! that shows Chinese.
 
 use image::{Rgba, RgbaImage};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og style pack <dir> [--out <dir>]\n       og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]";
+const USAGE: &str = "usage: og style list\n       og style eject <slug> [<name>] [--project <dir>] [--force]\n       og style pack <dir> [--out <dir>]\n       og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]";
 
 /// The parts a nine-patch can dress (og-ui's `StylePart` names) and `soft`.
 const SLICES: [&str; 13] = [
@@ -60,6 +68,23 @@ struct Piece {
 pub fn run(args: &[&str]) -> ExitCode {
     match args {
         ["check", rest @ ..] => crate::style_check::run(rest),
+        ["list"] => {
+            for slug in og_cook::cook::look::style_slugs() {
+                let about = ABOUT
+                    .iter()
+                    .find(|(s, _)| *s == slug)
+                    .map_or("", |(_, a)| a);
+                println!("{slug:<8} {about}");
+            }
+            ExitCode::SUCCESS
+        }
+        ["eject", rest @ ..] => match eject(rest) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("og style eject: {e}");
+                ExitCode::from(1)
+            }
+        },
         ["pack", rest @ ..] => match pack(rest) {
             Ok(()) => ExitCode::SUCCESS,
             Err(e) => {
@@ -72,6 +97,117 @@ pub fn run(args: &[&str]) -> ExitCode {
             ExitCode::from(2)
         }
     }
+}
+
+/// Each built-in style's signature (og-taste §1's table), for `og style list`.
+const ABOUT: &[(&str, &str)] = &[
+    (
+        "cartoon",
+        "thick outlines, cream panels, squash on press, pops (casual, match-3, party, idle)",
+    ),
+    (
+        "fantasy",
+        "parchment, gold corners and flourishes, a serif display (RPGs, card battlers, quests)",
+    ),
+    (
+        "neon",
+        "dark glass, glowing tubes, italic display (arcade, rhythm, racing, synthwave)",
+    ),
+    (
+        "paper",
+        "off-white sheets, ink outlines, soft shadows, one red (narrative, puzzle, cosy, word games)",
+    ),
+    (
+        "pixel",
+        "square frames, 2 px bevels, hard shadows, a bitmap face (platformers, roguelikes, retro)",
+    ),
+    (
+        "scifi",
+        "hairlines, cut corners, brackets, scanlines, mono numerals (space, tactics, hacking, mech)",
+    ),
+];
+
+/// `og style eject <slug> [<name>] [--project <dir>] [--force]`.
+fn eject(args: &[&str]) -> Result<(), String> {
+    let usage = "usage: og style eject <slug> [<name>] [--project <dir>] [--force]";
+    let (mut words, mut project, mut force) = (Vec::new(), PathBuf::from("."), false);
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        match *a {
+            "--force" => force = true,
+            "--project" => project = PathBuf::from(it.next().ok_or(usage)?),
+            a if a.starts_with('-') => return Err(usage.into()),
+            a => words.push(a),
+        }
+    }
+    let (slug, name) = match words.as_slice() {
+        [slug] => (*slug, *slug),
+        [slug, name] => (*slug, *name),
+        _ => return Err(usage.into()),
+    };
+    let slugs = og_cook::cook::look::style_slugs();
+    if !slugs.contains(&slug) {
+        return Err(format!(
+            "no built-in style '{slug}' (built-in: {})",
+            slugs.join(", ")
+        ));
+    }
+    if name.is_empty()
+        || name.starts_with(['@', '.'])
+        || name.contains(['/', '\\', '"'])
+        || name.chars().any(char::is_whitespace)
+    {
+        return Err(format!(
+            "'{name}' is not a style name: one directory name under assets/styles/ (letters, digits, - and _)"
+        ));
+    }
+    if !project.join("project.ogt").is_file() {
+        return Err(format!(
+            "{}: no project.ogt; run it in a game's directory or pass --project <dir>",
+            project.display()
+        ));
+    }
+    let prefix = format!("@styles/{slug}/");
+    let mut files: Vec<(&str, &[u8])> =
+        og_cook::cook::look::style_files(&format!("{prefix}style.ogt"));
+    files.extend(
+        og_cook::cook::look::STYLE_LICENCES
+            .iter()
+            .filter(|(id, _)| id.starts_with(&prefix))
+            .copied(),
+    );
+    files.sort();
+    let rel_dir = format!("assets/styles/{name}");
+    let dir = project.join(&rel_dir);
+    let targets: Vec<(String, &[u8])> = files
+        .iter()
+        .map(|(id, bytes)| (id[prefix.len()..].to_string(), *bytes))
+        .collect();
+    let existing: Vec<&str> = targets
+        .iter()
+        .filter(|(f, _)| dir.join(f).exists())
+        .map(|(f, _)| f.as_str())
+        .collect();
+    if !existing.is_empty() && !force {
+        return Err(format!(
+            "{rel_dir}/ already has {}; nothing written (--force overwrites)",
+            existing.join(", ")
+        ));
+    }
+    std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    println!(
+        "og style eject: the built-in '{slug}' into {rel_dir}/ ({} files)",
+        targets.len()
+    );
+    for (f, bytes) in &targets {
+        let path = dir.join(f);
+        std::fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))?;
+        println!("  {rel_dir}/{f}");
+    }
+    println!(
+        "name it in the game's look: ui \"styles/{name}/style.ogt\"\nthen change its palette roles, radius, ramp and fonts in {rel_dir}/style.ogt (og-ui §6); its cjk fonts stay the built-in @styles/cjk/ ones"
+    );
+    Ok(())
 }
 
 fn pack(args: &[&str]) -> Result<(), String> {
