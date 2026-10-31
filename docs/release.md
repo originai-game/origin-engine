@@ -130,6 +130,20 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.7.5 released (2026-10-31 UTC).** All five npm packages are
+published, and `v0.7.5` is pushed at `188fdbff`. It is a patch with the
+simulation unchanged and no IDL member added or removed: UI styles set
+Chinese in a matched companion face (`cjk`, `cjkDisplay`; templates/styles/cjk,
+OFL), button labels are judged against the frame art as drawn (`tone`),
+centred labels in a column take its width, `og.ui:` warns about controls
+past the screen, the neon style's glow is narrowed, and a script's `advance`
+holds the steps after it. The replay gate passed 2/2 goldens and
+`check.sh quick` 5/5. The tarballs and the registry install passed on a
+darwin-arm64 Mac satellite (Metal) and in the linux-x64 container. `og`
+grew by about 19.7 MB on each platform, because the cook carries each CJK
+font twice (owed). See the
+[release receipt](../tests/evidence/release/0.7.5.md).
+
 **0.7.4 released (2026-10-30 UTC).** All five npm packages are
 published, and `v0.7.4` is pushed at `92c53a9a`. It is a patch with the
 simulation unchanged and no IDL member changed: with
