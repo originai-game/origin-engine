@@ -53,6 +53,33 @@ fn version_names_og_and_the_engine() {
     );
 }
 
+/// `og <command> … --help` answers that command's usage on stdout and
+/// succeeds, as `og --help` does: an agent's shell reported each command's
+/// help as a failure (exit 2, usage on stderr) and retried (M7 run 12).
+#[test]
+fn every_command_answers_help_with_its_usage() {
+    for args in [
+        &["style", "--help"][..],
+        &["test", "--help"],
+        &["run", "-h"],
+        &["api", "show", "--help"],
+        &["bake", "probes", "--help"],
+    ] {
+        let out = og().args(args).output().unwrap();
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        assert!(out.status.success(), "{args:?}: {out:?}");
+        assert!(out.stderr.is_empty(), "{args:?}: {out:?}");
+        let entry = format!("  {} ", args[..args.len() - 1].join(" "));
+        assert!(
+            stdout.contains(&entry),
+            "{args:?} shows its entry: {stdout}"
+        );
+    }
+    // A subcommand narrows the answer to its entry.
+    let out = og().args(["bake", "probes", "--help"]).output().unwrap();
+    assert!(!String::from_utf8_lossy(&out.stdout).contains("bake lightmaps"));
+}
+
 #[test]
 fn api_check_passes_on_the_repository() {
     let out = og()

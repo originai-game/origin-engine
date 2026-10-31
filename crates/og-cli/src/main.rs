@@ -167,9 +167,58 @@ options:
   --version           print the og version
 ";
 
+/// `og <command> [<sub>] … --help`: that command's entries of [`USAGE`]
+/// (narrowed to `<sub>`'s when it names one), or `None` for a command
+/// [`USAGE`] does not list. Every command answers its help from this one
+/// text, on stdout with success, as `og --help` does.
+fn command_help(args: &[&str]) -> Option<String> {
+    let (cmd, rest) = args.split_first()?;
+    // The entries: a line indented two spaces starts one, deeper lines go on.
+    let mut entries: Vec<Vec<&str>> = Vec::new();
+    let mut open = false;
+    for line in USAGE.lines() {
+        let entry = line.starts_with("  ") && !line.starts_with("   ");
+        if entry {
+            entries.push(vec![line]);
+            open = true;
+        } else if open && line.starts_with("   ") {
+            entries.last_mut().expect("opened").push(line);
+        } else {
+            open = false;
+        }
+    }
+    let word = |e: &Vec<&str>, i: usize| e[0].split_whitespace().nth(i).map(str::to_string);
+    let mut mine: Vec<&Vec<&str>> = entries
+        .iter()
+        .filter(|e| word(e, 0).as_deref() == Some(cmd))
+        .collect();
+    if let Some(sub) = rest.first().filter(|a| !a.starts_with('-'))
+        && mine.iter().any(|e| word(e, 1).as_deref() == Some(sub))
+    {
+        mine.retain(|e| word(e, 1).as_deref() == Some(sub));
+    }
+    (!mine.is_empty()).then(|| {
+        let mut out = String::from("usage: og <command> [options]\n\n");
+        for e in mine {
+            for line in e {
+                out += line;
+                out.push('\n');
+            }
+        }
+        out
+    })
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    if args.len() > 1
+        && args[1..].iter().any(|a| *a == "--help" || *a == "-h")
+        && let Some(help) = command_help(&args)
+    {
+        print!("{help}");
+        return ExitCode::SUCCESS;
+    }
     match args.as_slice() {
         ["--version"] | ["-V"] | ["version"] => {
             println!("og {VERSION} (origin-engine {VERSION})");
