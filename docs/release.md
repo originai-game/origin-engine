@@ -130,6 +130,18 @@ the engine's version.
 
 ## 3. Versions and the release procedure
 
+**0.7.6 released (2026-10-31 UTC).** All five npm packages are
+published, and `v0.7.6` is pushed at `bff867c7`. It is a patch with the
+simulation unchanged and no IDL member added or removed: `og api find
+<words>` and `og api show <name>` look the API up one entry at a time
+from the installed engine package's wiki, so an agent no longer reads a
+module's whole page. The replay gate passed 2/2 goldens and `check.sh
+quick` 5/5. The tarballs and the registry install passed on a
+darwin-arm64 Mac satellite (Metal) and in the linux-x64 container, and
+the released `og` answered `og api show og.CharacterController` and `og
+api find character controller` from the package's wiki on both. See the
+[release receipt](../tests/evidence/release/0.7.6.md).
+
 **0.7.5 released (2026-10-31 UTC).** All five npm packages are
 published, and `v0.7.5` is pushed at `188fdbff`. It is a patch with the
 simulation unchanged and no IDL member added or removed: UI styles set
