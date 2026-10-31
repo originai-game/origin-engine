@@ -192,7 +192,7 @@ pub const PRESETS: &[(&str, &str)] = &[
 /// `"@canvas/paper.png"`; a game that names one has it cooked into its
 /// bundle under the id, where `og.load.texture`/`og.load.palette` find it
 /// too.
-pub const BUILTINS: &[(&str, &[u8])] = &[
+pub static BUILTINS: &[(&str, &[u8])] = &[
     (
         "@canvas/linen.png",
         include_bytes!("../../../../templates/looks/assets/canvas/linen.png"),
@@ -234,7 +234,7 @@ pub const BUILTINS: &[(&str, &[u8])] = &[
 /// its bundle under `@styles/<name>/`, where `og.load.style` finds it too
 /// (`@styles/pixel/style.ogt`). A game's own `assets/styles/<slug>/style.ogt`
 /// wins over the built-in of that slug.
-pub const STYLES: &[(&str, &[u8])] = &[
+pub static STYLES: &[(&str, &[u8])] = &[
     (
         "@styles/cjk/FusionPixel12-zhHans.ttf",
         include_bytes!("../../../../templates/styles/cjk/FusionPixel12-zhHans.ttf"),
