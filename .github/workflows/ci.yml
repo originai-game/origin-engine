@@ -3,17 +3,14 @@
 # Keep logic in the scripts so local and CI runs match.
 name: ci
 
-# Restored with the repository published (docs/ci.md §CI, 2026-10-25): the
-# local gate stays the signal for a merge (the coordinator's functional lane
-# and the wave-end run); this is the shared runner's record of main and of
-# every PR, and the nightly's perf measurement. The Actions tab still runs
-# it by hand.
+# Not on every push (docs/ci.md §CI, 2026-10-31): the local gate is the
+# signal for a merge (the coordinator's functional lane and the wave-end
+# run). The shared runner records main once a night, only when main moved
+# since the last nightly, and every PR; the Actions tab runs it by hand.
 on:
-  push:
-    branches: [main]
   pull_request:
   schedule:
-    - cron: "17 3 * * *" # nightly perf, 03:17 UTC
+    - cron: "17 3 * * *" # nightly gate and perf, 03:17 UTC, when main moved
   workflow_dispatch:
 
 concurrency:
@@ -44,6 +41,24 @@ env:
   OG_TEST_TIME_SCALE: "3"
 
 jobs:
+  # The nightly runs only when main moved since the last completed nightly:
+  # a red night stays red until a commit lands or someone runs it by hand.
+  changed:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      run: ${{ steps.last.outputs.run }}
+    steps:
+      - id: last
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          last=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --event schedule --status completed --limit 1 --json headSha --jq '.[0].headSha // ""')
+          if [ "$last" = "$GITHUB_SHA" ]; then echo "main unchanged since the last nightly ($last)" >&2; echo run=false; else echo run=true; fi >> "$GITHUB_OUTPUT"
+
   # The quick lane (docs/ci.md §Lanes): the loop's signal on every PR.
   quick:
     if: github.event_name == 'pull_request'
@@ -124,7 +139,8 @@ jobs:
 
   # The full lane with CI set: every step and test, the shipping wasm profile.
   gate:
-    if: github.event_name != 'schedule'
+    needs: changed
+    if: ${{ !cancelled() && (github.event_name != 'schedule' || needs.changed.outputs.run == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 240
     container: *container
@@ -172,7 +188,8 @@ jobs:
 
   # The perf suite (docs/ci.md §What runs where, `make perf`).
   perf-nightly:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: changed
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changed.outputs.run == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 240
     container: *container
