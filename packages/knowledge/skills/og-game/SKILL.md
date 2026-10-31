@@ -69,7 +69,8 @@ The order the games found productive:
    `og.nav.nearest` at every spawn and route point; only then write the
    behaviours.
 6. **Run with commands** (og-build §1, §4): `og run . --headless
-   --commands "...;screenshot:x.png;...;quit"`, then open each frame and
+   --commands "0.5:screenshot:x.png;2:key_down:Space;3:screenshot:y.png;3.5:quit"`
+   (every step starts with its time in seconds), then open each frame and
    say what it shows. Do this after every change that shows on screen.
    Add `describe:frame.json` beside a screenshot to get the frame as data:
    the visible entities nearest first, each with its screen box, pick point,
