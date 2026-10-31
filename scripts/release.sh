@@ -28,6 +28,9 @@
 #                                               to open, or --otp) is answered by the person running it, unless NPM_TOKEN is set (the
 #                                               project secret: a granular access token with publish rights and 2FA bypass), which
 #                                               publishes without a login or a prompt (a private userconfig for the run)
+#   scripts/release.sh dev <run-id|dir>         publish a dev build (docs/release.md §1a): the tarballs of a `release.yml -f dev=true`
+#                                               run (fetched, or a directory holding them) under npm's `dev` dist-tag; no verify, no git
+#                                               tag, `latest` untouched. NPM_TOKEN or an npm login, as publish
 #
 # pack holds the gate lock through pack.sh (a release build compiles beside
 # nothing) and refuses a dev native/ as pack.sh does. publish is an outward
@@ -231,8 +234,41 @@ cmd_publish() {
   og_say "release: now scripts/release.sh verify --registry"
 }
 
+# A dev build: what a pin moves to while a defect is tested (docs/release.md
+# §1a). The version comes from the tarballs (the workflow wrote it in its
+# checkout), not from this tree.
+cmd_dev() {
+  local src="${1:?scripts/release.sh dev <run-id|dir>}" out
+  if [ -d "$src" ]; then out="$(cd "$src" && pwd)"
+  else
+    og_need gh || return 1
+    out="$(mktemp -d)" || return 1
+    gh run download "$src" -p 'release-*' -D "$out" || { og_err "release: gh run download $src failed (a finished release.yml run with -f dev=true?)"; return 1; }
+    out="$(dirname "$(find "$out" -name manifest.json | head -1)")"
+  fi
+  local v
+  v="$(bun -e 'console.log(JSON.parse(require("node:fs").readFileSync(process.argv[1],"utf8")).version)' "$out/manifest.json")" || { og_err "release: no manifest.json in $out"; return 1; }
+  case "$v" in *-dev.*) ;; *) og_err "release: $v is not a dev build; a release goes through verify and publish"; return 1 ;; esac
+  if [ -n "${NPM_TOKEN:-}" ]; then
+    local rc; rc="$(mktemp)" || return 1
+    printf '//registry.npmjs.org/:_authToken=%s\n' "$NPM_TOKEN" > "$rc"
+    export NPM_CONFIG_USERCONFIG="$rc"
+    trap 'rm -f "$NPM_CONFIG_USERCONFIG"' RETURN
+  fi
+  npm whoami >/dev/null 2>&1 || { og_err "release: not logged in to npm (NPM_TOKEN)"; return 1; }
+  local name tgz
+  for name in engine-darwin-arm64 engine-linux-x64 engine-win32-x64 engine create-game; do
+    tgz="$out/origingame-$name-$v.tgz"
+    [ -f "$tgz" ] || { og_err "release: no $tgz"; return 1; }
+    if [ -n "$(npm view "@origingame/$name@$v" version 2>/dev/null)" ]; then og_say "release: @origingame/$name@$v is already published; skipped"; continue; fi
+    npm publish --access public --tag dev "$tgz" || { og_err "release: npm publish of @origingame/$name@$v failed; run dev again to continue"; return 1; }
+  done
+  og_say "release: published dev build $v (npm dist-tag dev). Pin it: \"@origingame/engine\": \"$v\""
+}
+
 case "$verb" in
   check) cmd_check ;;
+  dev) cmd_dev "$@" ;;
   bump) cmd_bump "$@" ;;
   pack) cmd_pack ;;
   manifest) cmd_manifest "$@" ;;

@@ -3,15 +3,23 @@
 # addon and og by cargo zigbuild, the engine package with its knowledge/,
 # create-game), and the macOS and Windows jobs build only their native addon
 # and og (`build.sh --native`, `pack.sh --native`). The assemble job puts the
-# five tarballs together under one manifest. Nothing here publishes: the
-# tarballs come back to a machine with `scripts/release.sh fetch <run-id>`,
+# five tarballs together under one manifest. A release publishes nothing
+# here: the tarballs come back to a machine with `scripts/release.sh fetch <run-id>`,
 # and `verify` then `publish` run there as before, by hand (docs/release.md
 # §3). Run it from the Actions tab or `gh workflow run release.yml --ref
 # main`; its logic stays in the scripts so a local pack is the same.
+# `-f dev=true` is a dev build (docs/release.md §1a): the checkouts carry
+# <next patch>-dev.<run number>, and it is published under npm's `dev` tag
+# with no verify (scripts/release.sh dev).
 name: release
 
 on:
   workflow_dispatch:
+    inputs:
+      dev:
+        description: "A dev build: <next patch>-dev.<run number>, for a pin to test (docs/release.md §1a)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -53,6 +61,9 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
+      - name: Dev version
+        if: inputs.dev
+        run: bun scripts/release-bump.ts --dev "${{ github.run_number }}" && cargo update --workspace -q
       - name: Build the ${{ matrix.platform }} addon and og (release)
         run: OG_RELEASE=1 sh packages/engine/scripts/build.sh --native
       - name: Pack @origingame/engine-${{ matrix.platform }}
@@ -91,6 +102,9 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.17.0
+      - name: Dev version
+        if: inputs.dev
+        run: bun scripts/release-bump.ts --dev "${{ github.run_number }}" && cargo update --workspace -q
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-zigbuild@0.23.4
@@ -131,6 +145,9 @@ jobs:
         with:
           path: dist/release/${{ needs.web.outputs.version }}
           merge-multiple: true
+      - name: Dev version
+        if: inputs.dev
+        run: bun scripts/release-bump.ts --dev "${{ github.run_number }}"
       - name: Manifest
         run: scripts/release.sh manifest "dist/release/${{ needs.web.outputs.version }}"
       - name: Install test (host, from the tarballs)
@@ -143,3 +160,13 @@ jobs:
             dist/release/${{ needs.web.outputs.version }}/manifest.json
           if-no-files-found: error
           retention-days: 30
+      # A dev build publishes itself when the repository has the NPM_TOKEN
+      # secret; otherwise `scripts/release.sh dev <run-id>` from a machine
+      # that has it.
+      - name: Publish the dev build (npm dist-tag dev)
+        if: inputs.dev
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then echo "no NPM_TOKEN secret: run scripts/release.sh dev ${{ github.run_id }}"; exit 0; fi
+          scripts/release.sh dev "dist/release/${{ needs.web.outputs.version }}"

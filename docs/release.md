@@ -114,6 +114,21 @@ knowledge, scaffold and archetypes an agent reads are the ones the
 package of that version carries; the repository can be read-only to the
 platform, and public when the owner decides (§6).
 
+### 1a. Dev builds while a pin is being tested (owner, 2026-10-31)
+
+A fix the platform needs to try does not wait for a release. It is
+pushed to `main`, built by `gh workflow run release.yml --ref main -f
+dev=true` (the same five tarballs, about 26 minutes; the checkouts carry
+`<next patch>-dev.<run number>`, e.g. `0.7.8-dev.12` after 0.7.7, and
+nothing of it is committed), and published under npm's `dev` dist-tag
+by the workflow when the repository has the `NPM_TOKEN` secret, or by
+`scripts/release.sh dev <run-id>` from a machine that has it. The
+platform then pins that exact version. A dev build runs no install test,
+no browser tier and writes no receipt, no tag and no changelog entry
+(its changes stay under `unreleased`); `latest` never points at one.
+A release (§3) is cut at a milestone, from whatever dev build the
+testing settled on, with every gate.
+
 ## 2. What the packages carry
 
 | Package | Contents | Built by |

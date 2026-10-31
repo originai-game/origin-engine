@@ -2,6 +2,8 @@
 // checked equal everywhere (docs/release.md §3).
 //
 //   bun scripts/release-bump.ts <version>   write it
+//   bun scripts/release-bump.ts --dev <n>   write the dev build <next patch>-dev.<n> (0.7.8-dev.3 after 0.7.7), changelog.json
+//                                           untouched; the release workflow's dev run does this in its checkout, never committed
 //   bun scripts/release-bump.ts --check     exit 1 naming every occurrence that differs from packages/engine's
 //   bun scripts/release-bump.ts --print     print the current version
 //
@@ -97,12 +99,20 @@ interface Changelog {
 }
 
 const minorOf = (v: string) => v.split(".").slice(0, 2).join(".");
+const DEV = /-dev\.\d+$/;
+
+/** The dev build `n` after `now`: the next patch's pre-release, `0.7.8-dev.<n>` after 0.7.7. */
+function devVersion(now: string, n: string): string {
+  const [major, minor, patch] = now.split("-")[0]!.split(".").map(Number);
+  return `${major}.${minor}.${patch! + 1}-dev.${n}`;
+}
 
 /** Problems with changelog.json for `version` (an entry, well formed); empty when fine. */
 function changelogProblems(log: Changelog, version: string): string[] {
   const out: string[] = [];
   const entry = log.versions.find((e) => e.version === version);
-  if (!entry) out.push(`${CHANGELOG}: no entry for ${version}`);
+  // A dev build (`--dev`) carries unreleased: it has no entry of its own.
+  if (!entry && !DEV.test(version)) out.push(`${CHANGELOG}: no entry for ${version}`);
   for (const e of [log.unreleased, ...log.versions]) {
     const name = e.version ?? "unreleased";
     if (e.simulation !== "unchanged" && e.simulation !== "changed") out.push(`${CHANGELOG} ${name}: simulation is "unchanged" or "changed"`);
@@ -129,6 +139,7 @@ function releaseChangelog(now: string, target: string): string | null {
 }
 
 function main(args: string[]): number {
+  const dev = args.includes("--dev");
   const want = args.find((a) => !a.startsWith("--"));
   const check = args.includes("--check");
   const now = current();
@@ -136,12 +147,12 @@ function main(args: string[]): number {
     process.stdout.write(`${now}\n`);
     return 0;
   }
-  if (!check && (!want || !SEMVER.test(want))) {
-    process.stderr.write("usage: bun scripts/release-bump.ts <version> | --check | --print\n");
+  if (dev ? !/^\d+$/.test(want ?? "") : !check && (!want || !SEMVER.test(want))) {
+    process.stderr.write("usage: bun scripts/release-bump.ts <version> | --dev <n> | --check | --print\n");
     return 2;
   }
-  const target = check ? now : want!;
-  if (!check) {
+  const target = check ? now : dev ? devVersion(now, want!) : want!;
+  if (!check && !dev) {
     const refused = releaseChangelog(now, target);
     if (refused) {
       process.stderr.write(`release-bump: ${refused}\n`);
