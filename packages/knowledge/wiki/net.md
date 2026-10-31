@@ -6,7 +6,7 @@ Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the 
 
 Inputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone.
 
-Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.Audio, og.Camera, og.Lockstep, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input).
+Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input).
 
 - **TypeScript**: functions are the namespace `og.net`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -18,7 +18,7 @@ module net {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 15048</sub>
+<sub>`api.ogt` line 15080</sub>
 
 ## Contents
 
@@ -64,7 +64,7 @@ fn submit {
 }
 ```
 
-<sub>`api.ogt` line 15146</sub>
+<sub>`api.ogt` line 15178</sub>
 
 <a id="fn-status"></a>
 
@@ -92,7 +92,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 15153</sub>
+<sub>`api.ogt` line 15185</sub>
 
 <a id="fn-hash"></a>
 
@@ -120,7 +120,7 @@ fn hash {
 }
 ```
 
-<sub>`api.ogt` line 15159</sub>
+<sub>`api.ogt` line 15191</sub>
 
 ## Components, resources and events
 
@@ -171,7 +171,7 @@ resource Lockstep {
 }
 ```
 
-<sub>`api.ogt` line 15054</sub>
+<sub>`api.ogt` line 15086</sub>
 
 <a id="record-PlayerInput"></a>
 
@@ -212,7 +212,7 @@ component PlayerInput {
 }
 ```
 
-<sub>`api.ogt` line 15082</sub>
+<sub>`api.ogt` line 15114</sub>
 
 <a id="record-Desync"></a>
 
@@ -237,7 +237,7 @@ event Desync {
 }
 ```
 
-<sub>`api.ogt` line 15101</sub>
+<sub>`api.ogt` line 15133</sub>
 
 ## Types
 
@@ -269,7 +269,7 @@ struct InputDesc {
 }
 ```
 
-<sub>`api.ogt` line 15108</sub>
+<sub>`api.ogt` line 15140</sub>
 
 <a id="type-LockstepSeat"></a>
 
@@ -298,7 +298,7 @@ struct LockstepSeat {
 }
 ```
 
-<sub>`api.ogt` line 15118</sub>
+<sub>`api.ogt` line 15150</sub>
 
 <a id="type-LockstepStatus"></a>
 
@@ -337,4 +337,4 @@ struct LockstepStatus {
 }
 ```
 
-<sub>`api.ogt` line 15130</sub>
+<sub>`api.ogt` line 15162</sub>

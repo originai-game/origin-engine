@@ -12,10 +12,11 @@ ring. It depends on `og-core` and `og-ecs` only and reads no clock.
 | Item | Entry points |
 |---|---|
 | `Input` (`og.Input`, version 2) | `down(code)`, `pressed`, `released`, `axis(neg, pos)`, `axis2`, `button_down(PointerButton)`, `button_pressed`, `button_released`, `contains(KeySet, i)`, `word(KeySet, w)`; `apply(&InjectedInput) -> Option<Vec<InputEvent>>`, `end_tick() -> Vec<InputEvent>` |
-| `Pointers` (`og.Pointers`, version 1) | `position(id)`, `start(id)`, `down(id)`, `is_pressed(id)`, `is_released(id)`, `count()`; masks `held`, `pressed`, `released` (bit `id`); `apply`, `end_tick` |
+| `Pointers` (`og.Pointers`, version 1) | `position(id)`, `start(id)`, `down(id)`, `is_pressed(id)`, `is_released(id)`, `count()`; masks `held`, `pressed`, `released` (bit `id`); `movement` (pointer 0's relative movement this tick); `apply`, `end_tick` |
+| `PointerLock` (`og.PointerLock`, version 1) | `wanted` (the game's), `locked` (the host's, from `InjectedInput::PointerLock`) |
 | `Gamepad` (`og.Gamepad`, version 1) | `masks(pad) -> (held, pressed, released)`, `is_connected(pad)`, `down(button, pad)`, `pressed`, `released`, `axis(GamepadAxis, pad)`; `GAMEPAD_BUTTONS` (17 standard-mapping names, bit order), `gamepad_button(name)`, `MAX_GAMEPADS = 4`, `MAX_POINTERS = 5` |
-| events | `KeyDown { key: Str64, repeat }`, `KeyUp { key }`, `PointerDown { x, y, button, id }`, `PointerUp { x, y, button, id }`, `PointerMove { x, y, id }`, `Wheel { deltaX, deltaY }` as `og.KeyDown` ... `og.Wheel`; `InputEvent` (one of them) `.send(world)`; `register(world)` |
-| injected input | `InjectedInput::{Key, Pointer { .., id }, Wheel, Gamepad(GamepadState { pad, connected, buttons, axes, triggers })}` with `from_json`/`to_json` (protocol 5), `KeyAction`, `PointerAction`, `PointerButton` (`bit`, `index`, `name`, `from_index`, `from_name`), `Modifiers` |
+| events | `KeyDown { key: Str64, repeat }`, `KeyUp { key }`, `PointerDown { x, y, button, id }`, `PointerUp { x, y, button, id }`, `PointerMove { x, y, id, movementX, movementY }`, `Wheel { deltaX, deltaY }` as `og.KeyDown` ... `og.Wheel`; `InputEvent` (one of them) `.send(world)`; `register(world)` |
+| injected input | `InjectedInput::{Key, Pointer { .., id, movement_x, movement_y }, PointerLock { locked }, Wheel, Gamepad(GamepadState { pad, connected, buttons, axes, triggers })}` with `from_json`/`to_json` (protocol 5), `KeyAction`, `PointerAction`, `PointerButton` (`bit`, `index`, `name`, `from_index`, `from_name`), `Modifiers` |
 | keys | `KEY_CODES` (106 `KeyboardEvent.code` names, the key-set bit order), `KEY_SET_BITS = 128`, `key_index`, `key_for_char` (US layout) |
 | sink | `InputSink { attach, inject, end_tick, accepted }`, `InputLayer` (alias `WorldInput`), `InputLayer::drain_ring(world, ring) -> RingReport` |
 | ring | `ring::{drain, drain_mut, decode_slot, encode_slot, write, new_ring}`, `HEADER_WORDS`, `SLOT_WORDS`, `SLOTS`, `KEY_BYTES`, `BYTE_LEN`, `KINDS`, `ACTIONS`, `BUTTONS` |
@@ -58,6 +59,18 @@ ticks leave both edges, and a disconnected pad holds nothing. Pad 4 or more
 is refused. Both resources are world state: snapshots carry them and replays
 are exact (`tests/pads.rs`). The web shell also keeps mapping pad buttons
 to keys (`gamepad.ts`), the fallback for games that read only `og.Input`.
+
+## Mouse-look
+
+A pointer event carries the mouse's relative movement (`movementX`,
+`movementY` in protocol 5 JSON, 0 when absent; the browser's, which keeps
+coming while the pointer is locked and its position stands still).
+`og.Pointers.movement` sums pointer 0's over the events before a tick and
+is zero again when the tick ends; a move whose movement is not zero raises
+`PointerMove` even at the same position. `og.PointerLock.wanted` is the
+game's ask for the lock; the host reports the lock with `{ "kind":
+"pointerLock", "locked" }` (ring kind 6), which sets `locked` and nothing
+else. `tests/mouselook.rs` holds both, and the ring and JSON round trips.
 
 ## Semantics
 
@@ -106,7 +119,7 @@ of little-endian 32-bit words:
 |---|---|
 | 0 | write index, monotonic (the writer publishes a slot with `Atomics.store`) |
 | 1 | read index, monotonic (the reader stores it back) |
-| 2 + 16·s | slot `s = index % 256`: `kind` (0 key, 1 pointer, 2 wheel, 3 gamepad), `action` (0 press, 1 down, 2 up, 3 click, 4 move), `button` (0 none, 1 left, 2 middle, 3 right), key length (≤ 32), `x`, `y`, `deltaX`, `deltaY` as f32 bits, then 32 bytes of key code (words 8–15); a pointer slot has its id in word 8 |
+| 2 + 16·s | slot `s = index % 256`: `kind` (0 key, 1 pointer, 2 wheel, 3 gamepad), `action` (0 press, 1 down, 2 up, 3 click, 4 move), `button` (0 none, 1 left, 2 middle, 3 right), key length (≤ 32), `x`, `y`, `deltaX`, `deltaY` as f32 bits, then 32 bytes of key code (words 8–15); a pointer slot has its id in word 8 and its movementX, movementY in words 9–10 (f32); kind 6 is a pointer lock report, word 1 locked (1) or released (0) |
 | gamepad slot | word 2 the pad, 3 connected, 4–7 the axes (f32), 8 the button mask, 9–10 the triggers (f32) |
 
 The writer drops an event when `write - read ≥ 256`, so the reader never
@@ -144,6 +157,10 @@ are unchanged.
   the world. Regenerate the fixture with
   `node crates/og-input/tests/fixtures/make-ring.mjs` when `input.ts`
   changes (it now has 11 events, a second touch and a pad among them).
+- `tests/mouselook.rs`: movement summed over a tick and gone the next, a
+  touch's movement not counted, `PointerMove` at a still position, the lock
+  report reaching `locked` and leaving `wanted`; movement and lock reports
+  across protocol 5 JSON and the ring.
 - `tests/pads.rs`: two touches and a pad over a seven-tick script (edges
   for one tick, a sub-tick tap on B, ids on events, og.Input following only
   pointer 0, a click on touch 3, pointer 5 and pad 4 refused, a disconnect

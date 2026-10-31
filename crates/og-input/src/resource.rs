@@ -158,6 +158,30 @@ pub struct PointerMove {
     pub y: f32,
     /// Which pointer: 0 the primary, 1 to 4 further touches.
     pub id: u32,
+    /// The mouse's relative movement this event carried (`movementX`), CSS
+    /// pixels; 0 when the host gave none.
+    #[reflect(name = "movementX", unit = "cssPx")]
+    pub movement_x: f32,
+    /// Its vertical relative movement (`movementY`, down positive).
+    #[reflect(name = "movementY", unit = "cssPx")]
+    pub movement_y: f32,
+}
+
+/// Whether the game wants the pointer locked to the play surface, and
+/// whether it is (IDL `input.PointerLock`, an engine extension): mouse-look.
+/// The game writes `wanted`; the host reads it from each frame's answer and
+/// asks for the lock on the next press on the play surface (browsers grant
+/// it only to a gesture), releases it when `wanted` goes false, and reports
+/// `locked` as an [`InjectedInput::PointerLock`] whenever it changes (the
+/// player's Escape releases it). A host without a cursor (headless, the
+/// native runs) never locks: `locked` follows only injected reports.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.PointerLock", version = 1)]
+pub struct PointerLock {
+    /// The game wants the pointer locked (and its cursor hidden).
+    pub wanted: bool,
+    /// The pointer is locked now, as the host last reported it.
+    pub locked: bool,
 }
 
 /// Text typed or composed (IDL `input.TextInput`), from the page's
@@ -274,10 +298,11 @@ impl InputEvent {
 }
 
 /// Registers [`Input`] and the six events, then [`Pointers`],
-/// [`Gamepad`], [`TextInput`] and [`A11yAction`], in this order:
-/// `og.Input`, `og.KeyDown`, `og.KeyUp`, `og.PointerDown`, `og.PointerUp`,
-/// `og.PointerMove`, `og.Wheel`, `og.Pointers`, `og.Gamepad`,
-/// `og.TextInput`, `og.A11yAction`. Idempotent.
+/// [`Gamepad`], [`TextInput`], [`A11yAction`] and [`PointerLock`], in this
+/// order: `og.Input`, `og.KeyDown`, `og.KeyUp`, `og.PointerDown`,
+/// `og.PointerUp`, `og.PointerMove`, `og.Wheel`, `og.Pointers`,
+/// `og.Gamepad`, `og.TextInput`, `og.A11yAction`, `og.PointerLock`.
+/// Idempotent.
 pub fn register(world: &mut World) -> og_core::Result<()> {
     world.register::<Input>()?;
     world.register::<KeyDown>()?;
@@ -290,6 +315,7 @@ pub fn register(world: &mut World) -> og_core::Result<()> {
     world.register::<Gamepad>()?;
     world.register::<TextInput>()?;
     world.register::<A11yAction>()?;
+    world.register::<PointerLock>()?;
     Ok(())
 }
 
@@ -484,16 +510,21 @@ impl Input {
             }
             // Further touches, pads and text have their own resources and events.
             InjectedInput::Pointer { id, .. } if *id != 0 => {}
-            InjectedInput::Gamepad(_) | InjectedInput::Text { .. } | InjectedInput::A11y { .. } => {
-            }
+            InjectedInput::Gamepad(_)
+            | InjectedInput::Text { .. }
+            | InjectedInput::A11y { .. }
+            | InjectedInput::PointerLock { .. } => {}
             InjectedInput::Pointer {
                 action,
                 x,
                 y,
                 button,
+                movement_x,
+                movement_y,
                 ..
             } => {
-                self.move_to(*x, *y, *action == PointerAction::Move, &mut out);
+                let movement = Vec2::new(*movement_x, *movement_y);
+                self.move_to(*x, *y, *action == PointerAction::Move, movement, &mut out);
                 let b = button.bit();
                 let held = self.buttons & b != 0;
                 match action {
@@ -538,7 +569,7 @@ impl Input {
                 delta_x,
                 delta_y,
             } => {
-                self.move_to(*x, *y, false, &mut out);
+                self.move_to(*x, *y, false, Vec2::ZERO, &mut out);
                 self.wheel += Vec2::new(*delta_x, *delta_y);
                 out.push(InputEvent::Wheel(Wheel {
                     delta_x: *delta_x,
@@ -549,10 +580,16 @@ impl Input {
         Some(out)
     }
 
-    fn move_to(&mut self, x: f32, y: f32, always: bool, out: &mut Vec<InputEvent>) {
+    fn move_to(&mut self, x: f32, y: f32, always: bool, movement: Vec2, out: &mut Vec<InputEvent>) {
         let to = Vec2::new(x, y);
-        if always || !self.pointer_inside || to != self.pointer {
-            out.push(InputEvent::PointerMove(PointerMove { x, y, id: 0 }));
+        if always || !self.pointer_inside || to != self.pointer || movement != Vec2::ZERO {
+            out.push(InputEvent::PointerMove(PointerMove {
+                x,
+                y,
+                id: 0,
+                movement_x: movement.x,
+                movement_y: movement.y,
+            }));
         }
         self.pointer = to;
         self.pointer_inside = true;
@@ -612,6 +649,7 @@ impl Input {
 /// Pointer 0 is the primary one, the same pointer as [`Input`]'s; ids 1 to
 /// 4 are further touches. Masks: bit `id`. Edges last exactly one tick, as
 /// [`Input`]'s do; a click holds its pointer until the end of the next tick.
+/// `movement` sums pointer 0's relative movement over the tick.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
 #[reflect(name = "og.Pointers", version = 1)]
 pub struct Pointers {
@@ -649,6 +687,12 @@ pub struct Pointers {
     pub start3: Vec2,
     #[reflect(unit = "cssPx")]
     pub start4: Vec2,
+    /// Pointer 0's relative movement this tick: the sum of the
+    /// `movementX`/`movementY` of its events since the last tick (the
+    /// mouse's, as browsers report it; it keeps coming while the pointer is
+    /// locked). Zero again when the tick ends.
+    #[reflect(unit = "cssPx")]
+    pub movement: Vec2,
 }
 
 impl Pointers {
@@ -729,12 +773,17 @@ impl Pointers {
             y,
             button,
             id,
+            movement_x,
+            movement_y,
         } = event
         else {
             return Some(Vec::new());
         };
         if *id as usize >= MAX_POINTERS {
             return None;
+        }
+        if *id == 0 {
+            self.movement += Vec2::new(*movement_x, *movement_y);
         }
         let bit = 1 << id;
         let at = Vec2::new(*x, *y);
@@ -748,6 +797,8 @@ impl Pointers {
                 x: *x,
                 y: *y,
                 id: *id,
+                movement_x: *movement_x,
+                movement_y: *movement_y,
             }));
         }
         let held = self.held & bit != 0;
@@ -795,9 +846,10 @@ impl Pointers {
         Some(out)
     }
 
-    /// The end of a tick: edges expire, clicks release (raising `PointerUp`
-    /// for pointers 1 to 4, in id order).
+    /// The end of a tick: edges and the movement expire, clicks release
+    /// (raising `PointerUp` for pointers 1 to 4, in id order).
     pub fn end_tick(&mut self) -> Vec<InputEvent> {
+        self.movement = Vec2::ZERO;
         let release = self.held & self.release_next;
         self.pressed = 0;
         self.released = release;

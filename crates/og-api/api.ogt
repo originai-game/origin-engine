@@ -958,7 +958,7 @@ module world {
     }
 
     fn restore {
-      doc "Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources."
+      doc "Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources."
       param save String "The text world.snapshot returned."
       param desc RestoreDesc "Whether a type whose layout changed since the save is mapped field by field."
       returns Result.Void "Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants): the reason names the type and the fields, and the fix (`{ migrate: true }`, or keeping a saved type's fields stable between releases)."
@@ -1309,6 +1309,7 @@ module input {
   doc "Input as the game sees it: the Input resource for polling, events for edges."
   doc "The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path."
   doc "Several pointers at once (multi-touch) are og.Pointers; the first four gamepads, in the W3C standard mapping, are og.Gamepad. Both are world state, as og.Input is, so they replay."
+  doc "Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick."
 
   const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
   const MAX_GAMEPADS u32 4 "The most gamepads og.Gamepad reads: pads 0 to 3."
@@ -1408,6 +1409,19 @@ module input {
       max 1
       optional true
     }
+    field movementX f32 "The mouse's relative movement since its last event (the browser's movementX), which keeps coming while the pointer is locked and x, y stand still: og.Pointers.movement sums pointer 0's over the tick for mouse-look. Omitted is 0. An engine extension of protocol 5." {
+      unit cssPx
+      optional true
+    }
+    field movementY f32 "The relative vertical movement (movementY, down positive). Omitted is 0." {
+      unit cssPx
+      optional true
+    }
+  }
+
+  struct PointerLockReport {
+    doc "The host reports whether the pointer is locked to the play surface now (an engine extension of protocol 5): the web shell sends one from the page's pointerlockchange, and a playtest can send its own; og.PointerLock.locked follows it."
+    field locked bool "Locked now (true) or released (false)."
   }
 
   struct GamepadInput {
@@ -1477,6 +1491,7 @@ module input {
     case gamepad GamepadInput "A gamepad's state."
     case text TextEntry "Typed or composed text."
     case a11y A11yRequest "A screen reader's request on a UI control."
+    case pointerLock PointerLockReport "The host's word on the pointer lock (og.PointerLock.locked)."
   }
 
   resource Input {
@@ -1654,6 +1669,10 @@ module input {
       readonly true
       unit cssPx
     }
+    field movement Vector2 "The mouse's relative movement this tick: the sum of the movementX, movementY of pointer 0's events since the last tick (y down), zero again when the tick ends. Mouse-look reads it: it keeps coming while the pointer is locked (og.PointerLock), when the position stands still. The web shell fills it from the browser's movementX/Y; headless, only injected pointer events with movementX/Y move it." {
+      readonly true
+      unit cssPx
+    }
     fn down {
       doc "Whether a pointer is held."
       param id u32 "The pointer, 0 to 4."
@@ -1682,6 +1701,15 @@ module input {
     fn count {
       doc "How many pointers are held."
       returns u32
+    }
+  }
+
+  resource PointerLock {
+    doc "Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), the host hides the cursor and locks the pointer to the play surface, and og.Pointers.movement carries the mouse's movement each tick. Off by default."
+    doc "On the web the shell reads `wanted` from each frame and asks for the lock on the next press on the canvas (browsers grant it only to a gesture, so the click that starts play takes it), releases it when `wanted` goes false, and reports `locked` from pointerlockchange: the player's Escape releases it, and `locked` goes false while `wanted` stays true, so show a \"click to look\" prompt then. While locked, og.Input.pointer and og.Pointers' positions stand still (the UI's hover stays where it was) and the mouse's buttons still press. Native runs (og run, og dev) are headless: `locked` stays false unless a script injects `{ kind: \"pointerLock\", locked: true }`. `locked` is the host's (session state, as og.Input is: a restore keeps it, lockstep peers do not compare it)."
+    field wanted bool "The game wants the pointer locked and the cursor hidden."
+    field locked bool "The pointer is locked now, as the host last reported it." {
+      readonly true
     }
   }
 
@@ -1859,6 +1887,8 @@ module input {
     field x f32 "Horizontal position in CSS pixels."
     field y f32 "Vertical position in CSS pixels."
     field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
+    field movementX f32 "The relative movement this event carried (movementX), CSS pixels; 0 when the host gave none. While the pointer is locked x and y stand still and only this moves."
+    field movementY f32 "The relative vertical movement (movementY, down positive), CSS pixels."
   }
 
   event Wheel {
@@ -13442,6 +13472,8 @@ module commands {
     variant expect "`expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=), `entity:<id>:<path>==<value>` (a field of its dump_entity: `render.lod==2`, `og.Transform.position.y>0`), `timings:<path>==<value>` (state().timings: `triangles<=1500000`). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked, as are an entity's `render.*` fields and the renderer's timings (`triangles`, `render`, `passes`)."
     variant save_scene "`save_scene[:path][:spawned]`: write every scene the world was assembled from back from the world (the boot scene's, then each og.world.instantiate made, each to its own `.ogt`): only the lines whose values changed (comments and order kept), the fields set or patch tuned, and resources as `resource <Name> { }` blocks; with `spawned`, the entities the game spawned at run time under the boot scene's marked section. To each scene's source, or with a path the boot scene's to that file under the output directory and the others beside it."
     variant help "`help`: list every action the channel knows, core and registered."
+    variant mouse_move "`mouse_move:dx,dy`: move the mouse by relative CSS pixels (movementX/Y, summed in og.Pointers.movement: mouse-look) with the pointer's position held, as a locked pointer moves."
+    variant pointer_lock "`pointer_lock:<on|off>`: report the pointer locked or released (og.PointerLock.locked), as the web shell does from pointerlockchange; headless hosts never lock on their own."
   }
 
   callback CommandHandler {
@@ -15049,7 +15081,7 @@ module net {
   skill og-game
   doc "Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it."
   doc "Inputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone."
-  doc "Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.Audio, og.Camera, og.Lockstep, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input)."
+  doc "Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input)."
 
   resource Lockstep {
     doc "Lockstep's settings and this peer's place. The game sets enabled, players, inputDelay and hashEvery (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared."

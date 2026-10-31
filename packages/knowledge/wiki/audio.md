@@ -20,7 +20,7 @@ module audio {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 9267</sub>
+<sub>`api.ogt` line 9297</sub>
 
 ## Contents
 
@@ -80,7 +80,7 @@ fn outputLatency {
 }
 ```
 
-<sub>`api.ogt` line 9721</sub>
+<sub>`api.ogt` line 9751</sub>
 
 ## Components, resources and events
 
@@ -240,7 +240,7 @@ component AudioSource {
 }
 ```
 
-<sub>`api.ogt` line 9322</sub>
+<sub>`api.ogt` line 9352</sub>
 
 <a id="record-AudioListener"></a>
 
@@ -277,7 +277,7 @@ component AudioListener {
 }
 ```
 
-<sub>`api.ogt` line 9437</sub>
+<sub>`api.ogt` line 9467</sub>
 
 <a id="record-Audio"></a>
 
@@ -377,7 +377,7 @@ resource Audio {
 }
 ```
 
-<sub>`api.ogt` line 9456</sub>
+<sub>`api.ogt` line 9486</sub>
 
 <a id="record-AudioBusFx"></a>
 
@@ -498,7 +498,7 @@ component AudioBusFx {
 }
 ```
 
-<sub>`api.ogt` line 9529</sub>
+<sub>`api.ogt` line 9559</sub>
 
 <a id="record-ReverbZone"></a>
 
@@ -569,7 +569,7 @@ component ReverbZone {
 }
 ```
 
-<sub>`api.ogt` line 9618</sub>
+<sub>`api.ogt` line 9648</sub>
 
 <a id="record-Music"></a>
 
@@ -625,7 +625,7 @@ component Music {
 }
 ```
 
-<sub>`api.ogt` line 9664</sub>
+<sub>`api.ogt` line 9694</sub>
 
 <a id="record-MusicBeat"></a>
 
@@ -652,7 +652,7 @@ event MusicBeat {
 }
 ```
 
-<sub>`api.ogt` line 9698</sub>
+<sub>`api.ogt` line 9728</sub>
 
 <a id="record-SoundStarted"></a>
 
@@ -677,7 +677,7 @@ event SoundStarted {
 }
 ```
 
-<sub>`api.ogt` line 9706</sub>
+<sub>`api.ogt` line 9736</sub>
 
 <a id="record-SoundEnded"></a>
 
@@ -704,7 +704,7 @@ event SoundEnded {
 }
 ```
 
-<sub>`api.ogt` line 9713</sub>
+<sub>`api.ogt` line 9743</sub>
 
 ## Types
 
@@ -733,7 +733,7 @@ enum AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 9281</sub>
+<sub>`api.ogt` line 9311</sub>
 
 <a id="type-PanningModel"></a>
 
@@ -756,7 +756,7 @@ enum PanningModel {
 }
 ```
 
-<sub>`api.ogt` line 9296</sub>
+<sub>`api.ogt` line 9326</sub>
 
 <a id="type-AudioResampler"></a>
 
@@ -779,7 +779,7 @@ enum AudioResampler {
 }
 ```
 
-<sub>`api.ogt` line 9302</sub>
+<sub>`api.ogt` line 9332</sub>
 
 ## Column kinds
 
@@ -800,7 +800,7 @@ column AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 9289</sub>
+<sub>`api.ogt` line 9319</sub>
 
 ```ogt
 column AudioResampler {
@@ -811,7 +811,7 @@ column AudioResampler {
 }
 ```
 
-<sub>`api.ogt` line 9308</sub>
+<sub>`api.ogt` line 9338</sub>
 
 ```ogt
 column PanningModel {
@@ -822,7 +822,7 @@ column PanningModel {
 }
 ```
 
-<sub>`api.ogt` line 9315</sub>
+<sub>`api.ogt` line 9345</sub>
 
 ## Constants
 
@@ -839,34 +839,34 @@ column PanningModel {
 const SOUND_FINISHED u32 0 "SoundEnded.reason: a one-shot played to its end."
 ```
 
-<sub>`api.ogt` line 9274</sub>
+<sub>`api.ogt` line 9304</sub>
 
 ```ogt
 const SOUND_STOPPED u32 1 "SoundEnded.reason: `playing` was set to false."
 ```
 
-<sub>`api.ogt` line 9275</sub>
+<sub>`api.ogt` line 9305</sub>
 
 ```ogt
 const SOUND_REMOVED u32 2 "SoundEnded.reason: the AudioSource was removed from a living entity."
 ```
 
-<sub>`api.ogt` line 9276</sub>
+<sub>`api.ogt` line 9306</sub>
 
 ```ogt
 const SOUND_REPLACED u32 3 "SoundEnded.reason: `sound` changed while it played."
 ```
 
-<sub>`api.ogt` line 9277</sub>
+<sub>`api.ogt` line 9307</sub>
 
 ```ogt
 const SOUND_CULLED u32 4 "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
 ```
 
-<sub>`api.ogt` line 9278</sub>
+<sub>`api.ogt` line 9308</sub>
 
 ```ogt
 const SOUND_RETRIGGERED u32 5 "SoundEnded.reason: AudioSource.retrigger started the sound again from the top; a new voice plays it."
 ```
 
-<sub>`api.ogt` line 9279</sub>
+<sub>`api.ogt` line 9309</sub>

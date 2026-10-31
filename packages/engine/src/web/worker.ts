@@ -32,7 +32,9 @@
 // the engine's log and the Worker's console (the crash card shows the last
 // 200); { type: "text", target } when the UI's focused text control changes
 // and { type: "copy", text } when a copy took text (text-input.ts); { type: "a11y", tree } when the UI's
-// accessibility tree changed (a11y.ts); { type: "result", id, value | error } for `call` (`advance`,
+// accessibility tree changed (a11y.ts); { type: "pointer-lock", wanted } when og.PointerLock.wanted
+// changed (the shell requests the lock on the next press on the canvas, or exits it);
+// { type: "result", id, value | error } for `call` (`advance`,
 // `command`, `hash`, `frame`, `probe`, and `timings`: the played frames'
 // display intervals and engine work); { type: "rpc",
 // frame } for an answer that did not cross the ring.
@@ -613,6 +615,8 @@ export function startWorker(game: GameToken): void {
   let behind = 0;
   /** The text target last sent to the shell, as JSON. */
   let textTarget = "null";
+  /** og.PointerLock.wanted as last sent to the shell. */
+  let lockWanted = false;
   /**
    * The played frames' timings, the last FRAME_RECORDS of them (the shell's
    * `timings` call, which `og run --device` reads): the display interval
@@ -637,7 +641,7 @@ export function startWorker(game: GameToken): void {
     if (engine && ring) for (const event of drainRing(ring)) engine.probe.input(stamped(event, now));
   };
 
-  /** What a frame's answer tells the shell: the UI's focused text control (text-input.ts), a copy, and the accessibility tree when it changed (a11y.ts). */
+  /** What a frame's answer tells the shell: the UI's focused text control (text-input.ts), a copy, the accessibility tree when it changed (a11y.ts), and og.PointerLock.wanted when it changed. */
   /** The run's trace while one is recorded (src/trace.ts): taken after every frame, so the engine holds a frame's spans at most. */
   let trace: Trace | null = null;
   const takeTrace = (last = false) => {
@@ -661,6 +665,11 @@ export function startWorker(game: GameToken): void {
     }
     if (answered.copy !== undefined) self.postMessage({ type: "copy", text: answered.copy });
     if (answered.a11y !== undefined) self.postMessage({ type: "a11y", tree: answered.a11y });
+    const wanted = answered.pointerLock === true;
+    if (wanted !== lockWanted) {
+      lockWanted = wanted;
+      self.postMessage({ type: "pointer-lock", wanted });
+    }
   };
 
   const answer = (frame: string, viaRing: boolean) => {

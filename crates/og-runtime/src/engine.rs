@@ -847,6 +847,7 @@ const REGISTERED_BY_MODULES: &[&str] = &[
     "og.Wheel",
     "og.Pointers",
     "og.Gamepad",
+    "og.PointerLock",
 ];
 
 /// Builds a world from game `game` and every declaration so far: the
@@ -974,6 +975,7 @@ pub(crate) fn assemble(
     resources.push("og.Input".to_string());
     resources.push("og.Pointers".to_string());
     resources.push("og.Gamepad".to_string());
+    resources.push("og.PointerLock".to_string());
     // The input events and og-input's further resources are read through
     // the layout og-input registered.
     for decl in og_api::host::RECORDS {
@@ -986,7 +988,18 @@ pub(crate) fn assemble(
             _ => continue,
         };
         let id = world.id_by_name(decl.schema).map_err(err)?;
-        let layout = Layout::from_schema(world.schema(id).map_err(err)?, kind);
+        let mut layout = Layout::from_schema(world.schema(id).map_err(err)?, kind);
+        // A resource's fields are as writable as the IDL says (og.PointerLock's
+        // `wanted` is the game's); the host's input stays read only.
+        if kind == RecordKind::Resource {
+            for f in std::sync::Arc::make_mut(&mut layout.fields) {
+                f.readonly = decl
+                    .fields
+                    .iter()
+                    .find(|d| d.name == f.name)
+                    .is_none_or(|d| d.readonly);
+            }
+        }
         layouts.insert(layout.schema.clone(), layout);
     }
 
@@ -1574,6 +1587,11 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     };
     let (text, copy) = text_entry(&eng);
     let a11y = a11y_changed(&eng);
+    let pointer_lock = eng
+        .world()
+        .ok()
+        .and_then(|w| w.resource::<og_input::PointerLock>().ok().map(|l| l.wanted))
+        .unwrap_or(false);
     let probe = eng.probe.borrow();
     // `behind`: real time the accumulator holds that no tick has simulated
     // yet, so a host can place an input event within the next tick.
@@ -1583,11 +1601,14 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // the last frame's that ticked), `renderMs`: the last render's.
     // `pending`: the command channel's steps still to run (a script has
     // ended when it is 0, wherever a restore moved og.Time).
+    // `pointerLock`: og.PointerLock.wanted, the game's ask for the pointer
+    // lock (the web shell requests it on the next press, exits it when
+    // false, and reports `locked` back as input).
     let mut answer = json!({
         "ok": true, "ticks": ticks, "tick": tick, "rendered": rendered,
         "paused": probe.paused(), "quit": probe.quit_requested(), "behind": behind,
         "text": text, "stepMs": step_ms, "renderMs": render_ms,
-        "pending": probe.steps_left(),
+        "pending": probe.steps_left(), "pointerLock": pointer_lock,
     });
     if let Some(c) = copy {
         answer["copy"] = json!(c);

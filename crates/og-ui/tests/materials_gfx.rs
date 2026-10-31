@@ -294,6 +294,8 @@ fn touches(p: &mut og_input::Pointers, at: [Vec2; 2]) -> InputFrame {
             y: pos.y,
             button: og_input::PointerButton::Left,
             id: id as u32,
+            movement_x: 0.0,
+            movement_y: 0.0,
         })
         .expect("a pointer id under five");
     }

@@ -8,7 +8,7 @@
 //! is refused naming them, or mapped field by field with `migrate`).
 //!
 //! A save is the world; the session is not in it. Restoring keeps the
-//! host's input (`og.Input`, `og.Pointers`, `og.Gamepad`) and the player's
+//! host's input (`og.Input`, `og.Pointers`, `og.Gamepad`, `og.PointerLock`) and the player's
 //! bus volumes (`og.Audio`), and moves what lives outside the world on the clock with
 //! `og.Time`'s jump: the probe's scheduled steps keep their remaining
 //! delays, `og.platform.now` its time. Inside a system or a command (the
@@ -27,7 +27,13 @@ const VERSION: u32 = 1;
 const MAX_INFLATED: usize = 64 << 20;
 
 /// The resources a restore keeps from the session.
-const SESSION: &[&str] = &["og.Input", "og.Pointers", "og.Gamepad", "og.Audio"];
+const SESSION: &[&str] = &[
+    "og.Input",
+    "og.Pointers",
+    "og.Gamepad",
+    "og.PointerLock",
+    "og.Audio",
+];
 
 /// A restore asked for inside a tick, applied when it ends.
 pub(crate) struct Pending {

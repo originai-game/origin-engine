@@ -1036,7 +1036,8 @@ impl Probe {
                 | InjectedInput::Key { .. }
                 | InjectedInput::Gamepad(_)
                 | InjectedInput::Text { .. }
-                | InjectedInput::A11y { .. } => {}
+                | InjectedInput::A11y { .. }
+                | InjectedInput::PointerLock { .. } => {}
             }
         }
         accepted
@@ -1055,6 +1056,8 @@ impl Probe {
             y,
             button,
             id: 0,
+            movement_x: 0.0,
+            movement_y: 0.0,
         };
         if self.deliver(world, &event) {
             Ok(())
@@ -1238,6 +1241,43 @@ impl Probe {
                 };
                 self.pointer_event(world, action, PointerButton::Left)
             }
+            "mouse_move" => {
+                let d = numbers(arg(0, "mouse_move:dx,dy")?)?;
+                let [dx, dy] = d[..] else {
+                    return Err("write `mouse_move:dx,dy` with two numbers".into());
+                };
+                let (x, y) = self.pointer;
+                let event = InjectedInput::Pointer {
+                    action: PointerAction::Move,
+                    x,
+                    y,
+                    button: PointerButton::None,
+                    id: 0,
+                    movement_x: dx,
+                    movement_y: dy,
+                };
+                if self.deliver(world, &event) {
+                    Ok(())
+                } else {
+                    Err("the input layer refused the mouse move".into())
+                }
+            }
+            "pointer_lock" => {
+                let locked = match arg(0, "pointer_lock:<on|off>")? {
+                    "on" => true,
+                    "off" => false,
+                    other => {
+                        return Err(format!(
+                            "'{other}' is not on or off; write `pointer_lock:<on|off>`"
+                        ));
+                    }
+                };
+                if self.deliver(world, &InjectedInput::PointerLock { locked }) {
+                    Ok(())
+                } else {
+                    Err("the input layer refused the pointer lock report".into())
+                }
+            }
             "scroll" => {
                 let d = numbers(arg(0, "scroll:dx,dy")?)?;
                 let [dx, dy] = d[..] else {
@@ -1297,6 +1337,8 @@ impl Probe {
                         PointerButton::Left
                     },
                     id,
+                    movement_x: 0.0,
+                    movement_y: 0.0,
                 };
                 if self.deliver(world, &event) {
                     Ok(())

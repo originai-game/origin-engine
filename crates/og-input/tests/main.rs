@@ -4,5 +4,6 @@
 //! in a process of its own. A new test file is a `mod` line here.
 
 mod edges;
+mod mouselook;
 mod pads;
 mod ring;

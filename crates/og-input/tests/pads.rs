@@ -26,6 +26,8 @@ fn touch(action: PointerAction, id: u32, x: f32, y: f32) -> InjectedInput {
             PointerButton::Left
         },
         id,
+        movement_x: 0.0,
+        movement_y: 0.0,
     }
 }
 

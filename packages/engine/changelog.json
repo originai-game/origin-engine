@@ -4,8 +4,22 @@
   "unreleased": {
     "simulation": "unchanged",
     "breaking": [],
-    "added": [],
-    "fixed": []
+    "added": [
+      {
+        "member": "og.PointerLock, og.Pointers.movement, PointerInput.movementX/movementY, og.PointerMove.movementX/movementY, InjectedInput pointerLock, mouse_move and pointer_lock actions",
+        "summary": "Mouse-look: og.Pointers.movement is the mouse's relative movement this tick (movementX/Y of pointer 0's events summed, zero next tick); og.PointerLock { wanted, locked } lets a game ask for the pointer lock, which the web shell requests on the next press on the canvas, exits when wanted goes false and reports back from pointerlockchange (absolute positions held while locked). Injected pointer events and og.PointerMove carry movementX/Y (0 when omitted); the command channel's mouse_move:dx,dy and pointer_lock:on|off script them. Native runs are headless and never lock. Off by default; the simulation of existing games is unchanged."
+      }
+    ],
+    "fixed": [
+      {
+        "member": "og (binary size)",
+        "summary": "The built-in look presets and style assets (og_cook look STYLES, BUILTINS) are statics, so og carries each CJK font once instead of twice (about 9.7 MB less per platform)."
+      },
+      {
+        "member": "og-core, og-game skills",
+        "summary": "\"What works\" says the cited examples/* games live in the GitHub repository, not the installed package, and that the archetypes are installed (og new --archetype)."
+      }
+    ]
   },
   "versions": [
     {

@@ -1268,6 +1268,8 @@ export class Engine {
     copy?: string;
     /** The UI's accessibility tree, on the frames where it changed, when the engine was created with `a11y` (web/a11y.ts mirrors it). */
     a11y?: Api.A11yTree;
+    /** og.PointerLock.wanted: the game asks for the pointer lock (the web shell requests it on the next press on the canvas, and exits it when false). */
+    pointerLock?: boolean;
   } {
     this.pumpPlatform();
     const answer = parse<{ ok: boolean; ticks?: number }>(abi().og_engine_frame(this.id, elapsedMs));

@@ -210,6 +210,10 @@ floating text: it is screen text where the og.Camera resource's
 - 3D: `og.OrbitCamera` (drag to turn, wheel to zoom) and `og.FollowCamera`
   on the entity the camera orbits or follows, driven by
   `og.systems.cameras` listed in `GameDesc.systems`.
+- Mouse-look: turn by `og.Pointers.movement` while `og.PointerLock.locked`
+  (og-game §7), about 0.002–0.003 rad per CSS px, pitch clamped short of
+  straight up and down, no smoothing on the raw turn (smoothing it reads
+  as lag); release the lock (`wanted` false) for menus and pauses.
 - The camera never moves on its own during play except for shake, kick,
   punch and a zone's scroll. Do not tween the camera while the player has
   control.

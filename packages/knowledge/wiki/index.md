@@ -122,7 +122,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1266 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1268 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -713,6 +713,7 @@ Field units the docs and Tune use.
 | [`og.PlatformerController`](physics.md#record-PlatformerController) | component | physics | — |
 | [`og.PlayerInput`](net.md#record-PlayerInput) | component | net | — |
 | [`og.PointerDown`](input.md#record-PointerDown) | event | input | — |
+| [`og.PointerLock`](input.md#record-PointerLock) | resource | input | — |
 | [`og.PointerMove`](input.md#record-PointerMove) | event | input | — |
 | [`og.Pointers`](input.md#record-Pointers) | resource | input | — |
 | [`og.PointerUp`](input.md#record-PointerUp) | event | input | — |
@@ -1018,6 +1019,7 @@ Field units the docs and Tune use.
 | [`PointerAction`](input.md#type-PointerAction) | enum | input | — |
 | [`PointerButton`](input.md#type-PointerButton) | enum | input | — |
 | [`PointerInput`](input.md#type-PointerInput) | struct | input | — |
+| [`PointerLockReport`](input.md#type-PointerLockReport) | struct | input | — |
 | [`Pointers.count`](input.md#member-Pointers-count) | method | input | `og_pointers_count` |
 | [`Pointers.down`](input.md#member-Pointers-down) | method | input | `og_pointers_down` |
 | [`Pointers.position`](input.md#member-Pointers-position) | method | input | `og_pointers_position` |

@@ -357,6 +357,16 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
         "help",
         "List every action the channel knows, core and registered.",
     ),
+    (
+        "mouse_move",
+        "mouse_move:dx,dy",
+        "Move the mouse by dx,dy CSS pixels of relative movement (movementX/Y, what og.Pointers.movement sums for mouse-look) with the pointer's position held, as a locked pointer moves.",
+    ),
+    (
+        "pointer_lock",
+        "pointer_lock:<on|off>",
+        "Report the pointer locked or released, as the web shell does from pointerlockchange (og.PointerLock.locked); headless hosts never lock on their own.",
+    ),
 ];
 
 /// What scheduling a script did.

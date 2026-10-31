@@ -6174,11 +6174,39 @@
             "y": 0
           },
           "readonly": true
+        },
+        {
+          "name": "movement",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readonly": true
         }
       ]
     },
     {
       "id": 4,
+      "name": "PointerLock",
+      "schema": "og.PointerLock",
+      "module": "input",
+      "fields": [
+        {
+          "name": "wanted",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "locked",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 5,
       "name": "Gamepad",
       "schema": "og.Gamepad",
       "module": "input",
@@ -6372,7 +6400,7 @@
       ]
     },
     {
-      "id": 5,
+      "id": 6,
       "name": "Camera",
       "schema": "og.Camera",
       "module": "camera",
@@ -6558,7 +6586,7 @@
       ]
     },
     {
-      "id": 6,
+      "id": 7,
       "name": "RenderSettings",
       "schema": "og.RenderSettings",
       "module": "render",
@@ -6718,7 +6746,7 @@
       ]
     },
     {
-      "id": 7,
+      "id": 8,
       "name": "Environment",
       "schema": "og.Environment",
       "module": "render",
@@ -6778,7 +6806,7 @@
       ]
     },
     {
-      "id": 8,
+      "id": 9,
       "name": "PostEffects",
       "schema": "og.PostEffects",
       "module": "render",
@@ -7244,7 +7272,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 10,
       "name": "Stylise",
       "schema": "og.Stylise",
       "module": "render",
@@ -7509,7 +7537,7 @@
       ]
     },
     {
-      "id": 10,
+      "id": 11,
       "name": "MaterialStyle",
       "schema": "og.MaterialStyle",
       "module": "render",
@@ -7609,7 +7637,7 @@
       ]
     },
     {
-      "id": 11,
+      "id": 12,
       "name": "Lighting2D",
       "schema": "og.Lighting2D",
       "module": "render",
@@ -7646,7 +7674,7 @@
       ]
     },
     {
-      "id": 12,
+      "id": 13,
       "name": "Physics",
       "schema": "og.Physics",
       "module": "physics",
@@ -7687,7 +7715,7 @@
       ]
     },
     {
-      "id": 13,
+      "id": 14,
       "name": "Fog",
       "schema": "og.Fog",
       "module": "atmosphere",
@@ -7794,7 +7822,7 @@
       ]
     },
     {
-      "id": 14,
+      "id": 15,
       "name": "Sky",
       "schema": "og.Sky",
       "module": "atmosphere",
@@ -7924,7 +7952,7 @@
       ]
     },
     {
-      "id": 15,
+      "id": 16,
       "name": "DayNight",
       "schema": "og.DayNight",
       "module": "atmosphere",
@@ -7990,7 +8018,7 @@
       ]
     },
     {
-      "id": 16,
+      "id": 17,
       "name": "Weather",
       "schema": "og.Weather",
       "module": "atmosphere",
@@ -8045,7 +8073,7 @@
       ]
     },
     {
-      "id": 17,
+      "id": 18,
       "name": "Wind",
       "schema": "og.Wind",
       "module": "atmosphere",
@@ -8081,7 +8109,7 @@
       ]
     },
     {
-      "id": 18,
+      "id": 19,
       "name": "Audio",
       "schema": "og.Audio",
       "module": "audio",
@@ -8159,7 +8187,7 @@
       ]
     },
     {
-      "id": 19,
+      "id": 20,
       "name": "Lockstep",
       "schema": "og.Lockstep",
       "module": "net",
@@ -8199,7 +8227,7 @@
       ]
     },
     {
-      "id": 20,
+      "id": 21,
       "name": "ArtPalette",
       "schema": "og.ArtPalette",
       "module": "art",
@@ -8238,7 +8266,7 @@
       ]
     },
     {
-      "id": 21,
+      "id": 22,
       "name": "ArtPixels",
       "schema": "og.ArtPixels",
       "module": "art",
@@ -8277,7 +8305,7 @@
       ]
     },
     {
-      "id": 22,
+      "id": 23,
       "name": "ArtTexels",
       "schema": "og.ArtTexels",
       "module": "art",
@@ -8305,7 +8333,7 @@
       ]
     },
     {
-      "id": 23,
+      "id": 24,
       "name": "ArtShape",
       "schema": "og.ArtShape",
       "module": "art",
@@ -8348,7 +8376,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 25,
       "name": "ArtLine",
       "schema": "og.ArtLine",
       "module": "art",
@@ -8385,7 +8413,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 26,
       "name": "ArtMotion",
       "schema": "og.ArtMotion",
       "module": "art",
@@ -8408,7 +8436,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 27,
       "name": "ArtCamera",
       "schema": "og.ArtCamera",
       "module": "art",
@@ -8619,6 +8647,16 @@
         {
           "name": "id",
           "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "movementX",
+          "type": "f32",
+          "default": 0
+        },
+        {
+          "name": "movementY",
+          "type": "f32",
           "default": 0
         }
       ]

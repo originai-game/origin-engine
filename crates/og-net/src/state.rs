@@ -31,6 +31,7 @@ pub const SESSION_RESOURCES: &[&str] = &[
     "og.Input",
     "og.Pointers",
     "og.Gamepad",
+    "og.PointerLock",
     "og.Audio",
     "og.Camera",
     "og.Lockstep",

@@ -13,6 +13,27 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
+## Unreleased
+
+- Mouse-look: `og.Pointers.movement` (the mouse's relative movement this
+  tick, CSS px: pointer 0's `movementX`/`movementY` summed, zero next tick)
+  and `og.PointerLock` (`wanted`, which the game writes; `locked`, read
+  only, the host's). The web shell asks for the lock on the next press on
+  the canvas while `wanted`, exits it when not, reports
+  `pointerlockchange` back (Escape releases it) and holds the absolute
+  positions while locked. `PointerInput` and `og.PointerMove` gain
+  `movementX`/`movementY` (0 when omitted), `InjectedInput` the
+  `pointerLock` case, the command channel `mouse_move:dx,dy` and
+  `pointer_lock:on|off`; native runs are headless and never lock.
+  og.Pointers and og.PointerMove have new layouts, so a save
+  restores with `migrate` (both are session state, which a restore keeps
+  anyway); the simulation is unchanged (the golden replays).
+
+- Fixed: `og` carries each built-in CJK font once (the look presets and
+  style assets are statics), about 9.7 MB less per platform.
+- Fixed: the og-core and og-game skills say the cited `examples/*` games
+  are in the GitHub repository, not the installed package.
+
 ## 0.7.6 — 2026-10-31
 
 A patch with the simulation unchanged (the golden replays): no IDL member

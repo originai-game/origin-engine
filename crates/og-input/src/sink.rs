@@ -3,7 +3,7 @@
 //! [`InputLayer`], the engine's sink over the `og.Input` resource.
 
 use crate::event::InjectedInput;
-use crate::resource::{Gamepad, Input, InputEvent, Pointers, register};
+use crate::resource::{Gamepad, Input, InputEvent, PointerLock, Pointers, register};
 use crate::ring;
 use og_ecs::World;
 
@@ -99,6 +99,9 @@ impl InputSink for InputLayer {
         if !world.has_resource::<Gamepad>() {
             world.insert_resource(Gamepad::default())?;
         }
+        if !world.has_resource::<PointerLock>() {
+            world.insert_resource(PointerLock::default())?;
+        }
         Ok(())
     }
 
@@ -135,6 +138,12 @@ impl InputSink for InputLayer {
                 if world.send(e).is_err() {
                     return false;
                 }
+            }
+            InjectedInput::PointerLock { locked } => {
+                let Ok(lock) = world.resource_mut::<PointerLock>() else {
+                    return false;
+                };
+                lock.locked = *locked;
             }
             InjectedInput::Gamepad(state) => {
                 let Ok(pad) = world.resource_mut::<Gamepad>() else {

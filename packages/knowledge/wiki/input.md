@@ -8,6 +8,8 @@ The shell collects pointer, keyboard and wheel input on the main thread; the pro
 
 Several pointers at once (multi-touch) are og.Pointers; the first four gamepads, in the W3C standard mapping, are og.Gamepad. Both are world state, as og.Input is, so they replay.
 
+Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.
+
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
@@ -34,6 +36,7 @@ module input {
 | [`Modifiers`](#type-Modifiers) | struct | Modifier keys held during a key event. |
 | [`KeyInput`](#type-KeyInput) | struct | A key event. `key` names the physical key as KeyboardEvent.code does: ArrowRight, Space, KeyA. |
 | [`PointerInput`](#type-PointerInput) | struct | A pointer event at a point in CSS pixels of the play surface. |
+| [`PointerLockReport`](#type-PointerLockReport) | struct | The host reports whether the pointer is locked to the play surface now (an engine extension of protocol 5): the web shell sends one from the page's pointerlockchange, and a playtest can send its own; og.PointerLock.locked follows it. |
 | [`GamepadInput`](#type-GamepadInput) | struct | A gamepad's whole state (an engine extension of protocol 5): the shell sends one whenever a pad changes, and a playtest can send its own. |
 | [`WheelInput`](#type-WheelInput) | struct | A wheel or trackpad scroll at a point. |
 | [`TextEntry`](#type-TextEntry) | struct | Typed or composed text (an engine extension of protocol 5): what the page's `beforeinput` inserted (a key's character, a paste, an input method's commit), or with `composing` an input method's composition so far. Raises TextInput events; the UI's focused text field takes them. |
@@ -42,6 +45,7 @@ module input {
 | [`InjectedInput`](#type-InjectedInput) | union | One input event in the game's own vocabulary, as the probe's input() and playtest scripts carry it. |
 | [`og.Input`](#record-Input) | resource | The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods. |
 | [`og.Pointers`](#record-Pointers) | resource | Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. Pointer 0 is og.Input's pointer; ids 1 to 4 are further touches, in the order they landed (the lowest free id). |
+| [`og.PointerLock`](#record-PointerLock) | resource | Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), the host hides the cursor and locks the pointer to the play surface, and og.Pointers.movement carries the mouse's movement each tick. Off by default. |
 | [`og.Gamepad`](#record-Gamepad) | resource | The first four gamepads in the W3C standard mapping, at the start of this tick (og-input's og.Gamepad). On the web the shell polls the pads each display frame and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys. |
 | [`og.KeyDown`](#record-KeyDown) | event | A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems. |
 | [`og.TextInput`](#record-TextInput) | event | Text typed or composed (an engine extension): the shell sends it from the page's `beforeinput` and composition events, the probe's `type:`, `compose:` and `commit:` from scripts. A text longer than 255 bytes arrives as several events in order. Key events still arrive for the keys; a text field types from these once a world has had one. |
@@ -212,7 +216,7 @@ resource Input {
 }
 ```
 
-<sub>`api.ogt` line 1482</sub>
+<sub>`api.ogt` line 1497</sub>
 
 <a id="member-Input-down"></a>
 
@@ -240,7 +244,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 1556</sub>
+<sub>`api.ogt` line 1571</sub>
 
 <a id="member-Input-pressed"></a>
 
@@ -268,7 +272,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 1561</sub>
+<sub>`api.ogt` line 1576</sub>
 
 <a id="member-Input-released"></a>
 
@@ -296,7 +300,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 1566</sub>
+<sub>`api.ogt` line 1581</sub>
 
 <a id="member-Input-axis"></a>
 
@@ -326,7 +330,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 1571</sub>
+<sub>`api.ogt` line 1586</sub>
 
 <a id="member-Input-axis2"></a>
 
@@ -360,7 +364,7 @@ fn axis2 {
 }
 ```
 
-<sub>`api.ogt` line 1577</sub>
+<sub>`api.ogt` line 1592</sub>
 
 <a id="member-Input-buttonDown"></a>
 
@@ -388,7 +392,7 @@ fn buttonDown {
 }
 ```
 
-<sub>`api.ogt` line 1585</sub>
+<sub>`api.ogt` line 1600</sub>
 
 <a id="member-Input-buttonPressed"></a>
 
@@ -416,7 +420,7 @@ fn buttonPressed {
 }
 ```
 
-<sub>`api.ogt` line 1590</sub>
+<sub>`api.ogt` line 1605</sub>
 
 <a id="member-Input-buttonReleased"></a>
 
@@ -444,7 +448,7 @@ fn buttonReleased {
 }
 ```
 
-<sub>`api.ogt` line 1595</sub>
+<sub>`api.ogt` line 1610</sub>
 
 <a id="record-Pointers"></a>
 
@@ -472,6 +476,7 @@ Token `og.Pointers`, registered under the schema name `og.Pointers`; its value t
 | `start2` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Where pointer 2 went down. |
 | `start3` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Where pointer 3 went down. |
 | `start4` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Where pointer 4 went down. |
+| `movement` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | The mouse's relative movement this tick: the sum of the movementX, movementY of pointer 0's events since the last tick (y down), zero again when the tick ends. Mouse-look reads it: it keeps coming while the pointer is locked (og.PointerLock), when the position stands still. The web shell fills it from the browser's movementX/Y; headless, only injected pointer events with movementX/Y move it. |
 
 ```ogt
 resource Pointers {
@@ -529,6 +534,10 @@ resource Pointers {
     readonly true
     unit cssPx
   }
+  field movement Vector2 "The mouse's relative movement this tick: the sum of the movementX, movementY of pointer 0's events since the last tick (y down), zero again when the tick ends. Mouse-look reads it: it keeps coming while the pointer is locked (og.PointerLock), when the position stands still. The web shell fills it from the browser's movementX/Y; headless, only injected pointer events with movementX/Y move it." {
+    readonly true
+    unit cssPx
+  }
   fn down {
     doc "Whether a pointer is held."
     param id u32 "The pointer, 0 to 4."
@@ -561,7 +570,7 @@ resource Pointers {
 }
 ```
 
-<sub>`api.ogt` line 1602</sub>
+<sub>`api.ogt` line 1617</sub>
 
 <a id="member-Pointers-down"></a>
 
@@ -589,7 +598,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 1657</sub>
+<sub>`api.ogt` line 1676</sub>
 
 <a id="member-Pointers-pressed"></a>
 
@@ -617,7 +626,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 1662</sub>
+<sub>`api.ogt` line 1681</sub>
 
 <a id="member-Pointers-released"></a>
 
@@ -645,7 +654,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 1667</sub>
+<sub>`api.ogt` line 1686</sub>
 
 <a id="member-Pointers-position"></a>
 
@@ -673,7 +682,7 @@ fn position {
 }
 ```
 
-<sub>`api.ogt` line 1672</sub>
+<sub>`api.ogt` line 1691</sub>
 
 <a id="member-Pointers-start"></a>
 
@@ -701,7 +710,7 @@ fn start {
 }
 ```
 
-<sub>`api.ogt` line 1677</sub>
+<sub>`api.ogt` line 1696</sub>
 
 <a id="member-Pointers-count"></a>
 
@@ -724,7 +733,35 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 1682</sub>
+<sub>`api.ogt` line 1701</sub>
+
+<a id="record-PointerLock"></a>
+
+### `og.PointerLock` (resource)
+
+Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), the host hides the cursor and locks the pointer to the play surface, and og.Pointers.movement carries the mouse's movement each tick. Off by default.
+
+On the web the shell reads `wanted` from each frame and asks for the lock on the next press on the canvas (browsers grant it only to a gesture, so the click that starts play takes it), releases it when `wanted` goes false, and reports `locked` from pointerlockchange: the player's Escape releases it, and `locked` goes false while `wanted` stays true, so show a "click to look" prompt then. While locked, og.Input.pointer and og.Pointers' positions stand still (the UI's hover stays where it was) and the mouse's buttons still press. Native runs (og run, og dev) are headless: `locked` stays false unless a script injects `{ kind: "pointerLock", locked: true }`. `locked` is the host's (session state, as og.Input is: a restore keeps it, lockstep peers do not compare it).
+
+Token `og.PointerLock`, registered under the schema name `og.PointerLock`; its value type is `PointerLock`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `wanted` | `boolean` | `false` | — | — | — | The game wants the pointer locked and the cursor hidden. |
+| `locked` | `boolean` | `false` | — | — | read only | The pointer is locked now, as the host last reported it. |
+
+```ogt
+resource PointerLock {
+  doc "Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), the host hides the cursor and locks the pointer to the play surface, and og.Pointers.movement carries the mouse's movement each tick. Off by default."
+  doc "On the web the shell reads `wanted` from each frame and asks for the lock on the next press on the canvas (browsers grant it only to a gesture, so the click that starts play takes it), releases it when `wanted` goes false, and reports `locked` from pointerlockchange: the player's Escape releases it, and `locked` goes false while `wanted` stays true, so show a \"click to look\" prompt then. While locked, og.Input.pointer and og.Pointers' positions stand still (the UI's hover stays where it was) and the mouse's buttons still press. Native runs (og run, og dev) are headless: `locked` stays false unless a script injects `{ kind: \"pointerLock\", locked: true }`. `locked` is the host's (session state, as og.Input is: a restore keeps it, lockstep peers do not compare it)."
+  field wanted bool "The game wants the pointer locked and the cursor hidden."
+  field locked bool "The pointer is locked now, as the host last reported it." {
+    readonly true
+  }
+}
+```
+
+<sub>`api.ogt` line 1707</sub>
 
 <a id="record-Gamepad"></a>
 
@@ -885,7 +922,7 @@ resource Gamepad {
 }
 ```
 
-<sub>`api.ogt` line 1688</sub>
+<sub>`api.ogt` line 1716</sub>
 
 <a id="member-Gamepad-connected"></a>
 
@@ -915,7 +952,7 @@ fn connected {
 }
 ```
 
-<sub>`api.ogt` line 1766</sub>
+<sub>`api.ogt` line 1794</sub>
 
 <a id="member-Gamepad-down"></a>
 
@@ -947,7 +984,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 1773</sub>
+<sub>`api.ogt` line 1801</sub>
 
 <a id="member-Gamepad-pressed"></a>
 
@@ -979,7 +1016,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 1781</sub>
+<sub>`api.ogt` line 1809</sub>
 
 <a id="member-Gamepad-released"></a>
 
@@ -1011,7 +1048,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 1789</sub>
+<sub>`api.ogt` line 1817</sub>
 
 <a id="member-Gamepad-axis"></a>
 
@@ -1043,7 +1080,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 1797</sub>
+<sub>`api.ogt` line 1825</sub>
 
 <a id="record-KeyDown"></a>
 
@@ -1071,7 +1108,7 @@ event KeyDown {
 }
 ```
 
-<sub>`api.ogt` line 1807</sub>
+<sub>`api.ogt` line 1835</sub>
 
 <a id="record-TextInput"></a>
 
@@ -1096,7 +1133,7 @@ event TextInput {
 }
 ```
 
-<sub>`api.ogt` line 1817</sub>
+<sub>`api.ogt` line 1845</sub>
 
 <a id="record-KeyUp"></a>
 
@@ -1122,7 +1159,7 @@ event KeyUp {
 }
 ```
 
-<sub>`api.ogt` line 1824</sub>
+<sub>`api.ogt` line 1852</sub>
 
 <a id="record-PointerDown"></a>
 
@@ -1154,7 +1191,7 @@ event PointerDown {
 }
 ```
 
-<sub>`api.ogt` line 1833</sub>
+<sub>`api.ogt` line 1861</sub>
 
 <a id="record-PointerUp"></a>
 
@@ -1186,7 +1223,7 @@ event PointerUp {
 }
 ```
 
-<sub>`api.ogt` line 1845</sub>
+<sub>`api.ogt` line 1873</sub>
 
 <a id="record-PointerMove"></a>
 
@@ -1201,6 +1238,8 @@ Token `og.PointerMove`, registered under the schema name `og.PointerMove`; its v
 | `x` | `number` | `0` | — | — | — | Horizontal position in CSS pixels. |
 | `y` | `number` | `0` | — | — | — | Vertical position in CSS pixels. |
 | `id` | `number` | `0` | — | — | — | Which pointer: 0 the primary one, 1 to 4 further touches. |
+| `movementX` | `number` | `0` | — | — | — | The relative movement this event carried (movementX), CSS pixels; 0 when the host gave none. While the pointer is locked x and y stand still and only this moves. |
+| `movementY` | `number` | `0` | — | — | — | The relative vertical movement (movementY, down positive), CSS pixels. |
 
 ```ogt
 event PointerMove {
@@ -1208,10 +1247,12 @@ event PointerMove {
   field x f32 "Horizontal position in CSS pixels."
   field y f32 "Vertical position in CSS pixels."
   field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
+  field movementX f32 "The relative movement this event carried (movementX), CSS pixels; 0 when the host gave none. While the pointer is locked x and y stand still and only this moves."
+  field movementY f32 "The relative vertical movement (movementY, down positive), CSS pixels."
 }
 ```
 
-<sub>`api.ogt` line 1857</sub>
+<sub>`api.ogt` line 1885</sub>
 
 <a id="record-Wheel"></a>
 
@@ -1234,7 +1275,7 @@ event Wheel {
 }
 ```
 
-<sub>`api.ogt` line 1864</sub>
+<sub>`api.ogt` line 1894</sub>
 
 <a id="record-A11yAction"></a>
 
@@ -1257,7 +1298,7 @@ event A11yAction {
 }
 ```
 
-<sub>`api.ogt` line 1870</sub>
+<sub>`api.ogt` line 1900</sub>
 
 ## Types
 
@@ -1312,7 +1353,7 @@ enum GamepadButton {
 }
 ```
 
-<sub>`api.ogt` line 1316</sub>
+<sub>`api.ogt` line 1317</sub>
 
 <a id="type-GamepadAxis"></a>
 
@@ -1343,7 +1384,7 @@ enum GamepadAxis {
 }
 ```
 
-<sub>`api.ogt` line 1337</sub>
+<sub>`api.ogt` line 1338</sub>
 
 <a id="type-KeyAction"></a>
 
@@ -1368,7 +1409,7 @@ enum KeyAction {
 }
 ```
 
-<sub>`api.ogt` line 1347</sub>
+<sub>`api.ogt` line 1348</sub>
 
 <a id="type-PointerAction"></a>
 
@@ -1395,7 +1436,7 @@ enum PointerAction {
 }
 ```
 
-<sub>`api.ogt` line 1354</sub>
+<sub>`api.ogt` line 1355</sub>
 
 <a id="type-PointerButton"></a>
 
@@ -1422,7 +1463,7 @@ enum PointerButton {
 }
 ```
 
-<sub>`api.ogt` line 1362</sub>
+<sub>`api.ogt` line 1363</sub>
 
 <a id="type-Modifiers"></a>
 
@@ -1447,7 +1488,7 @@ struct Modifiers {
 }
 ```
 
-<sub>`api.ogt` line 1370</sub>
+<sub>`api.ogt` line 1371</sub>
 
 <a id="type-KeyInput"></a>
 
@@ -1478,7 +1519,7 @@ struct KeyInput {
 }
 ```
 
-<sub>`api.ogt` line 1378</sub>
+<sub>`api.ogt` line 1379</sub>
 
 <a id="type-PointerInput"></a>
 
@@ -1494,6 +1535,8 @@ A pointer event at a point in CSS pixels of the play surface.
 | `button` | `PointerButton` | `"none"` | — | — | — | The button; `none` for a hover move. |
 | `id` | `number` | `0` | ≤ 4 | — | optional | Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0. |
 | `at` | `number` | `0` | -1 … 1 | — | optional | When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5. |
+| `movementX` | `number` | `0` | — | `cssPx` | optional | The mouse's relative movement since its last event (the browser's movementX), which keeps coming while the pointer is locked and x, y stand still: og.Pointers.movement sums pointer 0's over the tick for mouse-look. Omitted is 0. An engine extension of protocol 5. |
+| `movementY` | `number` | `0` | — | `cssPx` | optional | The relative vertical movement (movementY, down positive). Omitted is 0. |
 
 ```ogt
 struct PointerInput {
@@ -1515,10 +1558,37 @@ struct PointerInput {
     max 1
     optional true
   }
+  field movementX f32 "The mouse's relative movement since its last event (the browser's movementX), which keeps coming while the pointer is locked and x, y stand still: og.Pointers.movement sums pointer 0's over the tick for mouse-look. Omitted is 0. An engine extension of protocol 5." {
+    unit cssPx
+    optional true
+  }
+  field movementY f32 "The relative vertical movement (movementY, down positive). Omitted is 0." {
+    unit cssPx
+    optional true
+  }
 }
 ```
 
-<sub>`api.ogt` line 1392</sub>
+<sub>`api.ogt` line 1393</sub>
+
+<a id="type-PointerLockReport"></a>
+
+### `PointerLockReport` (struct)
+
+The host reports whether the pointer is locked to the play surface now (an engine extension of protocol 5): the web shell sends one from the page's pointerlockchange, and a playtest can send its own; og.PointerLock.locked follows it.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `locked` | `boolean` | `false` | — | — | — | Locked now (true) or released (false). |
+
+```ogt
+struct PointerLockReport {
+  doc "The host reports whether the pointer is locked to the play surface now (an engine extension of protocol 5): the web shell sends one from the page's pointerlockchange, and a playtest can send its own; og.PointerLock.locked follows it."
+  field locked bool "Locked now (true) or released (false)."
+}
+```
+
+<sub>`api.ogt` line 1422</sub>
 
 <a id="type-GamepadInput"></a>
 
@@ -1556,7 +1626,7 @@ struct GamepadInput {
 }
 ```
 
-<sub>`api.ogt` line 1413</sub>
+<sub>`api.ogt` line 1427</sub>
 
 <a id="type-WheelInput"></a>
 
@@ -1589,7 +1659,7 @@ struct WheelInput {
 }
 ```
 
-<sub>`api.ogt` line 1433</sub>
+<sub>`api.ogt` line 1447</sub>
 
 <a id="type-TextEntry"></a>
 
@@ -1612,7 +1682,7 @@ struct TextEntry {
 }
 ```
 
-<sub>`api.ogt` line 1449</sub>
+<sub>`api.ogt` line 1463</sub>
 
 <a id="type-A11yActionKind"></a>
 
@@ -1639,7 +1709,7 @@ enum A11yActionKind {
 }
 ```
 
-<sub>`api.ogt` line 1457</sub>
+<sub>`api.ogt` line 1471</sub>
 
 <a id="type-A11yRequest"></a>
 
@@ -1660,7 +1730,7 @@ struct A11yRequest {
 }
 ```
 
-<sub>`api.ogt` line 1465</sub>
+<sub>`api.ogt` line 1479</sub>
 
 <a id="type-InjectedInput"></a>
 
@@ -1678,6 +1748,7 @@ Tagged by `kind`.
 | `kind: "gamepad"` | [`GamepadInput`](#type-GamepadInput) | A gamepad's state. |
 | `kind: "text"` | [`TextEntry`](#type-TextEntry) | Typed or composed text. |
 | `kind: "a11y"` | [`A11yRequest`](#type-A11yRequest) | A screen reader's request on a UI control. |
+| `kind: "pointerLock"` | [`PointerLockReport`](#type-PointerLockReport) | The host's word on the pointer lock (og.PointerLock.locked). |
 
 ```ogt
 union InjectedInput {
@@ -1689,10 +1760,11 @@ union InjectedInput {
   case gamepad GamepadInput "A gamepad's state."
   case text TextEntry "Typed or composed text."
   case a11y A11yRequest "A screen reader's request on a UI control."
+  case pointerLock PointerLockReport "The host's word on the pointer lock (og.PointerLock.locked)."
 }
 ```
 
-<sub>`api.ogt` line 1471</sub>
+<sub>`api.ogt` line 1485</sub>
 
 ## Constants
 
@@ -1705,10 +1777,10 @@ union InjectedInput {
 const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
 ```
 
-<sub>`api.ogt` line 1313</sub>
+<sub>`api.ogt` line 1314</sub>
 
 ```ogt
 const MAX_GAMEPADS u32 4 "The most gamepads og.Gamepad reads: pads 0 to 3."
 ```
 
-<sub>`api.ogt` line 1314</sub>
+<sub>`api.ogt` line 1315</sub>

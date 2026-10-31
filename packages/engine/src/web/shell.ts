@@ -22,6 +22,16 @@
 // the shortcuts and the line's ends, Option by words, Control+A and E). A
 // Mac's browser sends no keyup for a key released while Command is held,
 // so the shell releases those keys itself when Command goes up.
+//
+// Pointer lock (mouse-look): a pointer move carries the mouse's movementX/Y
+// (og.Pointers.movement sums them per tick). When a frame's answer says the
+// game wants the lock (og.PointerLock.wanted, the Worker's `pointer-lock`
+// message), the next press on the canvas calls requestPointerLock (browsers
+// grant it only to a gesture); when it no longer does, exitPointerLock.
+// pointerlockchange is reported to the engine as a `pointerLock` input, so
+// og.PointerLock.locked follows the page (Escape releases it). While
+// locked, the absolute position the shell sends stays where the lock began
+// (the UI's hover and clicks land there), and only the movement moves.
 
 import { createRing, writeRing, type InjectedInput } from "./input.ts";
 import { TextEntry, type TextTarget } from "./text-input.ts";
@@ -218,6 +228,10 @@ export class Shell {
   #watched = 0;
   #watchdog: ReturnType<typeof setInterval> | undefined;
   #rooms: RoomHost | null = null;
+  /** og.PointerLock.wanted, as the Worker last said. */
+  #lockWanted = false;
+  /** The canvas the shell wired (the pointer lock's element). */
+  #canvas: HTMLCanvasElement | undefined;
   #platform: PlatformHost = localPlatform(storagePersistence(`og.platform:${globalThis.location?.pathname ?? "/"}`));
 
   private constructor(worker: Worker, ready: Ready, rpc: RpcRings | undefined) {
@@ -259,6 +273,13 @@ export class Shell {
       if (m.type === "a11y") {
         this.#a11y?.update((m as unknown as { tree: A11yTree }).tree);
         this.#text?.relabel();
+        return;
+      }
+      if (m.type === "pointer-lock") {
+        this.#lockWanted = (m as unknown as { wanted: boolean }).wanted === true;
+        // Releasing needs no gesture: the lock ends at once. Taking it waits for the next press.
+        const doc = globalThis.document;
+        if (!this.#lockWanted && doc?.pointerLockElement && doc.pointerLockElement === this.#canvas) doc.exitPointerLock?.();
         return;
       }
       if (m.type === "rpc" && m.frame !== undefined) {
@@ -574,6 +595,7 @@ export class Shell {
   }
 
   #wire(canvas: HTMLCanvasElement, ring: SharedArrayBuffer | undefined): void {
+    this.#canvas = canvas;
     const listen = <K extends keyof HTMLElementEventMap>(target: EventTarget, type: K, fn: (e: HTMLElementEventMap[K]) => void) => {
       target.addEventListener(type, fn as EventListener, { passive: false });
       this.#listeners.push(() => target.removeEventListener(type, fn as EventListener));
@@ -626,13 +648,29 @@ export class Shell {
         underCommand.clear();
       }
     });
-    // Relative to the canvas's CSS box, whichever element the event landed on.
+    // The pointer lock: whether the canvas holds it, and the position it began at (held while locked).
+    let locked = false;
+    let held = { x: 0, y: 0 };
+    const doc = globalThis.document as Document | undefined;
+    if (doc) {
+      listen(doc as unknown as EventTarget, "pointerlockchange" as keyof HTMLElementEventMap, () => {
+        const now = doc.pointerLockElement === canvas;
+        if (now === locked) return;
+        locked = now;
+        this.#send(ring, { kind: "pointerLock", locked: now });
+      });
+    }
+    // Relative to the canvas's CSS box, whichever element the event landed on; while locked, where the lock began.
     const at = (e: PointerEvent | WheelEvent) => {
+      if (locked) return held;
       const r = canvas.getBoundingClientRect();
-      return { x: e.clientX - r.left, y: e.clientY - r.top };
+      return (held = { x: e.clientX - r.left, y: e.clientY - r.top });
     };
     const point = (e: PointerEvent, action: "move" | "down" | "up", id: number) => {
       const p = at(e);
+      // The mouse's relative movement (touches and pens report none worth reading).
+      const mx = e.pointerType === "mouse" ? e.movementX || 0 : 0;
+      const my = e.pointerType === "mouse" ? e.movementY || 0 : 0;
       this.#send(ring, {
         kind: "pointer",
         action,
@@ -640,10 +678,20 @@ export class Shell {
         y: p.y,
         button: action === "move" ? "none" : (BUTTONS[e.button] ?? "left"),
         ...(id > 0 ? { id } : {}),
+        ...(mx !== 0 || my !== 0 ? { movementX: mx, movementY: my } : {}),
         time: stamp(e),
       });
     };
     listen(canvas, "pointerdown", (e) => {
+      // The game wants the lock: this press is the gesture browsers grant it to.
+      if (this.#lockWanted && !locked && e.pointerType === "mouse") {
+        try {
+          const asked = (canvas.requestPointerLock as (o?: unknown) => unknown)?.call(canvas);
+          if (asked instanceof Promise) asked.catch(() => {});
+        } catch {
+          /* refused (no gesture, a sandboxed frame): locked stays false */
+        }
+      }
       let id = this.#pointers.get(e.pointerId);
       if (id === undefined) {
         const taken = new Set(this.#pointers.values());
@@ -662,8 +710,8 @@ export class Shell {
     listen(canvas, "pointermove", (e) => {
       const id = this.#pointers.get(e.pointerId);
       if (id !== undefined) point(e, "move", id);
-      // A hovering mouse moves the primary pointer while nothing is held.
-      else if (this.#pointers.size === 0 && e.pointerType === "mouse") point(e, "move", 0);
+      // A hovering mouse moves the primary pointer while nothing is held (and, locked, only its movement).
+      else if ((this.#pointers.size === 0 || locked) && e.pointerType === "mouse") point(e, "move", 0);
     });
     const end = (e: PointerEvent) => {
       const id = this.#pointers.get(e.pointerId);

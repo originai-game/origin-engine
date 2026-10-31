@@ -26,7 +26,11 @@
 //! over several slots, which [`drain`] joins), word 3 the UTF-8 length and
 //! the text in words 4–15. An a11y slot (kind 5, an engine extension) is
 //! laid out as a text slot, word 1 the action (0 focus, 1 activate, 2
-//! increment, 3 decrement) and the control's path as the text. A key or
+//! increment, 3 decrement) and the control's path as the text. A pointer
+//! slot carries the mouse's relative movement (`movementX`, `movementY`)
+//! as f32 bits in words 9–10 (0 when none). A pointer lock slot (kind 6,
+//! an engine extension) carries word 1 1 when the pointer is locked now,
+//! 0 when it was released. A key or
 //! pointer slot carries
 //! the event's time in words 6–7 (an f64: the page's
 //! `performance.timeOrigin + timeStamp`, ms; 0 unknown), which the Worker
@@ -57,7 +61,15 @@ pub const BYTE_LEN: usize = (HEADER_WORDS + SLOTS * SLOT_WORDS) * 4;
 /// Bytes of text a text slot holds (words 4–15).
 pub const TEXT_BYTES: usize = 48;
 /// `kind` values, by index.
-pub const KINDS: [&str; 6] = ["key", "pointer", "wheel", "gamepad", "text", "a11y"];
+pub const KINDS: [&str; 7] = [
+    "key",
+    "pointer",
+    "wheel",
+    "gamepad",
+    "text",
+    "a11y",
+    "pointerLock",
+];
 /// `action` values, by index.
 pub const ACTIONS: [&str; 5] = ["press", "down", "up", "click", "move"];
 /// `button` values, by index.
@@ -106,6 +118,12 @@ pub fn decode_slot(slot: &[u8]) -> Result<InjectedInput, String> {
                 composing: w(1) == 1,
             }),
             a => Err(format!("text action {}", a as i32)),
+        };
+    }
+    if w(0) == 6 {
+        return match w(1) {
+            0 | 1 => Ok(InjectedInput::PointerLock { locked: w(1) == 1 }),
+            v => Err(format!("pointer lock {}", v as i32)),
         };
     }
     if w(0) == 5 {
@@ -160,12 +178,18 @@ pub fn decode_slot(slot: &[u8]) -> Result<InjectedInput, String> {
             if !x.is_finite() || !y.is_finite() {
                 return Err("a non-finite pointer position".into());
             }
+            let (movement_x, movement_y) = (f(9), f(10));
+            if !movement_x.is_finite() || !movement_y.is_finite() {
+                return Err("a non-finite pointer movement".into());
+            }
             Ok(InjectedInput::Pointer {
                 action,
                 x,
                 y,
                 button,
                 id: w(8),
+                movement_x,
+                movement_y,
             })
         }
         2 => {
@@ -240,8 +264,12 @@ pub fn encode_slot(event: &InjectedInput) -> [u8; SLOT_WORDS * 4] {
             y,
             button,
             id,
+            movement_x,
+            movement_y,
         } => {
             set_word(&mut slot, 8, *id);
+            set_word(&mut slot, 9, movement_x.to_bits());
+            set_word(&mut slot, 10, movement_y.to_bits());
             let a = match action {
                 PointerAction::Click => "click",
                 PointerAction::Move => "move",
@@ -262,6 +290,11 @@ pub fn encode_slot(event: &InjectedInput) -> [u8; SLOT_WORDS * 4] {
             set_word(&mut slot, 9, g.triggers[0].to_bits());
             set_word(&mut slot, 10, g.triggers[1].to_bits());
             (3, 0, g.pad, (g.axes[0], g.axes[1]), (g.axes[2], g.axes[3]))
+        }
+        InjectedInput::PointerLock { locked } => {
+            set_word(&mut slot, 0, 6);
+            set_word(&mut slot, 1, u32::from(*locked));
+            return slot;
         }
         InjectedInput::Text { .. } | InjectedInput::A11y { .. } => unreachable!("encoded above"),
     };

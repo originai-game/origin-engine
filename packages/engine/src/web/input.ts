@@ -10,7 +10,10 @@
 // (text past 48 bytes is split between characters over several slots,
 // joined again by drainRing), word 3 the UTF-8 length, the text in words
 // 4-15. An a11y slot (kind 5) is laid out as a text slot with word 1 the
-// action (A11Y_ACTIONS) and the control's path as its text. A key or pointer slot carries the event's time in words
+// action (A11Y_ACTIONS) and the control's path as its text. A pointer slot
+// carries the mouse's relative movement (movementX, movementY) as f32 in
+// words 9-10; a pointer lock slot (kind 6) has word 1 1 when the pointer is
+// locked now, 0 when it was released. A key or pointer slot carries the event's time in words
 // 6-7 (an f64: performance.timeOrigin + the event's timeStamp, ms; 0 when
 // unknown), which the Worker turns into the event's `at` within the tick.
 // Without cross-origin isolation the shell posts the same events as
@@ -35,8 +38,16 @@ export type InjectedInput =
       button: "none" | "left" | "middle" | "right";
       /** Which pointer: 0 the primary (omitted), 1 to 4 further touches (multi-touch). */
       id?: number;
+      /** The mouse's relative movement since its last event (PointerEvent.movementX/Y), CSS px; omitted is 0. */
+      movementX?: number;
+      movementY?: number;
       time?: number;
       at?: number;
+    }
+  | {
+      kind: "pointerLock";
+      /** The pointer is locked to the canvas now (pointerlockchange): og.PointerLock.locked. */
+      locked: boolean;
     }
   | { kind: "wheel"; x: number; y: number; deltaX: number; deltaY: number }
   | {
@@ -81,7 +92,7 @@ const SLOT = 16;
 const HEADER = 2; // write index, read index (monotonic)
 export const RING_SLOTS = 256;
 
-const KINDS = ["key", "pointer", "wheel", "gamepad", "text", "a11y"] as const;
+const KINDS = ["key", "pointer", "wheel", "gamepad", "text", "a11y", "pointerLock"] as const;
 /** Bytes of text one slot holds (words 4-15). */
 const TEXT_BYTES = 48;
 
@@ -133,6 +144,11 @@ export function writeRing(buffer: SharedArrayBuffer, event: InjectedInput): bool
   const at = HEADER + (write % RING_SLOTS) * SLOT;
   new Int32Array(buffer, at * 4, SLOT).fill(0);
   ints[at] = KINDS.indexOf(event.kind);
+  if (event.kind === "pointerLock") {
+    ints[at + 1] = event.locked ? 1 : 0;
+    Atomics.store(ints, 0, write + 1);
+    return true;
+  }
   if (event.kind === "gamepad") {
     ints[at + 2] = event.pad;
     ints[at + 3] = event.connected ? 1 : 0;
@@ -152,7 +168,11 @@ export function writeRing(buffer: SharedArrayBuffer, event: InjectedInput): bool
   floats[at + 6] = event.kind === "wheel" ? event.deltaX : 0;
   floats[at + 7] = event.kind === "wheel" ? event.deltaY : 0;
   new Uint8Array(buffer, (at + 8) * 4, 32).fill(0).set(key);
-  if (event.kind === "pointer") ints[at + 8] = event.id ?? 0;
+  if (event.kind === "pointer") {
+    ints[at + 8] = event.id ?? 0;
+    floats[at + 9] = event.movementX ?? 0;
+    floats[at + 10] = event.movementY ?? 0;
+  }
   if ((event.kind === "key" || event.kind === "pointer") && event.time !== undefined) new Float64Array(buffer, (at + 6) * 4, 1)[0] = event.time;
   Atomics.store(ints, 0, write + 1);
   return true;
@@ -184,6 +204,10 @@ export function drainRing(buffer: SharedArrayBuffer): InjectedInput[] {
       else out.push({ kind, action, path });
       continue;
     }
+    if (kind === "pointerLock") {
+      out.push({ kind, locked: ints[at + 1] === 1 });
+      continue;
+    }
     if (kind === "gamepad") {
       const mask = ints[at + 8]!;
       out.push({
@@ -206,6 +230,8 @@ export function drainRing(buffer: SharedArrayBuffer): InjectedInput[] {
       out.push({ kind, key: new TextDecoder().decode(bytes), action: action as "press" | "down" | "up", ...stamped });
     } else if (kind === "pointer") {
       const id = ints[at + 8]!;
+      const movementX = floats[at + 9]!;
+      const movementY = floats[at + 10]!;
       out.push({
         kind,
         action: action as "click" | "move" | "down" | "up",
@@ -213,6 +239,7 @@ export function drainRing(buffer: SharedArrayBuffer): InjectedInput[] {
         y,
         button: BUTTONS[ints[at + 2]!]!,
         ...(id > 0 ? { id } : {}),
+        ...(movementX !== 0 || movementY !== 0 ? { movementX, movementY } : {}),
         ...stamped,
       });
     } else if (kind === "wheel") {

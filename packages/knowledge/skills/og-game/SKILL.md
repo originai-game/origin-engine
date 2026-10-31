@@ -452,6 +452,32 @@ presses, which are polled). Timing that matters to the millisecond (a
 rhythm game's judgement) uses `time.elapsed + e.at * time.dt`; everything
 else ignores it. The stamp is world state, so a replay reproduces it.
 
+Mouse-look (a first- or third-person camera turned by the mouse) takes
+the pointer lock and the mouse's relative movement, as browser games do.
+Set `og.PointerLock.wanted`; the web shell locks the pointer on the next
+click on the canvas (browsers need the gesture) and reports `locked`
+(Escape releases it: show "click to look" while `wanted && !locked`).
+`og.Pointers.movement` is the mouse's movement this tick in CSS px
+(movementX/Y summed, y down, zero next tick); it keeps coming while
+locked, when the positions stand still.
+
+```ts
+const Look = defineSystem("Look", { reads: [og.Pointers], writes: [og.PointerLock, Aim] }, (_q, _time, world) => {
+  const lock = must(world.resource(og.PointerLock));
+  lock.wanted = !must(world.resource(Game)).paused; // release it for menus
+  if (!lock.locked) return;
+  const m = must(world.resource(og.Pointers)).movement;
+  const aim = must(world.resource(Aim));
+  aim.yaw -= m.x * 0.0025; // radians per CSS px
+  aim.pitch = Math.max(-1.4, Math.min(1.4, aim.pitch - m.y * 0.0025));
+});
+```
+
+Native runs are headless and never lock: script it with
+`pointer_lock:on` and `mouse_move:dx,dy` (or inject `{ kind: "pointer",
+action: "move", x, y, button: "none", movementX, movementY }` and
+`{ kind: "pointerLock", locked: true }`), which replays like any input.
+
 ## 8. 2D: sprites, flipbooks, tilemaps
 
 - **Sprites** are components: an entity with `og.Transform` and `og.Sprite`

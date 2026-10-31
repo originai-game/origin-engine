@@ -1643,6 +1643,8 @@ impl Fingers {
                 y: at.y,
                 button: og_input::PointerButton::Left,
                 id,
+                movement_x: 0.0,
+                movement_y: 0.0,
             })
             .expect("a pointer id under five");
     }
@@ -1868,6 +1870,8 @@ fn two_fingers_scroll_lists_and_pinch_zoom_views() {
                 y: at.y,
                 button: og_input::PointerButton::Left,
                 id,
+                movement_x: 0.0,
+                movement_y: 0.0,
             });
         }
         p

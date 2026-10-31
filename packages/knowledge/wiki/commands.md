@@ -18,7 +18,7 @@ module commands {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 13405</sub>
+<sub>`api.ogt` line 13435</sub>
 
 ## Contents
 
@@ -67,7 +67,7 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 13484</sub>
+<sub>`api.ogt` line 13516</sub>
 
 <a id="fn-parse"></a>
 
@@ -95,7 +95,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 13492</sub>
+<sub>`api.ogt` line 13524</sub>
 
 <a id="fn-help"></a>
 
@@ -123,7 +123,7 @@ fn help {
 }
 ```
 
-<sub>`api.ogt` line 13498</sub>
+<sub>`api.ogt` line 13530</sub>
 
 <a id="fn-schedule"></a>
 
@@ -153,7 +153,7 @@ fn schedule {
 }
 ```
 
-<sub>`api.ogt` line 13504</sub>
+<sub>`api.ogt` line 13536</sub>
 
 ## Types
 
@@ -198,6 +198,8 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 | `"expect"` | `expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=), `entity:<id>:<path>==<value>` (a field of its dump_entity: `render.lod==2`, `og.Transform.position.y>0`), `timings:<path>==<value>` (state().timings: `triangles<=1500000`). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked, as are an entity's `render.*` fields and the renderer's timings (`triangles`, `render`, `passes`). |
 | `"save_scene"` | `save_scene[:path][:spawned]`: write every scene the world was assembled from back from the world (the boot scene's, then each og.world.instantiate made, each to its own `.ogt`): only the lines whose values changed (comments and order kept), the fields set or patch tuned, and resources as `resource <Name> { }` blocks; with `spawned`, the entities the game spawned at run time under the boot scene's marked section. To each scene's source, or with a path the boot scene's to that file under the output directory and the others beside it. |
 | `"help"` | `help`: list every action the channel knows, core and registered. |
+| `"mouse_move"` | `mouse_move:dx,dy`: move the mouse by relative CSS pixels (movementX/Y, summed in og.Pointers.movement: mouse-look) with the pointer's position held, as a locked pointer moves. |
+| `"pointer_lock"` | `pointer_lock:<on\|off>`: report the pointer locked or released (og.PointerLock.locked), as the web shell does from pointerlockchange; headless hosts never lock on their own. |
 
 ```ogt
 enum CoreAction {
@@ -233,10 +235,12 @@ enum CoreAction {
   variant expect "`expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=), `entity:<id>:<path>==<value>` (a field of its dump_entity: `render.lod==2`, `og.Transform.position.y>0`), `timings:<path>==<value>` (state().timings: `triangles<=1500000`). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked, as are an entity's `render.*` fields and the renderer's timings (`triangles`, `render`, `passes`)."
   variant save_scene "`save_scene[:path][:spawned]`: write every scene the world was assembled from back from the world (the boot scene's, then each og.world.instantiate made, each to its own `.ogt`): only the lines whose values changed (comments and order kept), the fields set or patch tuned, and resources as `resource <Name> { }` blocks; with `spawned`, the entities the game spawned at run time under the boot scene's marked section. To each scene's source, or with a path the boot scene's to that file under the output directory and the others beside it."
   variant help "`help`: list every action the channel knows, core and registered."
+  variant mouse_move "`mouse_move:dx,dy`: move the mouse by relative CSS pixels (movementX/Y, summed in og.Pointers.movement: mouse-look) with the pointer's position held, as a locked pointer moves."
+  variant pointer_lock "`pointer_lock:<on|off>`: report the pointer locked or released (og.PointerLock.locked), as the web shell does from pointerlockchange; headless hosts never lock on their own."
 }
 ```
 
-<sub>`api.ogt` line 13412</sub>
+<sub>`api.ogt` line 13442</sub>
 
 <a id="type-CommandHandler"></a>
 
@@ -263,7 +267,7 @@ callback CommandHandler {
 }
 ```
 
-<sub>`api.ogt` line 13447</sub>
+<sub>`api.ogt` line 13479</sub>
 
 <a id="type-CommandDesc"></a>
 
@@ -287,7 +291,7 @@ struct CommandDesc {
 }
 ```
 
-<sub>`api.ogt` line 13453</sub>
+<sub>`api.ogt` line 13485</sub>
 
 <a id="type-CommandStep"></a>
 
@@ -312,7 +316,7 @@ struct CommandStep {
 }
 ```
 
-<sub>`api.ogt` line 13460</sub>
+<sub>`api.ogt` line 13492</sub>
 
 <a id="type-CommandInfo"></a>
 
@@ -337,7 +341,7 @@ struct CommandInfo {
 }
 ```
 
-<sub>`api.ogt` line 13469</sub>
+<sub>`api.ogt` line 13501</sub>
 
 <a id="type-CommandsReport"></a>
 
@@ -360,4 +364,4 @@ struct CommandsReport {
 }
 ```
 
-<sub>`api.ogt` line 13477</sub>
+<sub>`api.ogt` line 13509</sub>

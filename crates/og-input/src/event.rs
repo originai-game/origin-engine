@@ -190,9 +190,10 @@ impl A11yAct {
     }
 }
 
-/// One input event in the game's own vocabulary (protocol 5, plus four
-/// engine extensions: a pointer `id` for multi-touch, the `gamepad` kind,
-/// the `text` kind and the `a11y` kind).
+/// One input event in the game's own vocabulary (protocol 5, plus these
+/// engine extensions: a pointer `id` for multi-touch and its relative
+/// `movementX`/`movementY`, the `gamepad` kind, the `text` kind, the `a11y`
+/// kind and the `pointerLock` kind).
 /// Positions are CSS pixels of the play surface, the space `pick` reads;
 /// `key` is a `KeyboardEvent.code` name.
 #[derive(Clone, Debug, PartialEq)]
@@ -210,6 +211,13 @@ pub enum InjectedInput {
         /// Which pointer: 0 the primary (the mouse, the first touch, what
         /// protocol 5 means), 1 to [`MAX_POINTERS`] - 1 further touches.
         id: u32,
+        /// The mouse's relative movement since its last event, CSS pixels
+        /// (the browser's `movementX`/`movementY`, which keep coming while
+        /// the pointer is locked and its position stands still); 0 when
+        /// the host gave none. Pointer 0's sum per tick is
+        /// [`crate::Pointers::movement`].
+        movement_x: f32,
+        movement_y: f32,
     },
     Wheel {
         x: f32,
@@ -230,11 +238,23 @@ pub enum InjectedInput {
     /// Raises an [`crate::A11yAction`] event; the UI acts on it at the
     /// start of the next frame, against the last frame's controls.
     A11y { action: A11yAct, path: String },
+    /// The host reports whether the pointer is locked to the play surface
+    /// now (an engine extension): the web shell sends it from the page's
+    /// `pointerlockchange`; [`crate::PointerLock::locked`] follows it.
+    PointerLock { locked: bool },
 }
 
 fn number(value: &Value, key: &str) -> Option<f32> {
     let n = value.get(key)?.as_f64()?;
     (n.is_finite() && n.abs() <= f64::from(f32::MAX)).then_some(n as f32)
+}
+
+/// An optional number: 0 when absent or null, `None` when not a finite f32.
+fn optional_number(value: &Value, key: &str) -> Option<f32> {
+    match value.get(key) {
+        None | Some(Value::Null) => Some(0.0),
+        Some(_) => number(value, key),
+    }
 }
 
 impl InjectedInput {
@@ -283,6 +303,11 @@ impl InjectedInput {
                     None | Some(Value::Null) => 0,
                     Some(v) => u32::try_from(v.as_u64()?).ok()?,
                 },
+                movement_x: optional_number(value, "movementX")?,
+                movement_y: optional_number(value, "movementY")?,
+            }),
+            "pointerLock" => Some(InjectedInput::PointerLock {
+                locked: value.get("locked")?.as_bool()?,
             }),
             "gamepad" => {
                 let mut state = GamepadState {
@@ -369,6 +394,8 @@ impl InjectedInput {
                 y,
                 button,
                 id,
+                movement_x,
+                movement_y,
             } => {
                 let mut v = json!({
                     "kind": "pointer",
@@ -378,7 +405,14 @@ impl InjectedInput {
                 if *id != 0 {
                     v["id"] = json!(id);
                 }
+                if *movement_x != 0.0 || *movement_y != 0.0 {
+                    v["movementX"] = json!(movement_x);
+                    v["movementY"] = json!(movement_y);
+                }
                 v
+            }
+            InjectedInput::PointerLock { locked } => {
+                json!({"kind": "pointerLock", "locked": locked})
             }
             InjectedInput::Gamepad(g) => json!({
                 "kind": "gamepad",

@@ -62,6 +62,8 @@ fn the_writer_and_the_decoder_agree_and_a_full_ring_refuses() {
             y: 4.0,
             button: PointerButton::Left,
             id: 3,
+            movement_x: 0.0,
+            movement_y: 0.0,
         },
         InjectedInput::Gamepad(og_input::GamepadState {
             pad: 2,
@@ -108,6 +110,8 @@ fn the_writer_and_the_decoder_agree_and_a_full_ring_refuses() {
             y: 0.0,
             button: PointerButton::None,
             id: 0,
+            movement_x: 0.0,
+            movement_y: 0.0,
         };
         assert!(ring::write(&mut r, &e), "slot {i}");
     }
