@@ -19,6 +19,8 @@
 //   6. the 2D starter (`create-game --profile 2d`) through the same test
 //   7. the knowledge inside the engine package (knowledge/): its validate.ts,
 //      mount.ts --package into a stand-in origin-agent knowledge/ tree, then --check
+//   8. a project with an MP3 sound (fixtures/tone.mp3): og run cooks it, plays
+//      it (og.AudioPlayback's playhead at 0.5 s) and the mix is not silent
 //
 // --container builds tests/install/Dockerfile (node 22, bun) and runs this
 // script inside it with --host-only, the tarballs mounted read-only. With
@@ -87,6 +89,18 @@ function run(step: Step, cmd: string[], cwd: string, opts: { allowFail?: boolean
 
 function sha256(path: string): string {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+/** A 16-bit PCM WAV's RMS (0 to 1) over its data chunk. */
+function wavRms(path: string): number {
+  const b = readFileSync(path);
+  let at = 12;
+  while (at + 8 <= b.length && b.toString("ascii", at, at + 4) !== "data") at += 8 + b.readUInt32LE(at + 4);
+  const end = Math.min(b.length, at + 8 + b.readUInt32LE(at + 4));
+  let sum = 0;
+  let n = 0;
+  for (let i = at + 8; i + 1 < end; i += 2, n++) sum += (b.readInt16LE(i) / 32767) ** 2;
+  return Math.sqrt(sum / Math.max(1, n));
 }
 
 function tarball(name: string): string {
@@ -229,6 +243,45 @@ function host(): void {
     if (!existsSync(join(platform, "knowledge/game/skills/og-game/SKILL.md"))) step.fail("the mount wrote no og-game skill");
     if (!existsSync(join(platform, "knowledge/game-scaffold/origin-engine-ts/project.ogt"))) step.fail("the mount wrote no scaffold overlay");
     if (!existsSync(join(platform, "knowledge/game/skills/someone-else/SKILL.md"))) step.fail("the mount removed someone else's skill");
+
+    // 8. A compressed sound: an MP3 (the platform's generators return MP3) cooks with the installed og and plays.
+    step = new Step("8 an MP3 sound cooks and plays");
+    const sound = join(work, "demo-sound");
+    run(step, ["bun", create, sound, "--name", "Demo Sound", "--no-prompt"], consumer);
+    pinProject(sound);
+    run(step, ["bun", "install"], sound);
+    rmSync(join(sound, "tests"), { recursive: true, force: true });
+    mkdirSync(join(sound, "assets", "audio"), { recursive: true });
+    // tone.mp3: 1 s, 44.1 kHz stereo, a 0.5-amplitude sine (og-cook's tests/fixtures/audio/tone.mp3).
+    cpSync(join(HERE, "fixtures", "tone.mp3"), join(sound, "assets", "audio", "tone.mp3"));
+    writeFileSync(
+      join(sound, "src", "main.ts"),
+      `import { og } from "@origingame/engine";
+
+export default og.game({
+  tick: 60,
+  seed: 1,
+  start(world) {
+    const sound = og.load.sound(world, "audio/tone.mp3");
+    if (!sound.ok) throw new Error(sound.reason);
+    const voice = world.spawn({ name: "tone" });
+    if (!voice.ok) throw new Error(voice.reason);
+    const put = world.insert(voice.value, og.AudioSource, { sound: sound.value, playing: true });
+    if (!put.ok) throw new Error(put.reason);
+  },
+});
+`,
+    );
+    const heard = join(sound, "og-out", "sound");
+    og(step, sound, "run", ".", "--headless", "--commands", "0.5:get:tone.og.AudioPlayback;0.5:listen:tone.wav:0.5;0.6:quit", "--out", heard);
+    const got = join(heard, "get-000030.json");
+    if (!existsSync(got)) step.fail(`og run wrote no ${got}`);
+    const playback = (JSON.parse(readFileSync(got, "utf8")) as { value?: { cursor: number; loopEnd: number } }).value;
+    // Half a second into a 1 s sound at 44.1 kHz: the playhead near 22,050 frames, the sound 44,100 long.
+    if (!playback || Math.abs(playback.cursor - 22_050) > 1_000 || Math.abs(playback.loopEnd - 44_100) > 1_300) step.fail(`tone's og.AudioPlayback at 0.5 s: ${JSON.stringify(playback)}`);
+    const rms = wavRms(join(heard, "tone.wav"));
+    if (rms < 0.2) step.fail(`the mixer's last 0.5 s is near silent (RMS ${rms.toFixed(3)})`);
+    log(`   tone.mp3: cursor ${playback.cursor} of ${playback.loopEnd} frames at 0.5 s, mix RMS ${rms.toFixed(3)}`);
 
     log(`PASS on ${PLATFORM}`);
     if (!KEEP) rmSync(work, { recursive: true, force: true });

@@ -450,7 +450,11 @@ or the registry:
 5. `--archetype runner` once more through steps 2 to 4;
 6. the knowledge inside the installed engine (`knowledge/validate.ts`), and
    `knowledge/scripts/mount.ts --package <the engine package> --check`
-   against a stand-in platform tree.
+   against a stand-in platform tree;
+7. a project with an MP3 sound (`tests/install/fixtures/tone.mp3`, the
+   format the platform's generators return): `og run` cooks it with the
+   installed og and plays it, `og.AudioPlayback`'s playhead at 0.5 s and
+   the mixer's last half second not silent (from 0.7.7).
 
 It is also a stage of the wave's end (`scripts/wave-end.sh release`:
 `pack` and `verify`, the tarballs it leaves are the ones `publish`

@@ -124,8 +124,9 @@ async function main(): Promise<void> {
     // the persistent disk; /data itself is not the guest user's).
     log("uploading");
     const REMOTE = `${(await sh(sbx, "echo $HOME")).trim()}/og-install`;
-    await sh(sbx, `rm -rf ${REMOTE} && mkdir -p ${REMOTE}/tgz`);
+    await sh(sbx, `rm -rf ${REMOTE} && mkdir -p ${REMOTE}/tgz ${REMOTE}/fixtures`);
     await upload(sbx, join(HERE, "run.ts"), `${REMOTE}/run.ts`);
+    await upload(sbx, join(HERE, "fixtures", "tone.mp3"), `${REMOTE}/fixtures/tone.mp3`);
     if (FROM) {
       for (const name of ["engine", "engine-linux-x64", "create-game"]) {
         const f = join(FROM, `origingame-${name}-${VERSION}.tgz`);
