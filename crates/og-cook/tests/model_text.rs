@@ -413,17 +413,17 @@ fn the_report_counts_its_triangles_draws_and_bvh() {
     );
 }
 
-/// The og-game skill's `type model` example (§18) cooks as written.
+/// The og-model skill's `type model` example cooks as written.
 #[test]
 fn the_skill_s_example_cooks() {
     let skill = std::fs::read_to_string(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../packages/knowledge/skills/og-game/SKILL.md"),
+            .join("../../packages/knowledge/skills/og-model/SKILL.md"),
     )
     .unwrap();
     let start = skill
         .find("```\ntype model\n")
-        .expect("§18 has a type model example")
+        .expect("og-model has a type model example")
         + 4;
     let end = start + skill[start..].find("```").unwrap();
     let root = cooked(
