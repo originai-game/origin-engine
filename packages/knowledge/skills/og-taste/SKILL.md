@@ -394,8 +394,9 @@ post treatment that frames either. `create --premise` matches only among the
 styles of the game's profile (`--profile`, else the premise's, else 3D);
 `--look` names any style and wins.
 
-**Write the look.** Start from the style's preset and change only what the
-game needs; your file wins field by field. A style whose `look.presetReady`
+**Write the look.** Start from the style's preset (this skill's file:
+`skill {name: "og-taste", file: "looks/presets/<slug>.ogt"}`) and change
+only what the game needs; your file wins field by field. A style whose `look.presetReady`
 is false has no preset in this engine yet: leave out `extends` and set the
 blocks yourself from the entry's `primitives`.
 
@@ -404,7 +405,7 @@ type look
 version 1
 ---
 name "Harbour at dusk"
-extends "anime-cel-3d"          # the preset's slug (templates/looks/<slug>.ogt)
+extends "anime-cel-3d"          # the preset's slug (looks/presets/<slug>.ogt)
 ui "styles/harbour/style.ogt"   # the game's own UI style (the preset names a built-in)
 RenderSettings {
   toneMapping agx
