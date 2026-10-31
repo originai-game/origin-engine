@@ -63,7 +63,7 @@ pub use style::{
     Space, Spring, Srgba, Theme, TypeRamp, TypeStep,
 };
 pub use style_file::{Art, Slice, SliceFill, StyleFile, StylePart, UiSound, parse_style};
-pub use text::{FontMetrics, UiFont, VisualGlyph, bidi_runs, needs_visual};
+pub use text::{FontMetrics, Piece, UiFont, VisualGlyph, bidi_runs, needs_visual, pieces};
 pub use ui::{
     ButtonDesc, ButtonVariant, ControlSize, FieldDesc, Fonts, IconAtlas, ImageDesc, LabelDesc,
     PanelDesc, ProgressDesc, Response, ScrollAxes, ScrollDesc, SliderDesc, TextAreaDesc,

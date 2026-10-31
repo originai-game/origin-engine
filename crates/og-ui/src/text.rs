@@ -573,9 +573,10 @@ pub(crate) fn drawn_line(
 }
 
 /// One text command's worth of a line: the font, what it draws and where
-/// it starts, `dx` em from the line's start (its width `width` em).
+/// it starts, `dx` em from the line's start (its width `width` em; 0 for
+/// the one piece of a font that is not mixed).
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Piece {
+pub struct Piece {
     pub font: Option<FontHandle>,
     pub dx: f32,
     pub width: f32,
@@ -584,8 +585,10 @@ pub(crate) struct Piece {
 }
 
 /// What a line of `font` draws: one piece as [`drawn_line`] gives it, or
-/// for a mixed font its visual glyphs cut where the font changes.
-pub(crate) fn pieces(font: &UiFont, line: &str, default: Direction, tracking: f32) -> Vec<Piece> {
+/// for a mixed font its visual glyphs cut where the font changes (a
+/// style's Chinese companion beside its Latin face). World text drawn with
+/// the UI's fonts (`og.render.floatingText`) draws these too.
+pub fn pieces(font: &UiFont, line: &str, default: Direction, tracking: f32) -> Vec<Piece> {
     if !font.metrics.is_mixed() {
         let (text, placements) = drawn_line(&font.metrics, line, default, tracking);
         return vec![Piece {

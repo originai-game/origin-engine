@@ -3,17 +3,23 @@
 //! (`RenderScene::text_facing`) with the point it turns about, and a
 //! floating text's facing survives a snapshot.
 //!
+//! A floating text with no font of its own draws with the UI's: a line
+//! mixing a style's Latin body face with its Chinese companion (`fonts {
+//! cjk }`) reaches the renderer as one text per font, side by side and
+//! centred on its point (rhythm archetype: a judgement word drawn whole in
+//! the body face lost every Chinese character).
+//!
 //! Ways this could fail: the facing lands on another text's index; an
 //! aligned text keeps the runtime's shift along the world x axis (the
 //! renderer then turns it about its left end, off its point); a screen
 //! text faces; a snapshot drops the facing, or a snapshot without a faced
 //! text changes its bytes.
 
-use og_render::{RenderScene, SpriteFacing, TextFacing};
+use og_render::{FontHandle, RenderScene, SpriteFacing, TextFacing};
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_game_game,
-    og_host_begin_bundle, og_load_font, og_render_floating_text, og_render_text, og_world_restore,
-    og_world_snapshot, set_hooks, set_render_backend,
+    og_host_begin_bundle, og_load_font, og_load_style, og_render_floating_text, og_render_text,
+    og_ui_configure, og_world_restore, og_world_snapshot, set_hooks, set_render_backend,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -65,6 +71,7 @@ impl Hooks for Disk {
 #[derive(Default)]
 struct Seen {
     texts: Vec<(String, f32, Option<TextFacing>)>,
+    fonts: Vec<FontHandle>,
     screen: usize,
 }
 
@@ -93,6 +100,7 @@ impl RenderBackend for Recorder {
                 (t.text.clone(), t.position.x, facing)
             })
             .collect();
+        seen.fonts = scene.texts.iter().map(|t| t.font).collect();
         seen.screen = scene.overlay.as_ref().map_or(0, |o| o.texts.len());
         Ok(())
     }
@@ -192,5 +200,113 @@ fn faced_world_text_reaches_the_renderer_with_its_pivot() {
         seen_now("-12").2.map(|f| f.facing),
         Some(SpriteFacing::Camera),
         "restored facing"
+    );
+}
+
+/// A project whose style has a Latin body face and a Chinese companion, and
+/// a Chinese string table (the cook brings the companion only then).
+fn mixed_project() -> &'static Path {
+    static ROOT: OnceLock<PathBuf> = OnceLock::new();
+    ROOT.get_or_init(|| {
+        let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+            .join(format!("og-runtime-text-mixed-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let write = |path: &str, bytes: &[u8]| {
+            let p = root.join("assets").join(path);
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(p, bytes).unwrap();
+        };
+        let neon = repo().join("templates/styles/neon");
+        write(
+            "styles/mix/Body.ttf",
+            &std::fs::read(neon.join("ChakraPetch-BoldItalic.ttf")).unwrap(),
+        );
+        write(
+            "styles/mix/Body.ttf.ogt",
+            &std::fs::read(neon.join("ChakraPetch-BoldItalic.ttf.ogt")).unwrap(),
+        );
+        let t = og_ui::Theme::new(og_ui::Scheme::Dark);
+        let mut style = String::from("type style\nversion 1\n---\nname \"mix\"\npalette {\n");
+        for n in og_ui::Palette::NAMES {
+            let c = t.palette.get(n).unwrap();
+            let [r, g, b] = c.rgb;
+            style += &format!(
+                "  {n} \"#{r:02x}{g:02x}{b:02x}{:02x}\"\n",
+                (c.alpha * 255.0).round() as u8
+            );
+        }
+        style += "}\nradius {\n  small 1\n  control 2\n  bar 1\n  panel 3\n}\n";
+        style += "fonts {\n  body \"Body.ttf\"\n  cjk \"@styles/cjk/NotoSansSC-Regular.ttf\"\n}\n";
+        write("styles/mix/style.ogt", style.as_bytes());
+        write(
+            "strings/zh-CN.ogt",
+            "type strings\nversion 1\n---\nlocale \"zh-CN\"\nstring \"judge.perfect\" \"完美\"\n"
+                .as_bytes(),
+        );
+        let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        root
+    })
+}
+
+#[test]
+fn a_floating_text_mixing_a_companion_draws_each_run_in_its_font() {
+    set_hooks(Rc::new(Disk));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let options = json!({ "root": mixed_project().to_str().unwrap() }).to_string();
+    let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let seen = Rc::new(RefCell::new(Seen::default()));
+    set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
+    let style = value(og_load_style(engine, "styles/mix/style.ogt".into()));
+    value(og_ui_configure(
+        engine,
+        Some(json!({ "style": style }).to_string()),
+    ));
+    value(og_engine_frame(engine, 1000.0 / 60.0));
+
+    for (text, x, facing) in [("完美 x2", 4.0, None), ("美完 x3", -2.0, Some("camera"))] {
+        let mut d = json!({ "text": text, "position": { "x": x, "y": 0, "z": 0 }, "spread": 0, "size": 1, "pop": 0 });
+        if let Some(f) = facing {
+            d["facing"] = json!(f);
+        }
+        value(og_render_floating_text(engine, Some(d.to_string())));
+    }
+    value(og_engine_frame(engine, 0.0));
+    let seen = seen.borrow();
+    let drawn: Vec<(String, f32, Option<TextFacing>, FontHandle)> = seen
+        .texts
+        .iter()
+        .zip(&seen.fonts)
+        .map(|(t, f)| (t.0.clone(), t.1, t.2, *f))
+        .collect();
+    let piece = |s: &str| {
+        drawn
+            .iter()
+            .find(|t| t.0 == s)
+            .cloned()
+            .unwrap_or_else(|| panic!("{s:?} drawn alone: {drawn:?}"))
+    };
+
+    // Flat: the Chinese run first, the Latin after it, in two fonts, the
+    // line centred on x = 4 (its start left of the point, its end right).
+    let (zh, latin) = (piece("完美 "), piece("x2"));
+    assert_ne!(
+        zh.3, latin.3,
+        "the Chinese in the companion, the Latin in the body face"
+    );
+    assert!(
+        zh.1 < latin.1 && zh.1 < 4.0 && latin.1 > 4.0 - 0.01,
+        "side by side about the point: {zh:?} {latin:?}"
+    );
+
+    // Faced: both turn about the point, aligned so the line's middle is it
+    // (the Chinese run's align past its middle, the Latin's before its start).
+    let (zh, latin) = (piece("美完 "), piece("x3"));
+    let (fz, fl) = (zh.2.expect("faced"), latin.2.expect("faced"));
+    assert_eq!((zh.1, latin.1), (-2.0, -2.0), "both at the point");
+    assert!(
+        fz.align > 0.5 && fl.align < 0.0,
+        "one line centred: {fz:?} {fl:?}"
     );
 }
