@@ -292,6 +292,35 @@ fn the_grammar_is_strict_about_times_and_names() {
     }
 }
 
+// M7 run 5: `2.65:pause;2.66:set:…;2.7:screenshot:b.png;3:quit` spun for
+// minutes, its steps waiting for ticks the held clock never took.
+#[test]
+fn a_scripts_pause_runs_its_later_steps_on_the_held_world_and_resume_keeps_their_spacing() {
+    let mut h = build(1, false);
+    h.probe
+        .schedule(
+            &h.world,
+            "0.5:pause;1:set:player.Health.hp=55;2:resume;2.5:quit",
+        )
+        .unwrap();
+    let player = h.probe.names().resolve(&h.world, "player").unwrap();
+    // The host's loop: one tick a frame, none while the clock is held.
+    for _ in 0..1000 {
+        if h.probe.quit_requested() {
+            break;
+        }
+        let due = if h.probe.paused() { 0 } else { 1 };
+        h.probe.frame(&mut h.world, due).unwrap();
+    }
+    assert!(
+        h.probe.quit_requested(),
+        "the script never reached its quit"
+    );
+    assert_eq!(h.world.get::<Health>(player).unwrap().hp, 55.0);
+    // Held at tick 30; the quit keeps its 0.5 s after the resume.
+    assert_eq!(h.probe.tick(&h.world), 60);
+}
+
 #[test]
 fn steps_run_on_simulation_time_even_inside_an_advance() {
     let mut h = build(1, false);

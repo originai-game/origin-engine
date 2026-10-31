@@ -62,7 +62,10 @@ a number and a sound (taste 98, feel 79).
    `set:Game.coins=10`, `set:og.Stylise.ink=false`: a number, `true` or
    `false`, or `x,y,z`; a value outside the field's `min`/`max` is refused
    naming the range, never clamped, while game code's own writes are stored
-   as given: widen the range in the field's options to try one), `seed:<n>`, `pause`, `resume`, `advance:<ticks>`,
+   as given: widen the range in the field's options to try one), `seed:<n>`, `pause`
+   (holds the world's clock; the steps after it run in order on the held
+   world, a `screenshot` waiting for its frame), `resume` (the clock goes on;
+   later steps keep their spacing from it), `advance:<ticks>`,
    `quit`, and `help` for the list. Modules add their own: `dump_ai` and
    `dump_nav` (og-ai §5), `dump_platform` (og-platform-sdk §4), `locale:<tag>`
    (og-i18n §6), `dump_stream` and `terrain_stream:<stream|resident>[:<MiB>]`

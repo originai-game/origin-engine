@@ -228,6 +228,10 @@ pub struct Probe {
     snapshots: VecDeque<(String, Saved)>,
     next_snapshot: u64,
     paused: bool,
+    /// The clock was held by a script's `pause`: the script's later steps
+    /// run in order on the held world instead of waiting for ticks that
+    /// will not come.
+    script_paused: bool,
     quit: bool,
     step_ms: f64,
     render_ms: f64,
@@ -454,6 +458,7 @@ impl Probe {
             snapshots: VecDeque::new(),
             next_snapshot: 1,
             paused: false,
+            script_paused: false,
             quit: false,
             step_ms: 0.0,
             render_ms: 0.0,
@@ -916,7 +921,18 @@ impl Probe {
                 break;
             };
             if key.0 > now {
-                break;
+                if !(self.paused && self.script_paused) {
+                    break;
+                }
+                // Held by the script: the rest of it moves up to now and
+                // keeps its spacing, so the steps after a `resume` keep
+                // their distance from it.
+                let shift = key.0 - now;
+                self.queue = std::mem::take(&mut self.queue)
+                    .into_iter()
+                    .map(|((tick, seq), q)| ((tick - shift, seq), q))
+                    .collect();
+                continue;
             }
             match self.queue.remove(&key).expect("present") {
                 Queued::Step(step, within) => {
@@ -1759,10 +1775,12 @@ impl Probe {
             }
             "pause" => {
                 self.paused = true;
+                self.script_paused = true;
                 Ok(())
             }
             "resume" => {
                 self.paused = false;
+                self.script_paused = false;
                 Ok(())
             }
             "advance" => {
@@ -2121,6 +2139,7 @@ impl Probe {
     /// `resume`: release the clock.
     pub fn resume(&mut self) -> bool {
         self.paused = false;
+        self.script_paused = false;
         true
     }
 
