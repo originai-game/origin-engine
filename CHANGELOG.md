@@ -13,7 +13,10 @@ frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
 `crates/og-api/api.ogt`.
 
-## Unreleased
+## 0.7.7 — 2026-10-31
+
+A patch with the simulation unchanged (the golden replays): IDL members
+added off by default (mouse-look), none removed.
 
 - `og cook` takes `.mp3`, `.ogg` (Vorbis) and `.flac` sounds beside `.wav`:
   decoded to 16-bit PCM in the cook (pure Rust, symphonia; no ffmpeg) and

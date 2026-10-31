@@ -3,7 +3,7 @@ version 1
 ---
 name "Write Back"
 id "write-back"
-engine "0.7.6"
+engine "0.7.7"
 entry "src/main.ts"
 profile "3d"
 tick 60
