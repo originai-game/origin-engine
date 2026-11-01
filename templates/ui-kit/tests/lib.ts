@@ -68,6 +68,8 @@ export interface UiElement {
   y: number;
   width: number;
   height: number;
+  /** A scroll container cuts it: its box is the part in view. */
+  clipped?: boolean;
 }
 
 export const ui = (run: PlaytestRun, file: string): UiElement[] => run.json<{ elements: UiElement[] }>(file).elements;

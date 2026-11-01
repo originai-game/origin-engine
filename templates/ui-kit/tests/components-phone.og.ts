@@ -17,9 +17,11 @@ export default playtest({
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     t.ok(run.quit, "the script reached quit");
     const nav = ui(run, "navigation.json");
-    t.ok(nav.some((e) => e.role === "tab" && e.name === "Skills, 3" && e.states.includes("selected")), "a tap picked the second tab");
+    // Read before the page scrolls on to the breadcrumbs (a row scrolled out of view is not listed).
+    t.ok(ui(run, "navigation-tab.json").some((e) => e.role === "tab" && e.name === "Skills, 3" && e.states.includes("selected")), "a tap picked the second tab");
     t.ok(!nav.some((e) => e.id === "Prev" && e.parent === "Bar"), "no bumper hints under a finger");
-    for (const e of nav.filter((x) => x.role === "button" || x.role === "tab" || x.role === "link")) {
+    // Every target a finger can reach: one a scroll container cuts at its edge scrolls into view whole.
+    for (const e of nav.filter((x) => (x.role === "button" || x.role === "tab" || x.role === "link") && !x.clipped)) {
       t.ok(e.width >= 43.5 && e.height >= 43.5, `${e.id} (${e.name}) is a whole touch target: ${Math.round(e.width)}×${Math.round(e.height)}`);
     }
     const tabs = (f: string) => ui(run, f).filter((e) => e.role === "tab").map((e) => e.height);

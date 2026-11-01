@@ -96,8 +96,10 @@ export function componentsScript(phone: boolean): Script {
   }
   if (phone) {
     // A finger picks a tab (no bumpers under a finger); the carousel is further down.
-    b.seq((at) => tap(at, "Tabs/Tab#1"), 0.2);
+    // The underline row's tab (the pill row has a Tab#1 too, already selected).
+    b.seq((at) => tap(at, "TabsUnderline/Tabs/Bar/Clip/Strip/Tabs/Tab#1"), 0.2);
     b.shot("navigation-tab", 0.5);
+    b.dump("navigation-tab");
   } else {
     b.seq((at) => tap(at, "Viewport/Next"), 0.2);
     b.shot("navigation-carousel", 0.7);
@@ -157,6 +159,8 @@ export function componentsScript(phone: boolean): Script {
   b.shot("graph", 0.9);
   b.seq((at) => tap(at, "Zoom/In"), 0.2);
   b.shot("graph-zoom", 0.6);
+  // On a phone the calendar is under the graph: scrolled into view before its month turns.
+  if (phone) b.scroll("Graphs", 600);
   b.seq((at) => tap(at, "Login/Header/Next"), 0.2);
   b.shot("graph-month", 0.7);
   b.dump("graph");
