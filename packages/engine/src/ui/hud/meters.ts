@@ -71,9 +71,10 @@ export function statBar(id: string, desc: Api.StatBarDesc = {}): void {
       if ((desc.shieldMax ?? 0) > 0) shieldRow(desc, h, radius, style);
       kit.row("Main", { gap: tk.sm, cross: "center", width: { kind: "grow" } }, () => {
         if (desc.icon) icon("Icon", desc.icon, Math.round(h * 1.4), lit(ink), "");
-        if (desc.label) text("Label", desc.label, { step: ts(13), font: "display", color: token("ink"), nowrap: true, outline: 1 });
+        // Over the scene, not a card: full ink a step up, with the HUD's outline and halo (4.5:1 on a bright ground).
+        if (desc.label) text("Label", desc.label, { step: ts(14), font: "display", color: token("ink"), nowrap: true, outline: 1.2 });
         track(path, desc, frac, level, ink, h, radius, style);
-        if (desc.showValue) text("Value", valueText, { step: ts(13), font: "mono", color: level === "critical" ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1 });
+        if (desc.showValue) text("Value", valueText, { step: ts(14), font: "mono", color: level === "critical" ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1.2 });
       });
     }, {
       a11y: a11y("meter", name, { value: valueText, valueMin: 0, valueMax: max, valueNow: value }),
@@ -214,7 +215,7 @@ export function orbMeter(id: string, desc: Api.OrbMeterDesc = {}): void {
             absolute({ centerX: true, centerY: true }));
         }
       });
-      if (desc.label) text("Label", desc.label, { step: ts(12), color: token("inkMuted"), nowrap: true, outline: 0.8 });
+      if (desc.label) text("Label", desc.label, { step: ts(12), color: token("ink", 0.9), nowrap: true, outline: 1 });
     });
     apply({
       a11y: a11y("meter", name, { value: `${Math.round(value)} / ${Math.round(max)}`, valueMin: 0, valueMax: max, valueNow: value }),

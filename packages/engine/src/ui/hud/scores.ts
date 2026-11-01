@@ -24,7 +24,7 @@ export function scoreboard(id: string, desc: Api.ScoreboardDesc = {}): void {
   const tk = f.t;
   const vp = f.viewport;
   const width = Math.min(desc.width || (f.phone ? hudRoom() : u(760)), hudRoom());
-  const cols = desc.columns ?? [];
+  const allCols = desc.columns ?? [];
   // Rows shrink to fit the safe area's height (a phone held sideways), to
   // no less than a touch row; past that the panel scrolls.
   const teams = desc.teams ?? [];
@@ -33,13 +33,25 @@ export function scoreboard(id: string, desc: Api.ScoreboardDesc = {}): void {
   const chrome = (desc.title || desc.subtitle ? u(30) + tk.sm : 0) + tk.md * 2 + teams.length * tk.sm + lines * u(2);
   const rowH = Math.max(ut(22), Math.min(ut(f.phone ? 30 : 34), Math.floor((roomH - chrome) / Math.max(1, lines))));
   const scrolls = chrome + lines * rowH > roomH;
-  // Columns narrow to leave the name its share of a narrow panel.
-  const fixedW = width - tk.md * 2 - tk.sm * 2 - u(3) - tk.sm * (cols.length + 2);
-  const nameMin = f.phone ? u(84) : u(140);
-  const want = cols.reduce((n, c) => n + u(c.width || 56), 0) + u(56);
-  const squeeze = want > 0 ? Math.min(1, Math.max(0.5, (fixedW - nameMin) / want)) : 1;
-  const colW = (c: Api.ScoreColumn | undefined) => Math.round(u(c?.width || 56) * squeeze);
-  const pingW = Math.round(u(56) * squeeze);
+  // Each column is as wide as its widest value or label (measured at the
+  // text size in effect, mono at 0.62 em), at least its design width. A
+  // panel too narrow for them all (a phone at 200 %) drops columns from the
+  // right, ping first, rather than cut every value to "6,…": the name keeps
+  // its share and what shows reads whole.
+  const monoEm = stepSize(ts(13)).size * 0.62;
+  const need = (c: Api.ScoreColumn, i: number): number => {
+    const texts = [c.label ?? "", ...teams.flatMap((tm) => (tm.rows ?? []).map((r) => r.values?.[i] ?? ""))];
+    return Math.max(u(c.width || 56), Math.ceil(Math.max(...texts.map((x) => x.length)) * monoEm) + u(4));
+  };
+  const nameMin = Math.max(f.phone ? u(84) : u(140), Math.ceil(stepSize(ts(13)).size * 6));
+  const room = width - tk.md * 2 - tk.sm * 2 - u(3) - nameMin;
+  let pingW = Math.max(u(40), Math.ceil(Math.max(...teams.map((tm) => (tm.score ?? "").length), 2) * stepSize(ts(20, true)).size * 0.62));
+  let shownCols = allCols.length;
+  const total = (n: number, ping: number): number => allCols.slice(0, n).reduce((w, c, i) => w + need(c, i) + tk.sm, 0) + ping + tk.sm * 2;
+  while (shownCols > 1 && total(shownCols, pingW) > room) shownCols -= 1;
+  const cols = allCols.slice(0, shownCols);
+  const colW = (c: Api.ScoreColumn | undefined) => (c ? need(c, allCols.indexOf(c)) : u(56));
+  if (total(shownCols, pingW) > room) pingW = Math.max(0, room - total(shownCols, 0));
   // A scoreboard opens over the rest of the HUD, as a held Tab board does.
   hudPlace(id, anchorOf(desc, "center"), () => {
     box(id, {
@@ -47,6 +59,8 @@ export function scoreboard(id: string, desc: Api.ScoreboardDesc = {}): void {
       ...(scrolls ? { height: px(roomH), scroll: true } : {}),
     }, {
       ...chip(shapeOf("panel").radius, true),
+      // Opaque whatever the style's HUD alpha: it opens over the rest of the HUD, which must not show through.
+      fills: [solid(lit({ ...role("hud"), a: 1 })), vgrad([[0, token("sheen", 0.1)], [0.4, token("sheen", 0)]])],
     }, () => {
       if (desc.title || desc.subtitle) {
         kit.row("Head", { gap: tk.sm, cross: "end", width: pct(1) }, () => {
@@ -83,7 +97,7 @@ export function scoreboard(id: string, desc: Api.ScoreboardDesc = {}): void {
               text("Name", row.name ?? "", { step: ts(13), font: row.local ? "display" : "body", color: row.dead ? token("inkFaint") : token("ink"), width: { kind: "grow" }, nowrap: true, ellipsis: true });
               if (row.mvp) icon("Mvp", "star", u(14), lit(role("gold")), "MVP");
               if (row.dead) icon("Dead", "skull", u(14), token("inkFaint"), "Dead");
-              (row.values ?? []).forEach((v, i) => {
+              (row.values ?? []).slice(0, cols.length).forEach((v, i) => {
                 text(kit.idi("Value", i), v, { step: ts(13), font: "mono", color: row.dead ? token("inkMuted") : token("ink"), nowrap: true, ellipsis: true, width: px(colW(cols[i])), align: "end" });
               });
               if ((row.ping ?? 0) > 0) {

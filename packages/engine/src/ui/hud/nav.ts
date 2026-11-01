@@ -9,7 +9,7 @@
 // tick with a pop, counts, a countdown, the tracked one marked).
 
 import type * as Api from "@origingame/engine";
-import { TAU, textScale, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props, tsFit, sideSpan } from "./core.ts";
+import { TAU, textScale, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props, tsFit, sideSpan, stepSize, isolate } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
 
@@ -194,6 +194,11 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
               fixed({ start: x - 1, top: u(6) }, { opacity: clamp01(fade * 1.6) }));
           }
         }
+        // Where each marker sits, then which distances show: a label that
+        // would collide with one already placed thins out, objectives and
+        // pings first, then the nearest (a strip that names every marker
+        // reads as none).
+        const placed: Array<{ p: Api.CompassPoi; kind: Api.MarkerKind; x: number; clamped: boolean }> = [];
         for (const p of desc.pois ?? []) {
           const kind: Api.MarkerKind = p.kind ?? "poi";
           const keep = kind === "objective" || kind === "ping";
@@ -204,11 +209,24 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
             x = x < width / 2 ? u(10) : width - u(10);
             clamped = true;
           }
+          placed.push({ p, kind, x, clamped });
+        }
+        const rank = (q: (typeof placed)[number]): number => (q.kind === "objective" ? 0 : q.kind === "ping" ? 1 : 2) * 1e9 + (q.p.distance ?? 1e8);
+        const labelled = new Set<Api.CompassPoi>();
+        const spans: Array<[number, number]> = [];
+        for (const q of [...placed].sort((a, b) => rank(a) - rank(b))) {
+          if (q.p.distance === null || q.p.distance === undefined) continue;
+          const half = (`${Math.round(q.p.distance)}${desc.units ?? "m"}`.length * stepSize(ts(10)).size * 0.62) / 2 + u(3);
+          if (spans.some(([a, b]) => q.x + half > a && q.x - half < b)) continue;
+          spans.push([q.x - half, q.x + half]);
+          labelled.add(q.p);
+        }
+        for (const { p, kind, x, clamped } of placed) {
           const ink = markerInk(kind, p.color);
           const s = u(16);
           box(keyId(p.key ?? ""), { direction: "column", cross: "center", gap: 0, width: px(u(48)), part: sel("Compass", "poi", kind, clamped ? "clamped" : null) }, undefined, () => {
             mark("Mark", kind, ink, s, 0, p.icon ?? "", sel("Compass", "mark", kind), "", {});
-            if (p.distance !== null && p.distance !== undefined) {
+            if (p.distance !== null && p.distance !== undefined && labelled.has(p)) {
               text("Distance", `${Math.round(p.distance)}${desc.units ?? "m"}`, { step: ts(10), font: "mono", color: token("ink"), nowrap: true, outline: 1 });
             }
           }, fixed({ start: x - u(24), top: u(22) - s / 2 }, { a11y: a11y("image", p.label ?? ""), ...(clamped ? { opacity: 0.8 } : {}) }));
@@ -272,15 +290,22 @@ export function objectiveTracker(id: string, desc: Api.ObjectiveTrackerDesc = {}
               text("Distance", `${Math.round(q.distance)}${desc.units ?? "m"}`, { step: ts(12), font: "mono", color: token("inkMuted"), nowrap: true, outline: 1 });
             }
           };
+          // The timer and distance share the title's line only when both fit whole beside it (a measured guess:
+          // display letters at 0.6 em, mono at 0.62); else they take their own line rather than crowd or cut it.
+          const metaText = [q.timer != null ? countdown(q.timer, false) : "", q.distance != null ? `${Math.round(q.distance)}${desc.units ?? "m"}` : ""].filter(Boolean);
+          const metaW = metaText.reduce((w, m, i) => w + m.length * stepSize(ts(13)).size * 0.62 + (i > 0 ? tk.md : 0), 0);
+          const lead = (q.focused ? u(3) + tk.sm : 0) + (q.icon ? u(18) + tk.sm : 0);
+          const titleW = (q.title ?? "").length * stepSize(ts(15, true)).size * 0.6;
+          const apart = narrow || (metaText.length > 0 && lead + titleW + tk.sm + metaW > width - tk.md * 2);
           kit.row("Head", { gap: tk.sm, cross: "center", width: pct(1) }, () => {
             if (q.focused) leaf("Mark", { width: px(u(3)), height: px(u(18)), part: sel("ObjectiveTracker", "focus") }, { fills: [solid(token("highlight"))] });
             if (q.icon) icon("Icon", q.icon, u(18), q.focused ? token("highlight") : lit(role("gold")));
             text("Title", q.title ?? "", { step: ts(15), font: "display", color: q.focused ? token("highlight") : token("ink"), width: { kind: "grow" }, maxLines: 2, ellipsis: true, outline: 1 });
-            if (!narrow) meta();
+            if (!apart) meta();
           });
           // A narrow tracker (a phone's) gives the title the whole line and
           // the timer and distance their own line under it.
-          if (narrow && (q.timer != null || q.distance != null)) kit.row("Meta", { gap: tk.md, cross: "center" }, meta);
+          if (apart && metaText.length > 0) kit.row("Meta", { gap: tk.md, cross: "center" }, meta);
           if (done) {
             const s = pop(since, 0.2, 400);
             text("Complete", q.completeLabel ?? "Complete", { step: ts(14), font: "display", color: lit(role("success")), nowrap: true, outline: 1 }, { transform: { scaleX: s, scaleY: s, pivotX: 0 } });
@@ -325,7 +350,7 @@ function step(id: string, st: Api.ObjectiveStep, tk: ReturnType<typeof frame>["t
           }, absolute({ start: 0, top: 0 }));
         }
       }, { transform: { scaleX: s, scaleY: s } });
-      text("Text", `${st.text ?? ""}${st.optional ? " (Optional)" : ""}`, { step: ts(13), color: ink, width: { kind: "grow" }, maxLines: 2, ellipsis: true, outline: 0.8 });
+      text("Text", st.optional ? `${isolate(st.text ?? "")} (Optional)` : (st.text ?? ""), { step: ts(13), color: ink, width: { kind: "grow" }, maxLines: 2, ellipsis: true, outline: 0.8 });
       if ((st.target ?? 0) > 0) {
         text("Count", `${Math.min(st.count ?? 0, st.target ?? 0)}/${st.target}`, { step: ts(13), font: "mono", color: st.done ? token("inkFaint") : token("ink"), nowrap: true, outline: 0.8 },
           { transform: { scaleX: cs, scaleY: cs, pivotX: 1 } });

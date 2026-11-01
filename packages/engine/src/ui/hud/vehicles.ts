@@ -11,7 +11,7 @@ import type * as Api from "@origingame/engine";
 import {
   TAU, a11y, fixed, anchorOf, box, bp, clamp01, ellipseShape, frame, glow, groups, hudPlace, kit, leaf, lit, mix, paintRgba, pct, pulse, px,
   reduced, role, sel, solid, springTo, stroke, text, token, ts, u, vgrad, type Rgba, ut, tsFit,
-  stepSize,
+  stepSize, textScale,
 } from "./core.ts";
 
 const START = (3 * Math.PI) / 4;
@@ -26,7 +26,8 @@ function niceStep(max: number): number {
 }
 
 export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
-  const size = u(desc.size || (bp().phone ? 132 : 180));
+  // The dial grows with the player's text size (to 1.4×), so its numerals keep their spacing at 200 %.
+  const size = Math.round(u(desc.size || (bp().phone ? 132 : 180)) * Math.min(1.4, textScale()));
   const max = Math.max(1, desc.maxSpeed ?? 300);
   const speed = Math.max(0, desc.speed ?? 0);
   const rpm = clamp01(desc.rpm ?? 0);
@@ -66,6 +67,9 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
           }, fixed({ start: c - to, top: c - to }));
         }
         // Ticks and numbers.
+        const speedStep = tsFit(size >= 150 ? 30 : 22, size * 0.17, true);
+        const unitStep = tsFit(10, size * 0.07);
+        const readoutHalf = Math.max(String(Math.round(max)).length * stepSize(speedStep).size * 0.62, unit.length * stepSize(unitStep).size * 0.62 + size * 0.16) / 2 + size * 0.02;
         const step = niceStep(max);
         const n = Math.floor(max / step + 1e-6);
         for (let i = 0; i <= n * 2; i++) {
@@ -79,11 +83,17 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
             shape: { kind: "path", points: [{ x: c + Math.cos(a) * r0, y: c + Math.sin(a) * r0 }, { x: c + Math.cos(a) * r1, y: c + Math.sin(a) * r1 }], width: major ? 2 : 1, cap: "butt" },
             fills: [solid(major ? token("ink") : token("inkMuted"))],
           }, fixed({ start: 0, top: 0 }));
-          if (major && size >= 120) {
-            const rt = r0 - size * 0.08;
-            const lw = size * 0.16;
-            text(kit.idi("Num", i), String(Math.round(v)), { step: ts(10), font: "mono", color: token("inkMuted"), nowrap: true, width: px(lw), align: "center" },
-              fixed({ start: c + Math.cos(a) * rt - lw / 2, top: c + Math.sin(a) * rt - size * 0.035 }));
+          const rt = r0 - size * 0.08;
+          const lw = size * 0.16;
+          const numStep = tsFit(10, size * 0.075);
+          const nx = c + Math.cos(a) * rt;
+          const ny = c + Math.sin(a) * rt - size * 0.035;
+          // A numeral that would reach the readout under the hub (large text, the dial's lowest marks) is left out.
+          const numW = String(Math.round(v)).length * stepSize(numStep).size * 0.62;
+          const hitsReadout = ny + stepSize(numStep).line > c + size * 0.06 && Math.abs(nx - c) - numW / 2 < readoutHalf;
+          if (major && size >= 120 && !hitsReadout) {
+            text(kit.idi("Num", i), String(Math.round(v)), { step: numStep, font: "mono", color: token("inkMuted"), nowrap: true, width: px(lw), align: "center" },
+              fixed({ start: nx - lw / 2, top: ny }));
           }
         }
         // The needle on a spring with a little bounce, so it reads as mechanical.
@@ -102,21 +112,24 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
           fills: [solid(token("panelRaised"))],
           strokes: [stroke(1.5, token("lineStrong"))],
         }, fixed({ start: c - size * 0.045, top: c - size * 0.045 }));
-        // The speed and its unit under the hub, the gear at the bottom.
+        // Under the hub, one column that cannot collide with itself: the
+        // speed, then its unit beside the gear.
         box("Readout", { direction: "column", cross: "center", gap: 0, width: pct(1) }, undefined, () => {
-          text("Speed", String(Math.round(speed)), { step: tsFit(size >= 150 ? 30 : 22, size * 0.2, true), font: "display", color: token("ink"), nowrap: true, outline: 1 });
-          text("Unit", unit, { step: tsFit(10, size * 0.085), font: "mono", color: token("inkMuted"), nowrap: true });
-        }, fixed({ start: 0, top: c + size * 0.08 }));
-        if (desc.gear) {
-          // The box holds its numeral at any text size: it grows past its share of the dial rather than let the gear spill.
-          const gearStep = tsFit(15, size * 0.1, true);
-          const gearBox = Math.max(size * 0.16, stepSize(gearStep).line + 2, Math.ceil((desc.gear ?? "").length * stepSize(gearStep).size * 0.62) + 8);
-          box("Gear", { width: px(gearBox), height: px(gearBox), align: "center", cross: "center", part: sel("Speedometer", "gear") }, {
-            shape: { kind: "rect", radii: [3, 3, 3, 3] },
-            fills: [solid(over ? lit(role("danger"), 0.4 + 0.6 * pulse(6)) : token("shadow", 0.7))],
-            strokes: [stroke(1.5, over ? lit(role("danger")) : token("lineStrong"))],
-          }, () => text("Text", desc.gear ?? "", { step: gearStep, font: "display", color: token("ink"), nowrap: true }), fixed({ centerX: true, bottom: size * 0.04 }));
-        }
+          text("Speed", String(Math.round(speed)), { step: speedStep, font: "display", color: token("ink"), nowrap: true, outline: 1 });
+          kit.row("Meta", { gap: Math.round(size * 0.03), cross: "center" }, () => {
+            text("Unit", unit, { step: unitStep, font: "mono", color: token("inkMuted"), nowrap: true });
+            if (desc.gear) {
+              // The box holds its numeral at any text size: it grows past its share of the dial rather than let the gear spill.
+              const gearStep = tsFit(15, size * 0.09, true);
+              const gearBox = Math.max(size * 0.13, stepSize(gearStep).line + 2, Math.ceil((desc.gear ?? "").length * stepSize(gearStep).size * 0.62) + 8);
+              box("Gear", { width: px(gearBox), height: px(gearBox), align: "center", cross: "center", part: sel("Speedometer", "gear") }, {
+                shape: { kind: "rect", radii: [3, 3, 3, 3] },
+                fills: [solid(over ? lit(role("danger"), 0.4 + 0.6 * pulse(6)) : token("shadow", 0.7))],
+                strokes: [stroke(1.5, over ? lit(role("danger")) : token("lineStrong"))],
+              }, () => text("Text", desc.gear ?? "", { step: gearStep, font: "display", color: token("ink"), nowrap: true }));
+            }
+          });
+        }, fixed({ start: 0, top: c + size * 0.06 }));
         if (over) {
           leaf("Shift", { width: px(size * 0.1), height: px(size * 0.1), part: sel("Speedometer", "shift") }, {
             shape: ellipseShape(),
@@ -201,7 +214,7 @@ export function flightHud(id: string, desc: Api.FlightHudDesc = {}): void {
   const num = (lid: string, s: string, x: number, y: number, align: "start" | "end" | "center", step: Api.TypeStepName, ink0: Api.Paint = paint, more: { opacity?: number } = {}) => {
     const w = ut(56);
     const lh = ut(22);
-    text(lid, s, { step, font: "mono", color: ink0, nowrap: true, width: px(w), align, outline: 1 }, fixed({ start: align === "end" ? x - w : align === "center" ? x - w / 2 : x, top: y - lh / 2 }, more));
+    text(lid, s, { step, font: "mono", color: ink0, nowrap: true, width: px(w), align, outline: 1.25 }, fixed({ start: align === "end" ? x - w : align === "center" ? x - w / 2 : x, top: y - lh / 2 }, more));
   };
   const narrow = W < u(420);
   kit.anchor(`${id}Hud`, { anchor: desc.anchor ?? "center", margin: 0 }, () => {
@@ -239,8 +252,8 @@ export function flightHud(id: string, desc: Api.FlightHudDesc = {}): void {
               L(`${rid}b`, [[lc.x + gap + half, y], [lc.x + gap + half - piece, y]], 2, quiet, part);
               L(`${rid}d`, [[lc.x + gap + piece, y], [lc.x + gap, y], [lc.x + gap, y + tip]], 2, quiet, part);
             }
-            if (!narrow) num(`${rid}L`, String(Math.abs(d)), lc.x - gap - half - u(6), y, "end", ts(14), quiet);
-            num(`${rid}N`, String(Math.abs(d)), lc.x + gap + half + u(6), y, "start", ts(14), quiet);
+            if (!narrow) num(`${rid}L`, String(Math.abs(d)), lc.x - gap - half - u(6), y, "end", ts(14), paint);
+            num(`${rid}N`, String(Math.abs(d)), lc.x + gap + half + u(6), y, "start", ts(14), paint);
           }
         }, fixed({ start: 0, top: 0 }, { transform: { rotate: -roll, pivotX: 0.5, pivotY: 0.5 } }));
       }, fixed({ start: (W - lw) / 2, top: H * 0.13 }));
@@ -290,7 +303,7 @@ function tapes(W: number, H: number, desc: Api.FlightHudDesc, paint: Api.Paint, 
       const major = v % 30 === 0;
       const fade = 1 - Math.abs((x - tw / 2) / (tw / 2)) ** 3;
       leaf(`T${d}`, { width: px(2), height: px(major ? u(10) : u(5)) }, { fills: [solid(quiet)], strokes: [edgeStroke] }, fixed({ start: x - 1, top: ut(40) - u(12) - (major ? u(10) : u(5)) }, { opacity: clamp01(fade) }));
-      if (major) num(`N${d}`, cardinal[v] ?? String(v / 10).padStart(2, "0"), x, ut(10), "center", ts(14), quiet, { opacity: clamp01(fade) });
+      if (major) num(`N${d}`, cardinal[v] ?? String(v / 10).padStart(2, "0"), x, ut(10), "center", ts(14), paint, { opacity: clamp01(fade) });
     }
   }, fixed({ start: tx, top: 0 }));
   readout("Heading", String(Math.round(headingDeg) % 360).padStart(3, "0"), W / 2, ut(40) + ut(16), paint, edgeStroke, "center");
@@ -304,17 +317,21 @@ function tapes(W: number, H: number, desc: Api.FlightHudDesc, paint: Api.Paint, 
         const y = th / 2 - (v - value) * per;
         const fade = clamp01(1 - Math.abs((y - th / 2) / (th / 2)) ** 3);
         leaf(`T${Math.round(v)}`, { width: px(u(10)), height: px(2) }, { fills: [solid(quiet)], strokes: [edgeStroke] }, fixed(side === "start" ? { end: 0, top: y - 1 } : { start: 0, top: y - 1 }, { opacity: fade }));
-        if (Math.abs(y - th / 2) > u(24)) num(`N${Math.round(v)}`, String(Math.round(v)), side === "start" ? tapeW - u(14) : tapeW, y, "end", ts(13), quiet, { opacity: fade });
+        // Clear of the boxed readout (its half height and a numeral's, at any text size), and at full ink:
+        // the haloed numerals read over sky and ground.
+        // Nor at the tape's ends, where the unit (above) and the climb rate (below) sit outside it.
+        const off = Math.abs(y - th / 2);
+        if (off > ut(16) + ut(13) && off < th / 2 - ut(11)) num(`N${Math.round(v)}`, String(Math.round(v)), side === "start" ? tapeW - u(14) : tapeW, y, "end", ts(13), paint, { opacity: fade });
       }
     }, fixed({ start: x, top: (H - th) / 2 }));
     // The box sits over the tape at its outer edge, inside the HUD's frame.
     readout(tid, String(Math.round(value)), side === "start" ? x : x + tapeW, H / 2, paint, edgeStroke, side === "start" ? "start" : "end");
-    num(`${tid}Unit`, unitLabel, side === "start" ? x + tapeW : x, (H - th) / 2 - u(14), side === "start" ? "end" : "start", ts(12), quiet);
+    num(`${tid}Unit`, unitLabel, side === "start" ? x + tapeW : x, (H - th) / 2 - ut(14), side === "start" ? "end" : "start", ts(12), quiet);
   };
   tape("Speed", desc.speed ?? 0, desc.speedUnit ?? "kt", 0, 10, "start");
   tape("Altitude", desc.altitude ?? 0, desc.altitudeUnit ?? "ft", W - tapeW, 100, "end");
   const vs = desc.verticalSpeed ?? 0;
-  if (vs !== 0) num("Climb", `${vs > 0 ? "+" : "-"}${Math.abs(Math.round(vs))}`, W - tapeW, H * 0.78 + u(16), "start", ts(13), quiet);
+  if (vs !== 0) num("Climb", `${vs > 0 ? "+" : "-"}${Math.abs(Math.round(vs))}`, W - tapeW, H * 0.78 + ut(16), "start", ts(13), quiet);
 }
 
 function readout(rid: string, value: string, x: number, y: number, paint: Api.Paint, edgeStroke: Api.Stroke, align: "start" | "end" | "center"): void {

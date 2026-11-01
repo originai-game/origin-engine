@@ -263,7 +263,8 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
   // The timer under the tile can be wider than the tile (a long time, 200 % text): the column grows to hold it.
   const timeStep = tsFit(11, size * 0.3);
   const timeText = timers && !lasting ? shortTime(remaining, false) : "";
-  const timeWidth = Math.ceil(timeText.length * stepSize(timeStep).size * 0.62) + 4;
+  // With a gutter, so neighbouring timers read as numbers apart ("5m 6m"), never one run ("5m6m").
+  const timeWidth = timeText ? Math.ceil(timeText.length * stepSize(timeStep).size * 0.62) + frame().t.sm + 4 : 0;
   kit.column(id, { gap: 0, cross: "center", width: px(Math.max(size, base, timeWidth)) }, () => {
     open("Tile", {
       width: px(size), height: px(size), interactive: true,

@@ -123,7 +123,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
     if (!desc.reverse) portrait();
     kit.column("Bars", { gap: u(3), width: { kind: "grow" } }, () => {
       kit.row("Head", { gap: tk.xs, cross: "center", width: { kind: "grow" } }, () => {
-        text("Name", name, { step: ts(m.name), font: "display", color: dead ? token("inkFaint") : hostile ? lit(role("danger")) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, outline: 1 });
+        text("Name", name, { step: ts(m.name), font: "display", color: dead ? token("inkFaint") : hostile ? lit(role("danger")) : token("ink"), nowrap: textScale() < 1.5, maxLines: 2, ellipsis: true, width: { kind: "grow" }, outline: 1 });
         if (desc.combat) icon("Combat", "crossed-swords", u(14), lit(role("danger")), "In combat");
       });
       if (desc.title && size !== "small") text("Title", desc.title, { step: ts(11), color: token("inkMuted"), nowrap: true, ellipsis: true, width: { kind: "grow" } });
