@@ -6425,7 +6425,7 @@ module ui {
     field icon String "An icon of the atlas."
     field image Option.Texture "Its art (art kind ability, 1:1) instead of the icon."
     field name String "What a screen reader calls it (Fireball)."
-    field hotkey String "The key or button glyph's label (Q, LB, 1); empty is none."
+    field hotkey String "The key or button glyph's label (Q, LB, 1): a rebindable one's og.input.glyph(world, action).text, so it follows the device used last; empty is none."
     field cooldown f32 "Seconds of cooldown left; 0 is ready." {
       min 0
       unit s
@@ -7667,7 +7667,7 @@ module ui {
       default 1.2
       unit m
     }
-    field action String "The action whose glyph it shows (its binding on the device used last)."
+    field action String "The action whose glyph it shows, its binding on the device used last: a gameplay action's (og.input.glyph), else a UI action's (og.ui.glyph)."
     field verb String "What it does (Open, Talk, Pick up)."
     field name String "What it is (Chest); empty is none."
     field hold Option.f32 "A hold's progress 0 to 1: a ring fills round the glyph; null is a press." {

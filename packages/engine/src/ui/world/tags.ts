@@ -12,6 +12,7 @@
 // of Thieves (a tail to the speaker, the words typing out).
 
 import type * as Api from "@origingame/engine";
+import { input } from "../../input.ts";
 import {
   a11y, box, clamp01, easeBack, easeOut, edge, ellipseShape, fillDraw, glow, groups, icon, inkOn, kit, leaf, lit, mix, msToTicks, now, pct, pop,
   px, rarityColor, rarityPips, reactionColor, reduced, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, waypointColor, absolute,
@@ -108,7 +109,8 @@ export function nameplate(id: string, desc: Api.NameplateDesc = {}): Api.AnchorI
 }
 
 export function interactionPrompt(world: Api.World, id: string, desc: Api.InteractionPromptDesc = {}): Api.AnchorInfo {
-  const glyph = desc.action ? kit.glyph(world, desc.action) : null;
+  // A gameplay action (og.input) first, then a UI action (og.ui.defineActions).
+  const glyph = desc.action ? ((input.glyph(world as unknown as { readonly id: number }, desc.action) as Api.InputGlyph | null) ?? kit.glyph(world, desc.action)) : null;
   const disabled = !!desc.disabled;
   const hold = desc.hold ?? null;
   const holding = hold !== null && hold > 0 && hold < 1;

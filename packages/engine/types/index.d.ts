@@ -31059,7 +31059,7 @@ export interface AbilitySlotDesc {
    */
   readonly name?: string;
   /**
-   * The key or button glyph's label (Q, LB, 1); empty is none.
+   * The key or button glyph's label (Q, LB, 1): a rebindable one's og.input.glyph(world, action).text, so it follows the device used last; empty is none.
    *
    * @default ""
    */
@@ -33797,7 +33797,7 @@ export interface InteractionPromptDesc {
    */
   readonly height?: number;
   /**
-   * The action whose glyph it shows (its binding on the device used last).
+   * The action whose glyph it shows, its binding on the device used last: a gameplay action's (og.input.glyph), else a UI action's (og.ui.glyph).
    *
    * @default ""
    */

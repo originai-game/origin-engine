@@ -474,6 +474,8 @@ export default og.game({
   systems: [Stage],
   render: { antialias: "msaa4" },
   start(world) {
+    // The prompt's glyph follows the device used last: F, a pad's X (Square on a PlayStation pad).
+    og.input.defineAction(world, { name: "interact", label: "Interact", bindings: [{ control: "KeyF" }, { control: "pad.x" }] });
     const camera = world.resource(og.Camera);
     if (camera.ok) {
       const eye = { x: 0, y: 6.5, z: 9.5 };

@@ -67,11 +67,14 @@ test("og.ui.waypoint: on screen with its distance and label; behind the camera, 
   expect(at(els, "Ahead")).toBeDefined();
 });
 
-test("og.ui.interactionPrompt and speechBubble: a key cap for an unbound action, the hold's state; words type out, then leave", () => {
+test("og.ui.interactionPrompt and speechBubble: a key cap for an unbound action, an og.input action's binding, the hold's state; words type out, then leave", () => {
   let hold = 0.4;
   const e = engine("WorldPrompts", (w) => {
     og.ui.interactionPrompt(w, "Chest", { ...point(0, 0, -4), action: "no.such.action", verb: "Open", name: "Chest", hold });
     og.ui.interactionPrompt(w, "Door", { ...point(1.5, 0, -4), verb: "Open", disabled: true, reason: "Locked" });
+    // A gameplay action's prompt shows its binding (og.input), not the fallback cap.
+    og.input.defineAction(w, { name: "interact", bindings: [{ control: "KeyF" }, { control: "pad.x" }] });
+    og.ui.interactionPrompt(w, "Lever", { ...point(-1.5, 0, -4), action: "interact", verb: "Pull" });
     og.ui.speechBubble("Say", { ...point(-1, 0, -6), speaker: "Tom Nook", text: "Hello there, friend!", at: 0, charsPerSecond: 20, durationMs: 500 });
   });
   e.advance(15);
@@ -80,6 +83,7 @@ test("og.ui.interactionPrompt and speechBubble: a key cap for an unbound action,
   expect(at(els, "Chest/Frame/Glyph/Cap/Key")?.text).toBe("E");
   expect([at(els, "Chest")?.role, at(els, "Chest")?.name, states(at(els, "Chest")).use]).toEqual(["button", "Open Chest", "holding"]);
   expect([states(at(els, "Door")).use, at(els, "Door/Frame/Words/Reason")?.text]).toEqual(["disabled", "Locked"]);
+  expect(at(els, "Lever")?.value).toBe("F");
   // Fifteen ticks at 20 a second: five characters typed; the screen reader has it all at once.
   const typed = at(els, "Say/Bubble/Text")?.text ?? "";
   expect(typed.length).toBeGreaterThan(2);
