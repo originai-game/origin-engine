@@ -4,8 +4,9 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  byText, chevron, target, wrapRow, clamp, fit, flags, frame, grow, kit, lastGesture, mark, over, px, rememberPath, role, rtl, spring, surface, text, token, xy,
+  byText, chevron, target, wrapRow, clamp, fit, flags, frame, grow, kit, lastGesture, mark, over, overProps, px, rememberPath, role, rtl, spring, still, surface, text, token, xy,
 } from "../containers/base.ts";
+import { edge } from "../containers/panels.ts";
 
 // ── tree ────────────────────────────────────────────────────────────────
 
@@ -171,6 +172,47 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
   const oy = (H - h0) / 2;
   const at = (n: Api.GraphNode) => ({ x: ox + padX + (n.x ?? 0) * k, y: oy + padTop + (n.y ?? 0) * k });
   const byId = new Map(nodes.map((n) => [n.id ?? "", n] as const));
+  // The pan: the graph's own offset in its window (a scroll container that clips but never scrolls
+  // by itself, the canvas placed over it), so it opens centred on the selected node (else the
+  // root: the first node no link leads to) and shows by a fade at each side where more lies.
+  const vw = view?.width ?? 0;
+  const vh = view?.height ?? 0;
+  const maxX = Math.max(0, W - vw);
+  const maxY = Math.max(0, H - vh);
+  let panX = kit.memory("~panX", 0);
+  let panY = kit.memory("~panY", 0);
+  // A zoom keeps the view's middle where it was.
+  const kWas = kit.memory("~k", 0);
+  if (kWas > 0 && Math.abs(kWas - k) > 1e-6 && vw > 0) {
+    panX = (panX + vw / 2 - ox - padX) * (k / kWas) + ox + padX - vw / 2;
+    panY = (panY + vh / 2 - oy - padTop) * (k / kWas) + oy + padTop - vh / 2;
+  }
+  const centreOn = (n: Api.GraphNode | undefined) => {
+    if (!n || vw <= 0) return;
+    const p = at(n);
+    panX = p.x - vw / 2;
+    panY = p.y - vh / 2;
+  };
+  // Until the player pans it (a drag, the focus moving off screen), it stays centred there, as
+  // its size settles and the text size changes.
+  let free = kit.memory("~free", 0) > 0;
+  if (view && !free) {
+    const led = new Set(links.map((l) => l.to ?? ""));
+    centreOn(byId.get(desc.selected ?? "") ?? nodes.find((n) => !led.has(n.id ?? "")) ?? nodes[0]);
+  }
+  const ges = lastGesture(`${key}/Canvas`);
+  const along = (d: number) => (rtl() ? d : -d);
+  if (ges && !ges.dragging && kit.memory("~held", 0) !== 0) {
+    panX += along(kit.memory("~dx", 0) + ges.velocityX * 0.15);
+    panY -= kit.memory("~dy", 0) + ges.velocityY * 0.15;
+    free = true;
+  }
+  kit.remember("~held", ges?.dragging ? 1 : 0);
+  kit.remember("~dx", ges?.dragging ? ges.offsetX : 0);
+  kit.remember("~dy", ges?.dragging ? ges.offsetY : 0);
+  panX = clamp(panX, 0, maxX);
+  panY = clamp(panY, 0, maxY);
+  let focusedNode = -1;
   kit.open(id, { direction: "column", width: desc.width ?? grow(), height: desc.height ?? px(phone ? 360 : 420), cross: "stretch", radius: t.panel, background: token("well"), part: "Graph.frame", partClass: "slot" });
   try {
     kit.setDraw({
@@ -249,13 +291,29 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
           over({ insets: { start: (rtl() ? W - p.x : p.x) - cw / 2, top: p.y + s / 2 + 4 }, inert: true, z: 1 });
         }
         if (r.clicked) chosen = n.id ?? null;
+        if (r.focused) focusedNode = k;
       });
       kit.close();
-      kit.props({ pinch: { minScale: minZ / zoom, maxScale: maxZ / zoom } });
+      const liveX = ges?.dragging ? clamp(panX + along(ges.offsetX), -24, maxX + 24) : panX;
+      const liveY = ges?.dragging ? clamp(panY - ges.offsetY, -24, maxY + 24) : panY;
+      const shownX = still() || ges?.dragging ? liveX : kit.animate("~shownX", liveX, spring("ui"));
+      const shownY = still() || ges?.dragging ? liveY : kit.animate("~shownY", liveY, spring("ui"));
+      kit.props({
+        ...overProps({ insets: { start: 0, top: 0 } }),
+        transform: { x: rtl() ? shownX : -shownX, y: -shownY },
+        pinch: { minScale: minZ / zoom, maxScale: maxZ / zoom },
+        drag: { axis: "both", returnHome: true, rubber: 0.55, threshold: 6, spring: { kind: "instant" } },
+      });
       rememberPath(`${key}/Canvas`, kit.lastPath());
     } finally {
       kit.close();
     }
+    // The fades: over the graph's sides where more of it lies beyond the window.
+    const fade = 28;
+    edge("FadeStart", true, kit.animate("~fs", panX > 0.5 ? 1 : 0, spring("ui")), true, fade, "well");
+    edge("FadeEnd", false, kit.animate("~fe", panX < maxX - 0.5 ? 1 : 0, spring("ui")), true, fade, "well");
+    edge("FadeTop", true, kit.animate("~ft", panY > 0.5 ? 1 : 0, spring("ui")), false, fade, "well");
+    edge("FadeBottom", false, kit.animate("~fb", panY < maxY - 0.5 ? 1 : 0, spring("ui")), false, fade, "well");
     // Zoom controls in the corner.
     kit.row("Zoom", { gap: 2, padding: xy(2, 2), radius: t.control, background: token("panelRaised"), part: "Graph.zoom", partClass: "hud" }, () => {
       const out = surface("Out", { part: "Graph.zoomButton", cls: "button", fill: null, disabled: zoom <= minZ + 1e-3, width: px(target(40)), height: px(target(40)), align: "center", cross: "center", semantics: { role: "button", name: desc.zoomOutLabel || "Zoom out" } }, () => mark("Minus", "minus", 16, role("ink")));
@@ -269,6 +327,23 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
     kit.close();
   }
   kit.semantics({ role: "group", name: desc.label ?? "", value: `${Math.round(zoom * 100)}%` });
+  // A node the focus moves to (keys, a pad) is brought into view.
+  if (focusedNode >= 0 && focusedNode !== Math.round(kit.memory("~focused", -1))) {
+    const p = at(nodes[focusedNode]!);
+    const m = s / 2 + t.lg;
+    if (p.x - m < panX) panX = p.x - m;
+    else if (p.x + m > panX + vw) panX = p.x + m - vw;
+    if (p.y - m < panY) panY = p.y - m;
+    else if (p.y + m + capH + zoomRoom > panY + vh) panY = p.y + m + capH + zoomRoom - vh;
+    free = true;
+    panX = clamp(panX, 0, maxX);
+    panY = clamp(panY, 0, maxY);
+  }
+  kit.remember("~free", free ? 1 : 0);
+  kit.remember("~focused", focusedNode);
+  kit.remember("~panX", panX);
+  kit.remember("~panY", panY);
+  kit.remember("~k", k);
   if (chosen !== null) kit.feedback("select", -1);
   return { chosen, zoom, changed: zoom !== (desc.zoom ?? 1) };
 }

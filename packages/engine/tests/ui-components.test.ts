@@ -700,6 +700,36 @@ test("nodeGraph: at 200 % text no node or caption overlaps another, and the fit 
   }
 });
 
+test("nodeGraph: a graph wider than its window opens centred on its root, fades where it is cut, and a drag pans it", () => {
+  // Wrong: a graph that opens at its top-left corner (the root half out of view), cut edges with
+  // no sign that more lies there, or a canvas that does not follow the finger.
+  const nodes = [
+    { id: "root", x: 200, y: 0, label: "Warrior" }, { id: "cleave", x: 60, y: 110, label: "Cleave" }, { id: "guard", x: 200, y: 110, label: "Guard" },
+    { id: "rage", x: 340, y: 110, label: "Rage" }, { id: "whirl", x: 60, y: 220, label: "Whirlwind" }, { id: "wall", x: 200, y: 220, label: "Iron wall" }, { id: "berserk", x: 340, y: 220, label: "Berserk" },
+  ];
+  const links = [{ from: "root", to: "cleave" }, { from: "root", to: "guard" }, { from: "root", to: "rage" }];
+  const engine = run(() => og.ui.nodeGraph("Skills", { nodes, links, height: { kind: "fixed", px: 340 } } as never), 358);
+  og.ui.previewViewport(engine.world, { width: 390, height: 844, dpr: 3, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" } as never);
+  og.ui.configure(engine.world, { textScale: 2 });
+  engine.advance(30);
+  const view = find(engine, (e) => e.path.endsWith("Skills/View"))!;
+  const root = () => find(engine, (e) => e.path.endsWith("Canvas/Node#0"))!;
+  const r0 = root();
+  expect(Math.abs(r0.x + r0.width / 2 - (view.x + view.width / 2))).toBeLessThan(2);
+  // Cut on both sides: a fade over each.
+  expect(byPath(engine, "Skills/FadeStart")).toBeDefined();
+  expect(byPath(engine, "Skills/FadeEnd")).toBeDefined();
+  // A drag to the left pans the graph with the finger.
+  const y = Math.round(view.y + view.height - 20);
+  engine.probe.commands(`0:touch_move:${Math.round(view.x + view.width / 2)},${y};0.05:touch_start;0.1:touch_move:${Math.round(view.x + view.width / 2 - 60)},${y};0.15:touch_move:${Math.round(view.x + view.width / 2 - 120)},${y};0.2:touch_end`);
+  engine.advance(40);
+  // The root follows the finger left, or past the window's edge with the fling.
+  const r1 = find(engine, (e) => e.path.endsWith("Canvas/Node#0"));
+  expect(r1 === undefined || r1.x < r0.x - 40).toBeTrue();
+  // More of it now lies before the window: the start fade shows.
+  expect(byPath(engine, "Skills/FadeStart")).toBeDefined();
+});
+
 test("chart: a figure described from its data; each category a target that answers its press", () => {
   // Wrong: an unnamed picture, categories only reachable by pointer.
   let clicked: number | null = null;
