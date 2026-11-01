@@ -351,6 +351,7 @@ impl Ui {
                 shape: crate::paint::ShapeKind::Path {
                     points: vec![pt(cx, cy + sy * len), pt(cx, cy), pt(cx + sx * len, cy)],
                     closed: false,
+                    filled: false,
                     curves: false,
                     width: w,
                     cap: crate::paint::Cap::Square,

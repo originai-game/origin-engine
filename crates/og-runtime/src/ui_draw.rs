@@ -399,6 +399,7 @@ impl Reader<'_> {
                     .map(|a| a.iter().map(|p| vec2(p, [0.0, 0.0])).collect())
                     .unwrap_or_default(),
                 closed: v["closed"].as_bool().unwrap_or(false),
+                filled: v["filled"].as_bool().unwrap_or(false),
                 curves: v["curves"].as_bool().unwrap_or(false),
                 width: num(v, "width", 2.0).max(0.0),
                 cap: cap(&v["cap"]),

@@ -23858,6 +23858,12 @@ export interface DrawShape {
    */
   readonly closed?: boolean;
   /**
+   * A path is an area: its fills cover the inside of the closed outline through its points (even-odd) instead of drawing its line, and its strokes outline it, as any other shape's (an area chart, a radar's polygon, a pie's wedge).
+   *
+   * @default false
+   */
+  readonly filled?: boolean;
+  /**
    * A path's line width.
    *
    * @default 2

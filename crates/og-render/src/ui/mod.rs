@@ -120,6 +120,9 @@ pub enum UiGeometry {
     Polyline {
         points: Vec<Vec2>,
         closed: bool,
+        /// Closed and filled: the area inside the points (even-odd), which
+        /// fills cover and strokes outline (an area chart, a radar's polygon).
+        filled: bool,
         width: f32,
         cap: UiCap,
         join: UiJoin,

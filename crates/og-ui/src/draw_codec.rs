@@ -131,6 +131,7 @@ fn geometry(w: &mut W, g: &UiGeometry) {
         UiGeometry::Polyline {
             points,
             closed,
+            filled,
             width,
             cap: c,
             join,
@@ -140,7 +141,7 @@ fn geometry(w: &mut W, g: &UiGeometry) {
             for p in points {
                 v2(w, *p);
             }
-            w.u8(u8::from(*closed));
+            w.u8(if *filled { 2 } else { u8::from(*closed) });
             w.f32(*width);
             w.u8(cap(*c));
             match join {
@@ -186,9 +187,11 @@ fn rgeometry(r: &mut R) -> Option<UiGeometry> {
             for _ in 0..n {
                 points.push(rv2(r)?);
             }
+            let closed = r.u8()?;
             UiGeometry::Polyline {
                 points,
-                closed: r.u8()? != 0,
+                closed: closed != 0,
+                filled: closed == 2,
                 width: r.f32()?,
                 cap: rcap(r)?,
                 join: match r.u8()? {
@@ -717,5 +720,35 @@ impl R<'_> {
             }
             _ => return None,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_filled_path_keeps_its_area_through_the_codec() {
+        for (closed, filled) in [(false, false), (true, false), (true, true)] {
+            let g = UiGeometry::Polyline {
+                points: vec![
+                    Vec2::new(0.0, 0.0),
+                    Vec2::new(8.0, 0.0),
+                    Vec2::new(4.0, 6.0),
+                ],
+                closed,
+                filled,
+                width: 2.0,
+                cap: UiCap::Round,
+                join: UiJoin::Round,
+            };
+            let mut bytes = Vec::new();
+            geometry(&mut W(&mut bytes), &g);
+            let back = rgeometry(&mut R {
+                bytes: &bytes,
+                at: 0,
+            });
+            assert_eq!(back, Some(g));
+        }
     }
 }

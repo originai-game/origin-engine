@@ -262,6 +262,9 @@ pub enum ShapeKind {
     Path {
         points: Vec<[f32; 2]>,
         closed: bool,
+        /// Fills cover the inside of the closed path (even-odd) instead of
+        /// drawing its line, and strokes outline it.
+        filled: bool,
         curves: bool,
         width: f32,
         cap: Cap,
@@ -313,6 +316,7 @@ impl ShapeKind {
             ShapeKind::Path {
                 points,
                 closed,
+                filled,
                 curves,
                 width,
                 cap,
@@ -336,7 +340,8 @@ impl ShapeKind {
                 }
                 og_render::UiGeometry::Polyline {
                     points: line,
-                    closed: *closed,
+                    closed: *closed || *filled,
+                    filled: *filled,
                     width: *width,
                     cap: *cap,
                     join: *join,

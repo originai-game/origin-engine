@@ -215,6 +215,7 @@ pub fn shapes() -> RenderScene {
                 UiGeometry::Polyline {
                     points: zigzag.clone(),
                     closed: false,
+                    filled: false,
                     width: 12.0,
                     cap,
                     join,
@@ -236,6 +237,7 @@ pub fn shapes() -> RenderScene {
             UiGeometry::Polyline {
                 points: bezier,
                 closed: false,
+                filled: false,
                 width: 6.0,
                 cap: UiCap::Round,
                 join: UiJoin::Round,
@@ -297,6 +299,7 @@ pub fn shapes() -> RenderScene {
                     Vec2::new(-60.0, 45.0),
                 ],
                 closed: true,
+                filled: false,
                 width: 10.0,
                 cap: UiCap::Butt,
                 join: UiJoin::Bevel,
