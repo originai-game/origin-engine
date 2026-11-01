@@ -158,6 +158,7 @@ pub(crate) struct State {
     /// Every mesh registered with physics, replayed into a reload's physics.
     pub physics_meshes: IdMap<u64, og_physics::MeshDesc>,
     /// Every terrain's height field registered with physics, likewise.
+    #[cfg_attr(all(feature = "publish", feature = "profile2d"), allow(dead_code))]
     pub physics_heightfields: IdMap<u64, og_physics::HeightfieldDesc>,
     /// UI warnings already logged, so a repeated one is logged once.
     pub ui_warned: BTreeSet<String>,
