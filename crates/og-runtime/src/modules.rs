@@ -25,7 +25,7 @@ pub use ui_config::{og_load_style, og_ui_configure};
 mod ui_desc;
 pub use ui_desc::{
     THEME_COLORS, TYPE_STEPS, og_ui_frame_direction, og_ui_frame_theme, og_ui_frame_viewport,
-    og_ui_has_icon, og_ui_seconds, og_ui_theme, og_ui_viewport,
+    og_ui_has_icon, og_ui_last_path, og_ui_seconds, og_ui_theme, og_ui_viewport,
 };
 use ui_desc::{
     align, cross, element, f, frame_part, idx, insets, opt, opt_f, paint, rect_json, response,

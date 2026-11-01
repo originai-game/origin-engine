@@ -256,6 +256,10 @@ pub fn og_ui_frame_direction() -> String {
     if rtl { "rtl" } else { "ltr" }.to_owned()
 }
 
+pub fn og_ui_last_path() -> String {
+    with_ui("og.ui.lastPath", |ui| ui.last_path()).unwrap_or_default()
+}
+
 pub fn og_ui_has_icon(name: String) -> bool {
     with_ui("og.ui.hasIcon", |ui| ui.has_icon(&name)).unwrap_or(false)
 }

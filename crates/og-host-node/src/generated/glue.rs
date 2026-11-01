@@ -2013,6 +2013,12 @@ pub fn og_ui_seconds(env: Env) -> f64 {
     <Host as UiApi>::og_ui_seconds(&Host)
 }
 
+#[napi(js_name = "og_ui_last_path")]
+pub fn og_ui_last_path(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_last_path(&Host)
+}
+
 #[napi(js_name = "og_ui_frame_direction")]
 pub fn og_ui_frame_direction(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);

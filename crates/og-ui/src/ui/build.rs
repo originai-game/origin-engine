@@ -90,6 +90,16 @@ impl Ui {
         index
     }
 
+    /// The full path of the element built just before (a container just
+    /// closed, or a widget), as `bounds`, `gesture` and the probe name it;
+    /// empty when there is none.
+    pub fn last_path(&self) -> String {
+        if self.last_closed >= self.nodes.len() || self.last_closed == 0 {
+            return String::new();
+        }
+        self.path_of(self.last_closed)
+    }
+
     pub(crate) fn path_of(&self, mut i: usize) -> String {
         let mut parts = Vec::new();
         while i != NONE && i != 0 {

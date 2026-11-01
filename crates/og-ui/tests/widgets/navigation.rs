@@ -702,3 +702,24 @@ fn a_focusable_container_takes_keys_and_pads_as_a_button() {
     rig.idle(1, b);
     assert_eq!(rig.state.clicks, [2, 1], "the pointer reaches both");
 }
+
+/// `last_path` names the element just built by its full path (what
+/// `bounds` and `gesture` take), inside nested containers and after a
+/// container closes; empty before anything is built.
+#[test]
+fn last_path_names_the_element_just_built() {
+    let mut ui = Ui::new(UiDesc::default());
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    assert_eq!(ui.last_path(), "");
+    let mut seen = Vec::new();
+    ui.column("Shop", Element::column(), |ui| {
+        ui.row("Row", Element::row(), |ui| {
+            ui.button("Buy", "Buy", ButtonDesc::default());
+            seen.push(ui.last_path());
+        });
+        seen.push(ui.last_path());
+    });
+    seen.push(ui.last_path());
+    ui.end();
+    assert_eq!(seen, ["Shop/Row/Buy", "Shop/Row", "Shop"]);
+}
