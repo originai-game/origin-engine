@@ -444,11 +444,77 @@ playheads only while the group is resident.
 (`down("KeyW")`, `pressed`, `axis`, `buttonDown`). Two more resources carry
 what one pointer cannot: `og.Pointers` (pointer 0 is og.Input's, 1 to 4
 further touches: `down(id)`, `pressed(id)`, `position(id)`, `start(id)`)
-and `og.Gamepad` (up to four pads: `connected(pad)`, `down("a", pad)`,
-`pressed`, `released`, `axis("leftX", pad)`; sticks are y down). All three
+and `og.Gamepad` (up to eight pads: `connected(pad)`, `down("a", pad)`,
+`pressed`, `released`, `axis("leftX", pad)`; sticks are raw and y down). All three
 are world state, so playtests and replays reproduce them; script them with
 `touch:<id>:<down|move|up>:<x,y>` and `gamepad:<a+b+...|->[@pad][:lx,ly][:lt,rt]`
 (og-build §1). The fields and methods are `og api show input`.
+
+### Actions: what the player does, not which key
+
+Gameplay reads actions, not keys, so the player can rebind them and a pad
+plays the game as the keyboard does. Define them once in `start`, read
+them in any system (the engine samples them from og.Input, og.Pointers and
+og.Gamepad at the start of each tick, before the game's systems, so they
+replay and a playtest's `key_down:KeyD` drives them):
+
+```ts
+must(og.input.defineAction(world, {
+  name: "move", kind: "axis2", label: "Move",
+  bindings: [
+    { up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD" }, // a composite
+    { control: "pad.leftXY" },                                  // a stick, y up
+    { control: "pad.dpad" },
+  ],
+}));
+must(og.input.defineAction(world, { name: "jump", bindings: [{ control: "Space" }, { control: "pad.a" }] }));
+// in a system:
+const m = og.input.actionVector(world, "move"); // x right, y up, at most 1 long
+if (og.input.actionPressed(world, "jump")) { /* ... */ }
+```
+
+- Controls are strings: key codes, `mouse.left`, `mouse.xy` (movement),
+  `wheel.y`, `pad.a` … `pad.home`, `pad.leftX`, `pad.leftXY`,
+  `pad.rightTrigger`, `pad.dpad`, `touch`, `touch.xy` (a touch stick, with
+  a `zone` and `radius`); `pad.leftX+` is half an axis used as a button.
+  Every y is up in actions, whatever og.Gamepad's raw y says. A binding's
+  `scale` is its sensitivity (negative inverts), `invertY` turns a look
+  over, `deadzone` overrides the pad's (`og.input.setDeadzones`, per pad).
+  Several bindings: the strongest one this tick wins.
+- `kind`: `button` (down, pressed, released, `held` after `holdMs`,
+  `toggle`), `axis` (-1 to 1) or `axis2`. `og.input.action(world, name)`
+  is the whole `ActionState`.
+- Contexts: an action's `context` (`gameplay` by default, `menu`,
+  `vehicle`, your own); `og.input.setContexts(world, ["vehicle",
+  "gameplay"])` says which are live, first wins when two bind one control.
+- Rebinding: `og.input.rebind(world, { action, slot, binding, policy })`
+  reports conflicts with the other actions of a live context (`refuse` by
+  default; `swap`, `replace`, `allow`); `og.input.resetBindings` brings
+  the defaults back; `locked` actions cannot be rebound. Keep the player's
+  bindings with `og.input.saveBindings(world)` (versioned text) in the
+  game's settings (`og.platform.saveSettings`) and `og.input.loadBindings`
+  at start; a game load
+  keeps the player's bindings rather than the save's.
+- A controls screen: `og.input.startCapture(world, { action, slot })`
+  waits for the next key, button, stick or click (held sticks are ignored
+  until let go, and nothing fires an action while it waits);
+  `og.input.capture(world)` says when it is `done`, the `control` and its
+  `conflicts`; `og.input.applyCapture(world, "swap")` applies it,
+  `cancelCapture` drops it, as Escape or a pad's Back do (`CaptureDesc.cancel`).
+- Prompts: `og.input.glyph(world, "jump")` is the binding's glyph on the
+  device used last (`og.input.device`: `keyboardMouse`, `xbox`,
+  `playstation`, `switch`, `gamepad`, `touch`): its `icon` (`xbox.a`,
+  `ps.cross`, `key.space`) for a style's icon set and its `text`. An
+  og.ui action (`og.ui.defineAction`) with `action: "jump"` follows the
+  gameplay action, so its prompt moves with a rebinding.
+- Pads: the web shell maps pads the browser leaves unmapped (Firefox,
+  Linux, third-party pads) through its table and tells each pad's family
+  (`og.input.padDevice(world, pad)`). `og.input.rumble(world, { pad,
+  low, high, ms })` shakes a pad (-1 every pad): an output, never world state.
+- Keys held when the window loses focus or the page is hidden are let go,
+  so nothing stays stuck down.
+- Lockstep: actions are this peer's own, as og.Input is; hand them on with
+  `og.net.submit`.
 
 A press happens somewhere inside a tick, and the tick reads it at its
 start: `og.KeyDown`, `og.KeyUp`, `og.PointerDown` and `og.PointerUp` carry

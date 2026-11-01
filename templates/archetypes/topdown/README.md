@@ -42,19 +42,23 @@ screen-space text).
 
 ## Rules
 
-- **Moving.** WASD or the arrows move the hero at `Tuning.speed` on the
-  tick the keys are read; a diagonal is normalised. The hero faces the
+- **Moving.** The `move` action (WASD, the arrows, a pad's left stick or
+  d-pad; `defineActions` in `src/systems.ts`) moves the hero at
+  `Tuning.speed` on the tick it is read; a diagonal is at most 1 long, a
+  stick part way walks part speed. The player may rebind every action
+  (`og.input.rebind`), and the hint at the bottom names each one's binding
+  on the device used last (`og.input.glyph`). The hero faces the
   stronger axis (a diagonal keeps the old facing when it is one of its keys).
   The hero's body is `og.CharacterController` in its top-down mode
   (`gravityScale` 0): a kinematic box the engine slides along the walls,
   moved by `move` each tick (walk, dash and knockback summed). The slime
   and the hero pass through each other.
-- **The sword.** Space (or J) swings in the facing direction. The hero is
+- **The sword.** `attack`: Space (or J, a pad's A) swings in the facing direction. The hero is
   rooted for the swing's 15 ticks. Damage lands on the attack clip's strike
   frame (its `"hit"` event), within `Tuning.reach` of a point one reach
   ahead of the chest. Hits deal 12, 12, then a 26 crit: the slime (50 hp)
   dies on the third.
-- **The dash.** Shift (or K) dashes `Tuning.dashTicks` ticks at
+- **The dash.** `dash`: Shift (or K, a pad's B) dashes `Tuning.dashTicks` ticks at
   `Tuning.dashSpeed` along the keys (or the facing), leaving afterimages;
   then `Tuning.dashCooldown` ticks before the next.
 - **The slime.** Its behaviour tree, `assets/ai/slime.ogt`, is re-checked

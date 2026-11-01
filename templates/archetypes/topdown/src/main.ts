@@ -17,7 +17,7 @@ import { og, BODY_DYNAMIC, LOCK_ROTATION_X, LOCK_ROTATION_Y, LOCK_ROTATION_Z, LO
 import type { Entity, FlipbookInfo, World } from "@origingame/engine";
 import { checkHeroClips, clip, heroClip, HeroClip, loadSheets } from "./art.ts";
 import { Facing, Game, Hero, Pickup, PickupKind, Report, Slime, Sfx, Sound, Tuning } from "./components.ts";
-import { biteHero, Control, Door, Hud, openDoor, Pickups, Slimes, Voices } from "./systems.ts";
+import { biteHero, Control, defineActions, Door, Hud, openDoor, Pickups, Slimes, Voices } from "./systems.ts";
 
 /** The visible height in tiles: a whole room (12 tall), as in the old top-down adventures. */
 const VIEW_HEIGHT = 12;
@@ -67,6 +67,7 @@ function body(world: World, e: Entity, w: number, h: number, layer: number): voi
 }
 
 function start(world: World): void {
+  defineActions(world);
   const sheets = loadSheets(world);
   checkHeroClips(sheets.hero);
   const font = must(og.load.font(world, "fonts/ui.ttf"));

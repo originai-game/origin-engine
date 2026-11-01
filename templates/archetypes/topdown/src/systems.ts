@@ -51,21 +51,53 @@ function float(world: World, font: never, text: string, at: Vector3, color: { r:
   must(og.render.floatingText(world, { text, position: at, font, size: 0.42, color, crit, rise: 1.1, lifetime: 0.75 }));
 }
 
-/** The hero: input moves it on the tick it is read; Space swings, Shift dashes; hurt knocks it back and flickers it. */
+/** The hero's actions (defineActions, at start): what the player rebinds, read instead of keys. */
+export const MOVE = "move";
+export const ATTACK = "attack";
+export const DASH = "dash";
+
+/**
+ * The hero's actions with their default bindings: keys and a pad drive each
+ * one, the player may rebind them (og.input.rebind), and a prompt reads
+ * their glyph on the device used last (og.input.glyph).
+ */
+export function defineActions(world: World): void {
+  must(og.input.defineAction(world, {
+    name: MOVE,
+    kind: "axis2",
+    label: "Move",
+    bindings: [
+      { up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD" },
+      { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight" },
+      { control: "pad.leftXY" },
+      { control: "pad.dpad" },
+    ],
+  }));
+  must(og.input.defineAction(world, {
+    name: ATTACK,
+    label: "Attack",
+    bindings: [{ control: "Space" }, { control: "KeyJ" }, { control: "pad.a" }],
+  }));
+  must(og.input.defineAction(world, {
+    name: DASH,
+    label: "Dash",
+    bindings: [{ control: "ShiftLeft" }, { control: "ShiftRight" }, { control: "KeyK" }, { control: "pad.b" }],
+  }));
+}
+
+/** The hero: the move action walks it on the tick it is read; attack swings, dash dashes; hurt knocks it back and flickers it. */
 export const Control = defineSystem(
   "Control",
   {
-    reads: [og.Input, Tuning, og.FlipbookEvent],
+    reads: [Tuning, og.FlipbookEvent],
     writes: [Game, Hero, og.Transform, og.CharacterController, og.Flipbook, og.Sprite, og.Afterimage],
   },
   (q, time, world) => {
     const game = world.resource(Game);
     const tune = world.resource(Tuning);
-    const input = world.resource(og.Input);
-    if (!game.ok || !tune.ok || !input.ok) return;
+    if (!game.ok || !tune.ok) return;
     const g = game.value;
     const t = tune.value;
-    const inp = input.value;
     g.swing = false;
     for (const a of q.archetypes()) {
       const hero = a.column(Hero);
@@ -123,22 +155,19 @@ export const Control = defineSystem(
           continue;
         }
 
-        // Which way the keys point: WASD and the arrows, summed and clamped.
-        const k1 = inp.axis2("KeyA", "KeyD", "KeyS", "KeyW");
-        const k2 = inp.axis2("ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp");
-        let mx = Math.max(-1, Math.min(1, k1.x + k2.x));
-        let my = Math.max(-1, Math.min(1, k1.y + k2.y));
-        const len = Math.hypot(mx, my);
-        if (len > 0) {
-          mx /= len;
-          my /= len;
-        }
+        // Which way the player points: the `move` action (WASD, the arrows,
+        // the left stick or the d-pad; the strongest binding wins, a diagonal
+        // is at most 1 long, the stick's dead zone is the action map's).
+        const m = og.input.actionVector(world, MOVE);
+        const len = Math.hypot(m.x, m.y);
+        const mx = len > 1 ? m.x / len : m.x;
+        const my = len > 1 ? m.y / len : m.y;
         const moving = len > 0;
         hero.moving[i] = moving ? 1 : 0;
 
         if (hero.dashCooldown[i]! > 0) hero.dashCooldown[i] = hero.dashCooldown[i]! - 1;
-        const attackPressed = inp.pressed("Space") || inp.pressed("KeyJ");
-        const dashPressed = inp.pressed("ShiftLeft") || inp.pressed("ShiftRight") || inp.pressed("KeyK");
+        const attackPressed = og.input.actionPressed(world, ATTACK);
+        const dashPressed = og.input.actionPressed(world, DASH);
 
         // Facing follows the stronger axis; a diagonal keeps the old facing when it is one of its two keys.
         if (moving && hero.attack[i] === 0) g.facing = faceOf(mx, my, g.facing);
@@ -498,6 +527,11 @@ export const Hud = defineSystem("Hud", { reads: [Game], writes: [Report], after:
   line(`COINS ${g.coins}/${g.coinsTotal}`, pad, pad + size * 2.3, GOLD);
   if (g.hasKey) line("KEY", pad, pad + size * 3.6, GOLD);
   line(`ROOM ${g.room}`, w - pad, pad + size, WHITE, "end");
-  if (world.tick < 300 && g.room === 1) line("WASD / arrows move  ·  Space attack  ·  Shift dash", w / 2, h - pad, MINT, "center", Math.round(size * 0.75));
+  if (world.tick < 300 && g.room === 1) {
+    // The prompt names each action's binding on the device used last, so a
+    // pad or a rebinding changes it: "W A S D move  ·  Space attack  ·  Shift dash".
+    const named = (action: string, verb: string) => `${og.input.glyph(world, action)?.text ?? "?"} ${verb}`;
+    line([named(MOVE, "move"), named(ATTACK, "attack"), named(DASH, "dash")].join("  ·  "), w / 2, h - pad, MINT, "center", Math.round(size * 0.75));
+  }
   if (g.hp === 0) line("You fell. Back to the start...", w / 2, h / 2, RED, "center", Math.round(size * 1.2));
 });
