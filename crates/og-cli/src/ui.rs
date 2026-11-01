@@ -17,7 +17,7 @@
 
 use crate::project::{self, Project};
 use std::path::Path;
-use std::process::{Command, ExitCode};
+use std::process::{Command, ExitCode, ExitStatus};
 
 const USAGE: &str = "usage: og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,200] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
 
@@ -113,47 +113,56 @@ pub fn run(args: &[&str]) -> ExitCode {
             }
         },
     );
+    match spawn(mode, &p, &package, &bundle, &out, &forward) {
+        Ok(s) if s.success() => ExitCode::SUCCESS,
+        // 3: findings (check), as og style check's off-contract exit.
+        Ok(s) if s.code() == Some(3) => ExitCode::from(3),
+        Ok(_) => ExitCode::FAILURE,
+        Err(e) => {
+            eprintln!("og ui {mode}: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Runs ui-run.ts's `check` or `preview` into `out` on the cooked project's
+/// native bundle; without a `--screen` in `forward`, over every screen the
+/// project declares (og polish runs the check this way, over the same set).
+pub fn spawn(
+    mode: &str,
+    p: &Project,
+    package: &Path,
+    bundle: &Path,
+    out: &Path,
+    forward: &[&str],
+) -> Result<ExitStatus, String> {
     let given = forward.contains(&"--screen");
     let declared = if given {
         Vec::new()
     } else {
-        match declared_screens(&p.root) {
-            Ok(d) => d,
-            Err(e) => {
-                eprintln!("og ui {mode}: {e}");
-                return ExitCode::FAILURE;
-            }
-        }
+        declared_screens(&p.root)?
     };
     let mut playtests = Vec::new();
     if !given && declared.is_empty() {
         crate::test::files(&p.root.join("tests"), ".og.ts", &mut playtests);
     }
-    let mut cmd: Command = project::bun(&package, "src/node/ui-run.ts");
+    let mut cmd: Command = project::bun(package, "src/node/ui-run.ts");
     cmd.arg(mode)
         .arg("--entry")
-        .arg(&bundle)
+        .arg(bundle)
         .arg("--root")
         .arg(&p.root)
         .arg("--out")
-        .arg(&out)
-        .args(&forward);
+        .arg(out)
+        .args(forward);
     for (name, commands) in &declared {
         cmd.arg("--screen").arg(format!("{name}={commands}"));
     }
     for t in &playtests {
         cmd.arg("--playtest").arg(t);
     }
-    match cmd.status() {
-        Ok(s) if s.success() => ExitCode::SUCCESS,
-        // 3: findings (check), as og style check's off-contract exit.
-        Ok(s) if s.code() == Some(3) => ExitCode::from(3),
-        Ok(_) => ExitCode::FAILURE,
-        Err(e) => {
-            eprintln!("og ui {mode}: {} ({e})", project::NO_BUN);
-            ExitCode::FAILURE
-        }
-    }
+    cmd.status()
+        .map_err(|e| format!("{} ({e})", project::NO_BUN))
 }
 
 /// The screens project.ogt declares, in order: `ui { screen "<name>"
@@ -166,19 +175,11 @@ fn declared_screens(root: &Path) -> Result<Vec<(String, String)>, String> {
     let body = og_core::ogt::parse(&text)
         .map_err(|e| format!("{}: {}", path.display(), e.reason()))?
         .body;
-    let mut out: Vec<(String, String)> = Vec::new();
-    if let Some(ui) = body.get("ui").and_then(|e| e.block.as_ref()) {
-        for e in ui.entries.iter().filter(|e| e.key == "screen") {
-            let name = e.string(0).map_err(|_| {
-                format!(
-                    "project.ogt:{}: ui's screen takes a name and its commands: screen \"hud\" \"0:show:play\"",
-                    e.line
-                )
-            })?;
-            let commands = e.values.get(1).and_then(|v| v.as_str()).unwrap_or("");
-            out.push((name.to_string(), commands.to_string()));
-        }
-    }
+    let mut out: Vec<(String, String)> = og_cook::cook::ui_screens::screens(&body)
+        .map_err(|e| format!("project.ogt:{e}"))?
+        .into_iter()
+        .map(|s| (s.name, s.commands))
+        .collect();
     if let Some(screens) = body.get("screens").and_then(|e| e.block.as_ref()) {
         for e in &screens.entries {
             if let Ok(commands) = e.string(0)

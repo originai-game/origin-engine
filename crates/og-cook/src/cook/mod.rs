@@ -39,6 +39,7 @@ pub mod texture_array;
 mod texture_cache;
 pub mod tilemap;
 mod timeline;
+pub mod ui_screens;
 pub mod vector;
 pub mod video;
 pub mod vox;
@@ -1493,6 +1494,14 @@ pub fn cook_project_with_texture_cache(
         .transpose()
         .map_err(|e| CookError(format!("project.ogt:{e}")))?
         .unwrap_or_default();
+    // The screens `og ui check` visits (project.ogt's `ui { screen ... }`):
+    // a malformed block fails the cook with its line and fix.
+    if let Some(d) = std::fs::read_to_string(root.join("project.ogt"))
+        .ok()
+        .and_then(|t| Document::parse(&t).ok())
+    {
+        ui_screens::screens(&d.body).map_err(|e| CookError(format!("project.ogt:{e}")))?;
+    }
     let mut mesh_off: BTreeMap<String, String> = BTreeMap::new();
     for s in sources
         .iter()

@@ -542,7 +542,23 @@ declares: project.ogt's `ui { screen "<name>" "<commands>" }` lines (and
 its `screens { title ... play ... results ... }` block), else every value
 the game's show command lists in its usage (`commandHelp: { show: { usage:
 "<title|play|shop>" } }`), else each screen the playtests take a
-screenshot of. Declare them, so a bare `og ui check .` sees everything.
+screenshot of. Declare them, so a bare `og ui check .` sees everything:
+
+```text
+ui {
+  screen "title" "0:show:title"
+  screen "hud" "0:show:play"
+  screen "shop" "0:show:play;30:key:KeyS"
+}
+```
+
+Each line is `screen`, a name and one commands string (join steps with
+`;`). The cook refuses a malformed block with its line and fix: a line
+that is not `screen`, a screen with no name or no commands, more than one
+commands string, a name declared twice. A bare `og ui check .` is the full
+review (every screen × style × breakpoint × locale) and `og polish` runs
+the same set; a playtest that runs in the gate names its few screens with
+`--screen`.
 Each cell is a fresh engine laid out through og.ui.previewViewport, so a
 game needs no viewport command of its own. Outputs land in
 `og-out/ui-check/` (check.json, check.txt; exit 3 on an error) and
