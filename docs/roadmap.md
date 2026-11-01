@@ -130,7 +130,7 @@ After R, as the plan's final stage:
 | Stream | Thread | Branch | State |
 |---|---|---|---|
 | G1-2 | [T-d77ec7d3](https://ampcode.com/threads/T-d77ec7d3-271f-4b67-9d15-d46a5959df5a) | `g1-input-actions` | reviewed at 87001bc6, merging (simulation changed: golden replays re-recorded) |
-| G1-6 | [T-01a197e9](https://ampcode.com/threads/T-01a197e9-a4d5-742d-9c41-fa7086e21b35) | `g1-sourcemaps-telemetry` | merged 2026-11-01 (main 3aca1209); Chrome checked on macrunner; Safari blocked (macrunner's GUI session locked); studio-win Chrome/Edge pending |
+| G1-6 | [T-01a197e9](https://ampcode.com/threads/T-01a197e9-a4d5-742d-9c41-fa7086e21b35) | `g1-sourcemaps-telemetry` | merged 2026-11-01 (main 3aca1209); Chrome checked on macrunner; Chrome and Edge passed on studio-win (RTX 5060, gpu names nvidia/blackwell); Safari blocked (macrunner's GUI session locked) |
 | U6b | [T-90964ef0](https://ampcode.com/threads/T-90964ef0-8bb4-40fd-947e-90c23eeb1649) | `u6b-containers-data` | started 2026-11-01 |
 | U6c | [T-52f25cda](https://ampcode.com/threads/T-52f25cda-5a9c-42e6-a2b3-dbe62c284b35) | `u6c-feedback-hud-world` | started 2026-11-01 |
 | split-runtime-3 | [T-76cca373](https://ampcode.com/threads/T-76cca373-5286-44fd-849d-775944160cf5) | `split-runtime-3` | merged 2026-11-01 (main 3aca1209) |
@@ -140,3 +140,4 @@ After R, as the plan's final stage:
 | G1-3 | [T-01a1980c](https://ampcode.com/threads/T-01a1980c-a132-73a9-96bf-c2ebfbde9c2e) | `g1-gltf-formats` | reviewed at f65cdcab, merging (five new reference frames) |
 | G1-4 | [T-532b590f](https://ampcode.com/threads/T-532b590f-cff8-4ccc-89da-b4c97a97180a) | `g1-frame-quality` | started 2026-11-01 |
 | U6a, G1-7, U6d | — | — | as slots free (U6a next, on G1-2's API) |
+| web-tests | — | — | owed: tests/web/player.ts and export.ts wait on fixed sleeps, so a fresh headless profile's warm-up on D3D12 fails them; "behind the gate the game took its first tick" reads 2 for 1 on both machines (older than G1-6) |
