@@ -233,6 +233,13 @@ pub fn set_physics_clock(clock: fn() -> f64) {
     og_physics::set_clock(clock);
 }
 
+/// An engine's UI between ticks: its last frame, theme and viewport, which
+/// the native host's `og ui check` reads (og-host-node's `og_node_ui_frame`,
+/// docs/ui.md §16.5). `None` for an engine without one.
+pub fn shared_ui(engine: u32) -> Option<og_ui::SharedUi> {
+    engine::engine(engine).ok()?.state.borrow().ui.clone()
+}
+
 // The lifecycle members under their binding names, so a host's
 // `Lifecycle` impl reads like its module impls.
 

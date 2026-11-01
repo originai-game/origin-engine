@@ -42,6 +42,8 @@ mod render;
 #[cfg(not(feature = "publish"))]
 mod replay;
 mod room;
+#[cfg(not(feature = "publish"))]
+mod ui_check;
 
 use napi::bindgen_prelude::{FromNapiValue, ToNapiValue, TypeName, ValidateNapiValue, ValueType};
 use napi::{Env, sys};
