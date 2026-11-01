@@ -969,6 +969,83 @@ fn a_press_inside_a_focusable_container_focuses_it() {
     );
 }
 
+/// A UI state saved at version 12 (before each hit carried its focusable
+/// owner) upgrades to this version with the owners unset, restores, and the
+/// next frame fills them: a press on the item focuses its grid again.
+#[test]
+fn a_version_12_state_upgrades_and_restores() {
+    let build = &mut |ui: &mut Ui, _: &mut ()| {
+        ui.open(
+            "Grid",
+            Element {
+                interactive: true,
+                focusable: true,
+                padding: Insets::all(8.0),
+                ..Element::row()
+            },
+        );
+        for id in ["A", "B"] {
+            ui.open(
+                id,
+                Element {
+                    interactive: true,
+                    width: Size::Fixed(40.0),
+                    height: Size::Fixed(40.0),
+                    ..Element::default()
+                },
+            );
+            ui.close();
+        }
+        ui.close();
+    };
+    let mut rig = Rig::new(());
+    rig.idle(2, build);
+    let v13 = rig.ui.save_state();
+    // Version 13's layout: each hit's owner (8 bytes) after its key, rect,
+    // full rect, flags, scope and scroller; version 12 had none.
+    let u32_at =
+        |b: &[u8], at: usize| u32::from_le_bytes(b[at..at + 4].try_into().unwrap()) as usize;
+    assert_eq!(u32_at(&v13, 0), 13);
+    let scrolls = u32_at(&v13, 44);
+    let hits_at = 48 + scrolls * 12;
+    let hits = u32_at(&v13, hits_at);
+    assert!(hits >= 3, "the grid and its two items are hit");
+    let (mut v12, mut zeroed) = (v13[..hits_at + 4].to_vec(), v13[..hits_at + 4].to_vec());
+    v12[..4].copy_from_slice(&12u32.to_le_bytes());
+    let mut at = hits_at + 4;
+    let mut owners = 0;
+    for _ in 0..hits {
+        let head = 8 + 16 + 16 + 2 + 8 + 8;
+        v12.extend_from_slice(&v13[at..at + head]);
+        zeroed.extend_from_slice(&v13[at..at + head]);
+        owners += usize::from(v13[at + head..at + head + 8] != [0; 8]);
+        zeroed.extend_from_slice(&[0; 8]);
+        let tail = 24 + 16 + 16;
+        v12.extend_from_slice(&v13[at + head + 8..at + head + 8 + tail]);
+        zeroed.extend_from_slice(&v13[at + head + 8..at + head + 8 + tail]);
+        at += head + 8 + tail;
+    }
+    v12.extend_from_slice(&v13[at..]);
+    zeroed.extend_from_slice(&v13[at..]);
+    assert_eq!(owners, 2, "both items had the grid as their owner");
+
+    assert!(
+        rig.ui.restore_state(&v12).is_err(),
+        "a v12 block is not read as this version"
+    );
+    let upgraded = Ui::upgrade_state(&v12).expect("version 12 upgrades");
+    assert_eq!(upgraded, zeroed, "the same state, its owners unset");
+    let mut other = Rig::new(());
+    other.idle(1, build);
+    other
+        .ui
+        .restore_state(&upgraded)
+        .expect("the upgraded state restores");
+    other.idle(1, build);
+    other.click("Grid/B", build);
+    assert_eq!(other.ui.focus_path(0), "Grid");
+}
+
 /// `last_path` names the element just built by its full path (what
 /// `bounds` and `gesture` take), inside nested containers and after a
 /// container closes; empty before anything is built.

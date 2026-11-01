@@ -217,8 +217,9 @@ impl Ui {
     /// (engine 0.7.7) with what it did not have at its defaults (no hit
     /// transforms, the feedback stream unseeded, no motion channels, an
     /// empty layer stack) and its six sound voices moved to their events,
-    /// and the state of version 11 with its one focus return as the stack's
-    /// entry.
+    /// the state of version 11 with its one focus return as the stack's
+    /// entry, and the state of version 12 with each hit's focusable owner
+    /// unset (the next frame's hit test fills it).
     /// Refused for another version, or bytes that do not read as theirs.
     pub fn upgrade_state(bytes: &[u8]) -> og_core::Result<Vec<u8>> {
         let bad = |why: String| {
@@ -241,7 +242,7 @@ impl Ui {
                 };
                 Ok(ui.save_state())
             }
-            11 => {
+            11 | 12 => {
                 let s = r.state(version).ok_or_else(|| {
                     bad(format!("truncated or malformed version {version} state"))
                 })?;
@@ -266,7 +267,7 @@ impl Ui {
                 Ok(ui.save_state())
             }
             v => Err(bad(format!(
-                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11"
+                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9, 11 and 12"
             ))),
         }
     }
@@ -315,7 +316,7 @@ impl Reader<'_> {
         ))
     }
 
-    /// The state as `version` (this one's, 11 or 9) wrote it.
+    /// The state as `version` (this one's, 12, 11 or 9) wrote it.
     fn state(&mut self, version: u32) -> Option<State> {
         let v9 = version == 9;
         let mut s = State {
