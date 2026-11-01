@@ -145,7 +145,7 @@ for (const profile of ["3d", "2d"] as const) {
 }
 
 test.skipIf(STALE_WASM)("the probe's memory answers the same shape on both hosts, each with what its host can read", () => {
-  type Memory = { host: string; linear: number | null; resident: number | null; heap: { live: number; peak: number; allocations: number } | null; world: { entities: number }; stream: { budget: number; used: number; peak: number } | null; audio: number | null; gpu: unknown };
+  type Memory = { host: string; linear: number | null; resident: number | null; heap: { live: number; peak: number; allocations: number } | null; world: { entities: number }; stream: { budget: number; used: number; peak: number } | null; audio: number | null; gpu: unknown; deviceLosses: number | null };
   const run = (host: string) => {
     const r = Bun.spawnSync(["bun", "tests/support/probe-memory.ts", "--host", host], { cwd: pkg });
     const out = new TextDecoder().decode(r.stdout);
@@ -154,7 +154,7 @@ test.skipIf(STALE_WASM)("the probe's memory answers the same shape on both hosts
   };
   const [node, web] = [run("node"), run("web")];
   expect(Object.keys(web.memory).sort()).toEqual(Object.keys(node.memory).sort());
-  expect(Object.keys(node.memory).sort()).toEqual(["audio", "gpu", "heap", "host", "linear", "resident", "stream", "world"]);
+  expect(Object.keys(node.memory).sort()).toEqual(["audio", "deviceLosses", "gpu", "heap", "host", "linear", "resident", "stream", "world"]);
   // No renderer in this run: no GPU memory on either host.
   expect([web.memory.gpu, node.memory.gpu]).toEqual([null, null]);
   expect([node.memory.host, web.memory.host]).toEqual(["native", "web"]);
