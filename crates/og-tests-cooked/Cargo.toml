@@ -19,6 +19,9 @@ glam = { workspace = true }
 # pack_contrast.rs) and og-ui's test support they include by path.
 [dev-dependencies]
 og-ui = { path = "../og-ui" }
+# tests/support/text_scenes.rs reads the cooked fonts with og-bundle's loaders
+# (og-tests-web includes it by path, without og-cook).
+og-bundle = { path = "../og-bundle" }
 og-core = { path = "../og-core" }
 og-input = { path = "../og-input" }
 og-i18n = { path = "../og-i18n" }

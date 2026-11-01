@@ -40,7 +40,7 @@ fn add(eng: &Engine, id: &str) -> Result<og_render::EnvironmentMapHandle, String
 
 /// `og.load.environment`: the map's load index (its handle's).
 pub(crate) fn load(eng: &Engine, path: &str) -> Result<usize, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(&i) = eng.render.borrow().env.by_path.get(&id) {
         return Ok(i);
     }

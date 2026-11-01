@@ -50,12 +50,12 @@ test.skipIf(!inRepo)("a key the parser does not read is caught", () => {
 
 test.skipIf(!inRepo)("a word value the parser does not read is caught", () => {
   const p = grammarDrift(withSkill("og-render", (s) => s.replace("render sprite 12", "render sprites 12")), read);
-  expect(p.some((x) => x.includes("writes `sprites`") && x.includes("og-cook/src/fx.rs"))).toBeTrue();
+  expect(p.some((x) => x.includes("writes `sprites`") && x.includes("og-bundle/src/fx.rs"))).toBeTrue();
 });
 
 test.skipIf(!inRepo)("a key the parser reads and no block writes is caught", () => {
-  const p = grammarDrift(skills(), withSource("crates/og-cook/src/fx.rs", (s) => s.replace('"glow" => em.glow', '"glow" => em.glow,\n            "trailLength" => em.glow')));
-  expect(p).toContain("crates/og-cook/src/fx.rs: reads `trailLength`, which no `type particles` block in the skills writes or names; add it to og-render's grammar");
+  const p = grammarDrift(skills(), withSource("crates/og-bundle/src/fx.rs", (s) => s.replace('"glow" => em.glow', '"glow" => em.glow,\n            "trailLength" => em.glow')));
+  expect(p).toContain("crates/og-bundle/src/fx.rs: reads `trailLength`, which no `type particles` block in the skills writes or names; add it to og-render's grammar");
 });
 
 test.skipIf(!inRepo)("a renamed parser key is caught on both sides", () => {

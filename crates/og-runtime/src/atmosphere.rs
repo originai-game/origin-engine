@@ -725,7 +725,7 @@ pub fn og_atmosphere_time_of_day(world: u32) -> f64 {
 pub fn og_load_shader(world: u32, path: String) -> String {
     let r = (|| -> Result<Value, String> {
         let eng = engine(world)?;
-        let id = og_cook::runtime::asset_id(&path).to_string();
+        let id = og_bundle::runtime::asset_id(&path).to_string();
         if let Some(&i) = eng.render.borrow().atmo.shader_paths.get(&id) {
             return Ok(json!(super::assets::handle(i)));
         }

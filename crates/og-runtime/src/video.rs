@@ -286,7 +286,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
 }
 
 fn load_video(eng: &Engine, path: &str) -> Result<Value, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(v) = eng.render.borrow().videos.iter().find(|v| v.id == id) {
         return Ok(v.info.clone());
     }

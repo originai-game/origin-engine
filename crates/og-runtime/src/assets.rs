@@ -4,7 +4,7 @@
 //! the native host reads files under the project, the web host answers from
 //! the files it fetched before the engine started (and fetches a later
 //! bundle's on request, which completes at a tick boundary). Textures are
-//! decoded through `Hooks::texture`: og-cook's native transcoder, or the web
+//! decoded through `Hooks::texture`: og-bundle's native transcoder, or the web
 //! host's Basis transcoder.
 //!
 //! Handles are `index + 2^32` (generation 1), like materials, so 0 is never
@@ -13,7 +13,7 @@
 use super::codec::Layout;
 use super::engine::{Engine, before_structural, hooks};
 use super::extract::add_font;
-use og_cook::runtime::{Bundle, CookedSound, SceneDesc};
+use og_bundle::runtime::{Bundle, CookedSound, SceneDesc};
 use og_core::IdMap;
 use og_core::reflect::{FieldType, Schema};
 use og_ecs::Entity;
@@ -259,7 +259,7 @@ impl Assets {
         }
         Err(format!(
             "{}: not in the cooked bundle; put it under assets/ and run `og cook`",
-            og_cook::runtime::asset_id(id)
+            og_bundle::runtime::asset_id(id)
         ))
     }
 
@@ -324,7 +324,7 @@ pub(crate) mod og_blob_bytes {
 /// `og.load.gltf`: the model's meshes, materials and textures join the
 /// renderer once per asset id; the answer is the asset index.
 pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(&i) = eng.assets.borrow().by_path.get(&format!("gltf:{id}")) {
         return Ok(i);
     }
@@ -587,7 +587,7 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
 
 /// `og.load.scene`: decoded and kept; `instantiate` spawns it.
 pub(crate) fn load_scene(eng: &Engine, path: &str) -> Result<usize, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(&i) = eng.assets.borrow().by_path.get(&format!("scene:{id}")) {
         return Ok(i);
     }
@@ -605,7 +605,7 @@ pub(crate) fn load_scene(eng: &Engine, path: &str) -> Result<usize, String> {
 }
 
 pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(i) = eng.assets.borrow().fonts.iter().position(|f| f.id == id) {
         return Ok(i);
     }
@@ -659,7 +659,7 @@ pub(crate) fn texture_formats(eng: &Engine) -> Option<og_render::TextureFormats>
 /// `og.load.texture`: a cooked texture added to the renderer once; the
 /// answer is its index in the render state's textures.
 pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(&i) = eng.assets.borrow().by_path.get(&format!("texture:{id}")) {
         return Ok(i);
     }
@@ -815,7 +815,7 @@ pub(crate) fn texture_array_data(
 /// group unloads the renderer lets the array go (`super::stream`) and the
 /// handle draws nothing until the group is resident again.
 pub(crate) fn load_texture_array(eng: &Engine, path: &str) -> Result<Value, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(v) = eng.assets.borrow().texture_arrays.get(&id) {
         return Ok(v.clone());
     }
@@ -882,7 +882,7 @@ pub(crate) fn resolve_texture_arrays(eng: &Engine) {
 }
 
 pub(crate) fn load_sound(eng: &Engine, path: &str) -> Result<usize, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(i) = eng.assets.borrow().sounds.iter().position(|s| s.id == id) {
         return Ok(i);
     }
@@ -942,7 +942,7 @@ pub(crate) fn load_sound(eng: &Engine, path: &str) -> Result<usize, String> {
 pub(crate) fn chunk_loader(assets: &Assets, sound: &CookedSound) -> og_audio::ChunkLoader {
     let files: Vec<Option<(String, u64)>> = (0..sound.meta.chunk_count)
         .map(|n| {
-            let id = og_cook::runtime::chunk_id(&sound.id, n);
+            let id = og_bundle::runtime::chunk_id(&sound.id, n);
             let (bundle, dir) = assets.bundle_for(&id).ok()?;
             let out = bundle.output(&id).ok()?;
             Some((format!("{dir}/{}", out.file), out.stamp))
@@ -951,7 +951,7 @@ pub(crate) fn chunk_loader(assets: &Assets, sound: &CookedSound) -> og_audio::Ch
     std::sync::Arc::new(move |n| {
         let (path, stamp) = files.get(n as usize)?.as_ref()?;
         let bytes = std::fs::read(path).ok()?;
-        match og_cook::runtime::sound_chunk_of(&bytes, path, *stamp) {
+        match og_bundle::runtime::sound_chunk_of(&bytes, path, *stamp) {
             Ok((k, qoa)) if k == n => Some(qoa),
             _ => None,
         }

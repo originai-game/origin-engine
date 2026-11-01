@@ -111,20 +111,20 @@ fn project() -> &'static Path {
         }
         let report = og_cook::cook_project(&root, &cook_options()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
-        let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        let bundle = og_bundle::runtime::Bundle::open(&root.join("cooked")).unwrap();
         let text = std::fs::read_to_string(showcase.join("scenes/cornell.lightmap.ogt")).unwrap();
         let pages = std::fs::read(showcase.join("scenes/cornell.lightmap.ktx2")).unwrap();
         for (name, entity) in scenes {
             let id = format!("scenes/{name}.ogt");
-            let mut file = og_cook::lightmap::LightmapFile::parse(&text).unwrap();
+            let mut file = og_bundle::lightmap::LightmapFile::parse(&text).unwrap();
             file.scene = id.clone();
             file.scene_hash = bundle.asset(&id).unwrap().source_hash;
-            file.pages = og_cook::lightmap::pages_name(&id);
+            file.pages = og_bundle::lightmap::pages_name(&id);
             assert_eq!(file.models.len(), 1, "the box is one static model");
             file.models[0].entity = entity.into();
             file.models[0].hash = bundle.model_geometry_hash("models/cornell.glb").unwrap();
             write(
-                &og_cook::lightmap::lightmap_id(&id),
+                &og_bundle::lightmap::lightmap_id(&id),
                 file.to_text().as_bytes(),
             );
             write(&format!("scenes/{}", file.pages), &pages);
@@ -300,7 +300,7 @@ fn two_baked_scenes_both_draw_their_bakes() {
 #[test]
 fn a_recook_that_keeps_the_geometry_keeps_the_bake() {
     let root = project();
-    let bundle = || og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    let bundle = || og_bundle::runtime::Bundle::open(&root.join("cooked")).unwrap();
     let before = bundle().output("models/cornell.glb").unwrap().hash;
     std::fs::write(
         root.join("assets/models/cornell.glb.ogt"),

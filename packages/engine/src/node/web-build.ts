@@ -211,7 +211,7 @@ export interface StreamGroupFile {
   readonly assets: readonly string[];
 }
 
-/** A cooked manifest's streaming groups and the files of their outputs (written by og cook; crates/og-cook/src/runtime.rs). */
+/** A cooked manifest's streaming groups and the files of their outputs (written by og cook; crates/og-bundle/src/runtime.rs). */
 function streamGroupsOf(manifest: string): { groups: Array<{ name: string; file: string; priority: number; memory: number; assets: string[] }>; grouped: string[] } {
   const groups: Array<{ name: string; file: string; priority: number; memory: number; assets: string[] }> = [];
   const grouped: string[] = [];

@@ -1,0 +1,31 @@
+[package]
+name = "og-bundle"
+version = "0.7.7"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine cooked bundle: the blob formats og-cook writes and the runtime loaders that read cooked/ .ogb blobs into og-render's input types and plain scene data."
+
+# Pure Rust by default, builds for wasm32-unknown-unknown.
+[features]
+default = []
+# Native Basis Universal transcoding of cooked KTX2 textures to RGBA8 for
+# og-render (C++ through basis-universal; not for wasm32, where the host
+# transcodes with Binomial's wasm transcoder).
+transcode = ["dep:basis-universal", "dep:ruzstd"]
+# `.basis` → KTX2 wrapping for the cook's basis-universal encoder.
+basis = ["dep:basis-universal", "dep:ruzstd"]
+
+[dependencies]
+og-blob = { path = "../og-blob" }
+og-core = { path = "../og-core" }
+og-render = { path = "../og-render" }
+og-anim = { path = "../og-anim" }
+og-tilemap = { path = "../og-tilemap" }
+og-timeline = { path = "../og-timeline" }
+og-nav = { path = "../og-nav" }
+glam = { workspace = true }
+bytemuck = { workspace = true }
+miniz_oxide = "0.8"
+basis-universal = { version = "0.3.1", optional = true }
+ruzstd = { version = "0.9.1", optional = true }

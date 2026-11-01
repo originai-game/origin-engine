@@ -1,6 +1,6 @@
 //! The probe's scene write-back (`save_scene`, `docs/design.md` §3.4):
 //! every scene the world was assembled from rewritten from the world by
-//! `og_cook::scene_text` — the boot scene (`GameDesc.scene`) first, then
+//! `og_bundle::scene_text` — the boot scene (`GameDesc.scene`) first, then
 //! each scene `og.world.instantiate` made, each to its own `.ogt`. In each,
 //! a field line of a scene entity changes when its value did, and a tuned
 //! field the text does not list gets a line. A field's value is read from
@@ -16,7 +16,7 @@
 //! since, each with every component the text can give.
 
 use super::codec::{Kind, Layout, RecordKind};
-use og_cook::scene_text::{
+use og_bundle::scene_text::{
     FieldValue, Plan, RESOURCE, SpawnedEntity, Tuned, rewrite_with, spawned_names,
 };
 use og_core::IdMap;
@@ -406,7 +406,7 @@ impl RuntimeWriter {
                         let a = eng.assets.borrow();
                         a.entries
                             .get(i)
-                            .map(|x| og_cook::runtime::asset_id(&x.path).to_string())
+                            .map(|x| og_bundle::runtime::asset_id(&x.path).to_string())
                     });
                     match path {
                         Some(p) => node.model = Some(p),

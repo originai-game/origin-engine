@@ -51,7 +51,7 @@ fn info(handle: u64, rig: &Rig2dAsset, texture: usize) -> Value {
 }
 
 fn load_rig2d(eng: &Engine, path: &str) -> Result<Value, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     let key = format!("rig2d:{id}");
     if let Some(v) = eng.state.borrow().feel_assets.loaded.get(&key) {
         return Ok(v.clone());

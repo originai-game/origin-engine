@@ -10,7 +10,7 @@ platform's part, and the release that ships it (0.7.0).
 
 ## 1. What the review found
 
-- **A look is only the frame.** `type look` (`crates/og-cook/src/look.rs`)
+- **A look is only the frame.** `type look` (`crates/og-bundle/src/look.rs`)
   writes seven render resources (`RenderSettings`, `PostEffects`,
   `Stylise`, `MaterialStyle`, `Fog`, `Sky`, `Environment`) and the UI
   style. Models, textures, sprites, flipbooks, tile sets, animation timing
@@ -72,7 +72,7 @@ pieces a style needs on a sprite. 4 makes the style measurable.
 ### 2.1 The contract: seven art resources in the look
 
 New IDL module `art` (`crates/og-api/api.ogt`), seven resources a look
-sets like the render ones (by reflected name, `og-cook/src/look.rs`
+sets like the render ones (by reflected name, `og-bundle/src/look.rs`
 `LOOK_RESOURCES` grows by seven). Each field's zero value is "no
 constraint", so a look without them, and every existing game, cooks and
 draws exactly as before. They are resources, so game code can read the

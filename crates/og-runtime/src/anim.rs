@@ -117,7 +117,7 @@ fn wire(r: Result<Value, String>) -> String {
 }
 
 pub(crate) fn load_animation(eng: &Engine, path: &str) -> Result<Value, String> {
-    let id = og_cook::runtime::anim_id(path);
+    let id = og_bundle::runtime::anim_id(path);
     if let Some(v) = eng.state.borrow().anim_assets.loaded.get(&id) {
         return Ok(v.clone());
     }
@@ -138,7 +138,7 @@ pub(crate) fn load_animation(eng: &Engine, path: &str) -> Result<Value, String> 
     // skinned path; the copies are made when an entity with og.Skeleton
     // and og.Model of it is first drawn).
     eng.render.borrow_mut().fx.skins.insert(
-        og_cook::runtime::asset_id(path)
+        og_bundle::runtime::asset_id(path)
             .trim_end_matches("#anim")
             .to_string(),
         super::fx::SkinnedModel {
@@ -237,7 +237,7 @@ fn graph(eng: &Engine, desc: &Value) -> Result<Value, String> {
 }
 
 fn load_rig(eng: &Engine, path: &str) -> Result<Value, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(&h) = eng.state.borrow().anim_assets.rig_ids.get(&id) {
         return Ok(json!(h as f64));
     }

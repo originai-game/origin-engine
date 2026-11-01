@@ -1,6 +1,6 @@
 //! Looks and palettes (IDL `load.look`, `load.lookInfo`, `load.palette`,
 //! `render.applyLook`, `render.look`, `GameDesc.look`): a cooked `type
-//! look` blob (og-cook's `look` module: flattened and checked against the
+//! look` blob (og-bundle's `look` module: flattened and checked against the
 //! records by the cook) is loaded with every asset it names, and applying
 //! it writes the resources it names whole, through the same path as
 //! `world.setResource` (so a system that applies one must declare those
@@ -20,7 +20,7 @@
 //! palette, the look last applied) is kept, with a warning naming it.
 
 use super::engine::Engine;
-use og_cook::look::{ANIMATED_FIELDS, LookFile};
+use og_bundle::look::{ANIMATED_FIELDS, LookFile};
 use og_core::ogt::Value as Ogt;
 use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
@@ -74,7 +74,7 @@ fn add_palette(eng: &Engine, id: &str) -> Result<og_render::PaletteHandle, Strin
 /// `og.load.palette`: a cooked `.hex` or `.gpl` palette added to the
 /// renderer once.
 pub(crate) fn load_palette(eng: &Engine, path: &str) -> Result<usize, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(&i) = eng.render.borrow().fx.look.palette_by_path.get(&id) {
         return Ok(i);
     }
@@ -188,7 +188,7 @@ fn read(eng: &Engine, id: &str) -> Result<LookParts, String> {
 /// `og.load.look`: the look's load index, the assets it names loaded
 /// (once per path).
 pub(crate) fn load(eng: &Engine, path: &str) -> Result<usize, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(&i) = eng.render.borrow().fx.look.by_path.get(&id) {
         return Ok(i);
     }
@@ -273,7 +273,7 @@ pub(crate) fn apply(eng: &Engine, index: usize) -> Result<(), String> {
         // it as it is, so a system that declares the frame's resources (as
         // every game before the art contract does) applies its looks as
         // before.
-        if og_cook::look::ART_RESOURCES.contains(&resource.as_str())
+        if og_bundle::look::ART_RESOURCES.contains(&resource.as_str())
             && let Some(f) = super::engine::running(eng.id)
             && !eng.state.borrow().systems[f.system]
                 .writes
@@ -361,7 +361,7 @@ pub(crate) fn boot_antialias(eng: &Engine, path: &str) {
     if eng.render.borrow().options.get("antialias").is_some() {
         return;
     }
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     let file = {
         let assets = eng.assets.borrow();
         let Ok((bytes, bundle)) = assets.blob(&id) else {

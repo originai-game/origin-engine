@@ -87,12 +87,12 @@ mod web {
     }
 
     /// The cooked text fonts, from the manifest and files the runner gave.
-    fn text_fonts() -> Result<Vec<og_cook::runtime::CookedFont>, String> {
+    fn text_fonts() -> Result<Vec<og_bundle::runtime::CookedFont>, String> {
         let manifest = TEXT_MANIFEST.with(|m| m.borrow().clone()).ok_or(
             "no text fonts: the runner cooks crates/og-ui/tests/text-fonts and calls og_gfx_text_manifest and og_gfx_text_file first",
         )?;
         let bundle =
-            og_cook::runtime::Bundle::from_manifest(&manifest).map_err(|e| e.to_string())?;
+            og_bundle::runtime::Bundle::from_manifest(&manifest).map_err(|e| e.to_string())?;
         TEXT_FILES.with(|f| {
             let files = f.borrow();
             super::text_scenes::fonts_from(&bundle, |path| files.get(path).cloned())

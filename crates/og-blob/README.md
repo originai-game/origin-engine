@@ -32,7 +32,7 @@ All integers are little-endian. Offsets are from the start of the file.
 | 8 | 2 | container version | `1` |
 | 10 | 2 | header size | `64` |
 | 12 | 4 | section count `n` | |
-| 16 | 8 | type hash | what the blob holds: for `og-cook` blobs, FNV-1a over the layout hashes of the root and row schemas (`og_cook::format::type_hash`) |
+| 16 | 8 | type hash | what the blob holds: for `og-cook` blobs, FNV-1a over the layout hashes of the root and row schemas (`og_bundle::format::type_hash`) |
 | 24 | 4 | schema version | the root schema's version |
 | 28 | 4 | flags | `0` (reserved; non-zero is refused) |
 | 32 | 8 | cook stamp | FNV-1a of the cooker version, the options this output depends on and its inputs (`og-cook` README §Stamps) |

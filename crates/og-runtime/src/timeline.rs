@@ -324,7 +324,7 @@ fn facing(s: &og_timeline::PathSample) -> (Mat3, Quat) {
 // ── og.load.timeline and og.timeline.info ───────────────────────────────────
 
 fn load(eng: &Engine, path: &str) -> Result<u64, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     let reg = registry(eng.id);
     if let Some(&h) = lock(&reg).by_id.get(&id) {
         return Ok(h);
@@ -511,7 +511,7 @@ fn command(engine_id: u32, world: &mut World, args: &[String]) -> Result<(), Str
             Some(n) => Some(
                 *lock(&registry(engine_id))
                     .by_id
-                    .get(og_cook::runtime::asset_id(&asset_path(n)))
+                    .get(og_bundle::runtime::asset_id(&asset_path(n)))
                     .ok_or_else(|| {
                         format!("timeline '{n}' is not loaded (timeline:play:{n} loads it)")
                     })?,

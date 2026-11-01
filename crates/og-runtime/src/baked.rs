@@ -17,7 +17,7 @@
 use super::extract::Parts;
 use super::fx::{color, f, on};
 use glam::{Mat4, Vec3};
-use og_cook::runtime::SceneDesc;
+use og_bundle::runtime::SceneDesc;
 use og_core::IdMap;
 use og_render::{BakedLighting, BakedMesh, LightmapPages, LightmapUvs, MeshData, ProbeVolume};
 use serde_json::{Value, json};
@@ -139,12 +139,12 @@ pub(crate) fn scene_spawned(
     scene: &SceneDesc,
     spawned: &[og_ecs::Entity],
 ) {
-    let lightmap_id = og_cook::lightmap::lightmap_id(&scene.id);
+    let lightmap_id = og_bundle::lightmap::lightmap_id(&scene.id);
     let mut report = SceneBake {
         scene: scene.id.clone(),
         ..Default::default()
     };
-    let loaded = (|| -> Result<Option<og_cook::runtime::CookedLightmap>, String> {
+    let loaded = (|| -> Result<Option<og_bundle::runtime::CookedLightmap>, String> {
         let assets = eng.assets.borrow();
         let Ok((bundle, _)) = assets.bundle_for(&lightmap_id) else {
             return Ok(None);
@@ -191,7 +191,7 @@ pub(crate) fn scene_spawned(
             .map(|(e, s)| (e.name.as_str(), *s)),
     );
     // The models' parts, loaded by the spawn.
-    let mut models: Vec<(og_ecs::Entity, Parts, &og_cook::lightmap::BakedModel)> = Vec::new();
+    let mut models: Vec<(og_ecs::Entity, Parts, &og_bundle::lightmap::BakedModel)> = Vec::new();
     for m in &lm.file.models {
         let Some(&entity) = by_name.get(m.entity.as_str()) else {
             report.reason = format!(
@@ -220,7 +220,7 @@ pub(crate) fn scene_spawned(
     let mut meshes = std::collections::HashMap::new();
     for (entity, parts, m) in &models {
         // The model's geometry as loaded, against what the bake read.
-        let geometry = og_cook::lightmap::geometry_hash(
+        let geometry = og_bundle::lightmap::geometry_hash(
             parts.iter().filter_map(|&(mesh, _, _)| rs.scene.mesh(mesh)),
         );
         if geometry != m.hash {
@@ -266,7 +266,7 @@ pub(crate) fn scene_spawned(
         }
         overrides.push((entity.to_bits(), baked_parts));
     }
-    let to_f32 = og_cook::lightmap::f16_to_f32;
+    let to_f32 = og_bundle::lightmap::f16_to_f32;
     let pages = Arc::new(LightmapPages {
         width: lm.width,
         height: lm.height,

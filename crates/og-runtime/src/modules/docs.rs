@@ -142,7 +142,7 @@ fn roots_of(doc: &UiDocument) -> Vec<String> {
 }
 
 pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     let doc = read_document(eng, &id)?;
     let name = doc.name.clone();
     let hash = hash_of(eng, &id);

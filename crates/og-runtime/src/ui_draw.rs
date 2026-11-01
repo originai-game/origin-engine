@@ -42,7 +42,7 @@ pub(crate) fn load_vector(
     eng: &super::engine::Engine,
     path: &str,
 ) -> Result<(usize, UiVectorHandle), String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(&i) = eng.render.borrow().ui_draw.vector_paths.get(&id) {
         return Ok((i, eng.render.borrow().ui_draw.vectors[i]));
     }
@@ -66,7 +66,7 @@ pub(crate) fn load_vector(
 pub fn og_load_ui_material(world: u32, path: String) -> String {
     let r = (|| -> Result<Value, String> {
         let eng = engine(world)?;
-        let id = og_cook::runtime::asset_id(&path).to_string();
+        let id = og_bundle::runtime::asset_id(&path).to_string();
         if let Some(&i) = eng.render.borrow().ui_draw.material_paths.get(&id) {
             return Ok(json!(handle(i)));
         }

@@ -103,7 +103,7 @@ pub(crate) struct LoadedLut {
 
 /// One loaded model's primitives, for skinning: the scene mesh of its first
 /// primitive (they are consecutive), the glTF mesh of each primitive, and
-/// the node of each of its parts (`og_cook::runtime::ModelParts::nodes`)
+/// the node of each of its parts (`og_bundle::runtime::ModelParts::nodes`)
 /// and whether each is drawn at rest (`ModelParts::shown`).
 #[derive(Clone, Debug)]
 pub(crate) struct ModelInfo {
@@ -118,8 +118,8 @@ pub(crate) struct ModelInfo {
 /// copies of its primitives once made (by primitive; `None`: not skinned).
 #[derive(Clone, Debug, Default)]
 pub(crate) struct SkinnedModel {
-    pub streams: Vec<og_cook::runtime::SkinStream>,
-    pub morphs: Vec<og_cook::runtime::MorphTargets>,
+    pub streams: Vec<og_bundle::runtime::SkinStream>,
+    pub morphs: Vec<og_bundle::runtime::MorphTargets>,
     pub meshes: Option<Vec<Option<MeshHandle>>>,
 }
 
@@ -1130,7 +1130,7 @@ fn add_lut(eng: &super::engine::Engine, id: &str) -> Result<og_render::LutHandle
 /// go (`super::stream`) and PostEffects.lut grades nothing with it until
 /// the group is resident again, when it comes back under the same handle.
 pub(crate) fn load_lut(eng: &super::engine::Engine, path: &str) -> Result<usize, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     let key = format!("lut:{id}");
     if let Some(&i) = eng.render.borrow().fx.by_path.get(&key) {
         return Ok(i);
@@ -1169,7 +1169,7 @@ pub(crate) fn resolve_luts(eng: &super::engine::Engine) {
 /// `og.load.emitter`: a cooked emitter, its textures (or its texture
 /// array) loaded with it.
 pub(crate) fn load_emitter(eng: &super::engine::Engine, path: &str) -> Result<usize, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     let key = format!("emitter:{id}");
     if let Some(&i) = eng.render.borrow().fx.by_path.get(&key) {
         return Ok(i);
@@ -1182,7 +1182,7 @@ pub(crate) fn load_emitter(eng: &super::engine::Engine, path: &str) -> Result<us
             .map_err(|e| e.to_string())?
     };
     let mut array = None;
-    let emitter = og_cook::fx::parse_emitter_with(
+    let emitter = og_bundle::fx::parse_emitter_with(
         &text,
         &mut |tex| {
             let i = super::assets::load_texture(eng, tex)?;

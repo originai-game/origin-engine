@@ -55,10 +55,10 @@ pub mod sink;
 pub mod sound;
 pub mod system;
 
-/// The QOA codec: og-cook's `src/qoa.rs`, compiled into this crate so audio
-/// needs neither og-cook nor its renderer dependency. The encoder is here
+/// The QOA codec: og-bundle's `src/qoa.rs`, compiled into this crate so audio
+/// needs neither og-bundle nor its renderer dependency. The encoder is here
 /// for tests and tools that synthesise sounds.
-#[path = "../../og-cook/src/qoa.rs"]
+#[path = "../../og-bundle/src/qoa.rs"]
 pub mod qoa;
 
 pub use command::{COMMAND_BYTES, Command, Op, TickPacket};

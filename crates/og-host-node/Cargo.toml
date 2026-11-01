@@ -34,7 +34,7 @@ og-ui = { path = "../og-ui", default-features = false }
 og-physics = { path = "../og-physics" }
 og-render = { path = "../og-render" }
 og-probe = { path = "../og-probe", features = ["ws"] }
-og-cook = { path = "../og-cook", default-features = false, features = ["transcode"] }
+og-bundle = { path = "../og-bundle", features = ["transcode"] }
 napi = { version = "3", default-features = false, features = ["napi8"] }
 napi-derive = "3"
 pollster = { workspace = true }

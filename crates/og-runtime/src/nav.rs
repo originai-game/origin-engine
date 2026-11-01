@@ -398,7 +398,7 @@ fn mesh_info(h: u64, m: &NavMesh) -> Value {
 
 pub fn og_nav_load(world: u32, path: String) -> String {
     wire(engine(world).and_then(|eng| {
-        let id = og_cook::runtime::asset_id(&path).to_string();
+        let id = og_bundle::runtime::asset_id(&path).to_string();
         let (field, tiles) = {
             let assets = eng.assets.borrow();
             let (bytes, bundle) = assets.blob(&id)?;

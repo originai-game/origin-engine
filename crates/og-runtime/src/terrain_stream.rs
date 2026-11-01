@@ -16,7 +16,7 @@
 //! physics' height field and `og.terrain.sample`, never through what is
 //! resident, so streaming cannot change a tick's result.
 
-use og_cook::runtime::CookedTerrain;
+use og_bundle::runtime::CookedTerrain;
 use og_core::IdMap;
 use og_render::{RenderScene, TerrainHandle, TerrainTile, TerrainView};
 use std::collections::{BTreeMap, BTreeSet};

@@ -6,7 +6,7 @@ use super::*;
 enum Full {
     Model {
         meshes: Vec<MeshData>,
-        model: Box<og_cook::runtime::CookedModel>,
+        model: Box<og_bundle::runtime::CookedModel>,
         textures: Vec<TextureSource>,
     },
     Texture(TextureSource, bool),
@@ -29,7 +29,7 @@ fn replace_texture(
 }
 
 fn decode_texture(
-    bundle: &og_cook::runtime::Bundle,
+    bundle: &og_bundle::runtime::Bundle,
     files: &Streams,
     group: &str,
     id: &str,
@@ -589,7 +589,7 @@ pub(crate) fn add_sound(eng: &Engine, group: &str, id: &str) -> Result<(CookedSo
     );
     let sound = CookedSound {
         id: id.to_string(),
-        meta: og_cook::format::SoundMeta {
+        meta: og_bundle::format::SoundMeta {
             sample_rate: shape.sample_rate,
             channels: shape.channels,
             frames: shape.frames.min(u32::MAX as u64) as u32,

@@ -17,8 +17,8 @@ sink.pump();                                                                // 8
 ```
 
 Pure Rust over og-core and og-ecs; builds for `wasm32-unknown-unknown`. The
-QOA codec is og-cook's own `src/qoa.rs`, compiled into this crate by path
-(`og_audio::qoa`) so audio needs neither og-cook nor its og-render
+QOA codec is og-bundle's own `src/qoa.rs`, compiled into this crate by path
+(`og_audio::qoa`) so audio needs neither og-bundle nor its og-render
 dependency (Assets: moving `qoa.rs` into a tiny crate would make this an
 ordinary dependency).
 

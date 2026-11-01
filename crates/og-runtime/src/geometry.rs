@@ -407,7 +407,7 @@ fn bvh_of(g: &mut GeoState, scene: &og_render::RenderScene, mesh: MeshHandle) ->
 pub(crate) fn adopt_cooked_bvh(
     rs: &mut RenderState,
     mesh: MeshHandle,
-    prim: &og_cook::runtime::CookedPrimitive,
+    prim: &og_bundle::runtime::CookedPrimitive,
 ) -> Result<(), String> {
     let RenderState { geo: g, scene, .. } = rs;
     let Some(data) = scene.mesh(mesh) else {

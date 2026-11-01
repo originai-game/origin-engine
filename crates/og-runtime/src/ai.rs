@@ -55,7 +55,7 @@ fn insert(world: u32, b: Behaviour) -> Result<Value, String> {
 
 pub fn og_ai_load(world: u32, path: String) -> String {
     wire(engine(world).and_then(|eng| {
-        let id = og_cook::runtime::asset_id(&path).to_string();
+        let id = og_bundle::runtime::asset_id(&path).to_string();
         let text = {
             let assets = eng.assets.borrow();
             let (bytes, bundle) = assets.blob(&id)?;

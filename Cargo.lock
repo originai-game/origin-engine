@@ -1714,6 +1714,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-bundle"
+version = "0.7.7"
+dependencies = [
+ "basis-universal",
+ "bytemuck",
+ "glam 0.34.1",
+ "miniz_oxide 0.8.9",
+ "og-anim",
+ "og-blob",
+ "og-core",
+ "og-nav",
+ "og-render",
+ "og-tilemap",
+ "og-timeline",
+ "ruzstd",
+]
+
+[[package]]
 name = "og-cli"
 version = "0.7.7"
 dependencies = [
@@ -1754,6 +1772,7 @@ dependencies = [
  "og-anim",
  "og-audio",
  "og-blob",
+ "og-bundle",
  "og-core",
  "og-ecs",
  "og-geom",
@@ -1823,7 +1842,7 @@ dependencies = [
  "napi-derive",
  "og-api",
  "og-audio",
- "og-cook",
+ "og-bundle",
  "og-net",
  "og-physics",
  "og-probe",
@@ -1842,7 +1861,7 @@ dependencies = [
  "log",
  "og-api",
  "og-audio",
- "og-cook",
+ "og-bundle",
  "og-core",
  "og-lanes",
  "og-probe",
@@ -1976,6 +1995,7 @@ dependencies = [
  "og-anim",
  "og-api",
  "og-audio",
+ "og-bundle",
  "og-cook",
  "og-core",
  "og-ecs",
@@ -2017,6 +2037,7 @@ dependencies = [
  "glam 0.34.1",
  "image",
  "og-anim",
+ "og-bundle",
  "og-cook",
  "og-core",
  "og-i18n",
@@ -2033,7 +2054,7 @@ version = "0.7.7"
 dependencies = [
  "image",
  "js-sys",
- "og-cook",
+ "og-bundle",
  "og-core",
  "og-i18n",
  "og-input",

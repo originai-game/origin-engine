@@ -558,7 +558,10 @@ pub(crate) struct DrawLayouts {
 
 /// A cooked font as one `MsdfFont` per atlas page (Render's question 1: the
 /// mapping lives here). Pages are uploaded linear, without mips.
-pub(crate) fn add_font(scene: &mut RenderScene, font: &og_cook::runtime::CookedFont) -> FontPages {
+pub(crate) fn add_font(
+    scene: &mut RenderScene,
+    font: &og_bundle::runtime::CookedFont,
+) -> FontPages {
     let meta = &font.meta;
     let line_height = meta.ascender - meta.descender + meta.line_gap;
     let kerning: Vec<og_render::Kern> = font

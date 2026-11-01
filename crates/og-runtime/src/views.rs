@@ -130,7 +130,7 @@ pub(crate) fn capabilities(rs: &RenderState) -> Value {
 /// A cooked post pass added to the scene once per path: its load index
 /// (`og.load.post`, a look's PostEffects.custom).
 pub(crate) fn load_post(eng: &super::engine::Engine, path: &str) -> Result<usize, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(&i) = eng.render.borrow().views.post_paths.get(&id) {
         return Ok(i);
     }

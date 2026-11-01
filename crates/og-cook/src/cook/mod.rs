@@ -30,6 +30,7 @@ pub mod probes;
 mod rig2d;
 mod scene;
 pub mod sfx;
+mod shader_check;
 pub mod stats;
 mod stream;
 mod terrain;
@@ -2843,7 +2844,7 @@ fn run(
             let name = s.rel.trim_end_matches(".ogt");
             let shader = crate::shader::parse_shader(name, text, &mut |src| read_sibling(s, src))
                 .map_err(CookError)?;
-            let compiled = crate::shader::validate_shader(&shader)
+            let compiled = shader_check::validate_shader(&shader)
                 .map_err(|e| CookError(format!("the shader does not compile: {e}")))?;
             let canonical = crate::shader::shader_text(&shader);
             let mut w = og_blob::BlobWriter::new(
@@ -2874,7 +2875,7 @@ fn run(
             let name = s.rel.trim_end_matches(".ogt");
             let post = crate::shader::parse_post(name, text, &mut |src| read_sibling(s, src))
                 .map_err(CookError)?;
-            let compiled = crate::shader::validate_post(&post)
+            let compiled = shader_check::validate_post(&post)
                 .map_err(|e| CookError(format!("the post pass does not compile: {e}")))?;
             let canonical = crate::shader::post_text(&post);
             let mut w = og_blob::BlobWriter::new(
@@ -3023,7 +3024,7 @@ fn run(
             let material =
                 crate::shader::parse_ui_material(name, text, &mut |src| read_sibling(s, src))
                     .map_err(CookError)?;
-            let compiled = crate::shader::validate_ui_material(&material)
+            let compiled = shader_check::validate_ui_material(&material)
                 .map_err(|e| CookError(format!("the UI material does not compile: {e}")))?;
             let canonical = crate::shader::ui_material_text(&material);
             let mut w = og_blob::BlobWriter::new(

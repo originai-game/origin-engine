@@ -1,46 +1,22 @@
-//! Origin Engine `og-cook`: the cook (`assets/` → `cooked/`) and the runtime
-//! loaders that read what it writes (`docs/design.md` §2.5, `README.md`).
+//! Origin Engine `og-cook`: the cook (`assets/` → `cooked/`, `docs/design.md`
+//! §2.5, `README.md`). The runtime loaders that read what it writes are
+//! og-bundle's, re-exported here under the same paths (`og_cook::runtime`,
+//! `og_cook::format`, ...) for the cook and the tools.
 //!
 //! | module | feature | what it owns |
 //! |---|---|---|
-//! | [`anim_codec`] | `runtime` | how animation channels hold their samples: f32, constant, quantised keys with keyframe reduction |
-//! | [`format`] | always | the asset blobs: reflected root and row structs, type hashes, section names |
-//! | [`runtime`] | `runtime` | [`runtime::Bundle`] (the manifest as an index), loaders into og-render types and [`runtime::SceneDesc`] |
-//! | [`ktx2`] | `runtime` | KTX2 parsing, lossless RGBA8 textures; `.basis` ↔ KTX2 with `basis`/`transcode` |
-//! | [`meshopt_codec`] | `runtime` | pure-Rust meshoptimizer vertex and index decoders |
-//! | [`qoa`] | `runtime` | the QOA audio codec |
-//! | [`fx`] | `runtime` | particle emitter files (`.ogt` of `type particles`) and `.cube` colour tables |
-//! | [`look`] | `runtime` (resolution and validation: `cook`) | looks (`.ogt` of `type look`): the text, merging over a base, hex colours, `.hex`/`.gpl` palettes |
-//! | [`scene_text`] | `runtime` | scene write-back: a scene's `.ogt` rewritten line by line from current values, comments and order kept |
-//! | [`shader`] | `runtime` (validation: `cook`) | material shaders (`.ogt` of `type shader`): parsing, the cooked text, naga compilation for every back end |
+//! | `cook` (looks) | `cook` | look resolution and validation against the IDL's records |
+//! | `cook` (shaders) | `cook` | naga compilation of material shaders, post passes and UI materials for every back end |
 //! | `cook` (skins) | `cook` | UI skins (`.ogt` of `type skin`), validated with og-ui's parser |
 //! | [`cook`] | `cook` | [`cook::cook_project`], options, the report, the importers |
 //!
-//! `runtime` alone builds for `wasm32-unknown-unknown` (no C, no cook
-//! dependencies). `transcode` adds native Basis Universal transcoding to
-//! RGBA8; `cook` (the default) adds the importers and encoders.
+//! `transcode` forwards to og-bundle's native Basis Universal transcoding;
+//! `basis` encodes textures with basis-universal; `cook` (the default) adds
+//! the importers and encoders.
 
-#[cfg(feature = "runtime")]
-pub mod anim_codec;
-pub mod format;
-#[cfg(feature = "runtime")]
-pub mod fx;
-#[cfg(feature = "runtime")]
-pub mod ktx2;
-#[cfg(feature = "runtime")]
-pub mod lightmap;
-#[cfg(feature = "runtime")]
-pub mod look;
-#[cfg(feature = "runtime")]
-pub mod meshopt_codec;
-#[cfg(feature = "runtime")]
-pub mod qoa;
-#[cfg(feature = "runtime")]
-pub mod runtime;
-#[cfg(feature = "runtime")]
-pub mod scene_text;
-#[cfg(feature = "runtime")]
-pub mod shader;
+pub use og_bundle::{
+    anim_codec, format, fx, ktx2, lightmap, look, meshopt_codec, qoa, runtime, scene_text, shader,
+};
 
 #[cfg(feature = "cook")]
 pub mod cook;

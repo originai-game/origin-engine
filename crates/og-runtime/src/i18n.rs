@@ -121,7 +121,7 @@ fn apply(eng: &Engine) -> Result<(), String> {
 pub fn og_i18n_load(world: u32, path: String) -> String {
     let r = (|| -> Result<Value, String> {
         let eng = engine(world)?;
-        let id = og_cook::runtime::asset_id(&path).to_string();
+        let id = og_bundle::runtime::asset_id(&path).to_string();
         let text = {
             let assets = eng.assets.borrow();
             let (bytes, bundle) = assets.blob(&id)?;

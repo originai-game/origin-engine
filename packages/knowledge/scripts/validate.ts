@@ -730,7 +730,7 @@ export const GRAMMARS: readonly Grammar[] = [
   { type: "flipbook", source: "crates/og-anim/src/flipbook.rs", region: [/impl FlipMode/, /pub fn to_text/], names: { frame: 1, clip: 1 }, home: "og-2d" },
   { type: "tileset", source: "crates/og-tilemap/src/tileset.rs", home: "og-2d" },
   { type: "tilemap", source: "crates/og-tilemap/src/map.rs", region: [/pub fn parse\(text/, /^pub fn world_to_cell/m], home: "og-2d" },
-  { type: "particles", source: "crates/og-cook/src/fx.rs", unnamed: { key: "colorOverLife's lines: the parser reads their five numbers whatever the key" }, home: "og-render" },
+  { type: "particles", source: "crates/og-bundle/src/fx.rs", unnamed: { key: "colorOverLife's lines: the parser reads their five numbers whatever the key" }, home: "og-render" },
   { type: "import", block: "tilemap", source: "crates/og-cook/src/cook/tilemap.rs", region: [/pub fn parse\(block/, /pub fn describe/], home: "og-2d" },
   { type: "import", block: "animation", source: "crates/og-cook/src/cook/anim.rs", region: [/pub fn parse\(block/, /^fn asset_path/m], home: "og-anim" },
   {

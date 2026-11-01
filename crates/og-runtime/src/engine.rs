@@ -76,13 +76,13 @@ pub trait Hooks {
         let _ = (pack, textures);
     }
     /// A cooked texture for the renderer, in the device's encoding when
-    /// `formats` (the attached renderer's) names one: og-cook's transcoder
+    /// `formats` (the attached renderer's) names one: og-bundle's transcoder
     /// (native, feature `transcode`) by default, every mip level; the web
     /// host takes what its Worker transcoded with Binomial's Basis
     /// transcoder. RGBA8 without a renderer.
     fn texture(
         &self,
-        texture: &og_cook::runtime::CookedTexture,
+        texture: &og_bundle::runtime::CookedTexture,
         formats: Option<&og_render::TextureFormats>,
     ) -> Fetch<og_render::TextureSource> {
         match texture.to_texture_source(formats) {
@@ -268,7 +268,7 @@ pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
             Some(out)
         }
     };
-    let look = og_cook::look::project_look(b).map_err(|e| format!("project.ogt:{e}"))?;
+    let look = og_bundle::look::project_look(b).map_err(|e| format!("project.ogt:{e}"))?;
     Ok(ProjectGame {
         tick,
         seed,
@@ -307,7 +307,7 @@ pub(crate) fn with_project(mut game: GameDecl, p: &ProjectGame) -> Result<GameDe
     both("scene", g.scene, &mut game.scene, &p.scene)?;
     // The same asset id written with or without `assets/` is one look.
     if g.look {
-        game.look = og_cook::runtime::asset_id(&game.look).to_string();
+        game.look = og_bundle::runtime::asset_id(&game.look).to_string();
     }
     both("look", g.look, &mut game.look, &p.look)?;
     Ok(game)
@@ -1753,7 +1753,7 @@ fn render(eng: &Engine) -> Result<bool, String> {
 /// texts draw that the font lacks and no earlier frame warned of (each is
 /// named once, on the tick it is first drawn: a split's minus sign at the
 /// second lap is still named), with the font's asset and what its atlas
-/// holds (the charset words its glyphs show, og_cook::format::charset_words).
+/// holds (the charset words its glyphs show, og_bundle::format::charset_words).
 fn missing_glyph_notes(
     scene: &og_render::RenderScene,
     warned: &mut std::collections::BTreeSet<char>,
@@ -1800,7 +1800,7 @@ fn missing_glyph_notes(
             let cps: Vec<u32> = font.map_or(Vec::new(), |f| {
                 f.glyphs.iter().map(|g| g.codepoint as u32).collect()
             });
-            let (words, extra) = og_cook::format::charset_words(&cps);
+            let (words, extra) = og_bundle::format::charset_words(&cps);
             let holds = match (words.is_empty(), extra) {
                 (true, _) => format!("{} characters", cps.len()),
                 (false, 0) => format!("charset {}", words.join(" ")),

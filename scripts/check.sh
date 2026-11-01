@@ -122,8 +122,10 @@ rule_conformance() {
 rule_ui_styles() {
   echo "$(og_crate_dirs -p og-cli -p og-host-node -e normal,build | og_words) packages/engine templates/ui-kit templates/styles crates/og-ui/references $RULE_COMMON"
 }
+# crates/og-cook: the web tests cook their projects with og, and no wasm
+# crate depends on the cook (the loaders are og-bundle's).
 rule_web() {
-  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase templates/looks templates/ui-kit templates/styles templates/archetypes/third-person examples/brasswick examples/meridian-loop $RULE_COMMON"
+  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) crates/og-cook packages/engine templates/fx-showcase templates/looks templates/ui-kit templates/styles templates/archetypes/third-person examples/brasswick examples/meridian-loop $RULE_COMMON"
 }
 
 # skip_unchanged KEY WHAT RULE...: true (and prints why) when KEY may be

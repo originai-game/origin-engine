@@ -238,7 +238,7 @@ fn wanted_chunks(eng: &Engine) -> Vec<Wanted> {
     let a = eng.assets.borrow();
     let mut out = Vec::new();
     for (handle, id, n) in bank.keep_chunks(&sets) {
-        let chunk = og_cook::runtime::chunk_id(&id, n);
+        let chunk = og_bundle::runtime::chunk_id(&id, n);
         let Ok((bundle, dir)) = a.bundle_for(&chunk) else {
             continue;
         };
@@ -380,7 +380,7 @@ fn deliver(eng: &Engine, w: &Wanted, bytes: Result<Vec<u8>, String>) {
                 Ok(b) => b,
                 Err(e) => return warn_once(eng, format!("{path}: {e}")),
             };
-            let chunk = og_cook::runtime::chunk_id(id, *n);
+            let chunk = og_bundle::runtime::chunk_id(id, *n);
             let decoded = {
                 let a = eng.assets.borrow();
                 let Ok((bundle, _)) = a.bundle_for(&chunk) else {
@@ -410,7 +410,8 @@ fn deliver(eng: &Engine, w: &Wanted, bytes: Result<Vec<u8>, String>) {
                 if s.groups[i].state != State::Loading {
                     return;
                 }
-                match bytes.and_then(|b| og_cook::runtime::unpack(&b).map_err(|e| e.to_string())) {
+                match bytes.and_then(|b| og_bundle::runtime::unpack(&b).map_err(|e| e.to_string()))
+                {
                     Ok(files) => {
                         s.groups[i].files = files.into_iter().collect();
                         return;

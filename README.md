@@ -58,6 +58,7 @@ crates/           Rust workspace: the engine core and its backends
   og-audio        mixer, buses, spatialisation (AudioWorklet on web)
   og-ui           immediate-mode UI dressed by each game's own style
   og-cook         asset cook: glTF, textures (KTX2/Basis), audio, fonts (MSDF), scenes
+  og-bundle       the cooked blobs' formats and the runtime loaders that read them
   og-probe        command channel, probe RPC, dumps, capture, sweep
   og-host-web     wasm-bindgen bindings and the Worker/OffscreenCanvas host
   og-host-node    napi bindings for the headless native player

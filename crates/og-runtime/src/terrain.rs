@@ -37,7 +37,7 @@ const GEOMETRY_BASE: u64 = 0x7e << 32;
 pub(crate) struct LoadedTerrain {
     pub render: og_render::TerrainHandle,
     /// The cooked tiles, still compressed.
-    pub cooked: og_cook::runtime::CookedTerrain,
+    pub cooked: og_bundle::runtime::CookedTerrain,
     /// The whole field in memory: physics' (a collider terrain) or an
     /// edited one's. `None`: only the tiles below are decoded.
     pub field: Option<TerrainData>,
@@ -465,7 +465,7 @@ fn info(index: usize, t: &LoadedTerrain) -> Value {
 
 /// `og.terrain.load`.
 pub(crate) fn load(eng: &Engine, path: &str) -> Result<Value, String> {
-    let id = og_cook::runtime::asset_id(path).to_string();
+    let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(&i) = eng.render.borrow().terrain.by_id.get(&id) {
         return Ok(info(i, &eng.render.borrow().terrain.loaded[i]));
     }

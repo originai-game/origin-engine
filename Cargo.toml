@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/og-core", "crates/og-geom", "crates/og-core-derive", "crates/og-ecs", "crates/og-lanes", "crates/og-api", "crates/og-records", "crates/og-idl", "crates/og-runtime", "crates/og-render", "crates/og-bake", "crates/og-cook", "crates/og-blob", "crates/og-probe", "crates/og-input", "crates/og-physics", "crates/og-anim", "crates/og-tween", "crates/og-timeline", "crates/og-tilemap", "crates/og-audio", "crates/og-nav", "crates/og-ai", "crates/og-i18n", "crates/og-net", "crates/og-ui", "crates/og-host-web", "crates/og-host-node", "crates/og-cli", "crates/og-tests", "crates/og-tests-cooked", "crates/og-tests-web"]
+members = ["crates/og-core", "crates/og-geom", "crates/og-core-derive", "crates/og-ecs", "crates/og-lanes", "crates/og-api", "crates/og-records", "crates/og-idl", "crates/og-runtime", "crates/og-render", "crates/og-bake", "crates/og-cook", "crates/og-bundle", "crates/og-blob", "crates/og-probe", "crates/og-input", "crates/og-physics", "crates/og-anim", "crates/og-tween", "crates/og-timeline", "crates/og-tilemap", "crates/og-audio", "crates/og-nav", "crates/og-ai", "crates/og-i18n", "crates/og-net", "crates/og-ui", "crates/og-host-web", "crates/og-host-node", "crates/og-cli", "crates/og-tests", "crates/og-tests-cooked", "crates/og-tests-web"]
 
 # A vendored dependency, patched in below; not a member (no fmt, clippy or tests of ours).
 exclude = ["third_party"]
@@ -123,6 +123,8 @@ opt-level = "z"
 opt-level = "z"
 [profile.wasm.package.og-cook]
 opt-level = "z"
+[profile.wasm.package.og-bundle]
+opt-level = "z"
 [profile.wasm.package.og-blob]
 opt-level = "z"
 [profile.wasm.package.miniz_oxide]
@@ -215,6 +217,8 @@ codegen-units = 16
 [profile.dev.package.og-runtime]
 codegen-units = 16
 [profile.dev.package.og-cook]
+codegen-units = 16
+[profile.dev.package.og-bundle]
 codegen-units = 16
 [profile.dev.package.og-ui]
 codegen-units = 16

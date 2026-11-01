@@ -216,7 +216,7 @@ pub fn og_load_error(world: u32, asset: f64) -> String {
 /// A model's clip names from its `#anim` blob, in glTF order; none when the
 /// cook wrote no `#anim` (no skins, clips or morph targets).
 fn clip_names(a: &assets::Assets, model: &str) -> Result<Vec<String>, String> {
-    let id = og_cook::runtime::anim_id(model);
+    let id = og_bundle::runtime::anim_id(model);
     if a.bundle_for(&id).is_err() {
         return Ok(Vec::new());
     }

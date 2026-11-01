@@ -14,7 +14,7 @@ og-ecs = { path = "../og-ecs" }
 og-render = { path = "../og-render" }
 og-geom = { path = "../og-geom" }
 og-probe = { path = "../og-probe", default-features = false }
-og-cook = { path = "../og-cook", default-features = false, features = ["runtime"] }
+og-bundle = { path = "../og-bundle" }
 miniz_oxide = "0.8"
 glam = { workspace = true }
 serde_json = { version = "1", features = ["float_roundtrip"] }

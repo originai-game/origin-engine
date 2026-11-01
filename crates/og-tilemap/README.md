@@ -8,7 +8,7 @@ changed, collision rectangles merged into runs and 16×16 chunks of quads
 for og-render's sprite batch.
 
 ```rust
-let tileset = Arc::new(Tileset::parse(&text)?);                   // or og_cook: bundle.load_tileset(id)
+let tileset = Arc::new(Tileset::parse(&text)?);                   // or og_bundle: bundle.load_tileset(id)
 let asset = TilemapAsset::parse(&map_text)?;                      // or bundle.load_tilemap("maps/room.tmj")
 let mut state = MapState::new(&asset, &[tileset.clone()])?;       // tilesets in asset.tilesets order
 state.set(walls, 4, 7, 1)?;                                       // fill a terrain cell; its 3×3 neighbourhood re-resolves

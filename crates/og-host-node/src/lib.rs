@@ -24,8 +24,8 @@
 //! - og-probe is mounted by the runtime (`og_runtime`); this host adds
 //!   its loopback WebSocket (`og_node_probe_listen`, `og_node_probe_serve`,
 //!   og-probe's `ProbeServer` at `127.0.0.1:<port>/probe`), cooked files read
-//!   from disk (`Hooks::read_asset`) and og-cook's Basis transcoder for
-//!   textures (the `Hooks::texture` default with og-cook's `transcode`).
+//!   from disk (`Hooks::read_asset`) and og-bundle's Basis transcoder for
+//!   textures (the `Hooks::texture` default with og-bundle's `transcode`).
 
 /// The exports, one per binding symbol (`og api gen`).
 #[doc(hidden)]

@@ -24,7 +24,7 @@
 //!   fetches the game's bundle before creating the engine); once the
 //!   renderer is attached, the Worker asks `og_web_texture_target` which
 //!   encoding each Basis texture should reach this device in (the
-//!   renderer's `texture_formats`, og-cook's choice by kind), transcodes it
+//!   renderer's `texture_formats`, og-bundle's choice by kind), transcodes it
 //!   with Binomial's Basis transcoder (`src/web/basis.ts`) and hands it over
 //!   with `og_web_put_texture` (RGBA8 level 0) or
 //!   `og_web_put_texture_encoded` (every level of a block format).
@@ -154,7 +154,7 @@ impl Hooks for WebHooks {
 
     fn texture(
         &self,
-        texture: &og_cook::runtime::CookedTexture,
+        texture: &og_bundle::runtime::CookedTexture,
         formats: Option<&og_render::TextureFormats>,
     ) -> Fetch<og_render::TextureSource> {
         if let Some(t) = TEXTURES.with(|t| t.borrow().get(&texture.id).cloned()) {
@@ -378,13 +378,13 @@ pub fn og_web_put_texture_encoded(
 }
 
 /// The encoding a cooked texture should reach `engine`'s renderer in
-/// (og-cook's `CookedTexture::target_format` over the renderer's
+/// (og-bundle's `CookedTexture::target_format` over the renderer's
 /// `texture_formats`): `rgba8`, `bc7`, `bc5`, `astc4x4`, `etc2` or
 /// `eacrg11`; `rgba8` before a renderer is attached or for a texture that
 /// does not parse.
 #[wasm_bindgen]
 pub fn og_web_texture_target(engine: u32, manifest: String, id: String, bytes: Vec<u8>) -> String {
-    let Ok(bundle) = og_cook::runtime::Bundle::from_manifest(&manifest) else {
+    let Ok(bundle) = og_bundle::runtime::Bundle::from_manifest(&manifest) else {
         return "rgba8".into();
     };
     let words = aligned(&bytes);
@@ -447,7 +447,7 @@ fn json_str(s: &str) -> String {
 /// parse.
 #[wasm_bindgen]
 pub fn og_web_bundle_files(manifest: String) -> String {
-    match og_cook::runtime::Bundle::from_manifest(&manifest) {
+    match og_bundle::runtime::Bundle::from_manifest(&manifest) {
         Ok(bundle) => {
             let items: Vec<String> = bundle
                 .manifest()
@@ -489,14 +489,14 @@ fn aligned(bytes: &[u8]) -> Vec<u128> {
 /// with the reason when it loads).
 #[wasm_bindgen]
 pub fn og_web_texture_ktx2(manifest: String, id: String, bytes: Vec<u8>) -> Vec<u8> {
-    let Ok(bundle) = og_cook::runtime::Bundle::from_manifest(&manifest) else {
+    let Ok(bundle) = og_bundle::runtime::Bundle::from_manifest(&manifest) else {
         return Vec::new();
     };
     let words = aligned(&bytes);
     // SAFETY: the words hold `bytes.len()` initialised bytes.
     let view = unsafe { std::slice::from_raw_parts(words.as_ptr().cast::<u8>(), bytes.len()) };
     match bundle.texture(&id, view) {
-        Ok(t) if t.meta.codec != og_cook::format::codec::RGBA8 => t.ktx2,
+        Ok(t) if t.meta.codec != og_bundle::format::codec::RGBA8 => t.ktx2,
         _ => Vec::new(),
     }
 }
@@ -512,8 +512,8 @@ pub fn og_web_pack_ktx2(engine: Option<u32>, manifest: String, pack: Vec<u8>) ->
     let out = js_sys::Array::new();
     let formats = engine.and_then(|e| FORMATS.with(|f| f.borrow().get(&e).cloned()));
     let (Ok(bundle), Ok(files)) = (
-        og_cook::runtime::Bundle::from_manifest(&manifest),
-        og_cook::runtime::unpack(&pack),
+        og_bundle::runtime::Bundle::from_manifest(&manifest),
+        og_bundle::runtime::unpack(&pack),
     ) else {
         return out;
     };
@@ -529,7 +529,7 @@ pub fn og_web_pack_ktx2(engine: Option<u32>, manifest: String, pack: Vec<u8>) ->
         // SAFETY: the words hold `bytes.len()` initialised bytes.
         let view = unsafe { std::slice::from_raw_parts(words.as_ptr().cast::<u8>(), bytes.len()) };
         if let Ok(t) = bundle.texture(&o.id, view)
-            && t.meta.codec != og_cook::format::codec::RGBA8
+            && t.meta.codec != og_bundle::format::codec::RGBA8
         {
             out.push(&JsValue::from_str(&o.id));
             out.push(&js_sys::Uint8Array::from(t.ktx2.as_slice()));

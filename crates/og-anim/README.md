@@ -10,7 +10,7 @@ root motion back each tick.
 
 ```rust
 let anim = og_anim::install(&mut world)?;                       // after the systems that set players and parameters
-let cooked = bundle.load_animation("models/walker.glb")?;        // og-cook runtime: skeleton, clips, skin and morph streams
+let cooked = bundle.load_animation("models/walker.glb")?;        // og-bundle runtime: skeleton, clips, skin and morph streams
 anim.add_skeleton(1, cooked.skeleton.clone())?;
 for (i, c) in cooked.clips.iter().enumerate() { anim.add_clip(10 + i as u64, c.clone())?; }
 let graph = GraphAsset::parse(&text, &|name| cooked.clips.iter().position(|c| c.name == name).map(|i| 10 + i as u64))?;

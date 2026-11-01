@@ -1105,7 +1105,7 @@ pub fn og_load_style(world: u32, path: String) -> String {
 /// sounds loaded with it (once per path).
 pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
     (|| -> Result<usize, String> {
-        let id = og_cook::runtime::asset_id(path).to_string();
+        let id = og_bundle::runtime::asset_id(path).to_string();
         if let Some(i) = eng.assets.borrow().styles.iter().position(|s| s.id == id) {
             return Ok(i);
         }
