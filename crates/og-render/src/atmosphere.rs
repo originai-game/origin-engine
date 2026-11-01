@@ -3,8 +3,9 @@
 //! without fog and with the built-in sky draws exactly the frame it drew
 //! before (the shaders branch on a flag and return their input).
 //!
-//! - [`Fog`]: distance fog (exponential density from `start`, or a linear
-//!   ramp from `start` to `end`) and exponential height fog (dense below
+//! - [`Fog`]: distance fog measured from the camera (exponential density
+//!   past `start` and, when `end > start`, a linear ramp from `start` to
+//!   full fog at `end`, the two multiplied together) and exponential height fog (dense below
 //!   `height`, thinning by `falloff` per metre above it), mixed towards a
 //!   colour that turns towards `sun_color` looking into the sun (forward
 //!   scattering), capped at `max_opacity`. Applied in every lit, sky,

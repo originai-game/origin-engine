@@ -7664,23 +7664,23 @@ module atmosphere {
   const WEATHER_MIST u32 4 "Weather.kind: no particles, a dense low height fog."
 
   resource Fog {
-    doc "Distance and height fog over the 3D scene and world sprites: distance fog thickens exponentially by density from start (or linearly from start to end when end > start), height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged."
+    doc "Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged."
     field enabled bool "Draw the fog."
     field color Color "The colour the fog tends to (linear, before exposure)." {
       default 0.62 0.68 0.76
     }
-    field density f32 "Distance fog per metre (0: none)." {
+    field density f32 "Exponential distance fog per metre past start, with or without end's ramp (0: none)." {
       default 0.02
       min 0
       max 2
       tunable true
     }
-    field start f32 "Where distance fog starts." {
+    field start f32 "The distance from the camera where distance fog starts." {
       min 0
       unit m
       tunable true
     }
-    field end f32 "With end > start, a linear ramp to full fog at end as well." {
+    field end f32 "The distance from the camera where fog is full: with end > start, a linear ramp from start to end applied together with density's exponential fog (0: no ramp)." {
       min 0
       unit m
       tunable true

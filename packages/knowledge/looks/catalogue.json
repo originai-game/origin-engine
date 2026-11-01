@@ -267,7 +267,7 @@
       "checks": [
         "Facets are visible: each triangle shades flat with a hard edge to its neighbour.",
         "Surfaces carry flat colour, not detailed textures.",
-        "Distant layers separate by value or fog, not by detail."
+        "Depth reads by value: farther layers are lighter or lower in contrast than nearer ones, and the play area keeps full contrast."
       ],
       "premise": {
         "genre": "exploration, flight, puzzle, survival",
@@ -307,7 +307,7 @@
         "textureDensity": "no textures or 1 palette texture"
       },
       "artBible": {
-        "direction": "Planar facets, flat material colours, soft fog for distance, silhouettes designed from few polygons.",
+        "direction": "Planar facets, flat material colours, depth from value and silhouette, fog only beyond the play area, silhouettes designed from few polygons.",
         "avoid": [
           "smooth normals",
           "detailed textures",
@@ -684,7 +684,7 @@
       "checks": [
         "Characters are simple shapes with minimal facial detail and clean outlines.",
         "Backgrounds contain dense curling ornament or pointed arches in at least two depth layers.",
-        "Depth layers fade into haze or glow towards the back."
+        "Farther layers fade into haze or glow behind the play area, and the play area keeps full contrast."
       ],
       "premise": {
         "genre": "interconnected exploration platformer, challenging 2D action",
@@ -746,7 +746,7 @@
       "checks": [
         "Large areas are opaque painted masses with visible but selective brushwork.",
         "Lit surfaces are warm and shadows cool (or the reverse) across the whole frame.",
-        "The environment is dense but layered: foreground, play plane and background separate by value."
+        "The environment is dense but layered: what is nearer the camera, the play plane and what lies beyond or beneath it separate by value."
       ],
       "premise": {
         "genre": "action RPG, isometric adventure, story platformer",
@@ -1450,7 +1450,7 @@
         "textureDensity": "64 to 256 px textures, nearest-filtered"
       },
       "artBible": {
-        "direction": "A low-resolution frame with nearest upscaling, wobbling vertices and warped textures, short fog, modern light where it helps mood.",
+        "direction": "A low-resolution frame with nearest upscaling, wobbling vertices and warped textures, short fog beyond the play area, modern light where it helps mood.",
         "avoid": [
           "high-resolution textures",
           "smooth anti-aliased edges",
@@ -1835,7 +1835,7 @@
       "checks": [
         "Materials respond physically: metals reflect the environment, rough surfaces scatter.",
         "Lighting is naturalistic with soft shadows and indirect fill (ambient occlusion visible).",
-        "The frame is graded (a LUT or colour cast) and uses depth of field or atmosphere for focus."
+        "The frame is graded (a LUT or colour cast) and draws focus with light, depth of field or atmosphere outside the play area, which keeps full contrast."
       ],
       "premise": {
         "genre": "action adventure, open world, narrative drama",
@@ -1895,7 +1895,7 @@
       "preview": "previews/muted-cinematic-3d.webp",
       "checks": [
         "A capture's average saturation is low (below 0.25) with at most one saturated accent.",
-        "Light arrives in local beams or pools (god rays or spot lights) with haze between layers.",
+        "Light arrives in local beams or pools (god rays or spot lights) made visible by haze in their path, not by a fog over the whole frame.",
         "Forms are simplified but keep volume (soft shading, no outlines)."
       ],
       "premise": {
@@ -2193,7 +2193,7 @@
       "checks": [
         "At least four parallax layers are visible, foreground darkest.",
         "Luminous focal points (glows, light shafts) stand against dark masses.",
-        "Distant layers fade by atmospheric perspective (lighter and cooler)."
+        "Layers behind the play plane fade by atmospheric perspective (lighter and cooler), and the play plane keeps full contrast."
       ],
       "premise": {
         "genre": "exploration platformer, adventure",

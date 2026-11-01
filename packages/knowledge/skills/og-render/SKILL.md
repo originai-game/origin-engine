@@ -488,8 +488,11 @@ whole reflection.
 
 `og.atmosphere` is data too, and off until set (`og api show atmosphere`):
 
-- **Fog** — the `og.Fog` resource: `enabled`, distance fog (`density` per
-  metre from `start`, or a linear ramp to `end`), height fog
+- **Fog** — the `og.Fog` resource: `enabled`, distance fog counted from
+  the camera (`density` per metre past `start` and, when `end > start`, a
+  linear ramp to full fog at `end`: both apply together, and `density`
+  defaults to 0.02, so setting only `end` still adds exponential fog; set
+  `density: 0` for the ramp alone), height fog
   (`heightDensity` below `height`, thinning by `falloff`), `sunColor` for
   the glow looking into the sun, `sky` for how much of the sky it covers.
 - **Sky** — `og.Sky { enabled, zenith, horizon, ground, sunDirection,

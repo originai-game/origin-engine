@@ -27,7 +27,7 @@ module atmosphere {
 | [`WEATHER_SNOW`](#const-WEATHER_SNOW) | constant | Weather.kind: flakes drifting down on gusts, a pale fog. |
 | [`WEATHER_DUST`](#const-WEATHER_DUST) | constant | Weather.kind: dust blowing along the wind near the ground, a warm thick fog. |
 | [`WEATHER_MIST`](#const-WEATHER_MIST) | constant | Weather.kind: no particles, a dense low height fog. |
-| [`og.Fog`](#record-Fog) | resource | Distance and height fog over the 3D scene and world sprites: distance fog thickens exponentially by density from start (or linearly from start to end when end > start), height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged. |
+| [`og.Fog`](#record-Fog) | resource | Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged. |
 | [`og.Sky`](#record-Sky) | resource | A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it (the image-based light follows it). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself. |
 | [`og.DayNight`](#record-DayNight) | resource | A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`. |
 | [`og.Weather`](#record-Weather) | resource | A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation. |
@@ -72,7 +72,7 @@ fn timeOfDay {
 
 ### `og.Fog` (resource)
 
-Distance and height fog over the 3D scene and world sprites: distance fog thickens exponentially by density from start (or linearly from start to end when end > start), height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.
+Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.
 
 Token `og.Fog`, registered under the schema name `og.Fog`; its value type is `Fog`.
 
@@ -80,9 +80,9 @@ Token `og.Fog`, registered under the schema name `og.Fog`; its value type is `Fo
 |---|---|---|---|---|---|---|
 | `enabled` | `boolean` | `false` | — | — | — | Draw the fog. |
 | `color` | `Color` | `{ r: 0.62, g: 0.68, b: 0.76 }` | — | — | — | The colour the fog tends to (linear, before exposure). |
-| `density` | `number` | `0.02` | 0 … 2 | — | tunable | Distance fog per metre (0: none). |
-| `start` | `number` | `0` | ≥ 0 | `m` | tunable | Where distance fog starts. |
-| `end` | `number` | `0` | ≥ 0 | `m` | tunable | With end > start, a linear ramp to full fog at end as well. |
+| `density` | `number` | `0.02` | 0 … 2 | — | tunable | Exponential distance fog per metre past start, with or without end's ramp (0: none). |
+| `start` | `number` | `0` | ≥ 0 | `m` | tunable | The distance from the camera where distance fog starts. |
+| `end` | `number` | `0` | ≥ 0 | `m` | tunable | The distance from the camera where fog is full: with end > start, a linear ramp from start to end applied together with density's exponential fog (0: no ramp). |
 | `heightDensity` | `number` | `0` | 0 … 10 | — | tunable | Height fog at and below height (0: none). |
 | `height` | `number` | `0` | — | `m` | tunable | The world height below which height fog is densest. |
 | `falloff` | `number` | `0.5` | 0.0001 … 20 | — | tunable | How fast height fog thins above height, per metre. |
@@ -97,23 +97,23 @@ Token `og.Fog`, registered under the schema name `og.Fog`; its value type is `Fo
 
 ```ogt
 resource Fog {
-  doc "Distance and height fog over the 3D scene and world sprites: distance fog thickens exponentially by density from start (or linearly from start to end when end > start), height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged."
+  doc "Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged."
   field enabled bool "Draw the fog."
   field color Color "The colour the fog tends to (linear, before exposure)." {
     default 0.62 0.68 0.76
   }
-  field density f32 "Distance fog per metre (0: none)." {
+  field density f32 "Exponential distance fog per metre past start, with or without end's ramp (0: none)." {
     default 0.02
     min 0
     max 2
     tunable true
   }
-  field start f32 "Where distance fog starts." {
+  field start f32 "The distance from the camera where distance fog starts." {
     min 0
     unit m
     tunable true
   }
-  field end f32 "With end > start, a linear ramp to full fog at end as well." {
+  field end f32 "The distance from the camera where fog is full: with end > start, a linear ramp from start to end applied together with density's exponential fog (0: no ramp)." {
     min 0
     unit m
     tunable true

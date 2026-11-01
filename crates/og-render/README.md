@@ -1297,7 +1297,8 @@ All off by default: a scene that sets none of them draws exactly the frame
 it drew before (every earlier reference is unchanged).
 
 - **Fog** (`RenderScene::fog`, `src/atmosphere.rs`): distance fog
-  (exponential from `start`, or a linear ramp to `end`), integrated
+  from the camera (exponential from `start` and, when `end > start`, a
+  linear ramp to `end` as well), integrated
   exponential height fog, forward scattering towards `sun_color`, applied
   in the lit, sky, particle, strip and world-sprite shaders (blended
   effects fade into it by `fog_keep`); the overlay is never fogged.

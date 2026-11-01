@@ -257,6 +257,15 @@ cheaply than any model; use them on purpose, one look per area.
   the far plane recede; keep the nearest 10 m clear (`start` 6–10). Height
   fog (`heightDensity` 0.03–0.1 below the ground's height) fills valleys and
   swamps. Match the fog's `color` to the sky's horizon or the scene floats.
+  Those numbers are for a camera near the ground. Fog distances count from
+  the camera, not from the player: with a high or top-down camera
+  (shooters, strategy, isometric) the whole play area sits 20–60 m away,
+  so distance fog starts beyond the far edge of the play area (`start` past
+  its farthest visible point) or stays off. Depth there comes from value
+  (the ground darker or lighter than the subjects, farther layers lower in
+  contrast) and from height fog below the play plane (`height` under the
+  ground or sea, so it fills what lies beneath), never from fog over the
+  play area: the play area keeps full contrast.
 - **One sky per area**: a clear noon (`og.Sky` zenith deep blue, horizon
   pale), an overcast grey (low contrast, `sunSize` 0), a warm dusk with
   long shadows (`og.DayNight` at 16.5–17.25 h: at the default `tilt` the
@@ -279,8 +288,12 @@ cheaply than any model; use them on purpose, one look per area.
   dark and saturated; `waveStrength` 0.2–0.5 for ponds, 0.6–1 for seas.
 - **2D**: a `Water2D` lip a shade lighter than the surface; metaball fluids
   in one bright colour with a lighter `rim`, drawn under the foreground.
-- Prove it: captures at the area's time of day; the far third of the frame
-  lower in contrast than the near third, and the HUD unchanged by the fog.
+- Prove it: captures at the area's time of day; at a ground-level camera
+  the far third of the frame lower in contrast than the near third, and the
+  HUD unchanged by the fog. At every camera, capture the play area with the
+  fog on and off: its contrast is the same in both (within a few per cent),
+  or the fog is over the play area and moves out (`start` farther,
+  `density` lower).
 
 ## 9. Anti-patterns: "it looks like a web form"
 

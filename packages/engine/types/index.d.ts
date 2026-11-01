@@ -11716,7 +11716,7 @@ export declare const WEATHER_DUST: 3;
 export declare const WEATHER_MIST: 4;
 
 /**
- * Distance and height fog over the 3D scene and world sprites: distance fog thickens exponentially by density from start (or linearly from start to end when end > start), height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.
+ * Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.
  *
  * The `Fog` resource (token `og.Fog`).
  */
@@ -11730,7 +11730,7 @@ export interface Fog {
    */
   color: Color;
   /**
-   * Distance fog per metre (0: none).
+   * Exponential distance fog per metre past start, with or without end's ramp (0: none).
    *
    * @default 0.02
    * @range 0..2
@@ -11738,7 +11738,7 @@ export interface Fog {
    */
   density: number;
   /**
-   * Where distance fog starts.
+   * The distance from the camera where distance fog starts.
    *
    * @range 0..
    * @unit m (metres)
@@ -11746,7 +11746,7 @@ export interface Fog {
    */
   start: number;
   /**
-   * With end > start, a linear ramp to full fog at end as well.
+   * The distance from the camera where fog is full: with end > start, a linear ramp from start to end applied together with density's exponential fog (0: no ramp).
    *
    * @range 0..
    * @unit m (metres)
@@ -24792,7 +24792,7 @@ export declare namespace og {
     function stats(world: World): Result<PhysicsStats>;
   }
   /**
-   * Distance and height fog over the 3D scene and world sprites: distance fog thickens exponentially by density from start (or linearly from start to end when end > start), height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.
+   * Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.
    */
   const Fog: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly color: FieldSpec<"Color">; readonly density: FieldSpec<"f32">; readonly start: FieldSpec<"f32">; readonly end: FieldSpec<"f32">; readonly heightDensity: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly falloff: FieldSpec<"f32">; readonly sunColor: FieldSpec<"Color">; readonly sunPower: FieldSpec<"f32">; readonly maxOpacity: FieldSpec<"f32">; readonly sky: FieldSpec<"f32">; readonly volumetric: FieldSpec<"bool">; readonly scattering: FieldSpec<"f32">; readonly anisotropy: FieldSpec<"f32">; readonly volumetricDistance: FieldSpec<"f32"> }, Fog>;
   /**
