@@ -214,7 +214,10 @@ call names an asset id, the path under `assets/` (og-game §5, §6).
 |---|---|
 | `new GLTFLoader().load(url, (gltf) => scene.add(gltf.scene))` | `const ship = must(og.load.gltf(world, "models/ship.glb"))`, then `world.instantiate(ship, { name: "ship", position })` once `og.load.status(world, ship)` is `"ready"`, or the `AssetReady` event; a scene's `model` line instantiates it for you |
 | `gltf.animations` with an `AnimationMixer` | og.AnimationPlayer or og.AnimationGraph on the instance (og-anim §1) |
-| `DRACOLoader`, `KTX2Loader`, `MeshoptDecoder` | the cook compresses; give it the uncompressed glTF (it reads no Draco) |
+| `DRACOLoader`, `KTX2Loader`, `MeshoptDecoder` | delete the decoder: the cook reads Draco (`KHR_draco_mesh_compression`), meshopt (`EXT_meshopt_compression`), quantised (`KHR_mesh_quantization`) glTF and KTX2/Basis (`KHR_texture_basisu`) and WebP (`EXT_texture_webp`) images itself, then compresses what it writes |
+| `texture.offset`, `texture.repeat`, `texture.rotation` (and a glTF's `KHR_texture_transform`) | StandardMaterialDesc's `mapOffset`, `mapRepeat`, `mapRotation` and the same for `metalnessMap`, `normalMap`, `emissiveMap`, `aoMap`; a glTF's transform is cooked (baked into the uvs where it can be) |
+| `gltf.userData.variants` / `KHR_materials_variants` `selectVariant` | `og.Model.variant`, an index into `og.load.gltfInfo(world, asset).variants`, per instance |
+| a glTF's `KHR_lights_punctual` lights in `gltf.scene` | spawned with the model as child entities with og.PointLight, og.SpotLight or og.DirectionalLight (`GltfInfo.lights` counts them) |
 | `new THREE.TextureLoader().load("textures/crate.png")` | `og.load.texture(world, "textures/crate.png")` |
 | `RGBELoader`, `EXRLoader`, `CubeTextureLoader` for the environment | an `.ogt` of `type environment` naming the `.hdr`, `.exr` or cube, loaded with `og.load.environment` (prefiltered at cook time) |
 | `AudioLoader` with `THREE.Audio` | `og.load.sound` and og.AudioSource (og-audio) |

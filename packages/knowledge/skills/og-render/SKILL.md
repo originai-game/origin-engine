@@ -77,7 +77,13 @@ Every effect is off until the game turns it on, as data:
   with `thickness`, `ior` and `attenuationColor` for glass and water that
   refract what is behind them, `iridescence` for soap film and oil,
   `anisotropy` for brushed metal; a glTF's `KHR_materials_*` extensions
-  load into them. A non-uniform `scale` shades correctly. Set `sheenColor`
+  load into them (and `KHR_materials_unlit` into `unlit`). Each map slot has
+  a uv transform, three.js's `offset`/`repeat`/`rotation`: `mapOffset`,
+  `mapRepeat`, `mapRotation`, the same for `metalnessMap`, `normalMap`,
+  `emissiveMap` and `aoMap` (tiling, atlas cells, a glTF's
+  `KHR_texture_transform`). A glTF with material variants
+  (`KHR_materials_variants`) draws one per instance through
+  `og.Model.variant`, an index into `GltfInfo.variants`. A non-uniform `scale` shades correctly. Set `sheenColor`
   with `sheen` (black is no sheen); `thickness` is in the mesh's units and
   `attenuationDistance` 0 absorbs nothing. A transmissive material refracts
   only what was drawn before it (not other glass or water), and unlit and
