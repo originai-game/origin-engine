@@ -1,0 +1,531 @@
+//! Transform, random, audio, input and camera binding calls.
+
+use super::*;
+
+// ── transform ───────────────────────────────────────────────────────────────
+
+pub(super) fn vec3(v: &Value) -> glam::Vec3 {
+    glam::Vec3::new(
+        v["x"].as_f64().unwrap_or(0.0) as f32,
+        v["y"].as_f64().unwrap_or(0.0) as f32,
+        v["z"].as_f64().unwrap_or(0.0) as f32,
+    )
+}
+
+fn quat(v: &Value) -> glam::Quat {
+    glam::Quat::from_xyzw(
+        v["x"].as_f64().unwrap_or(0.0) as f32,
+        v["y"].as_f64().unwrap_or(0.0) as f32,
+        v["z"].as_f64().unwrap_or(0.0) as f32,
+        v["w"].as_f64().unwrap_or(1.0) as f32,
+    )
+}
+
+fn vec3_json(v: glam::Vec3) -> Value {
+    json!({ "x": f64::from(v.x), "y": f64::from(v.y), "z": f64::from(v.z) })
+}
+
+fn quat_json(q: glam::Quat) -> Value {
+    json!({ "x": f64::from(q.x), "y": f64::from(q.y), "z": f64::from(q.z), "w": f64::from(q.w) })
+}
+
+pub fn og_transform_compose(position: String, quaternion: String, scale: String) -> String {
+    let p = vec3(&parse(Some(&position)).unwrap_or_default());
+    let q = quat(&parse(Some(&quaternion)).unwrap_or_default());
+    let s = vec3(&parse(Some(&scale)).unwrap_or_default());
+    let m = glam::Mat4::from_scale_rotation_translation(s, q, p);
+    let elements: Vec<f64> = m.to_cols_array().iter().map(|&e| f64::from(e)).collect();
+    json!({ "elements": elements }).to_string()
+}
+
+pub fn og_transform_decompose(matrix: String) -> String {
+    let v = parse(Some(&matrix)).unwrap_or_default();
+    let mut e = [0f32; 16];
+    for (i, x) in e.iter_mut().enumerate() {
+        *x = v["elements"][i]
+            .as_f64()
+            .unwrap_or(if i % 5 == 0 { 1.0 } else { 0.0 }) as f32;
+    }
+    let (s, q, p) = glam::Mat4::from_cols_array(&e).to_scale_rotation_translation();
+    json!({ "position": vec3_json(p), "quaternion": quat_json(q), "scale": vec3_json(s) })
+        .to_string()
+}
+
+/// The rotation that points -Z from `eye` towards `target`, +Y up by default.
+fn look_rotation(eye: glam::Vec3, target: glam::Vec3, up: glam::Vec3) -> glam::Quat {
+    let up = if up.length_squared() == 0.0 {
+        glam::Vec3::Y
+    } else {
+        up
+    };
+    let forward = (target - eye).normalize_or_zero();
+    if forward == glam::Vec3::ZERO {
+        return glam::Quat::IDENTITY;
+    }
+    let z = -forward;
+    let x = up.cross(z).normalize_or(glam::Vec3::X);
+    let y = z.cross(x);
+    glam::Quat::from_mat3(&glam::Mat3::from_cols(x, y, z))
+}
+
+pub fn og_transform_look_at(eye: String, target: String, up: Option<String>) -> String {
+    let eye = vec3(&parse(Some(&eye)).unwrap_or_default());
+    let target = vec3(&parse(Some(&target)).unwrap_or_default());
+    let up = vec3(&parse(up.as_deref()).unwrap_or_default());
+    quat_json(look_rotation(eye, target, up)).to_string()
+}
+
+pub fn og_transform_from_axis_angle(axis: String, angle: f64) -> String {
+    let axis = vec3(&parse(Some(&axis)).unwrap_or_default());
+    quat_json(og_core::math::quat_from_axis_angle(axis, angle as f32)).to_string()
+}
+
+// ── rng ─────────────────────────────────────────────────────────────────────
+
+/// Draws from the world's Rng resource. Inside a system the resource must
+/// be among its writes (a draw moves its state); otherwise the draw is
+/// refused, logged once (`undeclared`) and answers the refused value (NaN).
+fn with_rng<T>(world: u32, refused: T, f: impl FnOnce(&mut Rng) -> T) -> T {
+    if let Some(frame) = running(world) {
+        // SAFETY: the frame is published while its system runs.
+        let ctx = unsafe { frame.ctx() };
+        return match ctx.resource_mut::<Rng>() {
+            Ok(mut r) => f(&mut r),
+            Err(_) => {
+                if let Ok(eng) = engine(world) {
+                    undeclared(&eng, frame.system, "write", Rng::NAME);
+                }
+                refused
+            }
+        };
+    }
+    match engine(world).and_then(|e| {
+        e.world()
+            .and_then(|w| w.resource_mut::<Rng>().map_err(err))
+            .map(f)
+    }) {
+        Ok(v) => v,
+        Err(_) => refused,
+    }
+}
+
+/// Reads the world's Rng resource without moving it: a fork derives a
+/// stream from the seed alone, so a system with og.Rng among its reads may
+/// fork (the parent is untouched and the child is the same on every host).
+fn read_rng<T>(world: u32, f: impl FnOnce(&Rng) -> T) -> Option<T> {
+    if let Some(frame) = running(world) {
+        // SAFETY: the frame is published while its system runs.
+        let ctx = unsafe { frame.ctx() };
+        return match ctx.resource::<Rng>() {
+            Ok(r) => Some(f(&r)),
+            Err(_) => {
+                if let Ok(eng) = engine(world) {
+                    undeclared(&eng, frame.system, "read", Rng::NAME);
+                }
+                None
+            }
+        };
+    }
+    engine(world)
+        .and_then(|e| {
+            e.world()
+                .and_then(|w| w.resource::<Rng>().map_err(err))
+                .map(|r| f(&r))
+        })
+        .ok()
+}
+
+fn with_stream<T>(stream: u32, refused: T, f: impl FnOnce(&mut Rng) -> T) -> T {
+    HANDLES.with(|t| {
+        let mut t = t.borrow_mut();
+        let base = t.streams.base;
+        match stream
+            .checked_sub(base)
+            .and_then(|i| t.streams.items.get_mut(i as usize))
+        {
+            Some((_, r)) => f(r),
+            None => refused,
+        }
+    })
+}
+
+fn chance(r: &mut Rng, p: f64) -> bool {
+    r.next_f64() < p
+}
+
+fn integer(r: &mut Rng, low: i32, high: i32) -> i32 {
+    if high < low {
+        return low;
+    }
+    r.integer(i64::from(low), i64::from(high)) as i32
+}
+
+fn new_stream(world: u32, rng: Rng) -> u32 {
+    HANDLES.with(|t| t.borrow_mut().streams.push((world, rng)))
+}
+
+pub fn og_rng_stream_get_seed(stream: u32) -> u32 {
+    with_stream(stream, 0, |r| r.seed())
+}
+pub fn og_rng_stream_next(stream: u32) -> f64 {
+    with_stream(stream, f64::NAN, Rng::next_f64)
+}
+pub fn og_rng_stream_range(stream: u32, low: f64, high: f64) -> f64 {
+    with_stream(stream, f64::NAN, |r| r.range(low, high))
+}
+pub fn og_rng_stream_integer(stream: u32, low: i32, high: i32) -> i32 {
+    with_stream(stream, 0, |r| integer(r, low, high))
+}
+pub fn og_rng_stream_chance(stream: u32, p: f64) -> bool {
+    with_stream(stream, false, |r| chance(r, p))
+}
+pub fn og_rng_stream_fork(stream: u32, label: String) -> u32 {
+    let owner = HANDLES.with(|t| {
+        let t = t.borrow();
+        t.streams.get(stream).map(|(w, r)| (*w, r.fork(&label)))
+    });
+    match owner {
+        Some((w, r)) => new_stream(w, r),
+        None => 0,
+    }
+}
+pub fn og_rng_next(world: u32) -> f64 {
+    with_rng(world, f64::NAN, Rng::next_f64)
+}
+pub fn og_rng_range(world: u32, low: f64, high: f64) -> f64 {
+    with_rng(world, f64::NAN, |r| r.range(low, high))
+}
+pub fn og_rng_integer(world: u32, low: i32, high: i32) -> i32 {
+    with_rng(world, 0, |r| integer(r, low, high))
+}
+pub fn og_rng_chance(world: u32, p: f64) -> bool {
+    with_rng(world, false, |r| chance(r, p))
+}
+pub fn og_rng_fork(world: u32, label: String) -> u32 {
+    match read_rng(world, |r| r.fork(&label)) {
+        Some(r) => new_stream(world, r),
+        None => 0,
+    }
+}
+
+// ── audio ───────────────────────────────────────────────────────────────────
+
+/// `og.audio.outputLatency`: og.Audio's `outputLatency`, which the host's
+/// sink reports between ticks (`set_audio_latency`). Inside a system og.Audio
+/// must be among its reads or writes (refused and logged once otherwise: 0).
+pub fn og_audio_output_latency(world: u32) -> f64 {
+    if let Some(frame) = running(world) {
+        // SAFETY: the frame is published while its system runs.
+        return match unsafe { frame.ctx() }.resource::<og_audio::Audio>() {
+            Ok(a) => a.output_latency,
+            Err(_) => {
+                if let Ok(eng) = engine(world) {
+                    undeclared(&eng, frame.system, "read", "og.Audio");
+                }
+                0.0
+            }
+        };
+    }
+    engine(world)
+        .and_then(|e| {
+            e.world().and_then(|w| {
+                w.resource::<og_audio::Audio>()
+                    .map_err(err)
+                    .map(|a| a.output_latency)
+            })
+        })
+        .unwrap_or(0.0)
+}
+
+/// The host's sink reports its output latency (seconds from a sample's world
+/// time to the speaker: the device's own and the buffering in front of it),
+/// between ticks; it is host input, written to og.Audio like an input event.
+pub fn set_audio_latency(engine_id: u32, seconds: f64) -> Result<(), String> {
+    if running(engine_id).is_some() {
+        return Err("the audio latency is host input: report it between ticks".into());
+    }
+    let seconds = if seconds.is_finite() {
+        seconds.clamp(0.0, 10.0)
+    } else {
+        0.0
+    };
+    let eng = engine(engine_id)?;
+    let w = eng.world()?;
+    let a = w.resource_mut::<og_audio::Audio>().map_err(err)?;
+    if a.output_latency != seconds {
+        a.output_latency = seconds;
+    }
+    Ok(())
+}
+
+// ── input ───────────────────────────────────────────────────────────────────
+
+/// The `og.Input` resource as of this tick (inside a system, through its
+/// context; the resource is og-probe's input layer until og-input owns it).
+fn input<T>(world: u32, f: impl FnOnce(&og_probe::Input) -> T, refused: T) -> T {
+    if let Some(fr) = running(world) {
+        // SAFETY: the frame is published while its system runs.
+        return match unsafe { fr.ctx() }.resource::<og_probe::Input>() {
+            Ok(i) => f(&i),
+            Err(_) => refused,
+        };
+    }
+    match engine(world).and_then(|eng| {
+        eng.world()?
+            .resource::<og_probe::Input>()
+            .map(|i| *i)
+            .map_err(err)
+    }) {
+        Ok(i) => f(&i),
+        Err(_) => refused,
+    }
+}
+
+fn button(name: &str) -> og_probe::input::PointerButton {
+    use og_probe::input::PointerButton as B;
+    match name {
+        "left" => B::Left,
+        "middle" => B::Middle,
+        "right" => B::Right,
+        _ => B::None,
+    }
+}
+
+pub fn og_input_down(world: u32, key: String) -> bool {
+    input(world, |i| i.down(&key), false)
+}
+pub fn og_input_pressed(world: u32, key: String) -> bool {
+    input(world, |i| i.pressed(&key), false)
+}
+pub fn og_input_released(world: u32, key: String) -> bool {
+    input(world, |i| i.released(&key), false)
+}
+pub fn og_input_axis(world: u32, negative: String, positive: String) -> f64 {
+    input(world, |i| f64::from(i.axis(&negative, &positive)), 0.0)
+}
+pub fn og_input_axis2(world: u32, left: String, right: String, down: String, up: String) -> String {
+    let v = input(
+        world,
+        |i| i.axis2(&left, &right, &down, &up),
+        og_core::glam::Vec2::ZERO,
+    );
+    json!({ "x": f64::from(v.x), "y": f64::from(v.y) }).to_string()
+}
+pub fn og_input_button_down(world: u32, b: String) -> bool {
+    input(world, |i| i.button_down(button(&b)), false)
+}
+pub fn og_input_button_pressed(world: u32, b: String) -> bool {
+    input(world, |i| i.button_pressed(button(&b)), false)
+}
+pub fn og_input_button_released(world: u32, b: String) -> bool {
+    input(world, |i| i.button_released(button(&b)), false)
+}
+
+/// A copy of an input resource as of this tick (inside a system, through
+/// its context, which refuses it unless the system reads it).
+fn input_res<R: og_core::Reflect + Copy + Send + Sync + 'static, T>(
+    world: u32,
+    f: impl FnOnce(&R) -> T,
+    refused: T,
+) -> T {
+    if let Some(fr) = running(world) {
+        // SAFETY: the frame is published while its system runs.
+        return match unsafe { fr.ctx() }.resource::<R>() {
+            Ok(r) => f(&r),
+            Err(_) => refused,
+        };
+    }
+    match engine(world).and_then(|eng| eng.world()?.resource::<R>().map(|r| *r).map_err(err)) {
+        Ok(r) => f(&r),
+        Err(_) => refused,
+    }
+}
+
+fn vec2_json(v: og_core::glam::Vec2) -> String {
+    json!({ "x": f64::from(v.x), "y": f64::from(v.y) }).to_string()
+}
+
+pub fn og_pointers_down(world: u32, id: u32) -> bool {
+    input_res(world, |p: &og_input::Pointers| p.down(id), false)
+}
+pub fn og_pointers_pressed(world: u32, id: u32) -> bool {
+    input_res(world, |p: &og_input::Pointers| p.is_pressed(id), false)
+}
+pub fn og_pointers_released(world: u32, id: u32) -> bool {
+    input_res(world, |p: &og_input::Pointers| p.is_released(id), false)
+}
+pub fn og_pointers_position(world: u32, id: u32) -> String {
+    vec2_json(input_res(
+        world,
+        |p: &og_input::Pointers| p.position(id),
+        Default::default(),
+    ))
+}
+pub fn og_pointers_start(world: u32, id: u32) -> String {
+    vec2_json(input_res(
+        world,
+        |p: &og_input::Pointers| p.start(id),
+        Default::default(),
+    ))
+}
+pub fn og_pointers_count(world: u32) -> u32 {
+    input_res(world, |p: &og_input::Pointers| p.count(), 0)
+}
+pub fn og_gamepad_connected(world: u32, pad: Option<u32>) -> bool {
+    input_res(
+        world,
+        |g: &og_input::Gamepad| g.is_connected(pad.unwrap_or(0)),
+        false,
+    )
+}
+fn pad_button(button: &str) -> Option<usize> {
+    og_input::gamepad_button(button)
+}
+pub fn og_gamepad_down(world: u32, button: String, pad: Option<u32>) -> bool {
+    pad_button(&button).is_some_and(|b| {
+        input_res(
+            world,
+            |g: &og_input::Gamepad| g.down(b, pad.unwrap_or(0)),
+            false,
+        )
+    })
+}
+pub fn og_gamepad_pressed(world: u32, button: String, pad: Option<u32>) -> bool {
+    pad_button(&button).is_some_and(|b| {
+        input_res(
+            world,
+            |g: &og_input::Gamepad| g.pressed(b, pad.unwrap_or(0)),
+            false,
+        )
+    })
+}
+pub fn og_gamepad_released(world: u32, button: String, pad: Option<u32>) -> bool {
+    pad_button(&button).is_some_and(|b| {
+        input_res(
+            world,
+            |g: &og_input::Gamepad| g.released(b, pad.unwrap_or(0)),
+            false,
+        )
+    })
+}
+pub fn og_gamepad_axis(world: u32, axis: String, pad: Option<u32>) -> f64 {
+    match og_input::GamepadAxis::from_name(&axis) {
+        Some(a) => input_res(
+            world,
+            |g: &og_input::Gamepad| f64::from(g.axis(a, pad.unwrap_or(0))),
+            0.0,
+        ),
+        None => 0.0,
+    }
+}
+
+// ── camera ──────────────────────────────────────────────────────────────────
+
+/// The play surface in CSS pixels (the unit of og.Input and the probe).
+fn surface_size(eng: &Engine) -> (f32, f32) {
+    let v = super::modules::viewport_of(eng.id);
+    (v.width.max(1.0), v.height.max(1.0))
+}
+
+pub fn og_camera_look_at(world: u32, target: String) {
+    let _ = (|| -> Result<(), String> {
+        let eng = engine(world)?;
+        let cam = resource_value(&eng, "og.Camera")?;
+        let q = look_rotation(
+            vec3(&cam["position"]),
+            vec3(&parse(Some(&target))?),
+            glam::Vec3::Y,
+        );
+        let value = json!({ "quaternion": quat_json(q) });
+        let answer = super::engine::write_resource(world, "og.Camera", &value.to_string());
+        if answer.contains("\"ok\":false") {
+            return Err(answer);
+        }
+        Ok(())
+    })();
+}
+
+fn view_proj(eng: &Engine) -> Result<(glam::Mat4, glam::Mat4, f32, f32), String> {
+    let cam = resource_value(eng, "og.Camera")?;
+    let (w, h) = surface_size(eng);
+    let vp = camera_view_proj(&cam, w, h);
+    Ok((vp, vp.inverse(), w, h))
+}
+
+/// og.Camera's projection times view on a `w`×`h` surface, and its eye,
+/// forward axis and whether it is orthographic: what og.camera's
+/// worldToScreen projects with and the UI's world anchors follow.
+pub(crate) fn camera_view(cam: &Value, w: f32, h: f32) -> og_ui::WorldView {
+    let rot = quat(&cam["quaternion"]);
+    og_ui::WorldView {
+        view_proj: camera_view_proj(cam, w, h),
+        eye: vec3(&cam["position"]),
+        forward: rot * glam::Vec3::NEG_Z,
+        orthographic: cam["orthographic"].as_bool().unwrap_or(false),
+    }
+}
+
+fn camera_view_proj(cam: &Value, w: f32, h: f32) -> glam::Mat4 {
+    let rot = quat(&cam["quaternion"]);
+    let view = glam::Mat4::from_rotation_translation(rot, vec3(&cam["position"])).inverse();
+    let near = cam["near"].as_f64().unwrap_or(0.1) as f32;
+    let far = cam["far"].as_f64().unwrap_or(2000.0) as f32;
+    let zoom = cam["zoom"].as_f64().unwrap_or(1.0).max(0.01) as f32;
+    let proj = if cam["orthographic"].as_bool().unwrap_or(false) {
+        let half_h = cam["height"].as_f64().unwrap_or(10.0) as f32 / 2.0 / zoom;
+        let half_w = half_h * w / h;
+        let r = 1.0 / (near - far);
+        glam::Mat4::from_cols(
+            glam::Vec4::new(1.0 / half_w, 0.0, 0.0, 0.0),
+            glam::Vec4::new(0.0, 1.0 / half_h, 0.0, 0.0),
+            glam::Vec4::new(0.0, 0.0, r, 0.0),
+            glam::Vec4::new(0.0, 0.0, r * near, 1.0),
+        )
+    } else {
+        // perspective_rh by hand: glam's calls the host libm, og_core::math does not.
+        let half = (cam["fov"].as_f64().unwrap_or(50.0) as f32).to_radians() / 2.0;
+        let (s, c) = og_core::math::sin_cos(half);
+        let f = c / s * zoom;
+        let r = far / (near - far);
+        glam::Mat4::from_cols(
+            glam::Vec4::new(f / (w / h), 0.0, 0.0, 0.0),
+            glam::Vec4::new(0.0, f, 0.0, 0.0),
+            glam::Vec4::new(0.0, 0.0, r, -1.0),
+            glam::Vec4::new(0.0, 0.0, r * near, 0.0),
+        )
+    };
+    proj * view
+}
+
+pub fn og_camera_world_to_screen(world: u32, point: String) -> String {
+    let answer = (|| -> Result<Value, String> {
+        let eng = engine(world)?;
+        let (vp, _, w, h) = view_proj(&eng)?;
+        let p = vp * vec3(&parse(Some(&point))?).extend(1.0);
+        if p.w <= 0.0 {
+            return Ok(Value::Null);
+        }
+        let ndc = p.truncate() / p.w;
+        Ok(
+            json!({ "x": f64::from((ndc.x + 1.0) / 2.0 * w), "y": f64::from((1.0 - ndc.y) / 2.0 * h) }),
+        )
+    })();
+    answer.unwrap_or(Value::Null).to_string()
+}
+
+pub fn og_camera_screen_to_ray(world: u32, x: f64, y: f64) -> String {
+    let answer = (|| -> Result<Value, String> {
+        let eng = engine(world)?;
+        let (_, inv, w, h) = view_proj(&eng)?;
+        let nx = x as f32 / w * 2.0 - 1.0;
+        let ny = 1.0 - y as f32 / h * 2.0;
+        let near = inv.project_point3(glam::Vec3::new(nx, ny, 0.0));
+        let far = inv.project_point3(glam::Vec3::new(nx, ny, 1.0));
+        Ok(
+            json!({ "origin": vec3_json(near), "direction": vec3_json((far - near).normalize_or_zero()) }),
+        )
+    })();
+    answer
+        .unwrap_or_else(|_| json!({ "origin": vec3_json(glam::Vec3::ZERO), "direction": vec3_json(glam::Vec3::NEG_Z) }))
+        .to_string()
+}
