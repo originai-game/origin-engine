@@ -7,7 +7,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  all, chevron, clamp, fit, flags, over, frame, grow, kit, lastGesture, lastInteraction, px, rememberPath, role, spring, still, surface, text, token, xy,
+  all, byText, chevron, clamp, fit, flags, over, frame, grow, kit, lastGesture, lastInteraction, px, rememberPath, role, rtl, spring, still, surface, text, token, xy,
 } from "./base.ts";
 
 // ── card ────────────────────────────────────────────────────────────────
@@ -30,11 +30,11 @@ export function card(id: string, desc: Api.CardDesc, build: Api.UiBuild): Api.Re
   const fillRole = CARD_FILL[variant] ?? "panelRaised";
   const pad = desc.padding ?? t.lg;
   const body = (): void => {
-    if (desc.media) media("Media", desc.media, t.panel);
+    if (desc.media) media("Media", desc.media, t.panel, !!desc.badge);
     kit.column("Body", { width: grow(), padding: all(pad), gap: t.xs }, () => {
-      if (desc.eyebrow) text("Eyebrow", desc.eyebrow, { step: "caption", color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
-      if (desc.title) text("Title", desc.title, { step: "lg", heading: true, width: grow(), maxLines: 2, ellipsis: true });
-      if (desc.subtitle) text("Subtitle", desc.subtitle, { step: "sm", color: "inkMuted", width: grow(), maxLines: 3, ellipsis: true });
+      if (desc.eyebrow) text("Eyebrow", desc.eyebrow, { step: "caption", color: "inkMuted", width: grow() });
+      if (desc.title) text("Title", desc.title, { step: "lg", heading: true, width: grow() });
+      if (desc.subtitle) text("Subtitle", desc.subtitle, { step: "sm", color: "inkMuted", width: grow() });
       if (desc.title || desc.subtitle || desc.eyebrow) kit.spacer("Gap", px(t.xs));
       build();
     });
@@ -45,6 +45,9 @@ export function card(id: string, desc: Api.CardDesc, build: Api.UiBuild): Api.Re
     if (selected) ring("Selected");
   };
   const part = `Card.frame${flags(selected && "selected", variant)}`;
+  // A fixed width is the card at 100 % text: it grows with the player's text size, so its title
+  // keeps whole words instead of breaking mid-word (a row of cards wraps).
+  const width = desc.width?.kind === "fixed" ? px(byText(desc.width.px ?? 0)) : desc.width ?? null;
   if (desc.interactive) {
     const r = surface(id, {
       part: "Card.frame",
@@ -53,24 +56,24 @@ export function card(id: string, desc: Api.CardDesc, build: Api.UiBuild): Api.Re
       selected,
       fill: role(fillRole),
       washBy: 0.07,
+      // Lifts under the pointer and the focus, sinks while pressed: the style's ui spring.
+      lift: -4,
+      pressScale: 0.97,
       disabled,
       direction: "column",
-      width: desc.width ?? null,
+      width,
       height: desc.height ?? null,
       cross: "stretch",
       radius: t.panel,
       semantics: { role: "button", selected, ...(desc.title ? { name: [desc.eyebrow, desc.title, desc.subtitle].filter(Boolean).join(", ") } : {}) },
+      // Over its neighbours while it lifts.
+      props: { z: lastInteraction(id).hovered || lastInteraction(id).focused ? 1 : 0 },
     }, body);
-    // Lift under the pointer and the focus, sink while pressed: the style's ui spring.
-    const was = lastInteraction(id);
-    const lift = still() || disabled ? 0 : was.pressed ? 1 : was.hovered || was.focused ? -4 : 0;
-    const s = was.pressed && !disabled && !still() ? 0.985 : 1;
-    kit.props({ transform: { y: lift, scaleX: s, scaleY: s }, motion: spring("ui"), z: was.hovered || was.focused ? 1 : 0 });
     return r;
   }
   kit.open(id, {
     direction: "column",
-    width: desc.width ?? null,
+    width,
     height: desc.height ?? null,
     cross: "stretch",
     radius: t.panel,
@@ -97,9 +100,11 @@ export function ring(id: string, width = 2, ink: Api.ThemeColor = "focus"): void
 }
 
 /** A media slot: the game's texture covering the slot at its aspect around its focal point, or a placeholder drawn from the style and the slot's kind (never a grey box). */
-export function media(id: string, m: Api.CardMedia, radius: number): void {
+export function media(id: string, m: Api.CardMedia, radius: number, badged = false): void {
   const aspect = m.aspect && m.aspect > 0 ? m.aspect : 16 / 9;
-  kit.open(id, { width: grow(), aspect, align: "center", cross: "center", part: `Card.media${flags(!m.texture && "placeholder")}`, partClass: "slot" });
+  // Under a corner badge the placeholder's mark sits low in the slot, clear of the badge.
+  const low = badged && !m.texture;
+  kit.open(id, { direction: "column", width: grow(), aspect, align: low ? "end" : "center", cross: "center", padding: low ? { left: 0, top: 0, right: 0, bottom: frame().t.md } : all(0), part: `Card.media${flags(!m.texture && "placeholder")}`, partClass: "slot" });
   const shape: Api.DrawShape = { kind: "rect", radii: [radius, radius, 0, 0] };
   if (m.texture) {
     kit.setDraw({ shape, fills: [{ kind: "image", texture: m.texture, fit: "cover", focal: m.focal ?? { x: 0.5, y: 0.5 } }] });
@@ -160,15 +165,17 @@ export function scrollArea(id: string, desc: Api.ScrollAreaDesc, build: Api.UiBu
   kit.semantics({ role: "region", ...(desc.label ? { name: desc.label } : {}) });
 }
 
-function edge(id: string, start: boolean, k: number, horizontal: boolean, size: number, ink: Api.ThemeColor): void {
+/** A fade over a scrolling view's edge (`k` its strength, 0 to 1) into the surface it sits on: more lies that way. */
+export function edge(id: string, start: boolean, k: number, horizontal: boolean, size: number, ink: Api.ThemeColor): void {
   if (k < 0.01) return;
   kit.open(id, { width: horizontal ? px(size) : grow(), height: horizontal ? grow() : px(size) });
   kit.setDraw({
     fills: [{
       kind: "gradient",
       type: "linear",
-      from: horizontal ? { x: start ? 0 : 1, y: 0.5 } : { x: 0.5, y: start ? 0 : 1 },
-      to: horizontal ? { x: start ? 1 : 0, y: 0.5 } : { x: 0.5, y: start ? 1 : 0 },
+      // Opaque at the outer side: the start inset is the right under a right-to-left locale.
+      from: horizontal ? { x: start !== rtl() ? 0 : 1, y: 0.5 } : { x: 0.5, y: start ? 0 : 1 },
+      to: horizontal ? { x: start !== rtl() ? 1 : 0, y: 0.5 } : { x: 0.5, y: start ? 1 : 0 },
       stops: [{ offset: 0, color: token(ink, k) }, { offset: 1, color: token(ink, 0) }],
     }],
   });
@@ -214,8 +221,8 @@ export function accordion(id: string, desc: Api.AccordionDesc, build: Api.UiItem
         semantics: { role: "button", expanded: open, name: s.subtitle ? `${s.title ?? ""}, ${s.subtitle}` : s.title ?? "" },
       }, () => {
         kit.column("Text", { width: grow(), gap: 2 }, () => {
-          text("Title", s.title ?? "", { step: "base", heading: true, width: grow(), ellipsis: true, nowrap: true });
-          if (s.subtitle) text("Subtitle", s.subtitle, { step: "caption", color: "inkMuted", width: grow(), ellipsis: true, nowrap: true });
+          text("Title", s.title ?? "", { step: "base", heading: true, width: grow() });
+          if (s.subtitle) text("Subtitle", s.subtitle, { step: "caption", color: "inkMuted", width: grow() });
         });
         if (s.badge) kit.badge("Badge", s.badge, s.badgeTone ?? "neutral");
         chevron("Chevron", "down", 18, role(s.disabled ? "inkFaint" : "inkMuted"), { group: "expansion", current: open ? "expanded" : "collapsed", turns: { collapsed: 0, expanded: 2 } });
