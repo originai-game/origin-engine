@@ -5,7 +5,7 @@
 // down marks), Crusader Kings III's tooltips (a ring fills, the card
 // locks, its keywords open cards of their own, as deep as they go) and
 // Baldur's Gate 3's keyword links. Each card is an anchored group in the
-// tooltip layer, placed beside its trigger's last rectangle, flipped and
+// tooltip layer (over the toast stack and every other layer), placed beside its trigger's last rectangle, flipped and
 // clamped inside the safe area, mirrored right to left.
 
 import type * as Api from "@origingame/engine";
@@ -157,7 +157,7 @@ function card(id: string, desc: Api.TooltipCardDesc, target: string, open_: bool
   let hoveredLink: string | null = null;
   let bodyPath = "";
   let overCard = false;
-  kit.anchor(id, { ...anchorAt(at.x, at.y, total, h), direction: "row", gap: tk.sm, cross: "start", over: true }, () => {
+  kit.anchor(id, { ...anchorAt(at.x, at.y, total, h), direction: "row", gap: tk.sm, cross: "start", over: true, tooltip: true }, () => {
     if (compare) {
       overCard = sheet("Compare", desc, true, width, rare, 0, () => {}) || overCard;
     }
@@ -228,7 +228,9 @@ function sheet(id: string, d: Api.TooltipCardDesc, equipped: boolean, width: num
     partClass: "tooltip",
   }, {
     shape: { kind: "rect", radii: [sh.radius, sh.radius, sh.radius, sh.radius], corner: sh.corner },
-    fills: [vgrad([[0, token("panelRaised", 0.98)], [1, token("panel", 0.98)]])],
+    // Fully opaque whatever the style's panels are: a card the player opened draws over the toasts and the HUD,
+    // and nothing under it may show through its text.
+    fills: [vgrad([[0, lit({ ...role("panelRaised"), a: 1 })], [1, lit({ ...role("panel"), a: 1 })]])],
     strokes: [stroke(rare && !equipped ? 1.5 : 1, rare && !equipped ? lit(rare, 0.7) : token("lineStrong", 0.8), "inside")],
     effects: [drop(12, 32, token("shadow", 0.55)), drop(2, 6, token("shadow", 0.35))],
   });

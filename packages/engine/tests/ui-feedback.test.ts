@@ -154,7 +154,7 @@ test("og.ui.tooltipCard: shows after its delay beside its trigger, pins after re
   let r: ReturnType<typeof og.ui.tooltipCard> | null = null;
   const e = engineFor("FbTip", () => {
     // The trigger is at the end of a wider panel: the card must clear the panel, not just the trigger.
-    og.ui.anchor("Bar", { anchor: "right", margin: 16, direction: "column", cross: "end", width: { kind: "fixed", px: 320 } }, () => {
+    og.ui.anchor("Bar", { anchor: "topRight", margin: 16, direction: "column", cross: "end", width: { kind: "fixed", px: 320 } }, () => {
       og.ui.button("Sword", "Sword", {});
       r = og.ui.tooltipCard("Tip", {
         open, target: "Sword", title: "Ashbringer", rarity: "legendary", subtitle: "Legendary sword",
@@ -162,6 +162,8 @@ test("og.ui.tooltipCard: shows after its delay beside its trigger, pins after re
         body: "Deals [link=fire]fire[/link] damage.", links: [{ key: "fire", title: "Fire", body: "Burns." }],
       });
     });
+    // A wide toast stack built after the card, across it.
+    og.ui.notifications("Toasts", { anchor: "topRight", width: 760, items: [{ key: "warn", variant: "alert", tone: "danger", title: "Connection unstable", at: 0, sticky: true }] });
   });
   e.advance(4);
   expect(r!.visible).toBe(false);
@@ -181,6 +183,11 @@ test("og.ui.tooltipCard: shows after its delay beside its trigger, pins after re
   expect(tip.x).toBeGreaterThanOrEqual(0);
   expect(at(els, "Tip/Card/Stats/Stat#0/Delta/Text")!.text).toBe("12");
   expect(at(els, "Tip/Card/Stats/Stat#0/Delta/Mark")).toBeDefined();
+  // Built before the toast stack and over it, the card still draws above it (the tooltip layer, not build order).
+  const toast = at(els, "Toasts")!;
+  expect(toast.x).toBeLessThan(tip.x + tip.width);
+  expect(toast.y).toBeLessThan(tip.y + tip.height);
+  expect(els.indexOf(at(els, "Tip/Card")!)).toBeGreaterThan(els.indexOf(at(els, "Toasts/warn")!));
   // Resting past pinMs pins it; let go, a pinned card stays only while held, then leaves.
   e.advance(30);
   expect(r!.pinned).toBe(true);
