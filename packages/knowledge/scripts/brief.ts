@@ -25,9 +25,110 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** The kinds of asset a brief is written for. */
-export const ART_KINDS = ["sprite", "tileset", "portrait", "backdrop", "prop", "character", "texture", "icon"] as const;
+/**
+ * The kinds of asset a brief is written for: the game's own (sprite to icon),
+ * then the UI's art slots (docs/ui.md §13, Appendix F; `UI_KINDS` has each
+ * one's spec), the names og-ui's `SlotKind` gives them.
+ */
+export const ART_KINDS = [
+  "sprite", "tileset", "portrait", "backdrop", "prop", "character", "texture", "icon",
+  "keyArt", "capsule", "logo", "appIcon", "characterSplash", "fullBody", "bust", "vnSprite", "eventCg", "itemIcon",
+  "abilityIcon", "cardArt", "cardFrame", "unitPortrait", "levelThumb", "songJacket", "saveThumb", "menuBackground",
+  "menuPattern", "banner", "playerBanner", "emblem", "achievement", "emote", "currency", "mapGlyph", "talentIcon",
+  "tutorial", "cosmeticPreview", "styleFrame", "styleButton", "ornament", "iconSet",
+] as const;
 export type ArtKind = (typeof ART_KINDS)[number];
+
+/** How a UI slot fills its rectangle with the art (og-ui's `Fit`). */
+export type UiFit = "cover" | "contain" | "fill" | "nineSlice" | "tile";
+
+/** What an art slot of a UI kind is (docs/ui.md §13.1): og-ui's `SlotKind::info`, held equal by og-ui's tests. */
+export interface UiKindSpec {
+  /** The sentence that opens the prompt; `{subject}` is the subject. */
+  readonly about: string;
+  /** The aspects it is drawn at as `w:h`, the first the default; empty: free (the art's own). */
+  readonly aspects: readonly string[];
+  /** Any aspect between these two is also allowed. */
+  readonly range?: readonly [string, string];
+  readonly transparent: boolean;
+  readonly tiling: boolean;
+  /** Where the subject sits, 0..1 from the top left: cropping keeps it. */
+  readonly focal: readonly [number, number];
+  /** Where text or controls lie over it (x0, y0, x1, y1, 0..1): nothing important there; null: none. */
+  readonly safe: readonly [number, number, number, number] | null;
+  readonly fit: UiFit;
+  /** The smallest CSS px size it must read at; 0: no floor. */
+  readonly legiblePx: number;
+  /** Style art drawn as a nine-slice with declared insets. */
+  readonly nineSlice: boolean;
+  /** The states drawn, one image each, left to right on one sheet (style buttons). */
+  readonly states: readonly string[];
+  /** Made by an image generator; false: the engine renders it (a viewport), the brief only describes it. */
+  readonly generated: boolean;
+  /** Pixel sizes per aspect where a store asks for exact ones (Steamworks, 2024). */
+  readonly pixels?: Readonly<Record<string, readonly [number, number]>>;
+}
+
+const centre = [0.5, 0.5] as const;
+const ui = (about: string, aspects: readonly string[], transparent: boolean, focal: readonly [number, number], fit: UiFit, extra: Partial<UiKindSpec> = {}): UiKindSpec => ({
+  about,
+  aspects,
+  transparent,
+  tiling: false,
+  focal,
+  safe: null,
+  fit,
+  legiblePx: 0,
+  nineSlice: false,
+  states: [],
+  generated: true,
+  ...extra,
+});
+
+/** The states a style button is drawn in. */
+export const BUTTON_STATES = ["normal", "hover", "pressed", "disabled", "focused"] as const;
+/** The cells (columns x rows) a grid inventory's item takes. */
+export const ITEM_CELLS: readonly (readonly [number, number])[] = [[1, 1], [1, 2], [2, 3], [2, 4]];
+
+/** Each UI kind's spec (Appendix F of docs/ui.md). */
+export const UI_KINDS = {
+  keyArt: ui("Key art of {subject}: the game's title image, a full-bleed scene", ["16:9", "21:9", "9:16"], false, [0.66, 0.45], "cover", { safe: [0, 0, 0.4, 1] }),
+  capsule: ui("A store capsule of {subject}: the game's artwork for a store listing, its logo laid over it separately", ["92:43", "77:29", "616:353", "187:224", "2:3", "96:31"], false, [0.5, 0.45], "cover", {
+    pixels: { "92:43": [920, 430], "77:29": [462, 174], "616:353": [1232, 706], "187:224": [748, 896], "2:3": [600, 900], "96:31": [3840, 1240] },
+  }),
+  logo: ui("The game's logo: {subject}, lettered as one mark", [], true, centre, "contain"),
+  appIcon: ui("An app icon of {subject}: one bold mark filling the square", ["1:1"], false, centre, "cover", { legiblePx: 32 }),
+  characterSplash: ui("A character splash of {subject}: the character large and in action, the moment they are unlocked", ["16:9", "9:16"], false, [0.5, 0.3], "cover", { safe: [0, 0.78, 1, 1] }),
+  fullBody: ui("A full-body character illustration of {subject}, head to feet, standing", ["9:16", "1:2"], true, [0.5, 0.18], "contain", { range: ["1:2", "9:16"] }),
+  bust: ui("A character bust of {subject}, head and shoulders, facing three-quarters", ["1:1", "3:4"], true, [0.5, 0.35], "cover"),
+  vnSprite: ui("A visual-novel sprite of {subject}: the character standing, knees up, on a clear background, layered so expressions swap", ["1:2"], true, [0.5, 0.15], "contain"),
+  eventCg: ui("An event illustration of {subject}: a story moment in one frame", ["16:9"], false, [0.5, 0.4], "cover", { safe: [0, 0.72, 1, 1] }),
+  itemIcon: ui("An inventory item icon of {subject}: the object alone, centred, seen at a three-quarter angle", ["1:1", "1:2", "2:3"], true, centre, "contain", { legiblePx: 32 }),
+  abilityIcon: ui("An ability icon of {subject}: one symbol of the effect on a filled ground", ["1:1"], false, centre, "cover", { legiblePx: 24 }),
+  cardArt: ui("Card art of {subject}: the picture in a card's art window", ["4:3"], false, [0.5, 0.45], "cover"),
+  cardFrame: ui("A card frame for {subject}: the border, name banner and text box of a playing card, its art window and text box left empty", ["5:7"], true, centre, "contain"),
+  unitPortrait: ui("A unit portrait of {subject}: the face or the building, filling a square", ["1:1"], false, [0.5, 0.4], "cover", { legiblePx: 32 }),
+  levelThumb: ui("A level thumbnail of {subject}: the place at a glance", ["16:9", "4:3"], false, centre, "cover"),
+  songJacket: ui("A song jacket of {subject}: album-cover artwork", ["1:1"], false, centre, "cover"),
+  saveThumb: ui("A save-slot thumbnail of {subject}: the scene where the game was saved", ["16:9"], false, centre, "cover"),
+  menuBackground: ui("A menu background of {subject}: a calm scene behind the game's menus", ["16:9", "21:9"], false, [0.68, 0.45], "cover", { safe: [0, 0, 0.45, 1] }),
+  menuPattern: ui("A tiling menu pattern of {subject}: a quiet repeat behind panels", ["1:1"], false, centre, "tile", { tiling: true }),
+  banner: ui("An event banner of {subject}: a promotion across the top of a shop or event screen", ["2:1", "16:9", "3:1"], false, [0.68, 0.5], "cover", { range: ["16:9", "2:1"], safe: [0, 0, 0.45, 1] }),
+  playerBanner: ui("A player banner of {subject}: a calling card behind a player's name and rank", ["4:1", "5:1", "1:2"], false, [0.75, 0.4], "cover", { range: ["4:1", "5:1"], safe: [0, 0.55, 0.6, 1] }),
+  emblem: ui("An emblem of {subject}: a crest or badge, symmetrical, on a clear background", ["1:1"], true, centre, "contain", { legiblePx: 32 }),
+  achievement: ui("An achievement icon of {subject}: one symbol of the deed on a filled ground", ["1:1"], false, centre, "cover", { legiblePx: 32 }),
+  emote: ui("An emote of {subject}: a sticker, one expression, bold outline, on a clear background", ["1:1"], true, centre, "contain", { legiblePx: 28 }),
+  currency: ui("A currency icon of {subject}: one coin, gem or resource, on a clear background", ["1:1"], true, centre, "contain", { legiblePx: 16 }),
+  mapGlyph: ui("A map glyph of {subject}: a flat symbol for a point of interest, on a clear background", ["1:1"], true, centre, "contain", { legiblePx: 16 }),
+  talentIcon: ui("A talent node icon of {subject}: one symbol on a filled ground", ["1:1"], false, centre, "cover", { legiblePx: 32 }),
+  tutorial: ui("A tutorial illustration of {subject}: the action shown plainly", ["16:9", "4:3"], false, centre, "cover"),
+  cosmeticPreview: ui("A cosmetic preview of {subject}: the item rendered in the game, three-quarter view", ["1:1", "3:4"], false, [0.5, 0.45], "cover", { generated: false }),
+  styleFrame: ui("A UI frame of {subject}: a panel's border and ground, its centre plain so text reads on it", [], true, centre, "nineSlice", { nineSlice: true }),
+  styleButton: ui("A UI button of {subject}: its border and face, its centre plain so a label reads on it", [], true, centre, "nineSlice", { nineSlice: true, states: BUTTON_STATES }),
+  ornament: ui("A UI ornament of {subject}: a corner, flourish or divider, on a clear background", [], true, centre, "contain"),
+  iconSet: ui("A UI icon of {subject} for the style's icon set: one flat symbol in a single colour, on a clear background", ["1:1"], true, centre, "contain", { legiblePx: 24 }),
+} as const satisfies Readonly<Record<string, UiKindSpec>>;
+export type UiKind = keyof typeof UI_KINDS;
 
 /** The art contract's resources (the IDL's `art` module): the blocks of a look the brief reads. */
 export const ART_RESOURCES = ["ArtPalette", "ArtPixels", "ArtTexels", "ArtShape", "ArtLine", "ArtMotion", "ArtCamera"] as const;
@@ -95,6 +196,32 @@ export interface BriefOptions {
   readonly references?: readonly string[];
   /** The asset's size in metres: a prop 1, a character 2, a texture's tile 2 by default. It sets the cell of a 2D sprite (ArtPixels.unit per metre) and the texture of a model (ArtTexels.density per metre). */
   readonly metres?: number;
+  /** A UI kind's aspect as `w:h`, one of `UI_KINDS[kind].aspects` (or in its range); unset, the first. */
+  readonly aspect?: string;
+  /** An item icon's cells, columns and rows (one of `ITEM_CELLS`); unset, 1 x 1. */
+  readonly cells?: readonly [number, number];
+  /** A nine-slice's insets as fractions of the art (left, top, right, bottom); unset, a quarter each. */
+  readonly insets?: readonly [number, number, number, number];
+}
+
+/** What a UI kind's art must hold to fit its slot (docs/ui.md §13.3). */
+export interface UiParams {
+  /** The aspect drawn, `w:h`. */
+  readonly aspect: string;
+  /** Every aspect the kind allows (a range as `lo..hi`). */
+  readonly aspects: readonly string[];
+  readonly focal: readonly [number, number];
+  readonly safe: readonly [number, number, number, number] | null;
+  readonly fit: UiFit;
+  readonly legiblePx: number;
+  /** Style art: the nine-slice insets (fractions) and the states drawn, left to right; null otherwise. */
+  readonly nineSlice: { readonly insets: readonly [number, number, number, number]; readonly states: readonly string[] } | null;
+  /** An item's cells (columns, rows); null for other kinds. */
+  readonly cells: readonly [number, number] | null;
+  /** What the cook's conform pass will do to it under this look (docs/art.md §2.3); empty: nothing. */
+  readonly conform: readonly string[];
+  /** Made by an image generator; false: rendered by the engine. */
+  readonly generated: boolean;
 }
 
 /** One reference image to hand the generator. */
@@ -156,6 +283,8 @@ export interface ArtBrief {
   readonly image?: ImageParams;
   /** Set when `medium` is `model`. */
   readonly model?: ModelParams;
+  /** Set for a UI kind (`UI_KINDS`). */
+  readonly ui?: UiParams;
 }
 
 // ---------------------------------------------------------------- colour
@@ -305,10 +434,36 @@ function snapUp(n: number, sizes: readonly number[]): number {
 const GENERATED = 1024;
 const TILESET = { columns: 4, rows: 4 };
 
-const DEFAULT_METRES: Readonly<Record<ArtKind, number>> = { sprite: 2, tileset: 1, portrait: 1, backdrop: 1, prop: 1, character: 2, texture: 2, icon: 1 };
+const DEFAULT_METRES: Readonly<Partial<Record<ArtKind, number>>> = { sprite: 2, tileset: 1, portrait: 1, backdrop: 1, prop: 1, character: 2, texture: 2, icon: 1 };
+
+/** `w:h` as numbers; null when it is not one. */
+function aspectOf(s: string): [number, number] | null {
+  const m = /^(\d+):(\d+)$/.exec(s.trim());
+  return m && Number(m[1]) > 0 && Number(m[2]) > 0 ? [Number(m[1]), Number(m[2])] : null;
+}
+
+const ratio = (s: string) => {
+  const [w, h] = aspectOf(s)!;
+  return w / h;
+};
+
+/** Whether `aspect` is one a UI kind is drawn at (within half a percent, as og-ui's `SlotKind::allows`). */
+export function uiAllows(kind: UiKind, aspect: string): boolean {
+  const spec: UiKindSpec = UI_KINDS[kind];
+  if (!aspectOf(aspect)) return false;
+  const r = ratio(aspect);
+  if (spec.aspects.length === 0 || spec.aspects.some((a) => Math.abs(ratio(a) / r - 1) < 0.005)) return true;
+  if (!spec.range) return false;
+  const [lo, hi] = [ratio(spec.range[0]), ratio(spec.range[1])].sort((a, b) => a - b) as [number, number];
+  return r >= lo * 0.995 && r <= hi * 1.005;
+}
+
+const isUi = (kind: ArtKind): kind is UiKind => kind in UI_KINDS;
+const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 /** Which sentence opens the prompt. */
 function opening(kind: ArtKind, subject: string, medium: "image" | "model", metres: number): string {
+  if (isUi(kind)) return `${UI_KINDS[kind].about.replace("{subject}", subject)}.`;
   switch (kind) {
     case "sprite":
       return `A game sprite of ${subject}.`;
@@ -349,7 +504,8 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
   const camera = art.ArtCamera ?? {};
   const profile = look.profile ?? (style && style.look.profiles.length === 1 ? style.look.profiles[0]! : "3d");
   const medium: "image" | "model" = (kind === "prop" || kind === "character") && profile === "3d" ? "model" : "image";
-  const metres = options.metres !== undefined && options.metres > 0 ? options.metres : DEFAULT_METRES[kind];
+  const metres = options.metres !== undefined && options.metres > 0 ? options.metres : (DEFAULT_METRES[kind] ?? 1);
+  const uiSpec: UiKindSpec | null = isUi(kind) ? UI_KINDS[kind] : null;
   const lines: string[] = [opening(kind, what, medium, metres)];
   const avoid: string[] = [...(style?.artBible.avoid ?? [])];
 
@@ -392,12 +548,86 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
   };
   let image: ImageParams | undefined;
   let model: ModelParams | undefined;
+  let uiParams: UiParams | undefined;
   if (medium === "image") {
-    const transparent = kind === "sprite" || kind === "icon" || kind === "portrait" || kind === "prop" || kind === "character";
-    const tiling = kind === "tileset" || kind === "texture";
+    const transparent = uiSpec ? uiSpec.transparent : kind === "sprite" || kind === "icon" || kind === "portrait" || kind === "prop" || kind === "character";
+    const tiling = uiSpec ? uiSpec.tiling : kind === "tileset" || kind === "texture";
     let grid: { width: number; height: number } | null = null;
     const pixelArt = unit > 0 || sizes.length > 0;
-    if (kind === "texture" && density > 0) {
+    if (uiSpec) {
+      // A UI kind: its slot's aspect, focal point, safe area and (style art) nine-slice.
+      const kindName = kind as UiKind;
+      const aspect = options.aspect ?? (options.cells ? `${options.cells[0]}:${options.cells[1]}` : uiSpec.aspects[0]) ?? "1:1";
+      if (!aspectOf(aspect)) throw new Error(`'${aspect}' is not an aspect: write w:h, such as 16:9`);
+      if (!uiAllows(kindName, aspect)) throw new Error(`${kind} art is drawn at ${[...uiSpec.aspects, ...(uiSpec.range ? [`${uiSpec.range[0]}..${uiSpec.range[1]}`] : [])].join(", ")}, not ${aspect}`);
+      const cells = kind === "itemIcon" ? (options.cells ?? (aspectOf(aspect) as [number, number])) : null;
+      if (cells && !ITEM_CELLS.some(([c, r]) => c === cells[0] && r === cells[1])) throw new Error(`an item is ${ITEM_CELLS.map(([c, r]) => `${c}x${r}`).join(", ")} cells, not ${cells[0]}x${cells[1]}`);
+      const insets = options.insets ?? ([0.25, 0.25, 0.25, 0.25] as const);
+      if (uiSpec.nineSlice && (insets.some((v) => v <= 0) || insets[0] + insets[2] >= 1 || insets[1] + insets[3] >= 1)) throw new Error("the insets are above 0 and leave a middle (left + right and top + bottom under 1)");
+      const states = uiSpec.states.length > 0 ? uiSpec.states : ["normal"];
+      const [aw, ah] = aspectOf(aspect)!;
+      let w: number;
+      let h: number;
+      if (pixelArt) {
+        const small = sizes.length > 0 ? Math.min(...sizes) : snapUp(unit, sizes);
+        const tall = logicalHeight > 0 ? logicalHeight : 180;
+        if (uiSpec.nineSlice) [w, h] = [Math.max(...(sizes.length > 0 ? sizes : [small * 3])), Math.max(...(sizes.length > 0 ? sizes : [small * 3]))];
+        else if (cells) [w, h] = [small * cells[0], small * cells[1]];
+        else if (uiSpec.legiblePx > 0 && aw === ah) [w, h] = [small, small];
+        else [w, h] = aw >= ah ? [Math.round((tall * aw) / ah), tall] : [tall, Math.round((tall * ah) / aw)];
+        const sheet = uiSpec.nineSlice ? states.length : 1;
+        grid = { width: w * sheet, height: h };
+        const scale = Math.max(1, Math.round(GENERATED / Math.max(grid.width, grid.height)));
+        image = { transparent, width: grid.width * scale, height: grid.height * scale, grid: { ...grid, scale }, tiling };
+        lines.push(`Size: pixel art on a ${grid.width} x ${grid.height} logical-pixel grid${sheet > 1 ? ` (${sheet} cells of ${w} x ${h})` : ""}, drawn at ${scale}x: every logical pixel one ${scale} x ${scale} block of one flat colour, hard edges, no anti-aliasing.`);
+        avoid.push("anti-aliased or blurred edges", "soft gradients", "pixels of more than one size");
+      } else {
+        const exact = uiSpec.pixels?.[aspect];
+        if (exact) [w, h] = [exact[0], exact[1]];
+        else if (uiSpec.nineSlice) [w, h] = [Math.floor(GENERATED / states.length / 8) * 8, Math.floor(GENERATED / states.length / 8) * 8];
+        else [w, h] = aw >= ah ? [GENERATED, Math.round((GENERATED * ah) / aw / 8) * 8] : [Math.round((GENERATED * aw) / ah / 8) * 8, GENERATED];
+        const sheet = uiSpec.nineSlice ? states.length : 1;
+        image = { transparent, width: w * sheet, height: h, grid: null, tiling };
+        lines.push(`Size: ${w * sheet} x ${h} pixels${sheet > 1 ? ` (${sheet} cells of ${w} x ${h})` : ""}${exact ? ", the store's exact size" : ""}.`);
+      }
+      const said: string[] = [`${aspect}`];
+      const others = uiSpec.aspects.filter((a) => a !== aspect);
+      if (others.length > 0) said.push(`the slot also takes ${others.join(", ")}`);
+      lines.push(`Aspect: ${said.join("; ")}${cells ? `; ${cells[0]} x ${cells[1]} inventory cells` : ""}.`);
+      if (uiSpec.fit === "cover") lines.push(`Focal point: the subject at ${pct(uiSpec.focal[0])} across and ${pct(uiSpec.focal[1])} down; the slot crops around it, so keep it whole within the middle of the frame.`);
+      if (uiSpec.safe) {
+        const [x0, y0, x1, y1] = uiSpec.safe;
+        lines.push(`Safe area: from ${pct(x0)} to ${pct(x1)} across and ${pct(y0)} to ${pct(y1)} down, text or controls lie over the art: keep it calm and free of the subject and of detail there.`);
+      }
+      if (uiSpec.legiblePx > 0) lines.push(`Legibility: it must still read at ${uiSpec.legiblePx} x ${uiSpec.legiblePx} px: one clear silhouette, no fine detail, strong value contrast.`);
+      if (uiSpec.nineSlice) {
+        const [l, t, r, b] = insets;
+        lines.push(`Nine-slice: the corners (${pct(l)} left, ${pct(t)} top, ${pct(r)} right, ${pct(b)} bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.`);
+        if (uiSpec.states.length > 0) lines.push(`States: one cell each, left to right: ${uiSpec.states.join(", ")}; the same silhouette in each, the hover lighter, the pressed darker and pushed in, the disabled flat and muted, the focused with a clear ring.`);
+      }
+      if (!uiSpec.generated) lines.push("Rendered: the engine draws this from a viewport of the game's own model; this brief describes the framing and lighting for it.");
+      if (kind === "logo") {
+        lines.push("Lettering: the game's title, the only text in the image, as one designed mark.");
+      }
+      const conform: string[] = [];
+      const colours0 = look.palette?.colours ?? [];
+      if (colours0.length > 0 && bool(palette.strict)) conform.push(`every texel mapped to the nearest of the palette's ${colours0.length} colours${word(palette.dither, "none") !== "none" ? ` with a ${word(palette.dither, "none")} dither` : ""}`);
+      if (pixelArt) conform.push(`resampled onto the ${unit > 0 ? `${unit} px per metre ` : ""}pixel grid with a dominant-colour downscale, alpha cut to on or off`);
+      if (num(line.width) > 0 && transparent) conform.push(`the look's ${num(line.width)}-pixel outline drawn round the shape`);
+      if (conform.length > 0) lines.push(`Conform: the cook then ${conform.join("; ")} (docs/art.md §2.3): draw for that.`);
+      uiParams = {
+        aspect,
+        aspects: [...uiSpec.aspects, ...(uiSpec.range ? [`${uiSpec.range[0]}..${uiSpec.range[1]}`] : [])],
+        focal: uiSpec.focal,
+        safe: uiSpec.safe,
+        fit: uiSpec.fit,
+        legiblePx: uiSpec.legiblePx,
+        nineSlice: uiSpec.nineSlice ? { insets, states } : null,
+        cells,
+        conform,
+        generated: uiSpec.generated,
+      };
+    } else if (kind === "texture" && density > 0) {
       grid = null; // a 3D surface: texels, below
     } else if (kind === "backdrop" && logicalHeight > 0) {
       grid = { width: Math.round((logicalHeight * 16) / 9), height: logicalHeight };
@@ -439,7 +669,9 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
           break;
       }
     }
-    if (grid) {
+    if (uiSpec) {
+      // Written above.
+    } else if (grid) {
       const scale = Math.max(1, Math.round(GENERATED / Math.max(grid.width, grid.height)));
       image = { transparent, width: grid.width * scale, height: grid.height * scale, grid: { ...grid, scale }, tiling };
       const per = unit > 0 ? ` (${unit} pixels per metre${kind === "tileset" ? `, each tile ${grid.width / TILESET.columns} x ${grid.height / TILESET.rows}` : ""})` : kind === "tileset" ? ` (each tile ${grid.width / TILESET.columns} x ${grid.height / TILESET.rows})` : "";
@@ -508,7 +740,7 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
       const where = place === "inside" ? "on the shape's own edge pixels" : place === "both" ? "centred on the shape's edge" : "round the outside of the shape";
       const brush = word(line.brush, "diamond");
       const corners = brush === "square" ? "corners filled" : brush === "circle" ? "rounded corners" : "corners left open";
-      if (kind === "backdrop" || kind === "tileset" || kind === "texture") lines.push(`Line: shapes standing in front carry a ${width}-pixel ${named} line ${where}; a tile's edge that meets the next tile carries none.`);
+      if (kind === "backdrop" || kind === "tileset" || kind === "texture" || (uiSpec !== null && !uiSpec.transparent)) lines.push(`Line: shapes standing in front carry a ${width}-pixel ${named} line ${where}; a tile's edge that meets the next tile carries none.`);
       else lines.push(`Line: a ${width}-pixel ${named} line ${where} (${corners}).`);
     } else if (medium === "model") {
       lines.push(`Line: the engine draws a ${width}-pixel ${named} outline round the model; paint none into the texture.`);
@@ -528,7 +760,7 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
   if ((kind === "sprite" || kind === "character") && (stepFps > 0 || maxFrames > 0)) {
     lines.push(`Motion: if animated, ${[stepFps > 0 && `each pose held at ${stepFps} frames a second`, maxFrames > 0 && `at most ${maxFrames} frames a clip`].filter(Boolean).join(", ")}.`);
   }
-  if (kind !== "texture" && kind !== "icon" && kind !== "portrait") {
+  if (kind !== "texture" && kind !== "icon" && kind !== "portrait" && !uiSpec) {
     const seen: string[] = [];
     if (bool(camera.fixedAngle)) {
       const pitch = num(camera.pitch);
@@ -551,7 +783,7 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
         : "References: the first image shows the style; the others are this game's accepted assets: match their palette, line, proportions and rendering, not their content.",
     );
   }
-  avoid.push("text, letters or watermarks");
+  avoid.push(kind === "logo" ? "watermarks or any text but the title" : "text, letters or watermarks");
   lines.push(`Avoid: ${avoid.join("; ")}.`);
 
   return {
@@ -565,6 +797,7 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
     references,
     ...(image ? { image } : {}),
     ...(model ? { model } : {}),
+    ...(uiParams ? { ui: uiParams } : {}),
   };
 }
 
@@ -778,7 +1011,7 @@ export function presetLook(slug: string, options: ReadLookOptions = {}): BriefLo
 
 // ---------------------------------------------------------------- the command line
 
-const USAGE = `usage: bun brief.ts <kind> "<subject>" [--project <dir> | --look <slug>] [--reference <path>]... [--metres <n>] [--json]
+const USAGE = `usage: bun brief.ts <kind> "<subject>" [--project <dir> | --look <slug>] [--reference <path>]... [--metres <n>] [--aspect <w:h>] [--json]
 
 Prints the request for one asset in the game's style (docs/art.md §2.2): the
 prompt, then the references and the generator's parameters.
@@ -787,6 +1020,7 @@ prompt, then the references and the generator's parameters.
   --look       a catalogue preset instead of a project
   --reference  an accepted asset of the game to pass as a reference (repeat)
   --metres     the asset's size in metres (a prop 1, a character 2)
+  --aspect     a UI kind's aspect, w:h (one its slot allows)
   --json       the whole brief as JSON`;
 
 function main(argv: string[]): number {
@@ -798,6 +1032,7 @@ function main(argv: string[]): number {
   let project = ".";
   let preset: string | undefined;
   let metres: number | undefined;
+  let aspect: string | undefined;
   let json = false;
   const references: string[] = [];
   for (let i = 0; i < rest.length; i++) {
@@ -811,15 +1046,16 @@ function main(argv: string[]): number {
     else if (a === "--look") preset = value();
     else if (a === "--reference") references.push(value());
     else if (a === "--metres") metres = Number(value());
+    else if (a === "--aspect") aspect = value();
     else if (a === "--json") json = true;
     else throw new Error(`unknown option ${a}. ${USAGE}`);
   }
   const look = preset !== undefined ? presetLook(preset) : readLook(project);
-  const brief = artBrief(look, kind as ArtKind, subject, { references, ...(metres !== undefined ? { metres } : {}) });
+  const brief = artBrief(look, kind as ArtKind, subject, { references, ...(metres !== undefined ? { metres } : {}), ...(aspect !== undefined ? { aspect } : {}) });
   if (json) console.log(JSON.stringify(brief, null, 2));
   else {
     const params = brief.image ?? brief.model;
-    console.log(`${brief.prompt}\n\n${brief.medium}: ${JSON.stringify(params)}\nreferences:${brief.references.map((r) => `\n  ${r.role}: ${r.path}`).join("") || " none"}`);
+    console.log(`${brief.prompt}\n\n${brief.medium}: ${JSON.stringify(params)}${brief.ui ? `\nui: ${JSON.stringify(brief.ui)}` : ""}\nreferences:${brief.references.map((r) => `\n  ${r.role}: ${r.path}`).join("") || " none"}`);
   }
   return 0;
 }

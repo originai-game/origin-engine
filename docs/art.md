@@ -158,6 +158,52 @@ As built (stream A5, `tests/evidence/art/brief/NOTES.md`):
   line: `bun <knowledge>/scripts/brief.ts <kind> "<subject>" [--project
   <dir> | --look <slug>] [--reference <path>]... [--metres <n>] [--json]`.
 
+**The UI kinds** (docs/ui.md §13.3, added in phase U4): `ART_KINDS`
+grows, after the eight above and in this order, by the art-slot kinds of
+docs/ui.md Appendix F, named as og-ui's `SlotKind` (`crates/og-ui/src/slot.rs`):
+`keyArt`, `capsule`, `logo`, `appIcon`, `characterSplash`, `fullBody`,
+`bust`, `vnSprite`, `eventCg`, `itemIcon`, `abilityIcon`, `cardArt`,
+`cardFrame`, `unitPortrait`, `levelThumb`, `songJacket`, `saveThumb`,
+`menuBackground`, `menuPattern`, `banner`, `playerBanner`, `emblem`,
+`achievement`, `emote`, `currency`, `mapGlyph`, `talentIcon`, `tutorial`,
+`cosmeticPreview`, and the style's own art `styleFrame`, `styleButton`,
+`ornament`, `iconSet`. The change is additive: the signatures of
+`artBrief`, `readLook` and `presetLook` are unchanged, `BriefOptions`
+gains the optional `aspect`, `cells` and `insets`, and `ArtBrief` the
+optional `ui`.
+
+- **`UI_KINDS`** (exported) gives each kind's spec: the aspects it is
+  drawn at (the first the default; `fullBody`, `banner` and
+  `playerBanner` also take a range), whether it is transparent or tiles,
+  its focal point, its safe rectangle (where a title or controls lie over
+  it: key art's left 40 %, a menu background's left 45 %, a splash's
+  bottom fifth), its fit, the smallest size it must read at (an ability
+  icon 24 px, a currency or map glyph 16), and for style art the
+  nine-slice and its states (`normal`, `hover`, `pressed`, `disabled`,
+  `focused` for a button). og-ui's tests hold the two declarations equal.
+  Store capsules take Steamworks' exact sizes (2024): header 920 x 430,
+  small 462 x 174, main 1232 x 706, vertical 748 x 896, library 600 x
+  900, library hero 3840 x 1240.
+- **What a UI brief adds**: `ui` is `{ aspect, aspects, focal, safe, fit,
+  legiblePx, nineSlice: { insets, states } | null, cells, conform,
+  generated }`, and the prompt gains an `Aspect`, a `Focal point`, a `Safe
+  area`, a `Legibility` floor, and for style art a `Nine-slice` line (the
+  corners keep their size, so the ornament goes there, the edges stay even
+  and the centre plain for a label) and a `States` line (one cell per
+  state, left to right on one sheet). `conform` names what the cook's
+  conform pass (§2.3, the row of 2D textures, which UI images are) will
+  do under the look: the strict palette mapping, the pixel grid and its
+  dominant-colour downscale, the outline; the prompt says so in a
+  `Conform` line, so the art is drawn for it.
+- **Sizes**: the longest side 1024, the other by the aspect, to a
+  multiple of 8 (key art 1024 x 576); a style button's five states share
+  1024 (five cells of 200); a pixel-art look puts icons on its smallest
+  sprite cell (an item of 1 x 2 cells is 16 x 32 in `16bit-pixel`), style
+  art on its largest, and scenes on `logicalHeight` (180 when unset), drawn
+  at the whole multiple nearest 1024 as for sprites. `logo` is the one kind
+  whose prompt asks for lettering; `cosmeticPreview` is rendered from a
+  viewport (docs/ui.md §5.5), and its brief describes the framing only.
+
 The skills change with it: `producing-game-assets` (platform knowledge,
 mounted from origin-agent; its engine side is the "consumer on Origin
 Engine" section, owned here through og-build: og-build §8, request, import,

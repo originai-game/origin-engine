@@ -73,6 +73,20 @@ break, with a `changelog.json` breaking entry):
   `icon`. `options.references` are the game's accepted assets (paths or
   URLs), passed on after the style's preview; `options.metres` is the
   asset's size (a prop 1, a character 2, a texture's tile 2 by default).
+  After those eight come the UI's art-slot kinds (docs/ui.md §13, Appendix
+  F), each specified in `UI_KINDS` (`UiKindSpec`: aspects, transparency,
+  tiling, focal point, safe rectangle, fit, legible size, nine-slice and
+  states): `keyArt`, `capsule`, `logo`, `appIcon`, `characterSplash`,
+  `fullBody`, `bust`, `vnSprite`, `eventCg`, `itemIcon`, `abilityIcon`,
+  `cardArt`, `cardFrame`, `unitPortrait`, `levelThumb`, `songJacket`,
+  `saveThumb`, `menuBackground`, `menuPattern`, `banner`, `playerBanner`,
+  `emblem`, `achievement`, `emote`, `currency`, `mapGlyph`, `talentIcon`,
+  `tutorial`, `cosmeticPreview`, `styleFrame`, `styleButton`, `ornament`,
+  `iconSet`. For them `options.aspect` (`w:h`, one the kind allows,
+  `uiAllows(kind, aspect)`), `options.cells` (an item's inventory cells)
+  and `options.insets` (a nine-slice's, fractions) apply, and the brief
+  carries `ui: UiParams { aspect, aspects, focal, safe, fit, legiblePx,
+  nineSlice, cells, conform, generated }` (docs/art.md §2.2).
 - `BriefLook { extends: string | null; art: ArtBlocks; profile?: "2d" |
   "3d"; palette?: BriefPalette | null; style?: BriefStyle | null; preview?:
   string }`: the flattened art blocks (`ArtBlocks`, by resource name of
@@ -84,7 +98,7 @@ break, with a `changelog.json` breaking entry):
   brief reads).
 - `ArtBrief { kind, subject, style, medium: "image" | "model", prompt,
   avoid, palette, references: BriefReference[], image?: ImageParams,
-  model?: ModelParams }`.
+  model?: ModelParams, ui?: UiParams }`.
 - `readLook(projectDir, options?)`: a project's look from disk:
   project.ogt's `look "looks/<id>.ogt"` and `profile`, the look's
   `extends` chain through the game's own looks (a slug names the game's

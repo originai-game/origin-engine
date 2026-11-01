@@ -9,7 +9,7 @@ import { afterAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ART_KINDS, artBrief, colourName, parsePalette, presetLook, readLook, type BriefLook } from "../scripts/brief.ts";
+import { ART_KINDS, artBrief, colourName, parsePalette, presetLook, readLook, UI_KINDS, uiAllows, type BriefLook } from "../scripts/brief.ts";
 
 const temps: string[] = [];
 afterAll(() => {
@@ -200,4 +200,55 @@ test("a look with no contract still asks for a whole asset", () => {
   expect(b.image).toEqual({ transparent: true, width: 1024, height: 1024, grid: null, tiling: false });
   expect(b.references).toEqual([]);
   expect(artBrief({ extends: null, art: {} }, "prop", "a fox").model).toEqual({ faceBudget: null, textureSize: 1024, normals: "any", voxel: 0, bevel: 0, filter: "any", mips: "any", metres: 1 });
+});
+
+test("the kinds of before stay first and in order: the UI kinds are added after them", () => {
+  expect(ART_KINDS.slice(0, 8)).toEqual(["sprite", "tileset", "portrait", "backdrop", "prop", "character", "texture", "icon"]);
+  expect(ART_KINDS.slice(8)).toEqual(Object.keys(UI_KINDS));
+});
+
+test("a UI kind asks for its slot: the aspect, the focal point, the safe area and the size", () => {
+  const plain: BriefLook = { extends: null, art: {} };
+  // Key art: 16:9 by default, 1024 wide and 1024 x 9 / 16 = 576 tall; the title sits over its left 40 %.
+  const key = artBrief(plain, "keyArt", "a lighthouse in a storm");
+  expect(key.medium).toBe("image");
+  expect(key.image).toEqual({ transparent: false, width: 1024, height: 576, grid: null, tiling: false });
+  expect(key.ui).toMatchObject({ aspect: "16:9", focal: [0.66, 0.45], safe: [0, 0, 0.4, 1], fit: "cover", nineSlice: null, cells: null, conform: [] });
+  expect(key.prompt).toContain("Safe area: from 0% to 40% across");
+  expect(key.prompt).toContain("66% across and 45% down");
+  // Portrait 9:16 is as tall as the generator draws: 1024 x 9 / 16 = 576 wide.
+  expect([artBrief(plain, "keyArt", "x", { aspect: "9:16" }).image?.width, artBrief(plain, "keyArt", "x", { aspect: "9:16" }).image?.height]).toEqual([576, 1024]);
+  // A store's vertical library capsule is its exact size, 600 x 900.
+  expect(artBrief(plain, "capsule", "x", { aspect: "2:3" }).image).toMatchObject({ width: 600, height: 900 });
+  // A portrait is never drawn wide; a full body anywhere from 1:2 to 9:16.
+  expect(() => artBrief(plain, "bust", "x", { aspect: "16:9" })).toThrow(/drawn at 1:1, 3:4, not 16:9/);
+  expect(uiAllows("fullBody", "5:9")).toBe(true);
+  expect(uiAllows("fullBody", "3:4")).toBe(false);
+  // A 2 x 3 inventory item: 1024 tall, 1024 x 2 / 3 = 682.7 wide, to a multiple of 8: 680.
+  const sword = artBrief(plain, "itemIcon", "a rune sword", { cells: [2, 3] });
+  expect([sword.image?.width, sword.image?.height, sword.image?.transparent]).toEqual([680, 1024, true]);
+  expect(sword.ui?.cells).toEqual([2, 3]);
+  expect(() => artBrief(plain, "itemIcon", "x", { cells: [3, 3] })).toThrow(/cells/);
+  // A logo is the one kind with lettering.
+  const logo = artBrief(plain, "logo", "Saltmarsh");
+  expect(logo.avoid).not.toContain("text, letters or watermarks");
+  expect(logo.prompt).toContain("Lettering: the game's title");
+});
+
+test("style art is a nine-slice with its insets and one cell per state", () => {
+  const plain: BriefLook = { extends: null, art: {} };
+  // Five states across 1024: 204.8 each, down to a multiple of 8: 200; the sheet is 1000 x 200.
+  const b = artBrief(plain, "styleButton", "a brass-edged button");
+  expect(b.image).toEqual({ transparent: true, width: 1000, height: 200, grid: null, tiling: false });
+  expect(b.ui?.nineSlice).toEqual({ insets: [0.25, 0.25, 0.25, 0.25], states: ["normal", "hover", "pressed", "disabled", "focused"] });
+  expect(b.prompt).toContain("States: one cell each, left to right: normal, hover, pressed, disabled, focused");
+  expect(artBrief(plain, "styleFrame", "x", { insets: [0.2, 0.3, 0.2, 0.1] }).ui?.nineSlice).toEqual({ insets: [0.2, 0.3, 0.2, 0.1], states: ["normal"] });
+  expect(() => artBrief(plain, "styleFrame", "x", { insets: [0.5, 0.25, 0.5, 0.25] })).toThrow(/leave a middle/);
+  // 16bit-pixel: spriteSizes 16 32 48. A button cell is the largest, 48; five of them 240 x 48, drawn at
+  // the whole number nearest 1024 / 240 = 4.27: 4, so 960 x 192. The cook then puts it on the grid.
+  const pixel = artBrief(presetLook("16bit-pixel"), "styleButton", "a stone button");
+  expect(pixel.image).toEqual({ transparent: true, width: 960, height: 192, grid: { width: 240, height: 48, scale: 4 }, tiling: false });
+  expect(pixel.ui?.conform.join(" ")).toContain("pixel grid");
+  // A 1 x 2 item there: cells of the smallest size, 16, so 16 x 32 at 1024 / 32 = 32.
+  expect(artBrief(presetLook("16bit-pixel"), "itemIcon", "a torch", { cells: [1, 2] }).image?.grid).toEqual({ width: 16, height: 32, scale: 32 });
 });
