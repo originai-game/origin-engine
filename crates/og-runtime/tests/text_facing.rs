@@ -189,7 +189,7 @@ fn faced_world_text_reaches_the_renderer_with_its_pivot() {
     assert_eq!(seen.borrow().screen, 1, "the screen text is the overlay's");
 
     // The floating text's facing is world state: a snapshot keeps it.
-    let save = value(og_world_snapshot(engine));
+    let save = value(og_world_snapshot(engine, None));
     value(og_world_restore(
         engine,
         save.as_str().unwrap().to_string(),

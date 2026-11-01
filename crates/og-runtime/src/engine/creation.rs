@@ -126,7 +126,10 @@ pub(crate) fn assemble(
     let game = decl.ok_or_else(|| format!("no game {game}: declare it with og.game first"))?;
     let game = match project {
         Some(p) => with_project(game, p)?,
-        None => game,
+        None => {
+            super::check_migrations(&game)?;
+            game
+        }
     };
     if !errors.is_empty() {
         return Err(format!(
@@ -465,6 +468,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         start_failed: None,
         project,
         boot_look: (!a.game.look.is_empty()).then(|| a.game.look.clone()),
+        save_version: a.game.save_version,
         ui_desc: Value::Null,
         step_ms: 0.0,
         render_ms: 0.0,

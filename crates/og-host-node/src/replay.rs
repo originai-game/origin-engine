@@ -6,7 +6,7 @@
 //!   `{"hash":"<016x>"}`; with an empty table, within the world's own,
 //!   returned beside it (`{"hash","table"}`) for the trace to keep;
 //! - `og_node_replay_diff`: what differs between a recorded save
-//!   (`og-save:1:...`, local) and the world now (remote): og-net's
+//!   (`og-save:2:...`, local) and the world now (remote): og-net's
 //!   `state::diff` as JSON, or `{"error": reason}`.
 
 // napi registers the exports outside `cfg(test)` only.

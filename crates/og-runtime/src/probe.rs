@@ -515,6 +515,7 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
         st.systems = a.systems;
         st.commands = a.commands;
         st.facts = a.game.facts;
+        st.save_version = a.game.save_version;
         st.warnings.extend(a.warnings);
         st.physics = Some(a.mounted.physics.clone());
         st.ui = Some(a.mounted.ui.clone());

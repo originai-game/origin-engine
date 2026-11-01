@@ -51,6 +51,26 @@ export interface HostAbi<A, V> {
   og_reflect_define_component(name: string, fields: string): string;
   /** `defineResource` */
   og_reflect_define_resource(name: string, fields: string): string;
+  /** `SaveEdit.version` */
+  og_save_edit_get_version(save_edit: number): number;
+  /** `SaveEdit.types` */
+  og_save_edit_types(save_edit: number): string;
+  /** `SaveEdit.records` */
+  og_save_edit_records(save_edit: number, name: string): string;
+  /** `SaveEdit.setRecords` */
+  og_save_edit_set_records(save_edit: number, name: string, desc: string | undefined): string;
+  /** `SaveEdit.renameType` */
+  og_save_edit_rename_type(save_edit: number, from: string, to: string): string;
+  /** `SaveEdit.renameField` */
+  og_save_edit_rename_field(save_edit: number, name: string, from: string, to: string): string;
+  /** `SaveEdit.dropType` */
+  og_save_edit_drop_type(save_edit: number, name: string): string;
+  /** `SaveEdit.spawn` */
+  og_save_edit_spawn(save_edit: number, desc: string | undefined): string;
+  /** `SaveEdit.text` */
+  og_save_edit_text(save_edit: number): string;
+  /** `SaveEdit.close` */
+  og_save_edit_close(save_edit: number): void;
   /** `World.tick` */
   og_world_get_tick(world: number): number;
   /** `World.spawn` */
@@ -84,7 +104,9 @@ export interface HostAbi<A, V> {
   /** `World.instantiate` */
   og_world_instantiate(world: number, asset: number, desc: string | undefined): string;
   /** `World.snapshot` */
-  og_world_snapshot(world: number): string;
+  og_world_snapshot(world: number, desc: string | undefined): string;
+  /** `World.openSave` */
+  og_world_open_save(world: number, save: string): string;
   /** `World.restore` */
   og_world_restore(world: number, save: string, desc: string | undefined): string;
   /** `Query.archetypes` */
@@ -979,6 +1001,16 @@ export interface HostAbi<A, V> {
 export const SYMBOLS: readonly string[] = [
   "og_reflect_define_component",
   "og_reflect_define_resource",
+  "og_save_edit_get_version",
+  "og_save_edit_types",
+  "og_save_edit_records",
+  "og_save_edit_set_records",
+  "og_save_edit_rename_type",
+  "og_save_edit_rename_field",
+  "og_save_edit_drop_type",
+  "og_save_edit_spawn",
+  "og_save_edit_text",
+  "og_save_edit_close",
   "og_world_get_tick",
   "og_world_spawn",
   "og_world_despawn",
@@ -996,6 +1028,7 @@ export const SYMBOLS: readonly string[] = [
   "og_world_emit",
   "og_world_instantiate",
   "og_world_snapshot",
+  "og_world_open_save",
   "og_world_restore",
   "og_query_archetypes",
   "og_query_count",

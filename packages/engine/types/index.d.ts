@@ -1246,6 +1246,220 @@ export interface RestoreDesc {
 }
 
 /**
+ * What world.snapshot saves. `{}` (or no desc) saves the whole world; naming tags or resources saves a selection: the entities that carry every component of `with` (with all their components and names) and the resources `resources` names, nothing else. world.restore of a selection replaces the live entities that carry those tags by the saved ones (spawned anew, in saved order, a saved entity's Entity fields pointed at its new id) and sets those resources, and leaves the rest of the world (other entities, og.Time, the modules' state, the session) as it is: a game keeps its progress and settings this way and rebuilds the level from its scene. A selection is small (only the types it uses are in its table) and so takes fewer store keys.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SnapshotDesc {
+  /**
+   * The tags: an entity carrying all of them is saved. Empty with `resources` empty: the whole world.
+   *
+   * @default []
+   */
+  readonly with?: readonly AnyComponent[];
+  /**
+   * The resources a selection keeps (settings, progress).
+   *
+   * @default []
+   */
+  readonly resources?: readonly AnyResource[];
+}
+
+/** A type a save holds, as it was saved. */
+export interface SaveType {
+  /** Its reflected name (`Wallet`, `og.Transform`). */
+  readonly name: string;
+  /** Its schema version when it was saved. */
+  readonly version: number;
+  /** Its fields, in saved order. */
+  readonly fields: readonly string[];
+}
+
+/**
+ * One saved value of a type: a component of an entity, or (entity null) the type's resource.
+ */
+export interface SaveRecord {
+  /** The saved entity, or null for the resource. */
+  readonly entity: Entity | null;
+  /** The value's fields by name, as saved. */
+  readonly value: unknown;
+}
+
+/**
+ * How SaveEdit.setRecords writes a type.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SetRecordsDesc {
+  /**
+   * The type to write them as, one this build declares; empty: the type itself (as this build declares it).
+   *
+   * @default ""
+   */
+  readonly into?: string;
+  /**
+   * The new values; a field a record leaves out takes its default, a key the type lacks is refused.
+   *
+   * @default []
+   */
+  readonly records?: readonly SaveRecord[];
+}
+
+/**
+ * How SaveEdit.transform writes what it returns.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TransformDesc {
+  /**
+   * The type to write the results as, one this build declares; empty: the type itself.
+   *
+   * @default ""
+   */
+  readonly into?: string;
+}
+
+/**
+ * An entity a migration adds to a save.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SaveSpawnDesc {
+  /**
+   * A unique name; empty leaves it unnamed.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its components by type name, each a value of the type as this build declares it (`{ "og.Transform": {}, Chest: { gold: 5 } }`).
+   *
+   * @default null
+   */
+  readonly components?: unknown;
+}
+
+/**
+ * A value's new form: called once per saved value of the type, in storage order.
+ *
+ * @param value The old record: its fields by name, as saved.
+ * @param entity Its entity, or null for the type's resource.
+ */
+export type RecordFn = (value: unknown, entity: Entity | null) => unknown;
+
+/**
+ * Where one saved value goes when its type splits.
+ *
+ * @param value The old record.
+ * @param entity Its entity, or null for the resource.
+ */
+export type SplitFn = (value: unknown, entity: Entity | null) => unknown;
+
+/**
+ * One step of a game's save migration: changes the save from SaveMigration.from to the next version.
+ *
+ * @param save The save, open for editing.
+ */
+export type MigrateFn = (save: SaveEdit) => Result<void>;
+
+/**
+ * A game's save migration step (GameDesc.migrations): run on a save of version `from` on its way to GameDesc.saveVersion, after the engine's own migrations.
+ */
+export interface SaveMigration {
+  /**
+   * The save version it migrates from, to from + 1; from 1 to GameDesc.saveVersion - 1, each at most once.
+   */
+  readonly from: number;
+  /** The step. */
+  readonly migrate: MigrateFn;
+}
+
+/**
+ * A save opened for editing (world.openSave), as a migration sees it: the engine's own migrations already applied, every type with its saved fields. Each edit changes the save, not the world; world.restore takes the result. An edit refused changes nothing. Entity ids are the saved world's.
+ */
+export interface SaveEdit {
+  /**
+   * The game's save version the save was written at (1 for a save of a game that never declared one).
+   */
+  readonly version: number;
+  /** The types the save holds, in its table's order. */
+  types(): readonly SaveType[];
+  /**
+   * Whether the save holds a type.
+   *
+   * @param name The type's name.
+   */
+  has(name: string): boolean;
+  /**
+   * A type's saved values: its components by entity in storage order, then its resource.
+   *
+   * @param name The type's name.
+   * @returns Refused for a type the save does not hold.
+   */
+  records(name: string): Result<readonly SaveRecord[]>;
+  /**
+   * Replace a type's values (its components, its resource) with records written as this build's type `into`: the old type's values and queued events go, an entity keeps its other components and its place. A type the save does not hold is added (a component a new version gives saved entities).
+   *
+   * @param name The saved type to replace.
+   * @param desc The type to write and the records.
+   * @returns Refused, with nothing changed, for a type this build does not declare, a record that does not fit it, or an entity the save does not hold.
+   */
+  setRecords(name: string, desc?: SetRecordsDesc): Result<void>;
+  /**
+   * Rewrite every value of a type through `map`, which sees the old record: records(name), then setRecords with what map returned. With `into`, the type becomes that one (a rename that reshapes).
+   *
+   * @param name The saved type.
+   * @param map The old record to the new one.
+   * @param desc The type the results are written as.
+   * @returns Refused as setRecords is, or when map throws.
+   */
+  transform(name: string, map: RecordFn, desc?: TransformDesc): Result<void>;
+  /**
+   * Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes.
+   *
+   * @param name The saved type.
+   * @param map The old record to the new types' records.
+   * @returns Refused as setRecords is, or when map throws.
+   */
+  split(name: string, map: SplitFn): Result<void>;
+  /**
+   * Give a saved type another name, its fields and values as they are (a later restore maps them field by field against the type of the new name).
+   *
+   * @param from The saved name.
+   * @param to The new name.
+   * @returns Refused for a name the save lacks, or one it already has.
+   */
+  renameType(from: string, to: string): Result<void>;
+  /**
+   * Give a saved type's field another name, its values as they are: `gold` saved, `coins` declared now, and every balance arrives.
+   *
+   * @param name The saved type.
+   * @param from The saved field.
+   * @param to The new name.
+   * @returns Refused for a type or field the save lacks, or a name the type already has.
+   */
+  renameField(name: string, from: string, to: string): Result<void>;
+  /**
+   * Remove a type from the save: its components, resource and queued events.
+   *
+   * @param name The saved type.
+   * @returns Refused for a type the save does not hold.
+   */
+  dropType(name: string): Result<void>;
+  /**
+   * Add an entity to the save, with components of this build's types: a whole save gives it the id the next spawn would take, a selection the next free one.
+   *
+   * @param desc Its name and components.
+   * @returns Refused for a taken name, a type this build does not declare or a value that does not fit it.
+   */
+  spawn(desc?: SaveSpawnDesc): Result<Entity>;
+  /** The save as text, at GameDesc.saveVersion: what world.restore takes. */
+  text(): Result<string>;
+  /** Let go of the open save. world.restore closes the ones it opens. */
+  close(): void;
+}
+
+/**
  * A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §8), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did.
  *
  * The payload of the `WorldRestored` event (token `og.WorldRestored`).
@@ -1401,17 +1615,25 @@ export interface World {
    */
   instantiate(asset: Asset, desc?: SpawnDesc): Result<Entity>;
   /**
-   * The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, deflated and base64-encoded after `og-save:1:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: "slot1", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring.
+   * The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, and the game's save version (GameDesc.saveVersion), deflated and base64-encoded after `og-save:2:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: "slot1", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type; 5,000 entities, half of them physics bodies, to about 436 KiB, written in about 95 ms and restored in about 60 ms natively). With SnapshotDesc's `with` or `resources`, only the tagged entities and the chosen resources (a selection). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring.
    *
-   * @returns The save, or why not (the world could not be read).
+   * @param desc The whole world, or a selection: tagged entities and chosen resources.
+   * @returns The save, or why not (the world could not be read, or SnapshotDesc names a type this world does not register).
    */
-  snapshot(): Result<string>;
+  snapshot(desc?: SnapshotDesc): Result<string>;
   /**
-   * Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the player's action bindings and dead zones (og.input), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
+   * Open a save for editing, as a migration does (SaveEdit): the engine's own migrations applied (an engine upgrade's changes to its components and its modules' state, such as og.ui's state of engine 0.7.7), the game's not yet. world.restore opens and migrates by itself; use this to read a save without restoring it, or to migrate one by hand.
+   *
+   * @param save The text world.snapshot returned.
+   * @returns Refused for text world.snapshot did not write, or a save of a newer GameDesc.saveVersion.
+   */
+  openSave(save: string): Result<SaveEdit>;
+  /**
+   * Replace the world with a save that world.snapshot wrote (a selection replaces only its tagged entities and its resources: SnapshotDesc). First the engine's own migrations upgrade what an older engine wrote of the engine's state, then GameDesc.migrations run from the save's version to GameDesc.saveVersion, in order, on the save (SaveEdit); a refused or throwing step refuses the restore with its reason and the world is left as it was. A save of a newer saveVersion is refused. Then: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the player's action bindings and dead zones (og.input), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
    *
    * @param save The text world.snapshot returned.
    * @param desc Whether a type whose layout changed since the save is mapped field by field.
-   * @returns Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants) and that the save holds data of (a type it holds none of, no component, resource value or event, takes this build's layout): the reason names the type and the fields, and the fix (`{ migrate: true }`, or keeping a saved type's fields stable between releases).
+   * @returns Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine or of a newer GameDesc.saveVersion, a migration that refused, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants) and that the save holds data of (a type it holds none of, no component, resource value or event, takes this build's layout; an engine og.* type that only gained fields takes their declared defaults): the reason names the type and the fields, and the fix (`{ migrate: true }`, a migration in GameDesc.migrations, or keeping a saved type's fields stable between releases).
    */
   restore(save: string, desc?: RestoreDesc): Result<void>;
 }
@@ -1628,6 +1850,19 @@ export interface GameDesc {
    * @default {}
    */
   readonly render?: RenderOptions;
+  /**
+   * The game's save version, written into every save: raise it when a release changes a saved type, and add the step from the old version to GameDesc.migrations. Left unset, project.ogt's `saveVersion` (else 1); the two set to different values refuse the engine.
+   *
+   * @default 1
+   * @range 1..
+   */
+  readonly saveVersion?: number;
+  /**
+   * The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order, so a save of any earlier version arrives at the current one (rename a field, transform values with the old record in hand, drop or split a type, add an entity).
+   *
+   * @default []
+   */
+  readonly migrations?: readonly SaveMigration[];
   /**
    * A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Left out or empty, project.ogt's `look "looks/<name>.ogt"` (the look whose art contract the cook reads) is applied when it has one, else none; the two naming different looks is refused (one value in two places).
    *
@@ -30207,7 +30442,7 @@ export declare namespace og {
      */
     function saveSettings(world: World, value: unknown): Result<number>;
     /**
-     * Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game. og-game §8.
+     * Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game (its two banks and the manifest: 1 MiB, the platform's budget for a player and game), and a world that would take more saves a selection of what it keeps (world.snapshot's SnapshotDesc). og-game §8.
      *
      * @param world The world.
      * @param desc The slot, the text and what a title shows of it.

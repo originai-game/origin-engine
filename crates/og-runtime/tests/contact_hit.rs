@@ -121,7 +121,10 @@ fn a_game_reads_the_impulse_and_the_relative_velocity_and_a_restore_replays_them
         for _ in 0..3 {
             frame(e);
         }
-        let save = value(og_world_snapshot(e)).as_str().unwrap().to_string();
+        let save = value(og_world_snapshot(e, None))
+            .as_str()
+            .unwrap()
+            .to_string();
         let (tick, hit) = until_hit(e, &seen);
         assert_eq!(f(&hit["a"]), light, "{profile}: {hit}");
         assert_eq!(f(&hit["b"]), heavy, "{profile}: {hit}");

@@ -188,13 +188,13 @@ test("a restore keeps the session: the player's volumes, and the scheduled steps
   engine.destroy();
 });
 
-test("a save is text behind og-save:1:, and anything else is refused with nothing changed", () => {
+test("a save is text behind og-save:2:, and anything else is refused with nothing changed", () => {
   const engine = start();
   engine.advance(5);
   const save = engine.world.snapshot();
   if (!save.ok) throw new Error(save.reason);
-  expect(save.value.startsWith("og-save:1:")).toBeTrue();
-  expect(save.value).toMatch(/^og-save:1:[A-Za-z0-9+/]+=*$/);
+  expect(save.value.startsWith("og-save:2:")).toBeTrue();
+  expect(save.value).toMatch(/^og-save:2:[A-Za-z0-9+/]+=*$/);
   // A JSON value as is: what og.platform.storeSet takes.
   expect(JSON.parse(JSON.stringify({ world: save.value })).world).toBe(save.value);
   const hash = engine.hash();

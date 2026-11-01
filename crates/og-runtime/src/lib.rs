@@ -64,6 +64,7 @@ mod probe;
 mod record;
 mod review;
 mod save;
+mod save_migrations;
 #[cfg(not(feature = "publish"))]
 mod scene_save;
 mod stream;
@@ -184,7 +185,12 @@ pub use platform::{
 };
 #[cfg(not(feature = "publish"))]
 pub use record::{render_frame, render_restore, render_snapshot};
-pub use save::{og_world_restore, og_world_snapshot, save_snapshot_bytes};
+pub use save::{
+    og_save_edit_close, og_save_edit_drop_type, og_save_edit_get_version, og_save_edit_records,
+    og_save_edit_rename_field, og_save_edit_rename_type, og_save_edit_set_records,
+    og_save_edit_spawn, og_save_edit_text, og_save_edit_types, og_world_open_save,
+    og_world_restore, og_world_snapshot, save_snapshot_bytes,
+};
 pub use skeleton2d::{og_anim_rig2d_info, og_anim_skeleton2d_boxes, og_load_rig2d};
 pub use stream::{
     og_stream_budget, og_stream_release, og_stream_request, og_stream_set_budget, og_stream_status,

@@ -141,6 +141,66 @@ pub fn og_reflect_define_resource(env: Env, name: String, fields: String) -> Str
     <Host as ReflectApi>::og_reflect_define_resource(&Host, name, fields)
 }
 
+#[napi(js_name = "og_save_edit_get_version")]
+pub fn og_save_edit_get_version(env: Env, save_edit: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_save_edit_get_version(&Host, save_edit)
+}
+
+#[napi(js_name = "og_save_edit_types")]
+pub fn og_save_edit_types(env: Env, save_edit: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_save_edit_types(&Host, save_edit)
+}
+
+#[napi(js_name = "og_save_edit_records")]
+pub fn og_save_edit_records(env: Env, save_edit: u32, name: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_save_edit_records(&Host, save_edit, name)
+}
+
+#[napi(js_name = "og_save_edit_set_records")]
+pub fn og_save_edit_set_records(env: Env, save_edit: u32, name: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_save_edit_set_records(&Host, save_edit, name, desc)
+}
+
+#[napi(js_name = "og_save_edit_rename_type")]
+pub fn og_save_edit_rename_type(env: Env, save_edit: u32, from: String, to: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_save_edit_rename_type(&Host, save_edit, from, to)
+}
+
+#[napi(js_name = "og_save_edit_rename_field")]
+pub fn og_save_edit_rename_field(env: Env, save_edit: u32, name: String, from: String, to: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_save_edit_rename_field(&Host, save_edit, name, from, to)
+}
+
+#[napi(js_name = "og_save_edit_drop_type")]
+pub fn og_save_edit_drop_type(env: Env, save_edit: u32, name: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_save_edit_drop_type(&Host, save_edit, name)
+}
+
+#[napi(js_name = "og_save_edit_spawn")]
+pub fn og_save_edit_spawn(env: Env, save_edit: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_save_edit_spawn(&Host, save_edit, desc)
+}
+
+#[napi(js_name = "og_save_edit_text")]
+pub fn og_save_edit_text(env: Env, save_edit: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_save_edit_text(&Host, save_edit)
+}
+
+#[napi(js_name = "og_save_edit_close")]
+pub fn og_save_edit_close(env: Env, save_edit: u32) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_save_edit_close(&Host, save_edit)
+}
+
 #[napi(js_name = "og_world_get_tick")]
 pub fn og_world_get_tick(env: Env, world: u32) -> u32 {
     let _env = crate::EnvScope::enter(&env);
@@ -238,9 +298,15 @@ pub fn og_world_instantiate(env: Env, world: u32, asset: f64, desc: Option<Strin
 }
 
 #[napi(js_name = "og_world_snapshot")]
-pub fn og_world_snapshot(env: Env, world: u32) -> String {
+pub fn og_world_snapshot(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as WorldApi>::og_world_snapshot(&Host, world)
+    <Host as WorldApi>::og_world_snapshot(&Host, world, desc)
+}
+
+#[napi(js_name = "og_world_open_save")]
+pub fn og_world_open_save(env: Env, world: u32, save: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_world_open_save(&Host, world, save)
 }
 
 #[napi(js_name = "og_world_restore")]

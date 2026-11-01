@@ -255,7 +255,19 @@ export interface GameDescIn {
   readonly start?: Function | null;
   readonly render?: Readonly<Record<string, unknown>>;
   readonly look?: string;
+  readonly saveVersion?: number;
+  readonly migrations?: readonly SaveMigrationIn[];
 }
+
+export interface SaveMigrationIn {
+  readonly from: number;
+  readonly migrate: (save: SaveEditImpl) => Result<void> | void;
+}
+
+/** Each game's save migrations (GameDesc.migrations), by its token; the steps run here, before world.restore reaches the host. */
+const gameMigrations = new WeakMap<object, readonly SaveMigrationIn[]>();
+/** The game an engine runs, for its world's restores. */
+const engineGames = new Map<number, object>();
 
 export function defineGame(desc: GameDescIn = {}): GameToken {
   const list = [...(desc.systems ?? [])];
@@ -264,6 +276,8 @@ export function defineGame(desc: GameDescIn = {}): GameToken {
   const facts = desc.facts ? callback(desc.facts) : null;
   const start = desc.start ? callback(desc.start) : null;
   const token = Object.freeze({ tick: desc.tick ?? 60, systems: Object.freeze(list) });
+  const migrations = [...(desc.migrations ?? [])];
+  gameMigrations.set(token, migrations);
   // Built when the host takes it, so the systems' host handles are known.
   declare((a) => {
     // Unset tick, seed, scenes and scene stay null: the engine takes
@@ -282,6 +296,8 @@ export function defineGame(desc: GameDescIn = {}): GameToken {
       start,
       render: desc.render ?? {},
       look: desc.look ?? "",
+      saveVersion: desc.saveVersion ?? null,
+      migrations: migrations.map((m) => m.from),
     });
     gameHandles.set(token, a.og_game_game(wire));
   });
@@ -1000,11 +1016,44 @@ export class WorldImpl {
     return parse(abi().og_world_find(this.id, name));
   }
 
-  snapshot(): Result<string> {
-    return parse(abi().og_world_snapshot(this.id));
+  snapshot(desc?: { with?: readonly Token[]; resources?: readonly Token[] }): Result<string> {
+    const wire = desc && { with: (desc.with ?? []).map((t) => t.name), resources: (desc.resources ?? []).map((t) => t.name) };
+    return parse(abi().og_world_snapshot(this.id, json(wire)));
+  }
+
+  openSave(save: string): Result<SaveEditImpl> {
+    const answer = parse<Result<number>>(abi().og_world_open_save(this.id, save));
+    if (!answer.ok) return answer;
+    return { ok: true, value: new SaveEditImpl(answer.value) };
   }
 
   restore(save: string, desc?: unknown): Result<void> {
+    const game = engineGames.get(this.id);
+    const steps = (game && gameMigrations.get(game)) ?? [];
+    if (steps.length > 0) {
+      // The game's steps from the save's version on, in order (the host
+      // refused a game whose steps reach past saveVersion or repeat one).
+      const opened = this.openSave(save);
+      if (!opened.ok) return opened;
+      const edit = opened.value;
+      try {
+        for (const step of [...steps].sort((a, b) => a.from - b.from)) {
+          if (step.from < edit.version) continue;
+          let r: Result<void> | void;
+          try {
+            r = step.migrate(edit);
+          } catch (e) {
+            return { ok: false, reason: `the save migration from version ${step.from} threw: ${message(e)}` };
+          }
+          if (r && r.ok === false) return { ok: false, reason: `the save migration from version ${step.from} refused: ${r.reason}` };
+        }
+        const text = edit.text();
+        if (!text.ok) return text;
+        save = text.value;
+      } finally {
+        edit.close();
+      }
+    }
     return structural(parse(abi().og_world_restore(this.id, save, json(desc))));
   }
 
@@ -1031,6 +1080,106 @@ export class WorldImpl {
 
   instantiate(asset: number, desc?: unknown): Result<number> {
     return structural(parse(abi().og_world_instantiate(this.id, asset, json(desc))));
+  }
+}
+
+/** A save open for editing (World.openSave, SaveEdit). */
+export class SaveEditImpl {
+  readonly #id: number;
+
+  constructor(id: number) {
+    this.#id = id;
+  }
+
+  get version(): number {
+    return abi().og_save_edit_get_version(this.#id);
+  }
+
+  types(): readonly { name: string; version: number; fields: readonly string[] }[] {
+    return parse<Result<readonly { name: string; version: number; fields: readonly string[] }[]>>(abi().og_save_edit_types(this.#id)).value ?? [];
+  }
+
+  has(name: string): boolean {
+    return this.types().some((t) => t.name === name);
+  }
+
+  records(name: string): Result<readonly { entity: number | null; value: Record<string, unknown> }[]> {
+    return parse(abi().og_save_edit_records(this.#id, name));
+  }
+
+  setRecords(name: string, desc?: { into?: string; records?: readonly { entity: number | null; value: unknown }[] }): Result<void> {
+    return parse(abi().og_save_edit_set_records(this.#id, name, json(desc)));
+  }
+
+  transform(name: string, map: (value: Record<string, unknown>, entity: number | null) => unknown, desc?: { into?: string }): Result<void> {
+    const old = this.records(name);
+    if (!old.ok) return old;
+    let records;
+    try {
+      records = old.value.map((r) => ({ entity: r.entity, value: map(r.value, r.entity) ?? {} }));
+    } catch (e) {
+      return { ok: false, reason: `SaveEdit.transform of ${name}: ${message(e)}` };
+    }
+    return this.setRecords(name, { into: desc?.into ?? "", records });
+  }
+
+  split(name: string, map: (value: Record<string, unknown>, entity: number | null) => Record<string, unknown> | null): Result<void> {
+    const old = this.records(name);
+    if (!old.ok) return old;
+    const parts = new Map<string, { entity: number | null; value: unknown }[]>();
+    try {
+      for (const r of old.value) {
+        for (const [type, value] of Object.entries(map(r.value, r.entity) ?? {})) {
+          if (value === null || value === undefined) continue;
+          let list = parts.get(type);
+          if (!list) parts.set(type, (list = []));
+          list.push({ entity: r.entity, value });
+        }
+      }
+    } catch (e) {
+      return { ok: false, reason: `SaveEdit.split of ${name}: ${message(e)}` };
+    }
+    // The old type goes, written as the first new one; the others are
+    // added. An edit refused part way leaves the earlier ones in the open
+    // save, which the restore then never takes.
+    const names = [...parts.keys()];
+    if (names.length === 0) return this.dropType(name);
+    const [first, ...rest] = names;
+    for (const type of rest) {
+      if (this.has(type)) return { ok: false, reason: `SaveEdit.split of ${name}: the save already holds ${type}` };
+    }
+    const r = this.setRecords(name, { into: first, records: parts.get(first!)! });
+    if (!r.ok) return r;
+    // A type the save does not hold: setRecords adds it.
+    for (const type of rest) {
+      const added = this.setRecords(type, { records: parts.get(type)! });
+      if (!added.ok) return added;
+    }
+    return { ok: true, value: undefined };
+  }
+
+  renameType(from: string, to: string): Result<void> {
+    return parse(abi().og_save_edit_rename_type(this.#id, from, to));
+  }
+
+  renameField(name: string, from: string, to: string): Result<void> {
+    return parse(abi().og_save_edit_rename_field(this.#id, name, from, to));
+  }
+
+  dropType(name: string): Result<void> {
+    return parse(abi().og_save_edit_drop_type(this.#id, name));
+  }
+
+  spawn(desc?: { name?: string; components?: Record<string, unknown> }): Result<number> {
+    return parse(abi().og_save_edit_spawn(this.#id, json(desc)));
+  }
+
+  text(): Result<string> {
+    return parse(abi().og_save_edit_text(this.#id));
+  }
+
+  close(): void {
+    abi().og_save_edit_close(this.#id);
   }
 }
 
@@ -1312,6 +1461,7 @@ export class Engine {
   destroy(): boolean {
     epoch++;
     worlds.delete(this.id);
+    engineGames.delete(this.id);
     forgetRecords(this.id);
     return abi().og_engine_destroy(this.id);
   }
@@ -1324,6 +1474,7 @@ export function createEngine(game: GameToken, options: CreateOptions = {}): Resu
   const answer = parse<Result<number>>(abi().og_engine_create(handle, JSON.stringify(options)));
   if (!answer.ok) return answer;
   forgetRecords(answer.value);
+  engineGames.set(answer.value, game);
   return { ok: true, value: new Engine(answer.value, game) };
 }
 

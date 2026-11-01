@@ -71,7 +71,10 @@ fn the_tick_after_a_restore_reads_og_world_restored_once() {
     let e = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
 
     run_to(e, 10);
-    let save = value(og_world_snapshot(e)).as_str().unwrap().to_string();
+    let save = value(og_world_snapshot(e, None))
+        .as_str()
+        .unwrap()
+        .to_string();
     let saved = hash(e);
     run_to(e, 20);
     assert!(

@@ -71,7 +71,7 @@ test("a restore that moves og.Time past the script's last scheduled tick still r
   const game = "packages/engine/tests/fixtures/restore-forward";
   const first = spawn([ogBin(), "run", "--headless", game, "--no-render", "--commands", "5:print_save;5.1:quit"], repo);
   if (first.exitCode !== 0) throw new Error(`og run exited ${first.exitCode}: ${first.stderr}${first.stdout}`);
-  const save = first.stdout.split("\n").find((l) => l.startsWith("og-save:1:"));
+  const save = first.stdout.split("\n").find((l) => l.startsWith("og-save:2:"));
   if (!save) throw new Error(`no save printed: ${first.stdout}`);
   const out = mkdtempSync(join(tmpdir(), "og-restore-forward-"));
   try {

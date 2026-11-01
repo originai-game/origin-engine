@@ -77,6 +77,26 @@ pub trait ReflectApi: Wire {
 
 /// `world`: packages/knowledge/wiki/world.md.
 pub trait WorldApi: Wire {
+    /// `SaveEdit.version`
+    fn og_save_edit_get_version(&self, save_edit: u32) -> u32;
+    /// `SaveEdit.types`
+    fn og_save_edit_types(&self, save_edit: u32) -> String;
+    /// `SaveEdit.records`
+    fn og_save_edit_records(&self, save_edit: u32, name: String) -> String;
+    /// `SaveEdit.setRecords`
+    fn og_save_edit_set_records(&self, save_edit: u32, name: String, desc: Option<String>) -> String;
+    /// `SaveEdit.renameType`
+    fn og_save_edit_rename_type(&self, save_edit: u32, from: String, to: String) -> String;
+    /// `SaveEdit.renameField`
+    fn og_save_edit_rename_field(&self, save_edit: u32, name: String, from: String, to: String) -> String;
+    /// `SaveEdit.dropType`
+    fn og_save_edit_drop_type(&self, save_edit: u32, name: String) -> String;
+    /// `SaveEdit.spawn`
+    fn og_save_edit_spawn(&self, save_edit: u32, desc: Option<String>) -> String;
+    /// `SaveEdit.text`
+    fn og_save_edit_text(&self, save_edit: u32) -> String;
+    /// `SaveEdit.close`
+    fn og_save_edit_close(&self, save_edit: u32);
     /// `World.tick`
     fn og_world_get_tick(&self, world: u32) -> u32;
     /// `World.spawn`
@@ -110,7 +130,9 @@ pub trait WorldApi: Wire {
     /// `World.instantiate`
     fn og_world_instantiate(&self, world: u32, asset: f64, desc: Option<String>) -> String;
     /// `World.snapshot`
-    fn og_world_snapshot(&self, world: u32) -> String;
+    fn og_world_snapshot(&self, world: u32, desc: Option<String>) -> String;
+    /// `World.openSave`
+    fn og_world_open_save(&self, world: u32, save: String) -> String;
     /// `World.restore`
     fn og_world_restore(&self, world: u32, save: String, desc: Option<String>) -> String;
     /// `Query.archetypes`
@@ -1122,6 +1144,16 @@ impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi +
 pub const SYMBOLS: &[&str] = &[
     "og_reflect_define_component",
     "og_reflect_define_resource",
+    "og_save_edit_get_version",
+    "og_save_edit_types",
+    "og_save_edit_records",
+    "og_save_edit_set_records",
+    "og_save_edit_rename_type",
+    "og_save_edit_rename_field",
+    "og_save_edit_drop_type",
+    "og_save_edit_spawn",
+    "og_save_edit_text",
+    "og_save_edit_close",
     "og_world_get_tick",
     "og_world_spawn",
     "og_world_despawn",
@@ -1139,6 +1171,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_world_emit",
     "og_world_instantiate",
     "og_world_snapshot",
+    "og_world_open_save",
     "og_world_restore",
     "og_query_archetypes",
     "og_query_count",

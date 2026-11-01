@@ -94,6 +94,8 @@ function owners(): Record<string, object> {
     // declares the two members a game uses, push and length).
     Path2: new og.Path2(),
     Shape: new og.Shape(),
+    // A save opened for a migration's edits (world.openSave).
+    SaveEdit: must(world.openSave(must(world.snapshot()))),
   };
 }
 

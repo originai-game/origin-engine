@@ -66,7 +66,12 @@ impl Hooks for Game {
             SAVE => {
                 let mut s = self.0.borrow_mut();
                 if w == s.saver && tick == SAVE_AT {
-                    s.saved = Some(value(og_world_snapshot(w)).as_str().unwrap().to_string());
+                    s.saved = Some(
+                        value(og_world_snapshot(w, None))
+                            .as_str()
+                            .unwrap()
+                            .to_string(),
+                    );
                 }
                 if w == s.loader && tick == RESTORE_AT {
                     let saved = s.saved.clone().expect("saved first");

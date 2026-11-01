@@ -69,7 +69,7 @@ export interface NativeExtras {
   og_node_trace_take(engine: number, last: boolean): string;
   /** `og replay`: the world's portable hash within a `{ type: [field, ...] }` table, `{ hash }` (016x); with an empty table within the world's own, `{ hash, table }`; `{ error }` when refused. Not in publish builds. */
   og_node_replay_hash(engine: number, tableJson: string): string;
-  /** `og replay compare`: og-net's diff of a recorded save (`og-save:1:...`, local) against the world now (remote), JSON, or `{ error }`. Not in publish builds. */
+  /** `og replay compare`: og-net's diff of a recorded save (`og-save:2:...`, local) against the world now (remote), JSON, or `{ error }`. Not in publish builds. */
   og_node_replay_diff(engine: number, saveText: string): string;
   /** `og ui check`: the UI's last laid-out frame (elements, undeclared overlaps, drawn text, fills, the accessibility tree, counts, viewport and theme facts; src/node/ui-check.ts's UiFrameSnapshot), or `{ error }`. Not in publish builds. */
   og_node_ui_frame(engine: number): string;

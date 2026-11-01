@@ -148,11 +148,55 @@ impl WorldApi for NodeHost {
     fn og_world_instantiate(&self, world: u32, asset: f64, desc: Option<String>) -> String {
         rt::og_world_instantiate(world, asset, desc)
     }
-    fn og_world_snapshot(&self, world: u32) -> String {
-        rt::og_world_snapshot(world)
+    fn og_world_snapshot(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_world_snapshot(world, desc)
     }
     fn og_world_restore(&self, world: u32, save: String, desc: Option<String>) -> String {
         rt::og_world_restore(world, save, desc)
+    }
+    fn og_world_open_save(&self, world: u32, save: String) -> String {
+        rt::og_world_open_save(world, save)
+    }
+    fn og_save_edit_get_version(&self, save_edit: u32) -> u32 {
+        rt::og_save_edit_get_version(save_edit)
+    }
+    fn og_save_edit_types(&self, save_edit: u32) -> String {
+        rt::og_save_edit_types(save_edit)
+    }
+    fn og_save_edit_records(&self, save_edit: u32, name: String) -> String {
+        rt::og_save_edit_records(save_edit, name)
+    }
+    fn og_save_edit_set_records(
+        &self,
+        save_edit: u32,
+        name: String,
+        desc: Option<String>,
+    ) -> String {
+        rt::og_save_edit_set_records(save_edit, name, desc)
+    }
+    fn og_save_edit_rename_type(&self, save_edit: u32, from: String, to: String) -> String {
+        rt::og_save_edit_rename_type(save_edit, from, to)
+    }
+    fn og_save_edit_rename_field(
+        &self,
+        save_edit: u32,
+        name: String,
+        from: String,
+        to: String,
+    ) -> String {
+        rt::og_save_edit_rename_field(save_edit, name, from, to)
+    }
+    fn og_save_edit_drop_type(&self, save_edit: u32, name: String) -> String {
+        rt::og_save_edit_drop_type(save_edit, name)
+    }
+    fn og_save_edit_spawn(&self, save_edit: u32, desc: Option<String>) -> String {
+        rt::og_save_edit_spawn(save_edit, desc)
+    }
+    fn og_save_edit_text(&self, save_edit: u32) -> String {
+        rt::og_save_edit_text(save_edit)
+    }
+    fn og_save_edit_close(&self, save_edit: u32) {
+        rt::og_save_edit_close(save_edit)
     }
     fn og_query_archetypes(&self, query: u32) -> String {
         rt::og_query_archetypes(query)

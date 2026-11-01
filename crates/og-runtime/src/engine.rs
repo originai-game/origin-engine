@@ -205,12 +205,19 @@ pub(crate) struct GameDecl {
     pub start: Option<u32>,
     /// GameDesc.look: applied before start runs; empty is none.
     pub look: String,
-    /// Which of tick, seed, scenes, scene and look GameDesc set: the others
+    /// GameDesc.saveVersion: the game's save version, written into every
+    /// save; a restore runs the game's migrations from a save's version to
+    /// this one (`save.rs`).
+    pub save_version: u32,
+    /// GameDesc.migrations' `from` versions, in declared order (the steps
+    /// themselves run in TypeScript, before world.restore reaches the host).
+    pub migrations: Vec<u32>,
+    /// Which of tick, seed, scenes, scene, look and saveVersion GameDesc set: the others
     /// take project.ogt's ([`with_project`]), else their defaults.
     pub given: Given,
 }
 
-/// Which of GameDesc's tick, seed, scenes, scene and look the game set.
+/// Which of GameDesc's tick, seed, scenes, scene, look and saveVersion the game set.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Given {
     pub tick: bool,
@@ -218,6 +225,7 @@ pub(crate) struct Given {
     pub scenes: bool,
     pub scene: bool,
     pub look: bool,
+    pub save_version: bool,
 }
 
 /// project.ogt's `tick`, `seed`, `scenes`, `scene` and `look`, as the host
@@ -232,9 +240,11 @@ pub(crate) struct ProjectGame {
     /// `look "looks/<id>.ogt"`: the look whose art contract the cook reads
     /// (og-cook's `cook::look::project_look`), as an asset id.
     pub look: Option<String>,
+    /// `saveVersion 3`: the game's save version (GameDesc.saveVersion).
+    pub save_version: Option<u32>,
 }
 
-/// Reads `tick`, `seed`, `scenes`, `scene` and `look` from project.ogt's
+/// Reads `tick`, `seed`, `scenes`, `scene`, `look` and `saveVersion` from project.ogt's
 /// text; a value of the wrong kind is refused naming its line. Other keys
 /// are og's (`name`, `entry`, `profile`, `publish`, ...) and are not read
 /// here.
@@ -299,13 +309,41 @@ pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
         }
     };
     let look = og_bundle::look::project_look(b).map_err(|e| format!("project.ogt:{e}"))?;
+    let save_version = whole(
+        "saveVersion",
+        1,
+        u64::from(u32::MAX),
+        "the game's save version, a whole number from 1",
+    )?;
     Ok(ProjectGame {
         tick,
         seed,
         scenes,
         scene,
         look,
+        save_version,
     })
+}
+
+/// GameDesc.migrations against GameDesc.saveVersion: each step's `from`
+/// is a version before the current one, and no version has two.
+pub(crate) fn check_migrations(game: &GameDecl) -> Result<(), String> {
+    let mut seen = Vec::new();
+    for &from in &game.migrations {
+        if from == 0 || from >= game.save_version {
+            return Err(format!(
+                "GameDesc.migrations has a step from version {from}, and the game's saveVersion is {}: a step migrates from 1 to saveVersion - 1 (raise saveVersion when you add the step)",
+                game.save_version
+            ));
+        }
+        if seen.contains(&from) {
+            return Err(format!(
+                "GameDesc.migrations has two steps from version {from}: one step per version"
+            ));
+        }
+        seen.push(from);
+    }
+    Ok(())
 }
 
 /// GameDesc with project.ogt's values for the fields it left unset. A field
@@ -340,6 +378,13 @@ pub(crate) fn with_project(mut game: GameDecl, p: &ProjectGame) -> Result<GameDe
         game.look = og_bundle::runtime::asset_id(&game.look).to_string();
     }
     both("look", g.look, &mut game.look, &p.look)?;
+    both(
+        "saveVersion",
+        g.save_version,
+        &mut game.save_version,
+        &p.save_version,
+    )?;
+    check_migrations(&game)?;
     Ok(game)
 }
 
@@ -456,12 +501,18 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
         render: desc["render"].clone(),
         start: desc["start"].as_u64().map(|n| n as u32),
         look: desc["look"].as_str().unwrap_or_default().to_string(),
+        save_version: num("saveVersion", 1).max(1),
+        migrations: desc["migrations"]
+            .as_array()
+            .map(|a| a.iter().map(|v| v.as_u64().unwrap_or(0) as u32).collect())
+            .unwrap_or_default(),
         given: Given {
             tick: desc["tick"].is_u64(),
             seed: desc["seed"].is_u64(),
             scenes: desc["scenes"].is_object(),
             scene: desc["scene"].is_string(),
             look: desc["look"].as_str().is_some_and(|l| !l.is_empty()),
+            save_version: desc["saveVersion"].is_u64(),
         },
     };
     DECL.with(|d| {
@@ -550,7 +601,7 @@ mod tests {
         }
     }
 
-    const PROJECT: &str = "type project\nversion 1\n---\nname \"P\"\nentry \"src/main.ts\"\nprofile \"3d\"\ntick 30\nseed 7\nscenes {\n  main \"scenes/main.ogt\"\n  boss \"scenes/boss.ogt\"\n}\nscene boss\n";
+    const PROJECT: &str = "type project\nversion 1\n---\nname \"P\"\nentry \"src/main.ts\"\nprofile \"3d\"\ntick 30\nseed 7\nscenes {\n  main \"scenes/main.ogt\"\n  boss \"scenes/boss.ogt\"\n}\nscene boss\nsaveVersion 3\n";
 
     fn game(desc: Value) -> GameDecl {
         let i = declare_game(&desc);
@@ -562,6 +613,7 @@ mod tests {
         let p = project_game(PROJECT).unwrap();
         let g = with_project(game(json!({})), &p).unwrap();
         assert_eq!((g.tick, g.seed, g.scene.as_str()), (30, 7, "boss"));
+        assert_eq!(g.save_version, 3, "project.ogt's saveVersion");
         assert_eq!(
             g.scenes.get("main").map(String::as_str),
             Some("scenes/main.ogt")
@@ -570,6 +622,17 @@ mod tests {
         let none = project_game("type project\nversion 1\n---\nname \"P\"\n").unwrap();
         let g = with_project(game(json!({})), &none).unwrap();
         assert_eq!((g.tick, g.seed, g.scene.as_str()), (60, 0, "main"));
+        assert_eq!(g.save_version, 1, "a game's first save version");
+        // Migrations step from 1 to saveVersion - 1, once each.
+        let g = with_project(game(json!({ "migrations": [1, 2] })), &p).unwrap();
+        assert_eq!(g.migrations, [1, 2]);
+        let e = with_project(game(json!({ "migrations": [3] })), &p).unwrap_err();
+        assert!(
+            e.contains("from version 3, and the game's saveVersion is 3"),
+            "{e}"
+        );
+        let e = with_project(game(json!({ "migrations": [1, 1] })), &p).unwrap_err();
+        assert!(e.contains("two steps from version 1"), "{e}");
         // Set in both, alike: fine.
         let g = with_project(game(json!({ "tick": 30, "seed": 7 })), &p).unwrap();
         assert_eq!((g.tick, g.seed), (30, 7));

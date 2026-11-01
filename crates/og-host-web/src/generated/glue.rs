@@ -119,6 +119,56 @@ pub fn og_reflect_define_resource(name: String, fields: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_save_edit_get_version(save_edit: u32) -> u32 {
+    <Host as WorldApi>::og_save_edit_get_version(&Host, save_edit)
+}
+
+#[wasm_bindgen]
+pub fn og_save_edit_types(save_edit: u32) -> String {
+    <Host as WorldApi>::og_save_edit_types(&Host, save_edit)
+}
+
+#[wasm_bindgen]
+pub fn og_save_edit_records(save_edit: u32, name: String) -> String {
+    <Host as WorldApi>::og_save_edit_records(&Host, save_edit, name)
+}
+
+#[wasm_bindgen]
+pub fn og_save_edit_set_records(save_edit: u32, name: String, desc: Option<String>) -> String {
+    <Host as WorldApi>::og_save_edit_set_records(&Host, save_edit, name, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_save_edit_rename_type(save_edit: u32, from: String, to: String) -> String {
+    <Host as WorldApi>::og_save_edit_rename_type(&Host, save_edit, from, to)
+}
+
+#[wasm_bindgen]
+pub fn og_save_edit_rename_field(save_edit: u32, name: String, from: String, to: String) -> String {
+    <Host as WorldApi>::og_save_edit_rename_field(&Host, save_edit, name, from, to)
+}
+
+#[wasm_bindgen]
+pub fn og_save_edit_drop_type(save_edit: u32, name: String) -> String {
+    <Host as WorldApi>::og_save_edit_drop_type(&Host, save_edit, name)
+}
+
+#[wasm_bindgen]
+pub fn og_save_edit_spawn(save_edit: u32, desc: Option<String>) -> String {
+    <Host as WorldApi>::og_save_edit_spawn(&Host, save_edit, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_save_edit_text(save_edit: u32) -> String {
+    <Host as WorldApi>::og_save_edit_text(&Host, save_edit)
+}
+
+#[wasm_bindgen]
+pub fn og_save_edit_close(save_edit: u32) {
+    <Host as WorldApi>::og_save_edit_close(&Host, save_edit)
+}
+
+#[wasm_bindgen]
 pub fn og_world_get_tick(world: u32) -> u32 {
     <Host as WorldApi>::og_world_get_tick(&Host, world)
 }
@@ -199,8 +249,13 @@ pub fn og_world_instantiate(world: u32, asset: f64, desc: Option<String>) -> Str
 }
 
 #[wasm_bindgen]
-pub fn og_world_snapshot(world: u32) -> String {
-    <Host as WorldApi>::og_world_snapshot(&Host, world)
+pub fn og_world_snapshot(world: u32, desc: Option<String>) -> String {
+    <Host as WorldApi>::og_world_snapshot(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_world_open_save(world: u32, save: String) -> String {
+    <Host as WorldApi>::og_world_open_save(&Host, world, save)
 }
 
 #[wasm_bindgen]

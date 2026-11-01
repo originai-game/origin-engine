@@ -14,7 +14,7 @@ module game {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1051</sub>
+<sub>`api.ogt` line 1198</sub>
 
 ## Contents
 
@@ -54,7 +54,7 @@ fn game {
 }
 ```
 
-<sub>`api.ogt` line 1103</sub>
+<sub>`api.ogt` line 1255</sub>
 
 ## Interfaces
 
@@ -70,7 +70,7 @@ interface Game {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1097</sub>
+<sub>`api.ogt` line 1249</sub>
 
 <a id="member-Game-tick"></a>
 
@@ -88,7 +88,7 @@ Binding symbol `og_game_get_tick` · publish builds: kept
 prop tick u32 "GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do)."
 ```
 
-<sub>`api.ogt` line 1099</sub>
+<sub>`api.ogt` line 1251</sub>
 
 <a id="member-Game-systems"></a>
 
@@ -106,7 +106,7 @@ Binding symbol `og_game_get_systems` · publish builds: kept
 prop systems List.System "The systems in declaration order."
 ```
 
-<sub>`api.ogt` line 1100</sub>
+<sub>`api.ogt` line 1252</sub>
 
 ## Types
 
@@ -134,7 +134,7 @@ callback FactsFn {
 }
 ```
 
-<sub>`api.ogt` line 1056</sub>
+<sub>`api.ogt` line 1203</sub>
 
 <a id="type-StartFn"></a>
 
@@ -159,7 +159,7 @@ callback StartFn {
 }
 ```
 
-<sub>`api.ogt` line 1062</sub>
+<sub>`api.ogt` line 1209</sub>
 
 <a id="type-GameDesc"></a>
 
@@ -183,6 +183,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `facts` | `FactsFn \| null` | `null` | — | — | — | The game's own facts for the probe's state(). |
 | `start` | `StartFn \| null` | `null` | — | — | — | Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it. |
 | `render` | `RenderOptions` | `{}` | — | — | — | How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer. |
+| `saveVersion` | `number` | `1` | ≥ 1 | — | — | The game's save version, written into every save: raise it when a release changes a saved type, and add the step from the old version to GameDesc.migrations. Left unset, project.ogt's `saveVersion` (else 1); the two set to different values refuse the engine. |
+| `migrations` | `readonly SaveMigration[]` | `[]` | — | — | — | The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order, so a save of any earlier version arrives at the current one (rename a field, transform values with the old record in hand, drop or split a type, add an entity). |
 | `look` | `string` | `""` | — | — | — | A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Left out or empty, project.ogt's `look "looks/<name>.ogt"` (the look whose art contract the cook reads) is applied when it has one, else none; the two naming different looks is refused (one value in two places). |
 
 ```ogt
@@ -213,8 +215,13 @@ struct GameDesc {
   field facts Option.FactsFn "The game's own facts for the probe's state()."
   field start Option.StartFn "Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it."
   field render RenderOptions "How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer."
+  field saveVersion u32 "The game's save version, written into every save: raise it when a release changes a saved type, and add the step from the old version to GameDesc.migrations. Left unset, project.ogt's `saveVersion` (else 1); the two set to different values refuse the engine." {
+    default 1
+    min 1
+  }
+  field migrations List.SaveMigration "The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order, so a save of any earlier version arrives at the current one (rename a field, transform values with the old record in hand, drop or split a type, add an entity)."
   field look String "A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Left out or empty, project.ogt's `look \"looks/<name>.ogt\"` (the look whose art contract the cook reads) is applied when it has one, else none; the two naming different looks is refused (one value in two places)."
 }
 ```
 
-<sub>`api.ogt` line 1067</sub>
+<sub>`api.ogt` line 1214</sub>

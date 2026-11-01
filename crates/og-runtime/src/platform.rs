@@ -406,7 +406,11 @@ pub fn og_platform_ai_mark(world: u32, desc: Option<String>) -> String {
 
 /// The longest slot name: room for a part's suffix (`.b7`) in a key.
 const MAX_SLOT_NAME: usize = 60;
-/// The most parts a slot's text takes, and so the longest text.
+/// The most parts a slot's text takes, and so the longest text: 8 of a
+/// key's 64 KiB, 512 KiB, so a slot's two banks fit the platform's 1 MiB
+/// a player and game (a 5,000-entity world, half of it physics bodies,
+/// saves to about 437 KiB; past that, a selection keeps what the game
+/// needs in a few KiB).
 const MAX_PARTS: usize = 8;
 /// The largest `meta`, encoded.
 const MAX_META: usize = 4 * 1024;
@@ -498,7 +502,7 @@ pub fn og_platform_save_slot(world: u32, desc: Option<String>) -> String {
     let parts = split(&text).len();
     if parts > MAX_PARTS {
         return refuse(format!(
-            "the text is {} bytes, {parts} parts of a store key's 64 KiB; a slot holds at most {MAX_PARTS} (512 KiB)",
+            "the text is {} bytes, {parts} parts of a store key's 64 KiB; a slot holds at most {MAX_PARTS} (512 KiB): save a selection (world.snapshot's SnapshotDesc) of what the game keeps",
             text.len()
         ));
     }

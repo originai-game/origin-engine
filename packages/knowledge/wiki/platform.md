@@ -20,7 +20,7 @@ module platform {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 11143</sub>
+<sub>`api.ogt` line 11295</sub>
 
 ## Contents
 
@@ -49,7 +49,7 @@ module platform {
 | [`og.platform.aiMark`](#fn-aiMark) | function | Disclose AI-generated content the game shows. |
 | [`og.platform.loadSettings`](#fn-loadSettings) | function | Ask for the game's saved settings (volume, controls, language): store.get of the key `og.settings`. Where the Player has no store, or is offline, the shell answers from the browser's own storage; natively, from the local store. |
 | [`og.platform.saveSettings`](#fn-saveSettings) | function | Save the game's settings under `og.settings` (the last save wins), with the same local fallback as loadSettings. |
-| [`og.platform.saveSlot`](#fn-saveSlot) | function | Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game. og-game §8. |
+| [`og.platform.saveSlot`](#fn-saveSlot) | function | Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game (its two banks and the manifest: 1 MiB, the platform's budget for a player and game), and a world that would take more saves a selection of what it keeps (world.snapshot's SnapshotDesc). og-game §8. |
 | [`og.platform.loadSlot`](#fn-loadSlot) | function | Read a slot saveSlot wrote: its manifest, then its parts, joined and checked against the manifest's length and checksum. One request for all of it. |
 | [`og.platform.result`](#fn-result) | function | The answer to a call, once it arrived. |
 | [`og.platform.info`](#fn-info) | function | What answers platform calls here, and what it answers. |
@@ -100,7 +100,7 @@ fn storeGet {
 }
 ```
 
-<sub>`api.ogt` line 11259</sub>
+<sub>`api.ogt` line 11411</sub>
 
 <a id="fn-storeSet"></a>
 
@@ -130,7 +130,7 @@ fn storeSet {
 }
 ```
 
-<sub>`api.ogt` line 11266</sub>
+<sub>`api.ogt` line 11418</sub>
 
 <a id="fn-storeList"></a>
 
@@ -158,7 +158,7 @@ fn storeList {
 }
 ```
 
-<sub>`api.ogt` line 11273</sub>
+<sub>`api.ogt` line 11425</sub>
 
 <a id="fn-leaderboardSubmit"></a>
 
@@ -188,7 +188,7 @@ fn leaderboardSubmit {
 }
 ```
 
-<sub>`api.ogt` line 11279</sub>
+<sub>`api.ogt` line 11431</sub>
 
 <a id="fn-leaderboardTop"></a>
 
@@ -218,7 +218,7 @@ fn leaderboardTop {
 }
 ```
 
-<sub>`api.ogt` line 11286</sub>
+<sub>`api.ogt` line 11438</sub>
 
 <a id="fn-leaderboardAround"></a>
 
@@ -248,7 +248,7 @@ fn leaderboardAround {
 }
 ```
 
-<sub>`api.ogt` line 11293</sub>
+<sub>`api.ogt` line 11445</sub>
 
 <a id="fn-telemetry"></a>
 
@@ -282,7 +282,7 @@ fn telemetry {
 }
 ```
 
-<sub>`api.ogt` line 11300</sub>
+<sub>`api.ogt` line 11452</sub>
 
 <a id="fn-point"></a>
 
@@ -312,7 +312,7 @@ fn point {
 }
 ```
 
-<sub>`api.ogt` line 11310</sub>
+<sub>`api.ogt` line 11462</sub>
 
 <a id="fn-aiMark"></a>
 
@@ -342,7 +342,7 @@ fn aiMark {
 }
 ```
 
-<sub>`api.ogt` line 11317</sub>
+<sub>`api.ogt` line 11469</sub>
 
 <a id="fn-loadSettings"></a>
 
@@ -370,7 +370,7 @@ fn loadSettings {
 }
 ```
 
-<sub>`api.ogt` line 11324</sub>
+<sub>`api.ogt` line 11476</sub>
 
 <a id="fn-saveSettings"></a>
 
@@ -400,13 +400,13 @@ fn saveSettings {
 }
 ```
 
-<sub>`api.ogt` line 11330</sub>
+<sub>`api.ogt` line 11482</sub>
 
 <a id="fn-saveSlot"></a>
 
 ### `og.platform.saveSlot`
 
-Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game. og-game §8.
+Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game (its two banks and the manifest: 1 MiB, the platform's budget for a player and game), and a world that would take more saves a selection of what it keeps (world.snapshot's SnapshotDesc). og-game §8.
 
 ```ts
 og.platform.saveSlot(world: World, desc?: SaveSlotDesc): Result<number>
@@ -423,14 +423,14 @@ Binding symbol `og_platform_save_slot` · publish builds: kept
 
 ```ogt
 fn saveSlot {
-  doc "Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game. og-game §8."
+  doc "Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game (its two banks and the manifest: 1 MiB, the platform's budget for a player and game), and a world that would take more saves a selection of what it keeps (world.snapshot's SnapshotDesc). og-game §8."
   param world World "The world."
   param desc SaveSlotDesc "The slot, the text and what a title shows of it."
   returns Result.u32 "Refused for a malformed slot name, a text over 512 KiB or a meta over 4 KiB. The answer arrives when the manifest is written: data `{ slot, parts, bytes, revision }`; an error is the first refused part's, or the manifest's (`conflict`: another save of the slot landed meanwhile; the slot holds that one)."
 }
 ```
 
-<sub>`api.ogt` line 11337</sub>
+<sub>`api.ogt` line 11489</sub>
 
 <a id="fn-loadSlot"></a>
 
@@ -460,7 +460,7 @@ fn loadSlot {
 }
 ```
 
-<sub>`api.ogt` line 11344</sub>
+<sub>`api.ogt` line 11496</sub>
 
 <a id="fn-result"></a>
 
@@ -490,7 +490,7 @@ fn result {
 }
 ```
 
-<sub>`api.ogt` line 11351</sub>
+<sub>`api.ogt` line 11503</sub>
 
 <a id="fn-info"></a>
 
@@ -518,7 +518,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 11358</sub>
+<sub>`api.ogt` line 11510</sub>
 
 <a id="fn-now"></a>
 
@@ -546,7 +546,7 @@ fn now {
 }
 ```
 
-<sub>`api.ogt` line 11364</sub>
+<sub>`api.ogt` line 11516</sub>
 
 <a id="fn-roomCreate"></a>
 
@@ -578,7 +578,7 @@ fn roomCreate {
 }
 ```
 
-<sub>`api.ogt` line 11437</sub>
+<sub>`api.ogt` line 11589</sub>
 
 <a id="fn-roomJoin"></a>
 
@@ -608,7 +608,7 @@ fn roomJoin {
 }
 ```
 
-<sub>`api.ogt` line 11446</sub>
+<sub>`api.ogt` line 11598</sub>
 
 <a id="fn-roomLeave"></a>
 
@@ -636,7 +636,7 @@ fn roomLeave {
 }
 ```
 
-<sub>`api.ogt` line 11453</sub>
+<sub>`api.ogt` line 11605</sub>
 
 <a id="fn-roomSend"></a>
 
@@ -670,7 +670,7 @@ fn roomSend {
 }
 ```
 
-<sub>`api.ogt` line 11459</sub>
+<sub>`api.ogt` line 11611</sub>
 
 <a id="fn-roomPeers"></a>
 
@@ -698,7 +698,7 @@ fn roomPeers {
 }
 ```
 
-<sub>`api.ogt` line 11469</sub>
+<sub>`api.ogt` line 11621</sub>
 
 <a id="fn-roomInfo"></a>
 
@@ -726,7 +726,7 @@ fn roomInfo {
 }
 ```
 
-<sub>`api.ogt` line 11475</sub>
+<sub>`api.ogt` line 11627</sub>
 
 <a id="fn-roomMessage"></a>
 
@@ -756,7 +756,7 @@ fn roomMessage {
 }
 ```
 
-<sub>`api.ogt` line 11481</sub>
+<sub>`api.ogt` line 11633</sub>
 
 ## Components, resources and events
 
@@ -781,7 +781,7 @@ event PlatformAnswered {
 }
 ```
 
-<sub>`api.ogt` line 11156</sub>
+<sub>`api.ogt` line 11308</sub>
 
 <a id="record-RoomJoined"></a>
 
@@ -810,7 +810,7 @@ event RoomJoined {
 }
 ```
 
-<sub>`api.ogt` line 11409</sub>
+<sub>`api.ogt` line 11561</sub>
 
 <a id="record-RoomPeerJoined"></a>
 
@@ -833,7 +833,7 @@ event RoomPeerJoined {
 }
 ```
 
-<sub>`api.ogt` line 11418</sub>
+<sub>`api.ogt` line 11570</sub>
 
 <a id="record-RoomPeerLeft"></a>
 
@@ -856,7 +856,7 @@ event RoomPeerLeft {
 }
 ```
 
-<sub>`api.ogt` line 11424</sub>
+<sub>`api.ogt` line 11576</sub>
 
 <a id="record-RoomMessage"></a>
 
@@ -881,7 +881,7 @@ event RoomMessage {
 }
 ```
 
-<sub>`api.ogt` line 11430</sub>
+<sub>`api.ogt` line 11582</sub>
 
 ## Types
 
@@ -906,7 +906,7 @@ enum PlatformOrder {
 }
 ```
 
-<sub>`api.ogt` line 11150</sub>
+<sub>`api.ogt` line 11302</sub>
 
 <a id="type-StoreSetDesc"></a>
 
@@ -934,7 +934,7 @@ struct StoreSetDesc {
 }
 ```
 
-<sub>`api.ogt` line 11162</sub>
+<sub>`api.ogt` line 11314</sub>
 
 <a id="type-LeaderboardSubmitDesc"></a>
 
@@ -962,7 +962,7 @@ struct LeaderboardSubmitDesc {
 }
 ```
 
-<sub>`api.ogt` line 11171</sub>
+<sub>`api.ogt` line 11323</sub>
 
 <a id="type-LeaderboardQueryDesc"></a>
 
@@ -992,7 +992,7 @@ struct LeaderboardQueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 11181</sub>
+<sub>`api.ogt` line 11333</sub>
 
 <a id="type-PointDesc"></a>
 
@@ -1020,7 +1020,7 @@ struct PointDesc {
 }
 ```
 
-<sub>`api.ogt` line 11194</sub>
+<sub>`api.ogt` line 11346</sub>
 
 <a id="type-AiMarkDesc"></a>
 
@@ -1046,7 +1046,7 @@ struct AiMarkDesc {
 }
 ```
 
-<sub>`api.ogt` line 11205</sub>
+<sub>`api.ogt` line 11357</sub>
 
 <a id="type-SaveSlotDesc"></a>
 
@@ -1072,7 +1072,7 @@ struct SaveSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 11213</sub>
+<sub>`api.ogt` line 11365</sub>
 
 <a id="type-LoadSlotDesc"></a>
 
@@ -1096,7 +1096,7 @@ struct LoadSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 11221</sub>
+<sub>`api.ogt` line 11373</sub>
 
 <a id="type-PlatformError"></a>
 
@@ -1121,7 +1121,7 @@ struct PlatformError {
 }
 ```
 
-<sub>`api.ogt` line 11228</sub>
+<sub>`api.ogt` line 11380</sub>
 
 <a id="type-PlatformResult"></a>
 
@@ -1156,7 +1156,7 @@ struct PlatformResult {
 }
 ```
 
-<sub>`api.ogt` line 11236</sub>
+<sub>`api.ogt` line 11388</sub>
 
 <a id="type-PlatformInfo"></a>
 
@@ -1181,7 +1181,7 @@ struct PlatformInfo {
 }
 ```
 
-<sub>`api.ogt` line 11251</sub>
+<sub>`api.ogt` line 11403</sub>
 
 <a id="type-RoomDesc"></a>
 
@@ -1209,7 +1209,7 @@ struct RoomDesc {
 }
 ```
 
-<sub>`api.ogt` line 11372</sub>
+<sub>`api.ogt` line 11524</sub>
 
 <a id="type-RoomPeer"></a>
 
@@ -1232,7 +1232,7 @@ struct RoomPeer {
 }
 ```
 
-<sub>`api.ogt` line 11383</sub>
+<sub>`api.ogt` line 11535</sub>
 
 <a id="type-RoomInfo"></a>
 
@@ -1261,7 +1261,7 @@ struct RoomInfo {
 }
 ```
 
-<sub>`api.ogt` line 11390</sub>
+<sub>`api.ogt` line 11542</sub>
 
 <a id="type-RoomMessageData"></a>
 
@@ -1288,4 +1288,4 @@ struct RoomMessageData {
 }
 ```
 
-<sub>`api.ogt` line 11400</sub>
+<sub>`api.ogt` line 11552</sub>

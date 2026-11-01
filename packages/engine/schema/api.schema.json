@@ -1703,12 +1703,231 @@
         "Entity",
         "SpawnDesc",
         "RestoreDesc",
+        "SnapshotDesc",
+        "SaveType",
+        "SaveRecord",
+        "SetRecordsDesc",
+        "TransformDesc",
+        "SaveSpawnDesc",
+        "SaveMigration",
         "WorldRestored",
         "QueryDesc"
       ],
       "consts": [],
       "functions": [],
       "interfaces": [
+        {
+          "name": "SaveEdit",
+          "doc": "A save opened for editing (world.openSave), as a migration sees it: the engine's own migrations already applied, every type with its saved fields. Each edit changes the save, not the world; world.restore takes the result. An edit refused changes nothing. Entity ids are the saved world's.",
+          "members": [
+            {
+              "name": "version",
+              "prop": "u32",
+              "doc": "The game's save version the save was written at (1 for a save of a game that never declared one).",
+              "publish": true
+            },
+            {
+              "name": "types",
+              "doc": "The types the save holds, in its table's order.",
+              "params": [],
+              "returns": "List<SaveType>",
+              "publish": true
+            },
+            {
+              "name": "has",
+              "doc": "Whether the save holds a type.",
+              "params": [
+                {
+                  "name": "name",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The type's name."
+                }
+              ],
+              "returns": "bool",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "records",
+              "doc": "A type's saved values: its components by entity in storage order, then its resource.",
+              "params": [
+                {
+                  "name": "name",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The type's name."
+                }
+              ],
+              "returns": "Result<List<SaveRecord>>",
+              "returnsDoc": "Refused for a type the save does not hold.",
+              "publish": true
+            },
+            {
+              "name": "setRecords",
+              "doc": "Replace a type's values (its components, its resource) with records written as this build's type `into`: the old type's values and queued events go, an entity keeps its other components and its place. A type the save does not hold is added (a component a new version gives saved entities).",
+              "params": [
+                {
+                  "name": "name",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The saved type to replace."
+                },
+                {
+                  "name": "desc",
+                  "type": "SetRecordsDesc",
+                  "optional": true,
+                  "doc": "The type to write and the records."
+                }
+              ],
+              "returns": "Result<Void>",
+              "returnsDoc": "Refused, with nothing changed, for a type this build does not declare, a record that does not fit it, or an entity the save does not hold.",
+              "publish": true
+            },
+            {
+              "name": "transform",
+              "doc": "Rewrite every value of a type through `map`, which sees the old record: records(name), then setRecords with what map returned. With `into`, the type becomes that one (a rename that reshapes).",
+              "params": [
+                {
+                  "name": "name",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The saved type."
+                },
+                {
+                  "name": "map",
+                  "type": "RecordFn",
+                  "optional": false,
+                  "doc": "The old record to the new one."
+                },
+                {
+                  "name": "desc",
+                  "type": "TransformDesc",
+                  "optional": true,
+                  "doc": "The type the results are written as."
+                }
+              ],
+              "returns": "Result<Void>",
+              "returnsDoc": "Refused as setRecords is, or when map throws.",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "split",
+              "doc": "Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes.",
+              "params": [
+                {
+                  "name": "name",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The saved type."
+                },
+                {
+                  "name": "map",
+                  "type": "SplitFn",
+                  "optional": false,
+                  "doc": "The old record to the new types' records."
+                }
+              ],
+              "returns": "Result<Void>",
+              "returnsDoc": "Refused as setRecords is, or when map throws.",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "renameType",
+              "doc": "Give a saved type another name, its fields and values as they are (a later restore maps them field by field against the type of the new name).",
+              "params": [
+                {
+                  "name": "from",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The saved name."
+                },
+                {
+                  "name": "to",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The new name."
+                }
+              ],
+              "returns": "Result<Void>",
+              "returnsDoc": "Refused for a name the save lacks, or one it already has.",
+              "publish": true
+            },
+            {
+              "name": "renameField",
+              "doc": "Give a saved type's field another name, its values as they are: `gold` saved, `coins` declared now, and every balance arrives.",
+              "params": [
+                {
+                  "name": "name",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The saved type."
+                },
+                {
+                  "name": "from",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The saved field."
+                },
+                {
+                  "name": "to",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The new name."
+                }
+              ],
+              "returns": "Result<Void>",
+              "returnsDoc": "Refused for a type or field the save lacks, or a name the type already has.",
+              "publish": true
+            },
+            {
+              "name": "dropType",
+              "doc": "Remove a type from the save: its components, resource and queued events.",
+              "params": [
+                {
+                  "name": "name",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The saved type."
+                }
+              ],
+              "returns": "Result<Void>",
+              "returnsDoc": "Refused for a type the save does not hold.",
+              "publish": true
+            },
+            {
+              "name": "spawn",
+              "doc": "Add an entity to the save, with components of this build's types: a whole save gives it the id the next spawn would take, a selection the next free one.",
+              "params": [
+                {
+                  "name": "desc",
+                  "type": "SaveSpawnDesc",
+                  "optional": true,
+                  "doc": "Its name and components."
+                }
+              ],
+              "returns": "Result<Entity>",
+              "returnsDoc": "Refused for a taken name, a type this build does not declare or a value that does not fit it.",
+              "publish": true
+            },
+            {
+              "name": "text",
+              "doc": "The save as text, at GameDesc.saveVersion: what world.restore takes.",
+              "params": [],
+              "returns": "Result<String>",
+              "publish": true
+            },
+            {
+              "name": "close",
+              "doc": "Let go of the open save. world.restore closes the ones it opens.",
+              "params": [],
+              "returns": "Void",
+              "publish": true
+            }
+          ]
+        },
         {
           "name": "World",
           "doc": "The world a system, a command or a game callback is handed. Game code never holds a world beyond the call it was passed to.",
@@ -2042,15 +2261,37 @@
             },
             {
               "name": "snapshot",
-              "doc": "The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, deflated and base64-encoded after `og-save:1:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: \"slot1\", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring.",
-              "params": [],
+              "doc": "The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, and the game's save version (GameDesc.saveVersion), deflated and base64-encoded after `og-save:2:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: \"slot1\", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type; 5,000 entities, half of them physics bodies, to about 436 KiB, written in about 95 ms and restored in about 60 ms natively). With SnapshotDesc's `with` or `resources`, only the tagged entities and the chosen resources (a selection). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring.",
+              "params": [
+                {
+                  "name": "desc",
+                  "type": "SnapshotDesc",
+                  "optional": true,
+                  "doc": "The whole world, or a selection: tagged entities and chosen resources."
+                }
+              ],
               "returns": "Result<String>",
-              "returnsDoc": "The save, or why not (the world could not be read).",
+              "returnsDoc": "The save, or why not (the world could not be read, or SnapshotDesc names a type this world does not register).",
+              "publish": true
+            },
+            {
+              "name": "openSave",
+              "doc": "Open a save for editing, as a migration does (SaveEdit): the engine's own migrations applied (an engine upgrade's changes to its components and its modules' state, such as og.ui's state of engine 0.7.7), the game's not yet. world.restore opens and migrates by itself; use this to read a save without restoring it, or to migrate one by hand.",
+              "params": [
+                {
+                  "name": "save",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The text world.snapshot returned."
+                }
+              ],
+              "returns": "Result<SaveEdit>",
+              "returnsDoc": "Refused for text world.snapshot did not write, or a save of a newer GameDesc.saveVersion.",
               "publish": true
             },
             {
               "name": "restore",
-              "doc": "Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the player's action bindings and dead zones (og.input), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.",
+              "doc": "Replace the world with a save that world.snapshot wrote (a selection replaces only its tagged entities and its resources: SnapshotDesc). First the engine's own migrations upgrade what an older engine wrote of the engine's state, then GameDesc.migrations run from the save's version to GameDesc.saveVersion, in order, on the save (SaveEdit); a refused or throwing step refuses the restore with its reason and the world is left as it was. A save of a newer saveVersion is refused. Then: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the player's action bindings and dead zones (og.input), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.",
               "params": [
                 {
                   "name": "save",
@@ -2066,7 +2307,7 @@
                 }
               ],
               "returns": "Result<Void>",
-              "returnsDoc": "Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants) and that the save holds data of (a type it holds none of, no component, resource value or event, takes this build's layout): the reason names the type and the fields, and the fix (`{ migrate: true }`, or keeping a saved type's fields stable between releases).",
+              "returnsDoc": "Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine or of a newer GameDesc.saveVersion, a migration that refused, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants) and that the save holds data of (a type it holds none of, no component, resource value or event, takes this build's layout; an engine og.* type that only gained fields takes their declared defaults): the reason names the type and the fields, and the fix (`{ migrate: true }`, a migration in GameDesc.migrations, or keeping a saved type's fields stable between releases).",
               "publish": true
             }
           ]
@@ -2170,7 +2411,59 @@
           ]
         }
       ],
-      "callbacks": []
+      "callbacks": [
+        {
+          "name": "RecordFn",
+          "doc": "A value's new form: called once per saved value of the type, in storage order.",
+          "params": [
+            {
+              "name": "value",
+              "type": "Json",
+              "optional": false,
+              "doc": "The old record: its fields by name, as saved."
+            },
+            {
+              "name": "entity",
+              "type": "Option<Entity>",
+              "optional": false,
+              "doc": "Its entity, or null for the type's resource."
+            }
+          ],
+          "returns": "Json"
+        },
+        {
+          "name": "SplitFn",
+          "doc": "Where one saved value goes when its type splits.",
+          "params": [
+            {
+              "name": "value",
+              "type": "Json",
+              "optional": false,
+              "doc": "The old record."
+            },
+            {
+              "name": "entity",
+              "type": "Option<Entity>",
+              "optional": false,
+              "doc": "Its entity, or null for the resource."
+            }
+          ],
+          "returns": "Json"
+        },
+        {
+          "name": "MigrateFn",
+          "doc": "One step of a game's save migration: changes the save from SaveMigration.from to the next version.",
+          "params": [
+            {
+              "name": "save",
+              "type": "SaveEdit",
+              "optional": false,
+              "doc": "The save, open for editing."
+            }
+          ],
+          "returns": "Result<Void>"
+        }
+      ]
     },
     {
       "name": "system",
@@ -8069,7 +8362,7 @@
         },
         {
           "name": "saveSlot",
-          "doc": "Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game. og-game §8.",
+          "doc": "Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game (its two banks and the manifest: 1 MiB, the platform's budget for a player and game), and a world that would take more saves a selection of what it keeps (world.snapshot's SnapshotDesc). og-game §8.",
           "params": [
             {
               "name": "world",
@@ -13712,6 +14005,166 @@
       },
       "additionalProperties": false
     },
+    "SnapshotDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "world",
+      "description": "What world.snapshot saves. `{}` (or no desc) saves the whole world; naming tags or resources saves a selection: the entities that carry every component of `with` (with all their components and names) and the resources `resources` names, nothing else. world.restore of a selection replaces the live entities that carry those tags by the saved ones (spawned anew, in saved order, a saved entity's Entity fields pointed at its new id) and sets those resources, and leaves the rest of the world (other entities, og.Time, the modules' state, the session) as it is: a game keeps its progress and settings this way and rebuilds the level from its scene. A selection is small (only the types it uses are in its table) and so takes fewer store keys.",
+      "type": "object",
+      "properties": {
+        "with": {
+          "type": "array",
+          "items": {
+            "x-og-type": "AnyComponent"
+          },
+          "description": "The tags: an entity carrying all of them is saved. Empty with `resources` empty: the whole world.",
+          "default": []
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "x-og-type": "AnyResource"
+          },
+          "description": "The resources a selection keeps (settings, progress).",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "SaveType": {
+      "x-og-kind": "struct",
+      "x-og-module": "world",
+      "description": "A type a save holds, as it was saved.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Its reflected name (`Wallet`, `og.Transform`)."
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its schema version when it was saved."
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its fields, in saved order."
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "fields"
+      ],
+      "additionalProperties": false
+    },
+    "SaveRecord": {
+      "x-og-kind": "struct",
+      "x-og-module": "world",
+      "description": "One saved value of a type: a component of an entity, or (entity null) the type's resource.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Entity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The saved entity, or null for the resource."
+        },
+        "value": {
+          "description": "The value's fields by name, as saved."
+        }
+      },
+      "required": [
+        "entity",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "SetRecordsDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "world",
+      "description": "How SaveEdit.setRecords writes a type.",
+      "type": "object",
+      "properties": {
+        "into": {
+          "type": "string",
+          "description": "The type to write them as, one this build declares; empty: the type itself (as this build declares it).",
+          "default": ""
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SaveRecord"
+          },
+          "description": "The new values; a field a record leaves out takes its default, a key the type lacks is refused.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "TransformDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "world",
+      "description": "How SaveEdit.transform writes what it returns.",
+      "type": "object",
+      "properties": {
+        "into": {
+          "type": "string",
+          "description": "The type to write the results as, one this build declares; empty: the type itself.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "SaveSpawnDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "world",
+      "description": "An entity a migration adds to a save.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "A unique name; empty leaves it unnamed.",
+          "default": ""
+        },
+        "components": {
+          "description": "Its components by type name, each a value of the type as this build declares it (`{ \"og.Transform\": {}, Chest: { gold: 5 } }`).",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "SaveMigration": {
+      "x-og-kind": "struct",
+      "x-og-module": "world",
+      "description": "A game's save migration step (GameDesc.migrations): run on a save of version `from` on its way to GameDesc.saveVersion, after the engine's own migrations.",
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The save version it migrates from, to from + 1; from 1 to GameDesc.saveVersion - 1, each at most once."
+        },
+        "migrate": {
+          "x-og-type": "MigrateFn",
+          "description": "The step."
+        }
+      },
+      "required": [
+        "from",
+        "migrate"
+      ],
+      "additionalProperties": false
+    },
     "WorldRestored": {
       "x-og-kind": "event",
       "x-og-module": "world",
@@ -13933,6 +14386,22 @@
           "$ref": "#/$defs/RenderOptions",
           "description": "How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer.",
           "default": {}
+        },
+        "saveVersion": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The game's save version, written into every save: raise it when a release changes a saved type, and add the step from the old version to GameDesc.migrations. Left unset, project.ogt's `saveVersion` (else 1); the two set to different values refuse the engine.",
+          "default": 1,
+          "minimum": 1
+        },
+        "migrations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SaveMigration"
+          },
+          "description": "The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order, so a save of any earlier version arrives at the current one (rename a field, transform values with the old record in hand, drop or split a type, add an entity).",
+          "default": []
         },
         "look": {
           "type": "string",

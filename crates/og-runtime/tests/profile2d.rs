@@ -154,18 +154,20 @@ fn base64_encode(bytes: &[u8]) -> String {
     out
 }
 
-/// The world snapshot inside a save (save.rs: `OGSV`, version, tick, hash,
-/// then the snapshot) and the tick it was taken at.
+/// The world snapshot inside a save (save.rs: `OGSV`, version 2, tick,
+/// hash, the game's save version, then the snapshot) and the tick it was
+/// taken at.
 fn snapshot_of(save: &str) -> (Vec<u8>, u64) {
     let payload = miniz_oxide::inflate::decompress_to_vec(&base64_decode(
-        save.strip_prefix("og-save:1:").expect("a save"),
+        save.strip_prefix("og-save:2:").expect("a save"),
     ))
     .expect("a deflated save");
     assert_eq!(&payload[..4], b"OGSV");
     let tick = u64::from_le_bytes(payload[8..16].try_into().unwrap());
-    (payload[24..].to_vec(), tick)
+    (payload[28..].to_vec(), tick)
 }
 
+/// A save of format 1 (engines to 0.7.7): still read, as save version 1.
 fn save_of(snapshot: &[u8], tick: u64) -> String {
     let mut payload = b"OGSV".to_vec();
     payload.extend_from_slice(&1u32.to_le_bytes());
@@ -200,7 +202,7 @@ fn a_save_carries_the_terrain_block_and_one_with_edits_is_refused() {
         .unwrap() as u32;
     wire(&og_engine_frame(engine, 1000.0 / 60.0));
 
-    let saved = wire(&og_world_snapshot(engine));
+    let saved = wire(&og_world_snapshot(engine, None));
     assert_eq!(saved["ok"], json!(true), "{saved}");
     let (snapshot, tick) = snapshot_of(saved["value"].as_str().unwrap());
     // The block as the full build's terrain.rs writes it with no edits:

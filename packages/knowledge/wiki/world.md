@@ -26,6 +26,17 @@ module world {
 | [`Entity()`](#column-Entity) | column kind | An Entity field: (index, generation) pairs. |
 | [`SpawnDesc`](#type-SpawnDesc) | desc struct | How to spawn an entity. `{}` spawns an unnamed entity at the origin with a Transform. |
 | [`RestoreDesc`](#type-RestoreDesc) | desc struct | How world.restore takes a save. |
+| [`SnapshotDesc`](#type-SnapshotDesc) | desc struct | What world.snapshot saves. `{}` (or no desc) saves the whole world; naming tags or resources saves a selection: the entities that carry every component of `with` (with all their components and names) and the resources `resources` names, nothing else. world.restore of a selection replaces the live entities that carry those tags by the saved ones (spawned anew, in saved order, a saved entity's Entity fields pointed at its new id) and sets those resources, and leaves the rest of the world (other entities, og.Time, the modules' state, the session) as it is: a game keeps its progress and settings this way and rebuilds the level from its scene. A selection is small (only the types it uses are in its table) and so takes fewer store keys. |
+| [`SaveType`](#type-SaveType) | struct | A type a save holds, as it was saved. |
+| [`SaveRecord`](#type-SaveRecord) | struct | One saved value of a type: a component of an entity, or (entity null) the type's resource. |
+| [`SetRecordsDesc`](#type-SetRecordsDesc) | desc struct | How SaveEdit.setRecords writes a type. |
+| [`TransformDesc`](#type-TransformDesc) | desc struct | How SaveEdit.transform writes what it returns. |
+| [`SaveSpawnDesc`](#type-SaveSpawnDesc) | desc struct | An entity a migration adds to a save. |
+| [`RecordFn`](#type-RecordFn) | callback | A value's new form: called once per saved value of the type, in storage order. |
+| [`SplitFn`](#type-SplitFn) | callback | Where one saved value goes when its type splits. |
+| [`MigrateFn`](#type-MigrateFn) | callback | One step of a game's save migration: changes the save from SaveMigration.from to the next version. |
+| [`SaveMigration`](#type-SaveMigration) | struct | A game's save migration step (GameDesc.migrations): run on a save of version `from` on its way to GameDesc.saveVersion, after the engine's own migrations. |
+| [`SaveEdit`](#type-SaveEdit) | interface | A save opened for editing (world.openSave), as a migration sees it: the engine's own migrations already applied, every type with its saved fields. Each edit changes the save, not the world; world.restore takes the result. An edit refused changes nothing. Entity ids are the saved world's. |
 | [`og.WorldRestored`](#record-WorldRestored) | event | A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §8), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did. |
 | [`QueryDesc`](#type-QueryDesc) | desc struct | Which entities a query matches. |
 | [`World`](#type-World) | interface | The world a system, a command or a game callback is handed. Game code never holds a world beyond the call it was passed to. |
@@ -59,9 +70,379 @@ event WorldRestored {
 }
 ```
 
-<sub>`api.ogt` line 823</sub>
+<sub>`api.ogt` line 961</sub>
 
 ## Interfaces
+
+<a id="type-SaveEdit"></a>
+
+### `SaveEdit` (interface)
+
+A save opened for editing (world.openSave), as a migration sees it: the engine's own migrations already applied, every type with its saved fields. Each edit changes the save, not the world; world.restore takes the result. An edit refused changes nothing. Entity ids are the saved world's.
+
+```ogt
+interface SaveEdit {
+  doc "A save opened for editing (world.openSave), as a migration sees it: the engine's own migrations already applied, every type with its saved fields. Each edit changes the save, not the world; world.restore takes the result. An edit refused changes nothing. Entity ids are the saved world's."
+  # members follow, each quoted below
+```
+
+<sub>`api.ogt` line 889</sub>
+
+<a id="member-SaveEdit-version"></a>
+
+#### `SaveEdit.version` (property)
+
+The game's save version the save was written at (1 for a save of a game that never declared one).
+
+```ts
+readonly version: number
+```
+
+Binding symbol `og_save_edit_get_version` · publish builds: kept
+
+```ogt
+prop version u32 "The game's save version the save was written at (1 for a save of a game that never declared one)."
+```
+
+<sub>`api.ogt` line 891</sub>
+
+<a id="member-SaveEdit-types"></a>
+
+#### `SaveEdit.types`
+
+The types the save holds, in its table's order.
+
+```ts
+SaveEdit.types(): readonly SaveType[]
+```
+
+**Returns** `readonly SaveType[]`.
+
+Binding symbol `og_save_edit_types` · publish builds: kept
+
+```ogt
+fn types {
+  doc "The types the save holds, in its table's order."
+  returns List.SaveType
+}
+```
+
+<sub>`api.ogt` line 892</sub>
+
+<a id="member-SaveEdit-has"></a>
+
+#### `SaveEdit.has`
+
+Whether the save holds a type.
+
+```ts
+SaveEdit.has(name: string): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | The type's name. |
+
+**Returns** `boolean`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn has {
+  doc "Whether the save holds a type."
+  host false
+  param name String "The type's name."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 896</sub>
+
+<a id="member-SaveEdit-records"></a>
+
+#### `SaveEdit.records`
+
+A type's saved values: its components by entity in storage order, then its resource.
+
+```ts
+SaveEdit.records(name: string): Result<readonly SaveRecord[]>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | The type's name. |
+
+**Returns** `Result<readonly SaveRecord[]>`: Refused for a type the save does not hold.
+
+Binding symbol `og_save_edit_records` · publish builds: kept
+
+```ogt
+fn records {
+  doc "A type's saved values: its components by entity in storage order, then its resource."
+  param name String "The type's name."
+  returns Result.List.SaveRecord "Refused for a type the save does not hold."
+}
+```
+
+<sub>`api.ogt` line 902</sub>
+
+<a id="member-SaveEdit-setRecords"></a>
+
+#### `SaveEdit.setRecords`
+
+Replace a type's values (its components, its resource) with records written as this build's type `into`: the old type's values and queued events go, an entity keeps its other components and its place. A type the save does not hold is added (a component a new version gives saved entities).
+
+```ts
+SaveEdit.setRecords(name: string, desc?: SetRecordsDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | The saved type to replace. |
+| `desc` | `SetRecordsDesc` | yes | The type to write and the records. |
+
+**Returns** `Result<void>`: Refused, with nothing changed, for a type this build does not declare, a record that does not fit it, or an entity the save does not hold.
+
+Binding symbol `og_save_edit_set_records` · publish builds: kept
+
+```ogt
+fn setRecords {
+  doc "Replace a type's values (its components, its resource) with records written as this build's type `into`: the old type's values and queued events go, an entity keeps its other components and its place. A type the save does not hold is added (a component a new version gives saved entities)."
+  param name String "The saved type to replace."
+  param desc SetRecordsDesc "The type to write and the records."
+  returns Result.Void "Refused, with nothing changed, for a type this build does not declare, a record that does not fit it, or an entity the save does not hold."
+}
+```
+
+<sub>`api.ogt` line 907</sub>
+
+<a id="member-SaveEdit-transform"></a>
+
+#### `SaveEdit.transform`
+
+Rewrite every value of a type through `map`, which sees the old record: records(name), then setRecords with what map returned. With `into`, the type becomes that one (a rename that reshapes).
+
+```ts
+SaveEdit.transform(name: string, map: RecordFn, desc?: TransformDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | The saved type. |
+| `map` | `RecordFn` | no | The old record to the new one. |
+| `desc` | `TransformDesc` | yes | The type the results are written as. |
+
+**Returns** `Result<void>`: Refused as setRecords is, or when map throws.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn transform {
+  doc "Rewrite every value of a type through `map`, which sees the old record: records(name), then setRecords with what map returned. With `into`, the type becomes that one (a rename that reshapes)."
+  host false
+  param name String "The saved type."
+  param map RecordFn "The old record to the new one."
+  param desc TransformDesc "The type the results are written as."
+  returns Result.Void "Refused as setRecords is, or when map throws."
+}
+```
+
+<sub>`api.ogt` line 913</sub>
+
+<a id="member-SaveEdit-split"></a>
+
+#### `SaveEdit.split`
+
+Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes.
+
+```ts
+SaveEdit.split(name: string, map: SplitFn): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | The saved type. |
+| `map` | `SplitFn` | no | The old record to the new types' records. |
+
+**Returns** `Result<void>`: Refused as setRecords is, or when map throws.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn split {
+  doc "Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes."
+  host false
+  param name String "The saved type."
+  param map SplitFn "The old record to the new types' records."
+  returns Result.Void "Refused as setRecords is, or when map throws."
+}
+```
+
+<sub>`api.ogt` line 921</sub>
+
+<a id="member-SaveEdit-renameType"></a>
+
+#### `SaveEdit.renameType`
+
+Give a saved type another name, its fields and values as they are (a later restore maps them field by field against the type of the new name).
+
+```ts
+SaveEdit.renameType(from: string, to: string): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `from` | `string` | no | The saved name. |
+| `to` | `string` | no | The new name. |
+
+**Returns** `Result<void>`: Refused for a name the save lacks, or one it already has.
+
+Binding symbol `og_save_edit_rename_type` · publish builds: kept
+
+```ogt
+fn renameType {
+  doc "Give a saved type another name, its fields and values as they are (a later restore maps them field by field against the type of the new name)."
+  param from String "The saved name."
+  param to String "The new name."
+  returns Result.Void "Refused for a name the save lacks, or one it already has."
+}
+```
+
+<sub>`api.ogt` line 928</sub>
+
+<a id="member-SaveEdit-renameField"></a>
+
+#### `SaveEdit.renameField`
+
+Give a saved type's field another name, its values as they are: `gold` saved, `coins` declared now, and every balance arrives.
+
+```ts
+SaveEdit.renameField(name: string, from: string, to: string): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | The saved type. |
+| `from` | `string` | no | The saved field. |
+| `to` | `string` | no | The new name. |
+
+**Returns** `Result<void>`: Refused for a type or field the save lacks, or a name the type already has.
+
+Binding symbol `og_save_edit_rename_field` · publish builds: kept
+
+```ogt
+fn renameField {
+  doc "Give a saved type's field another name, its values as they are: `gold` saved, `coins` declared now, and every balance arrives."
+  param name String "The saved type."
+  param from String "The saved field."
+  param to String "The new name."
+  returns Result.Void "Refused for a type or field the save lacks, or a name the type already has."
+}
+```
+
+<sub>`api.ogt` line 934</sub>
+
+<a id="member-SaveEdit-dropType"></a>
+
+#### `SaveEdit.dropType`
+
+Remove a type from the save: its components, resource and queued events.
+
+```ts
+SaveEdit.dropType(name: string): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | The saved type. |
+
+**Returns** `Result<void>`: Refused for a type the save does not hold.
+
+Binding symbol `og_save_edit_drop_type` · publish builds: kept
+
+```ogt
+fn dropType {
+  doc "Remove a type from the save: its components, resource and queued events."
+  param name String "The saved type."
+  returns Result.Void "Refused for a type the save does not hold."
+}
+```
+
+<sub>`api.ogt` line 941</sub>
+
+<a id="member-SaveEdit-spawn"></a>
+
+#### `SaveEdit.spawn`
+
+Add an entity to the save, with components of this build's types: a whole save gives it the id the next spawn would take, a selection the next free one.
+
+```ts
+SaveEdit.spawn(desc?: SaveSpawnDesc): Result<Entity>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `desc` | `SaveSpawnDesc` | yes | Its name and components. |
+
+**Returns** `Result<Entity>`: Refused for a taken name, a type this build does not declare or a value that does not fit it.
+
+Binding symbol `og_save_edit_spawn` · publish builds: kept
+
+```ogt
+fn spawn {
+  doc "Add an entity to the save, with components of this build's types: a whole save gives it the id the next spawn would take, a selection the next free one."
+  param desc SaveSpawnDesc "Its name and components."
+  returns Result.Entity "Refused for a taken name, a type this build does not declare or a value that does not fit it."
+}
+```
+
+<sub>`api.ogt` line 946</sub>
+
+<a id="member-SaveEdit-text"></a>
+
+#### `SaveEdit.text`
+
+The save as text, at GameDesc.saveVersion: what world.restore takes.
+
+```ts
+SaveEdit.text(): Result<string>
+```
+
+**Returns** `Result<string>`.
+
+Binding symbol `og_save_edit_text` · publish builds: kept
+
+```ogt
+fn text {
+  doc "The save as text, at GameDesc.saveVersion: what world.restore takes."
+  returns Result.String
+}
+```
+
+<sub>`api.ogt` line 951</sub>
+
+<a id="member-SaveEdit-close"></a>
+
+#### `SaveEdit.close`
+
+Let go of the open save. world.restore closes the ones it opens.
+
+```ts
+SaveEdit.close(): void
+```
+
+**Returns** `void`.
+
+Binding symbol `og_save_edit_close` · publish builds: kept
+
+```ogt
+fn close {
+  doc "Let go of the open save. world.restore closes the ones it opens."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 955</sub>
 
 <a id="type-World"></a>
 
@@ -75,7 +456,7 @@ interface World {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 840</sub>
+<sub>`api.ogt` line 978</sub>
 
 <a id="member-World-tick"></a>
 
@@ -93,7 +474,7 @@ Binding symbol `og_world_get_tick` · publish builds: kept
 prop tick u32 "Fixed steps taken since the world was created."
 ```
 
-<sub>`api.ogt` line 843</sub>
+<sub>`api.ogt` line 981</sub>
 
 <a id="member-World-spawn"></a>
 
@@ -121,7 +502,7 @@ fn spawn {
 }
 ```
 
-<sub>`api.ogt` line 845</sub>
+<sub>`api.ogt` line 983</sub>
 
 <a id="member-World-despawn"></a>
 
@@ -149,7 +530,7 @@ fn despawn {
 }
 ```
 
-<sub>`api.ogt` line 851</sub>
+<sub>`api.ogt` line 989</sub>
 
 <a id="member-World-alive"></a>
 
@@ -177,7 +558,7 @@ fn alive {
 }
 ```
 
-<sub>`api.ogt` line 857</sub>
+<sub>`api.ogt` line 995</sub>
 
 <a id="member-World-has"></a>
 
@@ -208,7 +589,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 863</sub>
+<sub>`api.ogt` line 1001</sub>
 
 <a id="member-World-insert"></a>
 
@@ -243,7 +624,7 @@ fn insert {
 }
 ```
 
-<sub>`api.ogt` line 871</sub>
+<sub>`api.ogt` line 1009</sub>
 
 <a id="member-World-remove"></a>
 
@@ -274,7 +655,7 @@ fn remove {
 }
 ```
 
-<sub>`api.ogt` line 882</sub>
+<sub>`api.ogt` line 1020</sub>
 
 <a id="member-World-get"></a>
 
@@ -305,7 +686,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 890</sub>
+<sub>`api.ogt` line 1028</sub>
 
 <a id="member-World-set"></a>
 
@@ -338,7 +719,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 898</sub>
+<sub>`api.ogt` line 1036</sub>
 
 <a id="member-World-resource"></a>
 
@@ -367,7 +748,7 @@ fn resource {
 }
 ```
 
-<sub>`api.ogt` line 907</sub>
+<sub>`api.ogt` line 1045</sub>
 
 <a id="member-World-find"></a>
 
@@ -395,7 +776,7 @@ fn find {
 }
 ```
 
-<sub>`api.ogt` line 914</sub>
+<sub>`api.ogt` line 1052</sub>
 
 <a id="member-World-nameOf"></a>
 
@@ -423,7 +804,7 @@ fn nameOf {
 }
 ```
 
-<sub>`api.ogt` line 920</sub>
+<sub>`api.ogt` line 1058</sub>
 
 <a id="member-World-query"></a>
 
@@ -451,7 +832,7 @@ fn query {
 }
 ```
 
-<sub>`api.ogt` line 926</sub>
+<sub>`api.ogt` line 1064</sub>
 
 <a id="member-World-events"></a>
 
@@ -480,7 +861,7 @@ fn events {
 }
 ```
 
-<sub>`api.ogt` line 932</sub>
+<sub>`api.ogt` line 1070</sub>
 
 <a id="member-World-emit"></a>
 
@@ -511,7 +892,7 @@ fn emit {
 }
 ```
 
-<sub>`api.ogt` line 939</sub>
+<sub>`api.ogt` line 1077</sub>
 
 <a id="member-World-instantiate"></a>
 
@@ -544,36 +925,71 @@ fn instantiate {
 }
 ```
 
-<sub>`api.ogt` line 947</sub>
+<sub>`api.ogt` line 1085</sub>
 
 <a id="member-World-snapshot"></a>
 
 #### `World.snapshot`
 
-The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, deflated and base64-encoded after `og-save:1:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: "slot1", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring.
+The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, and the game's save version (GameDesc.saveVersion), deflated and base64-encoded after `og-save:2:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: "slot1", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type; 5,000 entities, half of them physics bodies, to about 436 KiB, written in about 95 ms and restored in about 60 ms natively). With SnapshotDesc's `with` or `resources`, only the tagged entities and the chosen resources (a selection). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring.
 
 ```ts
-World.snapshot(): Result<string>
+World.snapshot(desc?: SnapshotDesc): Result<string>
 ```
 
-**Returns** `Result<string>`: The save, or why not (the world could not be read).
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `desc` | `SnapshotDesc` | yes | The whole world, or a selection: tagged entities and chosen resources. |
+
+**Returns** `Result<string>`: The save, or why not (the world could not be read, or SnapshotDesc names a type this world does not register).
 
 Binding symbol `og_world_snapshot` · publish builds: kept
 
 ```ogt
 fn snapshot {
-  doc "The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, deflated and base64-encoded after `og-save:1:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: \"slot1\", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring."
-  returns Result.String "The save, or why not (the world could not be read)."
+  doc "The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, and the game's save version (GameDesc.saveVersion), deflated and base64-encoded after `og-save:2:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: \"slot1\", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type; 5,000 entities, half of them physics bodies, to about 436 KiB, written in about 95 ms and restored in about 60 ms natively). With SnapshotDesc's `with` or `resources`, only the tagged entities and the chosen resources (a selection). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring."
+  param desc SnapshotDesc "The whole world, or a selection: tagged entities and chosen resources." {
+    optional true
+  }
+  returns Result.String "The save, or why not (the world could not be read, or SnapshotDesc names a type this world does not register)."
 }
 ```
 
-<sub>`api.ogt` line 955</sub>
+<sub>`api.ogt` line 1093</sub>
+
+<a id="member-World-openSave"></a>
+
+#### `World.openSave`
+
+Open a save for editing, as a migration does (SaveEdit): the engine's own migrations applied (an engine upgrade's changes to its components and its modules' state, such as og.ui's state of engine 0.7.7), the game's not yet. world.restore opens and migrates by itself; use this to read a save without restoring it, or to migrate one by hand.
+
+```ts
+World.openSave(save: string): Result<SaveEdit>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `save` | `string` | no | The text world.snapshot returned. |
+
+**Returns** `Result<SaveEdit>`: Refused for text world.snapshot did not write, or a save of a newer GameDesc.saveVersion.
+
+Binding symbol `og_world_open_save` · publish builds: kept
+
+```ogt
+fn openSave {
+  doc "Open a save for editing, as a migration does (SaveEdit): the engine's own migrations applied (an engine upgrade's changes to its components and its modules' state, such as og.ui's state of engine 0.7.7), the game's not yet. world.restore opens and migrates by itself; use this to read a save without restoring it, or to migrate one by hand."
+  param save String "The text world.snapshot returned."
+  returns Result.SaveEdit "Refused for text world.snapshot did not write, or a save of a newer GameDesc.saveVersion."
+}
+```
+
+<sub>`api.ogt` line 1101</sub>
 
 <a id="member-World-restore"></a>
 
 #### `World.restore`
 
-Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the player's action bindings and dead zones (og.input), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
+Replace the world with a save that world.snapshot wrote (a selection replaces only its tagged entities and its resources: SnapshotDesc). First the engine's own migrations upgrade what an older engine wrote of the engine's state, then GameDesc.migrations run from the save's version to GameDesc.saveVersion, in order, on the save (SaveEdit); a refused or throwing step refuses the restore with its reason and the world is left as it was. A save of a newer saveVersion is refused. Then: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the player's action bindings and dead zones (og.input), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
 
 ```ts
 World.restore(save: string, desc?: RestoreDesc): Result<void>
@@ -584,20 +1000,20 @@ World.restore(save: string, desc?: RestoreDesc): Result<void>
 | `save` | `string` | no | The text world.snapshot returned. |
 | `desc` | `RestoreDesc` | yes | Whether a type whose layout changed since the save is mapped field by field. |
 
-**Returns** `Result<void>`: Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants) and that the save holds data of (a type it holds none of, no component, resource value or event, takes this build's layout): the reason names the type and the fields, and the fix (`{ migrate: true }`, or keeping a saved type's fields stable between releases).
+**Returns** `Result<void>`: Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine or of a newer GameDesc.saveVersion, a migration that refused, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants) and that the save holds data of (a type it holds none of, no component, resource value or event, takes this build's layout; an engine og.* type that only gained fields takes their declared defaults): the reason names the type and the fields, and the fix (`{ migrate: true }`, a migration in GameDesc.migrations, or keeping a saved type's fields stable between releases).
 
 Binding symbol `og_world_restore` · publish builds: kept
 
 ```ogt
 fn restore {
-  doc "Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the player's action bindings and dead zones (og.input), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources."
+  doc "Replace the world with a save that world.snapshot wrote (a selection replaces only its tagged entities and its resources: SnapshotDesc). First the engine's own migrations upgrade what an older engine wrote of the engine's state, then GameDesc.migrations run from the save's version to GameDesc.saveVersion, in order, on the save (SaveEdit); a refused or throwing step refuses the restore with its reason and the world is left as it was. A save of a newer saveVersion is refused. Then: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the player's action bindings and dead zones (og.input), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources."
   param save String "The text world.snapshot returned."
   param desc RestoreDesc "Whether a type whose layout changed since the save is mapped field by field."
-  returns Result.Void "Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants) and that the save holds data of (a type it holds none of, no component, resource value or event, takes this build's layout): the reason names the type and the fields, and the fix (`{ migrate: true }`, or keeping a saved type's fields stable between releases)."
+  returns Result.Void "Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine or of a newer GameDesc.saveVersion, a migration that refused, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants) and that the save holds data of (a type it holds none of, no component, resource value or event, takes this build's layout; an engine og.* type that only gained fields takes their declared defaults): the reason names the type and the fields, and the fix (`{ migrate: true }`, a migration in GameDesc.migrations, or keeping a saved type's fields stable between releases)."
 }
 ```
 
-<sub>`api.ogt` line 960</sub>
+<sub>`api.ogt` line 1107</sub>
 
 <a id="type-Query"></a>
 
@@ -611,7 +1027,7 @@ interface Query {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 968</sub>
+<sub>`api.ogt` line 1115</sub>
 
 <a id="member-Query-archetypes"></a>
 
@@ -634,7 +1050,7 @@ fn archetypes {
 }
 ```
 
-<sub>`api.ogt` line 970</sub>
+<sub>`api.ogt` line 1117</sub>
 
 <a id="member-Query-count"></a>
 
@@ -657,7 +1073,7 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 974</sub>
+<sub>`api.ogt` line 1121</sub>
 
 <a id="type-ArchetypeView"></a>
 
@@ -671,7 +1087,7 @@ interface ArchetypeView {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 980</sub>
+<sub>`api.ogt` line 1127</sub>
 
 <a id="member-ArchetypeView-count"></a>
 
@@ -689,7 +1105,7 @@ Binding symbol `og_archetype_view_get_count` · publish builds: kept
 prop count u32 "The number of entities in the archetype."
 ```
 
-<sub>`api.ogt` line 982</sub>
+<sub>`api.ogt` line 1129</sub>
 
 <a id="member-ArchetypeView-tick"></a>
 
@@ -707,7 +1123,7 @@ Binding symbol `og_archetype_view_get_tick` · publish builds: kept
 prop tick u32 "The tick this view belongs to."
 ```
 
-<sub>`api.ogt` line 983</sub>
+<sub>`api.ogt` line 1130</sub>
 
 <a id="member-ArchetypeView-entities"></a>
 
@@ -725,7 +1141,7 @@ Binding symbol `og_archetype_view_get_entities` · publish builds: kept
 prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1. These are not handles: for a handle use entity(i) (world.despawn, get, set, insert and remove refuse a bare index, naming the call)."
 ```
 
-<sub>`api.ogt` line 984</sub>
+<sub>`api.ogt` line 1131</sub>
 
 <a id="member-ArchetypeView-entity"></a>
 
@@ -753,7 +1169,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 985</sub>
+<sub>`api.ogt` line 1132</sub>
 
 <a id="member-ArchetypeView-has"></a>
 
@@ -782,7 +1198,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 990</sub>
+<sub>`api.ogt` line 1137</sub>
 
 <a id="member-ArchetypeView-column"></a>
 
@@ -814,7 +1230,7 @@ fn column {
 }
 ```
 
-<sub>`api.ogt` line 996</sub>
+<sub>`api.ogt` line 1143</sub>
 
 ## Types
 
@@ -895,6 +1311,247 @@ struct RestoreDesc {
 
 <sub>`api.ogt` line 817</sub>
 
+<a id="type-SnapshotDesc"></a>
+
+### `SnapshotDesc` (desc struct)
+
+What world.snapshot saves. `{}` (or no desc) saves the whole world; naming tags or resources saves a selection: the entities that carry every component of `with` (with all their components and names) and the resources `resources` names, nothing else. world.restore of a selection replaces the live entities that carry those tags by the saved ones (spawned anew, in saved order, a saved entity's Entity fields pointed at its new id) and sets those resources, and leaves the rest of the world (other entities, og.Time, the modules' state, the session) as it is: a game keeps its progress and settings this way and rebuilds the level from its scene. A selection is small (only the types it uses are in its table) and so takes fewer store keys.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `with` | `readonly AnyComponent[]` | `[]` | — | — | — | The tags: an entity carrying all of them is saved. Empty with `resources` empty: the whole world. |
+| `resources` | `readonly AnyResource[]` | `[]` | — | — | — | The resources a selection keeps (settings, progress). |
+
+```ogt
+struct SnapshotDesc {
+  doc "What world.snapshot saves. `{}` (or no desc) saves the whole world; naming tags or resources saves a selection: the entities that carry every component of `with` (with all their components and names) and the resources `resources` names, nothing else. world.restore of a selection replaces the live entities that carry those tags by the saved ones (spawned anew, in saved order, a saved entity's Entity fields pointed at its new id) and sets those resources, and leaves the rest of the world (other entities, og.Time, the modules' state, the session) as it is: a game keeps its progress and settings this way and rebuilds the level from its scene. A selection is small (only the types it uses are in its table) and so takes fewer store keys."
+  desc true
+  field with List.AnyComponent "The tags: an entity carrying all of them is saved. Empty with `resources` empty: the whole world."
+  field resources List.AnyResource "The resources a selection keeps (settings, progress)."
+}
+```
+
+<sub>`api.ogt` line 823</sub>
+
+<a id="type-SaveType"></a>
+
+### `SaveType` (struct)
+
+A type a save holds, as it was saved.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `name` | `string` | `""` | — | — | — | Its reflected name (`Wallet`, `og.Transform`). |
+| `version` | `number` | `0` | — | — | — | Its schema version when it was saved. |
+| `fields` | `readonly string[]` | `[]` | — | — | — | Its fields, in saved order. |
+
+```ogt
+struct SaveType {
+  doc "A type a save holds, as it was saved."
+  field name String "Its reflected name (`Wallet`, `og.Transform`)."
+  field version u32 "Its schema version when it was saved."
+  field fields List.String "Its fields, in saved order."
+}
+```
+
+<sub>`api.ogt` line 830</sub>
+
+<a id="type-SaveRecord"></a>
+
+### `SaveRecord` (struct)
+
+One saved value of a type: a component of an entity, or (entity null) the type's resource.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity \| null` | `null` | — | — | — | The saved entity, or null for the resource. |
+| `value` | `unknown` | `null` | — | — | — | The value's fields by name, as saved. |
+
+```ogt
+struct SaveRecord {
+  doc "One saved value of a type: a component of an entity, or (entity null) the type's resource."
+  field entity Option.Entity "The saved entity, or null for the resource."
+  field value Json "The value's fields by name, as saved."
+}
+```
+
+<sub>`api.ogt` line 837</sub>
+
+<a id="type-SetRecordsDesc"></a>
+
+### `SetRecordsDesc` (desc struct)
+
+How SaveEdit.setRecords writes a type.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `into` | `string` | `""` | — | — | — | The type to write them as, one this build declares; empty: the type itself (as this build declares it). |
+| `records` | `readonly SaveRecord[]` | `[]` | — | — | — | The new values; a field a record leaves out takes its default, a key the type lacks is refused. |
+
+```ogt
+struct SetRecordsDesc {
+  doc "How SaveEdit.setRecords writes a type."
+  desc true
+  field into String "The type to write them as, one this build declares; empty: the type itself (as this build declares it)."
+  field records List.SaveRecord "The new values; a field a record leaves out takes its default, a key the type lacks is refused."
+}
+```
+
+<sub>`api.ogt` line 843</sub>
+
+<a id="type-TransformDesc"></a>
+
+### `TransformDesc` (desc struct)
+
+How SaveEdit.transform writes what it returns.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `into` | `string` | `""` | — | — | — | The type to write the results as, one this build declares; empty: the type itself. |
+
+```ogt
+struct TransformDesc {
+  doc "How SaveEdit.transform writes what it returns."
+  desc true
+  field into String "The type to write the results as, one this build declares; empty: the type itself."
+}
+```
+
+<sub>`api.ogt` line 850</sub>
+
+<a id="type-SaveSpawnDesc"></a>
+
+### `SaveSpawnDesc` (desc struct)
+
+An entity a migration adds to a save.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `name` | `string` | `""` | — | — | — | A unique name; empty leaves it unnamed. |
+| `components` | `unknown` | `null` | — | — | — | Its components by type name, each a value of the type as this build declares it (`{ "og.Transform": {}, Chest: { gold: 5 } }`). |
+
+```ogt
+struct SaveSpawnDesc {
+  doc "An entity a migration adds to a save."
+  desc true
+  field name String "A unique name; empty leaves it unnamed."
+  field components Json "Its components by type name, each a value of the type as this build declares it (`{ \"og.Transform\": {}, Chest: { gold: 5 } }`)."
+}
+```
+
+<sub>`api.ogt` line 856</sub>
+
+<a id="type-RecordFn"></a>
+
+### `RecordFn` (callback)
+
+A value's new form: called once per saved value of the type, in storage order.
+
+Game code supplies this function.
+
+```ts
+type RecordFn = (value: unknown, entity: Entity | null) => unknown
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `value` | `unknown` | no | The old record: its fields by name, as saved. |
+| `entity` | `Entity \| null` | no | Its entity, or null for the type's resource. |
+
+```ogt
+callback RecordFn {
+  doc "A value's new form: called once per saved value of the type, in storage order."
+  param value Json "The old record: its fields by name, as saved."
+  param entity Option.Entity "Its entity, or null for the type's resource."
+  returns Json "The new record: fields by name of the type it is written as; one left out takes its default."
+}
+```
+
+<sub>`api.ogt` line 863</sub>
+
+<a id="type-SplitFn"></a>
+
+### `SplitFn` (callback)
+
+Where one saved value goes when its type splits.
+
+Game code supplies this function.
+
+```ts
+type SplitFn = (value: unknown, entity: Entity | null) => unknown
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `value` | `unknown` | no | The old record. |
+| `entity` | `Entity \| null` | no | Its entity, or null for the resource. |
+
+```ogt
+callback SplitFn {
+  doc "Where one saved value goes when its type splits."
+  param value Json "The old record."
+  param entity Option.Entity "Its entity, or null for the resource."
+  returns Json "An object of the new types' names to their records: `{ Health: { hp: v.hp }, Mana: { mp: v.mp } }`; a type left out or null, and the entity does not get it."
+}
+```
+
+<sub>`api.ogt` line 870</sub>
+
+<a id="type-MigrateFn"></a>
+
+### `MigrateFn` (callback)
+
+One step of a game's save migration: changes the save from SaveMigration.from to the next version.
+
+Game code supplies this function.
+
+```ts
+type MigrateFn = (save: SaveEdit) => Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `save` | `SaveEdit` | no | The save, open for editing. |
+
+```ogt
+callback MigrateFn {
+  doc "One step of a game's save migration: changes the save from SaveMigration.from to the next version."
+  param save SaveEdit "The save, open for editing."
+  returns Result.Void "Refused (or a throw): the restore is refused with the reason, and the world is left as it was."
+}
+```
+
+<sub>`api.ogt` line 877</sub>
+
+<a id="type-SaveMigration"></a>
+
+### `SaveMigration` (struct)
+
+A game's save migration step (GameDesc.migrations): run on a save of version `from` on its way to GameDesc.saveVersion, after the engine's own migrations.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `from` | `number` | `0` | — | — | — | The save version it migrates from, to from + 1; from 1 to GameDesc.saveVersion - 1, each at most once. |
+| `migrate` | `MigrateFn` | — | — | — | — | The step. |
+
+```ogt
+struct SaveMigration {
+  doc "A game's save migration step (GameDesc.migrations): run on a save of version `from` on its way to GameDesc.saveVersion, after the engine's own migrations."
+  field from u32 "The save version it migrates from, to from + 1; from 1 to GameDesc.saveVersion - 1, each at most once."
+  field migrate MigrateFn "The step."
+}
+```
+
+<sub>`api.ogt` line 883</sub>
+
 <a id="type-QueryDesc"></a>
 
 ### `QueryDesc` (desc struct)
@@ -917,7 +1574,7 @@ struct QueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 833</sub>
+<sub>`api.ogt` line 971</sub>
 
 ## Column kinds
 

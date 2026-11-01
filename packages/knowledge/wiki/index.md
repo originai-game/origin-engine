@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1508 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1533 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -583,6 +583,7 @@ Field units the docs and Tune use.
 | [`MetaKind`](ui.md#type-MetaKind) | enum | ui | — |
 | [`MeterDesc`](ui.md#type-MeterDesc) | desc struct | ui | — |
 | [`MeterKind`](ui.md#type-MeterKind) | enum | ui | — |
+| [`MigrateFn`](world.md#type-MigrateFn) | callback | world | — |
 | [`MinimapDesc`](ui.md#type-MinimapDesc) | desc struct | ui | — |
 | [`MirrorAxis`](render.md#type-MirrorAxis) | enum | render | — |
 | [`MirrorDesc`](anim.md#type-MirrorDesc) | desc struct | anim | — |
@@ -1297,6 +1298,7 @@ Field units the docs and Tune use.
 | [`RayMath.intersectTriangle`](math.md#member-RayMath-intersectTriangle) | method | math | — |
 | [`RebindAnswer`](input.md#type-RebindAnswer) | struct | input | — |
 | [`RebindDesc`](input.md#type-RebindDesc) | desc struct | input | — |
+| [`RecordFn`](world.md#type-RecordFn) | callback | world | — |
 | [`ReducedMotion`](ui.md#type-ReducedMotion) | enum | ui | — |
 | [`ReflectionProbeMode`](render.md#type-ReflectionProbeMode) | enum | render | — |
 | [`ReflectionProbeMode()`](render.md#column-ReflectionProbeMode) | column kind | render | — |
@@ -1362,7 +1364,25 @@ Field units the docs and Tune use.
 | [`RuntimeProbe.version`](probe.md#member-RuntimeProbe-version) | property | probe | `og_runtime_probe_get_version` |
 | [`SavedScene`](probe.md#type-SavedScene) | struct | probe | — |
 | [`SavedSceneFile`](probe.md#type-SavedSceneFile) | struct | probe | — |
+| [`SaveEdit`](world.md#type-SaveEdit) | interface | world | — |
+| [`SaveEdit.close`](world.md#member-SaveEdit-close) | method | world | `og_save_edit_close` |
+| [`SaveEdit.dropType`](world.md#member-SaveEdit-dropType) | method | world | `og_save_edit_drop_type` |
+| [`SaveEdit.has`](world.md#member-SaveEdit-has) | method | world | — |
+| [`SaveEdit.records`](world.md#member-SaveEdit-records) | method | world | `og_save_edit_records` |
+| [`SaveEdit.renameField`](world.md#member-SaveEdit-renameField) | method | world | `og_save_edit_rename_field` |
+| [`SaveEdit.renameType`](world.md#member-SaveEdit-renameType) | method | world | `og_save_edit_rename_type` |
+| [`SaveEdit.setRecords`](world.md#member-SaveEdit-setRecords) | method | world | `og_save_edit_set_records` |
+| [`SaveEdit.spawn`](world.md#member-SaveEdit-spawn) | method | world | `og_save_edit_spawn` |
+| [`SaveEdit.split`](world.md#member-SaveEdit-split) | method | world | — |
+| [`SaveEdit.text`](world.md#member-SaveEdit-text) | method | world | `og_save_edit_text` |
+| [`SaveEdit.transform`](world.md#member-SaveEdit-transform) | method | world | — |
+| [`SaveEdit.types`](world.md#member-SaveEdit-types) | method | world | `og_save_edit_types` |
+| [`SaveEdit.version`](world.md#member-SaveEdit-version) | property | world | `og_save_edit_get_version` |
+| [`SaveMigration`](world.md#type-SaveMigration) | struct | world | — |
+| [`SaveRecord`](world.md#type-SaveRecord) | struct | world | — |
 | [`SaveSlotDesc`](platform.md#type-SaveSlotDesc) | desc struct | platform | — |
+| [`SaveSpawnDesc`](world.md#type-SaveSpawnDesc) | desc struct | world | — |
+| [`SaveType`](world.md#type-SaveType) | struct | world | — |
 | [`SceneViewportDesc`](ui.md#type-SceneViewportDesc) | desc struct | ui | — |
 | [`SceneViewportInfo`](ui.md#type-SceneViewportInfo) | struct | ui | — |
 | [`Scheme`](ui.md#type-Scheme) | enum | ui | — |
@@ -1377,6 +1397,7 @@ Field units the docs and Tune use.
 | [`ScrollAxes`](ui.md#type-ScrollAxes) | enum | ui | — |
 | [`ScrollDesc`](ui.md#type-ScrollDesc) | desc struct | ui | — |
 | [`SelectDesc`](ui.md#type-SelectDesc) | desc struct | ui | — |
+| [`SetRecordsDesc`](world.md#type-SetRecordsDesc) | desc struct | world | — |
 | [`SetTileDesc`](tilemap.md#type-SetTileDesc) | desc struct | tilemap | — |
 | [`SettingsChanged`](ui.md#type-SettingsChanged) | callback | ui | — |
 | [`SettingsDesc`](ui.md#type-SettingsDesc) | desc struct | ui | — |
@@ -1419,6 +1440,7 @@ Field units the docs and Tune use.
 | [`SliderResult`](ui.md#type-SliderResult) | struct | ui | — |
 | [`SlotMove`](ui.md#type-SlotMove) | struct | ui | — |
 | [`SnapPoint`](ui.md#type-SnapPoint) | struct | ui | — |
+| [`SnapshotDesc`](world.md#type-SnapshotDesc) | desc struct | world | — |
 | [`SnapshotInfo`](probe.md#type-SnapshotInfo) | struct | probe | — |
 | [`SolidFill`](ui.md#type-SolidFill) | desc struct | ui | — |
 | [`SolidGeometryDesc`](render.md#type-SolidGeometryDesc) | desc struct | render | — |
@@ -1444,6 +1466,7 @@ Field units the docs and Tune use.
 | [`SphereMath.getBoundingBox`](math.md#member-SphereMath-getBoundingBox) | method | math | — |
 | [`SphereMath.intersectsBox`](math.md#member-SphereMath-intersectsBox) | method | math | — |
 | [`SphereMath.intersectsSphere`](math.md#member-SphereMath-intersectsSphere) | method | math | — |
+| [`SplitFn`](world.md#type-SplitFn) | callback | world | — |
 | [`SpotlightDesc`](ui.md#type-SpotlightDesc) | desc struct | ui | — |
 | [`SpringColliderShape`](anim.md#type-SpringColliderShape) | enum | anim | — |
 | [`SpringColliderShape()`](anim.md#column-SpringColliderShape) | column kind | anim | — |
@@ -1553,6 +1576,7 @@ Field units the docs and Tune use.
 | [`TrackPercent`](ui.md#type-TrackPercent) | struct | ui | — |
 | [`TrackPx`](ui.md#type-TrackPx) | struct | ui | — |
 | [`TrackRange`](ui.md#type-TrackRange) | struct | ui | — |
+| [`TransformDesc`](world.md#type-TransformDesc) | desc struct | world | — |
 | [`Transition`](ui.md#type-Transition) | union | ui | — |
 | [`TransitionDesc`](ui.md#type-TransitionDesc) | desc struct | ui | — |
 | [`TransitionKind`](ui.md#type-TransitionKind) | enum | ui | — |
@@ -1654,6 +1678,7 @@ Field units the docs and Tune use.
 | [`World.insert`](world.md#member-World-insert) | method | world | `og_world_insert` |
 | [`World.instantiate`](world.md#member-World-instantiate) | method | world | `og_world_instantiate` |
 | [`World.nameOf`](world.md#member-World-nameOf) | method | world | `og_world_name_of` |
+| [`World.openSave`](world.md#member-World-openSave) | method | world | `og_world_open_save` |
 | [`World.query`](world.md#member-World-query) | method | world | `og_world_query` |
 | [`World.remove`](world.md#member-World-remove) | method | world | `og_world_remove` |
 | [`World.resource`](world.md#member-World-resource) | method | world | `og_world_resource` |
