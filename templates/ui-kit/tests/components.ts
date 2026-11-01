@@ -153,6 +153,14 @@ export function componentsScript(phone: boolean): Script {
     b.shot(`charts-${s}`, 0.5);
   }
   b.cmd("demo:data:rows");
+  // The second page: stacked bars, the radar and the donut, then its empty and error states.
+  b.cmd("show:chartsMore");
+  b.shot("charts-more", 1.2);
+  for (const s of ["empty", "error"]) {
+    b.cmd(`demo:data:${s}`);
+    b.shot(`charts-more-${s}`, 0.5);
+  }
+  b.cmd("demo:data:rows");
 
   // The graph and the calendar: idle, zoomed in, the next month.
   b.cmd("show:graph");
@@ -197,6 +205,8 @@ export function componentsScript(phone: boolean): Script {
   b.cmd("demo:data:rows");
   b.cmd("show:charts");
   b.shot("text200-charts", 1.2);
+  b.cmd("show:chartsMore");
+  b.shot("text200-charts-more", 1.2);
   b.cmd("show:graph");
   b.shot("text200-graph", 0.9);
   b.cmd("demo:text:100");
