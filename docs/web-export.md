@@ -52,7 +52,8 @@ dates, no absolute paths, files in sorted order
   "probe": { "protocol": 5, "wire": 1, "build": "publish",
              "members": ["hello", "tick", "state", "pick", "entity", "input", "capture"] },
   "crossOriginIsolation": "preferred",
-  "display": { "fit": "fill", "aspect": null, "orientation": "any", "dprCap": 2,
+  "display": { "fit": "fill", "aspect": null, "aspectMin": null, "aspectMax": null,
+               "orientation": "any", "dprCap": 2,
                "fullscreen": "off", "gate": "tap", "madeWith": true },
   "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "source": "brand" },
             { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "source": "brand" }],
@@ -501,7 +502,7 @@ session. At most 20 load failures go per sample and 100 a session.
 
 | Message | Fields added (all optional to the play origin) |
 |---|---|
-| `crash` | `cause` (`panic`, `error`, `hang`), `tick` (the world's, or null), `lane` (a panic's lanes site), `location` (a panic's `crates/…:line:col`), `stack` (string[], at most 48 frames of 240 characters, `at f (game.js:1:2345)` or `f@game.js:1:2345`), `engine` (version), `build` (og-build.json `sourcemaps.build`), `browser { name, major, os }`, `device { class: phone \| tablet \| desktop, cores, memory, dpr, touch }`, `gpu { vendor, architecture, fallback, limits: { maxTextureDimension2D, … }, features: string[] } \| null` (the device the engine renders with, its limits and the features it was created with), `memory { linear, heapLive, heapPeak, streamUsed, streamBudget, audio, entities, gpuTotal, gpuTextures, gpuTargets } \| null` (bytes; entities a count; the gpu figures the renderer's GPU memory, ProbeMemory.gpu) |
+| `crash` | `cause` (`panic`, `error`, `hang`), `tick` (the world's, or null), `lane` (a panic's lanes site), `location` (a panic's `crates/…:line:col`), `stack` (string[], at most 48 frames of 240 characters, `at f (game.js:1:2345)` or `f@game.js:1:2345`), `engine` (version), `build` (og-build.json `sourcemaps.build`), `browser { name, major, os }`, `device { class: phone \| tablet \| desktop, cores, memory, dpr, touch }`, `gpu { vendor, architecture, fallback, limits: { maxTextureDimension2D, … }, features: string[] } \| null` (the device the engine renders with, its limits and the features it was created with), `memory { linear, heapLive, heapPeak, streamUsed, streamBudget, audio, entities, gpuTotal, gpuTextures, gpuTargets, deviceLosses } \| null` (bytes; entities a count; the gpu figures the renderer's GPU memory, ProbeMemory.gpu; deviceLosses the GPU devices lost and recovered, ProbeMemory.deviceLosses) |
 | `sample` `phase: "boot"` (once, at the first frame) | beside `renderer` and `timings`: `stages` (the Worker's boot in ms: `wasm`, `bundle`, `create`, `attach`, `transcode`, `prime`, `settle`, `present`), `lanes { on, threads }`, `engine`, `build`, `browser`, `device`, `gpu`, `memory`, `failures` |
 | `sample` `phase: "play"` | `frames { count, ms, bins, interval, work, hitches, longHitches, max }` (`bins`: the 11 upper edges in ms, 8.4 to 250; `interval` and `work`: 12 counts each, the last above 250 ms; a hitch is an interval of 50 ms or more, a long one 250 ms or more), `memory`, `failures [{ file, reason: http_<status> \| timeout \| network }]`, `session { ms, samples }` (play time so far and the play samples sent) |
 | `sample` `phase: "end"` (on `pagehide`) | `memory` as last read, `failures` not yet sent, `session` |
@@ -530,6 +531,8 @@ publish {
   isolation preferred     # required | preferred | off
   fit fill                # fill | letterbox
   aspect "16:9"           # letterbox: width:height (required with letterbox)
+  aspect_min "16:10"      # fill: the narrowest shape it fills (4:3 gets bars above and below)
+  aspect_max "21:9"       # fill: the widest shape it fills (32:9 gets bars beside it)
   orientation any         # any | landscape | portrait (manifest; locked in fullscreen)
   dpr_cap 2               # 0.5–4
   fullscreen off          # off | gesture
@@ -544,7 +547,8 @@ publish {
 
 `og build` checks every value first (`crates/og-cli/src/publish.rs`); a bad
 one, an unknown key, or `fit letterbox` without `aspect` names its line and
-the values it takes. Every key is optional; the defaults are the values
+the values it takes; so does `aspect_min` wider than `aspect_max`, or either
+with `fit letterbox` (whose `aspect` is fixed already). Every key is optional; the defaults are the values
 shown, with no aspect, icon or short name. `probe` is read and checked but
 does not choose anything today: a `--publish` build always serves the
 player members and a dev build every member, whatever it says.
@@ -592,9 +596,49 @@ earlier build; a build that fails after replacing it removes what it wrote.
   starts at once; audio then unlocks on the first gesture.
 - **Layout**: `fill` covers the whole `100dvh` viewport and passes the
   safe-area insets to the UI (`og.ui` viewport); `letterbox` fits `aspect`
-  inside the safe area on ink. The canvas is drawn at
-  `min(devicePixelRatio, dpr_cap)`; resizes and orientation changes resize
-  the render target in the Worker (`og_web_resize`) before the next frame.
+  inside the safe area on ink. A `fill` game with `aspect_min`/`aspect_max`
+  fills every shape between them and is letterboxed at the bound past it
+  (`layoutCanvas`), for a game that cannot show more than 21:9 or less than
+  16:10; without them it fills 4:3 to 32:9 and the camera widens its view
+  (Hor+: the vertical field of view is held, og.render camera), while og-ui
+  keeps HUD anchors in a centred band no wider than `UiDesc.hudMaxAspect`
+  (21:9 by default) and never stretches a widget. The canvas is drawn at
+  `min(devicePixelRatio, dpr_cap)`; resizes, orientation changes and a
+  change of devicePixelRatio (a window moved to a monitor of another scale,
+  a page zoom: a `(resolution: <dpr>dppx)` query re-armed at each ratio,
+  `watchPixelRatio`) resize the render target in the Worker
+  (`og_web_resize`) and og-ui's scale before the next frame, so no frame is
+  drawn at the old ratio.
+- **Graphics settings** (og.render.setDisplay, the ui-kit settings screen's
+  graphics page): the preset, render scale, frame cap, auto quality apply at
+  once. Vsync is always on in a browser (`display().vsync`; a frame cap
+  under the refresh rate paces below it). `fullscreen` enters fullscreen on
+  the next press when the browser needs a gesture, leaves it at once, and
+  follows the player's own Escape back into the settings
+  (`fullscreenchange`). `powerPreference` (`highPerformance`, `lowPower`)
+  picks the adapter, which the browser chooses only when the device is
+  made: the shell keeps it in localStorage (`og.display:<page path>`) and
+  passes it at the next load; until then `display().restartNeeded` is true
+  and the page says "Applies after a restart".
+- **Pointer lock** (`src/web/pointer-lock.ts`, og.PointerLock and
+  og.input.setMouse): a wanted lock is requested on the next press on the
+  canvas, with `unadjustedMovement` (raw input: no OS acceleration) unless
+  `MouseDesc.raw` is off. Chrome and Edge on Windows, macOS and ChromeOS
+  grant it; a browser that rejects the option (NotSupportedError, Chrome on
+  Linux) is asked again plain in the same gesture, and one that ignores it
+  (Firefox, Safari: no promise) gets the plain lock; both set
+  `og.input.mouse().rawUnsupported`. Escape and focus loss release the lock
+  and re-arm it, so the next click locks again; a refused request (Chrome
+  refuses one for about a second after Escape) re-arms too, an unanswered
+  one is asked again by a press after a second, and a lock granted after the
+  game stopped wanting it is released at once: no sequence leaves a hidden
+  cursor the game cannot use.
+- **Keyboard layout** (`src/web/keyboard-layout.ts`): bindings stay on
+  physical keys (`KeyboardEvent.code`); what each key prints reaches
+  og.input.setKeyboardLayout, so glyphs and prompts read Z Q S D on AZERTY.
+  Chrome and Edge read `navigator.keyboard.getLayoutMap()` at load, on
+  focus and on a layout change; Firefox and Safari learn each key from its
+  first unmodified press, showing the US label until then.
 - **Visibility**: a hidden page (and `pagehide`) pauses the clock and
   suspends audio, releases the wake lock, and resumes all three.
 - **Input** (`src/web/shell.ts`, `src/web/gamepad.ts`): keyboard

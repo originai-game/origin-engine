@@ -312,8 +312,13 @@ render sprite 12
   the world, so hashes, saves and replays never see them, and a native run
   (`og run`, `og test`, reference frames) draws at scale 1 whatever they
   say; they take effect in the browser.
+  - Each call changes only the fields it names; the rest keep their
+    values (the defaults before any call).
+  - `quality`: the player's preset (`low` … `ultra`), drawn in place of
+    the game's RenderSettings without writing them; null (the default) is
+    the game's own.
   - `frameCap`: `auto` (60 on phones, the display's rate on desktops),
-    `display`, `fps60`, `fps30`. Skipped display frames still read input
+    `display`, `fps144`, `fps120`, `fps60`, `fps30`. Skipped display frames still read input
     and the fixed tick is unchanged.
   - `batterySaver`: 30 frames a second, render scale at most 0.75,
     automatic quality on.
@@ -324,7 +329,25 @@ render sprite 12
     at a time, then the quality is capped at medium (and low with 2),
     without writing RenderSettings; it comes back up when there is room,
     and never oscillates. Turn it off for a game whose look must not move
-    (pixel art draws on its own grid and ignores the scale anyway).
+    (pixel art draws on its own grid and ignores the scale anyway). A rung
+    above that falls back within a few frames waits twice as long before
+    it is tried again and is given up after three falls.
+
+  - `fullscreen`: the web shell enters fullscreen (on the next press when
+    the browser wants a gesture) and leaves it; the player's Escape turns
+    it off in `display().settings`.
+  - `powerPreference`: `highPerformance` (default) or `lowPower`, the GPU
+    a laptop with two uses. The adapter is chosen at the boot, so it
+    applies on the next load: `display().restartNeeded` is true until
+    then, and a settings page says "Applies after a restart".
+  - `display()` also reports `vsync` (always on in a browser, which has no
+    switch: show it fixed), `fullscreen` and the `powerPreference` the page
+    loaded with.
+
+  The player's graphics page is the ui-kit settings screen with
+  `GameSettings.display` set (og-ui): keep `display().settings` in the
+  game's settings (`og.platform.saveSettings`) and pass them back to
+  `setDisplay` at start; they are never in the world.
 
   ```ts
   og.render.setDisplay(world, { frameCap: "fps30", autoQuality: false, renderScale: 0.8 });

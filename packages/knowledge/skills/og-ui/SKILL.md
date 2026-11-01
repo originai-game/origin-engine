@@ -288,6 +288,18 @@ or give a native run the page's cover from outside the game with the
 command `cover:12,12,40,40` (`og run --setup cover:12,12,40,40`; a
 playtest's `setup: "cover:12,12,40,40"`, og-build §6), `cover:none`
 clearing it.
+On a wide PC screen (21:9 up to 32:9) anchored groups and toasts keep to a
+centred band no wider than `UiDesc.hudMaxAspect` (21/9 by default;
+`og.ui.configure(world, { hudMaxAspect: 16 / 9 })` for a tighter one, 0
+for the whole screen), so the vitals stay in the player's view; modals and
+world-space UI keep the whole screen, and nothing stretches. The band is
+`og.ui.viewport().hud`; a HUD placed by hand reads it. The settings
+template's Graphics tab is the PC graphics page when
+`GameSettings.display` holds `og.render.display(world).settings`
+(preset, render scale, frame-rate limit, V-Sync, adaptive quality,
+battery saver, fullscreen, GPU with "Applies after a restart"), and its
+Controls tab sets the mouse's sensitivity on `SettingsDesc.lookAction`
+and Raw mouse input (`GameSettings.rawMouse`).
 `og.ui.frameViewport().breakpoint` is `phonePortrait`, `phoneLandscape`,
 `tablet` or `desktop`; templates rearrange themselves by it (tabs become a
 select, side panels move under, touch controls appear when `touch` is set).

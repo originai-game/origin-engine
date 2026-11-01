@@ -507,6 +507,18 @@ if (og.input.actionPressed(world, "jump")) { /* ... */ }
   `ps.cross`, `key.space`) for a style's icon set and its `text`. An
   og.ui action (`og.ui.defineAction`) with `action: "jump"` follows the
   gameplay action, so its prompt moves with a rebinding.
+- Keyboard layouts: bindings are physical keys (`KeyW` is the key left of
+  `KeyE` on every layout), and glyphs show what the player's layout
+  prints on it: the web shell reads the layout
+  (`og.input.setKeyboardLayout`), so an AZERTY player's `KeyW`/`KeyA`
+  prompt reads Z and Q and a QWERTZ player's `KeyY` reads Z. Bind
+  movement to `KeyW KeyA KeyS KeyD`, never to the letters.
+- Sensitivity: `og.input.setSensitivity(world, { action: "look", device:
+  "keyboardMouse", scale: 1.5, invertY: true })` scales an axis action's
+  analog bindings (mouse movement, wheel, stick, touch stick) on one
+  device class, each class its own (`xbox` etc. for every pad); keys are
+  inverted but never scaled. Read it with `og.input.sensitivity`; it is
+  kept in `saveBindings` text.
 - Pads: the web shell maps pads the browser leaves unmapped (Firefox,
   Linux, third-party pads) through its table and tells each pad's family
   (`og.input.padDevice(world, pad)`). `og.input.rumble(world, { pad,
@@ -532,7 +544,13 @@ click on the canvas (browsers need the gesture) and reports `locked`
 (Escape releases it: show "click to look" while `wanted && !locked`).
 `og.Pointers.movement` is the mouse's movement this tick in CSS px
 (movementX/Y summed, y down, zero next tick); it keeps coming while
-locked, when the positions stand still.
+locked, when the positions stand still. Escape, a lost focus or a refused
+request re-arm the lock, so the next click takes it again. Raw input (no
+OS acceleration) is on by default where the browser grants it (Chrome and
+Edge on Windows, macOS, ChromeOS); `og.input.setMouse(world, { raw })` is
+the player's switch and `og.input.mouse(world).rawUnsupported` says the
+browser refused it (Firefox, Safari, Linux), where the lock is the plain
+one.
 
 ```ts
 const Look = defineSystem("Look", { reads: [og.Pointers], writes: [og.PointerLock, Aim] }, (_q, _time, world) => {
