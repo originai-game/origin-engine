@@ -5,6 +5,7 @@
 
 import { accordion, card, scrollArea, splitView } from "./containers/panels.ts";
 import { confirm, contextMenu, dialog, menu, popover, sheet } from "./containers/layers.ts";
+import { actionHints, breadcrumbs, carousel, pagination, radialMenu, tabBar } from "./containers/navigation.ts";
 
 export const components = Object.freeze({
   card,
@@ -17,4 +18,10 @@ export const components = Object.freeze({
   menu,
   contextMenu,
   sheet,
+  tabBar,
+  carousel,
+  breadcrumbs,
+  pagination,
+  actionHints,
+  radialMenu,
 });
