@@ -4052,22 +4052,26 @@ impl Ui {
                 if active {
                     knob = knob.scaled(t.press_scale);
                 }
-                let kp = PartRef::new("Slider", "knob", C::Chip).flag_if(active, "pressed");
+                let kp = PartRef::new("Slider", "knob", C::Chip)
+                    .flag("round")
+                    .flag_if(active, "pressed");
                 self.part_commands(&kp, knob.snapped(dpr), Some(p.knob), alpha, clip, cmds);
             }
             Widget::Toggle { on, slide } => {
                 let (sw, sh) = self.switch_size();
                 let track =
                     Rect::new(rect.x, rect.y + (rect.height - sh) / 2.0, sw, sh).snapped(dpr);
-                let tp =
-                    PartRef::new("Toggle", "track", C::Chip).flag(if on { "on" } else { "off" });
+                let tp = PartRef::new("Toggle", "track", C::Chip)
+                    .flag("round")
+                    .flag(if on { "on" } else { "off" });
                 let color = mix_srgba(p.control_strong, p.primary, slide);
                 self.part_commands(&tp, track, Some(color), alpha, clip, cmds);
                 let inset = t.space.xxs;
                 let k = sh - 2.0 * inset;
                 let kx = track.x + inset + (track.width - 2.0 * inset - k) * slide;
-                let kp =
-                    PartRef::new("Toggle", "knob", C::Chip).flag(if on { "on" } else { "off" });
+                let kp = PartRef::new("Toggle", "knob", C::Chip)
+                    .flag("round")
+                    .flag(if on { "on" } else { "off" });
                 self.part_commands(
                     &kp,
                     Rect::new(kx, track.y + inset, k, k).snapped(dpr),

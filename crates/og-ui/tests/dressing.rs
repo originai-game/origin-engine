@@ -275,3 +275,47 @@ fn a_parts_border_draws_under_its_label() {
         shot.ui.frame().levels()
     );
 }
+
+/// which drew them by the `chip` class (Lantern Vale's settings on metal).
+#[test]
+fn knobs_and_switch_tracks_stay_round_in_a_square_style() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../templates/archetypes/roguelike/assets/styles/lampdive/style.ogt");
+    let file = parse_style(&std::fs::read_to_string(dir).unwrap()).unwrap();
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_theme(file.theme(None, [0; 6]));
+    ui.set_dressings(file.dressings.clone());
+    let (mut v, mut on) = (0.5, true);
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.slider("S", &mut v, SliderDesc::default());
+    ui.toggle("T", &mut on, "Reduce motion");
+    ui.end();
+    // Every fill drawn for the slider's knob and the switch (shorter than
+    // the slider's 4 px track): its corner reaches half its short side.
+    let fills: Vec<(f32, f32)> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|it| match &it.cmd {
+            DrawCmd::Shape { shape, .. } if shape.mode == og_render::UiMode::Fill => {
+                let og_render::UiGeometry::Rect { radii, .. } = shape.geometry else {
+                    return None;
+                };
+                Some((radii[0], shape.half.x.min(shape.half.y)))
+            }
+            _ => None,
+        })
+        .filter(|&(_, half)| half > 4.0)
+        .collect();
+    assert_eq!(
+        fills.len(),
+        3,
+        "the knob, the track and its knob: {fills:?}"
+    );
+    for (radius, half) in fills {
+        assert!(
+            radius >= half,
+            "a corner of {radius} on a half side of {half}"
+        );
+    }
+}
