@@ -204,3 +204,57 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
     println!("{}", report.join("\n"));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+/// Every built-in style is version 2 with tokens of its own (not the ones
+/// `og style upgrade` derives), and the colours that carry meaning without
+/// text (rarity, teams, damage types, chart series) read 3:1 on its raised
+/// panel over its backdrop (WCAG 1.4.11), each status and rarity with its
+/// own cue (the parser refuses a shared one).
+#[test]
+fn every_built_in_style_is_version_2_with_colour_tokens_that_read_on_its_panels() {
+    let mut failures = Vec::new();
+    for name in PACKS {
+        let dir = root().join("../../styles").join(name);
+        let file = parse_style(&std::fs::read_to_string(dir.join("style.ogt")).expect("style.ogt"))
+            .unwrap_or_else(|e| panic!("{name}: {e}"));
+        assert_eq!(file.version, 2, "{name} is version 2");
+        let t = file.theme;
+        let icons: Vec<String> = file.icons.map(|i| i.3).unwrap_or_default();
+        assert_ne!(
+            t.tokens,
+            og_ui::StyleTokens::derive(&t, &icons),
+            "{name} sets its own tokens"
+        );
+        let ground = t.palette.panel_raised.over(t.palette.backdrop);
+        let c = &t.tokens.colors;
+        let named = c
+            .rarity
+            .iter()
+            .chain(&c.team)
+            .chain(&c.damage)
+            .map(|s| s.color)
+            .chain(c.series);
+        for (i, color) in named.enumerate() {
+            let r = color.contrast(ground);
+            if r < 3.0 {
+                failures.push(format!(
+                    "{name}: colour token {i} reads {r:.2}:1 on its panel"
+                ));
+            }
+        }
+        // The widgets still draw from the version 1 values: the corners of
+        // the four classes version 1 had are its radii.
+        use og_ui::tokens::ElementClass as E;
+        assert_eq!(
+            [E::Slot, E::Button, E::Bar, E::Panel].map(|k| t.tokens.shape(k).radius),
+            [
+                t.radius.small,
+                t.radius.control,
+                t.radius.bar,
+                t.radius.panel
+            ],
+            "{name}"
+        );
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}

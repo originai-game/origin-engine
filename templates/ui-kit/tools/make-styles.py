@@ -19,8 +19,11 @@ templates/styles/<name>/ (the cook compiles them in; a look names one with
 - icons.png: the kit's 32 icons (tools/make-assets.py draws them) restyled
   per pack: pixelated, thickened, outlined, roughened or neon-lined; white,
   alpha is coverage.
-- style.ogt: the style (og-ui's `parse_style` grammar): every palette role,
-  the radii, the type ramp, the fonts, the atlas and its slices, the motion.
+- style.ogt: the style, version 2 (og-ui's `parse_style` grammar, docs/ui.md
+  §12): every palette role, the tokens (colours with their cues, the type
+  scale, space, size, radius and stroke scales, elevation, the shape
+  language, motion, sounds and haptics; TOKENS below, chosen per style), the
+  ramp, the fonts, the atlas, and its parts dressed by selector.
   Chinese comes from the pack's companions, `cjk` (body and numbers) and
   `cjkDisplay` (titles), shared Simplified Chinese faces in
   templates/styles/cjk/ chosen to match each pack's Latin voice.
@@ -812,6 +815,323 @@ def neon_pack():
 PACKS = [pixel_pack, cartoon_pack, fantasy_pack, scifi_pack, paper_pack, neon_pack]
 
 
+# ── version 2 tokens (docs/ui.md §12.2) ────────────────────────────────────
+#
+# Each style's tokens are chosen for it: the rarity, team, damage and chart
+# colours start from seeds in the style's own voice and are moved along their
+# lightness until they read 3:1 on the style's raised panel (WCAG 1.4.11, the
+# bar for a colour that is not text); every status and rarity colour carries a
+# cue, an icon or a pattern or pips, so no meaning is colour alone (XAG 103).
+# The four element classes version 1 had a radius for (slot: small, button:
+# control, bar, panel) keep it, so the style draws as before.
+
+def _lin(c):
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def _lum(rgb):
+    r, g, b = (_lin(v) for v in rgb)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast(a, b):
+    x, y = _lum(a), _lum(b)
+    return (max(x, y) + 0.05) / (min(x, y) + 0.05)
+
+
+def _rgba(s):
+    s = s.lstrip("#")
+    rgb = tuple(int(s[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    a = int(s[6:8], 16) / 255 if len(s) == 8 else 1.0
+    return rgb, a
+
+
+def _over(top, a, below):
+    return tuple(round((t * a + b * (1 - a)) * 255) / 255 for t, b in zip(top, below))
+
+
+def _hex(rgb):
+    return "#" + "".join(f"{round(v * 255):02x}" for v in rgb)
+
+
+def readable(seed, ground, bar=3.0):
+    """The seed, or the least mix of it towards its own end of the scale
+    (white when lighter than the ground, black when darker) that reads
+    `bar`:1 on it: its hue kept as far as the bar allows."""
+    c = _rgba(seed)[0]
+    if _contrast(c, ground) >= bar:
+        return _hex(c)
+    end = (1.0, 1.0, 1.0) if _lum(c) >= _lum(ground) else (0.0, 0.0, 0.0)
+    for k in range(1, 101):
+        t = k / 100
+        m = tuple(round((a + (b - a) * t) * 255) / 255 for a, b in zip(c, end))
+        if _contrast(m, ground) >= bar:
+            return _hex(m)
+    return _hex(end)
+
+
+RARITY = ["common", "uncommon", "rare", "epic", "legendary", "mythic"]
+DAMAGE = ["physical", "fire", "ice", "lightning", "poison", "holy", "shadow", "arcane"]
+EVENTS = ["hover", "press", "focus", "select", "confirm", "cancel", "back", "open", "close", "tab", "toggleOn",
+          "toggleOff", "sliderTick", "scrollTick", "typewriter", "counterTick", "notification", "warning", "error",
+          "success", "reward", "revealCommon", "revealUncommon", "revealRare", "revealEpic", "revealLegendary",
+          "revealMythic"]
+CLASSES = ["panel", "dialog", "card", "tooltip", "button", "field", "chip", "badge", "tab", "slot", "bar", "hud", "avatar"]
+DURATIONS = dict(instant=120, fast=180, base=240, slow=400, spring=520, bounce=640)  # the prototype's (og-ui theme.rs)
+SPACE = dict(xxs=2, xs=4, sm=8, md=12, lg=16, xl=24, xxl=32, xl3=48)
+
+# Haptics shared by most styles (a style overrides what is its own).
+HAPTICS = dict(press="tick", select="tick", confirm="tap", cancel="tick", back="tick", tab="tick", toggleOn="tick",
+               toggleOff="tick", sliderTick="tick", notification="tap", warning="warning", error="error",
+               success="success", reward="double", revealUncommon="tick", revealRare="tap", revealEpic="double",
+               revealLegendary="thud", revealMythic="buzz")
+
+TOKENS = {
+    "pixel": dict(
+        # 8-bit tiers in the NES palette's voice; pips are the pixel stars of a loot drop.
+        status=dict(success='icon "check"', warn='icon "flag"', danger='icon "skull"', info="pattern checks"),
+        rarity=[("#bcbcbc", "pips 1"), ("#58d854", "pips 2"), ("#3cbcfc", "pips 3"), ("#d878f8", "pips 4"),
+                ("#fca044", "pips 5"), ("#f83800", "pips 6")],
+        teams=["#3cbcfc", "#f83800", "#58d854", "#f8b800", "#d878f8", "#fca044", "#00e8d8", "#f878f8"],
+        damage=[("#bcbcbc", 'icon "sword"'), ("#f83800", 'icon "fire"'), ("#3cbcfc", 'icon "drop"'),
+                ("#f8b800", 'icon "bolt"'), ("#58d854", "pattern checks"), ("#fcfcfc", 'icon "star"'),
+                ("#9878f8", "pattern grid"), ("#f878f8", "pattern diamonds")],
+        series=["#3cbcfc", "#f8b800", "#f83800", "#58d854", "#d878f8", "#00e8d8", "#fca044", "#bcbcbc"],
+        weights=dict(display=400, title=400, heading=400, body=400, label=400, caption=400, numeric=400),
+        tracking=dict(display=0.04, title=0.02, label=0.02),
+        sizes=dict(xs=16, sm=24, md=32, lg=48, xl=64, xxl=96, touch=44),
+        radius=dict(xs=0, sm=0, md=0, lg=0, xl=0, pill=0),
+        stroke=dict(hairline=2, thin=2, regular=2, thick=4, focus=2),
+        # Hard, offset shadows on the pixel grid.
+        elevation=dict(raised=[(4, 4, 0, 0, "#00000080")], floating=[(3, 3, 0, 0, "#00000080")],
+                       overlay=[(6, 6, 0, 0, "#000000b0")], top=[(8, 8, 0, 0, "#000000c0")]),
+        shape=dict(panel="square 0", dialog="square 0", card="square 0", tooltip="square 0", button="square 0",
+                   field="square 0", chip="notch 2", badge="notch 2", tab="square 0", slot="square 0",
+                   bar="square 0", hud="square 0", avatar="notch 4"),
+        springs=dict(ui=(100, 0), panel=(160, 0), emphasis=(240, 0), playful=(320, 0.1)),
+        # Motion held on steps, as hand-timed pixel animation is.
+        eases=dict(standard="linear", enter="steps 4", exit="steps 3", emphasis="steps 6"),
+        stagger_cap=0, overshoot=0.05,
+        haptics=dict(HAPTICS, revealLegendary="thud", typewriter="tick"),
+        sounds=dict(typewriter="pitch 0.9 1.1", counterTick="pitch 1 1.5"),
+    ),
+    "cartoon": dict(
+        # Candy-bright tiers; the reveal of each lands harder.
+        status=dict(success='icon "check"', warn='icon "flag"', danger='icon "close"', info="pattern dots"),
+        rarity=[("#9a9aa8", "pips 1"), ("#2fbf4a", "pips 2"), ("#2e8bff", "pips 3"), ("#b44cff", "pips 4"),
+                ("#ff9a1f", "pips 5"), ("#ff3d7f", "pips 6")],
+        teams=["#2e8bff", "#ff4d4d", "#2fbf4a", "#ffc21a", "#b44cff", "#ff8a1f", "#1fc7c7", "#ff5cb0"],
+        damage=[("#a08a70", 'icon "sword"'), ("#ff6a2b", 'icon "fire"'), ("#45c8ff", 'icon "drop"'),
+                ("#ffd21f", 'icon "bolt"'), ("#7ed957", "pattern dots"), ("#ffe58a", 'icon "star"'),
+                ("#7a5cf6", "pattern waves"), ("#ff4fd8", "pattern stars")],
+        series=["#2e8bff", "#ff8a1f", "#ff4d6a", "#2fbf4a", "#b44cff", "#ffc21a", "#1fc7c7", "#ff5cb0"],
+        weights=dict(display=400, title=400, heading=600, body=600, label=600, caption=600, numeric=400),
+        tracking=dict(display=0.01, title=0.01),
+        sizes=dict(xs=16, sm=24, md=36, lg=52, xl=72, xxl=104, touch=48),
+        radius=dict(xs=4, sm=6, md=10, lg=14, xl=20, pill=9999),
+        stroke=dict(hairline=2, thin=3, regular=4, thick=5, focus=3),
+        # A thick ink drop shadow straight down, the panel's weight.
+        elevation=dict(raised=[(0, 5, 0, 0, "#2b1a4a99")], floating=[(0, 4, 0, 0, "#2b1a4a99")],
+                       overlay=[(0, 8, 0, 0, "#2b1a4acc"), (0, 18, 24, 0, "#1a0f3c40")],
+                       top=[(0, 10, 0, 0, "#2b1a4acc"), (0, 24, 32, 0, "#1a0f3c4d")]),
+        shape=dict(panel="round 10", dialog="round 14", card="round 12", tooltip="round 8", button="squircle 6",
+                   field="squircle 6", chip="round pill", badge="round pill", tab="squircle 6", slot="round 6",
+                   bar="round 6", hud="round 8", avatar="round pill"),
+        springs=dict(ui=(160, 0.15), panel=(320, 0.25), emphasis=(480, 0.4), playful=(560, 0.5)),
+        eases=dict(standard="0.2 0 0 1", enter="0.34 1.56 0.64 1", exit="0.36 0 0.66 -0.56", emphasis="0.34 1.8 0.64 1"),
+        stagger_cap=400, overshoot=0.2,
+        haptics=dict(HAPTICS, reward="0 20 0.2 0.6 80 20 0.2 0.7 160 40 0.4 0.9", revealMythic="thud"),
+        sounds=dict(press="volume 0.8 1 pitch 0.95 1.08", counterTick="pitch 1 1.6", reward="pitch 1 1.25"),
+    ),
+    "fantasy": dict(
+        # Jewel tones of an illuminated manuscript; legendary is gilt, mythic crimson.
+        status=dict(success='icon "check"', warn='icon "flag"', danger='icon "skull"', info='icon "map"'),
+        rarity=[("#8a8170", "pips 1"), ("#3f8a2f", "pips 2"), ("#2a5fa8", "pips 3"), ("#7d3aa0", "pips 4"),
+                ("#b8781a", 'icon "crown"'), ("#a8182c", 'icon "gem"')],
+        teams=["#2a5fa8", "#a8182c", "#3f8a2f", "#b8781a", "#7d3aa0", "#c0561a", "#1f7f7a", "#a83a7a"],
+        damage=[("#7a6a55", 'icon "sword"'), ("#c0461a", 'icon "fire"'), ("#2f7fb0", 'icon "drop"'),
+                ("#a8861a", 'icon "bolt"'), ("#4f7a1f", 'icon "potion"'), ("#b8941a", 'icon "star"'),
+                ("#4a2a6a", 'icon "skull"'), ("#8a2a9a", "pattern stars")],
+        series=["#2a5fa8", "#b8781a", "#a8182c", "#3f8a2f", "#7d3aa0", "#1f7f7a", "#c0561a", "#6a5a48"],
+        weights=dict(display=700, title=700, heading=700, body=500, label=500, caption=500, numeric=700),
+        tracking=dict(display=0.06, title=0.05, heading=0.03, numeric=0.02),
+        sizes=dict(xs=16, sm=24, md=32, lg=48, xl=64, xxl=96, touch=44),
+        radius=dict(xs=2, sm=4, md=6, lg=8, xl=12, pill=9999),
+        stroke=dict(hairline=1, thin=1.5, regular=2, thick=3, focus=2),
+        elevation=dict(raised=[(0, 4, 8, 0, "#00000066")], floating=[(0, 3, 6, 0, "#00000080")],
+                       overlay=[(0, 10, 18, 2, "#000000b3")], top=[(0, 14, 28, 2, "#000000c0")]),
+        shape=dict(panel="round 4", dialog="round 6", card="round 4", tooltip="notch 4", button="round 4",
+                   field="round 4", chip="bevel 4", badge="notch 6", tab="round 4", slot="bevel 4",
+                   bar="round 4", hud="round 8", avatar="round pill"),
+        springs=dict(ui=(220, 0), panel=(360, 0.05), emphasis=(520, 0.15), playful=(600, 0.2)),
+        eases=dict(standard="0.25 0.1 0.25 1", enter="0.16 1 0.3 1", exit="0.7 0 0.84 0", emphasis="0.22 1.2 0.36 1"),
+        stagger_cap=420, overshoot=0.05,
+        haptics=dict(HAPTICS, open="tap", close="tick", revealLegendary="thud", revealMythic="thud"),
+        sounds=dict(press="volume 0.85 1 pitch 0.97 1.03", counterTick="pitch 1 1.3"),
+    ),
+    "scifi": dict(
+        # Display-panel tiers: cyan to magenta along the spectrum, cues as HUD patterns.
+        status=dict(success='icon "check"', warn="pattern stripes", danger="pattern chevrons", info="pattern grid"),
+        rarity=[("#8aa4b4", "pips 1"), ("#3dffa0", "pips 2"), ("#38c8ff", "pips 3"), ("#a87cff", "pips 4"),
+                ("#ffc53d", "pips 5"), ("#ff4d6a", "pips 6")],
+        teams=["#38c8ff", "#ff4d6a", "#3dffa0", "#ffc53d", "#a87cff", "#ff8a3d", "#3df0e0", "#ff6ad8"],
+        damage=[("#a6cde0", "pattern hatch"), ("#ff7a3d", 'icon "fire"'), ("#7fecff", 'icon "drop"'),
+                ("#ffe03d", 'icon "bolt"'), ("#9dff3d", "pattern dots"), ("#fff4c0", 'icon "star"'),
+                ("#9a7cff", "pattern grid"), ("#ff6ad8", "pattern diamonds")],
+        series=["#38e1ff", "#ffc53d", "#ff4d6a", "#3dffa0", "#a87cff", "#ff8a3d", "#3df0e0", "#a6cde0"],
+        weights=dict(display=700, title=700, heading=500, body=500, label=500, caption=500, numeric=400),
+        tracking=dict(display=0.08, title=0.06, heading=0.04, label=0.06, caption=0.04),
+        sizes=dict(xs=16, sm=24, md=32, lg=48, xl=64, xxl=96, touch=44),
+        radius=dict(xs=1, sm=2, md=2, lg=4, xl=6, pill=9999),
+        stroke=dict(hairline=1, thin=1, regular=1.5, thick=2, focus=2),
+        # Lit from inside: a dark falloff and a faint cyan rim.
+        elevation=dict(raised=[(0, 0, 8, 0, "#00000080")], floating=[(0, 0, 12, 0, "#00000099"), (0, 0, 4, 0, "#38e1ff26")],
+                       overlay=[(0, 0, 18, 0, "#000000aa"), (0, 0, 6, 0, "#38e1ff33")],
+                       top=[(0, 0, 24, 0, "#000000bb"), (0, 0, 8, 0, "#38e1ff40")]),
+        shape=dict(panel="bevel 2", dialog="bevel 16", card="bevel 10", tooltip="bevel 6", button="bevel 2",
+                   field="bevel 2", chip="bevel 6", badge="notch 4", tab="bevel 6", slot="bevel 2",
+                   bar="bevel 2", hud="bevel 8", avatar="bevel 8"),
+        springs=dict(ui=(140, 0), panel=(240, 0), emphasis=(360, 0.1), playful=(420, 0.15)),
+        eases=dict(standard="0.4 0 0.2 1", enter="0 0 0.2 1", exit="0.4 0 1 1", emphasis="0.2 0 0 1"),
+        stagger_cap=240, overshoot=0.02,
+        haptics=dict(HAPTICS, focus="tick", scrollTick="tick", typewriter="tick", counterTick="tick"),
+        sounds=dict(focus="volume 0.5 0.6", typewriter="volume 0.4 0.5 pitch 0.95 1.05", counterTick="pitch 1 1.4"),
+    ),
+    "paper": dict(
+        # Inks on paper: muted, printable, the red of the style kept for danger.
+        status=dict(success='icon "check"', warn='icon "flag"', danger='icon "close"', info="pattern hatch"),
+        rarity=[("#8a857a", "pips 1"), ("#3a7a3a", "pips 2"), ("#2b5cc8", "pips 3"), ("#6a3aa8", "pips 4"),
+                ("#b8781a", "pips 5"), ("#a02b1a", "pips 6")],
+        teams=["#2b5cc8", "#a02b1a", "#3a7a3a", "#a87a10", "#6a3aa8", "#c0601a", "#1f7f7a", "#a83a7a"],
+        damage=[("#6a655a", 'icon "sword"'), ("#c0461a", 'icon "fire"'), ("#2f7fb0", 'icon "drop"'),
+                ("#a8861a", 'icon "bolt"'), ("#4f7a1f", "pattern dots"), ("#a8861a", 'icon "star"'),
+                ("#3a2a5a", "pattern crosshatch"), ("#8a2a9a", "pattern waves")],
+        series=["#2b5cc8", "#c0601a", "#a02b1a", "#3a7a3a", "#6a3aa8", "#a87a10", "#1f7f7a", "#68635a"],
+        weights=dict(display=600, title=600, heading=600, body=400, label=500, caption=400, numeric=400),
+        tracking=dict(display=-0.01, title=-0.005, label=0.01),
+        sizes=dict(xs=16, sm=24, md=32, lg=48, xl=64, xxl=96, touch=44),
+        radius=dict(xs=2, sm=4, md=6, lg=8, xl=12, pill=9999),
+        stroke=dict(hairline=1, thin=1.2, regular=1.6, thick=2.2, focus=2),
+        elevation=dict(raised=[(0, 3, 8, 0, "#2a261f2e")], floating=[(0, 2, 6, 0, "#2a261f33")],
+                       overlay=[(0, 6, 16, 0, "#2a261f3a"), (0, 1, 2, 0, "#2a261f26")],
+                       top=[(0, 10, 24, 0, "#2a261f40"), (0, 1, 3, 0, "#2a261f26")]),
+        shape=dict(panel="round 6", dialog="round 8", card="round 6", tooltip="round 4", button="round 4",
+                   field="round 4", chip="round pill", badge="round pill", tab="round 4", slot="round 4",
+                   bar="round 4", hud="round pill", avatar="round pill"),
+        springs=dict(ui=(200, 0), panel=(320, 0.05), emphasis=(440, 0.12), playful=(520, 0.2)),
+        eases=dict(standard="0.25 0.1 0.25 1", enter="0.22 1 0.36 1", exit="0.55 0 1 0.45", emphasis="0.3 1.3 0.5 1"),
+        stagger_cap=360, overshoot=0.03,
+        haptics=dict(HAPTICS, reward="tap", revealMythic="thud"),
+        sounds=dict(typewriter="volume 0.5 0.7 pitch 0.9 1.1", counterTick="pitch 1 1.2"),
+    ),
+    "neon": dict(
+        # Tube colours on a dark street; each tier glows a step hotter.
+        status=dict(success='icon "check"', warn="pattern stripes", danger="pattern chevrons", info="pattern waves"),
+        rarity=[("#9a8ab8", "pips 1"), ("#3dffb0", "pips 2"), ("#36e8ff", "pips 3"), ("#c86bff", "pips 4"),
+                ("#ffd23d", "pips 5"), ("#ff3d6e", "pips 6")],
+        teams=["#36e8ff", "#ff3d6e", "#3dffb0", "#ffd23d", "#c86bff", "#ff8a3d", "#5cfff0", "#ff6af2"],
+        damage=[("#cdb6ea", "pattern hatch"), ("#ff6a3d", 'icon "fire"'), ("#7ff4ff", 'icon "drop"'),
+                ("#fff03d", 'icon "bolt"'), ("#9dff5c", "pattern dots"), ("#fff4d0", 'icon "star"'),
+                ("#9a6aff", "pattern grid"), ("#ff6af2", "pattern diamonds")],
+        series=["#36e8ff", "#ff3df2", "#ffd23d", "#3dffb0", "#c86bff", "#ff8a3d", "#5cfff0", "#ff3d6e"],
+        weights=dict(display=700, title=700, heading=700, body=700, label=700, caption=700, numeric=600),
+        tracking=dict(display=0.02, title=0.02, label=0.04, numeric=0.02),
+        sizes=dict(xs=16, sm=24, md=32, lg=48, xl=64, xxl=96, touch=44),
+        radius=dict(xs=3, sm=6, md=10, lg=14, xl=20, pill=9999),
+        stroke=dict(hairline=1, thin=1.6, regular=2, thick=2.6, focus=2),
+        # A dark drop and a magenta bloom.
+        elevation=dict(raised=[(0, 4, 12, 0, "#00000080")], floating=[(0, 4, 14, 0, "#00000099"), (0, 0, 8, 0, "#c81ebc33")],
+                       overlay=[(0, 6, 18, 0, "#000000a0"), (0, 0, 14, 0, "#c81ebc40")],
+                       top=[(0, 8, 24, 0, "#000000b0"), (0, 0, 18, 0, "#c81ebc4d")]),
+        shape=dict(panel="round 10", dialog="round 14", card="round 10", tooltip="round 6", button="squircle 6",
+                   field="round 6", chip="round pill", badge="round pill", tab="squircle 6", slot="round 6",
+                   bar="round 6", hud="round 10", avatar="round pill"),
+        springs=dict(ui=(140, 0.1), panel=(260, 0.15), emphasis=(380, 0.3), playful=(460, 0.4)),
+        eases=dict(standard="0.3 0 0.1 1", enter="0.12 1 0.3 1", exit="0.5 0 0.9 0.3", emphasis="0.3 1.6 0.6 1"),
+        stagger_cap=280, overshoot=0.12,
+        haptics=dict(HAPTICS, hover="tick", reward="0 30 0.3 0.8 60 30 0.3 0.8 120 60 0.6 1"),
+        sounds=dict(hover="volume 0.4 0.5 pitch 0.98 1.04", counterTick="pitch 1 1.5", reward="pitch 1 1.3"),
+    ),
+}
+
+
+def tokens_lines(s):
+    """The version 2 token blocks of a style (everything but motion and sounds)."""
+    t = TOKENS[s["name"]]
+    p = s["palette"]
+    raised, a = _rgba(p["panelRaised"])
+    ground = _over(raised, a, _rgba(p["backdrop"])[0])
+    L = ["colors {"]
+    for k, cue in t["status"].items():
+        L.append(f"  {k} {cue}")
+    for k, (c, cue) in zip(RARITY, t["rarity"]):
+        L.append(f'  {k} "{readable(c, ground)}" {cue}')
+    for i, c in enumerate(t["teams"]):
+        L.append(f'  team{i + 1} "{readable(c, ground)}"')
+    for k, (c, cue) in zip(DAMAGE, t["damage"]):
+        L.append(f'  {k} "{readable(c, ground)}" {cue}')
+    for i, c in enumerate(t["series"]):
+        L.append(f'  series{i + 1} "{readable(c, ground)}"')
+    L.append("}")
+    ramp = s["ramp"]
+    fonts = dict(display="display", title="display", heading="display", body="body", label="body", caption="body",
+                 numeric="numeric")
+    steps = dict(display="displayLg", title="displaySm", heading="xl", body="body", label="meta", caption="caption",
+                 numeric="lg")
+    L.append("typography {")
+    for role, step in steps.items():
+        size, lh = ramp[step]
+        head = f"  {role} {size} {lh} {t['tracking'].get(role, 0)} {t['weights'][role]} {fonts[role]}"
+        # Phones take display steps down: a title screen's word still fits a 360 px column.
+        if role in ("display", "title") and size >= 28:
+            k = 0.8 if role == "display" else 0.875
+            pp = (max(12, round(size * k)), max(16, round(lh * k)))
+            pl = (max(12, round(size * (1 + k) / 2)), max(16, round(lh * (1 + k) / 2)))
+            L += [head + " {", f"    phonePortrait {pp[0]} {pp[1]}", f"    phoneLandscape {pl[0]} {pl[1]}", "  }"]
+        else:
+            L.append(head)
+    L.append("}")
+    for key, vals in (("space", SPACE), ("size", t["sizes"]), ("radius", t["radius"]), ("stroke", t["stroke"])):
+        L += [key + " {"] + [f"  {k} {v}" for k, v in vals.items()] + ["}"]
+    L.append("elevation {")
+    for lvl, shadows in t["elevation"].items():
+        L += [f"  {lvl} {{"] + [f'    shadow {dx} {dy} {b} {sp} "{c}"' for dx, dy, b, sp, c in shadows] + ["  }"]
+    L.append("}")
+    assert list(t["shape"]) == CLASSES
+    r = s["radius"]
+    # The classes version 1 gave a radius keep it (the widgets read these).
+    for cls, v1 in (("slot", "small"), ("button", "control"), ("bar", "bar"), ("panel", "panel")):
+        assert float(t["shape"][cls].split()[1]) == r[v1], (s["name"], cls)
+    L += ["shape {"] + [f"  {k} {v}" for k, v in t["shape"].items()] + ["}"]
+    return L
+
+
+def motion_lines(s):
+    t = TOKENS[s["name"]]
+    m = s["motion"]
+    d = dict(DURATIONS, **s["durations"])
+    L = ["motion {", f"  enter {m['enter']}", f"  toast {m['toast']}", f"  progress {m['progress']}",
+         f"  shake {m['shake']}", f"  pop {m['pop']}"]
+    L += [f"  spring {k} {dur} {b}" for k, (dur, b) in t["springs"].items()]
+    L += [f"  ease {k} {v}" for k, v in t["eases"].items()]
+    L += [f"  duration {k} {d[k]}" for k in ("instant", "fast", "base", "slow", "spring", "bounce")]
+    L += [f"  stagger {m['stagger']}", f"  staggerCap {t['stagger_cap']}", f"  overshoot {t['overshoot']}", "}"]
+    return L
+
+
+def sounds_lines(s):
+    """Every UI event of docs/ui.md §7.8: the built-ins ship no UI sounds of
+    their own (a game hands og.ui.configure its own), so each is `none` with
+    the volume and pitch its set will play at, and the style's haptic."""
+    t = TOKENS[s["name"]]
+    L = ["sounds {"]
+    for e in EVENTS:
+        extra = t["sounds"].get(e)
+        L.append(f"  {e} none{' ' + extra if extra else ''} haptic {t['haptics'].get(e, 'none')}")
+    L.append("}")
+    return L
+
+
 # ── output ──────────────────────────────────────────────────────────────────
 
 def to8(img):
@@ -834,11 +1154,17 @@ def region(name):
     return f"{x} {y} {w} {h}"
 
 
+# The version 1 parts as version 2 dressings (og-ui's StylePart::selector).
+SELECTORS = dict(panel="Panel.frame", card="Card.frame", button="Button.base", buttonHover="Button.base[hover]",
+                 buttonPressed="Button.base[pressed]", buttonDisabled="Button.base[disabled]", field="Field.frame",
+                 slot="Slot.frame", tooltip="Tooltip.frame", hud="Hud.frame", track="Meter.track", fill="Meter.fill")
+
+
 def style_text(s, d, parts=None):
     n = s["name"]
     L = [
         "type style",
-        "version 1",
+        "version 2",
         "---",
         f"# The {n} style pack: generated by templates/ui-kit/tools/make-styles.py (CC0 art, OFL fonts; LICENSES.md).",
         f'name "{n}"',
@@ -848,9 +1174,9 @@ def style_text(s, d, parts=None):
         "palette {",
     ]
     L += [f'  {k} "{v}"' for k, v in s["palette"].items()]
-    L += ["}", "radius {"] + [f"  {k} {v}" for k, v in s["radius"].items()] + ["}"]
+    L += ["}"]
+    L += tokens_lines(s)
     L += ["ramp {"] + [f"  {k} {a} {b}" for k, (a, b) in s["ramp"].items()] + ["}"]
-    L += ["durations {"] + [f"  {k} {v}" for k, v in s["durations"].items()] + ["}"]
     L += [
         "fonts {",
         f'  body "{s["fonts"]["body"]}"',
@@ -864,10 +1190,34 @@ def style_text(s, d, parts=None):
         "  names " + " ".join(f'"{i}"' for i in ICONS),
         "}",
     ]
+    L.append(f"soft {region('soft')} 24")
+    if s.get("corner"):
+        w, h, ink, off = s["corner"]
+        L.append(f"corner {region('corner')} {w} {h} {ink} {off}")
+    if s.get("divider"):
+        w, h, ink = s["divider"]
+        L.append(f"divider {region('divider')} {w} {h} {ink}")
+    if s.get("flourish"):
+        w, h, ink, off = s["flourish"]
+        L.append(f"flourish {region('flourish')} {w} {h} {ink} {off}")
+    tiled = []
+    if s.get("tile"):
+        w, h, a, inset, tiled = s["tile"]
+        L.append(f"tile {region('tile')} {w} {h} {a} {inset}")
+    for role, dx, dy, blur, c in s["text"].get("textShadow", []):
+        L.append(f'textShadow {role} {dx} {dy} {blur} "{c}"')
+    for role, size, ink, a in s["text"].get("textGlow", []):
+        L.append(f"textGlow {role} {size} {ink} {a}")
+    for role, w in s["text"].get("textWeight", []):
+        L.append(f"textWeight {role} {w}")
+    L += motion_lines(s)
+    L += sounds_lines(s)
+    # One dressing per part: its frame, then (on a class) its shadow, glow,
+    # glass, corner ornaments and tile, and the button's press and hover.
     for part, spec in s["slices"].items():
         border = spec[0]
         mode = spec[1] if len(spec) > 1 else "tint"
-        L.append(f"slice {part} {region(part)} {border} {mode}")
+        D = [f"  slice {region(part)} {border} {mode}"]
         # A frame whose centre is not white and opaque: its mean, linear
         # RGB and alpha, so og-ui picks label ink that reads on what it
         # draws (og cook measures it the same way for a style without it).
@@ -878,46 +1228,24 @@ def style_text(s, d, parts=None):
             rgb = (lin * a).reshape(-1, 3).sum(0) / max(float(a.sum()), 1e-6)
             alpha = float(a.mean())
             if min(*rgb, alpha) < 0.98:
-                L.append(f"tone {part} {rgb[0]:.3f} {rgb[1]:.3f} {rgb[2]:.3f} {alpha:.2f}")
-    L.append(f"soft {region('soft')} 24")
-    if s.get("corner"):
-        w, h, ink, off = s["corner"]
-        L.append(f"corner {region('corner')} {w} {h} {ink} {off}")
-        L.append("corners " + " ".join(s["corners"]))
-    if s.get("divider"):
-        w, h, ink = s["divider"]
-        L.append(f"divider {region('divider')} {w} {h} {ink}")
-    if s.get("flourish"):
-        w, h, ink, off = s["flourish"]
-        L.append(f"flourish {region('flourish')} {w} {h} {ink} {off}")
-    if s.get("tile"):
-        w, h, a, inset, parts = s["tile"]
-        L.append(f"tile {region('tile')} {w} {h} {a} {inset} " + " ".join(parts))
-    for part, (dx, dy, blur, spread, c) in s["shadows"].items():
-        L.append(f'shadow {part} {dx} {dy} {blur} {spread} "{c}"')
-    for part, (size, ink, a) in s.get("glows", {}).items():
-        L.append(f"glow {part} {size} {ink} {a}")
-    for part, (blur, fill, tint) in s.get("glass", {}).items():
-        L.append(f"glass {part} {blur} {fill} {tint}")
-    for role, dx, dy, blur, c in s["text"].get("textShadow", []):
-        L.append(f'textShadow {role} {dx} {dy} {blur} "{c}"')
-    for role, size, ink, a in s["text"].get("textGlow", []):
-        L.append(f"textGlow {role} {size} {ink} {a}")
-    for role, w in s["text"].get("textWeight", []):
-        L.append(f"textWeight {role} {w}")
-    L.append("press {} {} {}".format(*s["press"]))
-    L.append("hover {} {}".format(*s["hover"]))
-    m = s["motion"]
-    L += [
-        "motion {",
-        f"  enter {m['enter']}",
-        f"  stagger {m['stagger']}",
-        f"  toast {m['toast']}",
-        f"  progress {m['progress']}",
-        f"  shake {m['shake']}",
-        f"  pop {m['pop']}",
-        "}",
-    ]
+                D.append(f"  tone {rgb[0]:.3f} {rgb[1]:.3f} {rgb[2]:.3f} {alpha:.2f}")
+        if part in s["shadows"]:
+            dx, dy, blur, spread, c = s["shadows"][part]
+            D.append(f'  shadow {dx} {dy} {blur} {spread} "{c}"')
+        if part in s.get("glows", {}):
+            size, ink, a = s["glows"][part]
+            D.append(f"  glow {size} {ink} {a}")
+        if part in s.get("glass", {}):
+            blur, fill, tint = s["glass"][part]
+            D.append(f"  glass {blur} {fill} {tint}")
+        if s.get("corner") and part in s.get("corners", []):
+            D.append("  corners")
+        if part in tiled:
+            D.append("  tile")
+        if part == "button":
+            D.append("  press {} {} {}".format(*s["press"]))
+            D.append("  hover {} {}".format(*s["hover"]))
+        L += [f'dress "{SELECTORS[part]}" {{'] + D + ["}"]
     return "\n".join(L) + "\n"
 
 
