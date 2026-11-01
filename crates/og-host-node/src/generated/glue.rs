@@ -1995,6 +1995,12 @@ pub fn og_ui_breakpoint(env: Env) -> String {
     <Host as UiApi>::og_ui_breakpoint(&Host)
 }
 
+#[napi(js_name = "og_ui_frame_pointer")]
+pub fn og_ui_frame_pointer(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_frame_pointer(&Host)
+}
+
 #[napi(js_name = "og_ui_frame_viewport")]
 pub fn og_ui_frame_viewport(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);

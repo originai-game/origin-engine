@@ -19767,6 +19767,29 @@ export interface SkeletonDesc {
 export type UiItemBuild = (index: number) => void;
 
 
+/** The primary pointer as the UI reads it this tick. */
+export interface UiPointer {
+  /**
+   * Its x from the surface's left.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * Its y from the surface's top.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+  /**
+   * It is over the surface: false for a mouse that left it, or a touch screen with no finger down.
+   */
+  readonly inside: boolean;
+  /** Its button or finger is down. */
+  readonly down: boolean;
+}
+
+
 
 
 
@@ -33772,6 +33795,10 @@ export declare namespace og {
      * The size class of the play surface of the frame being built (desktop outside a frame).
      */
     function breakpoint(): Breakpoint;
+    /**
+     * The primary pointer of the frame being built, without the world: for a component that hit-tests a shape it draws itself (a pie's wedges, a wheel's slices) by angle and radius rather than by rectangles. Keys and pads reach the same choices through focusable parts.
+     */
+    function framePointer(): UiPointer;
     /**
      * The play surface of the frame being built: og.ui.viewport without the world, for code that only builds UI.
      */

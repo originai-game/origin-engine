@@ -8794,6 +8794,7 @@
         "DpadResult",
         "ActionButtonDesc",
         "SkeletonDesc",
+        "UiPointer",
         "A11yNode",
         "A11yTree",
         "CounterDesc",
@@ -9569,6 +9570,13 @@
           "doc": "The size class of the play surface of the frame being built (desktop outside a frame).",
           "params": [],
           "returns": "Breakpoint",
+          "publish": true
+        },
+        {
+          "name": "framePointer",
+          "doc": "The primary pointer of the frame being built, without the world: for a component that hit-tests a shape it draws itself (a pie's wedges, a wheel's slices) by angle and radius rather than by rectangles. Keys and pads reach the same choices through focusable parts.",
+          "params": [],
+          "returns": "UiPointer",
           "publish": true
         },
         {
@@ -37197,6 +37205,39 @@
           "default": 0
         }
       },
+      "additionalProperties": false
+    },
+    "UiPointer": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "The primary pointer as the UI reads it this tick.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Its x from the surface's left.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Its y from the surface's top.",
+          "x-og-unit": "cssPx"
+        },
+        "inside": {
+          "type": "boolean",
+          "description": "It is over the surface: false for a mouse that left it, or a touch screen with no finger down."
+        },
+        "down": {
+          "type": "boolean",
+          "description": "Its button or finger is down."
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "inside",
+        "down"
+      ],
       "additionalProperties": false
     },
     "A11yNode": {
