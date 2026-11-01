@@ -244,8 +244,8 @@ export function surface(id: string, d: SurfaceDesc, build: () => void): Api.Resp
   // Its fill at rest, selected or not; transparent is the wash's colour at no alpha (a fade from
   // nothing passes through no grey).
   const rest = (s: boolean): Rgba => (s && d.selectedFill !== undefined ? d.selectedFill : d.fill) ?? { ...wash, a: 0 };
-  // Hover and focus move it half-way to the wash, a press twice as far as hover again: a press
-  // reads at a glance, not only beside the idle one.
+  // Hover and focus move it half-way to the wash, a press 2.4 times as far: a press reads at a
+  // glance, not only beside the idle one.
   const tint = (base: Rgba, k: number): Rgba => (base.a > 0 ? mix(base, { ...wash, a: Math.max(base.a, 1) }, k * by) : { ...wash, a: k * by * 1.4 });
   // The motion values of each interaction state: the lift and the press's sink.
   const lift = still() ? 0 : d.lift ?? 0;
@@ -291,7 +291,8 @@ export function surface(id: string, d: SurfaceDesc, build: () => void): Api.Resp
     states: [
       vstate("normal", [...bgValues(base), ...moved(0, 1)]),
       vstate("hover", [...bgValues(tint(base, 0.5)), ...moved(lift, 1)]),
-      vstate("pressed", [...bgValues(tint(base, 1.6)), ...moved(0, sink)]),
+      // Pressed: down past rest (a lifted part drops below its place) and darker by twice hover's.
+      vstate("pressed", [...bgValues(tint(base, 2.4)), ...moved(lift !== 0 ? 1 : 0, sink)]),
       vstate("focused", [...bgValues(tint(base, 0.5)), ...moved(lift, 1)]),
       vstate("disabled", [...bgValues(base), ...moved(0, 1)]),
     ],
@@ -404,7 +405,8 @@ export function glyphCap(id: string, glyph: { text: string; icon: string }, size
   });
   const symbol = PS_FACE[glyph.icon];
   if (symbol) faceSymbol("Symbol", symbol, Math.round(size * 0.5), ink);
-  else text("Text", glyph.text, { step: "caption", nowrap: true, font: "mono" });
+  // A key's name at the body's 16 px (at 1080p), as the hint beside it.
+  else text("Text", glyph.text, { step: "base", nowrap: true, font: "mono" });
   // A hold's progress: a ring around the cap, centred on it and scaled with it (the cap's width
   // as laid out last tick, so a key cap wider than tall is ringed round its middle).
   if (progress > 0) {
