@@ -11,7 +11,7 @@
 // Gate 3 (portraits in the order they act, the current one larger).
 
 import type * as Api from "@origingame/engine";
-import { a11y, absolute, anchorOf, box, chip, close, fitLevel, hudRoom, open, clamp01, countdown, easeBack, easeOut, edge, ellipseShape, fillDraw, formatNumber, frame, glow, groups, hudPlace, icon, inkOn, keyId, kit, leaf, lit, mix, msToTicks, now, paintRgba, pct, pop, pulse, px, reduced, role, sel, shapeOf, solid, sound, spring, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, type Rgba, apply, type Props } from "./core.ts";
+import { a11y, absolute, anchorOf, box, chip, close, fitLevel, hudRoom, open, clamp01, countdown, easeBack, easeOut, edge, ellipseShape, fillDraw, formatNumber, frame, glow, groups, hudPlace, icon, inkOn, keyId, kit, leaf, lit, mix, msToTicks, now, paintRgba, pct, pop, pulse, px, reduced, role, sel, shapeOf, solid, sound, spring, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, type Rgba, apply, type Props, ut, tsFit, stepSize } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
 
@@ -31,7 +31,7 @@ export function scoreboard(id: string, desc: Api.ScoreboardDesc = {}): void {
   const lines = teams.reduce((n, tm) => n + 1 + (tm.rows ?? []).length, 0);
   const roomH = vp.height - vp.safeArea.top - vp.safeArea.bottom - tk.gutter * 2;
   const chrome = (desc.title || desc.subtitle ? u(30) + tk.sm : 0) + tk.md * 2 + teams.length * tk.sm + lines * u(2);
-  const rowH = Math.max(u(22), Math.min(u(f.phone ? 30 : 34), Math.floor((roomH - chrome) / Math.max(1, lines))));
+  const rowH = Math.max(ut(22), Math.min(ut(f.phone ? 30 : 34), Math.floor((roomH - chrome) / Math.max(1, lines))));
   const scrolls = chrome + lines * rowH > roomH;
   // Columns narrow to leave the name its share of a narrow panel.
   const fixedW = width - tk.md * 2 - tk.sm * 2 - u(3) - tk.sm * (cols.length + 2);
@@ -40,6 +40,7 @@ export function scoreboard(id: string, desc: Api.ScoreboardDesc = {}): void {
   const squeeze = want > 0 ? Math.min(1, Math.max(0.5, (fixedW - nameMin) / want)) : 1;
   const colW = (c: Api.ScoreColumn | undefined) => Math.round(u(c?.width || 56) * squeeze);
   const pingW = Math.round(u(56) * squeeze);
+  // A scoreboard opens over the rest of the HUD, as a held Tab board does.
   hudPlace(id, anchorOf(desc, "center"), () => {
     box(id, {
       direction: "column", gap: tk.sm, width: px(width), padding: { left: tk.md, right: tk.md, top: tk.md, bottom: tk.md }, part: sel("Scoreboard", "panel"), partClass: "panel",
@@ -100,7 +101,7 @@ export function scoreboard(id: string, desc: Api.ScoreboardDesc = {}): void {
         }, { a11y: a11y("group", team.name ?? "") });
       });
     }, { a11y: a11y("table", desc.title || "Scoreboard") });
-  });
+  }, { over: true });
 }
 
 export function hudTimer(id: string, desc: Api.HudTimerDesc = {}): void {
@@ -143,7 +144,7 @@ export function hudTimer(id: string, desc: Api.HudTimerDesc = {}): void {
 
 export function scorebug(id: string, desc: Api.ScorebugDesc = {}): void {
   const tk = frame().t;
-  const h = u(36);
+  const h = ut(36);
   const side = (sid: "Home" | "Away", team: Api.ScorebugTeam | undefined, k: number) => {
     const t = team ?? {};
     const c = t.color ? paintRgba(t.color, teamColor(k)) : teamColor(k);
@@ -167,7 +168,7 @@ export function scorebug(id: string, desc: Api.ScorebugDesc = {}): void {
         fills: [solid(token("hud", 0.96)), ...(flash > 0 ? [solid(lit(c, 0.6 * flash))] : [])],
       }, () => {
         const s = (t.score ?? 0) > e.prev ? pop(e.since, 0.25, 420) : 1;
-        text("Score", String(t.score ?? 0), { step: ts(22, true), font: "display", color: token("ink"), nowrap: true }, { transform: { scaleX: s, scaleY: s } });
+        text("Score", String(t.score ?? 0), { step: tsFit(22, Math.min(h * 0.75, u(46) * 0.45), true), font: "display", color: token("ink"), nowrap: true }, { transform: { scaleX: s, scaleY: s } });
         if (t.possession) leaf("Possession", { width: px(u(6)), height: px(u(6)), part: sel("Scorebug", "possession") }, { shape: ellipseShape(), fills: [solid(lit(role("gold")))] }, absolute({ end: u(3), top: u(3) }));
       });
     });
@@ -212,7 +213,8 @@ export function comboCounter(id: string, desc: Api.ComboDesc = {}): void {
   const t = now();
   let comboProps: Props = {};
   hudPlace(id, anchorOf(desc, "right"), () => {
-    kit.column(id, { gap: 0, cross: "center" }, () => {
+    // Room above the count for its pop and its growth with the count, so a scaled count never reaches the piece stacked above.
+    box(id, { direction: "column", gap: 0, cross: "center", padding: { left: 0, right: 0, top: Math.round(stepSize(ts(48, true)).line * 0.25), bottom: 0 } }, undefined, () => {
       const e = edge("count", count);
       // A break: the last count shakes and falls off.
       const brokeAt = kit.memory("brokeAt", -1e9);
@@ -401,7 +403,7 @@ export function turnOrder(id: string, desc: Api.TurnOrderDesc = {}): void {
             if (un.portrait) {
               kit.image("Art", { texture: un.portrait, width: px(s), height: px(s), label: "" });
               apply(absolute({ start: 0, top: 0 }));
-            } else text("Initials", (un.name ?? "?").slice(0, 2).toUpperCase(), { step: ts(cur ? 20 : 15, true), font: "display", color: token("ink"), nowrap: true, outline: 1 });
+            } else text("Initials", (un.name ?? "?").slice(0, 2).toUpperCase(), { step: tsFit(cur ? 20 : 15, s * 0.42, true), font: "display", color: token("ink"), nowrap: true, outline: 1 });
             if (un.dead) {
               leaf("Cross", { width: px(s), height: px(s) }, {
                 shape: { kind: "path", points: [{ x: s * 0.2, y: s * 0.2 }, { x: s * 0.8, y: s * 0.8 }], width: 3, cap: "round" },

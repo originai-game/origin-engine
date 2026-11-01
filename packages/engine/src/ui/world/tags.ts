@@ -16,7 +16,7 @@ import { input } from "../../input.ts";
 import {
   a11y, box, clamp01, easeBack, easeOut, edge, ellipseShape, fillDraw, glow, groups, icon, inkOn, kit, leaf, lit, mix, msToTicks, now, pct, pop,
   px, rarityColor, rarityPips, reactionColor, reduced, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, waypointColor, absolute,
-  tps, arc, paintRgba, type Rgba, apply, type Props,
+  tps, arc, paintRgba, type Rgba, apply, type Props, ut,
 } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
@@ -96,7 +96,7 @@ export function nameplate(id: string, desc: Api.NameplateDesc = {}): Api.AnchorI
       });
     }
     if (desc.castName && lodName !== "bar") {
-      box("Cast", { width: px(barW), height: px(Math.max(10, u(12))), cross: "center", align: "center", part: sel("Nameplate", "cast"), partClass: "bar" }, trackDraw(2), () => {
+      box("Cast", { width: px(barW), height: px(Math.max(10, ut(12))), cross: "center", align: "center", part: sel("Nameplate", "cast"), partClass: "bar" }, trackDraw(2), () => {
         leaf("Fill", { width: pct(clamp01(desc.castProgress ?? 0)), height: pct(1) }, fillDraw(role("gold"), 2), absolute({ start: 0, top: 0 }));
         text("Name", desc.castName ?? "", { step: ts(9), color: token("ink"), nowrap: true, ellipsis: true, outline: 0.8 });
       });

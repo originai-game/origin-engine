@@ -10,11 +10,11 @@
 // a grey shield on what cannot be interrupted, interrupted in red).
 
 import type * as Api from "@origingame/engine";
-import { a11y, absolute, anchorOf, box, chip, innerGlow, reduced, clamp01, close, drop, easeOut, edge, fillDraw, frame, glow, groups, hudPlace, icon, inkOn, keyId, kit, leaf, lit, mix, msToTicks, now, open, paintRgba, pct, px, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, ellipseShape, type Rgba, apply } from "./core.ts";
+import { a11y, absolute, anchorOf, box, chip, innerGlow, reduced, clamp01, close, drop, easeOut, edge, fillDraw, frame, glow, groups, hudPlace, icon, inkOn, keyId, kit, leaf, lit, mix, msToTicks, now, open, paintRgba, pct, px, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, ellipseShape, type Rgba, apply, textScale, ut, tsFit, stepSize } from "./core.ts";
 import { statBar } from "./meters.ts";
 import { statusGrid } from "./abilities.ts";
 
-const NO_RESPONSE: Api.Response = { hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 };
+const NO_RESPONSE: Api.Response = { hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0 };
 
 /** Initials for a portrait with no art. */
 function initials(name: string): string {
@@ -93,7 +93,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
         kit.image("Art", { texture: desc.portrait, width: px(pd), height: px(pd), label: name });
         apply(absolute({ start: 0, top: 0 }, { opacity: dead ? 0.45 : 1 }));
       } else if (desc.icon && kit.hasIcon(desc.icon)) icon("Art", desc.icon, Math.round(pd * 0.56), token("ink"));
-      else text("Initials", initials(name), { step: ts(Math.round(m.portrait * 0.34), true), font: "display", color: lit(inkOn(nameHue(name))), nowrap: true });
+      else text("Initials", initials(name), { step: tsFit(Math.round(m.portrait * 0.34), pd * 0.48, true), font: "display", color: lit(inkOn(nameHue(name))), nowrap: true });
       if (hurt > 0 && !reduced()) {
         leaf("Hurt", { width: pct(1), height: pct(1) }, { fills: [solid(lit(role("danger"), 0.5 * hurt))] }, absolute({ start: 0, top: 0 }));
       }
@@ -106,7 +106,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
     if (hurt > 0 && !reduced()) apply({ transform: { x: Math.sin(hurtAge * 1.9) * u(3) * hurt } });
     const portraitPath = `${kit.openPath()}/Portrait`;
     if (desc.level) {
-      box("Level", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, height: px(Math.max(14, Math.round(pd * 0.3))), align: "center", cross: "center", part: sel("UnitFrame", "level"), partClass: "badge" }, {
+      box("Level", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, height: px(Math.max(14, Math.round(pd * 0.3)) * textScale()), align: "center", cross: "center", part: sel("UnitFrame", "level"), partClass: "badge" }, {
         shape: { kind: "rect", radii: [999, 999, 999, 999] },
         fills: [solid(token("hud", 0.98))],
         strokes: [stroke(1.5, lit(ringInk))],
@@ -227,8 +227,12 @@ function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response
   kit.row("Label", { gap: u(3), cross: "center", padding: { left: u(5), right: u(4), top: 0, bottom: 0 }, width: pct(1) }, () => {
     const roleName = ROLE_ICON[m.role ?? "none"];
     if (roleName) icon("Role", roleName, Math.max(10, Math.round(h * 0.34)), token("ink"), m.role ?? "");
+    // At a large text size the status takes its own line under the name, so neither is cut to nothing.
+    const stacked = textScale() >= 1.5 && !!(m.dead || m.offline);
+    if (stacked) open("Names", { direction: "column", gap: 0, width: { kind: "grow" } });
     text("Name", m.name ?? "", { step: ts(11), color: ink, nowrap: true, ellipsis: true, width: { kind: "grow" }, outline: 1 });
-    if (m.dead || m.offline) text("Status", m.dead ? "Dead" : "Offline", { step: ts(10), color: token("inkMuted"), nowrap: true });
+    if (m.dead || m.offline) text("Status", m.dead ? "Dead" : "Offline", { step: ts(10), color: token("inkMuted"), nowrap: true, ellipsis: stacked });
+    if (stacked) close();
   });
   apply(absolute({ start: 0, top: 0, bottom: 0 }));
   return close({
@@ -265,7 +269,8 @@ function cast(id: string, desc: Api.CastBarDesc, compact: boolean): void {
   const p = clamp01(desc.progress ?? 0);
   const bad = state === "interrupted" || state === "failed";
   const ink = bad ? role("danger") : state === "success" ? role("success") : desc.uninterruptible ? { r: 0.62, g: 0.64, b: 0.68, a: 1 } : desc.channel ? role("info") : role("gold");
-  const h = u(compact ? 10 : 18);
+  // The bar is at least as tall as the line of its name, at any text size.
+  const h = compact ? Math.max(u(10), stepSize(ts(10)).line) : Math.max(ut(18), stepSize(ts(13)).line);
   hudPlace(id, anchorOf(desc, null), () => {
     box(id, {
       direction: "row", gap: tk.xs, cross: "center", width: desc.width ?? px(u(280)),

@@ -10,7 +10,7 @@
 // the sweep running out.
 
 import type * as Api from "@origingame/engine";
-import { a11y, absolute, anchorOf, box, bp, chip, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, text, token, ts, u, vgrad, arc, type Rgba, apply } from "./core.ts";
+import { a11y, absolute, anchorOf, box, bp, chip, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, text, token, ts, u, vgrad, arc, type Rgba, apply, textScale, tsFit } from "./core.ts";
 
 const DEBUFF_TYPES: Record<string, string> = {
   magic: "#3d8bff", curse: "#a64dff", poison: "#3ccf4e", disease: "#c89a2c", bleed: "#e03030",
@@ -97,7 +97,7 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
         shape: { kind: "arc", start: angle - 0.02, sweep: 0.04, thickness: size * 0.75, cap: "butt" },
         fills: [solid(token("sheen", 0.45))],
       }, absolute({ start: -size * 0.25, top: -size * 0.25 }));
-      text("Time", shortTime(cooldown, true), { step: ts(size >= 52 ? 18 : 15, true), font: "display", color: token("ink"), nowrap: true, outline: 1.2 }, absolute({ centerX: true, centerY: true }));
+      text("Time", shortTime(cooldown, true), { step: tsFit(size >= 52 ? 18 : 15, size * 0.42, true), font: "display", color: token("ink"), nowrap: true, outline: 1.2 }, absolute({ centerX: true, centerY: true }));
     }
     if (flashT > 0) {
       leaf("Flash", { width: pct(1), height: pct(1), part: sel("AbilitySlot", "flash") }, {
@@ -106,7 +106,7 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
       }, absolute({ start: 0, top: 0 }));
     }
     if (ult !== null && !ultReady) {
-      text("Ultimate", `${Math.floor(clamp01(ult) * 100)}%`, { step: ts(16, true), font: "display", color: lit(role("gold")), nowrap: true, outline: 1.2 }, absolute({ centerX: true, centerY: true }));
+      text("Ultimate", `${Math.floor(clamp01(ult) * 100)}%`, { step: tsFit(16, size * 0.36, true), font: "display", color: lit(role("gold")), nowrap: true, outline: 1.2 }, absolute({ centerX: true, centerY: true }));
     }
     if (locked) {
       box("Lock", { width: pct(1), height: pct(1), align: "center", cross: "center", part: sel("AbilitySlot", "lock") }, { fills: [solid(token("shadow", 0.5))] }, () => {
@@ -120,7 +120,7 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
           leaf("Fill", { width: pct(p), height: pct(1) }, { fills: [solid(lit(role("gold")))] });
         }, absolute({ start: 0, bottom: 0 }));
       }
-      text("Charges", String(charges), { step: ts(14, true), font: "display", color: charges === 0 ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1.2 },
+      text("Charges", String(charges), { step: tsFit(14, size * 0.36, true), font: "display", color: charges === 0 ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1.2 },
         absolute({ end: inset + 1, bottom: inset }));
     }
     if (desc.cost) {
@@ -145,7 +145,7 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
     const keyIcon = glyph && glyph.device !== "keyboardMouse" && kit.hasIcon(glyph.icon) ? glyph.icon : "";
     if (keyText || keyIcon) {
       const capInk = desc.outOfRange ? role("danger") : role("ink");
-      box("Hotkey", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, height: px(Math.max(14, Math.round(size * 0.3))), cross: "center", align: "center", part: sel("AbilitySlot", "hotkey", desc.outOfRange ? "outOfRange" : null), partClass: "chip" }, {
+      box("Hotkey", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, height: px(Math.max(14, Math.round(size * 0.3)) * textScale()), cross: "center", align: "center", part: sel("AbilitySlot", "hotkey", desc.outOfRange ? "outOfRange" : null), partClass: "chip" }, {
         shape: { kind: "rect", radii: [3, 3, 3, 3] },
         fills: [solid(token("hud", 0.95))],
         strokes: [stroke(1, desc.outOfRange ? lit(role("danger")) : token("lineStrong"))],
@@ -233,7 +233,7 @@ export function statusGrid(id: string, desc: Api.StatusGridDesc = {}): Api.Statu
       }
       if (more > 0) {
         box("More", { width: px(size), height: px(size), align: "center", cross: "center", part: sel("StatusGrid", "more"), partClass: "slot" }, chip(shapeOf("slot").radius), () => {
-          text("Count", `+${more}`, { step: ts(13), font: "mono", color: token("ink"), nowrap: true });
+          text("Count", `+${more}`, { step: tsFit(13, size * 0.42), font: "mono", color: token("ink"), nowrap: true });
         }, { a11y: a11y("text", `${more} more`) });
       }
     }, { a11y: a11y("list", label) });
@@ -288,7 +288,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
       }, absolute({ start: -size * 0.25, top: -size * 0.25 }));
     }
     if ((fx.stacks ?? 0) >= 2) {
-      text("Stacks", String(fx.stacks), { step: ts(12, true), font: "display", color: token("ink"), nowrap: true, outline: 1.2 }, absolute({ end: 1, bottom: 0 }));
+      text("Stacks", String(fx.stacks), { step: tsFit(12, size * 0.5, true), font: "display", color: token("ink"), nowrap: true, outline: 1.2 }, absolute({ end: 1, bottom: 0 }));
     }
     res = close({
       opacity: blink,
@@ -296,7 +296,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
       ...groups({ time }, { time: ["lasting", "running", "expiring"] }),
     });
     if (timers && !lasting) {
-      text("Time", shortTime(remaining, false), { step: ts(11), font: "mono", color: expiring ? lit(role("warn")) : token("ink"), nowrap: true, outline: 1 });
+      text("Time", shortTime(remaining, false), { step: tsFit(11, size * 0.36), font: "mono", color: expiring ? lit(role("warn")) : token("ink"), nowrap: true, outline: 1 });
     }
   });
   return res ?? ({ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 } as Api.Response);

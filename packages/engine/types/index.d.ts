@@ -32424,11 +32424,17 @@ export interface ObjectiveTrackerDesc {
    */
   readonly quests?: readonly ObjectiveQuest[];
   /**
-   * The most shown; 0 is 3 (2 on a phone).
+   * The most shown; 0 is 3 (2 on a phone, 1 on a phone at a large text size).
    *
    * @default 0
    */
   readonly max?: number;
+  /**
+   * The most steps a quest lists, its open ones first, the rest counted on a last line (+2 more); 0 is every step, or 2 on a phone at a large text size.
+   *
+   * @default 0
+   */
+  readonly maxSteps?: number;
   /**
    * Its width; 0 is 300.
    *

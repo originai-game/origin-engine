@@ -5,6 +5,8 @@
 // taken. Ways it could fail: a command stamping its act with og.ui.tick()
 // between ticks (0 there), so a line is born expired and a timer reads the
 // screen's clock from the run's start; a crit hidden behind an older hit.
+// At 200 % text a label picking the step the doubled ramp already reaches
+// (so it does not grow), or a HUD piece crowding another off a phone.
 import { playtest, type PlaytestRun } from "@origingame/engine/playtest";
 
 interface El {
@@ -39,7 +41,13 @@ const steps = [
   "26.00:show:frames",
   "27.00:act:hit",
   "27.05:dump_ui:frames.json",
-  "27.30:quit",
+  // The strategy screen on a phone, at 100 % and at the player's 200 % text.
+  "27.30:viewport:phone",
+  "27.35:show:strategy",
+  "28.60:dump_ui:phone100.json",
+  "28.70:text:200",
+  "29.90:dump_ui:phone200.json",
+  "30.00:quit",
 ];
 
 export default playtest({
@@ -58,5 +66,16 @@ export default playtest({
     t.equal(at(run, "expired.json", "RoundHud/Round/Body/Time")?.text, "0.0", "reading 0.0");
     t.equal(state(run, "combo.json", "ComboHud/Combo", "combo"), "broken", "a break breaks the combo");
     t.equal(state(run, "frames.json", "PlayerHud/Player", "hurt"), "hit", "a hit shows on the player's frame");
+    const title = "QuestsHud/Quests/main/Head/Title";
+    const h100 = at(run, "phone100.json", title)?.height ?? 0;
+    const h200 = at(run, "phone200.json", title)?.height ?? 0;
+    t.ok(h100 > 0 && h200 >= h100 * 1.6, `the quest title grows with the player's text size (${h100} px, then ${h200} px)`);
+    for (const file of ["phone100.json", "phone200.json"]) {
+      const roots = els(run, file).filter((e) => /^(Res|Quests|Turns|Combo)Hud$/.test(e.path) && e.width > 0);
+      t.equal(roots.length, 4, `${file}: the resources, tracker, turn order and combo are all shown`);
+      t.ok(roots.every((e) => e.x >= 0 && e.x + e.width <= 390 && e.y >= 47 && e.y + e.height <= 844 - 34), `${file}: each lies inside the phone's safe area`);
+      const overlap = (a: El, b: El) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+      t.ok(roots.every((a, i) => roots.every((b, j) => i >= j || !overlap(a, b))), `${file}: none covers another`);
+    }
   },
 });

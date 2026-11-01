@@ -46,10 +46,15 @@ export function place(r: Api.UiRect, w: number, h: number, side: Api.Anchor, gap
 }
 
 /** The anchor offsets that put a group's top left at screen (x, y): og-ui mirrors a right-to-left frame after layout. */
-export function anchorAt(x: number, y: number, w: number): Api.AnchorDesc {
+export function anchorAt(x: number, y: number, w: number, h?: number): Api.AnchorDesc {
   const f = frame();
-  const s = f.viewport.safeArea;
-  const lx = kit.frameDirection() === "rtl" ? f.viewport.width - x - w : x;
+  const vp = f.viewport;
+  const s = vp.safeArea;
+  const lx = kit.frameDirection() === "rtl" ? vp.width - x - w : x;
+  // Held against the bottom of the screen, it hangs from there, so a card
+  // that grows (pinned, a longer stat) grows upward and never off the screen.
+  const bottom = vp.height - s.bottom - f.t.sm;
+  if (h !== undefined && y + h >= bottom - 1) return { anchor: "bottomLeft", margin: 0, offsetX: lx - s.left, offsetY: -f.t.sm };
   return { anchor: "topLeft", margin: 0, offsetX: lx - s.left, offsetY: y - s.top };
 }
 
@@ -114,7 +119,9 @@ function card(id: string, desc: Api.TooltipCardDesc, target: string, open_: bool
   const total = compare ? width * 2 + tk.sm : width;
   const trig = target ? kit.bounds(target) : null;
   const own = kit.bounds(id);
-  const h = own?.height ?? 160;
+  // Before it was ever laid out its height is unknown: it hangs from the
+  // bottom of the screen for that one (invisible) tick rather than spill.
+  const h = own?.height ?? f.viewport.height;
   const at = trig ? place(trig, total, h, desc.placement ?? "right", tk.sm) : { x: f.viewport.width / 2 - total / 2, y: f.viewport.height / 3 };
   const first = shownFor === 0;
   const pinProgress = pinnable && !pinned ? clamp01((rest - delay) / pinTicks) : pinned ? 1 : 0;
@@ -122,7 +129,7 @@ function card(id: string, desc: Api.TooltipCardDesc, target: string, open_: bool
   let hoveredLink: string | null = null;
   let bodyPath = "";
   let overCard = false;
-  kit.anchor(id, { ...anchorAt(at.x, at.y, total), direction: "row", gap: tk.sm, cross: "start", over: true }, () => {
+  kit.anchor(id, { ...anchorAt(at.x, at.y, total, h), direction: "row", gap: tk.sm, cross: "start", over: true }, () => {
     if (compare) {
       overCard = sheet("Compare", desc, true, width, rare, 0, () => {}) || overCard;
     }
@@ -173,9 +180,19 @@ function sheet(id: string, d: Api.TooltipCardDesc, equipped: boolean, width: num
   const title = equipped ? (d.compareTitle ?? "") : (d.title ?? "");
   const stats = equipped ? (d.compareStats ?? []) : (d.stats ?? []);
   const titleInk = equipped ? token("ink") : rare ? lit(rare) : token("ink");
+  // Taller than the safe area (long text at 200 %), the card scrolls
+  // rather than run off the screen: once it overflowed at this height it
+  // keeps to the room, until the screen's height changes.
+  const vp = f.viewport;
+  const room = Math.floor(vp.height - vp.safeArea.top - vp.safeArea.bottom - tk.sm * 2);
+  const capKey = `${kit.openPath()}/${id}~cap/${room}`;
+  const own = kit.bounds([kit.openPath(), id].filter(Boolean).join("/"));
+  const capped = kit.memory(capKey, 0) === 1 || (own?.height ?? 0) > room + 0.5;
+  kit.remember(capKey, capped ? 1 : 0);
   const path = open(id, {
     direction: "column",
     width: px(width),
+    ...(capped ? { height: px(room), scroll: true } : {}),
     padding: xy(tk.md + 2, tk.md),
     gap: tk.sm,
     interactive: true,

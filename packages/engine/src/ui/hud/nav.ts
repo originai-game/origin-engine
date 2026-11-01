@@ -9,7 +9,7 @@
 // tick with a pop, counts, a countdown, the tracked one marked).
 
 import type * as Api from "@origingame/engine";
-import { TAU, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props } from "./core.ts";
+import { TAU, textScale, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props, tsFit } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
 
@@ -150,7 +150,7 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}): Api.Min
         shape: ellipseShape(),
         fills: [solid(token("hud", 0.95))],
         strokes: [stroke(1, token("lineStrong"))],
-      }, () => text("Letter", desc.north ?? "N", { step: ts(10), font: "display", color: lit(role("danger")), nowrap: true }),
+      }, () => text("Letter", desc.north ?? "N", { step: tsFit(10, u(10)), font: "display", color: lit(role("danger")), nowrap: true }),
         fixed({ start: R + Math.cos(nAng) * nr - u(8), top: R + Math.sin(nAng) * nr - u(8) }));
       const r = close({ a11y: a11y("image", desc.zone || "Minimap") });
       result = { clicked: r.clicked };
@@ -232,7 +232,8 @@ export function objectiveTracker(id: string, desc: Api.ObjectiveTrackerDesc = {}
   const f = frame();
   const tk = f.t;
   const t = now();
-  const max = desc.max || (f.phone ? 2 : 3);
+  // A phone at a large text size has room for the focused quest only.
+  const max = desc.max || (f.phone ? (textScale() >= 1.5 ? 1 : 2) : 3);
   const width = Math.min(u(desc.width || 300), hudRoom());
   // Under about 280 design px the head's title and its timer cannot share a line.
   const narrow = width < u(280);
@@ -273,7 +274,12 @@ export function objectiveTracker(id: string, desc: Api.ObjectiveTrackerDesc = {}
             const s = pop(since, 0.2, 400);
             text("Complete", q.completeLabel ?? "Complete", { step: ts(14), font: "display", color: lit(role("success")), nowrap: true, outline: 1 }, { transform: { scaleX: s, scaleY: s, pivotX: 0 } });
           }
-          for (const st of q.steps ?? []) step(keyId(st.key ?? st.text ?? ""), st, tk);
+          // Open steps first when the list is cut, so what is left to do shows.
+          const all = q.steps ?? [];
+          const cap = desc.maxSteps || (f.phone && textScale() >= 1.5 ? 2 : 0);
+          const shown = cap > 0 && all.length > cap ? [...all.filter((st) => !st.done && !st.failed), ...all.filter((st) => st.done || st.failed)].slice(0, cap) : all;
+          for (const st of all) if (shown.includes(st)) step(keyId(st.key ?? st.text ?? ""), st, tk);
+          if (shown.length < all.length) text("More", `+${all.length - shown.length} more`, { step: ts(12), color: token("inkMuted"), nowrap: true, outline: 0.8 });
         }, { opacity: 1 - leave, a11y: a11y("group", q.title ?? "") });
       }
     }, { a11y: a11y("list", "Objectives") });

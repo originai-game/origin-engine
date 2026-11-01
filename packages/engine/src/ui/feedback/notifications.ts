@@ -9,7 +9,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  a11y, absolute, box, bp, clamp01, close, drop, frame, groups, glow, hudBandInset, icon, inner, keyId, kit, leaf, lit, msToTicks, now, open,
+  a11y, absolute, box, bp, clamp01, close, drop, frame, groups, glow, hudBandInset, textScale, icon, inner, keyId, kit, leaf, lit, msToTicks, now, open,
   pct, pop, px, radial, rarityColor, role, sel, shapeOf, solid, sound, stroke, text, toneRole, token, vgrad, xy, ts,
 } from "./core.ts";
 
@@ -34,7 +34,8 @@ export function notifications(id: string, desc: Api.NotificationsDesc = {}): Api
   const items = desc.items ?? [];
   const asked = desc.anchor ?? "topRight";
   const anchor: Api.Anchor = b.portrait && asked === "topRight" ? "top" : asked;
-  const max = desc.max || (b.phone ? 2 : 3);
+  // A phone at a large text size has room for one card at a time; the rest wait their turn.
+  const max = Math.min(desc.max || (b.phone ? 2 : 3), b.phone && textScale() >= 1.5 ? 1 : Infinity);
   const safe = f.viewport.safeArea;
   const width = desc.width || (b.portrait ? Math.max(240, f.viewport.width - safe.left - safe.right - tk.gutter * 2) : Math.min(380, f.viewport.width * 0.42));
   const slide = slideFor(anchor);

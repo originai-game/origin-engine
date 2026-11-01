@@ -68,7 +68,7 @@ export function hudPlace(id: string, anchor: Api.Anchor | null, build: (inAnchor
   if (middle) {
     // A stack on a side is centred as a whole on the side's middle (by its
     // extent last tick), so a tracker and a combo under it both stay on screen.
-    if (first) kit.remember(`${key}/top`, -kit.memory(`${key}/total`, 0) / 2);
+    if (first) kit.remember(`${key}/top`, sideTop(anchor, kit.memory(`${key}/total`, 0), t, gap));
     dy = kit.memory(`${key}/top`, 0) + start + h / 2;
   } else {
     dy = start;
@@ -80,6 +80,28 @@ export function hudPlace(id: string, anchor: Api.Anchor | null, build: (inAnchor
   const band = hudBandInset();
   const dx = crossOf(anchor) === "start" ? band : crossOf(anchor) === "end" ? -band : 0;
   kit.anchor(path, { anchor, direction: "column", cross: crossOf(anchor), ...more, offsetX: dx + (more.offsetX ?? 0), offsetY: dy + (more.offsetY ?? 0) }, () => build(true));
+}
+
+/**
+ * Where a stack on a side starts, from the safe area's middle: centred on
+ * it, but moved clear of the stacks at the top and bottom edges of that
+ * side (their extents last tick) when it fits between them.
+ */
+function sideTop(anchor: Api.Anchor, total: number, t: number, gap: number): number {
+  const f = frame();
+  const vp = f.viewport;
+  const half = (vp.height - vp.safeArea.top - vp.safeArea.bottom) / 2 - f.t.gutter;
+  const side = anchor === "left" ? "Left" : anchor === "right" ? "Right" : null;
+  const reach = (a: string): number => {
+    const k = `~hudStack/${a}`;
+    return kit.memory(`${k}/tick`, -10) >= t - 1 ? kit.memory(`${k}/total`, 0) : 0;
+  };
+  const above = side ? Math.max(reach("top"), reach(`top${side}`)) : 0;
+  const below = side ? Math.max(reach("bottom"), reach(`bottom${side}`)) : 0;
+  const lo = -half + (above > 0 ? above + gap : 0);
+  const hi = half - (below > 0 ? below + gap : 0) - total;
+  const centred = -total / 2;
+  return lo <= hi ? Math.min(hi, Math.max(lo, centred)) : centred;
 }
 
 /** How an anchored group lines its children up by where it sits. */

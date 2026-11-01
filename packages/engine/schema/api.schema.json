@@ -55664,7 +55664,14 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The most shown; 0 is 3 (2 on a phone).",
+          "description": "The most shown; 0 is 3 (2 on a phone, 1 on a phone at a large text size).",
+          "default": 0
+        },
+        "maxSteps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most steps a quest lists, its open ones first, the rest counted on a last line (+2 more); 0 is every step, or 2 on a phone at a large text size.",
           "default": 0
         },
         "width": {

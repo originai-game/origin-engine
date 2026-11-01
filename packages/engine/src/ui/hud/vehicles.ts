@@ -10,7 +10,7 @@
 import type * as Api from "@origingame/engine";
 import {
   TAU, a11y, fixed, anchorOf, box, bp, clamp01, ellipseShape, frame, glow, groups, hudPlace, kit, leaf, lit, mix, paintRgba, pct, pulse, px,
-  reduced, role, sel, solid, springTo, stroke, text, token, ts, u, vgrad, type Rgba,
+  reduced, role, sel, solid, springTo, stroke, text, token, ts, u, vgrad, type Rgba, ut, tsFit,
 } from "./core.ts";
 
 const START = (3 * Math.PI) / 4;
@@ -103,15 +103,15 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
         }, fixed({ start: c - size * 0.045, top: c - size * 0.045 }));
         // The speed and its unit under the hub, the gear at the bottom.
         box("Readout", { direction: "column", cross: "center", gap: 0, width: pct(1) }, undefined, () => {
-          text("Speed", String(Math.round(speed)), { step: ts(size >= 150 ? 30 : 22, true), font: "display", color: token("ink"), nowrap: true, outline: 1 });
-          text("Unit", unit, { step: ts(10), font: "mono", color: token("inkMuted"), nowrap: true });
+          text("Speed", String(Math.round(speed)), { step: tsFit(size >= 150 ? 30 : 22, size * 0.2, true), font: "display", color: token("ink"), nowrap: true, outline: 1 });
+          text("Unit", unit, { step: tsFit(10, size * 0.085), font: "mono", color: token("inkMuted"), nowrap: true });
         }, fixed({ start: 0, top: c + size * 0.08 }));
         if (desc.gear) {
           box("Gear", { width: px(size * 0.16), height: px(size * 0.16), align: "center", cross: "center", part: sel("Speedometer", "gear") }, {
             shape: { kind: "rect", radii: [3, 3, 3, 3] },
             fills: [solid(over ? lit(role("danger"), 0.4 + 0.6 * pulse(6)) : token("shadow", 0.7))],
             strokes: [stroke(1.5, over ? lit(role("danger")) : token("lineStrong"))],
-          }, () => text("Text", desc.gear ?? "", { step: ts(15, true), font: "display", color: token("ink"), nowrap: true }), fixed({ centerX: true, bottom: size * 0.04 }));
+          }, () => text("Text", desc.gear ?? "", { step: tsFit(15, size * 0.13, true), font: "display", color: token("ink"), nowrap: true }), fixed({ centerX: true, bottom: size * 0.04 }));
         }
         if (over) {
           leaf("Shift", { width: px(size * 0.1), height: px(size * 0.1), part: sel("Speedometer", "shift") }, {
@@ -195,8 +195,8 @@ export function flightHud(id: string, desc: Api.FlightHudDesc = {}): void {
   const line = (lid: string, pts: Array<[number, number]>, width: number, ink0: Api.Paint, part: string) =>
     leaf(lid, { width: px(W), height: px(H), part }, { shape: { kind: "path", points: pts.map(([x, y]) => ({ x, y })), width, cap: "round", join: "round" }, fills: [solid(ink0)], strokes: [edgeStroke] }, fixed({ start: 0, top: 0 }));
   const num = (lid: string, s: string, x: number, y: number, align: "start" | "end" | "center", step: Api.TypeStepName, ink0: Api.Paint = paint, more: { opacity?: number } = {}) => {
-    const w = u(56);
-    const lh = u(22);
+    const w = ut(56);
+    const lh = ut(22);
     text(lid, s, { step, font: "mono", color: ink0, nowrap: true, width: px(w), align, outline: 1 }, fixed({ start: align === "end" ? x - w : align === "center" ? x - w / 2 : x, top: y - lh / 2 }, more));
   };
   const narrow = W < u(420);
@@ -279,17 +279,17 @@ function tapes(W: number, H: number, desc: Api.FlightHudDesc, paint: Api.Paint, 
   const span = 60;
   const ppd = tw / span;
   const cardinal: Record<number, string> = { 0: "N", 90: "E", 180: "S", 270: "W" };
-  box("Heading", { width: px(tw), height: px(u(40)), part: sel("FlightHud", "heading") }, { clip: "shape" }, () => {
+  box("Heading", { width: px(tw), height: px(ut(40)), part: sel("FlightHud", "heading") }, { clip: "shape" }, () => {
     for (let d = Math.floor((headingDeg - span / 2) / 10) * 10; d <= headingDeg + span / 2; d += 10) {
       const x = tw / 2 + (d - headingDeg) * ppd;
       const v = ((d % 360) + 360) % 360;
       const major = v % 30 === 0;
       const fade = 1 - Math.abs((x - tw / 2) / (tw / 2)) ** 3;
-      leaf(`T${d}`, { width: px(2), height: px(major ? u(10) : u(5)) }, { fills: [solid(quiet)], strokes: [edgeStroke] }, fixed({ start: x - 1, top: u(28) - (major ? u(10) : u(5)) }, { opacity: clamp01(fade) }));
-      if (major) num(`N${d}`, cardinal[v] ?? String(v / 10).padStart(2, "0"), x, u(10), "center", ts(14), quiet, { opacity: clamp01(fade) });
+      leaf(`T${d}`, { width: px(2), height: px(major ? u(10) : u(5)) }, { fills: [solid(quiet)], strokes: [edgeStroke] }, fixed({ start: x - 1, top: ut(40) - u(12) - (major ? u(10) : u(5)) }, { opacity: clamp01(fade) }));
+      if (major) num(`N${d}`, cardinal[v] ?? String(v / 10).padStart(2, "0"), x, ut(10), "center", ts(14), quiet, { opacity: clamp01(fade) });
     }
   }, fixed({ start: tx, top: 0 }));
-  readout("Heading", String(Math.round(headingDeg) % 360).padStart(3, "0"), W / 2, u(54), paint, edgeStroke, "center");
+  readout("Heading", String(Math.round(headingDeg) % 360).padStart(3, "0"), W / 2, ut(40) + ut(16), paint, edgeStroke, "center");
   // Speed at the left, altitude at the right: a quiet tape and a large boxed readout at the boresight's height.
   const tapeW = u(64);
   const tape = (tid: "Speed" | "Altitude", value: number, unitLabel: string, x: number, step: number, side: "start" | "end") => {
@@ -314,8 +314,8 @@ function tapes(W: number, H: number, desc: Api.FlightHudDesc, paint: Api.Paint, 
 }
 
 function readout(rid: string, value: string, x: number, y: number, paint: Api.Paint, edgeStroke: Api.Stroke, align: "start" | "end" | "center"): void {
-  const w = u(76);
-  const h = u(32);
+  const w = ut(76);
+  const h = ut(32);
   box(`${rid}Box`, { width: px(w), height: px(h), align: "center", cross: "center", part: sel("FlightHud", "box") }, {
     shape: { kind: "rect", radii: [2, 2, 2, 2] },
     fills: [solid(token("shadow", 0.62))],

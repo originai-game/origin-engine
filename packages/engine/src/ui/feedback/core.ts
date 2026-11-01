@@ -305,6 +305,14 @@ export function scale(): number {
   return Math.max(1, Math.min(v.width, v.height * (16 / 9)) / 1280);
 }
 
+/** The player's text size in effect (UiDesc.textScale), 1 to 2. */
+export function textScale(): number {
+  return Math.min(2, Math.max(1, frame().theme.textScale || 1));
+}
+
+/** A length that holds text (a row's height, a readout's box): the design's, grown with the player's text size. */
+export const ut = (n: number): number => Math.round(n * scale() * textScale());
+
 /** A length of a 1280×720 design at this surface. */
 export const u = (n: number): number => Math.round(n * scale());
 
@@ -325,7 +333,9 @@ const DISPLAY_STEPS: readonly Api.TypeStepName[] = ["displaySm", "displayMd", "d
  */
 export function ts(n: number, display = false): Api.TypeStepName {
   const ramp = frame().theme.typeRamp;
-  const want = Math.max(n * scale(), minText());
+  // The ramp already carries the player's text size, so the size wanted
+  // does too: at 200 % a label takes a step twice as large, not the same one.
+  const want = Math.max(n * scale(), minText()) * textScale();
   const list = display && n >= 28 ? DISPLAY_STEPS : TEXT_STEPS;
   let best: Api.TypeStepName = list[list.length - 1]!;
   let bestSize = Infinity;
@@ -337,6 +347,29 @@ export function ts(n: number, display = false): Api.TypeStepName {
     }
   }
   return best;
+}
+
+/**
+ * The type step for text that sits inside a fixed mark (a slot's
+ * cooldown, a dial's readout, an icon's fallback letter): ts(n), grown
+ * with the player's text size, but never over `maxPx`, so it stays inside
+ * the art it labels rather than spilling past it.
+ */
+export function tsFit(n: number, maxPx: number, display = false): Api.TypeStepName {
+  const best = ts(n, display);
+  const ramp = frame().theme.typeRamp;
+  if ((ramp[best]?.size ?? 0) <= maxPx) return best;
+  const list = display && n >= 28 ? DISPLAY_STEPS : TEXT_STEPS;
+  let fit: Api.TypeStepName = list[0]!;
+  let fitSize = -Infinity;
+  for (const st of [...TEXT_STEPS, ...(display ? DISPLAY_STEPS : [])]) {
+    const size = ramp[st]?.size ?? 0;
+    if (size <= maxPx && size > fitSize) {
+      fit = st;
+      fitSize = size;
+    }
+  }
+  return fit;
 }
 
 /** A type step's size and line height in the frame's style. */
@@ -359,7 +392,7 @@ export function icon(id: string, name: string, size: number, tint: Paint, label 
     fills: [solid({ ...tint, alpha: (tint.alpha ?? 1) * 0.22 })],
     strokes: [stroke(Math.max(1.5, size / 14), tint)],
   }, () => {
-    if (name) text("Mark", name.slice(0, 1).toUpperCase(), { step: size >= 30 ? ts(16) : ts(13), color: tint, nowrap: true, font: "display" });
+    if (name) text("Mark", name.slice(0, 1).toUpperCase(), { step: tsFit(size >= 30 ? 16 : 13, size * 0.6), color: tint, nowrap: true, font: "display" });
   }, label ? { a11y: a11y("image", label) } : undefined);
 }
 

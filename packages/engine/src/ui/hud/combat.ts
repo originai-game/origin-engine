@@ -12,7 +12,7 @@
 import type * as Api from "@origingame/engine";
 import {
   a11y, absolute, anchorOf, arc, box, chip, clamp01, easeOut, edge, ellipseShape, frame, glow, groups, hudPlace, icon, keyId, kit, leaf, lit,
-  msToTicks, now, paintRgba, pct, pulse, px, reduced, role, sel, solid, sound, springTo, stroke, teamColor, text, token, ts, u, type Rgba,
+  msToTicks, now, paintRgba, pct, pulse, px, reduced, role, sel, solid, sound, springTo, stroke, teamColor, text, token, ts, u, type Rgba, textScale,
 } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
@@ -109,7 +109,10 @@ export function ammoCounter(id: string, desc: Api.AmmoDesc = {}): void {
     box(id, { direction: "column", gap: u(4), cross: "end", padding: { left: tk.md, right: tk.md, top: tk.sm, bottom: tk.sm }, part: sel("Ammo", "frame", state === "full" ? null : state), partClass: "hud" }, chip(), () => {
       const e = edge("mag", mag);
       sound("warning", e.changed && mag === 0);
-      if (desc.weapon || desc.icon || desc.fireMode) {
+      // A short screen at a large text size keeps the count and drops the weapon's line.
+      const vp = frame().viewport;
+      const short = vp.height - vp.safeArea.top - vp.safeArea.bottom < 480 && textScale() >= 1.5;
+      if ((desc.weapon || desc.icon || desc.fireMode) && !short) {
         kit.row("Weapon", { gap: tk.sm, cross: "center" }, () => {
           if (desc.icon) icon("Icon", desc.icon, u(22), token("ink"));
           if (desc.weapon) text("Name", desc.weapon, { step: ts(13), font: "display", color: token("inkMuted"), nowrap: true, outline: 0.8 });

@@ -8,6 +8,7 @@
 //   viewport:<desktop|ultrawide|tablet|phone|landscape>  (og.ui.previewViewport; render at the matching --size)
 //   lang:<en|ar|pseudo>     ar lays out right to left; pseudo is 40 % longer, accented and bracketed
 //   style:<prototype|scifi|fantasy|arcade|tactical|broadcast>
+//   text:<percent>          the player's text size, 100 to 200 (§15.2 holds every screen to 200)
 //   act:<hit|crit|heal|ready|empty|reload|interrupt|ping|say|complete|combo|score|break|place>
 //   reset   every act forgotten, the clock of the screen started again
 //
@@ -50,6 +51,8 @@ const state = {
    * with that frame's tick.
    */
   queue: [] as Array<() => void>,
+  /** The player's text size (UiDesc.textScale), 1 to 2. */
+  textScale: 1,
 };
 
 /** The pseudo-locale: 40 % longer, accented and bracketed (the checks' own), numbers as they are. */
@@ -223,7 +226,8 @@ function abilitiesScreen(): void {
   const interrupted = did("interrupt");
   // Built after the ability bar at the same anchor: they stack above it.
   og.ui.castBar("Cast", { name: L("Pyroblast"), icon: "fire", progress: Math.min(0.97, (s % 3.5) / 3.5), remaining: 3.5 - (s % 3.5), latency: 0.08, state: interrupted ? "interrupted" : "casting", stateAt: state.acts.interrupt ?? 0, anchor: "bottom", width: { kind: "fixed", px: 340 } });
-  og.ui.castBar("Channel", { name: L("Arcane Missiles"), icon: "sparks", channel: true, ticks: 5, progress: Math.min(1, (s % 2.5) / 2.5), remaining: 2.5 - (s % 2.5), anchor: "bottom", width: { kind: "fixed", px: 340 } });
+  // A phone held sideways has room over its ability bar for two bars, not three.
+  if (og.ui.frameViewport().breakpoint !== "phoneLandscape") og.ui.castBar("Channel", { name: L("Arcane Missiles"), icon: "sparks", channel: true, ticks: 5, progress: Math.min(1, (s % 2.5) / 2.5), remaining: 2.5 - (s % 2.5), anchor: "bottom", width: { kind: "fixed", px: 340 } });
   og.ui.castBar("Boss", { name: L("Cataclysm"), icon: "skull", uninterruptible: true, progress: 0.42, remaining: 4.2, anchor: "bottom", width: { kind: "fixed", px: 340 } });
 }
 
@@ -327,7 +331,8 @@ function strategyScreen(): void {
     ],
   });
   og.ui.objectiveTracker("Quests", {
-    width: small() ? 220 : 0,
+    // Narrow on a phone, but at a large text size wide enough that its lines do not stack up.
+    width: small() && state.textScale < 1.5 ? 220 : 0,
     quests: [
       {
         key: "main", title: L("The Siege of Lordaeron"), icon: "star", focused: true, distance: 312, timer: Math.max(0, 88 - s),
@@ -344,6 +349,9 @@ function strategyScreen(): void {
   });
   og.ui.turnOrder("Turns", {
     max: small() ? 4 : 8,
+    // On a phone the top is the resources' and the right the tracker's: the order sits at the bottom
+    // (held sideways, under the combo at the bottom left).
+    ...(og.ui.frameViewport().breakpoint === "phonePortrait" ? { anchor: "bottom" as const } : og.ui.frameViewport().breakpoint === "phoneLandscape" ? { anchor: "bottomLeft" as const } : {}),
     units: [
       { key: "hero", name: "Tidus", current: true, atb: 1 },
       { key: "imp", name: "Imp", team: 1, atb: 0.72 },
@@ -380,7 +388,8 @@ function racingScreen(): void {
   const s = seconds();
   const rpm = 0.45 + 0.5 * Math.abs(Math.sin(s * 0.8));
   og.ui.speedometer("Speedo", { speed: 118 + rpm * 120, maxSpeed: 320, rpm, gear: rpm > 0.85 ? "5" : "4", boost: 0.66 });
-  og.ui.speedometer("Digital", { speed: 287, maxSpeed: 320, rpm: 0.93, gear: "6", style: "digital", anchor: "bottomLeft" });
+  // On a phone held upright the two dials do not fit side by side: the digital one sits on the left side.
+  og.ui.speedometer("Digital", { speed: 287, maxSpeed: 320, rpm: 0.93, gear: "6", style: "digital", anchor: og.ui.frameViewport().breakpoint === "phonePortrait" ? "left" : "bottomLeft" });
   og.ui.hudTimer("Lap", { seconds: 83.4 + s, mode: "stopwatch", label: L("Lap 2/3") });
 }
 
@@ -458,6 +467,7 @@ function applyStyle(world: World): void {
     displayFont: state.fonts.body && !style ? (state.fonts.body as never) : null,
     style,
     icons: state.fonts.icons ? { font: state.fonts.icons as never } : null,
+    textScale: state.textScale,
   });
 }
 
@@ -561,6 +571,10 @@ export default og.game({
       state.style = (STYLES as readonly string[]).includes(args[0] ?? "") ? (args[0] as (typeof STYLES)[number]) : "prototype";
       applyStyle(world);
     },
+    text: (world, args) => {
+      state.textScale = Math.min(2, Math.max(1, Number(args[0]) / 100 || 1));
+      applyStyle(world);
+    },
     act: (_world, args) => {
       state.queue.push(() => act(args[0] ?? "hit"));
     },
@@ -573,6 +587,7 @@ export default og.game({
     viewport: { usage: "<desktop|ultrawide|tablet|phone|landscape>", doc: "Lay the UI out for that surface (og.ui.previewViewport)." },
     lang: { usage: "<en|ar|pseudo>", doc: "English, Arabic (right to left) or the pseudo-locale (40 % longer, accented, bracketed)." },
     style: { usage: `<${STYLES.join("|")}>`, doc: "Dress the components in a built-in style." },
+    text: { usage: "<percent>", doc: "The player's text size, 100 to 200 (og.ui.configure's textScale)." },
     act: { usage: "<hit|crit|heal|ready|empty|reload|interrupt|ping|say|complete|combo|score|break|place>", doc: "Something happens: a hit, a crit, a ping, a cooldown ending, a magazine running dry." },
     reset: { usage: "", doc: "Forget every act and start the screen's clock again." },
   },
