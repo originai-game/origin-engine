@@ -17773,6 +17773,12 @@ export interface ElementDesc {
    */
   readonly focusable?: boolean;
   /**
+   * With focusable: Left and Right (a pad's left and right) are its own while it has the focus: they step it (Response.adjust) instead of moving the focus, as a slider's do (a menu row opening its submenu, a carousel, a divider).
+   *
+   * @default false
+   */
+  readonly adjustable?: boolean;
+  /**
    * Its fill; null draws none.
    *
    * @default null
@@ -18270,6 +18276,10 @@ export interface Response {
    * Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads).
    */
   readonly focusedBy: number;
+  /**
+   * An adjustable element's (ElementDesc.adjustable) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise.
+   */
+  readonly adjust: number;
 }
 
 /** A slider's response and its value after this tick's input. */

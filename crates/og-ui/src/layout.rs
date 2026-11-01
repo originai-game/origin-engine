@@ -295,6 +295,11 @@ pub struct Element {
     /// a tab of a component): it takes the focus ring and Enter, Space or
     /// the pad's A press it, as a button.
     pub focusable: bool,
+    /// With focusable: Left and Right (a pad's left and right) are its
+    /// own while it has the focus: they step it ([`crate::Response::adjust`])
+    /// instead of moving the focus (a menu row opening its submenu, a
+    /// carousel, a divider).
+    pub adjustable: bool,
     pub background: Option<Srgba>,
     /// Corner radius in CSS pixels (clamped to half the shorter side).
     pub radius: f32,

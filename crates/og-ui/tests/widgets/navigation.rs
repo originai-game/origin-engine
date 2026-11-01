@@ -733,6 +733,61 @@ fn a_focusable_container_takes_keys_and_pads_as_a_button() {
     assert_eq!(rig.state.clicks, [2, 1], "the pointer reaches both");
 }
 
+/// An adjustable focusable container takes Left and Right while it has
+/// the focus (Response.adjust, the screen's directions) and keeps the
+/// focus; Up and Down still move it, and a plain focusable one lets Left
+/// and Right move the focus. Ways it could fail: Right moves the focus off
+/// the row (a submenu could never open from the keyboard), the step is
+/// reported to a row that is not focused, or the sign is the reading
+/// order's.
+#[test]
+fn an_adjustable_container_takes_left_and_right_while_focused() {
+    #[derive(Default)]
+    struct Rows {
+        adjust: Vec<i32>,
+    }
+    let mut rig = Rig::new(Rows::default());
+    let b = &mut |ui: &mut Ui, s: &mut Rows| {
+        s.adjust.clear();
+        ui.button("Side", "Side", ButtonDesc::default());
+        ui.column("Menu", Element::column(), |ui| {
+            for k in 0..2u32 {
+                ui.open(
+                    ui_idi("Row", k),
+                    Element {
+                        interactive: true,
+                        focusable: true,
+                        adjustable: k == 0,
+                        padding: Insets::all(8.0),
+                        ..Element::row()
+                    },
+                );
+                ui.label("Name", "Row", LabelDesc::default());
+                s.adjust.push(ui.close().adjust);
+            }
+        });
+    };
+    rig.idle(2, b);
+    rig.key(UiKey::Tab, b);
+    rig.key(UiKey::Tab, b);
+    assert_eq!(rig.ui.focus_path(0), "Menu/Row#0");
+    rig.step(keys(&[UiKey::Right]), b);
+    assert_eq!(rig.state.adjust, [1, 0], "Right steps it forward");
+    rig.step(InputFrame::default(), b);
+    assert_eq!(rig.state.adjust, [0, 0], "one tick");
+    assert_eq!(rig.ui.focus_path(0), "Menu/Row#0", "and the focus stays");
+    rig.step(keys(&[UiKey::Left]), b);
+    assert_eq!(rig.state.adjust, [-1, 0]);
+    rig.key(UiKey::Down, b);
+    assert_eq!(rig.ui.focus_path(0), "Menu/Row#1", "Down still moves");
+    rig.key(UiKey::Right, b);
+    assert_ne!(
+        rig.ui.focus_path(0),
+        "Menu/Row#1",
+        "a plain row lets Right move the focus"
+    );
+}
+
 /// `last_path` names the element just built by its full path (what
 /// `bounds` and `gesture` take), inside nested containers and after a
 /// container closes; empty before anything is built.

@@ -300,6 +300,11 @@ pub const PROPS: &[PropSpec] = &[
         "With interactive: keys and pads reach it and press it."
     ),
     p!(
+        "adjustable",
+        Ty::Bool,
+        "With focusable: Left and Right step it while it has the focus instead of moving the focus."
+    ),
+    p!(
         "visible",
         Ty::Bool,
         "False leaves it (and its subtree) out of the tree."

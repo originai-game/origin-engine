@@ -368,6 +368,9 @@ impl Ui {
         if r.has("focusable") {
             el.focusable = r.flag("focusable");
         }
+        if r.has("adjustable") {
+            el.adjustable = r.flag("adjustable");
+        }
         el
     }
 

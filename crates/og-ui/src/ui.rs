@@ -61,6 +61,10 @@ pub struct Response {
     /// Bit `k`: pad `k`'s focus is on it (pad 0's is `focused`; pads 1 to 3
     /// while [`Ui::set_players`] allows them).
     pub focused_by: u32,
+    /// An adjustable element's Left and Right this tick while it has the
+    /// focus: +1 for each press of Right, -1 for Left (the screen's
+    /// directions, not the reading order); 0 for any other element.
+    pub adjust: i32,
 }
 
 pub(crate) const HIT_SCROLL: u16 = 1;

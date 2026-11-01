@@ -410,6 +410,7 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `aspect` | number | all | Width over height (0: none). |
 | `interactive` | bool | all | It reports clicks (`on click`). |
 | `focusable` | bool | all | With interactive: keys and pads reach it and press it. |
+| `adjustable` | bool | all | With focusable: Left and Right step it while it has the focus instead of moving the focus. |
 | `visible` | bool | all | False leaves it (and its subtree) out of the tree. |
 | `name` | text | all | What a screen reader calls it. |
 | `part` | name | all | Its part name a style dresses (`ShopCard.frame`); the document's `parts` lists them. |
