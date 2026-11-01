@@ -7,7 +7,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  all, beside, chevron, clamp, fit, flags, floating, floatingContent, frame, grow, kit, mark, over, paint, px, role, spring, still,
+  all, beside, chevron, clamp, fit, flags, floating, floatingContent, frame, grow, kit, mark, over, paint, px, role, rtl, spring, still,
   surface, text, token, xy,
   type Placed, type Rgba, type Side,
 } from "./base.ts";
@@ -168,9 +168,12 @@ const ROW = 40;
  * shortcut or a submenu chevron; separators and group headers; disabled
  * and danger items; checkable and radio items; submenus (entries whose
  * `parent` names another's id) that open beside their row on hover or
- * activation. It hangs from an element (`anchor`) or at a point (`at`: a
- * context menu). Keys and pads walk its rows; Back closes a submenu, then
- * the menu. Answers the entry chosen this tick.
+ * activation, or on the forward arrow (Right; Left in a right-to-left
+ * locale) and a pad's forward direction from its row. It hangs from an
+ * element (`anchor`) or at a point (`at`: a context menu). Keys and pads
+ * walk its rows; the back arrow and Back close a submenu (the focus
+ * returns to its row), then Back the menu. Answers the entry chosen this
+ * tick.
  */
 export function menu(id: string, open: boolean, desc: Api.MenuDesc): Api.MenuChoice {
   const { viewport } = frame();
@@ -187,7 +190,7 @@ export function menu(id: string, open: boolean, desc: Api.MenuDesc): Api.MenuCho
     const r = menuRows(entries, "", desc, (i, why) => {
       if (why === "open") nextSub = i + 1;
       else if (why === "hover" && nextSub !== i + 1) nextSub = i + 1;
-    }, sub - 1);
+    }, sub - 1, () => {});
     if (r.chosen !== null) chosen = r.chosen;
     if (r.hoveredPlain) nextSub = 0;
   }, (place) => rise(place, side));
@@ -198,7 +201,7 @@ export function menu(id: string, open: boolean, desc: Api.MenuDesc): Api.MenuCho
   if (parent && (subOpen || kit.memory(`${id}~subVisible`, 0) > 0)) {
     const row = kit.bounds(`${f.path}/${kit.idi("Item", sub - 1)}`) ?? anchor;
     const s = floating(`${id}.sub`, subOpen, {}, (size) => beside(row, size, "end", 2, "start"), () => {
-      const r = menuRows(entries, parent.id ?? "", desc, () => {}, -1);
+      const r = menuRows(entries, parent.id ?? "", desc, () => {}, -1, () => (nextSub = 0));
       if (r.chosen !== null) chosen = r.chosen;
     }, (place) => rise(place, "end"));
     kit.remember(`${id}~subVisible`, s.visible ? 1 : 0);
@@ -218,8 +221,10 @@ export function contextMenu(id: string, open: boolean, at: Api.Vector2, desc: Ap
   return menu(id, open, { ...desc, at });
 }
 
-function menuRows(entries: readonly Api.MenuEntry[], parent: string, desc: Api.MenuDesc, onSub: (index: number, why: "open" | "hover") => void, openSub: number): { chosen: string | null; hoveredPlain: boolean } {
+function menuRows(entries: readonly Api.MenuEntry[], parent: string, desc: Api.MenuDesc, onSub: (index: number, why: "open" | "hover") => void, openSub: number, onBack: () => void): { chosen: string | null; hoveredPlain: boolean } {
   const { t, viewport } = frame();
+  // The arrow that goes deeper: Right, Left under a right-to-left locale (Response.adjust is physical).
+  const forward = rtl() ? -1 : 1;
   let chosen: string | null = null;
   let hoveredPlain = false;
   const anyCheck = entries.some((e) => (e.parent ?? "") === parent && (e.kind === "check" || e.kind === "radio"));
@@ -249,10 +254,13 @@ function menuRows(entries: readonly Api.MenuEntry[], parent: string, desc: Api.M
         part: "Menu.item",
         cls: "chip",
         flags: [danger ? "danger" : "", checked ? "checked" : "", hasSub && openSub === i ? "expanded" : ""],
+        ...(hasSub ? { expanded: openSub === i } : {}),
         fill: null,
         wash: danger ? role("danger") : undefined,
         washBy: 0.14,
         disabled: e.disabled ?? false,
+        // Left and Right are the rows' own: forward opens a submenu, back closes this one.
+        adjustable: true,
         width: grow(),
         height: px(Math.max(ROW, t.controlMd)),
         padding: xy(t.sm, 0),
@@ -289,6 +297,8 @@ function menuRows(entries: readonly Api.MenuEntry[], parent: string, desc: Api.M
         if (hasSub) onSub(i, "open");
         else chosen = e.id ?? null;
       }
+      if (r.adjust === forward && hasSub) onSub(i, "open");
+      else if (r.adjust === -forward) onBack();
     });
   });
   kit.semantics({ role: "menu", name: desc.label ?? "" });

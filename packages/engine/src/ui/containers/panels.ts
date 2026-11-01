@@ -50,6 +50,7 @@ export function card(id: string, desc: Api.CardDesc, build: Api.UiBuild): Api.Re
       part: "Card.frame",
       cls: CARD_CLASS[variant] ?? "card",
       flags: [selected ? "selected" : "", variant],
+      selected,
       fill: role(fillRole),
       washBy: 0.07,
       disabled,
@@ -203,6 +204,7 @@ export function accordion(id: string, desc: Api.AccordionDesc, build: Api.UiItem
         part: "Accordion.header",
         cls: "tab",
         flags: [open ? "expanded" : "collapsed"],
+        expanded: open,
         fill: null,
         disabled: s.disabled ?? false,
         width: grow(),
@@ -216,7 +218,7 @@ export function accordion(id: string, desc: Api.AccordionDesc, build: Api.UiItem
           if (s.subtitle) text("Subtitle", s.subtitle, { step: "caption", color: "inkMuted", width: grow(), ellipsis: true, nowrap: true });
         });
         if (s.badge) kit.badge("Badge", s.badge, s.badgeTone ?? "neutral");
-        chevron("Chevron", "down", 18, role(s.disabled ? "inkFaint" : "inkMuted"), kit.animate("~turn", open ? 2 : 0, spring("ui")));
+        chevron("Chevron", "down", 18, role(s.disabled ? "inkFaint" : "inkMuted"), { group: "expansion", current: open ? "expanded" : "collapsed", turns: { collapsed: 0, expanded: 2 } });
       });
       if (r.clicked) {
         toggled = i;
@@ -292,6 +294,7 @@ export function splitView(id: string, desc: Api.SplitViewDesc, start: Api.UiBuil
       cross: "center",
       radius: handle / 2,
       semantics: { role: "separator", name: desc.label ?? "", valueMin: 0, valueMax: 100, valueNow: Math.round(ratio * 100), value: `${Math.round(ratio * 100)}%` },
+      props: { drag: { axis: across ? "x" : "y", returnHome: true, threshold: 3, spring: { kind: "instant" } }, hitSlop: 6 },
     }, () => {
       const was = lastInteraction("Divider");
       const hot = was.hovered || was.pressed || was.focused || (ges?.held ?? false);
@@ -299,7 +302,6 @@ export function splitView(id: string, desc: Api.SplitViewDesc, start: Api.UiBuil
       kit.close();
       kit.props({ motion: spring("ui") });
     });
-    kit.props({ drag: { axis: across ? "x" : "y", returnHome: true, threshold: 3, spring: { kind: "instant" } }, hitSlop: 6 });
     rememberPath(`${key}/Divider`, kit.lastPath());
     if (r.clicked && !ges?.dragging && held === 0) {
       const snaps = desc.snaps && desc.snaps.length > 0 ? desc.snaps : [0.33, 0.5, 0.67];

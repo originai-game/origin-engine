@@ -47,6 +47,8 @@ function elements(engine: Engine): Element[] {
 }
 const find = (engine: Engine, pred: (e: Element) => boolean) => elements(engine).find(pred);
 const byPath = (engine: Engine, end: string) => find(engine, (e) => e.path.endsWith(end));
+/** The path of the element keys and pads focus, from the dump's states ("" when none). */
+const focused = (engine: Engine) => find(engine, (e) => e.states.includes("focused"))?.path ?? "";
 
 function tap(engine: Engine, path: string): void {
   const r = engine.probe.commands(`0:touch_move_to:${path};0.05:touch_start;0.1:touch_end`) as unknown as { warnings: string[] };
@@ -82,6 +84,40 @@ test("tabBar: the bumper steps to the next enabled tab, skipping a disabled one,
   expect(sel).toBe(1);
   expect(byPath(engine, "Tabs/Panel")?.role).toBe("tabpanel");
   expect(byPath(engine, "Panel/Body")?.text).toBe("Panel 1");
+});
+
+// ── visual states ───────────────────────────────────────────────────────
+
+test("states: parts move through §7.3 state groups (selection, interaction, expansion) a style's motion runs", () => {
+  // Wrong: a part animated by the component's own tween (no group, so a style's motion and the probe's forceState never reach it).
+  let sel = 0;
+  let open: number[] = [];
+  // Read inside the tick (og.ui answers the UI being built): each watched path's groups.
+  const watched: Array<[path: string, group: string]> = [];
+  let seen = new Map<string, string>();
+  const engine = run(() => {
+    sel = og.ui.tabBar("Tabs", { tabs: [{ label: "Gear" }, { label: "Skills" }], selected: sel }, () => {}).selected;
+    open = og.ui.accordion("Faq", { sections: [{ title: "Rules" }], expanded: open }, () => og.ui.label("Text", "Body", {})).expanded.slice();
+    seen = new Map(watched.map(([p, g]) => [`${p}:${g}`, og.ui.visualState(p, g)]));
+  });
+  const path = (end: string) => byPath(engine, end)!.path;
+  for (const [end, groups] of [["Tab#0", ["selection", "interaction"]], ["Tab#1", ["selection", "interaction"]], ["Section#0/Header", ["expansion"]], ["Section#0/Header/Chevron", ["expansion"]]] as const) {
+    for (const g of groups) watched.push([path(end), g]);
+  }
+  engine.advance(1);
+  const vs = (end: string, group: string) => seen.get(`${path(end)}:${group}`);
+  expect([vs("Tab#0", "selection"), vs("Tab#1", "selection")]).toEqual(["on", "off"]);
+  expect(vs("Tab#1", "interaction")).toBe("normal");
+  engine.probe.commands("0:touch_move_to:Tab#1");
+  engine.advance(4);
+  expect(vs("Tab#1", "interaction")).toBe("hover");
+  tap(engine, "Tab#1");
+  expect(sel).toBe(1);
+  expect([vs("Tab#0", "selection"), vs("Tab#1", "selection")]).toEqual(["off", "on"]);
+  expect([vs("Section#0/Header", "expansion"), vs("Section#0/Header/Chevron", "expansion")]).toEqual(["collapsed", "collapsed"]);
+  tap(engine, "Section#0/Header");
+  expect(open).toEqual([0]);
+  expect([vs("Section#0/Header", "expansion"), vs("Section#0/Header/Chevron", "expansion")]).toEqual(["expanded", "expanded"]);
 });
 
 // ── accordion ───────────────────────────────────────────────────────────
@@ -156,6 +192,59 @@ test("menu: Back closes it, answering dismissed without a choice", () => {
   key(engine, "Escape");
   expect(open).toBeFalse();
   expect(chosen).toBeNull();
+});
+
+test("menu: the forward arrow opens a submenu into its first entry, the back arrow closes it to its row; mirrored in right to left", () => {
+  // Wrong: Right moves the focus off the row (or wraps), Left in the submenu leaves it open, or the arrows are not mirrored.
+  for (const dir of ["ltr", "rtl"] as const) {
+    let chosen: string | null = null;
+    const engine = run(() => {
+      og.ui.button("Opener", "Options", {});
+      const r = og.ui.menu("Menu", true, {
+        anchor: og.ui.lastPath(),
+        entries: [
+          { id: "copy", label: "Copy" },
+          { id: "sort", label: "Sort by" },
+          { id: "byName", label: "Name", parent: "sort" },
+          { id: "byLevel", label: "Level", parent: "sort" },
+        ],
+      });
+      if (r.chosen !== null) chosen = r.chosen;
+    }, 640, dir === "rtl" ? kit : undefined);
+    if (dir === "rtl") {
+      const loaded = og.i18n.load(engine.world, "strings/ar.ogt");
+      if (!loaded.ok) throw new Error(loaded.reason);
+      og.i18n.setLocale(engine.world, "ar-EG");
+    }
+    engine.advance(12);
+    const [fwd, back] = dir === "rtl" ? ["ArrowLeft", "ArrowRight"] : ["ArrowRight", "ArrowLeft"];
+    // Opened, the focus is on its first entry; Down reaches the submenu's row.
+    expect(focused(engine).endsWith("Content/Item#0")).toBeTrue();
+    key(engine, "ArrowDown");
+    expect(focused(engine).endsWith("Content/Item#1")).toBeTrue();
+    key(engine, fwd);
+    engine.advance(12);
+    expect(find(engine, (e) => e.role === "menuitem" && e.name === "Name")).toBeDefined();
+    expect(find(engine, (e) => e.name === "Sort by")?.states).toContain("expanded");
+    expect(focused(engine)).toContain("Menu.sub/");
+    key(engine, back);
+    engine.advance(12);
+    expect(find(engine, (e) => e.role === "menuitem" && e.name === "Name") === undefined).toBeTrue();
+    expect(focused(engine).endsWith("Content/Item#1")).toBeTrue();
+    // The pad's d-pad does the same.
+    const [padFwd, padBack] = dir === "rtl" ? ["left", "right"] : ["right", "left"];
+    engine.probe.commands(`0:gamepad:${padFwd};0.05:gamepad:-`);
+    engine.advance(16);
+    expect(focused(engine)).toContain("Menu.sub/");
+    engine.probe.commands(`0:gamepad:${padBack};0.05:gamepad:-`);
+    engine.advance(16);
+    expect(focused(engine).endsWith("Content/Item#1")).toBeTrue();
+    // Forward again and Enter chooses in the submenu.
+    key(engine, fwd);
+    engine.advance(12);
+    key(engine, "Enter");
+    expect(chosen).toBe("byName");
+  }
 });
 
 test("menu: a press while it still eases in chooses (nothing waits for the open motion)", () => {
@@ -312,6 +401,40 @@ test("radialMenu: a stick's aim chooses the slice it points at, a release picks 
   expect(picked).toBe(2);
 });
 
+test("radialMenu: the pointer picks by angle anywhere on a slice; a release in the hole cancels; Right steps round", () => {
+  // Wrong: slices hit-tested as overlapping rectangles (the topmost wins everywhere), or a press in the hole that chooses.
+  let picked: number | null = null;
+  let hovered: number | null = null;
+  const engine = run(() => {
+    const r = og.ui.radialMenu("Wheel", true, { items: [{ label: "Up" }, { label: "Right" }, { label: "Down" }, { label: "Left" }, { label: "Bag", disabled: true }, { label: "Map" }] });
+    if (r.chosen !== null) picked = r.chosen;
+    hovered = r.hovered;
+  });
+  engine.advance(20);
+  const w = find(engine, (e) => e.role === "menu")!;
+  const cx = w.x + w.width / 2, cy = w.y + w.height / 2, R = w.width / 2;
+  // Six slices of 60° from the top, clockwise: a point near the edge between Down (2) and Left (3), on Left's side,
+  // near the rim and near the hole.
+  const at = (deg: number, r: number) => `${Math.round(cx + Math.sin((deg * Math.PI) / 180) * r)},${Math.round(cy - Math.cos((deg * Math.PI) / 180) * r)}`;
+  for (const [deg, r, want] of [[150 + 4, R * 0.95, 3], [150 - 4, R * 0.95, 2], [150 + 6, R * 0.5, 3], [0, R * 0.7, 0], [330 + 25, R * 0.8, 0], [300, R * 0.8, 5]] as const) {
+    engine.probe.commands(`0:touch_move:${at(deg, r)}`);
+    engine.advance(3);
+    expect([deg, hovered]).toEqual([deg, want]);
+  }
+  engine.probe.commands(`0:touch_move:${at(190, R * 0.8)};0.05:touch_start;0.1:touch_end`);
+  engine.advance(12);
+  expect(picked).toBe(3);
+  picked = null;
+  engine.probe.commands(`0:touch_move:${Math.round(cx)},${Math.round(cy)};0.05:touch_start;0.1:touch_end`);
+  engine.advance(12);
+  expect(picked).toBeNull();
+  // Right steps clockwise, skipping the disabled Bag (4).
+  key(engine, "ArrowRight");
+  expect(hovered).toBe(5);
+  key(engine, "Enter");
+  expect(picked).toBe(5);
+});
+
 // ── data ────────────────────────────────────────────────────────────────
 
 const ROWS = Array.from({ length: 10_000 }, (_, i) => ({ name: `Player ${String(i).padStart(5, "0")}`, score: (i * 7919) % 10_007, guild: ["Ash", "Brine", "Cinder"][i % 3] }));
@@ -441,6 +564,38 @@ test("chart: a figure described from its data; each category a target that answe
   // The value axis reaches past the largest value on a round step.
   const ticks = elements(engine).filter((e) => e.parent.startsWith("Tick#")).map((e) => e.text);
   expect(ticks[0]).toBe("500");
+});
+
+test("chart: a pointer anywhere inside a pie's wedge picks that wedge, at its edges and by the centre too; mirrored in right to left", () => {
+  // Wrong: wedges hit-tested by rectangles (a neighbour's overlaps a wedge's edge and the centre), or angles counted the wrong way.
+  for (const dir of ["ltr", "rtl"] as const) {
+    let hovered: number | null = null;
+    let clicked: number | null = null;
+    const engine = run(() => {
+      const r = og.ui.chart("Loot", { kind: "pie", categories: ["A", "B", "C"], series: [{ values: [1, 1, 2] }] });
+      hovered = r.hovered;
+      if (r.clicked !== null) clicked = r.clicked;
+    }, 640, dir === "rtl" ? kit : undefined);
+    if (dir === "rtl") {
+      const loaded = og.i18n.load(engine.world, "strings/ar.ogt");
+      if (!loaded.ok) throw new Error(loaded.reason);
+      og.i18n.setLocale(engine.world, "ar-EG");
+    }
+    engine.advance(40);
+    const plot = byPath(engine, "Body/Plot")!;
+    const cx = plot.x + plot.width / 2, cy = plot.y + plot.height / 2, R = plot.width / 2 - 8;
+    // Clockwise from 12 o'clock (counter-clockwise in right to left): A a quarter, B a quarter, C a half.
+    const s = dir === "rtl" ? -1 : 1;
+    const at = (deg: number, r: number) => `${Math.round(cx + s * Math.sin((deg * Math.PI) / 180) * r)},${Math.round(cy - Math.cos((deg * Math.PI) / 180) * r)}`;
+    for (const [deg, r, want] of [[86, 0.55, 0], [94, 0.55, 1], [176, 0.9, 1], [184, 0.9, 2], [45, 0.12, 0], [135, 0.12, 1], [300, 0.5, 2], [3, 0.95, 0]] as const) {
+      engine.probe.commands(`0:touch_move:${at(deg, R * r)}`);
+      engine.advance(3);
+      expect([dir, deg, r, hovered]).toEqual([dir, deg, r, want]);
+    }
+    engine.probe.commands(`0:touch_move:${at(135, R * 0.6)};0.05:touch_start;0.1:touch_end`);
+    engine.advance(12);
+    expect(clicked).toBe(1);
+  }
 });
 
 test("chart: a donut lists its wedges with their shares; a pie with no data shows the empty state", () => {

@@ -244,8 +244,7 @@ export function table(id: string, desc: Api.TableDesc): Api.TableResult {
             semantics: { role: "columnheader", name: label, value: on ? (descending ? "sorted descending" : "sorted ascending") : "" },
           }, () => {
             text("Label", label, { step: "caption", color: on ? "ink" : "inkMuted", nowrap: true, ellipsis: true, font: on ? "display" : "body" });
-            const turn = kit.animate("~turn", descending ? 1 : -1, spring("ui"));
-            if (on) chevron("Sort", "forward", 14, role("primary"), turn, 2);
+            if (on) chevron("Sort", "forward", 14, role("primary"), { group: "sort", current: descending ? "descending" : "ascending", turns: { ascending: -1, descending: 1 } }, 2);
           });
           if (r.clicked) {
             if (on) descending = !descending;
