@@ -1415,7 +1415,7 @@ export interface SaveEdit {
    */
   transform(name: string, map: RecordFn, desc?: TransformDesc): Result<void>;
   /**
-   * Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes.
+   * Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes. The migrated world holds the records a world built at the new version holds, and every peer and every restore of the same save migrates to the same world and hash; its hash differs from a built one's only by the archetypes the built one passed through (inserting the new types one at a time leaves an empty archetype of the first alone, which the split never makes), so compare a split's result record by record, not by hash. renameField, renameType, transform, dropType and spawn keep which types sit together: those migrate to a built world's hash exactly.
    *
    * @param name The saved type.
    * @param map The old record to the new types' records.
@@ -1858,7 +1858,7 @@ export interface GameDesc {
    */
   readonly saveVersion?: number;
   /**
-   * The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order, so a save of any earlier version arrives at the current one (rename a field, transform values with the old record in hand, drop or split a type, add an entity).
+   * The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order, so a save of any earlier version arrives at the current one (rename a field, transform values with the old record in hand, drop or split a type, add an entity). The engine's own migrations run before them, on what an older engine wrote of its state: a save from 0.7.7 restores with its game data, engine components and og.Rng as this build has them, and og.ui's state upgraded; that state had no motion channels, so an element on screen at the save (a toast, a dialog) plays its entrance again after the restore (presentation only: the restored UI state differs from one this build ran only in when that entrance began, and every restore of the save plays it alike).
    *
    * @default []
    */

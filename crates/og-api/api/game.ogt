@@ -45,7 +45,7 @@ module game {
       default 1
       min 1
     }
-    field migrations List.SaveMigration "The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order, so a save of any earlier version arrives at the current one (rename a field, transform values with the old record in hand, drop or split a type, add an entity)."
+    field migrations List.SaveMigration "The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order, so a save of any earlier version arrives at the current one (rename a field, transform values with the old record in hand, drop or split a type, add an entity). The engine's own migrations run before them, on what an older engine wrote of its state: a save from 0.7.7 restores with its game data, engine components and og.Rng as this build has them, and og.ui's state upgraded; that state had no motion channels, so an element on screen at the save (a toast, a dialog) plays its entrance again after the restore (presentation only: the restored UI state differs from one this build ran only in when that entrance began, and every restore of the save plays it alike)."
     field look String "A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned and before start runs, so start may still change any of it; its antialias is the renderer's when render leaves antialias out. Left out or empty, project.ogt's `look \"looks/<name>.ogt\"` (the look whose art contract the cook reads) is applied when it has one, else none; the two naming different looks is refused (one value in two places)."
   }
 

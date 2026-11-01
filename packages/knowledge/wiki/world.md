@@ -253,7 +253,7 @@ fn transform {
 
 #### `SaveEdit.split`
 
-Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes.
+Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes. The migrated world holds the records a world built at the new version holds, and every peer and every restore of the same save migrates to the same world and hash; its hash differs from a built one's only by the archetypes the built one passed through (inserting the new types one at a time leaves an empty archetype of the first alone, which the split never makes), so compare a split's result record by record, not by hash. renameField, renameType, transform, dropType and spawn keep which types sit together: those migrate to a built world's hash exactly.
 
 ```ts
 SaveEdit.split(name: string, map: SplitFn): Result<void>
@@ -270,7 +270,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn split {
-  doc "Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes."
+  doc "Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes. The migrated world holds the records a world built at the new version holds, and every peer and every restore of the same save migrates to the same world and hash; its hash differs from a built one's only by the archetypes the built one passed through (inserting the new types one at a time leaves an empty archetype of the first alone, which the split never makes), so compare a split's result record by record, not by hash. renameField, renameType, transform, dropType and spawn keep which types sit together: those migrate to a built world's hash exactly."
   host false
   param name String "The saved type."
   param map SplitFn "The old record to the new types' records."
