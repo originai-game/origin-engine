@@ -15559,7 +15559,7 @@
         },
         {
           "name": "defineAction",
-          "doc": "Define (or redefine) a UI action. confirm (Enter, Space, A), back (Escape, B), tabNext (E, ], RB), tabPrev (Q, [, LB) and details (X, Y) are defined by default.",
+          "doc": "Define (or redefine) a UI action. confirm (Enter, Space, A), back (Escape, B), tabNext (E, ], RB), tabPrev (Q, [, LB), details (X, Y) and rotate (R, X) are defined by default.",
           "params": [
             {
               "name": "world",
@@ -43151,13 +43151,38 @@
         "down": {
           "type": "boolean",
           "description": "Its button or finger is down."
+        },
+        "pressed": {
+          "type": "boolean",
+          "description": "Its button or finger went down this tick: where a drag a component runs itself (an inventory's item, a card) starts."
+        },
+        "released": {
+          "type": "boolean",
+          "description": "Its button or finger came up this tick: where such a drag ends."
+        },
+        "shift": {
+          "type": "boolean",
+          "description": "A Shift key is held (a split stack, a quick transfer, a range of a list)."
+        },
+        "ctrl": {
+          "type": "boolean",
+          "description": "A Control key is held."
+        },
+        "alt": {
+          "type": "boolean",
+          "description": "An Alt (Option) key is held."
         }
       },
       "required": [
         "x",
         "y",
         "inside",
-        "down"
+        "down",
+        "pressed",
+        "released",
+        "shift",
+        "ctrl",
+        "alt"
       ],
       "additionalProperties": false
     },

@@ -257,9 +257,14 @@ pub fn og_ui_frame_viewport() -> String {
 pub fn og_ui_frame_pointer() -> String {
     with_ui("og.ui.framePointer", |ui| {
         let i = ui.input();
-        json!({ "x": i.pointer.x, "y": i.pointer.y, "inside": i.pointer_inside, "down": i.down })
+        json!({
+            "x": i.pointer.x, "y": i.pointer.y, "inside": i.pointer_inside, "down": i.down,
+            "pressed": i.pressed, "released": i.released, "shift": i.shift, "ctrl": i.ctrl, "alt": i.alt,
+        })
     })
-    .unwrap_or_else(|| json!({ "x": 0.0, "y": 0.0, "inside": false, "down": false }))
+    .unwrap_or_else(|| {
+        json!({ "x": 0.0, "y": 0.0, "inside": false, "down": false, "pressed": false, "released": false, "shift": false, "ctrl": false, "alt": false })
+    })
     .to_string()
 }
 

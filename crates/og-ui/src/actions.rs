@@ -76,6 +76,10 @@ pub fn default_actions() -> Vec<ActionDesc> {
             "Previous tab",
         ),
         a("details", &["KeyX"], &["y"], "Details"),
+        // A held piece turns a quarter (an inventory's item, a placed
+        // building): R, as in the games that carry items in grids, and the
+        // pad's free face button.
+        a("rotate", &["KeyR"], &["x"], "Rotate"),
     ]
 }
 

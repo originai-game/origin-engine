@@ -1214,6 +1214,11 @@ module ui {
     }
     field inside bool "It is over the surface: false for a mouse that left it, or a touch screen with no finger down."
     field down bool "Its button or finger is down."
+    field pressed bool "Its button or finger went down this tick: where a drag a component runs itself (an inventory's item, a card) starts."
+    field released bool "Its button or finger came up this tick: where such a drag ends."
+    field shift bool "A Shift key is held (a split stack, a quick transfer, a range of a list)."
+    field ctrl bool "A Control key is held."
+    field alt bool "An Alt (Option) key is held."
   }
 
   fn framePointer {
@@ -9195,7 +9200,7 @@ module ui {
   }
 
   fn defineAction {
-    doc "Define (or redefine) a UI action. confirm (Enter, Space, A), back (Escape, B), tabNext (E, ], RB), tabPrev (Q, [, LB) and details (X, Y) are defined by default."
+    doc "Define (or redefine) a UI action. confirm (Enter, Space, A), back (Escape, B), tabNext (E, ], RB), tabPrev (Q, [, LB), details (X, Y) and rotate (R, X) are defined by default."
     param world World "The world."
     param desc UiActionDesc "The action."
     returns Result.Void

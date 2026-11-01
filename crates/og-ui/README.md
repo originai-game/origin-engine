@@ -378,7 +378,8 @@ buttons, trigger, toggle, label }` with `trigger` press, release or
 `Hold(ms)`, and `toggle` the hold's alternative (a tap turns it on, the next
 off: `action_held`). The defaults: `confirm` (Enter, Space, A), `back`
 (Escape, B), `tabNext` (E, `]`, RB), `tabPrev` (Q, `[`, LB), `details` (X,
-Y). `action(name)` is true the tick it fires; a document's `on action`
+Y), `rotate` (R, X: a held inventory item or placed piece turns).
+`action(name)` is true the tick it fires; a document's `on action`
 fires on the top layer that takes input. `device()` is the device used
 last (keyboard and mouse, the pad family the host set with
 `set_pad_family`: Xbox, PlayStation, Switch or a generic pad, or touch on a

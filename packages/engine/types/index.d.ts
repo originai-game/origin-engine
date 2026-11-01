@@ -22246,6 +22246,18 @@ export interface UiPointer {
   readonly inside: boolean;
   /** Its button or finger is down. */
   readonly down: boolean;
+  /**
+   * Its button or finger went down this tick: where a drag a component runs itself (an inventory's item, a card) starts.
+   */
+  readonly pressed: boolean;
+  /** Its button or finger came up this tick: where such a drag ends. */
+  readonly released: boolean;
+  /** A Shift key is held (a split stack, a quick transfer, a range of a list). */
+  readonly shift: boolean;
+  /** A Control key is held. */
+  readonly ctrl: boolean;
+  /** An Alt (Option) key is held. */
+  readonly alt: boolean;
 }
 
 
@@ -45725,7 +45737,7 @@ export declare namespace og {
      */
     function paused(world: World): boolean;
     /**
-     * Define (or redefine) a UI action. confirm (Enter, Space, A), back (Escape, B), tabNext (E, ], RB), tabPrev (Q, [, LB) and details (X, Y) are defined by default.
+     * Define (or redefine) a UI action. confirm (Enter, Space, A), back (Escape, B), tabNext (E, ], RB), tabPrev (Q, [, LB), details (X, Y) and rotate (R, X) are defined by default.
      *
      * @param world The world.
      * @param desc The action.
