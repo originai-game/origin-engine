@@ -19253,7 +19253,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `role` | `string` | `""` | — | — | — | Its role: button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, tabpanel, radiogroup, progressbar, meter, timer, status, alert, dialog, alertdialog, tooltip, separator, group, region, navigation, toolbar, menu, menubar, menuitem, menuitemcheckbox, menuitemradio, list, listitem, tree, treeitem, table, grid, row, rowheader, columnheader, cell, gridcell, figure or scrollbar; empty keeps its kind's. |
+| `role` | `string` | `""` | — | — | — | Its role: button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, tabpanel, radiogroup, progressbar, meter, timer, status, alert, log (a feed whose new lines are read: a killfeed, subtitles), dialog, alertdialog, tooltip, separator, group, region, navigation, toolbar, menu, menubar, menuitem, menuitemcheckbox, menuitemradio, list, listitem, tree, treeitem, table, grid, row, rowheader, columnheader, cell, gridcell, figure or scrollbar; empty keeps its kind's. |
 | `name` | `string \| null` | `null` | — | — | — | Its accessible name; null keeps what it shows. |
 | `description` | `string \| null` | `null` | — | — | — | Read after the name; null is none. |
 | `value` | `string \| null` | `null` | — | — | — | Its value as people read it (`3 of 12`, `Sorted ascending`); null is none. |
@@ -19270,7 +19270,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct SemanticsDesc {
   doc "What a component tells the accessibility tree about an element it built from containers (docs/ui.md §11): a role other than its kind's, a name, a value and states. Absent fields leave what the element's kind gives it."
   desc true
-  field role String "Its role: button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, tabpanel, radiogroup, progressbar, meter, timer, status, alert, dialog, alertdialog, tooltip, separator, group, region, navigation, toolbar, menu, menubar, menuitem, menuitemcheckbox, menuitemradio, list, listitem, tree, treeitem, table, grid, row, rowheader, columnheader, cell, gridcell, figure or scrollbar; empty keeps its kind's."
+  field role String "Its role: button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, tabpanel, radiogroup, progressbar, meter, timer, status, alert, log (a feed whose new lines are read: a killfeed, subtitles), dialog, alertdialog, tooltip, separator, group, region, navigation, toolbar, menu, menubar, menuitem, menuitemcheckbox, menuitemradio, list, listitem, tree, treeitem, table, grid, row, rowheader, columnheader, cell, gridcell, figure or scrollbar; empty keeps its kind's."
   field name Option.String "Its accessible name; null keeps what it shows."
   field description Option.String "Read after the name; null is none."
   field value Option.String "Its value as people read it (`3 of 12`, `Sorted ascending`); null is none."

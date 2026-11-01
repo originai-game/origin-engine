@@ -265,6 +265,7 @@ pub const ROLES: &[&str] = &[
     "timer",
     "status",
     "alert",
+    "log",
     "dialog",
     "alertdialog",
     "tooltip",

@@ -723,6 +723,14 @@ fn semantics_give_containers_the_roles_components_need() {
                     ..Semantics::default()
                 }));
             }
+            // A feed (a killfeed, subtitles) is a log: a reader reads its new lines.
+            ui.open("Feed", Element::column());
+            ui.label("Text", "Ash eliminated Nyx", LabelDesc::default());
+            ui.close();
+            assert!(ui.semantics(&Semantics {
+                role: Some("log".into()),
+                ..Semantics::default()
+            }));
             ui.open("Bad", Element::column());
             ui.label("Text", "x", LabelDesc::default());
             ui.close();
@@ -752,6 +760,7 @@ fn semantics_give_containers_the_roles_components_need() {
         (menu.value_min, menu.value_max, menu.value_now),
         (Some(0.0), Some(2.0), Some(1.0))
     );
+    assert_eq!(node(&tree, "Menu/Feed").role, "log");
     let open = node(&tree, "Menu/Item#0");
     assert_eq!(
         (open.role.as_str(), open.name.as_str()),
