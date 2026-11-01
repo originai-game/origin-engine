@@ -32,10 +32,41 @@ const IX = new Set<Interaction>(["normal", "hover", "pressed", "focused", "disab
 
 /** The interaction state the part remembered under `key` was in last tick. */
 export function interactionOf(key: string): Interaction {
-  const p = recallPath(key);
+  return interactionAt(recallPath(key));
+}
+
+/** The interaction state of the element at `path` last tick. */
+function interactionAt(p: string): Interaction {
   if (!p) return "normal";
   const s = kit.visualState(p, "interaction") as Interaction;
   return IX.has(s) ? s : "normal";
+}
+
+/**
+ * Paths by a number a control keeps in UI memory, which is scoped by the container it is built in:
+ * so each instance finds its own path (a part id such as `Track` or `Item#0` repeats across sliders
+ * and segmented controls, and a key made of the id alone read the previous instance's state).
+ */
+const pathNumbers = new Map<string, number>();
+const numberedPaths: string[] = [];
+/** A component's own path last tick, kept under `key` in the memory of the container it is built in (call it before opening its root). */
+export function ownPath(key: string): string {
+  return numberedPaths[kit.memory(`~p~${key}`, -1)] ?? "";
+}
+
+/** Keeps a component's path for next tick's {@link ownPath} (call it after closing its root, in the same container). */
+export function keepPath(key: string, path: string): void {
+  if (path) kit.remember(`~p~${key}`, pathNumber(path));
+}
+
+function pathNumber(p: string): number {
+  let n = pathNumbers.get(p);
+  if (n === undefined) {
+    n = numberedPaths.length;
+    numberedPaths.push(p);
+    pathNumbers.set(p, n);
+  }
+  return n;
 }
 
 /** A value of an animatable prop. */
@@ -114,6 +145,8 @@ export interface ControlDesc {
   touch?: number;
   /** Disabled, it still takes the pointer and the focus (inert) so its tooltip or reason can be read. */
   hoverable?: boolean;
+  /** A part drawn in its state that takes no input: presses fall through to what holds it (a slider's knob). */
+  inert?: boolean;
 }
 
 export interface Built {
@@ -138,8 +171,10 @@ export function control(id: string, d: ControlDesc, build: (ix: Interaction) => 
   const key = `${d.part}~${id}`;
   const disabled = d.disabled ?? false;
   // A disabled control that explains itself (a tooltip, a reason) still takes the pointer and the focus, inert.
-  const reach = !disabled || (d.hoverable ?? false);
-  const ix: Interaction = disabled ? "disabled" : interactionOf(key);
+  const reach = !d.inert && (!disabled || (d.hoverable ?? false));
+  const mine = `~ix~${key}`;
+  const own = numberedPaths[kit.memory(mine, -1)] ?? "";
+  const ix: Interaction = disabled ? "disabled" : d.inert ? "normal" : interactionAt(own);
   const wash = d.wash === undefined ? role("ink") : d.wash;
   const by = d.washBy ?? 0.1;
   const rest: Rgba = d.fills?.[0] ?? d.fill ?? { ...(wash ?? role("ink")), a: 0 };
@@ -172,6 +207,7 @@ export function control(id: string, d: ControlDesc, build: (ix: Interaction) => 
   }
   const path = kit.lastPath();
   rememberPath(key, path);
+  kit.remember(mine, pathNumber(path));
   const b = kit.bounds(path);
   const want = frame().touch ? (d.touch ?? TOUCH) : 0;
   const slop = b && want > 0 ? Math.max(0, Math.ceil((want - Math.min(b.width, b.height)) / 2)) : 0;
@@ -242,7 +278,10 @@ export function glyphIcon(id: string, name: string, size: number, color: Rgba): 
     kit.icon(id, name, { size, tint: paint(color), label: "" });
     return;
   }
-  drawn(id, hasMark(name) ? name : "dot", size, color);
+  // A name neither the icon set nor the drawn marks have: og-ui's empty slot and its warning,
+  // never a stand-in disc that reads as a picture.
+  if (hasMark(name)) drawn(id, name, size, color);
+  else kit.icon(id, name, { size, tint: paint(color), label: "" });
 }
 
 /** The marks the controls draw themselves: the shapes no icon set is needed for. */

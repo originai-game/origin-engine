@@ -357,15 +357,15 @@ module ui {
 | [`og.ui.valueSlider`](#fn-valueSlider) | function | A slider: a track, a fill from min (or from an origin, both ways) and a knob. A press anywhere on the track jumps the knob there and a drag follows (a touch too; the knob grows under a finger), Left and Right step it while it has the focus (a held key or d-pad repeats), with ticks at its steps, labelled marks, a readout and a bubble over the knob while it moves. Plays sliderTick at each step passed (rising in pitch with the value). Parts: `Slider.track[hover\|pressed\|focused\|disabled]`, `Slider.rail`, `Slider.fill`, `Slider.knob[pressed\|focused]`, `Slider.core` (the knob's dot while held or focused), `Slider.tick[passed]`, `Slider.bubble`. Role slider with its range. Probe: `<id>`, `<id>/Track`, `<id>/Track/Knob`, `<id>/Head/Value`. |
 | [`RangeSliderDesc`](#type-RangeSliderDesc) | desc struct | A range slider: two knobs on one track. |
 | [`RangeResult`](#type-RangeResult) | struct | A range slider's values after this tick. |
-| [`og.ui.rangeSlider`](#fn-rangeSlider) | function | A range slider: two knobs on one track and the fill between them. A press on the track takes the nearer knob there and a drag moves it (never past the other, kept minGap apart); each knob is its own focus stop, Left and Right step it. Parts: `RangeSlider.track`, `RangeSlider.rail`, `RangeSlider.fill`, `RangeSlider.knob[low\|high][pressed\|focused]`. Two sliders to a screen reader (lowLabel, highLabel). Probe: `<id>/Track/Low`, `<id>/Track/High`. |
+| [`og.ui.rangeSlider`](#fn-rangeSlider) | function | A range slider: two knobs on one track and the fill between them. A press on the track takes the nearer knob there and a drag moves it (never past the other, kept minGap apart); each knob is its own focus stop, Left and Right step it. Parts: `RangeSlider.track`, `RangeSlider.rail`, `RangeSlider.fill`, `RangeSlider.knob[low\|high][pressed\|focused]` (under a finger drawn inside `RangeSlider.reach`, its 44 px target). Two sliders to a screen reader (lowLabel, highLabel). Probe: `<id>/Track/Low`, `<id>/Track/High`. |
 | [`NumberStepperDesc`](#type-NumberStepperDesc) | desc struct | A number stepper: minus, the value and plus. |
 | [`NumberResult`](#type-NumberResult) | struct | A stepper's value after this tick. |
-| [`og.ui.numberStepper`](#fn-numberStepper) | function | A number stepper: minus, the value and plus. A press steps once, a held press repeats after 400 ms and speeds up (large steps after a second); Left and Right step it while the value has the focus. A bound's button goes disabled at the bound. Plays sliderTick per step. Parts: `Stepper.frame[focused\|disabled]`, `Stepper.button[dec\|inc][hover\|pressed\|disabled]`, `Stepper.value`. Role spinbutton with its range. Probe: `<id>/Frame/Dec`, `<id>/Frame/Value`, `<id>/Frame/Inc`. |
+| [`og.ui.numberStepper`](#fn-numberStepper) | function | A number stepper: minus, the value and plus. A press steps once, a held press repeats after 400 ms and speeds up (large steps after a second); Left and Right step it while the value has the focus. A bound's button goes disabled at the bound. Plays sliderTick per step. Parts: `Stepper.frame[focused\|disabled]`, `Stepper.button[dec\|inc][hover\|pressed\|disabled]`, `Stepper.value`. Role spinbutton with its range; its − and + are buttons under a finger and named images on a fine pointer (Left and Right on the focused stepper are theirs). Probe: `<id>/Frame/Dec`, `<id>/Frame/Value`, `<id>/Frame/Inc`. |
 | [`CyclerDesc`](#type-CyclerDesc) | desc struct | An option cycler: a setting's levels in one row. |
-| [`og.ui.cycler`](#fn-cycler) | function | An option cycler, the console settings row: `‹ High ›` with pips. Left and Right (a pad's d-pad or stick) change it while it has the focus, the arrows take a press, and a press on the value steps forward; the value slides in from the side it came (selection on the style's motion). Arrows follow the writing direction. Plays select. Parts: `Cycler.frame[hover\|focused\|disabled]`, `Cycler.arrow[prev\|next][disabled]`, `Cycler.pip[current]`. Role spinbutton reading the option. Probe: `<id>`, `<id>/Prev`, `<id>/Middle/Clip/Value#i` (the option shown), `<id>/Next`, `<id>/Middle/Pips/Pip#i`. |
+| [`og.ui.cycler`](#fn-cycler) | function | An option cycler, the console settings row: `‹ High ›` with pips. Left and Right (a pad's d-pad or stick) change it while it has the focus, the arrows take a press, and a press on the value steps forward; the value slides in from the side it came (selection on the style's motion). Arrows follow the writing direction. Plays select. Parts: `Cycler.frame[hover\|focused\|disabled]`, `Cycler.arrow[prev\|next][disabled]`, `Cycler.pip[current]`. Role spinbutton reading the option; its arrows are buttons under a finger and named images on a fine pointer (Left and Right on the focused cycler are theirs). Probe: `<id>`, `<id>/Prev`, `<id>/Middle/Clip/Value#i` (the option shown), `<id>/Next`, `<id>/Middle/Pips/Pip#i`. |
 | [`SegmentItem`](#type-SegmentItem) | desc struct | One segment of a segmented control. |
 | [`SegmentedDesc`](#type-SegmentedDesc) | desc struct | A segmented control: its segments and layout. |
-| [`og.ui.segmented`](#fn-segmented) | function | A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). A press chooses; Left and Right step the choice while it has the focus, skipping disabled segments, mirrored right to left. Plays tab. Parts: `Segmented.track[focused\|disabled]`, `Segmented.thumb`, `Segmented.item[selected][hover\|pressed\|disabled]`. Role radiogroup of radios. Probe: `<id>`, `<id>/Item#i`, `<id>/Thumb`. |
+| [`og.ui.segmented`](#fn-segmented) | function | A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). A press chooses; Left and Right step the choice while it has the focus, skipping disabled segments, mirrored right to left. The segments share the width they are given, never narrower than their labels: when they do not fit, the track scrolls sideways under a fade at the cut edge. Under a finger each segment is at least 44 px tall. Plays tab. Parts: `Segmented.track[focused\|disabled]`, `Segmented.thumb`, `Segmented.item[selected][hover\|pressed\|disabled]`. Role radiogroup of radios. Probe: `<id>`, `<id>/Strip/Track/Item#i`, `<id>/Strip/Track/Thumb`. |
 | [`DropdownOption`](#type-DropdownOption) | desc struct | One option of a dropdown. |
 | [`DropdownDesc`](#type-DropdownDesc) | desc struct | A dropdown: its options, label and states. |
 | [`DropdownResult`](#type-DropdownResult) | struct | A dropdown's state after this tick. |
@@ -4628,7 +4628,7 @@ fn valueSlider {
 
 ### `og.ui.rangeSlider`
 
-A range slider: two knobs on one track and the fill between them. A press on the track takes the nearer knob there and a drag moves it (never past the other, kept minGap apart); each knob is its own focus stop, Left and Right step it. Parts: `RangeSlider.track`, `RangeSlider.rail`, `RangeSlider.fill`, `RangeSlider.knob[low|high][pressed|focused]`. Two sliders to a screen reader (lowLabel, highLabel). Probe: `<id>/Track/Low`, `<id>/Track/High`.
+A range slider: two knobs on one track and the fill between them. A press on the track takes the nearer knob there and a drag moves it (never past the other, kept minGap apart); each knob is its own focus stop, Left and Right step it. Parts: `RangeSlider.track`, `RangeSlider.rail`, `RangeSlider.fill`, `RangeSlider.knob[low|high][pressed|focused]` (under a finger drawn inside `RangeSlider.reach`, its 44 px target). Two sliders to a screen reader (lowLabel, highLabel). Probe: `<id>/Track/Low`, `<id>/Track/High`.
 
 ```ts
 og.ui.rangeSlider(id: string, low: number, high: number, desc?: RangeSliderDesc): RangeResult
@@ -4647,7 +4647,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn rangeSlider {
-  doc "A range slider: two knobs on one track and the fill between them. A press on the track takes the nearer knob there and a drag moves it (never past the other, kept minGap apart); each knob is its own focus stop, Left and Right step it. Parts: `RangeSlider.track`, `RangeSlider.rail`, `RangeSlider.fill`, `RangeSlider.knob[low|high][pressed|focused]`. Two sliders to a screen reader (lowLabel, highLabel). Probe: `<id>/Track/Low`, `<id>/Track/High`."
+  doc "A range slider: two knobs on one track and the fill between them. A press on the track takes the nearer knob there and a drag moves it (never past the other, kept minGap apart); each knob is its own focus stop, Left and Right step it. Parts: `RangeSlider.track`, `RangeSlider.rail`, `RangeSlider.fill`, `RangeSlider.knob[low|high][pressed|focused]` (under a finger drawn inside `RangeSlider.reach`, its 44 px target). Two sliders to a screen reader (lowLabel, highLabel). Probe: `<id>/Track/Low`, `<id>/Track/High`."
   host false
   param id String "Its id."
   param low f32 "The low end from game state."
@@ -4663,7 +4663,7 @@ fn rangeSlider {
 
 ### `og.ui.numberStepper`
 
-A number stepper: minus, the value and plus. A press steps once, a held press repeats after 400 ms and speeds up (large steps after a second); Left and Right step it while the value has the focus. A bound's button goes disabled at the bound. Plays sliderTick per step. Parts: `Stepper.frame[focused|disabled]`, `Stepper.button[dec|inc][hover|pressed|disabled]`, `Stepper.value`. Role spinbutton with its range. Probe: `<id>/Frame/Dec`, `<id>/Frame/Value`, `<id>/Frame/Inc`.
+A number stepper: minus, the value and plus. A press steps once, a held press repeats after 400 ms and speeds up (large steps after a second); Left and Right step it while the value has the focus. A bound's button goes disabled at the bound. Plays sliderTick per step. Parts: `Stepper.frame[focused|disabled]`, `Stepper.button[dec|inc][hover|pressed|disabled]`, `Stepper.value`. Role spinbutton with its range; its − and + are buttons under a finger and named images on a fine pointer (Left and Right on the focused stepper are theirs). Probe: `<id>/Frame/Dec`, `<id>/Frame/Value`, `<id>/Frame/Inc`.
 
 ```ts
 og.ui.numberStepper(id: string, value: number, desc?: NumberStepperDesc): NumberResult
@@ -4681,7 +4681,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn numberStepper {
-  doc "A number stepper: minus, the value and plus. A press steps once, a held press repeats after 400 ms and speeds up (large steps after a second); Left and Right step it while the value has the focus. A bound's button goes disabled at the bound. Plays sliderTick per step. Parts: `Stepper.frame[focused|disabled]`, `Stepper.button[dec|inc][hover|pressed|disabled]`, `Stepper.value`. Role spinbutton with its range. Probe: `<id>/Frame/Dec`, `<id>/Frame/Value`, `<id>/Frame/Inc`."
+  doc "A number stepper: minus, the value and plus. A press steps once, a held press repeats after 400 ms and speeds up (large steps after a second); Left and Right step it while the value has the focus. A bound's button goes disabled at the bound. Plays sliderTick per step. Parts: `Stepper.frame[focused|disabled]`, `Stepper.button[dec|inc][hover|pressed|disabled]`, `Stepper.value`. Role spinbutton with its range; its − and + are buttons under a finger and named images on a fine pointer (Left and Right on the focused stepper are theirs). Probe: `<id>/Frame/Dec`, `<id>/Frame/Value`, `<id>/Frame/Inc`."
   host false
   param id String "Its id."
   param value f32 "The value from game state."
@@ -4696,7 +4696,7 @@ fn numberStepper {
 
 ### `og.ui.cycler`
 
-An option cycler, the console settings row: `‹ High ›` with pips. Left and Right (a pad's d-pad or stick) change it while it has the focus, the arrows take a press, and a press on the value steps forward; the value slides in from the side it came (selection on the style's motion). Arrows follow the writing direction. Plays select. Parts: `Cycler.frame[hover|focused|disabled]`, `Cycler.arrow[prev|next][disabled]`, `Cycler.pip[current]`. Role spinbutton reading the option. Probe: `<id>`, `<id>/Prev`, `<id>/Middle/Clip/Value#i` (the option shown), `<id>/Next`, `<id>/Middle/Pips/Pip#i`.
+An option cycler, the console settings row: `‹ High ›` with pips. Left and Right (a pad's d-pad or stick) change it while it has the focus, the arrows take a press, and a press on the value steps forward; the value slides in from the side it came (selection on the style's motion). Arrows follow the writing direction. Plays select. Parts: `Cycler.frame[hover|focused|disabled]`, `Cycler.arrow[prev|next][disabled]`, `Cycler.pip[current]`. Role spinbutton reading the option; its arrows are buttons under a finger and named images on a fine pointer (Left and Right on the focused cycler are theirs). Probe: `<id>`, `<id>/Prev`, `<id>/Middle/Clip/Value#i` (the option shown), `<id>/Next`, `<id>/Middle/Pips/Pip#i`.
 
 ```ts
 og.ui.cycler(id: string, options: readonly string[], index: number, desc?: CyclerDesc): ChoiceIndexResult
@@ -4715,7 +4715,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn cycler {
-  doc "An option cycler, the console settings row: `‹ High ›` with pips. Left and Right (a pad's d-pad or stick) change it while it has the focus, the arrows take a press, and a press on the value steps forward; the value slides in from the side it came (selection on the style's motion). Arrows follow the writing direction. Plays select. Parts: `Cycler.frame[hover|focused|disabled]`, `Cycler.arrow[prev|next][disabled]`, `Cycler.pip[current]`. Role spinbutton reading the option. Probe: `<id>`, `<id>/Prev`, `<id>/Middle/Clip/Value#i` (the option shown), `<id>/Next`, `<id>/Middle/Pips/Pip#i`."
+  doc "An option cycler, the console settings row: `‹ High ›` with pips. Left and Right (a pad's d-pad or stick) change it while it has the focus, the arrows take a press, and a press on the value steps forward; the value slides in from the side it came (selection on the style's motion). Arrows follow the writing direction. Plays select. Parts: `Cycler.frame[hover|focused|disabled]`, `Cycler.arrow[prev|next][disabled]`, `Cycler.pip[current]`. Role spinbutton reading the option; its arrows are buttons under a finger and named images on a fine pointer (Left and Right on the focused cycler are theirs). Probe: `<id>`, `<id>/Prev`, `<id>/Middle/Clip/Value#i` (the option shown), `<id>/Next`, `<id>/Middle/Pips/Pip#i`."
   host false
   param id String "Its id."
   param options List.String "The options."
@@ -4731,7 +4731,7 @@ fn cycler {
 
 ### `og.ui.segmented`
 
-A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). A press chooses; Left and Right step the choice while it has the focus, skipping disabled segments, mirrored right to left. Plays tab. Parts: `Segmented.track[focused|disabled]`, `Segmented.thumb`, `Segmented.item[selected][hover|pressed|disabled]`. Role radiogroup of radios. Probe: `<id>`, `<id>/Item#i`, `<id>/Thumb`.
+A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). A press chooses; Left and Right step the choice while it has the focus, skipping disabled segments, mirrored right to left. The segments share the width they are given, never narrower than their labels: when they do not fit, the track scrolls sideways under a fade at the cut edge. Under a finger each segment is at least 44 px tall. Plays tab. Parts: `Segmented.track[focused|disabled]`, `Segmented.thumb`, `Segmented.item[selected][hover|pressed|disabled]`. Role radiogroup of radios. Probe: `<id>`, `<id>/Strip/Track/Item#i`, `<id>/Strip/Track/Thumb`.
 
 ```ts
 og.ui.segmented(id: string, desc?: SegmentedDesc): ChoiceIndexResult
@@ -4748,7 +4748,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn segmented {
-  doc "A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). A press chooses; Left and Right step the choice while it has the focus, skipping disabled segments, mirrored right to left. Plays tab. Parts: `Segmented.track[focused|disabled]`, `Segmented.thumb`, `Segmented.item[selected][hover|pressed|disabled]`. Role radiogroup of radios. Probe: `<id>`, `<id>/Item#i`, `<id>/Thumb`."
+  doc "A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). A press chooses; Left and Right step the choice while it has the focus, skipping disabled segments, mirrored right to left. The segments share the width they are given, never narrower than their labels: when they do not fit, the track scrolls sideways under a fade at the cut edge. Under a finger each segment is at least 44 px tall. Plays tab. Parts: `Segmented.track[focused|disabled]`, `Segmented.thumb`, `Segmented.item[selected][hover|pressed|disabled]`. Role radiogroup of radios. Probe: `<id>`, `<id>/Strip/Track/Item#i`, `<id>/Strip/Track/Thumb`."
   host false
   param id String "Its id."
   param desc SegmentedDesc "Its segments."

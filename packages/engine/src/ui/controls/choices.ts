@@ -6,10 +6,10 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  all, bgValues, byText, chevron, control, drawn, flags, forward, frame, glyphIcon, grow, kit, mix, over, paint, px, recallPath, rememberPath, role, rtl, still, text, TOUCH, vstate, xy,
+  all, bgValues, byText, chevron, control, drawn, fit, flags, forward, frame, glyphIcon, grow, kit, mix, over, paint, parentOf, keepPath, ownPath, px, role, rtl, spring, still, text, TOUCH, vstate, xy,
 } from "./base.ts";
 import type { Interaction } from "./base.ts";
-import { ring } from "../containers/panels.ts";
+import { edge, ring } from "../containers/panels.ts";
 
 const v = (prop: Api.UiProp, value: number): Api.PropValue => ({ prop, value });
 
@@ -185,7 +185,7 @@ function radioRing(selected: boolean, ix: Interaction, size: number): void {
   const dot = Math.round(size * 0.46);
   kit.open("Ring", { width: px(size), height: px(size), align: "center", cross: "center", radius: size / 2, background: paint(selected ? role("primary") : role("well")), part: `Radio.ring${flags(selected && "selected", "round", ixFlag(ix))}`, partClass: "badge" });
   if (!selected) kit.setDraw({ strokes: [{ width: 1.5, align: "inside", paint: { kind: "solid", color: { token: "lineStrong" } } }] });
-  kit.open("Dot", { width: px(dot), height: px(dot), radius: dot / 2, background: paint(role("onPrimary")), part: "Radio.dot", partClass: "badge" });
+  kit.open("Dot", { width: px(dot), height: px(dot), radius: dot / 2, background: paint(role("onPrimary")), part: "Radio.dot[round]", partClass: "badge" });
   kit.close();
   kit.props({
     states: [{ name: "selection", states: [vstate("off", [v("scale", 0), v("opacity", 0)]), vstate("on", [v("scale", 1), v("opacity", 1)])], transitions: [{ from: "off", to: "on", transition: still() ? { kind: "tween", durationMs: 0 } : { kind: "spring", durationMs: 240, bounce: 0.4 } }] }],
@@ -276,76 +276,109 @@ export function segmented(id: string, desc: Api.SegmentedDesc = {}): Api.ChoiceI
   let selected = before;
   let focused = -1;
   const small = desc.size === "small";
-  const h = byText(Math.max(small ? t.controlSm : t.controlMd, frame().touch ? TOUCH : 0));
-  const pad = Math.max(2, Math.round(h * 0.08));
+  // A segment is at least 44 tall under a finger: the track's padding is around it.
+  const inner = byText(Math.max((small ? t.controlSm : t.controlMd) - 4, frame().touch ? TOUCH : 0));
+  const pad = Math.max(2, Math.round(inner * 0.08));
+  const h = inner + 2 * pad;
   const offAll = desc.disabled ?? false;
+  const equal = desc.equal ?? true;
   let adjust = 0;
-  kit.open(id, {
-    direction: "row",
-    width: desc.width ?? null,
-    height: px(h),
-    padding: all(pad),
-    gap: 0,
-    cross: "stretch",
-    radius: t.control + pad,
-    background: paint(role("well")),
-    part: `Segmented.track${flags(offAll && "disabled")}`,
-    partClass: "tab",
-  });
+  // Each segment's own width (its parts', remembered from last tick): segments share the row
+  // but never shrink below it; when they do not fit, the track scrolls sideways under an edge fade.
+  const nat = items.map((_, i) => kit.memory(`${id}~nat${i}`, 0));
+  const widest = Math.max(0, ...nat);
+  const natSum = equal ? widest * items.length : nat.reduce((a, b) => a + b, 0);
+  const measured: number[] = [];
+  // The track as laid out last tick: where the thumb goes.
+  const self = ownPath(`Segmented~${id}`);
+  kit.open(id, { direction: "row", width: desc.width ?? grow(), height: px(h) });
   let trackPath = "";
   try {
-    // The thumb under the chosen segment: laid where that segment was last tick, gliding to a new one (layout animation).
-    const self = recallPath(`Segmented~${id}`);
-    const sel = self ? kit.bounds(`${self}/${kit.idi("Item", selected)}`) : null;
-    const me = self ? kit.bounds(self) : null;
-    if (sel && me) {
-      kit.open("Thumb", { width: px(sel.width), height: px(sel.height), radius: t.control, background: paint(role("panelRaised")), part: "Segmented.thumb", partClass: "tab" });
-      kit.close();
-      kit.props({
-        position: "absolute",
-        // Insets are inside the track's padding, from its start (the writing direction's).
-        insets: { start: rtl() ? me.x + me.width - pad - (sel.x + sel.width) : sel.x - me.x - pad, top: sel.y - me.y - pad },
-        overlaps: [self],
-        inert: true,
-        layoutMotion: still() ? null : { kind: "token", token: "ui" },
-        z: 0,
-      });
-    }
-    items.forEach((it, i) => {
-      const on = i === selected;
-      const off = offAll || (it.disabled ?? false);
-      const built = control(kit.idi("Item", i), {
-        part: "Segmented.item",
-        cls: "tab",
-        disabled: off,
-        flags: [on && "selected"],
+    kit.openScroll("Strip", { width: grow(), height: px(h), axes: "horizontal", padding: all(0), gap: 0 });
+    try {
+      kit.open("Track", {
         direction: "row",
-        width: { kind: desc.equal ?? true ? "grow" : "fit", min: frame().touch ? TOUCH : 0 },
-        height: grow(),
-        padding: xy(byText(small ? t.sm : t.md), 0),
-        gap: t.xs,
-        align: "center",
-        fill: null,
-        washBy: on ? 0 : 0.05,
-        lift: 0,
-        press: 0.97,
-        adjustable: true,
-        props: { z: 1 },
-        semantics: { role: "radio", name: it.label || it.ariaLabel || "", checked: on },
-      }, () => {
-        const ink = on ? role("ink") : role("inkMuted");
-        if (it.icon) glyphIcon("Icon", it.icon, byText(small ? 16 : 18), ink);
-        if (it.label) text("Label", it.label, { step: small ? "sm" : "body", color: ink, nowrap: true, ellipsis: true, align: "center" });
+        width: grow(natSum + 2 * pad),
+        height: px(h),
+        padding: all(pad),
+        gap: 0,
+        cross: "stretch",
+        radius: t.control + pad,
+        background: paint(role("well")),
+        part: `Segmented.track${flags(offAll && "disabled")}`,
+        partClass: "tab",
       });
-      if (built.r.focused) focused = i;
-      if (built.r.clicked && !off) selected = i;
-      if (built.r.adjust) adjust = forward(built.r.adjust);
-    });
+      try {
+        // The thumb under the chosen segment: laid where that segment was last tick, gliding to a new one (layout animation).
+        const sel = self ? kit.bounds(`${self}/${kit.idi("Item", selected)}`) : null;
+        const me = self ? kit.bounds(self) : null;
+        if (sel && me) {
+          kit.open("Thumb", { width: px(sel.width), height: px(sel.height), radius: t.control, background: paint(role("panelRaised")), part: "Segmented.thumb", partClass: "tab" });
+          kit.close();
+          kit.props({
+            position: "absolute",
+            // Insets are inside the track's padding, from its start (the writing direction's).
+            insets: { start: rtl() ? me.x + me.width - pad - (sel.x + sel.width) : sel.x - me.x - pad, top: sel.y - me.y - pad },
+            overlaps: [self],
+            inert: true,
+            layoutMotion: still() ? null : { kind: "token", token: "ui" },
+            z: 0,
+          });
+        }
+        items.forEach((it, i) => {
+          const on = i === selected;
+          const off = offAll || (it.disabled ?? false);
+          const padX = byText(small ? t.sm : t.md);
+          const built = control(kit.idi("Item", i), {
+            part: "Segmented.item",
+            cls: "tab",
+            disabled: off,
+            flags: [on && "selected"],
+            direction: "row",
+            width: equal ? grow(Math.max(widest, frame().touch ? TOUCH : 0)) : fit(frame().touch ? TOUCH : 0),
+            height: grow(),
+            padding: xy(padX, 0),
+            gap: t.xs,
+            align: "center",
+            fill: null,
+            washBy: on ? 0 : 0.05,
+            lift: 0,
+            press: 0.97,
+            adjustable: true,
+            props: { z: 1 },
+            semantics: { role: "radio", name: it.label || it.ariaLabel || "", checked: on },
+          }, () => {
+            const ink = on ? role("ink") : role("inkMuted");
+            if (it.icon) glyphIcon("Icon", it.icon, byText(small ? 16 : 18), ink);
+            if (it.label) text("Label", it.label, { step: small ? "sm" : "body", color: ink, nowrap: true, align: "center" });
+          });
+          // Its own width: its parts' as laid out, never what a share squeezed it to.
+          const ip = kit.lastPath();
+          const parts = ["Icon", "Label"].map((c) => kit.bounds(`${ip}/${c}`)?.width ?? -1).filter((w) => w >= 0);
+          if (parts.length > 0) measured[i] = Math.ceil(parts.reduce((a, b) => a + b, 0) + (parts.length - 1) * t.xs + 2 * padX);
+          if (built.r.focused) focused = i;
+          if (built.r.clicked && !off) selected = i;
+          if (built.r.adjust) adjust = forward(built.r.adjust);
+        });
+      } finally {
+        kit.close();
+        trackPath = kit.lastPath();
+      }
+    } finally {
+      kit.close();
+    }
+    // The fades: where the track runs past the strip's edge (last tick's).
+    const sb = kit.bounds(parentOf(trackPath));
+    const tb = kit.bounds(trackPath);
+    const leftCut = sb !== null && tb !== null && tb.x < sb.x - 0.5;
+    const rightCut = sb !== null && tb !== null && tb.x + tb.width > sb.x + sb.width + 0.5;
+    edge("FadeStart", true, kit.animate(`${id}~fs`, (rtl() ? rightCut : leftCut) ? 1 : 0, spring("ui")), true, 24, "panel");
+    edge("FadeEnd", false, kit.animate(`${id}~fe`, (rtl() ? leftCut : rightCut) ? 1 : 0, spring("ui")), true, 24, "panel");
   } finally {
     kit.close();
-    trackPath = kit.lastPath();
-    rememberPath(`Segmented~${id}`, trackPath);
   }
+  keepPath(`Segmented~${id}`, trackPath);
+  measured.forEach((w, i) => kit.remember(`${id}~nat${i}`, w));
   kit.semantics({ role: "radiogroup", ...(desc.label ? { name: desc.label } : {}) });
   if (adjust) {
     const next = stepEnabled(items.length, selected, adjust, (i) => offAll || (items[i]?.disabled ?? false), false);
@@ -409,7 +442,9 @@ export function cycler(id: string, options: readonly string[], index: number, de
         lift: 0,
         press: 0.9,
         radius: h / 2,
-        semantics: { role: "button", name: way === "back" ? "Previous" : "Next" },
+        // The pointer's shortcut for what keys and pads do on the focused control (Left and Right; a
+        // field's own editing): a button under a finger, a named image to the pad graph.
+        semantics: { role: frame().touch ? "button" : "image", name: way === "back" ? "Previous" : "Next" },
       }, () => chevron("Chevron", way, Math.round(h * 0.44), can && !disabled ? role("ink") : role("inkFaint"), 0, 2.2));
       return a.r.clicked;
     };

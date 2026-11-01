@@ -7,12 +7,35 @@
 import type * as Api from "@origingame/engine";
 import { cornerBadge } from "../foundations/media.ts";
 import {
-  byText, clamp, control, defineTimelines, frame, glyphCap, glyphIcon, kit, mix, over, paint, pct, px, role, still, text, TOUCH, xy,
+  byText, clamp, contrast, control, defineTimelines, frame, glyphCap, glyphIcon, kit, mix, over, paint, keepPath, ownPath, pct, px, role, rtl, still, text, TOUCH, xy,
 } from "./base.ts";
 import type { Rgba } from "./base.ts";
 
-/** A variant's fills at rest, hovered and pressed, and its ink. */
+/**
+ * A fill the ink reads on at 4.5:1: moved away from the ink (towards black or white), as little as it
+ * takes, so a style whose hover or press colour is close to its label's (a dark primary hover under a
+ * dark label) still shows the label in every state. A translucent fill is left to what is under it.
+ */
+export function readableFill(fill: Rgba, ink: Rgba): Rgba {
+  if (fill.a < 0.99 || contrast(ink, fill) >= 4.5) return fill;
+  const lighter = contrast(ink, { r: 0, g: 0, b: 0, a: 1 }) >= contrast(ink, { r: 1, g: 1, b: 1, a: 1 });
+  const away: Rgba = lighter ? { r: 0, g: 0, b: 0, a: 1 } : { r: 1, g: 1, b: 1, a: 1 };
+  for (let n = 1; n <= 20; n++) {
+    const c = mix(fill, away, n * 0.05);
+    if (contrast(ink, c) >= 4.5) return c;
+  }
+  return away;
+}
+
+/** A variant's fills at rest, hovered and pressed, and its ink: the ink reads at 4.5:1 on each. */
 export function variantColors(v: Api.ButtonVariant | undefined, disabled = false): { fills: [Rgba, Rgba, Rgba]; ink: Rgba; line: boolean } {
+  const c0 = variantRaw(v, disabled);
+  if (disabled) return c0;
+  const [a, b, c] = c0.fills;
+  return { ...c0, fills: [readableFill(a, c0.ink), readableFill(b, c0.ink), readableFill(c, c0.ink)] };
+}
+
+function variantRaw(v: Api.ButtonVariant | undefined, disabled: boolean): { fills: [Rgba, Rgba, Rgba]; ink: Rgba; line: boolean } {
   const c = (n: Api.ThemeColor) => role(n);
   if (disabled) {
     const f = c("control");
@@ -130,6 +153,13 @@ export function iconButton(id: string, icon: string, desc: Api.IconButtonDesc = 
   return built.r;
 }
 
+/** A width that holds the longest of `labels` at a type step: an em a CJK character, 0.6 of one others (generous for proportional faces). */
+function labelWidth(step: Api.TypeStepName, labels: readonly string[]): number {
+  const size = frame().theme.typeRamp[step]?.size ?? 16;
+  const ems = (o: string): number => [...o].reduce((w, ch) => w + ((ch.codePointAt(0) ?? 0) >= 0x2e80 ? 1 : 0.6), 0);
+  return Math.ceil(Math.max(...labels.map(ems)) * size);
+}
+
 /** A pad family's glyph (a face button disc) for the confirm action, when the device used last is a pad. */
 function padConfirm(): { text: string; icon: string } | null {
   const g = kit.frameGlyph("confirm") as { text: string; icon: string } | null;
@@ -153,6 +183,9 @@ export function holdButton(id: string, label: string, desc: Api.HoldButtonDesc =
   const col = variantColors(variant, disabled);
   let holding = false;
   let confirmed = false;
+  const wasHolding = kit.memory(`${id}~h`, 0) > 0;
+  // The button's box last tick: the inverse label in the fill is laid out across all of it.
+  const prev = kit.bounds(ownPath(`Hold~${id}`));
   kit.open(id, { direction: "column", width: desc.width ?? null, gap: t.xs, cross: "center" });
   let built: ReturnType<typeof buttonBase>;
   try {
@@ -165,20 +198,37 @@ export function holdButton(id: string, label: string, desc: Api.HoldButtonDesc =
       flags: p > 0.001 ? ["holding"] : [],
       semantics: { name: label, value: `${Math.round(p * 100)}%`, valueMin: 0, valueMax: 100, valueNow: Math.round(p * 100) },
     }, (ink, m) => {
-      // The fill: from the start edge (the writing direction's), under the label.
-      kit.open("Fill", { width: pct(clamp(p, 0, 1)), height: { kind: "grow" }, background: paint({ ...ink, a: variant === "primary" ? 0.24 : 0.2 }), part: "HoldButton.fill", partClass: "bar" });
-      kit.close();
-      over({ insets: { start: 0, top: 0, bottom: 0 }, inert: true });
       const g = padConfirm();
-      if (g && !disabled) glyphCap("Glyph", g, Math.round(m.h * 0.5));
-      else if (desc.icon) glyphIcon("Icon", desc.icon, byText(m.icon), ink);
-      const showing = p > 0.001 && desc.holdingLabel ? desc.holdingLabel : label;
-      text("Label", showing, { step: m.step, color: ink, nowrap: true, ellipsis: true, align: "center" });
+      // Only while it is held does it say so; draining after a release, it shows its own label.
+      const showing = wasHolding && desc.holdingLabel ? desc.holdingLabel : label;
+      const content = (color: Rgba): void => {
+        if (g && !disabled) glyphCap("Glyph", g, Math.round(m.h * 0.5));
+        else if (desc.icon) glyphIcon("Icon", desc.icon, byText(m.icon), color);
+        // As wide as the longer of the two labels, so the button keeps its width as it says Keep holding.
+        text("Label", showing, { step: m.step, color, nowrap: true, ellipsis: true, align: "center", ...(desc.holdingLabel ? { width: { kind: "fit", min: labelWidth(m.step, [label, desc.holdingLabel]) } } : {}) });
+      };
+      content(ink);
+      // The fill: the label's ink, solid, from the start edge (the writing direction's), over the label;
+      // in it the same label in the button's own colour, cut by the fill's edge (an inverse clip), so
+      // the label reads at the variant's contrast on the track and on the fill alike.
+      if (p > 0.001 && prev && !disabled) {
+        kit.open("Fill", { direction: "row", width: pct(clamp(p, 0, 1)), height: { kind: "grow" }, background: paint({ ...ink, a: 1 }), part: "HoldButton.fill", partClass: "bar" });
+        // Rounded with the button at its start; its leading edge square until it reaches the end.
+        const rr = t.control;
+        const end = p > 0.97 ? rr : 0;
+        kit.setDraw({ shape: { kind: "rect", radii: rtl() ? [end, rr, rr, end] : [rr, end, end, rr] }, clip: "shape" });
+        kit.open("Inverse", { direction: "row", width: px(prev.width), height: px(prev.height), padding: xy(byText(m.pad), 0), gap: t.sm, align: "center", cross: "center" });
+        content({ ...col.fills[0], a: 1 });
+        kit.close();
+        kit.close();
+        over({ insets: { start: 0, top: 0, bottom: 0 }, inert: true, z: 1 });
+      }
     });
     if (desc.hint) text("Hint", desc.hint, { step: "caption", color: "inkMuted", nowrap: true, align: "center" });
   } finally {
     kit.close();
   }
+  keepPath(`Hold~${id}`, built.path);
   const r = built.r;
   if (!disabled) {
     const toggleMode = desc.toggle ?? false;
@@ -203,6 +253,7 @@ export function holdButton(id: string, label: string, desc: Api.HoldButtonDesc =
     if (!still()) kit.playTimeline(built.path, "og.controls.bump", {});
   }
   kit.remember(`${id}~p`, p);
+  kit.remember(`${id}~h`, holding ? 1 : 0);
   kit.remember(`${id}~arm`, armed ? 1 : 0);
   kit.remember(`${id}~ptr`, r.pressed ? 1 : 0);
   kit.remember(`${id}~t`, now);

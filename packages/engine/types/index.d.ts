@@ -37167,7 +37167,7 @@ export declare namespace og {
      */
     function valueSlider(id: string, value: number, desc?: ValueSliderDesc): ValueSliderResult;
     /**
-     * A range slider: two knobs on one track and the fill between them. A press on the track takes the nearer knob there and a drag moves it (never past the other, kept minGap apart); each knob is its own focus stop, Left and Right step it. Parts: `RangeSlider.track`, `RangeSlider.rail`, `RangeSlider.fill`, `RangeSlider.knob[low|high][pressed|focused]`. Two sliders to a screen reader (lowLabel, highLabel). Probe: `<id>/Track/Low`, `<id>/Track/High`.
+     * A range slider: two knobs on one track and the fill between them. A press on the track takes the nearer knob there and a drag moves it (never past the other, kept minGap apart); each knob is its own focus stop, Left and Right step it. Parts: `RangeSlider.track`, `RangeSlider.rail`, `RangeSlider.fill`, `RangeSlider.knob[low|high][pressed|focused]` (under a finger drawn inside `RangeSlider.reach`, its 44 px target). Two sliders to a screen reader (lowLabel, highLabel). Probe: `<id>/Track/Low`, `<id>/Track/High`.
      *
      * @param id Its id.
      * @param low The low end from game state.
@@ -37176,7 +37176,7 @@ export declare namespace og {
      */
     function rangeSlider(id: string, low: number, high: number, desc?: RangeSliderDesc): RangeResult;
     /**
-     * A number stepper: minus, the value and plus. A press steps once, a held press repeats after 400 ms and speeds up (large steps after a second); Left and Right step it while the value has the focus. A bound's button goes disabled at the bound. Plays sliderTick per step. Parts: `Stepper.frame[focused|disabled]`, `Stepper.button[dec|inc][hover|pressed|disabled]`, `Stepper.value`. Role spinbutton with its range. Probe: `<id>/Frame/Dec`, `<id>/Frame/Value`, `<id>/Frame/Inc`.
+     * A number stepper: minus, the value and plus. A press steps once, a held press repeats after 400 ms and speeds up (large steps after a second); Left and Right step it while the value has the focus. A bound's button goes disabled at the bound. Plays sliderTick per step. Parts: `Stepper.frame[focused|disabled]`, `Stepper.button[dec|inc][hover|pressed|disabled]`, `Stepper.value`. Role spinbutton with its range; its − and + are buttons under a finger and named images on a fine pointer (Left and Right on the focused stepper are theirs). Probe: `<id>/Frame/Dec`, `<id>/Frame/Value`, `<id>/Frame/Inc`.
      *
      * @param id Its id.
      * @param value The value from game state.
@@ -37184,7 +37184,7 @@ export declare namespace og {
      */
     function numberStepper(id: string, value: number, desc?: NumberStepperDesc): NumberResult;
     /**
-     * An option cycler, the console settings row: `‹ High ›` with pips. Left and Right (a pad's d-pad or stick) change it while it has the focus, the arrows take a press, and a press on the value steps forward; the value slides in from the side it came (selection on the style's motion). Arrows follow the writing direction. Plays select. Parts: `Cycler.frame[hover|focused|disabled]`, `Cycler.arrow[prev|next][disabled]`, `Cycler.pip[current]`. Role spinbutton reading the option. Probe: `<id>`, `<id>/Prev`, `<id>/Middle/Clip/Value#i` (the option shown), `<id>/Next`, `<id>/Middle/Pips/Pip#i`.
+     * An option cycler, the console settings row: `‹ High ›` with pips. Left and Right (a pad's d-pad or stick) change it while it has the focus, the arrows take a press, and a press on the value steps forward; the value slides in from the side it came (selection on the style's motion). Arrows follow the writing direction. Plays select. Parts: `Cycler.frame[hover|focused|disabled]`, `Cycler.arrow[prev|next][disabled]`, `Cycler.pip[current]`. Role spinbutton reading the option; its arrows are buttons under a finger and named images on a fine pointer (Left and Right on the focused cycler are theirs). Probe: `<id>`, `<id>/Prev`, `<id>/Middle/Clip/Value#i` (the option shown), `<id>/Next`, `<id>/Middle/Pips/Pip#i`.
      *
      * @param id Its id.
      * @param options The options.
@@ -37193,7 +37193,7 @@ export declare namespace og {
      */
     function cycler(id: string, options: readonly string[], index: number, desc?: CyclerDesc): ChoiceIndexResult;
     /**
-     * A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). A press chooses; Left and Right step the choice while it has the focus, skipping disabled segments, mirrored right to left. Plays tab. Parts: `Segmented.track[focused|disabled]`, `Segmented.thumb`, `Segmented.item[selected][hover|pressed|disabled]`. Role radiogroup of radios. Probe: `<id>`, `<id>/Item#i`, `<id>/Thumb`.
+     * A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). A press chooses; Left and Right step the choice while it has the focus, skipping disabled segments, mirrored right to left. The segments share the width they are given, never narrower than their labels: when they do not fit, the track scrolls sideways under a fade at the cut edge. Under a finger each segment is at least 44 px tall. Plays tab. Parts: `Segmented.track[focused|disabled]`, `Segmented.thumb`, `Segmented.item[selected][hover|pressed|disabled]`. Role radiogroup of radios. Probe: `<id>`, `<id>/Strip/Track/Item#i`, `<id>/Strip/Track/Thumb`.
      *
      * @param id Its id.
      * @param desc Its segments.

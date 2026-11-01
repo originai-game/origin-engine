@@ -6,7 +6,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  byText, clamp, control, decimalsOf, drawn, flags, formatValue, forward, frame, grow, kit, mix, over, paint, parentOf, pct, px, recallPath, rememberPath, role, rtl, snap, still, text, TOUCH, xy,
+  byText, clamp, control, decimalsOf, drawn, flags, formatValue, forward, frame, grow, kit, mix, over, paint, parentOf, keepPath, ownPath, pct, px, role, rtl, snap, still, text, TOUCH, xy,
 } from "./base.ts";
 
 /** A number as a slider or stepper shows it: a level's word, a percent, or the number with its unit. */
@@ -61,24 +61,37 @@ function knobAt(id: string, f: number, g: { h: number; knob: number }, part: str
   const big = state.pressed && frame().touch && !still();
   // It lies over the rail, in its track: an overlap on purpose.
   const track = parentOf(kit.lastPath());
+  // A knob a finger takes (a range's two) reaches 44 px around the disc it draws.
+  const reach = focusable && frame().touch ? Math.max(g.knob, TOUCH) : g.knob;
+  const ring = reach > g.knob;
+  const fill = state.disabled ? role("control") : role("knob");
+  const core = (on: boolean): void => {
+    // A dot of primary inside the knob while it is held or focused: where the value is, at a glance.
+    if (!on) return;
+    const c = Math.round(g.knob * 0.42);
+    kit.open("Core", { width: px(c), height: px(c), radius: c / 2, background: paint(role("primary")), part: `${part}.core`, partClass: "badge" });
+    kit.close();
+  };
   return control(id, {
-    part: `${part}.knob`,
+    part: ring ? `${part}.reach` : `${part}.knob`,
     cls: "chip",
     flags: ["round", state.extra, state.pressed && "pressed"],
     disabled: state.disabled,
     focusable,
     adjustable,
-    width: px(g.knob),
-    height: px(g.knob),
-    radius: g.knob / 2,
-    fill: state.disabled ? role("control") : role("knob"),
+    width: px(reach),
+    height: px(reach),
+    radius: reach / 2,
+    fill: ring ? { ...fill, a: 0 } : fill,
     wash: null,
     lift: 0,
     press: 1,
     touch: 0,
+    // A slider's one knob is drawn, not pressed: a press on it is the track's (which takes the focus and the drag).
+    inert: !focusable && !adjustable,
     props: {
       position: "absolute",
-      insets: { start: Math.round(f * railWidth), top: (g.h - g.knob) / 2 },
+      insets: { start: Math.round(f * railWidth - (reach - g.knob) / 2), top: (g.h - reach) / 2 },
       overlaps: track ? [track] : [],
       transform: { scaleX: big ? 1.15 : 1, scaleY: big ? 1.15 : 1 },
       motion: { kind: "token", token: "ui" },
@@ -86,12 +99,15 @@ function knobAt(id: string, f: number, g: { h: number; knob: number }, part: str
     },
     ...(a11y ? { semantics: a11y } : {}),
   }, (ix) => {
-    // A dot of primary inside the knob while it is held or focused: where the value is, at a glance.
-    if (state.pressed || state.focused || ix === "focused") {
-      const c = Math.round(g.knob * 0.42);
-      kit.open("Core", { width: px(c), height: px(c), radius: c / 2, background: paint(role("primary")), part: `${part}.core`, partClass: "badge" });
-      kit.close();
+    const on = state.pressed || state.focused || ix === "focused";
+    if (!ring) {
+      core(on);
+      return;
     }
+    // The disc, dressed as the knob in its state, centred in the reach.
+    kit.open("Disc", { width: px(g.knob), height: px(g.knob), radius: g.knob / 2, align: "center", cross: "center", background: paint(fill), part: `${part}.knob${flags("round", state.extra, state.pressed && "pressed", ix !== "normal" && ix)}`, partClass: "chip" });
+    core(on);
+    kit.close();
   });
 }
 
@@ -131,7 +147,7 @@ export function valueSlider(id: string, value: number, desc: Api.ValueSliderDesc
   const unit = step > 0 ? step : span / 20;
   const key = `Slider~${id}`;
   // Last tick's track, for the pointer and the rail's width.
-  const trackPath = recallPath(key);
+  const trackPath = ownPath(key);
   const tb = trackPath ? kit.bounds(trackPath) : null;
   railWidth = tb ? Math.max(1, tb.width - g.knob) : 0;
   const ptr = kit.framePointer() as Api.UiPointer;
@@ -146,7 +162,8 @@ export function valueSlider(id: string, value: number, desc: Api.ValueSliderDesc
   try {
     if (desc.label || (desc.showValue ?? true)) {
       kit.open("Head", { direction: "row", width: grow(), gap: t.sm, cross: "baseline" });
-      if (desc.label) text("Label", desc.label, { step: "sm", color: disabled ? "inkFaint" : "inkMuted", nowrap: true, ellipsis: true, width: grow() });
+      // A long label wraps (at 200 % text, in a narrow column) rather than losing its end.
+      if (desc.label) text("Label", desc.label, { step: "sm", color: disabled ? "inkFaint" : "inkMuted", width: grow() });
       else kit.spacer("Lead", grow());
       if (desc.showValue ?? true) text("Value", shown, { step: "sm", color: disabled ? "inkFaint" : "ink", nowrap: true, font: "mono" });
       kit.close();
@@ -187,7 +204,7 @@ export function valueSlider(id: string, value: number, desc: Api.ValueSliderDesc
     kit.close();
   }
   // The track's path, for next tick's pointer.
-  rememberPath(key, `${kit.lastPath()}/Track`);
+  keepPath(key, `${kit.lastPath()}/Track`);
   const changed = v !== value;
   if (changed) {
     const before = Math.round((value - min) / unit);
@@ -225,7 +242,7 @@ export function rangeSlider(id: string, low: number, high: number, desc: Api.Ran
   const g = geometry();
   const unit = step > 0 ? step : span / 20;
   const key = `RangeSlider~${id}`;
-  const trackPath = recallPath(key);
+  const trackPath = ownPath(key);
   const tb = trackPath ? kit.bounds(trackPath) : null;
   railWidth = tb ? Math.max(1, tb.width - g.knob) : 0;
   const ptr = kit.framePointer() as Api.UiPointer;
@@ -246,7 +263,8 @@ export function rangeSlider(id: string, low: number, high: number, desc: Api.Ran
   try {
     if (desc.label || (desc.showValue ?? true)) {
       kit.open("Head", { direction: "row", width: grow(), gap: t.sm, cross: "baseline" });
-      if (desc.label) text("Label", desc.label, { step: "sm", color: disabled ? "inkFaint" : "inkMuted", nowrap: true, ellipsis: true, width: grow() });
+      // A long label wraps (at 200 % text, in a narrow column) rather than losing its end.
+      if (desc.label) text("Label", desc.label, { step: "sm", color: disabled ? "inkFaint" : "inkMuted", width: grow() });
       else kit.spacer("Lead", grow());
       if (desc.showValue ?? true) text("Value", `${fmt(lo)} – ${fmt(hi)}`, { step: "sm", color: disabled ? "inkFaint" : "ink", nowrap: true, font: "mono" });
       kit.close();
@@ -282,7 +300,7 @@ export function rangeSlider(id: string, low: number, high: number, desc: Api.Ran
   } finally {
     kit.close();
   }
-  rememberPath(key, `${kit.lastPath()}/Track`);
+  keepPath(key, `${kit.lastPath()}/Track`);
   const down = press !== 0 || (active !== 0 && ptr.down);
   if (active && !down) committed = true;
   if (adjusted) committed = true;
@@ -319,9 +337,14 @@ export function numberStepper(id: string, value: number, desc: Api.NumberStepper
   const shown = showValue(v, min ?? 0, step, desc.format);
   let held = 0;
   let pressedNow = 0;
-  kit.open(id, { direction: "row", width: desc.width ?? null, gap: t.md, cross: "center" });
+  // The label and the buttons on one line while they fit; the buttons on a line of their own when they do not
+  // (larger text, a narrow column), never the label cut to nothing.
+  kit.open(id, { direction: "row", width: desc.width ?? null, gap: t.md, cross: "center", wrap: true });
   try {
-    if (desc.label) text("Label", desc.label, { step: "body", color: disabled ? "inkFaint" : "ink", nowrap: true, ellipsis: true, width: grow() });
+    if (desc.label) {
+      text("Label", desc.label, { step: "body", color: disabled ? "inkFaint" : "ink" });
+      kit.spacer("Gap", grow());
+    }
     kit.open("Frame", { direction: "row", height: px(h), cross: "stretch", radius: t.control, background: paint(role("well")), part: `Stepper.frame${flags(disabled && "disabled")}`, partClass: "field" });
     const btn = (bid: string, sign: -1 | 1): void => {
       const atBound = !wrap && (sign < 0 ? min !== null && v <= min : max !== null && v >= max);
@@ -329,7 +352,8 @@ export function numberStepper(id: string, value: number, desc: Api.NumberStepper
         part: `Stepper.button${flags(sign < 0 ? "dec" : "inc")}`,
         cls: "button",
         disabled: disabled || atBound,
-        focusable: false,
+        // A button under a finger is a stop keys and pads reach too; a fine pointer's named image is not.
+        focusable: frame().touch,
         width: px(h),
         height: grow(),
         fill: null,
@@ -337,7 +361,9 @@ export function numberStepper(id: string, value: number, desc: Api.NumberStepper
         lift: 0,
         press: 0.92,
         radius: t.control,
-        semantics: { role: "button", name: sign < 0 ? "Decrease" : "Increase" },
+        // The pointer's shortcut for what keys and pads do on the focused control (Left and Right; a
+        // field's own editing): a button under a finger, a named image to the pad graph.
+        semantics: { role: frame().touch ? "button" : "image", name: sign < 0 ? "Decrease" : "Increase" },
       }, () => drawn("Glyph", sign < 0 ? "minus" : "plus", byText(18), disabled || atBound ? role("inkFaint") : role("ink")));
       if (b.r.pressed) {
         held = sign;
