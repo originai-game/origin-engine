@@ -812,7 +812,7 @@ same phase; their FINDINGS about templates close with it.
 
 Each phase ends merged on main with its tests, reference frames on metal
 and the functional lane green; the wave's end runs `scripts/wave-end.sh`.
-At most three threads run at once (AGENTS.md); the split below keeps their
+At most five threads run at once (AGENTS.md); the split below keeps their
 files apart.
 
 | Phase | Content | Owns | Depends on |
