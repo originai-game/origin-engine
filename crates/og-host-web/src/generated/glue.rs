@@ -1634,6 +1634,16 @@ pub fn og_ui_a11y() -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_feedback(event: String, rise: f64) {
+    <Host as UiApi>::og_ui_feedback(&Host, event, rise)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_set_haptics(intensity: f64) {
+    <Host as UiApi>::og_ui_set_haptics(&Host, intensity)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_set_navigation(on: bool) {
     <Host as UiApi>::og_ui_set_navigation(&Host, on)
 }

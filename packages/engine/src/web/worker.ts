@@ -31,7 +31,7 @@
 // { type: "log", lines } with
 // the engine's log and the Worker's console (the crash card shows the last
 // 200); { type: "text", target } when the UI's focused text control changes
-// and { type: "copy", text } when a copy took text (text-input.ts); { type: "a11y", tree } when the UI's
+// and { type: "copy", text } when a copy took text (text-input.ts); { type: "haptics", patterns } when the UI's feedback played haptics (haptics.ts); { type: "a11y", tree } when the UI's
 // accessibility tree changed (a11y.ts); { type: "pointer-lock", wanted } when og.PointerLock.wanted
 // changed (the shell requests the lock on the next press on the canvas, or exits it);
 // { type: "result", id, value | error } for `call` (`advance`,
@@ -663,6 +663,7 @@ export function startWorker(game: GameToken): void {
     }
     if (answered.copy !== undefined) self.postMessage({ type: "copy", text: answered.copy });
     if (answered.a11y !== undefined) self.postMessage({ type: "a11y", tree: answered.a11y });
+    if (answered.haptics?.length) self.postMessage({ type: "haptics", patterns: answered.haptics });
     const wanted = answered.pointerLock === true;
     if (wanted !== lockWanted) {
       lockWanted = wanted;

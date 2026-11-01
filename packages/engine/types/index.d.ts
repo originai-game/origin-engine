@@ -16614,6 +16614,18 @@ export interface ElementDesc {
    */
   readonly frame?: StylePart | null;
   /**
+   * The part its style dresses it as, a selector with its variant, state and attributes (`ShopCard.frame[rarity=epic][selected]`): the style's most specific matching `dress` blocks draw it, and a part the style does not dress draws from the tokens (docs/ui.md §12.3). Overrides frame; null keeps frame's.
+   *
+   * @default null
+   */
+  readonly part?: string | null;
+  /**
+   * The element class whose shape language and elevation an undressed part takes: panel, dialog, card, tooltip, button, field, chip, badge, tab, slot, bar, hud, avatar; null is card.
+   *
+   * @default null
+   */
+  readonly partClass?: string | null;
+  /**
    * Width over height (0: none): with the height left to fit, it is as tall as its laid-out width over this; with a fixed height and the width left to fit, as wide as the height times it.
    *
    * @default 0
@@ -17411,6 +17423,10 @@ export interface UiTheme {
    * Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too.
    */
   readonly reducedTransparency: boolean;
+  /**
+   * The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric, at each breakpoint: size, lineHeight, trackingEm, weight, font), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses).
+   */
+  readonly tokens: unknown;
 }
 
 /** Builds a container's children: ui calls made inside it nest under the container. */
@@ -18678,6 +18694,8 @@ export interface A11yTree {
   /** The path keyboard and pad 0's focus is on; empty for none. */
   readonly focused: string;
 }
+
+
 
 
 
@@ -29662,6 +29680,19 @@ export declare namespace og {
      * The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements.
      */
     function a11y(): A11yTree;
+    /**
+     * Play a UI event's feedback from the style (docs/ui.md §7.8): one sound of its set, at random and never the one it played last, at a volume and pitch from the set's ranges, and its haptic pattern at the player's strength (setHaptics). Widgets play their own events (press, focus, select, confirm, back, open, close, tab, toggleOn, toggleOff, sliderTick); game code plays the rest: scrollTick, typewriter, counterTick, notification, warning, error, success, reward and the reveals revealCommon to revealMythic. The choices come from the UI state, so a replay plays the same. An unknown event or one the style leaves silent plays nothing.
+     *
+     * @param event The event's name.
+     * @param rise A rising cascade's step, 0 to 1, walking the set's pitch range up (a counter's ticks); below 0 picks the pitch at random.
+     */
+    function feedback(event: string, rise: number): void;
+    /**
+     * The player's haptic strength (a settings screen's vibration slider or switch): 0 turns the UI's haptics off, 1 (the default) plays the style's patterns as set; between scales them. The web shell rumbles the gamepad and vibrates a phone; the native host rumbles its pad.
+     *
+     * @param intensity 0 to 1 (clamped).
+     */
+    function setHaptics(intensity: number): void;
     /**
      * Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick.
      *

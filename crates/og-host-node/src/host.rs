@@ -993,6 +993,12 @@ impl UiApi for NodeHost {
     fn og_ui_set_navigation(&self, on: bool) {
         rt::og_ui_set_navigation(on)
     }
+    fn og_ui_feedback(&self, event: String, rise: f64) {
+        rt::og_ui_feedback(event, rise)
+    }
+    fn og_ui_set_haptics(&self, intensity: f64) {
+        rt::og_ui_set_haptics(intensity)
+    }
     fn og_ui_rich_text(&self, id: String, markup: String, desc: Option<String>) -> String {
         rt::og_ui_rich_text(id, markup, desc)
     }

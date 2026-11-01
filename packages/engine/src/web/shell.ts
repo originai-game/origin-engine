@@ -36,6 +36,7 @@
 import { createRing, writeRing, type InjectedInput } from "./input.ts";
 import { TextEntry, type TextTarget } from "./text-input.ts";
 import { A11yMirror, type A11yTree } from "./a11y.ts";
+import { playHaptics, type HapticPulse } from "./haptics.ts";
 import { laneChoice } from "./lanes.ts";
 import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import { localPlatform, storagePersistence, type PlatformCall, type PlatformHost } from "../platform-local.ts";
@@ -284,6 +285,10 @@ export class Shell {
       }
       if (m.type === "text") {
         this.#text?.update((m as unknown as { target: TextTarget | null }).target);
+        return;
+      }
+      if (m.type === "haptics") {
+        playHaptics((m as unknown as { patterns: HapticPulse[][] }).patterns);
         return;
       }
       if (m.type === "copy") {

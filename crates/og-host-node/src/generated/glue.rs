@@ -1959,6 +1959,18 @@ pub fn og_ui_a11y(env: Env) -> String {
     <Host as UiApi>::og_ui_a11y(&Host)
 }
 
+#[napi(js_name = "og_ui_feedback")]
+pub fn og_ui_feedback(env: Env, event: String, rise: f64) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_feedback(&Host, event, rise)
+}
+
+#[napi(js_name = "og_ui_set_haptics")]
+pub fn og_ui_set_haptics(env: Env, intensity: f64) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_set_haptics(&Host, intensity)
+}
+
 #[napi(js_name = "og_ui_set_navigation")]
 pub fn og_ui_set_navigation(env: Env, on: bool) {
     let _env = crate::EnvScope::enter(&env);

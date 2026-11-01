@@ -766,6 +766,10 @@ pub trait UiApi: Wire {
     fn og_ui_focus(&self, pad: u32) -> String;
     /// `og.ui.a11y`
     fn og_ui_a11y(&self) -> String;
+    /// `og.ui.feedback`
+    fn og_ui_feedback(&self, event: String, rise: f64);
+    /// `og.ui.setHaptics`
+    fn og_ui_set_haptics(&self, intensity: f64);
     /// `og.ui.setNavigation`
     fn og_ui_set_navigation(&self, on: bool);
     /// `og.ui.memory`
@@ -1360,6 +1364,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_set_players",
     "og_ui_focus",
     "og_ui_a11y",
+    "og_ui_feedback",
+    "og_ui_set_haptics",
     "og_ui_set_navigation",
     "og_ui_memory",
     "og_ui_remember",

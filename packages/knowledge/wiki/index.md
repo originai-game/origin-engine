@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1452 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1454 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -979,6 +979,7 @@ Field units the docs and Tune use.
 | [`og.ui.documentSchema`](ui.md#fn-documentSchema) | function | ui | `og_ui_document_schema` |
 | [`og.ui.dpad`](ui.md#fn-dpad) | function | ui | `og_ui_dpad` |
 | [`og.ui.dragging`](ui.md#fn-dragging) | function | ui | `og_ui_dragging` |
+| [`og.ui.feedback`](ui.md#fn-feedback) | function | ui | `og_ui_feedback` |
 | [`og.ui.focus`](ui.md#fn-focus) | function | ui | `og_ui_focus` |
 | [`og.ui.forceState`](ui.md#fn-forceState) | function | ui | `og_ui_force_state` |
 | [`og.ui.frameTheme`](ui.md#fn-frameTheme) | function | ui | `og_ui_frame_theme` |
@@ -1061,6 +1062,7 @@ Field units the docs and Tune use.
 | [`og.ui.select`](ui.md#fn-select) | function | ui | `og_ui_select` |
 | [`og.ui.setDevice`](ui.md#fn-setDevice) | function | ui | `og_ui_set_device` |
 | [`og.ui.setDraw`](ui.md#fn-setDraw) | function | ui | `og_ui_set_draw` |
+| [`og.ui.setHaptics`](ui.md#fn-setHaptics) | function | ui | `og_ui_set_haptics` |
 | [`og.ui.setNavigation`](ui.md#fn-setNavigation) | function | ui | `og_ui_set_navigation` |
 | [`og.ui.setPlayers`](ui.md#fn-setPlayers) | function | ui | `og_ui_set_players` |
 | [`og.ui.setProp`](ui.md#fn-setProp) | function | ui | `og_ui_set_prop` |

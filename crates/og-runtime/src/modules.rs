@@ -221,12 +221,18 @@ pub(crate) fn mount_back(
         .add_system(
             SystemDesc::new(UI_SOUND).write::<og_audio::AudioSource>(),
             move |ctx| {
-                let events = shared.lock().take_sounds();
-                if events.is_empty() {
+                // Each play is one of its event's set, at the volume and
+                // pitch the set's ranges gave it (og-ui chose them from
+                // the UI state's own stream, so a replay plays the same).
+                let plays = shared.lock().take_feedback();
+                if plays.is_empty() {
                     return Ok(());
                 }
-                for (event, sound) in events {
-                    let slot = event as usize;
+                for play in plays {
+                    if play.sound == 0 {
+                        continue;
+                    }
+                    let slot = play.event.index();
                     let old = shared.lock().voices_mut()[slot];
                     if old != 0 {
                         let e = Entity::from_bits(old);
@@ -236,7 +242,9 @@ pub(crate) fn mount_back(
                     }
                     let e = ctx.spawn((og_audio::AudioSource {
                         bus: og_audio::Bus::Ui as u32,
-                        ..og_audio::AudioSource::new(sound)
+                        volume: play.volume,
+                        pitch: play.pitch,
+                        ..og_audio::AudioSource::new(play.sound)
                     },))?;
                     shared.lock().voices_mut()[slot] = e.to_bits();
                 }
@@ -766,6 +774,13 @@ fn element(theme: &Theme, d: &Value) -> Element {
         background: paint(theme, &d["background"]),
         radius: f(d, "radius", 0.0),
         frame: frame_part(&d["frame"]),
+        part: d["part"].as_str().and_then(|sel| {
+            let class = d["partClass"]
+                .as_str()
+                .and_then(og_ui::tokens::ElementClass::from_name)
+                .unwrap_or(og_ui::tokens::ElementClass::Card);
+            og_ui::dress::PartRef::parse(sel, class).ok()
+        }),
         aspect: f(d, "aspect", 0.0).max(0.0),
     }
 }
@@ -854,7 +869,14 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                     .styles
                     .get(i)
                     .ok_or_else(|| format!("style: style {h} is not alive"))?;
-                Some((s.file.clone(), s.atlas, s.fonts, s.icons, s.sounds))
+                Some((
+                    s.file.clone(),
+                    s.atlas,
+                    s.fonts,
+                    s.icons,
+                    s.sounds,
+                    s.feedback.clone(),
+                ))
             }
             None => None,
         };
@@ -863,7 +885,11 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             _ => Scheme::Dark,
         };
         let mut theme = match &style {
-            Some((file, atlas, _, _, sounds)) => file.theme(*atlas, *sounds),
+            Some((file, atlas, _, _, sounds, feedback)) => {
+                file.theme_with_feedback(*atlas, *sounds, |id| {
+                    feedback.get(id).copied().unwrap_or(0)
+                })
+            }
             None => Theme::new(scheme),
         };
         if d["contrast"].as_str() == Some("high") {
@@ -885,6 +911,10 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             for e in og_ui::UiSound::ALL {
                 if let Some(h) = sounds[e.name()].as_f64() {
                     theme.art.sounds[e as usize] = h as u64;
+                    let f = &mut theme.tokens.feedback[e.event().index()];
+                    f.sounds = [0; og_ui::tokens::SET_SOUNDS];
+                    f.sounds[0] = h as u64;
+                    f.count = u8::from(h != 0.0);
                 }
             }
         }
@@ -993,7 +1023,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                     font: None,
                 },
             }
-        } else if let Some((file, _, _, Some(texture), _)) = &style {
+        } else if let Some((file, _, _, Some(texture), _, _)) = &style {
             let (_, columns, rows, names) = file.icons.clone().unwrap_or_default();
             IconAtlas {
                 texture: Some(*texture),
@@ -1007,6 +1037,13 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         };
         let mut ui = ui.lock();
         ui.set_theme(theme);
+        // The style's dressings, its vector fills bound when it loaded
+        // (none: the prototype's tokens dress every part).
+        ui.set_dressings(
+            style
+                .as_ref()
+                .map_or_else(Vec::new, |s| s.0.dressings.clone()),
+        );
         let chain = ui.fonts().chain.clone();
         let fonts = Fonts { chain, ..fonts };
         let fontless = fonts.body.handle.is_none()
@@ -1048,6 +1085,8 @@ pub(crate) struct LoadedStyle {
     pub fonts: [Option<f64>; 6],
     pub icons: Option<og_render::TextureHandle>,
     pub sounds: [u64; 6],
+    /// The sound handle of each asset id its feedback sets name.
+    pub feedback: std::collections::BTreeMap<String, u64>,
 }
 
 /// `og.load.style`: a cooked UI style, its atlas, fonts, icons and sounds loaded with it.
@@ -1112,6 +1151,19 @@ pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
                 sounds[k] = eng.assets.borrow().sound_handles[i];
             }
         }
+        let mut feedback = std::collections::BTreeMap::new();
+        for p in file.feedback_sounds.iter().flatten() {
+            if !feedback.contains_key(p) {
+                let i = super::assets::load_sound(eng, p)?;
+                feedback.insert(p.clone(), eng.assets.borrow().sound_handles[i]);
+            }
+        }
+        // The dressings' vector fills, bound to the loaded vectors.
+        let mut vectors = std::collections::BTreeMap::new();
+        for v in file.vector_assets() {
+            vectors.insert(v.clone(), super::ui_draw::load_vector(eng, &v)?.1);
+        }
+        file.bind_vectors(|v| vectors.get(v).copied());
         let mut a = eng.assets.borrow_mut();
         a.styles.push(LoadedStyle {
             id,
@@ -1120,6 +1172,7 @@ pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
             fonts,
             icons,
             sounds,
+            feedback,
         });
         Ok(a.styles.len() - 1)
     })()
@@ -1258,8 +1311,131 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, style: &str) -> String {
         "contrast": if theme.contrast == og_ui::Contrast::High { "high" } else { "standard" },
         "reducedMotion": theme.reduced_motion,
         "reducedTransparency": theme.reduced_transparency,
+        "tokens": tokens_json(&theme.tokens),
     })
     .to_string()
+}
+
+/// The style's tokens (docs/ui.md §12.2) as og.ui.theme answers them
+/// (`UiTheme.tokens`): type by role and breakpoint, the space, size,
+/// radius and stroke scales, elevation, the shape language per element
+/// class, the springs, the rarity, team and series colours, and each UI
+/// event's feedback set.
+fn tokens_json(t: &og_ui::StyleTokens) -> Value {
+    use og_ui::tokens::*;
+    let font = |f: og_ui::FontRole| match f {
+        og_ui::FontRole::Body => "body",
+        og_ui::FontRole::Display => "display",
+        og_ui::FontRole::Mono => "mono",
+        og_ui::FontRole::Rounded => "rounded",
+    };
+    let mut typography = Map::new();
+    for &role in TypeRole::ALL {
+        let mut by = Map::new();
+        for bp in og_ui::Breakpoint::ALL {
+            let k = t.typography.get(role, bp);
+            by.insert(
+                bp.name().to_string(),
+                json!({ "size": k.size, "lineHeight": k.line_height, "trackingEm": k.tracking_em, "weight": k.weight, "font": font(k.font) }),
+            );
+        }
+        typography.insert(role.name().to_string(), Value::Object(by));
+    }
+    let scale = |names: &[&str], v: &[f32]| -> Value {
+        Value::Object(
+            names
+                .iter()
+                .zip(v)
+                .map(|(n, v)| (n.to_string(), json!(v)))
+                .collect(),
+        )
+    };
+    let names = |all: &[&'static str]| all.to_vec();
+    let space = scale(
+        &names(&SpaceStep::ALL.iter().map(|s| s.name()).collect::<Vec<_>>()),
+        &t.space,
+    );
+    let size = scale(
+        &names(&SizeStep::ALL.iter().map(|s| s.name()).collect::<Vec<_>>()),
+        &t.size,
+    );
+    let radius = scale(
+        &names(&RadiusStep::ALL.iter().map(|s| s.name()).collect::<Vec<_>>()),
+        &t.radius,
+    );
+    let stroke = scale(
+        &names(
+            &StrokeWidth::ALL
+                .iter()
+                .map(|s| s.name())
+                .collect::<Vec<_>>(),
+        ),
+        &t.stroke,
+    );
+    let elevation: Map<String, Value> = Level::ALL
+        .iter()
+        .map(|&l| {
+            let shadows: Vec<Value> = t
+                .elevation(l)
+                .shadows()
+                .iter()
+                .map(|s| json!({ "dx": s.dx, "dy": s.dy, "blur": s.blur, "spread": s.spread, "color": hex(s.color) }))
+                .collect();
+            (l.name().to_string(), json!(shadows))
+        })
+        .collect();
+    let shape: Map<String, Value> = ElementClass::ALL
+        .iter()
+        .map(|&c| {
+            let k = t.shape(c);
+            (
+                c.name().to_string(),
+                json!({ "corner": k.corner.name(), "radius": k.radius }),
+            )
+        })
+        .collect();
+    let springs: Map<String, Value> = SpringName::ALL
+        .iter()
+        .map(|&n| {
+            let k = t.spring(n);
+            (
+                n.name().to_string(),
+                json!({ "durationMs": k.duration_ms, "bounce": k.bounce }),
+            )
+        })
+        .collect();
+    let swatches = |v: &[Swatch]| -> Vec<Value> { v.iter().map(|s| json!(hex(s.color))).collect() };
+    let rarity: Map<String, Value> = Rarity::ALL
+        .iter()
+        .map(|&r| (r.name().to_string(), json!(hex(t.rarity(r).color))))
+        .collect();
+    let feedback: Map<String, Value> = SoundEvent::ALL
+        .iter()
+        .map(|&e| {
+            let f = t.feedback(e);
+            let pulses: Vec<[f32; 4]> = f.haptic.pulses().iter().map(|p| [p.start_ms, p.ms, p.low, p.high]).collect();
+            (
+                e.name().to_string(),
+                json!({ "sounds": f.count, "volume": f.volume, "pitch": f.pitch, "haptic": pulses }),
+            )
+        })
+        .collect();
+    json!({
+        "typography": typography,
+        "space": space,
+        "size": size,
+        "radius": radius,
+        "stroke": stroke,
+        "elevation": elevation,
+        "shape": shape,
+        "springs": springs,
+        "staggerMs": t.motion.stagger_ms,
+        "overshoot": t.motion.overshoot,
+        "rarity": rarity,
+        "team": swatches(&t.colors.team),
+        "series": t.colors.series.iter().map(|c| hex(*c)).collect::<Vec<_>>(),
+        "feedback": feedback,
+    })
 }
 
 fn desc_of(desc: Option<String>) -> Value {
@@ -2281,6 +2457,23 @@ pub fn og_ui_navigate(world: u32, intent: String) {
 
 pub fn og_ui_back() -> bool {
     with_ui("og.ui.back", |ui| ui.back()).unwrap_or(false)
+}
+
+pub fn og_ui_feedback(event: String, rise: f64) {
+    let Some(e) = og_ui::tokens::SoundEvent::from_name(&event) else {
+        return;
+    };
+    with_ui("og.ui.feedback", |ui| {
+        if rise >= 0.0 {
+            ui.feedback_rising(e, rise as f32)
+        } else {
+            ui.feedback(e)
+        }
+    });
+}
+
+pub fn og_ui_set_haptics(intensity: f64) {
+    with_ui("og.ui.setHaptics", |ui| ui.set_haptics(intensity as f32));
 }
 
 pub fn og_ui_set_navigation(on: bool) {

@@ -1615,6 +1615,14 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     if let Some(c) = copy {
         answer["copy"] = json!(c);
     }
+    // `haptics`: the patterns the UI's feedback played since the last
+    // frame, at the player's strength (og.ui.setHaptics), each a list of
+    // [startMs, ms, low, high] pulses: the web shell rumbles the pad and
+    // vibrates the phone; a native host rumbles its pad.
+    let haptics = haptics_played(&eng);
+    if !haptics.is_empty() {
+        answer["haptics"] = json!(haptics);
+    }
     // `a11y`: the UI's accessibility tree (as og.ui.a11y answers it), on
     // the frames where it changed, for a host that mirrors it (create
     // option `a11y`: the web shell's DOM mirror).
@@ -1640,6 +1648,23 @@ fn a11y_changed(eng: &Engine) -> Option<Value> {
     }
     st.a11y_digest = digest;
     Some(super::modules::a11y_json(tree))
+}
+
+/// The haptic patterns the UI played since the last frame answer.
+fn haptics_played(eng: &Engine) -> Vec<Vec<[f32; 4]>> {
+    let Some(ui) = eng.state.borrow().ui.clone() else {
+        return Vec::new();
+    };
+    let mut ui = ui.lock();
+    ui.take_haptics()
+        .iter()
+        .map(|h| {
+            h.pulses()
+                .iter()
+                .map(|p| [p.start_ms, p.ms, p.low, p.high])
+                .collect()
+        })
+        .collect()
 }
 
 /// The UI's focused text control as the web shell takes it (`null`: none),

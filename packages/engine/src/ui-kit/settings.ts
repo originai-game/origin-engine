@@ -128,6 +128,9 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
       const r = render.applyQuality(desc.world as unknown as Parameters<typeof render.applyQuality>[0], s.quality) as Api.Result<void>;
       if (!r.ok) throw new Error(`og.ui.settingsScreen: ${r.reason}`);
     }
+    // The vibration switch is the player's haptic strength (og.ui.setHaptics):
+    // off silences the style's patterns on the pad and the phone.
+    if (s.vibration !== before.vibration) kit.setHaptics(s.vibration ? 1 : 0);
     desc.onChange?.(s);
   }
   if (closed && dirty) {

@@ -28,29 +28,38 @@ pub(crate) struct UiDrawState {
 pub fn og_load_vector(world: u32, path: String) -> String {
     let r = (|| -> Result<Value, String> {
         let eng = engine(world)?;
-        let id = og_cook::runtime::asset_id(&path).to_string();
-        if let Some(&i) = eng.render.borrow().ui_draw.vector_paths.get(&id) {
-            return Ok(json!(handle(i)));
-        }
-        let vector = {
-            let assets = eng.assets.borrow();
-            let (bytes, bundle) = assets.blob(&id)?;
-            bundle
-                .vector(&id, bytes.bytes())
-                .map_err(|e| e.to_string())?
-        };
-        let mut rs = eng.render.borrow_mut();
-        let h = rs.scene.add_ui_vector(vector);
-        let st = &mut rs.ui_draw;
-        st.vectors.push(h);
-        let i = st.vectors.len() - 1;
-        st.vector_paths.insert(id, i);
-        Ok(json!(handle(i)))
+        Ok(json!(handle(load_vector(&eng, &path)?.0)))
     })();
     match r {
         Ok(v) => ok(v),
         Err(e) => refuse(e),
     }
+}
+
+/// A cooked vector added to the scene once per path: its VectorArt index
+/// and its handle (a style's vector fills load through here too).
+pub(crate) fn load_vector(
+    eng: &super::engine::Engine,
+    path: &str,
+) -> Result<(usize, UiVectorHandle), String> {
+    let id = og_cook::runtime::asset_id(path).to_string();
+    if let Some(&i) = eng.render.borrow().ui_draw.vector_paths.get(&id) {
+        return Ok((i, eng.render.borrow().ui_draw.vectors[i]));
+    }
+    let vector = {
+        let assets = eng.assets.borrow();
+        let (bytes, bundle) = assets.blob(&id)?;
+        bundle
+            .vector(&id, bytes.bytes())
+            .map_err(|e| e.to_string())?
+    };
+    let mut rs = eng.render.borrow_mut();
+    let h = rs.scene.add_ui_vector(vector);
+    let st = &mut rs.ui_draw;
+    st.vectors.push(h);
+    let i = st.vectors.len() - 1;
+    st.vector_paths.insert(id, i);
+    Ok((i, h))
 }
 
 /// `og.load.uiMaterial`: a cooked UI material, added to the scene once per path.
