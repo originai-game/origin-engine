@@ -692,7 +692,9 @@ step_ui_styles() {
   # og test loads packages/engine/native's addon (else the npm one, an
   # older engine): build the dev addon and og there first.
   OG_GATE=1 sh packages/engine/scripts/build.sh --native || return 1
-  "$OG_TARGET_DIR/debug/og" test templates/ui-kit --filter tests/style-
+  # The playtests run OG_UI_STYLES_JOBS at a time (og test --jobs; measured
+  # in docs/ci.md §Two machines), each one's output printed whole, in order.
+  "$OG_TARGET_DIR/debug/og" test templates/ui-kit --filter tests/style- --jobs "${OG_UI_STYLES_JOBS:-3}"
 }
 
 # The packages that need no native build.

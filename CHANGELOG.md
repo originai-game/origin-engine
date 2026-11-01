@@ -15,6 +15,8 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- `og test --jobs N` runs up to N playtests at once (default 1, as
+  before); each one's output is printed whole, in the playtests' order.
 - **Breaking: WebGL2 is removed; the web is WebGPU only** (the owner,
   2026-11-01, design §8). A browser without WebGPU gets the player
   shell's "This browser does not support WebGPU" card (reported to the

@@ -1858,6 +1858,88 @@ fn test_filters_unit_and_playtest_paths_and_refuses_no_match() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// `--jobs` runs playtests at once yet prints each one's output whole and
+/// in the playtests' order, and still counts every failure: the first
+/// playtest ends only once the fourth has started beside it, and the third
+/// fails. Run one at a time, the first gives up waiting and fails too.
+#[test]
+fn test_jobs_runs_playtests_at_once_and_prints_them_in_order() {
+    let dir = scratch_root();
+    std::fs::remove_dir_all(dir.join("crates")).unwrap();
+    let engine = dir.join("engine");
+    std::fs::create_dir_all(engine.join("src/node")).unwrap();
+    std::fs::write(
+        engine.join("src/node/build.ts"),
+        "await Bun.write(process.argv[process.argv.indexOf('--out') + 1], 'export default 0;');",
+    )
+    .unwrap();
+    std::fs::write(
+        engine.join("src/node/playtest-run.ts"),
+        r#"import { basename, dirname, join } from "node:path";
+const f = process.argv[process.argv.indexOf("--file") + 1]!;
+const n = basename(f, ".og.ts");
+const marker = join(dirname(f), "..", ".d-started");
+console.log(`start ${n}`);
+if (n === "d") await Bun.write(marker, "");
+if (n === "a") {
+  const t0 = Date.now();
+  while (!(await Bun.file(marker).exists())) {
+    if (Date.now() - t0 > 3000) { console.log("a: d never started beside it"); process.exit(1); }
+    await Bun.sleep(20);
+  }
+}
+console.log(`end ${n}`);
+process.exit(n === "c" ? 1 : 0);
+"#,
+    )
+    .unwrap();
+    let game = dir.join("game");
+    std::fs::create_dir_all(game.join("tests")).unwrap();
+    std::fs::create_dir_all(game.join("src")).unwrap();
+    std::fs::write(game.join("src/main.ts"), "export default 0;").unwrap();
+    std::fs::write(
+        game.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    for n in ["a", "b", "c", "d"] {
+        std::fs::write(game.join(format!("tests/{n}.og.ts")), "export default 0;").unwrap();
+    }
+    let run = |jobs: &str| {
+        let _ = std::fs::remove_file(game.join(".d-started"));
+        let out = og()
+            .args(["test", "--no-check", "--jobs", jobs])
+            .arg(&game)
+            .env("OG_ENGINE_PACKAGE", &engine)
+            .output()
+            .unwrap();
+        (out.status.code(), text(&out))
+    };
+    let (code, t) = run("3");
+    assert_eq!(code, Some(1), "{t}");
+    assert!(t.contains("og test: 1 of 4 suite(s) failed"), "{t}");
+    let lines: Vec<&str> = t
+        .lines()
+        .filter(|l| l.starts_with("start ") || l.starts_with("end "))
+        .collect();
+    assert_eq!(
+        lines,
+        [
+            "start a", "end a", "start b", "end b", "start c", "end c", "start d", "end d"
+        ],
+        "{t}"
+    );
+    let (code, t) = run("1");
+    assert_eq!(code, Some(1), "{t}");
+    assert!(t.contains("og test: 2 of 4 suite(s) failed"), "{t}");
+    for bad in ["0", "x"] {
+        let (code, t) = run(bad);
+        assert_eq!(code, Some(2), "{t}");
+        assert!(t.contains("--jobs"), "{t}");
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 /// `og dev` checks a source change beside the rebuild and never refuses the
 /// reload over it: the reload goes through, its event carries the check
 /// (or `null` while it runs), the `check` event lists the diagnostic, and

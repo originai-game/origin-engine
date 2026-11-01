@@ -1,4 +1,4 @@
-//! `og test [project] [--filter <path>] [--json] [--no-check]`: the project's type check
+//! `og test [project] [--filter <path>] [--jobs N] [--json] [--no-check]`: the project's type check
 //! (crate::check), its bun tests (`*.test.ts`), then each playtest script
 //! `tests/*.og.ts` through `og run --headless --commands` in its own process
 //! (`packages/engine/src/node/playtest-run.ts`). Fails when anything fails,
@@ -8,6 +8,9 @@
 //! the check's `{ok, ms, errors}`.
 //! `--filter` selects suite files by a case-sensitive substring of their
 //! project-relative path (with `/` separators), before any tests execute.
+//! `--jobs N` runs up to N playtests at once (default 1), each process's
+//! output printed whole, in the playtests' order, once it and the ones
+//! before it have ended.
 //!
 //! Without a renderer (the platform's engine and probe sandboxes,
 //! `OG_RENDERER=none`) a playtest's screenshots are frames unchecked: each
@@ -43,6 +46,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let mut json = false;
     let mut check = true;
     let mut filter = None;
+    let mut jobs = 1;
     let mut args = args.iter();
     while let Some(a) = args.next() {
         match *a {
@@ -56,9 +60,20 @@ pub fn run(args: &[&str]) -> ExitCode {
                 };
                 filter = Some(*value);
             }
+            "--jobs" => {
+                let Some(n) = args
+                    .next()
+                    .and_then(|v| v.parse::<usize>().ok())
+                    .filter(|&n| n > 0)
+                else {
+                    eprintln!("og test: --jobs needs a number from 1");
+                    return ExitCode::from(2);
+                };
+                jobs = n;
+            }
             a if a.starts_with('-') => {
                 eprintln!(
-                    "og test: unknown option `{a}`. usage: og test [project] [--filter <path>] [--json] [--no-check]"
+                    "og test: unknown option `{a}`. usage: og test [project] [--filter <path>] [--jobs N] [--json] [--no-check]"
                 );
                 return ExitCode::from(2);
             }
@@ -169,27 +184,43 @@ pub fn run(args: &[&str]) -> ExitCode {
         };
         // Each playtest's result line, for the frames it left unchecked.
         let results = std::env::temp_dir().join(format!("og-test-{}", std::process::id()));
-        for (i, t) in playtests.iter().enumerate() {
-            let result = results.join(format!("{i}.json"));
+        let command = |i: usize, t: &PathBuf| {
             let mut cmd = project::bun(&package, "src/node/playtest-run.ts");
             cmd.arg("--file").arg(t).arg("--entry").arg(&bundle);
-            cmd.arg("--result").arg(&result);
+            cmd.arg("--result").arg(results.join(format!("{i}.json")));
             if p.manifest {
                 cmd.arg("--root").arg(&p.root);
             }
             if json {
                 cmd.arg("--json");
             }
-            match cmd.status() {
-                Ok(s) if s.success() => {}
-                Ok(_) => failed += 1,
+            cmd
+        };
+        let statuses = if jobs == 1 {
+            let mut statuses = Vec::new();
+            for (i, t) in playtests.iter().enumerate() {
+                let status = command(i, t).status();
+                let started = status.is_ok();
+                statuses.push(status.map(|s| s.success()));
+                if !started {
+                    break;
+                }
+            }
+            statuses
+        } else {
+            parallel(&playtests, jobs, command)
+        };
+        for (i, status) in statuses.iter().enumerate() {
+            match status {
+                Ok(true) => {}
+                Ok(false) => failed += 1,
                 Err(e) => {
                     eprintln!("og test: {} ({e})", project::NO_BUN);
                     let _ = std::fs::remove_dir_all(&results);
                     return ExitCode::FAILURE;
                 }
             }
-            unchecked += unchecked_frames(&result);
+            unchecked += unchecked_frames(&results.join(format!("{i}.json")));
         }
         let _ = std::fs::remove_dir_all(&results);
     }
@@ -223,6 +254,48 @@ pub fn run(args: &[&str]) -> ExitCode {
         println!("og test: {failed} of {total} suite(s) failed{frames}");
         ExitCode::FAILURE
     }
+}
+
+/// Runs each playtest's command, `jobs` at a time, and prints each one's
+/// output whole once it and every playtest before it have ended, so the
+/// log reads in the playtests' order. Whether each passed, in order.
+fn parallel(
+    playtests: &[PathBuf],
+    jobs: usize,
+    command: impl Fn(usize, &PathBuf) -> Command + Sync,
+) -> Vec<std::io::Result<bool>> {
+    use std::io::Write;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let next = AtomicUsize::new(0);
+    let (send, receive) = std::sync::mpsc::channel();
+    let mut done: Vec<Option<std::io::Result<std::process::Output>>> =
+        playtests.iter().map(|_| None).collect();
+    let mut statuses = Vec::new();
+    std::thread::scope(|scope| {
+        for _ in 0..jobs.min(playtests.len()) {
+            let send = send.clone();
+            let (next, command) = (&next, &command);
+            scope.spawn(move || {
+                loop {
+                    let i = next.fetch_add(1, Ordering::Relaxed);
+                    let Some(t) = playtests.get(i) else { break };
+                    let _ = send.send((i, command(i, t).output()));
+                }
+            });
+        }
+        drop(send);
+        for (i, output) in receive {
+            done[i] = Some(output);
+            while let Some(Some(output)) = done.get_mut(statuses.len()).map(Option::take) {
+                statuses.push(output.map(|o| {
+                    let _ = std::io::stdout().write_all(&o.stdout);
+                    let _ = std::io::stderr().write_all(&o.stderr);
+                    o.status.success()
+                }));
+            }
+        }
+    });
+    statuses
 }
 
 /// How many frames a playtest's result line (`playtest-run.ts --result`)
