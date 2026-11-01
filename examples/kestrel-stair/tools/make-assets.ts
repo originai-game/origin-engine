@@ -468,34 +468,18 @@ function music(): Uint8Array {
 // --------------------------------------------------------------------- style
 
 /**
- * The paper style pack (templates/styles/paper), copied as
- * styles/kestrel: the accent turned from the pack's one red to the courier's
- * cape red, the ground a warmer paper, and the CJK fallback pointed at the
- * game's own Japanese subset (og-taste §1).
+ * The paper style pack's art and fonts (templates/styles/paper), copied as
+ * styles/kestrel. The style itself, `styles/kestrel/style.ogt`, is the
+ * game's own: the pack retinted (the accent the courier's cape red, the
+ * ground a warmer paper, the CJK fallback the game's own Japanese subset,
+ * og-taste §1) and upgraded to version 2 by `og style upgrade`; this
+ * script no longer writes it.
  */
 function style(): void {
   const from = join(ENGINE, "templates", "styles", "paper");
   const to = join(ASSETS, "styles", "kestrel");
   mkdirSync(to, { recursive: true });
-  for (const f of readdirSync(from)) if (f !== "style.ogt") copyFileSync(join(from, f), join(to, f));
-  let text = readFileSync(join(from, "style.ogt"), "utf8");
-  const swap = (line: string, value: string) => {
-    const re = new RegExp(`^(\\s*${line}\\s+)"[^"]*"`, "m");
-    if (!re.test(text)) throw new Error(`style.ogt has no ${line} line`);
-    text = text.replace(re, `$1"${value}"`);
-  };
-  text = text.replace(/^name "paper"/m, 'name "kestrel"');
-  text = text.replace(/^# The paper style pack.*$/m, "# The Kestrel Stair's style: the engine's paper style pack (templates/styles/paper), copied and retinted by tools/make-assets.ts.");
-  swap("backdrop", "#efe6d2");
-  swap("well", "#e4d9c1");
-  swap("primary", "#9c2a1d");
-  swap("primaryHover", "#8f2618");
-  swap("primaryActive", "#7f2013");
-  swap("highlight", "#86210f");
-  // The pack's fgSubtle measures 3.5:1 as an item's count on a slot (og polish): a shade darker.
-  swap("inkFaint", "#57524a");
-  swap("fallback", "fonts/NotoSansJP-kestrel.otf");
-  writeFileSync(join(to, "style.ogt"), text);
+  for (const f of readdirSync(from)) if (f !== "style.ogt" && f !== "LICENSES.md") copyFileSync(join(from, f), join(to, f));
   // The copy's licences: the pack's, its fallback named as this game's.
   let lic = readFileSync(join(from, "LICENSES.md"), "utf8");
   lic = lic.replace("# The paper style pack: licences", "# The Kestrel Stair's style (the engine's paper style pack, retinted): licences");
