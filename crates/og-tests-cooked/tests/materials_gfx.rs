@@ -435,8 +435,7 @@ fn the_materials_frame_matches_its_reference() {
     let refs = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../og-ui/references");
     let own = refs.join(&tier).join("materials.png");
     if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        std::fs::create_dir_all(own.parent().expect("dir")).expect("reference dir");
-        std::fs::copy(&actual, &own).expect("record reference");
+        record_reference(&own, image.width, image.height, &image.pixels);
         println!("recorded {}", own.display());
     }
     let reference = if own.exists() {

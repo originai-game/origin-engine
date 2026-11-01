@@ -61,18 +61,18 @@
 // refuse. Needs Chrome (cdp.ts: a missing one is an error), or Firefox with
 // --firefox [<path>] (bidi.ts; WebGPU opens a window).
 
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { settingsOf, webBuild } from "../../src/node/web-build.ts";
 import { bundleGame } from "../../src/node/build.ts";
-import type { PlaytestDesc } from "../../src/playtest.ts";
+import { recordReference, type PlaytestDesc } from "../../src/playtest.ts";
 import { Browser, chromePath } from "./cdp.ts";
 import { Firefox, firefoxPath } from "./bidi.ts";
 import { serve } from "./serve.ts";
 import { cookProject } from "../support/og-bin.ts";
 import { compareFrames as compare, decodePng, TOLERANCE, type Image } from "../support/png.ts";
-import { encodePng } from "../../src/node/png.ts";
+import { encodePngBest } from "../../src/node/png.ts";
 import { LOOK_COMMANDS, LOOK_FRAMES, LOOK_SHOTS } from "../../../../templates/fx-showcase/tests/looks-script.ts";
 
 declare const Bun: {
@@ -322,8 +322,7 @@ try {
       continue;
     }
     if (record) {
-      mkdirSync(own, { recursive: true });
-      copyFileSync(file, join(own, `${s.name}.png`));
+      recordReference(file, join(own, `${s.name}.png`));
       console.log(`recorded ${join(own, `${s.name}.png`)} (tick ${shot.tick})`);
       continue;
     }
@@ -352,7 +351,7 @@ try {
     sheet.rgba = new Uint8Array(sheet.width * sheet.height * 4);
     cells.forEach((c, i) => blit(sheet, c, i, SHEET.cols, true));
     mkdirSync(own, { recursive: true });
-    writeFileSync(join(own, SHEET.name), encodePng(sheet));
+    writeFileSync(join(own, SHEET.name), encodePngBest(sheet));
     console.log(`recorded ${join(own, SHEET.name)} (${cells.length} cells)`);
   }
 } catch (e) {

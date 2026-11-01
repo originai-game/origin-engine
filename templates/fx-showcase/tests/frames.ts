@@ -6,11 +6,11 @@
 // `OG_FX_CAPTURE=sky.png,water.png` records only those.
 // (The decoder is the UI kit's, copied so the showcase stands alone.)
 
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inflateSync } from "node:zlib";
-import type { PlaytestChecks, PlaytestRun } from "@origingame/engine/playtest";
+import { recordReference, type PlaytestChecks, type PlaytestRun } from "@origingame/engine/playtest";
 
 export interface Image {
   width: number;
@@ -119,8 +119,7 @@ export function checkFrames(run: PlaytestRun, t: PlaytestChecks, files: readonly
       const ref = records(f) || existsSync(mine) ? mine : join(refs, "metal", prefix + f);
       if (ref !== mine) process.stdout.write(`  note: no ${run.tier} reference for ${prefix}${f}; comparing with metal\n`);
       if (records(f)) {
-        mkdirSync(own, { recursive: true });
-        copyFileSync(actual, ref);
+        recordReference(actual, ref);
         t.ok(true, `recorded ${ref}`);
         continue;
       }

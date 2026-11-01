@@ -65,8 +65,7 @@ fn sample_screen_matches_its_reference_frame() {
 
     let own = reference_dir(&tier).join("sample-screen.png");
     if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        std::fs::create_dir_all(own.parent().expect("dir")).expect("reference dir");
-        std::fs::copy(&actual, &own).expect("record reference");
+        record_reference(&own, image.width, image.height, &image.pixels);
         println!("recorded {}", own.display());
     }
     let reference = if own.exists() {
@@ -292,8 +291,7 @@ fn a_text_glow_is_a_halo_from_the_distance_field() {
     .expect("write frame");
     let own = reference_dir(&tier).join("text-glow.png");
     if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        std::fs::create_dir_all(own.parent().expect("dir")).expect("reference dir");
-        std::fs::copy(&out, &own).expect("record reference");
+        record_reference(&own, glow.width, glow.height, &glow.pixels);
     }
     let reference = if own.exists() {
         own
@@ -599,8 +597,7 @@ fn a_glass_panel_blurs_the_overlay_layers_below_it() {
     image::save_buffer(&out, &glass, w, h, image::ColorType::Rgba8).expect("write frame");
     let own = reference_dir(&tier).join("glass.png");
     if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        std::fs::create_dir_all(own.parent().expect("dir")).expect("reference dir");
-        std::fs::copy(&out, &own).expect("record reference");
+        record_reference(&own, w, h, &glass);
     }
     let reference = if own.exists() {
         own
@@ -791,8 +788,7 @@ fn text_fields_match_their_reference_frame() {
     .expect("write frame");
     let own = reference_dir(&tier).join("text-fields-2.png");
     if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        std::fs::create_dir_all(own.parent().expect("dir")).expect("reference dir");
-        std::fs::copy(&actual, &own).expect("record reference");
+        record_reference(&own, image.width, image.height, &image.pixels);
         println!("recorded {}", own.display());
     }
     let reference = if own.exists() {

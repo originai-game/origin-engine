@@ -5,11 +5,11 @@
 // without its own references compares with `metal` and says so.
 // `OG_UI_CAPTURE=1 og test .` records this tier's references instead.
 
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inflateSync } from "node:zlib";
-import type { PlaytestChecks, PlaytestRun } from "@origingame/engine/playtest";
+import { recordReference, type PlaytestChecks, type PlaytestRun } from "@origingame/engine/playtest";
 
 export interface Image {
   width: number;
@@ -117,8 +117,7 @@ export function checkFrames(run: PlaytestRun, t: PlaytestChecks, files: readonly
       const ref = capture || existsSync(mine) ? mine : join(refs, "metal", prefix + f);
       if (ref !== mine) process.stdout.write(`  note: no ${run.tier} reference for ${prefix}${f}; comparing with metal\n`);
       if (capture) {
-        mkdirSync(own, { recursive: true });
-        copyFileSync(actual, ref);
+        recordReference(actual, ref);
         t.ok(true, `recorded ${ref}`);
         continue;
       }

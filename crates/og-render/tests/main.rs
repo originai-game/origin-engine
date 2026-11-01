@@ -3,6 +3,7 @@
 //! per file (docs/ci.md §Test binaries). nextest still runs every test
 //! in a process of its own. A new test file is a `mod` line here.
 
+mod png;
 mod profile2d;
 mod shaders;
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]

@@ -1,7 +1,17 @@
 // PNG frames: the probe's captures decoded (8-bit RGB or RGBA,
 // non-interlaced, any filter) and RGBA images encoded (`og polish` writes
-// its report's frames at half size).
-import { deflateSync, inflateSync } from "node:zlib";
+// its report's frames at half size; `encodePngBest` writes the frames kept
+// in git, every reference).
+
+/** node:zlib, reached when a PNG is coded (bun and node both answer it) rather than imported: `@origingame/engine/playtest` reads this module, and a game type-checks its playtests without node's declarations. */
+function zlib(): Zlib {
+  return (globalThis as unknown as { process: { getBuiltinModule(id: string): Zlib } }).process.getBuiltinModule("node:zlib");
+}
+
+interface Zlib {
+  deflateSync(data: Uint8Array, options?: { level?: number }): Uint8Array;
+  inflateSync(data: Uint8Array): Uint8Array;
+}
 
 export interface Image {
   width: number;
@@ -35,7 +45,7 @@ export function decodePng(bytes: Uint8Array): Image {
   }
   const joined = new Uint8Array(idat.reduce((n, d) => n + d.length, 0));
   idat.reduce((at, d) => (joined.set(d, at), at + d.length), 0);
-  const raw = inflateSync(joined);
+  const raw = zlib().inflateSync(joined);
   const stride = width * channels;
   const out = new Uint8Array(width * height * 4);
   const prev = new Uint8Array(stride);
@@ -123,7 +133,69 @@ export function encodePng(img: Image): Uint8Array {
   v.setUint32(0, img.width);
   v.setUint32(4, img.height);
   ihdr.set([8, 2, 0, 0, 0], 8);
-  const parts = [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw, { level: 9 })), chunk("IEND", new Uint8Array(0))];
+  const parts = [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", zlib().deflateSync(raw, { level: 9 })), chunk("IEND", new Uint8Array(0))];
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  parts.reduce((at, p) => (out.set(p, at), at + p.length), 0);
+  return out;
+}
+
+/**
+ * The smallest PNG of the image this module can write, for frames kept in git
+ * (references): RGB when every pixel is opaque, else RGBA; each row filtered
+ * with whichever of PNG's five filters leaves the smallest sum of signed
+ * residuals (the adaptive heuristic of libpng and the png crate); deflated
+ * at zlib's level 9. The pixels decode exactly. A 1280×720 frame takes about
+ * a second, so per-run screenshots keep the probe's fast encoder.
+ */
+export function encodePngBest(img: Image): Uint8Array {
+  const { width, height, rgba } = img;
+  let opaque = true;
+  for (let i = 3; i < rgba.length; i += 4) if (rgba[i] !== 255) { opaque = false; break; }
+  const bpp = opaque ? 3 : 4;
+  const stride = width * bpp;
+  const raw = new Uint8Array((stride + 1) * height);
+  let prev = new Uint8Array(stride);
+  let cur = new Uint8Array(stride);
+  const trial = [0, 1, 2, 3, 4].map(() => new Uint8Array(stride));
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) for (let k = 0; k < bpp; k++) cur[x * bpp + k] = rgba[(y * width + x) * 4 + k]!;
+    let best = 0;
+    let bestCost = Infinity;
+    for (let f = 0; f < 5; f++) {
+      const out = trial[f]!;
+      let cost = 0;
+      for (let i = 0; i < stride; i++) {
+        const a = i >= bpp ? cur[i - bpp]! : 0;
+        const b = prev[i]!;
+        const c = i >= bpp ? prev[i - bpp]! : 0;
+        let pred = 0;
+        if (f === 1) pred = a;
+        else if (f === 2) pred = b;
+        else if (f === 3) pred = (a + b) >> 1;
+        else if (f === 4) {
+          const p = a + b - c;
+          const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+          pred = pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+        }
+        const v = (cur[i]! - pred) & 255;
+        out[i] = v;
+        cost += v < 128 ? v : 256 - v;
+      }
+      if (cost < bestCost) {
+        bestCost = cost;
+        best = f;
+      }
+    }
+    raw[y * (stride + 1)] = best;
+    raw.set(trial[best]!, y * (stride + 1) + 1);
+    [prev, cur] = [cur, prev];
+  }
+  const ihdr = new Uint8Array(13);
+  const v = new DataView(ihdr.buffer);
+  v.setUint32(0, width);
+  v.setUint32(4, height);
+  ihdr.set([8, opaque ? 2 : 6, 0, 0, 0], 8);
+  const parts = [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", zlib().deflateSync(raw, { level: 9 })), chunk("IEND", new Uint8Array(0))];
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   parts.reduce((at, p) => (out.set(p, at), at + p.length), 0);
   return out;

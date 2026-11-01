@@ -43,14 +43,14 @@
 // --firefox, Firefox (bidi.ts),
 // wasm-bindgen at the Cargo.lock version and the wasm32 target.
 
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Browser, chromePath } from "./cdp.ts";
 import { Firefox, firefoxPath } from "./bidi.ts";
 import { serve } from "./serve.ts";
 import { cookTextFonts } from "./text-fonts.ts";
-import { decodePng, encodePng, type Image } from "../../src/node/png.ts";
+import { decodePng, encodePng, encodePngBest, type Image } from "../../src/node/png.ts";
 import { createRequire } from "node:module";
 
 const { cpus, loadavg } = createRequire(import.meta.url)("node:os") as { cpus(): { model: string }[]; loadavg(): number[] };
@@ -246,7 +246,7 @@ try {
       } else if (record) {
         mkdirSync(join(where.root, tier), { recursive: true });
         const to = join(where.root, tier, `${where.name}.png`);
-        copyFileSync(file, to);
+        writeFileSync(to, encodePngBest(img));
         console.log(`rec  ${scene} (${tier}) -> ${to.slice(repo.length + 1)}; against metal ${JSON.stringify(row["metal"] ?? "none")}`);
       } else {
         const own = join(where.root, tier, `${where.name}.png`);

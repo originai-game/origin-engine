@@ -154,8 +154,7 @@ fn screen_sprites_above_the_ui_layer_draw_over_the_ui() {
     };
     let own = dir(&tier).join("screen-layers.png");
     if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        std::fs::create_dir_all(own.parent().expect("dir")).expect("reference dir");
-        std::fs::copy(&actual, &own).expect("record reference");
+        record_reference(&own, image.width, image.height, &image.pixels);
     }
     let reference = if own.exists() {
         own

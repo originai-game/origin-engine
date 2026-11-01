@@ -79,8 +79,7 @@ fn the_widget_set_matches_its_reference_frame() {
     };
     let own = dir(&tier).join("widget-set.png");
     if std::env::var_os("OG_UI_CAPTURE").is_some() {
-        std::fs::create_dir_all(own.parent().expect("dir")).expect("reference dir");
-        std::fs::copy(&actual, &own).expect("record reference");
+        record_reference(&own, image.width, image.height, &image.pixels);
         println!("recorded {}", own.display());
     }
     let reference = if own.exists() {

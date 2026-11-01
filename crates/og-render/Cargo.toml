@@ -36,9 +36,13 @@ log = { workspace = true }
 # The capture's PNG (capture.rs `png`): image-rs's deflate for filtered
 # image rows.
 fdeflate = "0.3.7"
+# `png_best` (capture.rs), the references' encoder: zlib's level 9.
+miniz_oxide = "0.8"
 gltf = { workspace = true, optional = true }
 
 [dev-dependencies]
+# tests/png.rs decodes what png_best writes and the committed references.
+image = { workspace = true }
 # tests/shaders.rs: every module translated as the Metal, Vulkan and DX12
 # backends do (wgpu's own naga).
 naga = { version = "30.0.1", features = ["wgsl-in", "msl-out", "spv-out", "hlsl-out"] }

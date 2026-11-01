@@ -224,6 +224,9 @@ pub fn render_built(built: &mut GfxScene) -> Result<Rendered, String> {
     })
 }
 
+/// Writes a frame a run produced (an actual, a diff, evidence) with the
+/// `image` crate's fast encoder: quick, and large. A frame kept in git is
+/// [`save_reference`]'s.
 pub fn save_png(path: &Path, image: &RgbaImage) -> Result<(), String> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -236,6 +239,15 @@ pub fn save_png(path: &Path, image: &RgbaImage) -> Result<(), String> {
         image::ColorType::Rgba8,
     )
     .map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// Records a reference frame (`OG_GFX_CAPTURE`) as og-render's
+/// [`og_render::png_best`], the smallest PNG of its pixels.
+pub fn save_reference(path: &Path, image: &RgbaImage) -> Result<(), String> {
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    }
+    std::fs::write(path, og_render::png_best(image)).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 pub fn load_png(path: &Path) -> Result<RgbaImage, String> {
@@ -276,7 +288,7 @@ pub fn check_built(scene: &str, built: &mut GfxScene, out_dir: &Path) -> Result<
         comparison: None,
     };
     if capture_requested(scene) {
-        save_png(&own, &rendered.image)?;
+        save_reference(&own, &rendered.image)?;
         return Ok(report);
     }
     // Frame by frame, as every reference harness here: a tier without its

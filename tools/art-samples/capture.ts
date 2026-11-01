@@ -15,6 +15,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } fr
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { prepare } from "./prepare.ts";
+import { recordReference } from "../../packages/engine/src/playtest.ts";
 
 const repo = resolve(import.meta.dir, "../..");
 const args = process.argv.slice(2);
@@ -61,6 +62,8 @@ for (const s of catalogue.styles) {
   writeFileSync(join(out, `${s.slug}.briefs.txt`), prepare(dir) + "\n");
   const run = spawnSync(og, ["run", dir, "--headless", "--size", size, "--out", out, "--commands", `${AT}:screenshot:${s.slug}.png;${AT + 0.1}:quit`], { encoding: "utf8" });
   const shot = existsSync(join(out, `${s.slug}.png`));
+  // The frame is kept as a reference: the same pixels at maximum compression, not og run's fast PNG.
+  if (shot) recordReference(join(out, `${s.slug}.png`), join(out, `${s.slug}.png`));
   const check = spawnSync(og, ["style", "check", dir, "--no-frames", "--json"], { encoding: "utf8" });
   writeFileSync(join(out, `${s.slug}.style.json`), check.stdout || JSON.stringify({ error: check.stderr }));
   let verdict = `exit ${check.status}`;

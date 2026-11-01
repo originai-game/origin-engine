@@ -9,7 +9,7 @@ mod scenes;
 use og_render::RenderScene;
 use og_ui::*;
 pub use scenes::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn fonts_dir() -> PathBuf {
     // The MSDF test atlas og-tests commits (Noto Sans SC subset, OFL).
@@ -52,6 +52,19 @@ pub fn test_font_metrics() -> UiFont {
         handle: None,
         ..add_test_font(&mut scene)
     }
+}
+
+/// Records a reference frame (`OG_UI_CAPTURE`) as og-render's `png_best`,
+/// the smallest PNG of its pixels: never a copy of the fast-encoded frame
+/// a run writes.
+pub fn record_reference(own: &Path, width: u32, height: u32, pixels: &[u8]) {
+    std::fs::create_dir_all(own.parent().expect("dir")).expect("reference dir");
+    let image = og_render::RgbaImage {
+        width,
+        height,
+        pixels: pixels.to_vec(),
+    };
+    std::fs::write(own, og_render::png_best(&image)).expect("record reference");
 }
 
 /// og-tests' rule: a pixel is an outlier when a channel differs by more than

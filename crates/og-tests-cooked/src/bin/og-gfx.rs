@@ -299,7 +299,7 @@ fn run(
         );
     }
     if let Some(dir) = capture {
-        gfx::save_png(&dir.join(&tier).join(format!("{name}.png")), &image)?;
+        gfx::save_reference(&dir.join(&tier).join(format!("{name}.png")), &image)?;
     }
     if let Some(path) = out {
         gfx::save_png(Path::new(path), &image)?;

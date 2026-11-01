@@ -21,6 +21,8 @@
 //     },
 //   });
 
+import { decodePng, encodePngBest } from "./node/png.ts";
+
 /** What one headless run produced. */
 export interface PlaytestRun {
   /** The tick the run ended on. */
@@ -189,4 +191,24 @@ export function playtest(desc: PlaytestDesc): PlaytestDesc {
     throw new Error("playtest({ name, commands, check }) needs all three (check may be left out when the commands carry expect: steps)");
   }
   return Object.freeze({ ...desc });
+}
+
+/**
+ * Records a reference frame: the screenshot a run wrote (the probe's fast PNG, large) decoded
+ * and written to `reference` at maximum compression (`encodePngBest`: the same pixels in a file
+ * 3 to 8 times smaller, about a second for a 1280×720 frame), its directory made. Every recorder
+ * of a `references/` frame uses it instead of copying the screenshot.
+ */
+export function recordReference(screenshot: string, reference: string): void {
+  // node:fs reached at run time, not imported: a game type-checks its playtests without node's declarations.
+  const fs = (globalThis as unknown as { process: { getBuiltinModule(id: string): NodeFs } }).process.getBuiltinModule("node:fs");
+  const png = encodePngBest(decodePng(new Uint8Array(fs.readFileSync(screenshot))));
+  fs.mkdirSync(reference.replace(/[\\/][^\\/]*$/, "") || ".", { recursive: true });
+  fs.writeFileSync(reference, png);
+}
+
+interface NodeFs {
+  readFileSync(path: string): Uint8Array;
+  mkdirSync(path: string, options: { recursive: boolean }): void;
+  writeFileSync(path: string, data: Uint8Array): void;
 }

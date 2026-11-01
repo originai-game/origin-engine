@@ -394,6 +394,83 @@ pub fn png(image: &RgbaImage) -> Vec<u8> {
     out
 }
 
+/// The smallest PNG of an RGBA8 image this crate writes, for frames kept in
+/// git (every reference a test records): RGB when every pixel is opaque,
+/// else RGBA; each row filtered with whichever of PNG's five filters leaves
+/// the smallest sum of signed residuals (libpng's and the png crate's
+/// adaptive heuristic); deflated at zlib's level 9. The same encoder as
+/// `encodePngBest` of `@origingame/engine`'s `src/node/png.ts`, so a
+/// reference is the same size whichever side recorded it. A 1280×720 frame
+/// takes about a second against [`png`]'s milliseconds and is 3 to 8 times
+/// smaller; the pixels decode exactly.
+pub fn png_best(image: &RgbaImage) -> Vec<u8> {
+    let opaque = image.pixels.as_chunks::<4>().0.iter().all(|p| p[3] == 255);
+    let bpp = if opaque { 3 } else { 4 };
+    let stride = image.width as usize * bpp;
+    let mut raw = Vec::with_capacity((stride + 1) * image.height as usize);
+    let mut prev = vec![0u8; stride];
+    let mut cur = vec![0u8; stride];
+    let mut trial = vec![vec![0u8; stride]; 5];
+    for row in image.pixels.chunks_exact(image.width as usize * 4) {
+        for (c, p) in cur.chunks_exact_mut(bpp).zip(row.as_chunks::<4>().0) {
+            c.copy_from_slice(&p[..bpp]);
+        }
+        let mut best = (u64::MAX, 0);
+        for (f, out) in trial.iter_mut().enumerate() {
+            let mut cost = 0u64;
+            for i in 0..stride {
+                let a = if i >= bpp { cur[i - bpp] } else { 0 };
+                let b = prev[i];
+                let c = if i >= bpp { prev[i - bpp] } else { 0 };
+                let pred = match f {
+                    1 => a,
+                    2 => b,
+                    3 => ((a as u16 + b as u16) >> 1) as u8,
+                    4 => {
+                        let p = a as i16 + b as i16 - c as i16;
+                        let (pa, pb, pc) = (
+                            (p - a as i16).abs(),
+                            (p - b as i16).abs(),
+                            (p - c as i16).abs(),
+                        );
+                        if pa <= pb && pa <= pc {
+                            a
+                        } else if pb <= pc {
+                            b
+                        } else {
+                            c
+                        }
+                    }
+                    _ => 0,
+                };
+                let v = cur[i].wrapping_sub(pred);
+                out[i] = v;
+                cost += (v as i8).unsigned_abs() as u64;
+            }
+            if cost < best.0 {
+                best = (cost, f);
+            }
+        }
+        raw.push(best.1 as u8);
+        raw.extend_from_slice(&trial[best.1]);
+        std::mem::swap(&mut prev, &mut cur);
+    }
+    let mut out = Vec::new();
+    out.extend_from_slice(b"\x89PNG\r\n\x1a\n");
+    let mut ihdr = [0u8; 13];
+    ihdr[..4].copy_from_slice(&image.width.to_be_bytes());
+    ihdr[4..8].copy_from_slice(&image.height.to_be_bytes());
+    ihdr[8..].copy_from_slice(&[8, if opaque { 2 } else { 6 }, 0, 0, 0]);
+    png_chunk(&mut out, b"IHDR", &ihdr);
+    png_chunk(
+        &mut out,
+        b"IDAT",
+        &miniz_oxide::deflate::compress_to_vec_zlib(&raw, 9),
+    );
+    png_chunk(&mut out, b"IEND", &[]);
+    out
+}
+
 fn png_chunk(out: &mut Vec<u8>, kind: &[u8; 4], data: &[u8]) {
     out.extend_from_slice(&(data.len() as u32).to_be_bytes());
     let at = out.len();
