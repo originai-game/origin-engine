@@ -392,3 +392,151 @@ fn a_type_the_save_holds_nothing_of_takes_this_worlds_layout() {
         assert_eq!(w.world_hash(), before);
     }
 }
+
+/// An engine resource as one release saved it, and as the next declares
+/// it: two fields added, neither defaulting to zero.
+mod engine_v1 {
+    use super::*;
+
+    #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+    #[reflect(name = "og.Settings")]
+    pub struct Settings {
+        #[reflect(default = 0.5)]
+        pub exposure: f32,
+    }
+}
+
+mod engine_v2 {
+    use super::*;
+
+    #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+    #[reflect(name = "og.Settings")]
+    pub struct Settings {
+        #[reflect(default = 0.5)]
+        pub exposure: f32,
+        #[reflect(default = 1)]
+        pub interpolate: bool,
+        #[reflect(default = 10)]
+        pub snap: f32,
+    }
+
+    /// The release after that removed `exposure`.
+    #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+    #[reflect(name = "og.Settings")]
+    pub struct Removed {
+        #[reflect(default = 1)]
+        pub interpolate: bool,
+    }
+}
+
+/// An engine type is one whose name starts with `og.` (og-runtime's rule).
+fn engine_owned(name: &str) -> bool {
+    name.starts_with("og.")
+}
+
+fn settings_world<T: Reflect>(value: T, wallet: bool) -> World {
+    let mut w = World::new(&WorldDesc {
+        seed: 5,
+        tick_rate: 60,
+    })
+    .unwrap();
+    w.register::<T>().unwrap();
+    w.insert_resource(value).unwrap();
+    if wallet {
+        w.register::<v1::Tuning>().unwrap();
+        w.insert_resource(v1::Tuning {
+            speed: 2.0,
+            old_knob: 3,
+        })
+        .unwrap();
+    }
+    w.register::<Pos>().unwrap();
+    w.spawn((Pos { x: 1.0 },)).unwrap();
+    w.step().unwrap();
+    w
+}
+
+#[test]
+fn an_engine_type_that_only_gained_fields_restores_with_their_declared_defaults() {
+    let old = settings_world(engine_v1::Settings { exposure: 0.75 }, false);
+    let bytes = old.snapshot();
+    let mut w = settings_world(
+        engine_v2::Settings {
+            exposure: 0.1,
+            interpolate: false,
+            snap: 0.0,
+        },
+        false,
+    );
+    // Strictly (no grown types) it is refused, as before.
+    let err = w
+        .check_snapshot_replacing(&bytes, false, &[], &|_| false)
+        .unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::Schema, "{err}");
+    // An engine type that only gained fields is taken, needing the
+    // field-by-field restore, which fills each added field with its default.
+    assert!(
+        w.check_snapshot_replacing(&bytes, false, &[], &engine_owned)
+            .unwrap()
+    );
+    w.restore_migrating(&bytes).unwrap();
+    assert_eq!(
+        *w.resource::<engine_v2::Settings>().unwrap(),
+        engine_v2::Settings {
+            exposure: 0.75,
+            interpolate: true,
+            snap: 10.0,
+        },
+        "the saved value kept, the added fields at their declared defaults, not zero"
+    );
+    // It hashes as a world built at the new layout with the same data.
+    let built = settings_world(
+        engine_v2::Settings {
+            exposure: 0.75,
+            interpolate: true,
+            snap: 10.0,
+        },
+        false,
+    );
+    assert_eq!(w.world_hash(), built.world_hash());
+}
+
+#[test]
+fn a_removed_engine_field_and_a_grown_game_type_are_still_refused() {
+    // An engine field removed since the save.
+    let old = settings_world(
+        engine_v2::Settings {
+            exposure: 0.75,
+            interpolate: false,
+            snap: 3.0,
+        },
+        false,
+    );
+    let w = settings_world(engine_v2::Removed { interpolate: true }, false);
+    let before = w.world_hash();
+    let err = w
+        .check_snapshot_replacing(&old.snapshot(), false, &[], &engine_owned)
+        .unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::Schema, "{err}");
+    assert!(
+        err.reason().contains("og.Settings.exposure") && err.reason().contains("removed"),
+        "{err}"
+    );
+    assert_eq!(w.world_hash(), before);
+
+    // A game type that gained a field (Tuning.gravity) is not an engine
+    // type: refused, naming it, though the engine type beside it fits.
+    let old = settings_world(engine_v1::Settings { exposure: 0.5 }, true);
+    let mut w = World::new(&WorldDesc {
+        seed: 5,
+        tick_rate: 60,
+    })
+    .unwrap();
+    w.register::<engine_v2::Settings>().unwrap();
+    w.register::<v2::Tuning>().unwrap();
+    w.register::<Pos>().unwrap();
+    let err = w
+        .check_snapshot_replacing(&old.snapshot(), false, &[], &engine_owned)
+        .unwrap_err();
+    assert!(err.reason().contains("'Tuning'"), "{err}");
+}

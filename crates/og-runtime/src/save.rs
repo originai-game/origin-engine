@@ -7,7 +7,8 @@
 //! layout hash and field table, so a save from a build whose types changed
 //! is refused naming them, or mapped field by field with `migrate`; the
 //! session's types below may differ without either, as the host's replace
-//! them).
+//! them, and so may an engine type that only gained fields since the save,
+//! which take their declared defaults: [`engine_owned`]).
 //!
 //! A save is the world; the session is not in it. Restoring keeps the
 //! host's input (`og.Input`, `og.Pointers`, `og.Gamepad`, `og.PointerLock`) and the player's
@@ -36,6 +37,17 @@ const SESSION: &[&str] = &[
     "og.PointerLock",
     "og.Audio",
 ];
+
+/// Whether a type is the engine's own (an og.* component, resource or
+/// event: the IDL's records and the modules'; a game's names cannot start
+/// with `og.`). A save restores without `migrate` when such a type only
+/// gained fields since it was written, each added field at its declared
+/// default (og.RenderSettings' new fields in every save of the build
+/// before); a field removed, renamed or retyped still needs an engine
+/// migration, and a game's own types stay strict.
+fn engine_owned(name: &str) -> bool {
+    name.starts_with("og.")
+}
 
 /// A restore asked for inside a tick, applied when it ends.
 pub(crate) struct Pending {
@@ -185,8 +197,12 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
     // build after a four-pad save) is taken, mapped field by field.
     if let Some(f) = running(world) {
         // SAFETY: the frame is published while its system runs.
-        let migrate = match unsafe { f.ctx() }.check_snapshot_replacing(&snapshot, migrate, SESSION)
-        {
+        let migrate = match unsafe { f.ctx() }.check_snapshot_replacing(
+            &snapshot,
+            migrate,
+            SESSION,
+            &engine_owned,
+        ) {
             Ok(session_differs) => migrate || session_differs,
             Err(e) => return refuse(refusal(e, migrate)),
         };
@@ -197,7 +213,7 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
         Ok(w) => w,
         Err(e) => return refuse(e),
     };
-    let migrate = match w.check_snapshot_replacing(&snapshot, migrate, SESSION) {
+    let migrate = match w.check_snapshot_replacing(&snapshot, migrate, SESSION, &engine_owned) {
         Ok(session_differs) => migrate || session_differs,
         Err(e) => return refuse(refusal(e, migrate)),
     };

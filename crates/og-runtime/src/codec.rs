@@ -434,6 +434,7 @@ impl Layout {
                     s.max = f.max;
                     s.tunable = f.tunable;
                     s.variants = f.variants.clone();
+                    s.default = default_lanes(f);
                     s
                 })
                 .collect(),
@@ -844,6 +845,39 @@ fn encode_number(kind: Kind, v: &Value, out: &mut Vec<u8>) -> Result<(), String>
     Ok(())
 }
 
+/// A field's declared default as og-core's lanes ([`FieldSchema::default`]),
+/// so what the world fills an added field with on a migrating restore (and
+/// the schema reports) is the declared value, not zero: `None` for a field
+/// without one, a string or a list.
+fn default_lanes(f: &FieldLayout) -> Option<Vec<f64>> {
+    if f.default.is_null() || f.ty.is_string() || f.ty.is_list() {
+        return None;
+    }
+    let mut bytes = Vec::with_capacity(f.ty.size());
+    encode_field(f, &f.default, &mut bytes).ok()?;
+    let lane = f.ty.scalar().size();
+    Some(
+        bytes
+            .chunks_exact(lane)
+            .map(|b| match f.ty.scalar() {
+                og_core::reflect::Scalar::F32 => {
+                    f64::from(f32::from_le_bytes(b.try_into().unwrap()))
+                }
+                og_core::reflect::Scalar::F64 => f64::from_le_bytes(b.try_into().unwrap()),
+                og_core::reflect::Scalar::I32 => {
+                    f64::from(i32::from_le_bytes(b.try_into().unwrap()))
+                }
+                og_core::reflect::Scalar::U32 => {
+                    f64::from(u32::from_le_bytes(b.try_into().unwrap()))
+                }
+                og_core::reflect::Scalar::I64 => i64::from_le_bytes(b.try_into().unwrap()) as f64,
+                og_core::reflect::Scalar::U64 => u64::from_le_bytes(b.try_into().unwrap()) as f64,
+                og_core::reflect::Scalar::Bool | og_core::reflect::Scalar::Utf8 => f64::from(b[0]),
+            })
+            .collect(),
+    )
+}
+
 fn encode_field(f: &FieldLayout, v: &Value, out: &mut Vec<u8>) -> Result<(), String> {
     if f.ty.is_list() {
         return encode_list(f, v, out);
@@ -970,6 +1004,36 @@ mod tests {
             capacity,
             list: 0,
         }
+    }
+
+    /// Every engine record's schema carries its declared defaults, so a
+    /// save from before a field was added restores it at that default
+    /// (og-ecs fills added fields from the schema): the bytes the schema's
+    /// defaults pack to are the record's encoded defaults, field by field,
+    /// not zero (`og.Camera.fov` is 60).
+    #[test]
+    fn an_engine_records_schema_defaults_are_its_declared_ones() {
+        let mut nonzero = 0;
+        for decl in og_api::host::RECORDS {
+            let Ok(layout) = Layout::from_decl(decl) else {
+                continue;
+            };
+            let encoded = layout.encode(None, None).unwrap();
+            let schema = layout.schema();
+            let mut at = 0;
+            for f in &schema.fields {
+                let size = f.ty.size();
+                let want = &encoded[at..at + size];
+                at += size;
+                if f.ty.is_string() || f.ty.is_list() {
+                    continue;
+                }
+                assert_eq!(f.default_bytes(), want, "{}.{}", schema.name, f.name);
+                nonzero += usize::from(want.iter().any(|&b| b != 0));
+            }
+            assert_eq!(at, encoded.len(), "{}", schema.name);
+        }
+        assert!(nonzero > 20, "only {nonzero} non-zero defaults checked");
     }
 
     /// A resource read every frame is decoded once while its bytes stay

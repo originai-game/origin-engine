@@ -253,9 +253,10 @@ impl<'w> SystemContext<'w> {
         bytes: &[u8],
         migrate: bool,
         replaced: &[&str],
+        grown: &dyn Fn(&str) -> bool,
     ) -> Result<bool> {
         self.world
-            .check_snapshot_replacing(bytes, migrate, replaced)
+            .check_snapshot_replacing(bytes, migrate, replaced, grown)
     }
 
     pub fn name(&self) -> &str {

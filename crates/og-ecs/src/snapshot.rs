@@ -267,6 +267,19 @@ fn other_layout(name: &str) -> Error {
     )
 }
 
+/// Whether `now` only adds fields to `saved`: every saved field is still
+/// there, of the same type (an enum with the same variants), and there is
+/// at least one more.
+fn only_added(saved: &Schema, now: &Schema) -> bool {
+    now.fields.len() > saved.fields.len()
+        && saved.fields.iter().all(|s| {
+            now.fields
+                .iter()
+                .find(|f| f.name == s.name)
+                .is_some_and(|f| f.ty == s.ty && f.variants == s.variants)
+        })
+}
+
 /// How a saved type's fields differ from this world's: ` (Game.coins
 /// added; Game.gold removed; Game.speed f32 -> f64)`, empty when only the
 /// metadata differs.
@@ -1132,21 +1145,25 @@ impl World {
     /// would take `bytes`, without changing anything: the same refusals,
     /// a type of another layout naming the fields that differ.
     pub fn check_snapshot(&self, bytes: &[u8], migrate: bool) -> Result<()> {
-        self.check_snapshot_replacing(bytes, migrate, &[])
+        self.check_snapshot_replacing(bytes, migrate, &[], &|_| false)
             .map(|_| ())
     }
 
     /// [`Self::check_snapshot`] for a caller that overwrites the types
     /// `replaced` names after the restore (a save's host session: the
     /// input it keeps): those may have another layout without a refusal.
-    /// Answers whether one did, so the restore must be
-    /// [`Self::restore_migrating`] (which, for every other type, then
-    /// equals [`Self::restore`]).
+    /// A type `grown` accepts (a host's own records, whose new fields have
+    /// declared defaults) may also have fields this world added since the
+    /// snapshot, each of its saved fields still here with its type: the
+    /// restore gives the added ones their defaults. Answers whether one of
+    /// either differed, so the restore must be [`Self::restore_migrating`]
+    /// (which, for every other type, then equals [`Self::restore`]).
     pub fn check_snapshot_replacing(
         &self,
         bytes: &[u8],
         migrate: bool,
         replaced: &[&str],
+        grown: &dyn Fn(&str) -> bool,
     ) -> Result<bool> {
         let parsed = parse(&self.registry, bytes)?;
         if migrate {
@@ -1179,6 +1196,13 @@ impl World {
                         ),
                     ));
                 }
+                differs = true;
+            } else if info.layout_hash != t.hash
+                && grown(&t.name)
+                && t.schema
+                    .as_ref()
+                    .is_some_and(|saved| only_added(saved, &info.schema))
+            {
                 differs = true;
             } else if info.layout_hash != t.hash {
                 let detail = t
