@@ -6,9 +6,10 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  chevron, clamp, fit, flags, frame, glyphCap, grow, kit, lastGesture, mark, over, pointerFrom, px, rememberPath, role, rtl, spring, still, surface, text, token, xy,
+  byText, chevron, clamp, fit, flags, frame, glyphCap, grow, kit, lastGesture, mark, over, pointerFrom, px, rememberPath, role, rtl, spring, still, surface, target, text, token, xy,
 } from "./base.ts";
 import { menu } from "./layers.ts";
+import { edge } from "./panels.ts";
 
 // ── tabs ────────────────────────────────────────────────────────────────
 
@@ -50,9 +51,15 @@ export function tabBar(id: string, desc: Api.TabBarDesc, build: Api.UiItemBuild)
       // The bumpers' hints: a key cap or a pad's shoulder; none under a finger, where the row scrolls.
       const hints = (desc.bumpers ?? true) && !touch;
       if (hints) bumper("Prev", "tabPrev", () => (selected = step(-1)));
+      // Tabs that fill the row share it, each at least as wide as its own label (remembered from
+      // last tick); when they do not fit they scroll sideways, a fade at the edge where more lie.
+      const nat = tabs.map((_, k) => kit.memory(`~nat${k}`, 0));
+      const natSum = nat.reduce((a, b) => a + b, 0) + (pill ? 2 * t.xxs + Math.max(0, n - 1) * t.xs : 0);
+      kit.open("Clip", { direction: "row", width: grow() });
       kit.openScroll("Strip", { width: grow(), axes: "horizontal", padding: xy(0, 0), gap: 0 });
+      let stripPath = "";
       try {
-        kit.open("Tabs", { direction: "row", width: desc.fill ? grow() : null, gap: pill ? t.xs : 0, cross: "stretch", padding: pill ? xy(t.xxs, t.xxs) : xy(0, 0), radius: pill ? t.control + t.xxs : 0, background: pill ? token("control") : null, part: `Tabs.track${flags(style)}`, partClass: "tab" });
+        kit.open("Tabs", { direction: "row", width: desc.fill ? grow(natSum) : null, gap: pill ? t.xs : 0, cross: "stretch", padding: pill ? xy(t.xxs, t.xxs) : xy(0, 0), radius: pill ? t.control + t.xxs : 0, background: pill ? token("control") : null, part: `Tabs.track${flags(style)}`, partClass: "tab" });
         tabs.forEach((tab, k) => {
           const on = k === selected;
           const r = surface(kit.idi("Tab", k), {
@@ -63,7 +70,7 @@ export function tabBar(id: string, desc: Api.TabBarDesc, build: Api.UiItemBuild)
             fill: null,
             washBy: 0.08,
             disabled: tab.disabled ?? false,
-            width: desc.fill ? grow() : null,
+            width: desc.fill ? grow(nat[k] ?? 0) : null,
             height: fit(Math.max(phone ? 44 : 40, t.controlMd)),
             padding: xy(t.md, 0),
             gap: t.xs,
@@ -76,6 +83,10 @@ export function tabBar(id: string, desc: Api.TabBarDesc, build: Api.UiItemBuild)
             if (tab.badge) kit.badge("Badge", tab.badge, tab.badgeTone ?? "primary");
           });
           if (r.clicked && k !== selected) selected = k;
+          // Its own width: its parts' laid out, never what a share squeezed it to.
+          const tp = kit.lastPath();
+          const parts = ["Icon", "Label", "Badge"].map((c) => kit.bounds(`${tp}/${c}`)?.width ?? -1).filter((w) => w >= 0);
+          if (parts.length > 0) kit.remember(`~nat${k}`, Math.ceil(parts.reduce((a, b) => a + b, 0) + (parts.length - 1) * t.xs + 2 * t.md));
         });
         kit.close();
         const row = kit.lastPath();
@@ -84,7 +95,21 @@ export function tabBar(id: string, desc: Api.TabBarDesc, build: Api.UiItemBuild)
         indicator("Indicator", row, before, pill);
       } finally {
         kit.close();
+        stripPath = kit.lastPath();
       }
+      // The fades: where the row's first or last tab lies past the strip's edge (last tick's).
+      const sb = kit.bounds(stripPath);
+      const first = kit.bounds(`${stripPath}/Tabs/${kit.idi("Tab", 0)}`);
+      const lastTab = kit.bounds(`${stripPath}/Tabs/${kit.idi("Tab", n - 1)}`);
+      const ends = [first, lastTab].filter((x): x is Api.UiRect => x !== null);
+      const leftCut = sb !== null && ends.some((e) => e.x < sb.x - 0.5);
+      const rightCut = sb !== null && ends.some((e) => e.x + e.width > sb.x + sb.width + 0.5);
+      // The reading direction's start is the right under a right-to-left locale.
+      const startCut = rtl() ? rightCut : leftCut;
+      const endCut = rtl() ? leftCut : rightCut;
+      edge("FadeStart", true, kit.animate("~fs", startCut ? 1 : 0, spring("ui")), true, 28, "panel");
+      edge("FadeEnd", false, kit.animate("~fe", endCut ? 1 : 0, spring("ui")), true, 28, "panel");
+      kit.close();
       if (hints) bumper("Next", "tabNext", () => (selected = step(1)));
     });
     if (style === "underline") kit.divider("Rule", false);
@@ -229,12 +254,12 @@ function arrow(id: string, way: "back" | "forward", on: boolean, act: () => void
   if (r.clicked) act();
 }
 
-/** Page dots: the current one a longer pill (so it reads without colour); each a 44 px target. */
+/** Page dots: the current one a longer pill (so it reads without colour); under a finger each a 44 px target round its small pip. */
 function dots(id: string, count: number, index: number, go: (k: number) => void): void {
   kit.row(id, { width: grow(), align: "center", cross: "center", gap: 0 }, () => {
     for (let k = 0; k < count; k++) {
       const on = k === index;
-      const r = surface(kit.idi("Dot", k), { part: "Carousel.dot", cls: "chip", flags: [on ? "current" : ""], selected: on, fill: null, focusable: false, width: px(on ? 36 : 22), height: px(28), align: "center", cross: "center", semantics: { role: "button", name: `${k + 1}`, selected: on } }, () => {
+      const r = surface(kit.idi("Dot", k), { part: "Carousel.dot", cls: "chip", flags: [on ? "current" : ""], selected: on, fill: null, focusable: false, width: px(target(on ? 36 : 22)), height: px(target(28)), align: "center", cross: "center", semantics: { role: "button", name: `${k + 1}`, selected: on } }, () => {
         const w = kit.animate("~w", on ? 20 : 8, spring("ui"));
         kit.open("Pip", { width: px(w), height: px(8), radius: 4, background: token(on ? "primary" : "lineStrong") });
         kit.close();
@@ -264,7 +289,8 @@ export function breadcrumbs(id: string, desc: Api.BreadcrumbsDesc): Api.Breadcru
   const shown = collapse ? [0, -1, ...items.map((_, k) => k).slice(items.length - (max - 2))] : items.map((_, k) => k);
   const openMore = kit.memory(`${id}~more`, 0) > 0;
   let nextMore = openMore;
-  kit.row(id, { width: desc.width ?? grow(), gap: t.xxs, cross: "center" }, () => {
+  // A path longer than its row wraps onto the next line (crumbs stay whole).
+  kit.row(id, { width: desc.width ?? grow(), gap: t.xxs, cross: "center", wrap: true }, () => {
     shown.forEach((k, j) => {
       if (j > 0) chevron(kit.idi("Sep", j), "forward", 14, role("inkFaint"), 0, 1.5);
       if (k === -1) {
@@ -275,12 +301,13 @@ export function breadcrumbs(id: string, desc: Api.BreadcrumbsDesc): Api.Breadcru
       const last = k === items.length - 1;
       const it = items[k]!;
       if (last) {
-        text(kit.idi("Crumb", k), it.label ?? "", { step: "sm", nowrap: true, ellipsis: true, font: "display" });
+        // The current page: a target as tall as the links (a screen reader and a finger find it whole).
+        kit.row(kit.idi("Crumb", k), { height: fit(tall), cross: "center", padding: xy(t.xs, 0) }, () => text("Label", it.label ?? "", { step: "sm", nowrap: true, font: "display" }));
         kit.semantics({ role: "link", name: it.label ?? "", selected: true, value: "current page" });
       } else {
-        const r = surface(kit.idi("Crumb", k), { part: "Breadcrumbs.crumb", cls: "chip", fill: null, height: fit(tall), padding: xy(t.xs, 0), gap: t.xs, semantics: { role: "link", name: it.label ?? "" } }, () => {
+        const r = surface(kit.idi("Crumb", k), { part: "Breadcrumbs.crumb", cls: "chip", fill: null, width: fit(tall), height: fit(tall), align: "center", padding: xy(t.xs, 0), gap: t.xs, semantics: { role: "link", name: it.label ?? "" } }, () => {
           if (it.icon) kit.icon("Icon", it.icon, { size: 16, tint: token("inkMuted"), label: "" });
-          text("Label", it.label ?? "", { step: "sm", color: "inkMuted", nowrap: true, ellipsis: true });
+          text("Label", it.label ?? "", { step: "sm", color: "inkMuted", nowrap: true });
         });
         if (r.clicked) chosen = k;
       }
@@ -367,11 +394,26 @@ export function actionHints(id: string, desc: Api.ActionHintsDesc): Api.ActionHi
   const { t, touch, viewport } = frame();
   const hints = desc.hints ?? [];
   let pressed: string | null = null;
-  const where: Api.Anchor = desc.anchor ?? "bottomRight";
+  const sa = viewport.safeArea;
+  // Under a finger a bar of buttons across the bottom, reaching into the safe area under it (its
+  // buttons above the home indicator); elsewhere hints at an edge.
+  const docked = touch && (desc.anchor === undefined || desc.anchor.startsWith("bottom"));
+  const where: Api.Anchor = docked ? "bottom" : desc.anchor ?? "bottomRight";
   const right = where.endsWith("Right");
   // Within the screen: hints that do not fit on one line (a phone, a large text size) wrap.
-  const maxW = Math.max(120, viewport.width - viewport.safeArea.left - viewport.safeArea.right - 2 * t.gutter);
-  kit.anchor(id, { anchor: where, direction: "column", width: fit(0, maxW), padding: xy(t.md, t.xs), background: desc.background === false ? null : token("hud"), radius: t.control, frame: "hud" }, () => kit.row("Row", { width: grow(), gap: touch ? t.sm : t.lg, cross: "center", align: right ? "end" : where.endsWith("Left") ? "start" : "center", wrap: true }, () => {
+  const maxW = Math.max(120, viewport.width - sa.left - sa.right - 2 * t.gutter);
+  const cap = 26;
+  // Room around a cap for a hold's ring (see glyphCap), at the text size.
+  const ringRoom = byText(Math.max(2, Math.round(cap * 0.1)) * 2);
+  kit.anchor(id, {
+    anchor: where,
+    direction: "column",
+    ...(docked ? { margin: 0, offsetY: sa.bottom, width: px(viewport.width) } : { width: fit(0, maxW) }),
+    padding: docked ? { left: sa.left + t.gutter, top: t.sm, right: sa.right + t.gutter, bottom: sa.bottom + t.sm } : xy(t.md, t.xs),
+    background: desc.background === false ? null : token("hud"),
+    radius: docked ? 0 : t.control,
+    frame: "hud",
+  }, () => kit.row("Row", { width: grow(), gap: touch ? t.sm : t.lg, cross: "center", align: docked ? "center" : right ? "end" : where.endsWith("Left") ? "start" : "center", wrap: true }, () => {
     hints.forEach((h, k) => {
       // The device's glyph for a UI action it knows, live; the hint's own text and icon otherwise.
       const glyph = (h.action ? deviceGlyph(h.action) : null) ?? { text: h.text ?? "", icon: h.icon ?? "" };
@@ -380,31 +422,26 @@ export function actionHints(id: string, desc: Api.ActionHintsDesc): Api.ActionHi
         cls: "chip",
         flags: [h.hold ? "hold" : "", touch ? "touch" : ""],
         fill: touch ? role("control") : null,
+        washBy: touch ? 0.14 : 0.1,
+        pressScale: 0.96,
         focusable: touch,
+        // As tall as its cap and the ring a hold draws round it: the cap never spills out.
         height: fit(touch ? 44 : 36),
-        padding: xy(touch ? t.md : t.xs, 0),
+        padding: xy(touch ? t.md : t.xs, touch ? t.xxs : ringRoom / 2),
         gap: t.sm,
         semantics: { role: "button", name: h.hint ?? h.action ?? "", ...(glyph.text && !touch ? { description: glyph.text } : {}) },
       }, () => {
-        if (!touch && glyph.text) {
-          glyphCap("Glyph", glyph, 26);
-          if (h.hold) {
-            const p = clamp(h.progress ?? 0, 0, 1);
-            if (p > 0) {
-              kit.open("Ring", { width: px(30), height: px(30) });
-              kit.setDraw({ shape: { kind: "arc", start: -Math.PI / 2, sweep: Math.PI * 2 * p, thickness: 3, cap: "round" }, fills: [{ kind: "solid", color: token("primary") }] });
-              kit.close();
-              over({ insets: { start: 0, top: 3 }, inert: true });
-            }
-          }
-        }
-        text("Hint", h.hint ?? h.action ?? "", { step: "sm", nowrap: true });
+        if (!touch && glyph.text) glyphCap("Glyph", glyph, cap, h.hold ? clamp(h.progress ?? 0, 0, 1) : 0);
+        text("Hint", h.hint ?? h.action ?? "", { step: "sm", nowrap: !touch });
       });
       if (r.clicked) pressed = h.action ?? null;
     });
   }));
   kit.semantics({ role: "toolbar", name: desc.label || "Actions" });
-  return { pressed };
+  // The room it took from its edge last tick, safe area included: a screen keeps its content clear of it.
+  const b = kit.bounds(id);
+  const height = b ? Math.max(0, where.startsWith("bottom") ? viewport.height - b.y : where.startsWith("top") ? b.y + b.height : 0) : 0;
+  return { pressed, height };
 }
 
 // ── radial wheel ────────────────────────────────────────────────────────
@@ -472,11 +509,24 @@ export function radialMenu(id: string, open: boolean, desc: Api.RadialDesc): Api
         const rr = (radius + hole) / 2;
         const cx = radius + Math.cos(mid) * rr * (rtl() ? -1 : 1);
         const cy = radius + Math.sin(mid) * rr;
-        kit.column("Label", { width: px(80), cross: "center", gap: 2 }, () => {
-          if (it.icon) kit.icon("Icon", it.icon, { size: 28, tint: token(on ? "onPrimary" : "ink"), label: "" });
-          if (it.label && desc.labels !== false) text("Text", it.label, { step: "caption", color: on ? "onPrimary" : "inkMuted", nowrap: true, ellipsis: true, align: "center", width: grow() });
+        // The label inside its wedge, never across its edges: as wide as the wedge is at the
+        // label's inner edge, the icon sized to the ring. A caption that would not fit (a small
+        // wheel, a large text size) leaves the slice to its icon, as weapon wheels do: the name of
+        // the slice aimed at is in the centre.
+        const thick = radius - hole;
+        const iconPx = Math.round(clamp(thick * 0.34, 18, 28));
+        const capLine = 16 * Math.max(1, frame().theme.textScale ?? 1);
+        const lh = iconPx + 2 + capLine;
+        const lw = Math.max(24, 2 * (rr - lh / 2) * Math.sin(turn / 2) - 8);
+        // Every slice captioned or none: a wheel where some slices are named and some not reads as broken.
+        const fits = (x: Api.RadialItem) => !x.icon || ((x.label?.length ?? 0) * capLine * 0.55 <= lw && lh <= thick - 8);
+        const caption = !!it.label && desc.labels !== false && (!it.icon || items.every(fits));
+        const boxH = caption ? lh : iconPx;
+        kit.column("Label", { width: px(lw), cross: "center", gap: 2 }, () => {
+          if (it.icon) kit.icon("Icon", it.icon, { size: iconPx, tint: token(on ? "onPrimary" : "ink"), label: "" });
+          if (caption) text("Text", it.label ?? "", { step: "caption", color: on ? "onPrimary" : "inkMuted", align: "center", width: grow(), maxLines: 2 });
         });
-        over({ insets: { start: (rtl() ? radius * 2 - cx : cx) - 40, top: cy - 22 }, inert: true });
+        over({ insets: { start: (rtl() ? radius * 2 - cx : cx) - lw / 2, top: cy - boxH / 2 }, inert: true });
       }
       kit.close();
       over({ insets: { start: 0, top: 0 }, inert: true });
@@ -485,7 +535,7 @@ export function radialMenu(id: string, open: boolean, desc: Api.RadialDesc): Api
     // The centre: what is chosen.
     kit.column("Centre", { width: px(hole * 2 - 8), height: px(hole * 2 - 8), align: "center", cross: "center", gap: 2, part: "Radial.centre", partClass: "avatar" }, () => {
       const it = items[hovered];
-      text("Name", it?.label ?? desc.title ?? "", { step: "base", heading: true, nowrap: true, ellipsis: true, align: "center", width: grow() });
+      text("Name", it?.label ?? desc.title ?? "", { step: "base", heading: true, align: "center", width: grow(), maxLines: 2 });
       if (it?.detail) text("Detail", it.detail, { step: "caption", color: "inkMuted", align: "center", width: grow(), maxLines: 2, ellipsis: true });
     });
     kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("panelRaised") }], strokes: [{ width: 1, align: "inside", paint: { kind: "solid", color: token("line") } }] });
