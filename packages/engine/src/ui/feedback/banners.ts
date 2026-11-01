@@ -9,7 +9,7 @@
 import type * as Api from "@origingame/engine";
 import {
   a11y, absolute, box, clamp01, close, drop, easeBack, easeOut, frame, groups, kit, leaf, lit, msToTicks, now, open, pct, px,
-  radial, reduced, role, sel, solid, sound, stroke, text, toneRole, token, vgrad, xy, inkOn, ts, mix,
+  radial, reduced, role, sel, solid, sound, stroke, text, toneRole, token, vgrad, xy, inkOn, ts, mix, stepSize,
 } from "./core.ts";
 
 const HOLD_MS: Record<Api.BannerKind, number> = { title: 3000, wave: 2400, victory: 3500, defeat: 3500, warning: 3000 };
@@ -138,13 +138,21 @@ export function ribbon(id: string, desc: Api.UiRibbonDesc = {}): void {
     const right = corner.endsWith("Right");
     const top = corner.startsWith("top");
     const rot = (right === top ? 1 : -1) * (Math.PI / 4);
-    box(id, { width: px(150), height: fitH(), align: "center", cross: "center", padding: xy(0, 3), part: sel("Ribbon", "band", corner, tone), partClass: "badge" }, {
+    // The container clips the band to the chord across its corner: a longer
+    // text (pseudo-locale, 200 %) moves the band out from the corner and
+    // lengthens it until the chord holds the text.
+    const label = (desc.text ?? "").toUpperCase();
+    const st = stepSize(ts(13));
+    const reach = Math.max(70, (label.length * st.size * 0.7 + 24) / Math.SQRT2);
+    const bandW = Math.max(150, Math.ceil(reach * Math.SQRT2 + 40));
+    const bandH = st.line + 6;
+    box(id, { width: px(bandW), height: fitH(), align: "center", cross: "center", padding: xy(0, 3), part: sel("Ribbon", "band", corner, tone), partClass: "badge" }, {
       fills: [vgrad([[0, lit(fill)], [1, lit(dark)]])],
       strokes: [stroke(1, token("sheen", 0.4), "inside"), stroke(1, lit(dark), "outside", { dash: 3, gap: 2 })],
       effects: [drop(2, 4, token("shadow", 0.45))],
-    }, () => text("Text", (desc.text ?? "").toUpperCase(), { step: ts(13), font: "display", color: ink, nowrap: true }), {
+    }, () => text("Text", label, { step: ts(13), font: "display", color: ink, nowrap: true }), {
       position: "absolute",
-      insets: { ...(top ? { top: 22 } : { bottom: 22 }), ...(right ? { end: -38 } : { start: -38 }) },
+      insets: { ...(top ? { top: Math.round(reach / 2 - bandH / 2) } : { bottom: Math.round(reach / 2 - bandH / 2) }), ...(right ? { end: Math.round(reach / 2 - bandW / 2) } : { start: Math.round(reach / 2 - bandW / 2) }) },
       transform: { rotate: rot },
       z: 4,
       overlaps: parent ? [parent] : [],

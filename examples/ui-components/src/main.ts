@@ -102,10 +102,12 @@ function feedbackScreen(): void {
     ],
   });
   const tk = og.ui.frameTheme().space;
-  // A phone at a large text size has room for the badges and bars only (the rings and counters show on every other
-  // surface), and held upright it opens them under the toast stack that shares its top.
+  // A phone held upright opens the column under the toast stack that shares its top and has no room for the rings;
+  // held sideways the subtitles take the lower half, so it keeps the badges, one bar and the counters; at a large
+  // text size it keeps the badges and bars only (the rest shows on every other surface).
   const crowded = small() && state.textScale >= 1.5;
-  const under = crowded && og.ui.frameViewport().breakpoint === "phonePortrait" ? (og.ui.bounds("Notes")?.height ?? 0) + 8 : 0;
+  const sideways = og.ui.frameViewport().breakpoint === "phoneLandscape";
+  const under = og.ui.frameViewport().breakpoint === "phonePortrait" ? (og.ui.bounds("Notes")?.height ?? 0) + 8 : 0;
   og.ui.anchor("Left", { anchor: "topLeft", direction: "column", gap: tk.lg ?? 16, width: { kind: "fixed", px: small() ? 320 : 420 }, offsetY: under }, () => {
     // Room above for the badges, which sit half over their icons' top corners.
     og.ui.row("Badges", { gap: 28, padding: { top: 12, bottom: 0, left: 0, right: 0 } }, () => {
@@ -121,19 +123,23 @@ function feedbackScreen(): void {
       });
     });
     og.ui.progressBar("Download", { value: Math.min(1, 0.2 + seconds() * 0.15), buffer: 0.85, label: L("Installing"), showValue: true });
-    // Held sideways the subtitles' band starts halfway down: the bars stop at the first.
-    if (crowded && og.ui.frameViewport().breakpoint === "phoneLandscape") return;
-    og.ui.progressBar("Steps", { value: 0.6, style: "steps", steps: 5, label: L("Chapter progress"), showValue: true, tone: "success" });
-    og.ui.progressBar("Busy", { style: "indeterminate", label: L("Matchmaking") });
+    // Held sideways the subtitles' band starts halfway down: the bars stop at the first, and at a large text size
+    // so does the column.
+    if (crowded && sideways) return;
+    if (!sideways) {
+      og.ui.progressBar("Steps", { value: 0.6, style: "steps", steps: 5, label: L("Chapter progress"), showValue: true, tone: "success" });
+      og.ui.progressBar("Busy", { style: "indeterminate", label: L("Matchmaking") });
+    }
     if (crowded) return;
-    og.ui.row("Rings", { gap: 24, cross: "center" }, () => {
+    // Large text on a short screen: the rings give their room to the counters.
+    if (!small() && (tall() || state.textScale < 1.5)) og.ui.row("Rings", { gap: 24, cross: "center" }, () => {
       og.ui.progressRing("Spin", { size: 48 });
       og.ui.progressRing("Ring", { value: 0.72, size: 72 });
       og.ui.starRating("Stars", { earned: 2, max: 3, size: 40, revealAt: state.t0 + 10 });
     });
-    if (tall()) og.ui.skeletonGroup("Skeleton", { shape: "row", count: 2 });
+    if (tall() && state.textScale < 1.5) og.ui.skeletonGroup("Skeleton", { shape: "row", count: 2 });
     // Overflowing numbers: grouped, compact, letters past T, scientific past letters.
-    og.ui.row("Numbers", { gap: 24 }, () => {
+    og.ui.row("Numbers", { gap: 24, wrap: true, width: { kind: "grow" } }, () => {
       og.ui.numberCounter("Gold", did("score") ? 1_284_330 : 12_840, { icon: "coin", label: L("Gold"), format: { notation: "grouped" } });
       og.ui.numberCounter("Idle", 3.4e19 * (1 + seconds()), { label: L("Cookies"), format: { notation: "letters" } });
     });

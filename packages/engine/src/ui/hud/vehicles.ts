@@ -11,6 +11,7 @@ import type * as Api from "@origingame/engine";
 import {
   TAU, a11y, fixed, anchorOf, box, bp, clamp01, ellipseShape, frame, glow, groups, hudPlace, kit, leaf, lit, mix, paintRgba, pct, pulse, px,
   reduced, role, sel, solid, springTo, stroke, text, token, ts, u, vgrad, type Rgba, ut, tsFit,
+  stepSize,
 } from "./core.ts";
 
 const START = (3 * Math.PI) / 4;
@@ -107,11 +108,14 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
           text("Unit", unit, { step: tsFit(10, size * 0.085), font: "mono", color: token("inkMuted"), nowrap: true });
         }, fixed({ start: 0, top: c + size * 0.08 }));
         if (desc.gear) {
-          box("Gear", { width: px(size * 0.16), height: px(size * 0.16), align: "center", cross: "center", part: sel("Speedometer", "gear") }, {
+          // The box holds its numeral at any text size: it grows past its share of the dial rather than let the gear spill.
+          const gearStep = tsFit(15, size * 0.1, true);
+          const gearBox = Math.max(size * 0.16, stepSize(gearStep).line + 2, Math.ceil((desc.gear ?? "").length * stepSize(gearStep).size * 0.62) + 8);
+          box("Gear", { width: px(gearBox), height: px(gearBox), align: "center", cross: "center", part: sel("Speedometer", "gear") }, {
             shape: { kind: "rect", radii: [3, 3, 3, 3] },
             fills: [solid(over ? lit(role("danger"), 0.4 + 0.6 * pulse(6)) : token("shadow", 0.7))],
             strokes: [stroke(1.5, over ? lit(role("danger")) : token("lineStrong"))],
-          }, () => text("Text", desc.gear ?? "", { step: tsFit(15, size * 0.1, true), font: "display", color: token("ink"), nowrap: true }), fixed({ centerX: true, bottom: size * 0.04 }));
+          }, () => text("Text", desc.gear ?? "", { step: gearStep, font: "display", color: token("ink"), nowrap: true }), fixed({ centerX: true, bottom: size * 0.04 }));
         }
         if (over) {
           leaf("Shift", { width: px(size * 0.1), height: px(size * 0.1), part: sel("Speedometer", "shift") }, {

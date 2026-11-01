@@ -134,6 +134,19 @@ test("og.ui.numberCounter: counts through the values between, lands on the value
   expect(at(els, "Gold/Body")!.width).toBe(midWidth);
   expect(at(els, "Gold/Body/Value")!.width).toBeLessThanOrEqual(midWidth + 0.5);
   expect(at(els, "Gold")!.value).toBe("1,100");
+
+  // A count wider than what holds it steps its numerals down instead of spilling out: digits never wrap.
+  const narrow = engineFor("FbCounterNarrow", () => {
+    og.ui.anchor("Box", { anchor: "topLeft", width: { kind: "fixed", px: 120 } }, () => {
+      og.ui.numberCounter("Gold", 1_284_330, { label: "Gold", step: "xl4" });
+    });
+  });
+  narrow.advance(4);
+  els = dump(narrow);
+  const box = at(els, "Box")!;
+  const big = at(els, "Box/Gold/Body/Value")!;
+  expect(big.text).toBe("1,284,330");
+  expect(big.x + big.width).toBeLessThanOrEqual(box.x + box.width + 0.5);
 });
 
 test("og.ui.tooltipCard: shows after its delay beside its trigger, pins after resting, leaves when let go", () => {

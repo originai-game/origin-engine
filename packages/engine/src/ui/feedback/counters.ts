@@ -22,18 +22,52 @@ export function numberCounter(id: string, value: number, desc: Api.NumberCounter
   return shown;
 }
 
+/** The largest step no larger than `step` at which a text `ems` em wide fits `room` px. */
+function fitWidth(step: Api.TypeStepName, ems: number, room: number): Api.TypeStepName {
+  const ramp = frame().theme.typeRamp;
+  const cap = stepSize(step).size;
+  if (cap * ems <= room) return step;
+  let best = step;
+  let bestSize = 0;
+  let least = step;
+  let leastSize = Infinity;
+  for (const [name, st] of Object.entries(ramp)) {
+    const size = st?.size ?? 0;
+    if (size <= 0 || size > cap) continue;
+    if (size < leastSize) {
+      least = name as Api.TypeStepName;
+      leastSize = size;
+    }
+    if (size * ems <= room && size > bestSize) {
+      best = name as Api.TypeStepName;
+      bestSize = size;
+    }
+  }
+  return bestSize > 0 ? best : least;
+}
+
 function counter(id: string, value: number, desc: Api.NumberCounterDesc, hud: boolean, radius: number): number {
   const f = frame();
   const tk = f.t;
   const format: Api.NumberFormatDesc = desc.format ?? {};
-  const step: Api.TypeStepName = desc.step ?? ts(26);
+  let step: Api.TypeStepName = desc.step ?? ts(26);
   const ink = desc.color ?? token("ink");
   const t = now();
   let shown = value;
+  // At most as wide as what holds it (last tick): the +n of a rise folds
+  // under the number when there is no room beside it. A holder sized by
+  // the counter alone (a HUD anchor around it) sets no limit, or the count
+  // could never grow a digit.
+  const holder = kit.openPath();
+  const held = holder ? kit.bounds(holder)?.width ?? 0 : 0;
+  const self = holder ? kit.bounds(`${holder}/${id}`)?.width ?? 0 : 0;
+  const room = held > 0 && Math.abs(held - self) > 1 ? held : 0;
   const path = open(id, {
     direction: "row",
     gap: tk.sm,
     cross: "center",
+    wrap: room > 0,
+    width: room > 0 ? { kind: "fit", max: room } : null,
     padding: hud ? xy(tk.md, tk.xs) : { left: 0, top: 0, right: 0, bottom: 0 },
     part: sel("NumberCounter", "frame", hud ? "hud" : null),
     partClass: "hud",
@@ -72,13 +106,19 @@ function counter(id: string, value: number, desc: Api.NumberCounterDesc, hud: bo
   const fall = clamp01(1 - (t - fellAt) / msToTicks(500));
   const inkNow = fall > 0 && ink.token === "ink" ? lit(mix(role("ink"), role("danger"), fall)) : ink;
 
+  // The box is as wide as the wider end of the count (an invisible copy
+  // sizes it), so a count that grows a digit never outgrows its place, and
+  // it keeps room on the side the landing pop grows towards. A count wider
+  // than what holds it (large text, a long number) steps its numerals down
+  // until it fits: digits never wrap.
+  const ends = [formatNumber(value, format), formatNumber(counting ? from : value, format)];
+  const widest = ends[0]!.length >= ends[1]!.length ? ends[0]! : ends[1]!;
+  if (room > 0) step = fitWidth(step, widest.length * 0.62 * 1.12, room);
   if (desc.icon) icon("Icon", desc.icon, Math.round(stepSize(step).size * 0.8), desc.icon === "coin" ? token("gold") : token("ink"));
-  kit.column("Body", { gap: 0, cross: desc.align === "end" ? "end" : desc.align === "center" ? "center" : "start" }, () => {
+  const popRoom = Math.ceil(widest.length * stepSize(step).size * 0.62 * 0.12);
+  const popPad = desc.align === "end" ? { left: popRoom, right: 0 } : desc.align === "center" ? { left: Math.ceil(popRoom / 2), right: Math.ceil(popRoom / 2) } : { left: 0, right: popRoom };
+  kit.column("Body", { gap: 0, cross: desc.align === "end" ? "end" : desc.align === "center" ? "center" : "start", padding: { top: 0, bottom: 0, ...popPad } }, () => {
     const roll = desc.roll !== false && counting && (format.notation ?? "grouped") === "grouped" && (format.exponent ?? 0) === 0 && Math.abs(value) < 1e15 && Math.abs(from) < 1e15;
-    // The box is as wide as the wider end of the count (an invisible copy
-    // sizes it), so a count that grows a digit never outgrows its place.
-    const ends = [formatNumber(value, format), formatNumber(counting ? from : value, format)];
-    const widest = ends[0]!.length >= ends[1]!.length ? ends[0]! : ends[1]!;
     text("Sizer", widest, { step, font: desc.font ?? "mono", nowrap: true, outline: hud ? 1 : false }, { opacity: 0, inert: true });
     const at = desc.align === "end" ? { end: 0, top: 0 } : desc.align === "center" ? { centerX: true, top: 0 } : { start: 0, top: 0 };
     if (roll) digits("Value", shown, format, step, desc.font ?? "mono", inkNow, hud);

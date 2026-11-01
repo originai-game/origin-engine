@@ -10,7 +10,7 @@
 // the sweep running out.
 
 import type * as Api from "@origingame/engine";
-import { a11y, absolute, anchorOf, box, bp, chip, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, text, token, ts, u, vgrad, arc, type Rgba, apply, textScale, tsFit } from "./core.ts";
+import { stepSize, a11y, absolute, anchorOf, box, bp, chip, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, text, token, ts, u, vgrad, arc, type Rgba, apply, textScale, tsFit } from "./core.ts";
 
 const DEBUFF_TYPES: Record<string, string> = {
   magic: "#3d8bff", curse: "#a64dff", poison: "#3ccf4e", disease: "#c89a2c", bleed: "#e03030",
@@ -260,7 +260,11 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
   const blink = expiring && !reduced() ? 0.45 + 0.55 * (0.5 + 0.5 * Math.cos(kit.seconds() * Math.PI * 2 * (remaining <= 2 ? 3 : 1.5))) : 1;
   const r = Math.min(shapeOf("slot").radius, size / 5);
   let res: Api.Response | null = null;
-  kit.column(id, { gap: 0, cross: "center", width: px(Math.max(size, base)) }, () => {
+  // The timer under the tile can be wider than the tile (a long time, 200 % text): the column grows to hold it.
+  const timeStep = tsFit(11, size * 0.3);
+  const timeText = timers && !lasting ? shortTime(remaining, false) : "";
+  const timeWidth = Math.ceil(timeText.length * stepSize(timeStep).size * 0.62) + 4;
+  kit.column(id, { gap: 0, cross: "center", width: px(Math.max(size, base, timeWidth)) }, () => {
     open("Tile", {
       width: px(size), height: px(size), interactive: true,
       part: sel("StatusGrid", "tile", fx.debuff ? "debuff" : "buff", fx.type ? ["type", fx.type] : null, expiring ? "expiring" : null),
@@ -296,7 +300,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
       ...groups({ time }, { time: ["lasting", "running", "expiring"] }),
     });
     if (timers && !lasting) {
-      text("Time", shortTime(remaining, false), { step: tsFit(11, size * 0.3), font: "mono", color: expiring ? lit(role("warn")) : token("ink"), nowrap: true, outline: 1 });
+      text("Time", timeText, { step: timeStep, font: "mono", color: expiring ? lit(role("warn")) : token("ink"), nowrap: true, outline: 1 });
     }
   });
   return res ?? ({ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 } as Api.Response);
