@@ -303,8 +303,9 @@ assets, one frame per style.
 Each stream is one thread on branch `art/<stream>` from the main named in
 its brief, in `external-agent:claude-code` mode on Claude Opus 5.5 medium,
 at most five at once (`AGENTS.md`). Agents' loop: `cargo check -p`, the
-unit tests of the crate they edit, `og api check` after an IDL change,
-`og run --headless --commands` frames read at 640×360 on lavapipe. They
+unit tests of the crate they edit, `og api check` after an IDL change;
+no frames in an orb (no lavapipe, `AGENTS.md`): the frames a change should
+move are named in the report and drawn on macrunner. They
 commit on the branch, push it, and report; they never merge, run the
 gate, record `metal` frames or publish. Evidence:
 `tests/evidence/art/<stream>/NOTES.md`.

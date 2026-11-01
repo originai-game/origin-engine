@@ -180,29 +180,32 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   suites, the wasm build, the size gate and determinism, and is what a
   commit to main must pass. Changes to rendering, animation, physics, the
   tick or the export run the full lane before they are called done.
-- **Real GPUs are the reference; lavapipe is a smoke check.** The
-  compatibility baseline is current hardware and browsers
-  (`docs/design.md` §8, the owner, 2026-10-27). Frames are judged on
-  `metal` (macrunner) and on DX12 with Chrome and Edge on WebGPU
-  (studio-win); the web is WebGPU only, with no WebGL2 tier (the owner,
-  2026-11-01). After each batch of merges the coordinator starts
-  both lanes, and a publish needs both green on its commit. An orb's
-  lavapipe frame shows that a change draws, read at 640×360 where it can
-  be; no `references/vulkan-cpu/` frame is recorded (a scene with no
-  frame of its tier is judged against `metal`). Shader changes are held
-  by og-render's `tests/shaders.rs`, which translates every module to
-  MSL, SPIR-V and HLSL on any machine.
+- **Real GPUs only; no lavapipe.** The compatibility baseline is current
+  hardware and browsers (`docs/design.md` §8, the owner, 2026-10-27).
+  Every GPU run happens on the two runners' GPUs: `metal` on macrunner,
+  DX12 natively and with Chrome and Edge on WebGPU on studio-win; the web
+  is WebGPU only, with no WebGL2 tier (the owner, 2026-11-01). Nothing runs
+  on lavapipe any more (the owner, 2026-11-01: it was slow, ui-styles took
+  25 min on an orb against 2 on macrunner, and judged nothing): an orb
+  runs no gfx test, no `og run` screenshot, no `og test` playtest that
+  draws, no `og ui check`, `og ui preview` or `og polish`. An agent in an
+  orb writes the code, runs `cargo check`, clippy, the logic tests of the
+  crates it edits and og-render's `tests/shaders.rs` (it translates every
+  module to MSL, SPIR-V and HLSL on any machine), pushes its branch, and
+  names the frames and scenes its change should move; the coordinator has
+  them drawn, read and recorded on macrunner (and studio-win for DX12 and
+  the browsers). No `references/vulkan-cpu/` frame is recorded. After each
+  batch of merges the coordinator runs both lanes on the runners, and a
+  publish needs both green on its commit.
 - **When to run the gate.** Function first, measurement later. After a
-  batch of merges on main, the one session that merges runs the
-  functional lane (`scripts/check.sh functional`: fmt, clippy, every
+  batch of merges on main, the one session that merges runs, on
+  macrunner, the functional lane (`scripts/check.sh functional`: fmt, clippy, every
   test with the GPU reference frames, drift, every style pack's reference
   sheets (`ui-styles`), the packages' tests on the
   native host) and that is what a merge must pass. The wasm build and its
   size, determinism and the browser tiers are measurements of a wave's
   end: `scripts/wave-end.sh` (`scripts/check.sh --all`, then
-  `scripts/check.sh web-reference`, serially; the vulkan-cpu frames on
-  lavapipe are set aside with the CPU-only sandbox requirement,
-  2026-10-22) once per wave, with its summary in the report, never per
+  `scripts/check.sh web-reference`, serially, on the runners) once per wave, with its summary in the report, never per
   merge. A size or
   frame-time number is a target to pursue there, not a reason to hold a
   functional merge. Never run `--all` after every edit. When a reference frame changes, re-record
