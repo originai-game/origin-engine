@@ -92,6 +92,9 @@ export interface PublishSettings {
   readonly fit: "letterbox" | "fill";
   /** `"16:9"` and the like; absent: the screen's own. */
   readonly aspect: string | null;
+  /** With `fill`: the narrowest and widest aspects the canvas takes (`"16:10"`, `"21:9"`); past them, bars. Absent: unbounded. */
+  readonly aspectMin: string | null;
+  readonly aspectMax: string | null;
   readonly dprCap: number;
   readonly fullscreen: "gesture" | "off";
   readonly gate: "tap" | "none";
@@ -125,6 +128,8 @@ export const DEFAULT_PUBLISH: PublishSettings = {
   orientation: "any",
   fit: "fill",
   aspect: null,
+  aspectMin: null,
+  aspectMax: null,
   dprCap: 2,
   fullscreen: "off",
   gate: "tap",
@@ -709,6 +714,8 @@ export async function webBuild(project: string, entry: string, out: string, publ
     isolation: p.isolation,
     fit: p.fit,
     aspect: aspectRatio(p.aspect),
+    aspectMin: aspectRatio(p.aspectMin),
+    aspectMax: aspectRatio(p.aspectMax),
     orientation: p.orientation,
     dprCap: p.dprCap,
     fullscreen: p.fullscreen,

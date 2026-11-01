@@ -8,6 +8,8 @@
 //!   isolation preferred     # required | preferred | off: crossOriginIsolation in og-build.json
 //!   fit fill                # fill | letterbox
 //!   aspect "16:9"           # letterbox: width:height
+//!   aspect_min "16:10"      # fill: the narrowest aspect drawn (taller screens get bars)
+//!   aspect_max "21:9"       # fill: the widest aspect drawn (wider screens get bars)
 //!   orientation any         # any | landscape | portrait
 //!   dpr_cap 2               # 0.5–4: the highest device pixel ratio drawn
 //!   fullscreen off          # off | gesture: ask on the first gesture
@@ -97,7 +99,7 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
                 }
                 json!(n)
             }
-            "aspect" => {
+            "aspect" | "aspect_min" | "aspect_max" => {
                 let a = text(e, &file)?;
                 let ok = a.split_once(':').is_some_and(|(w, h)| {
                     let (w, h) = (w.parse::<f64>(), h.parse::<f64>());
@@ -105,8 +107,8 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
                 });
                 if !ok {
                     return Err(format!(
-                        "{file}:{}: publish.aspect is \"{a}\"; write width:height, such as \"16:9\"",
-                        e.line
+                        "{file}:{}: publish.{} is \"{a}\"; write width:height, such as \"16:9\"",
+                        e.line, e.key
                     ));
                 }
                 json!(a)
@@ -115,13 +117,15 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
             "short_name" => json!(text(e, &file)?),
             other => {
                 return Err(format!(
-                    "{file}:{}: publish has no `{other}`; it takes probe, out, isolation, fit, aspect, orientation, dpr_cap, fullscreen, gate, made_with, icon, short_name, color_textures and telemetry",
+                    "{file}:{}: publish has no `{other}`; it takes probe, out, isolation, fit, aspect, aspect_min, aspect_max, orientation, dpr_cap, fullscreen, gate, made_with, icon, short_name, color_textures and telemetry",
                     e.line
                 ));
             }
         };
         let key = match e.key.as_str() {
             "dpr_cap" => "dprCap",
+            "aspect_min" => "aspectMin",
+            "aspect_max" => "aspectMax",
             "made_with" => "madeWith",
             "short_name" => "shortName",
             k => k,
@@ -133,6 +137,26 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
     {
         return Err(format!(
             "{file}: publish.fit is letterbox but there is no publish.aspect; add `aspect \"16:9\"` (width:height) or use `fit fill`"
+        ));
+    }
+    let ratio = |k: &str| {
+        publish.get(k).and_then(Value::as_str).and_then(|a| {
+            let (w, h) = a.split_once(':')?;
+            Some(w.parse::<f64>().ok()? / h.parse::<f64>().ok()?)
+        })
+    };
+    if publish.get("fit").and_then(Value::as_str) == Some("letterbox")
+        && (publish.contains_key("aspectMin") || publish.contains_key("aspectMax"))
+    {
+        return Err(format!(
+            "{file}: publish.aspect_min and aspect_max bound `fit fill`; a letterbox is always its `aspect`: remove them or use `fit fill`"
+        ));
+    }
+    if let (Some(lo), Some(hi)) = (ratio("aspectMin"), ratio("aspectMax"))
+        && lo > hi
+    {
+        return Err(format!(
+            "{file}: publish.aspect_min is wider than aspect_max; the narrowest comes first (aspect_min \"16:10\", aspect_max \"21:9\")"
         ));
     }
     Ok(json!({
@@ -253,5 +277,33 @@ mod tests {
             bad.contains(":7: publish.telemetry is `maybe`; use one of on, off"),
             "{bad}"
         );
+    }
+
+    /// The aspect range a `fill` canvas is held within reaches the web
+    /// build camelCased; a reversed range, a range on a letterbox and a
+    /// malformed bound name their fix.
+    #[test]
+    fn an_aspect_range_bounds_fill_only_narrowest_first() {
+        let ok = settings_of(
+            "range",
+            "  fit fill\n  aspect_min \"16:10\"\n  aspect_max \"21:9\"\n",
+        )
+        .unwrap();
+        assert_eq!(ok["publish"]["aspectMin"], "16:10");
+        assert_eq!(ok["publish"]["aspectMax"], "21:9");
+        let reversed =
+            settings_of("reversed", "  aspect_min \"21:9\"\n  aspect_max \"4:3\"\n").unwrap_err();
+        assert!(
+            reversed.contains("aspect_min is wider than aspect_max"),
+            "{reversed}"
+        );
+        let boxed = settings_of(
+            "boxed",
+            "  fit letterbox\n  aspect \"16:9\"\n  aspect_max \"21:9\"\n",
+        )
+        .unwrap_err();
+        assert!(boxed.contains("bound `fit fill`"), "{boxed}");
+        let bad = settings_of("badmax", "  aspect_max \"wide\"\n").unwrap_err();
+        assert!(bad.contains("publish.aspect_max is \"wide\""), "{bad}");
     }
 }

@@ -11,8 +11,9 @@
 //   (protocol 2 `start`, `gesture`, `pause`, `resume`);
 // - layout: letterbox (the project's aspect, centred on ink inside the safe
 //   area) or fill (the whole `100dvh` viewport, the safe-area insets passed to
-//   the UI), the device pixel ratio capped, resize and orientation changes
-//   resized in the Worker;
+//   the UI; held within `aspect_min` to `aspect_max` where the project bounds
+//   it, with bars past them), the device pixel ratio capped and followed
+//   across monitors, resize and orientation changes resized in the Worker;
 // - visibility: a hidden page pauses the clock and the audio and resumes both;
 // - input: keyboard, pointers (touch ids carried), gamepads as keys;
 // - the error card (§6): the reason, the last 200 log lines and the world
@@ -59,6 +60,14 @@ export interface ShellConfig {
   readonly fit: "letterbox" | "fill";
   /** Width over height for letterbox; null takes the screen's. */
   readonly aspect: number | null;
+  /**
+   * With `fill`: the narrowest and widest aspects (width over height) the canvas
+   * takes; on a screen outside them it is that aspect, centred on ink (letterbox
+   * bars on a taller screen, pillarbox bars on a wider one: a game framed for
+   * 16:10 to 21:9 on a 32:9 monitor). Null: no bound on that side.
+   */
+  readonly aspectMin: number | null;
+  readonly aspectMax: number | null;
   readonly orientation: "any" | "landscape" | "portrait";
   readonly dprCap: number;
   readonly fullscreen: "gesture" | "off";
@@ -138,6 +147,8 @@ export function readConfig(doc: Document = document): ShellConfig {
     isolation: c.isolation ?? "preferred",
     fit: c.fit === "fill" ? "fill" : "letterbox",
     aspect: typeof c.aspect === "number" && c.aspect > 0 ? c.aspect : null,
+    aspectMin: typeof c.aspectMin === "number" && c.aspectMin > 0 ? c.aspectMin : null,
+    aspectMax: typeof c.aspectMax === "number" && c.aspectMax > 0 ? c.aspectMax : null,
     orientation: c.orientation ?? "any",
     dprCap: typeof c.dprCap === "number" && c.dprCap > 0 ? c.dprCap : 2,
     fullscreen: c.fullscreen === "gesture" ? "gesture" : "off",
@@ -148,13 +159,25 @@ export function readConfig(doc: Document = document): ShellConfig {
   };
 }
 
-/** The canvas's CSS box for a viewport (CSS px) and its safe-area insets. */
+/**
+ * The canvas's CSS box for a viewport (CSS px) and its safe-area insets:
+ * `letterbox` fits `aspect` inside the safe area, centred on ink (bars above
+ * and below on a taller screen, beside it on a wider one); `fill` covers the
+ * viewport, held within `range` (width over height) where one is given, as a
+ * letterbox at the bound it passes.
+ */
 export function layoutCanvas(
   viewport: { width: number; height: number },
   insets: { top: number; right: number; bottom: number; left: number },
   fit: "letterbox" | "fill",
   aspect: number | null,
+  range: { readonly min: number | null; readonly max: number | null } = { min: null, max: null },
 ): { left: number; top: number; width: number; height: number; safeArea: { top: number; right: number; bottom: number; left: number } } {
+  if (fit === "fill") {
+    const a = Math.max(1, viewport.width) / Math.max(1, viewport.height);
+    const bound = range.max !== null && a > range.max ? range.max : range.min !== null && a < range.min ? range.min : null;
+    if (bound !== null) return layoutCanvas(viewport, insets, "letterbox", bound);
+  }
   if (fit === "fill" || aspect === null) {
     return { left: 0, top: 0, width: Math.max(1, viewport.width), height: Math.max(1, viewport.height), safeArea: insets };
   }
@@ -414,7 +437,7 @@ export async function play(): Promise<PlayHandle> {
   const place = () => {
     const vv = globalThis.visualViewport;
     const viewport = { width: vv?.width ?? innerWidth, height: vv?.height ?? innerHeight };
-    const box = layoutCanvas(viewport, safeAreaInsets(), config.fit, config.aspect);
+    const box = layoutCanvas(viewport, safeAreaInsets(), config.fit, config.aspect, { min: config.aspectMin, max: config.aspectMax });
     canvas.style.position = "absolute";
     canvas.style.left = `${box.left}px`;
     canvas.style.top = `${box.top}px`;
