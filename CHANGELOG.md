@@ -15,6 +15,13 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- Fixed: `World.restore` takes a save without `migrate` when an engine
+  type (an og.* component, resource or event) only gained fields since
+  the save: each added field gets its declared default (not zero), so an
+  engine field added in an upgrade no longer refuses every player's save.
+  A removed, renamed or retyped engine field, and any change to a game's
+  own types, is still refused naming the fields.
+
 - Fixed: `World.restore` compares a changed type's layout only when the
   save holds data of it (a component row, a resource value, an event); a
   type the save holds none of takes this build's layout, so a field added
