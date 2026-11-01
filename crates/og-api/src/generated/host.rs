@@ -778,6 +778,40 @@ pub trait UiApi: Wire {
     fn og_ui_screen_transition(&self, id: String, screen: String, desc: Option<String>) -> String;
     /// `og.ui.previewViewport`
     fn og_ui_preview_viewport(&self, world: u32, viewport: String);
+    /// `og.ui.props`
+    fn og_ui_props(&self, desc: Option<String>) -> bool;
+    /// `og.ui.defineTimeline`
+    fn og_ui_define_timeline(&self, name: String, timeline: Option<String>);
+    /// `og.ui.play`
+    fn og_ui_play(&self, path: String, choreo: String, desc: Option<String>) -> u32;
+    /// `og.ui.playTimeline`
+    fn og_ui_play_timeline(&self, path: String, timeline: String, desc: Option<String>) -> u32;
+    /// `og.ui.seek`
+    fn og_ui_seek(&self, play: u32, ms: f64) -> bool;
+    /// `og.ui.pause`
+    fn og_ui_pause(&self, play: u32) -> bool;
+    /// `og.ui.resume`
+    fn og_ui_resume(&self, play: u32) -> bool;
+    /// `og.ui.reverse`
+    fn og_ui_reverse(&self, play: u32) -> bool;
+    /// `og.ui.stop`
+    fn og_ui_stop(&self, play: u32) -> bool;
+    /// `og.ui.playInfo`
+    fn og_ui_play_info(&self, play: u32) -> String;
+    /// `og.ui.forceState`
+    fn og_ui_force_state(&self, path: String, group: String, state: String);
+    /// `og.ui.visualState`
+    fn og_ui_visual_state(&self, path: String, group: String) -> String;
+    /// `og.ui.animate`
+    fn og_ui_animate(&self, id: String, target: f64, transition: String) -> f64;
+    /// `og.ui.gesture`
+    fn og_ui_gesture(&self, path: String) -> String;
+    /// `og.ui.motionEvents`
+    fn og_ui_motion_events(&self) -> String;
+    /// `og.ui.overlaps`
+    fn og_ui_overlaps(&self) -> String;
+    /// `og.ui.layoutStats`
+    fn og_ui_layout_stats(&self) -> String;
 }
 
 /// `commands`: packages/knowledge/wiki/commands.md.
@@ -1262,6 +1296,23 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_shake",
     "og_ui_screen_transition",
     "og_ui_preview_viewport",
+    "og_ui_props",
+    "og_ui_define_timeline",
+    "og_ui_play",
+    "og_ui_play_timeline",
+    "og_ui_seek",
+    "og_ui_pause",
+    "og_ui_resume",
+    "og_ui_reverse",
+    "og_ui_stop",
+    "og_ui_play_info",
+    "og_ui_force_state",
+    "og_ui_visual_state",
+    "og_ui_animate",
+    "og_ui_gesture",
+    "og_ui_motion_events",
+    "og_ui_overlaps",
+    "og_ui_layout_stats",
     "og_commands_register",
     "og_commands_parse",
     "og_commands_help",

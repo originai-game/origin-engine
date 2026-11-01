@@ -1663,6 +1663,91 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
     <Host as UiApi>::og_ui_preview_viewport(&Host, world, viewport)
 }
 
+#[wasm_bindgen]
+pub fn og_ui_props(desc: Option<String>) -> bool {
+    <Host as UiApi>::og_ui_props(&Host, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_define_timeline(name: String, timeline: Option<String>) {
+    <Host as UiApi>::og_ui_define_timeline(&Host, name, timeline)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_play(path: String, choreo: String, desc: Option<String>) -> u32 {
+    <Host as UiApi>::og_ui_play(&Host, path, choreo, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_play_timeline(path: String, timeline: String, desc: Option<String>) -> u32 {
+    <Host as UiApi>::og_ui_play_timeline(&Host, path, timeline, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_seek(play: u32, ms: f64) -> bool {
+    <Host as UiApi>::og_ui_seek(&Host, play, ms)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_pause(play: u32) -> bool {
+    <Host as UiApi>::og_ui_pause(&Host, play)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_resume(play: u32) -> bool {
+    <Host as UiApi>::og_ui_resume(&Host, play)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_reverse(play: u32) -> bool {
+    <Host as UiApi>::og_ui_reverse(&Host, play)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_stop(play: u32) -> bool {
+    <Host as UiApi>::og_ui_stop(&Host, play)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_play_info(play: u32) -> String {
+    <Host as UiApi>::og_ui_play_info(&Host, play)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_force_state(path: String, group: String, state: String) {
+    <Host as UiApi>::og_ui_force_state(&Host, path, group, state)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_visual_state(path: String, group: String) -> String {
+    <Host as UiApi>::og_ui_visual_state(&Host, path, group)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_animate(id: String, target: f64, transition: String) -> f64 {
+    <Host as UiApi>::og_ui_animate(&Host, id, target, transition)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_gesture(path: String) -> String {
+    <Host as UiApi>::og_ui_gesture(&Host, path)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_motion_events() -> String {
+    <Host as UiApi>::og_ui_motion_events(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_overlaps() -> String {
+    <Host as UiApi>::og_ui_overlaps(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_layout_stats() -> String {
+    <Host as UiApi>::og_ui_layout_stats(&Host)
+}
+
 #[cfg(not(feature = "publish"))]
 #[wasm_bindgen]
 pub fn og_commands_register(name: String, handler: u32, desc: Option<String>) -> String {

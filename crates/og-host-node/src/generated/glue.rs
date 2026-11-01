@@ -1995,6 +1995,108 @@ pub fn og_ui_preview_viewport(env: Env, world: u32, viewport: String) {
     <Host as UiApi>::og_ui_preview_viewport(&Host, world, viewport)
 }
 
+#[napi(js_name = "og_ui_props")]
+pub fn og_ui_props(env: Env, desc: Option<String>) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_props(&Host, desc)
+}
+
+#[napi(js_name = "og_ui_define_timeline")]
+pub fn og_ui_define_timeline(env: Env, name: String, timeline: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_define_timeline(&Host, name, timeline)
+}
+
+#[napi(js_name = "og_ui_play")]
+pub fn og_ui_play(env: Env, path: String, choreo: String, desc: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_play(&Host, path, choreo, desc)
+}
+
+#[napi(js_name = "og_ui_play_timeline")]
+pub fn og_ui_play_timeline(env: Env, path: String, timeline: String, desc: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_play_timeline(&Host, path, timeline, desc)
+}
+
+#[napi(js_name = "og_ui_seek")]
+pub fn og_ui_seek(env: Env, play: u32, ms: f64) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_seek(&Host, play, ms)
+}
+
+#[napi(js_name = "og_ui_pause")]
+pub fn og_ui_pause(env: Env, play: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_pause(&Host, play)
+}
+
+#[napi(js_name = "og_ui_resume")]
+pub fn og_ui_resume(env: Env, play: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_resume(&Host, play)
+}
+
+#[napi(js_name = "og_ui_reverse")]
+pub fn og_ui_reverse(env: Env, play: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_reverse(&Host, play)
+}
+
+#[napi(js_name = "og_ui_stop")]
+pub fn og_ui_stop(env: Env, play: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_stop(&Host, play)
+}
+
+#[napi(js_name = "og_ui_play_info")]
+pub fn og_ui_play_info(env: Env, play: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_play_info(&Host, play)
+}
+
+#[napi(js_name = "og_ui_force_state")]
+pub fn og_ui_force_state(env: Env, path: String, group: String, state: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_force_state(&Host, path, group, state)
+}
+
+#[napi(js_name = "og_ui_visual_state")]
+pub fn og_ui_visual_state(env: Env, path: String, group: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_visual_state(&Host, path, group)
+}
+
+#[napi(js_name = "og_ui_animate")]
+pub fn og_ui_animate(env: Env, id: String, target: f64, transition: String) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_animate(&Host, id, target, transition)
+}
+
+#[napi(js_name = "og_ui_gesture")]
+pub fn og_ui_gesture(env: Env, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_gesture(&Host, path)
+}
+
+#[napi(js_name = "og_ui_motion_events")]
+pub fn og_ui_motion_events(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_motion_events(&Host)
+}
+
+#[napi(js_name = "og_ui_overlaps")]
+pub fn og_ui_overlaps(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_overlaps(&Host)
+}
+
+#[napi(js_name = "og_ui_layout_stats")]
+pub fn og_ui_layout_stats(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_layout_stats(&Host)
+}
+
 #[cfg(not(feature = "publish"))]
 #[napi(js_name = "og_commands_register")]
 pub fn og_commands_register(env: Env, name: String, handler: u32, desc: Option<String>) -> String {

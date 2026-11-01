@@ -669,6 +669,40 @@ export interface HostAbi<A, V> {
   og_ui_screen_transition(id: string, screen: string, desc: string | undefined): string;
   /** `og.ui.previewViewport` */
   og_ui_preview_viewport(world: number, viewport: string): void;
+  /** `og.ui.props` */
+  og_ui_props(desc: string | undefined): boolean;
+  /** `og.ui.defineTimeline` */
+  og_ui_define_timeline(name: string, timeline: string | undefined): void;
+  /** `og.ui.play` */
+  og_ui_play(path: string, choreo: string, desc: string | undefined): number;
+  /** `og.ui.playTimeline` */
+  og_ui_play_timeline(path: string, timeline: string, desc: string | undefined): number;
+  /** `og.ui.seek` */
+  og_ui_seek(play: number, ms: number): boolean;
+  /** `og.ui.pause` */
+  og_ui_pause(play: number): boolean;
+  /** `og.ui.resume` */
+  og_ui_resume(play: number): boolean;
+  /** `og.ui.reverse` */
+  og_ui_reverse(play: number): boolean;
+  /** `og.ui.stop` */
+  og_ui_stop(play: number): boolean;
+  /** `og.ui.playInfo` */
+  og_ui_play_info(play: number): string;
+  /** `og.ui.forceState` */
+  og_ui_force_state(path: string, group: string, state: string): void;
+  /** `og.ui.visualState` */
+  og_ui_visual_state(path: string, group: string): string;
+  /** `og.ui.animate` */
+  og_ui_animate(id: string, target: number, transition: string): number;
+  /** `og.ui.gesture` */
+  og_ui_gesture(path: string): string;
+  /** `og.ui.motionEvents` */
+  og_ui_motion_events(): string;
+  /** `og.ui.overlaps` */
+  og_ui_overlaps(): string;
+  /** `og.ui.layoutStats` */
+  og_ui_layout_stats(): string;
   /** `og.commands.register` */
   og_commands_register(name: string, handler: number, desc: string | undefined): string;
   /** `og.commands.parse` */
@@ -1116,6 +1150,23 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_shake",
   "og_ui_screen_transition",
   "og_ui_preview_viewport",
+  "og_ui_props",
+  "og_ui_define_timeline",
+  "og_ui_play",
+  "og_ui_play_timeline",
+  "og_ui_seek",
+  "og_ui_pause",
+  "og_ui_resume",
+  "og_ui_reverse",
+  "og_ui_stop",
+  "og_ui_play_info",
+  "og_ui_force_state",
+  "og_ui_visual_state",
+  "og_ui_animate",
+  "og_ui_gesture",
+  "og_ui_motion_events",
+  "og_ui_overlaps",
+  "og_ui_layout_stats",
   "og_commands_register",
   "og_commands_parse",
   "og_commands_help",

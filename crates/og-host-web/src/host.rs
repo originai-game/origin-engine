@@ -985,6 +985,57 @@ impl UiApi for WebHost {
     fn og_ui_preview_viewport(&self, world: u32, viewport: String) {
         rt::og_ui_preview_viewport(world, viewport)
     }
+    fn og_ui_props(&self, desc: Option<String>) -> bool {
+        rt::og_ui_props(desc)
+    }
+    fn og_ui_define_timeline(&self, name: String, timeline: Option<String>) {
+        rt::og_ui_define_timeline(name, timeline)
+    }
+    fn og_ui_play(&self, path: String, choreo: String, desc: Option<String>) -> u32 {
+        rt::og_ui_play(path, choreo, desc)
+    }
+    fn og_ui_play_timeline(&self, path: String, timeline: String, desc: Option<String>) -> u32 {
+        rt::og_ui_play_timeline(path, timeline, desc)
+    }
+    fn og_ui_seek(&self, play: u32, ms: f64) -> bool {
+        rt::og_ui_seek(play, ms)
+    }
+    fn og_ui_pause(&self, play: u32) -> bool {
+        rt::og_ui_pause(play)
+    }
+    fn og_ui_resume(&self, play: u32) -> bool {
+        rt::og_ui_resume(play)
+    }
+    fn og_ui_reverse(&self, play: u32) -> bool {
+        rt::og_ui_reverse(play)
+    }
+    fn og_ui_stop(&self, play: u32) -> bool {
+        rt::og_ui_stop(play)
+    }
+    fn og_ui_play_info(&self, play: u32) -> String {
+        rt::og_ui_play_info(play)
+    }
+    fn og_ui_force_state(&self, path: String, group: String, state: String) {
+        rt::og_ui_force_state(path, group, state)
+    }
+    fn og_ui_visual_state(&self, path: String, group: String) -> String {
+        rt::og_ui_visual_state(path, group)
+    }
+    fn og_ui_animate(&self, id: String, target: f64, transition: String) -> f64 {
+        rt::og_ui_animate(id, target, transition)
+    }
+    fn og_ui_gesture(&self, path: String) -> String {
+        rt::og_ui_gesture(path)
+    }
+    fn og_ui_motion_events(&self) -> String {
+        rt::og_ui_motion_events()
+    }
+    fn og_ui_overlaps(&self) -> String {
+        rt::og_ui_overlaps()
+    }
+    fn og_ui_layout_stats(&self) -> String {
+        rt::og_ui_layout_stats()
+    }
 }
 
 impl CommandsApi for WebHost {

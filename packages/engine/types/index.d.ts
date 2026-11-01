@@ -16290,8 +16290,9 @@ export type Align = "start" | "center" | "end" | "spaceBetween";
  * - `"center"`: Centred.
  * - `"end"`: At the end.
  * - `"stretch"`: Stretched to the container's inner size.
+ * - `"baseline"`: In a row, children share their first text baseline (rows of mixed type sizes); a column treats it as start.
  */
-export type Cross = "start" | "center" | "end" | "stretch";
+export type Cross = "start" | "center" | "end" | "stretch" | "baseline";
 
 /**
  * How the lines of a label align.
@@ -20788,6 +20789,1418 @@ export interface AlertDesc {
   readonly okLabel?: string;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * An animatable value of an element (docs/ui.md §7.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians.
+ * - `"x"`: Its horizontal offset, CSS px (the transform's x).
+ * - `"y"`: Its vertical offset, CSS px.
+ * - `"scaleX"`: Its horizontal scale (1: unscaled).
+ * - `"scaleY"`: Its vertical scale.
+ * - `"scale"`: Both scales at once.
+ * - `"rotate"`: Its turn, radians, clockwise on screen.
+ * - `"skewX"`: Its horizontal skew, radians.
+ * - `"skewY"`: Its vertical skew, radians.
+ * - `"opacity"`: Its opacity, 0 to 1, multiplied down the tree.
+ * - `"radius"`: Its corner radius, CSS px.
+ * - `"backgroundR"`: Its fill's red.
+ * - `"backgroundG"`: Its fill's green.
+ * - `"backgroundB"`: Its fill's blue.
+ * - `"backgroundA"`: Its fill's alpha.
+ * - `"inkR"`: Its text's red.
+ * - `"inkG"`: Its text's green.
+ * - `"inkB"`: Its text's blue.
+ * - `"inkA"`: Its text's alpha.
+ * - `"z"`: Its z among its siblings (stepped, never tweened).
+ * - `"inert"`: 1: it and its subtree take no input (stepped): a results screen's buttons wait for the sequence.
+ */
+export type UiProp = "x" | "y" | "scaleX" | "scaleY" | "scale" | "rotate" | "skewX" | "skewY" | "opacity" | "radius" | "backgroundR" | "backgroundG" | "backgroundB" | "backgroundA" | "inkR" | "inkG" | "inkB" | "inkA" | "z" | "inert";
+
+/**
+ * How a container lays out its children.
+ * - `"flex"`: The row and column walks of its direction (the default).
+ * - `"stack"`: Children overlaid in the same rectangle, each placed by its insets, else by the container's align (across) and cross (down): a card's art, frame, cost gem and name.
+ * - `"grid"`: Tracks and cells (ElementProps.grid).
+ */
+export type LayoutMode = "flex" | "stack" | "grid";
+
+/**
+ * How an element is placed.
+ * - `"flow"`: In its parent's flow (the default).
+ * - `"absolute"`: Out of the flow, placed by its insets inside its parent's padding box.
+ * - `"anchored"`: Out of the flow, its anchorSelf point on the anchorAt point of the element at anchorTo, moved by its start and top insets.
+ */
+export type Position = "flow" | "absolute" | "anchored";
+
+/**
+ * Which way auto-placed items fill a grid.
+ * - `"row"`: Along rows, adding rows (the default).
+ * - `"column"`: Down columns, adding columns.
+ */
+export type GridFlow = "row" | "column";
+
+/**
+ * Which way a drag moves its element.
+ * - `"both"`: Both ways.
+ * - `"x"`: Across only.
+ * - `"y"`: Down only.
+ * - `"lock"`: Either, locked to the first one the drag moves along.
+ */
+export type DragAxis = "both" | "x" | "y" | "lock";
+
+/**
+ * A named easing curve.
+ * - `"linear"`: Constant speed.
+ * - `"out"`: How things arrive: fast, then settling (the default).
+ * - `"exit"`: How things leave: slow, then away.
+ * - `"inOut"`: Slow at both ends.
+ */
+export type EaseName = "linear" | "out" | "exit" | "inOut";
+
+/**
+ * A named motion of the style (docs/ui.md §7.7): components use these, so a style's personality changes every motion at once.
+ * - `"ui"`: The control spring: hover, press, toggles.
+ * - `"panel"`: Panels, sheets and drawers.
+ * - `"emphasis"`: Rewards, results and level-ups.
+ * - `"playful"`: Bouncy toys: chips, stickers, mascots.
+ * - `"enter"`: The entrance ease and duration.
+ * - `"exit"`: The exit ease and duration.
+ */
+export type MotionToken = "ui" | "panel" | "emphasis" | "playful" | "enter" | "exit";
+
+/**
+ * What an animation does under reduced motion (docs/ui.md §7.7).
+ * - `"fade"`: Movement and scale jump; opacity and colour fade quickly (the default).
+ * - `"none"`: Everything jumps.
+ * - `"keep"`: Plays as authored: motion that carries meaning, kept small.
+ */
+export type ReducedMotion = "fade" | "none" | "keep";
+
+/**
+ * A screen orientation.
+ * - `"portrait"`: Taller than wide.
+ * - `"landscape"`: Wider than tall.
+ */
+export type Orientation = "portrait" | "landscape";
+
+/**
+ * How a play repeats.
+ * - `"once"`: Once (the default).
+ * - `"loop"`: Over and over.
+ * - `"pingPong"`: Forward then back, over and over.
+ */
+export type Repeat = "once" | "loop" | "pingPong";
+
+/**
+ * A transform applied after layout, about its pivot: CSS's translate(x, y) rotate(r) skew(kx, ky) scale(sx, sy) with its transform-origin. Hit tests, the probe's rectangles and the accessibility tree's bounds follow it; layout does not.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface UiTransform {
+  /**
+   * Moves it across.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x?: number;
+  /**
+   * Moves it down.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y?: number;
+  /**
+   * Its horizontal scale.
+   *
+   * @default 1
+   */
+  readonly scaleX?: number;
+  /**
+   * Its vertical scale.
+   *
+   * @default 1
+   */
+  readonly scaleY?: number;
+  /**
+   * Its turn, radians, clockwise on screen.
+   *
+   * @default 0
+   */
+  readonly rotate?: number;
+  /**
+   * Its horizontal skew, radians.
+   *
+   * @default 0
+   */
+  readonly skewX?: number;
+  /**
+   * Its vertical skew, radians.
+   *
+   * @default 0
+   */
+  readonly skewY?: number;
+  /**
+   * The pivot across its box (0 its start edge, 1 its end).
+   *
+   * @default 0.5
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly pivotX?: number;
+  /**
+   * The pivot down its box.
+   *
+   * @default 0.5
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly pivotY?: number;
+}
+
+/**
+ * Insets of an absolute or anchored element from its parent's edges; an absent one is not set. start and end follow the writing direction: a right-to-left layout mirrors them.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface Edges {
+  /**
+   * From the start edge.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly start?: number | null;
+  /**
+   * From the top.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly top?: number | null;
+  /**
+   * From the end edge.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly end?: number | null;
+  /**
+   * From the bottom.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly bottom?: number | null;
+  /**
+   * Centred across the parent (start, if given, moves it).
+   *
+   * @default false
+   */
+  readonly centerX?: boolean;
+  /**
+   * Centred down the parent (top, if given, moves it).
+   *
+   * @default false
+   */
+  readonly centerY?: boolean;
+}
+
+/** A fixed track. */
+export interface TrackPx {
+  /**
+   * Its size.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly px: number;
+}
+
+/** A share of the space the other tracks leave. */
+export interface TrackFr {
+  /**
+   * Its share.
+   *
+   * @default 1
+   */
+  readonly fr: number;
+}
+
+/** A track sized by its content, within bounds. */
+export interface TrackRange {
+  /**
+   * The smallest it gets.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly min: number;
+  /**
+   * The largest it gets.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly max: number;
+}
+
+/** A fraction of the grid's inner size. */
+export interface TrackPercent {
+  /**
+   * The fraction.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly fraction: number;
+}
+
+/** Its largest single-cell item. */
+export interface TrackAuto {
+}
+
+/** A grid track's size. */
+export type Track =
+  /** A fixed size. */
+  | ({ readonly kind: "px" } & TrackPx)
+  /** A share of the free space. */
+  | ({ readonly kind: "fr" } & TrackFr)
+  /** Its largest single-cell item. */
+  | ({ readonly kind: "auto" } & TrackAuto)
+  /** Its content between min and max. */
+  | ({ readonly kind: "minMax" } & TrackRange)
+  /** A fraction of the grid. */
+  | ({ readonly kind: "percent" } & TrackPercent);
+
+/**
+ * A grid's tracks and areas.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GridSpec {
+  /**
+   * The column tracks.
+   *
+   * @default []
+   */
+  readonly columns?: readonly Track[];
+  /**
+   * The row tracks; items past them add autoTrack rows.
+   *
+   * @default []
+   */
+  readonly rows?: readonly Track[];
+  /**
+   * The track added for items past the declared ones; null is auto.
+   *
+   * @default null
+   */
+  readonly autoTrack?: Track | null;
+  /**
+   * Space between columns; absent is the element's gap.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly columnGap?: number | null;
+  /**
+   * Space between rows; absent is the element's gap.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly rowGap?: number | null;
+  /**
+   * Named areas, one string per row of space-separated cell names, as CSS grid-template-areas (`.` is an unnamed cell).
+   *
+   * @default []
+   */
+  readonly areas?: readonly string[];
+  /**
+   * Which way auto-placed items fill it.
+   *
+   * @default "row"
+   */
+  readonly flow?: GridFlow;
+  /**
+   * Auto-placement back-fills holes left by spanning items.
+   *
+   * @default false
+   */
+  readonly dense?: boolean;
+}
+
+/**
+ * Where an item sits in its parent grid; the zero value is auto-placed in one cell.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GridPlace {
+  /**
+   * Its first column, 1-based (0: auto).
+   *
+   * @default 0
+   */
+  readonly column?: number;
+  /**
+   * Its first row, 1-based (0: auto).
+   *
+   * @default 0
+   */
+  readonly row?: number;
+  /**
+   * Columns spanned (0: 1).
+   *
+   * @default 0
+   */
+  readonly columnSpan?: number;
+  /**
+   * Rows spanned (0: 1).
+   *
+   * @default 0
+   */
+  readonly rowSpan?: number;
+  /**
+   * A named area of the grid (wins over the numbers).
+   *
+   * @default ""
+   */
+  readonly area?: string;
+}
+
+/** A value for an animatable prop. */
+export interface PropValue {
+  /** The prop. */
+  readonly prop: UiProp;
+  /** Its value. */
+  readonly value: number;
+}
+
+/**
+ * When a variant applies: every condition given must hold.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface UiQuery {
+  /**
+   * The size classes it applies on (empty: any).
+   *
+   * @default []
+   */
+  readonly breakpoints?: readonly Breakpoint[];
+  /**
+   * The orientation it applies in; null is either.
+   *
+   * @default null
+   */
+  readonly orientation?: Orientation | null;
+  /**
+   * The narrowest width it applies at (0: unbounded): the viewport's, or with container the element's own laid-out width.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly minWidth?: number;
+  /**
+   * The widest (0: unbounded).
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly maxWidth?: number;
+  /**
+   * A container query: the widths are the element's own (the same card in a four-column shop and a one-column phone list).
+   *
+   * @default false
+   */
+  readonly container?: boolean;
+}
+
+/**
+ * What a variant changes: the box's layout, its arrangement and animatable values; absent fields are unchanged.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface UiPatch {
+  /**
+   * Its direction.
+   *
+   * @default null
+   */
+  readonly direction?: Direction | null;
+  /**
+   * Its width.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * Its padding.
+   *
+   * @default null
+   */
+  readonly padding?: Insets | null;
+  /**
+   * Its gap.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number | null;
+  /**
+   * Its main-axis alignment.
+   *
+   * @default null
+   */
+  readonly align?: Align | null;
+  /**
+   * Its cross-axis alignment.
+   *
+   * @default null
+   */
+  readonly cross?: Cross | null;
+  /**
+   * Its wrapping.
+   *
+   * @default null
+   */
+  readonly wrap?: boolean | null;
+  /**
+   * Its layout mode.
+   *
+   * @default null
+   */
+  readonly layout?: LayoutMode | null;
+  /**
+   * Its grid columns (empty: unchanged).
+   *
+   * @default []
+   */
+  readonly columns?: readonly Track[];
+  /**
+   * Hide it and its subtree where the variant applies.
+   *
+   * @default null
+   */
+  readonly hidden?: boolean | null;
+  /**
+   * Animatable values it sets.
+   *
+   * @default []
+   */
+  readonly values?: readonly PropValue[];
+}
+
+/**
+ * A prop override under a condition (docs/ui.md §6.2: breakpoint variants and container queries). Later variants win.
+ */
+export interface UiVariant {
+  /** When it applies. */
+  readonly when: UiQuery;
+  /** What it changes. */
+  readonly set: UiPatch;
+}
+
+/**
+ * A spring by how it feels: about how long it takes to settle and how much it overshoots. Retargeting it keeps its value and velocity, so an interrupted motion never jumps.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SpringSpec {
+  /**
+   * About how long it takes to arrive, ms.
+   *
+   * @default 350
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+  /**
+   * 0 arrives without overshoot; 0.3 overshoots a little; up to 1 rings (below 0 is sluggish). The style's overshoot caps it.
+   *
+   * @default 0
+   * @range -0.95..1
+   */
+  readonly bounce?: number;
+}
+
+/**
+ * A duration on an ease: a retarget starts a new ease from where it is.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TweenSpec {
+  /**
+   * Its length, ms.
+   *
+   * @default 200
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+  /**
+   * Its curve.
+   *
+   * @default "linear"
+   */
+  readonly ease?: EaseName;
+  /**
+   * A cubic Bézier (x1, y1, x2, y2) in place of the named ease (empty: the named one).
+   *
+   * @default []
+   */
+  readonly bezier?: readonly number[];
+}
+
+/** One of the style's motion tokens. */
+export interface TokenRef {
+  /** The token. */
+  readonly token: MotionToken;
+}
+
+/** At once. */
+export interface InstantSpec {
+}
+
+/** How a value moves to a new target. */
+export type Transition =
+  /** At once. */
+  | ({ readonly kind: "instant" } & InstantSpec)
+  /** On a spring that keeps its velocity. */
+  | ({ readonly kind: "spring" } & SpringSpec)
+  /** Over a duration on an ease. */
+  | ({ readonly kind: "tween" } & TweenSpec)
+  /** The style's token. */
+  | ({ readonly kind: "token" } & TokenRef);
+
+/**
+ * Swipe to dismiss: a release past distance (or faster than velocity) along the drag's axis throws the element off.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DismissSpec {
+  /**
+   * 0: 40 % of its size along the axis.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly distance?: number;
+  /**
+   * CSS px per second (0: 800).
+   *
+   * @default 0
+   */
+  readonly velocity?: number;
+}
+
+/** An offset a released drag can settle on. */
+export interface SnapPoint {
+  /**
+   * Its x offset.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * Its y offset.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+}
+
+/**
+ * The element moves with a drag that starts on it (a card, a sheet, a carousel), released onto a spring that keeps the drag's velocity.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DragSpec {
+  /**
+   * Which way it moves.
+   *
+   * @default "both"
+   */
+  readonly axis?: DragAxis;
+  /**
+   * Bounds of its offset (x to x + width, y to y + height); null is free.
+   *
+   * @default null
+   */
+  readonly bounds?: UiRect | null;
+  /**
+   * Past the bounds it follows with resistance, iOS's rubber band with this constant (0 stops at the bounds; 0.55 is iOS's).
+   *
+   * @default 0
+   */
+  readonly rubber?: number;
+  /**
+   * Offsets a release settles on: the nearest to where its momentum would carry it.
+   *
+   * @default []
+   */
+  readonly snap?: readonly SnapPoint[];
+  /**
+   * A release projects the offset by its velocity (0.3 s of it) before choosing a snap point: a flick.
+   *
+   * @default false
+   */
+  readonly momentum?: boolean;
+  /**
+   * Without snap points, a release goes back to offset 0.
+   *
+   * @default false
+   */
+  readonly returnHome?: boolean;
+  /**
+   * Swipe to dismiss; null never throws it off.
+   *
+   * @default null
+   */
+  readonly dismiss?: DismissSpec | null;
+  /**
+   * Pointer travel before a press becomes a drag (0: 4).
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly threshold?: number;
+  /**
+   * The release spring; null is the style's ui spring.
+   *
+   * @default null
+   */
+  readonly spring?: Transition | null;
+  /**
+   * What a drop target matches in DropSpec.accept.
+   *
+   * @default ""
+   */
+  readonly tag?: string;
+}
+
+/**
+ * Two touches on the element scale (and turn) it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PinchSpec {
+  /**
+   * 0: 0.5.
+   *
+   * @default 0
+   */
+  readonly minScale?: number;
+  /**
+   * 0: 4.
+   *
+   * @default 0
+   */
+  readonly maxScale?: number;
+  /**
+   * The touches turn it too.
+   *
+   * @default false
+   */
+  readonly rotate?: boolean;
+}
+
+/**
+ * The element takes drops of dragged elements.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DropSpec {
+  /**
+   * The drag tags it takes (empty: any).
+   *
+   * @default []
+   */
+  readonly accept?: readonly string[];
+}
+
+/**
+ * How an element arrives or leaves (docs/ui.md §7.5): the values it enters from or exits to, and how it moves between them and its own.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PresenceSpec {
+  /**
+   * Where it starts (entering) or ends (leaving).
+   *
+   * @default []
+   */
+  readonly values?: readonly PropValue[];
+  /**
+   * A transition kind's values in place of values: what the kind enters from and exits to.
+   *
+   * @default null
+   */
+  readonly kind?: TransitionKind | null;
+  /**
+   * A slide kind's distance (0: 24).
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly distance?: number;
+  /**
+   * How it moves; null is the style's enter or exit token.
+   *
+   * @default null
+   */
+  readonly transition?: Transition | null;
+  /**
+   * Wait this long before moving (a hand-built stagger).
+   *
+   * @default 0
+   * @unit ms (milliseconds)
+   */
+  readonly delayMs?: number;
+}
+
+/** One state of a group: the values it sets, and timelines it starts. */
+export interface VisualState {
+  /** Its name. */
+  readonly name: string;
+  /** The values it sets. */
+  readonly values: readonly PropValue[];
+  /**
+   * A timeline (og.ui.defineTimeline) played on the element when the state is entered (empty: none).
+   */
+  readonly onEnter: string;
+  /** One played when it is left. */
+  readonly onExit: string;
+}
+
+/**
+ * The transition between two states of a group (`*` matches any state). The exact pair wins, then `* -> to`, `from -> *`, `* -> *`.
+ */
+export interface StateTransition {
+  /** The state left. */
+  readonly from: string;
+  /** The state entered. */
+  readonly to: string;
+  /** How the values move. */
+  readonly transition: Transition;
+}
+
+/**
+ * A visual state group (docs/ui.md §7.3): one of its states is current, and moving between them animates every value that changes. A group named interaction is derived from input: normal, hover, pressed, focused and disabled (a state the group lacks falls back: pressed to hover to normal, focused to hover). Other groups take their state from ElementProps.state, a timeline's state event or og.ui.forceState; the first state is the default.
+ */
+export interface StateGroup {
+  /** Its name. */
+  readonly name: string;
+  /** Its states. */
+  readonly states: readonly VisualState[];
+  /**
+   * Its transitions; a pair without one moves on the element's motion, else the style's ui spring.
+   */
+  readonly transitions: readonly StateTransition[];
+}
+
+/** The current state of a group. */
+export interface StateValue {
+  /** The group. */
+  readonly group: string;
+  /** Its state. */
+  readonly state: string;
+}
+
+/**
+ * Everything an element carries beyond its box (docs/ui.md §6.1): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ElementProps {
+  /**
+   * Its transform after layout.
+   *
+   * @default {}
+   */
+  readonly transform?: UiTransform;
+  /**
+   * Its opacity, multiplied down the tree.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  readonly opacity?: number;
+  /**
+   * Its drawing and hit-testing order among its siblings: higher draws over lower without leaving the flow.
+   *
+   * @default 0
+   */
+  readonly z?: number;
+  /**
+   * How it is placed.
+   *
+   * @default "flow"
+   */
+  readonly position?: Position;
+  /**
+   * Its insets, for an absolute or anchored element.
+   *
+   * @default {}
+   */
+  readonly insets?: Edges;
+  /**
+   * The path of the element an anchored element is placed against.
+   *
+   * @default ""
+   */
+  readonly anchorTo?: string;
+  /**
+   * The target's point it sits on.
+   *
+   * @default "topLeft"
+   */
+  readonly anchorAt?: Anchor;
+  /**
+   * Its own point that sits there.
+   *
+   * @default "topLeft"
+   */
+  readonly anchorSelf?: Anchor;
+  /**
+   * Extra pointer reach around its box.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly hitSlop?: number;
+  /**
+   * How it lays out its children.
+   *
+   * @default "flex"
+   */
+  readonly layout?: LayoutMode;
+  /**
+   * Its tracks and areas, for a grid.
+   *
+   * @default {}
+   */
+  readonly grid?: GridSpec;
+  /**
+   * Its place in a grid parent.
+   *
+   * @default {}
+   */
+  readonly place?: GridPlace;
+  /**
+   * Its container queries read its own width.
+   *
+   * @default false
+   */
+  readonly container?: boolean;
+  /**
+   * Prop overrides by breakpoint, orientation and width; later ones win.
+   *
+   * @default []
+   */
+  readonly variants?: readonly UiVariant[];
+  /**
+   * Paths of elements it overlaps on purpose (an ancestor path covers its subtree). Undeclared overlaps are reported (og.ui.overlaps).
+   *
+   * @default []
+   */
+  readonly overlaps?: readonly string[];
+  /**
+   * A shared-element key: the element with the same key on the screen being left morphs into this one.
+   *
+   * @default ""
+   */
+  readonly match?: string;
+  /**
+   * It moves with a drag.
+   *
+   * @default null
+   */
+  readonly drag?: DragSpec | null;
+  /**
+   * Two touches scale and turn it.
+   *
+   * @default null
+   */
+  readonly pinch?: PinchSpec | null;
+  /**
+   * It takes drops.
+   *
+   * @default null
+   */
+  readonly drop?: DropSpec | null;
+  /**
+   * How its animatable values move when they change; null is at once.
+   *
+   * @default null
+   */
+  readonly motion?: Transition | null;
+  /**
+   * Moves from its last laid-out rectangle to its new one (FLIP); null jumps.
+   *
+   * @default null
+   */
+  readonly layoutMotion?: Transition | null;
+  /**
+   * How it arrives.
+   *
+   * @default null
+   */
+  readonly enter?: PresenceSpec | null;
+  /**
+   * How it leaves: kept, inert and out of hit tests and the accessibility tree, while it plays after the element leaves the tree.
+   *
+   * @default null
+   */
+  readonly exit?: PresenceSpec | null;
+  /**
+   * Its visual state groups.
+   *
+   * @default []
+   */
+  readonly states?: readonly StateGroup[];
+  /**
+   * The current state of its groups that are not derived from input.
+   *
+   * @default []
+   */
+  readonly state?: readonly StateValue[];
+  /**
+   * Its reduced-motion fallback; null is the style's.
+   *
+   * @default null
+   */
+  readonly reduced?: ReducedMotion | null;
+  /**
+   * It and its subtree take no input.
+   *
+   * @default false
+   */
+  readonly inert?: boolean;
+}
+
+/** A named ease into a key. */
+export interface EaseKey {
+  /** The curve. */
+  readonly ease: EaseName;
+}
+
+/** Holds the previous value, then jumps at the key. */
+export interface HoldKey {
+}
+
+/** Constant speed into the key. */
+export interface LinearKey {
+}
+
+/** A cubic Bézier into the key. */
+export interface BezierKey {
+  /** x1, y1, x2, y2. */
+  readonly bezier: readonly number[];
+}
+
+/** How the segment into a key moves. */
+export type KeyEase =
+  /** Constant speed. */
+  | ({ readonly kind: "linear" } & LinearKey)
+  /** A named ease. */
+  | ({ readonly kind: "ease" } & EaseKey)
+  /** A cubic Bézier. */
+  | ({ readonly kind: "bezier" } & BezierKey)
+  /** On a spring from the previous key's value (released at it). */
+  | ({ readonly kind: "spring" } & SpringSpec)
+  /** Holds, then jumps. */
+  | ({ readonly kind: "hold" } & HoldKey);
+
+/** A keyframe: a value at a time. */
+export interface TimelineKey {
+  /**
+   * Its time.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly atMs: number;
+  /** Its value. */
+  readonly value: number;
+  /** How the segment into it moves; null is the out ease. */
+  readonly ease: KeyEase | null;
+}
+
+/**
+ * Keys over one prop of the element the timeline plays on, or of a descendant by its path below it (`Stars/Star#2`). Before its first key it holds that key's value, after its last the last.
+ */
+export interface TimelineTrack {
+  /** A path below the play's element (empty: the element itself). */
+  readonly target: string;
+  /** The prop. */
+  readonly prop: UiProp;
+  /** In time order. */
+  readonly keys: readonly TimelineKey[];
+}
+
+/** A UI sound of the style. */
+export interface SoundEvent {
+  /** hover, press, open, close, success or error. */
+  readonly name: string;
+  /**
+   * Its pitch (1: as recorded); a cascade step raises it 6 %.
+   *
+   * @default 1
+   */
+  readonly pitch: number;
+}
+
+/** A haptic pattern for the host. */
+export interface HapticEvent {
+  /** light, medium, heavy, success, warning or error. */
+  readonly name: string;
+}
+
+/** Rays and sparks from the target. */
+export interface BurstEvent {
+  /** How many (0: 12). */
+  readonly count: number;
+  /**
+   * How far they reach (0: the style's).
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly radius: number;
+  /** Their colour; null is the style's highlight. */
+  readonly color: Color | null;
+}
+
+/** Sets a state group of the target. */
+export interface StateEvent {
+  /** The group. */
+  readonly group: string;
+  /** Its new state. */
+  readonly state: string;
+}
+
+/** A callback to game code: it arrives in og.ui.motionEvents. */
+export interface CallbackEvent {
+  /** Its name. */
+  readonly name: string;
+}
+
+/** What an event does when a play reaches it. */
+export type TimelineAction =
+  /** A UI sound. */
+  | ({ readonly kind: "sound" } & SoundEvent)
+  /** A haptic. */
+  | ({ readonly kind: "haptic" } & HapticEvent)
+  /** A burst. */
+  | ({ readonly kind: "burst" } & BurstEvent)
+  /** A state change. */
+  | ({ readonly kind: "state" } & StateEvent)
+  /** A callback. */
+  | ({ readonly kind: "callback" } & CallbackEvent);
+
+/** An event at a time, on the play's element or a descendant. */
+export interface TimelineEvent {
+  /**
+   * Its time.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly atMs: number;
+  /** A path below the play's element (empty: the element itself). */
+  readonly target: string;
+  /** What it does. */
+  readonly action: TimelineAction;
+}
+
+/** A named time, for seeking (PlayDesc.fromLabel). */
+export interface TimelineLabel {
+  /** Its name. */
+  readonly name: string;
+  /**
+   * Its time.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly atMs: number;
+}
+
+/**
+ * Keyframed tracks and events (docs/ui.md §7.4).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface UiTimeline {
+  /**
+   * Its tracks.
+   *
+   * @default []
+   */
+  readonly tracks?: readonly TimelineTrack[];
+  /**
+   * Its events.
+   *
+   * @default []
+   */
+  readonly events?: readonly TimelineEvent[];
+  /**
+   * Its named times.
+   *
+   * @default []
+   */
+  readonly labels?: readonly TimelineLabel[];
+  /**
+   * Its length (0: its last key or event).
+   *
+   * @default 0
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+}
+
+/** A timeline on the play's element or a descendant. */
+export interface ChoreoPlay {
+  /** The timeline, by name. */
+  readonly timeline: string;
+  /** A path below the play's element (empty: the element itself). */
+  readonly target: string;
+  /**
+   * Wait this long first.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly delayMs: number;
+}
+
+/** Steps composed. */
+export interface ChoreoSteps {
+  /** The steps. */
+  readonly steps: readonly Choreo[];
+}
+
+/**
+ * One timeline on each target, each stepMs after the one before as ordered by from, the whole spread within capMs.
+ */
+export interface ChoreoStagger {
+  /** The timeline, by name. */
+  readonly timeline: string;
+  /** Paths below the play's element (empty: its children in order). */
+  readonly targets: readonly string[];
+  /**
+   * Between one target's start and the next's (0: the style's stagger).
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly stepMs: number;
+  /**
+   * The most the whole stagger spreads over (0: the style's cap).
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly capMs: number;
+  /**
+   * Where delays grow from: start, end, center (nearest the centre of their bounds first), or `x,y` (nearest that point first).
+   *
+   * @default "start"
+   */
+  readonly from: string;
+}
+
+/**
+ * Steps where each starts at the first `on` callback event of the one before (or its end): a score that counts chips, then multiplies, each step pitched higher.
+ */
+export interface ChoreoCascade {
+  /** The steps. */
+  readonly steps: readonly Choreo[];
+  /** The callback that starts the next step. */
+  readonly on: string;
+}
+
+/** Timelines composed into one play (docs/ui.md §7.4). */
+export type Choreo =
+  /** One timeline. */
+  | ({ readonly kind: "play" } & ChoreoPlay)
+  /** One after another. */
+  | ({ readonly kind: "sequence" } & ChoreoSteps)
+  /** All at once. */
+  | ({ readonly kind: "parallel" } & ChoreoSteps)
+  /** One timeline over many targets. */
+  | ({ readonly kind: "stagger" } & ChoreoStagger)
+  /** Steps chained on callbacks. */
+  | ({ readonly kind: "cascade" } & ChoreoCascade);
+
+/**
+ * How a play runs.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PlayDesc {
+  /**
+   * Plays backwards.
+   *
+   * @default false
+   */
+  readonly reverse?: boolean;
+  /**
+   * How it repeats.
+   *
+   * @default "once"
+   */
+  readonly repeat?: Repeat;
+  /**
+   * Its rate (0: 1).
+   *
+   * @default 0
+   */
+  readonly speed?: number;
+  /**
+   * Start this far in.
+   *
+   * @default 0
+   * @unit ms (milliseconds)
+   */
+  readonly fromMs?: number;
+  /**
+   * Start at a label of its first timeline (wins over fromMs).
+   *
+   * @default ""
+   */
+  readonly fromLabel?: string;
+  /**
+   * Keep the last values once it ends, until stopped.
+   *
+   * @default false
+   */
+  readonly hold?: boolean;
+  /**
+   * Under reduced motion it does not play at all.
+   *
+   * @default false
+   */
+  readonly decorative?: boolean;
+}
+
+/** Where a play is. */
+export interface PlayInfo {
+  /**
+   * Its time (before a reverse's turn).
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly atMs: number;
+  /**
+   * Its length.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly lengthMs: number;
+  /** Held. */
+  readonly paused: boolean;
+  /** Playing backwards. */
+  readonly reverse: boolean;
+  /** Finished (a held play keeps its values). */
+  readonly ended: boolean;
+}
+
+/** What a drag or pinch on an element is doing (last tick's answer, as responses are). */
+export interface GestureInfo {
+  /** A press is held on it. */
+  readonly held: boolean;
+  /** It moves with the pointer (the press travelled past the threshold). */
+  readonly dragging: boolean;
+  /**
+   * Its offset from where it was laid out.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly offsetX: number;
+  /**
+   * Its offset down.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly offsetY: number;
+  /** CSS px per second. */
+  readonly velocityX: number;
+  /** CSS px per second. */
+  readonly velocityY: number;
+  /** A pinch's scale (1: none). */
+  readonly scale: number;
+  /** A pinch's turn, radians. */
+  readonly rotation: number;
+  /** The snap point the last release chose (-1: none). */
+  readonly snapped: number;
+  /** A swipe threw it off. */
+  readonly dismissed: boolean;
+  /** The drop target under the drag (empty: none). */
+  readonly over: string;
+  /** The drop target it was dropped on this tick (empty: none). */
+  readonly droppedOn: string;
+  /** For a drop target: a drag is over it. */
+  readonly hovering: boolean;
+  /** For a drop target: the element dropped on it this tick (empty: none). */
+  readonly received: string;
+}
+
+/** What happened in the UI's motion this tick. */
+export interface UiMotionEvent {
+  /**
+   * sound, haptic, burst, state, callback, end (a play finished), dismiss (a swipe threw an element off), drop (a drag was dropped on a target) or snap (a released drag chose a snap point).
+   */
+  readonly kind: string;
+  /**
+   * The sound, haptic, callback or state's name; for drop the target's path; for snap the point's index.
+   */
+  readonly name: string;
+  /** The element's path. */
+  readonly target: string;
+  /** The play (0: none). */
+  readonly play: number;
+  /** The clip's step in a cascade or stagger. */
+  readonly index: number;
+  /** A sound's pitch: its own times 1.06 per cascade step. */
+  readonly pitch: number;
+}
+
+/** Two elements overlapping where neither declared it (docs/ui.md §6.2). */
+export interface UiOverlap {
+  /**
+   * The element placed over the other (absolute, anchored or floating), or the later of two siblings in the flow.
+   */
+  readonly path: string;
+  /** The other element. */
+  readonly other: string;
+  /** Where they overlap. */
+  readonly rect: UiRect;
+  /** Both are in their parent's flow: a layout bug, not a placement. */
+  readonly inFlow: boolean;
+}
+
+/** What the last frame rebuilt and laid out (docs/ui.md §6.3). */
+export interface UiLayoutStats {
+  /** Elements built. */
+  readonly elements: number;
+  /** Elements whose inputs changed since the tick before (or are new). */
+  readonly rebuilt: number;
+  /** Elements laid out; the rest kept their last layout. */
+  readonly laidOut: number;
+  /** Elements whose draw commands were kept from the tick before. */
+  readonly keptCommands: number;
+}
 
 
 
@@ -26296,6 +27709,112 @@ export declare namespace og {
      * @param desc Title, message and label.
      */
     function alertDialog(id: string, desc?: AlertDesc): boolean;
+    /**
+     * Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §6, §7). Call it right after the element.
+     *
+     * @param desc Its props.
+     * @returns False when no element was built before it.
+     */
+    function props(desc?: ElementProps): boolean;
+    /**
+     * Define a timeline by name: configuration, like the theme, defined once at start. Plays and state groups name it.
+     *
+     * @param name Its name.
+     * @param timeline Its tracks, events and labels.
+     */
+    function defineTimeline(name: string, timeline?: UiTimeline): void;
+    /**
+     * Play a choreography on an element from the end of this tick: its timelines' keys drive the elements' props and its events fire as it passes them (og.ui.motionEvents). Returns the play's id (0: no element, or a choreo of no known kind).
+     *
+     * @param path The element's full path; empty is the element built just before.
+     * @param choreo What plays.
+     * @param desc How it runs.
+     */
+    function play(path: string, choreo: Choreo, desc?: PlayDesc): number;
+    /**
+     * Play one timeline (by name) on an element: og.ui.play with a single step.
+     *
+     * @param path The element's full path; empty is the element built just before.
+     * @param timeline The timeline.
+     * @param desc How it runs.
+     */
+    function playTimeline(path: string, timeline: string, desc?: PlayDesc): number;
+    /**
+     * Move a play to a time; it fires no events on the way. Returns false for an unknown play.
+     *
+     * @param play The play.
+     * @param ms The time, ms.
+     */
+    function seek(play: number, ms: number): boolean;
+    /**
+     * Hold a play where it is.
+     *
+     * @param play The play.
+     */
+    function pause(play: number): boolean;
+    /**
+     * Let a held play go on.
+     *
+     * @param play The play.
+     */
+    function resume(play: number): boolean;
+    /**
+     * Turn a play round where it is: an interrupted opening closes from where it got to.
+     *
+     * @param play The play.
+     */
+    function reverse(play: number): boolean;
+    /**
+     * Stop a play: its elements go back to their own values (on their motion, if they have one).
+     *
+     * @param play The play.
+     */
+    function stop(play: number): boolean;
+    /**
+     * Where a play is; null once it is gone.
+     *
+     * @param play The play.
+     */
+    function playInfo(play: number): PlayInfo | null;
+    /**
+     * Force a state group of an element (the probe and agents render and check each state this way); null lets it go.
+     *
+     * @param path The element's full path.
+     * @param group The group.
+     * @param state The state; null releases it.
+     */
+    function forceState(path: string, group: string, state: string | null): void;
+    /**
+     * The state a group of an element is in (last tick); empty for none.
+     *
+     * @param path The element's full path.
+     * @param group The group.
+     */
+    function visualState(path: string, group: string): string;
+    /**
+     * Any number on a spring or an ease (docs/ui.md §7.1: every value is animatable): call it every tick with the target and it answers this tick's value. A retarget keeps its value and velocity; under reduced motion it jumps.
+     *
+     * @param id Its id under the open element.
+     * @param target Where it is going.
+     * @param transition How it moves.
+     */
+    function animate(id: string, target: number, transition: Transition): number;
+    /**
+     * What the drag or pinch on an element is doing.
+     *
+     * @param path The element's full path.
+     */
+    function gesture(path: string): GestureInfo;
+    /**
+     * The UI's motion events of the last frame: sounds, haptics, bursts, state changes, callbacks, ends, dismissals, drops and snaps.
+     */
+    function motionEvents(): readonly UiMotionEvent[];
+    /**
+     * The last frame's undeclared overlaps between elements (docs/ui.md §6.2), with both paths.
+     */
+    function overlaps(): readonly UiOverlap[];
+    /** What the last frame built, rebuilt, laid out and kept. */
+    function layoutStats(): UiLayoutStats;
   }
   /**
    * Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.

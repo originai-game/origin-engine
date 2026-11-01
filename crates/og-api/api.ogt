@@ -10876,6 +10876,7 @@ module ui {
     variant center "Centred."
     variant end "At the end."
     variant stretch "Stretched to the container's inner size."
+    variant baseline "In a row, children share their first text baseline (rows of mixed type sizes); a column treats it as start."
   }
 
   enum TextAlign {
@@ -13417,6 +13418,777 @@ module ui {
     param id String "Its id."
     param desc AlertDesc "Title, message and label."
     returns bool
+  }
+
+  enum UiProp {
+    doc "An animatable value of an element (docs/ui.md §7.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians."
+    variant x "Its horizontal offset, CSS px (the transform's x)."
+    variant y "Its vertical offset, CSS px."
+    variant scaleX "Its horizontal scale (1: unscaled)."
+    variant scaleY "Its vertical scale."
+    variant scale "Both scales at once."
+    variant rotate "Its turn, radians, clockwise on screen."
+    variant skewX "Its horizontal skew, radians."
+    variant skewY "Its vertical skew, radians."
+    variant opacity "Its opacity, 0 to 1, multiplied down the tree."
+    variant radius "Its corner radius, CSS px."
+    variant backgroundR "Its fill's red."
+    variant backgroundG "Its fill's green."
+    variant backgroundB "Its fill's blue."
+    variant backgroundA "Its fill's alpha."
+    variant inkR "Its text's red."
+    variant inkG "Its text's green."
+    variant inkB "Its text's blue."
+    variant inkA "Its text's alpha."
+    variant z "Its z among its siblings (stepped, never tweened)."
+    variant inert "1: it and its subtree take no input (stepped): a results screen's buttons wait for the sequence."
+  }
+
+  enum LayoutMode {
+    doc "How a container lays out its children."
+    variant flex "The row and column walks of its direction (the default)."
+    variant stack "Children overlaid in the same rectangle, each placed by its insets, else by the container's align (across) and cross (down): a card's art, frame, cost gem and name."
+    variant grid "Tracks and cells (ElementProps.grid)."
+  }
+
+  enum Position {
+    doc "How an element is placed."
+    variant flow "In its parent's flow (the default)."
+    variant absolute "Out of the flow, placed by its insets inside its parent's padding box."
+    variant anchored "Out of the flow, its anchorSelf point on the anchorAt point of the element at anchorTo, moved by its start and top insets."
+  }
+
+  enum GridFlow {
+    doc "Which way auto-placed items fill a grid."
+    variant row "Along rows, adding rows (the default)."
+    variant column "Down columns, adding columns."
+  }
+
+  enum DragAxis {
+    doc "Which way a drag moves its element."
+    variant both "Both ways."
+    variant x "Across only."
+    variant y "Down only."
+    variant lock "Either, locked to the first one the drag moves along."
+  }
+
+  enum EaseName {
+    doc "A named easing curve."
+    variant linear "Constant speed."
+    variant out "How things arrive: fast, then settling (the default)."
+    variant exit "How things leave: slow, then away."
+    variant inOut "Slow at both ends."
+  }
+
+  enum MotionToken {
+    doc "A named motion of the style (docs/ui.md §7.7): components use these, so a style's personality changes every motion at once."
+    variant ui "The control spring: hover, press, toggles."
+    variant panel "Panels, sheets and drawers."
+    variant emphasis "Rewards, results and level-ups."
+    variant playful "Bouncy toys: chips, stickers, mascots."
+    variant enter "The entrance ease and duration."
+    variant exit "The exit ease and duration."
+  }
+
+  enum ReducedMotion {
+    doc "What an animation does under reduced motion (docs/ui.md §7.7)."
+    variant fade "Movement and scale jump; opacity and colour fade quickly (the default)."
+    variant none "Everything jumps."
+    variant keep "Plays as authored: motion that carries meaning, kept small."
+  }
+
+  enum Orientation {
+    doc "A screen orientation."
+    variant portrait "Taller than wide."
+    variant landscape "Wider than tall."
+  }
+
+  enum Repeat {
+    doc "How a play repeats."
+    variant once "Once (the default)."
+    variant loop "Over and over."
+    variant pingPong "Forward then back, over and over."
+  }
+
+  struct UiTransform {
+    doc "A transform applied after layout, about its pivot: CSS's translate(x, y) rotate(r) skew(kx, ky) scale(sx, sy) with its transform-origin. Hit tests, the probe's rectangles and the accessibility tree's bounds follow it; layout does not."
+    desc true
+    field x f32 "Moves it across." {
+      unit cssPx
+    }
+    field y f32 "Moves it down." {
+      unit cssPx
+    }
+    field scaleX f32 "Its horizontal scale." {
+      default 1
+    }
+    field scaleY f32 "Its vertical scale." {
+      default 1
+    }
+    field rotate f32 "Its turn, radians, clockwise on screen."
+    field skewX f32 "Its horizontal skew, radians."
+    field skewY f32 "Its vertical skew, radians."
+    field pivotX f32 "The pivot across its box (0 its start edge, 1 its end)." {
+      default 0.5
+      unit ratio
+    }
+    field pivotY f32 "The pivot down its box." {
+      default 0.5
+      unit ratio
+    }
+  }
+
+  struct Edges {
+    doc "Insets of an absolute or anchored element from its parent's edges; an absent one is not set. start and end follow the writing direction: a right-to-left layout mirrors them."
+    desc true
+    field start Option.f32 "From the start edge." {
+      unit cssPx
+    }
+    field top Option.f32 "From the top." {
+      unit cssPx
+    }
+    field end Option.f32 "From the end edge." {
+      unit cssPx
+    }
+    field bottom Option.f32 "From the bottom." {
+      unit cssPx
+    }
+    field centerX bool "Centred across the parent (start, if given, moves it)."
+    field centerY bool "Centred down the parent (top, if given, moves it)."
+  }
+
+  struct TrackPx {
+    doc "A fixed track."
+    field px f32 "Its size." {
+      unit cssPx
+    }
+  }
+
+  struct TrackFr {
+    doc "A share of the space the other tracks leave."
+    field fr f32 "Its share." {
+      default 1
+    }
+  }
+
+  struct TrackRange {
+    doc "A track sized by its content, within bounds."
+    field min f32 "The smallest it gets." {
+      unit cssPx
+    }
+    field max f32 "The largest it gets." {
+      unit cssPx
+    }
+  }
+
+  struct TrackPercent {
+    doc "A fraction of the grid's inner size."
+    field fraction f32 "The fraction." {
+      unit ratio
+    }
+  }
+
+  struct TrackAuto {
+    doc "Its largest single-cell item."
+  }
+
+  union Track {
+    doc "A grid track's size."
+    tag kind
+    case px TrackPx "A fixed size."
+    case fr TrackFr "A share of the free space."
+    case auto TrackAuto "Its largest single-cell item."
+    case minMax TrackRange "Its content between min and max."
+    case percent TrackPercent "A fraction of the grid."
+  }
+
+  struct GridSpec {
+    doc "A grid's tracks and areas."
+    desc true
+    field columns List.Track "The column tracks."
+    field rows List.Track "The row tracks; items past them add autoTrack rows."
+    field autoTrack Option.Track "The track added for items past the declared ones; null is auto."
+    field columnGap Option.f32 "Space between columns; absent is the element's gap." {
+      unit cssPx
+    }
+    field rowGap Option.f32 "Space between rows; absent is the element's gap." {
+      unit cssPx
+    }
+    field areas List.String "Named areas, one string per row of space-separated cell names, as CSS grid-template-areas (`.` is an unnamed cell)."
+    field flow GridFlow "Which way auto-placed items fill it."
+    field dense bool "Auto-placement back-fills holes left by spanning items."
+  }
+
+  struct GridPlace {
+    doc "Where an item sits in its parent grid; the zero value is auto-placed in one cell."
+    desc true
+    field column u32 "Its first column, 1-based (0: auto)."
+    field row u32 "Its first row, 1-based (0: auto)."
+    field columnSpan u32 "Columns spanned (0: 1)."
+    field rowSpan u32 "Rows spanned (0: 1)."
+    field area String "A named area of the grid (wins over the numbers)."
+  }
+
+  struct PropValue {
+    doc "A value for an animatable prop."
+    field prop UiProp "The prop."
+    field value f32 "Its value."
+  }
+
+  struct UiQuery {
+    doc "When a variant applies: every condition given must hold."
+    desc true
+    field breakpoints List.Breakpoint "The size classes it applies on (empty: any)."
+    field orientation Option.Orientation "The orientation it applies in; null is either."
+    field minWidth f32 "The narrowest width it applies at (0: unbounded): the viewport's, or with container the element's own laid-out width." {
+      unit cssPx
+    }
+    field maxWidth f32 "The widest (0: unbounded)." {
+      unit cssPx
+    }
+    field container bool "A container query: the widths are the element's own (the same card in a four-column shop and a one-column phone list)."
+  }
+
+  struct UiPatch {
+    doc "What a variant changes: the box's layout, its arrangement and animatable values; absent fields are unchanged."
+    desc true
+    field direction Option.Direction "Its direction."
+    field width Option.Size "Its width."
+    field height Option.Size "Its height."
+    field padding Option.Insets "Its padding."
+    field gap Option.f32 "Its gap." {
+      unit cssPx
+    }
+    field align Option.Align "Its main-axis alignment."
+    field cross Option.Cross "Its cross-axis alignment."
+    field wrap Option.bool "Its wrapping."
+    field layout Option.LayoutMode "Its layout mode."
+    field columns List.Track "Its grid columns (empty: unchanged)."
+    field hidden Option.bool "Hide it and its subtree where the variant applies."
+    field values List.PropValue "Animatable values it sets."
+  }
+
+  struct UiVariant {
+    doc "A prop override under a condition (docs/ui.md §6.2: breakpoint variants and container queries). Later variants win."
+    field when UiQuery "When it applies."
+    field set UiPatch "What it changes."
+  }
+
+  struct SpringSpec {
+    doc "A spring by how it feels: about how long it takes to settle and how much it overshoots. Retargeting it keeps its value and velocity, so an interrupted motion never jumps."
+    desc true
+    field durationMs f32 "About how long it takes to arrive, ms." {
+      default 350
+      unit ms
+    }
+    field bounce f32 "0 arrives without overshoot; 0.3 overshoots a little; up to 1 rings (below 0 is sluggish). The style's overshoot caps it." {
+      min -0.95
+      max 1
+    }
+  }
+
+  struct TweenSpec {
+    doc "A duration on an ease: a retarget starts a new ease from where it is."
+    desc true
+    field durationMs f32 "Its length, ms." {
+      default 200
+      unit ms
+    }
+    field ease EaseName "Its curve."
+    field bezier List.f32 "A cubic Bézier (x1, y1, x2, y2) in place of the named ease (empty: the named one)."
+  }
+
+  struct TokenRef {
+    doc "One of the style's motion tokens."
+    field token MotionToken "The token."
+  }
+
+  struct InstantSpec {
+    doc "At once."
+  }
+
+  union Transition {
+    doc "How a value moves to a new target."
+    tag kind
+    case instant InstantSpec "At once."
+    case spring SpringSpec "On a spring that keeps its velocity."
+    case tween TweenSpec "Over a duration on an ease."
+    case token TokenRef "The style's token."
+  }
+
+  struct DismissSpec {
+    doc "Swipe to dismiss: a release past distance (or faster than velocity) along the drag's axis throws the element off."
+    desc true
+    field distance f32 "0: 40 % of its size along the axis." {
+      unit cssPx
+    }
+    field velocity f32 "CSS px per second (0: 800)."
+  }
+
+  struct SnapPoint {
+    doc "An offset a released drag can settle on."
+    field x f32 "Its x offset." {
+      unit cssPx
+    }
+    field y f32 "Its y offset." {
+      unit cssPx
+    }
+  }
+
+  struct DragSpec {
+    doc "The element moves with a drag that starts on it (a card, a sheet, a carousel), released onto a spring that keeps the drag's velocity."
+    desc true
+    field axis DragAxis "Which way it moves."
+    field bounds Option.UiRect "Bounds of its offset (x to x + width, y to y + height); null is free."
+    field rubber f32 "Past the bounds it follows with resistance, iOS's rubber band with this constant (0 stops at the bounds; 0.55 is iOS's)."
+    field snap List.SnapPoint "Offsets a release settles on: the nearest to where its momentum would carry it."
+    field momentum bool "A release projects the offset by its velocity (0.3 s of it) before choosing a snap point: a flick."
+    field returnHome bool "Without snap points, a release goes back to offset 0."
+    field dismiss Option.DismissSpec "Swipe to dismiss; null never throws it off."
+    field threshold f32 "Pointer travel before a press becomes a drag (0: 4)." {
+      unit cssPx
+    }
+    field spring Option.Transition "The release spring; null is the style's ui spring."
+    field tag String "What a drop target matches in DropSpec.accept."
+  }
+
+  struct PinchSpec {
+    doc "Two touches on the element scale (and turn) it."
+    desc true
+    field minScale f32 "0: 0.5."
+    field maxScale f32 "0: 4."
+    field rotate bool "The touches turn it too."
+  }
+
+  struct DropSpec {
+    doc "The element takes drops of dragged elements."
+    desc true
+    field accept List.String "The drag tags it takes (empty: any)."
+  }
+
+  struct PresenceSpec {
+    doc "How an element arrives or leaves (docs/ui.md §7.5): the values it enters from or exits to, and how it moves between them and its own."
+    desc true
+    field values List.PropValue "Where it starts (entering) or ends (leaving)."
+    field kind Option.TransitionKind "A transition kind's values in place of values: what the kind enters from and exits to."
+    field distance f32 "A slide kind's distance (0: 24)." {
+      unit cssPx
+    }
+    field transition Option.Transition "How it moves; null is the style's enter or exit token."
+    field delayMs f32 "Wait this long before moving (a hand-built stagger)." {
+      unit ms
+    }
+  }
+
+  struct VisualState {
+    doc "One state of a group: the values it sets, and timelines it starts."
+    field name String "Its name."
+    field values List.PropValue "The values it sets."
+    field onEnter String "A timeline (og.ui.defineTimeline) played on the element when the state is entered (empty: none)."
+    field onExit String "One played when it is left."
+  }
+
+  struct StateTransition {
+    doc "The transition between two states of a group (`*` matches any state). The exact pair wins, then `* -> to`, `from -> *`, `* -> *`."
+    field from String "The state left."
+    field to String "The state entered."
+    field transition Transition "How the values move."
+  }
+
+  struct StateGroup {
+    doc "A visual state group (docs/ui.md §7.3): one of its states is current, and moving between them animates every value that changes. A group named interaction is derived from input: normal, hover, pressed, focused and disabled (a state the group lacks falls back: pressed to hover to normal, focused to hover). Other groups take their state from ElementProps.state, a timeline's state event or og.ui.forceState; the first state is the default."
+    field name String "Its name."
+    field states List.VisualState "Its states."
+    field transitions List.StateTransition "Its transitions; a pair without one moves on the element's motion, else the style's ui spring."
+  }
+
+  struct StateValue {
+    doc "The current state of a group."
+    field group String "The group."
+    field state String "Its state."
+  }
+
+  struct ElementProps {
+    doc "Everything an element carries beyond its box (docs/ui.md §6.1): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion."
+    desc true
+    field transform UiTransform "Its transform after layout."
+    field opacity f32 "Its opacity, multiplied down the tree." {
+      default 1
+      min 0
+      max 1
+    }
+    field z i32 "Its drawing and hit-testing order among its siblings: higher draws over lower without leaving the flow."
+    field position Position "How it is placed."
+    field insets Edges "Its insets, for an absolute or anchored element."
+    field anchorTo String "The path of the element an anchored element is placed against."
+    field anchorAt Anchor "The target's point it sits on."
+    field anchorSelf Anchor "Its own point that sits there."
+    field hitSlop f32 "Extra pointer reach around its box." {
+      unit cssPx
+    }
+    field layout LayoutMode "How it lays out its children."
+    field grid GridSpec "Its tracks and areas, for a grid."
+    field place GridPlace "Its place in a grid parent."
+    field container bool "Its container queries read its own width."
+    field variants List.UiVariant "Prop overrides by breakpoint, orientation and width; later ones win."
+    field overlaps List.String "Paths of elements it overlaps on purpose (an ancestor path covers its subtree). Undeclared overlaps are reported (og.ui.overlaps)."
+    field match String "A shared-element key: the element with the same key on the screen being left morphs into this one."
+    field drag Option.DragSpec "It moves with a drag."
+    field pinch Option.PinchSpec "Two touches scale and turn it."
+    field drop Option.DropSpec "It takes drops."
+    field motion Option.Transition "How its animatable values move when they change; null is at once."
+    field layoutMotion Option.Transition "Moves from its last laid-out rectangle to its new one (FLIP); null jumps."
+    field enter Option.PresenceSpec "How it arrives."
+    field exit Option.PresenceSpec "How it leaves: kept, inert and out of hit tests and the accessibility tree, while it plays after the element leaves the tree."
+    field states List.StateGroup "Its visual state groups."
+    field state List.StateValue "The current state of its groups that are not derived from input."
+    field reduced Option.ReducedMotion "Its reduced-motion fallback; null is the style's."
+    field inert bool "It and its subtree take no input."
+  }
+
+  struct EaseKey {
+    doc "A named ease into a key."
+    field ease EaseName "The curve."
+  }
+
+  struct HoldKey {
+    doc "Holds the previous value, then jumps at the key."
+  }
+
+  struct LinearKey {
+    doc "Constant speed into the key."
+  }
+
+  struct BezierKey {
+    doc "A cubic Bézier into the key."
+    field bezier List.f32 "x1, y1, x2, y2."
+  }
+
+  union KeyEase {
+    doc "How the segment into a key moves."
+    tag kind
+    case linear LinearKey "Constant speed."
+    case ease EaseKey "A named ease."
+    case bezier BezierKey "A cubic Bézier."
+    case spring SpringSpec "On a spring from the previous key's value (released at it)."
+    case hold HoldKey "Holds, then jumps."
+  }
+
+  struct TimelineKey {
+    doc "A keyframe: a value at a time."
+    field atMs f32 "Its time." {
+      unit ms
+    }
+    field value f32 "Its value."
+    field ease Option.KeyEase "How the segment into it moves; null is the out ease."
+  }
+
+  struct TimelineTrack {
+    doc "Keys over one prop of the element the timeline plays on, or of a descendant by its path below it (`Stars/Star#2`). Before its first key it holds that key's value, after its last the last."
+    field target String "A path below the play's element (empty: the element itself)."
+    field prop UiProp "The prop."
+    field keys List.TimelineKey "In time order."
+  }
+
+  struct SoundEvent {
+    doc "A UI sound of the style."
+    field name String "hover, press, open, close, success or error."
+    field pitch f32 "Its pitch (1: as recorded); a cascade step raises it 6 %." {
+      default 1
+    }
+  }
+
+  struct HapticEvent {
+    doc "A haptic pattern for the host."
+    field name String "light, medium, heavy, success, warning or error."
+  }
+
+  struct BurstEvent {
+    doc "Rays and sparks from the target."
+    field count u32 "How many (0: 12)."
+    field radius f32 "How far they reach (0: the style's)." {
+      unit cssPx
+    }
+    field color Option.Color "Their colour; null is the style's highlight."
+  }
+
+  struct StateEvent {
+    doc "Sets a state group of the target."
+    field group String "The group."
+    field state String "Its new state."
+  }
+
+  struct CallbackEvent {
+    doc "A callback to game code: it arrives in og.ui.motionEvents."
+    field name String "Its name."
+  }
+
+  union TimelineAction {
+    doc "What an event does when a play reaches it."
+    tag kind
+    case sound SoundEvent "A UI sound."
+    case haptic HapticEvent "A haptic."
+    case burst BurstEvent "A burst."
+    case state StateEvent "A state change."
+    case callback CallbackEvent "A callback."
+  }
+
+  struct TimelineEvent {
+    doc "An event at a time, on the play's element or a descendant."
+    field atMs f32 "Its time." {
+      unit ms
+    }
+    field target String "A path below the play's element (empty: the element itself)."
+    field action TimelineAction "What it does."
+  }
+
+  struct TimelineLabel {
+    doc "A named time, for seeking (PlayDesc.fromLabel)."
+    field name String "Its name."
+    field atMs f32 "Its time." {
+      unit ms
+    }
+  }
+
+  struct UiTimeline {
+    doc "Keyframed tracks and events (docs/ui.md §7.4)."
+    desc true
+    field tracks List.TimelineTrack "Its tracks."
+    field events List.TimelineEvent "Its events."
+    field labels List.TimelineLabel "Its named times."
+    field durationMs f32 "Its length (0: its last key or event)." {
+      unit ms
+    }
+  }
+
+  struct ChoreoPlay {
+    doc "A timeline on the play's element or a descendant."
+    field timeline String "The timeline, by name."
+    field target String "A path below the play's element (empty: the element itself)."
+    field delayMs f32 "Wait this long first." {
+      unit ms
+    }
+  }
+
+  struct ChoreoSteps {
+    doc "Steps composed."
+    field steps List.Choreo "The steps."
+  }
+
+  struct ChoreoStagger {
+    doc "One timeline on each target, each stepMs after the one before as ordered by from, the whole spread within capMs."
+    field timeline String "The timeline, by name."
+    field targets List.String "Paths below the play's element (empty: its children in order)."
+    field stepMs f32 "Between one target's start and the next's (0: the style's stagger)." {
+      unit ms
+    }
+    field capMs f32 "The most the whole stagger spreads over (0: the style's cap)." {
+      unit ms
+    }
+    field from String "Where delays grow from: start, end, center (nearest the centre of their bounds first), or `x,y` (nearest that point first)." {
+      default "start"
+    }
+  }
+
+  struct ChoreoCascade {
+    doc "Steps where each starts at the first `on` callback event of the one before (or its end): a score that counts chips, then multiplies, each step pitched higher."
+    field steps List.Choreo "The steps."
+    field on String "The callback that starts the next step."
+  }
+
+  union Choreo {
+    doc "Timelines composed into one play (docs/ui.md §7.4)."
+    tag kind
+    case play ChoreoPlay "One timeline."
+    case sequence ChoreoSteps "One after another."
+    case parallel ChoreoSteps "All at once."
+    case stagger ChoreoStagger "One timeline over many targets."
+    case cascade ChoreoCascade "Steps chained on callbacks."
+  }
+
+  struct PlayDesc {
+    doc "How a play runs."
+    desc true
+    field reverse bool "Plays backwards."
+    field repeat Repeat "How it repeats."
+    field speed f32 "Its rate (0: 1)."
+    field fromMs f32 "Start this far in." {
+      unit ms
+    }
+    field fromLabel String "Start at a label of its first timeline (wins over fromMs)."
+    field hold bool "Keep the last values once it ends, until stopped."
+    field decorative bool "Under reduced motion it does not play at all."
+  }
+
+  struct PlayInfo {
+    doc "Where a play is."
+    field atMs f32 "Its time (before a reverse's turn)." {
+      unit ms
+    }
+    field lengthMs f32 "Its length." {
+      unit ms
+    }
+    field paused bool "Held."
+    field reverse bool "Playing backwards."
+    field ended bool "Finished (a held play keeps its values)."
+  }
+
+  struct GestureInfo {
+    doc "What a drag or pinch on an element is doing (last tick's answer, as responses are)."
+    field held bool "A press is held on it."
+    field dragging bool "It moves with the pointer (the press travelled past the threshold)."
+    field offsetX f32 "Its offset from where it was laid out." {
+      unit cssPx
+    }
+    field offsetY f32 "Its offset down." {
+      unit cssPx
+    }
+    field velocityX f32 "CSS px per second."
+    field velocityY f32 "CSS px per second."
+    field scale f32 "A pinch's scale (1: none)."
+    field rotation f32 "A pinch's turn, radians."
+    field snapped i32 "The snap point the last release chose (-1: none)."
+    field dismissed bool "A swipe threw it off."
+    field over String "The drop target under the drag (empty: none)."
+    field droppedOn String "The drop target it was dropped on this tick (empty: none)."
+    field hovering bool "For a drop target: a drag is over it."
+    field received String "For a drop target: the element dropped on it this tick (empty: none)."
+  }
+
+  struct UiMotionEvent {
+    doc "What happened in the UI's motion this tick."
+    field kind String "sound, haptic, burst, state, callback, end (a play finished), dismiss (a swipe threw an element off), drop (a drag was dropped on a target) or snap (a released drag chose a snap point)."
+    field name String "The sound, haptic, callback or state's name; for drop the target's path; for snap the point's index."
+    field target String "The element's path."
+    field play u32 "The play (0: none)."
+    field index u32 "The clip's step in a cascade or stagger."
+    field pitch f32 "A sound's pitch: its own times 1.06 per cascade step."
+  }
+
+  struct UiOverlap {
+    doc "Two elements overlapping where neither declared it (docs/ui.md §6.2)."
+    field path String "The element placed over the other (absolute, anchored or floating), or the later of two siblings in the flow."
+    field other String "The other element."
+    field rect UiRect "Where they overlap."
+    field inFlow bool "Both are in their parent's flow: a layout bug, not a placement."
+  }
+
+  struct UiLayoutStats {
+    doc "What the last frame rebuilt and laid out (docs/ui.md §6.3)."
+    field elements u32 "Elements built."
+    field rebuilt u32 "Elements whose inputs changed since the tick before (or are new)."
+    field laidOut u32 "Elements laid out; the rest kept their last layout."
+    field keptCommands u32 "Elements whose draw commands were kept from the tick before."
+  }
+
+  fn props {
+    doc "Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §6, §7). Call it right after the element."
+    param desc ElementProps "Its props."
+    returns bool "False when no element was built before it."
+  }
+
+  fn defineTimeline {
+    doc "Define a timeline by name: configuration, like the theme, defined once at start. Plays and state groups name it."
+    param name String "Its name."
+    param timeline UiTimeline "Its tracks, events and labels."
+    returns Void
+  }
+
+  fn play {
+    doc "Play a choreography on an element from the end of this tick: its timelines' keys drive the elements' props and its events fire as it passes them (og.ui.motionEvents). Returns the play's id (0: no element, or a choreo of no known kind)."
+    param path String "The element's full path; empty is the element built just before."
+    param choreo Choreo "What plays."
+    param desc PlayDesc "How it runs."
+    returns u32
+  }
+
+  fn playTimeline {
+    doc "Play one timeline (by name) on an element: og.ui.play with a single step."
+    param path String "The element's full path; empty is the element built just before."
+    param timeline String "The timeline."
+    param desc PlayDesc "How it runs."
+    returns u32
+  }
+
+  fn seek {
+    doc "Move a play to a time; it fires no events on the way. Returns false for an unknown play."
+    param play u32 "The play."
+    param ms f32 "The time, ms."
+    returns bool
+  }
+
+  fn pause {
+    doc "Hold a play where it is."
+    param play u32 "The play."
+    returns bool
+  }
+
+  fn resume {
+    doc "Let a held play go on."
+    param play u32 "The play."
+    returns bool
+  }
+
+  fn reverse {
+    doc "Turn a play round where it is: an interrupted opening closes from where it got to."
+    param play u32 "The play."
+    returns bool
+  }
+
+  fn stop {
+    doc "Stop a play: its elements go back to their own values (on their motion, if they have one)."
+    param play u32 "The play."
+    returns bool
+  }
+
+  fn playInfo {
+    doc "Where a play is; null once it is gone."
+    param play u32 "The play."
+    returns Option.PlayInfo
+  }
+
+  fn forceState {
+    doc "Force a state group of an element (the probe and agents render and check each state this way); null lets it go."
+    param path String "The element's full path."
+    param group String "The group."
+    param state Option.String "The state; null releases it."
+    returns Void
+  }
+
+  fn visualState {
+    doc "The state a group of an element is in (last tick); empty for none."
+    param path String "The element's full path."
+    param group String "The group."
+    returns String
+  }
+
+  fn animate {
+    doc "Any number on a spring or an ease (docs/ui.md §7.1: every value is animatable): call it every tick with the target and it answers this tick's value. A retarget keeps its value and velocity; under reduced motion it jumps."
+    param id String "Its id under the open element."
+    param target f32 "Where it is going."
+    param transition Transition "How it moves."
+    returns f32
+  }
+
+  fn gesture {
+    doc "What the drag or pinch on an element is doing."
+    param path String "The element's full path."
+    returns GestureInfo
+  }
+
+  fn motionEvents {
+    doc "The UI's motion events of the last frame: sounds, haptics, bursts, state changes, callbacks, ends, dismissals, drops and snaps."
+    returns List.UiMotionEvent
+  }
+
+  fn overlaps {
+    doc "The last frame's undeclared overlaps between elements (docs/ui.md §6.2), with both paths."
+    returns List.UiOverlap
+  }
+
+  fn layoutStats {
+    doc "What the last frame built, rebuilt, laid out and kept."
+    returns UiLayoutStats
   }
 }
 

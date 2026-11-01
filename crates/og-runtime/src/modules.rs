@@ -19,6 +19,14 @@
 //! the world hash carry it with the physics world (`og.physics`) and the
 //! audio stream (its resources).
 
+mod motion;
+pub use motion::{
+    og_ui_animate, og_ui_define_timeline, og_ui_force_state, og_ui_gesture, og_ui_layout_stats,
+    og_ui_motion_events, og_ui_overlaps, og_ui_pause, og_ui_play, og_ui_play_info,
+    og_ui_play_timeline, og_ui_props, og_ui_resume, og_ui_reverse, og_ui_seek, og_ui_stop,
+    og_ui_visual_state,
+};
+
 use super::engine::{Engine, engine, running};
 use super::{ok, ok_void, parse, refuse};
 use og_core::glam::Vec3;
@@ -748,6 +756,7 @@ fn cross(v: &Value) -> Cross {
         Some("center") => Cross::Center,
         Some("end") => Cross::End,
         Some("stretch") => Cross::Stretch,
+        Some("baseline") => Cross::Baseline,
         _ => Cross::Start,
     }
 }

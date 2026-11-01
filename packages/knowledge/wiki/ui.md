@@ -266,6 +266,90 @@ module ui {
 | [`og.ui.loadingScreen`](#fn-loadingScreen) | function | The loading template. |
 | [`og.ui.confirmDialog`](#fn-confirmDialog) | function | The confirm dialog template. |
 | [`og.ui.alertDialog`](#fn-alertDialog) | function | The alert template. Returns true the tick it is dismissed. |
+| [`UiProp`](#type-UiProp) | enum | An animatable value of an element (docs/ui.md §7.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians. |
+| [`LayoutMode`](#type-LayoutMode) | enum | How a container lays out its children. |
+| [`Position`](#type-Position) | enum | How an element is placed. |
+| [`GridFlow`](#type-GridFlow) | enum | Which way auto-placed items fill a grid. |
+| [`DragAxis`](#type-DragAxis) | enum | Which way a drag moves its element. |
+| [`EaseName`](#type-EaseName) | enum | A named easing curve. |
+| [`MotionToken`](#type-MotionToken) | enum | A named motion of the style (docs/ui.md §7.7): components use these, so a style's personality changes every motion at once. |
+| [`ReducedMotion`](#type-ReducedMotion) | enum | What an animation does under reduced motion (docs/ui.md §7.7). |
+| [`Orientation`](#type-Orientation) | enum | A screen orientation. |
+| [`Repeat`](#type-Repeat) | enum | How a play repeats. |
+| [`UiTransform`](#type-UiTransform) | desc struct | A transform applied after layout, about its pivot: CSS's translate(x, y) rotate(r) skew(kx, ky) scale(sx, sy) with its transform-origin. Hit tests, the probe's rectangles and the accessibility tree's bounds follow it; layout does not. |
+| [`Edges`](#type-Edges) | desc struct | Insets of an absolute or anchored element from its parent's edges; an absent one is not set. start and end follow the writing direction: a right-to-left layout mirrors them. |
+| [`TrackPx`](#type-TrackPx) | struct | A fixed track. |
+| [`TrackFr`](#type-TrackFr) | struct | A share of the space the other tracks leave. |
+| [`TrackRange`](#type-TrackRange) | struct | A track sized by its content, within bounds. |
+| [`TrackPercent`](#type-TrackPercent) | struct | A fraction of the grid's inner size. |
+| [`TrackAuto`](#type-TrackAuto) | struct | Its largest single-cell item. |
+| [`Track`](#type-Track) | union | A grid track's size. |
+| [`GridSpec`](#type-GridSpec) | desc struct | A grid's tracks and areas. |
+| [`GridPlace`](#type-GridPlace) | desc struct | Where an item sits in its parent grid; the zero value is auto-placed in one cell. |
+| [`PropValue`](#type-PropValue) | struct | A value for an animatable prop. |
+| [`UiQuery`](#type-UiQuery) | desc struct | When a variant applies: every condition given must hold. |
+| [`UiPatch`](#type-UiPatch) | desc struct | What a variant changes: the box's layout, its arrangement and animatable values; absent fields are unchanged. |
+| [`UiVariant`](#type-UiVariant) | struct | A prop override under a condition (docs/ui.md §6.2: breakpoint variants and container queries). Later variants win. |
+| [`SpringSpec`](#type-SpringSpec) | desc struct | A spring by how it feels: about how long it takes to settle and how much it overshoots. Retargeting it keeps its value and velocity, so an interrupted motion never jumps. |
+| [`TweenSpec`](#type-TweenSpec) | desc struct | A duration on an ease: a retarget starts a new ease from where it is. |
+| [`TokenRef`](#type-TokenRef) | struct | One of the style's motion tokens. |
+| [`InstantSpec`](#type-InstantSpec) | struct | At once. |
+| [`Transition`](#type-Transition) | union | How a value moves to a new target. |
+| [`DismissSpec`](#type-DismissSpec) | desc struct | Swipe to dismiss: a release past distance (or faster than velocity) along the drag's axis throws the element off. |
+| [`SnapPoint`](#type-SnapPoint) | struct | An offset a released drag can settle on. |
+| [`DragSpec`](#type-DragSpec) | desc struct | The element moves with a drag that starts on it (a card, a sheet, a carousel), released onto a spring that keeps the drag's velocity. |
+| [`PinchSpec`](#type-PinchSpec) | desc struct | Two touches on the element scale (and turn) it. |
+| [`DropSpec`](#type-DropSpec) | desc struct | The element takes drops of dragged elements. |
+| [`PresenceSpec`](#type-PresenceSpec) | desc struct | How an element arrives or leaves (docs/ui.md §7.5): the values it enters from or exits to, and how it moves between them and its own. |
+| [`VisualState`](#type-VisualState) | struct | One state of a group: the values it sets, and timelines it starts. |
+| [`StateTransition`](#type-StateTransition) | struct | The transition between two states of a group (`*` matches any state). The exact pair wins, then `* -> to`, `from -> *`, `* -> *`. |
+| [`StateGroup`](#type-StateGroup) | struct | A visual state group (docs/ui.md §7.3): one of its states is current, and moving between them animates every value that changes. A group named interaction is derived from input: normal, hover, pressed, focused and disabled (a state the group lacks falls back: pressed to hover to normal, focused to hover). Other groups take their state from ElementProps.state, a timeline's state event or og.ui.forceState; the first state is the default. |
+| [`StateValue`](#type-StateValue) | struct | The current state of a group. |
+| [`ElementProps`](#type-ElementProps) | desc struct | Everything an element carries beyond its box (docs/ui.md §6.1): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion. |
+| [`EaseKey`](#type-EaseKey) | struct | A named ease into a key. |
+| [`HoldKey`](#type-HoldKey) | struct | Holds the previous value, then jumps at the key. |
+| [`LinearKey`](#type-LinearKey) | struct | Constant speed into the key. |
+| [`BezierKey`](#type-BezierKey) | struct | A cubic Bézier into the key. |
+| [`KeyEase`](#type-KeyEase) | union | How the segment into a key moves. |
+| [`TimelineKey`](#type-TimelineKey) | struct | A keyframe: a value at a time. |
+| [`TimelineTrack`](#type-TimelineTrack) | struct | Keys over one prop of the element the timeline plays on, or of a descendant by its path below it (`Stars/Star#2`). Before its first key it holds that key's value, after its last the last. |
+| [`SoundEvent`](#type-SoundEvent) | struct | A UI sound of the style. |
+| [`HapticEvent`](#type-HapticEvent) | struct | A haptic pattern for the host. |
+| [`BurstEvent`](#type-BurstEvent) | struct | Rays and sparks from the target. |
+| [`StateEvent`](#type-StateEvent) | struct | Sets a state group of the target. |
+| [`CallbackEvent`](#type-CallbackEvent) | struct | A callback to game code: it arrives in og.ui.motionEvents. |
+| [`TimelineAction`](#type-TimelineAction) | union | What an event does when a play reaches it. |
+| [`TimelineEvent`](#type-TimelineEvent) | struct | An event at a time, on the play's element or a descendant. |
+| [`TimelineLabel`](#type-TimelineLabel) | struct | A named time, for seeking (PlayDesc.fromLabel). |
+| [`UiTimeline`](#type-UiTimeline) | desc struct | Keyframed tracks and events (docs/ui.md §7.4). |
+| [`ChoreoPlay`](#type-ChoreoPlay) | struct | A timeline on the play's element or a descendant. |
+| [`ChoreoSteps`](#type-ChoreoSteps) | struct | Steps composed. |
+| [`ChoreoStagger`](#type-ChoreoStagger) | struct | One timeline on each target, each stepMs after the one before as ordered by from, the whole spread within capMs. |
+| [`ChoreoCascade`](#type-ChoreoCascade) | struct | Steps where each starts at the first `on` callback event of the one before (or its end): a score that counts chips, then multiplies, each step pitched higher. |
+| [`Choreo`](#type-Choreo) | union | Timelines composed into one play (docs/ui.md §7.4). |
+| [`PlayDesc`](#type-PlayDesc) | desc struct | How a play runs. |
+| [`PlayInfo`](#type-PlayInfo) | struct | Where a play is. |
+| [`GestureInfo`](#type-GestureInfo) | struct | What a drag or pinch on an element is doing (last tick's answer, as responses are). |
+| [`UiMotionEvent`](#type-UiMotionEvent) | struct | What happened in the UI's motion this tick. |
+| [`UiOverlap`](#type-UiOverlap) | struct | Two elements overlapping where neither declared it (docs/ui.md §6.2). |
+| [`UiLayoutStats`](#type-UiLayoutStats) | struct | What the last frame rebuilt and laid out (docs/ui.md §6.3). |
+| [`og.ui.props`](#fn-props) | function | Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §6, §7). Call it right after the element. |
+| [`og.ui.defineTimeline`](#fn-defineTimeline) | function | Define a timeline by name: configuration, like the theme, defined once at start. Plays and state groups name it. |
+| [`og.ui.play`](#fn-play) | function | Play a choreography on an element from the end of this tick: its timelines' keys drive the elements' props and its events fire as it passes them (og.ui.motionEvents). Returns the play's id (0: no element, or a choreo of no known kind). |
+| [`og.ui.playTimeline`](#fn-playTimeline) | function | Play one timeline (by name) on an element: og.ui.play with a single step. |
+| [`og.ui.seek`](#fn-seek) | function | Move a play to a time; it fires no events on the way. Returns false for an unknown play. |
+| [`og.ui.pause`](#fn-pause) | function | Hold a play where it is. |
+| [`og.ui.resume`](#fn-resume) | function | Let a held play go on. |
+| [`og.ui.reverse`](#fn-reverse) | function | Turn a play round where it is: an interrupted opening closes from where it got to. |
+| [`og.ui.stop`](#fn-stop) | function | Stop a play: its elements go back to their own values (on their motion, if they have one). |
+| [`og.ui.playInfo`](#fn-playInfo) | function | Where a play is; null once it is gone. |
+| [`og.ui.forceState`](#fn-forceState) | function | Force a state group of an element (the probe and agents render and check each state this way); null lets it go. |
+| [`og.ui.visualState`](#fn-visualState) | function | The state a group of an element is in (last tick); empty for none. |
+| [`og.ui.animate`](#fn-animate) | function | Any number on a spring or an ease (docs/ui.md §7.1: every value is animatable): call it every tick with the target and it answers this tick's value. A retarget keeps its value and velocity; under reduced motion it jumps. |
+| [`og.ui.gesture`](#fn-gesture) | function | What the drag or pinch on an element is doing. |
+| [`og.ui.motionEvents`](#fn-motionEvents) | function | The UI's motion events of the last frame: sounds, haptics, bursts, state changes, callbacks, ends, dismissals, drops and snaps. |
+| [`og.ui.overlaps`](#fn-overlaps) | function | The last frame's undeclared overlaps between elements (docs/ui.md §6.2), with both paths. |
+| [`og.ui.layoutStats`](#fn-layoutStats) | function | What the last frame built, rebuilt, laid out and kept. |
 
 ## Functions
 
@@ -297,7 +381,7 @@ fn configure {
 }
 ```
 
-<sub>`api.ogt` line 11369</sub>
+<sub>`api.ogt` line 11370</sub>
 
 <a id="fn-viewport"></a>
 
@@ -325,7 +409,7 @@ fn viewport {
 }
 ```
 
-<sub>`api.ogt` line 11376</sub>
+<sub>`api.ogt` line 11377</sub>
 
 <a id="fn-theme"></a>
 
@@ -353,7 +437,7 @@ fn theme {
 }
 ```
 
-<sub>`api.ogt` line 11382</sub>
+<sub>`api.ogt` line 11383</sub>
 
 <a id="fn-open"></a>
 
@@ -383,7 +467,7 @@ fn open {
 }
 ```
 
-<sub>`api.ogt` line 11388</sub>
+<sub>`api.ogt` line 11389</sub>
 
 <a id="fn-openPanel"></a>
 
@@ -413,7 +497,7 @@ fn openPanel {
 }
 ```
 
-<sub>`api.ogt` line 11395</sub>
+<sub>`api.ogt` line 11396</sub>
 
 <a id="fn-openScroll"></a>
 
@@ -443,7 +527,7 @@ fn openScroll {
 }
 ```
 
-<sub>`api.ogt` line 11402</sub>
+<sub>`api.ogt` line 11403</sub>
 
 <a id="fn-close"></a>
 
@@ -466,7 +550,7 @@ fn close {
 }
 ```
 
-<sub>`api.ogt` line 11409</sub>
+<sub>`api.ogt` line 11410</sub>
 
 <a id="fn-row"></a>
 
@@ -499,7 +583,7 @@ fn row {
 }
 ```
 
-<sub>`api.ogt` line 11414</sub>
+<sub>`api.ogt` line 11415</sub>
 
 <a id="fn-column"></a>
 
@@ -532,7 +616,7 @@ fn column {
 }
 ```
 
-<sub>`api.ogt` line 11423</sub>
+<sub>`api.ogt` line 11424</sub>
 
 <a id="fn-panel"></a>
 
@@ -565,7 +649,7 @@ fn panel {
 }
 ```
 
-<sub>`api.ogt` line 11432</sub>
+<sub>`api.ogt` line 11433</sub>
 
 <a id="fn-scroll"></a>
 
@@ -598,7 +682,7 @@ fn scroll {
 }
 ```
 
-<sub>`api.ogt` line 11441</sub>
+<sub>`api.ogt` line 11442</sub>
 
 <a id="fn-richText"></a>
 
@@ -630,7 +714,7 @@ fn richText {
 }
 ```
 
-<sub>`api.ogt` line 11468</sub>
+<sub>`api.ogt` line 11469</sub>
 
 <a id="fn-label"></a>
 
@@ -662,7 +746,7 @@ fn label {
 }
 ```
 
-<sub>`api.ogt` line 11476</sub>
+<sub>`api.ogt` line 11477</sub>
 
 <a id="fn-button"></a>
 
@@ -694,7 +778,7 @@ fn button {
 }
 ```
 
-<sub>`api.ogt` line 11484</sub>
+<sub>`api.ogt` line 11485</sub>
 
 <a id="fn-image"></a>
 
@@ -724,7 +808,7 @@ fn image {
 }
 ```
 
-<sub>`api.ogt` line 11492</sub>
+<sub>`api.ogt` line 11493</sub>
 
 <a id="fn-zoomView"></a>
 
@@ -754,7 +838,7 @@ fn zoomView {
 }
 ```
 
-<sub>`api.ogt` line 11499</sub>
+<sub>`api.ogt` line 11500</sub>
 
 <a id="fn-progress"></a>
 
@@ -786,7 +870,7 @@ fn progress {
 }
 ```
 
-<sub>`api.ogt` line 11506</sub>
+<sub>`api.ogt` line 11507</sub>
 
 <a id="fn-slider"></a>
 
@@ -818,7 +902,7 @@ fn slider {
 }
 ```
 
-<sub>`api.ogt` line 11514</sub>
+<sub>`api.ogt` line 11515</sub>
 
 <a id="fn-toggle"></a>
 
@@ -850,7 +934,7 @@ fn toggle {
 }
 ```
 
-<sub>`api.ogt` line 11522</sub>
+<sub>`api.ogt` line 11523</sub>
 
 <a id="fn-textField"></a>
 
@@ -882,7 +966,7 @@ fn textField {
 }
 ```
 
-<sub>`api.ogt` line 11530</sub>
+<sub>`api.ogt` line 11531</sub>
 
 <a id="fn-textArea"></a>
 
@@ -914,7 +998,7 @@ fn textArea {
 }
 ```
 
-<sub>`api.ogt` line 11538</sub>
+<sub>`api.ogt` line 11539</sub>
 
 <a id="fn-tooltip"></a>
 
@@ -942,7 +1026,7 @@ fn tooltip {
 }
 ```
 
-<sub>`api.ogt` line 11546</sub>
+<sub>`api.ogt` line 11547</sub>
 
 <a id="fn-idi"></a>
 
@@ -973,7 +1057,7 @@ fn idi {
 }
 ```
 
-<sub>`api.ogt` line 11552</sub>
+<sub>`api.ogt` line 11553</sub>
 
 <a id="fn-breakpoint"></a>
 
@@ -996,7 +1080,7 @@ fn breakpoint {
 }
 ```
 
-<sub>`api.ogt` line 12017</sub>
+<sub>`api.ogt` line 12018</sub>
 
 <a id="fn-frameViewport"></a>
 
@@ -1019,7 +1103,7 @@ fn frameViewport {
 }
 ```
 
-<sub>`api.ogt` line 12022</sub>
+<sub>`api.ogt` line 12023</sub>
 
 <a id="fn-hasIcon"></a>
 
@@ -1047,7 +1131,7 @@ fn hasIcon {
 }
 ```
 
-<sub>`api.ogt` line 12027</sub>
+<sub>`api.ogt` line 12028</sub>
 
 <a id="fn-seconds"></a>
 
@@ -1070,7 +1154,7 @@ fn seconds {
 }
 ```
 
-<sub>`api.ogt` line 12033</sub>
+<sub>`api.ogt` line 12034</sub>
 
 <a id="fn-frameTheme"></a>
 
@@ -1093,7 +1177,7 @@ fn frameTheme {
 }
 ```
 
-<sub>`api.ogt` line 12038</sub>
+<sub>`api.ogt` line 12039</sub>
 
 <a id="fn-openAnchor"></a>
 
@@ -1123,7 +1207,7 @@ fn openAnchor {
 }
 ```
 
-<sub>`api.ogt` line 12043</sub>
+<sub>`api.ogt` line 12044</sub>
 
 <a id="fn-anchor"></a>
 
@@ -1156,7 +1240,7 @@ fn anchor {
 }
 ```
 
-<sub>`api.ogt` line 12050</sub>
+<sub>`api.ogt` line 12051</sub>
 
 <a id="fn-openTransition"></a>
 
@@ -1188,7 +1272,7 @@ fn openTransition {
 }
 ```
 
-<sub>`api.ogt` line 12059</sub>
+<sub>`api.ogt` line 12060</sub>
 
 <a id="fn-transition"></a>
 
@@ -1223,7 +1307,7 @@ fn transition {
 }
 ```
 
-<sub>`api.ogt` line 12067</sub>
+<sub>`api.ogt` line 12068</sub>
 
 <a id="fn-openModal"></a>
 
@@ -1255,7 +1339,7 @@ fn openModal {
 }
 ```
 
-<sub>`api.ogt` line 12077</sub>
+<sub>`api.ogt` line 12078</sub>
 
 <a id="fn-closeModal"></a>
 
@@ -1278,7 +1362,7 @@ fn closeModal {
 }
 ```
 
-<sub>`api.ogt` line 12085</sub>
+<sub>`api.ogt` line 12086</sub>
 
 <a id="fn-modal"></a>
 
@@ -1313,7 +1397,7 @@ fn modal {
 }
 ```
 
-<sub>`api.ogt` line 12090</sub>
+<sub>`api.ogt` line 12091</sub>
 
 <a id="fn-spotlight"></a>
 
@@ -1345,7 +1429,7 @@ fn spotlight {
 }
 ```
 
-<sub>`api.ogt` line 12100</sub>
+<sub>`api.ogt` line 12101</sub>
 
 <a id="fn-bounds"></a>
 
@@ -1373,7 +1457,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 12108</sub>
+<sub>`api.ogt` line 12109</sub>
 
 <a id="fn-openList"></a>
 
@@ -1403,7 +1487,7 @@ fn openList {
 }
 ```
 
-<sub>`api.ogt` line 12114</sub>
+<sub>`api.ogt` line 12115</sub>
 
 <a id="fn-openGrid"></a>
 
@@ -1433,7 +1517,7 @@ fn openGrid {
 }
 ```
 
-<sub>`api.ogt` line 12121</sub>
+<sub>`api.ogt` line 12122</sub>
 
 <a id="fn-listItem"></a>
 
@@ -1463,7 +1547,7 @@ fn listItem {
 }
 ```
 
-<sub>`api.ogt` line 12128</sub>
+<sub>`api.ogt` line 12129</sub>
 
 <a id="fn-gridItem"></a>
 
@@ -1493,7 +1577,7 @@ fn gridItem {
 }
 ```
 
-<sub>`api.ogt` line 12135</sub>
+<sub>`api.ogt` line 12136</sub>
 
 <a id="fn-closeList"></a>
 
@@ -1516,7 +1600,7 @@ fn closeList {
 }
 ```
 
-<sub>`api.ogt` line 12142</sub>
+<sub>`api.ogt` line 12143</sub>
 
 <a id="fn-dragging"></a>
 
@@ -1544,7 +1628,7 @@ fn dragging {
 }
 ```
 
-<sub>`api.ogt` line 12147</sub>
+<sub>`api.ogt` line 12148</sub>
 
 <a id="fn-list"></a>
 
@@ -1577,7 +1661,7 @@ fn list {
 }
 ```
 
-<sub>`api.ogt` line 12153</sub>
+<sub>`api.ogt` line 12154</sub>
 
 <a id="fn-grid"></a>
 
@@ -1610,7 +1694,7 @@ fn grid {
 }
 ```
 
-<sub>`api.ogt` line 12162</sub>
+<sub>`api.ogt` line 12163</sub>
 
 <a id="fn-tabs"></a>
 
@@ -1644,7 +1728,7 @@ fn tabs {
 }
 ```
 
-<sub>`api.ogt` line 12171</sub>
+<sub>`api.ogt` line 12172</sub>
 
 <a id="fn-select"></a>
 
@@ -1678,7 +1762,7 @@ fn select {
 }
 ```
 
-<sub>`api.ogt` line 12180</sub>
+<sub>`api.ogt` line 12181</sub>
 
 <a id="fn-stepper"></a>
 
@@ -1710,7 +1794,7 @@ fn stepper {
 }
 ```
 
-<sub>`api.ogt` line 12189</sub>
+<sub>`api.ogt` line 12190</sub>
 
 <a id="fn-radio"></a>
 
@@ -1744,7 +1828,7 @@ fn radio {
 }
 ```
 
-<sub>`api.ogt` line 12197</sub>
+<sub>`api.ogt` line 12198</sub>
 
 <a id="fn-checkbox"></a>
 
@@ -1776,7 +1860,7 @@ fn checkbox {
 }
 ```
 
-<sub>`api.ogt` line 12206</sub>
+<sub>`api.ogt` line 12207</sub>
 
 <a id="fn-checkboxList"></a>
 
@@ -1808,7 +1892,7 @@ fn checkboxList {
 }
 ```
 
-<sub>`api.ogt` line 12214</sub>
+<sub>`api.ogt` line 12215</sub>
 
 <a id="fn-chip"></a>
 
@@ -1840,7 +1924,7 @@ fn chip {
 }
 ```
 
-<sub>`api.ogt` line 12222</sub>
+<sub>`api.ogt` line 12223</sub>
 
 <a id="fn-badge"></a>
 
@@ -1872,7 +1956,7 @@ fn badge {
 }
 ```
 
-<sub>`api.ogt` line 12230</sub>
+<sub>`api.ogt` line 12231</sub>
 
 <a id="fn-divider"></a>
 
@@ -1902,7 +1986,7 @@ fn divider {
 }
 ```
 
-<sub>`api.ogt` line 12238</sub>
+<sub>`api.ogt` line 12239</sub>
 
 <a id="fn-spacer"></a>
 
@@ -1932,7 +2016,7 @@ fn spacer {
 }
 ```
 
-<sub>`api.ogt` line 12245</sub>
+<sub>`api.ogt` line 12246</sub>
 
 <a id="fn-keyValue"></a>
 
@@ -1966,7 +2050,7 @@ fn keyValue {
 }
 ```
 
-<sub>`api.ogt` line 12252</sub>
+<sub>`api.ogt` line 12253</sub>
 
 <a id="fn-skeleton"></a>
 
@@ -1996,7 +2080,7 @@ fn skeleton {
 }
 ```
 
-<sub>`api.ogt` line 12261</sub>
+<sub>`api.ogt` line 12262</sub>
 
 <a id="fn-spinner"></a>
 
@@ -2026,7 +2110,7 @@ fn spinner {
 }
 ```
 
-<sub>`api.ogt` line 12268</sub>
+<sub>`api.ogt` line 12269</sub>
 
 <a id="fn-icon"></a>
 
@@ -2058,7 +2142,7 @@ fn icon {
 }
 ```
 
-<sub>`api.ogt` line 12275</sub>
+<sub>`api.ogt` line 12276</sub>
 
 <a id="fn-meter"></a>
 
@@ -2092,7 +2176,7 @@ fn meter {
 }
 ```
 
-<sub>`api.ogt` line 12283</sub>
+<sub>`api.ogt` line 12284</sub>
 
 <a id="fn-cooldown"></a>
 
@@ -2124,7 +2208,7 @@ fn cooldown {
 }
 ```
 
-<sub>`api.ogt` line 12292</sub>
+<sub>`api.ogt` line 12293</sub>
 
 <a id="fn-minimap"></a>
 
@@ -2154,7 +2238,7 @@ fn minimap {
 }
 ```
 
-<sub>`api.ogt` line 12300</sub>
+<sub>`api.ogt` line 12301</sub>
 
 <a id="fn-dialogue"></a>
 
@@ -2184,7 +2268,7 @@ fn dialogue {
 }
 ```
 
-<sub>`api.ogt` line 12307</sub>
+<sub>`api.ogt` line 12308</sub>
 
 <a id="fn-joystick"></a>
 
@@ -2214,7 +2298,7 @@ fn joystick {
 }
 ```
 
-<sub>`api.ogt` line 12314</sub>
+<sub>`api.ogt` line 12315</sub>
 
 <a id="fn-dpad"></a>
 
@@ -2244,7 +2328,7 @@ fn dpad {
 }
 ```
 
-<sub>`api.ogt` line 12321</sub>
+<sub>`api.ogt` line 12322</sub>
 
 <a id="fn-actionButton"></a>
 
@@ -2276,7 +2360,7 @@ fn actionButton {
 }
 ```
 
-<sub>`api.ogt` line 12328</sub>
+<sub>`api.ogt` line 12329</sub>
 
 <a id="fn-toast"></a>
 
@@ -2308,7 +2392,7 @@ fn toast {
 }
 ```
 
-<sub>`api.ogt` line 12336</sub>
+<sub>`api.ogt` line 12337</sub>
 
 <a id="fn-dismissToast"></a>
 
@@ -2338,7 +2422,7 @@ fn dismissToast {
 }
 ```
 
-<sub>`api.ogt` line 12344</sub>
+<sub>`api.ogt` line 12345</sub>
 
 <a id="fn-navigate"></a>
 
@@ -2368,7 +2452,7 @@ fn navigate {
 }
 ```
 
-<sub>`api.ogt` line 12351</sub>
+<sub>`api.ogt` line 12352</sub>
 
 <a id="fn-back"></a>
 
@@ -2391,7 +2475,7 @@ fn back {
 }
 ```
 
-<sub>`api.ogt` line 12358</sub>
+<sub>`api.ogt` line 12359</sub>
 
 <a id="fn-setPlayers"></a>
 
@@ -2419,7 +2503,7 @@ fn setPlayers {
 }
 ```
 
-<sub>`api.ogt` line 12363</sub>
+<sub>`api.ogt` line 12364</sub>
 
 <a id="fn-focus"></a>
 
@@ -2447,7 +2531,7 @@ fn focus {
 }
 ```
 
-<sub>`api.ogt` line 12369</sub>
+<sub>`api.ogt` line 12370</sub>
 
 <a id="fn-a11y"></a>
 
@@ -2470,7 +2554,7 @@ fn a11y {
 }
 ```
 
-<sub>`api.ogt` line 12408</sub>
+<sub>`api.ogt` line 12409</sub>
 
 <a id="fn-setNavigation"></a>
 
@@ -2498,7 +2582,7 @@ fn setNavigation {
 }
 ```
 
-<sub>`api.ogt` line 12413</sub>
+<sub>`api.ogt` line 12414</sub>
 
 <a id="fn-memory"></a>
 
@@ -2528,7 +2612,7 @@ fn memory {
 }
 ```
 
-<sub>`api.ogt` line 12419</sub>
+<sub>`api.ogt` line 12420</sub>
 
 <a id="fn-remember"></a>
 
@@ -2558,7 +2642,7 @@ fn remember {
 }
 ```
 
-<sub>`api.ogt` line 12426</sub>
+<sub>`api.ogt` line 12427</sub>
 
 <a id="fn-tick"></a>
 
@@ -2581,7 +2665,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 12433</sub>
+<sub>`api.ogt` line 12434</sub>
 
 <a id="fn-counter"></a>
 
@@ -2613,7 +2697,7 @@ fn counter {
 }
 ```
 
-<sub>`api.ogt` line 12456</sub>
+<sub>`api.ogt` line 12457</sub>
 
 <a id="fn-burst"></a>
 
@@ -2641,7 +2725,7 @@ fn burst {
 }
 ```
 
-<sub>`api.ogt` line 12483</sub>
+<sub>`api.ogt` line 12484</sub>
 
 <a id="fn-shake"></a>
 
@@ -2669,7 +2753,7 @@ fn shake {
 }
 ```
 
-<sub>`api.ogt` line 12503</sub>
+<sub>`api.ogt` line 12504</sub>
 
 <a id="fn-screenTransition"></a>
 
@@ -2701,7 +2785,7 @@ fn screenTransition {
 }
 ```
 
-<sub>`api.ogt` line 12549</sub>
+<sub>`api.ogt` line 12550</sub>
 
 <a id="fn-previewViewport"></a>
 
@@ -2731,7 +2815,7 @@ fn previewViewport {
 }
 ```
 
-<sub>`api.ogt` line 12557</sub>
+<sub>`api.ogt` line 12558</sub>
 
 <a id="fn-mainMenu"></a>
 
@@ -2762,7 +2846,7 @@ fn mainMenu {
 }
 ```
 
-<sub>`api.ogt` line 13278</sub>
+<sub>`api.ogt` line 13279</sub>
 
 <a id="fn-pauseMenu"></a>
 
@@ -2793,7 +2877,7 @@ fn pauseMenu {
 }
 ```
 
-<sub>`api.ogt` line 13286</sub>
+<sub>`api.ogt` line 13287</sub>
 
 <a id="fn-settingsScreen"></a>
 
@@ -2824,7 +2908,7 @@ fn settingsScreen {
 }
 ```
 
-<sub>`api.ogt` line 13294</sub>
+<sub>`api.ogt` line 13295</sub>
 
 <a id="fn-platformerHud"></a>
 
@@ -2855,7 +2939,7 @@ fn platformerHud {
 }
 ```
 
-<sub>`api.ogt` line 13302</sub>
+<sub>`api.ogt` line 13303</sub>
 
 <a id="fn-shooterHud"></a>
 
@@ -2886,7 +2970,7 @@ fn shooterHud {
 }
 ```
 
-<sub>`api.ogt` line 13310</sub>
+<sub>`api.ogt` line 13311</sub>
 
 <a id="fn-puzzleHud"></a>
 
@@ -2917,7 +3001,7 @@ fn puzzleHud {
 }
 ```
 
-<sub>`api.ogt` line 13318</sub>
+<sub>`api.ogt` line 13319</sub>
 
 <a id="fn-idleHud"></a>
 
@@ -2948,7 +3032,7 @@ fn idleHud {
 }
 ```
 
-<sub>`api.ogt` line 13326</sub>
+<sub>`api.ogt` line 13327</sub>
 
 <a id="fn-racingHud"></a>
 
@@ -2979,7 +3063,7 @@ fn racingHud {
 }
 ```
 
-<sub>`api.ogt` line 13334</sub>
+<sub>`api.ogt` line 13335</sub>
 
 <a id="fn-cutscene"></a>
 
@@ -3010,7 +3094,7 @@ fn cutscene {
 }
 ```
 
-<sub>`api.ogt` line 13342</sub>
+<sub>`api.ogt` line 13343</sub>
 
 <a id="fn-shopScreen"></a>
 
@@ -3041,7 +3125,7 @@ fn shopScreen {
 }
 ```
 
-<sub>`api.ogt` line 13350</sub>
+<sub>`api.ogt` line 13351</sub>
 
 <a id="fn-inventoryScreen"></a>
 
@@ -3072,7 +3156,7 @@ fn inventoryScreen {
 }
 ```
 
-<sub>`api.ogt` line 13358</sub>
+<sub>`api.ogt` line 13359</sub>
 
 <a id="fn-levelSelect"></a>
 
@@ -3103,7 +3187,7 @@ fn levelSelect {
 }
 ```
 
-<sub>`api.ogt` line 13366</sub>
+<sub>`api.ogt` line 13367</sub>
 
 <a id="fn-resultsScreen"></a>
 
@@ -3134,7 +3218,7 @@ fn resultsScreen {
 }
 ```
 
-<sub>`api.ogt` line 13374</sub>
+<sub>`api.ogt` line 13375</sub>
 
 <a id="fn-leaderboardScreen"></a>
 
@@ -3165,7 +3249,7 @@ fn leaderboardScreen {
 }
 ```
 
-<sub>`api.ogt` line 13382</sub>
+<sub>`api.ogt` line 13383</sub>
 
 <a id="fn-tutorialOverlay"></a>
 
@@ -3196,7 +3280,7 @@ fn tutorialOverlay {
 }
 ```
 
-<sub>`api.ogt` line 13390</sub>
+<sub>`api.ogt` line 13391</sub>
 
 <a id="fn-loadingScreen"></a>
 
@@ -3227,7 +3311,7 @@ fn loadingScreen {
 }
 ```
 
-<sub>`api.ogt` line 13398</sub>
+<sub>`api.ogt` line 13399</sub>
 
 <a id="fn-confirmDialog"></a>
 
@@ -3258,7 +3342,7 @@ fn confirmDialog {
 }
 ```
 
-<sub>`api.ogt` line 13406</sub>
+<sub>`api.ogt` line 13407</sub>
 
 <a id="fn-alertDialog"></a>
 
@@ -3289,7 +3373,490 @@ fn alertDialog {
 }
 ```
 
-<sub>`api.ogt` line 13414</sub>
+<sub>`api.ogt` line 13415</sub>
+
+<a id="fn-props"></a>
+
+### `og.ui.props`
+
+Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §6, §7). Call it right after the element.
+
+```ts
+og.ui.props(desc?: ElementProps): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `desc` | `ElementProps` | yes | Its props. |
+
+**Returns** `boolean`: False when no element was built before it.
+
+Binding symbol `og_ui_props` · publish builds: kept
+
+```ogt
+fn props {
+  doc "Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §6, §7). Call it right after the element."
+  param desc ElementProps "Its props."
+  returns bool "False when no element was built before it."
+}
+```
+
+<sub>`api.ogt` line 14084</sub>
+
+<a id="fn-defineTimeline"></a>
+
+### `og.ui.defineTimeline`
+
+Define a timeline by name: configuration, like the theme, defined once at start. Plays and state groups name it.
+
+```ts
+og.ui.defineTimeline(name: string, timeline?: UiTimeline): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | Its name. |
+| `timeline` | `UiTimeline` | yes | Its tracks, events and labels. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_define_timeline` · publish builds: kept
+
+```ogt
+fn defineTimeline {
+  doc "Define a timeline by name: configuration, like the theme, defined once at start. Plays and state groups name it."
+  param name String "Its name."
+  param timeline UiTimeline "Its tracks, events and labels."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 14090</sub>
+
+<a id="fn-play"></a>
+
+### `og.ui.play`
+
+Play a choreography on an element from the end of this tick: its timelines' keys drive the elements' props and its events fire as it passes them (og.ui.motionEvents). Returns the play's id (0: no element, or a choreo of no known kind).
+
+```ts
+og.ui.play(path: string, choreo: Choreo, desc?: PlayDesc): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `path` | `string` | no | The element's full path; empty is the element built just before. |
+| `choreo` | `Choreo` | no | What plays. |
+| `desc` | `PlayDesc` | yes | How it runs. |
+
+**Returns** `number`.
+
+Binding symbol `og_ui_play` · publish builds: kept
+
+```ogt
+fn play {
+  doc "Play a choreography on an element from the end of this tick: its timelines' keys drive the elements' props and its events fire as it passes them (og.ui.motionEvents). Returns the play's id (0: no element, or a choreo of no known kind)."
+  param path String "The element's full path; empty is the element built just before."
+  param choreo Choreo "What plays."
+  param desc PlayDesc "How it runs."
+  returns u32
+}
+```
+
+<sub>`api.ogt` line 14097</sub>
+
+<a id="fn-playTimeline"></a>
+
+### `og.ui.playTimeline`
+
+Play one timeline (by name) on an element: og.ui.play with a single step.
+
+```ts
+og.ui.playTimeline(path: string, timeline: string, desc?: PlayDesc): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `path` | `string` | no | The element's full path; empty is the element built just before. |
+| `timeline` | `string` | no | The timeline. |
+| `desc` | `PlayDesc` | yes | How it runs. |
+
+**Returns** `number`.
+
+Binding symbol `og_ui_play_timeline` · publish builds: kept
+
+```ogt
+fn playTimeline {
+  doc "Play one timeline (by name) on an element: og.ui.play with a single step."
+  param path String "The element's full path; empty is the element built just before."
+  param timeline String "The timeline."
+  param desc PlayDesc "How it runs."
+  returns u32
+}
+```
+
+<sub>`api.ogt` line 14105</sub>
+
+<a id="fn-seek"></a>
+
+### `og.ui.seek`
+
+Move a play to a time; it fires no events on the way. Returns false for an unknown play.
+
+```ts
+og.ui.seek(play: number, ms: number): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `play` | `number` | no | The play. |
+| `ms` | `number` | no | The time, ms. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_ui_seek` · publish builds: kept
+
+```ogt
+fn seek {
+  doc "Move a play to a time; it fires no events on the way. Returns false for an unknown play."
+  param play u32 "The play."
+  param ms f32 "The time, ms."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 14113</sub>
+
+<a id="fn-pause"></a>
+
+### `og.ui.pause`
+
+Hold a play where it is.
+
+```ts
+og.ui.pause(play: number): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `play` | `number` | no | The play. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_ui_pause` · publish builds: kept
+
+```ogt
+fn pause {
+  doc "Hold a play where it is."
+  param play u32 "The play."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 14120</sub>
+
+<a id="fn-resume"></a>
+
+### `og.ui.resume`
+
+Let a held play go on.
+
+```ts
+og.ui.resume(play: number): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `play` | `number` | no | The play. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_ui_resume` · publish builds: kept
+
+```ogt
+fn resume {
+  doc "Let a held play go on."
+  param play u32 "The play."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 14126</sub>
+
+<a id="fn-reverse"></a>
+
+### `og.ui.reverse`
+
+Turn a play round where it is: an interrupted opening closes from where it got to.
+
+```ts
+og.ui.reverse(play: number): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `play` | `number` | no | The play. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_ui_reverse` · publish builds: kept
+
+```ogt
+fn reverse {
+  doc "Turn a play round where it is: an interrupted opening closes from where it got to."
+  param play u32 "The play."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 14132</sub>
+
+<a id="fn-stop"></a>
+
+### `og.ui.stop`
+
+Stop a play: its elements go back to their own values (on their motion, if they have one).
+
+```ts
+og.ui.stop(play: number): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `play` | `number` | no | The play. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_ui_stop` · publish builds: kept
+
+```ogt
+fn stop {
+  doc "Stop a play: its elements go back to their own values (on their motion, if they have one)."
+  param play u32 "The play."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 14138</sub>
+
+<a id="fn-playInfo"></a>
+
+### `og.ui.playInfo`
+
+Where a play is; null once it is gone.
+
+```ts
+og.ui.playInfo(play: number): PlayInfo | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `play` | `number` | no | The play. |
+
+**Returns** `PlayInfo | null`.
+
+Binding symbol `og_ui_play_info` · publish builds: kept
+
+```ogt
+fn playInfo {
+  doc "Where a play is; null once it is gone."
+  param play u32 "The play."
+  returns Option.PlayInfo
+}
+```
+
+<sub>`api.ogt` line 14144</sub>
+
+<a id="fn-forceState"></a>
+
+### `og.ui.forceState`
+
+Force a state group of an element (the probe and agents render and check each state this way); null lets it go.
+
+```ts
+og.ui.forceState(path: string, group: string, state: string | null): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `path` | `string` | no | The element's full path. |
+| `group` | `string` | no | The group. |
+| `state` | `string \| null` | no | The state; null releases it. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_force_state` · publish builds: kept
+
+```ogt
+fn forceState {
+  doc "Force a state group of an element (the probe and agents render and check each state this way); null lets it go."
+  param path String "The element's full path."
+  param group String "The group."
+  param state Option.String "The state; null releases it."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 14150</sub>
+
+<a id="fn-visualState"></a>
+
+### `og.ui.visualState`
+
+The state a group of an element is in (last tick); empty for none.
+
+```ts
+og.ui.visualState(path: string, group: string): string
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `path` | `string` | no | The element's full path. |
+| `group` | `string` | no | The group. |
+
+**Returns** `string`.
+
+Binding symbol `og_ui_visual_state` · publish builds: kept
+
+```ogt
+fn visualState {
+  doc "The state a group of an element is in (last tick); empty for none."
+  param path String "The element's full path."
+  param group String "The group."
+  returns String
+}
+```
+
+<sub>`api.ogt` line 14158</sub>
+
+<a id="fn-animate"></a>
+
+### `og.ui.animate`
+
+Any number on a spring or an ease (docs/ui.md §7.1: every value is animatable): call it every tick with the target and it answers this tick's value. A retarget keeps its value and velocity; under reduced motion it jumps.
+
+```ts
+og.ui.animate(id: string, target: number, transition: Transition): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id under the open element. |
+| `target` | `number` | no | Where it is going. |
+| `transition` | `Transition` | no | How it moves. |
+
+**Returns** `number`.
+
+Binding symbol `og_ui_animate` · publish builds: kept
+
+```ogt
+fn animate {
+  doc "Any number on a spring or an ease (docs/ui.md §7.1: every value is animatable): call it every tick with the target and it answers this tick's value. A retarget keeps its value and velocity; under reduced motion it jumps."
+  param id String "Its id under the open element."
+  param target f32 "Where it is going."
+  param transition Transition "How it moves."
+  returns f32
+}
+```
+
+<sub>`api.ogt` line 14165</sub>
+
+<a id="fn-gesture"></a>
+
+### `og.ui.gesture`
+
+What the drag or pinch on an element is doing.
+
+```ts
+og.ui.gesture(path: string): GestureInfo
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `path` | `string` | no | The element's full path. |
+
+**Returns** `GestureInfo`.
+
+Binding symbol `og_ui_gesture` · publish builds: kept
+
+```ogt
+fn gesture {
+  doc "What the drag or pinch on an element is doing."
+  param path String "The element's full path."
+  returns GestureInfo
+}
+```
+
+<sub>`api.ogt` line 14173</sub>
+
+<a id="fn-motionEvents"></a>
+
+### `og.ui.motionEvents`
+
+The UI's motion events of the last frame: sounds, haptics, bursts, state changes, callbacks, ends, dismissals, drops and snaps.
+
+```ts
+og.ui.motionEvents(): readonly UiMotionEvent[]
+```
+
+**Returns** `readonly UiMotionEvent[]`.
+
+Binding symbol `og_ui_motion_events` · publish builds: kept
+
+```ogt
+fn motionEvents {
+  doc "The UI's motion events of the last frame: sounds, haptics, bursts, state changes, callbacks, ends, dismissals, drops and snaps."
+  returns List.UiMotionEvent
+}
+```
+
+<sub>`api.ogt` line 14179</sub>
+
+<a id="fn-overlaps"></a>
+
+### `og.ui.overlaps`
+
+The last frame's undeclared overlaps between elements (docs/ui.md §6.2), with both paths.
+
+```ts
+og.ui.overlaps(): readonly UiOverlap[]
+```
+
+**Returns** `readonly UiOverlap[]`.
+
+Binding symbol `og_ui_overlaps` · publish builds: kept
+
+```ogt
+fn overlaps {
+  doc "The last frame's undeclared overlaps between elements (docs/ui.md §6.2), with both paths."
+  returns List.UiOverlap
+}
+```
+
+<sub>`api.ogt` line 14184</sub>
+
+<a id="fn-layoutStats"></a>
+
+### `og.ui.layoutStats`
+
+What the last frame built, rebuilt, laid out and kept.
+
+```ts
+og.ui.layoutStats(): UiLayoutStats
+```
+
+**Returns** `UiLayoutStats`.
+
+Binding symbol `og_ui_layout_stats` · publish builds: kept
+
+```ogt
+fn layoutStats {
+  doc "What the last frame built, rebuilt, laid out and kept."
+  returns UiLayoutStats
+}
+```
+
+<sub>`api.ogt` line 14189</sub>
 
 ## Types
 
@@ -3357,6 +3924,7 @@ A string: one of the variants below. The zero value is `"start"`.
 | `"center"` | Centred. |
 | `"end"` | At the end. |
 | `"stretch"` | Stretched to the container's inner size. |
+| `"baseline"` | In a row, children share their first text baseline (rows of mixed type sizes); a column treats it as start. |
 
 ```ogt
 enum Cross {
@@ -3365,6 +3933,7 @@ enum Cross {
   variant center "Centred."
   variant end "At the end."
   variant stretch "Stretched to the container's inner size."
+  variant baseline "In a row, children share their first text baseline (rows of mixed type sizes); a column treats it as start."
 }
 ```
 
@@ -3393,7 +3962,7 @@ enum TextAlign {
 }
 ```
 
-<sub>`api.ogt` line 10881</sub>
+<sub>`api.ogt` line 10882</sub>
 
 <a id="type-FontRole"></a>
 
@@ -3420,7 +3989,7 @@ enum FontRole {
 }
 ```
 
-<sub>`api.ogt` line 10888</sub>
+<sub>`api.ogt` line 10889</sub>
 
 <a id="type-ButtonVariant"></a>
 
@@ -3447,7 +4016,7 @@ enum ButtonVariant {
 }
 ```
 
-<sub>`api.ogt` line 10896</sub>
+<sub>`api.ogt` line 10897</sub>
 
 <a id="type-ControlSize"></a>
 
@@ -3472,7 +4041,7 @@ enum ControlSize {
 }
 ```
 
-<sub>`api.ogt` line 10904</sub>
+<sub>`api.ogt` line 10905</sub>
 
 <a id="type-Scheme"></a>
 
@@ -3495,7 +4064,7 @@ enum Scheme {
 }
 ```
 
-<sub>`api.ogt` line 10911</sub>
+<sub>`api.ogt` line 10912</sub>
 
 <a id="type-DensityMode"></a>
 
@@ -3522,7 +4091,7 @@ enum DensityMode {
 }
 ```
 
-<sub>`api.ogt` line 10917</sub>
+<sub>`api.ogt` line 10918</sub>
 
 <a id="type-ThemeColor"></a>
 
@@ -3607,7 +4176,7 @@ enum ThemeColor {
 }
 ```
 
-<sub>`api.ogt` line 10925</sub>
+<sub>`api.ogt` line 10926</sub>
 
 <a id="type-TypeStepName"></a>
 
@@ -3668,7 +4237,7 @@ enum TypeStepName {
 }
 ```
 
-<sub>`api.ogt` line 10962</sub>
+<sub>`api.ogt` line 10963</sub>
 
 <a id="type-SizeRange"></a>
 
@@ -3695,7 +4264,7 @@ struct SizeRange {
 }
 ```
 
-<sub>`api.ogt` line 10987</sub>
+<sub>`api.ogt` line 10988</sub>
 
 <a id="type-FixedSize"></a>
 
@@ -3716,7 +4285,7 @@ struct FixedSize {
 }
 ```
 
-<sub>`api.ogt` line 10999</sub>
+<sub>`api.ogt` line 11000</sub>
 
 <a id="type-PercentSize"></a>
 
@@ -3737,7 +4306,7 @@ struct PercentSize {
 }
 ```
 
-<sub>`api.ogt` line 11006</sub>
+<sub>`api.ogt` line 11007</sub>
 
 <a id="type-Size"></a>
 
@@ -3765,7 +4334,7 @@ union Size {
 }
 ```
 
-<sub>`api.ogt` line 11013</sub>
+<sub>`api.ogt` line 11014</sub>
 
 <a id="type-Insets"></a>
 
@@ -3798,7 +4367,7 @@ struct Insets {
 }
 ```
 
-<sub>`api.ogt` line 11022</sub>
+<sub>`api.ogt` line 11023</sub>
 
 <a id="type-Paint"></a>
 
@@ -3828,7 +4397,7 @@ struct Paint {
 }
 ```
 
-<sub>`api.ogt` line 11038</sub>
+<sub>`api.ogt` line 11039</sub>
 
 <a id="type-ElementDesc"></a>
 
@@ -3884,7 +4453,7 @@ struct ElementDesc {
 }
 ```
 
-<sub>`api.ogt` line 11050</sub>
+<sub>`api.ogt` line 11051</sub>
 
 <a id="type-LabelDesc"></a>
 
@@ -3922,7 +4491,7 @@ struct LabelDesc {
 }
 ```
 
-<sub>`api.ogt` line 11076</sub>
+<sub>`api.ogt` line 11077</sub>
 
 <a id="type-ButtonDesc"></a>
 
@@ -3952,7 +4521,7 @@ struct ButtonDesc {
 }
 ```
 
-<sub>`api.ogt` line 11090</sub>
+<sub>`api.ogt` line 11091</sub>
 
 <a id="type-PanelDesc"></a>
 
@@ -3988,7 +4557,7 @@ struct PanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 11100</sub>
+<sub>`api.ogt` line 11101</sub>
 
 <a id="type-ScrollAxes"></a>
 
@@ -4013,7 +4582,7 @@ enum ScrollAxes {
 }
 ```
 
-<sub>`api.ogt` line 11113</sub>
+<sub>`api.ogt` line 11114</sub>
 
 <a id="type-ScrollDesc"></a>
 
@@ -4045,7 +4614,7 @@ struct ScrollDesc {
 }
 ```
 
-<sub>`api.ogt` line 11120</sub>
+<sub>`api.ogt` line 11121</sub>
 
 <a id="type-ImageDesc"></a>
 
@@ -4081,7 +4650,7 @@ struct ImageDesc {
 }
 ```
 
-<sub>`api.ogt` line 11132</sub>
+<sub>`api.ogt` line 11133</sub>
 
 <a id="type-ZoomViewDesc"></a>
 
@@ -4123,7 +4692,7 @@ struct ZoomViewDesc {
 }
 ```
 
-<sub>`api.ogt` line 11146</sub>
+<sub>`api.ogt` line 11147</sub>
 
 <a id="type-ZoomResult"></a>
 
@@ -4146,7 +4715,7 @@ struct ZoomResult {
 }
 ```
 
-<sub>`api.ogt` line 11165</sub>
+<sub>`api.ogt` line 11166</sub>
 
 <a id="type-ProgressDesc"></a>
 
@@ -4168,7 +4737,7 @@ struct ProgressDesc {
 }
 ```
 
-<sub>`api.ogt` line 11172</sub>
+<sub>`api.ogt` line 11173</sub>
 
 <a id="type-SliderDesc"></a>
 
@@ -4198,7 +4767,7 @@ struct SliderDesc {
 }
 ```
 
-<sub>`api.ogt` line 11178</sub>
+<sub>`api.ogt` line 11179</sub>
 
 <a id="type-FieldDesc"></a>
 
@@ -4224,7 +4793,7 @@ struct FieldDesc {
 }
 ```
 
-<sub>`api.ogt` line 11189</sub>
+<sub>`api.ogt` line 11190</sub>
 
 <a id="type-TextAreaDesc"></a>
 
@@ -4252,7 +4821,7 @@ struct TextAreaDesc {
 }
 ```
 
-<sub>`api.ogt` line 11197</sub>
+<sub>`api.ogt` line 11198</sub>
 
 <a id="type-Response"></a>
 
@@ -4287,7 +4856,7 @@ struct Response {
 }
 ```
 
-<sub>`api.ogt` line 11206</sub>
+<sub>`api.ogt` line 11207</sub>
 
 <a id="type-SliderResult"></a>
 
@@ -4308,7 +4877,7 @@ struct SliderResult {
 }
 ```
 
-<sub>`api.ogt` line 11219</sub>
+<sub>`api.ogt` line 11220</sub>
 
 <a id="type-ToggleResult"></a>
 
@@ -4329,7 +4898,7 @@ struct ToggleResult {
 }
 ```
 
-<sub>`api.ogt` line 11225</sub>
+<sub>`api.ogt` line 11226</sub>
 
 <a id="type-FieldResult"></a>
 
@@ -4350,7 +4919,7 @@ struct FieldResult {
 }
 ```
 
-<sub>`api.ogt` line 11231</sub>
+<sub>`api.ogt` line 11232</sub>
 
 <a id="type-Viewport"></a>
 
@@ -4405,7 +4974,7 @@ struct Viewport {
 }
 ```
 
-<sub>`api.ogt` line 11237</sub>
+<sub>`api.ogt` line 11238</sub>
 
 <a id="type-UiDesc"></a>
 
@@ -4455,7 +5024,7 @@ struct UiDesc {
 }
 ```
 
-<sub>`api.ogt` line 11268</sub>
+<sub>`api.ogt` line 11269</sub>
 
 <a id="type-UiSounds"></a>
 
@@ -4487,7 +5056,7 @@ struct UiSounds {
 }
 ```
 
-<sub>`api.ogt` line 11288</sub>
+<sub>`api.ogt` line 11289</sub>
 
 <a id="type-StylePart"></a>
 
@@ -4522,7 +5091,7 @@ enum StylePart {
 }
 ```
 
-<sub>`api.ogt` line 11299</sub>
+<sub>`api.ogt` line 11300</sub>
 
 <a id="type-TypeStep"></a>
 
@@ -4553,7 +5122,7 @@ struct TypeStep {
 }
 ```
 
-<sub>`api.ogt` line 11311</sub>
+<sub>`api.ogt` line 11312</sub>
 
 <a id="type-ControlSizes"></a>
 
@@ -4598,7 +5167,7 @@ struct ControlSizes {
 }
 ```
 
-<sub>`api.ogt` line 11325</sub>
+<sub>`api.ogt` line 11326</sub>
 
 <a id="type-UiTheme"></a>
 
@@ -4637,7 +5206,7 @@ struct UiTheme {
 }
 ```
 
-<sub>`api.ogt` line 11350</sub>
+<sub>`api.ogt` line 11351</sub>
 
 <a id="type-UiBuild"></a>
 
@@ -4657,7 +5226,7 @@ callback UiBuild {
 }
 ```
 
-<sub>`api.ogt` line 11365</sub>
+<sub>`api.ogt` line 11366</sub>
 
 <a id="type-RichTextDesc"></a>
 
@@ -4689,7 +5258,7 @@ struct RichTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 11450</sub>
+<sub>`api.ogt` line 11451</sub>
 
 <a id="type-RichTextResult"></a>
 
@@ -4712,7 +5281,7 @@ struct RichTextResult {
 }
 ```
 
-<sub>`api.ogt` line 11461</sub>
+<sub>`api.ogt` line 11462</sub>
 
 <a id="type-Anchor"></a>
 
@@ -4749,7 +5318,7 @@ enum Anchor {
 }
 ```
 
-<sub>`api.ogt` line 11562</sub>
+<sub>`api.ogt` line 11563</sub>
 
 <a id="type-TransitionKind"></a>
 
@@ -4782,7 +5351,7 @@ enum TransitionKind {
 }
 ```
 
-<sub>`api.ogt` line 11575</sub>
+<sub>`api.ogt` line 11576</sub>
 
 <a id="type-Tone"></a>
 
@@ -4815,7 +5384,7 @@ enum Tone {
 }
 ```
 
-<sub>`api.ogt` line 11586</sub>
+<sub>`api.ogt` line 11587</sub>
 
 <a id="type-MeterKind"></a>
 
@@ -4842,7 +5411,7 @@ enum MeterKind {
 }
 ```
 
-<sub>`api.ogt` line 11597</sub>
+<sub>`api.ogt` line 11598</sub>
 
 <a id="type-Breakpoint"></a>
 
@@ -4869,7 +5438,7 @@ enum Breakpoint {
 }
 ```
 
-<sub>`api.ogt` line 11605</sub>
+<sub>`api.ogt` line 11606</sub>
 
 <a id="type-Contrast"></a>
 
@@ -4892,7 +5461,7 @@ enum Contrast {
 }
 ```
 
-<sub>`api.ogt` line 11613</sub>
+<sub>`api.ogt` line 11614</sub>
 
 <a id="type-NavIntent"></a>
 
@@ -4927,7 +5496,7 @@ enum NavIntent {
 }
 ```
 
-<sub>`api.ogt` line 11619</sub>
+<sub>`api.ogt` line 11620</sub>
 
 <a id="type-UiRect"></a>
 
@@ -4960,7 +5529,7 @@ struct UiRect {
 }
 ```
 
-<sub>`api.ogt` line 11631</sub>
+<sub>`api.ogt` line 11632</sub>
 
 <a id="type-IconAtlasDesc"></a>
 
@@ -4996,7 +5565,7 @@ struct IconAtlasDesc {
 }
 ```
 
-<sub>`api.ogt` line 11647</sub>
+<sub>`api.ogt` line 11648</sub>
 
 <a id="type-AnchorDesc"></a>
 
@@ -5056,7 +5625,7 @@ struct AnchorDesc {
 }
 ```
 
-<sub>`api.ogt` line 11663</sub>
+<sub>`api.ogt` line 11664</sub>
 
 <a id="type-TransitionDesc"></a>
 
@@ -5090,7 +5659,7 @@ struct TransitionDesc {
 }
 ```
 
-<sub>`api.ogt` line 11692</sub>
+<sub>`api.ogt` line 11693</sub>
 
 <a id="type-Presence"></a>
 
@@ -5117,7 +5686,7 @@ struct Presence {
 }
 ```
 
-<sub>`api.ogt` line 11707</sub>
+<sub>`api.ogt` line 11708</sub>
 
 <a id="type-ModalDesc"></a>
 
@@ -5151,7 +5720,7 @@ struct ModalDesc {
 }
 ```
 
-<sub>`api.ogt` line 11717</sub>
+<sub>`api.ogt` line 11718</sub>
 
 <a id="type-ModalResult"></a>
 
@@ -5172,7 +5741,7 @@ struct ModalResult {
 }
 ```
 
-<sub>`api.ogt` line 11729</sub>
+<sub>`api.ogt` line 11730</sub>
 
 <a id="type-SpotlightDesc"></a>
 
@@ -5197,7 +5766,7 @@ struct SpotlightDesc {
 }
 ```
 
-<sub>`api.ogt` line 11735</sub>
+<sub>`api.ogt` line 11736</sub>
 
 <a id="type-ListDesc"></a>
 
@@ -5236,7 +5805,7 @@ struct ListDesc {
 }
 ```
 
-<sub>`api.ogt` line 11744</sub>
+<sub>`api.ogt` line 11745</sub>
 
 <a id="type-ListRange"></a>
 
@@ -5257,7 +5826,7 @@ struct ListRange {
 }
 ```
 
-<sub>`api.ogt` line 11761</sub>
+<sub>`api.ogt` line 11762</sub>
 
 <a id="type-ListResult"></a>
 
@@ -5280,7 +5849,7 @@ struct ListResult {
 }
 ```
 
-<sub>`api.ogt` line 11767</sub>
+<sub>`api.ogt` line 11768</sub>
 
 <a id="type-GridDesc"></a>
 
@@ -5327,7 +5896,7 @@ struct GridDesc {
 }
 ```
 
-<sub>`api.ogt` line 11774</sub>
+<sub>`api.ogt` line 11775</sub>
 
 <a id="type-TabsDesc"></a>
 
@@ -5353,7 +5922,7 @@ struct TabsDesc {
 }
 ```
 
-<sub>`api.ogt` line 11797</sub>
+<sub>`api.ogt` line 11798</sub>
 
 <a id="type-ChoiceResult"></a>
 
@@ -5374,7 +5943,7 @@ struct ChoiceResult {
 }
 ```
 
-<sub>`api.ogt` line 11805</sub>
+<sub>`api.ogt` line 11806</sub>
 
 <a id="type-SelectDesc"></a>
 
@@ -5402,7 +5971,7 @@ struct SelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 11811</sub>
+<sub>`api.ogt` line 11812</sub>
 
 <a id="type-StepperDesc"></a>
 
@@ -5434,7 +6003,7 @@ struct StepperDesc {
 }
 ```
 
-<sub>`api.ogt` line 11820</sub>
+<sub>`api.ogt` line 11821</sub>
 
 <a id="type-StepperResult"></a>
 
@@ -5455,7 +6024,7 @@ struct StepperResult {
 }
 ```
 
-<sub>`api.ogt` line 11833</sub>
+<sub>`api.ogt` line 11834</sub>
 
 <a id="type-RadioDesc"></a>
 
@@ -5479,7 +6048,7 @@ struct RadioDesc {
 }
 ```
 
-<sub>`api.ogt` line 11839</sub>
+<sub>`api.ogt` line 11840</sub>
 
 <a id="type-CheckListResult"></a>
 
@@ -5500,7 +6069,7 @@ struct CheckListResult {
 }
 ```
 
-<sub>`api.ogt` line 11846</sub>
+<sub>`api.ogt` line 11847</sub>
 
 <a id="type-ToastDesc"></a>
 
@@ -5527,7 +6096,7 @@ struct ToastDesc {
 }
 ```
 
-<sub>`api.ogt` line 11852</sub>
+<sub>`api.ogt` line 11853</sub>
 
 <a id="type-ChipDesc"></a>
 
@@ -5551,7 +6120,7 @@ struct ChipDesc {
 }
 ```
 
-<sub>`api.ogt` line 11862</sub>
+<sub>`api.ogt` line 11863</sub>
 
 <a id="type-MeterDesc"></a>
 
@@ -5586,7 +6155,7 @@ struct MeterDesc {
 }
 ```
 
-<sub>`api.ogt` line 11869</sub>
+<sub>`api.ogt` line 11870</sub>
 
 <a id="type-CooldownDesc"></a>
 
@@ -5615,7 +6184,7 @@ struct CooldownDesc {
 }
 ```
 
-<sub>`api.ogt` line 11883</sub>
+<sub>`api.ogt` line 11884</sub>
 
 <a id="type-IconDesc"></a>
 
@@ -5644,7 +6213,7 @@ struct IconDesc {
 }
 ```
 
-<sub>`api.ogt` line 11894</sub>
+<sub>`api.ogt` line 11895</sub>
 
 <a id="type-MapMarker"></a>
 
@@ -5676,7 +6245,7 @@ struct MapMarker {
 }
 ```
 
-<sub>`api.ogt` line 11905</sub>
+<sub>`api.ogt` line 11906</sub>
 
 <a id="type-MinimapDesc"></a>
 
@@ -5709,7 +6278,7 @@ struct MinimapDesc {
 }
 ```
 
-<sub>`api.ogt` line 11918</sub>
+<sub>`api.ogt` line 11919</sub>
 
 <a id="type-DialogueDesc"></a>
 
@@ -5745,7 +6314,7 @@ struct DialogueDesc {
 }
 ```
 
-<sub>`api.ogt` line 11931</sub>
+<sub>`api.ogt` line 11932</sub>
 
 <a id="type-DialogueResult"></a>
 
@@ -5768,7 +6337,7 @@ struct DialogueResult {
 }
 ```
 
-<sub>`api.ogt` line 11945</sub>
+<sub>`api.ogt` line 11946</sub>
 
 <a id="type-JoystickDesc"></a>
 
@@ -5799,7 +6368,7 @@ struct JoystickDesc {
 }
 ```
 
-<sub>`api.ogt` line 11952</sub>
+<sub>`api.ogt` line 11953</sub>
 
 <a id="type-JoystickResult"></a>
 
@@ -5822,7 +6391,7 @@ struct JoystickResult {
 }
 ```
 
-<sub>`api.ogt` line 11966</sub>
+<sub>`api.ogt` line 11967</sub>
 
 <a id="type-DpadDesc"></a>
 
@@ -5847,7 +6416,7 @@ struct DpadDesc {
 }
 ```
 
-<sub>`api.ogt` line 11973</sub>
+<sub>`api.ogt` line 11974</sub>
 
 <a id="type-DpadResult"></a>
 
@@ -5872,7 +6441,7 @@ struct DpadResult {
 }
 ```
 
-<sub>`api.ogt` line 11982</sub>
+<sub>`api.ogt` line 11983</sub>
 
 <a id="type-ActionButtonDesc"></a>
 
@@ -5901,7 +6470,7 @@ struct ActionButtonDesc {
 }
 ```
 
-<sub>`api.ogt` line 11990</sub>
+<sub>`api.ogt` line 11991</sub>
 
 <a id="type-SkeletonDesc"></a>
 
@@ -5930,7 +6499,7 @@ struct SkeletonDesc {
 }
 ```
 
-<sub>`api.ogt` line 12001</sub>
+<sub>`api.ogt` line 12002</sub>
 
 <a id="type-UiItemBuild"></a>
 
@@ -5955,7 +6524,7 @@ callback UiItemBuild {
 }
 ```
 
-<sub>`api.ogt` line 12012</sub>
+<sub>`api.ogt` line 12013</sub>
 
 <a id="type-A11yNode"></a>
 
@@ -6008,7 +6577,7 @@ struct A11yNode {
 }
 ```
 
-<sub>`api.ogt` line 12375</sub>
+<sub>`api.ogt` line 12376</sub>
 
 <a id="type-A11yTree"></a>
 
@@ -6031,7 +6600,7 @@ struct A11yTree {
 }
 ```
 
-<sub>`api.ogt` line 12401</sub>
+<sub>`api.ogt` line 12402</sub>
 
 <a id="type-CounterDesc"></a>
 
@@ -6074,7 +6643,7 @@ struct CounterDesc {
 }
 ```
 
-<sub>`api.ogt` line 12438</sub>
+<sub>`api.ogt` line 12439</sub>
 
 <a id="type-BurstDesc"></a>
 
@@ -6113,7 +6682,7 @@ struct BurstDesc {
 }
 ```
 
-<sub>`api.ogt` line 12464</sub>
+<sub>`api.ogt` line 12465</sub>
 
 <a id="type-ShakeDesc"></a>
 
@@ -6145,7 +6714,7 @@ struct ShakeDesc {
 }
 ```
 
-<sub>`api.ogt` line 12489</sub>
+<sub>`api.ogt` line 12490</sub>
 
 <a id="type-ScreenWipe"></a>
 
@@ -6174,7 +6743,7 @@ enum ScreenWipe {
 }
 ```
 
-<sub>`api.ogt` line 12509</sub>
+<sub>`api.ogt` line 12510</sub>
 
 <a id="type-WipeSide"></a>
 
@@ -6201,7 +6770,7 @@ enum WipeSide {
 }
 ```
 
-<sub>`api.ogt` line 12518</sub>
+<sub>`api.ogt` line 12519</sub>
 
 <a id="type-ScreenTransitionDesc"></a>
 
@@ -6234,7 +6803,7 @@ struct ScreenTransitionDesc {
 }
 ```
 
-<sub>`api.ogt` line 12526</sub>
+<sub>`api.ogt` line 12527</sub>
 
 <a id="type-ScreenTransitionResult"></a>
 
@@ -6261,7 +6830,7 @@ struct ScreenTransitionResult {
 }
 ```
 
-<sub>`api.ogt` line 12539</sub>
+<sub>`api.ogt` line 12540</sub>
 
 <a id="type-UiAction"></a>
 
@@ -6286,7 +6855,7 @@ callback UiAction {
 }
 ```
 
-<sub>`api.ogt` line 12566</sub>
+<sub>`api.ogt` line 12567</sub>
 
 <a id="type-SettingsChanged"></a>
 
@@ -6311,7 +6880,7 @@ callback SettingsChanged {
 }
 ```
 
-<sub>`api.ogt` line 12571</sub>
+<sub>`api.ogt` line 12572</sub>
 
 <a id="type-MenuItem"></a>
 
@@ -6339,7 +6908,7 @@ struct MenuItem {
 }
 ```
 
-<sub>`api.ogt` line 12576</sub>
+<sub>`api.ogt` line 12577</sub>
 
 <a id="type-MenuResult"></a>
 
@@ -6358,7 +6927,7 @@ struct MenuResult {
 }
 ```
 
-<sub>`api.ogt` line 12585</sub>
+<sub>`api.ogt` line 12586</sub>
 
 <a id="type-MainMenuDesc"></a>
 
@@ -6390,7 +6959,7 @@ struct MainMenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 12590</sub>
+<sub>`api.ogt` line 12591</sub>
 
 <a id="type-PauseMenuDesc"></a>
 
@@ -6420,7 +6989,7 @@ struct PauseMenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 12601</sub>
+<sub>`api.ogt` line 12602</sub>
 
 <a id="type-KeyBinding"></a>
 
@@ -6446,7 +7015,7 @@ struct KeyBinding {
 }
 ```
 
-<sub>`api.ogt` line 12612</sub>
+<sub>`api.ogt` line 12613</sub>
 
 <a id="type-LanguageOption"></a>
 
@@ -6470,7 +7039,7 @@ struct LanguageOption {
 }
 ```
 
-<sub>`api.ogt` line 12620</sub>
+<sub>`api.ogt` line 12621</sub>
 
 <a id="type-GameSettings"></a>
 
@@ -6539,7 +7108,7 @@ struct GameSettings {
 }
 ```
 
-<sub>`api.ogt` line 12627</sub>
+<sub>`api.ogt` line 12628</sub>
 
 <a id="type-SettingsDesc"></a>
 
@@ -6659,7 +7228,7 @@ struct SettingsDesc {
 }
 ```
 
-<sub>`api.ogt` line 12668</sub>
+<sub>`api.ogt` line 12669</sub>
 
 <a id="type-SettingsResult"></a>
 
@@ -6682,7 +7251,7 @@ struct SettingsResult {
 }
 ```
 
-<sub>`api.ogt` line 12745</sub>
+<sub>`api.ogt` line 12746</sub>
 
 <a id="type-Ability"></a>
 
@@ -6712,7 +7281,7 @@ struct Ability {
 }
 ```
 
-<sub>`api.ogt` line 12752</sub>
+<sub>`api.ogt` line 12753</sub>
 
 <a id="type-PlatformerHudDesc"></a>
 
@@ -6758,7 +7327,7 @@ struct PlatformerHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 12763</sub>
+<sub>`api.ogt` line 12764</sub>
 
 <a id="type-HudResult"></a>
 
@@ -6785,7 +7354,7 @@ struct HudResult {
 }
 ```
 
-<sub>`api.ogt` line 12784</sub>
+<sub>`api.ogt` line 12785</sub>
 
 <a id="type-ShooterHudDesc"></a>
 
@@ -6847,7 +7416,7 @@ struct ShooterHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 12793</sub>
+<sub>`api.ogt` line 12794</sub>
 
 <a id="type-PuzzleHudDesc"></a>
 
@@ -6893,7 +7462,7 @@ struct PuzzleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 12824</sub>
+<sub>`api.ogt` line 12825</sub>
 
 <a id="type-Currency"></a>
 
@@ -6923,7 +7492,7 @@ struct Currency {
 }
 ```
 
-<sub>`api.ogt` line 12846</sub>
+<sub>`api.ogt` line 12847</sub>
 
 <a id="type-Generator"></a>
 
@@ -6959,7 +7528,7 @@ struct Generator {
 }
 ```
 
-<sub>`api.ogt` line 12856</sub>
+<sub>`api.ogt` line 12857</sub>
 
 <a id="type-IdleHudDesc"></a>
 
@@ -6999,7 +7568,7 @@ struct IdleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 12870</sub>
+<sub>`api.ogt` line 12871</sub>
 
 <a id="type-RaceSplit"></a>
 
@@ -7025,7 +7594,7 @@ struct RaceSplit {
 }
 ```
 
-<sub>`api.ogt` line 12889</sub>
+<sub>`api.ogt` line 12890</sub>
 
 <a id="type-RacingHudDesc"></a>
 
@@ -7121,7 +7690,7 @@ struct RacingHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 12897</sub>
+<sub>`api.ogt` line 12898</sub>
 
 <a id="type-DialogueLine"></a>
 
@@ -7147,7 +7716,7 @@ struct DialogueLine {
 }
 ```
 
-<sub>`api.ogt` line 12955</sub>
+<sub>`api.ogt` line 12956</sub>
 
 <a id="type-CutsceneDesc"></a>
 
@@ -7185,7 +7754,7 @@ struct CutsceneDesc {
 }
 ```
 
-<sub>`api.ogt` line 12963</sub>
+<sub>`api.ogt` line 12964</sub>
 
 <a id="type-CutsceneResult"></a>
 
@@ -7208,7 +7777,7 @@ struct CutsceneResult {
 }
 ```
 
-<sub>`api.ogt` line 12980</sub>
+<sub>`api.ogt` line 12981</sub>
 
 <a id="type-ShopItem"></a>
 
@@ -7242,7 +7811,7 @@ struct ShopItem {
 }
 ```
 
-<sub>`api.ogt` line 12987</sub>
+<sub>`api.ogt` line 12988</sub>
 
 <a id="type-ShopDesc"></a>
 
@@ -7300,7 +7869,7 @@ struct ShopDesc {
 }
 ```
 
-<sub>`api.ogt` line 12999</sub>
+<sub>`api.ogt` line 13000</sub>
 
 <a id="type-ShopResult"></a>
 
@@ -7323,7 +7892,7 @@ struct ShopResult {
 }
 ```
 
-<sub>`api.ogt` line 13030</sub>
+<sub>`api.ogt` line 13031</sub>
 
 <a id="type-InventoryItem"></a>
 
@@ -7355,7 +7924,7 @@ struct InventoryItem {
 }
 ```
 
-<sub>`api.ogt` line 13037</sub>
+<sub>`api.ogt` line 13038</sub>
 
 <a id="type-InventoryDesc"></a>
 
@@ -7399,7 +7968,7 @@ struct InventoryDesc {
 }
 ```
 
-<sub>`api.ogt` line 13048</sub>
+<sub>`api.ogt` line 13049</sub>
 
 <a id="type-SlotMove"></a>
 
@@ -7420,7 +7989,7 @@ struct SlotMove {
 }
 ```
 
-<sub>`api.ogt` line 13070</sub>
+<sub>`api.ogt` line 13071</sub>
 
 <a id="type-InventoryResult"></a>
 
@@ -7445,7 +8014,7 @@ struct InventoryResult {
 }
 ```
 
-<sub>`api.ogt` line 13076</sub>
+<sub>`api.ogt` line 13077</sub>
 
 <a id="type-LevelInfo"></a>
 
@@ -7473,7 +8042,7 @@ struct LevelInfo {
 }
 ```
 
-<sub>`api.ogt` line 13084</sub>
+<sub>`api.ogt` line 13085</sub>
 
 <a id="type-LevelSelectDesc"></a>
 
@@ -7513,7 +8082,7 @@ struct LevelSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 13093</sub>
+<sub>`api.ogt` line 13094</sub>
 
 <a id="type-LevelSelectResult"></a>
 
@@ -7534,7 +8103,7 @@ struct LevelSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 13112</sub>
+<sub>`api.ogt` line 13113</sub>
 
 <a id="type-StatRow"></a>
 
@@ -7558,7 +8127,7 @@ struct StatRow {
 }
 ```
 
-<sub>`api.ogt` line 13118</sub>
+<sub>`api.ogt` line 13119</sub>
 
 <a id="type-ScoreFormat"></a>
 
@@ -7581,7 +8150,7 @@ enum ScoreFormat {
 }
 ```
 
-<sub>`api.ogt` line 13125</sub>
+<sub>`api.ogt` line 13126</sub>
 
 <a id="type-ResultsDesc"></a>
 
@@ -7643,7 +8212,7 @@ struct ResultsDesc {
 }
 ```
 
-<sub>`api.ogt` line 13131</sub>
+<sub>`api.ogt` line 13132</sub>
 
 <a id="type-LeaderboardEntry"></a>
 
@@ -7671,7 +8240,7 @@ struct LeaderboardEntry {
 }
 ```
 
-<sub>`api.ogt` line 13162</sub>
+<sub>`api.ogt` line 13163</sub>
 
 <a id="type-LeaderboardDesc"></a>
 
@@ -7711,7 +8280,7 @@ struct LeaderboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 13171</sub>
+<sub>`api.ogt` line 13172</sub>
 
 <a id="type-LeaderboardResult"></a>
 
@@ -7736,7 +8305,7 @@ struct LeaderboardResult {
 }
 ```
 
-<sub>`api.ogt` line 13189</sub>
+<sub>`api.ogt` line 13190</sub>
 
 <a id="type-TutorialStep"></a>
 
@@ -7762,7 +8331,7 @@ struct TutorialStep {
 }
 ```
 
-<sub>`api.ogt` line 13197</sub>
+<sub>`api.ogt` line 13198</sub>
 
 <a id="type-TutorialDesc"></a>
 
@@ -7804,7 +8373,7 @@ struct TutorialDesc {
 }
 ```
 
-<sub>`api.ogt` line 13205</sub>
+<sub>`api.ogt` line 13206</sub>
 
 <a id="type-TutorialResult"></a>
 
@@ -7827,7 +8396,7 @@ struct TutorialResult {
 }
 ```
 
-<sub>`api.ogt` line 13225</sub>
+<sub>`api.ogt` line 13226</sub>
 
 <a id="type-LoadingDesc"></a>
 
@@ -7860,7 +8429,7 @@ struct LoadingDesc {
 }
 ```
 
-<sub>`api.ogt` line 13232</sub>
+<sub>`api.ogt` line 13233</sub>
 
 <a id="type-ConfirmDesc"></a>
 
@@ -7896,7 +8465,7 @@ struct ConfirmDesc {
 }
 ```
 
-<sub>`api.ogt` line 13246</sub>
+<sub>`api.ogt` line 13247</sub>
 
 <a id="type-ConfirmResult"></a>
 
@@ -7917,7 +8486,7 @@ struct ConfirmResult {
 }
 ```
 
-<sub>`api.ogt` line 13261</sub>
+<sub>`api.ogt` line 13262</sub>
 
 <a id="type-AlertDesc"></a>
 
@@ -7947,4 +8516,1859 @@ struct AlertDesc {
 }
 ```
 
-<sub>`api.ogt` line 13267</sub>
+<sub>`api.ogt` line 13268</sub>
+
+<a id="type-UiProp"></a>
+
+### `UiProp` (enum)
+
+An animatable value of an element (docs/ui.md §7.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians.
+
+A string: one of the variants below. The zero value is `"x"`.
+
+| Variant | Doc |
+|---|---|
+| `"x"` | Its horizontal offset, CSS px (the transform's x). |
+| `"y"` | Its vertical offset, CSS px. |
+| `"scaleX"` | Its horizontal scale (1: unscaled). |
+| `"scaleY"` | Its vertical scale. |
+| `"scale"` | Both scales at once. |
+| `"rotate"` | Its turn, radians, clockwise on screen. |
+| `"skewX"` | Its horizontal skew, radians. |
+| `"skewY"` | Its vertical skew, radians. |
+| `"opacity"` | Its opacity, 0 to 1, multiplied down the tree. |
+| `"radius"` | Its corner radius, CSS px. |
+| `"backgroundR"` | Its fill's red. |
+| `"backgroundG"` | Its fill's green. |
+| `"backgroundB"` | Its fill's blue. |
+| `"backgroundA"` | Its fill's alpha. |
+| `"inkR"` | Its text's red. |
+| `"inkG"` | Its text's green. |
+| `"inkB"` | Its text's blue. |
+| `"inkA"` | Its text's alpha. |
+| `"z"` | Its z among its siblings (stepped, never tweened). |
+| `"inert"` | 1: it and its subtree take no input (stepped): a results screen's buttons wait for the sequence. |
+
+```ogt
+enum UiProp {
+  doc "An animatable value of an element (docs/ui.md §7.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians."
+  variant x "Its horizontal offset, CSS px (the transform's x)."
+  variant y "Its vertical offset, CSS px."
+  variant scaleX "Its horizontal scale (1: unscaled)."
+  variant scaleY "Its vertical scale."
+  variant scale "Both scales at once."
+  variant rotate "Its turn, radians, clockwise on screen."
+  variant skewX "Its horizontal skew, radians."
+  variant skewY "Its vertical skew, radians."
+  variant opacity "Its opacity, 0 to 1, multiplied down the tree."
+  variant radius "Its corner radius, CSS px."
+  variant backgroundR "Its fill's red."
+  variant backgroundG "Its fill's green."
+  variant backgroundB "Its fill's blue."
+  variant backgroundA "Its fill's alpha."
+  variant inkR "Its text's red."
+  variant inkG "Its text's green."
+  variant inkB "Its text's blue."
+  variant inkA "Its text's alpha."
+  variant z "Its z among its siblings (stepped, never tweened)."
+  variant inert "1: it and its subtree take no input (stepped): a results screen's buttons wait for the sequence."
+}
+```
+
+<sub>`api.ogt` line 13423</sub>
+
+<a id="type-LayoutMode"></a>
+
+### `LayoutMode` (enum)
+
+How a container lays out its children.
+
+A string: one of the variants below. The zero value is `"flex"`.
+
+| Variant | Doc |
+|---|---|
+| `"flex"` | The row and column walks of its direction (the default). |
+| `"stack"` | Children overlaid in the same rectangle, each placed by its insets, else by the container's align (across) and cross (down): a card's art, frame, cost gem and name. |
+| `"grid"` | Tracks and cells (ElementProps.grid). |
+
+```ogt
+enum LayoutMode {
+  doc "How a container lays out its children."
+  variant flex "The row and column walks of its direction (the default)."
+  variant stack "Children overlaid in the same rectangle, each placed by its insets, else by the container's align (across) and cross (down): a card's art, frame, cost gem and name."
+  variant grid "Tracks and cells (ElementProps.grid)."
+}
+```
+
+<sub>`api.ogt` line 13447</sub>
+
+<a id="type-Position"></a>
+
+### `Position` (enum)
+
+How an element is placed.
+
+A string: one of the variants below. The zero value is `"flow"`.
+
+| Variant | Doc |
+|---|---|
+| `"flow"` | In its parent's flow (the default). |
+| `"absolute"` | Out of the flow, placed by its insets inside its parent's padding box. |
+| `"anchored"` | Out of the flow, its anchorSelf point on the anchorAt point of the element at anchorTo, moved by its start and top insets. |
+
+```ogt
+enum Position {
+  doc "How an element is placed."
+  variant flow "In its parent's flow (the default)."
+  variant absolute "Out of the flow, placed by its insets inside its parent's padding box."
+  variant anchored "Out of the flow, its anchorSelf point on the anchorAt point of the element at anchorTo, moved by its start and top insets."
+}
+```
+
+<sub>`api.ogt` line 13454</sub>
+
+<a id="type-GridFlow"></a>
+
+### `GridFlow` (enum)
+
+Which way auto-placed items fill a grid.
+
+A string: one of the variants below. The zero value is `"row"`.
+
+| Variant | Doc |
+|---|---|
+| `"row"` | Along rows, adding rows (the default). |
+| `"column"` | Down columns, adding columns. |
+
+```ogt
+enum GridFlow {
+  doc "Which way auto-placed items fill a grid."
+  variant row "Along rows, adding rows (the default)."
+  variant column "Down columns, adding columns."
+}
+```
+
+<sub>`api.ogt` line 13461</sub>
+
+<a id="type-DragAxis"></a>
+
+### `DragAxis` (enum)
+
+Which way a drag moves its element.
+
+A string: one of the variants below. The zero value is `"both"`.
+
+| Variant | Doc |
+|---|---|
+| `"both"` | Both ways. |
+| `"x"` | Across only. |
+| `"y"` | Down only. |
+| `"lock"` | Either, locked to the first one the drag moves along. |
+
+```ogt
+enum DragAxis {
+  doc "Which way a drag moves its element."
+  variant both "Both ways."
+  variant x "Across only."
+  variant y "Down only."
+  variant lock "Either, locked to the first one the drag moves along."
+}
+```
+
+<sub>`api.ogt` line 13467</sub>
+
+<a id="type-EaseName"></a>
+
+### `EaseName` (enum)
+
+A named easing curve.
+
+A string: one of the variants below. The zero value is `"linear"`.
+
+| Variant | Doc |
+|---|---|
+| `"linear"` | Constant speed. |
+| `"out"` | How things arrive: fast, then settling (the default). |
+| `"exit"` | How things leave: slow, then away. |
+| `"inOut"` | Slow at both ends. |
+
+```ogt
+enum EaseName {
+  doc "A named easing curve."
+  variant linear "Constant speed."
+  variant out "How things arrive: fast, then settling (the default)."
+  variant exit "How things leave: slow, then away."
+  variant inOut "Slow at both ends."
+}
+```
+
+<sub>`api.ogt` line 13475</sub>
+
+<a id="type-MotionToken"></a>
+
+### `MotionToken` (enum)
+
+A named motion of the style (docs/ui.md §7.7): components use these, so a style's personality changes every motion at once.
+
+A string: one of the variants below. The zero value is `"ui"`.
+
+| Variant | Doc |
+|---|---|
+| `"ui"` | The control spring: hover, press, toggles. |
+| `"panel"` | Panels, sheets and drawers. |
+| `"emphasis"` | Rewards, results and level-ups. |
+| `"playful"` | Bouncy toys: chips, stickers, mascots. |
+| `"enter"` | The entrance ease and duration. |
+| `"exit"` | The exit ease and duration. |
+
+```ogt
+enum MotionToken {
+  doc "A named motion of the style (docs/ui.md §7.7): components use these, so a style's personality changes every motion at once."
+  variant ui "The control spring: hover, press, toggles."
+  variant panel "Panels, sheets and drawers."
+  variant emphasis "Rewards, results and level-ups."
+  variant playful "Bouncy toys: chips, stickers, mascots."
+  variant enter "The entrance ease and duration."
+  variant exit "The exit ease and duration."
+}
+```
+
+<sub>`api.ogt` line 13483</sub>
+
+<a id="type-ReducedMotion"></a>
+
+### `ReducedMotion` (enum)
+
+What an animation does under reduced motion (docs/ui.md §7.7).
+
+A string: one of the variants below. The zero value is `"fade"`.
+
+| Variant | Doc |
+|---|---|
+| `"fade"` | Movement and scale jump; opacity and colour fade quickly (the default). |
+| `"none"` | Everything jumps. |
+| `"keep"` | Plays as authored: motion that carries meaning, kept small. |
+
+```ogt
+enum ReducedMotion {
+  doc "What an animation does under reduced motion (docs/ui.md §7.7)."
+  variant fade "Movement and scale jump; opacity and colour fade quickly (the default)."
+  variant none "Everything jumps."
+  variant keep "Plays as authored: motion that carries meaning, kept small."
+}
+```
+
+<sub>`api.ogt` line 13493</sub>
+
+<a id="type-Orientation"></a>
+
+### `Orientation` (enum)
+
+A screen orientation.
+
+A string: one of the variants below. The zero value is `"portrait"`.
+
+| Variant | Doc |
+|---|---|
+| `"portrait"` | Taller than wide. |
+| `"landscape"` | Wider than tall. |
+
+```ogt
+enum Orientation {
+  doc "A screen orientation."
+  variant portrait "Taller than wide."
+  variant landscape "Wider than tall."
+}
+```
+
+<sub>`api.ogt` line 13500</sub>
+
+<a id="type-Repeat"></a>
+
+### `Repeat` (enum)
+
+How a play repeats.
+
+A string: one of the variants below. The zero value is `"once"`.
+
+| Variant | Doc |
+|---|---|
+| `"once"` | Once (the default). |
+| `"loop"` | Over and over. |
+| `"pingPong"` | Forward then back, over and over. |
+
+```ogt
+enum Repeat {
+  doc "How a play repeats."
+  variant once "Once (the default)."
+  variant loop "Over and over."
+  variant pingPong "Forward then back, over and over."
+}
+```
+
+<sub>`api.ogt` line 13506</sub>
+
+<a id="type-UiTransform"></a>
+
+### `UiTransform` (desc struct)
+
+A transform applied after layout, about its pivot: CSS's translate(x, y) rotate(r) skew(kx, ky) scale(sx, sy) with its transform-origin. Hit tests, the probe's rectangles and the accessibility tree's bounds follow it; layout does not.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `x` | `number` | `0` | — | `cssPx` | — | Moves it across. |
+| `y` | `number` | `0` | — | `cssPx` | — | Moves it down. |
+| `scaleX` | `number` | `1` | — | — | — | Its horizontal scale. |
+| `scaleY` | `number` | `1` | — | — | — | Its vertical scale. |
+| `rotate` | `number` | `0` | — | — | — | Its turn, radians, clockwise on screen. |
+| `skewX` | `number` | `0` | — | — | — | Its horizontal skew, radians. |
+| `skewY` | `number` | `0` | — | — | — | Its vertical skew, radians. |
+| `pivotX` | `number` | `0.5` | — | `ratio` | — | The pivot across its box (0 its start edge, 1 its end). |
+| `pivotY` | `number` | `0.5` | — | `ratio` | — | The pivot down its box. |
+
+```ogt
+struct UiTransform {
+  doc "A transform applied after layout, about its pivot: CSS's translate(x, y) rotate(r) skew(kx, ky) scale(sx, sy) with its transform-origin. Hit tests, the probe's rectangles and the accessibility tree's bounds follow it; layout does not."
+  desc true
+  field x f32 "Moves it across." {
+    unit cssPx
+  }
+  field y f32 "Moves it down." {
+    unit cssPx
+  }
+  field scaleX f32 "Its horizontal scale." {
+    default 1
+  }
+  field scaleY f32 "Its vertical scale." {
+    default 1
+  }
+  field rotate f32 "Its turn, radians, clockwise on screen."
+  field skewX f32 "Its horizontal skew, radians."
+  field skewY f32 "Its vertical skew, radians."
+  field pivotX f32 "The pivot across its box (0 its start edge, 1 its end)." {
+    default 0.5
+    unit ratio
+  }
+  field pivotY f32 "The pivot down its box." {
+    default 0.5
+    unit ratio
+  }
+}
+```
+
+<sub>`api.ogt` line 13513</sub>
+
+<a id="type-Edges"></a>
+
+### `Edges` (desc struct)
+
+Insets of an absolute or anchored element from its parent's edges; an absent one is not set. start and end follow the writing direction: a right-to-left layout mirrors them.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `start` | `number \| null` | `null` | — | `cssPx` | — | From the start edge. |
+| `top` | `number \| null` | `null` | — | `cssPx` | — | From the top. |
+| `end` | `number \| null` | `null` | — | `cssPx` | — | From the end edge. |
+| `bottom` | `number \| null` | `null` | — | `cssPx` | — | From the bottom. |
+| `centerX` | `boolean` | `false` | — | — | — | Centred across the parent (start, if given, moves it). |
+| `centerY` | `boolean` | `false` | — | — | — | Centred down the parent (top, if given, moves it). |
+
+```ogt
+struct Edges {
+  doc "Insets of an absolute or anchored element from its parent's edges; an absent one is not set. start and end follow the writing direction: a right-to-left layout mirrors them."
+  desc true
+  field start Option.f32 "From the start edge." {
+    unit cssPx
+  }
+  field top Option.f32 "From the top." {
+    unit cssPx
+  }
+  field end Option.f32 "From the end edge." {
+    unit cssPx
+  }
+  field bottom Option.f32 "From the bottom." {
+    unit cssPx
+  }
+  field centerX bool "Centred across the parent (start, if given, moves it)."
+  field centerY bool "Centred down the parent (top, if given, moves it)."
+}
+```
+
+<sub>`api.ogt` line 13541</sub>
+
+<a id="type-TrackPx"></a>
+
+### `TrackPx` (struct)
+
+A fixed track.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `px` | `number` | `0` | — | `cssPx` | — | Its size. |
+
+```ogt
+struct TrackPx {
+  doc "A fixed track."
+  field px f32 "Its size." {
+    unit cssPx
+  }
+}
+```
+
+<sub>`api.ogt` line 13560</sub>
+
+<a id="type-TrackFr"></a>
+
+### `TrackFr` (struct)
+
+A share of the space the other tracks leave.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `fr` | `number` | `1` | — | — | — | Its share. |
+
+```ogt
+struct TrackFr {
+  doc "A share of the space the other tracks leave."
+  field fr f32 "Its share." {
+    default 1
+  }
+}
+```
+
+<sub>`api.ogt` line 13567</sub>
+
+<a id="type-TrackRange"></a>
+
+### `TrackRange` (struct)
+
+A track sized by its content, within bounds.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `min` | `number` | `0` | — | `cssPx` | — | The smallest it gets. |
+| `max` | `number` | `0` | — | `cssPx` | — | The largest it gets. |
+
+```ogt
+struct TrackRange {
+  doc "A track sized by its content, within bounds."
+  field min f32 "The smallest it gets." {
+    unit cssPx
+  }
+  field max f32 "The largest it gets." {
+    unit cssPx
+  }
+}
+```
+
+<sub>`api.ogt` line 13574</sub>
+
+<a id="type-TrackPercent"></a>
+
+### `TrackPercent` (struct)
+
+A fraction of the grid's inner size.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `fraction` | `number` | `0` | — | `ratio` | — | The fraction. |
+
+```ogt
+struct TrackPercent {
+  doc "A fraction of the grid's inner size."
+  field fraction f32 "The fraction." {
+    unit ratio
+  }
+}
+```
+
+<sub>`api.ogt` line 13584</sub>
+
+<a id="type-TrackAuto"></a>
+
+### `TrackAuto` (struct)
+
+Its largest single-cell item.
+
+```ogt
+struct TrackAuto {
+  doc "Its largest single-cell item."
+}
+```
+
+<sub>`api.ogt` line 13591</sub>
+
+<a id="type-Track"></a>
+
+### `Track` (union)
+
+A grid track's size.
+
+Tagged by `kind`.
+
+| Case | Payload | Doc |
+|---|---|---|
+| `kind: "px"` | [`TrackPx`](#type-TrackPx) | A fixed size. |
+| `kind: "fr"` | [`TrackFr`](#type-TrackFr) | A share of the free space. |
+| `kind: "auto"` | [`TrackAuto`](#type-TrackAuto) | Its largest single-cell item. |
+| `kind: "minMax"` | [`TrackRange`](#type-TrackRange) | Its content between min and max. |
+| `kind: "percent"` | [`TrackPercent`](#type-TrackPercent) | A fraction of the grid. |
+
+```ogt
+union Track {
+  doc "A grid track's size."
+  tag kind
+  case px TrackPx "A fixed size."
+  case fr TrackFr "A share of the free space."
+  case auto TrackAuto "Its largest single-cell item."
+  case minMax TrackRange "Its content between min and max."
+  case percent TrackPercent "A fraction of the grid."
+}
+```
+
+<sub>`api.ogt` line 13595</sub>
+
+<a id="type-GridSpec"></a>
+
+### `GridSpec` (desc struct)
+
+A grid's tracks and areas.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `columns` | `readonly Track[]` | `[]` | — | — | — | The column tracks. |
+| `rows` | `readonly Track[]` | `[]` | — | — | — | The row tracks; items past them add autoTrack rows. |
+| `autoTrack` | `Track \| null` | `null` | — | — | — | The track added for items past the declared ones; null is auto. |
+| `columnGap` | `number \| null` | `null` | — | `cssPx` | — | Space between columns; absent is the element's gap. |
+| `rowGap` | `number \| null` | `null` | — | `cssPx` | — | Space between rows; absent is the element's gap. |
+| `areas` | `readonly string[]` | `[]` | — | — | — | Named areas, one string per row of space-separated cell names, as CSS grid-template-areas (`.` is an unnamed cell). |
+| `flow` | `GridFlow` | `"row"` | — | — | — | Which way auto-placed items fill it. |
+| `dense` | `boolean` | `false` | — | — | — | Auto-placement back-fills holes left by spanning items. |
+
+```ogt
+struct GridSpec {
+  doc "A grid's tracks and areas."
+  desc true
+  field columns List.Track "The column tracks."
+  field rows List.Track "The row tracks; items past them add autoTrack rows."
+  field autoTrack Option.Track "The track added for items past the declared ones; null is auto."
+  field columnGap Option.f32 "Space between columns; absent is the element's gap." {
+    unit cssPx
+  }
+  field rowGap Option.f32 "Space between rows; absent is the element's gap." {
+    unit cssPx
+  }
+  field areas List.String "Named areas, one string per row of space-separated cell names, as CSS grid-template-areas (`.` is an unnamed cell)."
+  field flow GridFlow "Which way auto-placed items fill it."
+  field dense bool "Auto-placement back-fills holes left by spanning items."
+}
+```
+
+<sub>`api.ogt` line 13605</sub>
+
+<a id="type-GridPlace"></a>
+
+### `GridPlace` (desc struct)
+
+Where an item sits in its parent grid; the zero value is auto-placed in one cell.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `column` | `number` | `0` | — | — | — | Its first column, 1-based (0: auto). |
+| `row` | `number` | `0` | — | — | — | Its first row, 1-based (0: auto). |
+| `columnSpan` | `number` | `0` | — | — | — | Columns spanned (0: 1). |
+| `rowSpan` | `number` | `0` | — | — | — | Rows spanned (0: 1). |
+| `area` | `string` | `""` | — | — | — | A named area of the grid (wins over the numbers). |
+
+```ogt
+struct GridPlace {
+  doc "Where an item sits in its parent grid; the zero value is auto-placed in one cell."
+  desc true
+  field column u32 "Its first column, 1-based (0: auto)."
+  field row u32 "Its first row, 1-based (0: auto)."
+  field columnSpan u32 "Columns spanned (0: 1)."
+  field rowSpan u32 "Rows spanned (0: 1)."
+  field area String "A named area of the grid (wins over the numbers)."
+}
+```
+
+<sub>`api.ogt` line 13622</sub>
+
+<a id="type-PropValue"></a>
+
+### `PropValue` (struct)
+
+A value for an animatable prop.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `prop` | `UiProp` | `"x"` | — | — | — | The prop. |
+| `value` | `number` | `0` | — | — | — | Its value. |
+
+```ogt
+struct PropValue {
+  doc "A value for an animatable prop."
+  field prop UiProp "The prop."
+  field value f32 "Its value."
+}
+```
+
+<sub>`api.ogt` line 13632</sub>
+
+<a id="type-UiQuery"></a>
+
+### `UiQuery` (desc struct)
+
+When a variant applies: every condition given must hold.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `breakpoints` | `readonly Breakpoint[]` | `[]` | — | — | — | The size classes it applies on (empty: any). |
+| `orientation` | `Orientation \| null` | `null` | — | — | — | The orientation it applies in; null is either. |
+| `minWidth` | `number` | `0` | — | `cssPx` | — | The narrowest width it applies at (0: unbounded): the viewport's, or with container the element's own laid-out width. |
+| `maxWidth` | `number` | `0` | — | `cssPx` | — | The widest (0: unbounded). |
+| `container` | `boolean` | `false` | — | — | — | A container query: the widths are the element's own (the same card in a four-column shop and a one-column phone list). |
+
+```ogt
+struct UiQuery {
+  doc "When a variant applies: every condition given must hold."
+  desc true
+  field breakpoints List.Breakpoint "The size classes it applies on (empty: any)."
+  field orientation Option.Orientation "The orientation it applies in; null is either."
+  field minWidth f32 "The narrowest width it applies at (0: unbounded): the viewport's, or with container the element's own laid-out width." {
+    unit cssPx
+  }
+  field maxWidth f32 "The widest (0: unbounded)." {
+    unit cssPx
+  }
+  field container bool "A container query: the widths are the element's own (the same card in a four-column shop and a one-column phone list)."
+}
+```
+
+<sub>`api.ogt` line 13638</sub>
+
+<a id="type-UiPatch"></a>
+
+### `UiPatch` (desc struct)
+
+What a variant changes: the box's layout, its arrangement and animatable values; absent fields are unchanged.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `direction` | `Direction \| null` | `null` | — | — | — | Its direction. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width. |
+| `height` | `Size \| null` | `null` | — | — | — | Its height. |
+| `padding` | `Insets \| null` | `null` | — | — | — | Its padding. |
+| `gap` | `number \| null` | `null` | — | `cssPx` | — | Its gap. |
+| `align` | `Align \| null` | `null` | — | — | — | Its main-axis alignment. |
+| `cross` | `Cross \| null` | `null` | — | — | — | Its cross-axis alignment. |
+| `wrap` | `boolean \| null` | `null` | — | — | — | Its wrapping. |
+| `layout` | `LayoutMode \| null` | `null` | — | — | — | Its layout mode. |
+| `columns` | `readonly Track[]` | `[]` | — | — | — | Its grid columns (empty: unchanged). |
+| `hidden` | `boolean \| null` | `null` | — | — | — | Hide it and its subtree where the variant applies. |
+| `values` | `readonly PropValue[]` | `[]` | — | — | — | Animatable values it sets. |
+
+```ogt
+struct UiPatch {
+  doc "What a variant changes: the box's layout, its arrangement and animatable values; absent fields are unchanged."
+  desc true
+  field direction Option.Direction "Its direction."
+  field width Option.Size "Its width."
+  field height Option.Size "Its height."
+  field padding Option.Insets "Its padding."
+  field gap Option.f32 "Its gap." {
+    unit cssPx
+  }
+  field align Option.Align "Its main-axis alignment."
+  field cross Option.Cross "Its cross-axis alignment."
+  field wrap Option.bool "Its wrapping."
+  field layout Option.LayoutMode "Its layout mode."
+  field columns List.Track "Its grid columns (empty: unchanged)."
+  field hidden Option.bool "Hide it and its subtree where the variant applies."
+  field values List.PropValue "Animatable values it sets."
+}
+```
+
+<sub>`api.ogt` line 13652</sub>
+
+<a id="type-UiVariant"></a>
+
+### `UiVariant` (struct)
+
+A prop override under a condition (docs/ui.md §6.2: breakpoint variants and container queries). Later variants win.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `when` | `UiQuery` | `{}` | — | — | — | When it applies. |
+| `set` | `UiPatch` | `{}` | — | — | — | What it changes. |
+
+```ogt
+struct UiVariant {
+  doc "A prop override under a condition (docs/ui.md §6.2: breakpoint variants and container queries). Later variants win."
+  field when UiQuery "When it applies."
+  field set UiPatch "What it changes."
+}
+```
+
+<sub>`api.ogt` line 13671</sub>
+
+<a id="type-SpringSpec"></a>
+
+### `SpringSpec` (desc struct)
+
+A spring by how it feels: about how long it takes to settle and how much it overshoots. Retargeting it keeps its value and velocity, so an interrupted motion never jumps.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `durationMs` | `number` | `350` | — | `ms` | — | About how long it takes to arrive, ms. |
+| `bounce` | `number` | `0` | -0.95 … 1 | — | — | 0 arrives without overshoot; 0.3 overshoots a little; up to 1 rings (below 0 is sluggish). The style's overshoot caps it. |
+
+```ogt
+struct SpringSpec {
+  doc "A spring by how it feels: about how long it takes to settle and how much it overshoots. Retargeting it keeps its value and velocity, so an interrupted motion never jumps."
+  desc true
+  field durationMs f32 "About how long it takes to arrive, ms." {
+    default 350
+    unit ms
+  }
+  field bounce f32 "0 arrives without overshoot; 0.3 overshoots a little; up to 1 rings (below 0 is sluggish). The style's overshoot caps it." {
+    min -0.95
+    max 1
+  }
+}
+```
+
+<sub>`api.ogt` line 13677</sub>
+
+<a id="type-TweenSpec"></a>
+
+### `TweenSpec` (desc struct)
+
+A duration on an ease: a retarget starts a new ease from where it is.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `durationMs` | `number` | `200` | — | `ms` | — | Its length, ms. |
+| `ease` | `EaseName` | `"linear"` | — | — | — | Its curve. |
+| `bezier` | `readonly number[]` | `[]` | — | — | — | A cubic Bézier (x1, y1, x2, y2) in place of the named ease (empty: the named one). |
+
+```ogt
+struct TweenSpec {
+  doc "A duration on an ease: a retarget starts a new ease from where it is."
+  desc true
+  field durationMs f32 "Its length, ms." {
+    default 200
+    unit ms
+  }
+  field ease EaseName "Its curve."
+  field bezier List.f32 "A cubic Bézier (x1, y1, x2, y2) in place of the named ease (empty: the named one)."
+}
+```
+
+<sub>`api.ogt` line 13690</sub>
+
+<a id="type-TokenRef"></a>
+
+### `TokenRef` (struct)
+
+One of the style's motion tokens.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `token` | `MotionToken` | `"ui"` | — | — | — | The token. |
+
+```ogt
+struct TokenRef {
+  doc "One of the style's motion tokens."
+  field token MotionToken "The token."
+}
+```
+
+<sub>`api.ogt` line 13701</sub>
+
+<a id="type-InstantSpec"></a>
+
+### `InstantSpec` (struct)
+
+At once.
+
+```ogt
+struct InstantSpec {
+  doc "At once."
+}
+```
+
+<sub>`api.ogt` line 13706</sub>
+
+<a id="type-Transition"></a>
+
+### `Transition` (union)
+
+How a value moves to a new target.
+
+Tagged by `kind`.
+
+| Case | Payload | Doc |
+|---|---|---|
+| `kind: "instant"` | [`InstantSpec`](#type-InstantSpec) | At once. |
+| `kind: "spring"` | [`SpringSpec`](#type-SpringSpec) | On a spring that keeps its velocity. |
+| `kind: "tween"` | [`TweenSpec`](#type-TweenSpec) | Over a duration on an ease. |
+| `kind: "token"` | [`TokenRef`](#type-TokenRef) | The style's token. |
+
+```ogt
+union Transition {
+  doc "How a value moves to a new target."
+  tag kind
+  case instant InstantSpec "At once."
+  case spring SpringSpec "On a spring that keeps its velocity."
+  case tween TweenSpec "Over a duration on an ease."
+  case token TokenRef "The style's token."
+}
+```
+
+<sub>`api.ogt` line 13710</sub>
+
+<a id="type-DismissSpec"></a>
+
+### `DismissSpec` (desc struct)
+
+Swipe to dismiss: a release past distance (or faster than velocity) along the drag's axis throws the element off.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `distance` | `number` | `0` | — | `cssPx` | — | 0: 40 % of its size along the axis. |
+| `velocity` | `number` | `0` | — | — | — | CSS px per second (0: 800). |
+
+```ogt
+struct DismissSpec {
+  doc "Swipe to dismiss: a release past distance (or faster than velocity) along the drag's axis throws the element off."
+  desc true
+  field distance f32 "0: 40 % of its size along the axis." {
+    unit cssPx
+  }
+  field velocity f32 "CSS px per second (0: 800)."
+}
+```
+
+<sub>`api.ogt` line 13719</sub>
+
+<a id="type-SnapPoint"></a>
+
+### `SnapPoint` (struct)
+
+An offset a released drag can settle on.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `x` | `number` | `0` | — | `cssPx` | — | Its x offset. |
+| `y` | `number` | `0` | — | `cssPx` | — | Its y offset. |
+
+```ogt
+struct SnapPoint {
+  doc "An offset a released drag can settle on."
+  field x f32 "Its x offset." {
+    unit cssPx
+  }
+  field y f32 "Its y offset." {
+    unit cssPx
+  }
+}
+```
+
+<sub>`api.ogt` line 13728</sub>
+
+<a id="type-DragSpec"></a>
+
+### `DragSpec` (desc struct)
+
+The element moves with a drag that starts on it (a card, a sheet, a carousel), released onto a spring that keeps the drag's velocity.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `axis` | `DragAxis` | `"both"` | — | — | — | Which way it moves. |
+| `bounds` | `UiRect \| null` | `null` | — | — | — | Bounds of its offset (x to x + width, y to y + height); null is free. |
+| `rubber` | `number` | `0` | — | — | — | Past the bounds it follows with resistance, iOS's rubber band with this constant (0 stops at the bounds; 0.55 is iOS's). |
+| `snap` | `readonly SnapPoint[]` | `[]` | — | — | — | Offsets a release settles on: the nearest to where its momentum would carry it. |
+| `momentum` | `boolean` | `false` | — | — | — | A release projects the offset by its velocity (0.3 s of it) before choosing a snap point: a flick. |
+| `returnHome` | `boolean` | `false` | — | — | — | Without snap points, a release goes back to offset 0. |
+| `dismiss` | `DismissSpec \| null` | `null` | — | — | — | Swipe to dismiss; null never throws it off. |
+| `threshold` | `number` | `0` | — | `cssPx` | — | Pointer travel before a press becomes a drag (0: 4). |
+| `spring` | `Transition \| null` | `null` | — | — | — | The release spring; null is the style's ui spring. |
+| `tag` | `string` | `""` | — | — | — | What a drop target matches in DropSpec.accept. |
+
+```ogt
+struct DragSpec {
+  doc "The element moves with a drag that starts on it (a card, a sheet, a carousel), released onto a spring that keeps the drag's velocity."
+  desc true
+  field axis DragAxis "Which way it moves."
+  field bounds Option.UiRect "Bounds of its offset (x to x + width, y to y + height); null is free."
+  field rubber f32 "Past the bounds it follows with resistance, iOS's rubber band with this constant (0 stops at the bounds; 0.55 is iOS's)."
+  field snap List.SnapPoint "Offsets a release settles on: the nearest to where its momentum would carry it."
+  field momentum bool "A release projects the offset by its velocity (0.3 s of it) before choosing a snap point: a flick."
+  field returnHome bool "Without snap points, a release goes back to offset 0."
+  field dismiss Option.DismissSpec "Swipe to dismiss; null never throws it off."
+  field threshold f32 "Pointer travel before a press becomes a drag (0: 4)." {
+    unit cssPx
+  }
+  field spring Option.Transition "The release spring; null is the style's ui spring."
+  field tag String "What a drop target matches in DropSpec.accept."
+}
+```
+
+<sub>`api.ogt` line 13738</sub>
+
+<a id="type-PinchSpec"></a>
+
+### `PinchSpec` (desc struct)
+
+Two touches on the element scale (and turn) it.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `minScale` | `number` | `0` | — | — | — | 0: 0.5. |
+| `maxScale` | `number` | `0` | — | — | — | 0: 4. |
+| `rotate` | `boolean` | `false` | — | — | — | The touches turn it too. |
+
+```ogt
+struct PinchSpec {
+  doc "Two touches on the element scale (and turn) it."
+  desc true
+  field minScale f32 "0: 0.5."
+  field maxScale f32 "0: 4."
+  field rotate bool "The touches turn it too."
+}
+```
+
+<sub>`api.ogt` line 13755</sub>
+
+<a id="type-DropSpec"></a>
+
+### `DropSpec` (desc struct)
+
+The element takes drops of dragged elements.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `accept` | `readonly string[]` | `[]` | — | — | — | The drag tags it takes (empty: any). |
+
+```ogt
+struct DropSpec {
+  doc "The element takes drops of dragged elements."
+  desc true
+  field accept List.String "The drag tags it takes (empty: any)."
+}
+```
+
+<sub>`api.ogt` line 13763</sub>
+
+<a id="type-PresenceSpec"></a>
+
+### `PresenceSpec` (desc struct)
+
+How an element arrives or leaves (docs/ui.md §7.5): the values it enters from or exits to, and how it moves between them and its own.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `values` | `readonly PropValue[]` | `[]` | — | — | — | Where it starts (entering) or ends (leaving). |
+| `kind` | `TransitionKind \| null` | `null` | — | — | — | A transition kind's values in place of values: what the kind enters from and exits to. |
+| `distance` | `number` | `0` | — | `cssPx` | — | A slide kind's distance (0: 24). |
+| `transition` | `Transition \| null` | `null` | — | — | — | How it moves; null is the style's enter or exit token. |
+| `delayMs` | `number` | `0` | — | `ms` | — | Wait this long before moving (a hand-built stagger). |
+
+```ogt
+struct PresenceSpec {
+  doc "How an element arrives or leaves (docs/ui.md §7.5): the values it enters from or exits to, and how it moves between them and its own."
+  desc true
+  field values List.PropValue "Where it starts (entering) or ends (leaving)."
+  field kind Option.TransitionKind "A transition kind's values in place of values: what the kind enters from and exits to."
+  field distance f32 "A slide kind's distance (0: 24)." {
+    unit cssPx
+  }
+  field transition Option.Transition "How it moves; null is the style's enter or exit token."
+  field delayMs f32 "Wait this long before moving (a hand-built stagger)." {
+    unit ms
+  }
+}
+```
+
+<sub>`api.ogt` line 13769</sub>
+
+<a id="type-VisualState"></a>
+
+### `VisualState` (struct)
+
+One state of a group: the values it sets, and timelines it starts.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `name` | `string` | `""` | — | — | — | Its name. |
+| `values` | `readonly PropValue[]` | `[]` | — | — | — | The values it sets. |
+| `onEnter` | `string` | `""` | — | — | — | A timeline (og.ui.defineTimeline) played on the element when the state is entered (empty: none). |
+| `onExit` | `string` | `""` | — | — | — | One played when it is left. |
+
+```ogt
+struct VisualState {
+  doc "One state of a group: the values it sets, and timelines it starts."
+  field name String "Its name."
+  field values List.PropValue "The values it sets."
+  field onEnter String "A timeline (og.ui.defineTimeline) played on the element when the state is entered (empty: none)."
+  field onExit String "One played when it is left."
+}
+```
+
+<sub>`api.ogt` line 13783</sub>
+
+<a id="type-StateTransition"></a>
+
+### `StateTransition` (struct)
+
+The transition between two states of a group (`*` matches any state). The exact pair wins, then `* -> to`, `from -> *`, `* -> *`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `from` | `string` | `""` | — | — | — | The state left. |
+| `to` | `string` | `""` | — | — | — | The state entered. |
+| `transition` | `Transition` | — | — | — | — | How the values move. |
+
+```ogt
+struct StateTransition {
+  doc "The transition between two states of a group (`*` matches any state). The exact pair wins, then `* -> to`, `from -> *`, `* -> *`."
+  field from String "The state left."
+  field to String "The state entered."
+  field transition Transition "How the values move."
+}
+```
+
+<sub>`api.ogt` line 13791</sub>
+
+<a id="type-StateGroup"></a>
+
+### `StateGroup` (struct)
+
+A visual state group (docs/ui.md §7.3): one of its states is current, and moving between them animates every value that changes. A group named interaction is derived from input: normal, hover, pressed, focused and disabled (a state the group lacks falls back: pressed to hover to normal, focused to hover). Other groups take their state from ElementProps.state, a timeline's state event or og.ui.forceState; the first state is the default.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `name` | `string` | `""` | — | — | — | Its name. |
+| `states` | `readonly VisualState[]` | `[]` | — | — | — | Its states. |
+| `transitions` | `readonly StateTransition[]` | `[]` | — | — | — | Its transitions; a pair without one moves on the element's motion, else the style's ui spring. |
+
+```ogt
+struct StateGroup {
+  doc "A visual state group (docs/ui.md §7.3): one of its states is current, and moving between them animates every value that changes. A group named interaction is derived from input: normal, hover, pressed, focused and disabled (a state the group lacks falls back: pressed to hover to normal, focused to hover). Other groups take their state from ElementProps.state, a timeline's state event or og.ui.forceState; the first state is the default."
+  field name String "Its name."
+  field states List.VisualState "Its states."
+  field transitions List.StateTransition "Its transitions; a pair without one moves on the element's motion, else the style's ui spring."
+}
+```
+
+<sub>`api.ogt` line 13798</sub>
+
+<a id="type-StateValue"></a>
+
+### `StateValue` (struct)
+
+The current state of a group.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `group` | `string` | `""` | — | — | — | The group. |
+| `state` | `string` | `""` | — | — | — | Its state. |
+
+```ogt
+struct StateValue {
+  doc "The current state of a group."
+  field group String "The group."
+  field state String "Its state."
+}
+```
+
+<sub>`api.ogt` line 13805</sub>
+
+<a id="type-ElementProps"></a>
+
+### `ElementProps` (desc struct)
+
+Everything an element carries beyond its box (docs/ui.md §6.1): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `transform` | `UiTransform` | `{}` | — | — | — | Its transform after layout. |
+| `opacity` | `number` | `1` | 0 … 1 | — | — | Its opacity, multiplied down the tree. |
+| `z` | `number` | `0` | — | — | — | Its drawing and hit-testing order among its siblings: higher draws over lower without leaving the flow. |
+| `position` | `Position` | `"flow"` | — | — | — | How it is placed. |
+| `insets` | `Edges` | `{}` | — | — | — | Its insets, for an absolute or anchored element. |
+| `anchorTo` | `string` | `""` | — | — | — | The path of the element an anchored element is placed against. |
+| `anchorAt` | `Anchor` | `"topLeft"` | — | — | — | The target's point it sits on. |
+| `anchorSelf` | `Anchor` | `"topLeft"` | — | — | — | Its own point that sits there. |
+| `hitSlop` | `number` | `0` | — | `cssPx` | — | Extra pointer reach around its box. |
+| `layout` | `LayoutMode` | `"flex"` | — | — | — | How it lays out its children. |
+| `grid` | `GridSpec` | `{}` | — | — | — | Its tracks and areas, for a grid. |
+| `place` | `GridPlace` | `{}` | — | — | — | Its place in a grid parent. |
+| `container` | `boolean` | `false` | — | — | — | Its container queries read its own width. |
+| `variants` | `readonly UiVariant[]` | `[]` | — | — | — | Prop overrides by breakpoint, orientation and width; later ones win. |
+| `overlaps` | `readonly string[]` | `[]` | — | — | — | Paths of elements it overlaps on purpose (an ancestor path covers its subtree). Undeclared overlaps are reported (og.ui.overlaps). |
+| `match` | `string` | `""` | — | — | — | A shared-element key: the element with the same key on the screen being left morphs into this one. |
+| `drag` | `DragSpec \| null` | `null` | — | — | — | It moves with a drag. |
+| `pinch` | `PinchSpec \| null` | `null` | — | — | — | Two touches scale and turn it. |
+| `drop` | `DropSpec \| null` | `null` | — | — | — | It takes drops. |
+| `motion` | `Transition \| null` | `null` | — | — | — | How its animatable values move when they change; null is at once. |
+| `layoutMotion` | `Transition \| null` | `null` | — | — | — | Moves from its last laid-out rectangle to its new one (FLIP); null jumps. |
+| `enter` | `PresenceSpec \| null` | `null` | — | — | — | How it arrives. |
+| `exit` | `PresenceSpec \| null` | `null` | — | — | — | How it leaves: kept, inert and out of hit tests and the accessibility tree, while it plays after the element leaves the tree. |
+| `states` | `readonly StateGroup[]` | `[]` | — | — | — | Its visual state groups. |
+| `state` | `readonly StateValue[]` | `[]` | — | — | — | The current state of its groups that are not derived from input. |
+| `reduced` | `ReducedMotion \| null` | `null` | — | — | — | Its reduced-motion fallback; null is the style's. |
+| `inert` | `boolean` | `false` | — | — | — | It and its subtree take no input. |
+
+```ogt
+struct ElementProps {
+  doc "Everything an element carries beyond its box (docs/ui.md §6.1): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion."
+  desc true
+  field transform UiTransform "Its transform after layout."
+  field opacity f32 "Its opacity, multiplied down the tree." {
+    default 1
+    min 0
+    max 1
+  }
+  field z i32 "Its drawing and hit-testing order among its siblings: higher draws over lower without leaving the flow."
+  field position Position "How it is placed."
+  field insets Edges "Its insets, for an absolute or anchored element."
+  field anchorTo String "The path of the element an anchored element is placed against."
+  field anchorAt Anchor "The target's point it sits on."
+  field anchorSelf Anchor "Its own point that sits there."
+  field hitSlop f32 "Extra pointer reach around its box." {
+    unit cssPx
+  }
+  field layout LayoutMode "How it lays out its children."
+  field grid GridSpec "Its tracks and areas, for a grid."
+  field place GridPlace "Its place in a grid parent."
+  field container bool "Its container queries read its own width."
+  field variants List.UiVariant "Prop overrides by breakpoint, orientation and width; later ones win."
+  field overlaps List.String "Paths of elements it overlaps on purpose (an ancestor path covers its subtree). Undeclared overlaps are reported (og.ui.overlaps)."
+  field match String "A shared-element key: the element with the same key on the screen being left morphs into this one."
+  field drag Option.DragSpec "It moves with a drag."
+  field pinch Option.PinchSpec "Two touches scale and turn it."
+  field drop Option.DropSpec "It takes drops."
+  field motion Option.Transition "How its animatable values move when they change; null is at once."
+  field layoutMotion Option.Transition "Moves from its last laid-out rectangle to its new one (FLIP); null jumps."
+  field enter Option.PresenceSpec "How it arrives."
+  field exit Option.PresenceSpec "How it leaves: kept, inert and out of hit tests and the accessibility tree, while it plays after the element leaves the tree."
+  field states List.StateGroup "Its visual state groups."
+  field state List.StateValue "The current state of its groups that are not derived from input."
+  field reduced Option.ReducedMotion "Its reduced-motion fallback; null is the style's."
+  field inert bool "It and its subtree take no input."
+}
+```
+
+<sub>`api.ogt` line 13811</sub>
+
+<a id="type-EaseKey"></a>
+
+### `EaseKey` (struct)
+
+A named ease into a key.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `ease` | `EaseName` | `"linear"` | — | — | — | The curve. |
+
+```ogt
+struct EaseKey {
+  doc "A named ease into a key."
+  field ease EaseName "The curve."
+}
+```
+
+<sub>`api.ogt` line 13849</sub>
+
+<a id="type-HoldKey"></a>
+
+### `HoldKey` (struct)
+
+Holds the previous value, then jumps at the key.
+
+```ogt
+struct HoldKey {
+  doc "Holds the previous value, then jumps at the key."
+}
+```
+
+<sub>`api.ogt` line 13854</sub>
+
+<a id="type-LinearKey"></a>
+
+### `LinearKey` (struct)
+
+Constant speed into the key.
+
+```ogt
+struct LinearKey {
+  doc "Constant speed into the key."
+}
+```
+
+<sub>`api.ogt` line 13858</sub>
+
+<a id="type-BezierKey"></a>
+
+### `BezierKey` (struct)
+
+A cubic Bézier into the key.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `bezier` | `readonly number[]` | `[]` | — | — | — | x1, y1, x2, y2. |
+
+```ogt
+struct BezierKey {
+  doc "A cubic Bézier into the key."
+  field bezier List.f32 "x1, y1, x2, y2."
+}
+```
+
+<sub>`api.ogt` line 13862</sub>
+
+<a id="type-KeyEase"></a>
+
+### `KeyEase` (union)
+
+How the segment into a key moves.
+
+Tagged by `kind`.
+
+| Case | Payload | Doc |
+|---|---|---|
+| `kind: "linear"` | [`LinearKey`](#type-LinearKey) | Constant speed. |
+| `kind: "ease"` | [`EaseKey`](#type-EaseKey) | A named ease. |
+| `kind: "bezier"` | [`BezierKey`](#type-BezierKey) | A cubic Bézier. |
+| `kind: "spring"` | [`SpringSpec`](#type-SpringSpec) | On a spring from the previous key's value (released at it). |
+| `kind: "hold"` | [`HoldKey`](#type-HoldKey) | Holds, then jumps. |
+
+```ogt
+union KeyEase {
+  doc "How the segment into a key moves."
+  tag kind
+  case linear LinearKey "Constant speed."
+  case ease EaseKey "A named ease."
+  case bezier BezierKey "A cubic Bézier."
+  case spring SpringSpec "On a spring from the previous key's value (released at it)."
+  case hold HoldKey "Holds, then jumps."
+}
+```
+
+<sub>`api.ogt` line 13867</sub>
+
+<a id="type-TimelineKey"></a>
+
+### `TimelineKey` (struct)
+
+A keyframe: a value at a time.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `atMs` | `number` | `0` | — | `ms` | — | Its time. |
+| `value` | `number` | `0` | — | — | — | Its value. |
+| `ease` | `KeyEase \| null` | `null` | — | — | — | How the segment into it moves; null is the out ease. |
+
+```ogt
+struct TimelineKey {
+  doc "A keyframe: a value at a time."
+  field atMs f32 "Its time." {
+    unit ms
+  }
+  field value f32 "Its value."
+  field ease Option.KeyEase "How the segment into it moves; null is the out ease."
+}
+```
+
+<sub>`api.ogt` line 13877</sub>
+
+<a id="type-TimelineTrack"></a>
+
+### `TimelineTrack` (struct)
+
+Keys over one prop of the element the timeline plays on, or of a descendant by its path below it (`Stars/Star#2`). Before its first key it holds that key's value, after its last the last.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `target` | `string` | `""` | — | — | — | A path below the play's element (empty: the element itself). |
+| `prop` | `UiProp` | `"x"` | — | — | — | The prop. |
+| `keys` | `readonly TimelineKey[]` | `[]` | — | — | — | In time order. |
+
+```ogt
+struct TimelineTrack {
+  doc "Keys over one prop of the element the timeline plays on, or of a descendant by its path below it (`Stars/Star#2`). Before its first key it holds that key's value, after its last the last."
+  field target String "A path below the play's element (empty: the element itself)."
+  field prop UiProp "The prop."
+  field keys List.TimelineKey "In time order."
+}
+```
+
+<sub>`api.ogt` line 13886</sub>
+
+<a id="type-SoundEvent"></a>
+
+### `SoundEvent` (struct)
+
+A UI sound of the style.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `name` | `string` | `""` | — | — | — | hover, press, open, close, success or error. |
+| `pitch` | `number` | `1` | — | — | — | Its pitch (1: as recorded); a cascade step raises it 6 %. |
+
+```ogt
+struct SoundEvent {
+  doc "A UI sound of the style."
+  field name String "hover, press, open, close, success or error."
+  field pitch f32 "Its pitch (1: as recorded); a cascade step raises it 6 %." {
+    default 1
+  }
+}
+```
+
+<sub>`api.ogt` line 13893</sub>
+
+<a id="type-HapticEvent"></a>
+
+### `HapticEvent` (struct)
+
+A haptic pattern for the host.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `name` | `string` | `""` | — | — | — | light, medium, heavy, success, warning or error. |
+
+```ogt
+struct HapticEvent {
+  doc "A haptic pattern for the host."
+  field name String "light, medium, heavy, success, warning or error."
+}
+```
+
+<sub>`api.ogt` line 13901</sub>
+
+<a id="type-BurstEvent"></a>
+
+### `BurstEvent` (struct)
+
+Rays and sparks from the target.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `count` | `number` | `0` | — | — | — | How many (0: 12). |
+| `radius` | `number` | `0` | — | `cssPx` | — | How far they reach (0: the style's). |
+| `color` | `Color \| null` | `null` | — | — | — | Their colour; null is the style's highlight. |
+
+```ogt
+struct BurstEvent {
+  doc "Rays and sparks from the target."
+  field count u32 "How many (0: 12)."
+  field radius f32 "How far they reach (0: the style's)." {
+    unit cssPx
+  }
+  field color Option.Color "Their colour; null is the style's highlight."
+}
+```
+
+<sub>`api.ogt` line 13906</sub>
+
+<a id="type-StateEvent"></a>
+
+### `StateEvent` (struct)
+
+Sets a state group of the target.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `group` | `string` | `""` | — | — | — | The group. |
+| `state` | `string` | `""` | — | — | — | Its new state. |
+
+```ogt
+struct StateEvent {
+  doc "Sets a state group of the target."
+  field group String "The group."
+  field state String "Its new state."
+}
+```
+
+<sub>`api.ogt` line 13915</sub>
+
+<a id="type-CallbackEvent"></a>
+
+### `CallbackEvent` (struct)
+
+A callback to game code: it arrives in og.ui.motionEvents.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `name` | `string` | `""` | — | — | — | Its name. |
+
+```ogt
+struct CallbackEvent {
+  doc "A callback to game code: it arrives in og.ui.motionEvents."
+  field name String "Its name."
+}
+```
+
+<sub>`api.ogt` line 13921</sub>
+
+<a id="type-TimelineAction"></a>
+
+### `TimelineAction` (union)
+
+What an event does when a play reaches it.
+
+Tagged by `kind`.
+
+| Case | Payload | Doc |
+|---|---|---|
+| `kind: "sound"` | [`SoundEvent`](#type-SoundEvent) | A UI sound. |
+| `kind: "haptic"` | [`HapticEvent`](#type-HapticEvent) | A haptic. |
+| `kind: "burst"` | [`BurstEvent`](#type-BurstEvent) | A burst. |
+| `kind: "state"` | [`StateEvent`](#type-StateEvent) | A state change. |
+| `kind: "callback"` | [`CallbackEvent`](#type-CallbackEvent) | A callback. |
+
+```ogt
+union TimelineAction {
+  doc "What an event does when a play reaches it."
+  tag kind
+  case sound SoundEvent "A UI sound."
+  case haptic HapticEvent "A haptic."
+  case burst BurstEvent "A burst."
+  case state StateEvent "A state change."
+  case callback CallbackEvent "A callback."
+}
+```
+
+<sub>`api.ogt` line 13926</sub>
+
+<a id="type-TimelineEvent"></a>
+
+### `TimelineEvent` (struct)
+
+An event at a time, on the play's element or a descendant.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `atMs` | `number` | `0` | — | `ms` | — | Its time. |
+| `target` | `string` | `""` | — | — | — | A path below the play's element (empty: the element itself). |
+| `action` | `TimelineAction` | — | — | — | — | What it does. |
+
+```ogt
+struct TimelineEvent {
+  doc "An event at a time, on the play's element or a descendant."
+  field atMs f32 "Its time." {
+    unit ms
+  }
+  field target String "A path below the play's element (empty: the element itself)."
+  field action TimelineAction "What it does."
+}
+```
+
+<sub>`api.ogt` line 13936</sub>
+
+<a id="type-TimelineLabel"></a>
+
+### `TimelineLabel` (struct)
+
+A named time, for seeking (PlayDesc.fromLabel).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `name` | `string` | `""` | — | — | — | Its name. |
+| `atMs` | `number` | `0` | — | `ms` | — | Its time. |
+
+```ogt
+struct TimelineLabel {
+  doc "A named time, for seeking (PlayDesc.fromLabel)."
+  field name String "Its name."
+  field atMs f32 "Its time." {
+    unit ms
+  }
+}
+```
+
+<sub>`api.ogt` line 13945</sub>
+
+<a id="type-UiTimeline"></a>
+
+### `UiTimeline` (desc struct)
+
+Keyframed tracks and events (docs/ui.md §7.4).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `tracks` | `readonly TimelineTrack[]` | `[]` | — | — | — | Its tracks. |
+| `events` | `readonly TimelineEvent[]` | `[]` | — | — | — | Its events. |
+| `labels` | `readonly TimelineLabel[]` | `[]` | — | — | — | Its named times. |
+| `durationMs` | `number` | `0` | — | `ms` | — | Its length (0: its last key or event). |
+
+```ogt
+struct UiTimeline {
+  doc "Keyframed tracks and events (docs/ui.md §7.4)."
+  desc true
+  field tracks List.TimelineTrack "Its tracks."
+  field events List.TimelineEvent "Its events."
+  field labels List.TimelineLabel "Its named times."
+  field durationMs f32 "Its length (0: its last key or event)." {
+    unit ms
+  }
+}
+```
+
+<sub>`api.ogt` line 13953</sub>
+
+<a id="type-ChoreoPlay"></a>
+
+### `ChoreoPlay` (struct)
+
+A timeline on the play's element or a descendant.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `timeline` | `string` | `""` | — | — | — | The timeline, by name. |
+| `target` | `string` | `""` | — | — | — | A path below the play's element (empty: the element itself). |
+| `delayMs` | `number` | `0` | — | `ms` | — | Wait this long first. |
+
+```ogt
+struct ChoreoPlay {
+  doc "A timeline on the play's element or a descendant."
+  field timeline String "The timeline, by name."
+  field target String "A path below the play's element (empty: the element itself)."
+  field delayMs f32 "Wait this long first." {
+    unit ms
+  }
+}
+```
+
+<sub>`api.ogt` line 13964</sub>
+
+<a id="type-ChoreoSteps"></a>
+
+### `ChoreoSteps` (struct)
+
+Steps composed.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `steps` | `readonly Choreo[]` | `[]` | — | — | — | The steps. |
+
+```ogt
+struct ChoreoSteps {
+  doc "Steps composed."
+  field steps List.Choreo "The steps."
+}
+```
+
+<sub>`api.ogt` line 13973</sub>
+
+<a id="type-ChoreoStagger"></a>
+
+### `ChoreoStagger` (struct)
+
+One timeline on each target, each stepMs after the one before as ordered by from, the whole spread within capMs.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `timeline` | `string` | `""` | — | — | — | The timeline, by name. |
+| `targets` | `readonly string[]` | `[]` | — | — | — | Paths below the play's element (empty: its children in order). |
+| `stepMs` | `number` | `0` | — | `ms` | — | Between one target's start and the next's (0: the style's stagger). |
+| `capMs` | `number` | `0` | — | `ms` | — | The most the whole stagger spreads over (0: the style's cap). |
+| `from` | `string` | `"start"` | — | — | — | Where delays grow from: start, end, center (nearest the centre of their bounds first), or `x,y` (nearest that point first). |
+
+```ogt
+struct ChoreoStagger {
+  doc "One timeline on each target, each stepMs after the one before as ordered by from, the whole spread within capMs."
+  field timeline String "The timeline, by name."
+  field targets List.String "Paths below the play's element (empty: its children in order)."
+  field stepMs f32 "Between one target's start and the next's (0: the style's stagger)." {
+    unit ms
+  }
+  field capMs f32 "The most the whole stagger spreads over (0: the style's cap)." {
+    unit ms
+  }
+  field from String "Where delays grow from: start, end, center (nearest the centre of their bounds first), or `x,y` (nearest that point first)." {
+    default "start"
+  }
+}
+```
+
+<sub>`api.ogt` line 13978</sub>
+
+<a id="type-ChoreoCascade"></a>
+
+### `ChoreoCascade` (struct)
+
+Steps where each starts at the first `on` callback event of the one before (or its end): a score that counts chips, then multiplies, each step pitched higher.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `steps` | `readonly Choreo[]` | `[]` | — | — | — | The steps. |
+| `on` | `string` | `""` | — | — | — | The callback that starts the next step. |
+
+```ogt
+struct ChoreoCascade {
+  doc "Steps where each starts at the first `on` callback event of the one before (or its end): a score that counts chips, then multiplies, each step pitched higher."
+  field steps List.Choreo "The steps."
+  field on String "The callback that starts the next step."
+}
+```
+
+<sub>`api.ogt` line 13993</sub>
+
+<a id="type-Choreo"></a>
+
+### `Choreo` (union)
+
+Timelines composed into one play (docs/ui.md §7.4).
+
+Tagged by `kind`.
+
+| Case | Payload | Doc |
+|---|---|---|
+| `kind: "play"` | [`ChoreoPlay`](#type-ChoreoPlay) | One timeline. |
+| `kind: "sequence"` | [`ChoreoSteps`](#type-ChoreoSteps) | One after another. |
+| `kind: "parallel"` | [`ChoreoSteps`](#type-ChoreoSteps) | All at once. |
+| `kind: "stagger"` | [`ChoreoStagger`](#type-ChoreoStagger) | One timeline over many targets. |
+| `kind: "cascade"` | [`ChoreoCascade`](#type-ChoreoCascade) | Steps chained on callbacks. |
+
+```ogt
+union Choreo {
+  doc "Timelines composed into one play (docs/ui.md §7.4)."
+  tag kind
+  case play ChoreoPlay "One timeline."
+  case sequence ChoreoSteps "One after another."
+  case parallel ChoreoSteps "All at once."
+  case stagger ChoreoStagger "One timeline over many targets."
+  case cascade ChoreoCascade "Steps chained on callbacks."
+}
+```
+
+<sub>`api.ogt` line 13999</sub>
+
+<a id="type-PlayDesc"></a>
+
+### `PlayDesc` (desc struct)
+
+How a play runs.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `reverse` | `boolean` | `false` | — | — | — | Plays backwards. |
+| `repeat` | `Repeat` | `"once"` | — | — | — | How it repeats. |
+| `speed` | `number` | `0` | — | — | — | Its rate (0: 1). |
+| `fromMs` | `number` | `0` | — | `ms` | — | Start this far in. |
+| `fromLabel` | `string` | `""` | — | — | — | Start at a label of its first timeline (wins over fromMs). |
+| `hold` | `boolean` | `false` | — | — | — | Keep the last values once it ends, until stopped. |
+| `decorative` | `boolean` | `false` | — | — | — | Under reduced motion it does not play at all. |
+
+```ogt
+struct PlayDesc {
+  doc "How a play runs."
+  desc true
+  field reverse bool "Plays backwards."
+  field repeat Repeat "How it repeats."
+  field speed f32 "Its rate (0: 1)."
+  field fromMs f32 "Start this far in." {
+    unit ms
+  }
+  field fromLabel String "Start at a label of its first timeline (wins over fromMs)."
+  field hold bool "Keep the last values once it ends, until stopped."
+  field decorative bool "Under reduced motion it does not play at all."
+}
+```
+
+<sub>`api.ogt` line 14009</sub>
+
+<a id="type-PlayInfo"></a>
+
+### `PlayInfo` (struct)
+
+Where a play is.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `atMs` | `number` | `0` | — | `ms` | — | Its time (before a reverse's turn). |
+| `lengthMs` | `number` | `0` | — | `ms` | — | Its length. |
+| `paused` | `boolean` | `false` | — | — | — | Held. |
+| `reverse` | `boolean` | `false` | — | — | — | Playing backwards. |
+| `ended` | `boolean` | `false` | — | — | — | Finished (a held play keeps its values). |
+
+```ogt
+struct PlayInfo {
+  doc "Where a play is."
+  field atMs f32 "Its time (before a reverse's turn)." {
+    unit ms
+  }
+  field lengthMs f32 "Its length." {
+    unit ms
+  }
+  field paused bool "Held."
+  field reverse bool "Playing backwards."
+  field ended bool "Finished (a held play keeps its values)."
+}
+```
+
+<sub>`api.ogt` line 14023</sub>
+
+<a id="type-GestureInfo"></a>
+
+### `GestureInfo` (struct)
+
+What a drag or pinch on an element is doing (last tick's answer, as responses are).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `held` | `boolean` | `false` | — | — | — | A press is held on it. |
+| `dragging` | `boolean` | `false` | — | — | — | It moves with the pointer (the press travelled past the threshold). |
+| `offsetX` | `number` | `0` | — | `cssPx` | — | Its offset from where it was laid out. |
+| `offsetY` | `number` | `0` | — | `cssPx` | — | Its offset down. |
+| `velocityX` | `number` | `0` | — | — | — | CSS px per second. |
+| `velocityY` | `number` | `0` | — | — | — | CSS px per second. |
+| `scale` | `number` | `0` | — | — | — | A pinch's scale (1: none). |
+| `rotation` | `number` | `0` | — | — | — | A pinch's turn, radians. |
+| `snapped` | `number` | `0` | — | — | — | The snap point the last release chose (-1: none). |
+| `dismissed` | `boolean` | `false` | — | — | — | A swipe threw it off. |
+| `over` | `string` | `""` | — | — | — | The drop target under the drag (empty: none). |
+| `droppedOn` | `string` | `""` | — | — | — | The drop target it was dropped on this tick (empty: none). |
+| `hovering` | `boolean` | `false` | — | — | — | For a drop target: a drag is over it. |
+| `received` | `string` | `""` | — | — | — | For a drop target: the element dropped on it this tick (empty: none). |
+
+```ogt
+struct GestureInfo {
+  doc "What a drag or pinch on an element is doing (last tick's answer, as responses are)."
+  field held bool "A press is held on it."
+  field dragging bool "It moves with the pointer (the press travelled past the threshold)."
+  field offsetX f32 "Its offset from where it was laid out." {
+    unit cssPx
+  }
+  field offsetY f32 "Its offset down." {
+    unit cssPx
+  }
+  field velocityX f32 "CSS px per second."
+  field velocityY f32 "CSS px per second."
+  field scale f32 "A pinch's scale (1: none)."
+  field rotation f32 "A pinch's turn, radians."
+  field snapped i32 "The snap point the last release chose (-1: none)."
+  field dismissed bool "A swipe threw it off."
+  field over String "The drop target under the drag (empty: none)."
+  field droppedOn String "The drop target it was dropped on this tick (empty: none)."
+  field hovering bool "For a drop target: a drag is over it."
+  field received String "For a drop target: the element dropped on it this tick (empty: none)."
+}
+```
+
+<sub>`api.ogt` line 14036</sub>
+
+<a id="type-UiMotionEvent"></a>
+
+### `UiMotionEvent` (struct)
+
+What happened in the UI's motion this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `kind` | `string` | `""` | — | — | — | sound, haptic, burst, state, callback, end (a play finished), dismiss (a swipe threw an element off), drop (a drag was dropped on a target) or snap (a released drag chose a snap point). |
+| `name` | `string` | `""` | — | — | — | The sound, haptic, callback or state's name; for drop the target's path; for snap the point's index. |
+| `target` | `string` | `""` | — | — | — | The element's path. |
+| `play` | `number` | `0` | — | — | — | The play (0: none). |
+| `index` | `number` | `0` | — | — | — | The clip's step in a cascade or stagger. |
+| `pitch` | `number` | `0` | — | — | — | A sound's pitch: its own times 1.06 per cascade step. |
+
+```ogt
+struct UiMotionEvent {
+  doc "What happened in the UI's motion this tick."
+  field kind String "sound, haptic, burst, state, callback, end (a play finished), dismiss (a swipe threw an element off), drop (a drag was dropped on a target) or snap (a released drag chose a snap point)."
+  field name String "The sound, haptic, callback or state's name; for drop the target's path; for snap the point's index."
+  field target String "The element's path."
+  field play u32 "The play (0: none)."
+  field index u32 "The clip's step in a cascade or stagger."
+  field pitch f32 "A sound's pitch: its own times 1.06 per cascade step."
+}
+```
+
+<sub>`api.ogt` line 14058</sub>
+
+<a id="type-UiOverlap"></a>
+
+### `UiOverlap` (struct)
+
+Two elements overlapping where neither declared it (docs/ui.md §6.2).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `path` | `string` | `""` | — | — | — | The element placed over the other (absolute, anchored or floating), or the later of two siblings in the flow. |
+| `other` | `string` | `""` | — | — | — | The other element. |
+| `rect` | `UiRect` | `{ x: 0, y: 0, width: 0, height: 0 }` | — | — | — | Where they overlap. |
+| `inFlow` | `boolean` | `false` | — | — | — | Both are in their parent's flow: a layout bug, not a placement. |
+
+```ogt
+struct UiOverlap {
+  doc "Two elements overlapping where neither declared it (docs/ui.md §6.2)."
+  field path String "The element placed over the other (absolute, anchored or floating), or the later of two siblings in the flow."
+  field other String "The other element."
+  field rect UiRect "Where they overlap."
+  field inFlow bool "Both are in their parent's flow: a layout bug, not a placement."
+}
+```
+
+<sub>`api.ogt` line 14068</sub>
+
+<a id="type-UiLayoutStats"></a>
+
+### `UiLayoutStats` (struct)
+
+What the last frame rebuilt and laid out (docs/ui.md §6.3).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `elements` | `number` | `0` | — | — | — | Elements built. |
+| `rebuilt` | `number` | `0` | — | — | — | Elements whose inputs changed since the tick before (or are new). |
+| `laidOut` | `number` | `0` | — | — | — | Elements laid out; the rest kept their last layout. |
+| `keptCommands` | `number` | `0` | — | — | — | Elements whose draw commands were kept from the tick before. |
+
+```ogt
+struct UiLayoutStats {
+  doc "What the last frame rebuilt and laid out (docs/ui.md §6.3)."
+  field elements u32 "Elements built."
+  field rebuilt u32 "Elements whose inputs changed since the tick before (or are new)."
+  field laidOut u32 "Elements laid out; the rest kept their last layout."
+  field keptCommands u32 "Elements whose draw commands were kept from the tick before."
+}
+```
+
+<sub>`api.ogt` line 14076</sub>

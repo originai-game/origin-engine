@@ -107,6 +107,25 @@ export const widgets = {
     parse(abi().og_ui_screen_transition(id, screen, json(desc))),
   previewViewport: (world: Api.World, viewport: Api.Viewport | null): void =>
     abi().og_ui_preview_viewport(worldId(world), JSON.stringify(viewport ?? null)),
+  // The element model and motion (docs/ui.md §6, §7).
+  props: (desc?: Api.ElementProps): boolean => abi().og_ui_props(json(desc)),
+  defineTimeline: (name: string, timeline?: Api.UiTimeline): void => abi().og_ui_define_timeline(name, json(timeline)),
+  play: (path: string, choreo: Api.Choreo, desc?: Api.PlayDesc): number => abi().og_ui_play(path, JSON.stringify(choreo), json(desc)),
+  playTimeline: (path: string, timeline: string, desc?: Api.PlayDesc): number => abi().og_ui_play_timeline(path, timeline, json(desc)),
+  seek: (play: number, ms: number): boolean => abi().og_ui_seek(play, ms),
+  pause: (play: number): boolean => abi().og_ui_pause(play),
+  resume: (play: number): boolean => abi().og_ui_resume(play),
+  reverse: (play: number): boolean => abi().og_ui_reverse(play),
+  stop: (play: number): boolean => abi().og_ui_stop(play),
+  playInfo: (play: number): Api.PlayInfo | null => parse(abi().og_ui_play_info(play)),
+  forceState: (path: string, group: string, state: string | null): void =>
+    abi().og_ui_force_state(path, group, JSON.stringify(state ?? null)),
+  visualState: (path: string, group: string): string => abi().og_ui_visual_state(path, group),
+  animate: (id: string, target: number, transition: Api.Transition): number => abi().og_ui_animate(id, target, JSON.stringify(transition)),
+  gesture: (path: string): Api.GestureInfo => parse(abi().og_ui_gesture(path)),
+  motionEvents: (): Api.UiMotionEvent[] => parse(abi().og_ui_motion_events()),
+  overlaps: (): Api.UiOverlap[] => parse(abi().og_ui_overlaps()),
+  layoutStats: (): Api.UiLayoutStats => parse(abi().og_ui_layout_stats()),
 };
 
 /** og.ui.list / og.ui.grid: open, build the items in view, collect clicks and drops, close. */
