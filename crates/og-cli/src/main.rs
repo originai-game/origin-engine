@@ -57,7 +57,7 @@ commands:
                       cook, type-check, bundle and run the game on the native host with the probe;
                       outputs of screenshot/dump_* land in --out (default <project>/og-out)
   run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR]
-      [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>]
+      [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>]
       [--json]
                       play the publish build in a real browser (served with COOP/COEP on 127.0.0.1,
                       or for the iPhone on 0.0.0.0 with the LAN URL printed; --host names the

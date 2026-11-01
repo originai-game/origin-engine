@@ -2,11 +2,10 @@
 // (served under /game/) on a 1280×720 canvas at DPR 1, started with no
 // clock, so the harness drives it one `frame` (one 1/60 s tick and one
 // render) at a time through `globalThis.__og_shell__`, as
-// packages/engine/bench/lanes.ts does. `?webgl=1` takes the WebGL2 fallback.
+// packages/engine/bench/lanes.ts does, on WebGPU (the engine's only web tier).
 // The shell decides lanes from crossOriginIsolated, as the product page does.
 import { Shell } from "../../packages/engine/src/web/shell.ts";
 
-const params = new URLSearchParams(location.search);
 const lines: string[] = [];
 (globalThis as Record<string, unknown>)["__og_log__"] = lines;
 const at = (path: string) => new URL(`/game/${path}`, location.href).href;
@@ -19,7 +18,6 @@ try {
     lanes: { glue: at("origin-engine-lanes.js"), wasm: at("origin-engine-lanes_bg.wasm") },
     root: at("").replace(/\/$/, ""),
     basis: { js: at("basis/basis_transcoder.js"), wasm: at("basis/basis_transcoder.wasm") },
-    webgl: params.get("webgl") === "1",
     autoplay: false,
     prime: false,
     profile: "3d",

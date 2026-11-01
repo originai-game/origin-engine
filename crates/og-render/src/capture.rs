@@ -8,8 +8,7 @@
 //! loop), natively with a bound ([`CaptureRequest::wait`]) or as a future
 //! ([`CaptureRequest::finish`]). Dropping the request (or the
 //! [`Renderer::capture`] future) cancels it and frees the buffer. In the
-//! browser the mapping completes from the event loop (WebGPU's `mapAsync`)
-//! or on the next submit or [`Renderer::poll`] (WebGL2).
+//! browser the mapping completes from the event loop (WebGPU's `mapAsync`).
 //!
 //! A renderer that presents to a surface (the web host's canvas) draws its
 //! frames there, not offscreen: [`Renderer::set_keep_frame`] has each
@@ -133,7 +132,7 @@ impl CaptureRequest {
     }
 
     /// Resolves when the mapping completes (the host bounds the wait: drop
-    /// the future to cancel). On WebGL2 something must poll the device:
+    /// the future to cancel). Natively something must poll the device:
     /// the next frame's submit or [`Renderer::poll`].
     pub async fn finish(mut self) -> Result<RgbaImage, RenderError> {
         Mapped(self.state.clone())
@@ -188,7 +187,7 @@ impl Drop for CaptureRequest {
 
 impl Renderer {
     /// Processes finished GPU work without blocking: completes pending
-    /// captures on WebGL2 when no frame is being submitted.
+    /// captures when no frame is being submitted.
     pub fn poll(&self) {
         let _ = self.device.poll(wgpu::PollType::Poll);
     }

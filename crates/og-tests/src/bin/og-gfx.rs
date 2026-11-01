@@ -16,8 +16,7 @@
 //! (`RenderQuality::preset`, what `og.render.applyQuality` writes); unset,
 //! the scene's own quality (the default, medium's).
 //! `OG_GFX_CULLING=cpu|gpu|auto` sets the scene's `Culling`: `cpu` culls on
-//! the CPU on every tier, `gpu` on the GPU on the full tier whatever the
-//! scene's size, `auto` (the default) on the GPU from
+//! the CPU, `gpu` on the GPU whatever the scene's size, `auto` (the default) on the GPU from
 //! `og_render::GPU_CULLING_MIN_INSTANCES` instances.
 //! `OG_GFX_COMPACT=1` sets every mesh of the scene to
 //! `VertexEncoding::Compact` (16-byte vertices where a plain material draws
@@ -282,28 +281,24 @@ fn run(
             );
         }
     }
-    if !built.applies.includes(info.tier) {
-        let _ = write!(line, " (no reference on this tier)");
-    } else {
-        let reference = gfx::reference_path(&tier, name);
-        if reference.exists() {
-            let expected = gfx::load_png(&reference)?;
-            let c = compare::compare(
-                &image.pixels,
-                &expected.pixels,
-                expected.width,
-                expected.height,
-                &built.tolerance,
-            )?;
-            let _ = write!(
-                line,
-                " vs reference: rmse={:.5} max_diff={} outliers={}",
-                c.rmse, c.max_channel_diff, c.outliers
-            );
-        }
-        if let Some(dir) = capture {
-            gfx::save_png(&dir.join(&tier).join(format!("{name}.png")), &image)?;
-        }
+    let reference = gfx::reference_path(&tier, name);
+    if reference.exists() {
+        let expected = gfx::load_png(&reference)?;
+        let c = compare::compare(
+            &image.pixels,
+            &expected.pixels,
+            expected.width,
+            expected.height,
+            &built.tolerance,
+        )?;
+        let _ = write!(
+            line,
+            " vs reference: rmse={:.5} max_diff={} outliers={}",
+            c.rmse, c.max_channel_diff, c.outliers
+        );
+    }
+    if let Some(dir) = capture {
+        gfx::save_png(&dir.join(&tier).join(format!("{name}.png")), &image)?;
     }
     if let Some(path) = out {
         gfx::save_png(Path::new(path), &image)?;
@@ -526,7 +521,7 @@ fn effect_table(frames: u32, only: Option<&str>) -> Result<String, String> {
         ),
         (
             "water-3d",
-            "E5: planar water (refraction, foam, SSR on the full tier)",
+            "E5: planar water (refraction, foam, SSR)",
             |g| g.scene.water.clear(),
         ),
         ("water-2d", "E5: 2D water line", |g| {

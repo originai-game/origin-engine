@@ -5,9 +5,9 @@
 //! the packing of its maps.
 //!
 //! A physical material has fourteen maps beyond the base colour, normal,
-//! emissive and toon ramp, and a WebGL2 pipeline has sixteen texture slots
-//! across its groups (the skinned lit one already uses all sixteen). So
-//! its scalar maps are packed, once per set of maps, into the layers of
+//! emissive and toon ramp, and a lit pipeline has sixteen texture slots
+//! per stage (the downlevel limits the device is asked for). So its scalar
+//! maps are packed, once per set of maps, into the layers of
 //! one RGBA8 array texture by a render pass per layer and mip level
 //! (`shaders/pack.wgsl`; the implicit derivatives pick each source's mip):
 //!
@@ -25,7 +25,7 @@
 //! normal, emissive and gradient textures, the pack and the physical
 //! uniform: five textures. The physical effect group adds the copy of the
 //! opaque scene that transmission refracts: frame 5, material 5, effects 3
-//! and skin 1 make fourteen, so every lobe and map draws on WebGL2 too.
+//! and skin 1 make fourteen, within the sixteen.
 //! The shadow, prepass, reflection and scatter passes draw a physical
 //! material through its standard group like any other.
 
@@ -266,7 +266,7 @@ pub(crate) struct PhysicalPipelines {
     /// The physical shader with the built-in hooks.
     pub module: wgpu::ShaderModule,
     pub pipelines: HashMap<PbrKey, wgpu::RenderPipeline>,
-    /// A pack for a material without packed maps (two layers: WebGL2).
+    /// A pack for a material without packed maps (one layer).
     pub empty_pack: wgpu::TextureView,
     pack_layout: wgpu::BindGroupLayout,
     pack_pipeline: wgpu::RenderPipeline,
@@ -361,7 +361,7 @@ impl PhysicalPipelines {
                 size: wgpu::Extent3d {
                     width: 1,
                     height: 1,
-                    depth_or_array_layers: crate::gl_safe_array_layers(1),
+                    depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
                 sample_count: 1,
@@ -404,7 +404,7 @@ impl PhysicalPipelines {
             size: wgpu::Extent3d {
                 width,
                 height,
-                depth_or_array_layers: crate::gl_safe_array_layers(layers.len() as u32),
+                depth_or_array_layers: layers.len() as u32,
             },
             mip_level_count: levels,
             sample_count: 1,

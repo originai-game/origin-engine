@@ -6,7 +6,7 @@
 //
 // Firefox: --firefox <path>, $FIREFOX, or the default install. A missing
 // Firefox is an error, never a skip. Headless Firefox has no WebGPU adapter
-// (157 on Windows), so a WebGPU run opens a window; WebGL2 runs headless.
+// (157 on Windows), so a WebGPU run opens a window.
 
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -72,8 +72,6 @@ export class Firefox {
         ["browser.aboutwelcome.enabled", false],
         ["datareporting.policy.dataSubmissionEnabled", false],
         ["app.update.disabledForTesting", true],
-        // The adapter's own name in the run's renderer line, not a bucketed one.
-        ["webgl.sanitize-unmasked-renderer", false],
       ]
         .map(([k, v]) => `user_pref(${JSON.stringify(k)}, ${JSON.stringify(v)});`)
         .join("\n"),

@@ -10,8 +10,8 @@
 // absorbed by its thickness, the sun (with its shadows), the image-based
 // light and the clustered local lights scattered by its colour, the
 // environment reflected by Schlick's Fresnel, and fog. It writes its
-// depth, so what is drawn after it sorts against it. The same code on
-// every tier: no storage buffer, no compute. Prepended by frame.wgsl,
+// depth, so what is drawn after it sorts against it. No storage buffer,
+// no compute. Prepended by frame.wgsl,
 // lighting.wgsl and the light tables (clusters.rs).
 
 struct FluidUniform {

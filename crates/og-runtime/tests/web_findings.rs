@@ -7,9 +7,10 @@
 //!   every mesh again: the default mesh's instance casts.
 //! - #3: GameDesc.look's antialias is the renderer's even when the look's
 //!   assets cannot load before the renderer is attached (the web host
-//!   decodes textures only then), so Lantern Vale's TAA is TAA on WebGL2
-//!   too, not the tier's 4x MSAA. Broken once by loading the whole look at
-//!   boot again: no antialias reaches the render options.
+//!   decodes textures only then), so Lantern Vale's TAA is TAA on the web
+//!   (it was 4x MSAA on the since retired WebGL2 tier). Broken once by
+//!   loading the whole look at boot again: no antialias reaches the render
+//!   options.
 
 use og_render::RenderScene;
 use og_runtime::{

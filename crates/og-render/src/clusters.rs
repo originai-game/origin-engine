@@ -14,11 +14,8 @@
 //!
 //! The CPU build was measured against a compute pass and kept: at 256
 //! lights it takes tens of microseconds (`tests/evidence/P2/render/`), less
-//! than a compute dispatch's own overhead, and the same code serves the
-//! no-compute tier. The tables reach the shader as storage buffers on the
-//! full tier and as uniform buffers on WebGL2 (which has no storage
-//! buffers, and whose skinned lit pipeline already uses all sixteen of the
-//! GL backend's texture slots, so a tile table texture would not fit).
+//! than a compute dispatch's own overhead. The tables reach the shader as
+//! read-only storage buffers.
 //!
 //! Limits, and how they degrade:
 //! - Lights whose sphere misses the view are culled (`lights_culled`).
@@ -26,10 +23,9 @@
 //!   with the most radiance at the camera are kept (intensity × the
 //!   brightest channel of the colour over the squared distance from the
 //!   camera, at least 1 m), the rest counted in `lights_dropped`.
-//! - A cluster holds at most [`MAX_CLUSTER_LIGHTS`]; on WebGL2 all clusters
-//!   together hold [`UNIFORM_LIGHT_REFS`] (one 16 KiB uniform). Past either
-//!   cap the busiest clusters keep their most important lights (the same
-//!   score) and lose the rest there only (`cluster_lights_dropped`).
+//! - A cluster holds at most [`MAX_CLUSTER_LIGHTS`]. Past that cap a
+//!   cluster keeps its most important lights (the same score) and loses the
+//!   rest there only (`cluster_lights_dropped`).
 
 use crate::frame::{CameraFrame, Frustum};
 use crate::scene::{Light, MAX_LIGHTS};
@@ -41,66 +37,27 @@ pub const CLUSTER_GRID: [u32; 3] = [16, 9, 24];
 pub(crate) const CLUSTERS: usize = (CLUSTER_GRID[0] * CLUSTER_GRID[1] * CLUSTER_GRID[2]) as usize;
 /// The most lights one cluster shades.
 pub const MAX_CLUSTER_LIGHTS: usize = 64;
-/// The light references all clusters hold together on WebGL2 (one byte
-/// each, four to a word, in a 16 KiB uniform buffer).
-pub const UNIFORM_LIGHT_REFS: usize = 16384;
-/// The same on the full tier (a storage buffer): every cluster full.
-pub(crate) const STORAGE_LIGHT_REFS: usize = CLUSTERS * MAX_CLUSTER_LIGHTS;
+/// The light references all clusters hold together (one byte each, four to
+/// a word, in a storage buffer): every cluster full.
+pub(crate) const LIGHT_REFS: usize = CLUSTERS * MAX_CLUSTER_LIGHTS;
 
-/// How the light tables reach the lit shader.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum LightTables {
-    /// Read-only storage buffers (WebGPU, Metal, Vulkan).
-    Storage,
-    /// Uniform buffers of at most 16 KiB each (WebGL2).
-    Uniform,
+/// Byte sizes of the three buffers: lights, the cluster table, the refs.
+fn sizes() -> [u64; 3] {
+    [
+        (MAX_LIGHTS * std::mem::size_of::<crate::frame::LightGpu>()) as u64,
+        (CLUSTERS * 4) as u64,
+        LIGHT_REFS as u64,
+    ]
 }
 
-impl LightTables {
-    /// How many light references the tier's buffer holds.
-    pub fn ref_capacity(self) -> usize {
-        match self {
-            LightTables::Storage => STORAGE_LIGHT_REFS,
-            LightTables::Uniform => UNIFORM_LIGHT_REFS,
-        }
-    }
-
-    /// Byte sizes of the three buffers: lights, the cluster table, the refs.
-    pub fn sizes(self) -> [u64; 3] {
-        [
-            (MAX_LIGHTS * std::mem::size_of::<crate::frame::LightGpu>()) as u64,
-            (CLUSTERS * 4) as u64,
-            self.ref_capacity() as u64,
-        ]
-    }
-
-    /// The WGSL declaring the buffers (group 0, bindings 7 to 9) and their
-    /// accessors, placed after frame.wgsl in the lit shader.
-    ///
-    /// Both tiers hold the same bytes: the lights as [`MAX_LIGHTS`] records
-    /// of four vec4s, the table as one word per cluster (the first
-    /// reference, 24 bits, and the count, 8 bits), the references one byte
-    /// each, four to a word. The storage buffers declare them as they are
-    /// and index the word. A uniform array's element is 16 bytes, so on
-    /// WebGL2 the table and the references are vec4s of four words and the
-    /// lights flat vec4s, each array the one member of a struct. ANGLE's
-    /// D3D11 backend (Chrome and Edge on Windows) is why
-    /// (`tests/evidence/release/windows-x64-webgl2/NOTES.md`):
-    /// - it writes a `dyn_index_*` helper for each `v[i]` of uniform data,
-    ///   which FXC refuses as a redefinition (X3003): `lane` picks a word of
-    ///   a vec4 with masks instead;
-    /// - a light record read whole from a uniform array of structs made FXC
-    ///   compile the lit shader for 130 s: `light_at` reads four vec4s;
-    /// - a block holding only an array of 50 or more elements becomes a D3D
-    ///   StructuredBuffer, bound after the shader's textures; with the lit
-    ///   shader's fifteen, Chrome's GPU process crashed binding them at the
-    ///   first lit draws (`StateManager11::setShaderResourceInternal`). In a
-    ///   struct the array stays in a constant buffer, as area.wgsl's LTC
-    ///   table, lightmap.rs's probes and terrain.wgsl's tile table are.
-    pub fn wgsl(self) -> String {
-        let decls = match self {
-            LightTables::Storage => format!(
-                "@group(0) @binding(7) var<storage, read> light_list: array<LocalLight, {lights}>;
+/// The WGSL declaring the light tables' read-only storage buffers (group 0,
+/// bindings 7 to 9) and their accessors, placed after frame.wgsl in the lit
+/// shader: the lights as [`MAX_LIGHTS`] records of four vec4s, the table as
+/// one word per cluster (the first reference, 24 bits, and the count, 8
+/// bits), the references one byte each, four to a word.
+pub(crate) fn wgsl() -> String {
+    let decls = format!(
+        "@group(0) @binding(7) var<storage, read> light_list: array<LocalLight, {lights}>;
 @group(0) @binding(8) var<storage, read> cluster_table: array<u32, {table}>;
 @group(0) @binding(9) var<storage, read> cluster_refs: array<u32, {refs}>;
 
@@ -116,46 +73,12 @@ fn cluster_ref(j: u32) -> u32 {{
   return (cluster_refs[j >> 2u] >> ((j & 3u) * 8u)) & 255u;
 }}
 ",
-                lights = MAX_LIGHTS,
-                table = CLUSTERS,
-                refs = self.ref_capacity() / 4,
-            ),
-            LightTables::Uniform => format!(
-                "struct LightWords {{ v: array<vec4<f32>, {lights}> }};
-struct ClusterTableWords {{ v: array<vec4<u32>, {table}> }};
-struct ClusterRefWords {{ v: array<vec4<u32>, {refs}> }};
-@group(0) @binding(7) var<uniform> light_list: LightWords;
-@group(0) @binding(8) var<uniform> cluster_table: ClusterTableWords;
-@group(0) @binding(9) var<uniform> cluster_refs: ClusterRefWords;
-
-fn light_at(i: u32) -> LocalLight {{
-  let b = i * 4u;
-  return LocalLight(light_list.v[b], light_list.v[b + 1u], light_list.v[b + 2u], light_list.v[b + 3u]);
-}}
-
-// Word `k` (0 to 3) of `v`, chosen with masks rather than `v[k]`.
-fn lane(v: vec4<u32>, k: u32) -> u32 {{
-  let odd = 0u - (k & 1u);
-  let lo = v.x ^ ((v.x ^ v.y) & odd);
-  let hi = v.z ^ ((v.z ^ v.w) & odd);
-  return lo ^ ((lo ^ hi) & (0u - (k >> 1u)));
-}}
-
-fn cluster_word(c: u32) -> u32 {{
-  return lane(cluster_table.v[c >> 2u], c & 3u);
-}}
-
-fn cluster_ref(j: u32) -> u32 {{
-  return (lane(cluster_refs.v[j >> 4u], (j >> 2u) & 3u) >> ((j & 3u) * 8u)) & 255u;
-}}
-",
-                lights = MAX_LIGHTS * 4,
-                table = CLUSTERS / 4,
-                refs = self.ref_capacity() / 16,
-            ),
-        };
-        format!(
-            "// The local lights and their clusters (clusters.rs).
+        lights = MAX_LIGHTS,
+        table = CLUSTERS,
+        refs = LIGHT_REFS / 4,
+    );
+    format!(
+        "// The local lights and their clusters (clusters.rs).
 const CLUSTER_X: u32 = {gx}u;
 const CLUSTER_Y: u32 = {gy}u;
 const CLUSTER_Z: u32 = {gz}u;
@@ -191,47 +114,39 @@ fn cluster_at(frag: vec2<f32>, p: vec3<f32>) -> u32 {{
   return (z * CLUSTER_Y + y) * CLUSTER_X + x;
 }}
 ",
-            gx = CLUSTER_GRID[0],
-            gy = CLUSTER_GRID[1],
-            gz = CLUSTER_GRID[2],
-        )
-    }
+        gx = CLUSTER_GRID[0],
+        gy = CLUSTER_GRID[1],
+        gz = CLUSTER_GRID[2],
+    )
+}
 
-    /// The frame layout's entries for the three buffers.
-    pub fn layout_entries(self) -> [wgpu::BindGroupLayoutEntry; 3] {
-        let ty = match self {
-            LightTables::Storage => wgpu::BufferBindingType::Storage { read_only: true },
-            LightTables::Uniform => wgpu::BufferBindingType::Uniform,
-        };
-        [7, 8, 9].map(|binding| wgpu::BindGroupLayoutEntry {
-            binding,
-            visibility: wgpu::ShaderStages::FRAGMENT,
-            ty: wgpu::BindingType::Buffer {
-                ty,
-                has_dynamic_offset: false,
-                min_binding_size: None,
-            },
-            count: None,
-        })
-    }
+/// The frame layout's entries for the three buffers.
+pub(crate) fn layout_entries() -> [wgpu::BindGroupLayoutEntry; 3] {
+    [7, 8, 9].map(|binding| wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::FRAGMENT,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage { read_only: true },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    })
+}
 
-    /// The three buffers, at their fixed sizes.
-    pub fn buffers(self, device: &wgpu::Device) -> [wgpu::Buffer; 3] {
-        let usage = match self {
-            LightTables::Storage => wgpu::BufferUsages::STORAGE,
-            LightTables::Uniform => wgpu::BufferUsages::UNIFORM,
-        } | wgpu::BufferUsages::COPY_DST;
-        let labels = ["lights", "cluster table", "cluster lights"];
-        let sizes = self.sizes();
-        [0, 1, 2].map(|i| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(labels[i]),
-                size: sizes[i],
-                usage,
-                mapped_at_creation: false,
-            })
+/// The three buffers, at their fixed sizes.
+pub(crate) fn buffers(device: &wgpu::Device) -> [wgpu::Buffer; 3] {
+    let usage = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
+    let labels = ["lights", "cluster table", "cluster lights"];
+    let sizes = sizes();
+    [0, 1, 2].map(|i| {
+        device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some(labels[i]),
+            size: sizes[i],
+            usage,
+            mapped_at_creation: false,
         })
-    }
+    })
 }
 
 /// What the camera looks like to the cluster build.
@@ -286,28 +201,21 @@ pub(crate) fn importance(light: &Light, eye: Vec3) -> f32 {
 }
 
 impl ClusterBuilder {
-    /// Assigns the lights to clusters; `capacity` is the tier's reference
-    /// capacity ([`LightTables::ref_capacity`]).
-    pub fn build(&mut self, lights: &[Light], view: &ClusterView, capacity: usize) {
+    /// Assigns the lights to clusters.
+    pub fn build(&mut self, lights: &[Light], view: &ClusterView) {
         self.stats = ClusterStats::default();
         self.select(lights, view);
-        self.assign(lights, view, capacity);
+        self.assign(lights, view);
     }
 
     /// Assigns `kept` (another view's [`ClusterBuilder::kept`], whose light
     /// records are shared) to this view's clusters: the planar reflection's
     /// mirrored camera shades the main view's lights.
-    pub fn build_kept(
-        &mut self,
-        lights: &[Light],
-        kept: &[usize],
-        view: &ClusterView,
-        capacity: usize,
-    ) {
+    pub fn build_kept(&mut self, lights: &[Light], kept: &[usize], view: &ClusterView) {
         self.stats = ClusterStats::default();
         self.kept.clear();
         self.kept.extend_from_slice(kept);
-        self.assign(lights, view, capacity);
+        self.assign(lights, view);
     }
 
     /// The visible lights, then the most important [`MAX_LIGHTS`] of them.
@@ -348,7 +256,7 @@ impl ClusterBuilder {
     }
 
     /// The kept lights' clusters, capped, in the tables.
-    fn assign(&mut self, lights: &[Light], view: &ClusterView, capacity: usize) {
+    fn assign(&mut self, lights: &[Light], view: &ClusterView) {
         let near = view.near.max(1e-4);
         let far = view.far.max(near * 1.0001);
         let gz = CLUSTER_GRID[2] as f32;
@@ -379,21 +287,8 @@ impl ClusterBuilder {
         for b in &self.boxes {
             for_each_cluster(b, |c| self.total[c] += 1);
         }
-        let mut cap = MAX_CLUSTER_LIGHTS as u32;
-        let sum = |k: u32, total: &[u32]| total.iter().map(|&t| t.min(k) as usize).sum::<usize>();
-        if sum(cap, &self.total) > capacity {
-            // The largest per-cluster cap that fits the tier's capacity.
-            let (mut lo, mut hi) = (0u32, cap);
-            while lo < hi {
-                let mid = (lo + hi).div_ceil(2);
-                if sum(mid, &self.total) <= capacity {
-                    lo = mid;
-                } else {
-                    hi = mid - 1;
-                }
-            }
-            cap = lo;
-        }
+        // Every cluster at its cap fits the references' buffer (LIGHT_REFS).
+        let cap = MAX_CLUSTER_LIGHTS as u32;
         self.count.clear();
         self.count.extend(self.total.iter().map(|&t| t.min(cap)));
         let overflow = self.total.iter().any(|&t| t > cap);

@@ -14,9 +14,8 @@
 //! [`crate::TargetFormat::Rgba16Float`] as linear radiance, the depth
 //! texture as the normalised linear view depth. The depth comes from a
 //! prepass of the view's opaque meshes into a linear-depth colour target
-//! (as the main prepass's `lindepth`), never from its depth buffer: GLSL ES
-//! 3.0 cannot load a depth buffer, multisampled least of all, so this one
-//! path draws the depth on every tier, WebGL2 included. A viewport view resolves
+//! (as the main prepass's `lindepth`), never from its depth buffer, so a
+//! multisampled view reads the same single depth as any other. A viewport view resolves
 //! into its rect of the output after the frame's post chain, under the
 //! lines and the overlay.
 //!
@@ -458,7 +457,7 @@ pub(crate) struct ViewGlow {
     pub levels: Vec<wgpu::TextureView>,
     /// Each level's `[intensity, radius, width, height]` (views_glow.wgsl's
     /// `GlowChain`), the size the level's own, not its view's
-    /// textureDimensions (wrong on WebGL2 on Windows).
+    /// textureDimensions.
     uniforms: Vec<wgpu::Buffer>,
     /// Each level as the source of a pass (its group).
     groups: Vec<wgpu::BindGroup>,
@@ -502,7 +501,6 @@ impl Views {
     pub fn slot(
         &mut self,
         device: &wgpu::Device,
-        tables: crate::clusters::LightTables,
         index: usize,
         size: (u32, u32),
         samples: u32,
@@ -534,7 +532,7 @@ impl Views {
             ViewSlot {
                 frame_buffer: buffer("view frame", frame_bytes),
                 fx_buffer: buffer("view fx", fx_bytes),
-                light_buffers: tables.buffers(device),
+                light_buffers: crate::clusters::buffers(device),
                 clusters: Default::default(),
                 resolve_buffer: buffer(
                     "view resolve",
@@ -654,7 +652,7 @@ impl Views {
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        (tables, samples): (crate::clusters::LightTables, u32),
+        samples: u32,
         kept: &[usize],
         scene: &crate::RenderScene,
         plans: &[ViewPlan],
@@ -677,7 +675,6 @@ impl Views {
             let depth_drawn = soft || matches!(p.dest, Dest::Texture { depth: Some(_), .. });
             let slot = self.slot(
                 device,
-                tables,
                 p.index,
                 p.size,
                 samples,
@@ -698,7 +695,6 @@ impl Views {
                     width: p.size.0,
                     height: p.size.1,
                 },
-                tables.ref_capacity(),
             );
             if lights {
                 queue.write_buffer(

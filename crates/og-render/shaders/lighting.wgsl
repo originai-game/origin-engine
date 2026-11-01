@@ -1,6 +1,6 @@
 // Lighting shared by the lit passes (pbr.wgsl, terrain.wgsl, water.wgsl):
 // the GGX BRDF, the directional light's cascaded shadows and the local
-// lights' shadows, read with explicit compares (the WebGL2-safe path).
+// lights' shadows, read with explicit compares.
 // Prepended after frame.wgsl.
 
 const PI: f32 = 3.14159265359;
@@ -31,8 +31,7 @@ fn f_schlick_roughness(cos_theta: f32, f0: vec3<f32>, roughness: f32) -> vec3<f3
 // the sample compared explicitly (ref <= stored means lit) and blended by the
 // sample's position between them, as a hardware comparison sampler with
 // linear filtering would, so edges ramp over one texel instead of stepping.
-// textureLoad and explicit compares give the same result on every backend
-// (WebGL2 can neither filter a depth texture nor gather).
+// textureLoad and explicit compares give the same result on every backend.
 fn pcf(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f32) -> f32 {
   let size = vec2<i32>(textureDimensions(map));
   let p = uv * vec2<f32>(size) - 0.5;
@@ -63,7 +62,7 @@ fn cascade_index(p: vec3<f32>) -> u32 {
 // (softness × the distance from blocker to receiver, in texels). A
 // Vogel disc spreads the taps; a slope term keeps the wide kernel off a
 // receiver tilted from the light. Every read is a textureLoad compare, as
-// pcf's, so WebGL2 draws it too.
+// pcf's.
 const PCSS_TAPS: i32 = 16;
 const PCSS_MAX_TEXELS: f32 = 24.0;
 

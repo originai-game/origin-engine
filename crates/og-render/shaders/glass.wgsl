@@ -11,9 +11,7 @@
 struct GlassParams {
   // x: 1 to decode sRGB from the source; zw: the source's size in pixels.
   // Not textureDimensions: a level is sampled through its view's base mip
-  // level, and ANGLE on D3D11 (WebGL2 on Windows) answers textureSize with
-  // base level b as level 2b's size, which widened every level from the
-  // third on.
+  // level, and the size of the level is what the pass needs.
   params: vec4<f32>,
 };
 @group(0) @binding(2) var<uniform> glass: GlassParams;

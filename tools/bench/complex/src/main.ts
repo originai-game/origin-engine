@@ -15,10 +15,9 @@
 //   villagers on kestrel-stair's clip library), each on its own clip,
 //   speed and phase;
 // - the sun with three 2048 cascades over 120 m, two shadowed spot lights
-//   and two shadowed point lights (cube shadows on both tiers);
+//   and two shadowed point lights (cube shadows);
 // - 20 particle emitters (4 fires, 16 smokes), the sky and its IBL;
-// - post: AO (GTAO on WebGPU, SSAO on WebGL2: the tier's), bloom, ACES,
-//   and the tier's antialiasing (TAA on WebGPU, MSAA 4x on WebGL2).
+// - post: AO (GTAO), bloom, ACES and TAA.
 //
 // Every model is drawn at its full mesh (RenderSettings.lodBias 0), since
 // three.js has no levels of detail. Nothing reads the wall clock: the

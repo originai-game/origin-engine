@@ -3,9 +3,9 @@
 // with animated normals from a sum of travelling waves, colour by depth
 // (shallow to deep over depthFade, from the depth prepass), foam where the
 // water meets geometry, refraction of a copy of the scene drawn so far,
-// and reflection: screen-space on the full tier (a march through the
-// depth prepass), the sky's prefiltered cubemap where it misses and on
-// WebGL2, or the planar reflection pass's mirrored scene. Phase 2: the
+// and reflection: screen-space (a march through the depth prepass), the
+// sky's prefiltered cubemap where it misses, or the planar reflection
+// pass's mirrored scene. Phase 2: the
 // directional light's shadows on the surface, and the view from below
 // (what is above inside Snell's window, the water's colour reflected
 // outside it). Drawn after the opaque scene and the sky, before

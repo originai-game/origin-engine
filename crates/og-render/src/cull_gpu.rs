@@ -1,8 +1,9 @@
-//! GPU-driven culling on the full tier: the frustum and occlusion tests,
+//! GPU-driven culling: the frustum and occlusion tests,
 //! the compaction of the visible instances and the draws' instance counts
 //! run in compute, and every mesh pass submits indexed indirect draws. The
-//! CPU path ([`crate::Renderer::cull`]) stays for WebGL2 and for frames
-//! this cannot take (object motion blur, buffers over the device limits).
+//! CPU path ([`crate::Renderer::cull`]) stays for small frames
+//! ([`crate::Culling::Auto`]), [`crate::Culling::Cpu`] and for frames this
+//! cannot take (object motion blur, buffers over the device limits).
 //!
 //! Per frame: the sorted instances are uploaded once (region 0 of
 //! `instances`); stage A tests them against every shadow face, the planar

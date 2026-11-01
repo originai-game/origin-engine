@@ -12,7 +12,7 @@ export function og_web_init(): void {}
 export function og_web_set_viewport(_engine: number, _viewport: string): string {
   return "";
 }
-export async function og_web_attach_canvas(_engine: number, _canvas: unknown, _webgl: boolean): Promise<string> {
+export async function og_web_attach_canvas(_engine: number, _canvas: unknown): Promise<string> {
   return "none";
 }
 // The trace (src/web/worker.ts `trace`): the wasm's og_web_trace and

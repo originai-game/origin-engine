@@ -3,7 +3,6 @@
 // renders a few frames and posts what it saw to the harness.
 import { Shell } from "../../src/web/shell.ts";
 
-const params = new URLSearchParams(location.search);
 const post = (body: unknown) => fetch("/result", { method: "POST", body: JSON.stringify(body) });
 
 try {
@@ -14,7 +13,6 @@ try {
     worker,
     glue: "/web/origin-engine.js",
     wasm: "/web/origin-engine_bg.wasm",
-    webgl: params.get("webgl") === "1",
     autoplay: false,
   });
   const t0 = performance.now();

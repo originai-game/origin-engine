@@ -34,7 +34,7 @@ needed: no Rust, no checkout. Windows and linux-arm64 have no prebuilt
 
 A game is a TypeScript package against `@origingame/engine`. The engine owns
 the world (an ECS with reflected components), a fixed deterministic tick, the
-renderer (WebGPU, WebGL2 fallback), animation, physics, navigation, audio,
+renderer (WebGPU), animation, physics, navigation, audio,
 UI, the asset cook and the probe. Game code declares components and systems
 and reads the world through typed views over engine memory, so per-frame work
 stays inside the engine. The same engine builds as `origin-engine.wasm` for

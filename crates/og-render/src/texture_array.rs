@@ -2,9 +2,7 @@
 //! size, encoding and mip count uploaded as one `D2Array` texture (og-cook's
 //! `type texture-array`). RGBA8 layers get a box-filtered mip chain made
 //! here (deterministic, the same on every backend); encoded layers bring
-//! their own levels. On WebGL2 an array of one layer, or of a multiple of
-//! six, would be taken for a 2D or cube texture, so such an array is
-//! padded with copies of its last layer ([`crate::gl_safe_array_layers`]).
+//! their own levels.
 //!
 //! [`RenderScene::add_texture_array`]: crate::RenderScene::add_texture_array
 
@@ -24,10 +22,8 @@ pub struct TextureArrayData {
 pub struct TextureArrayInfo {
     pub width: u32,
     pub height: u32,
-    /// The layers asked for (the GPU texture may hold padding past them).
+    /// The layers, as many as the GPU texture holds.
     pub layers: u32,
-    /// Layers of the GPU texture.
-    pub gpu_layers: u32,
     pub levels: u32,
     pub format: TextureFormat,
     pub color_space: ColorSpace,
@@ -102,7 +98,6 @@ impl TextureArrayData {
             return Err("a texture array's layers have no texels".into());
         }
         let layers = self.layers.len() as u32;
-        let gpu_layers = crate::gl_safe_array_layers(layers);
         let per_layer: u64 = (0..levels)
             .map(|l| format.level_bytes(width, height, l) as u64)
             .sum();
@@ -110,18 +105,17 @@ impl TextureArrayData {
             width,
             height,
             layers,
-            gpu_layers,
             levels,
             format,
             color_space,
-            bytes: per_layer * u64::from(gpu_layers),
+            bytes: per_layer * u64::from(layers),
         })
     }
 
-    /// Every level of every GPU layer, layer after layer (wgpu's
-    /// `TextureDataOrder::LayerMajor`), padding layers included.
+    /// Every level of every layer, layer after layer (wgpu's
+    /// `TextureDataOrder::LayerMajor`).
     pub(crate) fn texels(&self, info: &TextureArrayInfo) -> Vec<u8> {
-        let mut per_layer: Vec<Vec<u8>> = self
+        let per_layer: Vec<Vec<u8>> = self
             .layers
             .iter()
             .map(|l| match l {
@@ -138,8 +132,6 @@ impl TextureArrayData {
                 }
             })
             .collect();
-        let last = per_layer.last().cloned().unwrap_or_default();
-        per_layer.resize(info.gpu_layers as usize, last);
         per_layer.concat()
     }
 }
@@ -194,7 +186,7 @@ pub(crate) fn upload(
             size: wgpu::Extent3d {
                 width: info.width,
                 height: info.height,
-                depth_or_array_layers: info.gpu_layers,
+                depth_or_array_layers: info.layers,
             },
             mip_level_count: info.levels,
             sample_count: 1,
@@ -231,21 +223,21 @@ mod tests {
     }
 
     #[test]
-    fn layers_must_agree_and_awkward_counts_are_padded() {
+    fn layers_must_agree() {
         let ok = TextureArrayData {
             layers: (0..6).map(|i| layer(i * 40, 8, 4)).collect(),
         };
         let info = ok.info().unwrap();
-        assert_eq!((info.layers, info.gpu_layers, info.levels), (6, 7, 4));
+        assert_eq!((info.layers, info.levels), (6, 4));
         let texels = ok.texels(&info);
         let per = (8 * 4 + 4 * 2 + 2 + 1) * 4;
-        assert_eq!(texels.len(), per * 7);
-        assert_eq!(texels[per * 6], 200, "the padding repeats the last layer");
-        assert_eq!(info.bytes, (per * 7) as u64);
+        assert_eq!(texels.len(), per * 6);
+        assert_eq!(texels[per * 5], 200, "the last layer last");
+        assert_eq!(info.bytes, (per * 6) as u64);
         let one = TextureArrayData {
             layers: vec![layer(1, 4, 4)],
         };
-        assert_eq!(one.info().unwrap().gpu_layers, 2);
+        assert_eq!(one.info().unwrap().layers, 1);
         let mixed = TextureArrayData {
             layers: vec![layer(1, 4, 4), layer(1, 8, 4)],
         };

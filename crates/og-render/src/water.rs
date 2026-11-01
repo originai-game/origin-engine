@@ -5,8 +5,8 @@
 //! normals, colour by the depth of water below (from the depth prepass,
 //! which a frame with water always runs), foam where it meets geometry and
 //! on steep crests, refraction of a copy of the scene drawn so far, and
-//! reflection: a march through the depth prepass on the full tier, the
-//! sky's prefiltered cubemap where that misses and everywhere on WebGL2.
+//! reflection: a march through the depth prepass, the sky's prefiltered
+//! cubemap where that misses.
 //!
 //! Phase 2 adds, each off by default: a **planar reflection** (the scene
 //! drawn again from the camera mirrored in the surface, clipped at the
@@ -473,7 +473,6 @@ impl WaterRenderer {
         queue: &wgpu::Queue,
         waters: &[Water],
         screen: (u32, u32),
-        ssr: bool,
         scene_color: &wgpu::TextureView,
         scene_depth: &wgpu::TextureView,
         planar: &[(usize, &wgpu::TextureView)],
@@ -549,7 +548,8 @@ impl WaterRenderer {
                 ],
                 look: [
                     water.reflectivity.max(0.0),
-                    f32::from(ssr),
+                    // The screen-space march on (water.wgsl).
+                    1.0,
                     field.map_or(1.0, |f| f.size),
                     field.map_or(2.0, |f| f.resolution as f32),
                 ],
@@ -575,8 +575,8 @@ impl WaterRenderer {
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
             // A probe face has no planar reflection of its own (that would be
             // a mirrored pass per face); its screen-space reflection marches
-            // the face's own depth prepass and copy, as the frame's does
-            // (full tier), mirroring what the probe sees from its point.
+            // the face's own depth prepass and copy, as the frame's does,
+            // mirroring what the probe sees from its point.
             slot.face = gpu;
             slot.face.extra[1] = 0.0;
             let heights = match (&slot.heights, field) {
@@ -645,7 +645,7 @@ impl WaterRenderer {
     /// size `size` draw them (after [`WaterRenderer::prepare`]): through
     /// `below`, the copy of the face drawn so far, and over `scene_depth`,
     /// the face's depth prepass, so the face refracts what lies below,
-    /// foams at the edges and (full tier) reflects the face in screen
+    /// foams at the edges and reflects the face in screen
     /// space as the frame does; without the planar reflection.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn face_draws<'a>(

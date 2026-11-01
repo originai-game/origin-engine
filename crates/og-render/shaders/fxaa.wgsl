@@ -1,5 +1,5 @@
 // FXAA (Timothy Lottes' FXAA 3.11, its quality path) over the tonemapped
-// image: `Antialias::Fxaa`, and `Tier`/`Msaa4` where the HDR target cannot be
+// image: `Antialias::Fxaa`, and `Msaa4` where the HDR target cannot be
 // multisampled. A pixel whose 4-neighbourhood's perceptual luma range is
 // below the threshold is copied as it is; on an edge, the edge's direction
 // and its two ends are searched (eight steps each way, widening), and the

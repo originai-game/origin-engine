@@ -1,5 +1,5 @@
 // The design §7 comparison with three.js, in headless Chrome for Testing:
-// the same scenes in the engine (WebGPU and the WebGL2 fallback) and in
+// the same scenes in the engine (WebGPU, its only web tier) and in
 // three.js 0.180 (WebGLRenderer; WebGPURenderer for the sphere field), on a
 // 1280×720 canvas at DPR 1 with vsync and the frame-rate limit off.
 //
@@ -9,7 +9,7 @@
 //
 // Scenes:
 // - complex: tools/bench/complex, the scene that judges §7's 1.5x budget
-//   (WebGPU the primary tier, WebGL2 reported): a product-scale level of a
+//   (on WebGPU, design §7): a product-scale level of a
 //   320 m textured ground with a lake, 5,261 props from 19 models in 60
 //   materials, 48 skinned characters on 14 clips, the sun's cascades and
 //   four shadowed local lights, 20 particle emitters, blended water, glass
@@ -79,7 +79,7 @@ const ROUNDS = Number(opt("--rounds", "2"));
 const ONLY = opt("--only", "");
 /** --shots: only the screenshots (no timing). */
 const SHOTS_ONLY = argv.includes("--shots");
-/** --mode <text>: only the modes whose name contains it (e.g. `engine`, `WebGL2`). */
+/** --mode <text>: only the modes whose name contains it (e.g. `engine`, `three WebGPU`). */
 const MODE = opt("--mode", "");
 /** --shot-frames N, --shot-wait S: frames played before a screenshot (120) and how long to wait for it (30 s); fewer and longer on a CPU-only machine. */
 const SHOT_FRAMES = Number(opt("--shot-frames", "120"));
@@ -87,7 +87,7 @@ const SHOT_WAIT = Number(opt("--shot-wait", "30"));
 const W = 1280, H = 720;
 mkdirSync(out, { recursive: true });
 const chrome = chromePath(argv.includes("--chrome") ? ["--chrome", opt("--chrome", "")] : []);
-/** BENCH_CHROME_FLAGS: more Chrome flags (an orb without a GPU: `--use-angle=gl-egl`, llvmpipe's GL, since SwiftShader refuses the engine's msdf-text shader on WebGL2). */
+/** BENCH_CHROME_FLAGS: more Chrome flags (an orb without a GPU: `--use-angle=gl-egl`, llvmpipe's GL, for three.js's WebGLRenderer). */
 const extraFlags = (process.env.BENCH_CHROME_FLAGS ?? "").split(" ").filter(Boolean);
 
 const SCENES = {
@@ -107,16 +107,13 @@ interface Mode {
 }
 const MODES: Mode[] = [
   { scene: "complex", name: "engine WebGPU", side: "engine", query: "" },
-  { scene: "complex", name: "engine WebGL2", side: "engine", query: "?webgl=1" },
   { scene: "complex", name: "three WebGL2, InstancedMesh per tile", side: "three", query: "?scene=complex" },
   { scene: "complex", name: "three WebGL2, InstancedMesh per part", side: "three", query: "?scene=complex&tiles=0" },
   { scene: "complex", name: "three WebGPU, InstancedMesh per tile", side: "three", query: "?scene=complex&webgpu=1" },
   { scene: "reference", name: "engine WebGPU", side: "engine", query: "" },
-  { scene: "reference", name: "engine WebGL2", side: "engine", query: "?webgl=1" },
   { scene: "reference", name: "three WebGL2, InstancedMesh", side: "three", query: "?scene=reference" },
   { scene: "reference", name: "three WebGL2, one Mesh each", side: "three", query: "?scene=reference&naive=1" },
   { scene: "spheres", name: "engine WebGPU", side: "engine", query: "" },
-  { scene: "spheres", name: "engine WebGL2", side: "engine", query: "?webgl=1" },
   { scene: "spheres", name: "three WebGL2, InstancedMesh", side: "three", query: "?scene=spheres" },
   { scene: "spheres", name: "three WebGL2, one Mesh each", side: "three", query: "?scene=spheres&naive=1" },
   { scene: "spheres", name: "three WebGPU, InstancedMesh", side: "three", query: "?scene=spheres&webgpu=1" },

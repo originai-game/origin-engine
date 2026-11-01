@@ -1,5 +1,5 @@
 //! `og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N]
-//! [--port P] [--out DIR] [--size WxH] [--headed] [--webgl] [--chrome <path>]
+//! [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>]
 //! [--cert <pem> --key <pem>] [--host <ip>] [--json]`
 //!
 //! The game on a real browser: cooks, exports the publish build into

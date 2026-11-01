@@ -22,7 +22,8 @@ use std::path::{Path, PathBuf};
 /// The `.ogt` type of a texture array.
 pub const ARRAY_TYPE: &str = "texture-array";
 
-/// The most layers an array holds (WebGL2's guaranteed minimum is 256).
+/// The most layers an array holds (WebGPU's guaranteed
+/// `maxTextureArrayLayers` is 256).
 pub const MAX_LAYERS: usize = 256;
 
 /// A parsed texture array file: its kind and its layers' files.

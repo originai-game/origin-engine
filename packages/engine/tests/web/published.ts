@@ -10,7 +10,7 @@
 // publish build has no command channel (og-build §6), so a step that is
 // not input or a capture is refused, never skipped.
 //
-//   bun tests/web/published.ts --project examples/hollowbell [--webgl] [--no-build] [--no-isolation]
+//   bun tests/web/published.ts --project examples/hollowbell [--no-build] [--no-isolation]
 //       [--script "<steps>" [--then "<steps>"] | --playtest <file>] [--title <node>]
 //       [--references <dir>] [--prefix <name prefix>]
 //       [--out <dir>] [--chrome <path>]
@@ -86,8 +86,7 @@ const repo = join(pkg, "..", "..");
 const projectRel = opt("--project") ?? "examples/hollowbell";
 const project = join(repo, projectRel);
 const id = projectRel.split("/").pop()!;
-const webgl = args.includes("--webgl");
-const tier = webgl ? "webgl2" : "webgpu";
+const tier = "webgpu";
 const isolated = !args.includes("--no-isolation");
 const work = resolve(opt("--out") ?? join(pkg, "dist", "published"));
 const out = join(work, id, `${tier}${isolated ? "" : "-single"}`);
@@ -625,7 +624,7 @@ try {
       engine = session;
     }
   });
-  await launch(0, () => page!.send("Page.navigate", { url: origin.url(webgl ? "?webgl=1" : "") }));
+  await launch(0, () => page!.send("Page.navigate", { url: origin.url() }));
 
   // ── 3. the script, then each relaunch's ────────────────────────────
   const ran: Array<{ launch: number; step: string; tick: number }> = [];

@@ -5,7 +5,7 @@ The measurement pages and scripts from the spike (`docs/spike-results.md`).
 - `threejs-compare.ts` — the design §7 comparison of the engine itself with three.js 0.180 in headless Chrome for Testing:
   the complex scene (`complex/` against `three-complex.js`; the judge of the 1.5× budget, below), the §7 reference
   scene (`crates/og-tests/reference-scene` against `three-reference.js`) and a 20,000-sphere per-object field
-  (`spheres/` against `three-spheres.js`), engine on WebGPU and WebGL2 (`engine.page.ts`), three on WebGL2
+  (`spheres/` against `three-spheres.js`), engine on WebGPU (`engine.page.ts`), three on WebGL2
   (and WebGPU for the complex scene and the instanced spheres); `--shots` for screenshots of both sides;
   `BENCH_CHROME_FLAGS` adds Chrome flags (`--use-angle=gl-egl` in an orb without a GPU). Results:
   `tests/evidence/P4/web-host-tools/threejs-comparison.md`.
@@ -23,8 +23,8 @@ Models for `compare.html` are the ones in `crates/og-tests/models/`; copy or sym
 ## The complex scene and how three.js is matched
 
 `complex/` is the scene that judges docs/design.md §7's 1.5× budget (the
-owner's decision of 2026-10-25): WebGPU is the primary tier, WebGL2 is
-reported beside it, and the §7 reference scene stays a reported secondary.
+owner's decision of 2026-10-25), on WebGPU, the engine's only web tier
+(2026-11-01); the §7 reference scene stays a reported secondary.
 It is a level at the size of a shipped Discover game, not a stress field:
 
 | | count |
@@ -36,7 +36,7 @@ It is a level at the size of a shipped Discover game, not a stress field:
 | skinned characters | 48 on two models: 24 walkers (12 joints, five clips) and 24 villagers (21 joints, nine clips of examples/kestrel-stair's library), each on its own clip, speed and phase |
 | lights | the sun with three 2048 cascades over 120 m; two spot and two point lights, all four shadowed (512 maps, cube faces for the points) |
 | particles | 20 emitters (4 fires, added; 16 smokes, blended), at most 64 particles each |
-| post | AO, bloom, ACES; the tier's antialiasing |
+| post | AO, bloom, ACES; TAA |
 
 Everything stands where `complex/src/layout.js` puts it, from a seeded hash
 and no clock; the engine's `src/main.ts` and `three-complex.js` both read
@@ -58,18 +58,18 @@ Two runs of 120 ticks hash the same (`og run tools/bench/complex
 | skinned characters | `og.Skeleton` + `og.AnimationPlayer` | `SkeletonUtils.clone`, a `SkinnedMesh` and an `AnimationMixer` each | the same models, clips, speeds and phases |
 | sun shadows | three cascades of 2048 over 120 m | `CSM` (WebGL2) and `CSMShadowNode` (WebGPU): three cascades of 2048, practical split, over 120 m | the same count, size and distance |
 | local lights | 2 spot, 2 point, all shadowed, clustered (forward+) | 2 `SpotLight`, 2 `PointLight`, all shadowed (512, cube) | the same lights and shadow maps; three shades every light in every fragment where the engine culls them per cluster, which is the engine's design and is counted as its advantage, as on the reference scene |
-| particles | `og.ParticleSystem` of `fx/fire.ogt` and `fx/smoke.ogt` (GPU on WebGPU, CPU on WebGL2) | the same emitters from the same table (`layout.js` `FX`), simulated on the CPU, one instanced billboard draw per blend mode | the same emitters, rates, lifetimes and blend modes; three has no particle system, so its simulation is the simplest one (no noise, no soft particles, which the emitters do not ask for) |
+| particles | `og.ParticleSystem` of `fx/fire.ogt` and `fx/smoke.ogt`, simulated on the GPU | the same emitters from the same table (`layout.js` `FX`), simulated on the CPU, one instanced billboard draw per blend mode | the same emitters, rates, lifetimes and blend modes; three has no particle system, so its simulation is the simplest one (no noise, no soft particles, which the emitters do not ask for) |
 | transparency | blended materials sorted back to front | `transparent` materials sorted back to front | the same materials |
 | sky and IBL | `RenderSettings.sky` (the built-in analytic sky), `environmentIntensity` 0.55 | the same analytic sky (`fs_sky` of `crates/og-render/shaders/ibl.wgsl`: zenith, horizon, ground, the sun's glow and disc, × 1.1) drawn once into a 512×256 half-float equirect, prefiltered by `PMREMGenerator`, `scene.environmentIntensity` 0.55, the same texture as background | the same sky at the same strength; three's `Sky` (the first run) is a much brighter atmosphere, under which the sun's shadows washed out |
 | shadow sampling | depth-only shadow maps | WebGL2: depth maps; WebGPU: three 0.180's `ShadowNode` also samples a colour map per shadowed light (the tint of transparent casters), which is dropped (below) | one filtered depth test per shadow map on all three |
-| AO | GTAO on WebGPU, SSAO on WebGL2 (the tier's) | `GTAOPass` (WebGL2), `GTAONode` (WebGPU) | three runs GTAO on both tiers, the costlier choice on WebGL2 |
+| AO | GTAO | `GTAOPass` (WebGL2), `GTAONode` (WebGPU) | GTAO on every side |
 | bloom | the engine's | `UnrealBloomPass` (WebGL2), `BloomNode` (WebGPU), strength 0.25 | one pass each |
 | tone mapping | ACES | ACES (`OutputPass` or the renderer's) | the same curve |
-| antialiasing | WebGPU: TAA; WebGL2: MSAA 4× (the tier's) | WebGL2: SMAA; WebGPU: `TRAANode` | WebGPU: temporal on both sides. WebGL2: three's TAARenderPass re-renders the scene per sample and would not be the same work, so three takes SMAA, a post pass cheaper than the engine's MSAA 4× |
+| antialiasing | TAA | WebGL2: SMAA; WebGPU: `TRAANode` | three WebGPU: temporal on both sides. three WebGL2: its TAARenderPass re-renders the scene per sample and would not be the same work, so it takes SMAA, one post pass |
 | frame | `frame` call: one 1/60 s tick and one render | one `requestAnimationFrame`, the simulation advanced 1/60 s | as for the other scenes (header of `threejs-compare.ts`) |
 
 Where the two cannot be the same, the choice goes to three: SMAA instead of
-MSAA on WebGL2, the per-tile `InstancedMesh` that three's culling needs
+temporal antialiasing on its WebGL2 renderer, the per-tile `InstancedMesh` that three's culling needs
 (reported beside the per-part one), no levels of detail on the engine side,
 and a particle simulation with less work than the engine's. Clustered lights
 are the engine's design, not a setting it could turn off; with four local

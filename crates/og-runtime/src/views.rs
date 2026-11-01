@@ -115,8 +115,8 @@ fn max_target_size(rs: &RenderState) -> u32 {
 
 /// RenderCapabilities' members of this module.
 pub(crate) fn capabilities(rs: &RenderState) -> Value {
-    // Every tier draws a target's depth (og-render views.rs: from the
-    // view's linear depth prepass, which WebGL2 reads too).
+    // Every renderer draws a target's depth (og-render views.rs: from the
+    // view's linear depth prepass).
     let renderer = rs.backend.as_ref().and_then(|b| b.info()).is_some();
     json!({
         "renderTargetDepth": renderer,

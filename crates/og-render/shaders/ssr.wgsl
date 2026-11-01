@@ -1,4 +1,4 @@
-// Screen-space reflections (ssr.rs; the full tier only), after fxpost.wgsl:
+// Screen-space reflections (ssr.rs), after fxpost.wgsl:
 // each glossy pixel marches its reflected ray in view space through the
 // prepass's view depth and, where the ray passes behind a surface by less
 // than the thickness, blends in the lit image there, weighted by Fresnel

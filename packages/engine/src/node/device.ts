@@ -1,7 +1,7 @@
 // `og run --device`: the publish build played in a real browser, timed.
 //
 //   bun src/node/device.ts --dist <publish build> --project <root> --device <target> --out <dir>
-//       [--seconds N (default 5)] [--port P] [--headed] [--webgl] [--chrome <path>]
+//       [--seconds N (default 5)] [--port P] [--headed] [--chrome <path>]
 //       [--cert <pem> --key <pem>] [--host <ip>] [--size WxH] [--json]
 //   bun src/node/device.ts --preflight --device <target> [options]   (og runs it before the build:
 //       the options and the target's tools only)
@@ -631,7 +631,6 @@ interface DeviceInfo {
   crossOriginIsolated: boolean;
   isSecureContext: boolean;
   gpu: { vendor: string; architecture: string; description: string } | null;
-  webgl: { vendor: string; renderer: string } | null;
 }
 
 const DEVICE_INFO = `(async () => {
@@ -641,16 +640,6 @@ const DEVICE_INFO = `(async () => {
     const a = nav.gpu ? await nav.gpu.requestAdapter() : null;
     const i = a ? (a.info || (a.requestAdapterInfo ? await a.requestAdapterInfo() : null)) : null;
     if (i) gpu = { vendor: i.vendor || "", architecture: i.architecture || "", description: i.description || "" };
-  } catch {}
-  let webgl = null;
-  try {
-    const gl = document.createElement("canvas").getContext("webgl2");
-    if (gl) {
-      const x = gl.getExtension("WEBGL_debug_renderer_info");
-      webgl = { vendor: String(gl.getParameter(x ? x.UNMASKED_VENDOR_WEBGL : gl.VENDOR)), renderer: String(gl.getParameter(x ? x.UNMASKED_RENDERER_WEBGL : gl.RENDERER)) };
-      const lose = gl.getExtension("WEBGL_lose_context");
-      if (lose) lose.loseContext();
-    }
   } catch {}
   const c = document.querySelector("canvas");
   const ua = nav.userAgentData;
@@ -667,7 +656,6 @@ const DEVICE_INFO = `(async () => {
     crossOriginIsolated: !!globalThis.crossOriginIsolated,
     isSecureContext: !!globalThis.isSecureContext,
     gpu,
-    webgl,
   };
 })()`;
 
@@ -828,7 +816,6 @@ function markdown(r: Report): string {
   L.push(`| Platform | ${d.platform}${d.mobile ? ", mobile" : ""} |`);
   L.push(`| Tier | ${m.tier} |`);
   if (d.gpu) L.push(`| WebGPU adapter | ${[d.gpu.vendor, d.gpu.architecture, d.gpu.description].filter(Boolean).join(", ") || "(no info)"} |`);
-  if (d.webgl) L.push(`| WebGL2 renderer | ${d.webgl.renderer} (${d.webgl.vendor}) |`);
   L.push(`| DPR, viewport, screen | ${d.dpr}, ${d.viewport.width}×${d.viewport.height} CSS px, ${d.screen.width}×${d.screen.height} |`);
   if (d.canvas) L.push(`| Canvas | ${d.canvas.width}×${d.canvas.height} device px |`);
   L.push(`| Cores, memory | ${d.hardwareConcurrency ?? "n/a"}, ${d.deviceMemory === null ? "n/a" : `${d.deviceMemory} GB`} |`);
@@ -868,7 +855,7 @@ async function main(): Promise<void> {
   const out = opt("--out");
   const preflight = flag("--preflight");
   if (!target || (!preflight && (!dist || !project || !out)))
-    refuse("usage: bun src/node/device.ts --dist <build> --project <root> --device chrome|android[:serial]|iphone[:udid] --out <dir> [--seconds N] [--port P] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--size WxH] [--json] (--preflight: only check the options and the target's tools)");
+    refuse("usage: bun src/node/device.ts --dist <build> --project <root> --device chrome|android[:serial]|iphone[:udid] --out <dir> [--seconds N] [--port P] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--size WxH] [--json] (--preflight: only check the options and the target's tools)");
   const [kindRaw, ...rest] = target!.split(":");
   const kind = kindRaw === "ios" ? "iphone" : kindRaw!;
   if (!(kind in BUDGET_MS)) refuse(`--device ${target}: the targets are chrome, android[:serial] and iphone[:udid] (or ios[:udid])`);
@@ -899,24 +886,23 @@ async function main(): Promise<void> {
   onExit(() => served.stop());
   const lanFound = kind === "iphone" ? lanAddresses() : [];
   const lan = lanFound.map((a) => a.address);
-  const query = flag("--webgl") ? "?webgl=1" : "";
   process.stderr.write(`og run --device: serving ${dist} at ${served.scheme}://127.0.0.1:${served.port}/${lan.map((a) => `, ${served.scheme}://${a}:${served.port}/`).join("")} (COOP/COEP)\n`);
   let driver: Driver | null = null;
   try {
-    let url = `${served.scheme}://127.0.0.1:${served.port}/${query}`;
+    let url = `${served.scheme}://127.0.0.1:${served.port}/`;
     if (kind === "chrome") driver = await launchChrome(w!, h!);
     else if (kind === "android") {
       const a = await connectAndroid(id, served.port, served.scheme);
       driver = a.driver;
-      url = a.url + query;
+      url = a.url;
     } else {
       const chosen = host ?? lanFound[0]?.address;
       if (!chosen) refuse("no LAN address: join the iPhone's Wi-Fi network, or pass --host <ip>");
-      url = `${served.scheme}://${chosen}:${served.port}/${query}`;
+      url = `${served.scheme}://${chosen}:${served.port}/`;
       process.stderr.write(
         `og run --device: the iPhone opens ${url} (${host ? "--host" : `${lanFound[0]!.iface}; --host <ip> names another`})${tls ? `; the certificate has to name ${chosen}` : ""}\n`,
       );
-      if (!tls) process.stderr.write("og run --device: an http LAN page is not a secure context on the iPhone (no isolation, WebGL2 only); --cert/--key serve HTTPS\n");
+      if (!tls) process.stderr.write("og run --device: an http LAN page is not a secure context on the iPhone (no isolation, and no WebGPU, which needs a secure context: the game will not start); --cert/--key serve HTTPS\n");
       driver = await connectIphone(id);
     }
     const opened = driver;

@@ -6,15 +6,15 @@
 // direction_slot.xyz and cone.xyz its half-width and half-height vectors
 // (no shadow slot). It is shaded with linearly transformed cosines (Heitz,
 // Dupuy, Hill and Neubelt 2016; the fitted GGX tables of their ltc_code,
-// resampled to 32 x 32 and held in a 16 KiB uniform so WebGL2's lit
-// pipelines keep their texture slots: frame binding 11).
+// resampled to 32 x 32 and held in a 16 KiB uniform so the lit pipelines
+// keep their texture slots: frame binding 11).
 //
 // Cookies are packed 8:8:8 in exact integers in layers of the local shadow
 // array past the shadow layers (read with textureLoad, as the shadows): a
 // spot's layer in color_kind.w - 2 (w >= 2), a point's six faces from
 // -cone.y - 1 (cone.y < 0).
 
-// In a struct so ANGLE keeps it a constant buffer (see clusters.rs).
+// Four words to a vec4, a uniform array's element.
 struct LtcWords { v: array<vec4<u32>, 1024> };
 @group(0) @binding(11) var<uniform> ltc_table: LtcWords;
 

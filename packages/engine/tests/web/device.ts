@@ -6,8 +6,7 @@
 // interval and engine work percentiles are positive and ordered; the device
 // section has the user agent, DPR, viewport, cores and the tier; the page
 // was cross-origin isolated and the server sent COOP/COEP on the page and
-// the wasm. The first run lands on WebGPU, a second with --webgl on the
-// WebGL2 fallback. A Chrome path that does not exist is refused in one
+// the wasm. The run lands on WebGPU. A Chrome path that does not exist is refused in one
 // line, exit 1.
 //
 //   bun tests/web/device.ts [--project <dir>] [--out <dir>] [--chrome <path>] [--seconds N]
@@ -17,7 +16,7 @@
 // examples/brasswick and examples/meridian-loop (release row F4), whose
 // default output is dist/test-device/<project's name>.
 //
-// Writes <out>/{webgpu,webgl2}/{report.md,device.json} and
+// Writes <out>/webgpu/{report.md,device.json} and
 // <out>/device-result.json (default dist/test-device). Exits 1 when a check
 // fails. A missing Chrome is an error (cdp.ts chromePath), never a skip.
 
@@ -92,7 +91,6 @@ const ordered = (s: Stats) => s.count > 0 && s.p50 > 0 && s.p50 <= s.p95 && s.p9
 const results: Record<string, unknown> = {};
 for (const [name, extra, tiers] of [
   ["webgpu", [] as string[], ["webgpu"]],
-  ["webgl2", ["--webgl"], ["webgl2"]],
 ] as const) {
   const dir = join(out, name);
   rmSync(dir, { recursive: true, force: true });

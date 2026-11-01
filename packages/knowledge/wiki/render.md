@@ -51,7 +51,7 @@ module render {
 | [`Texture()`](#column-Texture) | column kind | A Texture handle field (0 is none). |
 | [`Lut()`](#column-Lut) | column kind | A Lut handle field (0 is none). |
 | [`EnvironmentMap()`](#column-EnvironmentMap) | column kind | An EnvironmentMap handle field (0 is none). |
-| [`og.Environment`](#record-Environment) | resource | Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation. |
+| [`og.Environment`](#record-Environment) | resource | Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation. |
 | [`ParticleEmitter()`](#column-ParticleEmitter) | column kind | A ParticleEmitter handle field (0 is none). |
 | [`AoMethod`](#type-AoMethod) | enum | Which ambient occlusion algorithm runs. |
 | [`AoMethod()`](#column-AoMethod) | column kind | An AoMethod field: the variant's index. |
@@ -86,7 +86,7 @@ module render {
 | [`og.Occluder2D`](#record-Occluder2D) | component | A rectangle that blocks 2D light (walls, crates, characters), centred on the entity's position and turned with it about z. Pixels inside it are not shadowed by it. At most 128 are drawn. |
 | [`og.Decal`](#record-Decal) | component | A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn. |
 | [`PARTICLES_ARMED`](#const-PARTICLES_ARMED) | constant | ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it. |
-| [`og.ParticleSystem`](#record-ParticleSystem) | component | Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: compute on the full tier, the CPU on WebGL2, identical either way. |
+| [`og.ParticleSystem`](#record-ParticleSystem) | component | Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: in compute (sprite-mode emitters on the CPU), identical either way. |
 | [`og.Trail`](#record-Trail) | component | A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail. |
 | [`og.Beam`](#record-Beam) | component | A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter). |
 | [`RibbonPoint`](#type-RibbonPoint) | desc struct | One point of a ribbon. |
@@ -173,7 +173,7 @@ module render {
 | [`og.render.mergeGeometries`](#fn-mergeGeometries) | function | Make one geometry of several placed ones for og.Mesh: one draw instead of many, mirrored halves, arrays. |
 | [`LineMode`](#type-LineMode) | enum | How a line set's points join, as three.js's three line objects. |
 | [`LineMode()`](#column-LineMode) | column kind | A LineMode field: the variant's index. |
-| [`LinesDesc`](#type-LinesDesc) | desc struct | Lines through points, drawn this frame only (immediate mode, as og.render.sprite): submit them every tick they should show. three.js Line, LineSegments and LineLoop with a LineBasicMaterial or LineDashedMaterial, but any width on every tier (each segment is a quad in screen space with a feathered edge, so WebGL2's one-pixel lines do not apply). |
+| [`LinesDesc`](#type-LinesDesc) | desc struct | Lines through points, drawn this frame only (immediate mode, as og.render.sprite): submit them every tick they should show. three.js Line, LineSegments and LineLoop with a LineBasicMaterial or LineDashedMaterial, but any width (each segment is a quad in screen space with a feathered edge; WebGPU has no line width). |
 | [`og.render.lines`](#fn-lines) | function | Draw lines this frame. Systems and commands may call it; the list is cleared at every tick, so submit them every tick they should show (og.Lines keeps a static set). |
 | [`PointsDesc`](#type-PointsDesc) | desc struct | A point cloud drawn this frame only (immediate mode), as three.js Points with a PointsMaterial: a square per point facing the camera. Submit it every tick it should show (og.Points keeps a static set). |
 | [`og.render.points`](#fn-points) | function | Draw a point cloud this frame. Systems and commands may call it; the list is cleared at every tick. |
@@ -232,7 +232,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 3889</sub>
+<sub>`api.ogt` line 3888</sub>
 
 <a id="fn-sprite"></a>
 
@@ -262,7 +262,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 4019</sub>
+<sub>`api.ogt` line 4018</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -292,7 +292,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 4210</sub>
+<sub>`api.ogt` line 4209</sub>
 
 <a id="fn-measureText"></a>
 
@@ -322,7 +322,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 4217</sub>
+<sub>`api.ogt` line 4216</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -352,7 +352,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4286</sub>
+<sub>`api.ogt` line 4285</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -382,7 +382,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4293</sub>
+<sub>`api.ogt` line 4292</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -412,7 +412,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4300</sub>
+<sub>`api.ogt` line 4299</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -442,7 +442,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4384</sub>
+<sub>`api.ogt` line 4383</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -474,7 +474,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4391</sub>
+<sub>`api.ogt` line 4390</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -506,7 +506,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 4408</sub>
+<sub>`api.ogt` line 4407</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -538,7 +538,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 4416</sub>
+<sub>`api.ogt` line 4415</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -572,7 +572,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 4424</sub>
+<sub>`api.ogt` line 4423</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -602,7 +602,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 4433</sub>
+<sub>`api.ogt` line 4432</sub>
 
 <a id="fn-applyQuality"></a>
 
@@ -662,7 +662,7 @@ fn applyQuality {
 }
 ```
 
-<sub>`api.ogt` line 4440</sub>
+<sub>`api.ogt` line 4439</sub>
 
 <a id="fn-look"></a>
 
@@ -690,7 +690,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 4461</sub>
+<sub>`api.ogt` line 4460</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -718,7 +718,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 4467</sub>
+<sub>`api.ogt` line 4466</sub>
 
 <a id="fn-text"></a>
 
@@ -748,7 +748,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 4473</sub>
+<sub>`api.ogt` line 4472</sub>
 
 <a id="fn-bufferGeometry"></a>
 
@@ -778,7 +778,7 @@ fn bufferGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4511</sub>
+<sub>`api.ogt` line 4510</sub>
 
 <a id="fn-updateGeometry"></a>
 
@@ -810,7 +810,7 @@ fn updateGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4518</sub>
+<sub>`api.ogt` line 4517</sub>
 
 <a id="fn-geometryInfo"></a>
 
@@ -840,7 +840,7 @@ fn geometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 4526</sub>
+<sub>`api.ogt` line 4525</sub>
 
 <a id="fn-cylinderGeometry"></a>
 
@@ -870,7 +870,7 @@ fn cylinderGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4721</sub>
+<sub>`api.ogt` line 4720</sub>
 
 <a id="fn-coneGeometry"></a>
 
@@ -900,7 +900,7 @@ fn coneGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4728</sub>
+<sub>`api.ogt` line 4727</sub>
 
 <a id="fn-capsuleGeometry"></a>
 
@@ -930,7 +930,7 @@ fn capsuleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4735</sub>
+<sub>`api.ogt` line 4734</sub>
 
 <a id="fn-torusGeometry"></a>
 
@@ -960,7 +960,7 @@ fn torusGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4742</sub>
+<sub>`api.ogt` line 4741</sub>
 
 <a id="fn-ringGeometry"></a>
 
@@ -990,7 +990,7 @@ fn ringGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4749</sub>
+<sub>`api.ogt` line 4748</sub>
 
 <a id="fn-circleGeometry"></a>
 
@@ -1020,7 +1020,7 @@ fn circleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4756</sub>
+<sub>`api.ogt` line 4755</sub>
 
 <a id="fn-tubeGeometry"></a>
 
@@ -1050,7 +1050,7 @@ fn tubeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 4763</sub>
+<sub>`api.ogt` line 4762</sub>
 
 <a id="fn-shapeGeometry"></a>
 
@@ -1080,7 +1080,7 @@ fn shapeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5000</sub>
+<sub>`api.ogt` line 4999</sub>
 
 <a id="fn-extrudeGeometry"></a>
 
@@ -1110,7 +1110,7 @@ fn extrudeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5007</sub>
+<sub>`api.ogt` line 5006</sub>
 
 <a id="fn-latheGeometry"></a>
 
@@ -1140,7 +1140,7 @@ fn latheGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5014</sub>
+<sub>`api.ogt` line 5013</sub>
 
 <a id="fn-polyhedronGeometry"></a>
 
@@ -1170,7 +1170,7 @@ fn polyhedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5021</sub>
+<sub>`api.ogt` line 5020</sub>
 
 <a id="fn-icosahedronGeometry"></a>
 
@@ -1200,7 +1200,7 @@ fn icosahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5028</sub>
+<sub>`api.ogt` line 5027</sub>
 
 <a id="fn-dodecahedronGeometry"></a>
 
@@ -1230,7 +1230,7 @@ fn dodecahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5035</sub>
+<sub>`api.ogt` line 5034</sub>
 
 <a id="fn-octahedronGeometry"></a>
 
@@ -1260,7 +1260,7 @@ fn octahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5042</sub>
+<sub>`api.ogt` line 5041</sub>
 
 <a id="fn-tetrahedronGeometry"></a>
 
@@ -1290,7 +1290,7 @@ fn tetrahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5049</sub>
+<sub>`api.ogt` line 5048</sub>
 
 <a id="fn-sweepGeometry"></a>
 
@@ -1320,7 +1320,7 @@ fn sweepGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5056</sub>
+<sub>`api.ogt` line 5055</sub>
 
 <a id="fn-csgGeometry"></a>
 
@@ -1350,7 +1350,7 @@ fn csgGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5063</sub>
+<sub>`api.ogt` line 5062</sub>
 
 <a id="fn-mergeGeometries"></a>
 
@@ -1380,7 +1380,7 @@ fn mergeGeometries {
 }
 ```
 
-<sub>`api.ogt` line 5070</sub>
+<sub>`api.ogt` line 5069</sub>
 
 <a id="fn-lines"></a>
 
@@ -1410,7 +1410,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 5128</sub>
+<sub>`api.ogt` line 5127</sub>
 
 <a id="fn-points"></a>
 
@@ -1440,7 +1440,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 5163</sub>
+<sub>`api.ogt` line 5162</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1472,7 +1472,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 5267</sub>
+<sub>`api.ogt` line 5266</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1502,7 +1502,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 5323</sub>
+<sub>`api.ogt` line 5322</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1536,7 +1536,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 5435</sub>
+<sub>`api.ogt` line 5434</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1564,7 +1564,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 5450</sub>
+<sub>`api.ogt` line 5449</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1592,7 +1592,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 5518</sub>
+<sub>`api.ogt` line 5517</sub>
 
 ## Components, resources and events
 
@@ -1650,7 +1650,7 @@ component Mesh {
 }
 ```
 
-<sub>`api.ogt` line 2556</sub>
+<sub>`api.ogt` line 2555</sub>
 
 <a id="record-DirectionalLight"></a>
 
@@ -1733,7 +1733,7 @@ component DirectionalLight {
 }
 ```
 
-<sub>`api.ogt` line 2586</sub>
+<sub>`api.ogt` line 2585</sub>
 
 <a id="record-PointLight"></a>
 
@@ -1741,7 +1741,7 @@ component DirectionalLight {
 
 A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
 
-Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (8 on the full tier, 4 on WebGL2) get shadows, the brightest at the camera first.
+Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (8) get shadows, the brightest at the camera first.
 
 Token `og.PointLight`, registered under the schema name `og.PointLight`; its value type is `PointLight`.
 
@@ -1756,7 +1756,7 @@ Token `og.PointLight`, registered under the schema name `og.PointLight`; its val
 ```ogt
 component PointLight {
   doc "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance."
-  doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (8 on the full tier, 4 on WebGL2) get shadows, the brightest at the camera first."
+  doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (8) get shadows, the brightest at the camera first."
   field color Color "The light's linear colour." {
     default 1 1 1
   }
@@ -1776,7 +1776,7 @@ component PointLight {
 }
 ```
 
-<sub>`api.ogt` line 2641</sub>
+<sub>`api.ogt` line 2640</sub>
 
 <a id="record-SpotLight"></a>
 
@@ -1830,7 +1830,7 @@ component SpotLight {
 }
 ```
 
-<sub>`api.ogt` line 2662</sub>
+<sub>`api.ogt` line 2661</sub>
 
 <a id="record-RenderSettings"></a>
 
@@ -1865,12 +1865,12 @@ Token `og.RenderSettings`, registered under the schema name `og.RenderSettings`;
 | `shadowMapScale` | `number` | `1` | 0.125 … 4 | — | — | The shadow maps at this fraction of their full side: the directional light's cascades (2048 texels by default) and the local lights' layers (512), each kept within 64 texels and the device's limit (4096 for the cascades). Changing it makes the maps again at the next frame; RenderCapabilities.shadowMapSize is the cascades' side drawn. |
 | `volumetricFog` | `boolean` | `true` | — | — | — | An og.VolumetricFog is drawn lit, with its light shafts; false draws the same medium as plain distance and height fog. |
 | `softParticles` | `boolean` | `true` | — | — | — | Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them. |
-| `screenSpaceReflections` | `boolean` | `true` | — | — | — | PostEffects.ssr draws (on the full tier); false leaves smooth surfaces the reflection probes' and the environment's reflection. PostEffects keeps its settings either way. |
+| `screenSpaceReflections` | `boolean` | `true` | — | — | — | PostEffects.ssr draws; false leaves smooth surfaces the reflection probes' and the environment's reflection. PostEffects keeps its settings either way. |
 | `ambientOcclusion` | `boolean` | `true` | — | — | — | PostEffects.ao darkens creases; false draws none. PostEffects keeps its settings either way. |
 | `aoResolution` | `AoResolutionSetting` | `"postEffects"` | — | — | — | The resolution ambient occlusion is searched at: postEffects (the default) draws PostEffects.aoResolution; full or half is drawn in its place, and PostEffects keeps its own for when this is postEffects again. The renderer reads this first, so the probe's RenderSettings and PostEffects together say what is drawn. |
 | `ssrStepScale` | `number` | `1` | 0 … 32 | — | — | PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 64 steps for the default 32, finer contact with thin and distant reflected surfaces at twice the pass's GPU time. PostEffects keeps its steps. |
-| `volumetricStepScale` | `number` | `1` | 0 … 4 | — | — | An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (full tier; 8 to 256), each thinner, so a shaft's edge in depth and the fog just in front of a surface resolve more finely, or WebGL2's raymarch of 24 steps per pixel (4 to 96). The froxel grid's GPU time and memory grow with its slices; changing it makes the grid again at the next frame. |
-| `msaaSamples` | `number` | `4` | 1 … 4 | — | — | Samples per pixel where the antialiasing multisamples (msaa, the WebGL2 tier's choice): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it, as maxShadowedLights caps shadowedLights: where the device resolved no MSAA (TAA, FXAA, off, or FXAA for want of a multisampled HDR format) it is 1, and one sample is drawn whatever this says; RenderCapabilities.antialias is what is drawn now. Changing it makes the multisampled targets and pipelines again at the next frame. |
+| `volumetricStepScale` | `number` | `1` | 0 … 4 | — | — | An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), each thinner, so a shaft's edge in depth and the fog just in front of a surface resolve more finely, or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). The froxel grid's GPU time and memory grow with its slices; changing it makes the grid again at the next frame. |
+| `msaaSamples` | `number` | `4` | 1 … 4 | — | — | Samples per pixel where the antialiasing multisamples (msaa4): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it, as maxShadowedLights caps shadowedLights: where the device resolved no MSAA (TAA, FXAA, off, or FXAA for want of a multisampled HDR format) it is 1, and one sample is drawn whatever this says; RenderCapabilities.antialias is what is drawn now. Changing it makes the multisampled targets and pipelines again at the next frame. |
 
 ```ogt
 resource RenderSettings {
@@ -1959,7 +1959,7 @@ resource RenderSettings {
   field softParticles bool "Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them." {
     default true
   }
-  field screenSpaceReflections bool "PostEffects.ssr draws (on the full tier); false leaves smooth surfaces the reflection probes' and the environment's reflection. PostEffects keeps its settings either way." {
+  field screenSpaceReflections bool "PostEffects.ssr draws; false leaves smooth surfaces the reflection probes' and the environment's reflection. PostEffects keeps its settings either way." {
     default true
   }
   field ambientOcclusion bool "PostEffects.ao darkens creases; false draws none. PostEffects keeps its settings either way." {
@@ -1971,12 +1971,12 @@ resource RenderSettings {
     min 0
     max 32
   }
-  field volumetricStepScale f32 "An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (full tier; 8 to 256), each thinner, so a shaft's edge in depth and the fog just in front of a surface resolve more finely, or WebGL2's raymarch of 24 steps per pixel (4 to 96). The froxel grid's GPU time and memory grow with its slices; changing it makes the grid again at the next frame." {
+  field volumetricStepScale f32 "An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), each thinner, so a shaft's edge in depth and the fog just in front of a surface resolve more finely, or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). The froxel grid's GPU time and memory grow with its slices; changing it makes the grid again at the next frame." {
     default 1
     min 0
     max 4
   }
-  field msaaSamples u32 "Samples per pixel where the antialiasing multisamples (msaa, the WebGL2 tier's choice): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it, as maxShadowedLights caps shadowedLights: where the device resolved no MSAA (TAA, FXAA, off, or FXAA for want of a multisampled HDR format) it is 1, and one sample is drawn whatever this says; RenderCapabilities.antialias is what is drawn now. Changing it makes the multisampled targets and pipelines again at the next frame." {
+  field msaaSamples u32 "Samples per pixel where the antialiasing multisamples (msaa4): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it, as maxShadowedLights caps shadowedLights: where the device resolved no MSAA (TAA, FXAA, off, or FXAA for want of a multisampled HDR format) it is 1, and one sample is drawn whatever this says; RenderCapabilities.antialias is what is drawn now. Changing it makes the multisampled targets and pipelines again at the next frame." {
     default 4
     min 1
     max 4
@@ -1984,13 +1984,13 @@ resource RenderSettings {
 }
 ```
 
-<sub>`api.ogt` line 2745</sub>
+<sub>`api.ogt` line 2744</sub>
 
 <a id="record-Environment"></a>
 
 ### `og.Environment` (resource)
 
-Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.
+Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.
 
 Token `og.Environment`, registered under the schema name `og.Environment`; its value type is `Environment`.
 
@@ -2007,7 +2007,7 @@ Token `og.Environment`, registered under the schema name `og.Environment`; its v
 
 ```ogt
 resource Environment {
-  doc "Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes on any tier, WebGL2 included. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation."
+  doc "Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation."
   field map EnvironmentMap "The map from og.load.environment; 0 lights by the sky."
   field intensity f32 "The strength of the map's light on every surface, as three.js scene.environmentIntensity; while a map is set it replaces RenderSettings.environmentIntensity." {
     default 1
@@ -2038,7 +2038,7 @@ resource Environment {
 }
 ```
 
-<sub>`api.ogt` line 2882</sub>
+<sub>`api.ogt` line 2881</sub>
 
 <a id="record-PostEffects"></a>
 
@@ -2122,7 +2122,7 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 | `shakeMaxRoll` | `number` | `3` | ≥ 0 | `deg` | — | The largest roll at trauma 1. |
 | `shakeFrequency` | `number` | `12` | ≥ 0 | `hz` | — | How fast the shake moves. |
 | `shakeSeed` | `number` | `0` | — | — | — | The shake's noise seed. |
-| `ssr` | `boolean` | `false` | — | — | — | Screen-space reflections on the full tier: smooth surfaces reflect what the frame already drew by marching the depth-normal prepass along the reflected ray, faded by roughness and at the screen's edges, over the reflection probes and the environment where the ray misses. WebGL2 draws none (RenderCapabilities.ssr is false) and smooth surfaces keep the probes' reflection. |
+| `ssr` | `boolean` | `false` | — | — | — | Screen-space reflections: smooth surfaces reflect what the frame already drew by marching the depth-normal prepass along the reflected ray, faded by roughness and at the screen's edges, over the reflection probes and the environment where the ray misses. |
 | `ssrMaxDistance` | `number` | `20` | ≥ 0 | `m` | tunable | How far a reflected ray marches, in world units. |
 | `ssrThickness` | `number` | `0.3` | ≥ 0 | `m` | tunable | How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it. |
 | `ssrSteps` | `number` | `32` | 4 … 128 | — | — | Steps along each ray (a binary refinement follows the hit). |
@@ -2411,7 +2411,7 @@ resource PostEffects {
     unit hz
   }
   field shakeSeed u32 "The shake's noise seed."
-  field ssr bool "Screen-space reflections on the full tier: smooth surfaces reflect what the frame already drew by marching the depth-normal prepass along the reflected ray, faded by roughness and at the screen's edges, over the reflection probes and the environment where the ray misses. WebGL2 draws none (RenderCapabilities.ssr is false) and smooth surfaces keep the probes' reflection."
+  field ssr bool "Screen-space reflections: smooth surfaces reflect what the frame already drew by marching the depth-normal prepass along the reflected ray, faded by roughness and at the screen's edges, over the reflection probes and the environment where the ray misses."
   field ssrMaxDistance f32 "How far a reflected ray marches, in world units." {
     default 20
     min 0
@@ -2445,7 +2445,7 @@ resource PostEffects {
 }
 ```
 
-<sub>`api.ogt` line 3016</sub>
+<sub>`api.ogt` line 3015</sub>
 
 <a id="record-Stylise"></a>
 
@@ -2700,7 +2700,7 @@ resource Stylise {
 }
 ```
 
-<sub>`api.ogt` line 3394</sub>
+<sub>`api.ogt` line 3393</sub>
 
 <a id="record-MaterialStyle"></a>
 
@@ -2787,7 +2787,7 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 3587</sub>
+<sub>`api.ogt` line 3586</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -2826,7 +2826,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 3655</sub>
+<sub>`api.ogt` line 3654</sub>
 
 <a id="record-Light2D"></a>
 
@@ -2877,7 +2877,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 3674</sub>
+<sub>`api.ogt` line 3673</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -2908,7 +2908,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 3704</sub>
+<sub>`api.ogt` line 3703</sub>
 
 <a id="record-Decal"></a>
 
@@ -2963,13 +2963,13 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 3718</sub>
+<sub>`api.ogt` line 3717</sub>
 
 <a id="record-ParticleSystem"></a>
 
 ### `og.ParticleSystem` (component)
 
-Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: compute on the full tier, the CPU on WebGL2, identical either way.
+Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: in compute (sprite-mode emitters on the CPU), identical either way.
 
 Token `og.ParticleSystem`, registered under the schema name `og.ParticleSystem`; its value type is `ParticleSystem`.
 
@@ -2984,7 +2984,7 @@ Token `og.ParticleSystem`, registered under the schema name `og.ParticleSystem`;
 
 ```ogt
 component ParticleSystem {
-  doc "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: compute on the full tier, the CPU on WebGL2, identical either way."
+  doc "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: in compute (sprite-mode emitters on the CPU), identical either way."
   field emitter ParticleEmitter "The emitter asset; 0 draws nothing."
   field seed u32 "The random seed: systems with different seeds differ."
   field startTick u32 "The tick emission started: write the tick (`time.tick`, `world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, while a one-shot (`looping false`) stays armed and emits nothing until a tick is written, so effects spawned ahead of their first use wait." {
@@ -3000,7 +3000,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 3752</sub>
+<sub>`api.ogt` line 3751</sub>
 
 <a id="record-Trail"></a>
 
@@ -3076,7 +3076,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 3768</sub>
+<sub>`api.ogt` line 3767</sub>
 
 <a id="record-Beam"></a>
 
@@ -3142,7 +3142,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 3816</sub>
+<sub>`api.ogt` line 3815</sub>
 
 <a id="record-Sprite"></a>
 
@@ -3292,7 +3292,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 4026</sub>
+<sub>`api.ogt` line 4025</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -3340,7 +3340,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 4124</sub>
+<sub>`api.ogt` line 4123</sub>
 
 <a id="record-ReflectionProbe"></a>
 
@@ -3393,7 +3393,7 @@ component ReflectionProbe {
 }
 ```
 
-<sub>`api.ogt` line 4352</sub>
+<sub>`api.ogt` line 4351</sub>
 
 <a id="record-Lines"></a>
 
@@ -3456,7 +3456,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 5170</sub>
+<sub>`api.ogt` line 5169</sub>
 
 <a id="record-Points"></a>
 
@@ -3510,7 +3510,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 5207</sub>
+<sub>`api.ogt` line 5206</sub>
 
 <a id="record-CameraView"></a>
 
@@ -3617,7 +3617,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 5330</sub>
+<sub>`api.ogt` line 5329</sub>
 
 <a id="record-Mirror"></a>
 
@@ -3662,7 +3662,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 5402</sub>
+<sub>`api.ogt` line 5401</sub>
 
 <a id="record-RectLight"></a>
 
@@ -3712,7 +3712,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 5464</sub>
+<sub>`api.ogt` line 5463</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -3746,7 +3746,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 5491</sub>
+<sub>`api.ogt` line 5490</sub>
 
 ## Types
 
@@ -3828,7 +3828,6 @@ A string: one of the variants below. The zero value is `"webgpu"`.
 | Variant | Doc |
 |---|---|
 | `"webgpu"` | WebGPU in a browser: the full feature set. |
-| `"webgl2"` | The WebGL2 fallback: no compute, CPU culling and particles, tiled lights. |
 | `"vulkan"` | Native Vulkan on a GPU. |
 | `"vulkan-cpu"` | Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU. |
 | `"metal"` | Native Metal. |
@@ -3838,7 +3837,6 @@ A string: one of the variants below. The zero value is `"webgpu"`.
 enum RenderTier {
   doc "The backend the renderer runs on; the probe's hello reports it."
   variant webgpu "WebGPU in a browser: the full feature set."
-  variant webgl2 "The WebGL2 fallback: no compute, CPU culling and particles, tiled lights."
   variant vulkan "Native Vulkan on a GPU."
   variant vulkan-cpu "Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU."
   variant metal "Native Metal."
@@ -3858,24 +3856,24 @@ A string: one of the variants below. The zero value is `"tier"`.
 
 | Variant | Doc |
 |---|---|
-| `"tier"` | The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2, FXAA where the HDR format cannot be multisampled. |
+| `"tier"` | The engine's default method: TAA, on every backend (WebGPU, Metal, Vulkan, DX12). |
 | `"off"` | One sample per pixel. |
-| `"msaa4"` | 4x MSAA on any tier: sharp sprites and text, no temporal blur; FXAA where the HDR format cannot be multisampled. |
-| `"taa"` | Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames. RenderOptions.taaHistory and taaSharpen refine it. |
-| `"fxaa"` | FXAA on any tier: one full-screen pass over the tonemapped image (the overlay stays sharp), no extra samples and nothing to converge; softer than MSAA on fine texture. |
+| `"msaa4"` | 4x MSAA: sharp sprites and text, no temporal blur; FXAA where the HDR format cannot be multisampled. |
+| `"taa"` | Temporal antialiasing (what tier resolves to): a sub-pixel jitter per frame and a reprojected history; converges over about eight frames. RenderOptions.taaHistory and taaSharpen refine it. |
+| `"fxaa"` | FXAA: one full-screen pass over the tonemapped image (the overlay stays sharp), no extra samples and nothing to converge; softer than MSAA on fine texture. |
 
 ```ogt
 enum Antialias {
   doc "Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved."
-  variant tier "The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x MSAA on WebGL2, FXAA where the HDR format cannot be multisampled."
+  variant tier "The engine's default method: TAA, on every backend (WebGPU, Metal, Vulkan, DX12)."
   variant off "One sample per pixel."
-  variant msaa4 "4x MSAA on any tier: sharp sprites and text, no temporal blur; FXAA where the HDR format cannot be multisampled."
-  variant taa "Temporal antialiasing on any tier: a sub-pixel jitter per frame and a reprojected history; converges over about eight frames. RenderOptions.taaHistory and taaSharpen refine it."
-  variant fxaa "FXAA on any tier: one full-screen pass over the tonemapped image (the overlay stays sharp), no extra samples and nothing to converge; softer than MSAA on fine texture."
+  variant msaa4 "4x MSAA: sharp sprites and text, no temporal blur; FXAA where the HDR format cannot be multisampled."
+  variant taa "Temporal antialiasing (what tier resolves to): a sub-pixel jitter per frame and a reprojected history; converges over about eight frames. RenderOptions.taaHistory and taaSharpen refine it."
+  variant fxaa "FXAA: one full-screen pass over the tonemapped image (the overlay stays sharp), no extra samples and nothing to converge; softer than MSAA on fine texture."
 }
 ```
 
-<sub>`api.ogt` line 2313</sub>
+<sub>`api.ogt` line 2312</sub>
 
 <a id="type-PointShadows"></a>
 
@@ -3887,20 +3885,20 @@ A string: one of the variants below. The zero value is `"auto"`.
 
 | Variant | Doc |
 |---|---|
-| `"auto"` | Cube faces on the full tier, paraboloids on WebGL2. |
+| `"auto"` | Cube faces. |
 | `"cube"` | Six 90 degree faces: six shadow passes per light. |
 | `"paraboloid"` | Two paraboloid hemispheres (below and above the light): two passes per light instead of six, coarser, and large casters' silhouettes approximate (their edges stay straight in the curved projection). |
 
 ```ogt
 enum PointShadows {
   doc "How a point light's shadow map is stored, as og-render's PointShadows. RenderCapabilities.pointShadows reports what the device resolved."
-  variant auto "Cube faces on the full tier, paraboloids on WebGL2."
+  variant auto "Cube faces."
   variant cube "Six 90 degree faces: six shadow passes per light."
   variant paraboloid "Two paraboloid hemispheres (below and above the light): two passes per light instead of six, coarser, and large casters' silhouettes approximate (their edges stay straight in the curved projection)."
 }
 ```
 
-<sub>`api.ogt` line 2322</sub>
+<sub>`api.ogt` line 2321</sub>
 
 <a id="type-TaaHistory"></a>
 
@@ -3923,7 +3921,7 @@ enum TaaHistory {
 }
 ```
 
-<sub>`api.ogt` line 2329</sub>
+<sub>`api.ogt` line 2328</sub>
 
 <a id="type-DebugView"></a>
 
@@ -3968,7 +3966,7 @@ enum DebugView {
 }
 ```
 
-<sub>`api.ogt` line 2335</sub>
+<sub>`api.ogt` line 2334</sub>
 
 <a id="type-RenderOptions"></a>
 
@@ -3985,7 +3983,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `pointShadows` | `PointShadows` | `"auto"` | — | — | — | How point lights' shadows are stored: cube faces, or two paraboloid hemispheres (fewer passes, coarser). |
 | `taaHistory` | `TaaHistory` | `"bilinear"` | — | — | — | With TAA: how the history is resampled. |
 | `taaSharpen` | `number` | `0` | 0 … 1 | `ratio` | — | With TAA: a sharpening pass after it, 0 (none) to 1; it never pushes a pixel past its neighbours' range. |
-| `planarReflections` | `number` | `1` | 1 … 2 | — | — | How many planar reflection surfaces draw at once: water surfaces (og.Water.planarReflection) that mirror the scene in a pass of their own in the same frame. 1: the first surface that asks (a grid surface before one over a mesh); a second surface reflects as if it did not ask (screen-space and sky reflections), never in the first's mirror, and the log says so once. 2: a second surface in view mirrors the scene too, and material shaders can read the first's mirror (`planar_reflection`), at the cost of one more texture in every lit pipeline and a second reflection pass while both are in view. On WebGL2 the second surface still mirrors, but the lit pipelines have no texture unit left (the joint palette takes one there), so `planar_reflection` reads 0. RenderCapabilities.planarReflections reports the count the renderer was made with. |
+| `planarReflections` | `number` | `1` | 1 … 2 | — | — | How many planar reflection surfaces draw at once: water surfaces (og.Water.planarReflection) that mirror the scene in a pass of their own in the same frame. 1: the first surface that asks (a grid surface before one over a mesh); a second surface reflects as if it did not ask (screen-space and sky reflections), never in the first's mirror, and the log says so once. 2: a second surface in view mirrors the scene too, and material shaders can read the first's mirror (`planar_reflection`), at the cost of one more texture in every lit pipeline and a second reflection pass while both are in view. RenderCapabilities.planarReflections reports the count the renderer was made with. |
 | `debugView` | `DebugView` | `"none"` | — | — | — | A debug overlay from the first frame (og.debug.setView, the command channel's `debug:<view>`): none in a game, a view while building one. Not in publish builds. |
 
 ```ogt
@@ -4005,7 +4003,7 @@ struct RenderOptions {
     max 1
     unit ratio
   }
-  field planarReflections u32 "How many planar reflection surfaces draw at once: water surfaces (og.Water.planarReflection) that mirror the scene in a pass of their own in the same frame. 1: the first surface that asks (a grid surface before one over a mesh); a second surface reflects as if it did not ask (screen-space and sky reflections), never in the first's mirror, and the log says so once. 2: a second surface in view mirrors the scene too, and material shaders can read the first's mirror (`planar_reflection`), at the cost of one more texture in every lit pipeline and a second reflection pass while both are in view. On WebGL2 the second surface still mirrors, but the lit pipelines have no texture unit left (the joint palette takes one there), so `planar_reflection` reads 0. RenderCapabilities.planarReflections reports the count the renderer was made with." {
+  field planarReflections u32 "How many planar reflection surfaces draw at once: water surfaces (og.Water.planarReflection) that mirror the scene in a pass of their own in the same frame. 1: the first surface that asks (a grid surface before one over a mesh); a second surface reflects as if it did not ask (screen-space and sky reflections), never in the first's mirror, and the log says so once. 2: a second surface in view mirrors the scene too, and material shaders can read the first's mirror (`planar_reflection`), at the cost of one more texture in every lit pipeline and a second reflection pass while both are in view. RenderCapabilities.planarReflections reports the count the renderer was made with." {
     default 1
     min 1
     max 2
@@ -4014,7 +4012,7 @@ struct RenderOptions {
 }
 ```
 
-<sub>`api.ogt` line 2352</sub>
+<sub>`api.ogt` line 2351</sub>
 
 <a id="type-StandardMaterialDesc"></a>
 
@@ -4026,7 +4024,7 @@ It is og-render's reflected StandardMaterial field for field: metalnessMap and r
 
 The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. og.MaterialStyle fills the ones a material leaves at their defaults unless the material sets styled false.
 
-The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every tier, WebGL2 included; unlit and toon materials ignore them.
+The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every backend; unlit and toon materials ignore them.
 
 A transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it.
 
@@ -4098,18 +4096,18 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `anisotropy` | `number` | `0` | 0 … 1 | `ratio` | — | Stretches the specular highlight along a direction of the surface, as MeshPhysicalMaterial.anisotropy (brushed metal, hair, satin); 0 is none, 1 fully stretched. Needs the geometry's tangents (generated when it has none). |
 | `anisotropyRotation` | `number` | `0` | — | — | — | The stretch's direction in radians from the tangent (+u) towards the bitangent. |
 | `anisotropyMap` | `Texture \| null` | `null` | — | — | — | The stretch's direction in red and green (-1 to 1 in the tangent frame, turned by anisotropyRotation) and its strength in blue, times anisotropy. |
-| `mapArray` | `TextureArray \| null` | `null` | — | — | — | The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map: variants of one look (tiles, skins, damage states) are one material, each Mesh picking its layer with Mesh.materialLayer, and every mesh of the material is one draw whichever layer it shows. A material with mapArray or normalMapArray reads its base colour and normal map from arrays only (map and normalMap are not read); it draws on every tier, WebGL2 included. Physical materials (the MeshPhysicalMaterial fields) and shader materials do not take arrays. |
+| `mapArray` | `TextureArray \| null` | `null` | — | — | — | The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map: variants of one look (tiles, skins, damage states) are one material, each Mesh picking its layer with Mesh.materialLayer, and every mesh of the material is one draw whichever layer it shows. A material with mapArray or normalMapArray reads its base colour and normal map from arrays only (map and normalMap are not read). Physical materials (the MeshPhysicalMaterial fields) and shader materials do not take arrays. |
 | `mapLayer` | `number` | `0` | — | — | — | The layer of mapArray drawn where the Mesh does not pick one (past the array's last layer: the last). |
 | `normalMapArray` | `TextureArray \| null` | `null` | — | — | — | A tangent-space normal map from layer normalMapLayer of a texture array (linear: cook it with `kind normal`), the counterpart of mapArray. |
 | `normalMapLayer` | `number` | `0` | — | — | — | The layer of normalMapArray read where the Mesh does not pick one. |
-| `wireframe` | `boolean` | `false` | — | — | — | Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in color plus the emissive light, unlit, depth tested; on every tier (lines, not a polygon mode WebGL2 lacks). Its meshes cast no shadow. |
+| `wireframe` | `boolean` | `false` | — | — | — | Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in color plus the emissive light, unlit, depth tested; drawn as lines, not a polygon mode (WebGPU has none). Its meshes cast no shadow. |
 
 ```ogt
 struct StandardMaterialDesc {
   doc "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names."
   doc "It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front."
   doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. og.MaterialStyle fills the ones a material leaves at their defaults unless the material sets styled false."
-  doc "The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every tier, WebGL2 included; unlit and toon materials ignore them."
+  doc "The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every backend; unlit and toon materials ignore them."
   doc "A transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it."
   doc "normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly."
   desc true
@@ -4278,15 +4276,15 @@ struct StandardMaterialDesc {
   }
   field anisotropyRotation f32 "The stretch's direction in radians from the tangent (+u) towards the bitangent."
   field anisotropyMap Option.Texture "The stretch's direction in red and green (-1 to 1 in the tangent frame, turned by anisotropyRotation) and its strength in blue, times anisotropy."
-  field mapArray Option.TextureArray "The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map: variants of one look (tiles, skins, damage states) are one material, each Mesh picking its layer with Mesh.materialLayer, and every mesh of the material is one draw whichever layer it shows. A material with mapArray or normalMapArray reads its base colour and normal map from arrays only (map and normalMap are not read); it draws on every tier, WebGL2 included. Physical materials (the MeshPhysicalMaterial fields) and shader materials do not take arrays."
+  field mapArray Option.TextureArray "The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map: variants of one look (tiles, skins, damage states) are one material, each Mesh picking its layer with Mesh.materialLayer, and every mesh of the material is one draw whichever layer it shows. A material with mapArray or normalMapArray reads its base colour and normal map from arrays only (map and normalMap are not read). Physical materials (the MeshPhysicalMaterial fields) and shader materials do not take arrays."
   field mapLayer u32 "The layer of mapArray drawn where the Mesh does not pick one (past the array's last layer: the last)."
   field normalMapArray Option.TextureArray "A tangent-space normal map from layer normalMapLayer of a texture array (linear: cook it with `kind normal`), the counterpart of mapArray."
   field normalMapLayer u32 "The layer of normalMapArray read where the Mesh does not pick one."
-  field wireframe bool "Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in color plus the emissive light, unlit, depth tested; on every tier (lines, not a polygon mode WebGL2 lacks). Its meshes cast no shadow."
+  field wireframe bool "Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in color plus the emissive light, unlit, depth tested; drawn as lines, not a polygon mode (WebGPU has none). Its meshes cast no shadow."
 }
 ```
 
-<sub>`api.ogt` line 2376</sub>
+<sub>`api.ogt` line 2375</sub>
 
 <a id="type-ToneMapping"></a>
 
@@ -4313,7 +4311,7 @@ enum ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 2694</sub>
+<sub>`api.ogt` line 2693</sub>
 
 <a id="type-GraphicsQuality"></a>
 
@@ -4338,7 +4336,7 @@ enum GraphicsQuality {
 }
 ```
 
-<sub>`api.ogt` line 2709</sub>
+<sub>`api.ogt` line 2708</sub>
 
 <a id="type-AoResolutionSetting"></a>
 
@@ -4363,7 +4361,7 @@ enum AoResolutionSetting {
 }
 ```
 
-<sub>`api.ogt` line 2716</sub>
+<sub>`api.ogt` line 2715</sub>
 
 <a id="type-QualityPreset"></a>
 
@@ -4390,7 +4388,7 @@ enum QualityPreset {
 }
 ```
 
-<sub>`api.ogt` line 2730</sub>
+<sub>`api.ogt` line 2729</sub>
 
 <a id="type-Lut"></a>
 
@@ -4404,7 +4402,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
 ```
 
-<sub>`api.ogt` line 2857</sub>
+<sub>`api.ogt` line 2856</sub>
 
 <a id="type-EnvironmentMap"></a>
 
@@ -4418,7 +4416,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`, a KTX2 cube map, or six face images)."
 ```
 
-<sub>`api.ogt` line 2858</sub>
+<sub>`api.ogt` line 2857</sub>
 
 <a id="type-ParticleEmitter"></a>
 
@@ -4432,7 +4430,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 ```
 
-<sub>`api.ogt` line 2859</sub>
+<sub>`api.ogt` line 2858</sub>
 
 <a id="type-AoMethod"></a>
 
@@ -4444,7 +4442,7 @@ A string: one of the variants below. The zero value is `"auto"`.
 
 | Variant | Doc |
 |---|---|
-| `"auto"` | GTAO on the full tier, SSAO on WebGL2. |
+| `"auto"` | GTAO. |
 | `"gtao"` | Ground-truth ambient occlusion (3 slices): the better looking one. |
 | `"ssao"` | Hemisphere SSAO with 8 samples: the cheaper one. |
 | `"screen"` | Depth-only disc AO in screen units (14 taps, radius clamp(1.6 / depth, 0.004, 0.06) of the screen width, fading out from 120 to 300 m, squared): the post-process SSAO of three.js-era games. It ignores normals, so ground seen at a low angle darkens a little too, as those games look. aoRadius and aoRadiusScale do not apply; aoIntensity scales the occlusion. |
@@ -4452,14 +4450,14 @@ A string: one of the variants below. The zero value is `"auto"`.
 ```ogt
 enum AoMethod {
   doc "Which ambient occlusion algorithm runs."
-  variant auto "GTAO on the full tier, SSAO on WebGL2."
+  variant auto "GTAO."
   variant gtao "Ground-truth ambient occlusion (3 slices): the better looking one."
   variant ssao "Hemisphere SSAO with 8 samples: the cheaper one."
   variant screen "Depth-only disc AO in screen units (14 taps, radius clamp(1.6 / depth, 0.004, 0.06) of the screen width, fading out from 120 to 300 m, squared): the post-process SSAO of three.js-era games. It ignores normals, so ground seen at a low angle darkens a little too, as those games look. aoRadius and aoRadiusScale do not apply; aoIntensity scales the occlusion."
 }
 ```
 
-<sub>`api.ogt` line 2920</sub>
+<sub>`api.ogt` line 2919</sub>
 
 <a id="type-AoResolution"></a>
 
@@ -4482,7 +4480,7 @@ enum AoResolution {
 }
 ```
 
-<sub>`api.ogt` line 2935</sub>
+<sub>`api.ogt` line 2934</sub>
 
 <a id="type-DofQuality"></a>
 
@@ -4505,7 +4503,7 @@ enum DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2948</sub>
+<sub>`api.ogt` line 2947</sub>
 
 <a id="type-ScreenBlur"></a>
 
@@ -4532,7 +4530,7 @@ enum ScreenBlur {
 }
 ```
 
-<sub>`api.ogt` line 2961</sub>
+<sub>`api.ogt` line 2960</sub>
 
 <a id="type-SpriteBlend"></a>
 
@@ -4555,7 +4553,7 @@ enum SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2976</sub>
+<sub>`api.ogt` line 2975</sub>
 
 <a id="type-SpriteFacing"></a>
 
@@ -4580,7 +4578,7 @@ enum SpriteFacing {
 }
 ```
 
-<sub>`api.ogt` line 2989</sub>
+<sub>`api.ogt` line 2988</sub>
 
 <a id="type-StripBlend"></a>
 
@@ -4603,7 +4601,7 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 3003</sub>
+<sub>`api.ogt` line 3002</sub>
 
 <a id="type-Palette"></a>
 
@@ -4617,7 +4615,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Palette "A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours)."
 ```
 
-<sub>`api.ogt` line 3331</sub>
+<sub>`api.ogt` line 3330</sub>
 
 <a id="type-Look"></a>
 
@@ -4631,7 +4629,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Look "A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook."
 ```
 
-<sub>`api.ogt` line 3332</sub>
+<sub>`api.ogt` line 3331</sub>
 
 <a id="type-DitherPattern"></a>
 
@@ -4662,7 +4660,7 @@ enum DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 3348</sub>
+<sub>`api.ogt` line 3347</sub>
 
 <a id="type-MaterialSurface"></a>
 
@@ -4689,7 +4687,7 @@ enum MaterialSurface {
 }
 ```
 
-<sub>`api.ogt` line 3365</sub>
+<sub>`api.ogt` line 3364</sub>
 
 <a id="type-StyliseSpace"></a>
 
@@ -4714,7 +4712,7 @@ enum StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 3380</sub>
+<sub>`api.ogt` line 3379</sub>
 
 <a id="type-LookInfo"></a>
 
@@ -4745,7 +4743,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 3644</sub>
+<sub>`api.ogt` line 3643</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -4785,7 +4783,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 3856</sub>
+<sub>`api.ogt` line 3855</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -4816,7 +4814,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 3877</sub>
+<sub>`api.ogt` line 3876</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -4880,7 +4878,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 3896</sub>
+<sub>`api.ogt` line 3895</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -4909,7 +4907,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 3931</sub>
+<sub>`api.ogt` line 3930</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -4932,7 +4930,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 3942</sub>
+<sub>`api.ogt` line 3941</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -5045,7 +5043,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 3949</sub>
+<sub>`api.ogt` line 3948</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -5135,7 +5133,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 4151</sub>
+<sub>`api.ogt` line 4150</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -5177,7 +5175,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4224</sub>
+<sub>`api.ogt` line 4223</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -5213,7 +5211,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4247</sub>
+<sub>`api.ogt` line 4246</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -5253,7 +5251,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4265</sub>
+<sub>`api.ogt` line 4264</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -5267,22 +5265,22 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `compute` | `boolean` | `false` | — | — | — | Whether compute passes run (GPU culling, GPU particles). |
 | `antialias` | `Antialias` | `"tier"` | — | — | — | The antialiasing the device resolved RenderOptions.antialias to. |
 | `maxLights` | `number` | `0` | — | — | — | How many point and spot lights one frame draws (MAX_LIGHTS on every tier). |
-| `maxShadowedLights` | `number` | `0` | — | — | — | How many point and spot lights cast shadows in one frame (8 on the full tier, 4 on WebGL2); past it, the shadowed lights brightest at the camera keep theirs. |
+| `maxShadowedLights` | `number` | `0` | — | — | — | How many point and spot lights cast shadows in one frame (8); past it, the shadowed lights brightest at the camera keep theirs. |
 | `maxMsaaSamples` | `number` | `0` | — | — | — | The samples per pixel this device multisamples the scene at, which caps RenderSettings.msaaSamples: 4 where antialias resolved to msaa4 when the renderer was made, 1 where it resolved to taa, fxaa or off (or to fxaa because the HDR format cannot be multisampled), 0 without a renderer. It stays 4 while RenderSettings.msaaSamples 1 draws FXAA (antialias then says fxaa). |
 | `pointShadows` | `PointShadows` | `"auto"` | — | — | — | How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to). |
 | `width` | `number` | `0` | — | — | — | The render target width in device pixels. |
 | `height` | `number` | `0` | — | — | — | The render target height in device pixels. |
 | `stylise` | `readonly string[]` | `[]` | — | — | — | The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, shadowDarkness, rim, outline, outlineDistance, flatShading and surface of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn. |
-| `ssr` | `boolean` | `false` | — | — | — | Whether PostEffects.ssr draws: true on the full tier, false on WebGL2, where smooth surfaces reflect the reflection probes and the environment instead. |
+| `ssr` | `boolean` | `false` | — | — | — | Whether PostEffects.ssr draws: true with a renderer, false without one. |
 | `reflectionProbes` | `number` | `0` | — | — | — | How many og.ReflectionProbe components one frame samples (MAX_REFLECTION_PROBES on every tier). |
-| `renderTargetDepth` | `boolean` | `false` | — | — | — | Whether a render target made with `depth` gets its view's depth drawn: true on every tier with a renderer (WebGPU, Vulkan, Metal and WebGL2 alike), false without one. The depth comes from the view's own depth prepass of its opaque meshes into a linear-depth colour target, never from its depth buffer, which WebGL2 cannot read in a shader. |
+| `renderTargetDepth` | `boolean` | `false` | — | — | — | Whether a render target made with `depth` gets its view's depth drawn: true with a renderer, false without one. The depth comes from the view's own depth prepass of its opaque meshes into a linear-depth colour target, never from its depth buffer. |
 | `maxRenderTargetSize` | `number` | `0` | — | — | — | The largest side of a render target (the device's largest 2D texture). |
 | `maxCustomPosts` | `number` | `0` | — | — | — | The most custom post passes a frame runs: 8 on every tier, PostEffects.custom's capacity. |
-| `volumetricFog` | `VolumetricFog` | `"froxel"` | — | — | — | How Fog.volumetric is drawn on this device: a froxel grid (the full tier) or a raymarch along each pixel's view ray (WebGL2), each lit by the sun through its shadows and by the point, spot and rect lights around each sample (up to volumetricLights of them) through their shadows and cookies. |
-| `volumetricLights` | `number` | `0` | — | — | — | The most point, spot and rect lights that light one sample of Fog.volumetric: those of its screen cluster, MAX_CLUSTER_LIGHTS (64) in the froxel grid, 8 in WebGL2's raymarch, the brightest at the camera first. |
+| `volumetricFog` | `VolumetricFog` | `"froxel"` | — | — | — | How Fog.volumetric is drawn on this device: a froxel grid or a raymarch along each pixel's view ray, each lit by the sun through its shadows and by the point, spot and rect lights around each sample (up to volumetricLights of them) through their shadows and cookies. |
+| `volumetricLights` | `number` | `0` | — | — | — | The most point, spot and rect lights that light one sample of Fog.volumetric: those of its screen cluster, MAX_CLUSTER_LIGHTS (64) in the froxel grid, 8 in the raymarch, the brightest at the camera first. |
 | `maxLightCookies` | `number` | `0` | — | — | — | The most light cookie layers one frame draws (24 on every tier): a SpotLight.cookie takes one, a PointLight.cookie six (its cube's faces), and a texture several lights of one kind share takes its layers once. Cookies past it, in the order of their lights' entities, are not drawn: those lights shine without them, and the log names them in a warning. |
-| `gpuTimestamps` | `boolean` | `false` | — | — | — | Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`, WebGL2 with `EXT_disjoint_timer_query_webgl2` (Chrome; not Firefox or Safari); never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true. |
-| `spriteAnisotropy` | `number` | `0` | — | — | — | The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, WebGL2 with EXT_texture_filter_anisotropic), 1 where it has none and on a software rasterizer (the vulkan-cpu tier: lavapipe's anisotropic filter softens even an image drawn 1:1), 0 without a renderer. Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners. |
+| `gpuTimestamps` | `boolean` | `false` | — | — | — | Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true. |
+| `spriteAnisotropy` | `number` | `0` | — | — | — | The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, DX12), 1 where it has none and on a software rasterizer (the vulkan-cpu tier: lavapipe's anisotropic filter softens even an image drawn 1:1), 0 without a renderer. Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners. |
 | `planarReflections` | `number` | `0` | — | — | — | How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead. |
 | `world3d` | `boolean` | `false` | — | — | — | Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn, og.terrain's calls and a SHAPE_HEIGHTFIELD collider answer a refusal naming this field, and `og build --publish` refuses a 2D project whose scenes hold og.Terrain, og.TerrainScatter, og.Water, og.WaterSurface or og.Fluid3D, by scene file and line); true in the 3D modules, the dev module and the native host. |
 
@@ -5293,28 +5291,28 @@ struct RenderCapabilities {
   field compute bool "Whether compute passes run (GPU culling, GPU particles)."
   field antialias Antialias "The antialiasing the device resolved RenderOptions.antialias to."
   field maxLights u32 "How many point and spot lights one frame draws (MAX_LIGHTS on every tier)."
-  field maxShadowedLights u32 "How many point and spot lights cast shadows in one frame (8 on the full tier, 4 on WebGL2); past it, the shadowed lights brightest at the camera keep theirs."
+  field maxShadowedLights u32 "How many point and spot lights cast shadows in one frame (8); past it, the shadowed lights brightest at the camera keep theirs."
   field maxMsaaSamples u32 "The samples per pixel this device multisamples the scene at, which caps RenderSettings.msaaSamples: 4 where antialias resolved to msaa4 when the renderer was made, 1 where it resolved to taa, fxaa or off (or to fxaa because the HDR format cannot be multisampled), 0 without a renderer. It stays 4 while RenderSettings.msaaSamples 1 draws FXAA (antialias then says fxaa)."
   field pointShadows PointShadows "How point lights' shadows are stored on this device: cube or paraboloid (what RenderOptions.pointShadows resolved to)."
   field width u32 "The render target width in device pixels."
   field height u32 "The render target height in device pixels."
   field stylise List.String "The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, shadowDarkness, rim, outline, outlineDistance, flatShading and surface of MaterialStyle. A look that uses one this list lacks still applies; that primitive is not drawn."
-  field ssr bool "Whether PostEffects.ssr draws: true on the full tier, false on WebGL2, where smooth surfaces reflect the reflection probes and the environment instead."
+  field ssr bool "Whether PostEffects.ssr draws: true with a renderer, false without one."
   field reflectionProbes u32 "How many og.ReflectionProbe components one frame samples (MAX_REFLECTION_PROBES on every tier)."
-  field renderTargetDepth bool "Whether a render target made with `depth` gets its view's depth drawn: true on every tier with a renderer (WebGPU, Vulkan, Metal and WebGL2 alike), false without one. The depth comes from the view's own depth prepass of its opaque meshes into a linear-depth colour target, never from its depth buffer, which WebGL2 cannot read in a shader."
+  field renderTargetDepth bool "Whether a render target made with `depth` gets its view's depth drawn: true with a renderer, false without one. The depth comes from the view's own depth prepass of its opaque meshes into a linear-depth colour target, never from its depth buffer."
   field maxRenderTargetSize u32 "The largest side of a render target (the device's largest 2D texture)."
   field maxCustomPosts u32 "The most custom post passes a frame runs: 8 on every tier, PostEffects.custom's capacity."
-  field volumetricFog VolumetricFog "How Fog.volumetric is drawn on this device: a froxel grid (the full tier) or a raymarch along each pixel's view ray (WebGL2), each lit by the sun through its shadows and by the point, spot and rect lights around each sample (up to volumetricLights of them) through their shadows and cookies."
-  field volumetricLights u32 "The most point, spot and rect lights that light one sample of Fog.volumetric: those of its screen cluster, MAX_CLUSTER_LIGHTS (64) in the froxel grid, 8 in WebGL2's raymarch, the brightest at the camera first."
+  field volumetricFog VolumetricFog "How Fog.volumetric is drawn on this device: a froxel grid or a raymarch along each pixel's view ray, each lit by the sun through its shadows and by the point, spot and rect lights around each sample (up to volumetricLights of them) through their shadows and cookies."
+  field volumetricLights u32 "The most point, spot and rect lights that light one sample of Fog.volumetric: those of its screen cluster, MAX_CLUSTER_LIGHTS (64) in the froxel grid, 8 in the raymarch, the brightest at the camera first."
   field maxLightCookies u32 "The most light cookie layers one frame draws (24 on every tier): a SpotLight.cookie takes one, a PointLight.cookie six (its cube's faces), and a texture several lights of one kind share takes its layers once. Cookies past it, in the order of their lights' entities, are not drawn: those lights shine without them, and the log names them in a warning."
-  field gpuTimestamps bool "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`, WebGL2 with `EXT_disjoint_timer_query_webgl2` (Chrome; not Firefox or Safari); never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
-  field spriteAnisotropy u32 "The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, WebGL2 with EXT_texture_filter_anisotropic), 1 where it has none and on a software rasterizer (the vulkan-cpu tier: lavapipe's anisotropic filter softens even an image drawn 1:1), 0 without a renderer. Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners."
+  field gpuTimestamps bool "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
+  field spriteAnisotropy u32 "The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, DX12), 1 where it has none and on a software rasterizer (the vulkan-cpu tier: lavapipe's anisotropic filter softens even an image drawn 1:1), 0 without a renderer. Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners."
   field planarReflections u32 "How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead."
   field world3d bool "Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn, og.terrain's calls and a SHAPE_HEIGHTFIELD collider answer a refusal naming this field, and `og build --publish` refuses a 2D project whose scenes hold og.Terrain, og.TerrainScatter, og.Water, og.WaterSurface or og.Fluid3D, by scene file and line); true in the 3D modules, the dev module and the native host."
 }
 ```
 
-<sub>`api.ogt` line 4311</sub>
+<sub>`api.ogt` line 4310</sub>
 
 <a id="type-ReflectionProbeMode"></a>
 
@@ -5337,7 +5335,7 @@ enum ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 4339</sub>
+<sub>`api.ogt` line 4338</sub>
 
 <a id="type-Shader"></a>
 
@@ -5351,7 +5349,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read."
 ```
 
-<sub>`api.ogt` line 4399</sub>
+<sub>`api.ogt` line 4398</sub>
 
 <a id="type-BufferGeometryDesc"></a>
 
@@ -5392,7 +5390,7 @@ struct BufferGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4482</sub>
+<sub>`api.ogt` line 4481</sub>
 
 <a id="type-GeometryInfo"></a>
 
@@ -5423,7 +5421,7 @@ struct GeometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 4498</sub>
+<sub>`api.ogt` line 4497</sub>
 
 <a id="type-CylinderGeometryDesc"></a>
 
@@ -5482,7 +5480,7 @@ struct CylinderGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4533</sub>
+<sub>`api.ogt` line 4532</sub>
 
 <a id="type-ConeGeometryDesc"></a>
 
@@ -5526,7 +5524,7 @@ struct ConeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4569</sub>
+<sub>`api.ogt` line 4568</sub>
 
 <a id="type-CapsuleGeometryDesc"></a>
 
@@ -5573,7 +5571,7 @@ struct CapsuleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4593</sub>
+<sub>`api.ogt` line 4592</sub>
 
 <a id="type-TorusGeometryDesc"></a>
 
@@ -5620,7 +5618,7 @@ struct TorusGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4620</sub>
+<sub>`api.ogt` line 4619</sub>
 
 <a id="type-RingGeometryDesc"></a>
 
@@ -5671,7 +5669,7 @@ struct RingGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4647</sub>
+<sub>`api.ogt` line 4646</sub>
 
 <a id="type-CircleGeometryDesc"></a>
 
@@ -5711,7 +5709,7 @@ struct CircleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4677</sub>
+<sub>`api.ogt` line 4676</sub>
 
 <a id="type-TubeGeometryDesc"></a>
 
@@ -5755,7 +5753,7 @@ struct TubeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4698</sub>
+<sub>`api.ogt` line 4697</sub>
 
 <a id="type-ShapePoints"></a>
 
@@ -5776,7 +5774,7 @@ struct ShapePoints {
 }
 ```
 
-<sub>`api.ogt` line 4772</sub>
+<sub>`api.ogt` line 4771</sub>
 
 <a id="type-ShapeGeometryDesc"></a>
 
@@ -5813,7 +5811,7 @@ struct ShapeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4778</sub>
+<sub>`api.ogt` line 4777</sub>
 
 <a id="type-ExtrudeGeometryDesc"></a>
 
@@ -5886,7 +5884,7 @@ struct ExtrudeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4795</sub>
+<sub>`api.ogt` line 4794</sub>
 
 <a id="type-LatheGeometryDesc"></a>
 
@@ -5934,7 +5932,7 @@ struct LatheGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4840</sub>
+<sub>`api.ogt` line 4839</sub>
 
 <a id="type-PolyhedronGeometryDesc"></a>
 
@@ -5978,7 +5976,7 @@ struct PolyhedronGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4866</sub>
+<sub>`api.ogt` line 4865</sub>
 
 <a id="type-SolidGeometryDesc"></a>
 
@@ -6018,7 +6016,7 @@ struct SolidGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4888</sub>
+<sub>`api.ogt` line 4887</sub>
 
 <a id="type-SweepKey"></a>
 
@@ -6041,7 +6039,7 @@ struct SweepKey {
 }
 ```
 
-<sub>`api.ogt` line 4908</sub>
+<sub>`api.ogt` line 4907</sub>
 
 <a id="type-SweepGeometryDesc"></a>
 
@@ -6093,7 +6091,7 @@ struct SweepGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4916</sub>
+<sub>`api.ogt` line 4915</sub>
 
 <a id="type-MirrorAxis"></a>
 
@@ -6120,7 +6118,7 @@ enum MirrorAxis {
 }
 ```
 
-<sub>`api.ogt` line 4943</sub>
+<sub>`api.ogt` line 4942</sub>
 
 <a id="type-GeometryPart"></a>
 
@@ -6154,7 +6152,7 @@ struct GeometryPart {
 }
 ```
 
-<sub>`api.ogt` line 4951</sub>
+<sub>`api.ogt` line 4950</sub>
 
 <a id="type-CsgOp"></a>
 
@@ -6179,7 +6177,7 @@ enum CsgOp {
 }
 ```
 
-<sub>`api.ogt` line 4965</sub>
+<sub>`api.ogt` line 4964</sub>
 
 <a id="type-CsgGeometryDesc"></a>
 
@@ -6215,7 +6213,7 @@ struct CsgGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 4972</sub>
+<sub>`api.ogt` line 4971</sub>
 
 <a id="type-MergeGeometriesDesc"></a>
 
@@ -6247,7 +6245,7 @@ struct MergeGeometriesDesc {
 }
 ```
 
-<sub>`api.ogt` line 4987</sub>
+<sub>`api.ogt` line 4986</sub>
 
 <a id="type-LineMode"></a>
 
@@ -6272,13 +6270,13 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 5077</sub>
+<sub>`api.ogt` line 5076</sub>
 
 <a id="type-LinesDesc"></a>
 
 ### `LinesDesc` (desc struct)
 
-Lines through points, drawn this frame only (immediate mode, as og.render.sprite): submit them every tick they should show. three.js Line, LineSegments and LineLoop with a LineBasicMaterial or LineDashedMaterial, but any width on every tier (each segment is a quad in screen space with a feathered edge, so WebGL2's one-pixel lines do not apply).
+Lines through points, drawn this frame only (immediate mode, as og.render.sprite): submit them every tick they should show. three.js Line, LineSegments and LineLoop with a LineBasicMaterial or LineDashedMaterial, but any width (each segment is a quad in screen space with a feathered edge; WebGPU has no line width).
 
 World lines are drawn in the scene after the transparent meshes and particles, exposed, bloomed and tone mapped with it; screen lines over the finished frame, after every post effect and under the UI.
 
@@ -6301,7 +6299,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct LinesDesc {
-  doc "Lines through points, drawn this frame only (immediate mode, as og.render.sprite): submit them every tick they should show. three.js Line, LineSegments and LineLoop with a LineBasicMaterial or LineDashedMaterial, but any width on every tier (each segment is a quad in screen space with a feathered edge, so WebGL2's one-pixel lines do not apply)."
+  doc "Lines through points, drawn this frame only (immediate mode, as og.render.sprite): submit them every tick they should show. three.js Line, LineSegments and LineLoop with a LineBasicMaterial or LineDashedMaterial, but any width (each segment is a quad in screen space with a feathered edge; WebGPU has no line width)."
   doc "World lines are drawn in the scene after the transparent meshes and particles, exposed, bloomed and tone mapped with it; screen lines over the finished frame, after every post effect and under the UI."
   desc true
   field points List.Vector3 "The points, in order: world positions, or with screen CSS pixels from the top left of the play surface with y down (z ignored)." {
@@ -6338,7 +6336,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 5091</sub>
+<sub>`api.ogt` line 5090</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -6389,7 +6387,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 5135</sub>
+<sub>`api.ogt` line 5134</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -6422,7 +6420,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5238</sub>
+<sub>`api.ogt` line 5237</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -6457,7 +6455,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 5252</sub>
+<sub>`api.ogt` line 5251</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -6480,7 +6478,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 5277</sub>
+<sub>`api.ogt` line 5276</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -6494,7 +6492,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 5290</sub>
+<sub>`api.ogt` line 5289</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -6528,7 +6526,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 5299</sub>
+<sub>`api.ogt` line 5298</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -6555,7 +6553,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 5314</sub>
+<sub>`api.ogt` line 5313</sub>
 
 <a id="type-Post"></a>
 
@@ -6569,7 +6567,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 5426</sub>
+<sub>`api.ogt` line 5425</sub>
 
 <a id="type-PostError"></a>
 
@@ -6590,7 +6588,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 5444</sub>
+<sub>`api.ogt` line 5443</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -6602,18 +6600,18 @@ A string: one of the variants below. The zero value is `"froxel"`.
 
 | Variant | Doc |
 |---|---|
-| `"froxel"` | A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows and cookies (each cell the mean of eight samples over its depth), then integrated front to back: the full tier. |
-| `"raymarch"` | Each pixel's view ray marched through the fog in 24 jittered steps, each lit by the sun through its cascades and by the first 8 point, spot and rect lights of its screen cluster through their shadows and cookies (RenderCapabilities.volumetricLights): WebGL2, which has no compute. |
+| `"froxel"` | A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows and cookies (each cell the mean of eight samples over its depth), then integrated front to back: what the engine draws with. |
+| `"raymarch"` | Each pixel's view ray marched through the fog in 24 jittered steps, each lit by the sun through its cascades and by the first 8 point, spot and rect lights of its screen cluster through their shadows and cookies (RenderCapabilities.volumetricLights), with no compute pass: og-render's alternative to the froxel grid, which the engine draws with. |
 
 ```ogt
 enum VolumetricFog {
   doc "How the device draws Fog.volumetric (RenderCapabilities.volumetricFog)."
-  variant froxel "A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows and cookies (each cell the mean of eight samples over its depth), then integrated front to back: the full tier."
-  variant raymarch "Each pixel's view ray marched through the fog in 24 jittered steps, each lit by the sun through its cascades and by the first 8 point, spot and rect lights of its screen cluster through their shadows and cookies (RenderCapabilities.volumetricLights): WebGL2, which has no compute."
+  variant froxel "A grid of view-aligned cells over the camera's frustum (160 by 90 by 64, slices deepening with the square of their index) lit in compute by the sun through its shadow cascades and by the clustered point, spot and rect lights through their shadows and cookies (each cell the mean of eight samples over its depth), then integrated front to back: what the engine draws with."
+  variant raymarch "Each pixel's view ray marched through the fog in 24 jittered steps, each lit by the sun through its cascades and by the first 8 point, spot and rect lights of its screen cluster through their shadows and cookies (RenderCapabilities.volumetricLights), with no compute pass: og-render's alternative to the froxel grid, which the engine draws with."
 }
 ```
 
-<sub>`api.ogt` line 5458</sub>
+<sub>`api.ogt` line 5457</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -6646,7 +6644,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 5506</sub>
+<sub>`api.ogt` line 5505</sub>
 
 ## Column kinds
 
@@ -6713,7 +6711,7 @@ column ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 2702</sub>
+<sub>`api.ogt` line 2701</sub>
 
 ```ogt
 column AoResolutionSetting {
@@ -6724,7 +6722,7 @@ column AoResolutionSetting {
 }
 ```
 
-<sub>`api.ogt` line 2723</sub>
+<sub>`api.ogt` line 2722</sub>
 
 ```ogt
 column QualityPreset {
@@ -6735,7 +6733,7 @@ column QualityPreset {
 }
 ```
 
-<sub>`api.ogt` line 2738</sub>
+<sub>`api.ogt` line 2737</sub>
 
 ```ogt
 column Texture {
@@ -6746,7 +6744,7 @@ column Texture {
 }
 ```
 
-<sub>`api.ogt` line 2861</sub>
+<sub>`api.ogt` line 2860</sub>
 
 ```ogt
 column Lut {
@@ -6757,7 +6755,7 @@ column Lut {
 }
 ```
 
-<sub>`api.ogt` line 2868</sub>
+<sub>`api.ogt` line 2867</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -6768,7 +6766,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>`api.ogt` line 2875</sub>
+<sub>`api.ogt` line 2874</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -6779,7 +6777,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>`api.ogt` line 2913</sub>
+<sub>`api.ogt` line 2912</sub>
 
 ```ogt
 column AoMethod {
@@ -6790,7 +6788,7 @@ column AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 2928</sub>
+<sub>`api.ogt` line 2927</sub>
 
 ```ogt
 column AoResolution {
@@ -6801,7 +6799,7 @@ column AoResolution {
 }
 ```
 
-<sub>`api.ogt` line 2941</sub>
+<sub>`api.ogt` line 2940</sub>
 
 ```ogt
 column DofQuality {
@@ -6812,7 +6810,7 @@ column DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 2954</sub>
+<sub>`api.ogt` line 2953</sub>
 
 ```ogt
 column ScreenBlur {
@@ -6823,7 +6821,7 @@ column ScreenBlur {
 }
 ```
 
-<sub>`api.ogt` line 2969</sub>
+<sub>`api.ogt` line 2968</sub>
 
 ```ogt
 column SpriteBlend {
@@ -6834,7 +6832,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 2982</sub>
+<sub>`api.ogt` line 2981</sub>
 
 ```ogt
 column SpriteFacing {
@@ -6845,7 +6843,7 @@ column SpriteFacing {
 }
 ```
 
-<sub>`api.ogt` line 2996</sub>
+<sub>`api.ogt` line 2995</sub>
 
 ```ogt
 column StripBlend {
@@ -6856,7 +6854,7 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 3009</sub>
+<sub>`api.ogt` line 3008</sub>
 
 ```ogt
 column Palette {
@@ -6867,7 +6865,7 @@ column Palette {
 }
 ```
 
-<sub>`api.ogt` line 3334</sub>
+<sub>`api.ogt` line 3333</sub>
 
 ```ogt
 column Look {
@@ -6878,7 +6876,7 @@ column Look {
 }
 ```
 
-<sub>`api.ogt` line 3341</sub>
+<sub>`api.ogt` line 3340</sub>
 
 ```ogt
 column DitherPattern {
@@ -6889,7 +6887,7 @@ column DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 3358</sub>
+<sub>`api.ogt` line 3357</sub>
 
 ```ogt
 column MaterialSurface {
@@ -6900,7 +6898,7 @@ column MaterialSurface {
 }
 ```
 
-<sub>`api.ogt` line 3373</sub>
+<sub>`api.ogt` line 3372</sub>
 
 ```ogt
 column StyliseSpace {
@@ -6911,7 +6909,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 3387</sub>
+<sub>`api.ogt` line 3386</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -6922,7 +6920,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 4345</sub>
+<sub>`api.ogt` line 4344</sub>
 
 ```ogt
 column Shader {
@@ -6933,7 +6931,7 @@ column Shader {
 }
 ```
 
-<sub>`api.ogt` line 4401</sub>
+<sub>`api.ogt` line 4400</sub>
 
 ```ogt
 column LineMode {
@@ -6944,7 +6942,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 5084</sub>
+<sub>`api.ogt` line 5083</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -6955,7 +6953,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 5283</sub>
+<sub>`api.ogt` line 5282</sub>
 
 ```ogt
 column RenderTarget {
@@ -6966,7 +6964,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 5292</sub>
+<sub>`api.ogt` line 5291</sub>
 
 ```ogt
 column Post {
@@ -6977,7 +6975,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 5428</sub>
+<sub>`api.ogt` line 5427</sub>
 
 ## Constants
 
@@ -6993,28 +6991,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>`api.ogt` line 3750</sub>
+<sub>`api.ogt` line 3749</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 4307</sub>
+<sub>`api.ogt` line 4306</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 4308</sub>
+<sub>`api.ogt` line 4307</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>`api.ogt` line 4309</sub>
+<sub>`api.ogt` line 4308</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>`api.ogt` line 4337</sub>
+<sub>`api.ogt` line 4336</sub>

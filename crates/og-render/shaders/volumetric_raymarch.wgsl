@@ -1,4 +1,4 @@
-// The raymarch of volumetric.wgsl (WebGL2): each step lit by the sun
+// The raymarch of volumetric.wgsl (VolumetricMethod::Raymarch): each step lit by the sun
 // through its cascades and by the first RAYMARCH_LIGHTS (volumetric.rs)
 // point, spot and rect lights of its cluster through their shadows and
 // cookies.

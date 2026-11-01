@@ -87,7 +87,7 @@ export interface PlayOrigin {
   readonly requests: Array<{ load: number; at: number; path: string; bytes: number; brotli: number; sw?: boolean }>;
   /** A page load starts now: the requests from here on are its, timed from now. */
   navigated(): void;
-  /** The page's URL, with an optional query (`?webgl=1`). */
+  /** The page's URL, with an optional query (`?replay-seed=7`). */
   url(query?: string): string;
   stop(): void;
 }

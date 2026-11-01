@@ -832,8 +832,8 @@ fn text_fields_match_their_reference_frame() {
 /// isotropic draw, as lavapipe's does, is not one the sampler may use).
 /// Where the tier filters anisotropically (`RenderInfo::sprite_anisotropy`
 /// above 1, RenderCapabilities.spriteAnisotropy), the squeezed piece's
-/// outline reads the 1:1 one's darkness; where it does not (1: WebGL2
-/// without the extension, a software rasterizer), og-ui's 2× bound on a
+/// outline reads the 1:1 one's darkness; where it does not (1: a
+/// software rasterizer), og-ui's 2× bound on a
 /// middle's squeeze is what keeps the band away, and that half is skipped.
 ///
 /// Ways it could fail: the sampler reads the mip level by the larger axis

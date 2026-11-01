@@ -1,5 +1,5 @@
-//! Screen-space reflections (`docs/design.md` §2.6): the full tier's pass
-//! after the main pass (`FramePass::Ssr`, `ssr.wgsl` after `fxpost.wgsl`).
+//! Screen-space reflections (`docs/design.md` §2.6): a pass after the
+//! main pass (`FramePass::Ssr`, `ssr.wgsl` after `fxpost.wgsl`).
 //!
 //! Each glossy pixel marches its reflected ray in view space through the
 //! depth-normal prepass's view depth; where the ray passes behind a surface
@@ -13,9 +13,7 @@
 //! scattered copies and unlit materials carry none and reflect nothing.
 //!
 //! A ray that finds nothing keeps what the frame's reflection probes and
-//! environment map put there. WebGL2 (the GL tier) draws no SSR:
-//! `RenderCapabilities.ssr` is false there and smooth surfaces show the
-//! probes and the environment alone.
+//! environment map put there.
 
 /// Screen-space reflections ([`crate::PostEffects::ssr`]).
 #[derive(Clone, Copy, Debug, PartialEq)]

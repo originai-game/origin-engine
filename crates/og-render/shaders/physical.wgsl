@@ -284,7 +284,7 @@ fn bicubic_level(uv: vec2<f32>, level: f32) -> vec3<f32> {
 }
 
 // The opaque scene behind the point, blurred by `lod` levels (the copy
-// has a full mip chain; WebGL2 cannot ask a texture for its levels).
+// has a full mip chain).
 fn scene_behind(uv: vec2<f32>, lod: f32) -> vec3<f32> {
   let size = vec2<f32>(textureDimensions(transmission_tex));
   let top = floor(log2(max(size.x, size.y)));

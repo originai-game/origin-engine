@@ -192,8 +192,9 @@ struct Drawn {
 /// The raycast record of a tick: its drawn meshes as read when it started,
 /// then, from the first raycast of the tick on, the targets composed from
 /// them. Most ticks raycast nothing from a system, and composing every
-/// drawn mesh's world matrix each tick was a tenth of a WebGL2 frame of
-/// the reference scene (tests/evidence/r4/perf-webgl2-2/NOTES.md).
+/// drawn mesh's world matrix each tick was a tenth of a frame of the
+/// reference scene on the retired WebGL2 tier
+/// (tests/evidence/r4/perf-webgl2-2/NOTES.md).
 enum Record {
     /// The og.Mesh rows (shared with the next tick's while they hold) and
     /// the og.Model parts.

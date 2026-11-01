@@ -254,9 +254,9 @@ export interface DownloadSum {
  * build serves, everything fetched before its first frame, and what comes
  * later. A page takes one engine module: the lanes module when the page is
  * cross-origin isolated and the build ships it, else the single-threaded
- * one (docs/web-export.md §Lanes). The WebGPU and WebGL2 pages fetch the
- * same files. `total` (every file of the directory) is none of these: it
- * counts both engine modules, the licences, the icons and the manifest.
+ * one (docs/web-export.md §Lanes). `total` (every file of the directory)
+ * is none of these: it counts both engine modules, the licences, the icons
+ * and the manifest.
  */
 export interface Downloads {
   /** The boot of the single-threaded page, and of the lanes page when the build ships lanes. */
@@ -312,7 +312,7 @@ export function downloadLines(d: Downloads, codec: SizeRow["codec"]): string {
   const kb = (n: number) => `${(n / 1000).toFixed(1)} kB`;
   const boot = (name: string, b: DownloadBoot) =>
     `  ${name.padEnd(30)} ${String(b.files).padStart(4)} files  ${String(b.compressed).padStart(10)} B  (engine ${kb(b.engine.compressed)}, cooked ${kb(b.cooked.compressed)}, shell ${kb(b.shell.compressed)}, basis ${kb(b.basis.compressed)})`;
-  const lines = [`download (${codec}, what a player fetches; a WebGPU and a WebGL2 page fetch the same files):`];
+  const lines = [`download (${codec}, what a player fetches):`];
   if (d.boot.lanes) lines.push(boot("boot, lanes page (isolated)", d.boot.lanes));
   lines.push(boot("boot, single-threaded page", d.boot.single));
   const later = [

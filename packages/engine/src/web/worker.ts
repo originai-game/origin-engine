@@ -56,7 +56,6 @@ import { loadBasisTranscoder, transcodeKtx2, TEXTURE_FORMATS, type BasisTranscod
 import type { HostError } from "./shell.ts";
 import { PlatformCounter, settle, SETTLE_FIRST_MS, SETTLE_MS } from "./settle.ts";
 import { Trace, unixMs } from "../trace.ts";
-import { filterGlStateOf } from "./gl-state.ts";
 
 interface Start {
   type: "start";
@@ -72,7 +71,6 @@ interface Start {
   /** Why the shell did not choose lanes, reported back in ready. */
   lanesWhy?: string;
   canvas?: OffscreenCanvas;
-  webgl?: boolean;
   seed?: number;
   ring?: SharedArrayBuffer;
   rpc?: RpcRings;
@@ -174,7 +172,7 @@ export interface WebExtras {
   og_web_bundle_files(manifest: string): string;
   og_web_texture_ktx2(manifest: string, id: string, bytes: Uint8Array): Uint8Array;
   og_web_pack_ktx2?(engine: number | undefined, manifest: string, pack: Uint8Array): Array<string | Uint8Array>;
-  og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, webgl: boolean): Promise<string>;
+  og_web_attach_canvas(engine: number, canvas: OffscreenCanvas): Promise<string>;
   og_web_set_viewport(engine: number, viewport: string): string;
   og_web_resize?(engine: number, width: number, height: number): void;
   og_web_lanes?(): string;
@@ -802,7 +800,7 @@ export function startWorker(game: GameToken): void {
 
   /**
    * Behind the gate, in idle time: the renderer makes the pipelines the first frame did not
-   * draw with, one a task (og-render deferred.rs; each is a long link on WebGL2), until
+   * draw with, one a task (og-render deferred.rs), until
    * none is left or play begins (a pipeline still unmade is made by the frame that first draws with it).
    */
   const warmBehindGate = () => {
@@ -1004,9 +1002,10 @@ export function startWorker(game: GameToken): void {
         let tier = "none";
         if (data.canvas) {
           canvas = data.canvas;
-          // The WebGL2 tier draws through the state filter (gl-state.ts).
-          if (data.webgl) filterGlStateOf(data.canvas);
-          tier = await glue.og_web_attach_canvas(engine.id, data.canvas, !!data.webgl);
+          // WebGPU only: a rejection is the reason the renderer did not start (no fallback).
+          tier = await glue.og_web_attach_canvas(engine.id, data.canvas).catch((e: unknown) => {
+            throw new Error(`WebGPU did not start: ${e instanceof Error ? e.message : String(e)}`);
+          });
           rendering = true;
         }
         phase("attach");

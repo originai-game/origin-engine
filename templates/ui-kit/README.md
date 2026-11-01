@@ -64,9 +64,9 @@ and `kit-phone-<screen>.png` come from: `tests/frames-desktop.og.ts` and
 `tests/frames-phone.og.ts` show each screen, wait for its entrance, take its
 frame and compare it with the reference under og-tests' rule (a channel off
 by more than 32/255 is an outlier; fail above 0.5 % outliers or RMSE 0.01).
-Every frame, locale screen and style sheet is committed for `metal`,
-`vulkan-cpu`, `webgpu` and `webgl2`; a tier without its own references
-compares with `metal` and says so. The browser tiers run these same
+Every frame, locale screen and style sheet is committed for `metal`; a
+tier without its own references compares with `metal` and says so. The
+browser tier, WebGPU, runs these same
 playtests through `packages/engine/tests/web/reference-ui.ts` (`docs/ci.md`
 §Browser reference tiers).
 

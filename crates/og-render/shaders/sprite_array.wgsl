@@ -5,9 +5,7 @@
 // shows. Hit flash, 2D lighting, drop shadows (location 6, as sprite.wgsl),
 // the soft dot (a particle's round edge over its layer) and the glow
 // (`fs_glow` adds glowing array sprites into the glow buffer) as
-// sprite.wgsl; no MSDF text. On WebGL2 the array arrives as a
-// sampler2DArray: og-render pads a one-layer or multiple-of-six array
-// (gl_safe_array_layers) so the GL backend keeps it a 2D array.
+// sprite.wgsl; no MSDF text.
 // Prepended by frame.wgsl and lighting.wgsl.
 
 @group(1) @binding(0) var sprite_array: texture_2d_array<f32>;

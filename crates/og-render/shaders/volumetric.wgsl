@@ -4,12 +4,12 @@
 // scattering `colour × scattering` of the light it is lit by with a
 // Henyey-Greenstein phase of `anisotropy`.
 //
-// Full tier: `inject` lights every froxel (160 × 90 × 64 cells over the
+// The froxel grid: `inject` lights every froxel (160 × 90 × 64 cells over the
 // view, slices quadratically deeper to `distance`) by the sun through its
 // cascades and the cluster's point, spot and rect lights through their
 // shadows and cookies; `integrate` sums them front to back into the
 // in-scattered light and the transmittance at each slice's far edge;
-// `fs_froxel` reads that at each pixel's depth. WebGL2: `fs_raymarch`
+// `fs_froxel` reads that at each pixel's depth. The raymarch: `fs_raymarch`
 // marches each pixel's view ray in steps, lit by the sun and the first
 // RAYMARCH_LIGHTS lights of each step's cluster. Both
 // output (in-scattered light, transmittance), blended over the lit image

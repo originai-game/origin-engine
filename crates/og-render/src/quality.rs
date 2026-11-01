@@ -30,7 +30,7 @@ pub struct RenderQuality {
     /// light unshadowed (each keeps its flag for when it is true again).
     pub rect_shadows: bool,
     /// At most this many point, spot and rect lights cast shadows in a
-    /// frame, the brightest at the camera kept; the tier's
+    /// frame, the brightest at the camera kept; the renderer's
     /// [`crate::RenderInfo::shadowed_lights`] caps it (0: none).
     pub shadowed_lights: u32,
     /// The shadow maps at this fraction of their full side: the
@@ -59,14 +59,14 @@ pub struct RenderQuality {
     /// contact with thin and distant reflected surfaces.
     pub ssr_step_scale: f32,
     /// Volumetric fog's samples along each view ray times this: the
-    /// froxel grid's [`FROXELS`] slices deep on the full tier (each
-    /// sliced more thinly, so a shaft's edge in depth and the fog in
-    /// front of a near surface resolve more finely), the raymarch's
-    /// [`RAYMARCH_STEPS`] steps on WebGL2; within 8 to 256 slices and 4 to
+    /// froxel grid's [`FROXELS`] slices deep (each sliced more thinly, so
+    /// a shaft's edge in depth and the fog in front of a near surface
+    /// resolve more finely), or the raymarch's [`RAYMARCH_STEPS`] steps
+    /// ([`crate::VolumetricMethod::Raymarch`]); within 8 to 256 slices and 4 to
     /// 96 steps.
     pub volumetric_step_scale: f32,
     /// Samples per pixel where antialiasing multisamples
-    /// ([`crate::Antialias::Msaa4`], the WebGL2 tier's choice):
+    /// ([`crate::Antialias::Msaa4`]):
     /// [`crate::MSAA_SAMPLES`], or 1, which draws FXAA instead
     /// ([`crate::RenderInfo::antialias`] says which is drawn).
     /// [`crate::RenderInfo::msaa_samples`] caps it, as

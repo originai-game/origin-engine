@@ -2,7 +2,7 @@
 // Chrome, and its frame and probe timings: where the sphere field's frame
 // goes on the web (owed row 50, docs/phase-1.md).
 //
-//   bun tools/bench/profile-spheres.ts [--count 20000] [--frames 120] [--webgl]
+//   bun tools/bench/profile-spheres.ts [--count 20000] [--frames 120]
 //       [--single] [--names] [--top 40] [--chrome <path>] [--json <file>]
 //
 // --single serves the page without cross-origin isolation (the shell takes
@@ -32,7 +32,6 @@ const repo = join(here, "..", "..");
 const COUNT = Number(opt("--count", "20000"));
 const FRAMES = Number(opt("--frames", "120"));
 const TOP = Number(opt("--top", "40"));
-const WEBGL = argv.includes("--webgl");
 const SINGLE = argv.includes("--single");
 const NAMES = argv.includes("--names");
 const W = 1280, H = 720;
@@ -93,7 +92,7 @@ browser.on((method, params) => {
 try {
   const tab = await browser.open("about:blank", []);
   await tab.send("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: 1, mobile: false });
-  await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/bench.html${WEBGL ? "?webgl=1" : ""}` });
+  await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/bench.html` });
   await tab.until("!!(globalThis.__og_shell__ || globalThis.__og_shell_error__)", 180_000);
   const failed = await tab.eval<string | undefined>("globalThis.__og_shell_error__");
   if (failed) throw new Error(failed);

@@ -3,9 +3,8 @@
 // alike. Each reads its module's `source` through `linear_sampler`, a tap
 // at a time through its module's `bloom_tap`, and takes the source's size
 // in pixels from its module's `bloom_source_size`: a glow level is sampled
-// through its view's base mip level, where textureDimensions is wrong on
-// ANGLE on D3D11 (WebGL2 on Windows answers textureSize with base level b
-// as level 2b's size).
+// through its view's base mip level, whose textureDimensions is not the
+// level's size.
 
 // The 13-tap downsample (Jimenez, "Next generation post processing in Call of Duty").
 fn downsample13(uv: vec2<f32>) -> vec3<f32> {

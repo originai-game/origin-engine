@@ -537,8 +537,8 @@ impl Layout {
     /// last bytes decoded and their JSON are kept, so a record whose bytes
     /// did not change is not decoded again (the camera's, the render
     /// settings' and the post effects' decodes, their maps built and
-    /// dropped, were about a tenth of a WebGL2 frame's wasm:
-    /// tests/evidence/r4/perf-webgl2-2/NOTES.md).
+    /// dropped, were about a tenth of a frame's wasm on the retired WebGL2
+    /// tier: tests/evidence/r4/perf-webgl2-2/NOTES.md).
     pub fn decode_kept(&self, bytes: Vec<u8>) -> std::sync::Arc<Value> {
         let mut kept = self
             .kept

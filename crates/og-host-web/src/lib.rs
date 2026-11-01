@@ -12,8 +12,9 @@
 //!   reads and writes engine memory without a copy.
 //! - The dispatcher is a JavaScript function installed once; the engine calls
 //!   it for every system, command and facts call.
-//! - `og_web_attach_canvas` puts the renderer on an OffscreenCanvas (WebGPU,
-//!   or WebGL2); `og_engine_frame` then ticks and renders.
+//! - `og_web_attach_canvas` puts the renderer on an OffscreenCanvas
+//!   (WebGPU, the only web backend); `og_engine_frame` then ticks and
+//!   renders.
 //! - og-probe is mounted by the runtime; the Worker hands each frame of the
 //!   shell's request ring to `og_engine_call`. A capture renders offscreen
 //!   and starts the readback; the frame is answered by the next call once the
@@ -598,9 +599,9 @@ pub fn og_web_memory(engine: u32) -> String {
 
 /// Make one pipeline the engine's renderer has not used yet (og-render's
 /// `Renderer::warm`): the engine Worker calls it in idle time behind the
-/// play gate, until it answers false, so WebGL2's compiles and links of
-/// the passes the first frame did not draw happen before play rather than
-/// in a frame of it.
+/// play gate, until it answers false, so the pipelines of the passes the
+/// first frame did not draw compile before play rather than in a frame of
+/// it.
 #[wasm_bindgen]
 pub fn og_web_warm(engine: u32) -> bool {
     og_runtime::warm_renderer(engine)
@@ -871,19 +872,21 @@ mod canvas {
         }
     }
 
-    /// Put the renderer on an OffscreenCanvas transferred to this Worker.
-    /// Resolves to the tier (`webgpu`, `webgl2`), or rejects with the reason.
+    /// Put the renderer on an OffscreenCanvas transferred to this Worker,
+    /// on WebGPU (the engine has no other web backend). Resolves to the
+    /// tier (`webgpu`), or rejects with the reason: no WebGPU adapter in
+    /// this browser, or the canvas or device refused.
     #[wasm_bindgen]
     pub async fn og_web_attach_canvas(
         engine: u32,
         canvas: web_sys::OffscreenCanvas,
-        webgl: bool,
     ) -> Result<String, JsValue> {
-        let backend = if webgl {
-            Backend::WebGl2
-        } else {
-            Backend::WebGpu
-        };
+        if !wgpu::util::is_browser_webgpu_supported().await {
+            return Err(JsValue::from_str(
+                "no WebGPU adapter: this browser offers no WebGPU (navigator.gpu), which the engine needs",
+            ));
+        }
+        let backend = Backend::WebGpu;
         let desc = og_runtime::render_desc(
             engine,
             RenderDesc {

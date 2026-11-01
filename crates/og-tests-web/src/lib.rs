@@ -2,8 +2,7 @@
 //! crates/og-ui/tests/support/scenes.rs, the file og-ui's own gfx tests
 //! build them with), in a browser (docs/ci.md §Browser reference tiers).
 //!
-//! One scene at a time: [`og_gfx_open`] builds it and a renderer on WebGPU
-//! or WebGL2 (an OffscreenCanvas, which WebGL2 needs for its context),
+//! One scene at a time: [`og_gfx_open`] builds it and a renderer on WebGPU,
 //! [`og_gfx_render`] draws frames to the renderer's offscreen target exactly
 //! as `og_tests::gfx::render_built` does natively (the scene's update before
 //! each), and [`og_gfx_capture`] reads the last one back as RGBA8.
@@ -33,7 +32,7 @@ mod text_scenes;
 mod web {
     use og_render::{Backend, RenderTarget, Renderer};
     use og_tests::compare::Tolerance;
-    use og_tests::scenes::{self, Applies, GfxScene};
+    use og_tests::scenes::{self, GfxScene};
     use std::cell::{Cell, RefCell};
     use std::collections::BTreeMap;
     use wasm_bindgen::prelude::*;
@@ -101,7 +100,7 @@ mod web {
     }
 
     /// og-ui's reference scene `name` as a gfx scene: one frame, og-tests'
-    /// default tolerance (og-ui's rule), every tier; the test font compiled
+    /// default tolerance (og-ui's rule); the test font compiled
     /// in, or for a cooked-font text frame the fonts the runner gave.
     fn ui_scene(name: &str) -> Result<GfxScene, String> {
         let (scene, desc) = if super::text_scenes::TEXT_SCENES.contains(&name) {
@@ -115,7 +114,6 @@ mod web {
             tolerance: Tolerance::default(),
             frames: 1,
             update: None,
-            applies: Applies::Every,
         })
     }
 
@@ -135,23 +133,19 @@ mod web {
         super::scenes::reference_scene(name, &font)
     }
 
-    /// Whether the scenes opened from now on cull on the CPU on every tier
+    /// Whether the scenes opened from now on cull on the CPU
     /// (`Culling::Cpu`) rather than on the GPU where the adapter can.
     #[wasm_bindgen]
     pub fn og_gfx_cpu_culling(cpu: bool) {
         CPU_CULLING.with(|c| c.set(cpu));
     }
 
-    /// Builds `scene` (an og-tests scene, or `og-ui/<name>`) and its renderer (WebGL2 when `webgl`, on `canvas`; else
-    /// WebGPU, headless). Resolves to a JSON description: tier, adapter,
+    /// Builds `scene` (an og-tests scene, or `og-ui/<name>`) and its renderer
+    /// (WebGPU, headless). Resolves to a JSON description: tier, adapter,
     /// antialiasing, whether the scene has a reference on this tier, the
     /// frames it renders before its capture and its tolerance.
     #[wasm_bindgen]
-    pub async fn og_gfx_open(
-        scene: String,
-        webgl: bool,
-        canvas: web_sys::OffscreenCanvas,
-    ) -> Result<String, JsValue> {
+    pub async fn og_gfx_open(scene: String) -> Result<String, JsValue> {
         // A panic aborts with only "unreachable" in the console; its message
         // (a wgpu validation error, say) is what the runner reports.
         static HOOK: std::sync::Once = std::sync::Once::new();
@@ -166,34 +160,18 @@ mod web {
             None => scenes::build(&scene),
         }
         .map_err(err)?;
-        built.desc.backend = if webgl {
-            Backend::WebGl2
-        } else {
-            Backend::WebGpu
-        };
+        built.desc.backend = Backend::WebGpu;
         if CPU_CULLING.with(Cell::get) {
             built.desc.culling = og_render::Culling::Cpu;
         }
-        canvas.set_width(built.desc.width);
-        canvas.set_height(built.desc.height);
-        let renderer = if webgl {
-            let instance = built.desc.backend.instance();
-            let surface = instance
-                .create_surface(wgpu::SurfaceTarget::OffscreenCanvas(canvas))
-                .map_err(|e| err(format!("surface: {e}")))?;
-            Renderer::with_surface(&built.desc, &instance, surface).await
-        } else {
-            Renderer::new(&built.desc).await
-        }
-        .map_err(err)?;
+        let renderer = Renderer::new(&built.desc).await.map_err(err)?;
         let info = renderer.info();
         let t = &built.tolerance;
         let json = format!(
-            "{{\"tier\":{:?},\"adapter\":{:?},\"antialias\":\"{:?}\",\"applies\":{},\"frames\":{},\"width\":{},\"height\":{},\"tolerance\":{{\"channel\":{},\"outliers\":{},\"rmse\":{}}}}}",
+            "{{\"tier\":{:?},\"adapter\":{:?},\"antialias\":\"{:?}\",\"frames\":{},\"width\":{},\"height\":{},\"tolerance\":{{\"channel\":{},\"outliers\":{},\"rmse\":{}}}}}",
             info.backend_tier(),
             info.adapter,
             info.antialias,
-            built.applies.includes(info.tier),
             built.frames.max(1),
             built.desc.width,
             built.desc.height,
@@ -255,8 +233,8 @@ mod web {
             let open = o.as_ref().ok_or_else(|| err("no scene open"))?;
             open.renderer.begin_capture().map_err(err)
         })?;
-        // Poll until the copy lands: WebGL2 maps only when the device is
-        // polled (Renderer::capture's future alone never resolves there).
+        // Poll until the copy lands, yielding to the browser between tries
+        // (the readback's map completes on its event loop).
         for _ in 0..10_000 {
             let done = OPEN.with(|o| {
                 let o = o.borrow();

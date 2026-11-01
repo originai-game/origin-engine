@@ -25,8 +25,8 @@
 //! skinned meshes alike, and the shadow passes and the depth prepass see
 //! the mesh where `vertex_offset` moved it and cut where `surface_color`'s
 //! alpha falls below the alpha test (the shadow shader is built with the
-//! same hooks, `shadow_source`). `og-cook` compiles every shader asset with naga for each tier
-//! (WGSL, SPIR-V, MSL, and GLSL ES 3.0 for WebGL2) and refuses the asset
+//! same hooks, `shadow_source`). `og-cook` compiles every shader asset with naga
+//! (WGSL, SPIR-V and MSL) and refuses the asset
 //! with naga's message when it does not.
 
 /// The most parameters a shader declares.
@@ -273,41 +273,31 @@ pub(crate) fn default_hooks() -> String {
     hooks_section(&[], "")
 }
 
-/// The lit shader module's source with `hooks` for one tier (`full`: the
-/// storage-buffer joint palette, else the texture one), as the renderer
-/// compiles it. The cook validates shader assets with this.
-pub fn lit_module_source(shader: &MaterialShader, full: bool) -> String {
+/// The lit shader module's source with `hooks`, as the renderer compiles
+/// it. The cook validates shader assets with this.
+pub fn lit_module_source(shader: &MaterialShader) -> String {
     if let ShaderMode::Full { lit } = shader.mode {
-        let (palette, tables) = crate::custom::tier(full);
-        return crate::custom::lit_source(shader, lit, palette, tables);
+        return crate::custom::lit_source(shader, lit);
     }
-    crate::lit_source(&shader.hooks_wgsl(), full)
+    crate::lit_source(&shader.hooks_wgsl())
 }
 
 /// [`lit_module_source`] for the physical lit shader (`physical.rs`), which
 /// a physical material with a material shader draws with.
-pub fn physical_module_source(shader: &MaterialShader, full: bool) -> String {
+pub fn physical_module_source(shader: &MaterialShader) -> String {
     // A full shader draws a physical material with its own entries.
     if let ShaderMode::Full { .. } = shader.mode {
-        return lit_module_source(shader, full);
+        return lit_module_source(shader);
     }
-    crate::physical_source(&shader.hooks_wgsl(), full)
+    crate::physical_source(&shader.hooks_wgsl())
 }
 
 /// The shadow casters' module with `shader`'s hooks (vertex_offset and
-/// surface_color cut the shadow as they cut the lit pass), with the joint
-/// palette in a storage buffer (`full`) or a texture (WebGL2): what every
+/// surface_color cut the shadow as they cut the lit pass): what every
 /// cascade, spot, cube-face and paraboloid pass draws casters with.
-pub fn shadow_module_source(shader: &MaterialShader, full: bool) -> String {
+pub fn shadow_module_source(shader: &MaterialShader) -> String {
     if let ShaderMode::Full { .. } = shader.mode {
-        return crate::custom::shadow_source(shader, crate::custom::tier(full).0);
+        return crate::custom::shadow_source(shader);
     }
-    crate::shadow_source(
-        &shader.hooks_wgsl(),
-        if full {
-            crate::skin::PaletteMode::Storage
-        } else {
-            crate::skin::PaletteMode::Texture
-        },
-    )
+    crate::shadow_source(&shader.hooks_wgsl())
 }

@@ -1,4 +1,4 @@
-// The particle simulation (full tier): one invocation per slot of a
+// The particle simulation (compute): one invocation per slot of a
 // system's ring, one dispatch per tick. A slot either receives the newest
 // particle the tick spawns into it or, while alive, integrates one fixed
 // step; then live world-space particles bounce off the depth prepass. The

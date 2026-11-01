@@ -16,7 +16,7 @@
 //! parameters the asset declares (at most [`crate::MAX_SHADER_PARAMS`],
 //! set with [`crate::RenderScene::set_post_param`]).
 //!
-//! The cook validates a `type post` asset with naga for every tier. On the
+//! The cook validates a `type post` asset with naga for every backend. On the
 //! device the module and its pipeline are made inside an error scope: one
 //! that fails is reported ([`crate::Renderer::post_errors`]) and skipped,
 //! and the frame draws as without it.

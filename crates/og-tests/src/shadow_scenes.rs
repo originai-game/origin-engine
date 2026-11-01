@@ -1,5 +1,5 @@
 //! Shadow and antialiasing scenes of the shadows-aa round
-//! (`crates/og-render/README.md` §Shadows and antialiasing by tier): the
+//! (`crates/og-render/README.md` §Shadows and antialiasing): the
 //! sun's soft shadows with cascade blending, eight shadowed local lights,
 //! and the thin geometry under TAA with motion, Catmull-Rom history and
 //! sharpening.

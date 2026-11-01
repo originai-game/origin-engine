@@ -1,10 +1,10 @@
-// fxpost.wgsl's AO blur (`fs_ao_blur`) on the full tier: the same 4x4
+// fxpost.wgsl's AO blur (`fs_ao_blur`) at full resolution: the same 4x4
 // taps of view depth and raw AO read as four gathers each instead of 32
 // loads (a gather costs the texture unit what one load does), then
 // weighed and summed in the loop's order (rows top to bottom, each left to
-// right), so its answer is fs_ao_blur's to the bit. GLSL ES 3.0 has no
-// gather: WebGL2 keeps fs_ao_blur. Appended to the effect module
-// (fullscreen.wgsl, fxpost.wgsl, ssr.wgsl) on the full tier only (post.rs
+// right), so its answer is fs_ao_blur's to the bit. Half-resolution AO
+// keeps fs_ao_blur (its depth is at twice its texel). Appended to the
+// effect module (fullscreen.wgsl, fxpost.wgsl, ssr.wgsl; post.rs
 // `fx_source`).
 
 // Nearest, clamped to the edge: a gather's out-of-range texels are the

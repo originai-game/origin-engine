@@ -1,10 +1,9 @@
 // The browser tiers of og-tests' own gfx scenes: crates/og-tests-web (the
 // scenes of crates/og-tests/src/scenes.rs compiled to wasm32, their assets
-// compiled in) rendered in headless Chrome on WebGPU (or WebGL2 with
-// --webgl) at 1280×720, each scene drawn exactly as the native harness
+// compiled in) rendered in headless Chrome on WebGPU at 1280×720, each scene drawn exactly as the native harness
 // draws it (`og_tests::gfx::render_built`: its frames, its update before
 // each, the offscreen target read back), and compared with
-// crates/og-tests/references/<tier>/ (`webgpu` or `webgl2`) when that frame
+// crates/og-tests/references/<tier>/ (`webgpu`) when that frame
 // is committed, else with `metal`, under the scene's own tolerance
 // (crates/og-tests/src/compare.rs: a channel off by more than 32/255 is an
 // outlier; by default fail above 0.5 % outliers or an RGB RMSE above 0.01).
@@ -21,10 +20,10 @@
 // served beside the module and handed to it before any scene opens; that
 // needs the og a build put in packages/engine/native/ (or $OG_BIN).
 //
-//   bun tests/web/reference-gfx.ts [--webgl] [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>]]
+//   bun tests/web/reference-gfx.ts [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>]]
 //
-// A scene with no reference on the tier (`taa` on WebGL2, `msaa` on
-// WebGPU: scenes::Applies) is listed as not applying, not rendered.
+// A scene with no reference on the tier (scenes::Applies) is listed as
+// not applying, not rendered.
 // --record writes the frames as references/<tier>/ instead of comparing.
 // --time <n> then times the scenes og-tests' perf suite times natively
 // (crates/og-tests/tests/perf.rs): after the capture, 7 runs of n frames,
@@ -36,7 +35,7 @@
 // The perf-only city scenes (CITY: city-street, city-aerial) are timed only
 // when --scene names them, as is any scene --scene names (with --time),
 // the shadows-aa cost scenes (COSTS) among them. --cpu-culling culls on the CPU on WebGPU too
-// (og-render's Culling::Cpu; WebGL2 always does); --perf-out writes the
+// (og-render's Culling::Cpu); --perf-out writes the
 // timing JSON to <dir>/<tier>[-cpu-culling]/ instead (evidence runs).
 // Writes <out>/<tier>/<scene>.png, <scene>.diff.png on a mismatch and
 // reference-gfx-<tier>.json (default dist/test-gfx/out). Exits 1 when a
@@ -66,8 +65,7 @@ const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
-const webgl = args.includes("--webgl");
-const tier = webgl ? "webgl2" : "webgpu";
+const tier = "webgpu";
 const record = args.includes("--record");
 const work = join(pkg, "dist", "test-gfx");
 const out = resolve(opt("--out") ?? join(work, "out"));
@@ -134,12 +132,12 @@ import init, * as gfx from "/game/pkg/og-tests.js";
 try { await init(); globalThis.__gfx = gfx; } catch (e) { globalThis.__gfx_error = String(e && e.stack || e); }
 </script></body></html>`;
 const server = serve({ dist, isolate: false, extra: { "/gfx.html": html } });
-const browser = firefox ? await Firefox.launch({ firefox, headless: webgl }) : await Browser.launch({ chrome, width: 1280, height: 720 });
+const browser = firefox ? await Firefox.launch({ firefox, headless: false }) : await Browser.launch({ chrome, width: 1280, height: 720 });
 const log: string[] = [];
 const dir = join(out, tier);
 mkdirSync(dir, { recursive: true });
 
-type Opened = { tier: string; adapter: string; antialias: string; applies: boolean; frames: number; width: number; height: number; tolerance: { channel: number; outliers: number; rmse: number } };
+type Opened = { tier: string; adapter: string; antialias: string; frames: number; width: number; height: number; tolerance: { channel: number; outliers: number; rmse: number } };
 
 function compare(a: Image, b: Image, channel: number): { outliers: number; rmse: number; diff: Uint8Array } {
   const n = a.width * a.height;
@@ -218,8 +216,7 @@ try {
       // Open, draw the scene's frames, read the last one back (base64 RGBA).
       const shot = await bounded(tab.eval<{ opened: Opened; rgba?: string; renderMs?: number }>(`(async () => {
         const gfx = globalThis.__gfx;
-        const opened = JSON.parse(await gfx.og_gfx_open(${JSON.stringify(scene)}, ${webgl}, new OffscreenCanvas(1, 1)));
-        if (!opened.applies) { gfx.og_gfx_close(); return { opened }; }
+        const opened = JSON.parse(await gfx.og_gfx_open(${JSON.stringify(scene)}));
         const t = performance.now();
         gfx.og_gfx_render(opened.frames);
         const px = await gfx.og_gfx_capture();
@@ -232,11 +229,6 @@ try {
       Object.assign(row, { tier: o.tier, adapter: o.adapter, antialias: o.antialias, frames: o.frames });
       result["adapter"] ??= o.adapter;
       if (o.tier !== tier) throw new Error(`rendered on ${o.tier}, not ${tier}`);
-      if (!o.applies) {
-        row["applies"] = false;
-        console.log(`--   ${scene} (${tier}): no reference on this tier (scenes::Applies)`);
-        continue;
-      }
       row["renderMs"] = +shot.renderMs!.toFixed(1);
       const img: Image = { width: o.width, height: o.height, rgba: Uint8Array.from(atob(shot.rgba!), (c) => c.charCodeAt(0)) };
       const png = encodePng(img);
@@ -298,7 +290,7 @@ try {
           tier,
           browser: firefox ? "Firefox (bidi.ts)" : "Chrome for Testing (cdp.ts)",
           adapter: o.adapter,
-          culling: cpuCulling || webgl ? "cpu" : "auto",
+          culling: cpuCulling ? "cpu" : "auto",
           last_frame: t.stats,
           width: o.width,
           height: o.height,
@@ -313,7 +305,7 @@ try {
         // directory names the machine (its CPU, which on Apple silicon is
         // the GPU's name too), the adapter string stays in the file.
         const pdir = perfOut
-          ? join(resolve(perfOut), `${tier}${cpuCulling && !webgl ? "-cpu-culling" : ""}`)
+          ? join(resolve(perfOut), `${tier}${cpuCulling ? "-cpu-culling" : ""}`)
           : join(repo, "crates", "og-tests", "perf", `${tier}-${firefox ? "firefox" : "chrome"}-${slug(cpus()[0]?.model ?? "") || "unknown"}`);
         mkdirSync(pdir, { recursive: true });
         writeFileSync(join(pdir, `${scene}.json`), JSON.stringify(perf, null, 2) + "\n");

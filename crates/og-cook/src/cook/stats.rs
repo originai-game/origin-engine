@@ -57,8 +57,8 @@ pub struct Budgets {
     pub triangles: u64,
     /// Vertices of one model.
     pub vertices: u64,
-    /// The longer side of a texture: 2048 is WebGL2's guaranteed
-    /// `MAX_TEXTURE_SIZE`, the smallest of the tiers.
+    /// The longer side of a texture: 2048 (set as WebGL2's guaranteed
+    /// `MAX_TEXTURE_SIZE` while that tier existed; WebGPU guarantees 8192).
     pub texture_size: u64,
     /// Joints of one skin.
     pub bones: u64,

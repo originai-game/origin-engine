@@ -6,7 +6,7 @@
 // tick), --advance ticks (the page leaves the clock to the probe), capture (answered once the readback lands),
 // dump world. Prints the result as JSON and writes the captured frame.
 //
-//   bun tests/web/template.ts [--project <dir>] [--commands <script>] [--advance <ticks>] [--webgl] [--publish]
+//   bun tests/web/template.ts [--project <dir>] [--commands <script>] [--advance <ticks>] [--publish]
 //     [--entry <file>] [--png <out.png>] [--chrome <path>] [--entities <name,name>]
 //
 // --entities adds each named entity's dump (the probe's dump { what: "entity" }) to the answer.
@@ -102,14 +102,13 @@ const server = Bun.serve({
     return new Response(file, { headers: { ...headers, "content-type": types[ext] ?? "application/octet-stream" } });
   },
 });
-const query = args.includes("--webgl") ? "?webgl=1" : "";
 const profile = join(out, `profile-${Date.now()}`);
 const browser = Bun.spawn(
   [
     chrome, "--headless=new", "--no-first-run", "--no-default-browser-check", `--user-data-dir=${profile}`,
     "--window-size=1280,720", "--use-angle=metal", "--enable-unsafe-webgpu", "--enable-features=WebGPU",
     "--ignore-gpu-blocklist", "--disable-gpu-vsync", "--remote-debugging-port=0",
-    `http://127.0.0.1:${server.port}/${query}`,
+    `http://127.0.0.1:${server.port}/`,
   ],
   { stdout: "ignore", stderr: "ignore" },
 );

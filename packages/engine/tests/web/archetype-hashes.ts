@@ -7,7 +7,7 @@
 // probe scheduled it; the two dump_world hashes at the same tick must be
 // equal. Writes the table to --out (default target/evidence/archetype-hashes.md).
 //
-//   bun tests/web/archetype-hashes.ts [--webgl] [--out <file.md>] [--chrome <path>]
+//   bun tests/web/archetype-hashes.ts [--out <file.md>] [--chrome <path>]
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -40,7 +40,7 @@ for (const archetype of ["runner", "match3", "topdown"]) {
   const last = Math.max(...steps.map((s) => parseFloat(s)));
   const advance = Math.round(last * 60) + 30;
   const web = Bun.spawnSync(
-    ["bun", "tests/web/template.ts", "--project", project, "--commands", steps.join(";"), "--advance", String(advance), ...(args.includes("--webgl") ? ["--webgl"] : []), ...(opt("--chrome") ? ["--chrome", opt("--chrome")!] : [])],
+    ["bun", "tests/web/template.ts", "--project", project, "--commands", steps.join(";"), "--advance", String(advance), ...(opt("--chrome") ? ["--chrome", opt("--chrome")!] : [])],
     { cwd: pkg, stdout: "pipe", stderr: "pipe" },
   );
   if (web.exitCode !== 0) throw new Error(`${archetype} in Chrome: ${decode(web.stderr)}${decode(web.stdout).slice(-2000)}`);
@@ -63,7 +63,7 @@ for (const archetype of ["runner", "match3", "topdown"]) {
   rows.push({ archetype, surface: `${width}x${height}`, tick: d.tick, web: answer.dump.hash, native: d.hash, same: d.tick === answer.dump.tick && d.hash === answer.dump.hash });
 }
 const table = [
-  `| Archetype | Surface | Tick | Chrome (${args.includes("--webgl") ? "WebGL2" : "WebGPU"}) | Native | Equal |`,
+  `| Archetype | Surface | Tick | Chrome (WebGPU) | Native | Equal |`,
   "|---|---|---|---|---|---|",
   ...rows.map((r) => `| ${r.archetype} | ${r.surface} | ${r.tick} | \`${r.web}\` | \`${r.native}\` | ${r.same ? "yes" : "**no**"} |`),
 ].join("\n");

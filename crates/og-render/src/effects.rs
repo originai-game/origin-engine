@@ -15,8 +15,7 @@ use glam::{Mat4, Vec2, Vec3};
 /// Which ambient occlusion algorithm runs.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum AoMethod {
-    /// GTAO on the full tier (WebGPU, Metal, Vulkan), SSAO on the
-    /// no-compute tier (WebGL2).
+    /// GTAO.
     #[default]
     Auto,
     /// Ground-truth ambient occlusion (horizon search over 3 slices): the

@@ -1,4 +1,4 @@
-// The froxel grid of volumetric.wgsl (full tier): inject, integrate, apply.
+// The froxel grid of volumetric.wgsl (VolumetricMethod::Froxel): inject, integrate, apply.
 
 @group(1) @binding(1) var froxel_out: texture_storage_3d<rgba16float, write>;
 

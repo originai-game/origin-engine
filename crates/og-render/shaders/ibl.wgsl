@@ -1,4 +1,4 @@
-// IBL generation by render passes (no compute, so the WebGL2 tier can run it too):
+// IBL generation by render passes:
 // a procedural sky into a cubemap, its irradiance convolution, GGX-prefiltered
 // specular mips, and the split-sum BRDF LUT. Each cube face is a fullscreen
 // triangle whose fragment direction is derived from the face index.

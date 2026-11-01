@@ -62,9 +62,9 @@ hound = { version = "3.5.1", optional = true }
 symphonia = { version = "0.6.1", default-features = false, features = ["mp3", "ogg", "vorbis", "flac", "id3v2"], optional = true }
 serde_json = { version = "1", optional = true }
 nalgebra = { version = "0.34.1", optional = true }
-# The cook compiles material shaders for every back end (WGSL in; SPIR-V,
-# MSL and GLSL ES out), as wgpu would at load.
-naga = { version = "30.0.1", optional = true, features = ["wgsl-in", "glsl-out", "msl-out", "spv-out"] }
+# The cook compiles material shaders for every back end (WGSL in; SPIR-V
+# and MSL out), as wgpu would at load.
+naga = { version = "30.0.1", optional = true, features = ["wgsl-in", "msl-out", "spv-out"] }
 
 [dev-dependencies]
 og-tests = { path = "../og-tests" }

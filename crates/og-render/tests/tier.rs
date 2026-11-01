@@ -72,6 +72,4 @@ fn other_backends_keep_their_names() {
         tier_name(Backend::BrowserWebGpu, DeviceType::Other, ""),
         "webgpu"
     );
-    // Native GL on llvmpipe is the GL tier (no CPU variant is filed).
-    assert_eq!(tier_name(Backend::Gl, DeviceType::Cpu, "llvmpipe"), "gl");
 }

@@ -392,13 +392,6 @@ fn terrain_and_grass_in_a_probes_box_take_its_light() {
 #[test]
 fn ssr_reads_roughness_maps_and_terrain_layers() {
     let desc = scenes::base_desc();
-    let tier = Renderer::new_blocking(&desc)
-        .expect("a GPU adapter")
-        .info()
-        .tier;
-    if tier != og_render::Tier::Full {
-        return;
-    }
     // Under the sphere, as `ssr_reflects_the_sphere_in_the_floor` reads it.
     let at = |floor, ssr| {
         let (img, _) = render(&desc, &ssr_floor_scene(floor, ssr), None);
@@ -487,7 +480,7 @@ fn face_rows(capture: &(u32, Vec<f32>), face: usize, rows: (f32, f32)) -> [f32; 
 }
 
 /// Water in a capture reflects the face in screen space, as the frame's
-/// does on the full tier: the probe's +x face sees the glowing blue wall
+/// does: the probe's +x face sees the glowing blue wall
 /// beyond the water mirrored in it, so the water's rows (below the
 /// horizon, between the wall's foot and the face's bottom) turn bluer.
 /// Before the debt round 3 a face's water reflected only the environment

@@ -39,10 +39,9 @@ fdeflate = "0.3.7"
 gltf = { workspace = true, optional = true }
 
 [dev-dependencies]
-# tests/webgl2.rs: the WGSL to GLSL ES 3.0 translation wgpu's GL backend runs
-# in the browser (wgpu's own naga, with the GLSL writer); tests/shaders.rs:
-# every module translated as the Metal, Vulkan and DX12 backends do.
-naga = { version = "30.0.1", features = ["wgsl-in", "glsl-out", "msl-out", "spv-out", "hlsl-out"] }
+# tests/shaders.rs: every module translated as the Metal, Vulkan and DX12
+# backends do (wgpu's own naga).
+naga = { version = "30.0.1", features = ["wgsl-in", "msl-out", "spv-out", "hlsl-out"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wgpu = { workspace = true, features = ["metal", "vulkan", "dx12"] }
@@ -82,7 +81,7 @@ windows = { version = "0.62", features = [
 wgpu = { workspace = true, features = ["static-dxc"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wgpu = { workspace = true, features = ["webgpu", "webgl"] }
+wgpu = { workspace = true, features = ["webgpu"] }
 
 [[test]]
 name = "tests"

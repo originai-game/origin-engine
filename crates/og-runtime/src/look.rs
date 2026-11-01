@@ -353,10 +353,9 @@ pub(crate) fn info(eng: &Engine, index: usize) -> Result<Value, String> {
 /// look's blob alone. Loading the look itself loads the textures, style and
 /// environment map it names, which the web host can only decode once its
 /// renderer is attached (they go to the renderer's encodings), so a boot
-/// that loaded the look left the web's renderer on the tier's method:
-/// Lantern Vale's TAA was 4x MSAA on WebGL2 (and TAA on WebGPU only
-/// because that is the full tier's method), its ink and outlines unblended
-/// (web findings #3). A look whose blob is missing is left to `apply`
+/// that loaded the look left the web's renderer on the default method:
+/// Lantern Vale's TAA was 4x MSAA on the since retired WebGL2 tier, its
+/// ink and outlines unblended (web findings #3). A look whose blob is missing is left to `apply`
 /// before start, which reports it.
 pub(crate) fn boot_antialias(eng: &Engine, path: &str) {
     if eng.render.borrow().options.get("antialias").is_some() {

@@ -2,7 +2,7 @@
 // collapse), camera-facing or stretched along the velocity, sized and
 // coloured by the emitter's curves, animated through a sprite sheet, and
 // softened against the depth prepass. The instance data is the simulation's
-// storage buffer (full tier) or the CPU path's upload. Prepended by
+// storage buffer or the CPU path's upload. Prepended by
 // frame.wgsl, noise.wgsl and particle_common.wgsl.
 
 @group(1) @binding(0) var sprite_tex: texture_2d<f32>;

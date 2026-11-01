@@ -2,8 +2,8 @@
 
 The Origin Engine renderer (`docs/design.md` §2.6, M3 in `docs/phase-1.md`):
 wgpu, WGSL shaders in `crates/og-render/shaders/`, one code path for native
-(Metal, Vulkan, headless for executors) and the browser (WebGPU, WebGL2
-through wgpu's GL backend). It started as the spike's renderer; M0
+(Metal, Vulkan, DX12, headless for executors) and the browser (WebGPU
+only; the WebGL2 tier was retired on 2026-11-01). It started as the spike's renderer; M0
 reproduced the spike's frame byte for byte
 (`tests/evidence/M0/spike-frame-reproduced.png`).
 
@@ -14,8 +14,8 @@ the world → scene extraction belongs to the layer above.
 
 | Type | What it is |
 |---|---|
-| `RenderDesc` | How to create a renderer: `width`, `height`, `backend` (`Auto`, `WebGpu`, `WebGl2`, `Metal`, `Vulkan`), `output_format` (`None` = `Rgba8UnormSrgb` offscreen, the surface's choice on a surface), `antialias`, `shadow_map_size`, `shadow_cascades`, `texture_compression`, `particles`, `culling`, `point_shadows` (`PointShadows::{Auto, Cube, Paraboloid}`), `taa_history` (`TaaHistory::{Bilinear, CatmullRom}`), `taa_sharpen` (0 to 1), `planar_reflections` (1 or 2, `MAX_PLANAR_REFLECTIONS`). Default 1280×720, `Auto`, `Antialias::Off`, point shadows `Auto`, a bilinear TAA history, no sharpening, one planar reflection. |
-| `Antialias` | `Off`, `Tier` (TAA on the full tier, 4× MSAA on the no-compute tier), and the explicit `Msaa4`, `Taa` and `Fxaa` (any tier). `RenderInfo::antialias` reports what was resolved; `Tier` and `Msaa4` fall back to `Fxaa` where the HDR format cannot be multisampled ([Shadows and antialiasing by tier](#shadows-and-antialiasing-by-tier)). |
+| `RenderDesc` | How to create a renderer: `width`, `height`, `backend` (`Auto`, `WebGpu`, `Metal`, `Vulkan`), `output_format` (`None` = `Rgba8UnormSrgb` offscreen, the surface's choice on a surface), `antialias`, `shadow_map_size`, `shadow_cascades`, `texture_compression`, `particles`, `culling`, `point_shadows` (`PointShadows::{Auto, Cube, Paraboloid}`), `taa_history` (`TaaHistory::{Bilinear, CatmullRom}`), `taa_sharpen` (0 to 1), `planar_reflections` (1 or 2, `MAX_PLANAR_REFLECTIONS`). Default 1280×720, `Auto`, `Antialias::Off`, point shadows `Auto`, a bilinear TAA history, no sharpening, one planar reflection. |
+| `Antialias` | `Off`, `Tier` (the engine's default method: TAA on every backend), and the explicit `Msaa4`, `Taa` and `Fxaa`. `RenderInfo::antialias` reports what was resolved; `Msaa4` falls back to `Fxaa` where the HDR format cannot be multisampled ([Shadows and antialiasing](#shadows-and-antialiasing)). |
 | `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `save_state() -> RendererState` and `restore_state(state)` (the adapted exposure and its tick, kept on the GPU for a world snapshot; `RendererState::id`/`from_id` carry it as a u64), `capture().await -> RgbaImage` and `poll()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
 | `renderer_disabled()`, `RENDERER_SWITCH` | Native: `OG_RENDERER=none` in the environment makes `Renderer::new` and `with_surface` answer `NoAdapter` naming the switch, as on a machine without a usable adapter (the platform's engine and probe sandboxes), so hosts' no-renderer path is testable beside a GPU (docs/ci.md §Switches in the environment). |
 | `render_to_rgba(&desc, &scene)` | Native, blocking: one frame headless → `RgbaImage` (RGBA8, rows top to bottom). |
@@ -24,11 +24,11 @@ the world → scene extraction belongs to the layer above.
 | `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists (a vertex's `tangent` in glTF's frame, generated at upload when `w` is 0: `MeshData::generate_tangents`); RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
 | `VertexEncoding` | How a mesh's vertices are held on the GPU: `Full` (default, `Vertex` as given, 64 bytes) or `Compact` (16 bytes where a plain material draws it; quantised): `RenderScene::set_vertex_encoding(mesh, encoding)`, `vertex_encoding(mesh)`. [Instance and vertex encodings](#instance-and-vertex-encodings). |
 | `StandardMaterial`, `PhysicalExtensions` | The reflected three.js material (`MeshStandardMaterial` fields, `MeshPhysicalMaterial`'s clearcoat, sheen, transmission, iridescence, anisotropy and `ior`: [Physical materials](#physical-materials-p4)); glTF's `KHR_materials_*` extensions of one material with textures as handles or indices, `apply` lays them over a `StandardMaterial` as three.js's `GLTFLoader` does. `mapArray`/`mapLayer` and `normalMapArray`/`normalMapLayer` read the base colour and normal from texture-array layers ([Array maps](#array-maps-materials-and-terrain-layers)). |
-| `Instance` | `(mesh, material, transform, material_layer, fx, cast_shadows, receive_shadows)`, submitted one by one; batched by (mesh, material, cast_shadows). `material_layer` (`None`: the material's) is the texture-array layer an array-map material samples for this instance alone: [Array maps](#array-maps-materials-and-terrain-layers). `fx` (`InstanceFx { flash, flash_color, tint }`, `InstanceFx::NONE` the material's own look; `SkinnedInstance::fx` the same) is this instance's own hit flash and tint: [Instance looks](#instance-looks-the-hit-flash-of-one-instance). `cast_shadows` (drawn into the shadow passes; a (mesh, material)'s non-casters are a batch of their own) and `receive_shadows` (darkened by the shadow maps; carried in the record, no batch of its own), both on from `add_instance` and `SkinnedInstance::new`: [Which instances receive](#shadows-and-antialiasing-by-tier). The transform is affine: the GPU holds its columns' xyz, the layer and the look, 64 bytes ([Instance and vertex encodings](#instance-and-vertex-encodings)). |
+| `Instance` | `(mesh, material, transform, material_layer, fx, cast_shadows, receive_shadows)`, submitted one by one; batched by (mesh, material, cast_shadows). `material_layer` (`None`: the material's) is the texture-array layer an array-map material samples for this instance alone: [Array maps](#array-maps-materials-and-terrain-layers). `fx` (`InstanceFx { flash, flash_color, tint }`, `InstanceFx::NONE` the material's own look; `SkinnedInstance::fx` the same) is this instance's own hit flash and tint: [Instance looks](#instance-looks-the-hit-flash-of-one-instance). `cast_shadows` (drawn into the shadow passes; a (mesh, material)'s non-casters are a batch of their own) and `receive_shadows` (darkened by the shadow maps; carried in the record, no batch of its own), both on from `add_instance` and `SkinnedInstance::new`: [Which instances receive](#shadows-and-antialiasing). The transform is affine: the GPU holds its columns' xyz, the layer and the look, 64 bytes ([Instance and vertex encodings](#instance-and-vertex-encodings)). |
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
 | `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev, adapt_speed_up, adapt_speed_down }`: the frame's log-average luminance brought to 0.18. With both speeds 0 (`Exposure::auto()`) from the current frame only, so the same frame always gets the same exposure; otherwise adapted over the scene's ticks (see [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation)). |
 | `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth), `shadow_softness` (PCSS: the penumbra's width per metre between caster and receiver; 0, the default, is the hard edge) and `cascade_blend` (the fraction of each cascade's depth over which it fades into the next; 0 by default). Three cascades. |
-| `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. Clustered (see [Forward+](#forward-phase-2)): lights whose range misses the view are culled (`FrameStats::lights_culled`), up to `MAX_LIGHTS` = 256 in view are drawn (past it the brightest at the camera are kept, the rest counted in `lights_dropped`); of those in view with `cast_shadows`, `RenderInfo::shadowed_lights` (`MAX_SHADOWED_LIGHTS` = 8 on the full tier, `NO_COMPUTE_SHADOWED_LIGHTS` = 4 on WebGL2) get shadows, the most radiant at the camera first (the rest counted in `shadowed_lights_dropped`). |
+| `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. Clustered (see [Forward+](#forward-phase-2)): lights whose range misses the view are culled (`FrameStats::lights_culled`), up to `MAX_LIGHTS` = 256 in view are drawn (past it the brightest at the camera are kept, the rest counted in `lights_dropped`); of those in view with `cast_shadows`, `RenderInfo::shadowed_lights` (`MAX_SHADOWED_LIGHTS` = 8) get shadows, the most radiant at the camera first (the rest counted in `shadowed_lights_dropped`). |
 | `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default), `Agx` (Blender 4's and three.js's AgX fit, base look), `Neutral` (Khronos PBR Neutral, three.js `NeutralToneMapping`: colours up to 0.76 pass through less a dielectric's 0.04, only highlights roll off) or `None` (clamp: authored 2D colours come out exact). |
 | `EnvironmentMapData`, `EnvironmentMap`, `bake` | A prefiltered environment map (level 0's face `size`, `ENVIRONMENT_MAP_LEVELS` = 5 levels of RGB9E5 `texels`, level m at roughness m/4, `irradiance` as nine harmonics) and how a frame uses one (`map`, `rotation` about +y in radians, `background_intensity`); `rgb9e5`, `rgb9e5_decode`, `sh9`, `face_direction`; feature `bake`: `bake::bake(&Equirect, &BakeDesc)` and `bake::bake_cube`, the cook's prefilter, and `bake::from_prefiltered(&PrefilteredCube, &BakeDesc)`, a cube's own prefiltered mip chain taken as it is. See [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation). |
 | `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. `anchored_at(pivot)`: the same quad anchored elsewhere (a faced nine-slice's pieces turn about the panel's anchor). |
@@ -45,7 +45,7 @@ the world → scene extraction belongs to the layer above.
 | `Terrain`, `TerrainLayer`, `TerrainLod` | A terrain drawn this frame (`RenderScene::terrains`): its data, its `transform` (rotation, scale and translation from the terrain's own space, centred on the height field at height 0, to the world), up to `MAX_TERRAIN_LAYERS` = 4 layers (albedo and normal maps, tint, roughness, `tile`, `triplanar`, slope and altitude rules with fades), `height_blend`, `cast_shadows`, and the clipmap's `lod` (finest `spacing`, `ring` quads per side). |
 | `DebugView` | `None`, `Cascades` (red/green/blue per cascade, black beyond). |
 | `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `lights_culled`, `cluster_lights`, `cluster_lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `texture_bytes` (textures, texture arrays, environment maps, palettes and colour LUTs on the GPU; removed ones count nothing), `frame`, `taa_history` (whether TAA blended history this frame), `shadowed_lights` and `shadowed_lights_dropped`, `particle_collision_skipped`, and phase 2's `terrain_draws` (clipmap levels in the main pass), `terrain_triangles`, `terrain_shadow_draws`, `reflection_draws` (the planar reflection pass). |
-| `RenderInfo` | Adapter, backend, device type, `Tier` (`Full`, `NoCompute`), `antialias`, `shadow_map_size`, `shadow_cascades`, `shadowed_lights`, `point_shadows` (resolved: `Cube` or `Paraboloid`), `texture_formats`, `backend_tier()`: the reference-frame directory name and the tier the probe's hello, `og.render.capabilities` and `og polish` report (`tier_name(backend, device_type, adapter)`: `vulkan-cpu` for a software rasterizer, `is_software_adapter`: a CPU device type, or an adapter named llvmpipe, lavapipe or SwiftShader). |
+| `RenderInfo` | Adapter, backend, device type, `antialias`, `shadow_map_size`, `shadow_cascades`, `shadowed_lights`, `point_shadows` (resolved: `Cube` or `Paraboloid`), `texture_formats`, `backend_tier()`: the reference-frame directory name and the tier the probe's hello, `og.render.capabilities` and `og polish` report (`tier_name(backend, device_type, adapter)`: `vulkan-cpu` for a software rasterizer, `is_software_adapter`: a CPU device type, or an adapter named llvmpipe, lavapipe or SwiftShader). |
 | `RenderError` | `NoAdapter`, `NoDevice`, `Surface`, `InvalidHandle`, `Readback`, `Unsupported`, `InvalidData`. |
 | `shapes` | `sphere`, `plane`, `cuboid(size)`, `checker`. |
 | `gltf` (feature `gltf`) | `load_glb(bytes) -> GltfModel`, `GltfModel::add_to(&mut scene) -> ModelParts`, `ModelParts::instance`. A bridge until the cook (M4). |
@@ -92,7 +92,7 @@ not recorded.
 1. **Sync.** New meshes, textures (with the **mip pass**: one fullscreen
    triangle per level, linear-space box filter), materials, fonts. When the
    sky changes, the **IBL passes** run (sky cube, irradiance, GGX prefilter,
-   BRDF LUT; render passes only, so WebGL2 runs them); with an environment
+   BRDF LUT; render passes only); with an environment
    map they copy the cooked map into the same cubes instead.
 2. **Batch and cull** (CPU). Instances stably sorted by (mesh, material);
    each sorted instance gets a world bounding sphere. Both are kept across
@@ -111,13 +111,13 @@ not recorded.
    (`tests/evidence/debt3/cull-lane-grain/NOTES.md`). A
    batch that loses less than a tenth of its instances is drawn whole (no
    copy); otherwise its visible transforms are appended to the instance
-   buffer. Draws bind a buffer slice, never `first_instance` (WebGL2).
+   buffer. Draws bind a buffer slice.
    Sprites and glyphs are sorted by (layer, kind, texture or font) into runs.
    **GPU culling** (`cull_gpu.rs`; `RenderDesc::culling`: `Culling::Auto`
    by default, which takes it from `GPU_CULLING_MIN_INSTANCES` (16,384)
-   instances, `Culling::Gpu` at any size) replaces the per-pass lists on an
-   adapter with compute and indirect draws (native Metal, Vulkan, DX12 and
-   the browser's WebGPU):
+   instances, `Culling::Gpu` at any size) replaces the per-pass lists with
+   compute and indirect draws (native Metal, Vulkan, DX12 and the
+   browser's WebGPU):
    the sorted instances are uploaded once, a compute stage tests them
    against every shadow face, the planar reflection and the camera, last
    frame's visible opaque occluders are drawn at this frame's camera into
@@ -128,8 +128,9 @@ not recorded.
    instances are compacted in sorted order by a deterministic prefix sum
    and every batch is one `draw_indexed_indirect`, so both paths draw the
    same frame. A frame with no occluder material, or no earlier camera
-   visibility, skips the occluders, their depth and the pyramid. WebGL2,
-   `Culling::Cpu`, object motion blur and frames over the storage-binding
+   visibility, skips the occluders, their depth and the pyramid.
+   `Culling::Cpu` (a real choice: no compute dispatch or readback for a
+   small frame), object motion blur and frames over the storage-binding
    limit keep the CPU path. The counts come back through a readback ring
    for frames after `Renderer::request_culling_counts`:
    `FrameStats::gpu_culling`, `occluded`, `occluded_triangles`,
@@ -151,7 +152,7 @@ not recorded.
    frames. Three passes into a 2048² `R32Float` array (depth also written as
    colour) with a shared depth buffer, front faces culled.
 4. **Local shadows**: per shadowed light (at most `RenderInfo::shadowed_lights`:
-   8 on the full tier, 4 on WebGL2, since the P4 shadows round), six cube
+   8 since the P4 shadows round), six cube
    faces or two paraboloid hemispheres (point, by `PointShadows`) or one
    perspective view (spot), each a pass into a 512² `R32Float` array
    layer storing distance / range, casters culled to the face frustum.
@@ -167,7 +168,7 @@ not recorded.
    (Forward+, below; inverse square windowed to the range, smooth spot
    cone), split-sum IBL,
    emissive, alpha mask, derivative normal maps. Shadow lookups are bilinear
-   PCF with explicit compares on `textureLoad` (the WebGL2-safe path).
+   PCF with explicit compares on `textureLoad`.
    **Shadow bias works at any scale:** the normal offset and the depth bias
    are in world units proportional to the cascade's texel size (the depth
    bias then converted to that cascade's normalized depth), where the old
@@ -196,8 +197,7 @@ not recorded.
 9. **Tonemap**: exposure × (HDR + bloom × intensity) → ACES, AgX, Khronos PBR Neutral or clamp → the
    output. An sRGB output is encoded by the hardware; a non-sRGB one
    (WebGPU canvases are `Bgra8Unorm`) by the shader (`fs_srgb_encode`). A
-   surface takes an sRGB format where one is offered (WebGL2, native
-   windows).
+   surface takes an sRGB format where one is offered (native windows).
 10. **Overlay** (when `scene.overlay` is set; `overlay.rs`, `overlay.wgsl`):
     after the graph, straight into the output or its sRGB view (see below).
 
@@ -213,9 +213,9 @@ intensity times the colour's brightest channel over the squared distance,
 at least 1 m), and assigns each to the clusters its sphere can touch: the
 view-space box of the sphere, clipped to the near plane and projected,
 widened by a pixel for the TAA jitter, and the slices of its depth range.
-A cluster holds at most `MAX_CLUSTER_LIGHTS` = 64; past it (and on WebGL2
-past `UNIFORM_LIGHT_REFS` = 16,384 references in all) the busiest
-clusters keep their most important lights. The lit shader finds its
+A cluster holds at most `MAX_CLUSTER_LIGHTS` = 64; past it a cluster
+keeps its most important lights (the references' buffer holds every
+cluster at its cap). The lit shader finds its
 cluster from the pixel and the view depth and shades that cluster's lights
 in scene order, so every frame of up to eight lights is byte for byte the
 frame of the old per-fragment loop (every reference passes at RMSE 0), and
@@ -224,10 +224,8 @@ every pixel (RMSE 0) in a tenth of the time.
 
 The tables are three buffers in the frame group (bindings 7 to 9: the light
 records, one word per cluster with its first reference and count, and the
-references as bytes): storage buffers on the full tier, uniform buffers of
-at most 16 KiB on WebGL2. A tile table texture, as first planned for
-WebGL2, would need a seventeenth texture slot in the skinned lit pipeline
-(below). The build runs on the CPU on both tiers: 38 to 53 microseconds for
+references as bytes), all storage buffers. The build runs on the CPU:
+38 to 53 microseconds for
 256 lights, less than a compute build costs to record and submit alone
 (`tests/evidence/P4/perf/clusters-compute.md`; the P2 numbers in
 `tests/evidence/P2/render/forward-plus.md`). Stats: `lights` (drawn), `lights_culled`,
@@ -254,17 +252,18 @@ the main view lights nothing in a capture either; keeping lights for the
 due faces would change which lights the main view's shadow budget picks
 on capture frames.
 
-## Shadows and antialiasing by tier
+## Shadows and antialiasing
 
 The shadows-aa round (P4, `tests/evidence/P4/shadows-aa/`) closed the
 shadow and antialiasing lines phase 2 owed (`src/shadows.rs`,
 `src/frame.rs`, `shaders/lighting.wgsl`, `shaders/shadow_pass.wgsl`,
 `src/post.rs`, `shaders/fxaa.wgsl`, `shaders/taa.wgsl`). Everything new is
-off by default or tier-dependent off the full tier's defaults: every
-earlier reference frame is byte for byte what it was.
+off by default: every earlier reference frame is byte for byte what it
+was. (The round also served the WebGL2 tier, retired on 2026-11-01; its
+measurements below are history.)
 
 **Shadowed local lights.** Up to `RenderInfo::shadowed_lights` point and
-spot lights cast shadows in a frame: 8 on the full tier, 4 on WebGL2
+spot lights cast shadows in a frame: 8
 (`og.render.capabilities().maxShadowedLights`). When more in view cast,
 the ones with the most radiance at the camera keep theirs (the clusters'
 score: intensity × the colour's brightest channel over the squared
@@ -273,10 +272,10 @@ distance; ties in scene order) and the rest are counted in
 ones. Each gets consecutive layers of one 512² `R32Float` array, handed out
 in scene order: a spot one view, a point light six cube faces or two
 paraboloid hemispheres. The array starts at twelve layers and grows once,
-to the tier's capacity (48 layers with cube faces), the first frame whose
+to its capacity (48 layers with cube faces), the first frame whose
 scene could need more.
 
-**Point shadows by tier** (`RenderDesc::point_shadows`, the IDL's
+**Point shadows** (`RenderDesc::point_shadows`, the IDL's
 `RenderOptions.pointShadows`): `Cube` draws six 90° faces, `Paraboloid` the
 hemisphere below the light and the one above, each in one pass (the
 projection scaled into 0.9 of the disc, so filtering at the seam reads up to
@@ -290,17 +289,16 @@ hemisphere's centre than a cube face's, and the normal offset and depth
 bias grow with them. On `point-spot-lights` the paraboloid frame is within
 RMSE 0.0023 of the cube one (102 outlier pixels, on shadow edges and the
 ring at the light's height) in 3 passes instead of 7. `Auto` picks cube
-faces on the full tier and paraboloids on WebGL2: measured in Chrome on the M4 Pro (`reference-gfx.ts --time 60`), WebGL2
-draws `point-spot-lights` in 0.50 ms per frame with paraboloids against
-0.70 ms with cube faces, and four shadowed lights of `shadows-local-8` in
-0.60 against 1.09 ms; on WebGPU one point light costs the same either way
-(0.44 against 0.45 ms) and eight lights (six point) 0.60 against 1.33 ms;
-natively on metal 0.4–0.5 against 0.6–0.9 ms and 0.8–1.0 against
-2.2–2.7 ms, most of it the CPU encoding 38 shadow passes instead of 14
-(`tests/evidence/P4/shadows-aa/`). A full-tier frame with a few shadowed
-point lights costs nearly nothing more with cube faces, whose texels are
-finer, so `Auto` keeps them there; a game with many shadowed point lights
-saves about 0.7 ms a frame with `Paraboloid`.
+faces on every backend. Measured in Chrome on the M4 Pro
+(`reference-gfx.ts --time 60`), on WebGPU one point light costs the same
+either way (0.44 against 0.45 ms) and eight lights (six point) 0.60
+against 1.33 ms; natively on metal 0.4–0.5 against 0.6–0.9 ms and
+0.8–1.0 against 2.2–2.7 ms, most of it the CPU encoding 38 shadow passes
+instead of 14 (`tests/evidence/P4/shadows-aa/`). A frame with a few
+shadowed point lights costs nearly nothing more with cube faces, whose
+texels are finer, so `Auto` keeps them; `Paraboloid` is the choice for a
+game with many shadowed point lights, which saves about 0.7 ms a frame
+with it.
 
 **Which faces a pass stores, and which instances cast** (web findings
 #4, wave 13). Every shadow pass culls a front-sided caster's front
@@ -325,8 +323,8 @@ shadow lists skip those batches. og-runtime sets it from
 `og.Model.castShadow` (on by default: a loaded model casts, as it always
 has). Before, every mesh cast whatever its flag: The
 Kestrel Stair's crypt lamp, a 0.22 m glass box with its point light at
-the centre, shadowed the whole crypt from its own light on the full
-tier (cube faces) and not on WebGL2 (paraboloids), which the web round
+the centre, shadowed the whole crypt from its own light with cube faces
+and not on the retired WebGL2 tier (paraboloids), which the web round
 read as the sun's shadow missing under the roof (crypt RMSE 0.046
 against `metal`). `shadows-crypt` is that room: a roof and walls under a
 low sun, a non-casting glass box around a shadowed point light, which
@@ -364,21 +362,24 @@ sharp and penumbrae widen with height (`shadows-soft`: penumbra pixels on a
 plain ground 759 hard, 7,073 at softness 0.03). Blending: each cascade's
 last `cascade_blend` of its depth fades into the next, whose fit reaches
 back over that band so its casters are there. Both read with
-`textureLoad` compares, so WebGL2 draws them too. PCSS costs 0.22 ms on WebGPU (`shadows-soft` 0.64 against
-0.41 ms hard), 0.39 ms on WebGL2 (1.01 against 0.62) and about 0.4 ms on
-metal at 1280×720.
+`textureLoad` compares. PCSS costs 0.22 ms on WebGPU (`shadows-soft` 0.64 against
+0.41 ms hard) and about 0.4 ms on metal at 1280×720.
 
 **FXAA** (`Antialias::Fxaa`): FXAA 3.11's quality path (eight edge-search
 steps) over the tonemapped image, which the tonemap writes into an sRGB
 8-bit target the FXAA pass reads and writes to the output before the
-overlay, so the HUD stays sharp. One pass, no history, on any tier; `Tier`
-and `Msaa4` resolve to it where the HDR target cannot be multisampled
-(they resolved to `Off` before). It costs 0.08 ms on WebGPU and WebGL2 (`fxaa`
-0.50 and 0.75 ms against 0.41 and 0.67 ms without antialiasing; WebGL2's
-4× MSAA takes 1.11 ms on the same scene) and about 0.1 ms on metal.
+overlay, so the HUD stays sharp. One pass, no history; `Msaa4` resolves
+to it where the HDR target cannot be multisampled (it resolved to `Off`
+before). It costs 0.08 ms on WebGPU (`fxaa` 0.50 against 0.41 ms without
+antialiasing) and about 0.1 ms on metal.
+
+**4× MSAA** (`Antialias::Msaa4`): the HDR target and the depth buffer
+multisampled, resolved before the post chain. No jitter and no history,
+so sprites, text and pixel art stay sharp and a moving camera never
+blurs; it does not smooth shading or texture aliasing as TAA does.
 
 **Bloom follows the antialiasing.** Bloom's prefilter reads the lit
-image after antialiasing, so the tier's method decides how much of a
+image after antialiasing, so the method decides how much of a
 thin emitter's energy reaches it. The 4× MSAA resolve averages the HDR
 samples linearly and keeps a sub-pixel emissive line's energy; TAA's
 resolve weights each colour by 1 / (1 + luma) and clamps the history to
@@ -386,14 +387,13 @@ the current frame's 3×3 neighbourhood, so a line a jittered frame
 covers in one pixel and misses in the next settles far darker than its
 linear average, and its halo is weaker and narrower. Neither is a
 backend difference: on one adapter (lavapipe) Meridian Loop's title
-frame with `antialias` `msaa4` is within RMSE 0.0039 (0.010 % outliers)
-of the WebGL2 frame and as far from metal's TAA reference (0.0499,
-4.86 %) as the WebGL2 frame is (0.0495, 4.79 %); with `taa` the same
-adapter is 0.060 from the WebGL2 frame, with `off` 0.0128. A look with bloom
-over thin emissive lines (Meridian Loop's neon grid and windows)
-therefore differs between the tiers' `Tier` antialiasing by design, and
-the WebGL2 tier records its own reference for it
-(`tests/evidence/r3/meridian-webgl2/`).
+frame with `antialias` `msaa4` was within RMSE 0.0039 (0.010 % outliers)
+of the retired WebGL2 tier's MSAA frame and as far from metal's TAA
+reference (0.0499, 4.86 %) as that frame was (0.0495, 4.79 %); with
+`taa` the same adapter was 0.060 from it, with `off` 0.0128
+(`tests/evidence/r3/meridian-webgl2/`). A look with bloom over thin
+emissive lines (Meridian Loop's neon grid and windows) therefore differs
+between `msaa4` and `taa` by design.
 
 **TAA's history and sharpening** (`RenderDesc::taa_history`,
 `taa_sharpen`; the IDL's `taaHistory` and `taaSharpen`):
@@ -415,8 +415,8 @@ of less than a thousandth of a pixel) reads its own history texel with
 the history of a still camera. On metal the still path is byte for byte
 the old frames (the 37 looks frames, `taa`); the moving path moved
 `taa-sharp` (a sliding camera) by RMSE 0.00029, max 4 levels. It did
-not change the WebGL2 looks station's frames (still 30 of 37 apart from
-metal, to four decimals). The browser diagnostics then put the
+not change the then WebGL2 tier's looks station frames (still 30 of 37
+apart from metal, to four decimals). The browser diagnostics then put the
 divergence in TAA's history loop on WebGL2: with the jitter zeroed and
 the camera still, WebGL2 settles 0.5 to 0.75 px to the side of WebGPU,
 blurred, as a history read with a small sideways offset every frame
@@ -427,7 +427,8 @@ and sent in the uniform (`TaaUniform::still`); then every pixel reads
 its own history texel with no reprojection computed on the GPU at all.
 Metal is byte for byte unchanged (the looks frames, every og-gfx scene).
 
-**What differed on GL (row 68): the depth read as 0.** TAA read the
+**What differed on GL (row 68, history: the WebGL2 tier is retired):
+the depth read as 0.** TAA read the
 depth buffer with `textureLoad` (GLSL `texelFetch`). wgpu's GL backend
 binds no sampler object to a texture only `texelFetch` reads, so the
 texture's own filtering applies, and wgpu sets it to nearest only for
@@ -453,21 +454,17 @@ for floats and ints, and the shader alone, given the depth, matched
 Metal on ANGLE to within one 16-bit step for still and moving cameras.
 The resolve now reads the depth through a nearest sampler of its own
 (`depth_sampler`, binding 5) at the pixel's centre, which reads the
-texel `textureLoad` read on every backend and makes the GL backend bind
-a sampler to that unit. Metal: every og-gfx scene and the 37 looks
-frames byte for byte unchanged. ANGLE: `taa-sharp` RMSE 0.00028 and
-`taa-motion` 0.00010 against metal. The CPU's still decision stays (it
-spares the reprojection where nothing moved); `taa-sharp` now applies
-on every tier, so the browser tiers judge a moving camera through TAA
-on WebGL2 against metal.
+texel `textureLoad` read on every backend (and made the GL backend bind
+a sampler to that unit); it stays, as the read that is exact everywhere.
+Metal: every og-gfx scene and the 37 looks frames byte for byte
+unchanged. ANGLE: `taa-sharp` RMSE 0.00028 and `taa-motion` 0.00010
+against metal. The CPU's still decision stays (it spares the
+reprojection where nothing moved).
 
-**Ambient occlusion by tier.** `AoMethod::Auto` (the default, and what
-`PostEffects.ao` asks for) is GTAO on the full tier and SSAO on WebGL2 by
-design (GTAO's horizon search is too heavy there), so any frame with AO
-differs between the tiers: fx-showcase's paper-craft, voxel-worlds and
-sculpted-clay looks frames (RMSE 0.006 to 0.019 against WebGPU with
-FXAA) differ for this reason, and natively forcing the no-compute tier
-on metal reproduces exactly those three.
+**Ambient occlusion.** `AoMethod::Auto` (the default, and what
+`PostEffects.ao` asks for) is GTAO on every backend; `Ssao` (a cheaper
+hemisphere of depth samples, softer and noisier) and the other methods
+stay explicit choices.
 
 ## What a frame may cost: `RenderQuality`
 
@@ -503,8 +500,8 @@ the preset.
 The device caps two fields, and the fields keep what was asked: at most
 `RenderInfo::shadowed_lights` lights cast shadows, and
 `RenderInfo::msaa_samples` (4 where `Antialias` resolved to `Msaa4` when
-the renderer was made, else 1) caps `msaa_samples`, so on the full
-tier's TAA, FXAA or none a quality of 4 draws one sample;
+the renderer was made, else 1) caps `msaa_samples`, so under TAA, FXAA
+or none a quality of 4 draws one sample;
 `RenderInfo::antialias` says what is drawn now.
 
 What high costs on lavapipe (per-pass GPU timestamps, mean of 10 frames
@@ -567,7 +564,7 @@ it into the output exactly, and downsamples it into a six-level
 each panel samples the level its blur asks for, trilinear between levels,
 tints it and masks it to its rounded rectangle, sorted with the overlay's
 other runs at its layer. It blurs the scene under the overlay, not other
-overlay content; the pyramid is a render target of `Rgba16Float`, which WebGL2 renders to only with `EXT_color_buffer_float` (WebGPU, Metal, Vulkan and DX12 always); a frame without glass pays nothing (og-ui's `tests/gfx.rs`
+overlay content; the pyramid is a render target of `Rgba16Float` (renderable on WebGPU, Metal, Vulkan and DX12); a frame without glass pays nothing (og-ui's `tests/gfx.rs`
 `a_glass_panel_blurs_the_frame_under_it_and_nothing_else` and
 `references/<tier>/glass.png`; the cost is
 `tests/evidence/P2/ui/glass-cost.md`). Every
@@ -577,8 +574,8 @@ tier runs it (render passes only); screenshots, `capture` and
 `the_overlay_is_drawn_after_post_untonemapped_and_clipped`,
 `the_overlay_blends_in_linear_light_on_a_non_srgb_output`, the `overlay`
 reference scene (the showcase under TAA with a HUD; `metal` and
-`vulkan-cpu`), and fx-showcase's HUD and og.ui badge on `webgpu` and
-`webgl2` (`make web-reference`).
+`vulkan-cpu`), and fx-showcase's HUD and og.ui badge on `webgpu`
+(`make web-reference`).
 
 ## From TypeScript
 
@@ -598,16 +595,16 @@ module `render`), on both hosts, off by default:
 | `Overlay` | `SpriteDesc.screen` / `TextDesc.screen` with an optional `clip` `[x, y, w, h]`; og-ui draws into it |
 
 `templates/fx-showcase` shows each of them on five stations with references
-on `metal`, `vulkan-cpu`, `webgpu` and `webgl2` (the last two from headless
+on `metal`, `vulkan-cpu` and `webgpu` (the last from headless
 Chrome, `make web-reference`; each matches `metal` within og-tests'
 tolerance; `tests/evidence/E2/`).
 
 **Capture** (`capture.rs`): the offscreen target copied to a buffer and
 mapped. One async function on both hosts: natively it polls the device; on
-the web the mapping completes through WebGPU's `mapAsync` or, on WebGL2, on
-the next submit or `Renderer::poll()`. It reads only the offscreen target, so
-a page needs no `preserveDrawingBuffer`; a probe capture renders a frame to
-`Offscreen` first. It runs in Chrome on WebGPU and WebGL2: every frame
+the web the mapping completes through WebGPU's `mapAsync`. It reads only
+the offscreen target, so a page needs no `preserveDrawingBuffer`; a probe
+capture renders a frame to `Offscreen` first. It runs in Chrome on
+WebGPU: every frame
 `make web-reference` compares is a probe capture. A capture whose frame
 was read leaves its buffer to the next capture of the same size.
 `png(&image)` is the probe's encoder (`capture`, `sweep`, `screenshot`):
@@ -616,44 +613,28 @@ pixels decoding exactly (tests/evidence/r4/perf-capture/NOTES.md).
 
 ## Backend tiers
 
-| Tier | Backends | Reference directory | Antialiasing (`Tier`) |
-|---|---|---|---|
-| Tier | Backends | Reference directory | Antialiasing (`Tier`) | Shadowed local lights | Point shadows (`Auto`) | Particle collision |
+Every backend is one tier: compute, storage buffers and indirect draws
+are assumed (`docs/design.md` §2.6, §8). The WebGL2 tier (wgpu's GL
+backend, with 4× MSAA, four shadowed lights, paraboloid point shadows,
+SSAO and CPU particles) was retired on 2026-11-01; on the web the engine
+is WebGPU only.
+
+| Backends | Reference directory (`tier_name`) | Antialiasing (`Tier`) | Shadowed local lights | Point shadows (`Auto`) | AO (`Auto`) | Particle collision |
 |---|---|---|---|---|---|---|
-| `Full` | Metal, Vulkan (GPU or lavapipe), WebGPU | `metal`, `vulkan`, `vulkan-cpu`, `webgpu` | TAA | 8 | cube faces | the depth buffer (compute) |
-| `NoCompute` | WebGL2 (wgpu GL), native GL | `webgl2`, `gl` | 4× MSAA (FXAA without a multisampled HDR target) | 4 | paraboloids | the scene's colliders (CPU) |
+| Metal, Vulkan (GPU or lavapipe), DX12, WebGPU | `metal`, `vulkan`, `vulkan-cpu`, `dx12`, `webgpu` | TAA | 8 | cube faces | GTAO | the depth buffer (compute) |
 
-Both tiers request `Limits::downlevel_webgl2_defaults()` at the adapter's
-resolution; both tiers run the same passes (the full tier adds GPU
-particles), and the frame group's light tables are storage buffers on the
-full tier and uniform buffers on the no-compute one. The
-WebGL2 constraints stay designed in: shadow maps are `R32Float` colour
-arrays read with `textureLoad` and compared explicitly (WebGL2 can neither
-filter, `textureLod` nor gather a depth texture), the HDR target is
-`Rgba16Float` (`EXT_color_buffer_float`), IBL, mips, metering and bloom are
-render passes, there is no `first_instance`, and the uniform arrays stay far
-below the 16 KB WebGL2 uniform block limit (the frame uniform is about 4 KB:
-48 local shadow matrices since the shadows-aa round).
-Four constraints of wgpu's GL backend, each of which once broke
-fx-showcase on WebGL2:
-
-- GLSL has no `textureLoad` from a depth texture: TAA binds the depth
-  buffer as an unfilterable float texture (WebGPU allows a depth format
-  there) and reads `.r`, on every backend.
-- A texture read only with `textureLoad` gets no sampler object, and a
-  depth texture keeps GL's default linear filtering, under which it is
-  incomplete and reads 0: TAA samples the depth with a nearest sampler
-  of its own at the pixel's centre ([Where TAA reads its
-  history](#shadows-and-antialiasing-by-tier), row 68; `tests/shaders.rs` checks its GLSL).
-- A pipeline has 16 texture slots across all its bind groups, not per
-  stage: the lit skinned pipeline uses all 16 (frame 5, material 8, fx 2,
-  skin 1), so the sky cube is the sky pass's own group and on the texture
-  path the morph deltas and the joint palette share one texture. The
-  physical pipelines pack their maps into one array texture and use 14
-  ([Physical materials](#physical-materials-p4)).
-- The texture target is chosen at creation, and a square 2D texture with a
-  multiple of six layers becomes a cube map (array): the local shadow map
-  (twelve layers, 48 once grown) gets a spare layer to stay a 2D array.
+The device is asked for `Limits::downlevel_defaults()` at the adapter's
+resolution. Shadow maps are `R32Float` colour arrays read with
+`textureLoad` and compared explicitly, the HDR target is `Rgba16Float`,
+and IBL, mips, metering and bloom are render passes. A lit pipeline has
+16 sampled textures per stage (the downlevel limits): the lit skinned
+pipeline uses frame 5, material 8, fx 2, so the sky cube is the sky
+pass's own group. The physical pipelines pack their maps into one array
+texture and use 14 ([Physical materials](#physical-materials-p4)). The
+choices that remain (`Antialias::Msaa4` and `Fxaa`,
+`PointShadows::Paraboloid`, `AoMethod::Ssao`, the volumetric raymarch,
+`Culling::Cpu`, `ParticleSimulation::Cpu`) are a game's to make for its
+look or its budget, on every backend.
 
 ## Shared frames
 
@@ -685,48 +666,46 @@ and is compared with `crates/og-tests/references/<backend-tier>/<scene>.png`:
 a pixel is an outlier when a channel differs by more than 32/255; the frame
 fails above 0.5 % outliers or an RGB RMSE above 0.01. On failure the actual
 frame and a diff go to `target/…/tmp/og-gfx/<tier>/`. A missing reference
-fails; a scene with no reference on the adapter's tier (TAA on GL, MSAA on
-the full tier) asserts the tier's antialiasing choice instead.
+fails.
 
-| Scene | What it proves | Tiers |
-|---|---|---|
-| `gltf-reference` | The spike's scene (trickster + dropship × 25) with CSM, sky, mips. | all |
-| `spheres-20k` | 20,000 spheres submitted one by one: 2 batches, ≤ 10 draws. | all |
-| `cascades-200m` | A 420 m field, pillars to 190 m, a wall at 200 m, short kerbs and blocks: shadows in every cascade. | all |
-| `point-spot-lights` | Night, 7 local lights, a shadowed spot and a shadowed point light (7 shadow passes; 3 on WebGL2, whose point shadows are paraboloids). | all |
-| `point-shadows-paraboloid` | The same with the point light's shadow in two paraboloid hemispheres: 3 passes, RMSE 0.0023 against the cube frame. | all |
-| `shadows-local-8` | Night plaza: eight shadowed lights (six point, two spot; 38 passes) and two dim ones far behind whose shadows are left out. | full |
-| `shadows-crypt` | A roofed room under a low sun with a shadowed point light inside a glass box that casts no shadow (`Instance::cast_shadows`): the light reaches the altar and the pillar, a post's shadow falls beside them; paraboloids store the same faces as cube faces. | all |
-| `shadow-flags` | A low sun over a field: a trickster added as is (casting) beside one with `cast_shadows` off (no shadow), and in a 5 m wall's shadow a red box and a trickster that receive (dark) beside a box and a trickster with `receive_shadows` off (lit as if the wall were not there). | all |
-| `vox-keyframes` | A `.vox` written by the scene and cooked by og-cook (native only, `NATIVE_SCENES`): a grey slab, a blue post and a red block under a transform keyed at frames 0 and 2 (MagicaVoxel `nTRN` frames, owed row 63), sampled with og-anim and skinned as og-runtime poses a model; the left copy at frame 0 (the block on the slab left of the post), the right at frame 2 (right of the post, lifted, its shadow on the slab). | all (not in the browser set) |
-| `shadows-soft` | A low sun with PCSS (softness 0.03) and cascade blending (0.2): a cube's contact shadow sharp, a raised plank's and a floating ball's penumbrae wide, poles across the cascade split. | all |
-| `taa` | Thin poles and bars after 16 TAA frames. | full |
-| `msaa` | The same geometry with 4× MSAA. | no-compute |
-| `fxaa` | The same geometry with FXAA. | all |
-| `taa-sharp` | The same under TAA with the camera sliding 2 cm a frame, Catmull-Rom history and 0.5 sharpening (`Antialias::Taa`, so TAA on WebGL2 too: the browser's moving-camera TAA frame). | every |
-| `bloom` | Emissive spheres with bloom. | all |
-| `exposure` | A dim dusk scene metered to middle grey. | all |
-| `post-agx` | The `bloom` scene through AgX: lower contrast, the orange and magenta halos paler than under ACES, the cores rolling to white. | all |
-| `post-neutral` | The `bloom` scene through Khronos PBR Neutral: the spheres' bodies as saturated as their authored colour (ACES darkens and shifts them), the over-exposed cores rolling to white. | all |
-| `post-blur` | The `bloom` scene through a zoom blur (0.15, 16 taps) towards a point left of and above the centre: the blue sphere near it sharp, the outer spheres stretched into ovals along the lines to it, the floor's checks smeared radially, the bloom glowing round the streaks (it runs after the blur). | all |
-| `post-lens` | The spike's scene through a centred barrel lens (0.35): the robots and drones magnified at the centre, the floor's far edge and the horizon bowed into arcs, the corners fitted (no black). | all |
-| `post-adjust` | The spike's scene through the teal-orange LUT at 0.6, then colour adjustments baked into the same table (`ColorAdjust`: temperature 0.06, contrast 0.15, vibrance 0.25, shadows towards teal): deeper blue-violet robots, the far floor and the haze a warm sand, richer yellow crates. | all |
-| `environment-map` | Chrome and white spheres from mirror to rough lit only by a cooked 64×32 HDR studio (baked here as the cook bakes it), turned 0.6 rad, drawn as the background. | all |
-| `sprites-20k` | 20,000 sprites (3 textures, one a 2×2 atlas, 2 layers), orthographic: 3 sprite draws. | all |
-| `sprites-array` | Sixteen sprites of an eight-layer pixel-art flipbook array (nearest; the second row flipped and turned), six of a three-layer smooth array added over a plain textured strip: one draw per array and blend, three in all. | all |
-| `sprites-array-fx` | The same two arrays through the other paths: four glowing flipbook sprites over a strip (glow pass), a fountain of round, glowing, added particles on random layers of the smooth array, a flipbook emitter stepping each particle through the layers by age, and four overlay sprites of the flipbook's even layers beside a plain one; after 60 ticks. 5 sprite draws (three world, two overlay). | all |
-| `text-msdf` | Latin and CJK MSDF text from 0.32 to 4.5 world units, rotated. | all |
-| `sky-only` | The sky with the sun in view: 2 draws. | all |
-| `showcase` | Models, CSM, a shadowed spot and point light, bloom, auto exposure, world-space text and sprites, the tier's antialiasing. | all |
-| `lights-256` | Night over a plaza lit by 256 point and spot lights (Forward+; 243 in view). | all |
-| `atmosphere-moon` | The night colonnade with a waxing gibbous moon in view. | all |
-| `materials` | Every M6 material feature: metalness and roughness rows, emissive, normal maps, clearcoat, alpha mask and blend, double-sided, unlit, a non-uniformly scaled ellipsoid. | all |
-| `materials-array` | Texture-array maps (round of the cook's owed lines; references to record on metal and vulkan-cpu): eight cubes of one tile material (a four-layer sRGB colour array and a four-layer normal array), seven on their own layers and one on the material's, one batch; a cube of layer 1 as plain 2D textures beside them; two blended panes of one array material (layer 0, and the material's 3); a sphere with only a normal array (orange over the white stand-in). 5 batches, 13 instances. | all |
-| `materials-physical` | Every `MeshPhysicalMaterial` lobe: clearcoat with its three maps, sheen plain and mapped, iridescence on black and on metal, anisotropy plain and swirled by its map, then clear, frosted and amber glass, a transmission-mapped cube and a high-`ior` ball in front of a plinth of coloured bars. | all |
-| `skinned-hooks` | Skinned cylinders drawn with a material shader that ripples, bands and lifts them; their shadows and AO follow. | all |
-| `terrain-near`, `terrain-mid`, `terrain-far` | Phase 2: the 2 km island (clipmap, four layers, shadows, fog) from 2 m, 150 m and 700 m. | all |
-| `terrain-grass-wind` | The grass meadow (`terrain-grass`) in a gusting `Wind` at tick 90 (strength 0.4 towards +x and a little +z, gust 0.7): the tufts lean downwind, further where a gust passes, their tips lower; the boulders, plain instances, stand still. | all |
-| `water-planar`, `water-shadows`, `water-underwater` | Phase 2: the lake's planar reflection, shadows on the water, the view from under it with caustics. | all |
+| Scene | What it proves |
+|---|---|
+| `gltf-reference` | The spike's scene (trickster + dropship × 25) with CSM, sky, mips. |
+| `spheres-20k` | 20,000 spheres submitted one by one: 2 batches, ≤ 10 draws. |
+| `cascades-200m` | A 420 m field, pillars to 190 m, a wall at 200 m, short kerbs and blocks: shadows in every cascade. |
+| `point-spot-lights` | Night, 7 local lights, a shadowed spot and a shadowed point light (7 shadow passes). |
+| `point-shadows-paraboloid` | The same with the point light's shadow in two paraboloid hemispheres: 3 passes, RMSE 0.0023 against the cube frame. |
+| `shadows-local-8` | Night plaza: eight shadowed lights (six point, two spot; 38 passes) and two dim ones far behind whose shadows are left out. |
+| `shadows-crypt` | A roofed room under a low sun with a shadowed point light inside a glass box that casts no shadow (`Instance::cast_shadows`): the light reaches the altar and the pillar, a post's shadow falls beside them; paraboloids store the same faces as cube faces. |
+| `shadow-flags` | A low sun over a field: a trickster added as is (casting) beside one with `cast_shadows` off (no shadow), and in a 5 m wall's shadow a red box and a trickster that receive (dark) beside a box and a trickster with `receive_shadows` off (lit as if the wall were not there). |
+| `vox-keyframes` | A `.vox` written by the scene and cooked by og-cook (native only, `NATIVE_SCENES`): a grey slab, a blue post and a red block under a transform keyed at frames 0 and 2 (MagicaVoxel `nTRN` frames, owed row 63), sampled with og-anim and skinned as og-runtime poses a model; the left copy at frame 0 (the block on the slab left of the post), the right at frame 2 (right of the post, lifted, its shadow on the slab). |
+| `shadows-soft` | A low sun with PCSS (softness 0.03) and cascade blending (0.2): a cube's contact shadow sharp, a raised plank's and a floating ball's penumbrae wide, poles across the cascade split. |
+| `taa` | Thin poles and bars after 16 TAA frames. |
+| `fxaa` | The same geometry with FXAA. |
+| `taa-sharp` | The same under TAA with the camera sliding 2 cm a frame, Catmull-Rom history and 0.5 sharpening (`Antialias::Taa`: the browser's moving-camera TAA frame). |
+| `bloom` | Emissive spheres with bloom. |
+| `exposure` | A dim dusk scene metered to middle grey. |
+| `post-agx` | The `bloom` scene through AgX: lower contrast, the orange and magenta halos paler than under ACES, the cores rolling to white. |
+| `post-neutral` | The `bloom` scene through Khronos PBR Neutral: the spheres' bodies as saturated as their authored colour (ACES darkens and shifts them), the over-exposed cores rolling to white. |
+| `post-blur` | The `bloom` scene through a zoom blur (0.15, 16 taps) towards a point left of and above the centre: the blue sphere near it sharp, the outer spheres stretched into ovals along the lines to it, the floor's checks smeared radially, the bloom glowing round the streaks (it runs after the blur). |
+| `post-lens` | The spike's scene through a centred barrel lens (0.35): the robots and drones magnified at the centre, the floor's far edge and the horizon bowed into arcs, the corners fitted (no black). |
+| `post-adjust` | The spike's scene through the teal-orange LUT at 0.6, then colour adjustments baked into the same table (`ColorAdjust`: temperature 0.06, contrast 0.15, vibrance 0.25, shadows towards teal): deeper blue-violet robots, the far floor and the haze a warm sand, richer yellow crates. |
+| `environment-map` | Chrome and white spheres from mirror to rough lit only by a cooked 64×32 HDR studio (baked here as the cook bakes it), turned 0.6 rad, drawn as the background. |
+| `sprites-20k` | 20,000 sprites (3 textures, one a 2×2 atlas, 2 layers), orthographic: 3 sprite draws. |
+| `sprites-array` | Sixteen sprites of an eight-layer pixel-art flipbook array (nearest; the second row flipped and turned), six of a three-layer smooth array added over a plain textured strip: one draw per array and blend, three in all. |
+| `sprites-array-fx` | The same two arrays through the other paths: four glowing flipbook sprites over a strip (glow pass), a fountain of round, glowing, added particles on random layers of the smooth array, a flipbook emitter stepping each particle through the layers by age, and four overlay sprites of the flipbook's even layers beside a plain one; after 60 ticks. 5 sprite draws (three world, two overlay). |
+| `text-msdf` | Latin and CJK MSDF text from 0.32 to 4.5 world units, rotated. |
+| `sky-only` | The sky with the sun in view: 2 draws. |
+| `showcase` | Models, CSM, a shadowed spot and point light, bloom, auto exposure, world-space text and sprites, the default antialiasing (`Tier`: TAA). |
+| `lights-256` | Night over a plaza lit by 256 point and spot lights (Forward+; 243 in view). |
+| `atmosphere-moon` | The night colonnade with a waxing gibbous moon in view. |
+| `materials` | Every M6 material feature: metalness and roughness rows, emissive, normal maps, clearcoat, alpha mask and blend, double-sided, unlit, a non-uniformly scaled ellipsoid. |
+| `materials-array` | Texture-array maps (round of the cook's owed lines; references to record on metal and vulkan-cpu): eight cubes of one tile material (a four-layer sRGB colour array and a four-layer normal array), seven on their own layers and one on the material's, one batch; a cube of layer 1 as plain 2D textures beside them; two blended panes of one array material (layer 0, and the material's 3); a sphere with only a normal array (orange over the white stand-in). 5 batches, 13 instances. |
+| `materials-physical` | Every `MeshPhysicalMaterial` lobe: clearcoat with its three maps, sheen plain and mapped, iridescence on black and on metal, anisotropy plain and swirled by its map, then clear, frosted and amber glass, a transmission-mapped cube and a high-`ior` ball in front of a plinth of coloured bars. |
+| `skinned-hooks` | Skinned cylinders drawn with a material shader that ripples, bands and lifts them; their shadows and AO follow. |
+| `terrain-near`, `terrain-mid`, `terrain-far` | Phase 2: the 2 km island (clipmap, four layers, shadows, fog) from 2 m, 150 m and 700 m. |
+| `terrain-grass-wind` | The grass meadow (`terrain-grass`) in a gusting `Wind` at tick 90 (strength 0.4 towards +x and a little +z, gust 0.7): the tufts lean downwind, further where a gust passes, their tips lower; the boulders, plain instances, stand still. |
+| `water-planar`, `water-shadows`, `water-underwater` | Phase 2: the lake's planar reflection, shadows on the water, the view from under it with caustics. |
 
 Behaviour tests in `tests/gfx.rs` read frames rather than code: the cascade
 debug view puts cascade 0 at the camera's feet and cascade 2 at the horizon;
@@ -789,10 +768,11 @@ and adapter, compared with 15 % tolerance.
 
 ### Pipelines made on first use
 
-A pipeline is a program to compile, and on WebGL2 wgpu compiles and links
-each one synchronously when it is made (ANGLE's compile, then the status
-read that waits for it). `Renderer::new` used to make every fixed pipeline
-up front, 52 programs on the WebGL2 page of the dogfood games, most of them
+A pipeline is a program to compile, and on the retired WebGL2 tier wgpu
+compiled and linked each one synchronously when it was made (ANGLE's
+compile, then the status read that waits for it). `Renderer::new` used to
+make every fixed pipeline up front, 52 programs on the WebGL2 page of the
+dogfood games, most of them
 for passes the first frame does not draw (water, metaballs, 3D fluids,
 terrain, 2D lights, glass, ribbons, the sprite variants, bloom, TAA and the
 eleven effect passes): 400 to 550 ms before the first frame. Each is now a
@@ -805,7 +785,7 @@ first, and answers false when none is left: the web Worker calls it in
 idle time behind the play gate (`og_web_warm`), so a pass met later does
 not stop a frame to compile. Measured in headless Chrome 150 on the three
 dogfood games' publish builds (`packages/engine/tests/web/dogfood.ts
---boot`, three runs each, median, 2026-10-21): the WebGL2 renderer's
+--boot`, three runs each, median, 2026-10-21): the then WebGL2 renderer's
 creation went from 507 / 546 / 461 ms to 129 / 155 / 127 ms (Lantern Vale,
 Hollowbell, Kestrel Stair) and the first frame from 1,405 / 1,118 / 1,197
 ms to 703 / 701 / 705 ms; WebGPU's creation from 22 / 13 / 21 ms to 10 /
@@ -899,9 +879,8 @@ occluders', GPU culling's screen boxes) go through `mul_point`, the column
 order fused chain the compiler used when w came from the buffer, and a
 point moved by a material's `vertex_offset` keeps the plain product
 (`hooks.rs` `moved_clip`): every Metal frame is the 64-byte encoding's,
-byte for byte. The GL and SPIR-V tiers compile the same arithmetic (naga
-writes `fma` as `a * b + c` for GLSL ES 3.0); their references are
-compared under the gate's tolerance.
+byte for byte. The SPIR-V, HLSL and browser tiers compile the same
+arithmetic; their references are compared under the gate's tolerance.
 
 **Vertices: 16 bytes, opt-in.** `VertexEncoding::Compact`
 (`RenderScene::set_vertex_encoding`; `compact.rs`) uploads a mesh as the
@@ -955,10 +934,8 @@ carries its layer (location 7 of the sprite instance, which the other
 sprite pipelines do not read), so the run key is (blend, array): every
 sprite of one array is one instanced draw whichever layer it shows, where a
 sheet of separate textures would break the run at each frame. The group's
-view is an explicit `D2Array`; on WebGL2 the GL backend would take an array
-of one layer, or of a multiple of six, for a 2D or cube texture, so
-`add_texture_array` pads it (`gl_safe_array_layers`) and callers still
-address only the layers they gave. A layer past the array's count is
+view is an explicit `D2Array`, made with exactly the layers the caller
+gave. A layer past the array's count is
 refused (`InvalidData`). Array sprites take the hit flash, 2D lighting,
 fog, the additive blend, the soft dot and the glow pass (a glowing array
 sprite joins the glow runs by array, sorted after the plain textures, so
@@ -1170,9 +1147,9 @@ rides exposure, bloom and the tone curve: a cream speech bubble that
 auto exposure at dusk had blown to white and haloed (lantern-vale
 FINDINGS #17). *Chosen: drawn in place, flagged in the HDR alpha*, not
 in a pass after the tonemap. The sprite stays in the main pass, so it is
-depth tested against the scene's depth buffer on every tier (a pass
-after the tonemap would need that depth at the output's sample count,
-which WebGL2's 4x MSAA cannot give a single-sampled target) and sorted
+depth tested against the scene's depth buffer (a pass after the tonemap
+would need that depth at the output's sample count, which 4× MSAA
+cannot give a single-sampled target) and sorted
 with the other sprites. Before the frame's first such run a cover
 (`sprite.wgsl` `vs_cover`/`fs_cover`, a pipeline with no groups) sets the
 HDR target's alpha to 1 and keeps its colour; the sprite's pipeline
@@ -1203,7 +1180,7 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
 
 - **Post stack**: ambient occlusion (`AoMethod::Gtao` / `Ssao`, applied to
   the ambient term; `AoResolution::Half` searches and blurs every second
-  pixel and adds a depth-aware `ao-upsample` pass, the full tier's
+  pixel and adds a depth-aware `ao-upsample` pass; the
   full-resolution blur reads its 4x4 taps as gathers), outlines (depth and normal edges, per-scene or
   per-material colour and width; below), depth of field (`DofQuality::Low` / `High`), motion
   blur from per-object and camera motion vectors (`fx.rs` carries the
@@ -1235,8 +1212,10 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
   bounces, as the compute shader's response), soft fade against the scene,
   local or world space, 2D emitters drawn as sprites (from a texture or a
   texture array's layers, `ParticleEmitter::array`, with `round` for the
-  soft dot's edge). Simulated by compute
-  on the full tier and on the CPU elsewhere; without collision both paths
+  soft dot's edge). Simulated by compute (`ParticleSimulation::Auto`;
+  sprite-mode emitters on the CPU), or on the CPU for every emitter with
+  `ParticleSimulation::Cpu` (the state is Rust's to read, and it collides
+  with the scene's colliders instead of the depth buffer); without collision both paths
   give the same particles (`gpu_and_cpu_paths_simulate_the_same_particles`)
   and a 600-tick run is deterministic on either.
 - **Trails, ribbons and beams**: `Trail` keeps a per-id history for its
@@ -1270,9 +1249,8 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
   the og-tests scene `tilemap-lit` (a dark cave of three tile layers, a
   torch and a crystal, a pillar's and a ledge's shadows on the back wall,
   a window's sky layer kept as authored).
-- **Skinning and blendshapes**: `SkinData` + `JointPalette` (storage buffer
-  on the full tier; on WebGL2 one `Rgba32Float` vertex texture, the morph
-  deltas in its first rows and the palette after them),
+- **Skinning and blendshapes**: `SkinData` + `JointPalette` (a storage
+  buffer, the morph deltas beside the palette),
   `MorphTargets` weighted per instance; og-anim writes the palettes.
 - **Stylised**: toon ramp, rim light, dissolve per material. Every
   fragment entry point has one `discard` (`dissolve_at` returns a flag the
@@ -1322,8 +1300,8 @@ it drew before (every earlier reference is unchanged).
   colour by the water's depth over the scene (the depth prepass, which a
   frame with water always runs), foam where it meets geometry and on steep
   crests, refraction of a copy of the scene, reflections by a march through
-  the depth prepass on the full tier and the prefiltered sky cubemap where
-  that misses and on WebGL2. The main pass splits after the sky: the
+  the depth prepass and the prefiltered sky cubemap where that misses.
+  The main pass splits after the sky: the
   resolved scene is copied to `scene-copy` (`hdr` gains `COPY_SRC` only in
   frames with water), then water, transparents, particles, strips and
   sprites draw over it.
@@ -1441,9 +1419,11 @@ always did: every earlier og-tests frame is byte for byte the frame of
 the renderer before this change (`tests/evidence/P4/materials/`). A physical material with every lobe off draws the standard
 frame (RMSE 0, `tests/physical.rs`).
 
-**WebGL2's sixteen texture units: packing, and a pipeline of its own.**
-A physical material may sample 18 maps; the skinned lit pipeline already
-spends all 16 units WebGL2 gives a pipeline. A physical material keeps
+**Sixteen texture slots per stage: packing, and a pipeline of its own.**
+A physical material may sample 18 maps, past the 16 sampled textures per
+stage of the downlevel limits the device is asked for (the rule was
+first WebGL2's sixteen units per pipeline, retired with that tier). A
+physical material keeps
 its standard bind group (every pass but its lit one: shadows, the depth
 prepass, the planar reflection and scatter draw it as before) and gets a
 second one for the physical pipelines, whose layout differs:
@@ -1453,7 +1433,7 @@ second one for the physical pipelines, whose layout differs:
 | 0 frame | cascades, local shadows, irradiance, prefiltered, BRDF LUT (5) |
 | 1 physical material | base colour, normal, emissive, gradient, the pack (5), plus the material and physical uniforms |
 | 2 physical effects | SSAO, decal atlas, the transmission copy (3) |
-| 3 skin | the joint palette texture (1, WebGL2) |
+| 3 skin | none: the joint palette and the morph deltas are storage buffers |
 
 The pack is an RGBA8 2D array texture made once per set of maps (shared by
 materials with the same maps; made again when one of them is replaced)
@@ -1475,14 +1455,13 @@ The alternative, pipeline permutations keyed by which map groups a
 material uses, would have needed more than one permutation for a material
 with every map, and a texture atlas would have bled between maps under
 mipmapping. The pack costs one RGBA8 texel per layer used and a few passes
-when a material is first drawn. `tests/webgl2.rs` translates the physical
-shader and the pack shader to GLSL ES 3.0 and counts the physical module's
-textures (14, the static and skinned pipelines alike).
+when a material is first drawn. `tests/shaders.rs` validates the physical
+shader and the pack shader and translates them to MSL, SPIR-V and HLSL.
 
-**Tiers.** Every lobe and map draws on both tiers. The transmission copy's
-mip chain is made with render passes (the mip pass), so WebGL2 has it
-too: no difference by design. The physical shader asks no texture for its
-level count (WebGL2 cannot); it derives it from the copy's size.
+**Backends.** Every lobe and map draws on every backend. The
+transmission copy's mip chain is made with render passes (the mip
+pass). The physical shader asks no texture for its level count; it
+derives it from the copy's size.
 
 **From glTF.** The cook and the glTF bridge read the seven extensions with
 one parser (`gltf::physical_extensions`, the textures as their kinds: the
@@ -1530,7 +1509,7 @@ change to the standard shaders fails `tests/shaders.rs` instead of drifting.
 The standard builders (`pbr_pipeline`, `prepass_pipeline`,
 `shadow_pipeline`) make the variant's pipelines from those modules and the
 variant's layouts (the material group with two `D2Array` bindings, same
-texture count, so WebGL2's skinned pipeline still fits its sixteen units),
+texture count, so the skinned pipeline still fits its sixteen slots),
 keyed as the standard ones: a typical scene adds one lit, one prepass and
 one shadow pipeline. A material's array group is a second bind group (its
 standard group stays for shadows with a dissolve, scatter and everything
@@ -1614,8 +1593,7 @@ unchanged.
   spacing so vertices never move in the world. One index buffer holds the
   full grid (level 0) and the ring with its hole at each of the four
   places the finer level's snapping can put it; each level is one indexed
-  draw with its uniform slot by dynamic offset (WebGL2 has no first
-  instance). The levels end when the next one's hole would cover the
+  draw with its uniform slot by dynamic offset. The levels end when the next one's hole would cover the
   terrain or lie beyond the far plane. In the outer eighth of each level
   its odd vertices slide onto the coarser grid (CDLOD's morph, by the
   camera's own position, so it is continuous as it moves): at the edge the
@@ -1737,8 +1715,8 @@ once (`tests/evidence/P2/terrain-water/break-and-restore.md`).
 `shaders/fluid3d_blur.wgsl`; og-runtime fills it from every visible
 `og.Fluid3D`) draws particle fluids as one screen-space surface. The CPU
 uploads each frame's particles as instances (their positions come from
-og-physics' CPU solver anyway), so every tier, WebGL2 included, runs the
-same passes with no storage buffer or compute. The frame pass `fluid-3d`
+og-physics' CPU solver anyway), so the passes need no storage buffer or
+compute. The frame pass `fluid-3d`
 runs after the depth prepass and before the main pass, while a fluid has
 particles (the prepass and the split main pass are then forced on):
 
@@ -1764,8 +1742,7 @@ fluids blend), but the look (reflectivity, refraction, smoothing) is the
 first fluid's. Marching cubes was not built (nor measured): the
 screen-space passes cost two blur passes and a composite over the pixels
 the fluid covers plus two instanced draws, whatever the particle count, where a polygonised
-surface needs a density grid and a mesh rebuilt every frame, on the CPU for
-WebGL2.
+surface needs a density grid and a mesh rebuilt every frame.
 
 Cost (`og-gfx --costs-p2`, the `fluid-3d` scene: two fluids, 2,534
 particles, about a third of a 1280×720 frame): about 1.1 ms of GPU on an Apple M4 Pro
@@ -1778,7 +1755,7 @@ Tests and references (`metal`, `vulkan-cpu`): `og-tests/tests/fluids3d.rs`
 and the scene `fluid-3d` (a blue pool in a tiled basin with an orange drop
 above it, lit by the sun and an orange point light); each check was broken
 once (`tests/evidence/P2/sph/break-and-restore.md`). fx-showcase's
-`fluids3d` station has references on all four tiers.
+`fluids3d` station has references on `metal`, `vulkan-cpu` and `webgpu`.
 
 ## Phase 4: environment maps, AgX, exposure adaptation
 
@@ -1794,8 +1771,8 @@ three quarters +z), a box mip chain, levels 1–4 by GGX importance sampling
 roughness m/4, and the irradiance projected onto order-2 harmonics by texel
 solid angle and convolved with the cosine lobe (band factors 1, 2/3, 1/4,
 stored as E/π). Texels are RGB9E5 (`Rgb9e5Ufloat`): 4 bytes a texel
-against RGBA16F's 8, sampled and filtered on every tier (WebGPU core, GL ES
-3.0 core so WebGL2, Metal, Vulkan's mandatory formats); the map is only
+against RGBA16F's 8, sampled and filtered on every backend (WebGPU core,
+Metal, Vulkan's and DX12's mandatory formats); the map is only
 sampled, never a render target. A 128² map is 524 KB before zlib. A KTX2
 cube whose own mips are already GGX-prefiltered (og-cook's `prefiltered
 true`: cmgen's, IBLBaker's, the glTF IBL sampler's, level k of L at
@@ -1870,7 +1847,7 @@ capture does): Lantern Vale's first frame drew no ground, metered 2.5 EV
 brighter than the vale, and the dusk look adapting at 1 EV/s up stayed
 under-exposed for its first two seconds, a little less on the web,
 whose tick-0 frame metered differently (title RMSE 0.031 and start
-0.036 against `metal` on both browser tiers). Now the first ticked frame
+0.036 against `metal` on both browser tiers of the time). Now the first ticked frame
 meters the whole vale on every host: the title and start references
 were re-recorded (RMSE 0.173 and 0.044 against the old ones, the
 exposure at its target from the first frame), and a native run that
@@ -1886,7 +1863,7 @@ The primitives a look composes into a non-photographic frame
 by a `type look` asset through `og.render.applyLook`), each off at its
 zero value and then costing nothing: no pass is recorded, no pipeline
 built. `RenderCapabilities.stylise` names what this renderer draws
-(`STYLISE_DRAWN`). All of it draws on both tiers (render passes only).
+(`STYLISE_DRAWN`). All of it draws on every backend (render passes only).
 
 - **The pixel grid** (`PixelScale`): the scene is drawn at a logical size
   (`height` rows, the width from the output's aspect, both at most the
@@ -2012,8 +1989,8 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   each mesh instance's own space, so a moving, turning or skinned object
   carries its strokes, dots and grain. *Chosen: the object-space
   position, not an instance id.* An id would need every instance's
-  inverse transform where the post passes can read it (storage buffers,
-  which WebGL2 lacks, or a texture of transforms uploaded again) and a
+  inverse transform where the post passes can read it (a storage buffer
+  or a texture of transforms uploaded again) and a
   free channel in the prepass targets, which has none (normal and
   velocity, depth, outline). Instead, after the prepass the object pass
   (`stylise_object.rs`, `stylise_object.wgsl`; inside the prepass's graph
@@ -2080,7 +2057,7 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   clip position snapped to a screen grid of `vertex_snap` logical pixels,
   depth quantised to `depth_bits`, and affine texturing by interpolating
   uv × w and dividing by the interpolated w in the fragment (no
-  `noperspective` qualifier, so WebGL2 has it too). The physical shader
+  `noperspective` qualifier). The physical shader
   shares the vertex path; the prepass alpha cut stays perspective-correct.
 - **The material style** (`MaterialStyle`, material.rs `styled`): every lit
   material that leaves a stylised field at its default takes the scene's
@@ -2132,8 +2109,8 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   `.vox` model's greedy quads, a flat-shaded rock): a voxel canopy became
   a net of lines and a small voxel slime all ink (lantern-vale FINDINGS
   #15). Smoothed normals would need a vertex stream and a prepass channel
-  the prepass has no room for (WebGL2's sixteen attributes are spent on
-  the skinned prepass) and still ink small hard-edged meshes whose
+  the prepass has no room for (the skinned prepass spends the sixteen
+  vertex attributes of the downlevel limits) and still ink small hard-edged meshes whose
   smoothed normals turn within the line's width; the id keeps every face
   of one object clean whatever its topology, skinned included, at no
   extra target. Neighbouring objects share an id one time in 255 (their
@@ -2166,7 +2143,7 @@ where every line is a silhouette or crease) and `sprites-shadow` (og-tests,
 four with its hollow), `stylise-object` and `stylise-halftone-surface`
 (round four; recorded by the round's merge), and fx-showcase's `looks`
 station, one frame per preset of `templates/looks/`, which the browser
-tiers compare too (`reference.ts --looks` in `scripts/check.sh
+tier compares too (`reference.ts --looks` in `scripts/check.sh
 web-reference`, every frame against `metal`). The station's HUD line
 names the preset shown (`P4 station  looks  <slug>`, `none` before a
 look; `look:<slug>` sets it), so each frame identifies itself. Every style
@@ -2211,7 +2188,7 @@ draw besides the capture itself:
   otherwise reallocate them every interval. A capture drawn after the
   targets were freed and remade is bit for bit the first (checked in the
   debt round 3); og-render `probes::tests::face_targets_are_kept_for_due_and_realtime_captures_only`.
-- **Water's reflections.** On the full tier a face's water marches its
+- **Water's reflections.** A face's water marches its
   screen-space reflection through the face's own depth prepass and copy,
   as the frame's water does through its own (`WaterRenderer::face_draws`
   keeps `look.y`): what the surface mirrors as seen from the probe's
@@ -2239,13 +2216,12 @@ draw besides the capture itself:
 ## What phase 2 owes
 
 Delivered in P4: clearcoat maps, sheen, transmission (with volume and
-`ior`), iridescence and anisotropy on both tiers ([Physical
+`ior`), iridescence and anisotropy ([Physical
 materials](#physical-materials-p4)); cascade blending, PCSS soft shadows
-for the sun, point shadows by tier (dual-paraboloid on WebGL2), up to 8
-shadowed local lights (4 on WebGL2), TAA's Catmull-Rom history and
-sharpening, FXAA on every tier, and the CPU particle path's collision
-(WebGL2's sparks bounce) ([Shadows and antialiasing by
-tier](#shadows-and-antialiasing-by-tier)).
+for the sun, cube or dual-paraboloid point shadows, up to 8
+shadowed local lights, TAA's Catmull-Rom history and
+sharpening, FXAA, and the CPU particle path's collision
+([Shadows and antialiasing](#shadows-and-antialiasing)).
 
 Delivered since M3 (8d160fe, M6): the render graph object (`src/graph.rs`:
 declared targets and passes, data-flow order, aliased transients; the
@@ -2266,16 +2242,14 @@ with their mips, chosen per tier and reported in
   scene depth) and costs a second geometry pass: spheres-20k 9.98 to 16.56
   ms (+66 %), city-street +0.3 ms, city-aerial +0.5 ms, showcase within
   noise (`tests/evidence/P4/perf/prepass.md`). Design §2.6 says so.
-- **GL-tier references**: native GL needs wgpu's `gles`/`angle` features
-  (Cargo.lock change, ANGLE dylibs on macOS) and was not set up, so there
-  is no native `gl` tier. *The browser half is done (phase 2, owed row
-  22):* og-tests-web, a wasm harness of og-tests' scenes, draws them on
-  `webgpu` and `webgl2` in `make web-reference` (56 scenes per tier in the
-  P4 UI shell round's run), judged against `metal` unless the tier keeps a
-  reference by design, beside `templates/fx-showcase`.
+- **Browser references** (phase 2, owed row 22): og-tests-web, a wasm
+  harness of og-tests' scenes, draws them on `webgpu` in
+  `make web-reference`, judged against `metal`, beside
+  `templates/fx-showcase`. There is no GL tier, native or in the
+  browser: the WebGL2 tier was retired on 2026-11-01.
 - *Delivered (round four, r4/render-billboards):* 2D billboards,
   camera-facing world sprites (`SpriteFacing`: the view plane, or upright
-  about y), through the sprite batch on both tiers and in every view
+  about y), through the sprite batch and in every view
   ([Billboards](#billboards)).
 - (Fog landed in E5, in the lit, sky, particle, strip and sprite shaders
   rather than as a post pass (§E5: atmosphere); per-texture filtering is
@@ -2286,8 +2260,8 @@ with their mips, chosen per tier and reported in
 - *Delivered (P4 perf, `tests/evidence/P4/perf/`):*
   - **Instance upload dirty tracking** (12749c1): the CPU path's instance
     buffer and GPU culling's input region keep a copy of what they hold and
-    write only the 4 KiB blocks that changed (`src/upload.rs`), on both
-    tiers; a buffer just grown, or a frame of another length, is written
+    write only the 4 KiB blocks that changed (`src/upload.rs`); a buffer
+    just grown, or a frame of another length, is written
     whole. `FrameStats::instance_upload_bytes`; og-tests `tests/upload.rs`.
     Since r4/perf-webgl2-3 only the blocks a draw reads: on the CPU path
     the sorted records of the batches a list draws whole and the culled
@@ -2307,9 +2281,8 @@ with their mips, chosen per tier and reported in
     og-runtime unloads a streaming group's model textures through
     `remove_texture`. og-tests `tests/removal.rs`.
   - **Shader cooking per backend** (912e333, 8779ca8): every WGSL module
-    of both tiers (`og_render::shader_sources`) is validated by naga and
-    written as MSL and SPIR-V (full tier) or GLSL ES 3.0 (GL tier) in the
-    gate (`tests/shaders.rs`), so a shader error is a failed build, not a
+    (`og_render::shader_sources`) is validated by naga and written as
+    MSL, SPIR-V and HLSL in the gate (`tests/shaders.rs`), so a shader error is a failed build, not a
     player's crash. Compiled pipelines are kept across runs where wgpu has
     a pipeline cache (Vulkan; `set_pipeline_cache_dir`,
     `RenderInfo::pipeline_cache`); Metal and the browsers keep their own.
@@ -2320,7 +2293,7 @@ with their mips, chosen per tier and reported in
     dispatch, no importance order, so not even byte-identical) takes 97 to
     134 us to upload, encode and submit and 279 to 385 us of GPU on Metal
     (`tests/evidence/P4/perf/clusters-compute.md`,
-    og-tests `tests/cluster_compute.rs`). The CPU build stays on both tiers.
+    og-tests `tests/cluster_compute.rs`). The CPU build stays.
   - **The lit pass's per-instance GPU cost** (owed row 50's remainder,
     branch `r-lean`): plain materials draw through lean lit, prepass and
     shadow pipelines ([Lit pipeline variants](#lit-pipeline-variants)):

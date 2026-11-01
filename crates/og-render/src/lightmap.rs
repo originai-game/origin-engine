@@ -22,16 +22,14 @@
 //!   same entry points with its hooks) and the physical module's
 //!   `vs_physical_lightmap`/`fs_physical_lightmap`
 //!   (lightmap_physical.wgsl).
-//! - [`ProbeVolume`]s: one buffer at frame binding 10 (storage on the full
-//!   tier, a 16 KiB uniform on WebGL2, where a volume larger than the
-//!   uniform holds is resampled to fit), read by `ambient_irradiance` for
+//! - [`ProbeVolume`]s: one storage buffer at frame binding 10 (a volume
+//!   larger than the buffer holds is resampled to fit), read by `ambient_irradiance` for
 //!   every lit fragment without a lightmap: trilinear between the eight
 //!   probes around it, faded in over one spacing inside the box.
 //!
 //! The data is renderer state that outlives frames: a render snapshot's
 //! restore (`Renderer::restore_state`) keeps it, as it keeps every upload.
 
-use crate::clusters::LightTables;
 use crate::material::Side;
 use glam::Vec3;
 use std::collections::HashMap;
@@ -91,28 +89,18 @@ pub struct BakedLighting {
 pub const PROBE_VOLUMES: usize = 8;
 /// The probe buffer's header: two vec4 per volume.
 const HEADER: usize = 2 * PROBE_VOLUMES;
-/// The probe buffer's size in vec4 on each tier.
-fn probe_capacity(tables: LightTables) -> usize {
-    match tables {
-        // 16384 probes of three vec4.
-        LightTables::Storage => HEADER + 3 * 16384,
-        // One 16 KiB uniform.
-        LightTables::Uniform => 1024,
-    }
-}
+/// The probe buffer's size in vec4: the header and 16384 probes of three
+/// vec4.
+const PROBE_CAPACITY: usize = HEADER + 3 * 16384;
 
 /// The WGSL of the probe buffer and the ambient-light hook (frame binding
 /// 10), placed after lighting.wgsl in the lit shaders.
-pub(crate) fn probe_wgsl(tables: LightTables) -> String {
-    let space = match tables {
-        LightTables::Storage => "storage, read",
-        LightTables::Uniform => "uniform",
-    };
+pub(crate) fn probe_wgsl() -> String {
     format!(
-        "{}\nstruct ProbeWords {{ v: array<vec4<f32>, {n}> }};\n@group(0) @binding(10) var<{space}> probe_data: ProbeWords;\n{}",
+        "{}\nstruct ProbeWords {{ v: array<vec4<f32>, {n}> }};\n@group(0) @binding(10) var<storage, read> probe_data: ProbeWords;\n{}",
         format_args!("const PROBE_VOLUMES: u32 = {PROBE_VOLUMES}u;"),
         AMBIENT_WGSL,
-        n = probe_capacity(tables),
+        n = PROBE_CAPACITY,
     )
 }
 
@@ -175,15 +163,12 @@ fn ambient_irradiance(env: vec3<f32>, p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
 "#;
 
 /// The frame layout's entry for the probe buffer.
-pub(crate) fn probe_layout_entry(tables: LightTables) -> wgpu::BindGroupLayoutEntry {
+pub(crate) fn probe_layout_entry() -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
         binding: 10,
         visibility: wgpu::ShaderStages::FRAGMENT,
         ty: wgpu::BindingType::Buffer {
-            ty: match tables {
-                LightTables::Storage => wgpu::BufferBindingType::Storage { read_only: true },
-                LightTables::Uniform => wgpu::BufferBindingType::Uniform,
-            },
+            ty: wgpu::BufferBindingType::Storage { read_only: true },
             has_dynamic_offset: false,
             min_binding_size: None,
         },
@@ -291,7 +276,6 @@ pub(crate) fn f16_bits(x: f32) -> u16 {
 
 /// The GPU side of [`BakedLighting`].
 pub(crate) struct Lightmaps {
-    tables: LightTables,
     layout: wgpu::BindGroupLayout,
     /// The frame group's layout, every lightmapped pipeline's group 0.
     frame_layout: wgpu::BindGroupLayout,
@@ -392,7 +376,6 @@ impl Lightmaps {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         frame_layout: &wgpu::BindGroupLayout,
-        tables: LightTables,
     ) -> Lightmaps {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("lightmap"),
@@ -407,14 +390,11 @@ impl Lightmaps {
             min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
-        let capacity = probe_capacity(tables);
+        let capacity = PROBE_CAPACITY;
         let probe_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("light volumes"),
             size: (capacity * 16) as u64,
-            usage: match tables {
-                LightTables::Storage => wgpu::BufferUsages::STORAGE,
-                LightTables::Uniform => wgpu::BufferUsages::UNIFORM,
-            } | wgpu::BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
         queue.write_buffer(
@@ -423,7 +403,6 @@ impl Lightmaps {
             bytemuck::cast_slice(&pack_probes(&[], capacity)),
         );
         Lightmaps {
-            tables,
             layout,
             frame_layout: frame_layout.clone(),
             pipeline_layouts: HashMap::new(),
@@ -443,7 +422,7 @@ impl Lightmaps {
         sampler: &wgpu::Sampler,
         pages: &LightmapPages,
     ) -> wgpu::BindGroup {
-        let layers = crate::gl_safe_array_layers(pages.pages.len().max(1) as u32);
+        let layers = pages.pages.len().max(1) as u32;
         let (w, h) = (pages.width.max(1), pages.height.max(1));
         let texels = (w * h) as usize;
         let mut data: Vec<u16> = Vec::with_capacity(texels * 4 * layers as usize);
@@ -542,7 +521,7 @@ impl Lightmaps {
             .map(|v| (v.min, v.max, v.counts, Arc::as_ptr(&v.probes) as usize))
             .collect();
         if probes_key != self.probes_key {
-            let data = pack_probes(&baked.volumes, probe_capacity(self.tables));
+            let data = pack_probes(&baked.volumes, PROBE_CAPACITY);
             queue.write_buffer(&self.probe_buffer, 0, bytemuck::cast_slice(&data));
             self.probes_key = probes_key;
         }
@@ -568,8 +547,7 @@ impl Lightmaps {
 
     /// Makes the lightmapped pipeline of `family` for `key` from `module`
     /// (the family's lit module), its groups 1 and 2 laid out as
-    /// `material` and `fx`; `area_lights` false (the GL tier only) leaves
-    /// rect lights out, as `crate::pbr_pipeline`'s.
+    /// `material` and `fx`.
     #[allow(clippy::too_many_arguments)]
     pub fn ensure_pipeline(
         &mut self,
@@ -579,7 +557,6 @@ impl Lightmaps {
         module: &wgpu::ShaderModule,
         key: LitKey,
         samples: u32,
-        area_lights: bool,
     ) {
         if self.pipelines.contains_key(&(family, key)) {
             return;
@@ -600,8 +577,7 @@ impl Lightmaps {
                 })
             });
         let (side, blend, effects) = key;
-        let constants = [("EFFECTS", effects as u32 as f64), crate::AREA_LIGHTS_OFF];
-        let constants = &constants[..if area_lights { 1 } else { 2 }];
+        let constants = &[("EFFECTS", effects as u32 as f64)];
         let vertices = if family == Family::Compact {
             crate::compact::LEAN_LAYOUT
         } else {
@@ -674,7 +650,7 @@ mod tests {
     }
 
     #[test]
-    fn resamples_a_volume_too_large_for_the_uniform() {
+    fn resamples_a_volume_too_large_for_the_buffer() {
         // A linear field survives trilinear resampling exactly.
         let v = volume([16, 16, 16], |x, y, z| {
             x as f32 + 0.5 * y as f32 + 0.25 * z as f32

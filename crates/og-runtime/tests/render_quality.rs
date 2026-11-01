@@ -212,7 +212,6 @@ impl RenderBackend for Device {
             adapter: "test".into(),
             backend: og_render::wgpu::Backend::Vulkan,
             device_type: og_render::wgpu::DeviceType::Cpu,
-            tier: og_render::Tier::Full,
             antialias: if self.msaa > 1 {
                 og_render::Antialias::Msaa4
             } else {

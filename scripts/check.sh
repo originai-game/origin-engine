@@ -74,7 +74,7 @@ RULE_COMMON="Cargo.toml Cargo.lock rust-toolchain.toml .cargo .config scripts"
 rule_gpu() {
   echo "$(og_crate_dirs -p og-tests -p og-ui -p og-render -e normal,build,dev | og_words) templates/ui-kit/assets $RULE_COMMON"
 }
-# third_party: the vendored crates the wasm links (wgpu-hal's GLES backend is WebGL2's).
+# third_party: the vendored crates the wasm links.
 rule_wasm() { echo "crates third_party $RULE_COMMON"; }
 # og api check: the IDL, the generator and what it reads, og's api command,
 # and every directory it writes (og_idl::OUTPUT_DIRS).
@@ -538,14 +538,14 @@ step_bun_quick() {
   bun_test_packages $BUN_QUICK_PACKAGES
 }
 
-# The webgpu and webgl2 tiers of templates/fx-showcase, of og-tests' own
+# The webgpu tier of templates/fx-showcase, of og-tests' own
 # gfx scenes and og-ui's (crates/og-tests-web), of og-ui's kit frames
 # (templates/ui-kit) and of Ember Vale's frames
 # (templates/archetypes/third-person) in headless Chrome (docs/ci.md
 # §Browser reference tiers; `make web-reference`). In no lane: CI has no
 # Chrome for Testing.
 step_web_reference() {
-  local a b c d e f g h i j k l m n o q
+  local a c e g i k l n
   if skip_unchanged web-reference "web-reference" "$(rule_web)"; then return $SKIP; fi
   og_need bun || return 1
   # The tests cook each project with packages/engine/native's og and serve
@@ -554,20 +554,15 @@ step_web_reference() {
   # 0.3.0 og refused fx-showcase's newer asset types, 2026-10-24).
   OG_GATE=1 sh packages/engine/scripts/build.sh || return 1
   (cd packages/engine && bun tests/web/reference.ts); a=$?
-  (cd packages/engine && bun tests/web/reference.ts --webgl); b=$?
   # The E5 stations, each a fresh run like its playtest.
   (cd packages/engine && bun tests/web/reference-e5.ts); c=$?
-  (cd packages/engine && bun tests/web/reference-e5.ts --webgl); d=$?
   # The looks station: every preset of the catalogue in one run, each
   # frame against its tier's reference, else metal's (tests/looks-script.ts).
   (cd packages/engine && bun tests/web/reference.ts --looks); n=$?
-  (cd packages/engine && bun tests/web/reference.ts --webgl --looks); o=$?
   # og-tests' scenes against their tier's reference, else metal's.
   (cd packages/engine && bun tests/web/reference-gfx.ts); e=$?
-  (cd packages/engine && bun tests/web/reference-gfx.ts --webgl); f=$?
   # og-ui's kit frames, each reference playtest a fresh run like its own.
   (cd packages/engine && bun tests/web/reference-ui.ts); g=$?
-  (cd packages/engine && bun tests/web/reference-ui.ts --webgl); h=$?
   # Ember Vale's three frames: tests/frames.og.ts's commands without its
   # screenshots and quit, each shot at its screenshot's tick (60 t).
   # shellcheck disable=SC2054 # the commas are inside one --shots word
@@ -575,7 +570,6 @@ step_web_reference() {
     --script "1.0:run;1.1:warp:0;1.3:key_down:KeyF;3.5:key_up:KeyF;3.6:light:1;3.7:light:2;3.8:light:3"
     --shots title@54,beacon@204,dawn@432)
   (cd packages/engine && bun tests/web/reference.ts "${tp[@]}"); i=$?
-  (cd packages/engine && bun tests/web/reference.ts --webgl "${tp[@]}"); j=$?
   # Brasswick's nine frames and Meridian Loop's ten: each game's
   # tests/frames.og.ts itself (--playtest: its commands without its
   # screenshots and quit, each shot at its screenshot's tick, 60 t). Their
@@ -590,7 +584,6 @@ step_web_reference() {
     fi
     local ex=(--project "examples/$game" --playtest tests/frames.og.ts --out "dist/test-reference/$game")
     (cd packages/engine && bun tests/web/reference.ts "${ex[@]}") || p=1
-    (cd packages/engine && bun tests/web/reference.ts --webgl "${ex[@]}") || p=1
   done
   # A panic inside a lane reaches the page as a crash within 5 s, not a hang
   # (docs/web-export.md §Errors), and the same fault single-threaded.
@@ -598,12 +591,7 @@ step_web_reference() {
   # The accessibility mirror over ui-kit's settings screen, a screen
   # reader's click, the live region and the page's preferences.
   (cd packages/engine && bun tests/web/a11y.ts); l=$?
-  (cd packages/engine && bun tests/web/a11y.ts --webgl); m=$?
-  # GPU pass timing on the WebGL2 tier: gpuTimestamps and gpuPasses with
-  # EXT_disjoint_timer_query_webgl2 (the browser's, or a stand-in where it
-  # has none) and without it (tests/evidence/debt/webgl2-gpu-timing).
-  (cd packages/engine && bun tests/web/gpu-timing.ts); q=$?
-  return $((a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q))
+  return $((a | c | e | g | i | k | l | n | p))
 }
 
 # --- Scheduling ---------------------------------------------------------------

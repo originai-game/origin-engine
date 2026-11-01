@@ -1,7 +1,7 @@
 // The browser tiers of og-ui's kit frames: templates/ui-kit's reference
 // playtests (tests/<playtest>.og.ts: frames-desktop, frames-phone, players,
 // locales and the style-* style packs) each as the same fresh run in headless
-// Chrome through reference.ts, on WebGPU (or WebGL2 with --webgl), compared
+// Chrome through reference.ts, on WebGPU, compared
 // with crates/og-ui/references/<tier>/ (each frame on its own falling back
 // to metal's) under og-tests' rule: a channel off by more than 32/255 is an
 // outlier; fail above 0.5 % outliers or an RGB RMSE above 0.01.
@@ -14,7 +14,7 @@
 // against (frames.ts `checkFrames`). A style pack's shots are compared with
 // their cells of kit-style-<pack>[-phone].png, box-filtered as styles.ts does.
 //
-//   bun tests/web/reference-ui.ts [--webgl] [--record] [--only a,b] [--chrome <path>]
+//   bun tests/web/reference-ui.ts [--record] [--only a,b] [--chrome <path>]
 //
 // Without --only it runs SET below (docs/ci.md §Browser reference tiers says
 // which frames that is and why). --record writes this tier's references.
@@ -38,8 +38,8 @@ const repo = join(pkg, "..", "..");
 const kit = join(repo, "templates", "ui-kit");
 const args = process.argv.slice(2);
 const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
-const tier = args.includes("--webgl") ? "webgl2" : "webgpu";
-const pass = args.filter((a, i) => a === "--webgl" || a === "--record" || a === "--chrome" || args[i - 1] === "--chrome");
+const tier = "webgpu";
+const pass = args.filter((a, i) => a === "--record" || a === "--chrome" || args[i - 1] === "--chrome");
 const work = join(pkg, "dist", "test-reference", "ui");
 
 /** The reference prefix each frames playtest checks its screenshots under (its `checkFrames` call). */

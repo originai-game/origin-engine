@@ -130,16 +130,6 @@ export function compressionsFromWebGpu(features: { has(feature: string): boolean
   return out;
 }
 
-/** The block compressions a WebGL2 context supports, from `getSupportedExtensions()`. */
-export function compressionsFromWebGl2(extensions: Iterable<string>): Set<Compression> {
-  const have = new Set(extensions);
-  const out = new Set<Compression>();
-  if (have.has("EXT_texture_compression_bptc")) out.add("bc");
-  if (have.has("WEBGL_compressed_texture_astc")) out.add("astc");
-  if (have.has("WEBGL_compressed_texture_etc")) out.add("etc2");
-  return out;
-}
-
 /**
  * The GPU format to transcode to on this device: BC7 where BC is supported
  * (desktop), else ASTC 4x4 (Apple, most Android), else ETC2 (other Android),

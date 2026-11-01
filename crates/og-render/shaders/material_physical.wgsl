@@ -3,8 +3,8 @@
 // emissive and gradient textures as there, every other map packed into
 // the layers of one array texture by physical.rs, and the physical
 // factors. Five textures, so the skinned physical pipeline stays within
-// the sixteen a WebGL2 pipeline has (frame 5, material 5, effects 3,
-// skin 1).
+// the sixteen a stage has under the downlevel limits (frame 5, material 5,
+// effects 3, skin 1).
 
 // `PhysicalUniform` in physical.rs.
 struct PhysicalFactors {

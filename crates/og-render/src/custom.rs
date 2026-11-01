@@ -35,11 +35,10 @@
 //!
 //! The modules keep the built-in shaders' entry names and vertex buffers,
 //! so a full shader draws through the hooked materials' pipelines; the
-//! cook validates each tier's modules with naga (WGSL, SPIR-V, MSL and
-//! GLSL ES 3.0) as it does the hooks'.
+//! cook validates its modules with naga (WGSL, SPIR-V and MSL) as it does
+//! the hooks'.
 
 use crate::hooks::{MaterialShader, ShaderMode, defines, hooks_section};
-use crate::{clusters::LightTables, skin::PaletteMode};
 
 /// The entries a full shader may define (both optional, at least one).
 pub const FULL_SHADER_ENTRIES: [&str; 2] = ["vertex", "fragment"];
@@ -51,15 +50,6 @@ const SHADOW_WGSL: &str = wgsl!("custom_shadow.wgsl");
 const DEFAULT_VERTEX: &str = "fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput { return standard_vertex(v, model); }\n";
 const DEFAULT_FRAGMENT: &str =
     "fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput { return standard_surface(f); }\n";
-
-/// The palette and light tables of a tier (`full`: storage buffers).
-pub(crate) fn tier(full: bool) -> (PaletteMode, LightTables) {
-    if full {
-        (PaletteMode::Storage, LightTables::Storage)
-    } else {
-        (PaletteMode::Texture, LightTables::Uniform)
-    }
-}
 
 /// The contract, the shader's parameters and code, and the defaults of the
 /// entries it leaves out.
@@ -80,23 +70,18 @@ fn user_section(shader: &MaterialShader) -> String {
 }
 
 /// The lit (and prepass) module of a full shader.
-pub(crate) fn lit_source(
-    shader: &MaterialShader,
-    lit: bool,
-    palette: PaletteMode,
-    tables: LightTables,
-) -> String {
+pub(crate) fn lit_source(shader: &MaterialShader, lit: bool) -> String {
     format!(
         "const CUSTOM_LIT: bool = {lit};\n{}{}{}{}{}{}{}{}{}{}{}{}{LIT_WGSL}",
         crate::FRAME_WGSL,
-        tables.wgsl(),
+        crate::clusters::wgsl(),
         crate::particles_gpu::NOISE_WGSL,
         crate::MATERIAL_WGSL,
         crate::MATERIAL_MAPS_WGSL,
         crate::MATERIAL_DISSOLVE_WGSL,
-        palette.wgsl(3),
+        crate::skin::palette_wgsl(3),
         crate::LIGHTING_WGSL,
-        crate::area::wgsl(tables),
+        crate::AREA_WGSL,
         crate::INSTANCE_WGSL,
         fx_section(),
         user_section(shader),
@@ -121,14 +106,14 @@ struct Fx {
 }
 
 /// The shadow casters' module of a full shader.
-pub(crate) fn shadow_source(shader: &MaterialShader, palette: PaletteMode) -> String {
+pub(crate) fn shadow_source(shader: &MaterialShader) -> String {
     format!(
         "{}{}{}{}{}{}{}{}{SHADOW_WGSL}",
         crate::particles_gpu::NOISE_WGSL,
         crate::MATERIAL_WGSL,
         crate::MATERIAL_MAPS_WGSL,
         crate::MATERIAL_DISSOLVE_WGSL,
-        palette.wgsl(2),
+        crate::skin::palette_wgsl(2),
         crate::SHADOW_PASS_WGSL,
         crate::INSTANCE_WGSL,
         user_section(shader),
@@ -138,24 +123,16 @@ pub(crate) fn shadow_source(shader: &MaterialShader, palette: PaletteMode) -> St
 /// The lit and shadow module sources of any material shader, as the
 /// renderer compiles them (`planar`: its effect group carries the planar
 /// reflection, `crate::planar_slot`).
-pub(crate) fn module_sources(
-    shader: &MaterialShader,
-    palette: PaletteMode,
-    tables: LightTables,
-    planar: bool,
-) -> (String, String) {
+pub(crate) fn module_sources(shader: &MaterialShader, planar: bool) -> (String, String) {
     match shader.mode {
         ShaderMode::Hooks => {
             let hooks = shader.hooks_wgsl();
             (
-                crate::lit_source_with(&hooks, palette, tables, planar),
-                crate::shadow_source(&hooks, palette),
+                crate::lit_source_with(&hooks, planar),
+                crate::shadow_source(&hooks),
             )
         }
-        ShaderMode::Full { lit } => (
-            lit_source(shader, lit, palette, tables),
-            shadow_source(shader, palette),
-        ),
+        ShaderMode::Full { lit } => (lit_source(shader, lit), shadow_source(shader)),
     }
 }
 

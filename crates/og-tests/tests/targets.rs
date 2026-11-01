@@ -259,8 +259,7 @@ fn views_depth_matches_its_reference() {
 }
 
 /// A target's depth texture holds the view's linear depth from near (0)
-/// to far (1) on every tier (the view's depth prepass, which WebGL2 runs
-/// too): the wall 5.9 m away reads (5.9 - 0.1) / 19.9, the box 2.5 m away
+/// to far (1) (the view's depth prepass): the wall 5.9 m away reads (5.9 - 0.1) / 19.9, the box 2.5 m away
 /// 2.4 / 19.9, the sky 1, and the box off the view's layers writes none.
 #[test]
 fn a_targets_depth_texture_holds_the_views_linear_depth() {

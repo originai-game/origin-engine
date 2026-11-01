@@ -2,8 +2,8 @@
 //! hooks of og-render's lit shader (`og_render::MaterialShader`) and the
 //! uniforms they read. The cook reads the WGSL (inline or from the file
 //! `source` names), compiles the lit shader with it through naga for every
-//! tier and back end (WGSL validation, SPIR-V for Vulkan, MSL for Metal,
-//! GLSL ES 3.0 for WebGL2, each with effects on and off) and refuses the
+//! back end (WGSL validation, SPIR-V for Vulkan, MSL for Metal, each with
+//! effects on and off) and refuses the
 //! asset with naga's message when any of them fails. The blob keeps the
 //! canonical file with the code inlined, which the runtime parses again.
 //!
@@ -20,7 +20,7 @@
 //! the code defines `vertex` and `fragment` entries over og-render's
 //! binding contract (`custom.rs`) instead of the hooks, lit by the frame's
 //! lights (`lit`, the default) or drawn as returned (`unlit`); its shadow
-//! casters' module is compiled for every tier too. `mode hooks` (the
+//! casters' module is compiled too. `mode hooks` (the
 //! default) is the hooks.
 
 use og_core::ogt::{Document, Entry, Number, Value};
@@ -55,9 +55,9 @@ pub fn post_text(post: &og_render::PostShader) -> String {
     entries_text(POST_TYPE, &post.code, &post.params, ShaderMode::Hooks)
 }
 
-/// Compiles a post pass for every tier and back end (naga: WGSL, SPIR-V,
-/// MSL, GLSL ES 3.0). The engine also compiles it on the device and skips
-/// it, reported, when that fails.
+/// Compiles a post pass for every back end (naga: WGSL, SPIR-V, MSL). The
+/// engine also compiles it on the device and skips it, reported, when that
+/// fails.
 #[cfg(feature = "cook")]
 pub fn validate_post(post: &og_render::PostShader) -> Result<Vec<String>, String> {
     use naga::valid::{Capabilities, ValidationFlags, Validator};
@@ -72,60 +72,19 @@ pub fn validate_post(post: &og_render::PostShader) -> Result<Vec<String>, String
             user_lines(&e.emit_to_string(&src), first, lines)
         )
     })?;
-    let mut done = Vec::new();
-    for full in [true, false] {
-        let caps = if full {
-            Capabilities::all()
-        } else {
-            Capabilities::empty()
-        };
-        let info = Validator::new(ValidationFlags::all(), caps)
-            .validate(&module)
-            .map_err(|e| {
-                format!(
-                    "validation: {}",
-                    user_lines(&e.emit_to_string(&src), first, lines)
-                )
-            })?;
-        if full {
-            naga::back::spv::write_vec(&module, &info, &Default::default(), None)
-                .map_err(|e| format!("SPIR-V: {e}"))?;
-            naga::back::msl::write_string(&module, &info, &Default::default(), &Default::default())
-                .map_err(|e| format!("MSL: {e}"))?;
-            done.push("full tier: SPIR-V, MSL".to_string());
-        } else {
-            for (stage, entry) in [
-                (naga::ShaderStage::Vertex, "vs"),
-                (naga::ShaderStage::Fragment, "fs_custom_post"),
-            ] {
-                let options = naga::back::glsl::Options {
-                    version: naga::back::glsl::Version::Embedded {
-                        version: 300,
-                        is_webgl: true,
-                    },
-                    ..Default::default()
-                };
-                let pipeline = naga::back::glsl::PipelineOptions {
-                    shader_stage: stage,
-                    entry_point: entry.to_string(),
-                    multiview: None,
-                };
-                let mut out = String::new();
-                naga::back::glsl::Writer::new(
-                    &mut out,
-                    &module,
-                    &info,
-                    &options,
-                    &pipeline,
-                    naga::proc::BoundsCheckPolicies::default(),
-                )
-                .and_then(|mut w| w.write().map(|_| ()))
-                .map_err(|e| format!("GLSL ES 3.0 ({entry}): {e}"))?;
-            }
-            done.push("WebGL2: GLSL ES 3.0".to_string());
-        }
-    }
-    Ok(done)
+    let info = Validator::new(ValidationFlags::all(), Capabilities::all())
+        .validate(&module)
+        .map_err(|e| {
+            format!(
+                "validation: {}",
+                user_lines(&e.emit_to_string(&src), first, lines)
+            )
+        })?;
+    naga::back::spv::write_vec(&module, &info, &Default::default(), None)
+        .map_err(|e| format!("SPIR-V: {e}"))?;
+    naga::back::msl::write_string(&module, &info, &Default::default(), &Default::default())
+        .map_err(|e| format!("MSL: {e}"))?;
+    Ok(vec!["SPIR-V, MSL".to_string()])
 }
 
 /// The WGSL file a shader names with `source` (the cook reads it).
@@ -293,113 +252,58 @@ fn entries_text(ty: &str, code: &str, params: &[ShaderParam], mode: ShaderMode) 
     doc.to_text().expect("a shader document is well formed")
 }
 
-/// Compiles the lit shader with `shader`'s hooks for every tier and back
-/// end the engine draws with. Returns what was compiled, or naga's
-/// message for the first that failed.
+/// Compiles the lit shader with `shader`'s hooks for every back end the
+/// engine draws with. Returns what was compiled, or naga's message for the
+/// first that failed.
 #[cfg(feature = "cook")]
 pub fn validate_shader(shader: &MaterialShader) -> Result<Vec<String>, String> {
     use naga::back::pipeline_constants::process_overrides;
     use naga::valid::{Capabilities, ValidationFlags, Validator};
-    let mut done = Vec::new();
     // A full shader's casters run its code too (custom.rs).
-    type Source = fn(&MaterialShader, bool) -> String;
-    let mut modules: Vec<(&str, Source, [&str; 2])> =
-        vec![("lit", og_render::lit_module_source, ["vs", "fs"])];
+    type Source = fn(&MaterialShader) -> String;
+    let mut modules: Vec<Source> = vec![og_render::lit_module_source];
     if shader.mode != ShaderMode::Hooks {
-        modules.push((
-            "shadow",
-            og_render::shadow_module_source,
-            ["vs_hooked", "fs_hooked"],
-        ));
+        modules.push(og_render::shadow_module_source);
     }
-    for (tier, full) in [("full", true), ("webgl2", false)] {
-        for &(_label, source, entries) in &modules {
-            let src = source(shader, full);
-            let first = src
-                .find(shader.code.as_str())
-                .map_or(0, |at| src[..at].lines().count());
-            let lines = shader.code.lines().count();
-            let module = naga::front::wgsl::parse_str(&src).map_err(|e| {
+    for source in modules {
+        let src = source(shader);
+        let first = src
+            .find(shader.code.as_str())
+            .map_or(0, |at| src[..at].lines().count());
+        let lines = shader.code.lines().count();
+        let module = naga::front::wgsl::parse_str(&src).map_err(|e| {
+            format!(
+                "WGSL: {}",
+                user_lines(&e.emit_to_string(&src), first, lines)
+            )
+        })?;
+        let info = Validator::new(ValidationFlags::all(), Capabilities::all())
+            .validate(&module)
+            .map_err(|e| {
                 format!(
-                    "WGSL ({tier}): {}",
+                    "validation: {}",
                     user_lines(&e.emit_to_string(&src), first, lines)
                 )
             })?;
-            let caps = if full {
-                Capabilities::all()
-            } else {
-                Capabilities::empty()
-            };
-            let info = Validator::new(ValidationFlags::all(), caps)
-                .validate(&module)
-                .map_err(|e| {
-                    format!(
-                        "validation ({tier}): {}",
-                        user_lines(&e.emit_to_string(&src), first, lines)
-                    )
-                })?;
-            for effects in [1.0, 0.0] {
-                let mut constants = naga::back::PipelineConstants::default();
-                // The lit modules' (a shadow module has none).
-                if module
-                    .overrides
-                    .iter()
-                    .any(|(_, o)| o.name.as_deref() == Some("EFFECTS"))
-                {
-                    constants.insert("EFFECTS".to_string(), effects);
-                }
-                let (module, info) = process_overrides(&module, &info, None, &constants)
-                    .map_err(|e| format!("overrides ({tier}): {e}"))?;
-                if full {
-                    naga::back::spv::write_vec(&module, &info, &Default::default(), None)
-                        .map_err(|e| format!("SPIR-V: {e}"))?;
-                    naga::back::msl::write_string(
-                        &module,
-                        &info,
-                        &Default::default(),
-                        &Default::default(),
-                    )
-                    .map_err(|e| format!("MSL: {e}"))?;
-                } else {
-                    for (stage, entry) in [
-                        (naga::ShaderStage::Vertex, entries[0]),
-                        (naga::ShaderStage::Fragment, entries[1]),
-                    ] {
-                        let options = naga::back::glsl::Options {
-                            version: naga::back::glsl::Version::Embedded {
-                                version: 300,
-                                is_webgl: true,
-                            },
-                            ..Default::default()
-                        };
-                        let pipeline = naga::back::glsl::PipelineOptions {
-                            shader_stage: stage,
-                            entry_point: entry.to_string(),
-                            multiview: None,
-                        };
-                        let mut out = String::new();
-                        let mut w = naga::back::glsl::Writer::new(
-                            &mut out,
-                            &module,
-                            &info,
-                            &options,
-                            &pipeline,
-                            naga::proc::BoundsCheckPolicies::default(),
-                        )
-                        .map_err(|e| format!("GLSL ES 3.0 ({entry}): {e}"))?;
-                        w.write()
-                            .map_err(|e| format!("GLSL ES 3.0 ({entry}): {e}"))?;
-                    }
-                }
+        for effects in [1.0, 0.0] {
+            let mut constants = naga::back::PipelineConstants::default();
+            // The lit modules' (a shadow module has none).
+            if module
+                .overrides
+                .iter()
+                .any(|(_, o)| o.name.as_deref() == Some("EFFECTS"))
+            {
+                constants.insert("EFFECTS".to_string(), effects);
             }
+            let (module, info) = process_overrides(&module, &info, None, &constants)
+                .map_err(|e| format!("overrides: {e}"))?;
+            naga::back::spv::write_vec(&module, &info, &Default::default(), None)
+                .map_err(|e| format!("SPIR-V: {e}"))?;
+            naga::back::msl::write_string(&module, &info, &Default::default(), &Default::default())
+                .map_err(|e| format!("MSL: {e}"))?;
         }
-        done.push(if full {
-            "full tier: SPIR-V, MSL".to_string()
-        } else {
-            "WebGL2: GLSL ES 3.0".to_string()
-        });
     }
-    Ok(done)
+    Ok(vec!["SPIR-V, MSL".to_string()])
 }
 
 /// naga's report with `wgsl:<line>` locations inside the hooks (lines
@@ -446,23 +350,23 @@ mod tests {
         Err("no files".into())
     }
 
-    /// A full shader parses with its mode, validates for every tier (its
+    /// A full shader parses with its mode, validates for every back end (its
     /// lit and its shadow casters' modules) and keeps its mode through the
     /// canonical text the blob holds.
     #[test]
-    fn a_full_shader_cooks_for_every_tier_and_keeps_its_mode() {
+    fn a_full_shader_cooks_for_every_back_end_and_keeps_its_mode() {
         let s = parse_shader("crt", &full(CODE), &mut refuse).expect("parses");
         assert_eq!(s.mode, ShaderMode::Full { lit: false });
         let done = validate_shader(&s).expect("validates");
-        assert_eq!(done.len(), 2, "{done:?}");
+        assert_eq!(done, ["SPIR-V, MSL"]);
         let again = parse_shader("crt", &shader_text(&s), &mut refuse).expect("round trip");
         assert_eq!(again, s);
     }
 
-    /// A post pass cooks for every tier and round-trips; a broken one is
-    /// refused at its line.
+    /// A post pass cooks for every back end and round-trips; a broken one
+    /// is refused at its line.
     #[test]
-    fn a_post_pass_cooks_for_every_tier() {
+    fn a_post_pass_cooks_for_every_back_end() {
         let text = |code: &str| {
             format!(
                 "type post\nversion 1\n---\ncode \"{}\"\nparam curve float 0.1\n",
@@ -471,7 +375,7 @@ mod tests {
         };
         let code = "fn post(f: PostInput, p: Params) -> vec4<f32> {\n  let d = depth(f.uv) + normal(f.uv).x;\n  return previous(f.uv * (1.0 + p.curve)) + scene_color(f.uv) * 0.0 * d;\n}";
         let post = parse_post("crt", &text(code), &mut refuse).expect("parses");
-        assert_eq!(validate_post(&post).expect("validates").len(), 2);
+        assert_eq!(validate_post(&post).expect("validates"), ["SPIR-V, MSL"]);
         assert_eq!(
             parse_post("crt", &post_text(&post), &mut refuse).expect("again"),
             post

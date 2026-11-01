@@ -5,8 +5,7 @@
 // /__player/v2/…, the Player protocol 2 HTTP transport, docs/web-export.md
 // §The top-level page; the build's own `_headers`, so the page is
 // cross-origin isolated and the service worker registers) and played in
-// headless Chrome on one tier (WebGPU, or the WebGL2 fallback with
-// --webgl, the shell's `?webgl=1`), through real input on the canvas, the
+// headless Chrome on WebGPU, through real input on the canvas, the
 // accessibility mirror (to find what to press) and `__runtime_probe__`.
 //
 // Per game and tier it records: the published files (raw and brotli -q 11),
@@ -34,7 +33,7 @@
 // there, on its own clock (examples/WEB-FINDINGS.md #6). The served page
 // and the mirror-driven input are tests/web/play-origin.ts, shared with it.
 //
-//   bun tests/web/dogfood.ts --project examples/hollowbell [--webgl] [--frames] [--no-play]
+//   bun tests/web/dogfood.ts --project examples/hollowbell [--frames] [--no-play]
 //       [--no-build] [--no-isolation] [--throttle <Mbit/s>] [--boot] [--label <name>]
 //       [--out <dir>] [--chrome <path>]
 //
@@ -79,8 +78,7 @@ const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
 const projectRel = opt("--project") ?? "examples/hollowbell";
 const project = join(repo, projectRel);
-const webgl = args.includes("--webgl");
-const tier = webgl ? "webgl2" : "webgpu";
+const tier = "webgpu";
 const chrome = chromePath(args);
 const id = projectRel.split("/").pop()!;
 const work = resolve(opt("--out") ?? join(pkg, "dist", "dogfood"));
@@ -358,7 +356,7 @@ if (!args.includes("--no-play")) {
     await page.send("Log.enable");
     await page.send("Page.addScriptToEvaluateOnNewDocument", { source: OBSERVE });
     await page.send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 720, deviceScaleFactor: 1, mobile: false });
-    const url = origin.url(webgl ? "?webgl=1" : "");
+    const url = origin.url();
     origin.navigated();
     await page.send("Page.navigate", { url });
     await page.until("typeof __runtime_probe__ === 'object' || !document.getElementById('og-error')?.hidden", 120_000);
@@ -575,7 +573,7 @@ if (args.includes("--frames")) {
     Bun.spawnSync(["ln", "-s", join(repo, "crates", "og-ui", "references", "metal"), join(refs, "metal")]);
   }
   const framesOut = join(out, "frames");
-  const cmd = ["bun", join(here, "reference.ts"), ...(webgl ? ["--webgl"] : []), "--chrome", chrome, "--project", projectRel, "--references", relative(repo, refs), "--size", desc.size ?? "1280x720", "--script", script.join(";"), "--shots", shots.join(","), "--out", framesOut, "--time", "600"];
+  const cmd = ["bun", join(here, "reference.ts"), "--chrome", chrome, "--project", projectRel, "--references", relative(repo, refs), "--size", desc.size ?? "1280x720", "--script", script.join(";"), "--shots", shots.join(","), "--out", framesOut, "--time", "600"];
   console.log(`---- frames: ${shots.length} shots, ${script.length} commands`);
   const t1 = performance.now();
   const r = Bun.spawnSync(cmd, { cwd: pkg, stdout: "pipe", stderr: "pipe" });

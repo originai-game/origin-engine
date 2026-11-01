@@ -2,12 +2,11 @@
 //!
 //! A wgpu Forward+ renderer: PBR metallic-roughness, one directional light
 //! with three cascaded shadow maps, up to 256 point and spot lights in view,
-//! clustered (`clusters.rs`; up to eight of them shadowed, four on WebGL2, `shadows.rs`), split-sum image-based lighting generated from a procedural sky,
-//! antialiasing by tier (TAA on WebGPU-class backends, 4x MSAA or FXAA on WebGL2),
+//! clustered (`clusters.rs`; up to eight of them shadowed, `shadows.rs`), split-sum image-based lighting generated from a procedural sky,
+//! antialiasing (TAA by default, 4x MSAA or FXAA on request),
 //! bloom, manual or metered exposure, ACES tonemapping, and a 2D batch of
 //! sprites and MSDF text. It runs natively (Metal, Vulkan; headless for
-//! executors) and in the browser (WebGPU, or WebGL2 through wgpu's GL
-//! backend) from the same code.
+//! executors) and in the browser (WebGPU) from the same code.
 //!
 //! The crate knows nothing about the ECS. Its whole input is a [`RenderScene`]:
 //! resources with handles, instances and sprites submitted one by one, a
@@ -145,7 +144,7 @@ pub mod shared_frames;
 pub use area::{CookieLayers, LightCookie, MAX_COOKIE_LAYERS, RECT_SHADOW_FOV, cookie_layers};
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest, png};
-pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS, UNIFORM_LIGHT_REFS};
+pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS};
 pub use custom::{FULL_SHADER_ENTRIES, example as example_full_shader};
 pub use effects::*;
 #[cfg(feature = "bake")]
@@ -297,12 +296,10 @@ const SCREEN_AO_STUB: &str = "fn screen_ao(p: vec3<f32>) -> f32 { return 1.0; }\
 
 /// Whether the effect group carries the planar reflection material shaders
 /// read (binding 4): with two planar reflections
-/// ([`RenderDesc::planar_reflections`]) and the joint palette in a storage
-/// buffer. The lit pipelines have sixteen texture slots (downlevel limits);
-/// a palette texture takes the last. With one, the effect group is the four
-/// bindings it was before material shaders could read the mirror.
-pub(crate) fn planar_slot(palette: skin::PaletteMode, planar_reflections: u32) -> bool {
-    planar_reflections > 1 && palette == skin::PaletteMode::Storage
+/// ([`RenderDesc::planar_reflections`]). With one, the effect group is the
+/// four bindings it was before material shaders could read the mirror.
+pub(crate) fn planar_slot(planar_reflections: u32) -> bool {
+    planar_reflections > 1
 }
 
 /// The lit pipelines' effect group (group 2): the effect uniform, the screen
@@ -321,94 +318,58 @@ fn fx_layout_entries(planar: bool) -> Vec<wgpu::BindGroupLayoutEntry> {
     entries
 }
 
-/// The lit shader's source with `hooks` (`hooks.rs`), the joint palette
-/// read as `palette` and the light tables as `tables`; with `planar`
+/// The lit shader's source with `hooks` (`hooks.rs`); with `planar`
 /// ([`planar_slot`]) `planar_reflection` reads the effect group's binding 4,
 /// else it is [`PLANAR_STUB`].
-fn lit_source_with(
-    hooks: &str,
-    palette: skin::PaletteMode,
-    tables: clusters::LightTables,
-    planar: bool,
-) -> String {
+fn lit_source_with(hooks: &str, planar: bool) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{}{INSTANCE_WGSL}{PBR_WGSL}{}{SCREEN_AO_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
-        tables.wgsl(),
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{}{SCREEN_AO_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
+        clusters::wgsl(),
         particles_gpu::NOISE_WGSL,
-        palette.wgsl(3),
-        lightmap::probe_wgsl(tables),
-        area::wgsl(tables),
+        skin::palette_wgsl(3),
+        lightmap::probe_wgsl(),
         if planar { PLANAR_WGSL } else { PLANAR_STUB }
     )
 }
 
 /// The physical lit shader's source (`physical.rs`): [`lit_source_with`]
 /// with the physical material group and fragment shader.
-fn physical_source_with(
-    hooks: &str,
-    palette: skin::PaletteMode,
-    tables: clusters::LightTables,
-) -> String {
+pub(crate) fn physical_source(hooks: &str) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{}{INSTANCE_WGSL}{PBR_WGSL}{PLANAR_STUB}{SCREEN_AO_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
-        tables.wgsl(),
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PLANAR_STUB}{SCREEN_AO_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
+        clusters::wgsl(),
         particles_gpu::NOISE_WGSL,
-        palette.wgsl(3),
-        lightmap::probe_wgsl(tables),
-        area::wgsl(tables)
+        skin::palette_wgsl(3),
+        lightmap::probe_wgsl(),
     )
 }
 
-/// [`physical_source_with`] for a tier, as [`lit_source`].
-pub(crate) fn physical_source(hooks: &str, full: bool) -> String {
-    if full {
-        physical_source_with(
-            hooks,
-            skin::PaletteMode::Storage,
-            clusters::LightTables::Storage,
-        )
-    } else {
-        physical_source_with(
-            hooks,
-            skin::PaletteMode::Texture,
-            clusters::LightTables::Uniform,
-        )
-    }
-}
-
-/// [`lit_source_with`] for a tier (`full`: storage buffers for the palette
-/// and the light tables), with the planar reflection where the tier can
-/// carry it (two planar reflections, [`planar_slot`]): the cook validates a
-/// material shader against the module that reads it.
-pub(crate) fn lit_source(hooks: &str, full: bool) -> String {
-    let (palette, tables) = custom::tier(full);
-    lit_source_with(
-        hooks,
-        palette,
-        tables,
-        planar_slot(palette, MAX_PLANAR_REFLECTIONS),
-    )
+/// [`lit_source_with`] with the planar reflection (two planar reflections,
+/// [`planar_slot`]): the cook validates a material shader against the
+/// module that reads it.
+pub(crate) fn lit_source(hooks: &str) -> String {
+    lit_source_with(hooks, planar_slot(MAX_PLANAR_REFLECTIONS))
 }
 const SHADOW_WGSL: &str = wgsl!("shadow.wgsl");
 /// The shadow pass's slot and the paraboloid projection every caster shares.
 pub(crate) const SHADOW_PASS_WGSL: &str = wgsl!("shadow_pass.wgsl");
 
 /// The shadow shader's source with `hooks` (a material shader's, or the
-/// built-in identities) and the joint palette read as `palette`.
-pub(crate) fn shadow_source(hooks: &str, palette: skin::PaletteMode) -> String {
+/// built-in identities).
+pub(crate) fn shadow_source(hooks: &str) -> String {
     format!(
         "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{PLANAR_STUB}{SCREEN_AO_STUB}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{SHADOW_WGSL}",
         particles_gpu::NOISE_WGSL,
-        palette.wgsl(2)
+        skin::palette_wgsl(2)
     )
 }
-/// The scattered copies' lit module with the light tables `tables` and a
-/// material shader's `hooks` (vertex_offset, surface_color, surface_normal
-/// and surface_emissive run on the copies as on meshes).
-fn scatter_lit_source(tables: clusters::LightTables, hooks: &str) -> String {
+/// The scattered copies' lit module with a material shader's `hooks`
+/// (vertex_offset, surface_color, surface_normal and surface_emissive run
+/// on the copies as on meshes).
+fn scatter_lit_source(hooks: &str) -> String {
     format!(
         "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{hooks}{PLANAR_STUB}{SCREEN_AO_STUB}{LIGHTING_WGSL}{AREA_WGSL}{INSTANCE_WGSL}{}{}",
-        tables.wgsl(),
+        clusters::wgsl(),
         particles_gpu::NOISE_WGSL,
         wgsl3d!("scatter_common.wgsl"),
         wgsl3d!("scatter.wgsl")
@@ -426,9 +387,9 @@ fn scatter_shadow_source() -> String {
 }
 
 /// What the 3D fluid's module starts with: the frame group, the light
-/// tables `tables`, the lighting and the area lights (area.wgsl).
-fn fluid_shared_source(tables: clusters::LightTables) -> String {
-    format!("{FRAME_WGSL}{}{LIGHTING_WGSL}{AREA_WGSL}", tables.wgsl())
+/// tables, the lighting and the area lights (area.wgsl).
+fn fluid_shared_source() -> String {
+    format!("{FRAME_WGSL}{}{LIGHTING_WGSL}{AREA_WGSL}", clusters::wgsl())
 }
 const SKY_WGSL: &str = wgsl!("sky.wgsl");
 const SPRITE_WGSL: &str = wgsl!("sprite.wgsl");
@@ -492,8 +453,6 @@ pub enum Backend {
     Auto,
     /// Browser WebGPU.
     WebGpu,
-    /// WebGL2 through wgpu's GL backend (the reduced tier).
-    WebGl2,
     Metal,
     Vulkan,
 }
@@ -505,7 +464,6 @@ impl Backend {
             Backend::Auto if cfg!(target_os = "windows") => wgpu::Backends::DX12,
             Backend::Auto => wgpu::Backends::PRIMARY,
             Backend::WebGpu => wgpu::Backends::BROWSER_WEBGPU,
-            Backend::WebGl2 => wgpu::Backends::GL,
             Backend::Metal => wgpu::Backends::METAL,
             Backend::Vulkan => wgpu::Backends::VULKAN,
         }
@@ -541,26 +499,25 @@ impl Backend {
 }
 
 /// Antialiasing. [`RenderInfo::antialias`] reports what a renderer resolved
-/// it to (never `Tier`).
+/// it to (never `Tier`). Every backend (WebGPU, Metal, Vulkan, DX12) has
+/// all four methods.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Antialias {
     /// None: every pixel is one sample.
     #[default]
     Off,
-    /// The tier's method: TAA on the full tier (WebGPU, Metal, Vulkan), 4x
-    /// MSAA on the no-compute tier (WebGL2, GL), or FXAA there where the
-    /// HDR format cannot be multisampled.
+    /// The engine's default method: TAA.
     Tier,
-    /// 4x MSAA on any tier (FXAA where the HDR format cannot be
-    /// multisampled). Sharp sprites and text; no temporal blur.
+    /// 4x MSAA (FXAA where the HDR format cannot be multisampled). Sharp
+    /// sprites and text; no temporal blur.
     Msaa4,
-    /// Temporal antialiasing on any tier: a sub-pixel jitter per frame and a
+    /// Temporal antialiasing: a sub-pixel jitter per frame and a
     /// reprojected, neighbourhood-clamped history. Converges over ~8 frames.
     /// [`RenderDesc::taa_history`] and [`RenderDesc::taa_sharpen`] refine it.
     Taa,
     /// FXAA 3.11 (quality preset 12) over the tonemapped image, before the
-    /// overlay: one full-screen pass, no extra samples and no history, on
-    /// any tier. Softer than MSAA on texture detail; nothing to converge.
+    /// overlay: one full-screen pass, no extra samples and no history.
+    /// Softer than MSAA on texture detail; nothing to converge.
     Fxaa,
 }
 
@@ -598,16 +555,15 @@ pub struct RenderDesc {
     pub shadow_cascades: u32,
     /// Which compressed texture family [`RenderInfo::texture_formats`] picks.
     pub texture_compression: TextureCompression,
-    /// Where particles simulate: compute on the full tier, or the CPU path
-    /// everywhere ([`ParticleSimulation::Cpu`]).
+    /// Where particles simulate: in compute, or on the CPU
+    /// ([`ParticleSimulation::Cpu`]).
     pub particles: ParticleSimulation,
-    /// Where instances are culled: in compute with indirect draws on the
-    /// full tier for large scenes (frustum and occlusion), or the CPU path
-    /// ([`Culling`]).
+    /// Where instances are culled: in compute with indirect draws for large
+    /// scenes (frustum and occlusion), or on the CPU ([`Culling`]).
     pub culling: Culling,
     /// How point lights' shadows are stored: cube faces, or dual-paraboloid
     /// hemispheres (two passes instead of six; [`PointShadows`]). `Auto`:
-    /// cube on the full tier, paraboloid on WebGL2.
+    /// cube.
     pub point_shadows: PointShadows,
     /// With TAA: how the history is resampled ([`TaaHistory`]).
     pub taa_history: TaaHistory,
@@ -615,11 +571,9 @@ pub struct RenderDesc {
     /// clamped unsharp mask over the 4 neighbours that restores what the
     /// history's blend softened, never past the neighbourhood's range.
     pub taa_sharpen: f32,
-    /// How volumetric fog is drawn: `None` by the tier (the froxel grid
-    /// where there is compute, the raymarch on WebGL2); `Some(Raymarch)`
-    /// draws WebGL2's raymarch on a full-tier device too (to read that
-    /// path's frames natively: `OG_GFX_VOLUMETRIC=raymarch`). A froxel grid
-    /// asked for without compute is the raymarch.
+    /// How volumetric fog is drawn: `None` is the froxel grid (a compute
+    /// pass); `Some(Raymarch)` marches each pixel's ray in the fragment
+    /// shader instead ([`VolumetricMethod::Raymarch`]).
     pub volumetric: Option<VolumetricMethod>,
     /// How many water surfaces draw a planar reflection in one frame, 1
     /// (the default) to [`MAX_PLANAR_REFLECTIONS`]. 1: the first surface
@@ -627,8 +581,8 @@ pub struct RenderDesc {
     /// as without one, and the lit pipelines' effect group is the four
     /// bindings it has always been. 2: a second surface in view mirrors the
     /// scene in a pass of its own, and material shaders read the first
-    /// mirror (`planar_reflection`): one more texture in every lit pipeline
-    /// where the joint palette is a storage buffer, which pushes the
+    /// mirror (`planar_reflection`): one more texture in every lit
+    /// pipeline, which pushes the
     /// lightmapped pipelines' lightmap pages past sixteen textures, so they
     /// take an effect group without it ([`RenderInfo::planar_reflections`]
     /// says what the renderer was made with).
@@ -654,7 +608,7 @@ pub enum Culling {
     /// frame with object motion blur, or more instances than one storage
     /// binding holds, is culled on the CPU.
     Gpu,
-    /// Always on the CPU (frustum only; the no-compute tier's path).
+    /// Always on the CPU (frustum only).
     Cpu,
 }
 
@@ -704,22 +658,12 @@ impl RenderDesc {
     }
 }
 
-/// The renderer's feature tier (`docs/design.md` §8).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Tier {
-    /// WebGPU, Metal, Vulkan: compute available.
-    Full,
-    /// WebGL2 (and other GL): no compute; CPU fallbacks.
-    NoCompute,
-}
-
 /// What the renderer runs on.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RenderInfo {
     pub adapter: String,
     pub backend: wgpu::Backend,
     pub device_type: wgpu::DeviceType,
-    pub tier: Tier,
     /// The antialiasing in use: `Off`, `Msaa4`, `Taa` or `Fxaa`.
     pub antialias: Antialias,
     /// The samples per pixel the device multisamples the scene at:
@@ -733,9 +677,8 @@ pub struct RenderInfo {
     /// The cascade size and count in use (after clamping).
     pub shadow_map_size: u32,
     pub shadow_cascades: u32,
-    /// How many point and spot lights cast shadows in one frame on this
-    /// tier ([`MAX_SHADOWED_LIGHTS`] on the full tier,
-    /// [`NO_COMPUTE_SHADOWED_LIGHTS`] on WebGL2).
+    /// How many point and spot lights cast shadows in one frame
+    /// ([`MAX_SHADOWED_LIGHTS`]).
     pub shadowed_lights: u32,
     /// How point lights' shadows are stored: `Cube` or `Paraboloid` (never `Auto`).
     pub point_shadows: PointShadows,
@@ -747,7 +690,7 @@ pub struct RenderInfo {
     pub pipeline_cache: bool,
     /// The largest side of a 2D texture, so of a render target.
     pub max_texture_size: u32,
-    /// How volumetric fog is drawn ([`RenderDesc::volumetric`], the tier).
+    /// How volumetric fog is drawn ([`RenderDesc::volumetric`]).
     pub volumetric: VolumetricMethod,
     /// The most point, spot and rect lights that light one sample of the
     /// volumetric fog: the cluster's ([`MAX_CLUSTER_LIGHTS`]) in the froxel
@@ -756,8 +699,7 @@ pub struct RenderInfo {
     /// The anisotropic filtering of the sampler sprites and the UI's images
     /// draw through (text keeps a trilinear one: its distance field): [`SPRITE_ANISOTROPY`] where the device filters
     /// anisotropically (wgpu's `ANISOTROPIC_FILTERING`: Vulkan with
-    /// `samplerAnisotropy`, Metal, WebGPU, WebGL2 with
-    /// `EXT_texture_filter_anisotropic`), 1 where it has none and on a
+    /// `samplerAnisotropy`, Metal, DX12, WebGPU), 1 where it has none and on a
     /// software rasterizer ([`is_software_adapter`]): lavapipe's anisotropic
     /// filter is an elliptical weighted average that softens even an image
     /// drawn 1:1 (a 4-texel outline reads 216, 124, 40, 40, 124, 216 where
@@ -832,7 +774,7 @@ pub fn is_software_adapter(device_type: wgpu::DeviceType, name: &str) -> bool {
 }
 
 /// The tier name of an adapter: `metal`, `vulkan`, `vulkan-cpu` (a software
-/// rasterizer), `webgpu`, `webgl2`, `gl`, `dx12`. It names the reference-frame
+/// rasterizer), `webgpu`, `dx12`. It names the reference-frame
 /// directories and is the probe's `RenderTier`, so a frame time measured on
 /// a CPU rasterizer is never read as a GPU's.
 pub fn tier_name(backend: wgpu::Backend, device_type: wgpu::DeviceType, adapter: &str) -> String {
@@ -841,8 +783,6 @@ pub fn tier_name(backend: wgpu::Backend, device_type: wgpu::DeviceType, adapter:
         wgpu::Backend::Vulkan if is_software_adapter(device_type, adapter) => "vulkan-cpu".into(),
         wgpu::Backend::Vulkan => "vulkan".into(),
         wgpu::Backend::BrowserWebGpu => "webgpu".into(),
-        wgpu::Backend::Gl if cfg!(target_arch = "wasm32") => "webgl2".into(),
-        wgpu::Backend::Gl => "gl".into(),
         wgpu::Backend::Dx12 => "dx12".into(),
         other => format!("{other:?}").to_lowercase(),
     }
@@ -890,8 +830,7 @@ pub struct FrameStats {
     pub lights_dropped: u32,
     pub lights_culled: u32,
     /// Light references the clusters held, and those dropped from clusters
-    /// past [`MAX_CLUSTER_LIGHTS`] (or the tier's total, [`UNIFORM_LIGHT_REFS`]
-    /// on WebGL2).
+    /// past [`MAX_CLUSTER_LIGHTS`].
     pub cluster_lights: u32,
     pub cluster_lights_dropped: u32,
     /// Sprites and glyphs drawn, and the draws they took.
@@ -918,7 +857,7 @@ pub struct FrameStats {
     pub prepass_draws: u32,
     /// Particle systems, their summed capacity, the live particles of the
     /// CPU-simulated ones, the simulation ticks run, and systems whose
-    /// collision could not run here (no compute, or sprite mode).
+    /// collision could not run here (no colliders on the CPU path, or sprite mode).
     pub particle_systems: u32,
     pub particle_capacity: u32,
     pub particles_cpu: u32,
@@ -1431,23 +1370,6 @@ fn indirect_list(batches: &[Batch], n: u32, g: u32, include: impl Fn(&Batch) -> 
     }
 }
 
-/// The layers to allocate for a square 2D array texture that is to hold
-/// `layers` layers. wgpu's GL backend picks the GL texture target from the
-/// descriptor when it creates the texture: one layer makes a plain 2D
-/// texture and a multiple of six layers makes a cube map (array). A 2D-array
-/// sampler bound to either reads zero on WebGL2, with no validation error, and
-/// neither can be rendered to by layer as an array. At least two layers, and
-/// one spare when that is a multiple of six, keep it a 2D array; callers
-/// still address only the layers they asked for.
-pub(crate) fn gl_safe_array_layers(layers: u32) -> u32 {
-    let layers = layers.max(2);
-    if layers.is_multiple_of(6) {
-        layers + 1
-    } else {
-        layers
-    }
-}
-
 /// A shadow map: one R32Float array the lit shaders read, a view per layer,
 /// and the depth buffer its passes test against.
 struct ShadowMap {
@@ -1460,15 +1382,12 @@ struct ShadowMap {
 
 impl ShadowMap {
     fn new(device: &wgpu::Device, label: &str, size: u32, layers: u32) -> ShadowMap {
-        // A single cascade or the twelve local shadow layers would otherwise
-        // read as zero on WebGL2 (see `gl_safe_array_layers`).
-        let allocated = gl_safe_array_layers(layers);
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some(label),
             size: wgpu::Extent3d {
                 width: size,
                 height: size,
-                depth_or_array_layers: allocated,
+                depth_or_array_layers: layers,
             },
             mip_level_count: 1,
             sample_count: 1,
@@ -1571,11 +1490,6 @@ pub struct Renderer {
     sprite_layout: wgpu::BindGroupLayout,
     frame_buffer: wgpu::Buffer,
     /// The local lights, the cluster table and its light references (`clusters.rs`).
-    light_tables: clusters::LightTables,
-    /// Whether the lit pipelines shade rect lights: always on the full tier;
-    /// on the GL tier from the first frame whose scene has a rect light
-    /// (`area::wgsl`), whose lit pipelines are then made again with them.
-    area_lights: bool,
     light_buffers: [wgpu::Buffer; 3],
     /// Baked lighting: lightmap pages and uvs, the light volumes' buffer
     /// (frame binding 10).
@@ -2007,22 +1921,15 @@ fn cull_mode(side: Side) -> Option<wgpu::Face> {
     }
 }
 
-/// The pipeline constant a lit pipeline of the GL tier is made with while
-/// the scene has no rect light (the renderer's `area_lights`): area.wgsl's
-/// rect-light shading is left out of the program (`area::wgsl`).
-const AREA_LIGHTS_OFF: (&str, f64) = ("AREA_LIGHTS", 0.0);
-
-/// The lit pipeline for one (side, blending, skinned) combination;
-/// `area_lights` false (the GL tier only) leaves rect lights out.
+/// The lit pipeline for one (side, blending, skinned) combination.
 fn pbr_pipeline(
     device: &wgpu::Device,
     layouts: (&wgpu::PipelineLayout, &wgpu::PipelineLayout),
     module: &wgpu::ShaderModule,
     key: PbrKey,
     samples: u32,
-    area_lights: bool,
 ) -> wgpu::RenderPipeline {
-    lit_pipeline(device, layouts, module, key, samples, false, area_lights)
+    lit_pipeline(device, layouts, module, key, samples, false)
 }
 
 /// [`pbr_pipeline`] for the standard or the physical lit shader (whose
@@ -2034,7 +1941,6 @@ fn lit_pipeline(
     (side, transparent, skinned, effects): PbrKey,
     samples: u32,
     physical: bool,
-    area_lights: bool,
 ) -> wgpu::RenderPipeline {
     let plain = [Some(VERTEX_LAYOUT), Some(INSTANCE_LAYOUT)];
     let skin = [
@@ -2042,10 +1948,9 @@ fn lit_pipeline(
         Some(skin::SKINNED_INSTANCE_LAYOUT),
         Some(skin::SKIN_VERTEX_LAYOUT),
     ];
-    let constants = [("EFFECTS", effects as u32 as f64), AREA_LIGHTS_OFF];
     hdr_pipeline_with(
         device,
-        &constants[..if area_lights { 1 } else { 2 }],
+        &[("EFFECTS", effects as u32 as f64)],
         HdrPipeline {
             // Opaque lit pixels write alpha 1 (every sample); alpha-to-coverage materials write their coverage.
             alpha_to_coverage: !transparent,
@@ -2086,14 +1991,10 @@ fn lean_pipeline(
     module: &wgpu::ShaderModule,
     (side, effects, derivatives, compact): LeanKey,
     samples: u32,
-    area_lights: bool,
 ) -> wgpu::RenderPipeline {
     let mut constants = vec![("EFFECTS", effects as u32 as f64)];
     if !derivatives {
         constants.push(("DISCARD", 0.0));
-    }
-    if !area_lights {
-        constants.push(AREA_LIGHTS_OFF);
     }
     hdr_pipeline_with(
         device,
@@ -2363,7 +2264,6 @@ impl Renderer {
     }
 
     /// A headless renderer (draws to [`RenderTarget::Offscreen`] or caller views).
-    /// On the web, WebGL2 needs a canvas: use [`Renderer::with_surface`].
     pub async fn new(desc: &RenderDesc) -> Result<Renderer, RenderError> {
         if renderer_disabled() {
             return Err(disabled_error());
@@ -2402,7 +2302,7 @@ impl Renderer {
             .await
             .map_err(|e| RenderError::NoAdapter(format!("{:?}: {e}", desc.backend)))?;
         let caps = surface.get_capabilities(&adapter);
-        // An sRGB surface where one is offered (WebGL2, native windows): the
+        // An sRGB surface where one is offered (native windows): the
         // hardware encodes and blends in linear light, as offscreen. A
         // WebGPU canvas offers none; its sRGB view (below) does the same.
         let eight_bit = |f: &wgpu::TextureFormat, srgb: bool| {
@@ -2460,58 +2360,28 @@ impl Renderer {
         desc: &RenderDesc,
     ) -> Result<Renderer, RenderError> {
         let adapter_info = adapter.get_info();
-        let tier = if adapter
+        let indirect = adapter
             .get_downlevel_capabilities()
             .flags
-            .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS)
-        {
-            Tier::Full
-        } else {
-            Tier::NoCompute
-        };
-        let indirect = tier == Tier::Full
-            && adapter
-                .get_downlevel_capabilities()
-                .flags
-                .contains(wgpu::DownlevelFlags::INDIRECT_EXECUTION);
+            .contains(wgpu::DownlevelFlags::INDIRECT_EXECUTION);
         let msaa_ok = supports_msaa(&adapter);
         let antialias = match desc.antialias {
             Antialias::Off => Antialias::Off,
             Antialias::Taa => Antialias::Taa,
             Antialias::Fxaa => Antialias::Fxaa,
-            Antialias::Tier if tier == Tier::Full => Antialias::Taa,
-            Antialias::Tier | Antialias::Msaa4 if msaa_ok => Antialias::Msaa4,
+            Antialias::Tier => Antialias::Taa,
+            Antialias::Msaa4 if msaa_ok => Antialias::Msaa4,
             // No multisampled HDR target: the post-process instead.
-            Antialias::Tier | Antialias::Msaa4 => Antialias::Fxaa,
+            Antialias::Msaa4 => Antialias::Fxaa,
         };
         let samples = if antialias == Antialias::Msaa4 {
             MSAA_SAMPLES
         } else {
             1
         };
-        // The full tier asks for compute and storage buffers (particles, the
-        // skinning palette); the no-compute tier for WebGL2's limits.
-        let base_limits = if tier == Tier::Full {
-            wgpu::Limits::downlevel_defaults()
-        } else {
-            wgpu::Limits::downlevel_webgl2_defaults()
-        };
-        let limits = base_limits.using_resolution(adapter.limits());
-        let palette_mode = if tier == Tier::Full
-            && adapter
-                .get_downlevel_capabilities()
-                .flags
-                .contains(wgpu::DownlevelFlags::VERTEX_STORAGE)
-        {
-            skin::PaletteMode::Storage
-        } else {
-            skin::PaletteMode::Texture
-        };
-        let light_tables = if tier == Tier::Full {
-            clusters::LightTables::Storage
-        } else {
-            clusters::LightTables::Uniform
-        };
+        // Compute and storage buffers (particles, culling, the skinning
+        // palette, the light tables) at the downlevel defaults' counts.
+        let limits = wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits());
         let shadow_size = desc
             .shadow_map_size
             .clamp(64, limits.max_texture_dimension_2d.max(64));
@@ -2533,22 +2403,16 @@ impl Renderer {
             adapter: adapter_info.name.clone(),
             backend: adapter_info.backend,
             device_type: adapter_info.device_type,
-            tier,
             antialias,
             msaa_samples: samples,
             shadow_map_size: shadow_size,
             shadow_cascades: cascades,
-            shadowed_lights: shadows::shadowed_lights(tier) as u32,
-            point_shadows: desc.point_shadows.resolve(tier),
+            shadowed_lights: MAX_SHADOWED_LIGHTS as u32,
+            point_shadows: desc.point_shadows.resolve(),
             texture_formats,
             pipeline_cache: false,
             max_texture_size: limits.max_texture_dimension_2d,
-            volumetric: if tier == Tier::Full && desc.volumetric != Some(VolumetricMethod::Raymarch)
-            {
-                VolumetricMethod::Froxel
-            } else {
-                VolumetricMethod::Raymarch
-            },
+            volumetric: desc.volumetric.unwrap_or(VolumetricMethod::Froxel),
             volumetric_lights: 0,
             sprite_anisotropy: if adapter
                 .get_downlevel_capabilities()
@@ -2568,11 +2432,10 @@ impl Renderer {
         };
         info.volumetric_lights = volumetric::lights(info.volumetric);
         log::info!(
-            "og-render: {} ({:?}, {:?}, {:?}, antialias {:?}, shadows {}x{}², textures {:?}/{:?})",
+            "og-render: {} ({:?}, {:?}, antialias {:?}, shadows {}x{}², textures {:?}/{:?})",
             info.adapter,
             info.backend,
             info.device_type,
-            info.tier,
             info.antialias,
             cascades,
             shadow_size,
@@ -2592,8 +2455,8 @@ impl Renderer {
         let pipeline_disk =
             cache_dir.and_then(|dir| pipeline_cache::DiskCache::open(&device, &adapter_info, dir));
         info.pipeline_cache = pipeline_disk.is_some();
-        // No uncaptured-error handler on purpose: wgpu-core's default (native
-        // and WebGL2) panics on a validation error, which is how the web host
+        // No uncaptured-error handler on purpose: wgpu-core's default (native)
+        // panics on a validation error, which is how the web host
         // ends the Worker and shows the shell's crash card and how native
         // hosts and tests fail loudly; logging instead would leave a silently
         // broken frame. The browser's WebGPU reports to its own console.
@@ -2607,7 +2470,7 @@ impl Renderer {
         let (width, height) = (desc.width.clamp(1, max), desc.height.clamp(1, max));
 
         // Layouts.
-        let [lights_entry, table_entry, refs_entry] = light_tables.layout_entries();
+        let [lights_entry, table_entry, refs_entry] = clusters::layout_entries();
         let frame_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("frame"),
             entries: &[
@@ -2618,20 +2481,20 @@ impl Renderer {
                 texture_entry(4, true, wgpu::TextureViewDimension::Cube),
                 tex2d(5),
                 sampler_entry(6, wgpu::SamplerBindingType::Filtering),
-                // The local lights and their clusters: buffers, so WebGL2's
-                // skinned lit pipeline keeps its sixteen texture slots.
+                // The local lights and their clusters: buffers, so the lit
+                // pipelines keep their sixteen texture slots.
                 lights_entry,
                 table_entry,
                 refs_entry,
                 // Baked light volumes and the rect lights' LTC table
                 // (lightmap.rs, area.rs): buffers, as the light tables.
-                lightmap::probe_layout_entry(light_tables),
+                lightmap::probe_layout_entry(),
                 area::ltc_layout_entry(),
             ],
         });
         // The sky cube, bound by the sky pass alone: in the frame group it
-        // would take a texture slot from every lit pipeline, and WebGL2's
-        // skinned one needs them all (wgpu's GL backend has 16 per pipeline).
+        // would take a texture slot from every lit pipeline, which have
+        // sixteen (the downlevel limits the device is asked for).
         let sky_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("sky"),
             entries: &[texture_entry(0, true, wgpu::TextureViewDimension::Cube)],
@@ -2655,7 +2518,7 @@ impl Renderer {
         // With two planar reflections the effect group carries the one
         // material shaders read, and the lightmapped pipelines, whose pages
         // would make it a seventeenth texture, take the group without it.
-        let planar = planar_slot(palette_mode, info.planar_reflections);
+        let planar = planar_slot(info.planar_reflections);
         let fx_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("fx"),
             entries: &fx_layout_entries(planar),
@@ -2674,7 +2537,7 @@ impl Renderer {
                 uniform_entry(2, wgpu::ShaderStages::FRAGMENT),
             ],
         });
-        let palette_layout = palette_mode.layout(&device);
+        let palette_layout = skin::palette_layout(&device);
         let sprite_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("sprite"),
             entries: &[
@@ -2747,7 +2610,7 @@ impl Renderer {
         });
         let cascade_map = ShadowMap::new(&device, "cascades", shadow_size, cascades);
         // Twelve layers to begin with; a frame that needs more grows it to
-        // the tier's capacity (`grow_local_shadows`).
+        // the full capacity (`grow_local_shadows`).
         let local_map = ShadowMap::new(
             &device,
             "local shadows",
@@ -2767,21 +2630,14 @@ impl Renderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let light_buffers = light_tables.buffers(&device);
+        let light_buffers = clusters::buffers(&device);
         let ltc = area::ltc_buffer(&device);
-        let volumetric = volumetric::Volumetric::new(
-            &device,
-            light_tables,
-            light_tables == clusters::LightTables::Storage
-                && desc.volumetric != Some(VolumetricMethod::Raymarch),
-        );
+        let volumetric = volumetric::Volumetric::new(&device, info.volumetric);
         // One set per planar reflection the renderer draws (none without
         // the 3D world).
         let slots = 0..info.planar_reflections;
-        let reflection_light_buffers: Vec<_> = slots
-            .clone()
-            .map(|_| light_tables.buffers(&device))
-            .collect();
+        let reflection_light_buffers: Vec<_> =
+            slots.clone().map(|_| clusters::buffers(&device)).collect();
         let reflection_buffer: Vec<_> = slots
             .clone()
             .map(|_| {
@@ -2830,7 +2686,7 @@ impl Renderer {
         let pbr_shader = shader(
             &device,
             "pbr",
-            lit_source_with(&hooks::default_hooks(), palette_mode, light_tables, planar),
+            lit_source_with(&hooks::default_hooks(), planar),
         );
         // Parsed when the first pipeline that uses it is made (deferred.rs).
         let sky_shader = deferred::module(&device, "sky", format!("{FRAME_WGSL}{SKY_WGSL}"));
@@ -2841,11 +2697,7 @@ impl Renderer {
         );
         let ribbon_shader =
             deferred::module(&device, "ribbon", format!("{FRAME_WGSL}{RIBBON_WGSL}"));
-        let shadow_shader = shader(
-            &device,
-            "shadow",
-            shadow_source(&hooks::default_hooks(), palette_mode),
-        );
+        let shadow_shader = shader(&device, "shadow", shadow_source(&hooks::default_hooks()));
         let pipeline_layout = |label: &str, layouts: &[&wgpu::BindGroupLayout]| {
             let layouts: Vec<_> = layouts.iter().map(|l| Some(*l)).collect();
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -2855,7 +2707,7 @@ impl Renderer {
             })
         };
         let pbr_layout = pipeline_layout("pbr", &[&frame_layout, &material_layout, &fx_layout]);
-        let lightmaps = lightmap::Lightmaps::new(&device, &queue, &frame_layout, light_tables);
+        let lightmaps = lightmap::Lightmaps::new(&device, &queue, &frame_layout);
         let pbr_skinned_layout = pipeline_layout(
             "pbr skinned",
             &[&frame_layout, &material_layout, &fx_layout, &palette_layout],
@@ -2874,7 +2726,6 @@ impl Renderer {
                 &[&shadow_bind_layout, &material_layout, &palette_layout],
             ),
         ];
-        let area_lights = light_tables == clusters::LightTables::Storage;
         let mut pbr_pipelines = HashMap::new();
         let key = (Side::Front, false, false, false);
         pbr_pipelines.insert(
@@ -2885,7 +2736,6 @@ impl Renderer {
                 &pbr_shader,
                 key,
                 samples,
-                area_lights,
             ),
         );
         let mut shadow_pipelines = HashMap::new();
@@ -2924,12 +2774,8 @@ impl Renderer {
             water::WaterRenderer::new(&device, &frame_layout, FRAME_WGSL, LIGHTING_WGSL, samples);
         let metaballs =
             metaballs::MetaballRenderer::new(&device, &frame_layout, FRAME_WGSL, samples);
-        let fluid3d = fluid3d::Fluid3dRenderer::new(
-            &device,
-            &frame_layout,
-            &fluid_shared_source(light_tables),
-            samples,
-        );
+        let fluid3d =
+            fluid3d::Fluid3dRenderer::new(&device, &frame_layout, &fluid_shared_source(), samples);
         let additive = wgpu::BlendState {
             color: wgpu::BlendComponent {
                 src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -3073,7 +2919,6 @@ impl Renderer {
             &frame_layout,
             &sprite_layout,
             FRAME_WGSL,
-            tier == Tier::Full,
         );
         let lights_2d = light2d::Light2dRenderer::new(&device);
         let ribbon_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -3105,7 +2950,6 @@ impl Renderer {
                 taa_history: desc.taa_history,
                 taa_sharpen: desc.taa_sharpen.clamp(0.0, 1.0),
             },
-            tier == Tier::Full,
         );
         let mips = mips::MipGenerator::new(&device);
         let default_white = solid_texture(&device, &queue, [255; 4]);
@@ -3118,7 +2962,7 @@ impl Renderer {
                 shadow_layout: &shadow_bind_layout,
                 frame_wgsl: FRAME_WGSL,
                 lighting_wgsl: LIGHTING_WGSL,
-                light_tables_wgsl: &light_tables.wgsl(),
+                light_tables_wgsl: &clusters::wgsl(),
                 samples,
                 white: default_white.clone(),
                 flat_normal: default_normal.clone(),
@@ -3131,7 +2975,7 @@ impl Renderer {
                 material_layout: &material_layout,
                 shadow_layout: &shadow_bind_layout,
                 fx_layout: &fx_layout,
-                lit_wgsl: Box::new(move |hooks: &str| scatter_lit_source(light_tables, hooks)),
+                lit_wgsl: Box::new(scatter_lit_source),
                 shadow_wgsl: scatter_shadow_source(),
                 samples,
             },
@@ -3220,8 +3064,6 @@ impl Renderer {
             material_layout,
             sprite_layout,
             frame_buffer,
-            light_tables,
-            area_lights,
             light_buffers,
             lightmaps,
             ltc,
@@ -3267,7 +3109,7 @@ impl Renderer {
             sprite_fx_layout,
             sprite_fx_buffer,
             palette_layout,
-            palette: skin::GpuPalette::new(palette_mode),
+            palette: skin::GpuPalette::new(),
             skinned_buffer,
             prev_instance_buffer,
             prev_instance_upload: upload::DirtyUpload::default(),
@@ -3451,7 +3293,7 @@ impl Renderer {
     }
 
     /// Forgets the lit pipelines, which batches make again as they need
-    /// them, at the current samples and `area_lights`; the plain
+    /// them, at the current samples; the plain
     /// one, which some passes take without a batch, is made now.
     fn forget_lit_pipelines(&mut self) {
         self.pbr_pipelines.clear();
@@ -3464,7 +3306,6 @@ impl Renderer {
                 &self.pbr_shader,
                 key,
                 self.samples,
-                self.area_lights,
             ),
         );
         self.lean_pipelines.clear();
@@ -3670,12 +3511,7 @@ impl Renderer {
             self.taa_history = None;
         }
         for index in self.cache.shaders.len()..scene.shaders().len() {
-            let (lit, shadow) = custom::module_sources(
-                &scene.shaders()[index],
-                self.palette.mode(),
-                self.light_tables,
-                self.planar_slot(),
-            );
+            let (lit, shadow) = custom::module_sources(&scene.shaders()[index], self.planar_slot());
             let module = shader(&self.device, "pbr (material shader)", lit);
             self.cache.shaders.push(module);
             let module = shader(&self.device, "shadow (material shader)", shadow);
@@ -3902,13 +3738,8 @@ impl Renderer {
                     &self.device,
                     &self.queue,
                     [&self.frame_layout, &self.fx_layout, &self.palette_layout],
-                    lit_source_with(
-                        &hooks::default_hooks(),
-                        self.palette.mode(),
-                        self.light_tables,
-                        self.planar_slot(),
-                    ),
-                    shadow_source(&hooks::default_hooks(), self.palette.mode()),
+                    lit_source_with(&hooks::default_hooks(), self.planar_slot()),
+                    shadow_source(&hooks::default_hooks()),
                 ));
             }
             let (bind_group, array, factors) =
@@ -3926,7 +3757,7 @@ impl Renderer {
                     let module = shader(
                         &self.device,
                         "physical (material shader)",
-                        physical_source_with(&hooks, self.palette.mode(), self.light_tables),
+                        physical_source(&hooks),
                     );
                     self.cache.physical_shaders.insert(sh.index(), module);
                 }
@@ -4454,11 +4285,7 @@ impl Renderer {
                 &self.device,
                 &self.frame_layout,
                 &self.palette_layout,
-                physical_source_with(
-                    &hooks::default_hooks(),
-                    self.palette.mode(),
-                    self.light_tables,
-                ),
+                physical_source(&hooks::default_hooks()),
             ));
         }
         let textures = &self.cache.textures;
@@ -4546,19 +4373,19 @@ impl Renderer {
         ))
     }
 
-    /// Grows the local shadow array to the tier's capacity when the scene's
+    /// Grows the local shadow array to its full capacity when the scene's
     /// shadowed lights could need more layers than it has (once per
     /// renderer: the frame bind groups are made again with it).
     fn grow_local_shadows(&mut self, scene: &RenderScene) {
         let capacity =
             shadows::capacity(self.info.shadowed_lights as usize, self.info.point_shadows);
-        // Cookies take layers past every shadow layer the tier can have
+        // Cookies take layers past every shadow layer there can be
         // (area.rs), so the array grows to the full capacity with them.
         let cookies = area::Cookies::layers(scene) as usize;
         if self.local_map.layers.len() >= capacity + cookies {
             return;
         }
-        // At most every shadowed light of the scene's, and the tier's capacity.
+        // At most every shadowed light of the scene's, and the capacity.
         let needed = if cookies > 0 {
             capacity + cookies
         } else {
@@ -4799,10 +4626,10 @@ impl Renderer {
     }
 
     /// Whether the effect group carries the planar reflection material
-    /// shaders read ([`planar_slot`] for this renderer's palette and planar
+    /// shaders read ([`planar_slot`] for this renderer's planar
     /// reflections).
     pub(crate) fn planar_slot(&self) -> bool {
-        planar_slot(self.palette.mode(), self.info.planar_reflections)
+        planar_slot(self.info.planar_reflections)
     }
 
     /// An effect group without the planar reflection, for the lightmapped
@@ -4994,7 +4821,6 @@ impl Renderer {
 
     /// Makes the lit, shadow and prepass pipelines this frame's batches need.
     fn ensure_pipelines(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
-        let area_lights = self.area_lights;
         let all = batches
             .iter()
             .map(|b| (b, false))
@@ -5007,14 +4833,7 @@ impl Renderer {
                 let layouts = (&a.layouts.0, &a.layouts.1);
                 let key = (b.side, b.blend, is_skinned, b.effects);
                 if !a.lit.contains_key(&key) {
-                    let p = pbr_pipeline(
-                        &self.device,
-                        layouts,
-                        &a.module,
-                        key,
-                        self.samples,
-                        area_lights,
-                    );
+                    let p = pbr_pipeline(&self.device, layouts, &a.module, key, self.samples);
                     a.lit.insert(key, p);
                 }
                 let key = (b.side, is_skinned);
@@ -5057,7 +4876,6 @@ impl Renderer {
                             key,
                             self.samples,
                             true,
-                            area_lights,
                         );
                         physical.pipelines.insert(key, p);
                     }
@@ -5069,7 +4887,6 @@ impl Renderer {
                             key,
                             self.samples,
                             true,
-                            area_lights,
                         );
                         self.cache.physical_hook_pipelines.insert((sh, key), p);
                     }
@@ -5085,7 +4902,6 @@ impl Renderer {
                         &self.cache.shaders[sh],
                         (b.side, b.blend, is_skinned, b.effects),
                         self.samples,
-                        area_lights,
                     );
                     self.cache.hook_pipelines.insert(key, p);
                 }
@@ -5128,7 +4944,6 @@ impl Renderer {
                         &self.pbr_shader,
                         key,
                         self.samples,
-                        area_lights,
                     );
                     self.lean_pipelines.insert(key, p);
                 }
@@ -5164,7 +4979,6 @@ impl Renderer {
                     &self.pbr_shader,
                     key,
                     self.samples,
-                    area_lights,
                 );
                 self.pbr_pipelines.insert(key, p);
             }
@@ -5239,21 +5053,6 @@ impl Renderer {
                 )));
             }
         }
-        if !scene.skinned_instances.is_empty()
-            && let Some(rows) = self
-                .palette
-                .texture_rows(self.cache.morph_data.len(), matrices.len())
-        {
-            let max = self.device.limits().max_texture_dimension_2d;
-            if rows > max as u64 {
-                return Err(RenderError::Unsupported(format!(
-                    "{} joints and {} morph deltas take {rows} palette texture rows, this device allows {max}",
-                    matrices.len(),
-                    self.cache.morph_data.len()
-                )));
-            }
-        }
-        let joint_base = self.palette.joint_base(self.cache.morph_data.len());
         let mut order: Vec<usize> = (0..scene.skinned_instances.len()).collect();
         // Each instance's reflection probe: the one holding the centre of
         // its posed bounds, its joints' boxes moved by its palette
@@ -5356,7 +5155,6 @@ impl Renderer {
                 None => (m.w_axis.truncate(), 0.0),
             });
             let (first, count) = offsets[s.palette as usize];
-            let first = first + joint_base;
             let (morph_first, targets) = self.cache.morph_ranges[mesh];
             let w = s.morph_weights;
             data.push(skin::SkinnedInstanceGpu {
@@ -5625,7 +5423,7 @@ impl Renderer {
             &self.device,
             &self.queue,
             scene,
-            self.info.tier == Tier::Full && self.desc_particles == ParticleSimulation::Auto,
+            self.desc_particles == ParticleSimulation::Auto,
             self.cache.textures.len(),
             camera.position,
             cam.forward,
@@ -5653,11 +5451,10 @@ impl Renderer {
         // pass, a canvas, hatching or halftone on surfaces in the paint or
         // lines pass.
         let ink_depth = scene.stylise.depth_edges();
-        // Screen-space reflections: the full tier's (WebGL2 shows the
-        // probes and the environment), read from the prepass (ssr.rs).
+        // Screen-space reflections, read from the prepass (ssr.rs).
         let ssr = post_fx
             .ssr
-            .filter(|s| scene.quality.ssr && s.intensity > 0.0 && self.info.tier == Tier::Full)
+            .filter(|s| scene.quality.ssr && s.intensity > 0.0)
             .map(|s| ssr::ScreenSpaceReflections {
                 steps: scene.quality.ssr_steps(s.steps),
                 ..s
@@ -5717,17 +5514,6 @@ impl Renderer {
             self.probes
                 .ensure_targets(&self.device, &probe_frame, face_copy, face_fluid);
         }
-        // The GL tier's lit pipelines leave rect lights out until the scene
-        // has one (area::wgsl): made again with them from then on.
-        if !self.area_lights
-            && scene
-                .lights
-                .iter()
-                .any(|l| matches!(l.kind, LightKind::Rect { .. }))
-        {
-            self.area_lights = true;
-            self.forget_lit_pipelines();
-        }
         self.ensure_pipelines(
             &batches,
             &skinned_batches,
@@ -5780,20 +5566,15 @@ impl Renderer {
                     module,
                     (b.side, b.blend, b.effects),
                     self.samples,
-                    self.area_lights,
                 );
             }
         }
         // A pattern in object space: the object pass after the prepass.
         let object_space = prepass && scene.stylise.in_object_space();
         if object_space {
-            let object = self.stylise_object.get_or_insert_with(|| {
-                stylise_object::ObjectPass::new(
-                    &self.device,
-                    self.palette.mode(),
-                    self.light_tables,
-                )
-            });
+            let object = self
+                .stylise_object
+                .get_or_insert_with(|| stylise_object::ObjectPass::new(&self.device));
             let opaque = batches.iter().filter(|b| !b.transparent);
             for (side, skinned) in opaque
                 .map(|b| (b.side, false))
@@ -6608,7 +6389,6 @@ impl Renderer {
                 width: self.width,
                 height: self.height,
             },
-            self.light_tables.ref_capacity(),
         );
         let (mut lights_gpu, local_shadows, shadowed_dropped) = frame::local_lights(
             &scene.lights,
@@ -6682,7 +6462,6 @@ impl Renderer {
                     width: *rw,
                     height: *rh,
                 },
-                self.light_tables.ref_capacity(),
             );
             if !lights_gpu.is_empty() {
                 self.queue.write_buffer(
@@ -7148,7 +6927,7 @@ impl Renderer {
         self.views.write(
             &self.device,
             &self.queue,
-            (self.light_tables, self.samples),
+            self.samples,
             &self.clusters.kept,
             scene,
             &view_plans,
@@ -7334,7 +7113,7 @@ impl Renderer {
         let gtao = match ao.map(|a| a.method) {
             Some(AoMethod::Gtao) => true,
             Some(AoMethod::Ssao | AoMethod::Screen) => false,
-            _ => self.info.tier == Tier::Full,
+            _ => true,
         };
         let mut passes: Vec<FramePass> =
             (0..cascades.len() as u32).map(FramePass::Cascade).collect();
@@ -8039,7 +7818,6 @@ impl Renderer {
                 &self.queue,
                 scene_water,
                 (self.width, self.height),
-                self.info.tier == Tier::Full,
                 copy,
                 scene_depth,
                 &reflection_views,
@@ -8461,7 +8239,7 @@ impl Renderer {
                 }
                 let mesh = &self.cache.meshes[batch.mesh];
                 pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
-                // A buffer slice, not first_instance: WebGL2 has no base instance.
+                // The batch's instances as a buffer slice from its first.
                 let start = first as u64 * INSTANCE_STRIDE;
                 let instances = match (list.indirect, culled_gpu) {
                     (Some(_), Some(gc)) => &gc.instances,
@@ -10529,8 +10307,8 @@ impl Renderer {
     /// sky, ribbons, 2D lights, glass, water, terrain, metaballs, fluids);
     /// false when every pipeline is made. The renderer makes a pipeline when
     /// a pass first sets it (deferred.rs), so a frame compiles only what it
-    /// draws; a host with idle time (the web page behind its play gate,
-    /// where each WebGL2 program is a long ANGLE link) calls this until
+    /// draws; a host with idle time (the web page behind its play gate)
+    /// calls this until
     /// it answers false, so a pass met later does not stop a frame. The
     /// frames are the same either way.
     pub fn warm(&mut self) -> bool {
@@ -10777,7 +10555,6 @@ fn grow_and_write(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use skin::PaletteMode;
 
     /// The sampled textures of a bind group layout's entries.
     fn textures(entries: &[wgpu::BindGroupLayoutEntry]) -> usize {
@@ -10790,22 +10567,15 @@ mod tests {
     /// One planar reflection keeps the effect group main had before
     /// material shaders could read the mirror (four bindings, no lean group
     /// for the lightmapped pipelines, the lit module's `planar_reflection`
-    /// the stub); two add binding 4 where the palette leaves it a texture
-    /// slot, and only there do the lightmapped pipelines need the group
-    /// without it.
+    /// the stub); two add binding 4, and only then do the lightmapped
+    /// pipelines need the group without it.
     #[test]
     fn the_effect_group_carries_the_planar_reflection_only_with_two() {
-        let tables = clusters::LightTables::Storage;
         let hooks = hooks::default_hooks();
-        for (palette, count, slot) in [
-            (PaletteMode::Storage, 1, false),
-            (PaletteMode::Storage, 2, true),
-            (PaletteMode::Texture, 1, false),
-            (PaletteMode::Texture, 2, false),
-        ] {
-            let at = format!("{palette:?} with {count}");
-            assert_eq!(planar_slot(palette, count), slot, "{at}");
-            let fx = fx_layout_entries(planar_slot(palette, count));
+        for (count, slot) in [(1, false), (2, true)] {
+            let at = format!("with {count}");
+            assert_eq!(planar_slot(count), slot, "{at}");
+            let fx = fx_layout_entries(planar_slot(count));
             let bindings: Vec<u32> = fx.iter().map(|e| e.binding).collect();
             if slot {
                 assert_eq!(bindings, [0, 1, 2, 3, 4], "{at}");
@@ -10817,7 +10587,7 @@ mod tests {
                 assert_eq!(bindings, [0, 1, 2, 3], "{at}");
                 assert_eq!(textures(&fx), 2, "{at}");
             }
-            let source = lit_source_with(&hooks, palette, tables, planar_slot(palette, count));
+            let source = lit_source_with(&hooks, planar_slot(count));
             assert_eq!(source.contains("var planar_tex"), slot, "{at}");
             assert!(source.contains("fn planar_reflection("), "{at}");
         }

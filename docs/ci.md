@@ -278,7 +278,7 @@ split, and the lowest such crate is its cause.
 | `bun-test` | `bun run test` in each `packages/*` with a `test` script (the engine's files in parallel workers, `bun test --parallel`; the engine's `typecheck` also checks the six templates' `src/` against the generated declarations, `packages/engine/tsconfig.templates.json`; their playtests run under bun in `og test`); `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | | yes | |
 | `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hashes on the host and on wasm32 scalar and simd128 under node, the host release once more with lanes off and once with lanes on (failing when the lanes run did no parallel work), and the lanes wasm once per physics profile (`scripts/wasm-lanes.sh`, og-physics with `physics3d` or `physics2d` alone as the 3D and 2D lanes modules are built, bound by wasm-bindgen and run on one lane under node: the 2D world hash on the 2D lanes build, the 3D ones on the 3D) | full | | | yes (node from `actions/setup-node`) | |
 | perf | `scripts/perf.sh`: `cargo test -p og-tests -p og-runtime --release --no-fail-fast -- --ignored perf` against this machine's baselines (og-tests: `crates/og-tests/perf/<tier>-<adapter>/`, og-runtime: extraction of 20,000 meshes, `crates/og-runtime/perf/<cpu>/`); `--measure` records instead, copies the numbers to `target/evidence/perf/` and restores the tree | `make perf` | | | | `--measure` (below) |
-| `web-reference` | `OG_GATE=1 sh packages/engine/scripts/build.sh` first, so `packages/engine/native` holds this checkout's dev og and addon and `dist/web` the gate's wasm (a release build or an older gate leaves older ones there, and the tests cook every project with that og); then `bun tests/web/reference.ts` and `--webgl` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` and `--webgl` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference.ts --looks` and `--webgl --looks` for its looks station (37 presets in one run), then `bun tests/web/reference-gfx.ts` and `--webgl` for og-tests' gfx scenes and og-ui's four scenes, then `bun tests/web/reference-ui.ts` and `--webgl` for templates/ui-kit's 70 reference frames, then `bun tests/web/reference.ts --project templates/archetypes/third-person` and `--webgl` for Ember Vale's three frames, then the same with `--project examples/brasswick` and `examples/meridian-loop` and `--playtest tests/frames.og.ts` for their nine and ten (§Browser reference tiers), in headless Chrome, compared with `references/webgpu`/`webgl2` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | | |
+| `web-reference` | `OG_GATE=1 sh packages/engine/scripts/build.sh` first, so `packages/engine/native` holds this checkout's dev og and addon and `dist/web` the gate's wasm (a release build or an older gate leaves older ones there, and the tests cook every project with that og); then `bun tests/web/reference.ts` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference.ts --looks` for its looks station (37 presets in one run), then `bun tests/web/reference-gfx.ts` for og-tests' gfx scenes and og-ui's four scenes, then `bun tests/web/reference-ui.ts` for templates/ui-kit's 70 reference frames, then `bun tests/web/reference.ts --project templates/archetypes/third-person` for Ember Vale's three frames, then the same with `--project examples/brasswick` and `examples/meridian-loop` and `--playtest tests/frames.og.ts` for their nine and ten (§Browser reference tiers), in headless Chrome on WebGPU, compared with `references/webgpu` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | | |
 
 `cargo nextest` runs test binaries in parallel, one process per test.
 Fixtures several tests read are made once across their processes under a
@@ -380,7 +380,7 @@ whether a scene fell back to metal's reference, the entries are typed and
 compile-checked, and the tolerance they bend is the harness's.
 
 `gfx::check` reads the list only when the tier is `vulkan-cpu` and the
-scene is judged against metal's reference; on metal, webgpu, webgl2 and
+scene is judged against metal's reference; on metal, webgpu and
 dx12, and for a scene with its own vulkan-cpu reference, nothing changes,
 and the tolerance itself is not widened. A listed scene past its
 tolerance passes and is reported as `TOLERATED` with its numbers, as long
@@ -712,26 +712,27 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
 
 ## Browser reference tiers
 
-og-tests' gfx references cover `metal` (and `webgl2` for five scenes,
-§og-tests' gfx scenes in the browser; the `vulkan-cpu` copies went with
-the CPU sandbox requirement on 2026-10-22, §The wave-end run); og-ui's 83
-reference frames are `metal`'s (the browser tiers run 76 of them) and the
-browser tiers are judged against `metal` (§og-ui's kit frames in the
+The browser tier is WebGPU (the WebGL2 tier and its references were
+removed on 2026-11-01, design §8). og-tests' gfx references cover `metal`
+(the `vulkan-cpu` copies went with the CPU sandbox requirement on
+2026-10-22, §The wave-end run); og-ui's 83 reference frames are `metal`'s
+(the browser tier runs 76 of them) and the browser tier is judged against
+`metal` (§og-ui's kit frames in the
 browser);
-fx-showcase's browser tiers
+fx-showcase's browser frames
 come from `packages/engine/tests/web/reference.ts` (`make web-reference`): the dev
 export of `templates/fx-showcase` on a 1280×720 canvas at DPR 1 in headless
 Chrome for Testing, driven one tick and one render per `frame` call as
 `og run --commands` drives the native host, each station captured at its
 playtest screenshot's tick and compared with
-`templates/fx-showcase/references/<webgpu|webgl2>/` (committed; `metal`
-when a tier has none) at og-tests' default tolerance (32/255 per channel,
+`templates/fx-showcase/references/webgpu/` (committed; `metal`
+when it has none) at og-tests' default tolerance (32/255 per channel,
 0.5 % outliers, RMSE 0.01). `--record` writes the tier's references. Before
 the stations it sends `call("probe", "commands", {…})` with an object
 through the engine Worker and requires the probe's refusal ("probe.commands:
 script must be a string, not object") from the same Worker that then runs
-them. It takes about 2 s a tier after the export (Apple M4 Pro, Chrome 150)
-and passes on both tiers, but it is not in the gate: CI's machine has no
+them. It takes about 2 s after the export (Apple M4 Pro, Chrome 150)
+and passes, but it is not in the gate: CI's machine has no
 Chrome for Testing (a missing Chrome is an error, never a skip).
 
 The same runner takes another project's playtest frames: `--project
@@ -739,9 +740,9 @@ templates/archetypes/topdown --script "<the frames playtest's commands
 without screenshot and quit>" --shots start@30,crit@131,dash@168,east@216`
 compares (or with `--record` writes) `<project>/references/<tier>/`. What
 each template commits under `references/`: `metal` alone for idle, rhythm,
-roguelike, tower-defense, match3, runner and topdown; `metal` and a WebGL2
-`beacon` for third-person (below); `metal` and one WebGL2 frame (`water`,
-below) for fx-showcase (every `vulkan-cpu` copy went on 2026-10-22). The UI shell round (2026-10-21) deleted topdown's `webgpu`
+roguelike, tower-defense, match3, runner, topdown, third-person and
+fx-showcase (every `vulkan-cpu` copy went on 2026-10-22, and the WebGL2
+beacon, water and Meridian Loop frames with the tier on 2026-11-01). The UI shell round (2026-10-21) deleted topdown's `webgpu`
 and `webgl2` frames and 47 of fx-showcase's 48: each sits within the
 tolerance of `metal` on its tier (topdown within RMSE 0.00009, three of
 the WebGL2 four RMSE 0; fx-showcase's in
@@ -754,40 +755,22 @@ A tier's references are looked up frame by frame: a frame with no file
 under `references/<tier>/` (or a tier with no directory at all) is judged
 against `references/metal/`, and a frame on neither fails the run
 ("no reference at …; record one with --record"), never passes. A tier
-gets its own reference only for a difference the tier makes by design
-(§og-tests' gfx scenes in the browser).
+gets its own reference only for a difference the tier makes by design,
+never to absorb a defect.
 
-`web-reference` also runs fx-showcase's looks station on both tiers:
+`web-reference` also runs fx-showcase's looks station:
 reference.ts with `--looks` (output in `dist/test-reference/looks`) runs
 `tests/looks-script.ts`'s commands (the looks playtest's, without its
 screenshots and `quit`; the playtest and the runner import the same
 module, so they cannot drift) in one run and takes one shot per preset
 of the catalogue at its screenshot's tick (37 shots, the last at tick
-1164), each compared with `references/<tier>/looks-<slug>.png`, else
+1164), each compared with `references/webgpu/looks-<slug>.png`, else
 `metal`'s. The plain and look-taken-off frames are the playtest's own
 check and are not taken. WebGPU has no looks references of its own
-(every frame within RMSE 0.0098 of `metal`, 2026-10-21). WebGL2 keeps
-two by design, `paper-craft` and `voxel-worlds` (RMSE 0.0187 and 0.0113
-against `metal` at cf5f2b9): both turn on `PostEffects.ao` with the
-default method, which is GTAO on the full tier and SSAO on WebGL2
-(og-render's README, "Ambient occlusion by tier"); `sculpted-clay` uses
-it too but stays within tolerance (0.0062) and is judged against
-`metal`. The other 34 are judged against `metal` on WebGL2 since
-cf5f2b9 and 1a9037a: before them, TAA's history drifted sideways on the
-GL backend with a still camera (every edge about a pixel off, which the
-looks' posterize, ink and outlines turned into whole moved lines: 30
-frames at RMSE 0.010 to 0.046, present since the station joined the
-tiers). The cause (1a9037a): wgpu's GL backend binds no sampler to a
-depth texture read with `textureLoad`, GLSL ES treats the texture, left
-on linear filtering, as incomplete and reads 0, so every pixel
-reprojected from the near plane; the resolve now samples the depth
-through a nearest sampler, decides a still camera on the CPU (cf5f2b9)
-and reads each pixel's own history texel. `taa-sharp`, the sliding
-camera, applies on every tier since 1a9037a and is WebGL2's
-moving-camera TAA frame: RMSE 0.00028 against `metal` (WebGPU 0.00024).
+(every frame within RMSE 0.0098 of `metal`, 2026-10-21).
 
-`web-reference` also runs Ember Vale (`templates/archetypes/third-person`)
-on both tiers: reference.ts with `--project
+`web-reference` also runs Ember Vale (`templates/archetypes/third-person`):
+reference.ts with `--project
 templates/archetypes/third-person --out dist/test-reference/third-person`,
 `tests/frames.og.ts`'s commands without its screenshots and `quit`
 (`1.0:run;1.1:warp:0;1.3:key_down:KeyF;3.5:key_up:KeyF;3.6:light:1;3.7:light:2;3.8:light:3`)
@@ -795,23 +778,9 @@ and `--shots title@54,beacon@204,dawn@432` (each at its screenshot's tick,
 60 t). A change to that playtest changes the step's command in
 `scripts/check.sh` with it. WebGPU has no references of its own: against
 `metal` (2026-10-19) title is at RMSE 0.00131, beacon 0.00475 with
-0.060 % outliers, dawn 0.00067. On WebGL2 title (0.00428) and dawn
-(0.00180) are judged against `metal` too; the beacon keeps a WebGL2
-reference by design. Since the shadows-aa round (2026-10-21) the CPU
-particle path bounces off the scene's colliders (og-runtime hands it the
-og.Collider boxes and the terrain's height field), so WebGL2's ember
-sparks bounce on the vale and the plinth as the full tier's do off the
-depth buffer: against main's re-recorded `metal` beacon the WebGL2 frame
-went from RMSE 0.0185 with 0.919 % outliers (sparks falling through) to
-0.0165 with 0.809 %. It stays over 0.01 by design: WebGL2's 4× MSAA
-against the full tier's TAA (RMSE 0.0130 on its own in the showcase
-round's per-spark read; docs/phase-1.md), and sparks that bounce off the
-colliders' exact surfaces rather than off the depth buffer's (with its
-thickness band), so their paths after the first bounce differ. The WebGL2
-beacon was re-recorded (and reproduced at RMSE 0); webgpu's beacon is at
-RMSE 0.00475 against `metal`.
+0.060 % outliers, dawn 0.00067.
 
-`web-reference` also runs two of the example games on both tiers (release
+`web-reference` also runs two of the example games (release
 row F4): Brasswick's nine frames (`examples/brasswick`: title, levels,
 start, door, stomp, gate, pause, settings-es, results; the last at tick
 1092) and Meridian Loop's ten (`examples/meridian-loop`: title, jump,
@@ -823,27 +792,13 @@ playtest itself (its commands without screenshots, `quit` and `dump_*`,
 each shot at its screenshot's tick, 60 t), so a retimed playtest moves its
 browser frames with it and no command in `scripts/check.sh` has to follow
 it; `--print` shows what a run would play. Every frame is judged against
-`metal` until a tier needs one of its own for a difference the tier makes.
-Meridian Loop's ten need one on WebGL2 (the first runs at a7f10c57: RMSE
-0.0138 to 0.0509, outliers up to 5.50 %, every frame's WebGPU twin within
-0.0092): its look blooms thin emissive lines (the neon grid, the
-windows, the horizon's edge, the car's light) and the bloom reads the
-antialiased image, which is TAA on the full tier and 4× MSAA on WebGL2.
-TAA's luma-weighted, clamped resolve keeps far less of a sub-pixel
-line's energy than MSAA's linear average, so the halos are weaker on
-`metal` (og-render's README, §Shadows and antialiasing by tier, "Bloom
-follows the antialiasing"). On one adapter (lavapipe) the game with
-`antialias` `msaa4` is within RMSE 0.0039 (0.010 % outliers) of the
-WebGL2 title frame and the `taa` one 0.060 from it; sky, fog and the
-frames' areas away from emitters match to a level
-(`tests/evidence/r3/meridian-webgl2/`). The WebGL2 references are
-recorded with `reference.ts --webgl --record` for this difference.
+`metal` until the tier needs one of its own for a difference it makes.
 
-`bun tests/web/archetype-hashes.ts [--webgl]` compares the three
+`bun tests/web/archetype-hashes.ts` compares the three
 archetypes' world hashes across hosts: each replay playtest's script runs
 in Chrome and in `og run` at the page's play surface (1280×577 in the
 headless window), and the two `dump_world` hashes at the same tick must be
-equal. They are on WebGPU and WebGL2 (2026-10-19,
+equal. They are on WebGPU (2026-10-19,
 `tests/evidence/E7/archetype-hashes-*.md`). They used to differ because the
 native `og run` called `GameDesc.start` before attaching its renderer, so
 `og.render.capabilities` answered 0×0 there and runner and match3 laid
@@ -851,16 +806,16 @@ their view out for 16:9 instead of the surface; `og run` and `og polish`
 now create the engine with `deferStart` and run the start once the
 renderer is attached, as the web Worker always did.
 
-Both tiers are judged against `metal` (2026-10-21, the UI shell branch
+WebGPU is judged against `metal` (2026-10-21, the UI shell branch
 merged with main 376f3cd):
 
-| Station | webgpu outliers | webgpu RMSE | webgl2 outliers | webgl2 RMSE |
-|---|---|---|---|---|
-| post | 0.000 % | 0.00142 | 0.000 % | 0.00506 |
-| lens | 0.010 % | 0.00228 | 0.010 % | 0.00227 |
-| fx | 0.000 % | 0.00204 | 0.013 % | 0.00288 |
-| 2d | 0.000 % | 0.00251 | 0.000 % | 0.00254 |
-| stylised | 0.027 % | 0.00389 | 0.027 % | 0.00389 |
+| Station | outliers | RMSE |
+|---|---|---|
+| post | 0.000 % | 0.00142 |
+| lens | 0.010 % | 0.00228 |
+| fx | 0.000 % | 0.00204 |
+| 2d | 0.000 % | 0.00251 |
+| stylised | 0.027 % | 0.00389 |
 
 The E5 stations (sky, weather, water, shaders, controller, joints, rope,
 fluid) each have a playtest of their own, so `tests/web/reference-e5.ts`
@@ -869,40 +824,25 @@ reference.ts once per station with `--script 0.5:station:<name> --shots
 <name>@<tick>`, so the browser run is the same fresh run. Against `metal`
 (2026-10-21; the stations are now every `stationPlaytest`, 20 of them),
 every station is within RMSE 0.0085 on WebGPU (fluids3d; the rest under
-0.0020) and 0.0085 on WebGL2 (fluids3d, terrain 0.0078, environment
-0.0078; the rest under 0.0056), except water on WebGL2 at RMSE 0.0216
-(0.93 % outliers), which keeps its WebGL2 reference. That is expected: WebGL2 has no
-depth-prepass reflection march, so its water reflects the prefiltered sky
-cubemap (`crates/og-render/README.md` §E5).
+0.0020).
 
-The runner found four defects, all fixed in og-render before the tiers
-were recorded (`crates/og-render/README.md` §The overlay and §Backend
-tiers): the overlay blended encoded sRGB values on the WebGPU canvas's
-`Bgra8Unorm` (the HUD panel was 87,89,99 against 123,128,135; RMSE up to
-0.024); on WebGL2 TAA's `textureLoad` from a depth texture had no GLSL
-form, the lit skinned pipeline needed 18 of the GL backend's 16 texture
-slots, and the twelve-layer local shadow map was created as a cube-map
-array, which left every shadowed light black. 
+The runner found a defect fixed in og-render before the tier was recorded
+(`crates/og-render/README.md` §The overlay): the overlay blended encoded
+sRGB values on the WebGPU canvas's `Bgra8Unorm` (the HUD panel was
+87,89,99 against 123,128,135; RMSE up to 0.024).
+
 ### og-tests' gfx scenes in the browser
 
 `packages/engine/tests/web/reference-gfx.ts` renders og-tests' own gfx
 scenes (`crates/og-tests/src/scenes.rs`) in headless Chrome:
 `crates/og-tests-web` compiles them to a wasm-bindgen module (their glTF and
 font assets embedded with `include_bytes!` on wasm32), opens each on an
-OffscreenCanvas at 1280×720 on WebGPU or, with `--webgl`, on WebGL2
-through wgpu's GL backend, draws its frames as the native harness does
-(`og_tests::gfx::render_built`) and reads the target back, polling the
-device between tasks (on WebGL2 `map_async` completes only on a poll). Each
-frame is compared with `crates/og-tests/references/<webgpu|webgl2>/` when
+OffscreenCanvas at 1280×720 on WebGPU, draws its frames as the native
+harness does (`og_tests::gfx::render_built`) and reads the target back.
+Each frame is compared with `crates/og-tests/references/webgpu/` when
 that frame is committed, else with `metal`, under the scene's own tolerance
 (`crates/og-tests/src/compare.rs`), and every frame's figures against
-`metal` are kept in the report. A scene that does not apply to the tier
-(`scenes::Applies`: `taa`, `shadows-local-8`, whose eight shadowed
-lights are four on WebGL2, and `hooks-planar`, whose material shader
-reads the planar reflection that WebGL2's lit pipelines have no texture
-unit for, are full tier only, `msaa` the no-compute
-tier's 4x path) is listed, not rendered; `taa-sharp` asks for
-`Antialias::Taa` and is the WebGL2 tier's moving-camera TAA frame. `--scene a,b --time n`
+`metal` are kept in the report. `--scene a,b --time n`
 times any scene it names, the shadows-aa cost scenes too (`COSTS`:
 `point-shadows-cube`, `shadows-local-8-cube`, `shadows-local-8-paraboloid`,
 `shadows-soft-off`, `aa-off`, `taa-motion`, built but not in `SCENES`). `--record` writes the tier's references;
@@ -910,7 +850,7 @@ times any scene it names, the shadows-aa cost scenes too (`COSTS`:
 `crates/og-tests/perf/<tier>-chrome-<adapter>/` beside the native ones.
 The perf-only city scenes (`city-street`, `city-aerial`) are timed only when
 `--scene` names them. `--cpu-culling` makes WebGPU cull on the CPU
-(`Culling::Cpu`; WebGL2 always does). `--perf-out <dir>` writes the timing
+(`Culling::Cpu`). `--perf-out <dir>` writes the timing
 JSON to `<dir>/<tier>[-cpu-culling]/` instead, with the last frame's culling
 counts (`tests/evidence/P3/culling/`). The native counterpart is
 `og-gfx <scene> --frames <n>`, with `OG_GFX_CULLING=cpu|gpu|auto` for the
@@ -920,36 +860,21 @@ builds in `target/wasm-gfx` so the gate's og-render artifacts stay put.
 
 On 2026-10-19 (Chrome for Testing 150, ANGLE Metal on the Apple M4 Pro,
 `tests/evidence/P2/tooling/web-gfx-*.json`) all 47 applicable scenes pass on
-each tier. WebGPU matches `metal` throughout and has no references of its
-own. WebGL2 has its own for five scenes that differ from `metal` by
-design: `msaa` (no other tier renders it), `showcase` and `overlay` (GPU
-particles take the CPU path without compute; RMSE 0.0107 and 0.0103 against
-`metal`), `water-3d` (no screen-space reflection march, the sky cubemap
-reflects instead; RMSE 0.0258) and `water-ripples` (RMSE 0.0125, no
-outliers, mean 1.5/255, at most 21/255: the difference follows the texels
-of the magnified normal map, the one read the water path makes that
-WebGL2 does not reproduce exactly; `water-mesh`, `water-fresnel` and
-`water-glint`, the same path without a normal map, are within RMSE 1e-5 of
-`metal`, and the Mac lane's diagnostic of 2026-10-26 ruled out the
-sampler's anisotropy, the mip selection and the SSR march). A WebGL2
-reference is recorded only for a difference the tier makes by design,
-never to absorb a defect.
-`shadows-crypt` (wave 13, web findings #4) has none: its shadowed point
-light is two paraboloid hemispheres on WebGL2 and six cube faces on
-`metal`, which store the same faces since the paraboloids' winding was
-mirrored (the paraboloid frame within RMSE 0.0036 of the cube one
-natively), and the lamp's glass casts no shadow on either.
+WebGPU, which matches `metal` throughout and has no references of its
+own. A WebGPU reference is recorded only for a difference the tier makes
+by design, never to absorb a defect. `shadows-crypt` (wave 13, web
+findings #4) has none, and the lamp's glass casts no shadow.
 `shadow-flags` (owed row 87) has none either: per-instance cast and
-receive flags under the sun's cascades alone. Each tier
-takes 30 to 50 s after the module build.
+receive flags under the sun's cascades alone. A run takes 30 to 50 s
+after the module build.
 
 The same module carries og-ui's four reference scenes as `og-ui/<name>`
 (`sample-screen`, `text-glow`, `glass`, `widget-set`). They are built by
 `crates/og-ui/tests/support/scenes.rs`, the file og-ui's native `gfx` and
 `kit_gfx` tests build them with, included into og-tests-web by `#[path]`,
 and judged against `crates/og-ui/references/<tier>/<name>.png`, else
-`metal`. Neither browser tier has references of its own for them: they are
-judged against `metal`, which they match exactly (RMSE 0) on both tiers
+`metal`. The browser tier has no references of its own for them: they are
+judged against `metal`, which they match exactly (RMSE 0) on WebGPU
 (2026-10-19), except `widget-set` at RMSE 0.00046, which is also what the
 native metal run gives against that reference. `text-fields-2` rides with
 them, and since release-f2 so do the four cooked-font text frames
@@ -979,33 +904,33 @@ adds `--sheet kit-style-<pack>[-phone].png,<factor>,<cols>`: each shot is
 box-shrunk (2 on desktop, 3 on a phone, as `tests/styles.ts` does) and
 compared with its cell of the sheet; the gallery shot that only
 proves the pack applied is not a cell. Frames are judged against
-`crates/og-ui/references/<webgpu|webgl2>/`, else `metal`, at og-tests'
-default tolerance (neither tier has references of its own, so every frame
+`crates/og-ui/references/webgpu/`, else `metal`, at og-tests'
+default tolerance (WebGPU has no references of its own, so every frame
 and sheet is judged against `metal`), and the summary goes to
 `packages/engine/dist/test-reference/ui/reference-ui-<tier>.json`, one
 report per playtest beside it. `--only a,b` runs some playtests,
 `--record` writes the tier's frames and sheets.
 
-Both browser tiers are judged against `metal`'s 72 frames: per-tier
-copies, recorded 2026-10-19 and reproduced exactly (RMSE 0) by both tiers,
+The browser tier is judged against `metal`'s 72 frames: per-tier
+copies, recorded 2026-10-19 and reproduced exactly (RMSE 0),
 were dropped as duplicates of `metal`, since no frame differs by the
 tier's design. Against `metal` (Chrome for Testing 150, Apple M4 Pro,
-2026-10-19) every frame passes on both tiers.
+2026-10-19) every frame passes.
 Eleven frames have outliers there, all at most 0.038 % (RMSE ≤ 0.0089,
 `kit-desktop-settings`): the edges of the large MSDF titles ("Settings",
 "Paused", "Shop", "Levels", "Toasts", the puzzle score), eleven edge
 pixels on `idle` and the gallery's scrollbar thumb, whose coverage
-differs by a fraction of a pixel. lavapipe, WebGPU and WebGL2
-all agree there (no outliers between any two of them, RMSE ≤ 0.0019); the
+differs by a fraction of a pixel. lavapipe and WebGPU
+agree there (no outliers between them, RMSE ≤ 0.0019); the
 difference is metal's. Every other frame is within RMSE 0.0025 of `metal`,
 except the paper pack's phone sheet at 0.0040.
-A tier takes 100 to 140 s (about 7 to 9 minutes while another heavy job
+A run takes 100 to 140 s (about 7 to 9 minutes while another heavy job
 shares the machine), so the full set runs in `web-reference` rather than
 a subset.
 
 ### The accessibility mirror in the browser
 
-`packages/engine/tests/web/a11y.ts` (in `web-reference`, both tiers) runs
+`packages/engine/tests/web/a11y.ts` (in `web-reference`) runs
 the dev export of templates/ui-kit on a 1280×720 canvas with the
 reference page, one tick per `frame` call, on the settings screen, and
 checks the shell's DOM mirror of `og.ui.a11y()` (src/web/a11y.ts): one

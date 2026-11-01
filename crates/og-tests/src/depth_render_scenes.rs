@@ -15,7 +15,7 @@
 //!   sphere shows the room (the red wall behind the camera's view of it
 //!   and the floor), not the sky: without the probe it reflects the sky's
 //!   blue.
-//! - `ssr-wet-floor` (the full tier): a mirror-smooth dark floor under a
+//! - `ssr-wet-floor`: a mirror-smooth dark floor under a
 //!   black background, a red sphere and a lit white panel standing on it,
 //!   PostEffects.ssr on. The floor below each shows its reflection; with
 //!   the environment black and no probe, nothing else puts it there.

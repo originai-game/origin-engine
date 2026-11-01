@@ -50,17 +50,16 @@ codegen-units = 1
 
 # The wasm every web build ships and the size gate measures: release at
 # opt-level s, with the crates whose loops run every tick or frame at 3 and
-# the crates that run only while loading or when something changes (WGSL
-# translation for WebGL2, font shaping, the cooked bundle's decoding and
+# the crates that run only while loading or when something changes (font
+# shaping, the cooked bundle's decoding and
 # decompression, snapshots' bincode, navmesh triangulation, locale tables)
 # at z. Load-time crates at z: -85 KB brotli (tests/evidence/E7/wasm-size.md,
 # with Chrome's frame times unchanged; z for every crate cost 25 % of a
 # frame). The s default (tests/evidence/r4/size-2/NOTES.md): physics
 # (rapier, parry, og-physics, the math), og-ecs, og-render, og-anim,
 # og-lanes, og-ui, wgpu's WebGPU front end, og-nav and og-ai stay at 3;
-# og-runtime (the frame's extract and the bindings' glue) and wgpu's
-# WebGL2 path (wgpu-core, wgpu-hal) and the rest go to s. Native builds
-# never use it.
+# og-runtime (the frame's extract and the bindings' glue) and the rest go
+# to s. Native builds never use it.
 [profile.wasm]
 inherits = "release"
 opt-level = "s"
@@ -104,13 +103,7 @@ opt-level = 3
 [profile.wasm-gate]
 inherits = "wasm"
 codegen-units = 16
-[profile.wasm.package.naga]
-opt-level = "z"
 [profile.wasm.package.naga-types]
-opt-level = "z"
-[profile.wasm.package.wgpu-naga-bridge]
-opt-level = "z"
-[profile.wasm.package.codespan-reporting]
 opt-level = "z"
 [profile.wasm.package.rustybuzz]
 opt-level = "z"
@@ -266,7 +259,3 @@ codegen-units = 16
 # §Determinism).
 [patch.crates-io]
 basis-universal-sys = { path = "third_party/basis-universal-sys" }
-# wgpu-hal 30.0.1 with two GLES-only patches for the WebGL2 tier, GPU
-# timestamps from EXT_disjoint_timer_query_webgl2 and a queue that skips GL
-# calls setting what is already set (third_party/wgpu-hal/ORIGIN.md).
-wgpu-hal = { path = "third_party/wgpu-hal" }

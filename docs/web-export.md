@@ -523,37 +523,22 @@ earlier build; a build that fails after replacing it removes what it wrote.
   ms each), sent with the first frame.
 - **Pipelines behind the gate**: the renderer makes a pipeline when a pass
   first draws with it (og-render's README §Pipelines made on first use),
-  so the first frame compiles only what it draws: on the WebGL2 fallback,
-  where every program is a long compile and link, the renderer's creation went
-  from about 500 ms to 130 ms and the dogfood games' first frame from 1.1
-  to 1.4 s to 0.7 s. After the first frame the Worker makes the rest, one
-  a task in idle time, until none is left or the gate's tap starts play
-  (`og_web_warm`; the Worker's console says how many and how long:
-  Lantern Vale's 29 on WebGL2 in about 0.7 s, its 35 on WebGPU in 0.17 s);
-  a pass the warm-up did not reach is made by the frame that first draws
-  with it. On WebGL2 the lit programs leave the rect-light code out until
-  a frame has an `og.RectLight` (og-render's `area::wgsl`); a scene that
-  gets its first one during play links them again at that moment (about
-  5 to 8 s on ANGLE D3D11, waited for by the next lit frame), so a game
-  that will use one puts it in the first scene (at intensity 0 if it
-  should not shine yet), and the links happen at load.
-- **The WebGL2 state filter** (`src/web/gl-state.ts`): on the WebGL2
-  fallback the Worker puts a mirror of the context's state in front of
-  the context wgpu's GL backend draws through. A call that sets a value
-  the context already holds is dropped, and the enables, the active
-  texture unit, the program, the framebuffer bindings and the generic
-  buffer bindings are made when a call first reads them; a call the mirror
-  does not model (or an extension's) forgets what it knew. The frame is
-  the same: on the reference scene 3,797 WebGL calls a frame become 761
-  for the same 41 draws (`tests/evidence/r4/perf-webgl2/NOTES.md`).
-- **URL parameters**: `webgl=1` (the WebGL2 fallback; also taken when WebGPU
-  has no adapter), `replay-seed=<u32>`, `autoplay=0` (a harness drives the
-  clock through the probe: no gate, no first tick, no service worker).
-  On WebGPU og-render culls on the GPU: frustum and occlusion tests in
-  compute and indirect draws. The WebGL2 fallback culls on the CPU, and both
-  give the same frame. On og-tests' 40,000-building city scenes in Chrome,
-  WebGPU's frame takes about 35 % less time than with CPU culling
-  (`tests/evidence/P3/culling/`).
+  so the first frame compiles only what it draws. After the first frame
+  the Worker makes the rest, one a task in idle time, until none is left
+  or the gate's tap starts play (`og_web_warm`; the Worker's console says
+  how many and how long: Lantern Vale's 35 on WebGPU in 0.17 s); a pass
+  the warm-up did not reach is made by the frame that first draws with it.
+- **WebGPU only** (design §8, the owner, 2026-11-01): a browser without
+  `navigator.gpu`, or whose adapter or device cannot be had, gets the
+  shell's unsupported-browser state instead of an engine; there is no
+  WebGL2 fallback.
+- **URL parameters**: `replay-seed=<u32>`, `autoplay=0` (a harness drives
+  the clock through the probe: no gate, no first tick, no service worker).
+  og-render culls large frames on the GPU: frustum and occlusion tests in
+  compute and indirect draws (small frames on the CPU, `Culling::Auto`),
+  and both give the same frame. On og-tests' 40,000-building city scenes
+  in Chrome, WebGPU's frame takes about 35 % less time than with CPU
+  culling (`tests/evidence/P3/culling/`).
 
 ## The Player and Stage contract
 
@@ -817,8 +802,7 @@ icons) is.
   player downloads (`downloadsOf` in `src/node/web-build.ts`): the boot of
   the lanes page and of the single-threaded page (one engine module each,
   the shell, the Basis transcoder and the cooked first group without the
-  chunks of a chunked sound after its first; the WebGPU and WebGL2 pages
-  fetch the same files) and what comes later (the streaming packs, the
+  chunks of a chunked sound after its first) and what comes later (the streaming packs, the
   sound chunks, the audio worklet on the first gesture, the service worker
   and icons); the table's `total` is every file and no download. Then the
   probe build and members read from the copied wasm, and the manifest's
@@ -831,7 +815,7 @@ icons) is.
   answering), and its last stderr lines, and exits with the process's code
   (128 + the signal).
 - `og run --device chrome|android[:serial]|iphone[:udid] [project]
-  [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl]
+  [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed]
   [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]`
   exports the publish build into `<project>/.og/device`, serves it with its
   `_headers` and COOP/COEP/CORP on 127.0.0.1 (on 0.0.0.0 only for the
@@ -862,13 +846,13 @@ icons) is.
   1.5 s on the iPhone), a frame-time score (p95 interval, 17 ms: 100,
   33.3 ms: 0), findings with a fix each (over budget, missed frames, work
   over 16.7 ms, no isolation, console errors), the device (user agent,
-  platform, tier, WebGPU adapter, WebGL renderer, DPR, viewport, canvas,
+  platform, tier, WebGPU adapter, DPR, viewport, canvas,
   cores, memory, isolation) and the headers served. A missing Chrome, adb
   or safaridriver is told in one line before the build; the phone paths'
   prerequisites are in tests/evidence/P3/device/NOTES.md.
 - The publish build has no command channel, so its scripted check runs
   through what it keeps: `bun tests/web/published.ts --project <dir>
-  [--webgl] [--no-build] [--no-isolation]` in `packages/engine` publishes
+  [--no-build] [--no-isolation]` in `packages/engine` publishes
   the project (`og build --publish`), serves it as the platform opens a
   release (`tests/web/play-origin.ts`: the top-level page with
   `window.__OG_GAME`, a stand-in play origin answering Player protocol 2

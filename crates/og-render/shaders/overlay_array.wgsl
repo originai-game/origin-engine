@@ -3,8 +3,7 @@
 // clipped, alpha blended over the finished frame) sampling a
 // texture_2d_array, the layer in the instance's effect.w (which overlay
 // sprites leave unused), so every overlay sprite of one array is one
-// instanced draw whichever layer each shows. On WebGL2 the array arrives as
-// a sampler2DArray (padded by gl_safe_array_layers, as the world's).
+// instanced draw whichever layer each shows.
 
 struct OverlayFrame {
   // x, y: the output in device pixels; z: device pixels per CSS pixel;

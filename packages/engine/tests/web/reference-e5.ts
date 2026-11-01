@@ -6,7 +6,7 @@
 // references/<tier>/<station>.png under the same rule. The stations and
 // their waits are read from the playtests, so the two cannot drift.
 //
-//   bun tests/web/reference-e5.ts [--webgl] [--record] [--chrome <path>]
+//   bun tests/web/reference-e5.ts [--record] [--chrome <path>]
 
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";

@@ -1,8 +1,8 @@
 //! The depth wave's light scenes (docs/depth.md §7): area lights shaded
 //! with linearly transformed cosines (`rect-lights`), spot and point light
 //! cookies (`light-cookies`), fog lit as a medium by the sun through the
-//! slots of a wall and by a spot (`volumetric-fog`: a froxel grid on the
-//! full tier, a raymarch on WebGL2), and, natively, a Cornell box baked by
+//! slots of a wall and by a spot (`volumetric-fog`: a froxel grid, or the
+//! raymarch where asked), and, natively, a Cornell box baked by
 //! og-bake in the scene's build with a light volume lighting a ball inside
 //! it (`baked-cornell`).
 
@@ -320,8 +320,8 @@ pub fn light_cookies_scene() -> RenderScene {
 /// Fog lit as a medium: a low sun behind a wall shines through its three
 /// slots, throwing shafts toward the camera (anisotropy 0.6, forward
 /// scattering) and bright bars on the ground; a warm spot on the right
-/// draws its cone in the fog (on the full tier: the clustered lights light
-/// the froxels; WebGL2's raymarch takes the sun alone).
+/// draws its cone in the fog (the clustered lights light the froxels, and
+/// the raymarch's steps).
 pub fn volumetric_fog_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     let sun = Vec3::new(0.15, 0.32, -1.0).normalize();

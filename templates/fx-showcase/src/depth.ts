@@ -11,7 +11,7 @@
 //                chrome sphere and a gold one on a wet, mirror-smooth floor,
 //                an og.ReflectionProbe filling the room so they reflect the
 //                walls and not the sky, and PostEffects.ssr laying the
-//                frame's own reflection on the floor (the probe on WebGL2).
+//                frame's own reflection on the floor.
 
 import { og } from "@origingame/engine";
 import type { Geometry, Material, Vector3 as Vec3, World } from "@origingame/engine";

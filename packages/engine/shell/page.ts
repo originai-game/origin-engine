@@ -30,7 +30,7 @@
 //   only when the install criteria hold;
 // - "Made with Origin Engine" in the corner unless the project turns it off.
 
-import { Shell } from "../src/web/shell.ts";
+import { Shell, webGpuMissing } from "../src/web/shell.ts";
 import { AudioShell } from "../src/web/audio.ts";
 import { pollGamepads } from "../src/web/gamepad.ts";
 import { mountWire } from "./wire.ts";
@@ -107,8 +107,8 @@ export function probeParams(member: string, args: unknown[]): Record<string, unk
 
 const zh = /^zh\b/i.test(globalThis.navigator?.language ?? "");
 const T = zh
-  ? { loading: "正在加载", play: "点击开始", tapToPlay: "点击开始", startFailed: "游戏无法启动", stopped: "游戏已停止", reload: "重新加载", copy: "复制报告", copied: "已复制", log: "日志", dump: "世界快照", install: "添加到主屏幕", installIos: "点按分享，再选“添加到主屏幕”", dismiss: "不用了", back: "返回", madeWith: "Made with Origin Engine" }
-  : { loading: "Loading", play: "Play", tapToPlay: "Tap to play", startFailed: "The game could not start", stopped: "The game stopped", reload: "Reload", copy: "Copy report", copied: "Copied", log: "Log", dump: "World", install: "Install", installIos: "Tap Share, then Add to Home Screen", dismiss: "Not now", back: "Back", madeWith: "Made with Origin Engine" };
+  ? { loading: "正在加载", play: "点击开始", tapToPlay: "点击开始", startFailed: "游戏无法启动", noWebGpu: "此浏览器不支持 WebGPU", noWebGpuDetail: "本游戏需要 WebGPU：请用最新版的 Chrome、Edge、Safari 或 Firefox 打开。", stopped: "游戏已停止", reload: "重新加载", copy: "复制报告", copied: "已复制", log: "日志", dump: "世界快照", install: "添加到主屏幕", installIos: "点按分享，再选“添加到主屏幕”", dismiss: "不用了", back: "返回", madeWith: "Made with Origin Engine" }
+  : { loading: "Loading", play: "Play", tapToPlay: "Tap to play", startFailed: "The game could not start", noWebGpu: "This browser does not support WebGPU", noWebGpuDetail: "This game runs on WebGPU: open it in a current Chrome, Edge, Safari or Firefox.", stopped: "The game stopped", reload: "Reload", copy: "Copy report", copied: "Copied", log: "Log", dump: "World", install: "Install", installIos: "Tap Share, then Add to Home Screen", dismiss: "Not now", back: "Back", madeWith: "Made with Origin Engine" };
 
 export function readConfig(doc: Document = document): ShellConfig {
   const text = doc.getElementById("og-config")?.textContent ?? "{}";
@@ -313,11 +313,12 @@ export async function play(): Promise<PlayHandle> {
 
   // ── the error card (§6) ──────────────────────────────────────────────
   let shellRef: Shell | null = null;
-  const fail = async (title: string, message: string, after: boolean) => {
+  // `retryable` false: a reload cannot help (a browser without WebGPU).
+  const fail = async (title: string, message: string, after: boolean, retryable = true) => {
     if (phase === "failed") return;
     phase = "failed";
     if (after) player.crash("EngineCrash", message);
-    else player.fail("engine_start", message, true);
+    else player.fail("engine_start", message, retryable);
     let dump = "";
     if (shellRef) {
       const withTimeout = (p: Promise<unknown>) => {
@@ -395,14 +396,12 @@ export async function play(): Promise<PlayHandle> {
   const autoplayParam = query.get("autoplay");
   // `autoplay=0`: a harness drives the clock through the probe (no gate, no play).
   const harness = autoplayParam === "0";
-  let webgl = query.get("webgl") === "1";
-  if (!webgl) {
-    try {
-      const gpu = (navigator as { gpu?: { requestAdapter(): Promise<unknown> } }).gpu;
-      webgl = !gpu || !(await gpu.requestAdapter());
-    } catch {
-      webgl = true;
-    }
+  // WebGPU only (docs/design.md §8): without it the page says so and the engine never starts.
+  const noWebGpu = await webGpuMissing();
+  if (noWebGpu) {
+    log.push([`webgpu: ${noWebGpu}`]);
+    await fail(T.noWebGpu, `${T.noWebGpuDetail} (${noWebGpu})`, false, false);
+    throw new Error(`this browser does not support WebGPU: ${noWebGpu}`);
   }
   if (config.isolation === "required" && !globalThis.crossOriginIsolated) {
     log.push(["warn: this game declares crossOriginIsolation required, but the page is not cross-origin isolated (serve it with COOP/COEP: see the headers file); it runs single-threaded"]);
@@ -450,7 +449,6 @@ export async function play(): Promise<PlayHandle> {
         : {}),
       root: new URL(".", location.href).href.replace(/\/$/, ""),
       basis: { js: new URL("./basis/basis_transcoder.js", location.href).href, wasm: new URL("./basis/basis_transcoder.wasm", location.href).href },
-      webgl,
       autoplay: false,
       // Behind the gate, the first screen: one tick builds the game's UI (a harness keeps tick 0).
       prime: !harness,

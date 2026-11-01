@@ -10,8 +10,8 @@
 //! the same), so a mesh and material shared by two rooms are two batches,
 //! each binding its own room's probe frame group. A per-instance index in
 //! the instance record would need every probe's cube bound at once (a cube
-//! array, which WebGL2 lacks, or a texture slot per probe, which WebGL2's
-//! skinned lit pipeline has none left for); a batch split costs a draw only
+//! array of every probe, rebuilt as probes come and go, or a texture slot
+//! per probe, which the lit pipelines' sixteen do not have); a batch split costs a draw only
 //! where a batch spans rooms.
 //!
 //! What is not an instance takes a probe per draw: a terrain level, a

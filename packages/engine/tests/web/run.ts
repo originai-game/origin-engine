@@ -3,7 +3,7 @@
 // SharedArrayBuffer ring), runs Chrome for Testing headless and prints the
 // page's result as JSON. Needs `bun run build` first (dist/web).
 //
-//   bun tests/web/run.ts [--webgl] [--no-isolation] [--chrome <path>]
+//   bun tests/web/run.ts [--no-isolation] [--chrome <path>]
 
 import { fileURLToPath } from "node:url";
 import { existsSync, rmSync } from "node:fs";
@@ -60,14 +60,13 @@ const server = Bun.serve({
     return new Response(file, { headers: { ...headers, "content-type": types[ext] ?? "application/octet-stream" } });
   },
 });
-const query = args.includes("--webgl") ? "?webgl=1" : "";
 const profile = join(out, `profile-${Date.now()}`);
 const browser = Bun.spawn(
   [
     chrome, "--headless=new", "--no-first-run", "--no-default-browser-check", `--user-data-dir=${profile}`,
     "--window-size=1280,720", "--use-angle=metal", "--enable-unsafe-webgpu", "--enable-features=WebGPU",
     "--ignore-gpu-blocklist", "--disable-gpu-vsync", "--remote-debugging-port=0",
-    `http://127.0.0.1:${server.port}/${query}`,
+    `http://127.0.0.1:${server.port}/`,
   ],
   { stdout: "ignore", stderr: "ignore" },
 );

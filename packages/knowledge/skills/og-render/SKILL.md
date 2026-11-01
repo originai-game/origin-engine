@@ -245,8 +245,8 @@ render sprite 12
   `shadowSoftness` (0.01–0.05) widens the penumbra with the distance from
   caster to receiver, as a real sun's does, and `cascadeBlend` (0.1–0.2)
   hides the seams between cascades. Point and spot lights with
-  `castShadow` cast cube shadows on the full tier and paraboloid ones on
-  WebGL2.
+  `castShadow` cast cube shadows (`pointShadows: "paraboloid"` is the
+  cheaper, coarser choice).
 - **Antialiasing and renderer options** are `GameDesc.render`, read once
   when the renderer attaches:
 
@@ -254,8 +254,8 @@ render sprite 12
   og.game({ render: { antialias: "taa", taaHistory: "catmullRom", taaSharpen: 0.3, pointShadows: "auto", shadowMapSize: 2048 }, ... });
   ```
 
-  `antialias`: `tier` (TAA on WebGPU, Metal and Vulkan, 4x MSAA on WebGL2),
-  `taa` (any tier, converges over about 8 frames: fast motion, thin
+  `antialias`: `tier` (TAA, the default),
+  `taa` (converges over about 8 frames: fast motion, thin
   geometry), `msaa4`, `fxaa` (one cheap pass after tone mapping; pixel and
   low-resolution looks), `off` (pixel art). `taaHistory: "catmullRom"`
   stays sharper under camera motion and `taaSharpen` (0–1) restores
@@ -357,9 +357,10 @@ with `density`, `heightDensity` and `falloff` (thicker low down),
 `scattering` (how bright) and `anisotropy` (towards 1, bright looking into
 the light), up to `volumetricDistance`. Fog of 0.03 to 0.1 per metre reads
 well indoors. With `og.DayNight`, the shafts move with the sun.
-`RenderCapabilities.volumetricFog` is `froxel` on the full tier or
-`raymarch` on WebGL2. On both, the sun, spots, points and rect lights light
-the fog, so a lantern glows in it on WebGL2 too.
+`RenderCapabilities.volumetricFog` is `froxel` (the default) or
+`raymarch` (the cheaper method, when the renderer was asked for it). In
+both, the sun, spots, points and rect lights light the fog, so a lantern
+glows in it.
 `RenderCapabilities.volumetricLights` is how many local lights light one
 sample (64 for the froxel grid, 8 for the raymarch, brightest first).
 
@@ -480,9 +481,7 @@ SSR is weighted by roughness as the surface is shaded, its roughness map
 and a terrain layer's roughness included (`roughness` 0.05 reflects
 sharply; above 0.75 it reflects nothing), and by Fresnel. What it misses (off screen,
 behind objects) falls back to the probes and the environment, so use SSR
-together with a probe. WebGL2 draws no SSR: check
-`og.render.capabilities(world).ssr`, and on that tier the probe is the
-whole reflection.
+together with a probe.
 
 ## 6. Atmosphere and water
 
@@ -780,7 +779,7 @@ fn surface_emissive(h: Hook, p: Params, e: vec3<f32>) -> vec3<f32> // emitted li
 ```
 
 The cook compiles every shader for every back end (WebGPU, Metal, Vulkan,
-and GLSL ES for WebGL2) and refuses one that does not compile with naga's
+DX12) and refuses one that does not compile with naga's
 message, its lines counted in your hooks. In the game:
 `og.render.shaderMaterial(world, must(og.load.shader(world,
 "shaders/dissolve.ogt")), { color, alphaTest: 0.5 })` makes the material,
@@ -860,7 +859,7 @@ default) or `hdr`:
   `color` is black.
 
 `depth: true` also keeps the view's linear depth, from near (0) to far
-(1), of its opaque meshes, on every tier, WebGL2 included. It costs a
+(1), of its opaque meshes, on every backend. It costs a
 second draw of the view's opaque meshes, so ask for it only when a
 material reads it. (A scene with soft particles, `softDistance` above 0,
 pays that draw in every view anyway: its particles fade against it.)

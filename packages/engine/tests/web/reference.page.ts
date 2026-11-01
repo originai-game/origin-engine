@@ -18,7 +18,6 @@ try {
     wasm: at("origin-engine_bg.wasm"),
     root: at("").replace(/\/$/, ""),
     basis: { js: at("basis/basis_transcoder.js"), wasm: at("basis/basis_transcoder.wasm") },
-    webgl: params.get("webgl") === "1",
     autoplay: false,
     prime: false,
     profile: params.get("profile") === "2d" ? "2d" : "3d",

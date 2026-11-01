@@ -12,7 +12,7 @@
 //! object hides.
 //!
 //! Done on the CPU on purpose: the answer is the same on every backend
-//! (Metal, Vulkan, lavapipe, WebGPU, WebGL2) and without one, needs no
+//! (Metal, Vulkan, DX12, lavapipe, WebGPU) and without one, needs no
 //! readback (so it answers synchronously on the web too), and never feeds
 //! back into the frame. Left out: terrains, scattered copies, particles,
 //! strips, text and the overlay (the UI is described from its own tree),

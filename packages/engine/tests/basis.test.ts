@@ -9,7 +9,6 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  compressionsFromWebGl2,
   compressionsFromWebGpu,
   loadBasisTranscoder,
   pickFormat,
@@ -221,7 +220,6 @@ test("the format follows the device's compressions; WebGPU names follow the form
   expect(pickFormat(["etc2"])).toBe("etc2");
   expect(pickFormat([])).toBe("rgba8");
   expect(compressionsFromWebGpu(new Set(["texture-compression-astc", "float32-filterable"]))).toEqual(new Set(["astc"]));
-  expect(compressionsFromWebGl2(["EXT_texture_compression_bptc", "WEBGL_compressed_texture_etc"])).toEqual(new Set(["bc", "etc2"]));
   expect(wgpuFormatName("bc7", true)).toBe("bc7-rgba-unorm-srgb");
   expect(wgpuFormatName("astc4x4", false)).toBe("astc-4x4-unorm");
   expect(wgpuFormatName("etc2", true)).toBe("etc2-rgba8unorm-srgb");

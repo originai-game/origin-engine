@@ -38,7 +38,7 @@
 //! space world                       # world | local
 //! align camera                      # camera | velocity <stretch>
 //! softDistance 0
-//! collision 0.4 0.2                 # <bounce> <friction> (depth-buffer collision, full tier)
+//! collision 0.4 0.2                 # <bounce> <friction> (depth-buffer collision in compute)
 //! render billboard                  # billboard | sprite <layer> (2D: drawn as sprites)
 //! glow 0                            # sprite mode: strength in the 2D glow buffer
 //! array "fx/smoke.ogt" random       # sprite mode: draw from a texture array (`type texture-array`)

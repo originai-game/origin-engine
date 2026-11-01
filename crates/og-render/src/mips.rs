@@ -1,5 +1,4 @@
-//! Mip chains for uploaded textures, generated with render passes (no compute,
-//! so the WebGL2 tier runs the same path).
+//! Mip chains for uploaded textures, generated with render passes.
 
 use std::collections::HashMap;
 

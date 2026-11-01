@@ -13,10 +13,10 @@
 //! does not move: older particles are dead either way). Particles never
 //! feed back into the simulation; nothing reads them but the renderer.
 //!
-//! **Two paths, one description.** On the full tier the simulation runs in
-//! a compute shader (`shaders/particles_sim.wgsl`) into a storage buffer the
-//! draw reads as instance data; on the no-compute tier (WebGL2), or with
-//! [`ParticleSimulation::Cpu`], [`CpuParticles`] runs the same steps in Rust
+//! **Two paths, one description.** By default the simulation runs in a
+//! compute shader (`shaders/particles_sim.wgsl`) into a storage buffer the
+//! draw reads as instance data; with [`ParticleSimulation::Cpu`],
+//! [`CpuParticles`] runs the same steps in Rust
 //! and uploads the state. Sprite-mode emitters ([`ParticleRender::Sprite`])
 //! always simulate on the CPU and draw through the sprite batch; one with a
 //! texture array ([`ParticleEmitter::array`]) draws each particle from a
@@ -261,9 +261,9 @@ pub enum ParticleAlign {
     Velocity { stretch: f32 },
 }
 
-/// Particles bounce off the depth buffer on the full tier (turning the
-/// depth prepass on), and off [`crate::RenderScene::particle_colliders`] on
-/// the CPU path (the no-compute tier, [`ParticleSimulation::Cpu`]); a CPU
+/// Particles bounce off the depth buffer in compute (turning the depth
+/// prepass on), and off [`crate::RenderScene::particle_colliders`] on the
+/// CPU path ([`ParticleSimulation::Cpu`], sprite-mode emitters); a CPU
 /// system with no colliders to meet passes through and
 /// [`crate::FrameStats::particle_collision_skipped`] counts it, as does a
 /// sprite-mode one. World space only.
@@ -476,10 +476,12 @@ impl ParticleSystem {
 /// Where particle systems simulate ([`crate::RenderDesc::particles`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum ParticleSimulation {
-    /// Compute on the full tier, CPU on the no-compute tier.
+    /// Compute (sprite-mode emitters on the CPU).
     #[default]
     Auto,
-    /// Always on the CPU (the no-compute tier's path, on any tier).
+    /// Always on the CPU, on any backend: the state is Rust's to read and
+    /// collides with [`crate::RenderScene::particle_colliders`] instead of
+    /// the depth buffer.
     Cpu,
 }
 

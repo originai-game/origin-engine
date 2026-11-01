@@ -187,9 +187,10 @@ wgpu with WGSL shaders cooked per backend (naga). On the web the renderer
 is WebGPU only (the owner, 2026-11-01, §8): compute is available on every
 supported device, and a feature is designed for the full tier rather than
 cut to a reduced one. The WebGL2 tier (wgpu's GL backend, CPU culling and
-particles, a CPU-built forward tile table) is retired; the WebGL2 notes
-below describe that code until it is removed and are not a requirement on
-new work.
+particles, a CPU-built forward tile table, a joint palette in a texture)
+was removed with that decision; the CPU culling and CPU particle paths
+remain as options on every device (`Culling::Cpu`, small frames under
+`Culling::Auto`, `ParticleSimulation::Cpu`).
 
 - Forward+ (clustered), with a depth-normal prepass when an effect reads
   depth or normals (on every frame it cost the 20,000-sphere field two
@@ -199,17 +200,17 @@ new work.
   lobes (clearcoat, sheen, transmission, iridescence, anisotropy).
 - Cascaded shadow maps for one directional light (opt-in PCSS soft
   shadows and blending across cascade splits); cube faces or two
-  dual-paraboloid hemispheres for up to 8 point/spot lights on the full
-  tier and 4 on WebGL2, the brightest at the camera first (cube on the full
-  tier and paraboloid on WebGL2 by default; `RenderOptions.pointShadows`).
+  dual-paraboloid hemispheres for up to 8 point/spot lights, the brightest
+  at the camera first (cube by default, paraboloid as the cheaper choice;
+  `RenderOptions.pointShadows`).
 - IBL from an environment map prefiltered at cook time; sky model with
   exposure; height fog, lit as a medium when volumetric; baked lightmaps
   and light volumes (below).
 - Post: bloom, tonemap (ACES, AgX or Khronos PBR Neutral), colour grading LUT (a photo
   editor's colour adjustments baked into it on the CPU), lens distortion, zoom, spin and directional screen blurs, SSAO (GTAO on
-  WebGPU), antialiasing by tier: TAA on the full tier (optional
-  Catmull-Rom history and sharpening), 4× MSAA on WebGL2, FXAA on any tier
-  and where the HDR target cannot be multisampled.
+  WebGPU), antialiasing: TAA by default (optional Catmull-Rom history
+  and sharpening), 4× MSAA or FXAA as choices, FXAA where the HDR target
+  cannot be multisampled.
 - What a frame may cost is data the renderer reads every frame:
   RenderSettings' quality fields (rect-light shadows, the number of
   shadowed lights, the shadow maps' scale, volumetric fog, soft particles,
@@ -310,8 +311,8 @@ either place gives the same points, bit for bit.
 Lines and points are one pass (`lines.rs`, `points.rs`,
 `shaders/lines.wgsl`). Each segment or point is an instance of a quad in
 screen space with a feathered edge, so widths in pixels or in world units
-and dashes behave the same on WebGPU and WebGL2. WebGL2 has no wide lines
-and WebGPU no line width at all. Material `wireframe` draws its instances'
+and dashes behave the same on every backend; WebGPU has no line width at
+all. Material `wireframe` draws its instances'
 unique triangle edges through the same pass, and the edges are computed
 once per mesh revision. The pass draws in two places:
 
@@ -396,15 +397,15 @@ S6).
   environment (`ibl.rs`). The lit shaders box-project the reflected ray
   onto the probe's box, so a room's walls reflect where they stand, and
   blend the probe into the environment over `blendDistance` at the box's
-  faces. Probes cost no texture slot, because WebGL2's skinned lit
-  pipeline uses all sixteen. A draw inside a probe's box binds that
+  faces. Probes cost no texture slot in the lit pipelines (a choice made
+  when a skinned lit pipeline had to fit sixteen textures). A draw inside a probe's box binds that
   probe's frame group instead, whose uniform carries the box and whose
   two IBL cubes are the environment's and the probe's. The probe is
   chosen per instance (`probe_select.rs`): the smallest box holding the
   centre of its bounds. The instance sort keys on it, so one mesh and
   material in two rooms is two batches, each binding its room's probe (a
-  per-instance index would need every cube bound at once: a cube array,
-  which WebGL2 lacks). Skinned instances choose by their posed bounds:
+  per-instance index would need every cube bound at once, as a cube
+  array). Skinned instances choose by their posed bounds:
   each joint's bind-pose box of the vertices it moves (made once per
   mesh, `skin.rs`) through the frame's joint matrices, so a figure whose
   root joint walks it into the next room takes that room's probe;
@@ -439,9 +440,8 @@ S6).
   layer roughness, a scattered copy's material. The hit is weighted
   by Fresnel and gloss² and faded at the screen's edges, towards the
   maximum distance, and for rays turning back to the camera. Where a ray
-  misses, the probes and environment already drawn remain. WebGL2 draws
-  no SSR (`RenderCapabilities.ssr` is false), so its smooth surfaces show
-  the probes alone.
+  misses, the probes and environment already drawn remain
+  (`RenderCapabilities.ssr` is false only without a renderer).
 
 Render targets, views, layers and custom shaders (depth S8).
 
@@ -460,7 +460,8 @@ next frame, so a target drawn every few ticks never shows the cut run.
   meshes and terrain again through the prepass pipelines into a
   single-sampled linear-depth colour target (RG32F, as the main
   prepass's `lindepth`), and the resolve normalises it from near to far.
-  One path on every tier, so the native gfx tests run what WebGL2 runs.
+  One path on every backend, so the native gfx tests run what the browser
+  runs.
   `RenderCapabilities.renderTargetDepth` is true with a renderer.
 
 **Views.** A view (`views.rs`, `og.CameraView`, `og.Mirror`) is a
@@ -622,14 +623,13 @@ Baked lighting, volumetrics and area lights (depth S7).
   point, spot and rect lights through their shadows and cookies (each
   froxel the mean of eight stratified, jittered samples over its slice's
   depth, so a shaft crossing a deep slice is integrated, not hit or
-  missed column by column), then integrates front to back. On WebGL2,
-  which has no compute, each pixel's ray is marched in 24 steps, each lit
-  by the sun and by the first 8 point, spot and rect lights of its
-  cluster (`RAYMARCH_LIGHTS`) through their shadows and cookies.
-  `RenderCapabilities.volumetricLights` reports the per-sample bound (64
-  in the froxel grid, 8 in the raymarch); `RenderDesc::volumetric`
-  (`OG_GFX_VOLUMETRIC=raymarch`) draws the raymarch on a full-tier device
-  to read its frames natively.
+  missed column by column), then integrates front to back. The
+  `raymarch` method, a choice on any device, marches each pixel's ray in
+  24 steps, each lit by the sun and by the first 8 point, spot and rect
+  lights of its cluster (`RAYMARCH_LIGHTS`) through their shadows and
+  cookies. `RenderCapabilities.volumetricLights` reports the per-sample
+  bound (64 in the froxel grid, 8 in the raymarch); `RenderDesc::volumetric`
+  (`OG_GFX_VOLUMETRIC=raymarch`) selects the raymarch.
   `RenderCapabilities.volumetricFog` reports which method the device uses.
   Both methods blend over the lit image after the main pass as
   colour × transmittance plus in-scattered light, reading the prepass's
@@ -690,7 +690,7 @@ Materials: `alphaToCoverage` (with MSAA) turns alpha-tested foliage into
 sample coverage, scatter included; material shaders get `Hook.eye`,
 `Hook.front`, `planar_reflection(p, shift)` (the frame's planar
 reflection, for a game's own water or floor, with
-`RenderOptions.planarReflections 2` on the full tier; 0 on WebGL2) and
+`RenderOptions.planarReflections 2`) and
 `screen_ao(p)`.
 `Terrain.visible false` keeps a terrain as ground for its scatter only,
 and `TerrainScatter.castShadows` turns the copies' shadows off. og-ui's
@@ -776,7 +776,7 @@ later.
   into a control shorter than its art shows the centre of the art's middle,
   squeezed at most twice, and sprites and the UI's images are sampled
   anisotropically where the device can (`RenderCapabilities.spriteAnisotropy`,
-  16; WebGL2 through `EXT_texture_filter_anisotropic`; 1 on a software
+  16; 1 on a software
   rasterizer, whose filter softens even a 1:1 draw), so the outline
   through a squeezed middle is as crisp as the corners; text keeps a
   trilinear sampler (its distance field). Screen transitions, count-ups and

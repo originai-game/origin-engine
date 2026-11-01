@@ -1,17 +1,17 @@
 //! GPU-driven culling (og-render's cull_gpu.rs) against the CPU path it
-//! replaces on the full tier: the same scene rendered for several frames
+//! replaces for large scenes: the same scene rendered for several frames
 //! with `Culling::Gpu` (the GPU path whatever the scene's size, so the
 //! small scenes cover every culled pass) and with `Culling::Cpu` gives the
 //! same picture (no channel off by more than 2 outside 0.01 % of the
 //! pixels, RMSE at most 0.002: far tighter than the gfx references'
 //! tolerance, which would hide a missing object), the same frustum counts,
 //! no fewer triangles drawn or hidden than the CPU path has in view, the
-//! GPU path on every frame exactly on the full tier, and on the street,
+//! GPU path on every frame, and on the street,
 //! where the nearest blocks hide most of the city, the occlusion test
 //! hides most of what is in view. The frames and a stats line per scene
 //! are written under the test's output directory.
 
-use og_render::{Culling, FrameStats, RenderTarget, Renderer, RgbaImage, Tier};
+use og_render::{Culling, FrameStats, RenderTarget, Renderer, RgbaImage};
 use og_tests::compare::{Tolerance, compare};
 use og_tests::gfx;
 use og_tests::scenes;
@@ -29,7 +29,6 @@ struct Run {
     stats: FrameStats,
     /// Whether the GPU culled each frame.
     gpu_frames: Vec<bool>,
-    tier: Tier,
 }
 
 /// Renders `frames` frames of the scene `name` with `culling`.
@@ -54,7 +53,6 @@ fn render(name: &str, culling: Culling, frames: u32) -> Run {
         image,
         stats,
         gpu_frames,
-        tier: renderer.info().tier,
     }
 }
 
@@ -73,7 +71,6 @@ const SCENES: &[(&str, u32)] = &[
     // The second planar reflection slot culls on the CPU beside the GPU's
     // first (RenderOptions.planarReflections 2).
     ("water-planar-two", 4),
-    ("msaa", 4),
     ("shader-hooks", 4),
     ("showcase", 4),
     // Secondary cameras and probe faces cull on the CPU beside the GPU's
@@ -93,7 +90,7 @@ fn gpu_culling_draws_the_cpu_paths_frame() {
     for &(name, frames) in SCENES {
         let gpu_run = render(name, Culling::Gpu, frames);
         let cpu_run = render(name, Culling::Cpu, frames);
-        let (gpu, g, tier) = (&gpu_run.image, &gpu_run.stats, gpu_run.tier);
+        let (gpu, g) = (&gpu_run.image, &gpu_run.stats);
         let (cpu, c) = (&cpu_run.image, &cpu_run.stats);
         gfx::save_png(&dir.join(format!("{name}.gpu.png")), gpu).expect("save");
         gfx::save_png(&dir.join(format!("{name}.cpu.png")), cpu).expect("save");
@@ -102,14 +99,11 @@ fn gpu_culling_draws_the_cpu_paths_frame() {
             "{name}: Culling::Cpu culls on the CPU every frame: {:?}",
             cpu_run.gpu_frames
         );
-        // Every full-tier adapter the gate runs on (Metal, Vulkan, lavapipe)
-        // has compute and indirect draws.
+        // Every adapter the gate runs on (Metal, Vulkan, lavapipe) has
+        // compute and indirect draws.
         assert!(
-            gpu_run
-                .gpu_frames
-                .iter()
-                .all(|&x| x == (tier == Tier::Full)),
-            "{name}: Culling::Gpu culls on the GPU on every frame exactly on the full tier ({tier:?}): {:?}",
+            gpu_run.gpu_frames.iter().all(|&x| x),
+            "{name}: Culling::Gpu culls on the GPU on every frame: {:?}",
             gpu_run.gpu_frames
         );
         // The paths differ only by rounding (instance order within a batch
@@ -123,7 +117,7 @@ fn gpu_culling_draws_the_cpu_paths_frame() {
             .expect("same size");
         let _ = writeln!(
             log,
-            "{name} ({frames} frames, {tier:?}): gpu draws={} culled={} occluded={} triangles={} in_view_triangles={} occluded_triangles={} shadow_casters={} | cpu draws={} culled={} triangles={} in_view_triangles={} shadow_casters={} | rmse={:.5} outliers={} max_channel_diff={}",
+            "{name} ({frames} frames): gpu draws={} culled={} occluded={} triangles={} in_view_triangles={} occluded_triangles={} shadow_casters={} | cpu draws={} culled={} triangles={} in_view_triangles={} shadow_casters={} | rmse={:.5} outliers={} max_channel_diff={}",
             g.draw_calls,
             g.culled,
             g.occluded,
@@ -184,13 +178,13 @@ fn gpu_culling_draws_the_cpu_paths_frame() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// `Culling::Auto` takes the GPU path on the full tier for the city's
+/// `Culling::Auto` takes the GPU path for the city's
 /// 40,000 instances and the CPU path for the showcase's few dozen
 /// (`og_render::GPU_CULLING_MIN_INSTANCES`).
 #[test]
 fn auto_culls_only_large_scenes_on_the_gpu() {
     for (name, large) in [("city-street", true), ("showcase", false)] {
-        let Run { stats, tier, .. } = render(name, Culling::Auto, 1);
+        let Run { stats, .. } = render(name, Culling::Auto, 1);
         assert_eq!(
             stats.instances >= og_render::GPU_CULLING_MIN_INSTANCES,
             large,
@@ -198,9 +192,8 @@ fn auto_culls_only_large_scenes_on_the_gpu() {
             stats.instances
         );
         assert_eq!(
-            stats.gpu_culling,
-            large && tier == Tier::Full,
-            "{name}: Culling::Auto culls {} instances on the GPU only on the full tier and from the threshold",
+            stats.gpu_culling, large,
+            "{name}: Culling::Auto culls {} instances on the GPU only from the threshold",
             stats.instances
         );
     }

@@ -243,7 +243,7 @@ impl SpriteArrayPipelines {
     }
 
     /// One array's group: every layer viewed as a 2D array (explicitly, so
-    /// the GL backend binds it as one), with `sampler`.
+    /// a one-layer array is one too), with `sampler`.
     pub fn bind_group(
         &self,
         device: &wgpu::Device,

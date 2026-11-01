@@ -1,9 +1,9 @@
 // The browser reference tiers of the effect and overlay frames:
 // templates/fx-showcase's five stations (every E1 effect, each under the
 // screen-space HUD and og.ui badge the overlay pass draws) rendered in
-// headless Chrome on WebGPU (or the WebGL2 fallback with --webgl) at
+// headless Chrome on WebGPU (the engine's only web tier) at
 // 1280×720, DPR 1, from the dev web export's engine Worker, and compared
-// with templates/fx-showcase/references/<tier>/ (`webgpu` or `webgl2`) when
+// with templates/fx-showcase/references/<tier>/ (`webgpu`) when
 // that frame is committed there, else with `metal` (a tier with no
 // directory is judged against metal throughout), under og-tests' rule
 // (crates/og-tests/src/compare.rs): a channel off by more than 32/255 is an
@@ -18,8 +18,8 @@
 // First the Worker gets `call("probe", "commands", {…})` with an object and
 // must answer the probe's refusal (it once trapped the wasm), then runs them.
 //
-//   bun tests/web/reference.ts [--webgl] [--record] [--out <dir>] [--chrome <path>]
-//   make web-reference                        both tiers
+//   bun tests/web/reference.ts [--record] [--out <dir>] [--chrome <path>]
+//   make web-reference                        the lane
 //
 // Another project's playtest frames: --project <dir> (relative to the
 // repository) with --script "<og run --commands script>" and
@@ -59,7 +59,7 @@
 // Exits 1 when a station does not match or has no reference (neither its
 // tier's nor metal's), the engine does not start or the probe does not
 // refuse. Needs Chrome (cdp.ts: a missing one is an error), or Firefox with
-// --firefox [<path>] (bidi.ts; WebGPU opens a window, WebGL2 is headless).
+// --firefox [<path>] (bidi.ts; WebGPU opens a window).
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
@@ -86,8 +86,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
 const project = join(repo, opt("--project") ?? join("templates", "fx-showcase"));
-const webgl = args.includes("--webgl");
-const tier = webgl ? "webgl2" : "webgpu";
+const tier = "webgpu";
 const record = args.includes("--record");
 const looks = args.includes("--looks");
 const work = join(pkg, "dist", "test-reference");
@@ -200,7 +199,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><title>reference<
 <style>html,body{margin:0;background:#14161b}canvas{display:block;width:${WIDTH}px;height:${HEIGHT}px}</style></head>
 <body><canvas></canvas><script type="module" src="/game/reference-page.js"></script></body></html>`;
 const server = serve({ dist, isolate: true, extra: { "/reference.html": html } });
-const browser = firefox ? await Firefox.launch({ firefox, headless: webgl }) : await Browser.launch({ chrome, width: WIDTH, height: HEIGHT });
+const browser = firefox ? await Firefox.launch({ firefox, headless: false }) : await Browser.launch({ chrome, width: WIDTH, height: HEIGHT });
 const log: string[] = [];
 const dir = join(out, tier);
 mkdirSync(dir, { recursive: true });
@@ -219,7 +218,7 @@ try {
   tab = await browser.open("about:blank", log);
   await tab.send("Emulation.setDeviceMetricsOverride", { width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false });
   const profile = settingsOf(project).profile;
-  await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/reference.html?profile=${profile}${webgl ? "&webgl=1" : ""}` });
+  await tab.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/reference.html?profile=${profile}` });
   await tab.until("globalThis.__og_shell__ || globalThis.__og_shell_error__", 90_000);
   const failed = await tab.eval<string | undefined>("globalThis.__og_shell_error__");
   if (failed) throw new Error(`the engine did not start: ${failed}\n${(await tab.eval<string[]>("globalThis.__og_log__ ?? []")).slice(-20).join("\n")}`);

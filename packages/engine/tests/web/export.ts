@@ -1,6 +1,6 @@
 // The web export end to end in headless Chrome: both archetypes built with
 // `og build --publish`'s web half, served with the build's own `_headers`,
-// loaded on WebGPU and on the WebGL2 fallback.
+// loaded on WebGPU.
 //
 // Per archetype and backend it records the first-frame time (the shell's
 // `og:first-frame` mark, ms since navigation), the tier the engine reports,
@@ -106,11 +106,11 @@ async function load(page: Page): Promise<{ firstFrame: number; ready: number; ti
 
 try {
   for (const game of ["runner", "match3"]) {
-    for (const backend of ["webgpu", "webgl2"] as const) {
+    for (const backend of ["webgpu"] as const) {
       const label = `${game} ${backend}`;
       const server = serve({ dist: builds[game]!.dist, isolate: true });
       const log: string[] = [];
-      const page = await browser.open(`http://127.0.0.1:${server.port}/game/index.html${backend === "webgl2" ? "?webgl=1" : ""}`, log);
+      const page = await browser.open(`http://127.0.0.1:${server.port}/game/index.html`, log);
       try {
         const t = await load(page);
         check(t.tier === backend, `${label}: the engine reports tier ${backend}`, t);

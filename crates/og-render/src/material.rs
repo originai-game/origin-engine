@@ -267,7 +267,7 @@ pub struct StandardMaterial {
     pub styled: u32,
     /// 1: drawn as the edges of its triangles, one CSS pixel wide, in its
     /// colour plus its emissive light, depth tested and unlit (three.js
-    /// `wireframe`, on every tier: lines, not a polygon mode). Its instances
+    /// `wireframe`, on every backend: lines, not a polygon mode). Its instances
     /// cast no shadow.
     #[reflect(min = 0.0, max = 1.0, default = 0.0)]
     pub wireframe: u32,
@@ -1089,8 +1089,6 @@ impl ArrayMaps {
             ),
         );
         let solid = |label, rgba: [u8; 4]| {
-            let layers = crate::gl_safe_array_layers(1);
-            let texels: Vec<u8> = (0..layers).flat_map(|_| rgba).collect();
             wgpu::util::DeviceExt::create_texture_with_data(
                 device,
                 queue,
@@ -1099,7 +1097,7 @@ impl ArrayMaps {
                     size: wgpu::Extent3d {
                         width: 1,
                         height: 1,
-                        depth_or_array_layers: layers,
+                        depth_or_array_layers: 1,
                     },
                     mip_level_count: 1,
                     sample_count: 1,
@@ -1109,7 +1107,7 @@ impl ArrayMaps {
                     view_formats: &[],
                 },
                 wgpu::util::TextureDataOrder::LayerMajor,
-                &texels,
+                &rgba,
             )
             .create_view(&wgpu::TextureViewDescriptor {
                 dimension: Some(wgpu::TextureViewDimension::D2Array),
@@ -1143,7 +1141,7 @@ mod tests {
     /// the layer handed on flat, and the four entry points replaced.
     #[test]
     fn the_array_variant_samples_every_map_at_its_layer() {
-        let standard = crate::lit_source(&crate::hooks::default_hooks(), true);
+        let standard = crate::lit_source(&crate::hooks::default_hooks());
         let array = array_lit_source(&standard);
         for decl in [
             "var base_color_tex: texture_2d_array<f32>;",
@@ -1171,10 +1169,7 @@ mod tests {
             assert_eq!(layered, samples, "{texture}");
         }
         // The shadow variant renames its two plain vertex stages only.
-        let shadow = array_shadow_source(&crate::shadow_source(
-            &crate::hooks::default_hooks(),
-            crate::skin::PaletteMode::Storage,
-        ));
+        let shadow = array_shadow_source(&crate::shadow_source(&crate::hooks::default_hooks()));
         assert!(shadow.contains("fn vs_standard(") && shadow.contains("fn vs_lean_standard("));
         assert_eq!(shadow.matches("\nfn vs(").count(), 1);
     }

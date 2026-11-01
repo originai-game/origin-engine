@@ -1,4 +1,4 @@
-//! The renderer must keep compiling for the browser (WebGPU and WebGL2).
+//! The renderer must keep compiling for the browser (WebGPU).
 //!
 //! The gate's wasm-build step (scripts/check.sh, before the test step)
 //! already compiles og-render for wasm32 into `$OG_WASM_OUT` (default

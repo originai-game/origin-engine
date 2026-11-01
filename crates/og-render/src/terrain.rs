@@ -779,8 +779,6 @@ impl TerrainRenderer {
             terrain_shadow_array_source(),
         );
         let solid = |label, rgba: [u8; 4]| {
-            let layers = crate::gl_safe_array_layers(1);
-            let texels: Vec<u8> = (0..layers).flat_map(|_| rgba).collect();
             wgpu::util::DeviceExt::create_texture_with_data(
                 device,
                 queue,
@@ -789,7 +787,7 @@ impl TerrainRenderer {
                     size: wgpu::Extent3d {
                         width: 1,
                         height: 1,
-                        depth_or_array_layers: layers,
+                        depth_or_array_layers: 1,
                     },
                     mip_level_count: 1,
                     sample_count: 1,
@@ -799,7 +797,7 @@ impl TerrainRenderer {
                     view_formats: &[],
                 },
                 wgpu::util::TextureDataOrder::LayerMajor,
-                &texels,
+                &rgba,
             )
             .create_view(&wgpu::TextureViewDescriptor {
                 dimension: Some(wgpu::TextureViewDimension::D2Array),
@@ -888,14 +886,13 @@ impl TerrainRenderer {
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
-        // Viewed as a 2D array, so it needs GL-safe layers, each white.
-        let white_layers = crate::gl_safe_array_layers(1);
+        // One white layer, viewed as a 2D array.
         let white_tex = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("terrain no control"),
             size: wgpu::Extent3d {
                 width: 1,
                 height: 1,
-                depth_or_array_layers: white_layers,
+                depth_or_array_layers: 1,
             },
             mip_level_count: 1,
             sample_count: 1,
@@ -906,7 +903,7 @@ impl TerrainRenderer {
         });
         queue.write_texture(
             white_tex.as_image_copy(),
-            &vec![255; 4 * white_layers as usize],
+            &[255; 4],
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(4),
@@ -915,7 +912,7 @@ impl TerrainRenderer {
             wgpu::Extent3d {
                 width: 1,
                 height: 1,
-                depth_or_array_layers: white_layers,
+                depth_or_array_layers: 1,
             },
         );
         let white_array = white_tex.create_view(&wgpu::TextureViewDescriptor {
@@ -962,9 +959,8 @@ impl TerrainRenderer {
         range: (f32, f32),
         streamed: bool,
     ) -> GpuData {
-        // `capacity` slots; the spare layers keep a one-tile (or six-tile)
-        // terrain a 2D array on WebGL2 and are never used.
-        let layers = crate::gl_safe_array_layers(capacity);
+        // `capacity` slots.
+        let layers = capacity;
         let array = |label, side: u32, mips: u32, format| {
             let t = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some(label),
@@ -1135,13 +1131,12 @@ impl TerrainRenderer {
             let layout = source
                 .layout()
                 .map_err(|e| crate::RenderError::InvalidData(format!("terrain {i}: {e}")))?;
-            // The atlases allocate at most one spare layer beyond the slots
-            // (`gl_safe_array_layers`), which must stay within `max_layers`.
-            // (`max`/`min`, not `clamp`: a device with eight layers or
-            // fewer must not panic.)
+            // The atlases' layers must stay within `max_layers`. (`max`/`min`,
+            // not `clamp`: a device with eight layers or fewer must not
+            // panic.)
             let capacity = (t.lod.budget() / layout.slot_bytes().max(1))
                 .max(8)
-                .min((self.max_layers as u64).saturating_sub(1).max(1))
+                .min((self.max_layers as u64).max(1))
                 .min(layout.tile_count() as u64) as u32;
             let view = TerrainView {
                 detail: scene.scatter_detail(ti),

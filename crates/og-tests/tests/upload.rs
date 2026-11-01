@@ -6,7 +6,7 @@
 //! And only what a draw reads: the CPU path's sorted records that no list
 //! draws whole are not written.
 
-use og_render::{Culling, FrameStats, RenderTarget, Renderer, Tier};
+use og_render::{Culling, FrameStats, RenderTarget, Renderer};
 use og_tests::scenes;
 
 fn frame(renderer: &mut Renderer, scene: &og_render::RenderScene) -> FrameStats {
@@ -21,9 +21,6 @@ fn check(culling: Culling) {
     let mut built = scenes::build("spheres-20k").expect("scene");
     built.desc.culling = culling;
     let mut renderer = Renderer::new_blocking(&built.desc).expect("renderer");
-    if culling == Culling::Gpu && renderer.info().tier != Tier::Full {
-        return;
-    }
     let n = built.scene.instances.len() as u64;
     let first = frame(&mut renderer, &built.scene);
     assert!(

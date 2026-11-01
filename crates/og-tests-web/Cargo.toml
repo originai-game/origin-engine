@@ -4,7 +4,7 @@ version = "0.7.7"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine tests in the browser: og-tests' gfx scenes and og-ui's reference scenes as a wasm-bindgen module rendered on WebGPU or WebGL2 (packages/engine/tests/web/reference-gfx.ts)."
+description = "Origin Engine tests in the browser: og-tests' gfx scenes and og-ui's reference scenes as a wasm-bindgen module rendered on WebGPU (packages/engine/tests/web/reference-gfx.ts)."
 publish = false
 
 [lib]
@@ -25,8 +25,7 @@ og-input = { path = "../og-input" }
 og-core = { path = "../og-core" }
 image = { workspace = true }
 serde_json = "1"
-wgpu = { workspace = true }
 wasm-bindgen = "=0.2.129"
 wasm-bindgen-futures = "=0.4.79"
 js-sys = "=0.3.106"
-web-sys = { version = "=0.3.106", features = ["OffscreenCanvas", "console"] }
+web-sys = { version = "=0.3.106", features = ["console"] }

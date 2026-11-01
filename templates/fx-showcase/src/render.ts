@@ -2,8 +2,7 @@
 // built when first shown (like the E5 round's):
 //
 //   lights   a night plaza lit by 256 point and spot lights (Forward+:
-//            clustered lights on WebGPU and native, the CPU tile table
-//            on WebGL2)
+//            clustered lights)
 //   moon     og.DayNight at 21:00: a waxing moon rising over the rooftops,
 //            moonlit, with stars
 //   materials every StandardMaterialDesc feature on one board: metalness and

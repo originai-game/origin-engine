@@ -452,7 +452,7 @@ pub struct Instance {
 }
 
 /// An instance's own look, beside its transform in the instance record and
-/// read by the lit shaders on every tier (pbr_fs.wgsl, physical.wgsl):
+/// read by the lit shaders on every backend (pbr_fs.wgsl, physical.wgsl):
 /// the hit flash mixes the lit colour towards `flash_color`, the tint
 /// multiplies the material's base colour. Colours travel as 8 bits a
 /// channel. [`InstanceFx::NONE`] (the default) shades exactly as the
@@ -697,7 +697,7 @@ impl Default for DirectionalLight {
 /// culled: past it the least important are dropped (the radiance at the
 /// camera; `clusters.rs`) and counted in [`crate::FrameStats::lights_dropped`].
 pub const MAX_LIGHTS: usize = 256;
-pub use crate::shadows::{MAX_SHADOWED_LIGHTS, NO_COMPUTE_SHADOWED_LIGHTS};
+pub use crate::shadows::MAX_SHADOWED_LIGHTS;
 
 /// The shape of a local light.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -742,9 +742,9 @@ pub struct Light {
     pub range: f32,
     /// Shadows from this light (cube faces or two paraboloid hemispheres for
     /// a point light, [`crate::PointShadows`]; one map for a spot). Of the
-    /// shadowed lights in view, the tier's [`crate::RenderInfo::shadowed_lights`]
-    /// with the most radiance at the camera get them (8 on the full tier, 4
-    /// on WebGL2); the rest are counted in
+    /// shadowed lights in view, the [`crate::RenderInfo::shadowed_lights`]
+    /// (8) with the most radiance at the camera get them; the rest are
+    /// counted in
     /// [`crate::FrameStats::shadowed_lights_dropped`].
     pub cast_shadows: bool,
 }
@@ -899,8 +899,7 @@ pub struct PostEffects {
     pub sharpen: Option<f32>,
     /// A full-screen hit flash.
     pub flash: Option<ScreenFlash>,
-    /// Screen-space reflections (the full tier; `None`: off, and WebGL2
-    /// draws none).
+    /// Screen-space reflections (`None`: off).
     pub ssr: Option<crate::ScreenSpaceReflections>,
     /// `Some(radius)`: [`PostEffects::bloom`] as three.js UnrealBloomPass
     /// (luminance high pass, five Gaussian mips mixed by `radius`, the knee
@@ -1224,7 +1223,7 @@ impl Text {
 /// output encodes them in hardware, any other output in the shader).
 /// Sorted and batched as the world's sprites and text are: by (layer, kind,
 /// texture or font), submission order within a run, the same textures and
-/// MSDF fonts. Drawn on every tier; included in [`crate::Renderer::capture`]
+/// MSDF fonts. Drawn on every backend; included in [`crate::Renderer::capture`]
 /// and counted in [`crate::FrameStats`].
 #[derive(Clone, Debug, PartialEq)]
 pub struct Overlay {
@@ -1400,9 +1399,9 @@ pub struct RenderScene {
     pub tick_rate: f32,
     /// Running particle systems (state is kept by their id).
     pub particles: Vec<ParticleSystem>,
-    /// What CPU-simulated particles with collision bounce off (the
-    /// no-compute tier's stand-in for the depth buffer the compute path
-    /// reads; [`crate::ParticleCollider`]). Empty by default.
+    /// What CPU-simulated particles with collision bounce off (the CPU
+    /// path's stand-in for the depth buffer the compute path reads;
+    /// [`crate::ParticleCollider`]). Empty by default.
     pub particle_colliders: Vec<crate::ParticleCollider>,
     pub trails: Vec<Trail>,
     pub ribbons: Vec<Ribbon>,

@@ -271,7 +271,7 @@ fn a_texture_array_cooks_its_layers_and_uploads_them_as_one_array() {
         .render(&scene, &og_render::RenderTarget::Offscreen)
         .unwrap();
     let info = renderer.texture_array_info(pixel).unwrap();
-    assert_eq!((info.layers, info.gpu_layers, info.levels), (3, 3, 1));
+    assert_eq!((info.layers, info.levels), (3, 1));
     assert_eq!(info.format, og_render::TextureFormat::Rgba8);
     for (i, c) in cards.iter().enumerate() {
         let read = renderer
@@ -280,8 +280,7 @@ fn a_texture_array_cooks_its_layers_and_uploads_them_as_one_array() {
         assert_eq!(&read.pixels, c, "layer {i} of the array");
     }
     let cinfo = renderer.texture_array_info(compressed).unwrap();
-    // Two layers need no padding (one, or a multiple of six, would).
-    assert_eq!((cinfo.layers, cinfo.gpu_layers, cinfo.levels), (2, 2, 7));
+    assert_eq!((cinfo.layers, cinfo.levels), (2, 7));
     assert!(
         stats.texture_bytes >= info.bytes + cinfo.bytes,
         "counted in the frame's texture bytes"
@@ -303,14 +302,12 @@ fn a_texture_array_cooks_its_layers_and_uploads_them_as_one_array() {
     evidence(
         "textures-array.json",
         format!(
-            "{{\"pixel\": {{\"layers\": {}, \"gpu_layers\": {}, \"levels\": {}, \"format\": \"{}\", \"bytes\": {}}}, \"colour\": {{\"layers\": {}, \"gpu_layers\": {}, \"levels\": {}, \"format\": \"{}\", \"bytes\": {}}}, \"frame_texture_bytes\": {}}}\n",
+            "{{\"pixel\": {{\"layers\": {}, \"levels\": {}, \"format\": \"{}\", \"bytes\": {}}}, \"colour\": {{\"layers\": {}, \"levels\": {}, \"format\": \"{}\", \"bytes\": {}}}, \"frame_texture_bytes\": {}}}\n",
             info.layers,
-            info.gpu_layers,
             info.levels,
             info.format.name(),
             info.bytes,
             cinfo.layers,
-            cinfo.gpu_layers,
             cinfo.levels,
             cinfo.format.name(),
             cinfo.bytes,

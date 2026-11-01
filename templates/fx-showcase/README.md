@@ -52,7 +52,7 @@ as evidence. `og polish .` (2026-10-19): taste 100, feel 97.
 | `stylised` | toon (with `textures/toon.png` as the ramp) and an outline, rim light, dissolve with a glowing edge, a hit flash pulse, screen flash and camera shake on the same beat, the skinned `walker.glb` walking with its first blendshape breathing |
 | `sky` | dusk from `og.DayNight` (the sun, sky, light and ambient from the clock, the image-based light regenerated every 5 game minutes) over a colonnade, `og.Fog` distance and height fog tinted to the horizon |
 | `weather` | `og.Weather` rain over a yard: streaks falling with the wind, the preset's fog and dimmed light, under an overcast `og.Sky` |
-| `water` | `og.Water` over an `og.WaterSurface`: colour by depth over a sloping bed, foam at the posts and the buoy, screen-space reflections (the sky's cubemap on WebGL2), a crate dropped in at 0.33 s that splashes and floats |
+| `water` | `og.Water` over an `og.WaterSurface`: colour by depth over a sloping bed, foam at the posts and the buoy, screen-space reflections, a crate dropped in at 0.33 s that splashes and floats |
 | `shaders` | `og.load.shader` materials (`shaders/dissolve.ogt`, `shaders/grass.ogt`, WGSL hooks compiled by the cook for every back end): a sphere dissolving by noise as `og.render.setShaderParam` sweeps its amount, a cut cube, 600 wind-swayed grass blades |
 | `controller` | `og.CharacterController` up three steps and a slope, a jump, then off the landing onto a lift (a kinematic body) that carries it |
 | `joints` | `og.Joint`: a motorised hinge, a chain of ball joints, a spring; the walker as an `og.Ragdoll` (rig from its skeleton) going limp from its walk at 0.67 s |
@@ -71,7 +71,7 @@ as evidence. `og polish .` (2026-10-19): taste 100, feel 97.
 | `fluids3d` | two `og.Fluid3D` of one `group` in a tiled basin (their `bounds`): a blue pool of 1600 particles, and a heavy orange fluid (`density` 3, `mixing` 0) poured into its left end by an emitter (`emitRate`, up to `maxCount` 500) that sinks under it; drawn as one screen-space surface, the tiles seen through it tinted and bent, lit by the sun and an orange lamp, the low front wall cutting it (about 2 ms of CPU a tick at two substeps) |
 | `environment` | `og.load.environment(world, "env/studio.ogt")` (the cook prefiltered `env/studio.hdr`, a synthetic 256 × 128 studio, into a 128² GGX cube and irradiance harmonics) set as `og.Environment.map`, turned 40°, drawn behind with `background`: five spheres on a plinth (mirror chrome, brushed chrome, gold, red lacquer, chalk) lit by it alone but for a weak sun along the key light; `RenderSettings.toneMapping` `agx`, auto exposure adapting at 1 EV/s up and 2.5 down |
 | `baked` | `scenes/cornell.ogt`, a Cornell box whose model is `static true`, baked by `og bake lightmaps` (a CPU path tracer, `scenes/cornell.lightmap.ogt` and `.ktx2`): the white walls and blocks take red and green from the walls beside them and the ceiling is lit by bounces alone, while the ceiling spot's direct light and shadows are drawn live; its `og.LightVolume` lights a ball rolling through the box; `baked:off` draws it unbaked, `baked:on` again |
-| `volumetric` | a room with a window in `og.Fog` `volumetric` fog: the sun of an `og.DayNight` cycle (an hour every four seconds) throws shafts through the panes that sweep across the floor; an `og.RectLight` panel under the ceiling, a spot with a lattice `cookie` and a lantern `og.PointLight` with a cube `cookie`, each lighting the fog (a froxel grid on the full tier, a raymarch on WebGL2) |
+| `volumetric` | a room with a window in `og.Fog` `volumetric` fog: the sun of an `og.DayNight` cycle (an hour every four seconds) throws shafts through the panes that sweep across the floor; an `og.RectLight` panel under the ceiling, a spot with a lattice `cookie` and a lantern `og.PointLight` with a cube `cookie`, each lighting the fog (a froxel grid) |
 | `models` | `models/clockwork.ogt`, a `type model` the cook builds from og-geom parts (og-game §18): a brass gear extruded with a bevel round a hole, hung from the `axle` pivot with three bolts placed by `at` blocks (one mesh, drawn instanced), a lathed vase, a horn swept along a path tapering and twisting, a dice cut by CSG, a fin and its mirror, a plinth with `uvRepeat`; loaded with `og.load.gltf` as any model, and `og.render.raycast` (the BVH the cook built) finds the gear's front face and passes through its hole |
 
 `tests/frames.og.ts` shows each station, waits for its effects (TAA,
@@ -92,8 +92,7 @@ and checks of what it shows from dumped entities and the two frames (the
 crate floats, the character rides the lift, the hinge turned and the ragdoll
 blended to its bones, the ball stays within its rope's reach, rain and
 flags move). `OG_FX_CAPTURE=water.png og test .` records named frames only.
-The E5 and phase 2 stations have references on all four tiers: `metal`, `vulkan-cpu`
-(lavapipe in the og-lavapipe container, reproduced at RMSE 0) and the browser
-tiers `webgpu` and `webgl2`, which come from
+The E5 and phase 2 stations have `metal` references; the browser tier,
+WebGPU, is judged against them by
 `packages/engine/tests/web/reference-e5.ts` (`docs/ci.md` §Browser reference
 tiers).

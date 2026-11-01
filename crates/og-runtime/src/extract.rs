@@ -27,8 +27,8 @@ use std::collections::BTreeMap;
 /// A renderer the host attached to an engine (an OffscreenCanvas surface on
 /// the web, an offscreen target on native).
 pub trait RenderBackend {
-    /// The IDL `RenderTier` (`webgpu`, `webgl2`, `metal`, `vulkan`,
-    /// `vulkan-cpu`), og-render's `tier_name`, which also names the
+    /// The IDL `RenderTier` (`webgpu`, `metal`, `vulkan`, `vulkan-cpu`,
+    /// `dx12`), og-render's `tier_name`, which also names the
     /// reference frames.
     fn tier(&self) -> String;
     /// The render target in device pixels.
@@ -501,8 +501,8 @@ impl Hierarchy {
     /// them (a pass over every entity whose archetype changed) to the next
     /// question about an entity. The raycast record reads the world as
     /// every tick starts and most ticks ask it nothing (20,000 moving
-    /// spheres: the per-entity pass was a tenth of the WebGL2 frame's wasm
-    /// work). Reads with no question between them add up: an archetype is
+    /// spheres: the per-entity pass was a tenth of the wasm work of a frame
+    /// on the retired WebGL2 tier). Reads with no question between them add up: an archetype is
     /// still only when it was still at each of them.
     pub(crate) fn capture(&mut self, world: &World) {
         self.composed = 0;
@@ -1642,8 +1642,9 @@ pub(crate) fn add_font(scene: &mut RenderScene, font: &og_cook::runtime::CookedF
 /// (`RenderScene::particle_colliders`): every og.Collider that is a box, a
 /// sphere or a terrain's height field, placed as physics places it, while
 /// a particle system of the frame has collision. The compute path reads the
-/// depth buffer instead; WebGL2 (and `ParticleSimulation::Cpu`) reads these,
-/// so sparks bounce on the ground and on solid shapes on every tier.
+/// depth buffer instead; `ParticleSimulation::Cpu` and sprite-mode
+/// emitters read these, so their sparks bounce on the ground and on solid
+/// shapes too.
 fn particle_colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     rs.scene.particle_colliders.clear();
     let colliding = rs.scene.particles.iter().any(|s| {

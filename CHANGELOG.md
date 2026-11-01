@@ -15,6 +15,22 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Breaking: WebGL2 is removed; the web is WebGPU only** (the owner,
+  2026-11-01, design §8). A browser without WebGPU gets the player
+  shell's "This browser does not support WebGPU" card (reported to the
+  Player as a non-retryable `engine_start` failure) instead of a degraded
+  engine. Removed: the `webgl2` variant of `RenderTier`; the shell's
+  `webgl` option and the play page's `webgl=1` parameter; `og run --device
+  --webgl` and every browser test runner's `--webgl` tier; og-render's
+  `Backend::WebGl2`, `Tier` and `RenderInfo.tier`; the vendored
+  `third_party/wgpu-hal` (its patches were GLES-only). With a renderer,
+  `RenderCapabilities.compute` and `ssr` are always true,
+  `maxShadowedLights` is 8 and `volumetricFog` is `froxel` unless the
+  game asked for `raymarch`. The `auto` defaults now always mean TAA,
+  cube point shadows, GTAO and the froxel grid; MSAA, FXAA, paraboloid
+  shadows, SSAO, the raymarch, CPU culling and CPU particles stay as
+  choices on every device. A game that set none of these draws as it did
+  on WebGPU.
 - Entity arguments say what went wrong: a value that is not an entity
   number (`null` from `world.find`, `undefined`, a Result) is thrown naming
   the call and parameter, alike on both hosts (`world.set: entity is null

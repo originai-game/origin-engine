@@ -6,7 +6,7 @@
 //! fog, scattering its colour times `scattering` of the light it is lit by
 //! with a Henyey-Greenstein phase, out to `distance` metres of view depth.
 //!
-//! - Full tier ([`VolumetricMethod::Froxel`]): the graph pass `volumetric`
+//! - [`VolumetricMethod::Froxel`] (the default): the graph pass `volumetric`
 //!   (two compute dispatches after the shadow passes) lights a 160 × 90 ×
 //!   64 froxel grid over the view by the sun through its cascades and by
 //!   the clustered point, spot and rect lights through their shadows and
@@ -15,18 +15,19 @@
 //!   froxel and per frame: a slice is metres deep far out, and a single
 //!   sample there landed in or out of a shaft column by column (vertical
 //!   streaks).
-//! - WebGL2 ([`VolumetricMethod::Raymarch`]): no compute; the apply pass
-//!   marches each pixel's view ray in 24 jittered steps, lit by the sun
-//!   through its cascades and by the first [`RAYMARCH_LIGHTS`] point, spot
-//!   and rect lights of each step's cluster through their shadows and
-//!   cookies (a lantern lights its fog on WebGL2 too).
+//! - [`VolumetricMethod::Raymarch`] (asked for with
+//!   `RenderDesc::volumetric`): no compute pass; the apply pass marches
+//!   each pixel's view ray in 24 jittered steps, lit by the sun through its
+//!   cascades and by the first [`RAYMARCH_LIGHTS`] point, spot and rect
+//!   lights of each step's cluster through their shadows and cookies. It
+//!   has no froxel grid to fill and no slice blur, at the cost of fewer
+//!   lights per sample and a per-pixel loop.
 //!
 //! Either way the last thing the `main` pass does is blend the result over
 //! the lit image (colour × transmittance + in-scattered light) at each
 //! pixel's prepass depth, so opaque surfaces, the sky (at `distance`) and
 //! whatever was blended in front of them are all seen through the volume.
 
-use crate::clusters::LightTables;
 use glam::Vec3;
 
 /// Fog lit as a participating medium ([`crate::RenderScene::volumetric_fog`]).
@@ -65,10 +66,13 @@ impl Default for VolumetricFog {
     }
 }
 
-/// How a renderer draws volumetric fog.
+/// How a renderer draws volumetric fog, on every backend (WebGPU, Metal,
+/// Vulkan, DX12).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum VolumetricMethod {
+    /// A froxel grid lit and integrated in compute (the default).
     Froxel,
+    /// A per-pixel raymarch in the apply pass's fragment shader.
     Raymarch,
 }
 
@@ -81,7 +85,7 @@ pub const RAYMARCH_STEPS: u32 = 24;
 /// The most point, spot and rect lights of a step's cluster that light the
 /// raymarch's fog (the first of the cluster's, which keeps the brightest
 /// at the camera first): each step evaluates them with their shadows and
-/// cookies, so 24 steps × 8 lights is the WebGL2 fragment's bound.
+/// cookies, so 24 steps × 8 lights bound the fragment's work.
 pub const RAYMARCH_LIGHTS: u32 = 8;
 
 /// The lights one sample of the fog is lit by, by method
@@ -139,7 +143,6 @@ fn froxel_volume(device: &wgpu::Device, label: &str, slices: u32) -> wgpu::Textu
 /// The renderer's volumetric fog: made on the first frame that has it.
 pub(crate) struct Volumetric {
     pub method: VolumetricMethod,
-    tables: LightTables,
     uniform: wgpu::Buffer,
     froxels: Option<Froxels>,
     apply_layout: wgpu::BindGroupLayout,
@@ -210,16 +213,17 @@ fn texture_ty(dim: wgpu::TextureViewDimension, filterable: bool) -> wgpu::Bindin
     }
 }
 
-/// The module's source for a tier (`full`: the froxel entry points).
-pub(crate) fn source(tables: LightTables, full: bool) -> String {
+/// The module's source for a method (`froxel`: the froxel entry points,
+/// else the raymarch's).
+pub(crate) fn source(froxel: bool) -> String {
     format!(
         "{}{}{}{}{}{}",
         crate::FRAME_WGSL,
-        tables.wgsl(),
+        crate::clusters::wgsl(),
         crate::LIGHTING_WGSL,
         crate::AREA_WGSL,
         wgsl3d!("volumetric.wgsl"),
-        if full {
+        if froxel {
             wgsl3d!("volumetric_froxel.wgsl").to_string()
         } else {
             format!(
@@ -231,12 +235,8 @@ pub(crate) fn source(tables: LightTables, full: bool) -> String {
 }
 
 impl Volumetric {
-    pub fn new(device: &wgpu::Device, tables: LightTables, full: bool) -> Volumetric {
-        let method = if full {
-            VolumetricMethod::Froxel
-        } else {
-            VolumetricMethod::Raymarch
-        };
+    pub fn new(device: &wgpu::Device, method: VolumetricMethod) -> Volumetric {
+        let froxel = method == VolumetricMethod::Froxel;
         let fragment = wgpu::ShaderStages::FRAGMENT;
         let mut entries = vec![
             entry(0, fragment | wgpu::ShaderStages::COMPUTE, uniform_ty()),
@@ -246,7 +246,7 @@ impl Volumetric {
                 texture_ty(wgpu::TextureViewDimension::D2, false),
             ),
         ];
-        if full {
+        if froxel {
             entries.push(entry(
                 5,
                 fragment,
@@ -264,7 +264,6 @@ impl Volumetric {
         });
         Volumetric {
             method,
-            tables,
             uniform: device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("volumetric"),
                 size: std::mem::size_of::<VolUniform>() as u64,
@@ -282,8 +281,8 @@ impl Volumetric {
         if self.apply.is_some() {
             return;
         }
-        let full = self.method == VolumetricMethod::Froxel;
-        let module = crate::shader(device, "volumetric", source(self.tables, full));
+        let froxel = self.method == VolumetricMethod::Froxel;
+        let module = crate::shader(device, "volumetric", source(froxel));
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("volumetric apply"),
             bind_group_layouts: &[Some(frame_layout), Some(&self.apply_layout)],
@@ -304,7 +303,7 @@ impl Volumetric {
                 multisample: Default::default(),
                 fragment: Some(wgpu::FragmentState {
                     module: &module,
-                    entry_point: Some(if full { "fs_froxel" } else { "fs_raymarch" }),
+                    entry_point: Some(if froxel { "fs_froxel" } else { "fs_raymarch" }),
                     compilation_options: Default::default(),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: crate::HDR_FORMAT,
@@ -328,7 +327,7 @@ impl Volumetric {
                 cache: crate::pipeline_cache::of(device).as_ref(),
             }),
         );
-        if !full {
+        if !froxel {
             return;
         }
         let compute = wgpu::ShaderStages::COMPUTE;
@@ -455,7 +454,7 @@ impl Volumetric {
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
     }
 
-    /// The froxel dispatches (full tier; nothing on WebGL2): after the
+    /// The froxel dispatches (nothing with the raymarch): after the
     /// shadow passes, whose maps they read.
     #[allow(clippy::too_many_arguments)]
     pub fn encode_froxels(

@@ -1,5 +1,5 @@
-//! Shadows and antialiasing by tier (`crates/og-render/README.md`
-//! §Shadows and antialiasing by tier): the reference frames of the round's
+//! Shadows and antialiasing (`crates/og-render/README.md`
+//! §Shadows and antialiasing): the reference frames of the round's
 //! scenes, and behaviour read from frames and stats. More than two local
 //! lights cast shadows, the ones left out past the tier's count are the
 //! least radiant at the camera, dual-paraboloid point shadows draw the
@@ -8,7 +8,7 @@
 
 use og_render::{
     Antialias, FrameStats, Material, PointShadows, RenderDesc, RenderScene, RenderTarget, Renderer,
-    RgbaImage, TaaHistory, Tier,
+    RgbaImage, TaaHistory,
 };
 use og_tests::compare::{Tolerance, compare};
 use og_tests::{gfx, scenes, shadow_scenes};
@@ -26,13 +26,6 @@ fn check(scene: &str) -> gfx::GfxReport {
         }
         Err(e) => panic!("{e}"),
     }
-}
-
-fn tier() -> Tier {
-    Renderer::new_blocking(&scenes::base_desc())
-        .expect("a GPU adapter")
-        .info()
-        .tier
 }
 
 fn frame(desc: &RenderDesc, scene: &RenderScene, frames: u32) -> (RgbaImage, FrameStats) {
@@ -151,8 +144,8 @@ fn shadows_crypt_matches_its_reference() {
 /// cube faces and paraboloids alike, and the two draw it within
 /// tolerance; glass that casts shuts the light in on both (web findings
 /// #4: every mesh cast, and paraboloids stored the faces turned towards
-/// the light, so The Kestrel Stair's crypt lamp lit its crypt on WebGL2
-/// and not on the full tier).
+/// the light, so The Kestrel Stair's crypt lamp lit its crypt with
+/// paraboloids and not with cube faces).
 #[test]
 fn a_light_in_a_non_casting_fixture_lights_its_room_on_both_point_shadow_storages() {
     let shut = || {
@@ -205,19 +198,10 @@ fn a_light_in_a_non_casting_fixture_lights_its_room_on_both_point_shadow_storage
     }
 }
 
-/// Eight shadowed lights on the full tier (38 passes: six points with
-/// cube faces, two spots); the two far, dim ones are left out.
+/// Eight shadowed lights (38 passes: six points with cube faces, two
+/// spots); the two far, dim ones are left out.
 #[test]
-fn shadows_local_8_matches_its_reference_on_the_full_tier() {
-    if tier() != Tier::Full {
-        let scene = shadow_scenes::many_shadowed_lights(true);
-        let (_, stats) = frame(&scenes::base_desc(), &scene, 1);
-        assert_eq!(
-            (stats.shadowed_lights, stats.shadowed_lights_dropped),
-            (og_render::NO_COMPUTE_SHADOWED_LIGHTS as u32, 6)
-        );
-        return;
-    }
+fn shadows_local_8_matches_its_reference() {
     let report = check("shadows-local-8");
     let s = report.stats;
     assert_eq!(report.info.shadowed_lights, 8);
@@ -225,7 +209,7 @@ fn shadows_local_8_matches_its_reference_on_the_full_tier() {
     assert_eq!(s.shadow_passes, 6 * 6 + 2);
 }
 
-/// The lights left out past the tier's count are the least radiant at the
+/// The lights left out past the count are the least radiant at the
 /// camera, whatever their order in the scene: the frame is the one of the
 /// scene where only they never cast.
 #[test]

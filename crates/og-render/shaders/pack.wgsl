@@ -40,8 +40,7 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
     textureSample(t3, pack_sampler, in.uv),
   );
   var o = pack.fallback;
-  // A local copy: no GL-tier shader indexes a uniform vector by a variable
-  // (ANGLE's D3D11 backend; clusters.rs, `LightTables::wgsl`).
+  // A local copy, indexed by the loop.
   var picks = pack.pick;
   for (var c = 0u; c < 4u; c++) {
     let k = picks[c];

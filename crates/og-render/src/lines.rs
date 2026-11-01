@@ -5,8 +5,7 @@
 //! Every segment and point is one instance of a screen-space quad
 //! (`shaders/lines.wgsl`): a width in CSS pixels stays that wide at any
 //! distance, a world width shrinks with it, and the edge is feathered by a
-//! pixel on every tier (WebGL2 has no wide lines, WebGPU no line width at
-//! all). Sets draw in one of two places ([`LineLayer`]):
+//! pixel on every backend (WebGPU has no line width at all). Sets draw in one of two places ([`LineLayer`]):
 //!
 //! - **Scene**: in the main pass after the transparent meshes, particles
 //!   and strips, into the HDR target (exposed, bloomed and tone mapped with

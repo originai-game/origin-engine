@@ -3,7 +3,7 @@
 //! [`set_pipeline_cache_dir`]; each renderer on such an adapter reads
 //! `<dir>/<wgpu::util::pipeline_cache_key>` when it starts, hands the cache
 //! to every pipeline it makes, and writes it back after its first frame and
-//! when it is dropped. Metal, WebGPU and WebGL2 have no such cache in wgpu
+//! when it is dropped. Metal, DX12 and WebGPU have no such cache in wgpu
 //! (their drivers or browsers keep their own); there nothing changes and
 //! `RenderInfo::pipeline_cache` is false.
 

@@ -65,13 +65,13 @@ impl Renderer {
         })?;
         let info = gpu.info;
         if info.format != crate::TextureFormat::Rgba8
-            || layer >= info.gpu_layers
+            || layer >= info.layers
             || level >= info.levels
         {
             return Err(RenderError::Unsupported(format!(
                 "reading layer {layer} level {level} of a {} array of {} layers and {} levels",
                 info.format.name(),
-                info.gpu_layers,
+                info.layers,
                 info.levels
             )));
         }

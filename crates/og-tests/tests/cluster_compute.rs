@@ -1,5 +1,5 @@
-//! Whether the Forward+ cluster build would be faster in compute on the
-//! full tier (og-render's README, "What phase 2 owes"). Ignored: a
+//! Whether the Forward+ cluster build would be faster in compute
+//! (og-render's README, "What phase 2 owes"). Ignored: a
 //! measurement, run by hand (`cargo test -p og-tests --release --test
 //! cluster_compute -- --ignored --nocapture`), whose numbers are in
 //! `tests/evidence/P4/perf/clusters-compute.md`.

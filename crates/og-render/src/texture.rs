@@ -1,4 +1,4 @@
-//! Texture formats by tier, pre-encoded uploads ([`TextureUpload`]) and the
+//! Texture formats by device, pre-encoded uploads ([`TextureUpload`]) and the
 //! format choice reported in [`crate::RenderInfo::texture_formats`].
 //!
 //! The renderer does not transcode: the host (the cook's Basis Universal
@@ -15,14 +15,15 @@ use crate::scene::ColorSpace;
 pub enum TextureFormat {
     /// Uncompressed 8-bit RGBA: every backend.
     Rgba8,
-    /// BC7 RGBA (desktop: Metal on macOS, Vulkan, D3D, WebGPU/WebGL2 with
+    /// BC7 RGBA (desktop: Metal on macOS, Vulkan, D3D, WebGPU with
     /// `texture-compression-bc`).
     Bc7,
     /// BC5: two channels (normal map x and y; z is reconstructed). Linear only.
     Bc5,
     /// ASTC LDR with 4x4 blocks (mobile GPUs, Apple silicon).
     Astc4x4,
-    /// ETC2 RGBA8 (EAC alpha): OpenGL ES 3 / WebGL2 baseline on mobile.
+    /// ETC2 RGBA8 (EAC alpha): the mobile baseline (WebGPU's
+    /// `texture-compression-etc2`).
     Etc2Rgba8,
     /// EAC RG11: two channels (normal maps on the ETC2 tier). Linear only.
     EacRg11,

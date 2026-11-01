@@ -72,8 +72,8 @@ fn hemi_irradiance(n: vec3<f32>) -> vec3<f32> {
 }
 
 @group(0) @binding(0) var<uniform> frame: Frame;
-// Shadow depths stored in R32Float colour targets and read with textureLoad:
-// WebGL2 can neither filter nor textureLod a depth texture.
+// Shadow depths stored in R32Float colour targets and read with textureLoad
+// (lighting.wgsl's explicit compares).
 @group(0) @binding(1) var cascade_map: texture_2d_array<f32>;
 @group(0) @binding(2) var local_shadow_map: texture_2d_array<f32>;
 @group(0) @binding(3) var irradiance_map: texture_cube<f32>;

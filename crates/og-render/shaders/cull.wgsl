@@ -1,4 +1,4 @@
-// GPU-driven culling (full tier, cull_gpu.rs): per pass, every sorted
+// GPU-driven culling (cull_gpu.rs): per pass, every sorted
 // instance's world sphere is tested against the pass's planes (and, for
 // the main pass, the occluders' depth pyramid); the visible ones are
 // compacted, batch by batch and in their sorted order, into the pass's

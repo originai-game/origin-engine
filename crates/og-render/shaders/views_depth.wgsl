@@ -1,7 +1,7 @@
 // The depth resolve of a view (views.wgsl): its depth prepass's linear
 // view depth (world units along its forward axis, the main prepass's
 // `lindepth`) normalised from near (0) to far (1) in rgb. A colour target,
-// so every tier loads it (GLSL ES 3.0 cannot load a depth buffer).
+// so a multisampled view reads the same single depth.
 @group(0) @binding(0) var depth_tex: texture_2d<f32>;
 
 @fragment

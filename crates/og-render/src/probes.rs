@@ -28,8 +28,8 @@
 //! map `og bake probes` wrote); a realtime probe draws it again every
 //! [`ReflectionProbe::interval`] ticks.
 //!
-//! Sampling costs no texture slot (WebGL2's skinned lit pipeline has none
-//! left): a draw whose bounds fall in a probe's box binds the probe's frame
+//! Sampling costs no texture slot (the lit pipelines' sixteen are taken):
+//! a draw whose bounds fall in a probe's box binds the probe's frame
 //! group, whose uniform carries the box and whose irradiance and
 //! prefiltered bindings are the environment's prefiltered cube and the
 //! probe's. The lit shaders then box-project the reflected ray onto the

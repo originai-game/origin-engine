@@ -21,13 +21,8 @@
 //! opened (`ProbeTimings.gpuPasses`): the GPU's time in queue order,
 //! which sums to the frame.
 //!
-//! WebGL2 has the same pairs where the context has
-//! `EXT_disjoint_timer_query_webgl2` (Chrome; not Firefox or Safari): its
-//! `TIMESTAMP_EXT` counter has no bits there, so the carried wgpu-hal
-//! (`third_party/wgpu-hal`, patch 1 of its ORIGIN.md) builds each timestamp from
-//! `TIME_ELAPSED_EXT` queries chained from the frame's first write, and
-//! resolves every query of a frame the GPU's timer was disturbed in
-//! (`GPU_DISJOINT_EXT`) to 0: no frame is reported for it ([`frame_of`]).
+//! A query the GPU never wrote resolves to 0 (WebGPU's unwritten query):
+//! a frame with none read is not reported ([`frame_of`]).
 //!
 //! The timestamps of a frame are resolved into a buffer, copied to a
 //! readback and mapped after the submit; a later frame (or
@@ -552,9 +547,7 @@ impl GpuTimer {
 /// (the frame's first beginning for the first) to its own end, in queue
 /// order (the module's documentation). A query the GPU left at 0 is not
 /// read; a pass with none ends where the one before it did, 0 ms long. A
-/// frame with no query read is no frame (`None`): WebGL2 resolves every
-/// query of a frame its timer was disturbed in to 0 (wgpu-hal's
-/// `ElapsedTimestamps`, the `GPU_DISJOINT_EXT` flag).
+/// frame with no query read is no frame (`None`).
 fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> Option<GpuFrame> {
     let span = |r: &Range<u32>| -> Option<(u64, u64)> {
         let mut span: Option<(u64, u64)> = None;
@@ -643,7 +636,7 @@ mod tests {
         );
         assert_eq!(f.passes[1].ms(), 3.0);
         assert_eq!(f.ms(), 4.0);
-        // Every query left at 0 (WebGL2's disjoint timer): no frame, not
+        // Every query left at 0 (none written): no frame, not
         // one of 0 ms passes.
         assert_eq!(frame_of(p(), &[0; 8], 10.0), None);
     }

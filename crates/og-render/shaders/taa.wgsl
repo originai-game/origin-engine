@@ -1,4 +1,4 @@
-// Temporal antialiasing (WebGPU tier): the jittered frame blended into the
+// Temporal antialiasing: the jittered frame blended into the
 // history. The history is reprojected through the depth buffer with the
 // unjittered matrices (camera motion only; moving objects rely on the clamp),
 // clamped to the current 3x3 neighbourhood's colour box, and blended with
@@ -27,15 +27,7 @@ struct Taa {
 @group(0) @binding(3) var linear_sampler: sampler;
 @group(0) @binding(4) var<uniform> taa: Taa;
 // The depth is read through this nearest sampler at the pixel's centre,
-// not with textureLoad: wgpu's GL backend (WebGL2) binds no sampler object
-// to a texture only texelFetch reads, so a depth texture keeps GL's default
-// linear filtering, which makes a DEPTH_COMPONENT32F texture incomplete
-// under GLSL ES 3.0, and texelFetch of an incomplete texture returns 0.
-// Every pixel then reprojected from the near plane (row 68): a wrong motion
-// for a moving camera, and for a still one a motion of the near plane's
-// rounding (up to 0.025 px at fx-showcase's 2800 m station on ANGLE) above
-// the own-texel test below, so the history was resampled every frame. At
-// the texel's centre nearest reads the texel textureLoad reads.
+// which reads the texel textureLoad reads.
 @group(0) @binding(5) var depth_sampler: sampler;
 
 fn to_ycocg(c: vec3<f32>) -> vec3<f32> {

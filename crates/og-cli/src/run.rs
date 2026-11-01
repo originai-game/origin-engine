@@ -32,7 +32,7 @@
 //! (og-render's `shared_frames`); `og dev` does the same.
 //!
 //! `og run --device chrome|android[:serial]|iphone[:udid] [project]
-//! [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl]
+//! [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed]
 //! [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]`
 //! plays the publish build in a real browser instead and reports its first
 //! frame and frame times (`device.rs`).
@@ -41,7 +41,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--room ws://127.0.0.1:P/<room>] [--json] [--no-check]\n       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--webgl] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--room ws://127.0.0.1:P/<room>] [--json] [--no-check]\n       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -95,7 +95,7 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                 r.forward.push(args[i].into());
                 r.native.push(args[i].into());
             }
-            f @ ("--headed" | "--webgl") => device_forward.push(f.to_string()),
+            f @ "--headed" => device_forward.push(f.to_string()),
             flag @ ("--device" | "--seconds" | "--host" | "--chrome" | "--cert" | "--key") => {
                 let Some(v) = args.get(i + 1) else {
                     return Err(format!("{flag} needs a value. {USAGE}"));
@@ -170,7 +170,7 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
         Some(d) => {
             if let Some(f) = r.native.first() {
                 return Err(format!(
-                    "{f} is a native run's option; og run --device takes --seconds, --port, --out, --size, --headed, --webgl, --chrome, --cert, --key, --host and --json"
+                    "{f} is a native run's option; og run --device takes --seconds, --port, --out, --size, --headed, --chrome, --cert, --key, --host and --json"
                 ));
             }
             d.forward = device_forward;

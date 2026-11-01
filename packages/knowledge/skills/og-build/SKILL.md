@@ -383,7 +383,7 @@ sound {
 size table, brotli `-q 11` per file as the size gate measures the engine:
 
 ```text
-download (brotli-11, what a player fetches; a WebGPU and a WebGL2 page fetch the same files):
+download (brotli-11, what a player fetches):
   boot, lanes page (isolated)      92 files     4323854 B  (engine 2976.8 kB, cooked 1044.3 kB, shell 85.5 kB, basis 217.3 kB)
   boot, single-threaded page       91 files     4284988 B  (engine 2937.9 kB, cooked 1044.3 kB, shell 85.5 kB, basis 217.3 kB)
   later: 20 sound chunks 2427050 B (ahead of their playheads); the audio worklet 875 B (first gesture); the service worker and icons 32634 B
@@ -559,8 +559,8 @@ Point and spot lights are clustered (Forward+): a pixel shades only the
 lights whose `distance` reaches it, so a few hundred lamps, torches or
 neon signs cost little; keep each `distance` as short as the look allows.
 Up to `MAX_LIGHTS` (256) in view are drawn, the brightest kept past that,
-and up to `RenderCapabilities.maxShadowedLights` with `castShadow` (8 on
-the full tier, 4 on WebGL2) cast shadows (shadows are the expensive part;
+and up to `RenderCapabilities.maxShadowedLights` with `castShadow` (8) cast
+shadows (shadows are the expensive part;
 og-render §3).
 Engine work spreads over the cores on the lanes: physics from about 500
 bodies, skinning, extraction and culling, with results identical to one

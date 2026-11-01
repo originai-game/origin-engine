@@ -14,8 +14,8 @@ use og_render::{
     Light2d, Lighting2d, MAX_DECALS, Material, MorphTargets, MotionBlur, Occluder2d, Outline,
     ParticleCollision, ParticleEmitter, ParticleRender, ParticleSimulation, ParticleSystem,
     Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, ScreenBlur,
-    ScreenBlurKind, ScreenFlash, SkinnedInstance, Sprite, SpriteFx, StandardMaterial, Tier,
-    Tonemap, Trail, TrailStyle, View, ViewTarget, Vignette, shapes,
+    ScreenBlurKind, ScreenFlash, SkinnedInstance, Sprite, SpriteFx, StandardMaterial, Tonemap,
+    Trail, TrailStyle, View, ViewTarget, Vignette, shapes,
 };
 use og_tests::fx_scenes as fx;
 use og_tests::{gfx, scenes};
@@ -121,13 +121,6 @@ fn save(name: &str, img: &RgbaImage) {
     let _ = gfx::save_png(&out_dir().join(format!("{name}.png")), img);
 }
 
-fn adapter_tier() -> Tier {
-    Renderer::new_blocking(&small())
-        .expect("renderer")
-        .info()
-        .tier
-}
-
 // ---------------------------------------------------------------------------
 // Particles.
 // ---------------------------------------------------------------------------
@@ -201,9 +194,6 @@ fn plain_fountain(scene: &mut RenderScene) -> og_render::EmitterHandle {
 /// same schedule) and integrate them the same way within float error.
 #[test]
 fn gpu_and_cpu_paths_simulate_the_same_particles() {
-    if adapter_tier() != Tier::Full {
-        return assert_cpu_only();
-    }
     let mut states = Vec::new();
     for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
         let mut scene = RenderScene::new();
@@ -230,17 +220,6 @@ fn gpu_and_cpu_paths_simulate_the_same_particles() {
         .fold(0.0f32, f32::max);
     println!("largest position difference: {worst}");
     assert!(worst < 1e-3, "GPU and CPU particles differ by {worst}");
-}
-
-fn assert_cpu_only() {
-    // The no-compute tier has only the CPU path: Auto must use it.
-    let mut scene = RenderScene::new();
-    let e = plain_fountain(&mut scene);
-    scene
-        .particles
-        .push(ParticleSystem::new(7, e, Mat4::IDENTITY, 42, 0));
-    let (_, stats, _) = run(&small(), &mut scene, 10, |s, f| fx::tick_all(s, f as u64));
-    assert!(stats.particles_cpu > 0);
 }
 
 /// Spawn counts follow the schedule: a 40-particle burst at start, then 60
@@ -345,16 +324,10 @@ fn soft_particles_fade_against_the_scene() {
     assert!(luma(px(&soft, c.0, c.1)) < 0.5 * luma(px(&hard, c.0, c.1)));
 }
 
-/// Particles with collision stay above the ground (full tier); without it
+/// Particles with collision stay above the ground (compute); without it
 /// they fall through.
 #[test]
 fn particles_bounce_off_the_depth_buffer() {
-    if adapter_tier() != Tier::Full {
-        let mut scene = collision_scene(true);
-        let (_, stats, _) = run(&small(), &mut scene, 2, |s, f| fx::tick_all(s, f as u64));
-        assert_eq!(stats.particle_collision_skipped, 1);
-        return;
-    }
     let lowest = |collide: bool| {
         let mut scene = collision_scene(collide);
         let (img, _, r) = run(&small(), &mut scene, 90, |s, f| fx::tick_all(s, f as u64));
@@ -372,7 +345,7 @@ fn particles_bounce_off_the_depth_buffer() {
     assert!(without < -1.0, "without collision the lowest is {without}");
 }
 
-/// The CPU path (WebGL2's, `ParticleSimulation::Cpu` here) bounces
+/// The CPU path (`ParticleSimulation::Cpu`) bounces
 /// particles off the scene's colliders: a ground plane, a flat height
 /// field or a box under the fountain each keep them above the ground,
 /// some on their way back up; without colliders they fall through and the
@@ -1909,34 +1882,32 @@ fn the_high_preset_refines_ao_reflections_and_fog_and_medium_moves_nothing() {
         ) > 0
     );
 
-    // Screen-space reflections (the full tier's): the scene asks 48 steps.
-    if adapter_tier() == Tier::Full {
-        let steps = |n: u32| {
-            move |s: &mut RenderScene| {
-                if let Some(ssr) = &mut s.post.ssr {
-                    ssr.steps = n;
-                }
+    // Screen-space reflections: the scene asks 48 steps.
+    let steps = |n: u32| {
+        move |s: &mut RenderScene| {
+            if let Some(ssr) = &mut s.post.ssr {
+                ssr.steps = n;
             }
-        };
-        let ssr_default = at_quality("ssr-wet-floor", default, |_| {});
-        assert!(at_quality("ssr-wet-floor", medium, |_| {}).pixels == ssr_default.pixels);
-        let ssr_high = at_quality("ssr-wet-floor", high, |_| {});
-        let ssr_shadows = at_quality("ssr-wet-floor", shadows_only, |_| {});
-        assert!(
-            ssr_high.pixels == at_quality("ssr-wet-floor", shadows_only, steps(96)).pixels,
-            "high marches twice the scene's 48 steps"
-        );
-        // The emissive slab's reflection in the floor.
-        let r = (745, 405, 885, 665);
-        assert!(
-            report(
-                "ssr-wet-floor: shadows only -> high",
-                &ssr_shadows,
-                &ssr_high,
-                r
-            ) > 0
-        );
-    }
+        }
+    };
+    let ssr_default = at_quality("ssr-wet-floor", default, |_| {});
+    assert!(at_quality("ssr-wet-floor", medium, |_| {}).pixels == ssr_default.pixels);
+    let ssr_high = at_quality("ssr-wet-floor", high, |_| {});
+    let ssr_shadows = at_quality("ssr-wet-floor", shadows_only, |_| {});
+    assert!(
+        ssr_high.pixels == at_quality("ssr-wet-floor", shadows_only, steps(96)).pixels,
+        "high marches twice the scene's 48 steps"
+    );
+    // The emissive slab's reflection in the floor.
+    let r = (745, 405, 885, 665);
+    assert!(
+        report(
+            "ssr-wet-floor: shadows only -> high",
+            &ssr_shadows,
+            &ssr_high,
+            r
+        ) > 0
+    );
 
     // Volumetric fog: 64 slices against 128.
     let fog_default = at_quality("volumetric-fog", default, |_| {});

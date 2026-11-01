@@ -1697,8 +1697,8 @@ pub fn og_render_capabilities(world: u32) -> String {
             let (w, h) = b.size();
             let info = b.info();
             json!({
-                "tier": tier.clone(),
-                "compute": tier != "webgl2",
+                "tier": tier,
+                "compute": true,
                 "antialias": b.antialias(),
                 "maxLights": og_render::MAX_LIGHTS,
                 "maxShadowedLights": info.as_ref().map_or(0, |i| i.shadowed_lights),
@@ -1706,17 +1706,15 @@ pub fn og_render_capabilities(world: u32) -> String {
                 "pointShadows": info.as_ref().map_or("cube", |i| crate::point_shadows_name(i.point_shadows)),
                 "width": w, "height": h,
                 "stylise": og_render::STYLISE_DRAWN,
-                // SSR is the full tier's; WebGL2 reflects the probes and the environment.
-                "ssr": tier != "webgl2",
+                "ssr": true,
                 "reflectionProbes": og_render::MAX_REFLECTION_PROBES,
                 "volumetricFog": match info.as_ref().map(|i| i.volumetric) {
                     Some(og_render::VolumetricMethod::Froxel) => "froxel",
                     Some(og_render::VolumetricMethod::Raymarch) => "raymarch",
-                    None if tier == "webgl2" => "raymarch",
                     None => "froxel",
                 },
                 "volumetricLights": info.as_ref().map_or(
-                    if tier == "webgl2" { og_render::RAYMARCH_LIGHTS } else { og_render::MAX_CLUSTER_LIGHTS as u32 },
+                    og_render::MAX_CLUSTER_LIGHTS as u32,
                     |i| i.volumetric_lights,
                 ),
                 "maxLightCookies": og_render::MAX_COOKIE_LAYERS,

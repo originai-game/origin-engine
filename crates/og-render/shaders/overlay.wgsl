@@ -14,9 +14,7 @@ struct OverlayFrame {
 
 struct SpriteParams {
   // x: MSDF distance range in atlas pixels (0: a plain sprite), yz: atlas
-  // size in pixels; w: the glass pyramid's mip levels (src/glass.rs). The
-  // shader cannot ask the texture: textureNumLevels has no GLSL ES 3.0 form,
-  // and the WebGL2 tier has no texture queries.
+  // size in pixels; w: the glass pyramid's mip levels (src/glass.rs).
   msdf: vec4<f32>,
 };
 @group(1) @binding(0) var sprite_tex: texture_2d<f32>;

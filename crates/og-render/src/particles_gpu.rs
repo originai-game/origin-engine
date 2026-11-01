@@ -1,5 +1,5 @@
 //! The renderer's side of particles: per-system state kept by id, the
-//! compute simulation (full tier), the CPU path's uploads, and the draw.
+//! compute simulation, the CPU path's uploads, and the draw.
 
 use crate::particles::{
     CpuParticles, EmitterShape, MAX_CURVE_KEYS, ParticleAlign, ParticleBlend, ParticleEmitter,
@@ -238,7 +238,7 @@ pub(crate) struct ParticleFrame {
 
 pub(crate) struct ParticleRenderer {
     sim_layout: wgpu::BindGroupLayout,
-    sim: Option<(wgpu::ComputePipeline, wgpu::ComputePipeline)>,
+    sim: (wgpu::ComputePipeline, wgpu::ComputePipeline),
     pub draw_layout: wgpu::BindGroupLayout,
     draw: HashMap<(ParticleBlend, u32), wgpu::RenderPipeline>,
     draw_module: wgpu::ShaderModule,
@@ -301,24 +301,19 @@ impl ParticleRenderer {
         frame_layout: &wgpu::BindGroupLayout,
         sprite_layout: &wgpu::BindGroupLayout,
         frame_wgsl: &str,
-        compute: bool,
     ) -> ParticleRenderer {
         let sim_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("particle sim"),
-            entries: &if compute {
-                vec![
-                    uniform_entry(0, wgpu::ShaderStages::COMPUTE, true),
-                    uniform_entry(1, wgpu::ShaderStages::COMPUTE, false),
-                    storage_entry(2, false),
-                    storage_entry(3, true),
-                    depth_entry(4, wgpu::ShaderStages::COMPUTE),
-                    depth_entry(5, wgpu::ShaderStages::COMPUTE),
-                ]
-            } else {
-                vec![]
-            },
+            entries: &[
+                uniform_entry(0, wgpu::ShaderStages::COMPUTE, true),
+                uniform_entry(1, wgpu::ShaderStages::COMPUTE, false),
+                storage_entry(2, false),
+                storage_entry(3, true),
+                depth_entry(4, wgpu::ShaderStages::COMPUTE),
+                depth_entry(5, wgpu::ShaderStages::COMPUTE),
+            ],
         });
-        let sim = compute.then(|| {
+        let sim = {
             let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("particle sim"),
                 source: wgpu::ShaderSource::Wgsl(sim_source().into()),
@@ -339,7 +334,7 @@ impl ParticleRenderer {
                 })
             };
             (pipeline("simulate"), pipeline("clear"))
-        });
+        };
         let draw_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("particle draw"),
             entries: &[
@@ -404,7 +399,6 @@ impl ParticleRenderer {
             self.systems.clear();
             self.points.clear();
         }
-        let gpu = gpu && self.sim.is_some();
         let tick_rate = scene.tick_rate.max(1e-3);
         let dt = 1.0 / tick_rate;
         let mut out = ParticleFrame::default();
@@ -661,9 +655,7 @@ impl ParticleRenderer {
         depth: &wgpu::TextureView,
         gbuffer: &wgpu::TextureView,
     ) {
-        let Some((simulate, clear)) = &self.sim else {
-            return;
-        };
+        let (simulate, clear) = &self.sim;
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("particle sim"),
             timestamp_writes: None,
@@ -933,7 +925,7 @@ fn push_sprites(
     }
 }
 
-/// The particle simulation's module (compute: full tier only).
+/// The particle simulation's module (compute).
 pub(crate) fn sim_source() -> String {
     format!("{NOISE_WGSL}{COMMON_WGSL}{SIM_WGSL}")
 }

@@ -257,19 +257,9 @@ pub fn render(scene: &str) -> Result<Rendered, String> {
 /// Renders `scene` and compares it with its reference, this tier's or else
 /// metal's (or records this tier's when capture is requested). On a mismatch, writes
 /// `<out_dir>/<tier>/<scene>.actual.png` and `.diff.png` and returns `Err`.
-/// A scene that does not apply to the adapter's tier (TAA on GL, MSAA on
-/// WebGPU-class backends) is an error here: callers check
-/// [`GfxScene::applies`] first and assert something else instead.
 pub fn check(scene: &str, out_dir: &Path) -> Result<GfxReport, String> {
     let mut built = scenes::build(scene)?;
     let rendered = render_built(&mut built)?;
-    if !built.applies.includes(rendered.info.tier) {
-        return Err(format!(
-            "gfx {scene} has no reference on the {:?} tier ({})",
-            rendered.info.tier,
-            rendered.info.backend_tier()
-        ));
-    }
     let tier = rendered.info.backend_tier();
     let own = reference_path(&tier, scene);
     let mut report = GfxReport {

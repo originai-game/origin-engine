@@ -1,7 +1,7 @@
 //! The named gfx scenes (the M3 reference set, `docs/phase-1.md`). Each one
 //! is a fixed [`RenderDesc`] and [`RenderScene`], how many frames to render
-//! before the capture (with an optional per-frame update), the backend tiers
-//! it applies to, and the tolerance its reference comparison uses.
+//! before the capture (with an optional per-frame update), and the
+//! tolerance its reference comparison uses.
 
 use crate::compare::Tolerance;
 use crate::fx_scenes as fx;
@@ -10,7 +10,7 @@ use og_render::gltf::{GltfModel, load_glb};
 use og_render::{
     Antialias, Background, Bloom, Camera, ColorSpace, DirectionalLight, Environment, Exposure,
     Glyph, Light, LightKind, Material, Mips, MsdfFont, ProceduralSky, Projection, RenderDesc,
-    RenderScene, ShadowBounds, Sprite, Text, TextureData, Tier, Tonemap, shapes,
+    RenderScene, ShadowBounds, Sprite, Text, TextureData, Tonemap, shapes,
 };
 use std::path::PathBuf;
 
@@ -21,7 +21,6 @@ pub const SCENES: &[&str] = &[
     "cascades-200m",
     "point-spot-lights",
     "taa",
-    "msaa",
     "bloom",
     "exposure",
     "sprites-20k",
@@ -158,26 +157,6 @@ pub const NATIVE_SCENES: &[&str] = &[
     "terrain-generated",
 ];
 
-/// Which backend tiers a scene has a reference for.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Applies {
-    Every,
-    /// TAA is the full tier's antialiasing.
-    FullTier,
-    /// MSAA is the no-compute (WebGL2/GL) tier's antialiasing.
-    NoComputeTier,
-}
-
-impl Applies {
-    pub fn includes(self, tier: Tier) -> bool {
-        match self {
-            Applies::Every => true,
-            Applies::FullTier => tier == Tier::Full,
-            Applies::NoComputeTier => tier == Tier::NoCompute,
-        }
-    }
-}
-
 /// A per-frame change (frame index from 0): moving sprites, an orbiting camera.
 pub type Update = fn(&mut RenderScene, u32);
 
@@ -188,7 +167,6 @@ pub struct GfxScene {
     /// Frames rendered before the capture (TAA needs its history).
     pub frames: u32,
     pub update: Option<Update>,
-    pub applies: Applies,
 }
 
 /// The directory of the committed test assets (`crates/og-tests/assets`),
@@ -234,8 +212,7 @@ fn asset_text(rel: &str) -> Result<String, String> {
 }
 
 /// The renderer description every scene starts from: 1280x720 on the
-/// adapter `OG_GFX_BACKEND` names (`metal`, `vulkan`; default: the platform's),
-/// with WebGL2's volumetric raymarch when `OG_GFX_VOLUMETRIC=raymarch`.
+/// adapter `OG_GFX_BACKEND` names (`metal`, `vulkan`; default: the platform's).
 pub fn base_desc() -> RenderDesc {
     let backend = match std::env::var("OG_GFX_BACKEND").as_deref() {
         Ok("metal") => og_render::Backend::Metal,
@@ -246,10 +223,6 @@ pub fn base_desc() -> RenderDesc {
         width: 1280,
         height: 720,
         backend,
-        // OG_GFX_VOLUMETRIC=raymarch draws WebGL2's volumetric fog here.
-        volumetric: std::env::var("OG_GFX_VOLUMETRIC")
-            .is_ok_and(|v| v == "raymarch")
-            .then_some(og_render::VolumetricMethod::Raymarch),
         ..Default::default()
     }
 }
@@ -262,7 +235,6 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         tolerance: Tolerance::default(),
         frames: 1,
         update: None,
-        applies: Applies::Every,
     };
     // Each scene is built in a closure of its own, so its temporaries live
     // in that closure's frame. Unoptimised, one function's frame holds every
@@ -304,18 +276,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = thin_geometry();
             g.desc.antialias = Antialias::Tier;
             g.frames = 16;
-            g.applies = Applies::FullTier;
             Ok(())
         },
-        // The same geometry with the GL tier's 4x MSAA.
-        "msaa" => |g, _| {
-            g.scene = thin_geometry();
-            g.desc.antialias = Antialias::Tier;
-            g.applies = Applies::NoComputeTier;
-            Ok(())
-        },
-        // The same geometry with FXAA, on every tier (the GL tier's
-        // alternative to MSAA, what `Tier` picks without multisampled HDR).
+        // The same geometry with FXAA (what `Msaa4` draws without a
+        // multisampled HDR target).
         "fxaa" => |g, _| {
             g.scene = thin_geometry();
             g.desc.antialias = Antialias::Fxaa;
@@ -323,9 +287,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // The same geometry under TAA with the camera sliding sideways:
         // Catmull-Rom history and a 0.5 sharpening pass, after 16 frames.
-        // `Antialias::Taa` is TAA on every tier: the browser tiers judge a
-        // moving camera's reprojection on WebGL2 against metal here (row
-        // 68: the GL backend read TAA's depth as 0 until it was sampled).
+        // The browser tier judges a moving camera's reprojection against
+        // metal here.
         "taa-sharp" => |g, _| {
             g.scene = thin_geometry();
             g.desc.antialias = Antialias::Taa;
@@ -374,11 +337,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.desc.antialias = Antialias::Taa;
             g.frames = 16;
             g.update = Some(crate::shadow_scenes::pan_thin_geometry);
-            g.applies = Applies::FullTier;
             Ok(())
         },
         // point-spot-lights with the point light's shadow in two paraboloid
-        // hemispheres (WebGL2's default) instead of six cube faces.
+        // hemispheres instead of six cube faces (`PointShadows::Paraboloid`).
         "point-shadows-paraboloid" => |g, _| {
             g.scene = point_spot_lights();
             g.desc.point_shadows = og_render::PointShadows::Paraboloid;
@@ -387,7 +349,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // A roofed room on a sunlit field: the sun reaches the floor only
         // through the door, and a shadowed point light inside a glass box
         // that casts no shadow lights the altar and the pillar (its shadow
-        // in cube faces, or paraboloids on WebGL2, falls behind a post).
+        // in cube faces falls behind a post).
         "shadows-crypt" => |g, _| {
             g.scene = crate::shadow_scenes::crypt_scene();
             Ok(())
@@ -413,11 +375,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         // Eight shadowed lights (six point, two spot) and two more far
-        // behind whose shadows are left out (the full tier's eight; WebGL2
-        // draws four, its own frame).
+        // behind whose shadows are left out (MAX_SHADOWED_LIGHTS, eight).
         "shadows-local-8" => |g, _| {
             g.scene = crate::shadow_scenes::many_shadowed_lights(true);
-            g.applies = Applies::FullTier;
             Ok(())
         },
         // Emissive spheres over a dark ground with bloom.
@@ -525,7 +485,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         // Everything at once: models, CSM, local lights, bloom, auto exposure,
-        // world-space text and sprites, the tier's antialiasing.
+        // world-space text and sprites, the default antialiasing (TAA).
         "showcase" => |g, _| {
             g.scene = showcase()?;
             crate::fx_scenes::showcase_effects(&mut g.scene);
@@ -545,14 +505,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.update = Some(crate::fx_scenes::showcase_update);
             Ok(())
         },
-        // Night camp: GPU particles (CPU on the no-compute tier) after 120 ticks.
+        // Night camp: GPU particles after 120 ticks.
         "particles" => |g, _| {
             g.scene = fx::particles_scene();
             g.frames = 120;
             g.update = Some(fx::tick_update);
             Ok(())
         },
-        // The same simulated on the CPU path on any tier (no collision).
+        // The same simulated on the CPU path (no collision).
         "particles-cpu" => |g, _| {
             g.scene = fx::particles_scene();
             g.desc.particles = og_render::ParticleSimulation::Cpu;
@@ -760,8 +720,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = view_kinds_scene(&ViewKind::ALL, 3, 60);
             Ok(())
         },
-        // A render target's depth texture shown full frame (every tier
-        // draws it, from the view's depth prepass).
+        // A render target's depth texture shown full frame (from the view's
+        // depth prepass).
         "views-depth" => |g, _| {
             g.scene = crate::target_scenes::depth_scene();
             Ok(())
@@ -884,8 +844,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // Render-lod (depth S6; depth_render_scenes.rs): a cooked tree at
         // three distances, each at the level its size on screen picks and
         // tinted as debugView lod tints it; a chrome sphere in a closed
-        // room reflecting its reflection probe; SSR on a wet floor (the
-        // full tier's).
+        // room reflecting its reflection probe; SSR on a wet floor.
         #[cfg(not(target_arch = "wasm32"))]
         "lod-levels" => |g, _| {
             g.scene = crate::depth_render_scenes::lod_scene()?.0;
@@ -899,7 +858,6 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         #[cfg(not(target_arch = "wasm32"))]
         "ssr-wet-floor" => |g, _| {
             g.scene = crate::depth_render_scenes::ssr_scene(true);
-            g.applies = Applies::FullTier;
             Ok(())
         },
         // Reflection probes picked per instance (two rooms sharing a
@@ -937,7 +895,6 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::stylise_scenes::untonemapped_sprites_scene();
             g.desc.antialias = Antialias::Tier;
             g.frames = 16;
-            g.applies = Applies::FullTier;
             Ok(())
         },
         // Phase 2: skinned meshes drawn with a material shader that ripples,
@@ -1046,14 +1003,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         // Material shaders read the planar reflection, and a second surface
-        // gets one, only with the second slot (RenderOptions.planarReflections 2),
-        // and only on the full tier: on WebGL2 the joint palette is a texture
-        // and the lit pipelines have no unit left for the mirror
-        // (og_render::planar_slot), so `planar_reflection` reads 0 there.
+        // gets one, only with the second slot (RenderOptions.planarReflections 2,
+        // og_render::planar_slot).
         "hooks-planar" => |g, _| {
             g.scene = crate::fork_scenes::hooks_planar_scene(true);
             g.desc.planar_reflections = 2;
-            g.applies = Applies::FullTier;
             Ok(())
         },
         "hooks-screen-ao" => |g, _| {

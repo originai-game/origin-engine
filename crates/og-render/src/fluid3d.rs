@@ -1,9 +1,8 @@
 //! 3D particle fluids (owed row 29): [`Fluid3d`], og-physics'
 //! `og.Fluid3D` particles drawn as one screen-space surface (see
 //! `shaders/fluid3d.wgsl`). The CPU uploads the particles each frame as
-//! instances (their positions come from the CPU solver anyway), so every
-//! tier, WebGL2 included, draws the same passes with no storage buffer or
-//! compute:
+//! instances (their positions come from the CPU solver anyway), and the
+//! surface is drawn in render passes with no storage buffer or compute:
 //!
 //! 1. sphere imposters write the nearest view depth (`fluid.depth`, with
 //!    `fluid.zbuf` for the depth test), cut by the depth prepass;
@@ -29,7 +28,7 @@
 //! Marching cubes was not built: the screen-space surface costs four
 //! passes over the pixels the fluid covers whatever the particle count,
 //! where a polygonised surface needs a density grid and a mesh rebuilt
-//! every frame on the CPU for WebGL2.
+//! every frame.
 
 use crate::deferred::{AsModule, Deferred};
 use glam::{Mat4, Vec3};

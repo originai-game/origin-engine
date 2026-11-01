@@ -6,8 +6,7 @@
 use glam::{Mat4, Vec2, Vec3};
 use og_render::{
     Antialias, Background, Camera, DebugView, Exposure, FrameStats, Light, Material, RenderDesc,
-    RenderError, RenderInfo, RenderScene, RenderTarget, Renderer, RgbaImage, Sprite, Text, Tier,
-    Tonemap, shapes,
+    RenderError, RenderScene, RenderTarget, Renderer, RgbaImage, Sprite, Text, Tonemap, shapes,
 };
 use og_tests::gfx;
 use og_tests::scenes::{self, GfxScene};
@@ -25,14 +24,6 @@ fn check(scene: &str) -> gfx::GfxReport {
         }
         Err(e) => panic!("{e}"),
     }
-}
-
-/// The adapter the harness renders on (`OG_GFX_BACKEND` picks one).
-fn adapter() -> RenderInfo {
-    Renderer::new_blocking(&scenes::base_desc())
-        .expect("a GPU adapter")
-        .info()
-        .clone()
 }
 
 /// Renders `frames` frames of `scene` with `desc` and returns the last one.
@@ -238,15 +229,9 @@ fn lights_beyond_the_limit_are_counted() {
 }
 
 #[test]
-fn taa_matches_its_reference_on_the_full_tier() {
-    if adapter().tier == Tier::Full {
-        let report = check("taa");
-        assert_eq!(report.info.antialias, Antialias::Taa);
-    } else {
-        // `Antialias::Tier` is MSAA here; the msaa scene covers this tier.
-        let r = Renderer::new_blocking(&built("taa").desc).expect("renderer");
-        assert_eq!(r.info().antialias, Antialias::Msaa4);
-    }
+fn taa_matches_its_reference() {
+    let report = check("taa");
+    assert_eq!(report.info.antialias, Antialias::Taa);
 }
 
 /// TAA's frames `at` (each 1-based) of the thin geometry with the camera
@@ -333,8 +318,8 @@ fn shifts_by_eighth(a: &RgbaImage, b: &RgbaImage) -> [f32; 8] {
 /// same Halton phase) agree within one level, the last bits of the 16-bit
 /// history. And it sits where the frame without antialiasing does: the
 /// jitter's weighted mean moves the whole frame a fraction of a pixel to
-/// one side, the same in every eighth of the width to 0.15 px. WebGL2
-/// before row 68's fix (TAA's depth read as 0 there) settled 0.5 to 0.75
+/// one side, the same in every eighth of the width to 0.15 px. The retired
+/// WebGL2 tier before row 68's fix (TAA's depth read as 0 there) settled 0.5 to 0.75
 /// px to the side, more at the right of the frame than at the left: a
 /// steady state too, which the shift catches and the fixed point alone
 /// does not (a history read 0.05 px to the left per frame, times x over
@@ -385,19 +370,6 @@ fn taa_after_the_camera_stops_reaches_the_still_cameras_fixed_point() {
         max <= 1 && rmse <= 1e-3,
         "TAA after the camera stopped differs from a camera still there (rmse {rmse:.6}, max {max})"
     );
-}
-
-#[test]
-fn msaa_matches_its_reference_on_the_no_compute_tier() {
-    if adapter().tier == Tier::NoCompute {
-        let report = check("msaa");
-        assert_eq!(report.info.antialias, Antialias::Msaa4);
-    } else {
-        // `Antialias::Tier` is TAA here; MSAA itself is exercised by
-        // `antialiasing_smooths_edges` with `Antialias::Msaa4`.
-        let r = Renderer::new_blocking(&built("msaa").desc).expect("renderer");
-        assert_eq!(r.info().antialias, Antialias::Taa);
-    }
 }
 
 /// Thin white bars on black, unlit (emissive only, no tonemap): without
@@ -1320,20 +1292,16 @@ fn capture_of_a_bgra_output_matches_rgba() {
 // ---------------------------------------------------------------------------
 
 /// Night camp after 120 ticks: six systems (flames, smoke, embers, magic,
-/// sparkles, sparks), GPU on the full tier.
+/// sparkles, sparks), simulated in compute.
 #[test]
 fn particles_match_their_reference() {
     let s = check("particles").stats;
     assert_eq!(s.particle_systems, 6);
     assert!(s.particle_capacity >= 1_000);
-    if adapter().tier == Tier::Full {
-        assert_eq!(s.particles_cpu, 0, "simulated in compute");
-    } else {
-        assert!(s.particles_cpu > 100);
-    }
+    assert_eq!(s.particles_cpu, 0, "simulated in compute");
 }
 
-/// The same scene on the CPU path (any tier): collision is skipped.
+/// The same scene on the CPU path: collision is skipped.
 #[test]
 fn particles_cpu_match_their_reference() {
     let s = check("particles-cpu").stats;
@@ -1747,13 +1715,10 @@ fn a_reflection_probe_puts_the_room_in_the_chrome_sphere() {
     assert!(a[2] > a[0] + 10.0, "with the probe, the room: {a:?}");
 }
 
-/// `ssr-wet-floor` (depth S6; the full tier; reference `ssr-wet-floor.png`):
+/// `ssr-wet-floor` (depth S6; reference `ssr-wet-floor.png`):
 /// screen-space reflections on a mirror-smooth floor under a black sky.
 #[test]
 fn ssr_wet_floor_matches_its_reference() {
-    if adapter().tier != Tier::Full {
-        return;
-    }
     check("ssr-wet-floor");
 }
 
@@ -1763,9 +1728,6 @@ fn ssr_wet_floor_matches_its_reference() {
 /// would leave this patch dark.
 #[test]
 fn ssr_reflects_the_sphere_in_the_floor() {
-    if adapter().tier != Tier::Full {
-        return;
-    }
     let desc = scenes::base_desc();
     let on = frame(&desc, &og_tests::depth_render_scenes::ssr_scene(true), 1).0;
     let off = frame(&desc, &og_tests::depth_render_scenes::ssr_scene(false), 1).0;

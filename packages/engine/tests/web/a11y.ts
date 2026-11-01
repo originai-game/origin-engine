@@ -28,7 +28,7 @@
 //   dialog arrives at its full size at once (it fades) where it otherwise
 //   scales in from 92 %.
 //
-//   bun tests/web/a11y.ts [--webgl] [--out <dir>] [--chrome <path>]
+//   bun tests/web/a11y.ts [--out <dir>] [--chrome <path>]
 //
 // Writes <out>/a11y-<tier>.json (default dist/test-a11y/out) and the
 // screenshots of the contrast check. Exits 1 when a check fails.
@@ -52,8 +52,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
 const project = join(repo, "templates", "ui-kit");
-const webgl = args.includes("--webgl");
-const tier = webgl ? "webgl2" : "webgpu";
+const tier = "webgpu";
 const work = join(pkg, "dist", "test-a11y");
 const out = resolve(opt("--out") ?? join(work, "out"));
 mkdirSync(out, { recursive: true });
@@ -102,7 +101,7 @@ try {
   tab = await browser.open("about:blank", log);
   const t = tab;
   await t.send("Emulation.setDeviceMetricsOverride", { width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false });
-  await t.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/a11y.html${webgl ? "?webgl=1" : ""}` });
+  await t.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/a11y.html` });
   await t.until("globalThis.__og_shell__ || globalThis.__og_shell_error__", 90_000);
   const failed = await t.eval<string | undefined>("globalThis.__og_shell_error__");
   if (failed) throw new Error(`the engine did not start: ${failed}`);

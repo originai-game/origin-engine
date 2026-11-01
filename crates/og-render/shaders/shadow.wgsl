@@ -1,6 +1,6 @@
 // Shadow passes: depth from the directional light's cascades, or distance /
 // range from a point or spot light. The value also goes to an R32Float colour
-// target: every backend (WebGL2 included) can fetch it as a plain texture, so
+// target: every backend fetches it as a plain texture, so
 // the PCF compares are explicit and identical everywhere. One uniform slot per
 // pass, selected with a dynamic offset (shadow_pass.wgsl, with the
 // paraboloid projection of a point light's hemispheres). Prepended by

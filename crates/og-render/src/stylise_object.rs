@@ -19,7 +19,7 @@
 //! `stylise_object.wgsl`) and its pipelines are made the first frame a
 //! look lays a pattern in object space; nothing is built or drawn before.
 
-use crate::{Side, clusters, skin};
+use crate::{Side, skin};
 use std::collections::HashMap;
 
 pub(crate) const STYLISE_OBJECT_WGSL: &str = wgsl!("stylise_object.wgsl");
@@ -37,12 +37,11 @@ const BIAS: wgpu::DepthBiasState = wgpu::DepthBiasState {
     clamp: 0.0,
 };
 
-/// The object pass's module source for a joint palette mode and light
-/// tables (`shaders.rs` validates it on both tiers).
-pub(crate) fn object_source(palette: skin::PaletteMode, tables: clusters::LightTables) -> String {
+/// The object pass's module source (`shaders.rs` validates it).
+pub(crate) fn object_source() -> String {
     format!(
         "{}{STYLISE_OBJECT_WGSL}",
-        crate::lit_source_with(&crate::hooks::default_hooks(), palette, tables, false)
+        crate::lit_source_with(&crate::hooks::default_hooks(), false)
     )
 }
 
@@ -53,13 +52,9 @@ pub(crate) struct ObjectPass {
 }
 
 impl ObjectPass {
-    pub fn new(
-        device: &wgpu::Device,
-        palette: skin::PaletteMode,
-        tables: clusters::LightTables,
-    ) -> ObjectPass {
+    pub fn new(device: &wgpu::Device) -> ObjectPass {
         ObjectPass {
-            module: crate::shader(device, "stylise object", object_source(palette, tables)),
+            module: crate::shader(device, "stylise object", object_source()),
             pipelines: HashMap::new(),
         }
     }
