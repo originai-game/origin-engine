@@ -700,6 +700,7 @@ pub fn token_strokes(part: &PartRef, theme: &Theme) -> Vec<Stroke> {
         C::Button if part.has("disabled") || part.has("quiet") => Vec::new(),
         C::Button if part.has("danger") => vec![stroke(hair, tok("danger", 0.45))],
         C::Button if part.has("primary") => Vec::new(),
+        C::Button if part.has("ghost") => vec![stroke(thin, tok("lineStrong", 1.0))],
         C::Button => vec![stroke(hair, tok("line", 1.0))],
         C::Field if part.has("invalid") => vec![stroke(thin, tok("danger", 1.0))],
         C::Field => vec![stroke(thin, tok("line", 1.0))],
@@ -729,7 +730,7 @@ pub fn token_effects(part: &PartRef, theme: &Theme) -> Vec<Effect> {
     }
     use ElementClass as C;
     match part.class {
-        C::Button if part.has("disabled") || part.has("quiet") => {}
+        C::Button if part.has("disabled") || part.has("quiet") || part.has("ghost") => {}
         C::Button if part.has("pressed") => out.push(inner(1.0, 3.0, tok("shadow", 0.45))),
         C::Button => out.push(inner(1.0, 0.0, tok("sheen", 0.6))),
         C::Field | C::Slot => out.push(inner(1.0, 3.0, tok("shadow", 0.3))),

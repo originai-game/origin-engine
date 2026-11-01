@@ -55,7 +55,7 @@ export function dialog(id: string, open: boolean, desc: Api.DialogDesc, build: A
 
 /** Buttons by weight: quiet, secondary, danger, primary (the primary last in a row, first in a stack). */
 function rank(a: Api.DialogAction): number {
-  return { quiet: 0, secondary: 1, danger: 2, primary: 3 }[a.variant ?? "secondary"] ?? 1;
+  return { quiet: 0, ghost: 1, secondary: 1, danger: 2, primary: 3 }[a.variant ?? "secondary"] ?? 1;
 }
 
 /** A tone's mark: a tinted disc with a shape in it, so the tone is never colour alone (XAG 103). */

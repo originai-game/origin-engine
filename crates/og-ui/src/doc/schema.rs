@@ -442,7 +442,7 @@ pub const PROPS: &[PropSpec] = &[
     // Controls.
     p!(
         "variant",
-        Ty::Word(&["secondary", "primary", "quiet", "danger"]),
+        Ty::Word(&["secondary", "primary", "quiet", "danger", "ghost"]),
         ["button"],
         "The button's role."
     ),
@@ -463,6 +463,12 @@ pub const PROPS: &[PropSpec] = &[
         Ty::Bool,
         ["button"],
         "Takes the focus when it appears."
+    ),
+    p!(
+        "square",
+        Ty::Bool,
+        ["button"],
+        "A square of the control height: an icon button."
     ),
     p!(
         "value",

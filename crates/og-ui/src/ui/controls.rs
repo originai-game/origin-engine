@@ -54,11 +54,16 @@ impl Ui {
         } else {
             t.space.lg
         };
+        let (width, pad) = if desc.square {
+            (Size::Fixed(h), 0.0)
+        } else {
+            (desc.width.unwrap_or_default(), pad)
+        };
         let i = self.leaf(
             "button",
             id.into(),
             Element {
-                width: desc.width.unwrap_or_default(),
+                width,
                 height: Size::Fixed(h),
                 padding: Insets::xy(pad, 0.0),
                 // A style that shakes a refused press hears presses on a disabled button.
@@ -106,7 +111,9 @@ impl Ui {
                     Some(mix(p.control, p.control_strong, p.control_strong)),
                     p.ink,
                 ),
-                ButtonVariant::Quiet => {
+                // Ghost is quiet's fill with a strong outline (the token
+                // stroke of a `ghost` part), so it reads as a button at rest.
+                ButtonVariant::Quiet | ButtonVariant::Ghost => {
                     let clear = p.control.fade(0.0);
                     let c = mix(clear, p.control, p.control);
                     ((c.alpha > 0.0).then_some(c), p.ink)
@@ -127,6 +134,7 @@ impl Ui {
             ButtonVariant::Secondary => "secondary",
             ButtonVariant::Quiet => "quiet",
             ButtonVariant::Danger => "danger",
+            ButtonVariant::Ghost => "ghost",
         };
         let mut part =
             crate::dress::PartRef::new("Button", "base", crate::tokens::ElementClass::Button)
@@ -136,7 +144,8 @@ impl Ui {
                 .flag_if(!desc.disabled && r.hovered && !r.pressed, "hover")
                 .flag_if(r.focused, "focused")
                 .flag_if(desc.size == ControlSize::Small, "small")
-                .flag_if(desc.size == ControlSize::Large, "large");
+                .flag_if(desc.size == ControlSize::Large, "large")
+                .flag_if(desc.square, "square");
         part.hover = amounts.0;
         part.press = amounts.1;
         let resolved = self.dress.resolve(&part);

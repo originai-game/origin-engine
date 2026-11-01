@@ -17636,8 +17636,9 @@ export type FontRole = "body" | "display" | "mono" | "rounded";
  * - `"primary"`: The primary action: one per screen.
  * - `"quiet"`: Text until hovered.
  * - `"danger"`: A destructive action: danger ink on the danger tint.
+ * - `"ghost"`: Clear inside a strong outline until hovered: a second action beside a primary that still reads as a button.
  */
-export type ButtonVariant = "secondary" | "primary" | "quiet" | "danger";
+export type ButtonVariant = "secondary" | "primary" | "quiet" | "danger" | "ghost";
 
 /**
  * Control heights from the density (h-control-sm, -md, -lg).
@@ -18052,6 +18053,12 @@ export interface ButtonDesc {
    * @default false
    */
   readonly autofocus?: boolean;
+  /**
+   * A square of the control height with no side padding: an icon button or a one-glyph label (`+`). Overrides width.
+   *
+   * @default false
+   */
+  readonly square?: boolean;
 }
 
 /**

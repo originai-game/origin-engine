@@ -11,6 +11,8 @@
 //!   no elevation) instead of from the tokens;
 //! - a hover jumps to its colour in one tick instead of moving on the
 //!   style's `ui` spring;
+//! - a ghost button at rest draws as a quiet one (no edge, so it does not
+//!   read as a button), or a square icon button keeps its label padding;
 //! - a set of sounds repeats one sound twice in a row, ignores its volume
 //!   or pitch range, differs after a restore, or the player's haptics
 //!   setting at 0 still plays the pattern.
@@ -192,6 +194,40 @@ fn a_hover_moves_the_buttons_fill_on_the_ui_spring() {
         build(&mut ui, InputFrame::hover(x, y));
     }
     assert!(near(fill(&ui), p.primary_hover), "and arrives");
+}
+
+#[test]
+fn a_ghost_button_shows_its_edge_at_rest_and_a_square_one_is_square() {
+    let strokes = |variant: ButtonVariant| {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.button(
+            "Go",
+            "Go",
+            ButtonDesc {
+                variant,
+                square: true,
+                ..ButtonDesc::default()
+            },
+        );
+        ui.end();
+        let e = ui.frame().element("Go").unwrap().clone();
+        assert!((e.width - e.height).abs() < 0.5, "square: {e:?}");
+        ui.frame()
+            .items
+            .iter()
+            .filter(|i| matches!(&i.cmd, DrawCmd::Shape { shape, .. } if matches!(shape.mode, og_render::UiMode::Stroke(_))))
+            .count()
+    };
+    assert_eq!(
+        strokes(ButtonVariant::Quiet),
+        0,
+        "a quiet button is text at rest"
+    );
+    assert!(
+        strokes(ButtonVariant::Ghost) > 0,
+        "a ghost button shows its outline at rest"
+    );
 }
 
 fn theme_with_set() -> Theme {

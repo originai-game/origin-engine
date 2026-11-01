@@ -111,6 +111,7 @@ pub fn og_ui_button(id: String, text: String, desc: Option<String>) -> String {
                 Some("primary") => ButtonVariant::Primary,
                 Some("quiet") => ButtonVariant::Quiet,
                 Some("danger") => ButtonVariant::Danger,
+                Some("ghost") => ButtonVariant::Ghost,
                 _ => ButtonVariant::Secondary,
             },
             size: match d["size"].as_str() {
@@ -121,6 +122,7 @@ pub fn og_ui_button(id: String, text: String, desc: Option<String>) -> String {
             disabled: d["disabled"].as_bool().unwrap_or(false),
             width: size(&d["width"]),
             autofocus: d["autofocus"].as_bool().unwrap_or(false),
+            square: d["square"].as_bool().unwrap_or(false),
         };
         ui.button(id.as_str(), &text, b)
     });

@@ -252,6 +252,7 @@ impl Ui {
                             Some("primary") => ButtonVariant::Primary,
                             Some("quiet") => ButtonVariant::Quiet,
                             Some("danger") => ButtonVariant::Danger,
+                            Some("ghost") => ButtonVariant::Ghost,
                             _ => ButtonVariant::Secondary,
                         },
                         size: match r.str("size") {
@@ -262,6 +263,7 @@ impl Ui {
                         disabled: r.flag("disabled"),
                         width: r.size("width"),
                         autofocus: r.flag("autofocus"),
+                        square: r.flag("square"),
                     },
                 );
             }

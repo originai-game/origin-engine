@@ -458,6 +458,9 @@ pub enum ButtonVariant {
     Quiet,
     /// A destructive action: danger ink on the danger tint.
     Danger,
+    /// An outlined button: clear inside a strong line until hovered, for
+    /// a second action beside a primary that must still read as a button.
+    Ghost,
 }
 
 /// Control heights from the density (`controlSm/md/lg`).
@@ -480,6 +483,9 @@ pub struct ButtonDesc {
     /// and no dialog is open: what opens takes the focus, so a title
     /// menu's first item answers Enter and the pad's A at once.
     pub autofocus: bool,
+    /// A square of the control height with no side padding: an icon
+    /// button, a one-glyph label (`+`). Overrides `width`.
+    pub square: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

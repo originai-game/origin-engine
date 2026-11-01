@@ -53,7 +53,7 @@ resolves against, so a scripted `touch_move_to` and a click agree.
 | `panel(id, PanelDesc, f)` | a card: `panel`, `radius.panel`, `space.lg` padding, `space.md` gap, a column unless `row` | — |
 | `scroll(id, ScrollDesc, f)` | a scroll column, vertical by default, horizontal or both ways by `ScrollDesc::axes` (`Element::scroll_x` for any container): the wheel (both axes) or a drag scrolls it, a released drag keeps its momentum, it clips its content, a scrollbar per scrolling axis (`radius.bar`) shows the position and a press on one grabs it; nested containers hand off (§Scrolling) | — |
 | `label(id, text, LabelDesc)` | MSDF text; wraps at its width (word breaks; between CJK characters under kinsoku, so no line starts with closing punctuation, a small kana or `ー` nor ends with an opening bracket, and a katakana word stays whole; long words between characters) unless `nowrap`; `align` start/center/end; type step from the ramp; `ellipsis` cuts it with "…" ("..." in a font without it) where it does not fit: a `nowrap` label on its one line (it can then shrink in a row), a wrapping one on its last line with `max_lines` | the whole text, cut or not |
-| `button(id, text, ButtonDesc) -> Response` | a box of `h-control-sm/md/lg` cornered by `radius.control`; `Secondary` (neutral fill, default), `Primary` (the style's `primary`, one per screen), `Quiet`, `Danger`; `disabled` turns neutral and inert; pressed shrinks by `press-scale` | the label |
+| `button(id, text, ButtonDesc) -> Response` | a box of `h-control-sm/md/lg` cornered by `radius.control`; `Secondary` (neutral fill, default), `Primary` (the style's `primary`, one per screen), `Quiet`, `Danger`, `Ghost` (clear inside a `lineStrong` outline); `square` makes it as wide as it is tall (an icon button); `disabled` turns neutral and inert; pressed shrinks by `press-scale` | the label |
 | `image(id, ImageDesc)` | a texture region (`uv`, `tint`), or a solid rectangle without a texture; `aspect` (width over height) keeps its proportions: with the height left to fit it is as tall as its laid-out width over it, with a fixed height and the width left to fit as wide as the height times it (`Element::aspect`, any element) | — |
 | `zoom_view(id, &ZoomViewDesc) -> ZoomResponse` | a zoomable picture (a map, an artwork): two touches pinch it about their centre and pan it, the wheel zooms about the pointer, a drag pans; focused (Tab, a pad) `+`/`-` zoom it, `0` fits it, the arrows pan it; it stays on its picture and within `min_zoom`..`max_zoom` (1 to 4 by default); answers the zoom and the centre; role `image` named by its id, its zoom as its value (§Scrolling) | — |
 | `progress(id, value, ProgressDesc)` | a track filled to 0–1, cornered by `radius.bar` | — |
@@ -462,10 +462,11 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `ellipsis` | bool | label | Cut with … where it does not fit. |
 | `font` | body \| display \| mono \| rounded | label | The font role. |
 | `heading` | bool | label | A heading (a style's flourish frames it). |
-| `variant` | secondary \| primary \| quiet \| danger | button | The button's role. |
+| `variant` | secondary \| primary \| quiet \| danger \| ghost | button | The button's role. |
 | `size` | small \| medium \| large | button | The control height. |
 | `disabled` | bool | button, slider, toggle, field | Takes no input. |
 | `autofocus` | bool | button | Takes the focus when it appears. |
+| `square` | bool | button | A square of the control height: an icon button. |
 | `value` | number | progress, slider | Its value (a slider writes it back). Two-way. |
 | `min` | number | slider | The range's low end. |
 | `max` | number | slider | The range's high end. |

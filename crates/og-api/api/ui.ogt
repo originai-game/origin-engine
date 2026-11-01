@@ -48,6 +48,7 @@ module ui {
     variant primary "The primary action: one per screen."
     variant quiet "Text until hovered."
     variant danger "A destructive action: danger ink on the danger tint."
+    variant ghost "Clear inside a strong outline until hovered: a second action beside a primary that still reads as a button."
   }
 
   enum ControlSize {
@@ -248,6 +249,7 @@ module ui {
     field disabled bool "Neutral and inert."
     field width Option.Size "Its width; null fits the label."
     field autofocus bool "Take the focus when it appears (it was not on screen the tick before) and no dialog is open: what opens takes the focus (og-ui §4), so a menu's first item answers Enter and the pad's A from its first tick. og.ui.mainMenu's first item has it."
+    field square bool "A square of the control height with no side padding: an icon button or a one-glyph label (`+`). Overrides width."
   }
 
   struct PanelDesc {
