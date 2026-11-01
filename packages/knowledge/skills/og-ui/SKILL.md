@@ -1,6 +1,6 @@
 ---
 name: og-ui
-description: Game screens and HUDs on Origin Engine with og.ui — which screen template to pick (title, pause, settings, five HUDs, cutscene, shop, inventory, level select, results, leaderboard, tutorial, loading, dialogs, toasts), how to feed it data and read what it answers, the widget set beneath, focus for keyboard and gamepad, accessibility (the screen-reader mirror), phones, touch gestures and the safe area, text (fields, text areas, selection and the clipboard, input methods, ellipsis, kerning, shaping, font fallback), and the look: UI styles (a look's `ui` line, the six built-ins, the game's own) and how their frames tile, count-ups, bursts, shakes, screen transitions and UI sounds. Use when building or changing menus, HUDs or any UI in a project with a project.ogt.
+description: Game screens and HUDs on Origin Engine with og.ui — which screen template to pick (title, pause, settings, five HUDs, cutscene, shop, inventory, level select, results, leaderboard, tutorial, loading, dialogs, toasts), how to feed it data and read what it answers, the widget set beneath, focus for keyboard and gamepad, accessibility (the screen-reader mirror), phones, touch gestures and the safe area, text (fields, text areas, selection and the clipboard, input methods, ellipsis, kerning, shaping, font fallback), and the look: UI styles (a look's `ui` line, the six built-ins, the game's own) and how their frames tile, count-ups, bursts, shakes, screen transitions and UI sounds, and proving a UI with og ui preview and og ui check. Use when building or changing menus, HUDs or any UI in a project with a project.ogt.
 ---
 
 `og.ui` is the engine's immediate-mode UI: a system describes the tree every
@@ -514,4 +514,73 @@ playtests show how to drive UI from a script: `move_to_text:=shop` then
 `touch_start`/`touch_end`, `key_down:Tab`/`key_up:Tab`, a game command that
 calls `og.ui.navigate`, `dump_ui` for bounds and texts, and frame comparison
 against references. `og polish .` scores the screens' contrast, text size,
-transitions and sounds (og-build §5).
+transitions and sounds (og-build §5), and runs `og ui check`'s rules on
+every frame its playtests capture.
+
+**The loop: preview, check, adjust.** A UI is not done until it has been
+seen on every surface and in every language, and the checks are clean:
+
+```sh
+# A contact sheet per screen (and style): a row per breakpoint (desktop,
+# phone portrait and landscape, tablet), a column per locale (the game's,
+# a pseudo-locale 40 % longer with accents and brackets, a CJK one, a
+# right-to-left one), with index.json naming what each cell shows.
+og ui preview . --screen title --screen hud=show:play
+# Every rule, with the element paths, the measured value and the prop to change.
+og ui check . --screen title --screen hud=show:play
+# A motion as a filmstrip: the screen settles, then the commands, a frame at each time.
+og ui preview . --screen hud=show:play --film "damage:30" --at 0,0.05,0.1,0.2,0.4
+```
+
+A screen is a name and the commands that reach it (`--screen
+hud=show:play`, steps `t:action;...` from the cell's start); a bare
+`--screen <name>` runs `show:<name>` (change it with `--show
+"open:{screen}"`). `--styles pixel,neon --style-cmd "style:{style}"`
+adds a style axis, `--breakpoints` and `--locales` narrow the others.
+Each cell is a fresh engine laid out through og.ui.previewViewport, so a
+game needs no viewport command of its own. Outputs land in
+`og-out/ui-check/` (check.json, check.txt; exit 3 on an error) and
+`og-out/ui-preview/` (sheet-<screen>.png, index.json, film.png).
+
+What `og ui check` reports (docs/ui.md §16.5), each with the fix:
+
+| Rule | What fails | Change |
+|---|---|---|
+| `overlap` | two elements over each other that nothing declared (§6.2): placed groups that collide at a breakpoint, siblings in the flow | the placed one's anchor, offset or a breakpoint variant; `overlaps: ["<path>"]` in og.ui.props when it is the design |
+| `text-cut`, `offscreen` | text cut by its clip, drawn wider than its box, a control past the screen with no scroll | let the box fit or wrap; `ellipsis` with a tooltip; a scroll container |
+| `text-truncated` | an ellipsis without a tooltip (a warning: a tooltip only exists while hovered) | og.ui.tooltip right after it |
+| `safe-area`, `covered` | under the notch or home indicator, or under the player shell's Back (`Viewport.covered`) | place with og.ui.anchor, which keeps to both |
+| `touch-target` | an interactive element under 44×44 CSS px on a coarse pointer | its size, or hit slop |
+| `contrast` | text under 4.5:1 on the pixels (7:1 in high contrast) | the style's palette, never per call |
+| `text-size` | text under 12 CSS px on touch, under 18 px at 1080p on desktop | a larger step of the ramp |
+| `focus-reach`, `focus-trap` | a control the d-pad cannot reach from the default focus (two in one place, not focusable), or cannot leave | line controls up in rows and columns; make it focusable |
+| `a11y-name`, `a11y-locale` | a control with no name; a name or text the same in another locale as in the game's own | its text (or its desc's `label`, where the widget has one); og.i18n.t |
+| `primary-actions` | more than one primary button in a layer | all but one `secondary` |
+| `feedback` | a styled game without hover and press sounds; a custom interactive container without visual states | the style's sounds; a `press` state group |
+| `budget` | over 300 elements in a frame | a virtual list, fewer wrappers |
+
+Not checkable yet, and reported as such: 200 % text scale (og-ui has no
+text scale), a layer without Back (the layer stack), motion bounds and
+reduced-motion fallbacks (the style's motion tokens on states), art
+slots on their placeholder. og.ui.overlaps and og.ui.layoutStats read the
+same overlap and counts from game code.
+
+In a playtest, the same checker: take `dump_ui:<name>.uicheck.json` (the
+run writes `<name>.uiframe.json` beside it) and read it with `checkUi`:
+
+```ts
+import { playtest } from "@origingame/engine/playtest";
+import { checkUi } from "@origingame/engine/ui-check";
+
+export default playtest({
+  name: "the HUD is clean on a phone",
+  commands: "0:show:play;0.8:dump_ui:hud.uicheck.json;0.9:quit",
+  check(run, t) {
+    const errors = checkUi(run, "hud", { skip: ["contrast"] }).filter((f) => f.severity === "error");
+    t.equal(errors.map((f) => `${f.rule} ${f.paths.join(" × ")}`), [], "og ui check finds nothing");
+  },
+});
+```
+
+ui-craft has the design side: hierarchy, each genre's layout grammar and
+motion personality.
