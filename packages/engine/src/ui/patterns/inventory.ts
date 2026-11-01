@@ -9,7 +9,7 @@
 import type * as Api from "@origingame/engine";
 import {
   artSlot, btn, clamp, flags, frame, glow, grow, inside, keyHash, keyOf, kit, lastInteraction, line, mix, over, overProps, paint, pips, pointer, px,
-  rarityColor, rarityRank, recallPath, rememberPath, role, rtl, shadow, st, still, surface, symbol, text, token, u, vstate, xy, type Mut,
+  rarityColor, rarityPips, recallPath, rememberPath, role, rtl, shadow, st, still, surface, symbol, text, token, u, vstate, xy, type Mut,
 } from "./core.ts";
 
 // ── the hand: what is carried ───────────────────────────────────────────
@@ -118,7 +118,7 @@ function tile(it: Api.GridItem, wpx: number, hpx: number, cs: number, opts: { li
       { kind: "gradient", type: "linear", from: { x: 0.5, y: 1 }, to: { x: 0.5, y: 0 }, stops: [{ offset: 0, color: paint(base, tier ? 0.42 : 0.12) }, { offset: 1, color: paint(base, tier ? 0.08 : 0.02) }] },
       ...(it.unusable ? [{ kind: "solid", color: paint(role("danger"), 0.22) } as Api.Fill] : []),
     ],
-    strokes: [line(rarityRank(it.rarity) >= 4 ? 2 : 1, paint(tier ? mix(base, role("ink"), 0.1) : role("line"), opts.dim ? 0.4 : 0.95))],
+    strokes: [line(rarityPips(it.rarity) >= 4 ? 2 : 1, paint(tier ? mix(base, role("ink"), 0.1) : role("line"), opts.dim ? 0.4 : 0.95))],
     ...(opts.raised ? { effects: [shadow(u(10), u(18), 0.55)] } : {}),
   });
   // The art, turned with the item when it lies turned: it is laid out unturned and rotated a quarter.
@@ -135,7 +135,7 @@ function tile(it: Api.GridItem, wpx: number, hpx: number, cs: number, opts: { li
   });
   kit.props(overProps({ insets: { centerX: true, centerY: true }, transform: { rotate: it.rotated ? Math.PI / 2 : 0 }, inert: true, opacity: opts.lifted ? 0.35 : opts.dim ? 0.45 : 1 }));
   const mk = Math.max(12, Math.round(cs * 0.26));
-  if (rarityRank(it.rarity) > 0) {
+  if (rarityPips(it.rarity) > 0) {
     kit.open("Pips", { direction: "row" });
     pips("Row", it.rarity, Math.max(5, Math.round(cs * 0.1)));
     kit.close();
