@@ -47,7 +47,7 @@ platforms. Ray tracing. Networking engines beyond the platform SDK's rooms.
             │        │ SharedArrayBuffer rings (input, clock)   │ postMessage      │
             │  ┌─────▼──────────────── engine Worker ───────────▼───────────────┐ │
             │  │  origin-engine.wasm (Rust): ECS, tick, renderer (wgpu→WebGPU   │ │
-            │  │  or WebGL2 on OffscreenCanvas), anim, physics, nav, audio mix, │ │
+            │  │  on OffscreenCanvas), anim, physics, nav, audio mix,           │ │
             │  │  UI, probe, commands                                           │ │
             │  │        ▲ typed views over wasm memory                          │ │
             │  │  game.js (TS bundle): components, systems, scenes, tunables    │ │
@@ -149,6 +149,12 @@ and the fallback where tsrs has no package.
   hosts; the engine ships its own `sin`/`cos`/`atan2`/`exp` so results do not
   depend on the host's `Math`. Physics (rapier) is built with its
   `enhanced-determinism` feature.
+- The presentation layer is outside this (the owner, 2026-11-01): what
+  is computed for display only, such as a neural network's poses (§2.7,
+  motion generation), may differ between devices, precisions and runs.
+  It never writes a component the simulation reads, is not in a snapshot
+  or `world_hash`, and game code does not branch on it; the simulation
+  stays bit-identical on every host.
 
 ### 2.5 Scenes and assets **(D)**
 
@@ -177,10 +183,13 @@ and the fallback where tsrs has no package.
 
 ### 2.6 Renderer **(D)**
 
-wgpu with WGSL shaders cooked per backend (naga). WebGPU is primary; WebGL2
-is the fallback through wgpu's GL backend with a reduced feature tier
-(no compute: GPU culling and particles fall back to CPU paths, clustered
-lighting falls back to a forward tile table built on the CPU).
+wgpu with WGSL shaders cooked per backend (naga). On the web the renderer
+is WebGPU only (the owner, 2026-11-01, §8): compute is available on every
+supported device, and a feature is designed for the full tier rather than
+cut to a reduced one. The WebGL2 tier (wgpu's GL backend, CPU culling and
+particles, a CPU-built forward tile table) is retired; the WebGL2 notes
+below describe that code until it is removed and are not a requirement on
+new work.
 
 - Forward+ (clustered), with a depth-normal prepass when an effect reads
   depth or normals (on every frame it cost the 20,000-sphere field two
@@ -717,6 +726,28 @@ later.
 - **Animation**: glTF skins and clips, a blend tree asset (`.ogt`), state
   machines as data, root motion, additive layers, two-bone and FABRIK IK,
   blendshapes.
+- **Motion generation** (planned, the owner's direction of 2026-11-01;
+  researched before it is built, `tests/evidence/motionbricks/NOTES.md`):
+  a humanoid is animated by intent instead of hand-authored clips and
+  blend trees, because an agent states where a character goes and what
+  it does far better than it authors and splices clips. Game code sets
+  targets (a place and heading, a style, an interaction on a prop such
+  as sit, vault or pick up, whose target poses the prop's asset carries)
+  and a pose-conditioned generative model in the manner of NVIDIA's
+  MotionBricks fills in the motion between the character's recent poses
+  and those targets, a short span at a time, chained. The model runs on
+  the device, in Rust, on wgpu compute (one implementation for both
+  hosts; no third-party web inference runtime), with its weights a
+  cooked asset fetched like any other and sized for quality, not for a
+  download budget. Its poses are presentation (§2.4): the simulation
+  moves the character by its controller deterministically, the pose
+  follows, and gameplay never reads it. og-anim retargets the generated
+  skeleton onto the game's rig and plants the feet from the model's
+  contact output. Open for the research: the model (distilled from a
+  teacher or trained on licensed motion, since the target poses of the
+  public release are evaluation-only), the intent API, and the crate
+  boundary (inference beside og-render's device, not inside og-anim's
+  tick).
 - **Physics**: rapier3d (and rapier2d for 2D projects), fixed-tick stepping
   inside the engine tick, a kinematic character controller, vehicle later.
   A kinematic body with an `og.Velocity` moves by it each tick and its
@@ -1328,16 +1359,21 @@ Chrome DevTools on a paired phone) when the person is present.
 
 ## 7. Budgets
 
-Measured in the spike (§10) and gated in CI afterwards.
+Measured in the spike (§10) and gated in CI afterwards. Quality comes
+first (the owner, 2026-11-01): the engine targets current devices only
+(§8), and no budget here is a reason to cut a feature to a reduced tier
+or to hold a model or an effect below the quality it needs; a figure a
+feature moves is measured at a wave's end and pursued, or the budget is
+raised in its own commit.
 
 | Budget | Target |
 |---|---|
-| engine wasm, brotli | ≤ 4 MB core; ≤ 6 MB with physics and animation |
-| first frame, mid-range Android, 4G, small game | ≤ 2.0 s click to first frame (the play-surface budget) |
+| engine wasm, brotli | reported per download (the largest variant a player loads); pursued at wave ends, not a ceiling on features (2026-11-01). Model weights and other assets are not in it |
+| first frame, a current iPhone, 4G, small game | ≤ 2.0 s click to first frame (the play-surface budget) |
 | first frame, iPhone 13, Wi-Fi, mid-size 3D scene | ≤ 1.5 s |
-| TS system over 10,000 entities (one archetype, 2 components) | ≤ 1.0 ms per tick on a 2022 mid-range Android |
-| complex scene (`tools/bench/complex`: a 320 m textured level, 5,261 props from 19 models in 60 materials, 48 skinned characters on 14 clips, the sun's cascades and 4 shadowed local lights, 20 particle emitters, transparency, AO, bloom, ACES, the tier's antialiasing) | ≥ 1.5× the frame rate of the same scene in Three.js on the same device, judged on WebGPU; WebGL2 reported |
-| reference scene (500 instanced objects, 2 shadowed lights, 20 skinned characters, PBR, post) | reported beside the complex scene, both tiers; no longer the judge |
+| TS system over 10,000 entities (one archetype, 2 components) | ≤ 1.0 ms per tick on a current iPhone |
+| complex scene (`tools/bench/complex`: a 320 m textured level, 5,261 props from 19 models in 60 materials, 48 skinned characters on 14 clips, the sun's cascades and 4 shadowed local lights, 20 particle emitters, transparency, AO, bloom, ACES, the tier's antialiasing) | ≥ 1.5× the frame rate of the same scene in Three.js on the same device, judged on WebGPU |
+| reference scene (500 instanced objects, 2 shadowed lights, 20 skinned characters, PBR, post) | reported beside the complex scene; no longer the judge |
 | probe `capture` 1280×720 | ≤ 30 ms native, ≤ 60 ms web |
 | hot reload | ≤ 300 ms from bundle write to first new frame |
 | headless executor image (`engine`) | ≤ 600 MB |
@@ -1370,26 +1406,30 @@ line.
 
 ## 8. Platform matrix
 
-| | WebGPU (Chrome, Edge, Safari 26+, recent Firefox) | WebGL2 fallback | native Linux (executor) | native macOS (developer) |
-|---|---|---|---|---|
-| renderer | full | no compute: CPU culling/particles, tiled lights, no GTAO | full with a Vulkan device (a GPU; lavapipe set aside), else none: the simulation, the probe and the playtests without their frames | full (Metal) |
-| lanes | with COOP/COEP | with COOP/COEP | rayon | rayon |
-| audio | AudioWorklet | AudioWorklet | cpal or null | cpal |
-| capture | readback | readback | readback | readback |
-| determinism | yes | yes | yes | yes |
+| | WebGPU (Chrome, Edge, Safari 26+, recent Firefox) | native Linux (executor) | native macOS (developer) |
+|---|---|---|---|
+| renderer | full | full with a Vulkan device (a GPU; lavapipe set aside), else none: the simulation, the probe and the playtests without their frames | full (Metal) |
+| lanes | with COOP/COEP | rayon | rayon |
+| audio | AudioWorklet | cpal or null | cpal |
+| capture | readback | readback | readback |
+| determinism | yes | yes | yes |
 
 **The compatibility baseline (the owner, 2026-10-27).** During
 development features come first, and the engine targets current
 hardware and current browsers; old browsers, low-end GPUs and old
-drivers are not a target and are not tested.
+drivers are not a target and are not tested. **Quality over reach (the
+owner, 2026-11-01):** there is no reduced tier for weaker devices. A
+browser or device without WebGPU is not supported (the player shell says
+so instead of starting a degraded engine), and a feature is built for
+the supported devices at the quality it needs, never cut down to fit a
+weaker one.
 
 - Browsers: the current stable Chrome and Edge and the major before it,
-  Safari 26+, the current stable Firefox. WebGPU is the main path; WebGL2
-  is the fallback on those same browsers (WebGPU off or failing), not a
-  route to older ones.
-- Desktop: Windows 10/11 x64 on DX12 (in the browser, D3D12 for WebGPU and
-  ANGLE on D3D11 for WebGL2) with a current NVIDIA, AMD or Intel GPU and
-  driver; macOS on Apple silicon (Metal); Linux x64 with a Vulkan GPU.
+  Safari 26+, the current stable Firefox, on WebGPU. There is no WebGL2
+  fallback (retired 2026-11-01, §12.4).
+- Desktop: Windows 10/11 x64 on DX12 (in the browser, D3D12 for WebGPU)
+  with a current NVIDIA, AMD or Intel GPU and driver; macOS on Apple
+  silicon (Metal); Linux x64 with a Vulkan GPU.
 - Phones: a current iPhone in Safari. Mid-range and older Android
   devices are deferred.
 - The reference GPUs are real ones: `metal` (macrunner) and DX12 with the
@@ -1544,7 +1584,9 @@ Cloud CI runs only by hand (docs/ci.md §CI); its `perf` lane measures, it does 
    symbol (§9); geometry in the platform's `product-marks.ts`.
 3. **2D as a first-class profile** (orthographic camera, sprite batching,
    2D physics via rapier2d) in phase 1 or phase 2.
-4. **WebGL2 fallback lifetime**: keep until WebGPU share on the platform's
+4. ~~WebGL2 fallback lifetime~~ **Decided 2026-11-01: retired.** Quality over
+   reach (§8): the web is WebGPU only, with no reduced tier. The original
+   question was: keep until WebGPU share on the platform's
    real devices passes a threshold the Player telemetry reports.
 5. **Native macOS/Windows developer runs** of `og run` beyond executors (nice
    for engine developers; not a product).
