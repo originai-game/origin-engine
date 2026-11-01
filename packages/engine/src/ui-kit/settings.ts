@@ -18,7 +18,7 @@ import type * as Api from "@origingame/engine";
 import { render } from "../runtime.ts";
 import { input } from "../input.ts";
 import { kit } from "./bind.ts";
-import { frame, grow, px, token } from "./util.ts";
+import { fit, frame, grow, px, token } from "./util.ts";
 
 type Settings = {
   -readonly [K in keyof Required<Api.GameSettings>]: K extends "bindings" ? Api.KeyBinding[] : Required<Api.GameSettings>[K];
@@ -89,7 +89,14 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
       ? (kit.select("Section", labels, tab, { width: grow(), label: section }) as Api.ChoiceResult)
       : (kit.tabs("Section", labels, tab, { fill: true, width: grow(), label: section }) as Api.ChoiceResult);
     tab = pick.selected;
-    kit.column("Body", { width: grow(), gap: t.sm, height: px(phone ? 300 : 260) }, () => {
+    // The body sizes to its tab's rows, at least the old fixed height where
+    // the screen has room (the dialog keeps its size between short tabs), and
+    // scrolls once the dialog reaches the safe area: the modal's backdrop
+    // shrinks it, a scroll's height going down to nothing. Its right padding
+    // keeps the rows' values clear of the scroll bar (xs wide, xxs in).
+    const floor = frame().viewport.height >= 600 ? (phone ? 300 : 260) : 0;
+    const bar = t.xs + 2 * t.xxs;
+    kit.scroll("Body", { width: grow(), height: fit(floor), gap: t.sm, padding: { left: 0, top: 0, bottom: 0, right: bar } }, () => {
       const pct = (v: number): string => `${Math.round(v * 100)}%`;
       switch (tabs[tab]?.[0]) {
         case "audio": {
@@ -123,7 +130,7 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
           s.vibration = kit.checkbox("Vibration", s.vibration, desc.vibrationLabel ?? "Vibration").on;
           if (s.bindings.length > 0) {
             kit.divider("Rule", false);
-            kit.scroll("Bindings", { width: grow(), height: grow() }, () => {
+            kit.column("Bindings", { width: grow() }, () => {
               s.bindings.forEach((b, i) => kit.keyValue(kit.idi("Binding", i), b.label ?? b.action ?? "", b.key ?? "", true));
             });
           }
@@ -180,13 +187,13 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
 /**
  * The PC graphics page over GameSettings.display: what og.render.display
  * answers for this device (V-Sync, the GPU the page loaded with) beside the
- * player's choices. Scrolls inside the tab's fixed height.
+ * player's choices. Its rows are the body's, which scrolls past the safe area.
  */
 function graphicsPage(s: Settings, d: Api.DisplaySettings, desc: Api.SettingsDesc, phone: boolean): void {
   const { t } = frame();
   const info = desc.world ? (render.display(desc.world as unknown as World) as Api.DisplayInfo) : null;
   const display = d as { -readonly [K in keyof Api.DisplaySettings]: Api.DisplaySettings[K] };
-  kit.scroll("Page", { width: grow(), height: grow(), gap: t.sm }, () => {
+  kit.column("Page", { width: grow(), gap: t.sm }, () => {
     const quality = desc.qualityLabel ?? "Quality";
     kit.label("QualityLabel", quality, { step: "meta", color: token("inkMuted") });
     const levels = [desc.lowLabel ?? "Low", desc.mediumLabel ?? "Medium", desc.highLabel ?? "High"];
