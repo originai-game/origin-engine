@@ -61,6 +61,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(ui_9_to_11),
     },
     Migration {
+        target: Target::Block,
+        name: "og.ui",
+        from: 11,
+        to: 12,
+        note: "U6b: the focus returns as a stack, one per nested scope",
+        run: Some(ui_upgrade),
+    },
+    Migration {
         target: Target::Record,
         name: "og.Gamepad",
         from: 1,
@@ -71,6 +79,13 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
 ];
 
 fn ui_9_to_11(edit: &mut SnapshotEdit) -> Result<(), String> {
+    let bytes = edit.block("og.ui").ok_or("no og.ui block")?;
+    let upgraded = og_ui::Ui::upgrade_state(bytes).map_err(|e| e.reason().to_string())?;
+    edit.set_block("og.ui", upgraded)
+        .map_err(|e| e.reason().to_string())
+}
+
+fn ui_upgrade(edit: &mut SnapshotEdit) -> Result<(), String> {
     let bytes = edit.block("og.ui").ok_or("no og.ui block")?;
     let upgraded = og_ui::Ui::upgrade_state(bytes).map_err(|e| e.reason().to_string())?;
     edit.set_block("og.ui", upgraded)

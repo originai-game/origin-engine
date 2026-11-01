@@ -215,7 +215,9 @@ impl Ui {
     /// the bytes as they are at this version, the state of version 9
     /// (engine 0.7.7) with what it did not have at its defaults (no hit
     /// transforms, the feedback stream unseeded, no motion channels, an
-    /// empty layer stack) and its six sound voices moved to their events.
+    /// empty layer stack) and its six sound voices moved to their events,
+    /// and the state of version 11 with its one focus return as the stack's
+    /// entry.
     /// Refused for another version, or bytes that do not read as theirs.
     pub fn upgrade_state(bytes: &[u8]) -> og_core::Result<Vec<u8>> {
         let bad = |why: String| {
@@ -238,8 +240,32 @@ impl Ui {
                 };
                 Ok(ui.save_state())
             }
+            11 => {
+                let s = r.state(version).ok_or_else(|| {
+                    bad(format!("truncated or malformed version {version} state"))
+                })?;
+                let docs: serde_json::Value = r
+                    .string()
+                    .and_then(|t| serde_json::from_str(&t).ok())
+                    .ok_or_else(|| {
+                        bad(format!(
+                            "truncated or malformed version {version} layer stack"
+                        ))
+                    })?;
+                if r.at != bytes.len() {
+                    return Err(bad(format!(
+                        "trailing bytes after a version {version} state"
+                    )));
+                }
+                let mut ui = Ui {
+                    state: s,
+                    ..Ui::default()
+                };
+                ui.restore_docs_state(&docs);
+                Ok(ui.save_state())
+            }
             v => Err(bad(format!(
-                "version {v}: this engine reads version {STATE_VERSION} and upgrades version 9"
+                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11"
             ))),
         }
     }
@@ -288,7 +314,7 @@ impl Reader<'_> {
         ))
     }
 
-    /// The state as `version` (this one's, or 9) wrote it.
+    /// The state as `version` (this one's, 11 or 9) wrote it.
     fn state(&mut self, version: u32) -> Option<State> {
         let v9 = version == 9;
         let mut s = State {
@@ -346,8 +372,16 @@ impl Reader<'_> {
         s.nav_off = flags & 2 != 0;
         s.scope_locked = flags & 4 != 0;
         s.scope = self.u64()?;
-        for _ in 0..self.u32()? {
-            s.focus_returns.push((self.u64()?, self.u64()?));
+        if version >= 12 {
+            for _ in 0..self.u32()? {
+                s.focus_returns.push((self.u64()?, self.u64()?));
+            }
+        } else {
+            // Before version 12 one return was kept, for a scope opened over the base.
+            let back = self.u64()?;
+            if s.scope != 0 {
+                s.focus_returns.push((0, back));
+            }
         }
         s.stick = (self.u8()?, self.u64()?);
         for _ in 0..self.u32()? {
@@ -500,5 +534,48 @@ impl Reader<'_> {
         s.motion = r.motion()?;
         self.at = r.at;
         Some(s)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A version 11 state block (one focus return) restores once upgraded:
+    /// the dialog it had open gives the focus back where it was.
+    #[test]
+    fn a_version_11_state_upgrades_and_restores() {
+        let mut ui = Ui::default();
+        ui.state.scope = 7;
+        ui.state.focus = 9;
+        ui.state.focus_returns = vec![(0, 42)];
+        let v12 = ui.save_state();
+        // Version 11 wrote the one return as a u64 where 12 writes a counted list.
+        let mut now = 7u64.to_le_bytes().to_vec();
+        now.extend_from_slice(&1u32.to_le_bytes());
+        now.extend_from_slice(&0u64.to_le_bytes());
+        now.extend_from_slice(&42u64.to_le_bytes());
+        let at = v12
+            .windows(now.len())
+            .position(|w| w == now.as_slice())
+            .expect("the scope and its returns");
+        let mut v11 = v12[..at].to_vec();
+        v11.extend_from_slice(&7u64.to_le_bytes());
+        v11.extend_from_slice(&42u64.to_le_bytes());
+        v11.extend_from_slice(&v12[at + now.len()..]);
+        v11[..4].copy_from_slice(&11u32.to_le_bytes());
+
+        let mut fresh = Ui::default();
+        assert!(
+            fresh.restore_state(&v11).is_err(),
+            "11 is read only through the upgrade"
+        );
+        let up = Ui::upgrade_state(&v11).expect("version 11 upgrades");
+        assert_eq!(up, v12, "the upgrade writes what this version saves");
+        fresh
+            .restore_state(&up)
+            .expect("the upgraded block restores");
+        assert_eq!((fresh.state.scope, fresh.state.focus), (7, 9));
+        assert_eq!(fresh.state.focus_returns, vec![(0, 42)]);
     }
 }
