@@ -66,8 +66,8 @@ export function chart(id: string, desc: Api.ChartDesc): Api.ChartResult {
   try {
     if (desc.title || desc.subtitle) {
       kit.column("Header", { width: grow(), gap: 2 }, () => {
-        if (desc.title) text("Title", desc.title, { step: "base", heading: true, width: grow(), nowrap: true, ellipsis: true });
-        if (desc.subtitle) text("Subtitle", desc.subtitle, { step: "caption", color: "inkMuted", width: grow(), nowrap: true, ellipsis: true });
+        if (desc.title) text("Title", desc.title, { step: "base", heading: true, width: grow() });
+        if (desc.subtitle) text("Subtitle", desc.subtitle, { step: "caption", color: "inkMuted", width: grow() });
       });
     }
     if (desc.loading || desc.error || empty) {
@@ -596,7 +596,7 @@ function pie(cx: Ctx, W0: number, H: number): { hovered: number | null; clicked:
         semantics: { role: "button", name: `${cx.cats[k] ?? k + 1}, ${cx.fmt(cx.values[0]![k]!)}, ${pct(val)}`, selected: desc.selected === k },
       }, () => {
         swatch("Swatch", colour(k), 10);
-        text("Label", cx.cats[k] ?? `${k + 1}`, { step: "sm", nowrap: true, ellipsis: true, width: grow(), color: on ? "ink" : "inkMuted" });
+        text("Label", cx.cats[k] ?? `${k + 1}`, { step: "sm", width: grow(), color: on ? "ink" : "inkMuted" });
         text("Value", cx.fmt(cx.values[0]![k]!), { step: "sm", font: "mono", nowrap: true });
         text("Share", pct(val), { step: "caption", font: "mono", color: "inkFaint", nowrap: true, width: px(44), align: "end" });
       });

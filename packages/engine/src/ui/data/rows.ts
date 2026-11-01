@@ -23,7 +23,7 @@ export function keyValueRows(id: string, desc: Api.KeyValueRowsDesc): void {
   kit.open(id, { direction: "column", width: desc.width ?? grow(), cross: "stretch", part: "KeyValue.frame", partClass: "panel" });
   try {
     if (desc.title) {
-      kit.row("Title", { width: grow(), padding: { left: 0, top: 0, right: 0, bottom: t.xs } }, () => text("Text", desc.title ?? "", { step: "caption", color: "inkMuted", nowrap: true, ellipsis: true, width: grow() }));
+      kit.row("Title", { width: grow(), padding: { left: 0, top: 0, right: 0, bottom: t.xs } }, () => text("Text", desc.title ?? "", { step: "caption", color: "inkMuted", width: grow() }));
     }
     rows.forEach((r, k) => {
       const ink = TONE[r.tone ?? "neutral"] ?? "ink";
@@ -91,7 +91,7 @@ export function statCompare(id: string, desc: Api.StatCompareDesc): void {
       kit.open(kit.idi("Row", k), { direction: "column", width: grow(), gap: t.xxs, padding: xy(0, t.xs), part: `StatCompare.row${flags(better > 0 ? "better" : better < 0 ? "worse" : "same")}`, partClass: "slot" });
       kit.row("Line", { width: grow(), gap: t.sm, cross: "center" }, () => {
         if (r.icon) kit.icon("Icon", r.icon, { size: 18, tint: token("inkMuted"), label: "" });
-        text("Label", r.label ?? "", { step: "sm", color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
+        text("Label", r.label ?? "", { step: "sm", color: "inkMuted", width: grow() });
         text("Current", fmtOf(cur), { step: "sm", font: "mono", color: same ? "ink" : "inkMuted", nowrap: true, align: "end", width: px(phone ? 56 : 72) });
         kit.open("Arrow", { width: px(16), height: px(16), align: "center", cross: "center" });
         if (!same) {

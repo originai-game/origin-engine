@@ -71,7 +71,7 @@ export function calendar(id: string, desc: Api.CalendarDesc): Api.CalendarResult
     kit.row("Header", { width: grow(), gap: t.xs, cross: "center" }, () => {
       const prev = surface("Prev", { part: "Calendar.step", cls: "button", flags: ["round"], fill: null, disabled: !canTurn(-1), width: px(44), height: px(44), align: "center", cross: "center", radius: 22, semantics: { role: "button", name: desc.prevLabel || "Previous month" } }, () => chevron("Chevron", "back", 16, role(canTurn(-1) ? "ink" : "inkFaint")));
       if (prev.clicked) turn(-1);
-      text("Month", `${months[month - 1]} ${year}`, { step: "base", heading: true, align: "center", width: grow(), nowrap: true, ellipsis: true });
+      text("Month", `${months[month - 1]} ${year}`, { step: "base", heading: true, align: "center", width: grow() });
       kit.semantics({ role: "heading", name: `${months[month - 1]} ${year}` });
       const next = surface("Next", { part: "Calendar.step", cls: "button", flags: ["round"], fill: null, disabled: !canTurn(1), width: px(44), height: px(44), align: "center", cross: "center", radius: 22, semantics: { role: "button", name: desc.nextLabel || "Next month" } }, () => chevron("Chevron", "forward", 16, role(canTurn(1) ? "ink" : "inkFaint")));
       if (next.clicked) turn(1);

@@ -4,7 +4,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  byText, chevron, clamp, flags, frame, grow, kit, lastGesture, mark, over, px, rememberPath, role, rtl, spring, surface, text, token, xy,
+  byText, chevron, target, wrapRow, clamp, flags, frame, grow, kit, lastGesture, mark, over, px, rememberPath, role, rtl, spring, surface, text, token, xy,
 } from "../containers/base.ts";
 
 // ── tree ────────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ export function tree(id: string, desc: Api.TreeDesc): Api.TreeResult {
     });
   };
   walk("", 0);
-  const rowH = byText(desc.rowHeight ?? (phone ? 44 : 36));
+  const rowH = wrapRow(desc.rowHeight ?? (phone ? 44 : 36));
   const indent = desc.indent ?? 20;
   kit.open(id, { direction: "column", width: desc.width ?? grow(), height: desc.height ?? null, cross: "stretch", part: "Tree.frame", partClass: "panel" });
   try {
@@ -56,13 +56,13 @@ export function tree(id: string, desc: Api.TreeDesc): Api.TreeResult {
       try {
         kit.row("Line", { width: grow(), height: grow(), padding: { left: t.xs + depth * indent, top: 0, right: t.sm, bottom: 0 }, gap: t.xs, cross: "center", part: `Tree.item${flags(sel && "selected", branch && (isOpen ? "expanded" : "collapsed"))}`, partClass: "slot" }, () => {
           if (branch) {
-            const tr = surface("Toggle", { part: "Tree.toggle", cls: "chip", fill: null, focusable: false, width: px(28), height: px(28), align: "center", cross: "center", semantics: { role: "button", name: isOpen ? "Collapse" : "Expand" } }, () => {
+            const tr = surface("Toggle", { part: "Tree.toggle", cls: "chip", fill: null, focusable: false, width: px(target(28)), height: px(target(28)), align: "center", cross: "center", semantics: { role: "button", name: isOpen ? "Collapse" : "Expand" } }, () => {
               chevron("Chevron", "forward", 14, role("inkMuted"), { group: "expansion", current: isOpen ? "expanded" : "collapsed", turns: { collapsed: 0, expanded: 1 } });
             });
             if (tr.clicked) toggled = key;
-          } else kit.spacer("Toggle", px(28));
+          } else kit.spacer("Toggle", px(target(28)));
           if (it.icon) kit.icon("Icon", it.icon, { size: 18, tint: token(sel ? "primary" : "inkMuted"), label: "" });
-          text("Label", it.label ?? "", { step: "sm", nowrap: true, ellipsis: true, width: grow(), color: it.disabled ? "inkFaint" : "ink" });
+          text("Label", it.label ?? "", { step: "sm", maxLines: 2, ellipsis: true, width: grow(), color: it.disabled ? "inkFaint" : "ink" });
           if (it.badge) kit.badge("Badge", it.badge, it.badgeTone ?? "neutral");
         });
       } finally {
@@ -119,15 +119,30 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
     x1 = Math.max(x1, n.x ?? 0);
     y1 = Math.max(y1, n.y ?? 0);
   }
-  const margin = size;
   const pinch = lastGesture(`${key}/Canvas`);
   const pinchHeld = kit.memory(`${id}~pinch`, 1);
   if (pinch && pinch.scale !== 1 && !pinch.held && pinchHeld !== 1) zoom = clamp(zoom * pinchHeld, minZ, maxZ);
   kit.remember(`${id}~pinch`, pinch?.held ? pinch.scale : 1);
   const live = pinch?.held ? clamp(zoom * pinch.scale, minZ, maxZ) : zoom;
-  const W = (x1 + 2 * margin) * live;
-  const H = (y1 + 2 * margin) * live;
-  const at = (n: Api.GraphNode) => ({ x: ((n.x ?? 0) + margin) * live, y: ((n.y ?? 0) + margin) * live });
+  const s = size * Math.max(0.75, Math.min(1.25, live));
+  // Room round the nodes' centres for a node and its caption (two lines under it), at the text size.
+  const capW = byText(120);
+  const padX = Math.max(s / 2, capW / 2) + t.sm;
+  const padTop = s / 2 + t.sm;
+  const padBottom = s / 2 + 4 + byText(2 * 18) + t.sm;
+  // Zoom 1 fits the whole graph in its view (as laid out last tick): it opens with every node in
+  // sight, and zooming in from there pans.
+  const view = kit.bounds(`${id}/View`) ?? kit.bounds(id);
+  const fitK = view ? Math.min(1, x1 > 0 ? Math.max(0.1, (view.width - 2 * padX) / x1) : 1, y1 > 0 ? Math.max(0.1, (view.height - padTop - padBottom) / y1) : 1) : 1;
+  const k = live * fitK;
+  const w0 = x1 * k + 2 * padX;
+  const h0 = y1 * k + padTop + padBottom;
+  // Smaller than its view, it sits in the middle.
+  const W = Math.max(w0, view?.width ?? 0);
+  const H = Math.max(h0, view?.height ?? 0);
+  const ox = (W - w0) / 2;
+  const oy = (H - h0) / 2;
+  const at = (n: Api.GraphNode) => ({ x: ox + padX + (n.x ?? 0) * k, y: oy + padTop + (n.y ?? 0) * k });
   const byId = new Map(nodes.map((n) => [n.id ?? "", n] as const));
   kit.open(id, { direction: "column", width: desc.width ?? grow(), height: desc.height ?? px(phone ? 360 : 420), cross: "stretch", radius: t.panel, background: token("well"), part: "Graph.frame", partClass: "slot" });
   try {
@@ -169,7 +184,6 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
         const p = at(n);
         const state = n.state ?? "available";
         const locked = state === "locked";
-        const s = size * Math.max(0.75, Math.min(1.25, live));
         const ink = STATE_INK[state] ?? "ink";
         const r = surface(kit.idi("Node", k), {
           part: "Graph.node",
@@ -203,8 +217,8 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
           }
         });
         if (n.label && desc.labels !== false) {
-          text(kit.idi("Caption", k), n.label, { step: "caption", color: locked ? "inkFaint" : "inkMuted", nowrap: true, ellipsis: true, align: "center", width: px(120) });
-          over({ insets: { start: (rtl() ? W - p.x : p.x) - 60, top: p.y + s / 2 + 4 }, inert: true, z: 1 });
+          text(kit.idi("Caption", k), n.label, { step: "caption", color: locked ? "inkFaint" : "inkMuted", align: "center", width: px(capW), maxLines: 2 });
+          over({ insets: { start: (rtl() ? W - p.x : p.x) - capW / 2, top: p.y + s / 2 + 4 }, inert: true, z: 1 });
         }
         if (r.clicked) chosen = n.id ?? null;
       });

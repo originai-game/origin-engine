@@ -8,7 +8,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  all, byText, chevron, fit, flags, frame, grow, kit, mark, px, role, spring, surface, text, token, xy,
+  all, byText, chevron, target, fit, flags, frame, grow, kit, mark, px, role, spring, surface, text, token, xy,
 } from "../containers/base.ts";
 import { formatNumber, groupNumber } from "./format.ts";
 
@@ -187,15 +187,18 @@ export function table(id: string, desc: Api.TableDesc): Api.TableResult {
   const { t, phone } = frame();
   const rows = (desc.rows ?? []) as readonly unknown[];
   const all_ = desc.columns ?? [];
-  // On a phone keep the columns that fit, by priority.
-  const room = (frame().viewport.width - 2 * t.gutter);
+  // A column's width grows with the player's text size (its numbers and its header are text).
+  const widthOf = (c: Api.TableColumn): number | null => (c.width ? byText(c.width) : null);
+  // Keep the columns that fit the table's width (as laid out last tick; the screen's before it
+  // was), highest priority first: a growing column needs room for its text too. On a phone, or at
+  // a large text size on a desktop, the low-priority columns drop instead of every column cutting.
+  const room = kit.bounds(id)?.width ?? frame().viewport.width - 2 * t.gutter;
   const cols = (() => {
-    if (!phone) return all_;
     const want = [...all_].map((c, k) => ({ c, k })).sort((a, b) => (b.c.priority ?? 0) - (a.c.priority ?? 0));
-    let used = 0;
+    let used = 2 * t.sm;
     const keep = new Set<number>();
     for (const { c, k } of want) {
-      const w = c.width ?? 120;
+      const w = widthOf(c) ?? byText(80);
       if (keep.size === 0 || used + w <= room) {
         keep.add(k);
         used += w;
@@ -210,6 +213,9 @@ export function table(id: string, desc: Api.TableDesc): Api.TableResult {
   let retry = false;
   const rowH = byText(desc.rowHeight ?? (phone ? 48 : 40));
   const colIndex = (c: Api.TableColumn) => all_.indexOf(c);
+  // A small text's rough advance at the text size: a cell whose value is likely cut says it whole in a tooltip.
+  const charW = 9 * Math.max(1, frame().theme.textScale ?? 1);
+  const colW = new Map(cols.map((c) => [c, widthOf(c)] as const));
   kit.open(id, { direction: "column", width: desc.width ?? grow(), height: desc.height ?? null, cross: "stretch", gap: t.sm });
   try {
     if (desc.search ?? true) {
@@ -225,9 +231,10 @@ export function table(id: string, desc: Api.TableDesc): Api.TableResult {
           const on = k === sortBy;
           const end = c.numeric ?? false;
           const label = c.label ?? c.key ?? "";
-          const width: Api.Size = c.width ? px(c.width) : grow();
+          const cw = widthOf(c);
+          const width: Api.Size = cw ? px(cw) : grow();
           if (c.sortable === false) {
-            kit.row(kit.idi("Col", k), { width, padding: xy(t.xs, 0), align: end ? "end" : "start" }, () => text("Label", label, { step: "caption", color: "inkMuted", nowrap: true, ellipsis: true }));
+            kit.row(kit.idi("Col", k), { width, padding: xy(t.xs, 0), align: end ? "end" : "start" }, () => text("Label", label, { step: "caption", color: "inkMuted", maxLines: 2, align: end ? "end" : "start" }));
             kit.semantics({ role: "columnheader", name: label });
             return;
           }
@@ -237,13 +244,14 @@ export function table(id: string, desc: Api.TableDesc): Api.TableResult {
             flags: [on ? "sorted" : "", on ? (descending ? "descending" : "ascending") : ""],
             fill: null,
             width,
-            height: fit(36),
+            height: fit(target(36)),
             padding: xy(t.xs, 0),
             gap: t.xxs,
             align: end ? "end" : "start",
             semantics: { role: "columnheader", name: label, value: on ? (descending ? "sorted descending" : "sorted ascending") : "" },
           }, () => {
-            text("Label", label, { step: "caption", color: on ? "ink" : "inkMuted", nowrap: true, ellipsis: true, font: on ? "display" : "body" });
+            // A header wraps onto a second line rather than cut to a stub.
+            text("Label", label, { step: "caption", color: on ? "ink" : "inkMuted", maxLines: 2, font: on ? "display" : "body", align: end ? "end" : "start" });
             if (on) chevron("Sort", "forward", 14, role("primary"), { group: "sort", current: descending ? "descending" : "ascending", turns: { ascending: -1, descending: 1 } }, 2);
           });
           if (r.clicked) {
@@ -274,8 +282,11 @@ export function table(id: string, desc: Api.TableDesc): Api.TableResult {
                 const end = c.numeric ?? false;
                 const tone = c.toneKey ? String((rows[i] as Record<string, unknown>)[c.toneKey] ?? "") : "";
                 const ink: Api.ThemeColor = tone === "up" || tone === "success" ? "success" : tone === "down" || tone === "danger" ? "danger" : k === 0 ? "ink" : "inkMuted";
-                kit.row(kit.idi("Cell", k), { width: c.width ? px(c.width) : grow(), padding: xy(t.xs, 0), align: end ? "end" : "start" }, () => {
-                  text("Text", cellText(rows[i], c), { step: "sm", nowrap: true, ellipsis: true, color: ink, font: end ? "mono" : "body" });
+                kit.row(kit.idi("Cell", k), { width: colW.get(c) ? px(colW.get(c)!) : grow(), padding: xy(t.xs, 0), align: end ? "end" : "start" }, () => {
+                  // Data in a fixed column: an ellipsis, with the whole value in a tooltip when it cuts.
+                  const v = cellText(rows[i], c);
+                  text("Text", v, { step: "sm", nowrap: true, ellipsis: true, color: ink, font: end ? "mono" : "body" });
+                  if (v.length * charW > (colW.get(c) ?? room)) kit.tooltip(v);
                 });
                 kit.semantics({ role: "cell" });
               });
