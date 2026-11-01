@@ -158,6 +158,33 @@ test("menu: Back closes it, answering dismissed without a choice", () => {
   expect(chosen).toBeNull();
 });
 
+test("menu: a press while it still eases in chooses (nothing waits for the open motion)", () => {
+  // Wrong: the surface inert for its 140 ms entrance, so a quick player's press is dropped.
+  let open = false;
+  let chosen: string | null = null;
+  const engine = run(() => {
+    if (og.ui.button("Opener", "Options", {}).clicked) open = true;
+    const at = og.ui.lastPath();
+    const r = og.ui.menu("Menu", open, { anchor: at, entries: [{ id: "a", label: "Alpha" }, { id: "b", label: "Beta" }] });
+    if (r.chosen !== null) chosen = r.chosen;
+    if (r.dismissed) open = false;
+  });
+  // Where Beta rests, from an open that settled; then closed again.
+  tap(engine, "Opener");
+  engine.advance(20);
+  const beta = find(engine, (e) => e.role === "menuitem" && e.name === "Beta")!;
+  expect(beta).toBeDefined();
+  key(engine, "Escape");
+  engine.advance(20);
+  expect(open).toBeFalse();
+  // Open, and press Beta three ticks after it first shows (its motion runs nine).
+  const x = Math.round(beta.x + beta.width / 2), y = Math.round(beta.y + beta.height / 2);
+  engine.probe.commands(`0:touch_move_to:Opener;0.02:touch_start;0.05:touch_end;0.1:touch_move:${x},${y};0.1:touch_start;0.13:touch_end`);
+  engine.advance(12);
+  expect(chosen).toBe("b");
+  expect(open).toBeFalse();
+});
+
 // ── dialogs ─────────────────────────────────────────────────────────────
 
 test("confirm: the action answers confirmed, Escape cancels; a danger confirm says its tone", () => {
