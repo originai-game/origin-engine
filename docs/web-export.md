@@ -456,6 +456,19 @@ Worker counts no frames, the page reads no adapter or memory, and only
 `start`, `ready`, `fail`, the boot `sample` with `renderer` and `timings`,
 `crash` with `name` and `fingerprint`, `heartbeat` and `end` go, as before.
 
+**The GPU is the engine's own device.** The page never asks for an adapter
+of its own: on a machine with two GPUs the browser's default adapter may
+be the integrated one while the engine (which asks for `high-performance`)
+renders on the discrete one, and a second adapter costs every load. With
+telemetry on, the Worker reads the device it renders with after attaching
+the canvas and sends it with `ready`: its limits and features from the
+wasm (`og_web_gpu`: the WebGPU names of what the device was created with,
+and whether the adapter is a fallback one) and its adapter's `vendor` and
+`architecture` from `GPUDevice.adapterInfo` of the canvas context's
+configured device (`getConfiguration()`; wgpu does not carry them on the
+web). Where a browser has no `getConfiguration` or `adapterInfo`, `vendor`
+and `architecture` are empty and the limits and features still go.
+
 **Nothing personal.** A browser is its family, major version and OS family
 (never the user-agent string); a device is its class and the figures any
 page reads (`hardwareConcurrency`, `deviceMemory`, DPR to a quarter); a GPU
@@ -475,7 +488,7 @@ session. At most 20 load failures go per sample and 100 a session.
 
 | Message | Fields added (all optional to the play origin) |
 |---|---|
-| `crash` | `cause` (`panic`, `error`, `hang`), `tick` (the world's, or null), `lane` (a panic's lanes site), `location` (a panic's `crates/…:line:col`), `stack` (string[], at most 48 frames of 240 characters, `at f (game.js:1:2345)` or `f@game.js:1:2345`), `engine` (version), `build` (og-build.json `sourcemaps.build`), `browser { name, major, os }`, `device { class: phone \| tablet \| desktop, cores, memory, dpr, touch }`, `gpu { vendor, architecture, fallback, limits: { maxTextureDimension2D, … }, features: string[] } \| null`, `memory { linear, heapLive, heapPeak, streamUsed, streamBudget, audio, entities } \| null` (bytes; entities a count) |
+| `crash` | `cause` (`panic`, `error`, `hang`), `tick` (the world's, or null), `lane` (a panic's lanes site), `location` (a panic's `crates/…:line:col`), `stack` (string[], at most 48 frames of 240 characters, `at f (game.js:1:2345)` or `f@game.js:1:2345`), `engine` (version), `build` (og-build.json `sourcemaps.build`), `browser { name, major, os }`, `device { class: phone \| tablet \| desktop, cores, memory, dpr, touch }`, `gpu { vendor, architecture, fallback, limits: { maxTextureDimension2D, … }, features: string[] } \| null` (the device the engine renders with, its limits and the features it was created with), `memory { linear, heapLive, heapPeak, streamUsed, streamBudget, audio, entities } \| null` (bytes; entities a count) |
 | `sample` `phase: "boot"` (once, at the first frame) | beside `renderer` and `timings`: `stages` (the Worker's boot in ms: `wasm`, `bundle`, `create`, `attach`, `transcode`, `prime`, `settle`, `present`), `lanes { on, threads }`, `engine`, `build`, `browser`, `device`, `gpu`, `memory`, `failures` |
 | `sample` `phase: "play"` | `frames { count, ms, bins, interval, work, hitches, longHitches, max }` (`bins`: the 11 upper edges in ms, 8.4 to 250; `interval` and `work`: 12 counts each, the last above 250 ms; a hitch is an interval of 50 ms or more, a long one 250 ms or more), `memory`, `failures [{ file, reason: http_<status> \| timeout \| network }]`, `session { ms, samples }` (play time so far and the play samples sent) |
 | `sample` `phase: "end"` (on `pagehide`) | `memory` as last read, `failures` not yet sent, `session` |

@@ -44,7 +44,8 @@ function canvas(): HTMLCanvasElement {
     width: 0,
     height: 0,
     ownerDocument: anything(),
-    transferControlToOffscreen: () => ({ offscreen: true }),
+    // The OffscreenCanvas the Worker draws on: its WebGPU context's configured device names its adapter (deviceReport).
+    transferControlToOffscreen: () => ({ offscreen: true, getContext: () => ({ getConfiguration: () => ({ device: { adapterInfo: { vendor: "nvidia", architecture: "ada", description: "NVIDIA GeForce RTX 4070 Laptop GPU driver 566.03" } } }) }) }),
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 320, height: 180 }),
   }) as unknown as HTMLCanvasElement;
 }
@@ -119,6 +120,8 @@ for (const autoplay of [false, true]) {
     expect(error.kind).toBe("error");
     expect(error.message).toBe(message);
     expect(shell.error).toEqual(error);
+    // Without telemetry the Worker reads no device for it.
+    expect(shell.ready.gpu === undefined).toBe(true);
     // Nothing waits on a stopped engine.
     expect(await rejection(shell.probe("tick"))).toContain("the engine stopped");
     expect(await rejection(shell.call("hash"))).toContain("the engine stopped");
@@ -159,6 +162,8 @@ test("a crash after play reports its stack, tick, engine, build, browser, device
   expect(frames!.count).toBeGreaterThan(0);
   expect(frames!.interval.reduce((a, b) => a + b, 0)).toBe(frames!.count);
   expect(frames!.interval.length).toBe(frames!.bins.length + 1);
+  // The GPU is the device the Worker renders with, sent with ready: never an adapter the page asks for.
+  expect(shell.ready.gpu).toEqual({ info: { vendor: "nvidia", architecture: "ada", isFallbackAdapter: false }, limits: { maxTextureDimension2D: 16384, maxBufferSize: 4294967296 }, features: ["texture-compression-bc", "timestamp-query"] });
   await Promise.race([arrived, new Promise((_, reject) => setTimeout(() => reject(new Error("no crash reached the shell in 5 s")), 5000))]);
   const [{ message, error }] = crashes as [{ message: string; error: HostError }];
 
@@ -185,7 +190,7 @@ test("a crash after play reports its stack, tick, engine, build, browser, device
     build: "0123456789abcdef",
     browser: browserOf(ua),
     device: deviceOf({ ua, coarse: true, touchPoints: 5, screen: { width: 1024, height: 1366 }, dpr: 2, cores: 8, memory: 8 }),
-    gpu: gpuOf({ info: { vendor: "apple", architecture: "metal-3", description: "Apple M2 driver 1.2.3 at /System/Library" }, limits: { maxTextureDimension2D: 16384, maxBufferSize: 4294967296, notALimit: 1 }, features: new Set(["texture-compression-astc", "made-up-feature"]) }),
+    gpu: gpuOf(shell.ready.gpu!),
   };
   page.start();
   page.crash("EngineCrash", message, crashFields(error, context, { linear: 1 << 26, heapLive: 1 << 20, heapPeak: 1 << 21, streamUsed: null, streamBudget: null, audio: null, entities: 3 }));
@@ -202,11 +207,11 @@ test("a crash after play reports its stack, tick, engine, build, browser, device
   expect(crash["build"]).toBe("0123456789abcdef");
   expect(crash["browser"]).toEqual({ name: "safari", major: 26, os: "macos" });
   expect(crash["device"]).toEqual({ class: "tablet", cores: 8, memory: 8, dpr: 2, touch: true });
-  expect(crash["gpu"]).toEqual({ vendor: "apple", architecture: "metal-3", fallback: false, limits: { maxTextureDimension2D: 16384, maxBufferSize: 4294967296 }, features: ["texture-compression-astc"] });
+  expect(crash["gpu"]).toEqual({ vendor: "nvidia", architecture: "ada", fallback: false, limits: { maxTextureDimension2D: 16384, maxBufferSize: 4294967296 }, features: ["texture-compression-bc", "timestamp-query"] });
   expect((crash["memory"] as { entities: number }).entities).toBe(3);
   // Nothing personal: not the message's text, an address, a path of this machine or the driver's description.
   const text = JSON.stringify(crash);
-  for (const leak of ["ada@example.com", "mine caved", import.meta.dir, "driver", "/System/"]) expect(text).not.toContain(leak);
+  for (const leak of ["ada@example.com", "mine caved", import.meta.dir, "driver", "RTX"]) expect(text).not.toContain(leak);
   shell.dispose();
   restore();
 });

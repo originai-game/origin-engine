@@ -179,6 +179,8 @@ export interface Ready {
   readonly textureFormat: string | null;
   readonly files: number;
   readonly textures: number;
+  /** With `telemetry`: the device the renderer runs on (worker.ts deviceReport; shell/telemetry.ts gpuOf reads it). */
+  readonly gpu?: { readonly info?: unknown; readonly limits?: unknown; readonly features?: readonly string[] };
 }
 
 const BUTTONS = ["left", "middle", "right"] as const;
@@ -398,6 +400,7 @@ export class Shell {
             textureFormat: m.textureFormat ?? null,
             files: m.files ?? 0,
             textures: m.textures ?? 0,
+            ...(m.gpu ? { gpu: m.gpu } : {}),
           });
         } else if (m.type === "error") failed(m.message ?? "the engine did not start", (m as { error?: HostError }).error);
       };

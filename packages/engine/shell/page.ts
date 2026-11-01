@@ -489,17 +489,6 @@ export async function play(): Promise<PlayHandle> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     return Promise.race([p.catch(() => null), new Promise<null>((r) => (timer = setTimeout(() => r(null), ms)))]).finally(() => clearTimeout(timer));
   };
-  // The adapter the page asks for (the Worker's is asked the same way): its vendor, architecture and limits.
-  const gpuReady = telemetry
-    ? within(
-        Promise.resolve((navigator as { gpu?: { requestAdapter(): Promise<Parameters<typeof gpuOf>[0] | null> } }).gpu?.requestAdapter() ?? null).then((a) => {
-          const gpu = a ? gpuOf(a) : null;
-          if (context) context = { ...context, gpu };
-          return gpu;
-        }),
-        5000,
-      )
-    : null;
   const readMemory = async () => {
     if (shellRef) lastMemory = memoryOf(await within(shellRef.call("memory"))) ?? lastMemory;
     return lastMemory;
@@ -507,7 +496,6 @@ export async function play(): Promise<PlayHandle> {
   /** Once, at the first frame: the boot's stages, the renderer, the lanes, the context, the memory and what did not arrive. */
   const bootSample = async () => {
     for (let i = 0; !shellRef && i < 100; i++) await new Promise((r) => setTimeout(r, 20));
-    await gpuReady;
     const memory = await readMemory();
     const { at: _at, ...stages } = shellRef?.boot ?? {};
     const lanes = shellRef?.ready.lanes;
@@ -587,6 +575,8 @@ export async function play(): Promise<PlayHandle> {
     throw e;
   }
   shellRef = shell;
+  // The device the engine renders with, as the Worker read it (never an adapter of the page's own).
+  if (context) context = { ...context, gpu: shell.ready.gpu ? gpuOf(shell.ready.gpu) : null };
   performance.mark?.("og:ready");
   const lanes = shell.ready.lanes;
   log.push([lanes.on ? `lanes: on, ${lanes.threads} Workers` : `lanes: off (${lanes.why})`]);

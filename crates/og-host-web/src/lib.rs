@@ -64,6 +64,8 @@ thread_local! {
     static TEXTURES: RefCell<BTreeMap<String, og_render::TextureSource>> = const { RefCell::new(BTreeMap::new()) };
     /// The encodings each engine's attached renderer takes.
     static FORMATS: RefCell<IdMap<u32, og_render::TextureFormats>> = const { RefCell::new(IdMap::new()) };
+    /// The device each engine's attached renderer runs on, as `og_web_gpu` answers it.
+    static GPUS: RefCell<IdMap<u32, String>> = const { RefCell::new(IdMap::new()) };
     /// Paths handed to the fetcher and not answered yet, so each is asked for once at a time.
     static REQUESTED: RefCell<std::collections::BTreeSet<String>> = const { RefCell::new(std::collections::BTreeSet::new()) };
     /// Packs let go of while they were fetched, with their group's texture
@@ -597,6 +599,105 @@ pub fn og_web_memory(engine: u32) -> String {
     og_runtime::memory_report(engine).to_string()
 }
 
+/// The WebGPU limits a crash report and a boot sample carry (field telemetry,
+/// docs/web-export.md §Telemetry; `shell/telemetry.ts` GPU_LIMITS), each with
+/// the device's value.
+const GPU_LIMITS: [&str; 14] = [
+    "maxTextureDimension2D",
+    "maxTextureArrayLayers",
+    "maxBindGroups",
+    "maxSampledTexturesPerShaderStage",
+    "maxStorageBuffersPerShaderStage",
+    "maxStorageTexturesPerShaderStage",
+    "maxUniformBufferBindingSize",
+    "maxStorageBufferBindingSize",
+    "maxBufferSize",
+    "maxVertexBuffers",
+    "maxColorAttachments",
+    "maxColorAttachmentBytesPerSample",
+    "maxComputeWorkgroupStorageSize",
+    "maxComputeInvocationsPerWorkgroup",
+];
+
+/// The device the renderer runs on, for field telemetry: its limits by their
+/// WebGPU names (GPU_LIMITS), the WebGPU features it was created with, and
+/// whether its adapter is a fallback (software) one. The vendor and
+/// architecture are the Worker's to add (wgpu does not carry them on the web).
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+fn gpu_report(
+    limits: &og_render::wgpu::Limits,
+    features: og_render::wgpu::Features,
+    fallback: bool,
+) -> serde_json::Value {
+    let l = limits;
+    let values: [u64; 14] = [
+        l.max_texture_dimension_2d.into(),
+        l.max_texture_array_layers.into(),
+        l.max_bind_groups.into(),
+        l.max_sampled_textures_per_shader_stage.into(),
+        l.max_storage_buffers_per_shader_stage.into(),
+        l.max_storage_textures_per_shader_stage.into(),
+        l.max_uniform_buffer_binding_size,
+        l.max_storage_buffer_binding_size,
+        l.max_buffer_size,
+        l.max_vertex_buffers.into(),
+        l.max_color_attachments.into(),
+        l.max_color_attachment_bytes_per_sample.into(),
+        l.max_compute_workgroup_storage_size.into(),
+        l.max_compute_invocations_per_workgroup.into(),
+    ];
+    let named = [
+        (
+            "texture-compression-bc",
+            og_render::wgpu::Features::TEXTURE_COMPRESSION_BC,
+        ),
+        (
+            "texture-compression-astc",
+            og_render::wgpu::Features::TEXTURE_COMPRESSION_ASTC,
+        ),
+        (
+            "texture-compression-etc2",
+            og_render::wgpu::Features::TEXTURE_COMPRESSION_ETC2,
+        ),
+        ("shader-f16", og_render::wgpu::Features::SHADER_F16),
+        (
+            "timestamp-query",
+            og_render::wgpu::Features::TIMESTAMP_QUERY,
+        ),
+        (
+            "float32-filterable",
+            og_render::wgpu::Features::FLOAT32_FILTERABLE,
+        ),
+        (
+            "rg11b10ufloat-renderable",
+            og_render::wgpu::Features::RG11B10UFLOAT_RENDERABLE,
+        ),
+        (
+            "indirect-first-instance",
+            og_render::wgpu::Features::INDIRECT_FIRST_INSTANCE,
+        ),
+        (
+            "depth-clip-control",
+            og_render::wgpu::Features::DEPTH_CLIP_CONTROL,
+        ),
+        ("subgroups", og_render::wgpu::Features::SUBGROUP),
+    ];
+    serde_json::json!({
+        "fallback": fallback,
+        "limits": GPU_LIMITS.iter().zip(values).map(|(k, v)| (k.to_string(), serde_json::json!(v))).collect::<serde_json::Map<_, _>>(),
+        "features": named.iter().filter(|(_, f)| features.contains(*f)).map(|(n, _)| *n).collect::<Vec<_>>(),
+    })
+}
+
+/// The device the engine's renderer runs on (`gpu_report`), as JSON, or
+/// `null` before a canvas is attached: the Worker reads it after attaching
+/// and sends it with `ready` when the page counts field telemetry.
+#[wasm_bindgen]
+pub fn og_web_gpu(engine: u32) -> String {
+    GPUS.with(|g| g.borrow().get(&engine).cloned())
+        .unwrap_or_else(|| "null".into())
+}
+
 /// Make one pipeline the engine's renderer has not used yet (og-render's
 /// `Renderer::warm`): the engine Worker calls it in idle time behind the
 /// play gate, until it answers false, so the pipelines of the passes the
@@ -906,6 +1007,13 @@ mod canvas {
         let tier = renderer.info().backend_tier();
         let formats = renderer.info().texture_formats.clone();
         super::FORMATS.with(|f| f.borrow_mut().insert(engine, formats));
+        let device = renderer.device();
+        let gpu = super::gpu_report(
+            &device.limits(),
+            device.features(),
+            renderer.info().device_type == og_render::wgpu::DeviceType::Cpu,
+        );
+        super::GPUS.with(|g| g.borrow_mut().insert(engine, gpu.to_string()));
         set_render_backend(
             engine,
             Some(Box::new(CanvasBackend {
@@ -921,5 +1029,28 @@ mod canvas {
         )
         .map_err(|e| JsValue::from_str(&e))?;
         Ok(tier)
+    }
+}
+
+#[cfg(test)]
+mod gpu_tests {
+    #[test]
+    fn the_gpu_report_names_webgpu_limits_and_the_features_the_device_has() {
+        let limits = og_render::wgpu::Limits {
+            max_texture_dimension_2d: 16384,
+            max_buffer_size: 1 << 32,
+            ..og_render::wgpu::Limits::downlevel_defaults()
+        };
+        let features = og_render::wgpu::Features::TEXTURE_COMPRESSION_ASTC
+            | og_render::wgpu::Features::SHADER_F16;
+        let r = super::gpu_report(&limits, features, false);
+        assert_eq!(r["limits"]["maxTextureDimension2D"], 16384);
+        assert_eq!(r["limits"]["maxBufferSize"], 1u64 << 32);
+        assert_eq!(r["limits"].as_object().unwrap().len(), 14);
+        assert_eq!(
+            r["features"],
+            serde_json::json!(["texture-compression-astc", "shader-f16"])
+        );
+        assert_eq!(r["fallback"], false);
     }
 }

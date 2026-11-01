@@ -34,3 +34,8 @@ export function og_web_fail_file(path: string, reason: string): void {
   throw new Error(`${path}: ${reason}`);
 }
 export function og_web_set_fetcher(_fetch: (path: string) => void): void {}
+// The device the renderer runs on (src/web/worker.ts deviceReport): what the
+// wasm's og_web_gpu answers, a discrete GPU's limits and features.
+export function og_web_gpu(_engine: number): string {
+  return JSON.stringify({ fallback: false, limits: { maxTextureDimension2D: 16384, maxBufferSize: 4294967296 }, features: ["texture-compression-bc", "timestamp-query"] });
+}

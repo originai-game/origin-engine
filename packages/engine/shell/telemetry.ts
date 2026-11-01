@@ -133,8 +133,13 @@ export function deviceOf(env: { ua: string; coarse: boolean; touchPoints: number
   };
 }
 
-/** An adapter's report: its info's vendor and architecture, the limits GPU_LIMITS names, the features GPU_FEATURES names. */
-export function gpuOf(adapter: { info?: unknown; limits?: unknown; features?: { has(f: string): boolean }; isFallbackAdapter?: boolean }): GpuInfo {
+/**
+ * The device the engine renders with (the Worker's `ready.gpu`, worker.ts
+ * deviceReport: never an adapter the page asks for itself, which could be
+ * another GPU of the machine): its adapter's vendor and architecture, the
+ * limits GPU_LIMITS names, the features GPU_FEATURES names.
+ */
+export function gpuOf(adapter: { info?: unknown; limits?: unknown; features?: readonly string[] | { has(f: string): boolean }; isFallbackAdapter?: boolean }): GpuInfo {
   const info = (adapter.info ?? {}) as { vendor?: unknown; architecture?: unknown; isFallbackAdapter?: unknown };
   const limits: Record<string, number> = {};
   const given = (adapter.limits ?? {}) as Record<string, unknown>;
@@ -144,7 +149,10 @@ export function gpuOf(adapter: { info?: unknown; limits?: unknown; features?: { 
     architecture: word(info.architecture),
     fallback: info.isFallbackAdapter === true || adapter.isFallbackAdapter === true,
     limits,
-    features: GPU_FEATURES.filter((f) => adapter.features?.has(f) === true),
+    features: GPU_FEATURES.filter((f) => {
+      const given = adapter.features;
+      return Array.isArray(given) ? given.includes(f) : (given as { has(f: string): boolean } | undefined)?.has(f) === true;
+    }),
   };
 }
 

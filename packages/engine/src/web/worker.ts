@@ -183,6 +183,8 @@ export interface WebExtras {
   og_web_lanes?(): string;
   /** What the engine holds (the probe's `memory`, ProbeMemory), as JSON. */
   og_web_memory?(engine: number): string;
+  /** The device the attached renderer runs on: its WebGPU limits and features, whether it is a fallback adapter (JSON, null before attaching). */
+  og_web_gpu?(engine: number): string;
   /** Make one pipeline no frame used yet (og-render's Renderer::warm); false when none is left. */
   og_web_warm?(engine: number): boolean;
   /** `og render`'s every-frame capture (development builds): the display frame drawn last as RGBA8 rows at the canvas's size; empty until its readback lands. */
@@ -228,6 +230,32 @@ export const FETCH_DEADLINE_MS = 300_000;
 
 /** How many of the first group's files the boot fetches at once. */
 export const FETCH_CONCURRENCY = 24;
+
+/**
+ * The device the engine renders with, for field telemetry: its limits,
+ * features and fallback flag from the wasm (`og_web_gpu`), and its adapter's
+ * vendor and architecture from the device itself (the canvas's WebGPU
+ * context's configured device, `GPUDevice.adapterInfo`), which wgpu does not
+ * carry. Null without a renderer; vendor and architecture empty where the
+ * browser has no `getConfiguration` or `adapterInfo`.
+ */
+export function deviceReport(glue: { og_web_gpu?(engine: number): string }, engine: number, canvas: OffscreenCanvas | undefined): Record<string, unknown> | null {
+  let report: Record<string, unknown> | null = null;
+  try {
+    report = JSON.parse(glue.og_web_gpu?.(engine) ?? "null") as Record<string, unknown> | null;
+  } catch {
+    return null;
+  }
+  if (!report) return null;
+  let info: { vendor?: unknown; architecture?: unknown; isFallbackAdapter?: unknown } = {};
+  try {
+    const context = (canvas as unknown as { getContext(kind: string): { getConfiguration?(): { device?: { adapterInfo?: typeof info } } | null } | null } | undefined)?.getContext("webgpu");
+    info = context?.getConfiguration?.()?.device?.adapterInfo ?? {};
+  } catch {
+    /* an older browser: limits and features only */
+  }
+  return { info: { vendor: info.vendor, architecture: info.architecture, isFallbackAdapter: report["fallback"] === true || info.isFallbackAdapter === true }, limits: report["limits"], features: report["features"] };
+}
 
 /**
  * A file of the bundle that did not arrive, told to the page (`{ type:
@@ -1050,6 +1078,8 @@ export function startWorker(game: GameToken): void {
           rendering = true;
         }
         phase("attach");
+        // Field telemetry: the device the renderer runs on, never a second adapter (gpuOf, shell/telemetry.ts).
+        const gpu = data.telemetry && rendering ? deviceReport(glue, engine.id, canvas) : null;
         lastTier = tier;
         lanesState = lanes;
         // The textures go to the renderer's encodings, so after it is attached (the game starts later).
@@ -1067,6 +1097,7 @@ export function startWorker(game: GameToken): void {
           files: loaded?.files ?? 0,
           textures: loaded?.textures ?? 0,
           lanes,
+          ...(gpu ? { gpu } : {}),
         });
         void requests();
         if (data.autoplay) {
