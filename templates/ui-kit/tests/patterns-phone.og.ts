@@ -21,6 +21,8 @@ export default playtest({
     for (const e of equipped.filter((x) => x.role === "button")) {
       t.ok(e.width >= 43.5 && e.height >= 43.5, `${e.id} (${e.name}) is a whole touch target: ${Math.round(e.width)}×${Math.round(e.height)}`);
     }
+    t.ok(ui(run, "cards-aim.json").some((e) => e.role === "status" && e.name === "valid: Cultist"), "a finger dragged Bash's arc onto the cultist");
+    t.ok(!ui(run, "cards-played.json").some((e) => e.role === "option" && e.name.startsWith("Bash")), "and played it");
     t.frame(script.files, () => {
       for (const f of script.files) t.equal(run.png(f).width, 1170, `${f} is 1170 wide`);
     });

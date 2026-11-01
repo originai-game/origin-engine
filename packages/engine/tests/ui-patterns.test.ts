@@ -241,3 +241,156 @@ test("inventoryGrid: right to left, columns count from the right edge", () => {
   drag(b.engine, sword, `${Math.round(g.x + g.width - 5 * 50 - 25)},${Math.round(g.y + 75)}`);
   expect(b.moves.at(-1)).toMatchObject({ key: "sword", x: 5, y: 0 });
 });
+
+// ── card hand ───────────────────────────────────────────────────────────
+
+const HAND: Api.HandCard[] = [
+  { key: "strike", name: "Strike", cost: 1, typeLine: "Attack", text: "Deal [b]6[/b] damage.", needsTarget: true },
+  { key: "defend", name: "Defend", cost: 1, typeLine: "Skill", text: "Gain [b]5[/b] Block." },
+  { key: "bash", name: "Bash", cost: 2, typeLine: "Attack", text: "Deal 8 damage.", needsTarget: true, rarity: "rare" },
+  { key: "anger", name: "Anger", cost: 0, typeLine: "Attack", text: "Deal 6 damage." },
+  { key: "wound", name: "Wound", typeLine: "Status", text: "Unplayable.", playable: false },
+];
+// Two enemies on the table: the first can be targeted, the second (behind a taunt) cannot.
+const TARGETS: Api.CardTarget[] = [
+  { key: "cultist", name: "Cultist", rect: { x: 760, y: 80, width: 160, height: 180 } },
+  { key: "louse", name: "Louse", rect: { x: 980, y: 80, width: 160, height: 180 }, valid: false },
+];
+
+/** A hand along the bottom of a 1280×720 desktop (or right to left), the game removing each card played. */
+function hand(rtl = false) {
+  const cards = HAND.map((c) => ({ ...c }));
+  const played: Api.CardPlay[] = [];
+  const results: Api.CardHandResult[] = [];
+  const sys = defineSystem(`UpHand${systems++}`, {}, () => {
+    og.ui.anchor("Table", { anchor: "bottom", width: { kind: "fixed", px: 1200 }, direction: "column" } as never, () => {
+      const r = og.ui.cardHand("Hand", { cards, targets: TARGETS, cardWidth: 150 });
+      results.push(r);
+      if (r.played) {
+        played.push(r.played);
+        cards.splice(cards.findIndex((c) => c.key === r.played!.key), 1);
+      }
+    });
+  });
+  const made = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, rtl ? { root: kit } : {});
+  if (!made.ok) throw new Error(made.reason);
+  const engine = made.value;
+  if (rtl) {
+    og.i18n.load(engine.world, "strings/ar.ogt");
+    og.i18n.setLocale(engine.world, "ar-EG");
+  }
+  og.ui.previewViewport(engine.world, { width: 1280, height: 720, dpr: 1, coarsePointer: false, breakpoint: "desktop", safeArea: { left: 0, top: 0, right: 0, bottom: 0 } } as never);
+  engine.advance(6);
+  return { engine, played, results, cards };
+}
+const cardEl = (engine: Engine, k: string) => byPath(engine, `Fan/${k}`)!;
+
+test("cardHand: a card dragged above the play line plays on release; let go below it, it goes back", () => {
+  // Wrong: a release anywhere plays (a misdrag spends the card), or a release never does.
+  const h = hand();
+  drag(h.engine, cardEl(h.engine, "defend"), "640,640");
+  expect(h.played).toEqual([]);
+  expect(cardEl(h.engine, "defend")).toBeDefined();
+  drag(h.engine, cardEl(h.engine, "defend"), "640,200");
+  expect(h.played).toEqual([{ key: "defend", target: null }]);
+  expect(byPath(h.engine, "Fan/defend") === undefined).toBe(true);
+});
+
+test("cardHand: a card that needs a target is aimed with an arc and plays only on a valid target", () => {
+  // Wrong: a targeted card played on release above the line with no target, or on the taunted enemy.
+  const h = hand();
+  drag(h.engine, cardEl(h.engine, "bash"), "640,200");
+  expect(h.played).toEqual([]);
+  drag(h.engine, cardEl(h.engine, "bash"), "1060,170");
+  expect(h.played).toEqual([]);
+  drag(h.engine, cardEl(h.engine, "bash"), "840,170");
+  expect(h.played).toEqual([{ key: "bash", target: "cultist" }]);
+});
+
+test("cardHand: while aiming, the arc and the result say which target is under the tip", () => {
+  const h = hand();
+  const s = cardEl(h.engine, "strike");
+  const [fx, fy] = [Math.round(s.x + s.width / 2), Math.round(s.y + s.height / 2)];
+  h.engine.probe.commands(`0:touch_move:${fx},${fy};0.05:touch_start;0.1:touch_move:${fx},400;0.2:touch_move:1060,170`);
+  h.engine.advance(20);
+  expect(h.results.at(-1)!.aiming).toMatchObject({ key: "strike", target: "louse" });
+  expect(byPath(h.engine, "Hand/Fan/Arc")!.name).toBe("invalid: Louse");
+  h.engine.probe.commands("0:touch_move:840,170");
+  h.engine.advance(6);
+  expect(byPath(h.engine, "Hand/Fan/Arc")!.name).toBe("valid: Cultist");
+  // The aimed card stays over the hand, laid out larger than at rest (150 wide; its bounds at rest are turned).
+  expect(cardEl(h.engine, "strike").width).toBeGreaterThan(150 * 1.25);
+  h.engine.probe.commands("0:touch_end");
+  h.engine.advance(6);
+  expect(h.played).toEqual([{ key: "strike", target: "cultist" }]);
+});
+
+test("cardHand: an unplayable card shakes and is refused; it is said disabled", () => {
+  const h = hand();
+  expect(cardEl(h.engine, "wound").states).toContain("disabled");
+  drag(h.engine, cardEl(h.engine, "wound"), "640,200");
+  expect(h.played).toEqual([]);
+  expect(h.results.some((r) => r.refused === "wound")).toBe(true);
+});
+
+test("cardHand: hovering lifts a card clear of the fan; its neighbours part", () => {
+  // Wrong: the lifted card scaled in place (its text drawn small) or covered by its neighbour.
+  const h = hand();
+  const before = elements(h.engine);
+  const at = (es: Element[], k: string) => es.find((e) => e.path.endsWith(`Fan/${k}`))!;
+  const b = at(before, "bash");
+  h.engine.probe.commands(`0:touch_move:${Math.round(b.x + b.width / 2)},${Math.round(b.y + b.height / 2)}`);
+  h.engine.advance(40);
+  const after = elements(h.engine);
+  expect(at(after, "bash").width).toBeGreaterThan(b.width * 1.2);
+  expect(at(after, "bash").y).toBeLessThan(b.y - 40);
+  expect(at(after, "bash").states).toContain("selected");
+  expect(at(after, "defend").x).toBeLessThan(at(before, "defend").x);
+  expect(at(after, "anger").x).toBeGreaterThan(at(before, "anger").x);
+  expect(h.results.at(-1)!.hovered).toBe("bash");
+});
+
+test("cardHand: a click picks a card and a second click plays it", () => {
+  const h = hand();
+  const tapAt = (e: Element) => h.engine.probe.commands(`0:touch_move:${Math.round(e.x + e.width / 2)},${Math.round(e.y + e.height / 2)};0.05:touch_start;0.1:touch_end`);
+  tapAt(cardEl(h.engine, "anger"));
+  h.engine.advance(30);
+  expect(h.played).toEqual([]);
+  tapAt(cardEl(h.engine, "anger"));
+  h.engine.advance(12);
+  expect(h.played).toEqual([{ key: "anger", target: null }]);
+});
+
+test("cardHand: keys walk the hand, Enter aims a targeted card, the arrows step the targets, Enter plays", () => {
+  // Wrong: keys play a targeted card with no target, or step onto targets the card cannot take without saying so.
+  const h = hand();
+  key(h.engine, "Tab");
+  expect(byPath(h.engine, "Hand/Fan")!.states).toContain("focused");
+  expect(h.results.at(-1)!.hovered).toBe("strike");
+  key(h.engine, "ArrowRight");
+  key(h.engine, "ArrowRight");
+  expect(h.results.at(-1)!.hovered).toBe("bash");
+  key(h.engine, "Enter");
+  expect(h.results.at(-1)!.aiming).toMatchObject({ key: "bash", target: "cultist" });
+  key(h.engine, "ArrowRight");
+  expect(h.results.at(-1)!.aiming).toMatchObject({ key: "bash", target: "louse" });
+  key(h.engine, "Enter");
+  expect(h.played).toEqual([]);
+  key(h.engine, "ArrowRight");
+  key(h.engine, "Enter");
+  expect(h.played).toEqual([{ key: "bash", target: "cultist" }]);
+  // The cursor stays at its place (now Anger); back to Strike, aimed, then Back stops aiming without playing.
+  expect(h.results.at(-1)!.hovered).toBe("anger");
+  key(h.engine, "ArrowLeft");
+  key(h.engine, "ArrowLeft");
+  key(h.engine, "Enter");
+  expect(h.results.at(-1)!.aiming?.key).toBe("strike");
+  key(h.engine, "Escape");
+  expect(h.results.at(-1)!.aiming).toBeNull();
+  expect(h.played.length).toBe(1);
+});
+
+test("cardHand: right to left, the hand fans from the right", () => {
+  const h = hand(true);
+  expect(cardEl(h.engine, "strike").x).toBeGreaterThan(cardEl(h.engine, "wound").x);
+});

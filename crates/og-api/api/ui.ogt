@@ -4266,6 +4266,101 @@ module ui {
     returns PaperdollResult
   }
 
+  # ·· card hands ··
+
+  struct HandCard {
+    doc "A card in the player's hand, as the game's viewmodel holds it."
+    desc true
+    field key String "Its key, stable while it is in the hand: its element id, so its probe path is <id>/Fan/<key>."
+    field name String "Its name, on its banner."
+    field cost Option.i32 "What it costs to play, in its gem in the top start corner; null draws no gem (a free card, a land)."
+    field costUp bool "The cost is raised this turn: the gem's number in danger ink."
+    field costDown bool "The cost is lowered: the number in success ink."
+    field typeLine String "Its type (Attack, Skill · Fire): a line under the art."
+    field text String "Its rules as rich-text markup (og.ui.richText): [b]Deal 6[/b] damage. [icon=…] and [color=…] are honoured."
+    field image Option.Texture "Its art (art kind card); without it a placeholder in its tier's colour."
+    field rarity Rarity "Its tier: its frame's colour and pips."
+    field playable bool "The player can play it now (enough energy, a legal moment): unplayable cards are dimmed, their cost in danger ink, and a drag of one shakes and is refused."
+    field needsTarget bool "Playing it asks for a target: dragged up, it stays over the hand and an arc follows the pointer to the target under it."
+    field glow bool "It is worth playing now (a combo, a synergy): its edge glows in the primary ink."
+    field fresh bool "Drawn this tick: it flies in from the draw pile."
+  }
+
+  struct CardTarget {
+    doc "A place a targeted card can be played on: an enemy, an ally, a lane, as the game projects it onto the screen."
+    desc true
+    field key String "Its key, answered with the play."
+    field name String "What a screen reader calls it."
+    field rect UiRect "Where it is on the screen (og.ui.worldAnchor's or a HUD element's rectangle)."
+    field valid bool "The aimed card can be played on it: the arc ends in success ink and a ring marks it; an invalid one turns the arc danger." {
+      default true
+    }
+  }
+
+  struct CardHandDesc {
+    doc "A hand of cards, its targets and what it says."
+    desc true
+    field cards List.HandCard "The cards, first to last (start to end of the fan)."
+    field targets List.CardTarget "Where a targeted card can go: aiming snaps the arc to the one under the pointer, and keys and pads step through the valid ones."
+    field cardWidth f32 "A card's width at rest; 0 is 150 on a desktop (scaled with the screen) and 104 on a phone. Its height is 1.4 times it." {
+      unit cssPx
+      min 0
+    }
+    field spread f32 "How far the fan turns its outermost cards, in degrees; 0 is 3 a card, at most 18." {
+      min 0
+      max 40
+    }
+    field playLine f32 "How far up the screen a card must be dragged to play, as a fraction of the screen's height from its bottom; 0 is 0.36." {
+      min 0
+      max 1
+    }
+    field disabled bool "Not the player's turn: cards lift and can be read, none plays."
+    field inspect String "The key of a card shown large in the middle (the details action, a long press); empty shows none."
+    field label String "What a screen reader calls the hand." {
+      default "Hand"
+    }
+    field targetPrompt String "What the arc's tip says while aiming with keys and pads." {
+      default "Choose a target"
+    }
+  }
+
+  struct CardPlay {
+    doc "A card played: the game spends its cost and resolves it."
+    field key String "The card."
+    field target Option.String "The target's key, for a card that needs one."
+  }
+
+  struct CardAim {
+    doc "A targeted card being aimed: what to preview (the damage on the enemy under it)."
+    field key String "The card."
+    field target Option.String "The valid or invalid target under the arc's tip; null over none."
+    field x f32 "The arc's tip." {
+      unit cssPx
+    }
+    field y f32 "The arc's tip." {
+      unit cssPx
+    }
+  }
+
+  struct CardHandResult {
+    doc "What the hand did this tick."
+    field played Option.CardPlay "A card played: a non-targeted one released above the play line (or confirmed with keys), a targeted one released on a valid target (or confirmed on one)."
+    field aiming Option.CardAim "A targeted card being aimed."
+    field hovered Option.String "The card under the pointer or the focus."
+    field inspect Option.String "A card whose details were asked for: a long press, the details action; set CardHandDesc.inspect to it, and clear it on dismissed."
+    field dismissed bool "The large card was dismissed (Back, a press)."
+    field refused Option.String "An unplayable card the player tried to play: it shook, and the game may say why."
+  }
+
+  fn cardHand {
+    doc "A hand of cards (Slay the Spire, Hearthstone, Marvel Snap, Balatro): fanned along an arc at the bottom of the play area, each card a frame in its tier's colour with its cost gem, art, name banner, type line and rich-text rules. The card under the pointer or the focus lifts clear of the fan, straightens and grows so it reads whole, and its neighbours part. Dragged above the play line a card plays on release; a card that needs a target stays over the hand while an arc follows the pointer, snapping to the target under it (success ink on a valid one, danger on an invalid one), and plays on release there. Keys and pads walk the hand with Left and Right, confirm plays or starts aiming (Left and Right then step through the valid targets, confirm plays, Back cancels), the details action shows a card large. An unplayable card is dimmed with its cost in danger ink, and trying it shakes it."
+    doc "Parts: CardHand.fan, Card.frame[rarity=<tier>][lifted][dragging][aiming][unplayable][glow], Card.cost[up|down|unaffordable], Card.art, Card.name, Card.type, Card.text, CardHand.arc[valid|invalid|none], CardHand.reticle, CardHand.playLine, CardHand.inspect. Slots: each card's art (art kind card, 5:4). States: on each card, group lift (rest, lifted, held, aiming) and play (playable, unplayable); on the arc, group verdict (none, valid, invalid). Motion: cards move to their fan places on the ui spring (layout motion), a lifted card rises and grows, a fresh card flies in from the start edge, a played one leaves upward, a refusal shakes. Sounds: hover as a card lifts, select as a drag or aim starts, confirm on a play, error on a refusal, cancel when aiming stops. Accessibility: a listbox named by label; each card an option named by its name, cost and type, its rules as its description, unplayable said as disabled; aiming says the target. Probe ids: <id>/Fan/<key>, <id>/Arc, <id>/Reticle, <id>/Inspect."
+    host false
+    param id String "Its id."
+    param desc CardHandDesc "The cards and their targets."
+    returns CardHandResult
+  }
+
   # ── end of the genre patterns ────────────────────────────────────────
 
   # ── the UI kit: screen templates (TypeScript over the calls above) ──────
@@ -5596,7 +5691,7 @@ module ui {
     field place GridPlace "Its place in a grid parent."
     field container bool "Its container queries read its own width."
     field variants List.UiVariant "Prop overrides by breakpoint, orientation and width; later ones win."
-    field overlaps List.String "Paths of elements it overlaps on purpose (an ancestor path covers its subtree). Undeclared overlaps are reported (og.ui.overlaps)."
+    field overlaps List.String "Paths of elements it overlaps on purpose (an ancestor path covers its subtree; `*` covers everything, for what follows the pointer across the screen: a targeting arc, a dragged ghost). Undeclared overlaps are reported (og.ui.overlaps)."
     field dense bool "Its text and its subtree's are a dense HUD's readouts (strategy, MMO, simulation: docs/ui.md §15.2): og ui check holds them to 12 px at 1080p instead of 18, still growing with the player's text scale and passing the contrast rule. Never for menus, body text or controls."
     field match String "A shared-element key: the element with the same key on the screen being left morphs into this one."
     field drag Option.DragSpec "It moves with a drag."

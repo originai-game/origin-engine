@@ -28377,6 +28377,239 @@ export interface PaperdollResult {
 
 
 /**
+ * A card in the player's hand, as the game's viewmodel holds it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface HandCard {
+  /**
+   * Its key, stable while it is in the hand: its element id, so its probe path is <id>/Fan/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name, on its banner.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * What it costs to play, in its gem in the top start corner; null draws no gem (a free card, a land).
+   *
+   * @default null
+   */
+  readonly cost?: number | null;
+  /**
+   * The cost is raised this turn: the gem's number in danger ink.
+   *
+   * @default false
+   */
+  readonly costUp?: boolean;
+  /**
+   * The cost is lowered: the number in success ink.
+   *
+   * @default false
+   */
+  readonly costDown?: boolean;
+  /**
+   * Its type (Attack, Skill · Fire): a line under the art.
+   *
+   * @default ""
+   */
+  readonly typeLine?: string;
+  /**
+   * Its rules as rich-text markup (og.ui.richText): [b]Deal 6[/b] damage. [icon=…] and [color=…] are honoured.
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * Its art (art kind card); without it a placeholder in its tier's colour.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Its tier: its frame's colour and pips.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * The player can play it now (enough energy, a legal moment): unplayable cards are dimmed, their cost in danger ink, and a drag of one shakes and is refused.
+   *
+   * @default false
+   */
+  readonly playable?: boolean;
+  /**
+   * Playing it asks for a target: dragged up, it stays over the hand and an arc follows the pointer to the target under it.
+   *
+   * @default false
+   */
+  readonly needsTarget?: boolean;
+  /**
+   * It is worth playing now (a combo, a synergy): its edge glows in the primary ink.
+   *
+   * @default false
+   */
+  readonly glow?: boolean;
+  /**
+   * Drawn this tick: it flies in from the draw pile.
+   *
+   * @default false
+   */
+  readonly fresh?: boolean;
+}
+
+/**
+ * A place a targeted card can be played on: an enemy, an ally, a lane, as the game projects it onto the screen.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CardTarget {
+  /**
+   * Its key, answered with the play.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * What a screen reader calls it.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Where it is on the screen (og.ui.worldAnchor's or a HUD element's rectangle).
+   *
+   * @default { x: 0, y: 0, width: 0, height: 0 }
+   */
+  readonly rect?: UiRect;
+  /**
+   * The aimed card can be played on it: the arc ends in success ink and a ring marks it; an invalid one turns the arc danger.
+   *
+   * @default true
+   */
+  readonly valid?: boolean;
+}
+
+/**
+ * A hand of cards, its targets and what it says.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CardHandDesc {
+  /**
+   * The cards, first to last (start to end of the fan).
+   *
+   * @default []
+   */
+  readonly cards?: readonly HandCard[];
+  /**
+   * Where a targeted card can go: aiming snaps the arc to the one under the pointer, and keys and pads step through the valid ones.
+   *
+   * @default []
+   */
+  readonly targets?: readonly CardTarget[];
+  /**
+   * A card's width at rest; 0 is 150 on a desktop (scaled with the screen) and 104 on a phone. Its height is 1.4 times it.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly cardWidth?: number;
+  /**
+   * How far the fan turns its outermost cards, in degrees; 0 is 3 a card, at most 18.
+   *
+   * @default 0
+   * @range 0..40
+   */
+  readonly spread?: number;
+  /**
+   * How far up the screen a card must be dragged to play, as a fraction of the screen's height from its bottom; 0 is 0.36.
+   *
+   * @default 0
+   * @range 0..1
+   */
+  readonly playLine?: number;
+  /**
+   * Not the player's turn: cards lift and can be read, none plays.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * The key of a card shown large in the middle (the details action, a long press); empty shows none.
+   *
+   * @default ""
+   */
+  readonly inspect?: string;
+  /**
+   * What a screen reader calls the hand.
+   *
+   * @default "Hand"
+   */
+  readonly label?: string;
+  /**
+   * What the arc's tip says while aiming with keys and pads.
+   *
+   * @default "Choose a target"
+   */
+  readonly targetPrompt?: string;
+}
+
+/** A card played: the game spends its cost and resolves it. */
+export interface CardPlay {
+  /** The card. */
+  readonly key: string;
+  /** The target's key, for a card that needs one. */
+  readonly target: string | null;
+}
+
+/** A targeted card being aimed: what to preview (the damage on the enemy under it). */
+export interface CardAim {
+  /** The card. */
+  readonly key: string;
+  /** The valid or invalid target under the arc's tip; null over none. */
+  readonly target: string | null;
+  /**
+   * The arc's tip.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * The arc's tip.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+}
+
+/** What the hand did this tick. */
+export interface CardHandResult {
+  /**
+   * A card played: a non-targeted one released above the play line (or confirmed with keys), a targeted one released on a valid target (or confirmed on one).
+   */
+  readonly played: CardPlay | null;
+  /** A targeted card being aimed. */
+  readonly aiming: CardAim | null;
+  /** The card under the pointer or the focus. */
+  readonly hovered: string | null;
+  /**
+   * A card whose details were asked for: a long press, the details action; set CardHandDesc.inspect to it, and clear it on dismissed.
+   */
+  readonly inspect: string | null;
+  /** The large card was dismissed (Back, a press). */
+  readonly dismissed: boolean;
+  /** An unplayable card the player tried to play: it shook, and the game may say why. */
+  readonly refused: string | null;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -31317,7 +31550,7 @@ export interface ElementProps {
    */
   readonly variants?: readonly UiVariant[];
   /**
-   * Paths of elements it overlaps on purpose (an ancestor path covers its subtree). Undeclared overlaps are reported (og.ui.overlaps).
+   * Paths of elements it overlaps on purpose (an ancestor path covers its subtree; `*` covers everything, for what follows the pointer across the screen: a targeting arc, a dragged ghost). Undeclared overlaps are reported (og.ui.overlaps).
    *
    * @default []
    */
@@ -45595,6 +45828,14 @@ export declare namespace og {
      * @param figure Builds the figure in its box (an art slot, a viewport).
      */
     function paperdoll(id: string, desc: PaperdollDesc, figure: UiBuild): PaperdollResult;
+    /**
+     * A hand of cards (Slay the Spire, Hearthstone, Marvel Snap, Balatro): fanned along an arc at the bottom of the play area, each card a frame in its tier's colour with its cost gem, art, name banner, type line and rich-text rules. The card under the pointer or the focus lifts clear of the fan, straightens and grows so it reads whole, and its neighbours part. Dragged above the play line a card plays on release; a card that needs a target stays over the hand while an arc follows the pointer, snapping to the target under it (success ink on a valid one, danger on an invalid one), and plays on release there. Keys and pads walk the hand with Left and Right, confirm plays or starts aiming (Left and Right then step through the valid targets, confirm plays, Back cancels), the details action shows a card large. An unplayable card is dimmed with its cost in danger ink, and trying it shakes it.
+     * Parts: CardHand.fan, Card.frame[rarity=<tier>][lifted][dragging][aiming][unplayable][glow], Card.cost[up|down|unaffordable], Card.art, Card.name, Card.type, Card.text, CardHand.arc[valid|invalid|none], CardHand.reticle, CardHand.playLine, CardHand.inspect. Slots: each card's art (art kind card, 5:4). States: on each card, group lift (rest, lifted, held, aiming) and play (playable, unplayable); on the arc, group verdict (none, valid, invalid). Motion: cards move to their fan places on the ui spring (layout motion), a lifted card rises and grows, a fresh card flies in from the start edge, a played one leaves upward, a refusal shakes. Sounds: hover as a card lifts, select as a drag or aim starts, confirm on a play, error on a refusal, cancel when aiming stops. Accessibility: a listbox named by label; each card an option named by its name, cost and type, its rules as its description, unplayable said as disabled; aiming says the target. Probe ids: <id>/Fan/<key>, <id>/Arc, <id>/Reticle, <id>/Inspect.
+     *
+     * @param id Its id.
+     * @param desc The cards and their targets.
+     */
+    function cardHand(id: string, desc?: CardHandDesc): CardHandResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

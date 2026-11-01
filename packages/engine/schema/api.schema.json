@@ -9944,6 +9944,12 @@
         "PaperdollEquip",
         "PaperdollDesc",
         "PaperdollResult",
+        "HandCard",
+        "CardTarget",
+        "CardHandDesc",
+        "CardPlay",
+        "CardAim",
+        "CardHandResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -13424,6 +13430,27 @@
             }
           ],
           "returns": "PaperdollResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "cardHand",
+          "doc": "A hand of cards (Slay the Spire, Hearthstone, Marvel Snap, Balatro): fanned along an arc at the bottom of the play area, each card a frame in its tier's colour with its cost gem, art, name banner, type line and rich-text rules. The card under the pointer or the focus lifts clear of the fan, straightens and grows so it reads whole, and its neighbours part. Dragged above the play line a card plays on release; a card that needs a target stays over the hand while an arc follows the pointer, snapping to the target under it (success ink on a valid one, danger on an invalid one), and plays on release there. Keys and pads walk the hand with Left and Right, confirm plays or starts aiming (Left and Right then step through the valid targets, confirm plays, Back cancels), the details action shows a card large. An unplayable card is dimmed with its cost in danger ink, and trying it shakes it.\nParts: CardHand.fan, Card.frame[rarity=<tier>][lifted][dragging][aiming][unplayable][glow], Card.cost[up|down|unaffordable], Card.art, Card.name, Card.type, Card.text, CardHand.arc[valid|invalid|none], CardHand.reticle, CardHand.playLine, CardHand.inspect. Slots: each card's art (art kind card, 5:4). States: on each card, group lift (rest, lifted, held, aiming) and play (playable, unplayable); on the arc, group verdict (none, valid, invalid). Motion: cards move to their fan places on the ui spring (layout motion), a lifted card rises and grows, a fresh card flies in from the start edge, a played one leaves upward, a refusal shakes. Sounds: hover as a card lifts, select as a drag or aim starts, confirm on a play, error on a refusal, cancel when aiming stops. Accessibility: a listbox named by label; each card an option named by its name, cost and type, its rules as its description, unplayable said as disabled; aiming says the target. Probe ids: <id>/Fan/<key>, <id>/Arc, <id>/Reticle, <id>/Inspect.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "CardHandDesc",
+              "optional": true,
+              "doc": "The cards and their targets."
+            }
+          ],
+          "returns": "CardHandResult",
           "publish": true,
           "host": false
         },
@@ -50945,6 +50972,340 @@
       ],
       "additionalProperties": false
     },
+    "HandCard": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A card in the player's hand, as the game's viewmodel holds it.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key, stable while it is in the hand: its element id, so its probe path is <id>/Fan/<key>.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name, on its banner.",
+          "default": ""
+        },
+        "cost": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -2147483648,
+              "maximum": 2147483647
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What it costs to play, in its gem in the top start corner; null draws no gem (a free card, a land).",
+          "default": null
+        },
+        "costUp": {
+          "type": "boolean",
+          "description": "The cost is raised this turn: the gem's number in danger ink.",
+          "default": false
+        },
+        "costDown": {
+          "type": "boolean",
+          "description": "The cost is lowered: the number in success ink.",
+          "default": false
+        },
+        "typeLine": {
+          "type": "string",
+          "description": "Its type (Attack, Skill · Fire): a line under the art.",
+          "default": ""
+        },
+        "text": {
+          "type": "string",
+          "description": "Its rules as rich-text markup (og.ui.richText): [b]Deal 6[/b] damage. [icon=…] and [color=…] are honoured.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (art kind card); without it a placeholder in its tier's colour.",
+          "default": null
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "Its tier: its frame's colour and pips.",
+          "default": "none"
+        },
+        "playable": {
+          "type": "boolean",
+          "description": "The player can play it now (enough energy, a legal moment): unplayable cards are dimmed, their cost in danger ink, and a drag of one shakes and is refused.",
+          "default": false
+        },
+        "needsTarget": {
+          "type": "boolean",
+          "description": "Playing it asks for a target: dragged up, it stays over the hand and an arc follows the pointer to the target under it.",
+          "default": false
+        },
+        "glow": {
+          "type": "boolean",
+          "description": "It is worth playing now (a combo, a synergy): its edge glows in the primary ink.",
+          "default": false
+        },
+        "fresh": {
+          "type": "boolean",
+          "description": "Drawn this tick: it flies in from the draw pile.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "CardTarget": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A place a targeted card can be played on: an enemy, an ally, a lane, as the game projects it onto the screen.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key, answered with the play.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "What a screen reader calls it.",
+          "default": ""
+        },
+        "rect": {
+          "$ref": "#/$defs/UiRect",
+          "description": "Where it is on the screen (og.ui.worldAnchor's or a HUD element's rectangle).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          }
+        },
+        "valid": {
+          "type": "boolean",
+          "description": "The aimed card can be played on it: the arc ends in success ink and a ring marks it; an invalid one turns the arc danger.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "CardHandDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A hand of cards, its targets and what it says.",
+      "type": "object",
+      "properties": {
+        "cards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HandCard"
+          },
+          "description": "The cards, first to last (start to end of the fan).",
+          "default": []
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CardTarget"
+          },
+          "description": "Where a targeted card can go: aiming snaps the arc to the one under the pointer, and keys and pads step through the valid ones.",
+          "default": []
+        },
+        "cardWidth": {
+          "type": "number",
+          "description": "A card's width at rest; 0 is 150 on a desktop (scaled with the screen) and 104 on a phone. Its height is 1.4 times it.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "spread": {
+          "type": "number",
+          "description": "How far the fan turns its outermost cards, in degrees; 0 is 3 a card, at most 18.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 40
+        },
+        "playLine": {
+          "type": "number",
+          "description": "How far up the screen a card must be dragged to play, as a fraction of the screen's height from its bottom; 0 is 0.36.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Not the player's turn: cards lift and can be read, none plays.",
+          "default": false
+        },
+        "inspect": {
+          "type": "string",
+          "description": "The key of a card shown large in the middle (the details action, a long press); empty shows none.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls the hand.",
+          "default": "Hand"
+        },
+        "targetPrompt": {
+          "type": "string",
+          "description": "What the arc's tip says while aiming with keys and pads.",
+          "default": "Choose a target"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CardPlay": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A card played: the game spends its cost and resolves it.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The card."
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The target's key, for a card that needs one."
+        }
+      },
+      "required": [
+        "key",
+        "target"
+      ],
+      "additionalProperties": false
+    },
+    "CardAim": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A targeted card being aimed: what to preview (the damage on the enemy under it).",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The card."
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The valid or invalid target under the arc's tip; null over none."
+        },
+        "x": {
+          "type": "number",
+          "description": "The arc's tip.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "The arc's tip.",
+          "x-og-unit": "cssPx"
+        }
+      },
+      "required": [
+        "key",
+        "target",
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "CardHandResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the hand did this tick.",
+      "type": "object",
+      "properties": {
+        "played": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CardPlay"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A card played: a non-targeted one released above the play line (or confirmed with keys), a targeted one released on a valid target (or confirmed on one)."
+        },
+        "aiming": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CardAim"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A targeted card being aimed."
+        },
+        "hovered": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The card under the pointer or the focus."
+        },
+        "inspect": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A card whose details were asked for: a long press, the details action; set CardHandDesc.inspect to it, and clear it on dismissed."
+        },
+        "dismissed": {
+          "type": "boolean",
+          "description": "The large card was dismissed (Back, a press)."
+        },
+        "refused": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An unplayable card the player tried to play: it shook, and the game may say why."
+        }
+      },
+      "required": [
+        "played",
+        "aiming",
+        "hovered",
+        "inspect",
+        "dismissed",
+        "refused"
+      ],
+      "additionalProperties": false
+    },
     "MenuItem": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
@@ -54702,7 +55063,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Paths of elements it overlaps on purpose (an ancestor path covers its subtree). Undeclared overlaps are reported (og.ui.overlaps).",
+          "description": "Paths of elements it overlaps on purpose (an ancestor path covers its subtree; `*` covers everything, for what follows the pointer across the screen: a targeting arc, a dragged ghost). Undeclared overlaps are reported (og.ui.overlaps).",
           "default": []
         },
         "dense": {

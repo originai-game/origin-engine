@@ -160,7 +160,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2016 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2023 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -300,8 +300,13 @@ Field units the docs and Tune use.
 | [`CaptureAccept`](input.md#type-CaptureAccept) | enum | input | — |
 | [`CaptureDesc`](input.md#type-CaptureDesc) | desc struct | input | — |
 | [`CaptureState`](input.md#type-CaptureState) | struct | input | — |
+| [`CardAim`](ui.md#type-CardAim) | struct | ui | — |
 | [`CardDesc`](ui.md#type-CardDesc) | desc struct | ui | — |
+| [`CardHandDesc`](ui.md#type-CardHandDesc) | desc struct | ui | — |
+| [`CardHandResult`](ui.md#type-CardHandResult) | struct | ui | — |
 | [`CardMedia`](ui.md#type-CardMedia) | desc struct | ui | — |
+| [`CardPlay`](ui.md#type-CardPlay) | struct | ui | — |
+| [`CardTarget`](ui.md#type-CardTarget) | desc struct | ui | — |
 | [`CardVariant`](ui.md#type-CardVariant) | enum | ui | — |
 | [`CarouselDesc`](ui.md#type-CarouselDesc) | desc struct | ui | — |
 | [`CarouselResult`](ui.md#type-CarouselResult) | struct | ui | — |
@@ -552,6 +557,7 @@ Field units the docs and Tune use.
 | [`GridPlace`](ui.md#type-GridPlace) | desc struct | ui | — |
 | [`GridSpec`](ui.md#type-GridSpec) | desc struct | ui | — |
 | [`GroundDesc`](ui.md#type-GroundDesc) | desc struct | ui | — |
+| [`HandCard`](ui.md#type-HandCard) | desc struct | ui | — |
 | [`HapticEvent`](ui.md#type-HapticEvent) | struct | ui | — |
 | [`Heard`](probe.md#type-Heard) | struct | probe | — |
 | [`Hello`](probe.md#type-Hello) | struct | probe | — |
@@ -1232,6 +1238,7 @@ Field units the docs and Tune use.
 | [`og.ui.button`](ui.md#fn-button) | function | ui | `og_ui_button` |
 | [`og.ui.calendar`](ui.md#fn-calendar) | function | ui | — |
 | [`og.ui.card`](ui.md#fn-card) | function | ui | — |
+| [`og.ui.cardHand`](ui.md#fn-cardHand) | function | ui | — |
 | [`og.ui.carousel`](ui.md#fn-carousel) | function | ui | — |
 | [`og.ui.castBar`](ui.md#fn-castBar) | function | ui | — |
 | [`og.ui.celebration`](ui.md#fn-celebration) | function | ui | — |

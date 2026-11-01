@@ -9,7 +9,7 @@
 // a gallery, never saved.
 
 import { og } from "@origingame/engine";
-import type { GridItem, InventoryCarry, InventoryMove, PaperdollSlot, Size, World } from "@origingame/engine";
+import type { CardTarget, GridItem, HandCard, InventoryCarry, InventoryMove, PaperdollSlot, Size, UiRect, World } from "@origingame/engine";
 
 /** A fixture the preview changes: its readonly fields writable. */
 type Mut<T> = { -readonly [K in keyof T]: T[K] };
@@ -92,13 +92,123 @@ const p = {
   log: "",
 };
 
+// ── cards: a combat table and its hand ──────────────────────────────────
+
+const HAND0: HandCard[] = [
+  { key: "strike", name: "Strike", cost: 1, typeLine: "Attack", text: "Deal [b]6[/b] damage.", needsTarget: true, rarity: "common" },
+  { key: "defend", name: "Defend", cost: 1, typeLine: "Skill", text: "Gain [b]5[/b] [color=info]Block[/color].", rarity: "common" },
+  { key: "bash", name: "Bash", cost: 2, typeLine: "Attack", text: "Deal [b]8[/b] damage. Apply 2 [color=warn]Vulnerable[/color].", needsTarget: true, rarity: "rare" },
+  { key: "anger", name: "Anger", cost: 0, typeLine: "Attack", text: "Deal [b]6[/b] damage. Add a copy to your discard.", needsTarget: true, rarity: "uncommon", glow: true },
+  { key: "inflame", name: "Inflame", cost: 1, costDown: true, typeLine: "Power", text: "Gain [b]2[/b] [color=danger]Strength[/color].", rarity: "epic" },
+  { key: "wound", name: "Wound", typeLine: "Status", text: "Unplayable.", playable: false },
+];
+
+interface Foe { key: string; name: string; hp: number; max: number; taunt: boolean }
+const FOES0: Foe[] = [{ key: "cultist", name: "Cultist", hp: 48, max: 50, taunt: false }, { key: "louse", name: "Red Louse", hp: 12, max: 15, taunt: true }];
+
+const c = {
+  hand: HAND0.map((x) => ({ ...x })) as Array<Mut<HandCard>>,
+  foes: FOES0.map((x) => ({ ...x })),
+  energy: 3,
+  turn: true,
+  inspect: "",
+  log: "",
+};
+
+/** The combat table: two enemies (the second behind a taunt, so it cannot be targeted), the energy, the piles, and the hand. */
+export function cardsScreen(): void {
+  const t = og.ui.frameTheme();
+  const vp = og.ui.frameViewport();
+  const sa = vp.safeArea;
+  const small = phone();
+  const portrait = vp.breakpoint === "phonePortrait";
+  const W = vp.width - sa.left - sa.right;
+  const big = !small && vp.height >= 1000;
+  const landscape = vp.breakpoint === "phoneLandscape";
+  // The table stops above the foot (its height of last tick): the enemies never stand behind the hand.
+  const footH = og.ui.bounds("Foot")?.height ?? (small ? 220 : 320);
+  // The enemies, as the game would project its units: their rectangles of last tick are the hand's targets.
+  const targets: CardTarget[] = c.foes.map((f) => ({ key: f.key, name: f.name, rect: og.ui.bounds(`${landscape ? "Cards/Top" : "Cards/Table"}/Foes/${f.key}`) ?? { x: -1000, y: -1000, width: 0, height: 0 } as UiRect, valid: !f.taunt }));
+  const foes = (): void => {
+    // Where the table is short (a phone on its side, 200 % text), the enemies stand without their figures.
+    const ts = Math.max(1, t.textScale ?? 1);
+    const room = vp.height - sa.top - sa.bottom - (small ? (portrait ? 116 : 64) : t.space.lg) - footH - t.space.sm - 48 * ts;
+    const figH = small ? 60 : big ? 148 : 112;
+    const figure = !landscape && room >= figH + 110 * ts;
+    const foeW = portrait ? Math.floor((W - 2 * t.space.sm - t.space.md) / 2) : small ? 150 : big ? 240 : 176;
+    og.ui.row("Foes", { gap: small ? t.space.md : t.space.xl, cross: "end" }, () => {
+      for (const f of c.foes) {
+        og.ui.column(f.key, { width: px(foeW), gap: t.space.xs, cross: "center", padding: { left: t.space.sm, top: t.space.sm, right: t.space.sm, bottom: t.space.sm }, radius: t.radius.panel, background: { token: "panel" } }, () => {
+          if (figure) og.ui.column("Figure", { width: px(small ? 56 : big ? 128 : 96), height: px(small ? 60 : big ? 148 : 112), radius: 48, background: { token: f.taunt ? "control" : "primarySoft" } }, () => {});
+          og.ui.label("Name", f.name, { step: small ? "sm" : big ? "xl2" : "lg", font: "display", maxLines: 2, ellipsis: true, width: grow, align: "center" });
+          // The hit points under the bar, not in it: a bar's inner label is small and would be cut at 200 %.
+          og.ui.meter("Hp", f.hp, f.max, { kind: "health", width: grow });
+          og.ui.label("HpText", `${f.hp} / ${f.max}`, { step: small ? "sm" : big ? "xl" : "base", font: "mono", nowrap: true });
+          if (f.taunt) og.ui.label("Note", "Behind a taunt", { step: small ? "sm" : big ? "lg" : "sm", color: { token: "inkMuted" }, width: grow, align: "center", maxLines: 2 });
+        });
+      }
+    });
+  };
+  og.ui.anchor("Cards", { anchor: "topLeft", margin: 0, width: px(W), height: px(vp.height - sa.top - sa.bottom), direction: "column", padding: { left: small ? t.space.sm : t.space.xl, top: small ? (portrait ? 116 : 64) : t.space.lg, right: small ? t.space.sm : t.space.xl, bottom: Math.round(footH + t.space.sm) } }, () => {
+    og.ui.row("Top", { width: grow, gap: t.space.md, cross: "center" }, () => {
+      og.ui.label("Title", "Combat", { step: small ? "xl2" : "xl4", heading: true, font: "display", nowrap: true });
+      og.ui.label("Turn", c.turn ? "Your turn" : "Enemy turn", { step: small ? "sm" : big ? "xl" : "base", color: { token: c.turn ? "success" : "warn" }, nowrap: true });
+      if (landscape) {
+        og.ui.spacer("Gap", grow);
+        foes();
+      }
+    });
+    // On a phone on its side the table has no height to spare: the enemies stand in the title's row.
+    if (!landscape) og.ui.row("Table", { width: grow, height: grow, align: "end", cross: "center", gap: small ? t.space.md : t.space.xl3, padding: { left: 0, top: 0, right: small ? 0 : t.space.xl3, bottom: 0 } }, foes);
+  });
+  // The hand along the foot, the energy at its start and End turn at its end.
+  og.ui.anchor("Foot", { anchor: "bottom", margin: 0, width: px(W), direction: "column", gap: t.space.xs, padding: { left: small ? t.space.xs : t.space.lg, top: 0, right: small ? t.space.xs : t.space.lg, bottom: small ? t.space.xs : t.space.md } }, () => {
+    og.ui.row("Bar", { width: grow, cross: "center", gap: t.space.md }, () => {
+      og.ui.row("Energy", { gap: t.space.xs, cross: "center", padding: { left: t.space.md, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, radius: 999, background: { token: "panelRaised" } }, () => {
+        og.ui.label("Value", `${c.energy} / 3`, { step: small ? "lg" : "xl2", font: "mono", color: { token: "highlight" }, nowrap: true });
+        og.ui.label("Label", "Energy", { step: big ? "lg" : "sm", color: { token: "inkMuted" }, nowrap: true });
+      });
+      og.ui.spacer("Gap", grow);
+      if (og.ui.button("EndTurn", c.turn ? "End turn" : "Waiting…", { variant: "primary", disabled: !c.turn, size: big ? "large" : "medium" }).clicked) c.turn = false;
+    });
+    const r = og.ui.cardHand("Hand", {
+      cards: c.hand.map((x) => ({ ...x, playable: x.playable !== false && (x.cost ?? 0) <= c.energy })),
+      targets,
+      disabled: !c.turn,
+      inspect: c.inspect,
+      label: "Hand",
+    });
+    if (r.played) {
+      const card = c.hand.find((x) => x.key === r.played!.key)!;
+      c.energy -= card.cost ?? 0;
+      c.hand.splice(c.hand.indexOf(card), 1);
+      const foe = c.foes.find((f) => f.key === r.played!.target);
+      if (foe) foe.hp = Math.max(0, foe.hp - 6);
+      c.log = `${card.name}${foe ? ` → ${foe.name}` : ""}`;
+    }
+    if (r.inspect) c.inspect = r.inspect;
+    if (r.dismissed) c.inspect = "";
+  });
+}
+
 /** `pat:<key>:<value>`: a pattern preview's state (pick:<item>, highlight:<tag>, reset). */
 export function patternsCommand(_world: World, args: readonly string[]): void {
   const [key, value = ""] = args;
   if (key === "pick") p.pick = { key: value, count: 0 };
   else if (key === "highlight") p.highlight = value;
   else if (key === "select") p.selected = value;
-  else if (key === "reset") {
+  else if (key === "inspect") c.inspect = value;
+  else if (key === "turn") c.turn = value !== "off";
+  else if (key === "draw") {
+    // A card drawn: it flies in from the start edge.
+    const k = `${value || "strike"}${c.hand.length}`;
+    c.hand.push({ ...(HAND0.find((x) => x.key === (value || "strike")) ?? HAND0[0]!), key: k, fresh: true });
+  } else if (key === "reset") {
+    c.hand = HAND0.map((x) => ({ ...x }));
+    c.foes = FOES0.map((x) => ({ ...x }));
+    c.energy = 3;
+    c.turn = true;
+    c.inspect = "";
     p.bag = BAG0.map((i) => ({ ...i }));
     p.slots = SLOTS0.map((s) => ({ ...s }));
     p.stash = STASH0.map((i) => ({ ...i }));

@@ -3,9 +3,11 @@
 // crates/og-api/api/ui.ogt (`host false`) and written here over public
 // og.ui calls only.
 
+import { cardHand } from "./cards.ts";
 import { inventoryGrid, paperdoll } from "./inventory.ts";
 
 export const patterns = Object.freeze({
+  cardHand,
   inventoryGrid,
   paperdoll,
 });

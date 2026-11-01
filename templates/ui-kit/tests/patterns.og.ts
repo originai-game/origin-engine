@@ -25,6 +25,11 @@ export default playtest({
     t.ok(menu.some((e) => e.role === "menu"), "a long press opened the item menu");
     const keys = ui(run, "gear-keys.json");
     t.ok(keys.some((e) => e.role === "grid" && e.states.includes("focused")), "Tab put the focus on the backpack");
+    const aim = ui(run, "cards-aim.json");
+    t.ok(aim.some((e) => e.role === "status" && e.name === "valid: Cultist"), "the arc dragged onto the cultist says it is a valid target");
+    t.ok(!ui(run, "cards-played.json").some((e) => e.role === "option" && e.name.startsWith("Bash")), "released there, Bash was played and left the hand");
+    t.ok(ui(run, "cards-inspect.json").some((e) => e.role === "dialog" && e.name === "Inflame"), "the inspected card is shown large");
+    t.ok(ui(run, "cards-keys.json").some((e) => e.role === "status" && e.name === "invalid: Red Louse"), "keys stepped the target onto the taunted enemy and the arc says invalid");
     t.frame(script.files, () => {
       for (const f of script.files) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
     });

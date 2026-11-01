@@ -1,0 +1,528 @@
+// Card hands (docs/ui.md §11 genre patterns, Appendix D: drag to play with
+// a targeting arc). The hand fans along an arc; the card under the pointer
+// or the focus lifts clear, straightens and is laid out larger so it reads
+// whole. A card is played by dragging it above the play line, by a click
+// and a second click, or by confirm with keys and pads; a card that needs a
+// target is aimed with an arc that snaps to the target under it. What is
+// held and aimed is the component's own state (og.ui.memory, so a snapshot
+// carries it); the game only hears CardHandResult.played.
+
+import type * as Api from "@origingame/engine";
+import {
+  artSlot, clamp, flags, floating, floatingContent, frame, glow, grow, inside, keyHash, keyOf, kit, lastInteraction, line, mix, over, overProps,
+  paint, pips, pointer, px, rarityColor, recallPath, rememberPath, role, rtl, shadow, spring, st, still, surface, text, token, u, vgrad, vstate, xy, type Mut,
+} from "./core.ts";
+
+// ── the hand's state ────────────────────────────────────────────────────
+
+interface Hand {
+  /** The card pressed (its key's hash) while the pointer is down, where and when. */
+  held: number;
+  px: number;
+  py: number;
+  pt: number;
+  /** 1: the held card has moved past the drag threshold. */
+  drag: number;
+  /** The card a click picked (it stays lifted; a second click plays it). */
+  sel: number;
+  /** Aiming a targeted card without a drag: 1 by keys and pads, 2 by the pointer (after a second click). */
+  aim: number;
+  /** The aimed target by keys: its index in desc.targets. */
+  tgt: number;
+  /** The cursor of keys and pads: a card's index. */
+  cur: number;
+  /** A refusal: its tick and card. */
+  rt: number;
+  rk: number;
+  /** The tick it was last built, plus one. */
+  seen: number;
+}
+
+const KEYS: Array<keyof Hand> = ["held", "px", "py", "pt", "drag", "sel", "aim", "tgt", "cur", "rt", "rk", "seen"];
+
+function readHand(): Hand {
+  const h = {} as Hand;
+  for (const k of KEYS) h[k] = kit.memory(`~c.${k}`, 0);
+  // Not built last tick (the screen closed and came back): nothing is held, only the cursor stays.
+  if (h.seen !== 0 && kit.tick() + 1 - h.seen > 1) for (const k of KEYS) if (k !== "cur") h[k] = 0;
+  return h;
+}
+
+function writeHand(h: Hand): void {
+  h.seen = kit.tick() + 1;
+  for (const k of KEYS) kit.remember(`~c.${k}`, h[k]);
+}
+
+const LONG_PRESS = 30;
+
+/** A card's rules as words for a screen reader: the markup's tags left out. */
+function plain(markup: string): string {
+  return markup.replace(/\[\[/g, "\u0000").replace(/\[[^\]]*\]/g, "").replace(/\u0000/g, "[").replace(/\s+/g, " ").trim();
+}
+
+// ── a card's face ───────────────────────────────────────────────────────
+
+interface FaceOpts {
+  playable: boolean;
+  ready: boolean;
+  /** Draw the rules (a card wide enough to read them). */
+  rules: boolean;
+}
+
+/**
+ * A card's face in the open element, `cw` × `ch`: the frame in its tier's
+ * colour, the cost gem, the art, the name banner, the type line with its
+ * pips, and the rules as rich text. Sizes follow the card's width.
+ */
+function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
+  const tier = rarityColor(c.rarity);
+  const edge = tier ?? role("lineStrong");
+  const r = Math.max(6, Math.round(cw * 0.07));
+  const glowing = o.ready ? role("success") : c.glow && o.playable ? role("primary") : null;
+  kit.setDraw({
+    shape: { kind: "rect", radii: [r, r, r, r] },
+    fills: [vgrad([[0, paint(mix(role("panelRaised"), edge, 0.14))], [1, paint(mix(role("panel"), edge, 0.06))]])],
+    strokes: [line(Math.max(2, Math.round(cw / 75)), paint(mix(edge, role("ink"), 0.12))), line(1, token("shadow", 0.5), "outside")],
+    effects: [shadow(Math.round(cw * 0.04), Math.round(cw * 0.1), 0.5), ...(glowing ? [glow(Math.round(cw * 0.1), paint(glowing, 0.85), 2)] : [])],
+  });
+  const pad = Math.max(4, Math.round(cw * 0.045));
+  const artH = Math.round(ch * (o.rules ? 0.4 : 0.56));
+  artSlot("Art", "Card.art", { texture: c.image ?? null, kind: "card", rarity: c.rarity, radius: Math.max(3, r - pad), width: px(cw - pad * 2), height: px(artH) });
+  // The banner: the name on a band of the frame's edge colour, darkened so the ink reads on any tier.
+  const band = mix(role("well"), edge, 0.3);
+  kit.open("Name", { width: grow(), direction: "row", align: "center", cross: "center", padding: xy(Math.round(pad * 1.2), Math.max(2, Math.round(pad * 0.6))), radius: Math.max(3, Math.round(r * 0.5)), background: paint(band), part: "Card.name", partClass: "badge" });
+  text("Text", c.name ?? "", { step: st(cw >= u(180) ? 15 : 13), nowrap: true, ellipsis: true, width: grow(), align: "center", font: "display", heading: true });
+  kit.close();
+  if (o.rules) {
+    kit.row("Type", { width: grow(), gap: u(6), cross: "center", align: "center", part: "Card.type", partClass: "panel" }, () => {
+      if (c.typeLine) text("Text", c.typeLine, { step: st(12), color: "inkMuted", nowrap: true, ellipsis: true });
+      pips("Pips", c.rarity, Math.max(5, Math.round(cw * 0.035)), 6);
+    });
+    if (c.text) {
+      kit.open("Rules", { width: grow(), height: grow(), direction: "column", align: "center", cross: "center", padding: xy(Math.round(pad * 0.6), 0), part: "Card.text", partClass: "panel" });
+      kit.richText("Body", c.text, { step: st(cw >= u(180) ? 14 : 12), color: token("ink"), align: "center", width: grow() });
+      kit.close();
+    }
+  }
+  // The cost: a gem in the top start corner, its number in danger ink when raised or out of reach, success when lowered.
+  if (c.cost !== undefined && c.cost !== null) {
+    // It grows with the player's text size (to half again), so its number stays inside it.
+    const g = Math.round(Math.max(26, cw * 0.22) * Math.min(1.5, Math.max(1, frame().theme.textScale ?? 1)));
+    const tone: Api.ThemeColor = !o.playable || c.costUp ? "danger" : c.costDown ? "success" : "ink";
+    kit.open("Cost", { width: px(g), height: px(g), align: "center", cross: "center", part: `Card.cost${flags(c.costUp && "up", c.costDown && "down", !o.playable && "unaffordable")}`, partClass: "badge" });
+    kit.setDraw({
+      shape: { kind: "ellipse" },
+      fills: [{ kind: "gradient", type: "radial", from: { x: 0.4, y: 0.35 }, to: { x: 0.5, y: 0.5 }, stops: [{ offset: 0, color: paint(mix(role("primary"), role("well"), 0.35)) }, { offset: 1, color: paint(mix(role("primary"), role("well"), 0.75)) }] }],
+      strokes: [line(2, paint(mix(role("primary"), role("ink"), 0.35))), line(1, token("shadow", 0.6), "outside")],
+      effects: [shadow(2, 4, 0.5)],
+    });
+    text("Value", `${c.cost}`, { step: st(g >= u(40) ? 20 : 15), color: tone, font: "mono", nowrap: true });
+    kit.close();
+    over({ insets: { start: -Math.round(g * 0.18), top: -Math.round(g * 0.18) }, inert: true, z: 5 });
+  }
+  // Out of reach: the card under a shade (still readable), never faded to nothing.
+  if (!o.playable) {
+    kit.open("Shade", { width: px(cw), height: px(ch), part: "Card.shade", partClass: "panel" });
+    kit.setDraw({ shape: { kind: "rect", radii: [r, r, r, r] }, fills: [{ kind: "solid", color: token("shadow", 0.38) }] });
+    kit.close();
+    over({ insets: { start: 0, top: 0 }, inert: true, z: 4 });
+  }
+}
+
+// ── the hand ────────────────────────────────────────────────────────────
+
+interface Place {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rot: number;
+  z: number;
+  mode: "rest" | "lifted" | "held" | "aiming";
+}
+
+/**
+ * A hand of cards (Slay the Spire, Hearthstone, Marvel Snap, Balatro):
+ * see `fn cardHand` in crates/og-api/api/ui.ogt.
+ */
+export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult {
+  const { viewport: vp, touch, phone } = frame();
+  const cards = desc.cards ?? [];
+  const targets = desc.targets ?? [];
+  const keys = cards.map((c) => c.key ?? "");
+  const n = cards.length;
+  const p = pointer();
+  const tick = kit.tick();
+  const out: Mut<Api.CardHandResult> = { played: null, aiming: null, hovered: null, inspect: null, dismissed: false, refused: null };
+  const sa = vp.safeArea;
+
+  kit.open(id, { direction: "column", width: grow(), cross: "center", part: "CardHand.frame", partClass: "panel" });
+  const h = readHand();
+  const fanRect = kit.bounds(recallPath(`${id}~fan`));
+  const fanW = fanRect?.width ?? vp.width - sa.left - sa.right;
+
+  // Sizes: a card at rest, and lifted (laid out larger, so its rules read at their own size).
+  const roomH = vp.height - sa.top - sa.bottom;
+  // A card's width at rest: its own, kept to the room, and narrowed (to 80 at least) until each card in the fan shows
+  // more than half of itself, so the middle of every card is its own to press.
+  const w0 = Math.min(desc.cardWidth && desc.cardWidth > 0 ? desc.cardWidth : phone ? 96 : u(150), fanW * 0.34, (roomH * 0.3) / 1.4);
+  const w = Math.round(n > 1 ? Math.max(Math.min(w0, 80), Math.min(w0, (fanW * 0.9) / (1 + 0.62 * (n - 1)))) : w0);
+  const ch = Math.round(w * 1.4);
+  const liftW = Math.round(Math.min(Math.max(w * 1.3, phone ? 168 : u(196)), fanW * 0.62, (roomH * 0.62) / 1.4));
+  const liftH = Math.round(liftW * 1.4);
+  // The fan's turn: a card's outermost corners swing out and down by it, so the box makes room for them.
+  const per = (n > 1 ? Math.min(desc.spread && desc.spread > 0 ? desc.spread : 3, 36 / (n - 1)) : 0) * (Math.PI / 180);
+  const maxRot = per * Math.max(0, (n - 1) / 2);
+  const swingX = Math.ceil(ch * Math.sin(maxRot));
+  const swingY = Math.ceil((w / 2) * Math.sin(maxRot));
+  // Room over the cards for the cost gem standing out of their corner.
+  const topRoom = u(8) + Math.round(Math.max(26, w * 0.22) * 0.3 * Math.min(1.5, Math.max(1, frame().theme.textScale ?? 1)));
+  const H = ch + topRoom + u(14) + swingY + 2;
+  const playY = vp.height - sa.bottom - roomH * (desc.playLine && desc.playLine > 0 ? desc.playLine : 0.36);
+
+  // Which card is which.
+  const held = keyOf(keys, h.held);
+  const sel = keyOf(keys, h.sel);
+  if (h.held && !held) h.held = 0;
+  if (h.sel && !sel) (h.sel = 0), (h.aim = 0);
+  h.cur = clamp(h.cur, 0, Math.max(0, n - 1));
+  const card = (k: string | null): Api.HandCard | null => (k ? cards[keys.indexOf(k)] ?? null : null);
+  const can = (c: Api.HandCard | null): boolean => !!c && !desc.disabled && (c.playable ?? true);
+  const local = (x: number, y: number) => (fanRect ? { x: rtl() ? fanRect.x + fanRect.width - x : x - fanRect.x, y: y - fanRect.y } : { x, y });
+  const targetAt = (x: number, y: number): number => targets.findIndex((t) => inside(t.rect ?? null, x, y));
+  const refuse = (k: string): void => {
+    h.rt = tick;
+    h.rk = keyHash(k);
+    out.refused = k;
+    kit.feedback("error", -1);
+  };
+  const play = (k: string, target: string | null): void => {
+    out.played = { key: k, target };
+    h.held = h.drag = h.sel = h.aim = 0;
+    kit.feedback("confirm", -1);
+  };
+  // Start what a card asks for: play it, or aim it (by keys, or by the pointer after a second click).
+  const activate = (k: string, by: 1 | 2): void => {
+    const c = card(k);
+    if (!can(c)) return refuse(k);
+    if (c!.needsTarget && targets.length > 0) {
+      h.sel = keyHash(k);
+      h.aim = by;
+      h.tgt = Math.max(0, targets.findIndex((t) => t.valid ?? true));
+      kit.feedback("select", -1);
+    } else play(k, null);
+  };
+
+  // ── the pointer: a press held becomes a drag; a release ends it ──
+  if (held && p.down && !h.drag) {
+    if (Math.hypot(p.x - h.px, p.y - h.py) > (touch ? 10 : 5)) {
+      if (!can(card(held))) {
+        refuse(held);
+        h.held = 0;
+      } else {
+        h.drag = 1;
+        h.sel = 0;
+        h.aim = 0;
+        kit.feedback("select", -1);
+      }
+    } else if (tick - h.pt >= LONG_PRESS) {
+      out.inspect = held;
+      h.held = 0;
+    }
+  }
+  const dragging = held && h.drag ? card(held) : null;
+  const dragAiming = !!dragging && !!dragging.needsTarget && targets.length > 0 && !!fanRect && p.y < fanRect.y;
+  if (held && p.released) {
+    if (dragging) {
+      if (dragAiming) {
+        const t = targetAt(p.x, p.y);
+        if (t >= 0 && (targets[t]!.valid ?? true)) play(held, targets[t]!.key ?? "");
+        else kit.feedback("cancel", -1);
+      } else if (!dragging.needsTarget && p.y < playY) play(held, null);
+    } else if (h.sel === h.held) activate(held, 2);
+    else h.sel = h.held;
+    h.held = 0;
+    h.drag = 0;
+  }
+  // Aiming by the pointer: the next press plays on a valid target or stops aiming.
+  const pAiming = h.aim === 2 && sel ? sel : null;
+  if (pAiming && p.pressed) {
+    const t = targetAt(p.x, p.y);
+    if (t >= 0 && (targets[t]!.valid ?? true)) play(pAiming, targets[t]!.key ?? "");
+    else {
+      h.aim = 0;
+      kit.feedback("cancel", -1);
+    }
+  }
+
+  // ── which card lifts ──
+  let hovered: string | null = null;
+  const fanIx = lastInteraction(`${id}~fan`);
+  kit.open("Fan", { width: grow(), height: px(H), interactive: true, focusable: n > 0, adjustable: true, part: `CardHand.fan${flags(!!desc.disabled && "disabled")}`, partClass: "panel" });
+  for (const k of keys) if (lastInteraction(k).hovered) hovered = k;
+  const focusCard = fanIx.focused && n > 0 ? keys[h.cur]! : null;
+  const heldNow = keyOf(keys, h.held);
+  const selNow = keyOf(keys, h.sel);
+  const lifted = heldNow ?? selNow ?? (touch ? null : hovered) ?? focusCard;
+  out.hovered = hovered ?? focusCard;
+
+  // ── the fan's places ──
+  const step = n > 1 ? Math.min(w * 0.82, (fanW - 2 * swingX - w) / (n - 1)) : 0;
+  const x0 = (fanW - (w + step * (n - 1))) / 2;
+  const L = lifted ? keys.indexOf(lifted) : -1;
+  const push = L >= 0 ? clamp((liftW - step) * 0.45, 0, w * 0.6) : 0;
+  const mid = (n - 1) / 2;
+  const places: Place[] = cards.map((_, i) => {
+    const off = i - mid;
+    const dip = mid > 0 ? Math.round(u(14) * (off / mid) ** 2) : 0;
+    const part = L < 0 || i === L ? 0 : (i < L ? -push : push) / Math.abs(i - L) ** 0.6;
+    // Parted, a card stays inside the fan with room for its turned corners.
+    return { x: clamp(x0 + i * step + part, Math.min(swingX, x0), Math.max(fanW - swingX - w, x0 + i * step)), y: topRoom + dip, w, h: ch, rot: off * per, z: i, mode: "rest" };
+  });
+  if (L >= 0) {
+    const pl = places[L]!;
+    const cx = x0 + L * step + w / 2;
+    const k = keys[L]!;
+    if (dragging && k === held && !dragAiming) {
+      // Held by the pointer: it follows, at its rest size, a little turned the way it was.
+      // Kept inside the safe area: a card dragged to the screen's edge stops there whole.
+      const q = local(p.x, p.y);
+      const fr = fanRect!;
+      const startRoom = rtl() ? vp.width - sa.right - (fr.x + fr.width) : fr.x - sa.left;
+      const endRoom = rtl() ? fr.x - sa.left : vp.width - sa.right - (fr.x + fr.width);
+      const x = clamp(q.x - w / 2, -startRoom, fanW + endRoom - w);
+      const y = clamp(q.y - ch * 0.55, sa.top - fr.y, vp.height - sa.bottom - fr.y - ch);
+      Object.assign(pl, { x, y, rot: 0, z: 100, mode: "held" });
+    } else {
+      const aiming = (dragging && k === held && dragAiming) || (k === selNow && h.aim > 0);
+      Object.assign(pl, { x: clamp(cx - liftW / 2, 0, Math.max(0, fanW - liftW)), y: H - liftH - u(8), w: liftW, h: liftH, rot: 0, z: 100, mode: aiming ? "aiming" : "lifted" });
+    }
+  }
+
+  // ── the cards ──
+  for (let i = 0; i < n; i++) {
+    const c = cards[i]!;
+    const k = keys[i]!;
+    const pl = places[i]!;
+    const playable = can(c) || (!!desc.disabled && (c.playable ?? true));
+    const ready = pl.mode === "held" && !c.needsTarget && p.y < playY;
+    const shaking = h.rt > 0 && tick - h.rt < 18 && h.rk === keyHash(k);
+    const shake = shaking && !still() ? Math.sin((tick - h.rt) * 1.6) * (18 - (tick - h.rt)) * 0.6 : 0;
+    const following = pl.mode === "held";
+    const r = surface(k, {
+      part: "Card.frame",
+      cls: "card",
+      flags: [`rarity=${c.rarity ?? "none"}`, pl.mode === "rest" ? "" : pl.mode === "held" ? "dragging" : pl.mode, playable ? "" : "unplayable", c.glow ? "glow" : "", ready ? "ready" : ""],
+      fill: null,
+      washBy: 0.05,
+      focusable: false,
+      direction: "column",
+      width: px(pl.w),
+      height: px(pl.h),
+      padding: xy(Math.max(4, Math.round(pl.w * 0.045)), Math.max(4, Math.round(pl.w * 0.045))),
+      gap: Math.max(3, Math.round(pl.w * 0.03)),
+      cross: "stretch",
+      radius: Math.max(6, Math.round(pl.w * 0.07)),
+      layer: {
+        insets: { start: Math.round(pl.x), top: Math.round(pl.y) },
+        z: pl.z,
+        transform: { rotate: pl.rot, x: shake, pivotX: 0.5, pivotY: 1 },
+        // Moving between places on the ui spring; under the pointer it follows exactly.
+        ...(following ? {} : { layoutMotion: spring("ui"), motion: spring("ui") }),
+        ...(pl.mode === "rest" ? {} : { overlaps: ["*"] }),
+        ...(c.fresh ? { enter: { values: [{ prop: "opacity", value: 0 }, { prop: "x", value: -u(260) }, { prop: "y", value: u(40) }, { prop: "rotate", value: -0.5 }], transition: spring("panel") } } : {}),
+        exit: { values: [{ prop: "opacity", value: 0 }, { prop: "y", value: -u(120) }, { prop: "scale", value: 1.08 }], transition: { kind: "tween", durationMs: 220, ease: "exit" } },
+        states: [
+          { name: "lift", states: [vstate("rest"), vstate("lifted"), vstate("held"), vstate("aiming")], transitions: [] },
+          { name: "play", states: [vstate("playable"), vstate("unplayable")], transitions: [] },
+        ],
+        state: [{ group: "lift", state: pl.mode }, { group: "play", state: playable ? "playable" : "unplayable" }],
+      },
+    }, () => cardFace(c, pl.w, pl.h, { playable, ready, rules: pl.w >= u(140) }));
+    kit.semantics({
+      role: "option",
+      name: [c.name ?? k, c.cost !== undefined && c.cost !== null ? `${c.cost}` : "", c.typeLine ?? ""].filter(Boolean).join(", "),
+      description: plain(c.text ?? ""),
+      selected: k === lifted,
+      disabled: !playable,
+    });
+    if (r.pressed && p.pressed && !pAiming) {
+      h.held = keyHash(k);
+      h.px = p.x;
+      h.py = p.y;
+      h.pt = tick;
+      h.drag = 0;
+      h.cur = i;
+    }
+  }
+  // The hover sound as a card lifts under the pointer.
+  const hv = hovered ? keyHash(hovered) : 0;
+  if (hv && hv !== kit.memory("~c.hover", 0)) kit.feedback("hover", -1);
+  kit.remember("~c.hover", hv);
+
+  // ── the play line, while a card that plays on release is held ──
+  if (dragging && !dragging.needsTarget && fanRect) {
+    const above = p.y < playY;
+    kit.open("PlayLine", { width: px(fanW), height: px(u(3)), part: `CardHand.playLine${flags(above && "ready")}`, partClass: "bar" });
+    kit.setDraw({ shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [{ kind: "gradient", type: "linear", from: { x: 0, y: 0.5 }, to: { x: 1, y: 0.5 }, stops: [{ offset: 0, color: paint(role(above ? "success" : "primary"), 0) }, { offset: 0.5, color: paint(role(above ? "success" : "primary"), 0.9) }, { offset: 1, color: paint(role(above ? "success" : "primary"), 0) }] }], effects: [glow(u(8), paint(role(above ? "success" : "primary"), 0.6))] });
+    kit.close();
+    kit.props(overProps({ insets: { start: 0, top: Math.round(playY - fanRect.y) }, inert: true, z: 90, overlaps: ["*"] }));
+  }
+
+  // The arc: from the aimed card's top to the pointer or the target the keys are on.
+  const aimKey = dragAiming ? held : h.aim > 0 ? selNow : null;
+  if (aimKey && fanRect) {
+    const L2 = keys.indexOf(aimKey);
+    const pl = places[L2]!;
+    const sx = rtl() ? fanRect.x + fanRect.width - (pl.x + pl.w / 2) : fanRect.x + pl.x + pl.w / 2;
+    const sy = fanRect.y + pl.y + u(10);
+    let tx = p.x;
+    let ty = p.y;
+    let ti = targetAt(p.x, p.y);
+    if (h.aim === 1) {
+      h.tgt = clamp(h.tgt, 0, Math.max(0, targets.length - 1));
+      ti = targets.length > 0 ? h.tgt : -1;
+      const tr = ti >= 0 ? targets[ti]!.rect ?? null : null;
+      if (tr) {
+        tx = tr.x + tr.width / 2;
+        ty = tr.y + tr.height / 2;
+      }
+    }
+    const tgt = ti >= 0 ? targets[ti]! : null;
+    const verdict = tgt ? ((tgt.valid ?? true) ? "valid" : "invalid") : "none";
+    arc(sx, sy, tx, ty, verdict, fanRect, tgt, h.aim === 1 ? desc.targetPrompt ?? "Choose a target" : "");
+    out.aiming = { key: aimKey, target: tgt ? tgt.key ?? null : null, x: tx, y: ty };
+  }
+  const fan = kit.close() as Api.Response;
+  const fanPath = kit.lastPath();
+  rememberPath(`${id}~fan`, fanPath);
+  kit.remember(`${id}~fan~ix`, (fan.hovered ? 1 : 0) | (fan.pressed ? 2 : 0) | (fan.focused ? 4 : 0));
+  kit.props({
+    states: [{ name: "interaction", states: [vstate("normal"), vstate("hover"), vstate("pressed"), vstate("focused"), vstate("disabled")], transitions: [] }],
+  });
+  kit.semantics({ role: "listbox", name: desc.label ?? "Hand", value: n > 0 ? cards[h.cur]?.name ?? "" : "" });
+
+  // ── keys and pads: Left and Right walk the hand (it claims them while focused; Up and Down leave it) ──
+  if (fan.focused && n > 0) {
+    const adjust = rtl() ? -fan.adjust : fan.adjust;
+    if (h.aim === 1 && selNow) {
+      // Left and Right step through the targets; confirm plays on a valid one; Back stops aiming.
+      const step2 = (fan.adjust || 0) + (fan.adjustY || 0);
+      if (step2 !== 0 && targets.length > 0) {
+        h.tgt = (((h.tgt + Math.sign(rtl() ? -step2 : step2)) % targets.length) + targets.length) % targets.length;
+        kit.feedback("focus", -1);
+      }
+      if (kit.back()) {
+        h.aim = 0;
+        h.sel = 0;
+        kit.feedback("cancel", -1);
+      } else if (fan.clicked && !p.released) {
+        const t = targets[h.tgt];
+        if (t && (t.valid ?? true)) play(selNow, t.key ?? "");
+        else refuse(selNow);
+      }
+    } else {
+      if (adjust !== 0) {
+        h.cur = clamp(h.cur + adjust, 0, n - 1);
+        h.sel = 0;
+        kit.feedback("focus", -1);
+      }
+      if (fan.clicked && !p.released) activate(keys[h.cur]!, 1);
+      if (kit.action("details")) out.inspect = keys[h.cur]!;
+    }
+  }
+  // A press on nothing of the hand lets a picked card go.
+  if (p.pressed && !h.held && h.sel && h.aim !== 1 && !pAiming && !inside(kit.bounds(fanPath), p.x, p.y)) h.sel = 0;
+
+  // ── a card shown large ──
+  const big = desc.inspect ? card(desc.inspect) : null;
+  const bw = Math.round(Math.min(phone ? 280 : u(340), (vp.width - sa.left - sa.right) * 0.8, ((roomH - u(48)) / 1.4)));
+  const m = floating(`${id}Inspect`, !!big, { scrim: true }, (s) => ({ x: (vp.width - s.width) / 2, y: (vp.height - s.height) / 2 }), (at) => {
+    if (!big) return;
+    floatingContent({ direction: "column", part: "CardHand.inspect", partClass: "panel" }, () => {
+      kit.open("Card", { width: px(bw), height: px(Math.round(bw * 1.4)), direction: "column", cross: "stretch", padding: all4(Math.round(bw * 0.045)), gap: Math.round(bw * 0.03), part: `Card.frame${flags(`rarity=${big.rarity ?? "none"}`, "inspect")}`, partClass: "card" });
+      cardFace(big, bw, Math.round(bw * 1.4), { playable: can(big) || !!desc.disabled, ready: false, rules: true });
+      kit.close();
+      kit.semantics({ role: "dialog", name: big.name ?? "", description: plain(big.text ?? "") });
+    });
+    void at;
+  });
+  if (m.dismissed) out.dismissed = true;
+
+  writeHand(h);
+  kit.close();
+  return out;
+}
+
+const all4 = (v: number): Api.Insets => ({ left: v, top: v, right: v, bottom: v });
+
+/**
+ * The targeting arc from (sx, sy) to (tx, ty), screen CSS px: a curve that
+ * rises from the card and bends to the tip, in the verdict's ink with a
+ * dark outline so it reads on any scene, a reticle at the tip, a ring
+ * around the target under it, and (aiming by keys) a chip naming it.
+ */
+function arc(sx: number, sy: number, tx: number, ty: number, verdict: "none" | "valid" | "invalid", fan: Api.UiRect, tgt: Api.CardTarget | null, prompt: string): void {
+  const tone = role(verdict === "valid" ? "success" : verdict === "invalid" ? "danger" : "primary");
+  // A quadratic Bézier with its control point above the start, sampled.
+  const cx = sx + (tx - sx) * 0.1;
+  const cy = Math.min(sy, ty) - Math.max(u(40), Math.abs(tx - sx) * 0.35);
+  const R = u(18);
+  const pts: Api.Vector2[] = [];
+  const N = 28;
+  for (let k = 0; k <= N; k++) {
+    const t = k / N;
+    const x = (1 - t) ** 2 * sx + 2 * (1 - t) * t * cx + t * t * tx;
+    const y = (1 - t) ** 2 * sy + 2 * (1 - t) * t * cy + t * t * ty;
+    if (Math.hypot(x - tx, y - ty) < R * 0.9) break;
+    pts.push({ x, y });
+  }
+  if (pts.length < 2) pts.push({ x: tx, y: ty - R });
+  const minX = Math.min(...pts.map((q) => q.x)) - u(8);
+  const minY = Math.min(...pts.map((q) => q.y)) - u(8);
+  const maxX = Math.max(...pts.map((q) => q.x)) + u(8);
+  const maxY = Math.max(...pts.map((q) => q.y)) + u(8);
+  // Placed in the fan's box from its start edge; its points are the screen's, so a mirrored layout keeps them where they are.
+  const startOf = (x0: number, x1: number) => (rtl() ? fan.x + fan.width - x1 : x0 - fan.x);
+  kit.open("Arc", { width: px(maxX - minX), height: px(maxY - minY), part: `CardHand.arc${flags(verdict)}`, partClass: "bar" });
+  kit.setDraw({
+    shape: { kind: "path", points: pts.map((q) => ({ x: q.x - minX, y: q.y - minY })), width: u(6), cap: "round", join: "round" },
+    fills: [{ kind: "solid", color: paint(tone) }],
+    effects: [{ kind: "dropShadow", offset: { x: 0, y: 0 }, blur: 1, spread: u(2), color: token("shadow", 0.8) }, glow(u(10), paint(tone, 0.55))],
+  });
+  kit.close();
+  kit.props(overProps({ insets: { start: Math.round(startOf(minX, maxX)), top: Math.round(minY - fan.y) }, inert: true, z: 120, overlaps: ["*"], states: [{ name: "verdict", states: [vstate("none"), vstate("valid"), vstate("invalid")], transitions: [] }], state: [{ group: "verdict", state: verdict }] }));
+  kit.semantics({ role: "status", name: [verdict === "none" ? "" : verdict, tgt?.name ?? ""].filter(Boolean).join(": ") });
+  // The reticle: a ring and a dot at the tip.
+  kit.open("Reticle", { width: px(R * 2), height: px(R * 2), align: "center", cross: "center", part: `CardHand.reticle${flags(verdict)}`, partClass: "badge" });
+  kit.setDraw({ shape: { kind: "ellipse" }, strokes: [line(u(3), paint(tone)), line(u(2), token("shadow", 0.8), "outside")], effects: [glow(u(8), paint(tone, 0.5))] });
+  kit.open("Dot", { width: px(u(6)), height: px(u(6)) });
+  kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: paint(tone) }], strokes: [line(1, token("shadow", 0.8), "outside")] });
+  kit.close();
+  kit.close();
+  kit.props(overProps({ insets: { start: Math.round(startOf(tx - R, tx + R)), top: Math.round(ty - R - fan.y) }, inert: true, z: 121, overlaps: ["*"] }));
+  // The target under the tip, ringed.
+  const tr = tgt?.rect ?? null;
+  if (tr) {
+    const o = u(6);
+    kit.open("TargetRing", { width: px(tr.width + o * 2), height: px(tr.height + o * 2), part: `CardHand.target${flags(verdict)}`, partClass: "badge" });
+    kit.setDraw({ shape: { kind: "rect", radii: [u(10), u(10), u(10), u(10)] }, strokes: [line(u(3), paint(tone)), line(u(2), token("shadow", 0.7), "outside")], effects: [glow(u(12), paint(tone, 0.5))] });
+    kit.close();
+    kit.props(overProps({ insets: { start: Math.round(startOf(tr.x - o, tr.x + tr.width + o)), top: Math.round(tr.y - o - fan.y) }, inert: true, z: 119, overlaps: ["*"] }));
+  }
+  // Aiming by keys: what the target is, above it (or the prompt while none is valid).
+  if (prompt) {
+    // Centred over the tip by its own width of last tick.
+    const was = kit.bounds(recallPath("~c.prompt"));
+    const cw = was?.width ?? u(120);
+    kit.open("Prompt", { direction: "row", padding: xy(u(12), u(6)), part: `CardHand.prompt${flags(verdict)}`, partClass: "chip" });
+    kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token("panelRaised") }], strokes: [line(2, paint(tone))], effects: [shadow(u(3), u(8), 0.5)] });
+    text("Text", tgt ? tgt.name ?? "" : prompt, { step: st(13), nowrap: true, font: "display" });
+    kit.close();
+    rememberPath("~c.prompt", kit.lastPath());
+    const v = frame().viewport;
+    const x0 = clamp(tx - cw / 2, v.safeArea.left + u(4), v.width - v.safeArea.right - cw - u(4));
+    const top = (tr ? tr.y : ty - R) - u(44);
+    kit.props(overProps({ insets: { start: Math.round(startOf(x0, x0 + cw)), top: Math.round(Math.max(frame().viewport.safeArea.top + u(4), top) - fan.y) }, inert: true, z: 122, overlaps: ["*"] }));
+  }
+}

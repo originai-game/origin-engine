@@ -18,7 +18,7 @@
 
 import { og, defineComponent, defineResource, defineSystem, bool, f32, f64, str, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
-import { gearScreen, patternsCommand } from "./patterns.ts";
+import { cardsScreen, gearScreen, patternsCommand } from "./patterns.ts";
 import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, navigationScreen, overlaysScreen } from "./components.ts";
 import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundationsScreen, rangesScreen } from "./controls.ts";
 
@@ -28,7 +28,7 @@ export const SCREENS = [
   "players", "text", "materials",
   "containers", "navigation", "overlays", "data", "charts", "chartsMore", "graph",
   "foundations", "controls", "ranges", "fields", "bindings",
-  "gear",
+  "gear", "cards",
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
@@ -81,6 +81,7 @@ const BLURBS: Record<Screen, string> = {
   fields: "Text fields, search, selects, colour picker",
   bindings: "Key bindings and the on-screen keyboard",
   gear: "Paperdoll, backpack and stash: multi-cell items, stacks, rotation",
+  cards: "A hand of cards: fan, hover lift, drag to play, a targeting arc",
 };
 
 /** The demo's state: one entity named "demo" (dump_entity:demo reads it). */
@@ -1162,6 +1163,10 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       // Back puts a carried item back first (the grid takes it).
       gearScreen();
       break;
+    case "cards":
+      // Back stops aiming first (the hand takes it).
+      cardsScreen();
+      break;
     case "toasts": {
       const t = og.ui.frameTheme();
       og.ui.anchor("ToastDemo", { anchor: "center", direction: "column", gap: t.space.sm, width: { kind: "fixed", px: 300 }, padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, background: { token: "panel" }, radius: t.radius.panel }, () => {
@@ -1302,7 +1307,7 @@ export default og.game({
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
     mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },
     demo: { usage: "<overlay|data|aim|text|device|reset|keyboard|controls>:<value>", doc: "A component preview's state: demo:overlay:menu (menu, submenu, context, popover, dialog, confirm, sheet, sideSheet, radial, none), demo:data:loading (rows, loading, empty, error), demo:aim:0.7,-0.7 (the radial wheel's stick), demo:text:200 (the player's text size, 100 to 200 %), demo:device:playstation (the device prompts are drawn for, and the key-binding rows': keyboardMouse, xbox, playstation, switch), demo:keyboard:kana (letters, symbols, numeric, kana, none: the on-screen keyboard on the bindings screen), demo:controls:reset (the controls previews' state)." },
-    pat: { usage: "<pick|highlight|select|reset>:<value>", doc: "A genre pattern preview's state: pat:pick:helm (an item in the hand), pat:highlight:potion (a tag lit), pat:select:<item>, pat:reset." },
+    pat: { usage: "<pick|highlight|select|inspect|turn|draw|reset>:<value>", doc: "A genre pattern preview's state: pat:pick:helm (an item in the hand), pat:highlight:potion (a tag lit), pat:select:<item>, pat:inspect:bash (a card shown large), pat:turn:off (not the player's turn), pat:draw:strike (a card drawn), pat:reset." },
     offline: { usage: "<on|off>", doc: "The leaderboard's rows fail to load: its error message and Retry (which loads again)." },
   },
   facts: (world) => {

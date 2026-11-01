@@ -131,11 +131,87 @@ function gear(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void 
   }
 }
 
+/** The combat table's hand in its states. `phone` keeps to what a finger does. */
+function cards(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void {
+  const FAN = "Hand/Fan";
+  b.cmd("show:cards");
+  b.cmd("pat:reset");
+  b.shot(`${prefix}cards-idle`, 0.8);
+  if (!phone) {
+    // Hover: the card lifts clear of the fan, straight and larger; its neighbours part.
+    b.cmd(`touch_move_to:${FAN}/bash`, 0.1);
+    b.shot(`${prefix}cards-hover`, 0.5);
+  }
+  // A card that plays on release, held below the play line, then above it (ready), let go back in the hand.
+  b.cmd(`touch_move_to:${FAN}/defend`, 0.05);
+  b.cmd("touch_start", 0.1);
+  b.cmd("touch_move_to:Foot/Bar/Energy", 0.2);
+  b.shot(`${prefix}cards-held`, 0.3);
+  b.cmd("touch_move_to:Cards/Top/Title", 0.2);
+  b.shot(`${prefix}cards-ready`, 0.3);
+  b.cmd(`touch_move_to:${FAN}/wound`, 0.2);
+  b.cmd("touch_end", 0.4);
+  // A targeted card dragged up: the arc to the enemy behind a taunt (invalid), then to the other (valid), played there.
+  b.cmd(`touch_move_to:${FAN}/bash`, 0.05);
+  b.cmd("touch_start", 0.1);
+  b.cmd("touch_move_to:Foes/louse", 0.25);
+  b.shot(`${prefix}cards-aim-invalid`, 0.3);
+  b.cmd("touch_move_to:Foes/cultist", 0.25);
+  b.shot(`${prefix}cards-aim-valid`, 0.3);
+  b.dump(`${prefix}cards-aim`);
+  b.cmd("touch_end", 0.2);
+  b.shot(`${prefix}cards-played`, 0.5);
+  b.dump(`${prefix}cards-played`);
+  // Out of energy now for a 2-cost card: Inflame and Anger stay playable, an unplayable Wound shakes when tried.
+  b.cmd(`touch_move_to:${FAN}/wound`, 0.05);
+  b.cmd("touch_start", 0.05);
+  b.cmd("touch_move_to:Cards/Top/Title", 0.1);
+  b.shot(`${prefix}cards-refused`, 0.1);
+  b.cmd("touch_end", 0.4);
+  // A card drawn flies in; a card shown large; the enemy's turn.
+  b.cmd("pat:draw:strike");
+  b.shot(`${prefix}cards-drawn`, 0.25);
+  b.cmd("pat:inspect:inflame");
+  b.shot(`${prefix}cards-inspect`, 0.6);
+  b.dump(`${prefix}cards-inspect`);
+  b.cmd("pat:inspect:");
+  b.cmd("pat:turn:off");
+  b.shot(`${prefix}cards-enemy-turn`, 0.5);
+  b.cmd("pat:reset");
+  if (!phone) {
+    // Keys: a click on Strike puts the focus on the hand; the cursor walks it, Enter aims Bash, Right steps
+    // the target onto the enemy behind a taunt (the arc says invalid), Back stops aiming.
+    b.seq((at) => tap(at, "Hand/Fan/strike"), 0.2);
+    b.cmd("touch_move_to:Cards/Top/Title", 0.2);
+    b.seq((at) => key(at, "ArrowRight"), 0.2);
+    b.seq((at) => key(at, "ArrowRight"), 0.2);
+    b.shot(`${prefix}cards-keys-cursor`, 0.4);
+    b.seq((at) => key(at, "Enter"), 0.2);
+    b.shot(`${prefix}cards-keys-aim`, 0.4);
+    b.seq((at) => key(at, "ArrowRight"), 0.2);
+    b.shot(`${prefix}cards-keys-aim-invalid`, 0.4);
+    b.dump(`${prefix}cards-keys`);
+    b.seq((at) => key(at, "Escape"), 0.3);
+  } else {
+    // A finger: a tap picks a card (it stays up), a second tap aims it, a tap on the enemy plays it.
+    b.seq((at) => tap(at, `${FAN}/strike`), 0.3);
+    b.shot(`${prefix}cards-picked`, 0.4);
+    b.seq((at) => tap(at, `${FAN}/strike`), 0.3);
+    b.cmd("touch_move_to:Foes/cultist", 0.2);
+    b.shot(`${prefix}cards-tap-aim`, 0.4);
+    b.cmd("touch_start", 0.05);
+    b.cmd("touch_end", 0.3);
+    b.dump(`${prefix}cards-tapped`);
+  }
+  b.cmd("pat:reset");
+}
+
 /** Every pattern screen in its states, then right to left and at 200 % text. */
 export function patternsScript(phone: boolean): Script {
   const b = builder(0.3);
   if (phone) b.cmd("viewport:phone");
   gear(b, phone);
+  cards(b, phone);
   b.cmd("locale:ar");
   b.cmd("show:gear");
   b.shot("rtl-gear", 0.8);
@@ -144,12 +220,26 @@ export function patternsScript(phone: boolean): Script {
   // Back puts what the keys carry back where it was.
   b.seq((at) => key(at, "Escape"), 0.3);
   b.cmd("pat:reset");
+  b.cmd("show:cards");
+  b.cmd("pat:reset");
+  b.shot("rtl-cards", 0.8);
+  b.cmd(`touch_move_to:Hand/Fan/bash`, 0.05);
+  b.cmd("touch_start", 0.1);
+  b.cmd("touch_move_to:Foes/cultist", 0.25);
+  b.shot("rtl-cards-aim", 0.3);
+  b.cmd("touch_end", 0.3);
+  b.cmd("pat:reset");
   b.cmd("locale:en");
   b.cmd("demo:text:200");
   b.cmd("show:gear");
   b.shot("text200-gear", 0.8);
   b.cmd("pat:select:greatsword");
   b.shot("text200-gear-selected", 0.5);
+  b.cmd("pat:reset");
+  b.cmd("show:cards");
+  b.shot("text200-cards", 0.8);
+  b.cmd("pat:inspect:bash");
+  b.shot("text200-cards-inspect", 0.6);
   b.cmd("pat:reset");
   b.cmd("demo:text:100");
   return b.end();
