@@ -1195,6 +1195,11 @@ module ui {
     returns f64
   }
 
+  fn frameDirection {
+    doc "The writing direction of the frame being built, `ltr` or `rtl` (og.i18n's locale sets it): code that draws its own arrows, chevrons or progress along a line mirrors them by it; layout mirrors rows and insets itself."
+    returns String
+  }
+
   fn frameTheme {
     doc "The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates)."
     returns UiTheme

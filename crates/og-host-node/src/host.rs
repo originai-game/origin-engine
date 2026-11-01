@@ -1014,6 +1014,9 @@ impl UiApi for NodeHost {
     fn og_ui_seconds(&self) -> f64 {
         rt::og_ui_seconds()
     }
+    fn og_ui_frame_direction(&self) -> String {
+        rt::og_ui_frame_direction()
+    }
     fn og_ui_counter(&self, id: String, value: f64, desc: Option<String>) -> f64 {
         rt::og_ui_counter(id, value, desc)
     }

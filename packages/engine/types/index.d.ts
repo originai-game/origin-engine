@@ -19940,6 +19940,7 @@ export type UiItemBuild = (index: number) => void;
 
 
 
+
 /**
  * One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out).
  */
@@ -31212,6 +31213,10 @@ export declare namespace og {
      * The UI's clock in seconds: frames built over the tick rate (simulation time, never the wall clock).
      */
     function seconds(): number;
+    /**
+     * The writing direction of the frame being built, `ltr` or `rtl` (og.i18n's locale sets it): code that draws its own arrows, chevrons or progress along a line mirrors them by it; layout mirrors rows and insets itself.
+     */
+    function frameDirection(): string;
     /**
      * The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates).
      */

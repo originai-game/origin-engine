@@ -781,6 +781,8 @@ pub trait UiApi: Wire {
     fn og_ui_has_icon(&self, name: String) -> bool;
     /// `og.ui.seconds`
     fn og_ui_seconds(&self) -> f64;
+    /// `og.ui.frameDirection`
+    fn og_ui_frame_direction(&self) -> String;
     /// `og.ui.frameTheme`
     fn og_ui_frame_theme(&self) -> String;
     /// `og.ui.openAnchor`
@@ -1472,6 +1474,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_frame_viewport",
     "og_ui_has_icon",
     "og_ui_seconds",
+    "og_ui_frame_direction",
     "og_ui_frame_theme",
     "og_ui_open_anchor",
     "og_ui_open_transition",

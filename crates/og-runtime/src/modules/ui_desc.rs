@@ -248,6 +248,14 @@ pub fn og_ui_frame_viewport() -> String {
     viewport_json(&v, hud).to_string()
 }
 
+pub fn og_ui_frame_direction() -> String {
+    let rtl = with_ui("og.ui.frameDirection", |ui| {
+        ui.direction() == og_i18n::Direction::Rtl
+    })
+    .unwrap_or(false);
+    if rtl { "rtl" } else { "ltr" }.to_owned()
+}
+
 pub fn og_ui_has_icon(name: String) -> bool {
     with_ui("og.ui.hasIcon", |ui| ui.has_icon(&name)).unwrap_or(false)
 }
