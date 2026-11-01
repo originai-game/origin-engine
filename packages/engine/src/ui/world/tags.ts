@@ -17,6 +17,7 @@ import {
   a11y, box, clamp01, easeBack, easeOut, edge, ellipseShape, fillDraw, glow, groups, icon, inkOn, kit, leaf, lit, mix, msToTicks, now, pct, pop,
   px, rarityColor, rarityPips, reactionColor, reduced, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, waypointColor, absolute,
   tps, arc, paintRgba, type Rgba, apply, type Props, ut,
+  isolate,
 } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
@@ -54,7 +55,8 @@ export function nameplate(id: string, desc: Api.NameplateDesc = {}): Api.AnchorI
     gap: u(2),
     declutter: "stack",
     contain: true,
-    priority: (desc.priority ?? 0) + (targeted ? 1000 : 0),
+    // A unit ranks over loot (its labels yield to the people), a target over every unit.
+    priority: 100 + (desc.priority ?? 0) + (targeted ? 1000 : 0),
     occlusion: desc.occlusion ?? "fade",
     lod: lods,
     maxDistance: desc.maxDistance || 80,
@@ -201,7 +203,9 @@ export function waypoint(id: string, desc: Api.WaypointDesc = {}): Api.AnchorInf
     gap: u(2),
     pivot: "center",
     occlusion: "none",
+    // A marker never moves off its point: it ranks over every tag, so plates, prompts and loot declutter round it.
     declutter: "none",
+    priority: kind === "objective" || kind === "ping" ? 5000 : 4000,
     clamp: { margin: desc.clampMargin || 32, arrow: lit(col), arrowSize: u(12) },
   }, (inf) => {
     clampedNow = inf.clamped;
@@ -228,7 +232,7 @@ export function waypoint(id: string, desc: Api.WaypointDesc = {}): Api.AnchorInf
     }, { transform: { y: (1 - drop) * -u(30), scaleX: drop, scaleY: drop }, opacity: fade });
     text("Distance", `${Math.round(inf.distance)}${desc.units ?? "m"}`, { step: ts(12), font: "mono", color: token("ink"), nowrap: true, outline: 1 }, { opacity: fade });
     if ((desc.label || desc.by) && !inf.clamped) {
-      text("Label", [desc.label, desc.by ? `· ${desc.by}` : ""].filter(Boolean).join(" "), { step: ts(12), font: "display", color: lit(mix(col, WHITE, 0.4)), nowrap: true, outline: 1 }, { opacity: fade });
+      text("Label", desc.by ? `${isolate(desc.label ?? "")} · ${isolate(desc.by)}`.trim() : (desc.label ?? ""), { step: ts(12), font: "display", color: lit(mix(col, WHITE, 0.4)), nowrap: true, outline: 1 }, { opacity: fade });
     }
   });
   apply({

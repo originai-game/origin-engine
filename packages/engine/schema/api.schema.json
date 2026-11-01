@@ -56949,7 +56949,7 @@
           "type": "integer",
           "minimum": -2147483648,
           "maximum": 2147483647,
-          "description": "Who keeps its place when nameplates overlap (the target's is raised by 1000).",
+          "description": "Who keeps its place when tags overlap: a nameplate ranks 100 over loot labels (the target 1000 more), and waypoints rank over every tag.",
           "default": 0
         },
         "lod": {

@@ -7557,7 +7557,7 @@ module ui {
     field icon String "A class, quest or role icon before the name."
     field unitClass UnitClass "Elite, rare or boss: a dressed frame."
     field targeted bool "The player's target: larger, outlined, drawn over the rest."
-    field priority i32 "Who keeps its place when nameplates overlap (the target's is raised by 1000)."
+    field priority i32 "Who keeps its place when tags overlap: a nameplate ranks 100 over loot labels (the target 1000 more), and waypoints rank over every tag."
     field lod List.f32 "Distances where it sheds detail: past the first the title goes, past the second the name goes and only the bar stays; empty is 25 and 50."
     field maxDistance f32 "Hidden past this; 0 is 80." {
       unit m

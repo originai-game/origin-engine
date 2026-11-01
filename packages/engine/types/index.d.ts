@@ -33596,7 +33596,7 @@ export interface NameplateDesc {
    */
   readonly targeted?: boolean;
   /**
-   * Who keeps its place when nameplates overlap (the target's is raised by 1000).
+   * Who keeps its place when tags overlap: a nameplate ranks 100 over loot labels (the target 1000 more), and waypoints rank over every tag.
    *
    * @default 0
    */

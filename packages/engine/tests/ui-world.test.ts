@@ -14,7 +14,9 @@
 //   centre is behind the camera;
 // - a ground shape on a slope floats at its given height instead of lying on
 //   the terrain (sampled or cast down against its collider) under each vertex;
-// - damage numbers spawn nothing, or a miss spawns a number.
+// - damage numbers spawn nothing, or a miss spawns a number;
+// - a crowd of plates and loot overlaps, stacks off the top of a phone, or
+//   a waypoint is pushed off its point by the tags around it.
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -255,4 +257,31 @@ test("ground shapes lie on a sloped terrain: sampled, or cast down against its c
   // A telegraph over the hilltop is drawn, its edge on the summit's ground.
   expect(at(els, "Slam/Box/Area")).toBeDefined();
   expect(at(els, "Slam/Box/Edge#0")).toBeDefined();
+});
+
+test("a crowd of tags on a phone never overlaps, keeps inside the safe area, and leaves waypoints on their points", () => {
+  const PHONE = { width: 390, height: 844, dpr: 1, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" };
+  const infos: Record<string, { alpha: number }> = {};
+  const e = engineFor("WorldCrowd", (w) => {
+    // At 200 % text the stack outgrows the room above it: it must not climb off the top.
+    og.ui.configure(w, { textScale: 2 });
+    for (let i = 0; i < 6; i++) infos[`P${i}`] = og.ui.nameplate(`P${i}`, { ...point(0.2 + i * 0.12, 0, -6 - i * 0.2), name: "Ember Imp", level: "12", health: 0.5, reaction: "hostile" });
+    for (let i = 0; i < 4; i++) infos[`L${i}`] = og.ui.lootLabel(`L${i}`, { ...point(0.1 * i, 0, -5), name: "Linen Scraps", rarity: "uncommon", count: 3 }).info;
+    infos.W = og.ui.waypoint("W", { ...point(2.4, 1.6, -6.2), kind: "objective", label: "Hold" });
+  }, PHONE, [og.Camera]);
+  e.advance(60);
+  const els = dump(e);
+  const shown = Object.keys(infos).filter((k) => infos[k]!.alpha > 0.05).map((k) => at(els, k)!).filter(Boolean);
+  expect(shown.filter((a) => a.path.startsWith("P")).length).toBeGreaterThan(1);
+  for (const a of shown) {
+    if (a.path === "W") continue;
+    expect(a.y).toBeGreaterThanOrEqual(47 - 0.5);
+    expect(a.x + a.width).toBeLessThanOrEqual(390 + 0.5);
+  }
+  for (let i = 0; i < shown.length; i++) for (let j = i + 1; j < shown.length; j++) {
+    const a = shown[i]!, b = shown[j]!;
+    const w = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+    const h = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+    expect(w > 1 && h > 1 ? `${a.path} over ${b.path}` : "").toBe("");
+  }
 });
