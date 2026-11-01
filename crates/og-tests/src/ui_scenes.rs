@@ -910,6 +910,7 @@ pub fn layers() -> RenderScene {
                 material,
                 params,
                 mask,
+                target: None,
             });
             let n = o.ui.layers.len() as u32 - 1;
             o.ui.shapes.push(UiShape {
@@ -1529,4 +1530,81 @@ pub fn world(
     }
     scene.overlay = Some(o);
     Ok(scene)
+}
+
+/// `ui-panel` (`docs/ui.md` §14, world panels): a UI layer drawn into a
+/// render target instead of the overlay, the target the emissive map of a
+/// 3 × 2 m quad turned 25° about y in front of the camera. The panel's
+/// rect, 480 × 320 CSS px, is on the screen at (760, 380), where nothing
+/// of it may show (a panel composites nowhere); its content, in layer 200:
+/// a teal card filling it, a green bar across its lower third, a red disc
+/// at its top left. Two frames: the scene samples the target the frame
+/// after the UI drew it.
+pub fn panel() -> RenderScene {
+    use og_render::{Camera, Material, Projection, RenderTargetDesc, TargetFormat, shapes};
+    let mut scene = RenderScene::new();
+    crate::scenes::ground(&mut scene, 40.0, 1.0, 0.8);
+    let target = scene.add_render_target(RenderTargetDesc {
+        width: 480,
+        height: 320,
+        format: TargetFormat::Rgba16Float,
+        depth: false,
+    });
+    let quad = scene.add_mesh(shapes::plane_xy(3.0, 2.0));
+    let screen = scene.add_material(Material {
+        base_color: [0.0, 0.0, 0.0, 1.0],
+        emissive: [1.0; 3],
+        emissive_texture: Some(target.color),
+        ..Default::default()
+    });
+    scene.add_instance(
+        quad,
+        screen,
+        og_core::glam::Mat4::from_rotation_translation(
+            og_core::glam::Quat::from_rotation_y(25f32.to_radians()),
+            Vec3::new(0.0, 1.5, 0.0),
+        ),
+    );
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 1.5, 5.0),
+        target: Vec3::new(0.0, 1.5, 0.0),
+        up: Vec3::Y,
+        projection: Projection::Perspective {
+            fov_y_degrees: 50.0,
+        },
+        near: 0.1,
+        far: 100.0,
+        ..Default::default()
+    };
+    scene.environment.background = Background::Color(Vec3::new(0.25, 0.35, 0.55));
+    scene.post.tonemap = Tonemap::None;
+    let mut o = Overlay::new(W, H, 0.0);
+    let (x, y) = (760.0, 380.0);
+    o.ui.layers.push(og_render::UiLayer {
+        capture: [200, 209],
+        rect: [x, y, 480.0, 320.0],
+        material: og_render::UiMaterial::Plain,
+        params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+        mask: None,
+        target: Some(target.color),
+    });
+    let mut put = |s: UiShape| {
+        o.ui.shapes.push(UiShape { layer: 200, ..s });
+    };
+    put(UiShape::rect(
+        [x, y, 480.0, 320.0],
+        0.0,
+        [0.0, 0.35, 0.4, 1.0],
+    ));
+    put(UiShape::rect(
+        [x + 40.0, y + 220.0, 400.0, 50.0],
+        12.0,
+        [0.1, 0.9, 0.2, 1.0],
+    ));
+    put(UiShape {
+        geometry: og_render::UiGeometry::Ellipse,
+        ..UiShape::rect([x + 30.0, y + 30.0, 80.0, 80.0], 0.0, [0.95, 0.1, 0.1, 1.0])
+    });
+    scene.overlay = Some(o);
+    scene
 }

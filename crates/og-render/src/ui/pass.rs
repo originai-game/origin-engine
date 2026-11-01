@@ -859,6 +859,11 @@ impl UiRenderer {
         let mut used = vec![false; self.targets.len()];
         let mut target_of = Vec::new();
         for plan in &frame.layers {
+            if plan.target.is_some() {
+                // A world panel draws into its own render target.
+                target_of.push(usize::MAX);
+                continue;
+            }
             let found = self
                 .targets
                 .iter()
@@ -905,6 +910,10 @@ impl UiRenderer {
             target_of.clear();
             let mut taken = vec![false; self.targets.len()];
             for plan in &frame.layers {
+                if plan.target.is_some() {
+                    target_of.push(usize::MAX);
+                    continue;
+                }
                 let i = self
                     .targets
                     .iter()
@@ -920,7 +929,7 @@ impl UiRenderer {
             let u = [
                 plan.size.0 as f32,
                 plan.size.1 as f32,
-                uniform[2],
+                plan.scale,
                 0.0,
                 plan.origin[0],
                 plan.origin[1],
@@ -955,13 +964,17 @@ impl UiRenderer {
                 None => {}
             }
             queue.write_buffer(&self.layer_params[n], 0, bytemuck::bytes_of(&params));
-            let target = &self.targets[target_of[n]];
+            // A world panel composites nowhere: its group samples white.
+            let target = self
+                .targets
+                .get(target_of[n])
+                .map_or(&self.white, |t| &t.view);
             let composite = crate::bind_group(
                 device,
                 "ui layer composite",
                 &self.layer_layout,
                 &[
-                    wgpu::BindingResource::TextureView(&target.view),
+                    wgpu::BindingResource::TextureView(target),
                     wgpu::BindingResource::Sampler(&self.sampler),
                     self.layer_params[n].as_entire_binding(),
                     wgpu::BindingResource::TextureView(mask_view.as_ref().unwrap_or(&self.white)),
@@ -1200,7 +1213,10 @@ impl Renderer {
             let Some((group0, target, _)) = self.ui.frame.layers.get(&plan.index) else {
                 continue;
             };
-            let view = &self.ui.targets[*target].view;
+            let view = match plan.target {
+                Some(t) => &self.cache.textures[t].view,
+                None => &self.ui.targets[*target].view,
+            };
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("ui layer"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {

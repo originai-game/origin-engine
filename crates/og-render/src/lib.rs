@@ -5636,6 +5636,7 @@ impl Renderer {
                 self.cache.textures.len(),
                 array_layers,
                 |v| scene.ui_vectors.get(v.index()),
+                |t| scene.target_texture(t),
                 overlay::OverlayTarget {
                     scale: overlay::OverlayRenderer::scale(self.out_height, o),
                     width: self.out_width,

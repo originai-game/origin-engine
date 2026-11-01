@@ -114,6 +114,11 @@ pub(crate) struct LayerPlan {
     pub size: (u32, u32),
     /// The snapped rectangle, CSS px.
     pub rect: [f32; 4],
+    /// Device pixels per CSS px (a world panel's: its target's over its rect).
+    pub scale: f32,
+    /// A world panel's render target (its texture index), drawn instead of
+    /// a target of the UI pass's own.
+    pub target: Option<usize>,
 }
 
 /// The overlay's sorted instances and runs for one frame.
@@ -218,6 +223,7 @@ pub(crate) fn build<'a>(
     texture_count: usize,
     array_layers: impl Fn(TextureArrayHandle) -> Option<u32>,
     vector: impl Fn(UiVectorHandle) -> Option<&'a UiVectorData>,
+    panel_target: impl Fn(crate::TextureHandle) -> Option<crate::TargetTexture>,
     target: OverlayTarget,
 ) -> Result<OverlayFrame, RenderError> {
     let ui = &overlay.ui;
@@ -571,6 +577,28 @@ pub(crate) fn build<'a>(
         }
         depth[k as usize] = d;
         let [x, y, w, h] = layers[k as usize].rect;
+        if let Some(t) = layers[k as usize].target {
+            // A world panel: its rect over the whole of its target.
+            let tt = panel_target(t)
+                .filter(|tt| tt.kind == crate::TargetKind::Color(crate::TargetFormat::Rgba16Float))
+                .ok_or_else(|| {
+                    RenderError::InvalidHandle(format!(
+                        "ui layer {k}: target texture {} is not an rgba16float render target",
+                        t.index()
+                    ))
+                })?;
+            if w > 0.0 && h > 0.0 {
+                plans.push(LayerPlan {
+                    index: k,
+                    origin: [x, y],
+                    size: (tt.width, tt.height),
+                    rect: [x, y, w, h],
+                    scale: tt.width as f32 / w,
+                    target: Some(t.index()),
+                });
+            }
+            continue;
+        }
         let s = target.scale.max(1e-6);
         let x0 = (x * s).floor().clamp(0.0, target.width as f32);
         let y0 = (y * s).floor().clamp(0.0, target.height as f32);
@@ -586,6 +614,8 @@ pub(crate) fn build<'a>(
                 origin: [x0 / s, y0 / s],
                 size: ((x1 - x0) as u32, (y1 - y0) as u32),
                 rect: [x0 / s, y0 / s, (x1 - x0) / s, (y1 - y0) / s],
+                scale: s,
+                target: None,
             });
         }
     }

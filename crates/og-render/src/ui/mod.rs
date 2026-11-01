@@ -450,6 +450,14 @@ pub const UI_MATERIAL_PARAMS: usize = 4;
 /// in `capture` (inclusive) draws into a target of `rect` (`[x, y, width,
 /// height]`, CSS px) instead of the overlay, and the [`UiShape`]s whose
 /// paint is [`UiPaint::Layer`] of it composite it through `material`.
+///
+/// With a `target` (a world panel, `docs/ui.md` §14) the layer draws into
+/// that render target's colour instead, `rect` stretched over the whole
+/// target wherever it is on (or off) the screen, and composites nowhere:
+/// a mesh's material samples the target (the frame after, since the UI
+/// draws after the scene). The target is an
+/// [`crate::TargetFormat::Rgba16Float`] one: linear, as a lit `map` or an
+/// unlit `emissiveMap` reads it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct UiLayer {
     pub capture: [i32; 2],
@@ -457,6 +465,7 @@ pub struct UiLayer {
     pub material: UiMaterial,
     pub params: [[f32; 4]; UI_MATERIAL_PARAMS],
     pub mask: Option<UiMask>,
+    pub target: Option<TextureHandle>,
 }
 
 /// An outline around overlay text, drawn from its font's distance field.

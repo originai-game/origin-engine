@@ -874,6 +874,7 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
                     material: *material,
                     params: *params,
                     mask: mask.clone(),
+                    target: None,
                 });
                 spaces.push(Space {
                     base,

@@ -407,3 +407,51 @@ fn ui_world_occludes_and_draws_mass_elements() {
         "confetti still at the centre"
     );
 }
+
+#[test]
+fn ui_panel_matches_its_reference() {
+    check("ui-panel");
+}
+
+/// A world panel (`docs/ui.md` §14, `ui_scenes::panel`): the UI layer with
+/// a target draws into it, so the quad shows the panel's card, bar and
+/// disc; and it composites nowhere, so its rect on the screen shows the
+/// scene.
+#[test]
+fn ui_panel_draws_into_its_target_and_not_the_screen() {
+    let r = render("ui-panel");
+    // The quad's centre: the teal card (0, 0.35, 0.4) as emitted radiance
+    // (about (0, 160, 170) in sRGB), the sky's reflection added.
+    let card = px(&r, 640, 300);
+    assert!(
+        card[0] < 60.0 && card[1] > 150.0 && card[2] > 160.0,
+        "card {card:?}"
+    );
+    // Green bar on the quad's lower third, red disc at its top left.
+    let green = (380..500)
+        .flat_map(|y| (400..840).map(move |x| (x, y)))
+        .filter(|&(x, y)| {
+            let p = px(&r, x, y);
+            p[1] > 200.0 && p[0] < 150.0 && p[2] < 170.0
+        })
+        .count();
+    assert!(green > 3000, "{green} green bar pixels on the quad");
+    let red = (200..330)
+        .flat_map(|y| (400..560).map(move |x| (x, y)))
+        .filter(|&(x, y)| {
+            let p = px(&r, x, y);
+            p[0] > 200.0 && p[1] < 130.0 && p[2] < 130.0
+        })
+        .count();
+    assert!(red > 400, "{red} red disc pixels on the quad");
+    // The panel's rect on the screen (760, 380, 480 × 320): the ground and
+    // sky, no teal card.
+    let teal = (400..680)
+        .flat_map(|y| (800..1220).map(move |x| (x, y)))
+        .filter(|&(x, y)| near(px(&r, x, y), srgb8([0.0, 0.35, 0.4, 1.0]), 12.0))
+        .count();
+    assert!(
+        teal < 50,
+        "{teal} teal pixels: the panel composited on the screen"
+    );
+}
