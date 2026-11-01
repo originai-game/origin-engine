@@ -33474,6 +33474,885 @@ export interface LowHealthDesc {
 
 
 /**
+ * How a unit stands toward the player, which colours its tag.
+ * - `"hostile"`: An enemy (danger).
+ * - `"neutral"`: Neither (warn).
+ * - `"friendly"`: An ally or a friendly NPC (success).
+ * - `"player"`: Another player (info).
+ * - `"self"`: The player (primary).
+ */
+export type Reaction = "hostile" | "neutral" | "friendly" | "player" | "self";
+
+/**
+ * A nameplate over a unit.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NameplateDesc {
+  /**
+   * What it sits over.
+   *
+   * @default {}
+   */
+  readonly target?: WorldTarget;
+  /**
+   * World units above the target's point (its head).
+   *
+   * @default 2
+   * @unit m (metres)
+   */
+  readonly height?: number;
+  /**
+   * The name.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * A line under it (<Guild>, a role); empty is none.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * Its level on a badge; empty is none.
+   *
+   * @default ""
+   */
+  readonly level?: string;
+  /**
+   * Its colour.
+   *
+   * @default "hostile"
+   */
+  readonly reaction?: Reaction;
+  /**
+   * Health 0 to 1 for a bar under the name; null draws none.
+   *
+   * @default null
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly health?: number | null;
+  /**
+   * An absorb over the health, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly shield?: number;
+  /**
+   * What it is casting; empty is nothing.
+   *
+   * @default ""
+   */
+  readonly castName?: string;
+  /**
+   * How far the cast is.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly castProgress?: number;
+  /**
+   * A class, quest or role icon before the name.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Elite, rare or boss: a dressed frame.
+   *
+   * @default "normal"
+   */
+  readonly unitClass?: UnitClass;
+  /**
+   * The player's target: larger, outlined, drawn over the rest.
+   *
+   * @default false
+   */
+  readonly targeted?: boolean;
+  /**
+   * Who keeps its place when nameplates overlap (the target's is raised by 1000).
+   *
+   * @default 0
+   */
+  readonly priority?: number;
+  /**
+   * Distances where it sheds detail: past the first the title goes, past the second the name goes and only the bar stays; empty is 25 and 50.
+   *
+   * @default []
+   */
+  readonly lod?: readonly number[];
+  /**
+   * Hidden past this; 0 is 80.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly maxDistance?: number;
+  /**
+   * Behind the scene; the default fades.
+   *
+   * @default "none"
+   */
+  readonly occlusion?: WorldOcclusion;
+}
+
+
+/**
+ * One overhead bar.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface OverheadBar {
+  /**
+   * The unit's key (its ghost is tracked by it).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * The world point it sits on (over the unit's head).
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly position?: Vector3;
+  /**
+   * Health 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly value?: number;
+  /**
+   * Its colour.
+   *
+   * @default "hostile"
+   */
+  readonly reaction?: Reaction;
+  /**
+   * A colour of its own.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+}
+
+/**
+ * Overhead bars over many units.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface OverheadBarsDesc {
+  /**
+   * The bars this tick.
+   *
+   * @default []
+   */
+  readonly bars?: readonly OverheadBar[];
+  /**
+   * A bar's width; 0 is 56.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+  /**
+   * A bar's height; 0 is 6.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height?: number;
+  /**
+   * The distance at which a bar is its size (nearer larger, farther smaller); 0 keeps the screen size.
+   *
+   * @default 12
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly reference?: number;
+  /**
+   * A bar at full health is not drawn (an RTS's default).
+   *
+   * @default false
+   */
+  readonly hideFull?: boolean;
+}
+
+
+/**
+ * What a damage number is.
+ * - `"normal"`: A hit.
+ * - `"critical"`: A critical hit: larger, in gold, popping past its size.
+ * - `"heal"`: Healing: success, with a +.
+ * - `"dot"`: Damage over time: smaller and dimmer.
+ * - `"miss"`: A miss, a dodge, a block or immune: the word, grey.
+ * - `"shield"`: Absorbed: the info colour.
+ * - `"self"`: Damage the player took: danger.
+ */
+export type DamageKind = "normal" | "critical" | "heal" | "dot" | "miss" | "shield" | "self";
+
+/**
+ * A damage number to throw.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DamageHitDesc {
+  /**
+   * Where the hit landed (a world point).
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly position?: Vector3;
+  /**
+   * How much.
+   *
+   * @default 0
+   */
+  readonly amount?: number;
+  /**
+   * What it is.
+   *
+   * @default "normal"
+   */
+  readonly kind?: DamageKind;
+  /**
+   * A miss's word (Miss, Dodge, Block, Immune); empty is Miss.
+   *
+   * @default ""
+   */
+  readonly word?: string;
+  /**
+   * A damage type's colour (fire, frost); null is the kind's.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Which way it drifts (a hit's index).
+   *
+   * @default 0
+   */
+  readonly seed?: number;
+}
+
+/**
+ * Damage numbers.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DamageNumbersDesc {
+  /**
+   * The hits that landed this tick (give each hit once).
+   *
+   * @default []
+   */
+  readonly hits?: readonly DamageHitDesc[];
+  /**
+   * 12.3K over 12,300 (the default).
+   *
+   * @default true
+   */
+  readonly compact?: boolean;
+  /**
+   * A normal hit's text size; 0 is 22.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * The distance at which numbers are their size; 0 keeps the screen size.
+   *
+   * @default 10
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly reference?: number;
+}
+
+
+/**
+ * An interaction prompt over a thing.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface InteractionPromptDesc {
+  /**
+   * What it is over.
+   *
+   * @default {}
+   */
+  readonly target?: WorldTarget;
+  /**
+   * World units above the target's point.
+   *
+   * @default 1.2
+   * @unit m (metres)
+   */
+  readonly height?: number;
+  /**
+   * The action whose glyph it shows (its binding on the device used last).
+   *
+   * @default ""
+   */
+  readonly action?: string;
+  /**
+   * What it does (Open, Talk, Pick up).
+   *
+   * @default ""
+   */
+  readonly verb?: string;
+  /**
+   * What it is (Chest); empty is none.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * A hold's progress 0 to 1: a ring fills round the glyph; null is a press.
+   *
+   * @default null
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly hold?: number | null;
+  /**
+   * It cannot be used now (locked, out of reach): dimmed, with reason.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Why it cannot (Locked).
+   *
+   * @default ""
+   */
+  readonly reason?: string;
+  /**
+   * Hidden past this; 0 is 6.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly maxDistance?: number;
+}
+
+
+/**
+ * What a waypoint marks.
+ * - `"objective"`: A quest or mode objective (gold).
+ * - `"marker"`: The player's own marker (info).
+ * - `"ping"`: A teammate's ping (warn), pulsing; it leaves after its time.
+ * - `"enemy"`: A spotted enemy (danger).
+ * - `"ally"`: A teammate (their colour).
+ * - `"loot"`: Loot (its rarity).
+ */
+export type WaypointKind = "objective" | "marker" | "ping" | "enemy" | "ally" | "loot";
+
+/**
+ * A waypoint or a ping in the world.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface WaypointDesc {
+  /**
+   * What it marks.
+   *
+   * @default {}
+   */
+  readonly target?: WorldTarget;
+  /**
+   * World units above the point.
+   *
+   * @default 0.5
+   * @unit m (metres)
+   */
+  readonly height?: number;
+  /**
+   * What it is.
+   *
+   * @default "objective"
+   */
+  readonly kind?: WaypointKind;
+  /**
+   * Its icon; empty is the kind's.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * A word under it (Defend, Enemy spotted); empty is none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Who pinged it (shown with the label).
+   *
+   * @default ""
+   */
+  readonly by?: string;
+  /**
+   * A colour of its own.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Loot's tier.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * og.ui.tick() when it was placed: a ping drops in and pulses from then.
+   *
+   * @default 0
+   */
+  readonly at?: number;
+  /**
+   * A ping leaves after this; 0 is 8000 for a ping, never for the rest.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+  /**
+   * The distance's unit.
+   *
+   * @default "m"
+   */
+  readonly units?: string;
+  /**
+   * Inset from the safe area's edges when clamped; 0 is 32.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly clampMargin?: number;
+}
+
+
+/**
+ * A selection ring on the ground.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SelectionRingDesc {
+  /**
+   * Its centre on the ground (a unit's feet).
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly center?: Vector3;
+  /**
+   * Its radius.
+   *
+   * @default 0.6
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly radius?: number;
+  /**
+   * Its colour (friendly green, hostile red, as RTS rings).
+   *
+   * @default "self"
+   */
+  readonly reaction?: Reaction;
+  /**
+   * A colour of its own.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Hovered, not selected: thin and dim.
+   *
+   * @default false
+   */
+  readonly hover?: boolean;
+  /**
+   * og.ui.tick() when it was selected: it springs in from larger.
+   *
+   * @default 0
+   */
+  readonly selectedAt?: number;
+  /**
+   * Broken into this many arcs turning slowly (a target ring); 0 is a whole ring.
+   *
+   * @default 0
+   */
+  readonly segments?: number;
+}
+
+
+/**
+ * A telegraph's area.
+ * - `"circle"`: A disc of radius.
+ * - `"ring"`: A ring between inner and radius (stand inside or outside it).
+ * - `"cone"`: A cone of angle, radius long, toward direction.
+ * - `"line"`: A rectangle width wide and radius long toward direction (a charge).
+ */
+export type TelegraphShape = "circle" | "ring" | "cone" | "line";
+
+/**
+ * An area an attack will hit.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TelegraphDesc {
+  /**
+   * Its origin on the ground.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly center?: Vector3;
+  /**
+   * Its area.
+   *
+   * @default "circle"
+   */
+  readonly shape?: TelegraphShape;
+  /**
+   * A disc's or ring's radius, a cone's or line's length.
+   *
+   * @default 4
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly radius?: number;
+  /**
+   * A ring's inner radius.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly inner?: number;
+  /**
+   * A cone's width.
+   *
+   * @default 1.0471976
+   * @unit rad (radians)
+   */
+  readonly angle?: number;
+  /**
+   * A line's width.
+   *
+   * @default 2
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly width?: number;
+  /**
+   * Which way a cone or line faces, clockwise from +z seen from above (0 is +z, π/2 is +x).
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly direction?: number;
+  /**
+   * The wind-up 0 to 1: the fill grows to the edge as the hit nears.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly progress?: number;
+  /**
+   * An enemy's (danger, the default); else an ally's (info).
+   *
+   * @default true
+   */
+  readonly hostile?: boolean;
+  /**
+   * A colour of its own.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+}
+
+
+/**
+ * A path on the ground.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PathLineDesc {
+  /**
+   * The path's world points, from the mover.
+   *
+   * @default []
+   */
+  readonly points?: readonly Vector3[];
+  /**
+   * How far along it the mover can go this turn: past it the line turns danger; 0 is all of it.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly reach?: number;
+  /**
+   * A label at its end (12 m · 2 AP); empty is none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * It cannot be taken: danger, with a cross at its end.
+   *
+   * @default false
+   */
+  readonly invalid?: boolean;
+  /**
+   * Its colour; null is the highlight.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Its width; 0 is 4.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+  /**
+   * An arrow head at its end (the default).
+   *
+   * @default true
+   */
+  readonly arrow?: boolean;
+}
+
+
+/**
+ * A building's footprint while it is placed.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PlacementGhostDesc {
+  /**
+   * Its footprint's centre on the ground.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly center?: Vector3;
+  /**
+   * Its width along x before rotation.
+   *
+   * @default 2
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly width?: number;
+  /**
+   * Its depth along z.
+   *
+   * @default 2
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly depth?: number;
+  /**
+   * Its turn about y, clockwise from above.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly rotation?: number;
+  /**
+   * The grid's cell; the footprint shows its cells; 0 shows none.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly cell?: number;
+  /**
+   * It can be placed here (success); else danger with hatching.
+   *
+   * @default true
+   */
+  readonly valid?: boolean;
+  /**
+   * Its cost or why not (Blocked); empty is none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * A range ring round it (a tower's reach).
+   *
+   * @default null
+   * @unit m (metres)
+   */
+  readonly range?: number | null;
+}
+
+
+/**
+ * A label on an item lying in the world.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LootLabelDesc {
+  /**
+   * The item.
+   *
+   * @default {}
+   */
+  readonly target?: WorldTarget;
+  /**
+   * World units above it.
+   *
+   * @default 0.4
+   * @unit m (metres)
+   */
+  readonly height?: number;
+  /**
+   * The item's name.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its tier: colour, pips, and a beam from rare up.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * A stack's count (×3); 0 and 1 show none.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * Its icon.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * A light beam over it (the default for rare and up).
+   *
+   * @default true
+   */
+  readonly beam?: boolean;
+  /**
+   * Hidden past this; 0 is 40.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly maxDistance?: number;
+}
+
+/** What a loot label answered. */
+export interface LootLabelResult {
+  /** Pressed this tick (pick it up). */
+  readonly clicked: boolean;
+  /** Under the pointer (show its tooltip). */
+  readonly hovered: boolean;
+  /** Where it stands. */
+  readonly info: AnchorInfo;
+}
+
+
+/**
+ * A speech bubble over a speaker.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SpeechBubbleDesc {
+  /**
+   * The speaker.
+   *
+   * @default {}
+   */
+  readonly target?: WorldTarget;
+  /**
+   * World units above the speaker's point.
+   *
+   * @default 2.2
+   * @unit m (metres)
+   */
+  readonly height?: number;
+  /**
+   * What is said.
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * Who says it, over the text; empty is none.
+   *
+   * @default ""
+   */
+  readonly speaker?: string;
+  /**
+   * og.ui.tick() when it was said: it types out from then and leaves after its time.
+   *
+   * @default 0
+   */
+  readonly at?: number;
+  /**
+   * How fast it types; 0 shows it at once.
+   *
+   * @default 40
+   * @range 0..
+   */
+  readonly charsPerSecond?: number;
+  /**
+   * How long it stays after it has typed; 0 is 1500 plus 60 per character.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+  /**
+   * A shout: bold, a jagged edge.
+   *
+   * @default false
+   */
+  readonly shout?: boolean;
+  /**
+   * A thought: rounder, the tail as bubbles.
+   *
+   * @default false
+   */
+  readonly thought?: boolean;
+  /**
+   * Its widest; 0 is 260.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly maxWidth?: number;
+  /**
+   * Off screen, it stays on the edge so its words are not missed.
+   *
+   * @default false
+   */
+  readonly clamp?: boolean;
+}
+
+
+/**
  * A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
@@ -42475,6 +43354,99 @@ export declare namespace og {
      * @param desc Health and the last hit.
      */
     function lowHealthVignette(id: string, desc?: LowHealthDesc): void;
+    /**
+     * A nameplate to the bar of World of Warcraft and Final Fantasy XIV: the name in its reaction's colour with a level badge and an icon, a title under it, a slim health bar with its absorb and a cast bar under that, an elite or boss frame, the target larger and outlined and kept on top; crowds stack instead of overlapping, it fades behind walls and sheds detail with distance (title, then name).
+     * Parts: Nameplate.frame[<reaction>][targeted][<class>], Nameplate.name, Nameplate.title, Nameplate.level, Nameplate.bar, Nameplate.fill[<reaction>], Nameplate.shield, Nameplate.cast. States: group lod (full, compact, bar), group selection (none, targeted). Accessibility: text named name, value level and health. Probe ids: <id>, <id>/Name, <id>/Bar/Fill, <id>/Cast.
+     *
+     * @param id Its id.
+     * @param desc The unit.
+     */
+    function nameplate(id: string, desc?: NameplateDesc): AnchorInfo;
+    /**
+     * Overhead bars to the bar of RTS and MOBA crowds (StarCraft II, League of Legends): one mass element per unit, thousands a frame, each a dark track with its fill in its reaction's colour and a pale ghost that holds after a hit then drains, scaled by distance and faded behind the scene.
+     * Parts: none per bar (mass elements); the template is named <id>. Accessibility: none (the units' frames carry it). Probe: og.ui.massCount.
+     *
+     * @param id Its id (its mass template's name).
+     * @param desc The bars.
+     */
+    function overheadBars(id: string, desc?: OverheadBarsDesc): void;
+    /**
+     * Damage numbers to the bar of Diablo IV, Genshin Impact and World of Warcraft: each hit thrown from where it landed, rising and drifting to its side as it fades, outlined so it reads on any scene; a critical larger in gold, popping past its size and settling; heals in green with a +; damage over time smaller; misses as their word in grey; the player's own damage in danger; numbers compact past ten thousand. Mass elements: thousands at once, in the snapshot.
+     * Parts: none per number (mass elements); the templates are named <id>.number and <id>.word. Accessibility: none (combat text is decoration; the game announces what matters). Probe: og.ui.massCount.
+     *
+     * @param id Its id (its mass templates' prefix).
+     * @param desc This tick's hits.
+     */
+    function damageNumbers(id: string, desc?: DamageNumbersDesc): void;
+    /**
+     * An interaction prompt to the bar of The Last of Us, Elden Ring and Genshin Impact: the action's glyph for the device used last (a key cap, a pad's face button) and the verb, the thing's name over it, a ring filling round the glyph for a hold and a pop when it completes, dimmed with its reason when it cannot be used; it springs in when it appears and stays upright and readable at any distance it shows.
+     * Parts: InteractionPrompt.frame[disabled], InteractionPrompt.glyph, InteractionPrompt.hold, InteractionPrompt.verb, InteractionPrompt.name, InteractionPrompt.reason. States: group use (ready, holding, disabled). Accessibility: button named the verb and name, value the glyph's text. Probe ids: <id>, <id>/Glyph, <id>/Verb.
+     *
+     * @param world The world (for the glyph).
+     * @param id Its id.
+     * @param desc The action and the thing.
+     */
+    function interactionPrompt(world: World, id: string, desc?: InteractionPromptDesc): AnchorInfo;
+    /**
+     * A waypoint or ping to the bar of Apex Legends and Destiny: a diamond with its kind's icon in its colour, the distance under it, a label and who pinged it; off screen or behind it stays on the safe area's edge with an arrow toward its point; a ping drops in with rings rippling from it and leaves after its time; it shrinks a little far away and dims when the crosshair is not near.
+     * Parts: Waypoint.marker[<kind>][clamped], Waypoint.icon, Waypoint.distance, Waypoint.label, Waypoint.ripple. States: group place (onScreen, clamped). Sounds: notify when a ping lands. Accessibility: image named the label, value the distance. Probe ids: <id>, <id>/Marker, <id>/Distance, <id>/Label.
+     *
+     * @param id Its id.
+     * @param desc What it marks.
+     */
+    function waypoint(id: string, desc?: WaypointDesc): AnchorInfo;
+    /**
+     * A selection ring to the bar of StarCraft II and Baldur's Gate 3: an ellipse on the ground under the unit (the ground circle projected), a bright edge and a soft inner glow in its reaction's colour, springing in from larger when selected, thin and dim on hover, or broken into arcs turning slowly.
+     * Parts: SelectionRing.ring[<reaction>][hover], SelectionRing.glow. Accessibility: none (the unit's frame is selected). Probe ids: <id>.
+     *
+     * @param world The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads.
+     * @param id Its id.
+     * @param desc Where and how.
+     */
+    function selectionRing(world: World, id: string, desc?: SelectionRingDesc): void;
+    /**
+     * An attack telegraph to the bar of Final Fantasy XIV and WildStar: the area on the ground (disc, ring, cone or line) tinted in danger with a bright edge, a fill growing from its origin to the edge as the wind-up runs so the moment of impact reads without a number, and a flash as it lands.
+     * Parts: Telegraph.area[<shape>][hostile|friendly], Telegraph.edge, Telegraph.fill, Telegraph.flash. States: group windup (charging, impact). Accessibility: none (the game announces what is dangerous). Probe ids: <id>.
+     *
+     * @param world The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads.
+     * @param id Its id.
+     * @param desc The area and the wind-up.
+     */
+    function telegraph(world: World, id: string, desc?: TelegraphDesc): void;
+    /**
+     * A path line to the bar of Baldur's Gate 3, XCOM 2 and RTS move orders: the route on the ground as a line with chevrons marching toward its end, the part past this turn's reach in danger, an arrow head or a destination ring at its end with a label (the distance, the cost), a cross when it cannot be taken.
+     * Parts: PathLine.line[reach|beyond][invalid], PathLine.chevron, PathLine.end, PathLine.label. Accessibility: text named the label. Probe ids: <id>, <id>/Label.
+     *
+     * @param world The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads.
+     * @param id Its id.
+     * @param desc The route.
+     */
+    function pathLine(world: World, id: string, desc?: PathLineDesc): void;
+    /**
+     * A placement ghost to the bar of Age of Empires IV, Anno and Cities: Skylines: the footprint on the ground in success or danger (hatched when invalid, so it is not told by colour alone), its grid cells, a range ring for a tower's reach, and its cost or the reason it cannot go there; it breathes while held.
+     * Parts: PlacementGhost.footprint[valid|invalid], PlacementGhost.cells, PlacementGhost.range, PlacementGhost.label. States: group place (valid, invalid). Accessibility: status named the label. Probe ids: <id>, <id>/Label.
+     *
+     * @param world The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads.
+     * @param id Its id.
+     * @param desc The footprint.
+     */
+    function placementGhost(world: World, id: string, desc?: PlacementGhostDesc): void;
+    /**
+     * A loot label to the bar of Diablo IV, Path of Exile and Borderlands: the name on a dark chip edged in its rarity's colour with pips so tiers do not rest on colour alone, the stack's count, a beam of light rising over rare and better items, labels stacking instead of overlapping (higher rarity on top), pressable to pick up.
+     * Parts: LootLabel.chip[rarity=<r>], LootLabel.name, LootLabel.pip, LootLabel.count, LootLabel.beam. Accessibility: button named the name, value its rarity. Probe ids: <id>, <id>/Chip/Name.
+     *
+     * @param id Its id.
+     * @param desc The item.
+     */
+    function lootLabel(id: string, desc?: LootLabelDesc): LootLabelResult;
+    /**
+     * A speech bubble to the bar of Animal Crossing, Sea of Thieves and The Sims: a rounded bubble over the speaker with a tail pointing down to them, the speaker's name, the text typing out with a soft tick of sound, popping in and fading out after a time that grows with its length; a shout jagged and bold, a thought round with its tail as bubbles; it can hold on the edge when the speaker is off screen.
+     * Parts: SpeechBubble.bubble[shout|thought], SpeechBubble.tail, SpeechBubble.speaker, SpeechBubble.text. States: group speech (typing, shown, leaving). Sounds: counterTick as it types. Accessibility: text named the speaker, value the whole text (a screen reader hears it at once). Probe ids: <id>, <id>/Bubble/Text, <id>/Bubble/Speaker.
+     *
+     * @param id Its id.
+     * @param desc The words.
+     */
+    function speechBubble(id: string, desc?: SpeechBubbleDesc): AnchorInfo;
     /**
      * Give the element built just before (a container just closed, or a widget) a role, a name, a value and states for the accessibility tree and the probe's dump (dump_ui's role, name, value, states). Components built from containers call it so a screen reader meets a menu, a tree or a table, not rows of buttons. Answers false, with a frame warning, when no element was built before it or the role is unknown.
      *

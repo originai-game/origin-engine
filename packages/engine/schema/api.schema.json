@@ -9550,6 +9550,24 @@
         "DamageHit",
         "DamageDirectionDesc",
         "LowHealthDesc",
+        "Reaction",
+        "NameplateDesc",
+        "OverheadBar",
+        "OverheadBarsDesc",
+        "DamageKind",
+        "DamageHitDesc",
+        "DamageNumbersDesc",
+        "InteractionPromptDesc",
+        "WaypointKind",
+        "WaypointDesc",
+        "SelectionRingDesc",
+        "TelegraphShape",
+        "TelegraphDesc",
+        "PathLineDesc",
+        "PlacementGhostDesc",
+        "LootLabelDesc",
+        "LootLabelResult",
+        "SpeechBubbleDesc",
         "VectorArt",
         "UiMaterial",
         "VectorArt",
@@ -14279,6 +14297,267 @@
             }
           ],
           "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "nameplate",
+          "doc": "A nameplate to the bar of World of Warcraft and Final Fantasy XIV: the name in its reaction's colour with a level badge and an icon, a title under it, a slim health bar with its absorb and a cast bar under that, an elite or boss frame, the target larger and outlined and kept on top; crowds stack instead of overlapping, it fades behind walls and sheds detail with distance (title, then name).\nParts: Nameplate.frame[<reaction>][targeted][<class>], Nameplate.name, Nameplate.title, Nameplate.level, Nameplate.bar, Nameplate.fill[<reaction>], Nameplate.shield, Nameplate.cast. States: group lod (full, compact, bar), group selection (none, targeted). Accessibility: text named name, value level and health. Probe ids: <id>, <id>/Name, <id>/Bar/Fill, <id>/Cast.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "NameplateDesc",
+              "optional": true,
+              "doc": "The unit."
+            }
+          ],
+          "returns": "AnchorInfo",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "overheadBars",
+          "doc": "Overhead bars to the bar of RTS and MOBA crowds (StarCraft II, League of Legends): one mass element per unit, thousands a frame, each a dark track with its fill in its reaction's colour and a pale ghost that holds after a hit then drains, scaled by distance and faded behind the scene.\nParts: none per bar (mass elements); the template is named <id>. Accessibility: none (the units' frames carry it). Probe: og.ui.massCount.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id (its mass template's name)."
+            },
+            {
+              "name": "desc",
+              "type": "OverheadBarsDesc",
+              "optional": true,
+              "doc": "The bars."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "damageNumbers",
+          "doc": "Damage numbers to the bar of Diablo IV, Genshin Impact and World of Warcraft: each hit thrown from where it landed, rising and drifting to its side as it fades, outlined so it reads on any scene; a critical larger in gold, popping past its size and settling; heals in green with a +; damage over time smaller; misses as their word in grey; the player's own damage in danger; numbers compact past ten thousand. Mass elements: thousands at once, in the snapshot.\nParts: none per number (mass elements); the templates are named <id>.number and <id>.word. Accessibility: none (combat text is decoration; the game announces what matters). Probe: og.ui.massCount.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id (its mass templates' prefix)."
+            },
+            {
+              "name": "desc",
+              "type": "DamageNumbersDesc",
+              "optional": true,
+              "doc": "This tick's hits."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "interactionPrompt",
+          "doc": "An interaction prompt to the bar of The Last of Us, Elden Ring and Genshin Impact: the action's glyph for the device used last (a key cap, a pad's face button) and the verb, the thing's name over it, a ring filling round the glyph for a hold and a pop when it completes, dimmed with its reason when it cannot be used; it springs in when it appears and stays upright and readable at any distance it shows.\nParts: InteractionPrompt.frame[disabled], InteractionPrompt.glyph, InteractionPrompt.hold, InteractionPrompt.verb, InteractionPrompt.name, InteractionPrompt.reason. States: group use (ready, holding, disabled). Accessibility: button named the verb and name, value the glyph's text. Probe ids: <id>, <id>/Glyph, <id>/Verb.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world (for the glyph)."
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "InteractionPromptDesc",
+              "optional": true,
+              "doc": "The action and the thing."
+            }
+          ],
+          "returns": "AnchorInfo",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "waypoint",
+          "doc": "A waypoint or ping to the bar of Apex Legends and Destiny: a diamond with its kind's icon in its colour, the distance under it, a label and who pinged it; off screen or behind it stays on the safe area's edge with an arrow toward its point; a ping drops in with rings rippling from it and leaves after its time; it shrinks a little far away and dims when the crosshair is not near.\nParts: Waypoint.marker[<kind>][clamped], Waypoint.icon, Waypoint.distance, Waypoint.label, Waypoint.ripple. States: group place (onScreen, clamped). Sounds: notify when a ping lands. Accessibility: image named the label, value the distance. Probe ids: <id>, <id>/Marker, <id>/Distance, <id>/Label.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "WaypointDesc",
+              "optional": true,
+              "doc": "What it marks."
+            }
+          ],
+          "returns": "AnchorInfo",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "selectionRing",
+          "doc": "A selection ring to the bar of StarCraft II and Baldur's Gate 3: an ellipse on the ground under the unit (the ground circle projected), a bright edge and a soft inner glow in its reaction's colour, springing in from larger when selected, thin and dim on hover, or broken into arcs turning slowly.\nParts: SelectionRing.ring[<reaction>][hover], SelectionRing.glow. Accessibility: none (the unit's frame is selected). Probe ids: <id>.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads."
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SelectionRingDesc",
+              "optional": true,
+              "doc": "Where and how."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "telegraph",
+          "doc": "An attack telegraph to the bar of Final Fantasy XIV and WildStar: the area on the ground (disc, ring, cone or line) tinted in danger with a bright edge, a fill growing from its origin to the edge as the wind-up runs so the moment of impact reads without a number, and a flash as it lands.\nParts: Telegraph.area[<shape>][hostile|friendly], Telegraph.edge, Telegraph.fill, Telegraph.flash. States: group windup (charging, impact). Accessibility: none (the game announces what is dangerous). Probe ids: <id>.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads."
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "TelegraphDesc",
+              "optional": true,
+              "doc": "The area and the wind-up."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "pathLine",
+          "doc": "A path line to the bar of Baldur's Gate 3, XCOM 2 and RTS move orders: the route on the ground as a line with chevrons marching toward its end, the part past this turn's reach in danger, an arrow head or a destination ring at its end with a label (the distance, the cost), a cross when it cannot be taken.\nParts: PathLine.line[reach|beyond][invalid], PathLine.chevron, PathLine.end, PathLine.label. Accessibility: text named the label. Probe ids: <id>, <id>/Label.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads."
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "PathLineDesc",
+              "optional": true,
+              "doc": "The route."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "placementGhost",
+          "doc": "A placement ghost to the bar of Age of Empires IV, Anno and Cities: Skylines: the footprint on the ground in success or danger (hatched when invalid, so it is not told by colour alone), its grid cells, a range ring for a tower's reach, and its cost or the reason it cannot go there; it breathes while held.\nParts: PlacementGhost.footprint[valid|invalid], PlacementGhost.cells, PlacementGhost.range, PlacementGhost.label. States: group place (valid, invalid). Accessibility: status named the label. Probe ids: <id>, <id>/Label.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads."
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "PlacementGhostDesc",
+              "optional": true,
+              "doc": "The footprint."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "lootLabel",
+          "doc": "A loot label to the bar of Diablo IV, Path of Exile and Borderlands: the name on a dark chip edged in its rarity's colour with pips so tiers do not rest on colour alone, the stack's count, a beam of light rising over rare and better items, labels stacking instead of overlapping (higher rarity on top), pressable to pick up.\nParts: LootLabel.chip[rarity=<r>], LootLabel.name, LootLabel.pip, LootLabel.count, LootLabel.beam. Accessibility: button named the name, value its rarity. Probe ids: <id>, <id>/Chip/Name.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "LootLabelDesc",
+              "optional": true,
+              "doc": "The item."
+            }
+          ],
+          "returns": "LootLabelResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "speechBubble",
+          "doc": "A speech bubble to the bar of Animal Crossing, Sea of Thieves and The Sims: a rounded bubble over the speaker with a tail pointing down to them, the speaker's name, the text typing out with a soft tick of sound, popping in and fading out after a time that grows with its length; a shout jagged and bold, a thought round with its tail as bubbles; it can hold on the edge when the speaker is off screen.\nParts: SpeechBubble.bubble[shout|thought], SpeechBubble.tail, SpeechBubble.speaker, SpeechBubble.text. States: group speech (typing, shown, leaving). Sounds: counterTick as it types. Accessibility: text named the speaker, value the whole text (a screen reader hears it at once). Probe ids: <id>, <id>/Bubble/Text, <id>/Bubble/Speaker.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SpeechBubbleDesc",
+              "optional": true,
+              "doc": "The words."
+            }
+          ],
+          "returns": "AnchorInfo",
           "publish": true,
           "host": false
         },
@@ -56537,6 +56816,945 @@
           ],
           "description": "Its ink; null is a deep red.",
           "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "Reaction": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How a unit stands toward the player, which colours its tag.",
+      "type": "string",
+      "enum": [
+        "hostile",
+        "neutral",
+        "friendly",
+        "player",
+        "self"
+      ],
+      "x-og-variants": {
+        "hostile": "An enemy (danger).",
+        "neutral": "Neither (warn).",
+        "friendly": "An ally or a friendly NPC (success).",
+        "player": "Another player (info).",
+        "self": "The player (primary)."
+      }
+    },
+    "NameplateDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A nameplate over a unit.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/WorldTarget",
+          "description": "What it sits over.",
+          "default": {}
+        },
+        "height": {
+          "type": "number",
+          "description": "World units above the target's point (its head).",
+          "default": 2,
+          "x-og-unit": "m"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name.",
+          "default": ""
+        },
+        "title": {
+          "type": "string",
+          "description": "A line under it (<Guild>, a role); empty is none.",
+          "default": ""
+        },
+        "level": {
+          "type": "string",
+          "description": "Its level on a badge; empty is none.",
+          "default": ""
+        },
+        "reaction": {
+          "$ref": "#/$defs/Reaction",
+          "description": "Its colour.",
+          "default": "hostile"
+        },
+        "health": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Health 0 to 1 for a bar under the name; null draws none.",
+          "default": null,
+          "x-og-unit": "ratio"
+        },
+        "shield": {
+          "type": "number",
+          "description": "An absorb over the health, 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "castName": {
+          "type": "string",
+          "description": "What it is casting; empty is nothing.",
+          "default": ""
+        },
+        "castProgress": {
+          "type": "number",
+          "description": "How far the cast is.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "icon": {
+          "type": "string",
+          "description": "A class, quest or role icon before the name.",
+          "default": ""
+        },
+        "unitClass": {
+          "$ref": "#/$defs/UnitClass",
+          "description": "Elite, rare or boss: a dressed frame.",
+          "default": "normal"
+        },
+        "targeted": {
+          "type": "boolean",
+          "description": "The player's target: larger, outlined, drawn over the rest.",
+          "default": false
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Who keeps its place when nameplates overlap (the target's is raised by 1000).",
+          "default": 0
+        },
+        "lod": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Distances where it sheds detail: past the first the title goes, past the second the name goes and only the bar stays; empty is 25 and 50.",
+          "default": []
+        },
+        "maxDistance": {
+          "type": "number",
+          "description": "Hidden past this; 0 is 80.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "occlusion": {
+          "$ref": "#/$defs/WorldOcclusion",
+          "description": "Behind the scene; the default fades.",
+          "default": "none"
+        }
+      },
+      "additionalProperties": false
+    },
+    "OverheadBar": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One overhead bar.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The unit's key (its ghost is tracked by it).",
+          "default": ""
+        },
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The world point it sits on (over the unit's head).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "value": {
+          "type": "number",
+          "description": "Health 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "reaction": {
+          "$ref": "#/$defs/Reaction",
+          "description": "Its colour.",
+          "default": "hostile"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A colour of its own.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "OverheadBarsDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Overhead bars over many units.",
+      "type": "object",
+      "properties": {
+        "bars": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OverheadBar"
+          },
+          "description": "The bars this tick.",
+          "default": []
+        },
+        "width": {
+          "type": "number",
+          "description": "A bar's width; 0 is 56.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "height": {
+          "type": "number",
+          "description": "A bar's height; 0 is 6.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "reference": {
+          "type": "number",
+          "description": "The distance at which a bar is its size (nearer larger, farther smaller); 0 keeps the screen size.",
+          "default": 12,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "hideFull": {
+          "type": "boolean",
+          "description": "A bar at full health is not drawn (an RTS's default).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "DamageKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a damage number is.",
+      "type": "string",
+      "enum": [
+        "normal",
+        "critical",
+        "heal",
+        "dot",
+        "miss",
+        "shield",
+        "self"
+      ],
+      "x-og-variants": {
+        "normal": "A hit.",
+        "critical": "A critical hit: larger, in gold, popping past its size.",
+        "heal": "Healing: success, with a +.",
+        "dot": "Damage over time: smaller and dimmer.",
+        "miss": "A miss, a dodge, a block or immune: the word, grey.",
+        "shield": "Absorbed: the info colour.",
+        "self": "Damage the player took: danger."
+      }
+    },
+    "DamageHitDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A damage number to throw.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the hit landed (a world point).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "amount": {
+          "type": "number",
+          "description": "How much.",
+          "default": 0
+        },
+        "kind": {
+          "$ref": "#/$defs/DamageKind",
+          "description": "What it is.",
+          "default": "normal"
+        },
+        "word": {
+          "type": "string",
+          "description": "A miss's word (Miss, Dodge, Block, Immune); empty is Miss.",
+          "default": ""
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A damage type's colour (fire, frost); null is the kind's.",
+          "default": null
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Which way it drifts (a hit's index).",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "DamageNumbersDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Damage numbers.",
+      "type": "object",
+      "properties": {
+        "hits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DamageHitDesc"
+          },
+          "description": "The hits that landed this tick (give each hit once).",
+          "default": []
+        },
+        "compact": {
+          "type": "boolean",
+          "description": "12.3K over 12,300 (the default).",
+          "default": true
+        },
+        "size": {
+          "type": "number",
+          "description": "A normal hit's text size; 0 is 22.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "reference": {
+          "type": "number",
+          "description": "The distance at which numbers are their size; 0 keeps the screen size.",
+          "default": 10,
+          "minimum": 0,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "InteractionPromptDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An interaction prompt over a thing.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/WorldTarget",
+          "description": "What it is over.",
+          "default": {}
+        },
+        "height": {
+          "type": "number",
+          "description": "World units above the target's point.",
+          "default": 1.2,
+          "x-og-unit": "m"
+        },
+        "action": {
+          "type": "string",
+          "description": "The action whose glyph it shows (its binding on the device used last).",
+          "default": ""
+        },
+        "verb": {
+          "type": "string",
+          "description": "What it does (Open, Talk, Pick up).",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "What it is (Chest); empty is none.",
+          "default": ""
+        },
+        "hold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A hold's progress 0 to 1: a ring fills round the glyph; null is a press.",
+          "default": null,
+          "x-og-unit": "ratio"
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "It cannot be used now (locked, out of reach): dimmed, with reason.",
+          "default": false
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why it cannot (Locked).",
+          "default": ""
+        },
+        "maxDistance": {
+          "type": "number",
+          "description": "Hidden past this; 0 is 6.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WaypointKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a waypoint marks.",
+      "type": "string",
+      "enum": [
+        "objective",
+        "marker",
+        "ping",
+        "enemy",
+        "ally",
+        "loot"
+      ],
+      "x-og-variants": {
+        "objective": "A quest or mode objective (gold).",
+        "marker": "The player's own marker (info).",
+        "ping": "A teammate's ping (warn), pulsing; it leaves after its time.",
+        "enemy": "A spotted enemy (danger).",
+        "ally": "A teammate (their colour).",
+        "loot": "Loot (its rarity)."
+      }
+    },
+    "WaypointDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A waypoint or a ping in the world.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/WorldTarget",
+          "description": "What it marks.",
+          "default": {}
+        },
+        "height": {
+          "type": "number",
+          "description": "World units above the point.",
+          "default": 0.5,
+          "x-og-unit": "m"
+        },
+        "kind": {
+          "$ref": "#/$defs/WaypointKind",
+          "description": "What it is.",
+          "default": "objective"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Its icon; empty is the kind's.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "A word under it (Defend, Enemy spotted); empty is none.",
+          "default": ""
+        },
+        "by": {
+          "type": "string",
+          "description": "Who pinged it (shown with the label).",
+          "default": ""
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A colour of its own.",
+          "default": null
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "Loot's tier.",
+          "default": "none"
+        },
+        "at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.ui.tick() when it was placed: a ping drops in and pulses from then.",
+          "default": 0
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "A ping leaves after this; 0 is 8000 for a ping, never for the rest.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "units": {
+          "type": "string",
+          "description": "The distance's unit.",
+          "default": "m"
+        },
+        "clampMargin": {
+          "type": "number",
+          "description": "Inset from the safe area's edges when clamped; 0 is 32.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SelectionRingDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A selection ring on the ground.",
+      "type": "object",
+      "properties": {
+        "center": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its centre on the ground (a unit's feet).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "radius": {
+          "type": "number",
+          "description": "Its radius.",
+          "default": 0.6,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "reaction": {
+          "$ref": "#/$defs/Reaction",
+          "description": "Its colour (friendly green, hostile red, as RTS rings).",
+          "default": "self"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A colour of its own.",
+          "default": null
+        },
+        "hover": {
+          "type": "boolean",
+          "description": "Hovered, not selected: thin and dim.",
+          "default": false
+        },
+        "selectedAt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.ui.tick() when it was selected: it springs in from larger.",
+          "default": 0
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Broken into this many arcs turning slowly (a target ring); 0 is a whole ring.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "TelegraphShape": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A telegraph's area.",
+      "type": "string",
+      "enum": [
+        "circle",
+        "ring",
+        "cone",
+        "line"
+      ],
+      "x-og-variants": {
+        "circle": "A disc of radius.",
+        "ring": "A ring between inner and radius (stand inside or outside it).",
+        "cone": "A cone of angle, radius long, toward direction.",
+        "line": "A rectangle width wide and radius long toward direction (a charge)."
+      }
+    },
+    "TelegraphDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An area an attack will hit.",
+      "type": "object",
+      "properties": {
+        "center": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its origin on the ground.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "shape": {
+          "$ref": "#/$defs/TelegraphShape",
+          "description": "Its area.",
+          "default": "circle"
+        },
+        "radius": {
+          "type": "number",
+          "description": "A disc's or ring's radius, a cone's or line's length.",
+          "default": 4,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "inner": {
+          "type": "number",
+          "description": "A ring's inner radius.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "angle": {
+          "type": "number",
+          "description": "A cone's width.",
+          "default": 1.0471976,
+          "x-og-unit": "rad"
+        },
+        "width": {
+          "type": "number",
+          "description": "A line's width.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "direction": {
+          "type": "number",
+          "description": "Which way a cone or line faces, clockwise from +z seen from above (0 is +z, π/2 is +x).",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "progress": {
+          "type": "number",
+          "description": "The wind-up 0 to 1: the fill grows to the edge as the hit nears.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "hostile": {
+          "type": "boolean",
+          "description": "An enemy's (danger, the default); else an ally's (info).",
+          "default": true
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A colour of its own.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "PathLineDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A path on the ground.",
+      "type": "object",
+      "properties": {
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector3"
+          },
+          "description": "The path's world points, from the mover.",
+          "default": []
+        },
+        "reach": {
+          "type": "number",
+          "description": "How far along it the mover can go this turn: past it the line turns danger; 0 is all of it.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "label": {
+          "type": "string",
+          "description": "A label at its end (12 m · 2 AP); empty is none.",
+          "default": ""
+        },
+        "invalid": {
+          "type": "boolean",
+          "description": "It cannot be taken: danger, with a cross at its end.",
+          "default": false
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its colour; null is the highlight.",
+          "default": null
+        },
+        "width": {
+          "type": "number",
+          "description": "Its width; 0 is 4.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "arrow": {
+          "type": "boolean",
+          "description": "An arrow head at its end (the default).",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlacementGhostDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A building's footprint while it is placed.",
+      "type": "object",
+      "properties": {
+        "center": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its footprint's centre on the ground.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "width": {
+          "type": "number",
+          "description": "Its width along x before rotation.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "depth": {
+          "type": "number",
+          "description": "Its depth along z.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "rotation": {
+          "type": "number",
+          "description": "Its turn about y, clockwise from above.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "cell": {
+          "type": "number",
+          "description": "The grid's cell; the footprint shows its cells; 0 shows none.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "valid": {
+          "type": "boolean",
+          "description": "It can be placed here (success); else danger with hatching.",
+          "default": true
+        },
+        "label": {
+          "type": "string",
+          "description": "Its cost or why not (Blocked); empty is none.",
+          "default": ""
+        },
+        "range": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A range ring round it (a tower's reach).",
+          "default": null,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LootLabelDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A label on an item lying in the world.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/WorldTarget",
+          "description": "The item.",
+          "default": {}
+        },
+        "height": {
+          "type": "number",
+          "description": "World units above it.",
+          "default": 0.4,
+          "x-og-unit": "m"
+        },
+        "name": {
+          "type": "string",
+          "description": "The item's name.",
+          "default": ""
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "Its tier: colour, pips, and a beam from rare up.",
+          "default": "none"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A stack's count (×3); 0 and 1 show none.",
+          "default": 0
+        },
+        "icon": {
+          "type": "string",
+          "description": "Its icon.",
+          "default": ""
+        },
+        "beam": {
+          "type": "boolean",
+          "description": "A light beam over it (the default for rare and up).",
+          "default": true
+        },
+        "maxDistance": {
+          "type": "number",
+          "description": "Hidden past this; 0 is 40.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LootLabelResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a loot label answered.",
+      "type": "object",
+      "properties": {
+        "clicked": {
+          "type": "boolean",
+          "description": "Pressed this tick (pick it up)."
+        },
+        "hovered": {
+          "type": "boolean",
+          "description": "Under the pointer (show its tooltip)."
+        },
+        "info": {
+          "$ref": "#/$defs/AnchorInfo",
+          "description": "Where it stands."
+        }
+      },
+      "required": [
+        "clicked",
+        "hovered",
+        "info"
+      ],
+      "additionalProperties": false
+    },
+    "SpeechBubbleDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A speech bubble over a speaker.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/WorldTarget",
+          "description": "The speaker.",
+          "default": {}
+        },
+        "height": {
+          "type": "number",
+          "description": "World units above the speaker's point.",
+          "default": 2.2,
+          "x-og-unit": "m"
+        },
+        "text": {
+          "type": "string",
+          "description": "What is said.",
+          "default": ""
+        },
+        "speaker": {
+          "type": "string",
+          "description": "Who says it, over the text; empty is none.",
+          "default": ""
+        },
+        "at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.ui.tick() when it was said: it types out from then and leaves after its time.",
+          "default": 0
+        },
+        "charsPerSecond": {
+          "type": "number",
+          "description": "How fast it types; 0 shows it at once.",
+          "default": 40,
+          "minimum": 0
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "How long it stays after it has typed; 0 is 1500 plus 60 per character.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "shout": {
+          "type": "boolean",
+          "description": "A shout: bold, a jagged edge.",
+          "default": false
+        },
+        "thought": {
+          "type": "boolean",
+          "description": "A thought: rounder, the tail as bubbles.",
+          "default": false
+        },
+        "maxWidth": {
+          "type": "number",
+          "description": "Its widest; 0 is 260.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "clamp": {
+          "type": "boolean",
+          "description": "Off screen, it stays on the edge so its words are not missed.",
+          "default": false
         }
       },
       "additionalProperties": false
