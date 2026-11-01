@@ -86,6 +86,7 @@ impl RenderScene {
             reflection_probes: Vec::new(),
             shake: CameraShake::default(),
             previous_transforms: Vec::new(),
+            camera_cut: false,
             joint_palettes: Vec::new(),
             skinned_instances: Vec::new(),
             overlay: None,

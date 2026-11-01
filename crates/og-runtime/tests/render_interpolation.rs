@@ -26,9 +26,9 @@ use og_render::RenderScene;
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame,
     og_engine_probe_capture, og_engine_probe_commands, og_engine_probe_dump, og_game_game,
-    og_host_begin_bundle, og_render_box_geometry, og_render_snap, og_render_standard_material,
-    og_system_define_system, og_world_get_tick, og_world_insert, og_world_set, og_world_spawn,
-    set_hooks, set_render_backend, write_resource,
+    og_host_begin_bundle, og_render_box_geometry, og_render_snap, og_render_snap_camera,
+    og_render_standard_material, og_system_define_system, og_world_get_tick, og_world_insert,
+    og_world_set, og_world_spawn, set_hooks, set_render_backend, write_resource,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -101,6 +101,7 @@ impl Hooks for Mover {
 struct Seen {
     drawn: Vec<Mat4>,
     previous: Vec<Mat4>,
+    camera_cut: bool,
     camera: Vec3,
     captured: Vec<Mat4>,
 }
@@ -118,6 +119,7 @@ impl RenderBackend for Recorder {
         let mut s = self.0.borrow_mut();
         s.drawn = scene.instances.iter().map(|i| i.transform).collect();
         s.previous = scene.previous_transforms.clone();
+        s.camera_cut = scene.camera_cut;
         s.camera = scene.camera.position;
         Ok(())
     }
@@ -387,6 +389,75 @@ fn the_probes_teleport_snaps() {
         between > 10,
         "only {between} frames drew the landed entity between ticks"
     );
+}
+
+/// Motion blur does not smear across a snap: on the frames of the tick B
+/// was snapped (og.render.snap) and C jumped past snapDistance, each moves
+/// from where it is drawn, as does the camera after og.render.snapCamera;
+/// A, D (og.Interpolation.off, moving a metre a tick) and the camera on
+/// other frames still blur. The old code moved B and C from the frame
+/// before, 3 and 50 m away, and the camera from its last view.
+#[test]
+fn motion_blur_does_not_smear_across_a_snap() {
+    let entities = Entities::default();
+    let (e, seen) = engine(&entities);
+    value(write_resource(
+        e,
+        "og.PostEffects",
+        r#"{"motionBlur":true}"#,
+    ));
+    let index = |s: &Seen, z: f32| {
+        s.drawn
+            .iter()
+            .position(|m| (m.w_axis.z - z).abs() < 0.5)
+            .unwrap()
+    };
+    let moved = |s: &Seen, z: f32| {
+        let i = index(s, z);
+        (s.previous[i].w_axis.x - s.drawn[i].w_axis.x).abs()
+    };
+    let (mut cuts, mut snapped_camera, mut first) = (0, None, true);
+    for _ in 0..80 {
+        let (w, behind) = frame(e, 1000.0 / 144.0);
+        let s = seen.borrow();
+        if w < 3 || behind == 0.0 {
+            continue;
+        }
+        if w == K + 1 {
+            for z in [10.0, 20.0] {
+                assert_eq!(
+                    moved(&s, z),
+                    0.0,
+                    "tick {w}: the entity at z {z} blurs across its jump"
+                );
+            }
+            if first {
+                assert!(moved(&s, 0.0) > 0.0, "A still blurs on the snap's frames");
+                assert!(
+                    moved(&s, 30.0) > 0.0,
+                    "D (Interpolation.off) still blurs on the snap's frames"
+                );
+                first = false;
+            }
+            cuts += 1;
+        }
+        assert_eq!(
+            s.camera_cut,
+            // Asked between frames, it is the coming tick's: the frames
+            // until that tick and those after it are cut.
+            snapped_camera.is_some_and(|t| w == t || w == t + 1),
+            "tick {w}: camera_cut after og.render.snapCamera on tick {snapped_camera:?}"
+        );
+        if w == K + 4 && snapped_camera.is_none() {
+            og_render_snap_camera(e);
+            snapped_camera = Some(w);
+        }
+    }
+    assert!(
+        cuts >= 2,
+        "only {cuts} frames fell between the snap's ticks"
+    );
+    assert!(snapped_camera.is_some());
 }
 
 // ── skinned poses ───────────────────────────────────────────────────────────

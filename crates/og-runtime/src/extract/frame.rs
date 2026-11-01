@@ -74,9 +74,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         .as_ref()
         .and_then(|c| c["layers"].as_u64())
         .map_or(1, |x| x as u32);
+    scene.camera_cut = false;
     if let Some(c) = &camera {
         let (position, rot) = super::interpolate::camera_pose(c);
-        let (position, rot) = super::interpolate::camera(&rs.interp, position, rot);
+        let (position, rot, cut) = super::interpolate::camera(&rs.interp, position, rot);
+        scene.camera_cut = cut;
         let cam = &mut scene.camera;
         cam.position = position;
         cam.target = position + rot * Vec3::NEG_Z;
@@ -574,7 +576,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // Lines, points and debug draw (after every instance is in, for the
     // bounds view).
     super::geometry::extract(world, rs, &mut h, vp);
-    super::fx::motion(rs, &keys, tick);
+    // Teleported into this frame: drawn without per-object motion.
+    let mut cut = IdMap::new();
+    if rs.interp.drawn.is_some() && rs.scene.post.motion_blur.is_some() {
+        for &(e, _) in &keys {
+            if !cut.contains_key(&e) && h.cut(e) {
+                cut.insert(e, ());
+            }
+        }
+    }
+    super::fx::motion(rs, &keys, tick, &cut);
     // Layer masks, secondary cameras and custom post passes.
     super::views::extract(world, rs, &keys, &mut h);
     // Which entity each instance came from, for the probe's id pass.

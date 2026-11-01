@@ -65,25 +65,33 @@ pub(crate) struct Blend {
     /// Entities drawn at the tick with everything under them
     /// (og.Interpolation.off, og.render.snap), by bits.
     pub held: IdMap<u64, ()>,
+    /// Those of `held` snapped in the last tick (og.render.snap, the
+    /// probe's teleport): teleported, so drawn without motion.
+    pub snapped: IdMap<u64, ()>,
+}
+
+/// Whether `e` or an ancestor (`parent`: og.Parent links) is in `set`.
+fn under(set: &IdMap<u64, ()>, parent: &IdMap<u64, u64>, e: u64) -> bool {
+    if set.is_empty() {
+        return false;
+    }
+    let mut cur = e;
+    for _ in 0..=256 {
+        if set.contains_key(&cur) {
+            return true;
+        }
+        match parent.get(&cur) {
+            Some(&p) => cur = p,
+            None => return false,
+        }
+    }
+    false
 }
 
 impl Blend {
     /// Whether `e` is held at the tick (itself or an ancestor).
     fn holds(&self, parent: &IdMap<u64, u64>, e: u64) -> bool {
-        if self.held.is_empty() {
-            return false;
-        }
-        let mut cur = e;
-        for _ in 0..=256 {
-            if self.held.contains_key(&cur) {
-                return true;
-            }
-            match parent.get(&cur) {
-                Some(&p) => cur = p,
-                None => return false,
-            }
-        }
-        false
+        under(&self.held, parent, e)
     }
 
     /// The drawn world matrix of `e`, whose tick world matrix is `m`
@@ -493,6 +501,22 @@ impl Hierarchy {
     pub(crate) fn blend_alpha(&mut self, e: u64) -> Option<f32> {
         let b = self.blend.as_mut()?;
         (!b.holds(&self.parent, e) && b.prev.knows(e)).then_some(b.alpha)
+    }
+
+    /// Whether `e` was teleported into a frame between ticks: snapped
+    /// (itself or an ancestor: og.render.snap, the probe's teleport) or
+    /// moved past RenderSettings.snapDistance between the ticks. Per-object
+    /// motion blur draws it without motion rather than smeared across the
+    /// jump; `false` on a frame at the tick.
+    pub(crate) fn cut(&mut self, e: u64) -> bool {
+        let m = self.tick_world_of(e);
+        let Some(b) = self.blend.as_mut() else {
+            return false;
+        };
+        if under(&b.snapped, &self.parent, e) {
+            return true;
+        }
+        b.prev.knows(e) && b.prev.world_of(e).w_axis.distance_squared(m.w_axis) > b.snap_sq
     }
 
     /// Whether `e` has og.Transform here.

@@ -1091,8 +1091,9 @@ pub(crate) fn posed_model(
 /// tick's for `previous_transforms` (same order as the instances); a
 /// display frame drawn between ticks (`super::interpolate`) moves from the
 /// display frame before it instead, as drawn, since the shutter is a
-/// fraction of the frame.
-pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64) {
+/// fraction of the frame. An entity in `cut` (teleported into the frame:
+/// `Hierarchy::cut`) moves from where it is drawn, so it does not smear.
+pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: &IdMap<u64, ()>) {
     let RenderState {
         scene, fx, interp, ..
     } = rs;
@@ -1134,6 +1135,17 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64) {
             .zip(&scene.instances)
             .map(|(k, i)| last.get(k).copied().unwrap_or(i.transform))
             .collect();
+    }
+    if !cut.is_empty() {
+        for ((k, i), p) in keys
+            .iter()
+            .zip(&scene.instances)
+            .zip(&mut scene.previous_transforms)
+        {
+            if cut.contains_key(&k.0) {
+                *p = i.transform;
+            }
+        }
     }
     fx.drawn.clear();
     fx.drawn.extend(

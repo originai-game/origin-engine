@@ -145,6 +145,9 @@ pub struct RenderScene {
     /// `instances`), for per-object motion blur. Ignored unless its length
     /// equals `instances`'; then only the camera's motion blurs.
     pub previous_transforms: Vec<Mat4>,
+    /// The camera cut into this frame (a teleport or a cut between shots):
+    /// motion blur takes no camera motion from the frame before.
+    pub camera_cut: bool,
     /// This frame's joint palettes ([`SkinnedInstance::palette`] indexes them).
     pub joint_palettes: Vec<JointPalette>,
     pub skinned_instances: Vec<SkinnedInstance>,

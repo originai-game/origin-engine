@@ -208,12 +208,13 @@ pub(crate) fn begin(
     } else {
         f32::INFINITY
     };
-    let mut held = IdMap::new();
+    let mut snapped = IdMap::new();
     for (&e, &t) in rs.interp.snaps.iter() {
         if t >= started {
-            held.insert(e, ());
+            snapped.insert(e, ());
         }
     }
+    let mut held = snapped.clone();
     if let Some(layout) = &rs.draw.interpolation {
         for (e, v) in rows(world, layout) {
             if on(&v, "off", false) {
@@ -226,6 +227,7 @@ pub(crate) fn begin(
         alpha,
         snap_sq,
         held,
+        snapped,
     });
     rs.interp.active = Some((alpha, snap_sq, started));
     rs.interp.drawn = Some(alpha);
@@ -239,26 +241,29 @@ pub(crate) fn end(rs: &mut RenderState, h: &mut Hierarchy) {
     rs.interp.active = None;
 }
 
-/// og.Camera's drawn pose, whose tick pose is `position` and `rot`.
-pub(crate) fn camera(s: &InterpState, position: Vec3, rot: Quat) -> (Vec3, Quat) {
+/// og.Camera's drawn pose, whose tick pose is `position` and `rot`, and
+/// whether the camera cut into this frame between ticks
+/// (og.render.snapCamera, or a jump past snapDistance): motion blur then
+/// takes no camera motion (`RenderScene::camera_cut`).
+pub(crate) fn camera(s: &InterpState, position: Vec3, rot: Quat) -> (Vec3, Quat, bool) {
     let Some((alpha, snap_sq, started)) = s.active else {
-        return (position, rot);
+        return (position, rot, false);
     };
     let Some((tick, p0, r0)) = s.camera else {
-        return (position, rot);
+        return (position, rot, false);
     };
-    if tick != started
-        || s.camera_snap.is_some_and(|t| t >= started)
-        || p0.distance_squared(position) > snap_sq
-    {
-        return (position, rot);
+    if tick != started {
+        return (position, rot, false);
+    }
+    if s.camera_snap.is_some_and(|t| t >= started) || p0.distance_squared(position) > snap_sq {
+        return (position, rot, true);
     }
     let r = if r0 == rot {
         rot
     } else {
         og_core::math::quat_slerp(r0, rot, alpha).normalize()
     };
-    (p0.lerp(position, alpha), r)
+    (p0.lerp(position, alpha), r, false)
 }
 
 /// The alpha of a display frame: `None` (the tick) on a tick boundary,
@@ -301,7 +306,7 @@ pub(crate) fn ui_shifts(
     let drawn_view = match camera {
         Some(c) => {
             let (p, q) = camera_pose(c);
-            let (p, q) = self::camera(&rs.interp, p, q);
+            let (p, q, _) = self::camera(&rs.interp, p, q);
             let mut c = c.clone();
             c["position"] = serde_json::json!({ "x": p.x, "y": p.y, "z": p.z });
             c["quaternion"] = serde_json::json!({ "x": q.x, "y": q.y, "z": q.z, "w": q.w });

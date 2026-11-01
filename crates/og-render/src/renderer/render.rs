@@ -775,7 +775,10 @@ impl Renderer {
             .collect();
 
         // Terrains: new or edited data uploaded, this frame's clipmap levels.
-        let prev_view_proj = self.prev_view_proj.unwrap_or(cam.view_proj);
+        let prev_view_proj = match self.prev_view_proj {
+            Some(vp) if !scene.camera_cut => vp,
+            _ => cam.view_proj,
+        };
         let textures = &self.cache.textures;
         let arrays = &self.cache.texture_arrays;
         let terrain_draws = if !WORLD_3D {
