@@ -51,6 +51,18 @@ function builder(t0: number) {
 
 const OVERLAYS = ["menu", "context", "popover", "dialog", "confirm", "sheet", "sideSheet", "radial"] as const;
 
+/** A pad's bumper pressed: the tab row's bumpers and the action bar in Xbox's glyphs (RB stepped on), then PlayStation's (LB back, the drawn × ○ □ △), the tabs left as they were. */
+function padBumpers(b: ReturnType<typeof builder>, name: string): void {
+  for (const [device, button] of [["xbox", "rightBumper"], ["playstation", "leftBumper"]] as const) {
+    b.cmd(`demo:device:${device}`);
+    b.cmd(`gamepad:${button}`, 0.05);
+    b.cmd("gamepad:-", 0.2);
+    b.shot(`${name}-bumper-${device}`, 0.5);
+  }
+  b.cmd("gamepad:off");
+  b.cmd("demo:device:keyboardMouse");
+}
+
 /** Every component screen in its states. `phone` keeps to what a finger does (no hover, no keys). */
 export function componentsScript(phone: boolean): Script {
   const b = builder(0.3);
@@ -80,6 +92,7 @@ export function componentsScript(phone: boolean): Script {
   if (!phone) {
     b.seq((at) => key(at, "KeyE"), 0.2);
     b.shot("navigation-bumper", 0.5);
+    padBumpers(b, "navigation");
   }
   if (phone) {
     // A finger picks a tab (no bumpers under a finger); the carousel is further down.
@@ -156,6 +169,7 @@ export function componentsScript(phone: boolean): Script {
   b.cmd("show:navigation");
   b.shot("text200-navigation", 0.8);
   b.dump("navigation-200");
+  if (!phone) padBumpers(b, "text200-navigation");
   if (phone) b.scroll("Navigation", 1100);
   b.seq((at) => tap(at, "Path/More"), 0.2);
   b.shot("text200-navigation-crumbs-menu", 0.5);

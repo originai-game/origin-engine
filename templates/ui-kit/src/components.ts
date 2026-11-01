@@ -9,7 +9,7 @@
 // preview's, kept here between ticks: it is a gallery, never saved.
 
 import { og } from "@origingame/engine";
-import type { MenuEntry, Size, World } from "@origingame/engine";
+import type { MenuEntry, Size, UiDevice, World } from "@origingame/engine";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -42,13 +42,14 @@ const s = {
   sort: "name",
 };
 
-/** `demo:<key>:<value>`: a preview's state (overlay, data, aim), or the player's text size (text, percent). */
+/** `demo:<key>:<value>`: a preview's state (overlay, data, aim), the player's text size (text, percent), or the device prompts are drawn for (device: keyboardMouse, xbox, playstation, switch). */
 export function demoCommand(world: World, args: readonly string[]): void {
   const [key, value = ""] = args;
   if (key === "text") {
     const r = og.ui.configure(world, { textScale: Math.min(2, Math.max(1, Number(value) / 100 || 1)) });
     if (!r.ok) throw new Error(r.reason);
-  } else if (key === "overlay") s.overlay = value;
+  } else if (key === "device") og.ui.setDevice(world, value as UiDevice);
+  else if (key === "overlay") s.overlay = value;
   else if (key === "data") s.data = value;
   else if (key === "aim") {
     const [x, y] = value.split(",").map(Number);
