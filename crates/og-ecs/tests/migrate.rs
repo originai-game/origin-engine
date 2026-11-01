@@ -313,3 +313,82 @@ fn check_snapshot_refuses_what_restore_would_naming_the_fields_and_changes_nothi
     assert!(w.check_snapshot(b"OGWS", false).is_err());
     assert!(w.check_snapshot(b"nope", true).is_err());
 }
+
+/// A component both builds declare alike.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "Pos")]
+struct Pos {
+    x: f32,
+}
+
+/// A world of three `Pos` entities, two ticks in, with `Health` and the
+/// `Damage` event registered at v1's or v2's layout; `fill` adds data.
+fn pos_world(v2: bool, fill: impl FnOnce(&mut World)) -> World {
+    let mut w = World::new(&WorldDesc {
+        seed: 3,
+        tick_rate: 60,
+    })
+    .unwrap();
+    w.register::<Pos>().unwrap();
+    if v2 {
+        w.register::<v2::Health>().unwrap();
+        w.register::<v2::Damage>().unwrap();
+    } else {
+        w.register::<v1::Health>().unwrap();
+        w.register::<v1::Damage>().unwrap();
+    }
+    for i in 0..3 {
+        w.spawn((Pos { x: i as f32 },)).unwrap();
+    }
+    w.step().unwrap();
+    w.step().unwrap();
+    fill(&mut w);
+    w
+}
+
+#[test]
+fn a_type_the_save_holds_nothing_of_takes_this_worlds_layout() {
+    // Health and Damage changed layout, but the save holds none of them:
+    // the strict restore takes it, and the world hashes as one built on
+    // this layout with the same data.
+    let bytes = pos_world(false, |_| {}).snapshot();
+    let mut w = pos_world(true, |w| {
+        w.spawn((Pos { x: 9.0 },)).unwrap();
+    });
+    w.check_snapshot(&bytes, false).unwrap();
+    w.restore(&bytes).unwrap();
+    assert_eq!(w.world_hash(), pos_world(true, |_| {}).world_hash());
+
+    // A save holding a component row, or an event, of a changed type is
+    // still refused, with nothing changed.
+    let held: [fn(&mut World); 2] = [
+        |w| {
+            w.spawn((
+                Pos { x: 1.0 },
+                v1::Health {
+                    hp: 1.0,
+                    regen: 0.0,
+                    status: 0,
+                },
+            ))
+            .unwrap();
+        },
+        |w| {
+            w.send(v1::Damage {
+                amount: 1.0,
+                crit: false,
+            })
+            .unwrap();
+        },
+    ];
+    for fill in held {
+        let bytes = pos_world(false, fill).snapshot();
+        let mut w = pos_world(true, |_| {});
+        let before = w.world_hash();
+        let err = w.check_snapshot(&bytes, false).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::Schema, "{err}");
+        let err = w.restore(&bytes).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::Schema, "{err}");
+        assert_eq!(w.world_hash(), before);
+    }
+}

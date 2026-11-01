@@ -15,6 +15,11 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- Fixed: `World.restore` compares a changed type's layout only when the
+  save holds data of it (a component row, a resource value, an event); a
+  type the save holds none of takes this build's layout, so a field added
+  to a type an old save never used no longer refuses it without `migrate`.
+
 - **Gameplay actions, rebinding and gamepads (G1-2).** Added to the
   IDL: `og.input.defineAction`, `actions`, `action`, `actionDown`,
   `actionPressed`, `actionReleased`, `actionHeld`, `actionValue`,

@@ -235,6 +235,24 @@ struct Parsed<'a> {
     resume: Option<&'a str>,
 }
 
+impl Parsed<'_> {
+    /// Whether the snapshot holds data of its type `t`: a row of an
+    /// archetype storing it, a resource value, or a current or pending
+    /// event. The format keeps no per-type counts, so this reads the parsed
+    /// rows. A type it holds nothing of cannot be misread whatever its
+    /// layout, so a restore takes this world's layout for it.
+    fn holds(&self, t: usize) -> bool {
+        self.archetypes
+            .iter()
+            .any(|a| !a.entities.is_empty() && a.stored.contains(&t))
+            || self.resources.iter().any(|&(r, _)| r == t)
+            || self
+                .events
+                .iter()
+                .any(|(e, current, pending)| *e == t && !(current.is_empty() && pending.is_empty()))
+    }
+}
+
 fn not_registered(name: &str) -> Error {
     Error::new(
         ErrorKind::NotFound,
@@ -1143,13 +1161,15 @@ impl World {
         }
         resume_at(self, parsed.resume, None)?;
         let mut differs = false;
-        for t in &parsed.types {
+        for (i, t) in parsed.types.iter().enumerate() {
             let id = self
                 .registry
                 .id_by_name(&t.name)
                 .map_err(|_| not_registered(&t.name))?;
             let info = self.registry.info(id);
-            if info.layout_hash != t.hash && replaced.contains(&t.name.as_str()) {
+            if info.layout_hash != t.hash && !parsed.holds(i) {
+                // Nothing of it saved: nothing to misread (Parsed::holds).
+            } else if info.layout_hash != t.hash && replaced.contains(&t.name.as_str()) {
                 if t.schema.is_none() {
                     return Err(Error::new(
                         ErrorKind::Schema,
@@ -1189,16 +1209,19 @@ impl World {
     /// Replaces the world's state (entities, components, resources, events,
     /// names, state blocks) with a snapshot's. Systems and registrations stay. Refused,
     /// with nothing changed, when the snapshot is malformed or names a type
-    /// this world lacks or has with another layout.
+    /// this world lacks or has with another layout; a type the snapshot
+    /// holds no data of (no component row, resource value or event) may
+    /// differ, and keeps this world's layout.
     pub fn restore(&mut self, bytes: &[u8]) -> Result<()> {
         let parsed = parse(&self.registry, bytes)?;
         let mut map = Vec::with_capacity(parsed.types.len());
-        for t in &parsed.types {
+        for (i, t) in parsed.types.iter().enumerate() {
             let id = self
                 .registry
                 .id_by_name(&t.name)
                 .map_err(|_| not_registered(&t.name))?;
-            if self.registry.info(id).layout_hash != t.hash {
+            // A type the snapshot holds nothing of takes this world's layout.
+            if self.registry.info(id).layout_hash != t.hash && parsed.holds(i) {
                 return Err(other_layout(&t.name));
             }
             map.push(id);

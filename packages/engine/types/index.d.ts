@@ -1411,7 +1411,7 @@ export interface World {
    *
    * @param save The text world.snapshot returned.
    * @param desc Whether a type whose layout changed since the save is mapped field by field.
-   * @returns Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants): the reason names the type and the fields, and the fix (`{ migrate: true }`, or keeping a saved type's fields stable between releases).
+   * @returns Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants) and that the save holds data of (a type it holds none of, no component, resource value or event, takes this build's layout): the reason names the type and the fields, and the fix (`{ migrate: true }`, or keeping a saved type's fields stable between releases).
    */
   restore(save: string, desc?: RestoreDesc): Result<void>;
 }

@@ -38,6 +38,10 @@
       {
         "member": "web shell: focus",
         "summary": "Keys held when the window loses focus or the page is hidden are released, and the pads come to rest with the keys they map to (the next poll sends a pad still held); nothing released them before, so a key could stay down in the game after an alt-tab."
+      },
+      {
+        "member": "World.restore",
+        "summary": "A type whose layout changed since the save is compared only when the save holds data of it (a component row, a resource value or an event): a type it holds none of takes this build's layout, since nothing of it can be misread, so adding a field to a type a save never used (Model.variant) no longer refuses that save without migrate. Types the save holds data of are checked as before."
       }
     ]
   },
