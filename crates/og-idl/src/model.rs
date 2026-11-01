@@ -1,4 +1,4 @@
-//! The IDL model: what `api.ogt` declares, after the `.ogt` tree is read.
+//! The IDL model: what `api/<module>.ogt` declares, after the `.ogt` tree is read.
 //!
 //! Every declaration keeps its source line so diagnostics name it.
 

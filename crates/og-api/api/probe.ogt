@@ -1,0 +1,696 @@
+module probe {
+  skill og-build
+  doc "The probe: RuntimeProbe protocol 5 (origin/packages/contracts/src/probe.ts) served natively, plus the engine's wire members."
+  doc "In a page it is published on globalThis.__runtime_probe__; on native, `og` serves it as JSON-RPC 2.0 over a loopback WebSocket at /probe."
+  doc "A refusal is false or null exactly as protocol 5; a JSON-RPC error is only for a malformed call or an unknown method."
+  doc "Probe entity ids are entity names; an unnamed entity is `#<index>.<generation>`."
+
+  const PROBE_GLOBAL String "__runtime_probe__" "The global the page publishes the probe on."
+  const PROBE_VERSION u32 5 "The RuntimeProbe contract revision both sides speak."
+  const PROBE_WIRE_VERSION u32 1 "The wire revision hello reports."
+  const REPLAY_SEED_PARAM String "replay-seed" "The page query parameter that starts a deterministic replay from a uint32 seed."
+  const PLAYTEST_MAX_TICKS u32 3600 "The longest playtest one request may advance, in fixed steps."
+  const PROBE_PROGRAM_MAX_OPERATIONS u32 256 "The most operations one probe program may carry."
+
+  struct PickResult {
+    doc "What a screen point resolved to."
+    field entity String "The probe id of the entity under the point."
+    field world OneOf.Array.f32.2.Array.f32.3 "Where the pick landed in world space: two components in the 2D profile, three in 3D; nothing pads a plane with an unmeasured zero."
+    field source Option.String "Where a person would change it, as `player.ts::jump`."
+  }
+
+  struct ProbeTunable {
+    doc "One published tunable parameter and the range it means something over."
+    field path String "Where the value lives, as `Health.hp`."
+    field label String "The person-facing name." {
+      optional true
+    }
+    field min f32 "The smallest meaningful value." {
+      optional true
+    }
+    field max f32 "The largest meaningful value." {
+      optional true
+    }
+    field step f32 "Tune's increment." {
+      optional true
+    }
+  }
+
+  struct ProbeEntityRef {
+    doc "One entity the probe publishes in state()."
+    field id String "Its probe id."
+    field label String "A person-facing name." {
+      optional true
+    }
+  }
+
+  struct ProbeTimings {
+    doc "The fixed timings head of state()."
+    field step f32 "Time the last tick took." {
+      unit ms
+    }
+    field render f32 "Time the last frame's render took; 0 without a renderer." {
+      unit ms
+    }
+    field frameMs f32 "step + render." {
+      unit ms
+    }
+    field systems List.ProbeTiming "The last tick's systems in run order, each with its milliseconds."
+    field passes List.ProbeTiming "The last rendered frame's render passes in the render graph's order, each with its milliseconds of CPU encoding (empty without a renderer)."
+    field gpuPasses List.ProbeTiming "The render passes of the newest frame the GPU's timestamps were read back for (a frame or two behind `passes`), each with the GPU's milliseconds from the end of the pass before it to its own end; empty where the device has no timestamp queries (RenderCapabilities.gpuTimestamps) or without a renderer."
+    field triangles u32 "Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer."
+  }
+
+  struct ProbeTiming {
+    doc "One named span of the last tick or frame."
+    field name String "A system's name, or a render pass's (`Main`, `Cascade0`, `Bloom`)."
+    field ms f32 "Its time." {
+      unit ms
+    }
+  }
+
+  struct ProbeState {
+    doc "The probe's state(): a fixed head, then the game's own facts."
+    field tick u32 "Fixed steps since load."
+    field paused bool "Whether the clock is held."
+    field seed u32 "The seed the world was assembled from."
+    field timings ProbeTimings "The last tick's timings."
+    field entities List.ProbeEntityRef "The named entities."
+    field facts Json "What GameDesc.facts returned, or null."
+  }
+
+  struct AdvanceOperation {
+    doc "The advance operation's payload."
+    field steps u32 "Fixed steps to take."
+  }
+
+  struct InputOperation {
+    doc "The input operation's payload."
+    field event InjectedInput "The event."
+  }
+
+  struct PickOperation {
+    doc "The pick operation's payload."
+    field x f32 "Horizontal position in CSS pixels."
+    field y f32 "Vertical position in CSS pixels."
+  }
+
+  struct EntityOperation {
+    doc "The entity operation's payload."
+    field id String "The probe id."
+  }
+
+  struct ExpectOperation {
+    doc "The expect operation's payload."
+    field what String "The expectation, as after `expect:` in a script, such as `state:started==true`."
+  }
+
+  union ProbeOperation {
+    doc "One operation of a probe program, which runs in one evaluation so a scripted segment costs one round trip."
+    tag op
+    case advance AdvanceOperation "Take fixed steps; answers the tick."
+    case input InputOperation "Inject an event; answers true."
+    case pause "Hold the clock; answers true."
+    case resume "Release the clock; answers true."
+    case read "Read the state; answers `{ tick, state }`."
+    case pick PickOperation "Pick a point; answers its result or null."
+    case entity EntityOperation "Read an entity's parameters; null is a refusal."
+    case expect ExpectOperation "Evaluate an expectation; answers its ExpectResult, failed or not (a malformed one is a refusal)."
+    case describe "Describe the frame; answers its Description."
+  }
+
+  struct ProbeProgramResult {
+    doc "What a program observed: one answer per operation that ran. A false, or entity's null, stops the program and `refused` names its index."
+    field results List.Json "The answers, in order."
+    field refused Option.u32 "The index of the refusing operation, or null."
+    field tick u32 "The tick after the last operation that ran."
+  }
+
+  struct Hello {
+    doc "The wire's hello: who is speaking."
+    field protocol u32 "PROBE_VERSION."
+    field wire u32 "PROBE_WIRE_VERSION."
+    field substrate String "Always `origin-engine`."
+    field engine String "`origin-engine <version>`."
+    field ticksPerSecond u32 "The fixed tick rate." {
+      unit hz
+    }
+    field tier RenderTier "The renderer backend."
+    field build BuildProfile "The build configuration."
+    field members List.String "The probe members this build serves."
+    field modules List.String "The engine modules this build carries beyond the core (`physics`, `audio`, `ui`, `cook`), so a client knows which members do something."
+  }
+
+  enum BuildProfile {
+    doc "The build configuration; publish builds keep only the player-facing probe members."
+    variant dev "A development build: every member, the command channel, dumps."
+    variant release "An optimised build with every member."
+    variant publish "A published game: hello, tick, state, pick, entity, input and capture only."
+  }
+
+  struct Capture {
+    doc "A captured frame."
+    field tick u32 "The tick the frame shows."
+    field width u32 "Width in pixels."
+    field height u32 "Height in pixels."
+    field png String "The PNG, base64."
+  }
+
+  struct Heard {
+    doc "What the host's mixer rendered last: the audio up to the current tick."
+    field tick u32 "The tick it ends at."
+    field rate u32 "Frames per second." {
+      unit hz
+    }
+    field frames u32 "Stereo frames in the WAV."
+    field peak f32 "The largest sample, 0 to 1."
+    field rms f32 "The root mean square of both channels."
+    field wav String "A 16-bit stereo WAV, base64."
+  }
+
+  struct ProbeHeap {
+    doc "The engine's allocator, counted (both hosts install a counting global allocator)."
+    field live f64 "Bytes allocated and not freed." {
+      unit bytes
+    }
+    field peak f64 "The most bytes live at once since load." {
+      unit bytes
+    }
+    field allocations f64 "Allocations made since load."
+  }
+
+  struct ProbeWorldMemory {
+    doc "The world's size."
+    field entities u32 "Entities alive."
+  }
+
+  struct ProbeStreamMemory {
+    doc "The streaming memory budget (og.stream.budget): what the admitted groups' assets take."
+    field budget f64 "The budget." {
+      unit bytes
+    }
+    field used f64 "What the admitted groups take now." {
+      unit bytes
+    }
+    field peak f64 "The most they took at once." {
+      unit bytes
+    }
+  }
+
+  struct ProbeMemory {
+    doc "What the engine holds, in one shape on both hosts; a figure a host cannot read is null. A publish page, whose probe has no `memory`, answers the same from the engine Worker (`__runtime_probe__.memory()`, docs/web-export.md)."
+    field host String "`web` or `native`."
+    field linear Option.f64 "The wasm linear memory's size, which the browser reserved for the engine and never takes back; null natively." {
+      unit bytes
+    }
+    field resident Option.f64 "The process's resident memory (Linux /proc/self/status, macOS task_info); null on the web, where a page cannot read its process's." {
+      unit bytes
+    }
+    field heap Option.ProbeHeap "The engine's allocator; null where the host counts nothing."
+    field world ProbeWorldMemory "The world."
+    field stream Option.ProbeStreamMemory "The streaming budget."
+    field audio Option.f64 "The sound bank's samples in memory (decoded sounds and the resident chunks of streamed ones); null without audio." {
+      unit bytes
+    }
+  }
+
+  struct SweepDesc {
+    doc "A parameter sweep: for each value, restore the snapshot taken at the call, patch, advance and capture."
+    desc true
+    field id String "The probe id of the entity."
+    field parameter String "The parameter, as `Health.hp`."
+    field values List.Json "The values to try, in order."
+    field steps u32 "Fixed steps to advance after each patch."
+    field width u32 "Capture width; 0 is the render target's."
+    field height u32 "Capture height; 0 is the render target's."
+  }
+
+  struct SweepFrame {
+    doc "One frame of a sweep."
+    field value Json "The value patched in."
+    field tick u32 "The tick captured."
+    field png String "The PNG, base64."
+  }
+
+  struct SweepResult {
+    doc "A sweep's frames, one per value."
+    field frames List.SweepFrame "The frames."
+  }
+
+  struct ReloadReport {
+    doc "What a hot reload did. Components are re-registered by name and migrated field by field through the schema."
+    field tick u32 "The tick the world was restored at."
+    field ms f32 "From bundle swap to restored world." {
+      unit ms
+    }
+    field migrated List.String "Fields carried across a layout change, as `Health.hp`."
+    field dropped List.String "Components or fields that no longer exist, dropped with their data."
+    field warnings List.String "Anything else worth reading, each naming the fix."
+  }
+
+  struct SnapshotInfo {
+    doc "A snapshot of the whole world (components, resources, Rng states, pending events) kept in the running process."
+    field id String "The snapshot's id, for restore."
+    field tick u32 "The tick it was taken at."
+    field hash String "The world hash at that tick, hex: equal hashes mean equal worlds."
+    field bytes u32 "Its size." {
+      unit bytes
+    }
+  }
+
+  enum DumpKind {
+    doc "What dump() reports."
+    variant world "Archetype tables, systems and their matched counts."
+    variant entity "One entity's components and transform."
+    variant ui "The UI tree with bounds."
+    variant desync "The first desync of a lockstep session (og.net): its tick, both hashes and the component-level diff of the two peers' snapshots."
+  }
+
+  struct DumpDesc {
+    doc "What to dump."
+    desc true
+    field what DumpKind "The kind of dump."
+    field id String "The probe id, for an entity dump."
+  }
+
+  struct ArchetypeDump {
+    doc "One archetype table."
+    field components List.String "Its components, by name."
+    field count u32 "Entities in it."
+  }
+
+  struct SystemDump {
+    doc "One system. The engine fills reads, writes and matched for every system the game declared; ms is null because the probe reads no clock (state().timings has the tick's time)."
+    field name String "Its name."
+    field matched Option.u32 "Entities its queries match now; null for a system the host did not declare to the probe."
+    field reads Option.List.String "What it declared it reads; null when undeclared."
+    field writes Option.List.String "What it declared it writes; null when undeclared."
+    field ms Option.f32 "Time it took on the last tick; null when not measured." {
+      unit ms
+    }
+  }
+
+  struct WorldDump {
+    doc "The world: tables, systems, resources."
+    field tick u32 "The tick."
+    field hash String "The world hash, hex."
+    field entities u32 "Live entities."
+    field archetypes List.ArchetypeDump "The archetype tables."
+    field systems List.SystemDump "The systems in run order."
+    field resources List.String "The registered resources."
+  }
+
+  struct EntityDump {
+    doc "One entity."
+    field id String "Its probe id."
+    field name Option.String "Its name."
+    field components Map.Json "Each component's field values, by component name."
+  }
+
+  struct UiElement {
+    doc "One UI element with its bounds."
+    field id String "Its stable id, as the command channel targets it."
+    field parent String "Its parent's id; empty at the root."
+    field kind String "What made it: `label`, `button`, `icon`, `image`, `panel` and the other widget names; empty when the UI module does not say."
+    field disabled bool "A disabled control (its text is exempt from contrast rules, as WCAG exempts inactive controls)."
+    field clipped bool "Only part of it shows: a scroll container or the surface cuts it, and the bounds are the part that shows."
+    field text String "The text it shows, if any."
+    field role String "Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element (a layout container, a spacer)."
+    field name String "Its accessible name: its text, a name the widget gives it (an icon's name, a dialog's title, Decrease and Increase for a stepper's buttons), a control's own text gathered from its children, or else its id."
+    field value String "Its value as text: a slider's or stepper's number, a progress's or meter's amount, a field's text, a select's choice; empty for none."
+    field states List.String "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy."
+    field opaque bool "It draws an opaque background over its whole box (its fill's alpha times its opacity is 1), hiding the scene under it."
+    field x f32 "Left edge." {
+      unit cssPx
+    }
+    field y f32 "Top edge." {
+      unit cssPx
+    }
+    field width f32 "Width." {
+      unit cssPx
+    }
+    field height f32 "Height." {
+      unit cssPx
+    }
+  }
+
+  struct UiSurface {
+    doc "The surface UI bounds are laid out on."
+    field width f32 "Its width." {
+      unit cssPx
+    }
+    field height f32 "Its height." {
+      unit cssPx
+    }
+    field dpr f32 "Device pixels per CSS pixel: a frame of this surface is width × dpr pixels wide." {
+      default 1
+    }
+  }
+
+  struct UiDump {
+    doc "The UI tree, flattened in draw order."
+    field tick u32 "The tick."
+    field surface Option.UiSurface "The surface the bounds are on; null without a UI module."
+    field elements List.UiElement "The elements."
+  }
+
+  struct DesyncDump {
+    doc "The first desync of this peer's lockstep session (og.net), as `dump_desync` writes it."
+    field desync bool "Whether a desync happened; false lists the ticks compared with each peer so far."
+    field tick Option.u32 "The first divergent tick: og.Time.tick of the two worlds that differ."
+    field local Json "This peer: `{ peer, player, hash }`."
+    field remote Json "The other peer: `{ peer, player, hash }`."
+    field diff Json "What differs: `{ components: [{ entity, component, fields: [{ field, local, remote }] }], entities: { onlyLocal, onlyRemote }, resources, events, blocks, allocator }`, in the local world's entity order (the first entry is the first difference in storage order); `{ pending }` until the other peer's snapshot arrived."
+  }
+
+  union DumpResult {
+    doc "A dump, tagged by its kind."
+    tag kind
+    case world WorldDump "The world dump."
+    case entity EntityDump "An entity dump."
+    case ui UiDump "The UI dump."
+    case desync DesyncDump "The desync dump."
+  }
+
+  struct ScreenBox {
+    doc "A box on the play surface."
+    field x f32 "Left edge." {
+      unit cssPx
+    }
+    field y f32 "Top edge." {
+      unit cssPx
+    }
+    field width f32 "Width." {
+      unit cssPx
+    }
+    field height f32 "Height." {
+      unit cssPx
+    }
+  }
+
+  struct ScreenPoint {
+    doc "A point on the play surface."
+    field x f32 "Horizontal position." {
+      unit cssPx
+    }
+    field y f32 "Vertical position." {
+      unit cssPx
+    }
+  }
+
+  struct DescribedEntity {
+    doc "One entity the frame shows, from the entity-id pass (a CPU rasterisation of the frame's meshes, skinned meshes and world sprites at a quarter of its pixels)."
+    field id String "Its probe id."
+    field name Option.String "Its name."
+    field order u32 "Its depth order: 0 is the nearest."
+    field archetype List.String "Its components, by name."
+    field labels List.String "What draws it: `model` with its asset path, `mesh`, `skinned`, `sprite`."
+    field box ScreenBox "The box of its visible pixels."
+    field drawn ScreenBox "The box of what it covers with nothing in front of it."
+    field point ScreenPoint "A visible point nearest the box's centre: pick answers this entity there."
+    field depth f32 "From the camera to its nearest visible point, along the view." {
+      unit m
+    }
+    field coverage f32 "Its visible share of the surface." {
+      unit ratio
+    }
+    field occlusion f32 "The share of what it covers alone that something else hides: another object in front, or a UI element drawn opaque over it (DescribedUi.opaque); on a secondary camera's image, objects only." {
+      unit ratio
+    }
+    field views List.String "The probe ids of the og.CameraView and og.Mirror entities whose image also shows it, from their own id passes on their own layers; empty when only the main camera does (under DescribedView.entities it is empty)."
+  }
+
+  struct DescribedView {
+    doc "A secondary camera (og.CameraView, og.Mirror) and what its image shows: its own entity-id pass, from its eye and on its layers, at a quarter of its image's pixels, whatever its `every`. An entity only its layers admit (a layer the main camera leaves out) is listed here and not in Description.entities."
+    field id String "The view entity's probe id."
+    field name Option.String "Its name."
+    field kind String "`camera` (og.CameraView) or `mirror` (og.Mirror)."
+    field size PassSize "The pixels its image covers: its render target's, or its viewport's rect of the frame."
+    field entities List.DescribedEntity "What it shows, nearest its eye first, boxes and points in its image's pixels."
+  }
+
+  struct DescribedUi {
+    doc "One UI element as describe lists it (the tree dump_ui writes)."
+    field id String "Its id."
+    field parent String "Its parent's id."
+    field kind String "What made it."
+    field role String "Its accessibility role."
+    field text String "The text it shows."
+    field value String "Its value as text."
+    field states List.String "Its states."
+    field opaque bool "It draws an opaque background over its whole box: the entities under it count it in their occlusion."
+    field box ScreenBox "Its rect."
+  }
+
+  struct DescribedCamera {
+    doc "The camera as drawn, with its shake."
+    field position Array.f32.3 "Where it is."
+    field target Array.f32.3 "What it looks at."
+    field up Array.f32.3 "Its up."
+    field projection String "`perspective` or `orthographic`."
+    field fov Option.f32 "The vertical field of view (perspective)." {
+      unit deg
+    }
+    field height Option.f32 "The height in view (orthographic)." {
+      unit m
+    }
+    field near f32 "The near plane." {
+      unit m
+    }
+    field far f32 "The far plane." {
+      unit m
+    }
+  }
+
+  struct PassSize {
+    doc "The entity-id pass's size."
+    field width u32 "Width in pixels."
+    field height u32 "Height in pixels."
+  }
+
+  struct Description {
+    doc "The frame as data: deterministic, the same JSON on every host and backend for the same world."
+    field tick u32 "The tick."
+    field surface Option.UiSurface "The play surface."
+    field pass Option.PassSize "The entity-id pass; null without a scene."
+    field camera Option.DescribedCamera "The camera; null without a scene."
+    field entities List.DescribedEntity "The entities the main camera shows, nearest first (each names the views that also show it)."
+    field views List.DescribedView "The secondary cameras the frame draws, in its view order, each with what it shows."
+    field ui List.DescribedUi "The UI elements in draw order."
+  }
+
+  enum ExpectStatus {
+    doc "How an expectation came out."
+    variant pass "It held."
+    variant fail "It did not: the result carries the tick and the observed value."
+    variant unchecked "It reads a frame and the host has no renderer."
+  }
+
+  struct ExpectResult {
+    doc "One evaluated expectation."
+    field tick u32 "The tick it was evaluated at."
+    field at Option.f32 "The script step's time, when a script ran it." {
+      unit s
+    }
+    field expect String "As written after `expect:`."
+    field kind String "`entity`, `event`, `ui`, `region`, `frame` or `state`."
+    field status ExpectStatus "The outcome."
+    field expected Json "What was expected."
+    field observed Json "What was there."
+    field reason String "Why it failed or was unchecked; empty on a pass."
+  }
+
+  struct ExpectReport {
+    doc "The expectations evaluated since the last call."
+    field passed u32 "Those that held."
+    field failed u32 "Those that did not."
+    field unchecked u32 "Those that needed a renderer."
+    field results List.ExpectResult "Each, in order."
+  }
+
+  struct SavedScene {
+    doc "The scenes written back from the world: the head is the boot scene's (or the first instantiated one's), `scenes` lists every one."
+    field tick u32 "The tick of the world it was written from."
+    field source String "The first scene's source, project-relative."
+    field written String "Where it was written; empty when only returned."
+    field lines List.u32 "The 1-based lines of the first scene's new text that changed or were added."
+    field skipped List.String "Tuned fields that were not written, each with its reason: an entity no scene made (without `spawned`), a resource no scene sets where no boot scene takes it."
+    field text String "The first scene's new text."
+    field spawned u32 "Entities written under the boot scene's spawned section (0 without `spawned`)."
+    field scenes List.SavedSceneFile "Every scene written back: the boot scene's first, then each og.world.instantiate made, once each."
+  }
+
+  struct SavedSceneFile {
+    doc "One scene file written back."
+    field source String "Its source, project-relative."
+    field written String "Where it was written; empty when only returned."
+    field lines List.u32 "The 1-based lines of its new text that changed or were added."
+    field text String "Its new text."
+  }
+
+  interface RuntimeProbe {
+    doc "RuntimeProbe protocol 5, member for member. Every member answers synchronously with JSON-serialisable values."
+    publish false
+
+    prop version u32 "PROBE_VERSION." {
+      publish true
+    }
+    fn tick {
+      doc "Fixed steps the world has taken since load."
+      publish true
+      returns u32
+    }
+    fn state {
+      doc "A JSON snapshot: the fixed timings head, then the game's own facts."
+      publish true
+      returns ProbeState
+    }
+    fn advance {
+      doc "Take whole fixed steps regardless of the wall clock."
+      param steps u32 "Fixed steps, at most PLAYTEST_MAX_TICKS."
+      returns u32 "The tick after the steps."
+    }
+    fn pause {
+      doc "Hold the wall-clock loop; advance still steps."
+      returns bool
+    }
+    fn resume {
+      doc "Release the wall-clock loop."
+      returns bool
+    }
+    fn input {
+      doc "One event through the input layer's own path."
+      publish true
+      param event InjectedInput "The event."
+      returns bool "False is a refusal."
+    }
+    fn accepted {
+      doc "Page events (keyboard, pointer, wheel) the input layer accepted since load."
+      returns u32
+    }
+    fn pick {
+      doc "What is under a point of the play surface."
+      publish true
+      param x f32 "Horizontal position in CSS pixels."
+      param y f32 "Vertical position in CSS pixels."
+      returns Option.PickResult "Null when nothing is under the point."
+    }
+    fn entity {
+      doc "One entity's published parameters: its tunable fields as `Component.field` keys."
+      publish true
+      param id String "The probe id."
+      returns Option.Map.Json "Null for an unknown entity."
+    }
+    fn bounds {
+      doc "The ranges of one entity's tunable fields, from the schema."
+      param id String "The probe id."
+      returns Option.Map.ProbeTunable "Null for an unknown entity."
+    }
+    fn patch {
+      doc "Move one tunable field for this run only; it applies within one frame. The probe never writes project files."
+      param id String "The probe id."
+      param parameter String "The field, as `Health.hp`."
+      param value Json "The new value."
+      returns bool "False is a refusal."
+    }
+    fn run {
+      doc "Run a program of the members above in order, stopping at the first refusal."
+      param program List.ProbeOperation "At most PROBE_PROGRAM_MAX_OPERATIONS operations."
+      returns ProbeProgramResult
+    }
+  }
+
+  interface EngineProbe {
+    doc "The engine's probe: protocol 5 plus the wire members of the loopback WebSocket and the in-page request ring."
+    extends RuntimeProbe
+    publish false
+
+    fn hello {
+      doc "Who is speaking: protocol, wire, engine version, tick rate, renderer tier, build."
+      publish true
+      returns Hello
+    }
+    fn capture {
+      doc "The frame of the current tick, rendered offscreen and read back as a PNG; null without a renderer (hello's tier `none`)."
+      doc "Size rule: width and height are both 0 (or absent), which is the render target's size, or both 1 to 4096, which renders that size with the same camera (the aspect follows the requested size); one zero and one not is a malformed call."
+      doc "On the web the readback is asynchronous: through the request ring the answer arrives when the copy completes; a synchronous in-page call answers null on the first tick and the frame from then on (a capture is requested on tick N and answered on N + 1)."
+      publish true
+      param width u32 "Width in pixels; 0 is the render target's." {
+        default 0
+      }
+      param height u32 "Height in pixels; 0 is the render target's." {
+        default 0
+      }
+      returns Option.Capture "Null without a renderer."
+    }
+    fn sweep {
+      doc "A filmstrip over one tunable: per value, restore, patch, advance, capture."
+      param desc SweepDesc "The parameter, values, steps and size." {
+        flatten true
+      }
+      returns Option.SweepResult "Null for an unknown entity or parameter, or without a renderer."
+    }
+    fn reload {
+      doc "Hot reload: snapshot, swap the game bundle, re-register components by name, restore."
+      returns Option.ReloadReport "Null when the new bundle fails to load; the old one keeps running."
+    }
+    fn snapshot {
+      doc "Snapshot the whole world in the running process."
+      returns Option.SnapshotInfo
+    }
+    fn restore {
+      doc "Restore a snapshot taken by this process."
+      param id String "The snapshot id."
+      returns bool "False for an unknown id."
+    }
+    fn dump {
+      doc "A world, entity or UI dump, as the command channel's dump actions write."
+      param desc DumpDesc "What to dump." {
+        flatten true
+      }
+      returns Option.DumpResult "Null for an unknown entity."
+    }
+    fn commands {
+      doc "Schedule a command script on simulation time, as `og run --commands`."
+      param script String "`t:action[:args];...`."
+      returns Option.CommandsReport "Null for a malformed script."
+    }
+    fn listen {
+      doc "The last seconds of audio the host's mixer rendered (a null sink renders too, into a two-second ring), as a WAV with its peak and RMS: what a person would have heard."
+      param seconds f32 "How many seconds, 0 to 2." {
+        default 1
+      }
+      returns Option.Heard "Null without audio, or before anything was rendered."
+    }
+    fn memory {
+      doc "What the engine holds: the wasm linear memory on the web or the process's resident memory natively, the engine's counted heap, the world's entities, the streaming budget and the audio bank, in the same shape on both hosts."
+      returns Option.ProbeMemory "Null from a host that gives no figures."
+    }
+    fn describe {
+      doc "The frame of the current tick as data: the visible entities with screen boxes, depth order and occlusion from the entity-id pass, their names, archetypes and labels; the UI elements with rects and text; the camera. Answers without a renderer too (the pass runs on the CPU)."
+      returns Description
+    }
+    fn expect {
+      doc "Evaluate one expectation now (the forms of the command channel's `expect:`); the result is also kept for expectations()."
+      param what String "The expectation, such as `entity:crate:within:0,0.4,-1,1,0.6,1`."
+      returns ExpectResult "A malformed expectation is a malformed call."
+    }
+    fn expectations {
+      doc "Every expectation evaluated since the last call (scripts' `expect:` steps, programs, expect()), and the counts."
+      returns ExpectReport
+    }
+    fn saveScene {
+      doc "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned."
+      param write bool "Replace each scene's source file." {
+        default false
+      }
+      param spawned bool "Write the entities the game spawned at run time under the boot scene's marked section." {
+        default false
+      }
+      returns Option.SavedScene "Null without a scene to write back (the reason is in the log)."
+    }
+  }
+}
+
+# ── terrain ───────────────────────────────────────────────────────────────
+

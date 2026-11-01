@@ -48,7 +48,7 @@ engine features, not tooling bolted on afterwards.
 
 ```
 crates/           Rust workspace: the engine core and its backends
-  og-api          the IDL (`api.ogt`) and the generators: Rust traits, .d.ts, wiki, JSON schema
+  og-api          the IDL (`api/<module>.ogt`) and the generators: Rust traits, .d.ts, wiki, JSON schema
   og-core         allocators, containers, math (glam), ids, reflection, text formats
   og-ecs          world, archetypes, queries, schedule, snapshot/restore
   og-render       wgpu renderer: forward+, PBR, shadows, IBL, post, text, particles

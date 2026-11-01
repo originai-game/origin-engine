@@ -179,7 +179,7 @@ commands:
                       regenerate the IDL outputs (packages/engine/{types,schema}, the hosts' glue,
                       the knowledge wiki); --wiki writes only the wiki
   api check [--root <dir>]
-                      exit 1 when a generated file differs from crates/og-api/api.ogt
+                      exit 1 when a generated file differs from crates/og-api/api/
   bake projection <init|plan|prepare|project|holes|export> --run <dir> [options]
                       texture a level from views an image model paints (CPU, native): the
                       caller paints each prepared view; `og bake projection` lists the steps
@@ -291,6 +291,6 @@ fn main() -> ExitCode {
 pub(crate) fn find_root(start: &Path) -> Option<PathBuf> {
     start
         .ancestors()
-        .find(|dir| dir.join(og_idl::IDL_PATH).is_file())
+        .find(|dir| dir.join(og_idl::IDL_PATH).is_dir())
         .map(Path::to_path_buf)
 }

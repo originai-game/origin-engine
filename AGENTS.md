@@ -70,6 +70,8 @@ what remains to launch, `docs/release.md`.
   the wasm host and the native host. A member that exists on one and not the
   other is a bug, not a platform difference; backend limits are reported
   through capability queries, never by missing members.
+  Edit `crates/og-api/api/<module>.ogt` for that module (`ui.ogt` for UI);
+  `prelude.ogt` holds the header and units, and `parts.txt` fixes the order.
 - **Deterministic by construction.** Fixed tick, seeded randomness owned by
   the engine, no wall-clock reads inside the tick, snapshot and restore of
   the whole world. Rendering never feeds back into simulation.

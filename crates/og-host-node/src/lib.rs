@@ -1,5 +1,5 @@
 //! Origin Engine native host (`docs/design.md` §2.1, §5): the binding
-//! symbols of `crates/og-api/api.ogt` as a napi addon (`origin-engine.node`),
+//! symbols of `crates/og-api/api/<module>.ogt` as a napi addon (`origin-engine.node`),
 //! headless, for `og run` and the executors. `packages/engine/src/node/`
 //! loads it under bun or node.
 //!

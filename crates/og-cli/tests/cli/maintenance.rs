@@ -46,7 +46,7 @@ fn api_check_passes_on_the_repository() {
         .output()
         .unwrap();
     assert!(out.status.success(), "{}", text(&out));
-    assert!(text(&out).contains("match crates/og-api/api.ogt"));
+    assert!(text(&out).contains("match crates/og-api/api"));
 }
 
 #[test]
@@ -115,7 +115,7 @@ fn api_check_detects_a_hand_edit_and_a_stray_file_and_gen_repairs_them() {
 #[test]
 fn api_gen_refuses_an_invalid_idl_and_names_the_line() {
     let root = scratch_root();
-    let idl = root.join(og_api_path());
+    let idl = root.join(og_api_path()).join("world.ogt");
     let text_in = std::fs::read_to_string(&idl).unwrap();
     std::fs::write(
         &idl,
@@ -129,6 +129,31 @@ fn api_gen_refuses_an_invalid_idl_and_names_the_line() {
     assert_eq!(out.status.code(), Some(1));
     assert!(
         text(&out).contains("unknown type `Entty`"),
+        "{}",
+        text(&out)
+    );
+    let line = text_in
+        .lines()
+        .position(|l| l.trim() == "fn spawn {")
+        .unwrap()
+        + 1;
+    assert!(
+        text(&out).contains(&format!("world.ogt:{line}:")),
+        "{}",
+        text(&out)
+    );
+    std::fs::write(
+        &idl,
+        text_in.replacen("skill og-core", "skill \"og-core", 1),
+    )
+    .unwrap();
+    let out = og()
+        .args(["api", "gen", "--root", root.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        text(&out).contains("world.ogt:2: unterminated string"),
         "{}",
         text(&out)
     );
@@ -386,17 +411,17 @@ fn api_gen_wiki_writes_only_the_wiki_and_removes_stale_pages() {
         .unwrap();
     assert!(out.status.success(), "{}", text(&out));
     assert!(!wiki.join("retired.md").exists(), "{}", text(&out));
-    let idl = std::fs::read_to_string(root.join(og_api_path())).unwrap();
-    let modules: Vec<&str> = idl
-        .lines()
-        .filter_map(|l| l.strip_prefix("module ")?.strip_suffix(" {"))
-        .collect();
+    let idl = og_idl::read(&root.join(og_api_path())).unwrap();
     let mut pages: Vec<String> = std::fs::read_dir(&wiki)
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
     pages.sort();
-    let mut want: Vec<String> = modules.iter().map(|m| format!("{m}.md")).collect();
+    let mut want: Vec<String> = idl
+        .modules
+        .iter()
+        .map(|m| format!("{}.md", m.name))
+        .collect();
     want.push("index.md".into());
     want.sort();
     assert_eq!(pages, want);

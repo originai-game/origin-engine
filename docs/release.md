@@ -135,7 +135,7 @@ testing settled on, with every gate.
 
 | Package | Contents | Built by |
 |---|---|---|
-| `@origingame/engine` | the TypeScript API and runtime (`src/`, `types/*.d.ts`, `schema/api.schema.json`, `bindings.json`), the web hosts (`dist/web`, `dist/web-publish`, `dist/web-publish-2d`, each publish directory with its lanes variant), the player shell, the Basis transcoder, `bin/og.mjs` (runs the platform package's `og` with this package as `OG_ENGINE_PACKAGE`), and `knowledge/`: `skills/og-*` (ten), `wiki/` (generated from `api.ogt`), `looks/catalogue.json`, `scaffold/` (`origin-engine.json`, `distribution.json`, the template's text), `knowledge.json`, `scripts/mount.ts` and `validate.ts` (copied from `packages/knowledge` at pack); no native code | `packages/engine/scripts/pack.sh` (`OG_RELEASE=1 build.sh --linux-x64` first): `scripts/release.sh pack` on the `macrunner` Amp runner (§3) |
+| `@origingame/engine` | the TypeScript API and runtime (`src/`, `types/*.d.ts`, `schema/api.schema.json`, `bindings.json`), the web hosts (`dist/web`, `dist/web-publish`, `dist/web-publish-2d`, each publish directory with its lanes variant), the player shell, the Basis transcoder, `bin/og.mjs` (runs the platform package's `og` with this package as `OG_ENGINE_PACKAGE`), and `knowledge/`: `skills/og-*` (ten), `wiki/` (generated from `api/<module>.ogt`), `looks/catalogue.json`, `scaffold/` (`origin-engine.json`, `distribution.json`, the template's text), `knowledge.json`, `scripts/mount.ts` and `validate.ts` (copied from `packages/knowledge` at pack); no native code | `packages/engine/scripts/pack.sh` (`OG_RELEASE=1 build.sh --linux-x64` first): `scripts/release.sh pack` on the `macrunner` Amp runner (§3) |
 | `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` | `origin-engine.node` (napi addon, `crates/og-host-node`) and `og` (`crates/og-cli`), release profile, `os`/`cpu`/`libc` so only the matching one installs, as `optionalDependencies` of the main package | both in the Mac's `scripts/release.sh pack`: linux-x64 by cargo zigbuild (glibc 2.31), darwin-arm64 natively |
 | `@origingame/engine-win32-x64` | `origin-engine.node` (MSVC napi addon) and `og.exe`, release profile, `os: win32`, `cpu: x64`; the same API, DX12 renderer, tsgo checker fallback | `build.sh --native` then `pack.sh --native` in Git Bash on the `studio-win` Amp runner (§3) |
 | `@origingame/create-game` | `bin/create.ts` (`npm create @origingame/game` runs it: npm and bun map `create @scope/name` to `@scope/create-name`, which is why the package is `create-game`, not `create`), `template/` (`templates/game`, the 3D template), `template-2d/` (`templates/game-2d`, the 2D starter `--profile 2d` writes), `archetypes/` (the eight), `looks/` (the catalogue) | `packages/create` `prepack` |
@@ -332,7 +332,7 @@ by default (a game that does not set them draws and runs exactly as
 before, which the reference frames hold), variants appended to an enum,
 fixes, frames and speed. Either way `CHANGELOG.md` has one line per IDL
 member added, changed or removed, written at the merge that changes
-`api.ogt`; a release that is compatible but large may still take a minor
+`api/<module>.ogt`; a release that is compatible but large may still take a minor
 when the owner names it. Every
 occurrence of the version is written by `scripts/release.sh bump` and
 held equal by `packages/knowledge`'s test: the three `package.json`

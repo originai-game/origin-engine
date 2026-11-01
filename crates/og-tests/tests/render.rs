@@ -209,7 +209,7 @@ fn bytemuck_bytes(v: &[f32; 3]) -> &[u8] {
 fn the_material_schema_matches_the_idl() {
     let schema = StandardMaterial::schema();
     schema.validate().expect("a valid schema");
-    let idl_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../og-api/api.ogt");
+    let idl_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../og-api/api/render.ogt");
     let idl = std::fs::read_to_string(&idl_path).expect("the IDL");
     let start = idl
         .find("struct StandardMaterialDesc {")

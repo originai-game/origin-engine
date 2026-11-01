@@ -1,5 +1,5 @@
 //! Origin Engine `og-records`: the engine-owned record and column tables
-//! generated from `api.ogt` (`og api gen` writes `src/generated/records.rs`),
+//! generated from `crates/og-api/api/` (`og api gen` writes `src/generated/records.rs`),
 //! which `og_api::host` re-exports. See `crates/og-api/README.md`.
 //!
 //! They are their own crate because most IDL edits change the host traits

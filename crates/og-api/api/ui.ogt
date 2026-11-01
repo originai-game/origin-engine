@@ -1,0 +1,4548 @@
+module ui {
+  skill og-ui
+  doc "The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the placeholder prototype style until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it."
+  doc "The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick."
+  doc "Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi(\"Slot\", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it."
+
+  enum Direction {
+    doc "Which way a container lays out its children."
+    variant row "Left to right."
+    variant column "Top to bottom."
+  }
+
+  enum Align {
+    doc "Where children sit along the main axis."
+    variant start "At the start."
+    variant center "Centred."
+    variant end "At the end."
+    variant spaceBetween "The free space split evenly between children."
+  }
+
+  enum Cross {
+    doc "Where children sit across the main axis."
+    variant start "At the start."
+    variant center "Centred."
+    variant end "At the end."
+    variant stretch "Stretched to the container's inner size."
+    variant baseline "In a row, children share their first text baseline (rows of mixed type sizes); a column treats it as start."
+  }
+
+  enum TextAlign {
+    doc "How the lines of a label align."
+    variant start "To the start (left)."
+    variant center "Centred."
+    variant end "To the end (right)."
+  }
+
+  enum FontRole {
+    doc "Which configured font text uses; display and mono fall back to body, rounded to display, then body."
+    variant body "The body font."
+    variant display "The display font."
+    variant mono "The monospaced font."
+    variant rounded "The rounded font, for levels and scores."
+  }
+
+  enum ButtonVariant {
+    doc "Button roles: how the style draws each."
+    variant secondary "A neutral fill (the default)."
+    variant primary "The primary action: one per screen."
+    variant quiet "Text until hovered."
+    variant danger "A destructive action: danger ink on the danger tint."
+  }
+
+  enum ControlSize {
+    doc "Control heights from the density (h-control-sm, -md, -lg)."
+    variant medium "The medium control height."
+    variant small "The small control height."
+    variant large "The large control height."
+  }
+
+  enum Scheme {
+    doc "The palette: games run on a stage, so dark is the default."
+    variant dark "The dark palette."
+    variant light "The light palette."
+  }
+
+  enum DensityMode {
+    doc "Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise."
+    variant auto "Touch sizes on a coarse pointer or a narrow surface, mouse sizes otherwise."
+    variant mouse "A mouse and keyboard: the tightest controls."
+    variant pad "A gamepad across a room: larger controls, rows and gutters that read from a couch."
+    variant touch "A finger: every control at least 44 CSS px."
+  }
+
+  enum ThemeColor {
+    doc "A colour role of the UI style in effect (the game's style, or the prototype style before it picks one)."
+    variant backdrop "The screen behind the UI where nothing else is."
+    variant well "A recessed ground inside a panel: wells, map frames, empty slots."
+    variant panel "Panels and cards."
+    variant panelHover "A panel under the pointer."
+    variant panelRaised "Dialogs, menus and tooltips."
+    variant line "Hairlines and frames."
+    variant lineStrong "Stronger frames: high contrast, map borders, scrollbars."
+    variant ink "The main ink."
+    variant inkMuted "Secondary ink: captions, keys, inactive tabs."
+    variant inkFaint "The faintest ink that still reads: placeholders, hints."
+    variant inkInverse "Ink on a ground of ink (a selected chip)."
+    variant control "Neutral control fills: secondary buttons, tracks, fields."
+    variant controlStrong "A neutral control hovered or pressed; selection."
+    variant primary "The one directed action: primary buttons, a slider's fill, a switch that is on, the caret."
+    variant primaryHover "primary hovered."
+    variant primaryActive "primary pressed."
+    variant onPrimary "Ink on primary."
+    variant primarySoft "A translucent wash of primary."
+    variant highlight "Emphasised ink: a speaker's name, a price, a link, the player's map dot."
+    variant focus "The focus ring of key and pad navigation."
+    variant knob "Slider and switch knobs."
+    variant hud "HUD capsules over the game (scores, timers, toasts)."
+    variant scrim "Behind a dialog."
+    variant shadow "Drop shadows."
+    variant sheen "A skeleton's passing sheen."
+    variant success "Success."
+    variant warn "Warnings."
+    variant danger "Danger and errors."
+    variant info "Information."
+    variant health "A health meter."
+    variant mana "A mana meter."
+    variant xp "An experience meter."
+    variant gold "Currency: coins, gold, prices that can be paid."
+  }
+
+  enum TypeStepName {
+    doc "A step of the style's type ramp."
+    variant body "The default step."
+    variant xs "A step of the ramp."
+    variant meta "A step of the ramp."
+    variant caption "A step of the ramp."
+    variant sm "A step of the ramp."
+    variant reading "A step of the ramp."
+    variant base "A step of the ramp."
+    variant lg "A step of the ramp."
+    variant xl "A step of the ramp."
+    variant xl2 "A step of the ramp."
+    variant xl3 "A step of the ramp."
+    variant xl4 "A step of the ramp."
+    variant xl5 "A step of the ramp."
+    variant xl6 "A step of the ramp."
+    variant xl7 "A step of the ramp."
+    variant xl8 "A step of the ramp."
+    variant displaySm "A step of the ramp."
+    variant displayMd "A step of the ramp."
+    variant displayLg "A step of the ramp."
+    variant displayXl "A step of the ramp."
+    variant displayXl2 "A step of the ramp."
+  }
+
+  struct SizeRange {
+    doc "The bounds of a fit or grow size."
+    field min f32 "The smallest size." {
+      optional true
+      unit cssPx
+    }
+    field max f32 "The largest size; absent is unbounded." {
+      optional true
+      unit cssPx
+    }
+  }
+
+  struct FixedSize {
+    doc "A fixed size."
+    field px f32 "The size." {
+      unit cssPx
+    }
+  }
+
+  struct PercentSize {
+    doc "A size relative to the parent."
+    field fraction f32 "The fraction of the parent's inner size." {
+      unit ratio
+    }
+  }
+
+  union Size {
+    doc "A size along one axis. Absent (null) is fit: the content's size."
+    tag kind
+    case fit SizeRange "The content's size, within the range."
+    case grow SizeRange "The content's size, then a share of the parent's free space, within the range."
+    case fixed FixedSize "Exactly this size."
+    case percent PercentSize "A fraction of the parent's inner size."
+  }
+
+  struct Insets {
+    doc "Padding or margins on four sides."
+    field left f32 "The left side." {
+      unit cssPx
+    }
+    field top f32 "The top side." {
+      unit cssPx
+    }
+    field right f32 "The right side." {
+      unit cssPx
+    }
+    field bottom f32 "The bottom side." {
+      unit cssPx
+    }
+  }
+
+  struct Paint {
+    doc "A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an alpha. Neither is white."
+    desc true
+    field token Option.ThemeColor "A semantic colour of the theme."
+    field color Option.Color "An sRGB colour as authored, when no token is given."
+    field alpha f32 "The opacity." {
+      default 1
+      min 0
+      max 1
+    }
+  }
+
+  struct ElementDesc {
+    doc "A container: its layout and its look."
+    desc true
+    field direction Direction "Which way it lays out its children."
+    field width Option.Size "Its width; null fits the content."
+    field height Option.Size "Its height; null fits the content."
+    field padding Insets "Space inside its edges."
+    field gap f32 "Space between children." {
+      unit cssPx
+    }
+    field align Align "Where children sit along the main axis."
+    field cross Cross "Where children sit across it."
+    field wrap bool "Break a row into lines at its inner width."
+    field scroll bool "Scroll its content vertically and clip it."
+    field scrollX bool "Scroll its content horizontally and clip it (with scroll: both ways)."
+    field interactive bool "Report a Response from close(), as a button does."
+    field background Option.Paint "Its fill; null draws none."
+    field radius f32 "Corner radius." {
+      unit cssPx
+    }
+    field frame Option.StylePart "The style frame its background takes (a HUD element, a card); null is a plain fill. Without a style the fill is drawn either way."
+    field part Option.String "The part its style dresses it as, a selector with its variant, state and attributes (`ShopCard.frame[rarity=epic][selected]`): the style's most specific matching `dress` blocks draw it, and a part the style does not dress draws from the tokens (docs/ui.md §12.3). Overrides frame; null keeps frame's."
+    field partClass Option.String "The element class whose shape language and elevation an undressed part takes: panel, dialog, card, tooltip, button, field, chip, badge, tab, slot, bar, hud, avatar; null is card."
+    field aspect f32 "Width over height (0: none): with the height left to fit, it is as tall as its laid-out width over this; with a fixed height and the width left to fit, as wide as the height times it." {
+      min 0
+    }
+  }
+
+  struct LabelDesc {
+    doc "How a label draws its text."
+    desc true
+    field step Option.TypeStepName "The type step; null is body."
+    field color Option.Paint "The ink; null is ink."
+    field align TextAlign "How the lines align."
+    field nowrap bool "Keep to one line (breaking only at `\\n`)."
+    field width Option.Size "Its width; null fits the text."
+    field font FontRole "Which font."
+    field heading bool "A heading: a style with a flourish frames it."
+    field ellipsis bool "Cut with an ellipsis where the text does not fit its width: on its one line (with nowrap; the label can then shrink in a row) or on its last line (maxLines). The probe still reads the whole text."
+    field maxLines u32 "The most lines a wrapping label shows; 0 is no limit. With ellipsis the last ends in an ellipsis when text is left out."
+  }
+
+  struct ButtonDesc {
+    doc "A button's look."
+    desc true
+    field variant ButtonVariant "The look."
+    field size ControlSize "The control height."
+    field disabled bool "Neutral and inert."
+    field width Option.Size "Its width; null fits the label."
+    field autofocus bool "Take the focus when it appears (it was not on screen the tick before) and no dialog is open: what opens takes the focus (og-ui §4), so a menu's first item answers Enter and the pad's A from its first tick. og.ui.mainMenu's first item has it."
+  }
+
+  struct PanelDesc {
+    doc "A card: panel, the panel radius, padded and spaced by the style."
+    desc true
+    field row bool "Lay children left to right (the default is top to bottom)."
+    field width Option.Size "Its width; null fits the content."
+    field height Option.Size "Its height; null fits the content."
+    field padding Option.Insets "Space inside; null is space.lg on every side."
+    field gap Option.f32 "Space between children; null is space.md."
+    field align Align "Where children sit along the main axis."
+    field cross Cross "Where children sit across it."
+    field background Option.Paint "Its fill; null is panel."
+  }
+
+  enum ScrollAxes {
+    doc "Which ways a scroll container scrolls."
+    variant vertical "Up and down (the default)."
+    variant horizontal "Left and right."
+    variant both "Both ways."
+  }
+
+  struct ScrollDesc {
+    doc "A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it."
+    desc true
+    field width Option.Size "Its width; null fits the content."
+    field height Option.Size "Its height; null fits the content."
+    field padding Insets "Space inside."
+    field gap f32 "Space between children." {
+      unit cssPx
+    }
+    field axes ScrollAxes "Which ways it scrolls."
+  }
+
+  struct ImageDesc {
+    doc "A texture region, or a solid rectangle without a texture."
+    desc true
+    field texture Option.Texture "The texture; null draws a solid rectangle of the tint."
+    field uv Option.Array.f32.4 "The region drawn, [u0, v0, u1, v1] with v down; null is the whole texture."
+    field tint Option.Paint "Multiplies the texture; null is white."
+    field width Option.Size "Its width; null fits."
+    field height Option.Size "Its height; null fits."
+    field aspect f32 "Width over height (0: none): with the height left to fit, the image is as tall as its laid-out width over this (a growing column keeps a picture's proportions); with a fixed height and the width left to fit, as wide as the height times it." {
+      min 0
+    }
+    field label String "What a screen reader calls it (and the probe's text): a picture that means something (a portrait, a star earned) names it in the game's words; empty is decoration."
+  }
+
+  struct ZoomViewDesc {
+    doc "A zoomable picture (a map, an artwork): what it shows and its zoom limits."
+    desc true
+    field texture Option.Texture "The picture; null draws a solid rectangle of the tint."
+    field uv Option.Array.f32.4 "The picture's region, [u0, v0, u1, v1] with v down; null is the whole texture."
+    field tint Option.Paint "Multiplies the texture; null is white."
+    field width Option.Size "Its width; null fits."
+    field height Option.Size "Its height; null fits."
+    field aspect f32 "Width over height (0: none), as ImageDesc.aspect." {
+      min 0
+    }
+    field minZoom f32 "The least zoom; 0 is 1 (the whole picture)." {
+      min 0
+    }
+    field maxZoom f32 "The most zoom; 0 is 4." {
+      min 0
+    }
+  }
+
+  struct ZoomResult {
+    doc "Where a zoom view is."
+    field zoom f32 "Its zoom: 1 shows the whole picture, 2 half of it each way."
+    field centerX f32 "The middle of what it shows, as a fraction of the picture's width (0.5 at rest)."
+    field centerY f32 "The middle of what it shows, as a fraction of the picture's height (0.5 at rest)."
+  }
+
+  struct ProgressDesc {
+    doc "A progress bar."
+    desc true
+    field width Option.Size "Its width; null grows into the free space."
+  }
+
+  struct SliderDesc {
+    doc "A slider's range and width."
+    desc true
+    field min f32 "The smallest value; min equal to max (the zero value) means 0 to 1."
+    field max f32 "The largest value."
+    field step f32 "Snap to multiples of step from min; 0 is continuous." {
+      min 0
+    }
+    field width Option.Size "Its width; null grows."
+  }
+
+  struct FieldDesc {
+    doc "A one-line text field."
+    desc true
+    field placeholder String "Shown, dimmed, while the field is empty."
+    field width Option.Size "Its width; null grows."
+    field maxChars u32 "The most characters it takes; 0 is no limit."
+  }
+
+  struct TextAreaDesc {
+    doc "A multi-line text area."
+    desc true
+    field placeholder String "Shown, dimmed, while the area is empty."
+    field width Option.Size "Its width; null grows."
+    field rows u32 "Lines shown at once; 0 is 4. More scroll."
+    field maxChars u32 "The most characters it takes, line breaks included; 0 is no limit."
+  }
+
+  struct Response {
+    doc "What happened to an element this tick. Edges (clicked, changed, submitted) are true for exactly one tick."
+    field hovered bool "The pointer is over it and no other element holds the press."
+    field pressed bool "The press that started on it is still held."
+    field clicked bool "Pressed and released inside it."
+    field changed bool "Its value changed (slider, toggle, text field)."
+    field focused bool "It has focus: a text field being edited, or the control keyboard and gamepad navigation landed on."
+    field submitted bool "Enter was pressed in it (text field)."
+    field dropped Option.u32 "A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop)."
+    field pad Option.u32 "The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer)."
+    field focusedBy u32 "Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads)."
+  }
+
+  struct SliderResult {
+    doc "A slider's response and its value after this tick's input."
+    field response Response "What happened to it."
+    field value f32 "The value, to keep in game state and pass back next tick."
+  }
+
+  struct ToggleResult {
+    doc "A toggle's response and its state after this tick's input."
+    field response Response "What happened to it."
+    field on bool "The state, to keep in game state and pass back next tick."
+  }
+
+  struct FieldResult {
+    doc "A text field's response and its text after this tick's input."
+    field response Response "What happened to it."
+    field value String "The text, to keep in game state and pass back next tick."
+  }
+
+  struct Viewport {
+    doc "The play surface the UI lays out in."
+    field width f32 "Its width." {
+      unit cssPx
+    }
+    field height f32 "Its height." {
+      unit cssPx
+    }
+    field dpr f32 "Device pixels per CSS pixel; rectangles snap to device pixels." {
+      default 1
+    }
+    field safeArea Insets "The device's unsafe margins (notch, home indicator); the root pads by them."
+    field coarsePointer bool "A touch screen or another coarse pointer."
+    field reducedMotion bool "The page prefers reduced motion (prefers-reduced-motion: reduce, from the web shell): the UI's theme only fades, whatever UiDesc.reducedMotion says. Omitted is false." {
+      optional true
+    }
+    field highContrast bool "The page prefers more contrast (prefers-contrast: more, from the web shell): the UI's theme is the high-contrast one, whatever UiDesc.contrast says. Omitted is false." {
+      optional true
+    }
+    field reducedTransparency bool "The page prefers less transparency (prefers-reduced-transparency: reduce, from the web shell): glass parts are opaque surfaces and the scrim and translucent fills flat, whatever UiDesc.reducedTransparency says (UiTheme.reducedTransparency). Omitted is false." {
+      optional true
+    }
+    field macKeys bool "Text controls take macOS's editing keys: Command with A, C, X and Z, Command+←/→ to the line's ends (↑/↓ the text's), Option+←/→ and Option+Backspace by words, Control+A and E to the line's ends. Off: Control takes the shortcuts and moves by words (Alt too), Home and End go to the line's ends. The web shell sets it from the browser's platform (Apple's); a native host sets it on macOS, so a script that holds Ctrl or Meta edits as a person on that OS would (og.ui.previewViewport pins either). Omitted is false." {
+      optional true
+    }
+    field covered UiRect "Where the host's own control covers the surface: on a published page the web shell's round Back to the Portal, top left (about 12, 12 to 52, 52 CSS px; its name shows beside it for the first seconds of play). Anchored groups keep out of it, moved along the edge they sit on (a top-left group to its right), so the HUD templates never draw under it; a game drawing its own corner reads it from og.ui.frameViewport. Empty (omitted) is none: native hosts and pages without Back." {
+      optional true
+    }
+    field breakpoint Breakpoint "Its size class: phone portrait or landscape, tablet, desktop."
+  }
+
+  struct UiDesc {
+    doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it."
+    desc true
+    field scheme Scheme "The palette."
+    field density DensityMode "The control sizes."
+    field font Option.Font "The body font, from og.load.font; null measures text at half an em per character and draws none."
+    field displayFont Option.Font "The display font; null uses the body font."
+    field monoFont Option.Font "The monospaced font; null uses the body font."
+    field roundedFont Option.Font "The rounded font (levels and scores); null uses the display font, then the body font."
+    field fallbackFonts List.Font "Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole. A text mixing scripts takes each run from the first font that has it (the role's for its Latin, a fallback for its CJK or Arabic), one label in several fonts."
+    field contrast Contrast "Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast)."
+    field primaryColor Option.Color "An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's."
+    field reducedMotion bool "Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion)."
+    field reducedTransparency bool "Nothing is see-through: glass parts (a style's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on."
+    field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from; null takes the style's."
+    field toastAnchor Option.Anchor "Where toasts stack; null is the bottom centre."
+    field style Option.Style "A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style, the engine's placeholder."
+    field sounds Option.UiSounds "Sounds for UI events (they win over the style's)."
+  }
+
+  struct UiSounds {
+    doc "Sounds the UI plays through og-audio (the ui bus) on its events; null is silent."
+    desc true
+    field hover Option.Sound "The pointer reaches a control, or keyboard or gamepad focus moves to one."
+    field press Option.Sound "A control is pressed: by the pointer, Enter, Space or the gamepad's A."
+    field open Option.Sound "A dialog opens."
+    field close Option.Sound "A dialog closes."
+    field success Option.Sound "A success toast."
+    field error Option.Sound "A refused press or a danger toast."
+  }
+
+  enum StylePart {
+    doc "An element class a style dresses with a nine-slice frame."
+    variant panel "Dialogs and screen panels."
+    variant card "Cards."
+    variant button "Buttons (with hover, pressed and disabled states)."
+    variant field "Text fields."
+    variant slot "Inventory and grid cells."
+    variant tooltip "Tooltips."
+    variant hud "HUD elements over the game (counters, timers) and toasts."
+    variant track "A progress bar's track."
+  }
+
+  struct TypeStep {
+    doc "One step of the type ramp."
+    field size f32 "The font size." {
+      unit cssPx
+    }
+    field lineHeight f32 "The leading of Latin text." {
+      unit cssPx
+    }
+    field trackingEm f32 "Latin tracking, in em."
+    field cjkLineHeight f32 "The leading text with Chinese, Japanese or Korean characters takes." {
+      unit cssPx
+    }
+  }
+
+  struct ControlSizes {
+    doc "The control, row and header heights and the gutter of the density in effect."
+    field controlSm f32 "A small control's height." {
+      unit cssPx
+    }
+    field controlMd f32 "A control's height." {
+      unit cssPx
+    }
+    field controlLg f32 "A large control's height." {
+      unit cssPx
+    }
+    field gutter f32 "The gutter." {
+      unit cssPx
+    }
+    field header f32 "The header height." {
+      unit cssPx
+    }
+    field row f32 "The row height." {
+      unit cssPx
+    }
+    field section f32 "The section spacing." {
+      unit cssPx
+    }
+  }
+
+  struct UiTheme {
+    doc "The style values the UI draws with, read-only."
+    field scheme Scheme "The palette in use."
+    field palette Map.String "Each ThemeColor as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
+    field space Map.f32 "The spacing scale by name (xxs, xs, sm, md, lg, xl, xxl, xl3), in CSS pixels."
+    field radius Map.f32 "The corner radii by name (small, control, bar, panel), in CSS pixels."
+    field typeRamp Map.TypeStep "Each TypeStepName's step."
+    field sizes ControlSizes "The control sizes of the density in effect."
+    field durationsMs Map.f32 "The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds."
+    field style String "The configured style's name; empty for the prototype style."
+    field contrast Contrast "The variant in effect: high when the game asked for it or the page prefers more contrast."
+    field reducedMotion bool "Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement."
+    field reducedTransparency bool "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
+    field tokens Json "The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric, at each breakpoint: size, lineHeight, trackingEm, weight, font), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
+  }
+
+  callback UiBuild {
+    doc "Builds a container's children: ui calls made inside it nest under the container."
+  }
+
+  fn configure {
+    doc "Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the prototype style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text."
+    param world World "The world whose UI is configured."
+    param desc UiDesc "The fields to change; the others keep their values."
+    returns Result.Void "Refused for a dead font or style, or a desc that is not an object."
+  }
+
+  fn viewport {
+    doc "This tick's play surface: the render target's size in CSS pixels, its DPR and safe area, as the host reports them."
+    param world World "The world."
+    returns Viewport
+  }
+
+  fn theme {
+    doc "The style values the UI draws with."
+    param world World "The world."
+    returns UiTheme
+  }
+
+  fn open {
+    doc "Open a container; the calls until its close() build its children."
+    param id String "Its id, unique among its siblings."
+    param desc ElementDesc "Its layout and look."
+    returns Void
+  }
+
+  fn openPanel {
+    doc "Open a card, closed by close(): og.ui.panel without the callback."
+    param id String "Its id."
+    param desc PanelDesc "Its layout and look."
+    returns Void
+  }
+
+  fn openScroll {
+    doc "Open a vertical scroll container, closed by close(): og.ui.scroll without the callback."
+    param id String "Its id."
+    param desc ScrollDesc "Its size and spacing."
+    returns Void
+  }
+
+  fn close {
+    doc "Close the open container."
+    returns Response "Its response, for an interactive container; the zero response otherwise."
+  }
+
+  fn row {
+    doc "A row built by `build`: open(id, {...desc, direction: row}), build(), close()."
+    host false
+    param id String "Its id."
+    param desc ElementDesc "Its layout and look; direction is row."
+    param build UiBuild "Makes its children."
+    returns Response "Its response, for an interactive row."
+  }
+
+  fn column {
+    doc "A column built by `build`: open(id, {...desc, direction: column}), build(), close()."
+    host false
+    param id String "Its id."
+    param desc ElementDesc "Its layout and look; direction is column."
+    param build UiBuild "Makes its children."
+    returns Response "Its response, for an interactive column."
+  }
+
+  fn panel {
+    doc "A card built by `build`: openPanel(id, desc), build(), close()."
+    host false
+    param id String "Its id."
+    param desc PanelDesc "Its layout and look."
+    param build UiBuild "Makes its children."
+    returns Void
+  }
+
+  fn scroll {
+    doc "A vertical scroll container built by `build`: openScroll(id, desc), build(), close()."
+    host false
+    param id String "Its id."
+    param desc ScrollDesc "Its size and spacing."
+    param build UiBuild "Makes its children."
+    returns Void
+  }
+
+  struct RichTextDesc {
+    doc "How a rich text paragraph draws: its defaults, which its markup's spans override."
+    desc true
+    field step Option.TypeStepName "The type step; null is body."
+    field color Option.Paint "The ink; null is ink."
+    field align TextAlign "How the lines align."
+    field nowrap bool "Keep to one line (breaking only at `\\n`)."
+    field width Option.Size "Its width; null fits the text."
+    field font FontRole "Which font."
+  }
+
+  struct RichTextResult {
+    doc "What a rich text's links did this tick."
+    field response Response "Its links together: hovered while one is, clicked when one was."
+    field link Option.String "The link clicked this tick: its `[link=…]` id."
+    field hovered Option.String "The link under the pointer."
+  }
+
+  fn richText {
+    doc "A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the style), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning."
+    param id String "Its id."
+    param markup String "The markup."
+    param desc RichTextDesc "Defaults for its spans: type step, ink, alignment, wrapping, width and font."
+    returns RichTextResult
+  }
+
+  fn label {
+    doc "MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text."
+    param id String "Its id."
+    param text String "The text."
+    param desc LabelDesc "Type step, ink, alignment, wrapping, width and font."
+    returns Void
+  }
+
+  fn button {
+    doc "A button with a label; `clicked` is a press and a release inside it. The probe reads its label."
+    param id String "Its id."
+    param text String "The label."
+    param desc ButtonDesc "Variant, size, disabled and width."
+    returns Response
+  }
+
+  fn image {
+    doc "A texture region, or a solid rectangle; with ImageDesc.aspect, a fitting side follows the other."
+    param id String "Its id."
+    param desc ImageDesc "Texture, region, tint, size and aspect ratio."
+    returns Void
+  }
+
+  fn zoomView {
+    doc "A zoomable picture (a map, an artwork): two fingers pinch it to zoom about their centre and pan it as they move (og.Pointers), the wheel zooms about the pointer, a drag pans; Tab or a pad focuses it, and then + (= and the keypad's) and - zoom it about its centre, 0 fits it again and the arrows pan it a tenth of its size. It stays on its picture and within its zoom limits; its zoom and centre are UI state (snapshots carry them). Two fingers over a scroll container scroll it the same way, and fling it as they lift. The probe reads its zoom as its value."
+    param id String "Its id."
+    param desc ZoomViewDesc "The picture, its size and zoom limits."
+    returns ZoomResult
+  }
+
+  fn progress {
+    doc "A track filled to a fraction."
+    param id String "Its id."
+    param value f32 "How full it is, from 0 to 1."
+    param desc ProgressDesc "Its width."
+    returns Void
+  }
+
+  fn slider {
+    doc "A track with a fill and a thumb: a press anywhere on it sets the value and dragging follows. Pass back the value it answers next tick."
+    param id String "Its id."
+    param value f32 "The value from game state."
+    param desc SliderDesc "Range, step and width."
+    returns SliderResult
+  }
+
+  fn toggle {
+    doc "A switch with a label; a click flips it. Pass back the state it answers next tick. The probe reads its label."
+    param id String "Its id."
+    param on bool "The state from game state."
+    param label String "The label."
+    returns ToggleResult
+  }
+
+  fn textField {
+    doc "One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text (og.input's TextInput events: the page's typing, the probe's type: and commit:; until a world has had one, a printable key pressed types its US-layout character, and after it keys only edit) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects, Alt or Ctrl with them moves or deletes by words (Ctrl with Home and End: the text's ends); Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell), with Z undoes and with Shift+Z or Y redoes (a history of 100 steps per field, typing undone a word at a time; a text the game sets starts it again); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty."
+    param id String "Its id."
+    param value String "The text from game state."
+    param desc FieldDesc "Placeholder, width and length limit."
+    returns FieldResult
+  }
+
+  fn textArea {
+    doc "Several lines of text: textField's editing, with Enter starting a new line, Up and Down moving between lines and Home and End to a line's ends, a triple click selecting the line between its breaks, the text wrapped between words at the area's width and scrolled to keep the caret's line in view (a drag above or below the area scrolls it, faster the further out). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty."
+    param id String "Its id."
+    param value String "The text from game state."
+    param desc TextAreaDesc "Placeholder, width, rows and length limit."
+    returns FieldResult
+  }
+
+  fn tooltip {
+    doc "A tooltip for the element just built: shown below it (above without room) once the pointer has rested on it for the slow motion duration, drawn over everything. The probe reads its text."
+    param text String "The text."
+    returns Void
+  }
+
+  fn idi {
+    doc "The id of the index-th of several siblings of one name: `idi(\"Slot\", 3)` is `Slot#3`."
+    host false
+    param name String "The name."
+    param index u32 "The index."
+    returns String
+  }
+
+  # ── the game widget set ─────────────────────────────────────────────────
+
+  enum Anchor {
+    doc "A point of the safe area an anchored group sits at."
+    variant topLeft "The top left corner."
+    variant top "The middle of the top edge."
+    variant topRight "The top right corner."
+    variant left "The middle of the left edge."
+    variant center "The centre."
+    variant right "The middle of the right edge."
+    variant bottomLeft "The bottom left corner."
+    variant bottom "The middle of the bottom edge."
+    variant bottomRight "The bottom right corner."
+  }
+
+  enum TransitionKind {
+    doc "How a transition moves its content in and out. Under reduced motion every kind only fades."
+    variant fade "Opacity only."
+    variant slideUp "Rises into place from below."
+    variant slideDown "Drops into place from above."
+    variant slideLeft "Enters from the right."
+    variant slideRight "Enters from the left."
+    variant scale "Grows from slightly smaller around its centre."
+    variant pop "Springs up from smaller around its centre, overshoots and settles."
+  }
+
+  enum Tone {
+    doc "A status tone of badges, toasts and map markers."
+    variant neutral "Neutral: control fill and muted ink."
+    variant success "Success."
+    variant warn "Warning (orange)."
+    variant danger "Danger."
+    variant info "Information."
+    variant primary "The game's identity: the primary's soft wash and highlight ink."
+    variant inverse "Neutral emphasis: ink fill, inverse ink."
+  }
+
+  enum MeterKind {
+    doc "What a meter measures, which sets its colour."
+    variant health "health; warn under 30 %, danger under 15 %."
+    variant mana "mana."
+    variant xp "xp."
+    variant primary "primary."
+  }
+
+  enum Breakpoint {
+    doc "The play surface's size class."
+    variant desktop "1024 CSS px wide or more, the shorter side 600 or more."
+    variant tablet "The shorter side 600 or more, under 1024 wide."
+    variant phoneLandscape "The shorter side under 600, wider than tall."
+    variant phonePortrait "The shorter side under 600, taller than wide."
+  }
+
+  enum Contrast {
+    doc "The theme variant: high contrast remaps muted inks, fills and lines to the style's stronger ones and outlines every control (no new colour)."
+    variant standard "The style's palette as it is."
+    variant high "Stronger inks, fills and edges."
+  }
+
+  enum NavIntent {
+    doc "A focus-navigation intent, as the arrow keys, Tab, Enter, Space, Escape and a gamepad's d-pad, stick, A and B give."
+    variant up "Up."
+    variant down "Down."
+    variant left "Left."
+    variant right "Right."
+    variant next "The next control in reading order (Tab)."
+    variant prev "The previous one (Shift+Tab)."
+    variant activate "Press the focused control (Enter, Space, A)."
+    variant back "Leave: the topmost dialog or menu closes, else og.ui.back() answers true (Escape, B)."
+  }
+
+  struct UiRect {
+    doc "A rectangle of the play surface."
+    field x f32 "Its left edge." {
+      unit cssPx
+    }
+    field y f32 "Its top edge." {
+      unit cssPx
+    }
+    field width f32 "Its width." {
+      unit cssPx
+    }
+    field height f32 "Its height." {
+      unit cssPx
+    }
+  }
+
+  struct IconAtlasDesc {
+    doc "The icon atlas: a texture of equal cells in a grid, named in reading order, or an icon set cooked like a font (font)."
+    desc true
+    field font Option.Font "An icon set from og.load.font (an `.ogt` of `type icons` naming SVGs, such as the UI kit's iconoir set): its icons are distance-field glyphs, crisp at any size and tinted by their ink, named by the set; texture, columns, rows and names are then not used."
+    field texture Option.Texture "The atlas texture, from og.load.texture."
+    field columns u32 "Cells across." {
+      default 1
+      min 1
+    }
+    field rows u32 "Cells down." {
+      default 1
+      min 1
+    }
+    field names List.String "Each cell's name, in reading order: og.ui.icon draws a cell by its name."
+  }
+
+  struct AnchorDesc {
+    doc "An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls)."
+    desc true
+    field anchor Anchor "Where it sits."
+    field margin Option.f32 "The inset from the safe area's edges, the same on every edge: a margin wide enough to keep a top-left HUD over a centred portrait play field also pushes it that far down (use offsetX for the sideways shift, or a width); null is the density's gutter."
+    field offsetX f32 "Moves it right after placing." {
+      unit cssPx
+    }
+    field offsetY f32 "Moves it down after placing." {
+      unit cssPx
+    }
+    field direction Direction "Which way it lays out its children."
+    field gap f32 "Space between children." {
+      unit cssPx
+    }
+    field padding Insets "Space inside its edges."
+    field align Align "Where children sit along the main axis."
+    field cross Cross "Where children sit across it."
+    field background Option.Paint "Its fill; null draws none."
+    field radius f32 "Corner radius." {
+      unit cssPx
+    }
+    field width Option.Size "Its width; null fits the content."
+    field height Option.Size "Its height; null fits the content."
+    field over bool "Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them."
+    field frame Option.StylePart "The style frame its background takes; null is the panel's."
+    field instant bool "Shown settled the first time it is built: no style entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap."
+  }
+
+  struct TransitionDesc {
+    doc "How a transition moves, timed in ticks from the style's motion."
+    desc true
+    field kind TransitionKind "The movement."
+    field durationMs f32 "How long entering and leaving take; 0 is motion.duration.base (240 ms)." {
+      unit ms
+      min 0
+    }
+    field distance f32 "How far slides travel; 0 is space.xl." {
+      unit cssPx
+      min 0
+    }
+    field instant bool "Shown at once the first time it is built (no entrance)."
+  }
+
+  struct Presence {
+    doc "Where a transition or dialog is this tick."
+    field visible bool "Build its content: shown, entering or leaving."
+    field progress f32 "0 gone, 1 settled." {
+      unit ratio
+    }
+    field entering bool "Moving in."
+    field leaving bool "Moving out."
+  }
+
+  struct ModalDesc {
+    doc "A dialog: a scrim over everything and a centred panel. Focus moves in and stays while it is the topmost; Back and the backdrop dismiss it unless locked."
+    desc true
+    field title String "A title over the content; empty is none."
+    field width Option.Size "The panel's width; null is 420 CSS px, at most the surface less its gutters."
+    field locked bool "Back and the backdrop do not dismiss it (a choice must be made)."
+    field ignoreBackdrop bool "A press on the backdrop does not dismiss it."
+    field transition Option.TransitionKind "How it enters and leaves; null is scale."
+    field backdrop Option.Paint "The backdrop's fill; null is scrim."
+    field bare bool "No panel: the content sits centred on the backdrop (full-screen menus, loading)."
+  }
+
+  struct ModalResult {
+    doc "A dialog's answer this tick."
+    field visible bool "Build its content (open, or leaving)."
+    field dismissed bool "Back or a press on the backdrop asked to close it: set your open flag false."
+  }
+
+  struct SpotlightDesc {
+    doc "A spotlight: the surface dimmed except a hole around a target."
+    desc true
+    field padding f32 "Room around the target; 0 is space.sm." {
+      unit cssPx
+      min 0
+    }
+  }
+
+  struct ListDesc {
+    doc "A virtualised list: only the rows in view (and one more each side) are built, fillers keep the scroll range of every row."
+    desc true
+    field count u32 "How many rows there are."
+    field rowHeight f32 "Every row's height; 0 is the density's row height." {
+      unit cssPx
+      min 0
+    }
+    field gap f32 "Space between rows." {
+      unit cssPx
+    }
+    field width Option.Size "Its width; null fits."
+    field height Option.Size "Its height (it scrolls inside); null grows."
+    field padding Insets "Space inside."
+    field selected Option.u32 "The selected row (controlStrong), for og.ui.list."
+  }
+
+  struct ListRange {
+    doc "The rows (or cells) to build this tick: first up to, not including, last."
+    field first u32 "The first index."
+    field last u32 "One past the last index."
+  }
+
+  struct ListResult {
+    doc "What happened in a list or grid this tick."
+    field clicked Option.u32 "The row or cell pressed (or activated) this tick."
+    field dropFrom Option.u32 "A drag and drop ended: the index it started on."
+    field dropTo Option.u32 "And the index it was released over."
+  }
+
+  struct GridDesc {
+    doc "A virtualised grid of equal cells (inventories, level select), scrolling vertically."
+    desc true
+    field count u32 "How many cells there are."
+    field cellWidth f32 "A cell's width; 0 is 64 (never under the 44 px touch target). With columns set and a width other than fit, the cells share the grid's width instead, as wide as it allows (never under the touch target), and keep their height." {
+      unit cssPx
+      min 0
+    }
+    field cellHeight f32 "A cell's height; 0 is its width." {
+      unit cssPx
+      min 0
+    }
+    field columns u32 "Cells across, exactly, whatever the width: a fit grid is that many cells of cellWidth, any other the cells share; 0 is as many cells of cellWidth as fit."
+    field gap f32 "Space between cells; 0 is space.sm." {
+      unit cssPx
+      min 0
+    }
+    field width Option.Size "Its width; null fits (exactly the columns when columns is set)."
+    field height Option.Size "Its height; null grows."
+    field padding Insets "Space inside."
+    field selected Option.u32 "The selected cell, for og.ui.grid."
+  }
+
+  struct TabsDesc {
+    doc "A segmented control of tabs."
+    desc true
+    field fill bool "Equal segments across the width."
+    field width Option.Size "Its width; null fits (grows with fill)."
+    field label String "What a screen reader calls the row of tabs (its accessible name), never drawn; empty is its id. A localised game passes its string table's."
+  }
+
+  struct ChoiceResult {
+    doc "A choice control's response and the chosen index after this tick's input."
+    field response Response "What happened to it; changed when the choice moved."
+    field selected u32 "The chosen index, to keep in game state and pass back next tick."
+  }
+
+  struct SelectDesc {
+    doc "A select: a trigger that opens a menu of options."
+    desc true
+    field placeholder String "Shown while nothing is chosen."
+    field width Option.Size "Its width; null grows from 160."
+    field disabled bool "Neutral and inert."
+    field label String "What a screen reader calls it (its accessible name; the chosen option is its value), never drawn; empty is its id. A localised game passes its string table's."
+  }
+
+  struct StepperDesc {
+    doc "A number stepper's range, step and digits."
+    desc true
+    field min f32 "The smallest value; min equal to max (the zero value) is unbounded."
+    field max f32 "The largest value."
+    field step f32 "How much a press changes it; 0 is 1." {
+      min 0
+    }
+    field decimals u32 "Digits after the point." {
+      max 6
+    }
+  }
+
+  struct StepperResult {
+    doc "A stepper's response and value after this tick's input."
+    field response Response "What happened to it."
+    field value f32 "The value, to keep in game state and pass back next tick."
+  }
+
+  struct RadioDesc {
+    doc "How a radio group lays out, and its name."
+    desc true
+    field horizontal bool "Options in a row (the default is a column)."
+    field label String "What a screen reader calls the group (its accessible name), never drawn; empty is its id. A localised game passes its string table's."
+  }
+
+  struct CheckListResult {
+    doc "A checkbox list's response and values after this tick's input."
+    field response Response "What happened to it; changed when any box flipped."
+    field values List.bool "The values, to keep in game state and pass back next tick."
+  }
+
+  struct ToastDesc {
+    doc "A toast's tone and time."
+    desc true
+    field tone Tone "Its tone: a dot of the tone's colour before the text."
+    field durationMs f32 "How long it stays; 0 is 3200 ms (6000 for danger)." {
+      unit ms
+      min 0
+    }
+  }
+
+  struct ChipDesc {
+    doc "A chip's state."
+    desc true
+    field selected bool "Selected: inverted to ink."
+    field disabled bool "Neutral and inert."
+  }
+
+  struct MeterDesc {
+    doc "A meter: a track with a fill that animates its changes by the tick."
+    desc true
+    field kind MeterKind "What it measures, which sets its colour."
+    field color Option.Paint "A colour of your own instead of the kind's."
+    field label String "Text inside the bar (such as `75 / 100`); empty is none."
+    field width Option.Size "Its width; null grows."
+    field height f32 "Its height; 0 is space.md, or the caption's line with a label." {
+      unit cssPx
+      min 0
+    }
+    field segments u32 "Notches dividing it into this many parts; 0 or 1 is none."
+  }
+
+  struct CooldownDesc {
+    doc "A cooldown ring's size and centre."
+    desc true
+    field size f32 "Its diameter; 0 is 56 (never under 44)." {
+      unit cssPx
+      min 0
+    }
+    field label String "Text in the middle (a key, seconds left); empty is none."
+    field icon String "An icon of the atlas in the middle, by name; empty is none."
+  }
+
+  struct IconDesc {
+    doc "An icon's size, ink and name."
+    desc true
+    field size f32 "Its size; 0 is 24." {
+      unit cssPx
+      min 0
+    }
+    field tint Option.Paint "Its ink; null is ink."
+    field label Option.String "What a screen reader calls it (and the probe's text): null is the icon's name in the atlas (an English word: `star`); empty is decoration, named by nothing, so a card or button it sits on is named by its other text. A localised game names a meaningful icon from its string table."
+  }
+
+  struct MapMarker {
+    doc "A marker on a mini-map."
+    desc true
+    field x f32 "Across the map, 0 to 1." {
+      unit ratio
+    }
+    field y f32 "Down the map, 0 to 1." {
+      unit ratio
+    }
+    field tone Tone "Its colour; neutral is the stage ink."
+    field player bool "The player: the primary, larger, ringed."
+  }
+
+  struct MinimapDesc {
+    doc "A mini-map frame."
+    desc true
+    field texture Option.Texture "The map; null is the stage colour."
+    field uv Option.Array.f32.4 "The region of the map shown, [u0, v0, u1, v1]; null is the whole texture."
+    field size f32 "Its side; 0 is 160." {
+      unit cssPx
+      min 0
+    }
+    field markers List.MapMarker "Markers over the map."
+    field label String "A zone name under it; empty is none."
+  }
+
+  struct DialogueDesc {
+    doc "A dialogue box: a portrait slot, the speaker and the line typed out by the tick."
+    desc true
+    field speaker String "Who speaks (primary ink)."
+    field text String "The line. A new text starts typing again."
+    field portrait Option.Texture "A portrait texture; null is the speaker's initial."
+    field portraitUv Option.Array.f32.4 "The portrait's region of the texture; null is the whole texture."
+    field portraitIcon String "A portrait from the icon atlas by name, when no texture is given; empty is the speaker's initial."
+    field charsPerSecond f32 "Typing speed; 0 is 40." {
+      min 0
+    }
+    field portraitRight bool "The portrait on the right."
+  }
+
+  struct DialogueResult {
+    doc "A dialogue box's answer this tick."
+    field shown u32 "Characters shown."
+    field done bool "The whole line is shown."
+    field advanced bool "Pressed (or activated) while done: show the next line."
+  }
+
+  struct JoystickDesc {
+    doc "A virtual joystick."
+    desc true
+    field size f32 "The base's diameter; 0 is 128 (never under three touch targets)." {
+      unit cssPx
+      min 0
+    }
+    field deadZone f32 "The ignored radius; 0 is 0.15." {
+      unit ratio
+      min 0
+      max 1
+    }
+  }
+
+  struct JoystickResult {
+    doc "A joystick's vector this tick."
+    field x f32 "-1 left to 1 right; 0 inside the dead zone."
+    field y f32 "-1 up to 1 down; 0 inside the dead zone."
+    field active bool "A press that started on it is held."
+  }
+
+  struct DpadDesc {
+    doc "A d-pad."
+    desc true
+    field size f32 "The pad's size; 0 is 132 (each arm at least 44)." {
+      unit cssPx
+      min 0
+    }
+  }
+
+  struct DpadResult {
+    doc "Which arms of a d-pad are held this tick."
+    field up bool "Up is held."
+    field down bool "Down is held."
+    field left bool "Left is held."
+    field right bool "Right is held."
+  }
+
+  struct ActionButtonDesc {
+    doc "A square touch action button (jump, fire), cornered by the style's control radius."
+    desc true
+    field size f32 "Its side; 0 is 64 (never under 44)." {
+      unit cssPx
+      min 0
+    }
+    field primary bool "The primary button (one per screen)."
+    field icon String "An icon of the atlas by name, instead of the label; empty is the label."
+  }
+
+  struct SkeletonDesc {
+    doc "A skeleton: the neutral fill standing in for content that is loading."
+    desc true
+    field width Option.Size "Its width; null grows."
+    field height f32 "A line's height; 0 is the body size." {
+      unit cssPx
+      min 0
+    }
+    field lines u32 "Stacked lines; 0 or 1 is one, the last of several is shorter."
+  }
+
+  callback UiItemBuild {
+    doc "Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it."
+    param index u32 "Its index."
+  }
+
+  fn breakpoint {
+    doc "The size class of the play surface of the frame being built (desktop outside a frame)."
+    returns Breakpoint
+  }
+
+  fn frameViewport {
+    doc "The play surface of the frame being built: og.ui.viewport without the world, for code that only builds UI."
+    returns Viewport
+  }
+
+  fn hasIcon {
+    doc "Whether the icon atlas has an icon of this name (templates draw a fallback otherwise)."
+    param name String "The icon's name."
+    returns bool
+  }
+
+  fn seconds {
+    doc "The UI's clock in seconds: frames built over the tick rate (simulation time, never the wall clock)."
+    returns f64
+  }
+
+  fn frameTheme {
+    doc "The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates)."
+    returns UiTheme
+  }
+
+  fn openAnchor {
+    doc "Open an anchored group, closed by close(): og.ui.anchor without the callback."
+    param id String "Its id; the probe path is the id alone."
+    param desc AnchorDesc "Where it sits and how it lays out."
+    returns Void
+  }
+
+  fn anchor {
+    doc "An anchored group built by `build`: a layer at a point of the safe area, over the tree, for HUD corners and touch controls."
+    host false
+    param id String "Its id."
+    param desc AnchorDesc "Where it sits and how it lays out."
+    param build UiBuild "Makes its children."
+    returns Void
+  }
+
+  fn openTransition {
+    doc "Open a transition container (a column), closed by close(); build its children only while the answer is visible: it stays visible while it leaves. Its content takes no input while it moves."
+    param id String "Its id."
+    param show bool "Whether it should be shown."
+    param desc TransitionDesc "How it moves."
+    returns Presence
+  }
+
+  fn transition {
+    doc "Content that enters and leaves: fade, slide or scale by the tick from the style's motion. `build` runs while it is visible."
+    host false
+    param id String "Its id."
+    param show bool "Whether it should be shown."
+    param desc TransitionDesc "How it moves."
+    param build UiBuild "Makes its content."
+    returns Presence
+  }
+
+  fn openModal {
+    doc "Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`."
+    param id String "Its id."
+    param open bool "Whether it should be open."
+    param desc ModalDesc "Title, width and dismissal rules."
+    returns ModalResult
+  }
+
+  fn closeModal {
+    doc "Close a dialog opened with openModal (its panel and backdrop)."
+    returns Void
+  }
+
+  fn modal {
+    doc "A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. Set your open flag false on `dismissed`."
+    host false
+    param id String "Its id."
+    param open bool "Whether it should be open."
+    param desc ModalDesc "Title, width and dismissal rules."
+    param build UiBuild "Makes its content."
+    returns ModalResult
+  }
+
+  fn spotlight {
+    doc "A spotlight over everything (a tutorial step): the scrim on four sides of the hole, a primary edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`."
+    param id String "Its id."
+    param hole Option.UiRect "The rectangle to leave lit, as og.ui.bounds answers; null dims everything."
+    param desc SpotlightDesc "Room around the hole."
+    returns Response
+  }
+
+  fn bounds {
+    doc "Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it."
+    param path String "The id or path."
+    returns Option.UiRect
+  }
+
+  fn openList {
+    doc "Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList()."
+    param id String "Its id."
+    param desc ListDesc "Row count and size."
+    returns ListRange
+  }
+
+  fn openGrid {
+    doc "Open a virtualised grid and learn which cells to build: gridItem(i) and close() for each, then closeList()."
+    param id String "Its id."
+    param desc GridDesc "Cell count, size and columns."
+    returns ListRange
+  }
+
+  fn listItem {
+    doc "Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`."
+    param index u32 "Its index."
+    param selected bool "Drawn selected (controlStrong)."
+    returns Response
+  }
+
+  fn gridItem {
+    doc "Open cell `index` of the open grid (`Cell#index`): a slot on control, focusable; its content follows until close(). Drops answer `dropped` as listItem's."
+    param index u32 "Its index."
+    param selected bool "Drawn selected (controlStrong with a primary bar)."
+    returns Response
+  }
+
+  fn closeList {
+    doc "Close a list or grid opened with openList or openGrid."
+    returns Response
+  }
+
+  fn dragging {
+    doc "The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer."
+    param id String "The list's or grid's id."
+    returns Option.u32
+  }
+
+  fn list {
+    doc "A virtualised list built by `build(index)` for the rows in view."
+    host false
+    param id String "Its id."
+    param desc ListDesc "Row count, size and the selected row."
+    param build UiItemBuild "Makes one row's content."
+    returns ListResult
+  }
+
+  fn grid {
+    doc "A virtualised grid built by `build(index)` for the cells in view."
+    host false
+    param id String "Its id."
+    param desc GridDesc "Cell count, size, columns and the selected cell."
+    param build UiItemBuild "Makes one cell's content."
+    returns ListResult
+  }
+
+  fn tabs {
+    doc "A segmented control: a neutral track, the chosen tab on the thumb. Tabs are `Tab#i` and the probe reads their labels."
+    param id String "Its id."
+    param items List.String "The tab labels."
+    param selected u32 "The chosen index from game state."
+    param desc TabsDesc "Fill and width."
+    returns ChoiceResult
+  }
+
+  fn select {
+    doc "A select: a field-like trigger with the chosen label and a chevron; a press or Activate opens its menu `<id>.menu` (options `Option#i`) under it, a focus scope; choosing closes it with changed. Back or a press outside closes it."
+    param id String "Its id."
+    param options List.String "The option labels."
+    param selected u32 "The chosen index from game state."
+    param desc SelectDesc "Placeholder, width, disabled."
+    returns ChoiceResult
+  }
+
+  fn stepper {
+    doc "A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused; a screen reader's increment and decrement on the stepper itself (its spinbutton, which the web shell mirrors as an adjustable range) step it too."
+    param id String "Its id."
+    param value f32 "The value from game state."
+    param desc StepperDesc "Range, step and digits."
+    returns StepperResult
+  }
+
+  fn radio {
+    doc "A radio group of `Option#i` rows: a ring, filled primary when chosen, and a label."
+    param id String "Its id."
+    param options List.String "The option labels."
+    param selected u32 "The chosen index from game state."
+    param desc RadioDesc "Row or column."
+    returns ChoiceResult
+  }
+
+  fn checkbox {
+    doc "A checkbox with a label; a press flips it."
+    param id String "Its id."
+    param on bool "The state from game state."
+    param label String "The label."
+    returns ToggleResult
+  }
+
+  fn checkboxList {
+    doc "Checkboxes in a column (`Option#i`)."
+    param id String "Its id."
+    param labels List.String "The labels."
+    param values List.bool "The states from game state."
+    returns CheckListResult
+  }
+
+  fn chip {
+    doc "A chip: a control-filled tag; selected inverts to ink. For filters and tags."
+    param id String "Its id."
+    param text String "The label."
+    param desc ChipDesc "Selected and disabled."
+    returns Response
+  }
+
+  fn badge {
+    doc "A badge: a small status tag in its tone."
+    param id String "Its id."
+    param text String "The label (a count, a word)."
+    param tone Tone "Its tone."
+    returns Void
+  }
+
+  fn divider {
+    doc "A hairline in the border colour across its parent."
+    param id String "Its id."
+    param vertical bool "Stand it up (in a row)."
+    returns Void
+  }
+
+  fn spacer {
+    doc "Empty space."
+    param id String "Its id."
+    param size Option.Size "Its size along both axes; null grows into the free space."
+    returns Void
+  }
+
+  fn keyValue {
+    doc "A key (inkMuted) and its value (ink, at the end) on one row: stats, settings summaries, receipts."
+    param id String "Its id."
+    param key String "The key."
+    param value String "The value."
+    param mono bool "The value in the monospaced font (prices, ids)."
+    returns Void
+  }
+
+  fn skeleton {
+    doc "A skeleton: the neutral fill standing in for content that is loading, with a sheen that passes every 1.6 s (still under reduced motion)."
+    param id String "Its id."
+    param desc SkeletonDesc "Width, line height and lines."
+    returns Void
+  }
+
+  fn spinner {
+    doc "A loading spinner: eight dots around a circle, the bright one turning by the tick."
+    param id String "Its id."
+    param size f32 "Its diameter in CSS px; 0 is the small control height."
+    returns Void
+  }
+
+  fn icon {
+    doc "An icon of the atlas (UiDesc.icons) by name: a texture cell, or an icon set's distance-field glyph fitted to its square; an unknown name draws an empty slot and warns. Rich text takes the same icons inline with `[icon=name]`. The probe reads the name."
+    param id String "Its id."
+    param name String "The icon's name."
+    param desc IconDesc "Size and ink."
+    returns Void
+  }
+
+  fn meter {
+    doc "A health, mana or xp bar. A drop shows at once and leaves a pale trail that follows after a beat; a rise grows into place with a ghost of the target; both by the tick."
+    param id String "Its id."
+    param value f32 "The current value."
+    param max f32 "The full value."
+    param desc MeterDesc "Kind, label, size and notches."
+    returns Void
+  }
+
+  fn cooldown {
+    doc "A cooldown: a disc whose primary ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not)."
+    param id String "Its id."
+    param remaining f32 "How much of the cooldown is left, 0 to 1: 1 just used, 0 ready."
+    param desc CooldownDesc "Size, label and icon."
+    returns Response
+  }
+
+  fn minimap {
+    doc "A mini-map frame: the map in a lineStrong frame, markers as dots (the player primary and ringed), an N mark and a zone label."
+    param id String "Its id."
+    param desc MinimapDesc "Map, markers and label."
+    returns Void
+  }
+
+  fn dialogue {
+    doc "A dialogue box: a portrait slot, the speaker in primary ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown."
+    param id String "Its id."
+    param desc DialogueDesc "Speaker, text, portrait and speed."
+    returns DialogueResult
+  }
+
+  fn joystick {
+    doc "A virtual joystick: a base and a knob that follows a press that started on it. It keeps the finger that grabbed it (any of og.Pointers), so another finger can hold an action button at the same time."
+    param id String "Its id."
+    param desc JoystickDesc "Size and dead zone."
+    returns JoystickResult
+  }
+
+  fn dpad {
+    doc "A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px."
+    param id String "Its id."
+    param desc DpadDesc "Its size."
+    returns DpadResult
+  }
+
+  fn actionButton {
+    doc "A square touch action button, cornered by the style's control radius: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px."
+    param id String "Its id."
+    param text String "Its label (and what the probe reads)."
+    param desc ActionButtonDesc "Size, primary and icon."
+    returns Response
+  }
+
+  fn toast {
+    doc "Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it."
+    param world World "The world whose UI shows it."
+    param text String "The message: a few words."
+    param desc ToastDesc "Tone and time."
+    returns u32 "Its id, for dismissToast."
+  }
+
+  fn dismissToast {
+    doc "Start a toast's exit."
+    param world World "The world."
+    param toastId u32 "The id toast() answered."
+    returns Void
+  }
+
+  fn navigate {
+    doc "Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command. A move queued while the focus is on nothing puts the focus on the first control, whatever its direction, and no further: moves asked again before the focus lands (each tick until og.ui.focus answers a path) land on that same first control."
+    param world World "The world."
+    param intent NavIntent "The intent."
+    returns Void
+  }
+
+  fn back {
+    doc "Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it. While a dialog or menu that Back closes is open (the topmost of the last frame) it answers false and leaves Back to it, even when asked before the dialog is built this tick: a HUD drawn under pause never takes the Back that closes pause. A locked dialog lets Back through."
+    returns bool
+  }
+
+  fn setPlayers {
+    doc "Local multiplayer: how many players this screen takes (1 to 4; 1 by default). Pads 1 to count - 1 each move a focus of their own among the same controls, shown as a ring in the player's colour (info, success, warn), and their A presses the control under it (Response.pad says which pad); pad 0 shares the one focus with the keyboard and the pointer, and Back and adjusting a slider stay pad 0's. Declare it every tick the screen shows; it takes effect from the next tick, and a dialog's focus scope holds every pad's focus inside it."
+    param count u32 "Players, 1 to 4 (clamped)."
+    returns Void
+  }
+
+  fn focus {
+    doc "The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none."
+    param pad u32 "The pad, 0 to 3; past 3 answers empty."
+    returns String
+  }
+
+  struct A11yNode {
+    doc "One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out)."
+    field path String "Its path, as touch_move_to and og.ui.focus name it."
+    field parent String "The path of the nearest node above it in the tree; empty at the top."
+    field role String "Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group."
+    field name String "Its accessible name: what a screen reader says it is. A text field or area is named by the label before it in its row, else by its placeholder, else by its id; never by the text in it (that is its value)."
+    field description String "Read after the name (aria-description): a text field's placeholder when a label names it; empty for none."
+    field value String "Its value as text (a slider's number, a progress's percent, a field's text); empty for none."
+    field states List.String "Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view)."
+    field valueMin Option.f32 "A range's smallest value (aria-valuemin): a slider's min, a bounded stepper's, 0 for a progress (in percent) and a meter; null for a stepper without bounds and a control that is no range."
+    field valueMax Option.f32 "A range's largest value (aria-valuemax): a slider's max, a bounded stepper's, 100 for a progress, a meter's max; null as valueMin is."
+    field valueNow Option.f32 "A range's value as a number (aria-valuenow; value says it as people read it): a slider's, a stepper's, a meter's, a progress's percent; null for a control that is no range."
+    field x f32 "Left edge of the whole element." {
+      unit cssPx
+    }
+    field y f32 "Top edge of the whole element." {
+      unit cssPx
+    }
+    field width f32 "Width." {
+      unit cssPx
+    }
+    field height f32 "Height." {
+      unit cssPx
+    }
+  }
+
+  struct A11yTree {
+    doc "The last frame's accessibility tree, built from the same nodes the UI draws and takes input on."
+    field nodes List.A11yNode "The nodes, in tree order: the page, then each layer over it (a dialog after the page)."
+    field focusOrder List.String "The paths keyboard Tab and the pads visit, in order: the nodes marked focusable, within the topmost dialog while one is open."
+    field focused String "The path keyboard and pad 0's focus is on; empty for none."
+  }
+
+  fn a11y {
+    doc "The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements."
+    returns A11yTree
+  }
+
+  fn feedback {
+    doc "Play a UI event's feedback from the style (docs/ui.md §7.8): one sound of its set, at random and never the one it played last, at a volume and pitch from the set's ranges, and its haptic pattern at the player's strength (setHaptics). Widgets play their own events (press, focus, select, confirm, back, open, close, tab, toggleOn, toggleOff, sliderTick); game code plays the rest: scrollTick, typewriter, counterTick, notification, warning, error, success, reward and the reveals revealCommon to revealMythic. The choices come from the UI state, so a replay plays the same. An unknown event or one the style leaves silent plays nothing."
+    param event String "The event's name."
+    param rise f32 "A rising cascade's step, 0 to 1, walking the set's pitch range up (a counter's ticks); below 0 picks the pitch at random."
+    returns Void
+  }
+
+  fn setHaptics {
+    doc "The player's haptic strength (a settings screen's vibration slider or switch): 0 turns the UI's haptics off, 1 (the default) plays the style's patterns as set; between scales them. The web shell rumbles the gamepad and vibrates a phone; the native host rumbles its pad."
+    param intensity f32 "0 to 1 (clamped)."
+    returns Void
+  }
+
+  fn setNavigation {
+    doc "Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick."
+    param on bool "On or off."
+    returns Void
+  }
+
+  fn memory {
+    doc "A number the UI keeps for an id under the open element (a template's tab, a count-up's start tick), in snapshots like the rest of the UI state. Read it every tick it is used: an unused memory is dropped."
+    param id String "The id, unique among its siblings' memories."
+    param initial f64 "Its value the first time."
+    returns f64
+  }
+
+  fn remember {
+    doc "Set a number memory (see memory)."
+    param id String "The id."
+    param value f64 "The value."
+    returns Void
+  }
+
+  fn tick {
+    doc "Frames the UI has built: its clock, for animations by the tick."
+    returns u32
+  }
+
+  struct CounterDesc {
+    doc "A number that counts to its value."
+    desc true
+    field step Option.TypeStepName "The type step; null is body."
+    field font FontRole "Which font: mono (the numeric role) for counts in a row, display for a big score."
+    field color Option.Paint "The ink; null is ink."
+    field align TextAlign "How it aligns in its width."
+    field width Option.Size "Its width; null fits the text."
+    field durationMs f32 "How long a change takes to count; 0 is 900 ms." {
+      unit ms
+      min 0
+    }
+    field from Option.f64 "Where the first count starts; null starts at the value (no count)."
+    field decimals u32 "Digits after the point."
+    field prefix String "Text before the number."
+    field suffix String "Text after the number."
+  }
+
+  fn counter {
+    doc "A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a style with motion.pop bumps it when it lands. Scores, currency, rewards."
+    param id String "Its id."
+    param value f64 "The value to count to."
+    param desc CounterDesc "Look, duration, start and format."
+    returns f64 "The number shown this tick."
+  }
+
+  struct BurstDesc {
+    doc "Rays and sparks thrown from an element."
+    desc true
+    field count u32 "Rays; 0 is 8."
+    field color Option.Paint "Their ink; null is the primary."
+    field radius f32 "How far they fly from the element's centre; 0 is 1.4 times its size." {
+      unit cssPx
+      min 0
+    }
+    field durationMs f32 "How long they fly; 0 is motion.duration.slow plus base." {
+      unit ms
+      min 0
+    }
+    field delayMs f32 "Wait this long after the element first appears." {
+      unit ms
+      min 0
+    }
+  }
+
+  fn burst {
+    doc "Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion."
+    param desc BurstDesc "Count, ink, reach and timing."
+    returns Void
+  }
+
+  struct ShakeDesc {
+    doc "A shake of an element: three sideways swings decaying to rest."
+    desc true
+    field amount f32 "The first swing; 0 is the style's motion.shake, else 6." {
+      unit cssPx
+      min 0
+    }
+    field durationMs f32 "How long it takes to come to rest; 0 is motion.duration.slow." {
+      unit ms
+      min 0
+    }
+    field sound bool "Also play the style's error sound, as a refused press does."
+  }
+
+  fn shake {
+    doc "Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the style's motion.shake is set."
+    param desc ShakeDesc "Amount, duration and sound."
+    returns Void
+  }
+
+  enum ScreenWipe {
+    doc "How a screen transition covers the old screen and reveals the new one."
+    variant fade "The cover fades in and out."
+    variant wipe "An edge sweeps across."
+    variant iris "A circle closes on the centre and opens again."
+    variant dissolve "Cells appear in a fixed scattered order."
+    variant slide "A sheet slides over and away."
+  }
+
+  enum WipeSide {
+    doc "Where a wipe or a slide comes from."
+    variant left "From the left."
+    variant right "From the right."
+    variant top "From the top."
+    variant bottom "From the bottom."
+  }
+
+  struct ScreenTransitionDesc {
+    doc "How a screen transition looks."
+    desc true
+    field kind ScreenWipe "The movement."
+    field durationMs f32 "Cover and reveal together; 0 is twice motion.duration.slow." {
+      unit ms
+      min 0
+    }
+    field color Option.Paint "The cover's colour (the texture's tint); null is backdrop."
+    field texture Option.Texture "A texture stretched over the surface as the cover; null is the flat colour."
+    field from WipeSide "Where a wipe or a slide comes from."
+  }
+
+  struct ScreenTransitionResult {
+    doc "Where a screen transition is this tick."
+    field shown String "The screen to build this tick: the old one until the cover closes, then the new one."
+    field covering bool "The cover is closing over the old screen."
+    field revealing bool "The cover is opening on the new screen."
+    field cover f32 "How much of the surface is covered, 0 to 1." {
+      unit ratio
+    }
+  }
+
+  fn screenTransition {
+    doc "A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade."
+    param id String "Its id."
+    param screen String "The screen the game wants now."
+    param desc ScreenTransitionDesc "Kind, duration, colour or texture, side."
+    returns ScreenTransitionResult
+  }
+
+  fn previewViewport {
+    doc "Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`)."
+    param world World "The world."
+    param viewport Option.Viewport "The surface to lay out for; null returns to the host's."
+    returns Void
+  }
+
+  # ── the UI kit: screen templates (TypeScript over the calls above) ──────
+
+  callback UiAction {
+    doc "A template's action, by its id (a menu item, `buy:<item>`, `share`)."
+    param action String "The action's id."
+  }
+
+  callback SettingsChanged {
+    doc "The settings after a change: persist them (cloud save, local storage through the shell) and apply them."
+    param settings GameSettings "The new settings."
+  }
+
+  struct MenuItem {
+    doc "An item of a menu: an id the game acts on and the label a player reads."
+    desc true
+    field id String "The id answered when it is chosen; also its probe id."
+    field label String "What it says."
+    field disabled bool "Shown but inert."
+    field primary bool "The primary action (one per screen)."
+  }
+
+  struct MenuResult {
+    doc "What a menu-like template answered this tick."
+    field selected Option.String "The id of the item chosen this tick."
+  }
+
+  struct MainMenuDesc {
+    doc "A title screen: the title, a subtitle, a column of items (the first primary unless one says so) and a footer. Centred on desktop and tablet, bottom-weighted on a phone."
+    desc true
+    field title String "The game's title, in display type."
+    field subtitle String "A line under it; empty is none."
+    field items List.MenuItem "The items, such as Play, Continue, Settings, Quit."
+    field footer String "A line at the bottom (a version, credits); empty is none."
+    field onSelect Option.UiAction "Called with the chosen item's id."
+    field instant bool "Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the style."
+  }
+
+  struct PauseMenuDesc {
+    doc "A pause screen: a dialog over the frozen game with Resume first. Back resumes."
+    desc true
+    field open bool "Whether the game is paused."
+    field title String "Its title." {
+      default "Paused"
+    }
+    field items List.MenuItem "The items; empty is Resume, Settings, Quit to menu (`resume`, `settings`, `quit`)."
+    field onSelect Option.UiAction "Called with the chosen item's id; Back answers `resume`."
+  }
+
+  struct KeyBinding {
+    doc "A control the settings screen lists: an action and the key bound to it."
+    desc true
+    field action String "The action's id."
+    field label String "What a player reads."
+    field key String "The bound key, as shown (`Space`, `A`, `←`)."
+  }
+
+  struct LanguageOption {
+    doc "A language the settings screen offers, in its own name."
+    desc true
+    field code String "Its code (`en`, `zh-CN`)."
+    field label String "Its name in itself (`English`, `简体中文`)."
+  }
+
+  struct GameSettings {
+    doc "The settings most games share. The game keeps them (a resource, a save) and passes them in every tick."
+    desc true
+    field masterVolume f32 "The master volume." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+    }
+    field musicVolume f32 "The music bus." {
+      default 0.8
+      min 0
+      max 1
+      unit ratio
+    }
+    field sfxVolume f32 "The effects bus." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+    }
+    field muted bool "Everything silent."
+    field quality GraphicsQuality "The graphics preset."
+    field showFps bool "Show the frame rate."
+    field reducedMotion bool "Keep state changes, drop movement (the UI's transitions only fade)."
+    field highContrast bool "The high-contrast theme."
+    field vibration bool "Vibrate on hits (where the device can)." {
+      default true
+    }
+    field invertY bool "Invert the vertical look axis."
+    field sensitivity f32 "Look sensitivity." {
+      default 1
+      min 0.1
+      max 3
+    }
+    field language String "The language code." {
+      default "en"
+    }
+    field bindings List.KeyBinding "The controls, as shown on the Controls tab."
+  }
+
+  struct SettingsDesc {
+    doc "A settings screen: Audio, Graphics, Controls and Language tabs (a select on a phone) over the game's settings, with persistence hooks."
+    desc true
+    field open bool "Whether it is shown."
+    field settings GameSettings "The settings from game state."
+    field languages List.LanguageOption "The languages offered; empty hides the Language tab."
+    field onChange Option.SettingsChanged "Called on every change (apply it at once: volume, contrast)."
+    field onSave Option.SettingsChanged "Called when the screen closes after changes (persist here)."
+    field world Option.World "The world the graphics preset is drawn in: when the player picks another preset the screen calls og.render.applyQuality(world, preset) before onChange. Null leaves applying it to the game. Inside a system, the system declares RenderSettings among its writes."
+    field title String "The dialog's title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "Settings"
+    }
+    field audioLabel String "The Audio tab." {
+      default "Audio"
+    }
+    field graphicsLabel String "The Graphics tab." {
+      default "Graphics"
+    }
+    field controlsLabel String "The Controls tab." {
+      default "Controls"
+    }
+    field languageLabel String "The Language tab." {
+      default "Language"
+    }
+    field masterLabel String "The master volume's slider." {
+      default "Master"
+    }
+    field musicLabel String "The music volume's slider." {
+      default "Music"
+    }
+    field effectsLabel String "The effects volume's slider." {
+      default "Effects"
+    }
+    field muteLabel String "The mute toggle." {
+      default "Mute everything"
+    }
+    field qualityLabel String "The graphics preset's heading, also the presets' group's accessible name." {
+      default "Quality"
+    }
+    field lowLabel String "The low preset." {
+      default "Low"
+    }
+    field mediumLabel String "The medium preset." {
+      default "Medium"
+    }
+    field highLabel String "The high preset." {
+      default "High"
+    }
+    field fpsLabel String "The frame-rate toggle." {
+      default "Show frame rate"
+    }
+    field motionLabel String "The reduced-motion toggle." {
+      default "Reduce motion"
+    }
+    field contrastLabel String "The high-contrast toggle." {
+      default "High contrast"
+    }
+    field sensitivityLabel String "The look sensitivity's slider." {
+      default "Sensitivity"
+    }
+    field invertLabel String "The invert-Y checkbox." {
+      default "Invert vertical look"
+    }
+    field vibrationLabel String "The vibration checkbox." {
+      default "Vibration"
+    }
+    field doneLabel String "The button that closes the screen." {
+      default "Done"
+    }
+    field sectionLabel String "What a screen reader calls the row of tabs (the select on a phone): the group's accessible name, never drawn." {
+      default "Section"
+    }
+    field languagesLabel String "What a screen reader calls the list of languages: the group's accessible name, never drawn." {
+      default "Languages"
+    }
+  }
+
+  struct SettingsResult {
+    doc "The settings screen's answer this tick."
+    field settings GameSettings "The settings after this tick's input: keep them."
+    field changed bool "Something changed this tick."
+    field closed bool "The player closed the screen (Back, Done): set open false."
+  }
+
+  struct Ability {
+    doc "An ability on a HUD: a cooldown ring with its key."
+    desc true
+    field id String "Its id (and probe id)."
+    field key String "The key or button shown in the middle."
+    field icon String "An icon of the atlas instead of the key; empty is the key."
+    field remaining f32 "How much of its cooldown is left: 1 just used, 0 ready." {
+      unit ratio
+    }
+  }
+
+  struct PlatformerHudDesc {
+    doc "A platformer HUD: lives as hearts and a level name top left, coins and score top right, a timer, a pause button. What a game leaves out it does not draw: no hearts with maxLives 0 (and no health), no coins or score capsule without coins or score."
+    desc true
+    field lives u32 "Lives left."
+    field maxLives u32 "Lives at most (hearts drawn); 0 draws no hearts and no capsule for them (a game without lives)." {
+      default 3
+    }
+    field coins Option.u32 "Coins collected; null or left out draws no coins capsule."
+    field score Option.u32 "The score; null or left out draws no score capsule."
+    field level String "The level's name; empty is none."
+    field timeLeft Option.f32 "Seconds left; null hides the timer."
+    field health Option.f32 "A health bar instead of hearts, 0 to 1; null shows hearts."
+    field touch bool "Show touch controls (a d-pad and Jump) on phones and tablets."
+    field jumpLabel String "The touch Jump button. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "Jump"
+    }
+    field pauseLabel String "The pause button's name (what a screen reader says; the button shows its icon)." {
+      default "Pause"
+    }
+  }
+
+  struct HudResult {
+    doc "What a HUD answered this tick."
+    field paused bool "The pause button was pressed (or Back)."
+    field action Option.String "A HUD action pressed this tick (an ability's id, `jump`, a generator's `buy:<id>`, `tap`)."
+    field moveX f32 "The touch controls' horizontal input, -1 to 1."
+    field moveY f32 "The touch controls' vertical input, -1 (up) to 1."
+    field held List.String "The touch action buttons held this tick."
+  }
+
+  struct ShooterHudDesc {
+    doc "A shooter HUD: health and armor bottom left, ammo bottom right, abilities as cooldown rings, kills top right, a crosshair, an optional mini-map."
+    desc true
+    field health f32 "Health."
+    field maxHealth f32 "Full health." {
+      default 100
+    }
+    field armor f32 "Armor; 0 with maxArmor 0 hides it."
+    field maxArmor f32 "Full armor."
+    field ammo u32 "Rounds in the magazine."
+    field magazine u32 "Rounds a magazine holds."
+    field reserve u32 "Rounds in reserve."
+    field weapon String "The weapon's name."
+    field kills u32 "Kills."
+    field abilities List.Ability "Abilities with cooldowns."
+    field crosshair bool "Draw a crosshair at the centre." {
+      default true
+    }
+    field map Option.MinimapDesc "A mini-map top left; null is none."
+    field touch bool "Show touch controls (a stick and Fire) on phones and tablets."
+    field killsLabel String "The word after the kill count. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "kills"
+    }
+    field fireLabel String "The touch Fire button." {
+      default "Fire"
+    }
+    field pauseLabel String "The pause button's name (what a screen reader says; the button shows its icon)." {
+      default "Pause"
+    }
+  }
+
+  struct PuzzleHudDesc {
+    doc "A puzzle HUD: level and moves, the score towards a target with three star marks, an optional timer."
+    desc true
+    field level String "The level's name."
+    field score u32 "The score."
+    field target u32 "The score that wins." {
+      default 1000
+    }
+    field stars List.u32 "The scores for one, two and three stars; empty is a third, two thirds and all of the target."
+    field moves Option.u32 "Moves left; null hides it."
+    field timeLeft Option.f32 "Seconds left; null hides it."
+    field movesLabel String "The caption under the moves left. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "moves left"
+    }
+    field targetLabel String "The line beside the stars; `{target}` is replaced by the target, formatted (1,000). A localised game passes its string table's, with `{target}` in it." {
+      default "Target {target}"
+    }
+    field pauseLabel String "The pause button's name (what a screen reader says; the button shows its icon)." {
+      default "Pause"
+    }
+  }
+
+  struct Currency {
+    doc "A currency an idle game counts."
+    desc true
+    field id String "Its id."
+    field name String "Its name."
+    field amount f64 "How much there is."
+    field perSecond f64 "How much it earns per second."
+    field icon String "An icon of the atlas; empty is none."
+  }
+
+  struct Generator {
+    doc "A generator an idle game lists: level, cost, progress."
+    desc true
+    field id String "Its id: buying answers `buy:<id>`."
+    field name String "Its name."
+    field level u32 "Its level."
+    field cost f64 "The next level's price."
+    field affordable bool "The player can pay for it."
+    field progress f32 "Its cycle, 0 to 1." {
+      unit ratio
+    }
+    field icon String "An icon of the atlas; empty is none."
+  }
+
+  struct IdleHudDesc {
+    doc "An idle or incremental HUD: currencies with their rates on top, a big tap target, the generators in a list."
+    desc true
+    field currencies List.Currency "The currencies, the first the main one."
+    field generators List.Generator "The generators."
+    field tapLabel String "The tap target's label; empty hides it." {
+      default "Tap"
+    }
+    field levelLabel String "A generator's level badge; `{level}` is replaced by its level. Every word of the HUD is a field with its English default: a localised game passes its string table's (og.i18n.t), with `{level}` in it." {
+      default "Lv {level}"
+    }
+    field rateLabel String "A currency's rate; `{rate}` is replaced by its per-second amount, formatted (+12/s is `+{rate}/s`). A localised game passes its string table's, with `{rate}` in it." {
+      default "+{rate}/s"
+    }
+    field pauseLabel String "The pause button's name (what a screen reader says; the button shows its icon)." {
+      default "Pause"
+    }
+  }
+
+  struct RaceSplit {
+    doc "One split of a racing HUD: a sector's time and its delta against the reference (the record's split)."
+    desc true
+    field label String "Its name (`S1`, a sector's), the game's own word."
+    field time Option.f32 "Its time in seconds, shown as m:ss.mmm; null is not yet run (a dash)."
+    field delta Option.f32 "Against the reference in seconds, shown signed (`-0.412`, `+1.050`, with the ASCII minus every pack draws): negative is ahead, in success ink; positive behind, in danger ink; null shows none."
+  }
+
+  struct RacingHudDesc {
+    doc "A racing HUD: position and lap top left, the times top right (the race time, a live delta, the best, the splits), the speedometer and gear bottom right, the boost meter, an optional mini-map. A time trial sets racers 0 (no place) and boostMeter false (no meter), and shows its sectors as splits."
+    desc true
+    field speed f32 "The speed, in `unit`."
+    field maxSpeed f32 "The dial's top." {
+      default 300
+    }
+    field unit String "The speed's unit." {
+      default "km/h"
+    }
+    field gear String "The gear (`3`, `R`, `N`)."
+    field lap u32 "The lap." {
+      default 1
+    }
+    field laps u32 "Laps in the race." {
+      default 3
+    }
+    field position u32 "The player's place." {
+      default 1
+    }
+    field racers u32 "Cars in the race; 0 hides the place (a time trial)." {
+      default 8
+    }
+    field time f32 "The race time in seconds."
+    field delta Option.f32 "A live delta in seconds against the reference lap, under the time, signed like a split's: negative (ahead) in success ink, positive in danger ink; null hides it."
+    field best Option.f32 "The best lap in seconds; null hides it."
+    field splits List.RaceSplit "Splits under the times (a time trial's sectors), one row each: label, time, delta; empty is none."
+    field boost f32 "The boost meter, 0 to 1." {
+      unit ratio
+    }
+    field boostMeter bool "Draw the boost meter and the touch Boost pedal; a race without boost (a time trial) sets false." {
+      default true
+    }
+    field map Option.MinimapDesc "A mini-map; null is none."
+    field touch bool "Show touch controls (steering arrows, Brake, Boost) on phones and tablets."
+    field lapLabel String "The caption under the lap. Every word of the HUD is a field with its English default (unit too): a localised game passes its string table's (og.i18n.t)." {
+      default "lap"
+    }
+    field bestLabel String "The best lap's line; `{best}` is replaced by the best lap as m:ss.mmm. A localised game passes its string table's, with `{best}` in it." {
+      default "Best {best}"
+    }
+    field pauseLabel String "The pause button's name (what a screen reader says; the button shows its icon)." {
+      default "Pause"
+    }
+    field boostLabel String "The boost meter's label and the touch Boost pedal." {
+      default "Boost"
+    }
+    field brakeLabel String "The touch Brake pedal." {
+      default "Brake"
+    }
+    field leftLabel String "The touch steering arrow left." {
+      default "Left"
+    }
+    field rightLabel String "The touch steering arrow right." {
+      default "Right"
+    }
+  }
+
+  struct DialogueLine {
+    doc "One line of a cutscene."
+    desc true
+    field speaker String "Who speaks."
+    field text String "What they say."
+    field portrait String "An icon of the atlas as the portrait; empty is the speaker's initial."
+  }
+
+  struct CutsceneDesc {
+    doc "A dialogue scene: letterbox bars, the dialogue box at the bottom, Skip at the top right."
+    desc true
+    field open bool "Whether it plays."
+    field lines List.DialogueLine "The lines."
+    field index u32 "The line shown, from game state."
+    field letterbox bool "Cinematic bars." {
+      default true
+    }
+    field skippable bool "Show Skip." {
+      default true
+    }
+    field skipLabel String "The Skip button. Every word of the cutscene is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "Skip"
+    }
+  }
+
+  struct CutsceneResult {
+    doc "A cutscene's answer this tick."
+    field index u32 "The line to show next tick: keep it."
+    field finished bool "The last line was advanced past."
+    field skipped bool "Skip was pressed (or Back)."
+  }
+
+  struct ShopItem {
+    doc "An item a shop sells."
+    desc true
+    field id String "Its id: buying answers it."
+    field name String "Its name."
+    field price f64 "Its price in the shop's currency."
+    field description String "A line about it."
+    field icon String "An icon of the atlas; empty is none."
+    field category String "Its category tab; empty is the first."
+    field owned bool "Already owned (one-off items): shown, not for sale."
+  }
+
+  struct ShopDesc {
+    doc "A shop: the balance, category tabs, a grid of items with prices, a detail panel with Buy (disabled when the balance is short)."
+    desc true
+    field title String "Its title." {
+      default "Shop"
+    }
+    field currency String "The currency's name (`coins`)." {
+      default "coins"
+    }
+    field currencyIcon String "The currency's icon; empty is none."
+    field balance f64 "What the player has."
+    field items List.ShopItem "What is for sale."
+    field categories List.String "Category tabs; empty is one list."
+    field onBuy Option.UiAction "Called with the bought item's id."
+    field priceLabel String "The detail panel's price line. Every word of the shop is a field with its English default (title and currency too): a localised game passes its string table's (og.i18n.t)." {
+      default "Price"
+    }
+    field buyLabel String "The Buy button." {
+      default "Buy"
+    }
+    field shortLabel String "The Buy button while the balance is short of the price." {
+      default "Not enough"
+    }
+    field ownedLabel String "An owned item's badge and button." {
+      default "Owned"
+    }
+    field emptyLabel String "The detail panel when the category has no items." {
+      default "Nothing for sale here"
+    }
+  }
+
+  struct ShopResult {
+    doc "A shop's answer this tick."
+    field bought Option.String "The item bought this tick: take the price and grant it."
+    field refused Option.String "The item whose Buy was pressed this tick while the balance was short: the button shook with the error sound (og.ui.shake) and nothing was bought."
+    field closed bool "Close was pressed (or Back)."
+  }
+
+  struct InventoryItem {
+    doc "What an inventory slot holds."
+    desc true
+    field slot u32 "The slot index."
+    field id String "The item's id."
+    field name String "Its name."
+    field count u32 "How many (stacks); 0 or 1 hides the count."
+    field icon String "An icon of the atlas; empty is its initial."
+    field description String "A line about it."
+  }
+
+  struct InventoryDesc {
+    doc "An inventory: a grid of slots, items dragged between them, a detail panel with Use."
+    desc true
+    field title String "Its title." {
+      default "Inventory"
+    }
+    field slots u32 "How many slots." {
+      default 24
+    }
+    field columns u32 "Slots across; 0 fits the width."
+    field items List.InventoryItem "The items, by slot."
+    field useLabel String "The detail panel's action; empty hides it. Every word of the inventory is a field with its English default (title too): a localised game passes its string table's (og.i18n.t)." {
+      default "Use"
+    }
+    field hintLabel String "The detail panel while no slot is selected." {
+      default "Select an item. Drag it to another slot to move it."
+    }
+    field countLabel String "The detail panel's count line, beside a stacked item's count." {
+      default "Count"
+    }
+  }
+
+  struct SlotMove {
+    doc "An item dragged from one slot to another."
+    field from u32 "The slot it left."
+    field to u32 "The slot it was dropped on (swap when that slot holds an item)."
+  }
+
+  struct InventoryResult {
+    doc "An inventory's answer this tick."
+    field selected Option.u32 "The selected slot."
+    field moved Option.SlotMove "A drag and drop this tick: move (or swap) the items."
+    field used Option.String "The id of the item Use was pressed for."
+    field closed bool "Close was pressed (or Back)."
+  }
+
+  struct LevelInfo {
+    doc "A level in a level select."
+    desc true
+    field name String "Its name or number."
+    field stars u32 "Stars earned, 0 to 3."
+    field locked bool "Not yet reachable: a lock, inert."
+    field best String "The best result as shown; empty is none."
+  }
+
+  struct LevelSelectDesc {
+    doc "A level select: a grid of level cards with stars and locks, the total stars, and a Back button. Back closes it from every input: the button, a press on the scrim around it, Escape and the pad's B."
+    desc true
+    field title String "Its title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "Levels"
+    }
+    field levels List.LevelInfo "The levels."
+    field columns u32 "Cards across; 0 fits the width."
+    field backLabel String "The button that closes it." {
+      default "Back"
+    }
+    field starsLabel String "What a screen reader says for a card's stars (and the total's): `{stars}` is replaced by the stars earned, `{max}` by the most there are. The stars themselves are drawn, never this text." {
+      default "{stars} of {max} stars"
+    }
+    field lockedLabel String "What a screen reader calls a locked card (it shows only a lock): `{name}` is replaced by the level's name or number." {
+      default "{name}, locked"
+    }
+  }
+
+  struct LevelSelectResult {
+    doc "A level select's answer this tick."
+    field chosen Option.u32 "The level picked this tick."
+    field closed bool "The player asked to close it: its Back button, a press on the scrim, Escape or the pad's B."
+  }
+
+  struct StatRow {
+    doc "A labelled value on a results screen."
+    desc true
+    field label String "The label."
+    field value String "The value, as shown."
+  }
+
+  enum ScoreFormat {
+    doc "How a results screen shows its score and best."
+    variant points "A whole number grouped with commas (12,840), counted up from 0; the best is the higher."
+    variant time "Seconds as m:ss.mmm (1:36.233), counted up from 0:00.000: a time trial's result. Lower is better: the best is the lower, and a best of 0 is none (no best line)."
+  }
+
+  struct ResultsDesc {
+    doc "A results screen: the title, stars that land one by one, the score counting up (points, or a time with `format` time) under its label, the best (a badge for a new best), stats, actions and a share hook."
+    desc true
+    field open bool "Whether it is shown."
+    field title String "Its title." {
+      default "Level complete"
+    }
+    field score f64 "The score: points, or seconds with `format` time."
+    field best f64 "The best score: points, or seconds with `format` time (0 is none)."
+    field format ScoreFormat "How the score and best are shown: points (the default) or a time."
+    field scoreLabel String "A caption over the score (`Total time`, `Score`); empty is none. A localised game passes its string table's."
+    field newBest bool "This run set the best."
+    field stars u32 "Stars earned."
+    field maxStars u32 "Stars possible; 0 hides them." {
+      default 3
+    }
+    field stats List.StatRow "Stats under the score."
+    field actions List.MenuItem "The actions; empty is Retry, Next and Menu (`retry`, `next`, `menu`)."
+    field shareText String "Text a share would post; empty hides Share."
+    field onShare Option.UiAction "Called with the share text when Share is pressed (the shell posts it)."
+    field bestLabel String "The best score's line; `{best}` is replaced by the best score, formatted as the score is (m:ss.mmm with `format` time). A localised game passes its string table's (og.i18n.t), with `{best}` in it." {
+      default "Best {best}"
+    }
+    field newBestLabel String "The badge a new best shows." {
+      default "New best"
+    }
+    field shareLabel String "The Share button's label." {
+      default "Share"
+    }
+  }
+
+  struct LeaderboardEntry {
+    doc "A row of a leaderboard."
+    desc true
+    field rank u32 "The rank."
+    field name String "The player's name."
+    field score String "The score, as shown."
+    field player bool "This is the player: highlighted."
+  }
+
+  struct LeaderboardDesc {
+    doc "A leaderboard: scope tabs, a virtualised list of ranks (medal colours for 1 to 3, the player highlighted), and honest loading, error and empty states."
+    desc true
+    field title String "Its title." {
+      default "Leaderboard"
+    }
+    field scopes List.String "Scope tabs (Today, This week, All time); empty is none."
+    field entries List.LeaderboardEntry "The rows."
+    field loading bool "The rows are loading: skeletons."
+    field error String "Loading failed: this message and Retry."
+    field empty String "Shown when there are no rows." {
+      default "No scores yet"
+    }
+    field retryLabel String "The button under an error. Every word of the leaderboard is a field with its English default (title and empty too; error and scopes are the game's): a localised game passes its string table's (og.i18n.t)." {
+      default "Retry"
+    }
+  }
+
+  struct LeaderboardResult {
+    doc "A leaderboard's answer this tick."
+    field scope u32 "The scope tab chosen: keep it and load its rows."
+    field changed bool "The scope changed this tick."
+    field retry bool "Retry was pressed."
+    field closed bool "Close was pressed (or Back)."
+  }
+
+  struct TutorialStep {
+    doc "A step of a tutorial: the element to point at, a title and a line."
+    desc true
+    field target String "The element's id or path (as touch_move_to takes); empty points at nothing."
+    field title String "The step's title."
+    field text String "What to do."
+  }
+
+  struct TutorialDesc {
+    doc "An onboarding overlay: a spotlight on each step's target, a callout beside it with Next and Skip, and the step count."
+    desc true
+    field open bool "Whether it is shown."
+    field steps List.TutorialStep "The steps."
+    field index u32 "The step shown, from game state."
+    field skipLabel String "The Skip button. Every word of the overlay is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
+      default "Skip"
+    }
+    field nextLabel String "The button that shows the next step." {
+      default "Next"
+    }
+    field doneLabel String "That button on the last step." {
+      default "Done"
+    }
+    field stepLabel String "The step count; `{step}` is replaced by the step's number from 1 and `{count}` by the number of steps. A localised game passes its string table's, with both in it." {
+      default "{step} of {count}"
+    }
+  }
+
+  struct TutorialResult {
+    doc "A tutorial's answer this tick."
+    field index u32 "The step to show next tick: keep it."
+    field finished bool "The last step's Done was pressed."
+    field skipped bool "Skip was pressed (or Back)."
+  }
+
+  struct LoadingDesc {
+    doc "A loading screen: the title, a real progress bar (or a spinner while unknown) and tips that change by the tick."
+    desc true
+    field title String "What is loading." {
+      default "Loading"
+    }
+    field progress Option.f32 "How far, 0 to 1; null is unknown (a spinner, never a fake bar)."
+    field tips List.String "Tips shown in turn."
+    field tipSeconds f32 "Seconds per tip." {
+      default 4
+      min 1
+    }
+  }
+
+  struct ConfirmDesc {
+    doc "A confirm dialog: a title, a consequence sentence, Cancel and the action."
+    desc true
+    field open bool "Whether it is open."
+    field title String "The question."
+    field message String "What will happen, as rich text markup (og.ui.richText: [b], [color=…], [icon=…]…), so a translation carries its own emphasis."
+    field confirmLabel String "The action's label." {
+      default "Confirm"
+    }
+    field cancelLabel String "Cancel's label." {
+      default "Cancel"
+    }
+    field danger bool "The action destroys something: the danger button."
+  }
+
+  struct ConfirmResult {
+    doc "A confirm dialog's answer this tick."
+    field confirmed bool "The action was chosen."
+    field cancelled bool "Cancel, Back or the backdrop."
+  }
+
+  struct AlertDesc {
+    doc "An alert: a title, a message and one button."
+    desc true
+    field open bool "Whether it is open."
+    field title String "The title."
+    field message String "The message, as rich text markup (og.ui.richText)."
+    field okLabel String "The button's label." {
+      default "OK"
+    }
+  }
+
+  fn mainMenu {
+    doc "The title screen template. Returns the item chosen this tick."
+    host false
+    param id String "Its id."
+    param desc MainMenuDesc "Title, items and footer."
+    returns MenuResult
+  }
+
+  fn pauseMenu {
+    doc "The pause screen template: a dialog with Resume first; Back answers `resume`."
+    host false
+    param id String "Its id."
+    param desc PauseMenuDesc "Open and items."
+    returns MenuResult
+  }
+
+  fn settingsScreen {
+    doc "The settings template: Audio (volumes, mute), Graphics (quality, frame rate, reduced motion, contrast), Controls (sensitivity, invert, vibration, bindings) and Language. Pass the settings in every tick and keep what it answers."
+    host false
+    param id String "Its id."
+    param desc SettingsDesc "Open, the settings, languages and hooks."
+    returns SettingsResult
+  }
+
+  fn platformerHud {
+    doc "The platformer HUD template."
+    host false
+    param id String "Its id."
+    param desc PlatformerHudDesc "Lives, coins, score, level and timer."
+    returns HudResult
+  }
+
+  fn shooterHud {
+    doc "The shooter HUD template."
+    host false
+    param id String "Its id."
+    param desc ShooterHudDesc "Health, armor, ammo, abilities and map."
+    returns HudResult
+  }
+
+  fn puzzleHud {
+    doc "The puzzle HUD template."
+    host false
+    param id String "Its id."
+    param desc PuzzleHudDesc "Level, score, target, stars, moves and timer."
+    returns HudResult
+  }
+
+  fn idleHud {
+    doc "The idle and incremental HUD template: answers `tap` and `buy:<id>` actions."
+    host false
+    param id String "Its id."
+    param desc IdleHudDesc "Currencies and generators."
+    returns HudResult
+  }
+
+  fn racingHud {
+    doc "The racing HUD template."
+    host false
+    param id String "Its id."
+    param desc RacingHudDesc "Speed, gear, laps, place, times, splits, boost and its words."
+    returns HudResult
+  }
+
+  fn cutscene {
+    doc "The dialogue and cutscene template: letterbox, the dialogue box, Skip."
+    host false
+    param id String "Its id."
+    param desc CutsceneDesc "Lines and the current index."
+    returns CutsceneResult
+  }
+
+  fn shopScreen {
+    doc "The shop template."
+    host false
+    param id String "Its id."
+    param desc ShopDesc "Balance, items and categories."
+    returns ShopResult
+  }
+
+  fn inventoryScreen {
+    doc "The inventory template: a grid of slots with drag and drop."
+    host false
+    param id String "Its id."
+    param desc InventoryDesc "Slots and items."
+    returns InventoryResult
+  }
+
+  fn levelSelect {
+    doc "The level select template: a card picked answers `chosen`; its Back button, a press on the scrim around it, Escape and the pad's B answer `closed`."
+    host false
+    param id String "Its id."
+    param desc LevelSelectDesc "The levels and the screen's words."
+    returns LevelSelectResult
+  }
+
+  fn resultsScreen {
+    doc "The results template: stars, the score (points or a time) counting up under its label, the best, stats, actions and Share."
+    host false
+    param id String "Its id."
+    param desc ResultsDesc "Score, stars, stats and actions."
+    returns MenuResult
+  }
+
+  fn leaderboardScreen {
+    doc "The leaderboard template."
+    host false
+    param id String "Its id."
+    param desc LeaderboardDesc "Scopes, rows and states."
+    returns LeaderboardResult
+  }
+
+  fn tutorialOverlay {
+    doc "The onboarding template: a spotlight and a callout per step."
+    host false
+    param id String "Its id."
+    param desc TutorialDesc "Steps and the current index."
+    returns TutorialResult
+  }
+
+  fn loadingScreen {
+    doc "The loading template."
+    host false
+    param id String "Its id."
+    param desc LoadingDesc "Title, progress and tips."
+    returns Void
+  }
+
+  fn confirmDialog {
+    doc "The confirm dialog template."
+    host false
+    param id String "Its id."
+    param desc ConfirmDesc "Question, consequence and labels."
+    returns ConfirmResult
+  }
+
+  fn alertDialog {
+    doc "The alert template. Returns true the tick it is dismissed."
+    host false
+    param id String "Its id."
+    param desc AlertDesc "Title, message and label."
+    returns bool
+  }
+
+  enum UiProp {
+    doc "An animatable value of an element (docs/ui.md §7.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians."
+    variant x "Its horizontal offset, CSS px (the transform's x)."
+    variant y "Its vertical offset, CSS px."
+    variant scaleX "Its horizontal scale (1: unscaled)."
+    variant scaleY "Its vertical scale."
+    variant scale "Both scales at once."
+    variant rotate "Its turn, radians, clockwise on screen."
+    variant skewX "Its horizontal skew, radians."
+    variant skewY "Its vertical skew, radians."
+    variant opacity "Its opacity, 0 to 1, multiplied down the tree."
+    variant radius "Its corner radius, CSS px."
+    variant backgroundR "Its fill's red."
+    variant backgroundG "Its fill's green."
+    variant backgroundB "Its fill's blue."
+    variant backgroundA "Its fill's alpha."
+    variant inkR "Its text's red."
+    variant inkG "Its text's green."
+    variant inkB "Its text's blue."
+    variant inkA "Its text's alpha."
+    variant z "Its z among its siblings (stepped, never tweened)."
+    variant inert "1: it and its subtree take no input (stepped): a results screen's buttons wait for the sequence."
+  }
+
+  enum LayoutMode {
+    doc "How a container lays out its children."
+    variant flex "The row and column walks of its direction (the default)."
+    variant stack "Children overlaid in the same rectangle, each placed by its insets, else by the container's align (across) and cross (down): a card's art, frame, cost gem and name."
+    variant grid "Tracks and cells (ElementProps.grid)."
+  }
+
+  enum Position {
+    doc "How an element is placed."
+    variant flow "In its parent's flow (the default)."
+    variant absolute "Out of the flow, placed by its insets inside its parent's padding box."
+    variant anchored "Out of the flow, its anchorSelf point on the anchorAt point of the element at anchorTo, moved by its start and top insets."
+  }
+
+  enum GridFlow {
+    doc "Which way auto-placed items fill a grid."
+    variant row "Along rows, adding rows (the default)."
+    variant column "Down columns, adding columns."
+  }
+
+  enum DragAxis {
+    doc "Which way a drag moves its element."
+    variant both "Both ways."
+    variant x "Across only."
+    variant y "Down only."
+    variant lock "Either, locked to the first one the drag moves along."
+  }
+
+  enum EaseName {
+    doc "A named easing curve."
+    variant linear "Constant speed."
+    variant out "How things arrive: fast, then settling (the default)."
+    variant exit "How things leave: slow, then away."
+    variant inOut "Slow at both ends."
+  }
+
+  enum MotionToken {
+    doc "A named motion of the style (docs/ui.md §7.7): components use these, so a style's personality changes every motion at once."
+    variant ui "The control spring: hover, press, toggles."
+    variant panel "Panels, sheets and drawers."
+    variant emphasis "Rewards, results and level-ups."
+    variant playful "Bouncy toys: chips, stickers, mascots."
+    variant enter "The entrance ease and duration."
+    variant exit "The exit ease and duration."
+  }
+
+  enum ReducedMotion {
+    doc "What an animation does under reduced motion (docs/ui.md §7.7)."
+    variant fade "Movement and scale jump; opacity and colour fade quickly (the default)."
+    variant none "Everything jumps."
+    variant keep "Plays as authored: motion that carries meaning, kept small."
+  }
+
+  enum Orientation {
+    doc "A screen orientation."
+    variant portrait "Taller than wide."
+    variant landscape "Wider than tall."
+  }
+
+  enum Repeat {
+    doc "How a play repeats."
+    variant once "Once (the default)."
+    variant loop "Over and over."
+    variant pingPong "Forward then back, over and over."
+  }
+
+  struct UiTransform {
+    doc "A transform applied after layout, about its pivot: CSS's translate(x, y) rotate(r) skew(kx, ky) scale(sx, sy) with its transform-origin. Hit tests, the probe's rectangles and the accessibility tree's bounds follow it; layout does not."
+    desc true
+    field x f32 "Moves it across." {
+      unit cssPx
+    }
+    field y f32 "Moves it down." {
+      unit cssPx
+    }
+    field scaleX f32 "Its horizontal scale." {
+      default 1
+    }
+    field scaleY f32 "Its vertical scale." {
+      default 1
+    }
+    field rotate f32 "Its turn, radians, clockwise on screen."
+    field skewX f32 "Its horizontal skew, radians."
+    field skewY f32 "Its vertical skew, radians."
+    field pivotX f32 "The pivot across its box (0 its start edge, 1 its end)." {
+      default 0.5
+      unit ratio
+    }
+    field pivotY f32 "The pivot down its box." {
+      default 0.5
+      unit ratio
+    }
+  }
+
+  struct Edges {
+    doc "Insets of an absolute or anchored element from its parent's edges; an absent one is not set. start and end follow the writing direction: a right-to-left layout mirrors them."
+    desc true
+    field start Option.f32 "From the start edge." {
+      unit cssPx
+    }
+    field top Option.f32 "From the top." {
+      unit cssPx
+    }
+    field end Option.f32 "From the end edge." {
+      unit cssPx
+    }
+    field bottom Option.f32 "From the bottom." {
+      unit cssPx
+    }
+    field centerX bool "Centred across the parent (start, if given, moves it)."
+    field centerY bool "Centred down the parent (top, if given, moves it)."
+  }
+
+  struct TrackPx {
+    doc "A fixed track."
+    field px f32 "Its size." {
+      unit cssPx
+    }
+  }
+
+  struct TrackFr {
+    doc "A share of the space the other tracks leave."
+    field fr f32 "Its share." {
+      default 1
+    }
+  }
+
+  struct TrackRange {
+    doc "A track sized by its content, within bounds."
+    field min f32 "The smallest it gets." {
+      unit cssPx
+    }
+    field max f32 "The largest it gets." {
+      unit cssPx
+    }
+  }
+
+  struct TrackPercent {
+    doc "A fraction of the grid's inner size."
+    field fraction f32 "The fraction." {
+      unit ratio
+    }
+  }
+
+  struct TrackAuto {
+    doc "Its largest single-cell item."
+  }
+
+  union Track {
+    doc "A grid track's size."
+    tag kind
+    case px TrackPx "A fixed size."
+    case fr TrackFr "A share of the free space."
+    case auto TrackAuto "Its largest single-cell item."
+    case minMax TrackRange "Its content between min and max."
+    case percent TrackPercent "A fraction of the grid."
+  }
+
+  struct GridSpec {
+    doc "A grid's tracks and areas."
+    desc true
+    field columns List.Track "The column tracks."
+    field rows List.Track "The row tracks; items past them add autoTrack rows."
+    field autoTrack Option.Track "The track added for items past the declared ones; null is auto."
+    field columnGap Option.f32 "Space between columns; absent is the element's gap." {
+      unit cssPx
+    }
+    field rowGap Option.f32 "Space between rows; absent is the element's gap." {
+      unit cssPx
+    }
+    field areas List.String "Named areas, one string per row of space-separated cell names, as CSS grid-template-areas (`.` is an unnamed cell)."
+    field flow GridFlow "Which way auto-placed items fill it."
+    field dense bool "Auto-placement back-fills holes left by spanning items."
+  }
+
+  struct GridPlace {
+    doc "Where an item sits in its parent grid; the zero value is auto-placed in one cell."
+    desc true
+    field column u32 "Its first column, 1-based (0: auto)."
+    field row u32 "Its first row, 1-based (0: auto)."
+    field columnSpan u32 "Columns spanned (0: 1)."
+    field rowSpan u32 "Rows spanned (0: 1)."
+    field area String "A named area of the grid (wins over the numbers)."
+  }
+
+  struct PropValue {
+    doc "A value for an animatable prop."
+    field prop UiProp "The prop."
+    field value f32 "Its value."
+  }
+
+  struct UiQuery {
+    doc "When a variant applies: every condition given must hold."
+    desc true
+    field breakpoints List.Breakpoint "The size classes it applies on (empty: any)."
+    field orientation Option.Orientation "The orientation it applies in; null is either."
+    field minWidth f32 "The narrowest width it applies at (0: unbounded): the viewport's, or with container the element's own laid-out width." {
+      unit cssPx
+    }
+    field maxWidth f32 "The widest (0: unbounded)." {
+      unit cssPx
+    }
+    field container bool "A container query: the widths are the element's own (the same card in a four-column shop and a one-column phone list)."
+  }
+
+  struct UiPatch {
+    doc "What a variant changes: the box's layout, its arrangement and animatable values; absent fields are unchanged."
+    desc true
+    field direction Option.Direction "Its direction."
+    field width Option.Size "Its width."
+    field height Option.Size "Its height."
+    field padding Option.Insets "Its padding."
+    field gap Option.f32 "Its gap." {
+      unit cssPx
+    }
+    field align Option.Align "Its main-axis alignment."
+    field cross Option.Cross "Its cross-axis alignment."
+    field wrap Option.bool "Its wrapping."
+    field layout Option.LayoutMode "Its layout mode."
+    field columns List.Track "Its grid columns (empty: unchanged)."
+    field hidden Option.bool "Hide it and its subtree where the variant applies."
+    field values List.PropValue "Animatable values it sets."
+  }
+
+  struct UiVariant {
+    doc "A prop override under a condition (docs/ui.md §6.2: breakpoint variants and container queries). Later variants win."
+    field when UiQuery "When it applies."
+    field set UiPatch "What it changes."
+  }
+
+  struct SpringSpec {
+    doc "A spring by how it feels: about how long it takes to settle and how much it overshoots. Retargeting it keeps its value and velocity, so an interrupted motion never jumps."
+    desc true
+    field durationMs f32 "About how long it takes to arrive, ms." {
+      default 350
+      unit ms
+    }
+    field bounce f32 "0 arrives without overshoot; 0.3 overshoots a little; up to 1 rings (below 0 is sluggish). The style's overshoot caps it." {
+      min -0.95
+      max 1
+    }
+  }
+
+  struct TweenSpec {
+    doc "A duration on an ease: a retarget starts a new ease from where it is."
+    desc true
+    field durationMs f32 "Its length, ms." {
+      default 200
+      unit ms
+    }
+    field ease EaseName "Its curve."
+    field bezier List.f32 "A cubic Bézier (x1, y1, x2, y2) in place of the named ease (empty: the named one)."
+  }
+
+  struct TokenRef {
+    doc "One of the style's motion tokens."
+    field token MotionToken "The token."
+  }
+
+  struct InstantSpec {
+    doc "At once."
+  }
+
+  union Transition {
+    doc "How a value moves to a new target."
+    tag kind
+    case instant InstantSpec "At once."
+    case spring SpringSpec "On a spring that keeps its velocity."
+    case tween TweenSpec "Over a duration on an ease."
+    case token TokenRef "The style's token."
+  }
+
+  struct DismissSpec {
+    doc "Swipe to dismiss: a release past distance (or faster than velocity) along the drag's axis throws the element off."
+    desc true
+    field distance f32 "0: 40 % of its size along the axis." {
+      unit cssPx
+    }
+    field velocity f32 "CSS px per second (0: 800)."
+  }
+
+  struct SnapPoint {
+    doc "An offset a released drag can settle on."
+    field x f32 "Its x offset." {
+      unit cssPx
+    }
+    field y f32 "Its y offset." {
+      unit cssPx
+    }
+  }
+
+  struct DragSpec {
+    doc "The element moves with a drag that starts on it (a card, a sheet, a carousel), released onto a spring that keeps the drag's velocity."
+    desc true
+    field axis DragAxis "Which way it moves."
+    field bounds Option.UiRect "Bounds of its offset (x to x + width, y to y + height); null is free."
+    field rubber f32 "Past the bounds it follows with resistance, iOS's rubber band with this constant (0 stops at the bounds; 0.55 is iOS's)."
+    field snap List.SnapPoint "Offsets a release settles on: the nearest to where its momentum would carry it."
+    field momentum bool "A release projects the offset by its velocity (0.3 s of it) before choosing a snap point: a flick."
+    field returnHome bool "Without snap points, a release goes back to offset 0."
+    field dismiss Option.DismissSpec "Swipe to dismiss; null never throws it off."
+    field threshold f32 "Pointer travel before a press becomes a drag (0: 4)." {
+      unit cssPx
+    }
+    field spring Option.Transition "The release spring; null is the style's ui spring."
+    field tag String "What a drop target matches in DropSpec.accept."
+  }
+
+  struct PinchSpec {
+    doc "Two touches on the element scale (and turn) it."
+    desc true
+    field minScale f32 "0: 0.5."
+    field maxScale f32 "0: 4."
+    field rotate bool "The touches turn it too."
+  }
+
+  struct DropSpec {
+    doc "The element takes drops of dragged elements."
+    desc true
+    field accept List.String "The drag tags it takes (empty: any)."
+  }
+
+  struct PresenceSpec {
+    doc "How an element arrives or leaves (docs/ui.md §7.5): the values it enters from or exits to, and how it moves between them and its own."
+    desc true
+    field values List.PropValue "Where it starts (entering) or ends (leaving)."
+    field kind Option.TransitionKind "A transition kind's values in place of values: what the kind enters from and exits to."
+    field distance f32 "A slide kind's distance (0: 24)." {
+      unit cssPx
+    }
+    field transition Option.Transition "How it moves; null is the style's enter or exit token."
+    field delayMs f32 "Wait this long before moving (a hand-built stagger)." {
+      unit ms
+    }
+  }
+
+  struct VisualState {
+    doc "One state of a group: the values it sets, and timelines it starts."
+    field name String "Its name."
+    field values List.PropValue "The values it sets."
+    field onEnter String "A timeline (og.ui.defineTimeline) played on the element when the state is entered (empty: none)."
+    field onExit String "One played when it is left."
+  }
+
+  struct StateTransition {
+    doc "The transition between two states of a group (`*` matches any state). The exact pair wins, then `* -> to`, `from -> *`, `* -> *`."
+    field from String "The state left."
+    field to String "The state entered."
+    field transition Transition "How the values move."
+  }
+
+  struct StateGroup {
+    doc "A visual state group (docs/ui.md §7.3): one of its states is current, and moving between them animates every value that changes. A group named interaction is derived from input: normal, hover, pressed, focused and disabled (a state the group lacks falls back: pressed to hover to normal, focused to hover). Other groups take their state from ElementProps.state, a timeline's state event or og.ui.forceState; the first state is the default."
+    field name String "Its name."
+    field states List.VisualState "Its states."
+    field transitions List.StateTransition "Its transitions; a pair without one moves on the element's motion, else the style's ui spring."
+  }
+
+  struct StateValue {
+    doc "The current state of a group."
+    field group String "The group."
+    field state String "Its state."
+  }
+
+  struct ElementProps {
+    doc "Everything an element carries beyond its box (docs/ui.md §6.1): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion."
+    desc true
+    field transform UiTransform "Its transform after layout."
+    field opacity f32 "Its opacity, multiplied down the tree." {
+      default 1
+      min 0
+      max 1
+    }
+    field z i32 "Its drawing and hit-testing order among its siblings: higher draws over lower without leaving the flow."
+    field position Position "How it is placed."
+    field insets Edges "Its insets, for an absolute or anchored element."
+    field anchorTo String "The path of the element an anchored element is placed against."
+    field anchorAt Anchor "The target's point it sits on."
+    field anchorSelf Anchor "Its own point that sits there."
+    field hitSlop f32 "Extra pointer reach around its box." {
+      unit cssPx
+    }
+    field layout LayoutMode "How it lays out its children."
+    field grid GridSpec "Its tracks and areas, for a grid."
+    field place GridPlace "Its place in a grid parent."
+    field container bool "Its container queries read its own width."
+    field variants List.UiVariant "Prop overrides by breakpoint, orientation and width; later ones win."
+    field overlaps List.String "Paths of elements it overlaps on purpose (an ancestor path covers its subtree). Undeclared overlaps are reported (og.ui.overlaps)."
+    field match String "A shared-element key: the element with the same key on the screen being left morphs into this one."
+    field drag Option.DragSpec "It moves with a drag."
+    field pinch Option.PinchSpec "Two touches scale and turn it."
+    field drop Option.DropSpec "It takes drops."
+    field motion Option.Transition "How its animatable values move when they change; null is at once."
+    field layoutMotion Option.Transition "Moves from its last laid-out rectangle to its new one (FLIP); null jumps."
+    field enter Option.PresenceSpec "How it arrives."
+    field exit Option.PresenceSpec "How it leaves: kept, inert and out of hit tests and the accessibility tree, while it plays after the element leaves the tree."
+    field states List.StateGroup "Its visual state groups."
+    field state List.StateValue "The current state of its groups that are not derived from input."
+    field reduced Option.ReducedMotion "Its reduced-motion fallback; null is the style's."
+    field inert bool "It and its subtree take no input."
+  }
+
+  struct EaseKey {
+    doc "A named ease into a key."
+    field ease EaseName "The curve."
+  }
+
+  struct HoldKey {
+    doc "Holds the previous value, then jumps at the key."
+  }
+
+  struct LinearKey {
+    doc "Constant speed into the key."
+  }
+
+  struct BezierKey {
+    doc "A cubic Bézier into the key."
+    field bezier List.f32 "x1, y1, x2, y2."
+  }
+
+  union KeyEase {
+    doc "How the segment into a key moves."
+    tag kind
+    case linear LinearKey "Constant speed."
+    case ease EaseKey "A named ease."
+    case bezier BezierKey "A cubic Bézier."
+    case spring SpringSpec "On a spring from the previous key's value (released at it)."
+    case hold HoldKey "Holds, then jumps."
+  }
+
+  struct TimelineKey {
+    doc "A keyframe: a value at a time."
+    field atMs f32 "Its time." {
+      unit ms
+    }
+    field value f32 "Its value."
+    field ease Option.KeyEase "How the segment into it moves; null is the out ease."
+  }
+
+  struct TimelineTrack {
+    doc "Keys over one prop of the element the timeline plays on, or of a descendant by its path below it (`Stars/Star#2`). Before its first key it holds that key's value, after its last the last."
+    field target String "A path below the play's element (empty: the element itself)."
+    field prop UiProp "The prop."
+    field keys List.TimelineKey "In time order."
+  }
+
+  struct SoundEvent {
+    doc "A UI sound of the style."
+    field name String "hover, press, open, close, success or error."
+    field pitch f32 "Its pitch (1: as recorded); a cascade step raises it 6 %." {
+      default 1
+    }
+  }
+
+  struct HapticEvent {
+    doc "A haptic pattern for the host."
+    field name String "light, medium, heavy, success, warning or error."
+  }
+
+  struct BurstEvent {
+    doc "Rays and sparks from the target."
+    field count u32 "How many (0: 12)."
+    field radius f32 "How far they reach (0: the style's)." {
+      unit cssPx
+    }
+    field color Option.Color "Their colour; null is the style's highlight."
+  }
+
+  struct StateEvent {
+    doc "Sets a state group of the target."
+    field group String "The group."
+    field state String "Its new state."
+  }
+
+  struct CallbackEvent {
+    doc "A callback to game code: it arrives in og.ui.motionEvents."
+    field name String "Its name."
+  }
+
+  union TimelineAction {
+    doc "What an event does when a play reaches it."
+    tag kind
+    case sound SoundEvent "A UI sound."
+    case haptic HapticEvent "A haptic."
+    case burst BurstEvent "A burst."
+    case state StateEvent "A state change."
+    case callback CallbackEvent "A callback."
+  }
+
+  struct TimelineEvent {
+    doc "An event at a time, on the play's element or a descendant."
+    field atMs f32 "Its time." {
+      unit ms
+    }
+    field target String "A path below the play's element (empty: the element itself)."
+    field action TimelineAction "What it does."
+  }
+
+  struct TimelineLabel {
+    doc "A named time, for seeking (PlayDesc.fromLabel)."
+    field name String "Its name."
+    field atMs f32 "Its time." {
+      unit ms
+    }
+  }
+
+  struct UiTimeline {
+    doc "Keyframed tracks and events (docs/ui.md §7.4)."
+    desc true
+    field tracks List.TimelineTrack "Its tracks."
+    field events List.TimelineEvent "Its events."
+    field labels List.TimelineLabel "Its named times."
+    field durationMs f32 "Its length (0: its last key or event)." {
+      unit ms
+    }
+  }
+
+  struct ChoreoPlay {
+    doc "A timeline on the play's element or a descendant."
+    field timeline String "The timeline, by name."
+    field target String "A path below the play's element (empty: the element itself)."
+    field delayMs f32 "Wait this long first." {
+      unit ms
+    }
+  }
+
+  struct ChoreoSteps {
+    doc "Steps composed."
+    field steps List.Choreo "The steps."
+  }
+
+  struct ChoreoStagger {
+    doc "One timeline on each target, each stepMs after the one before as ordered by from, the whole spread within capMs."
+    field timeline String "The timeline, by name."
+    field targets List.String "Paths below the play's element (empty: its children in order)."
+    field stepMs f32 "Between one target's start and the next's (0: the style's stagger)." {
+      unit ms
+    }
+    field capMs f32 "The most the whole stagger spreads over (0: the style's cap)." {
+      unit ms
+    }
+    field from String "Where delays grow from: start, end, center (nearest the centre of their bounds first), or `x,y` (nearest that point first)." {
+      default "start"
+    }
+  }
+
+  struct ChoreoCascade {
+    doc "Steps where each starts at the first `on` callback event of the one before (or its end): a score that counts chips, then multiplies, each step pitched higher."
+    field steps List.Choreo "The steps."
+    field on String "The callback that starts the next step."
+  }
+
+  union Choreo {
+    doc "Timelines composed into one play (docs/ui.md §7.4)."
+    tag kind
+    case play ChoreoPlay "One timeline."
+    case sequence ChoreoSteps "One after another."
+    case parallel ChoreoSteps "All at once."
+    case stagger ChoreoStagger "One timeline over many targets."
+    case cascade ChoreoCascade "Steps chained on callbacks."
+  }
+
+  struct PlayDesc {
+    doc "How a play runs."
+    desc true
+    field reverse bool "Plays backwards."
+    field repeat Repeat "How it repeats."
+    field speed f32 "Its rate (0: 1)."
+    field fromMs f32 "Start this far in." {
+      unit ms
+    }
+    field fromLabel String "Start at a label of its first timeline (wins over fromMs)."
+    field hold bool "Keep the last values once it ends, until stopped."
+    field decorative bool "Under reduced motion it does not play at all."
+  }
+
+  struct PlayInfo {
+    doc "Where a play is."
+    field atMs f32 "Its time (before a reverse's turn)." {
+      unit ms
+    }
+    field lengthMs f32 "Its length." {
+      unit ms
+    }
+    field paused bool "Held."
+    field reverse bool "Playing backwards."
+    field ended bool "Finished (a held play keeps its values)."
+  }
+
+  struct GestureInfo {
+    doc "What a drag or pinch on an element is doing (last tick's answer, as responses are)."
+    field held bool "A press is held on it."
+    field dragging bool "It moves with the pointer (the press travelled past the threshold)."
+    field offsetX f32 "Its offset from where it was laid out." {
+      unit cssPx
+    }
+    field offsetY f32 "Its offset down." {
+      unit cssPx
+    }
+    field velocityX f32 "CSS px per second."
+    field velocityY f32 "CSS px per second."
+    field scale f32 "A pinch's scale (1: none)."
+    field rotation f32 "A pinch's turn, radians."
+    field snapped i32 "The snap point the last release chose (-1: none)."
+    field dismissed bool "A swipe threw it off."
+    field over String "The drop target under the drag (empty: none)."
+    field droppedOn String "The drop target it was dropped on this tick (empty: none)."
+    field hovering bool "For a drop target: a drag is over it."
+    field received String "For a drop target: the element dropped on it this tick (empty: none)."
+  }
+
+  struct UiMotionEvent {
+    doc "What happened in the UI's motion this tick."
+    field kind String "sound, haptic, burst, state, callback, end (a play finished), dismiss (a swipe threw an element off), drop (a drag was dropped on a target) or snap (a released drag chose a snap point)."
+    field name String "The sound, haptic, callback or state's name; for drop the target's path; for snap the point's index."
+    field target String "The element's path."
+    field play u32 "The play (0: none)."
+    field index u32 "The clip's step in a cascade or stagger."
+    field pitch f32 "A sound's pitch: its own times 1.06 per cascade step."
+  }
+
+  struct UiOverlap {
+    doc "Two elements overlapping where neither declared it (docs/ui.md §6.2)."
+    field path String "The element placed over the other (absolute, anchored or floating), or the later of two siblings in the flow."
+    field other String "The other element."
+    field rect UiRect "Where they overlap."
+    field inFlow bool "Both are in their parent's flow: a layout bug, not a placement."
+  }
+
+  struct UiLayoutStats {
+    doc "What the last frame rebuilt and laid out (docs/ui.md §6.3)."
+    field elements u32 "Elements built."
+    field rebuilt u32 "Elements whose inputs changed since the tick before (or are new)."
+    field laidOut u32 "Elements laid out; the rest kept their last layout."
+    field keptCommands u32 "Elements whose draw commands were kept from the tick before."
+  }
+
+  fn props {
+    doc "Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §6, §7). Call it right after the element."
+    param desc ElementProps "Its props."
+    returns bool "False when no element was built before it."
+  }
+
+  fn defineTimeline {
+    doc "Define a timeline by name: configuration, like the theme, defined once at start. Plays and state groups name it."
+    param name String "Its name."
+    param timeline UiTimeline "Its tracks, events and labels."
+    returns Void
+  }
+
+  fn play {
+    doc "Play a choreography on an element from the end of this tick: its timelines' keys drive the elements' props and its events fire as it passes them (og.ui.motionEvents). Returns the play's id (0: no element, or a choreo of no known kind)."
+    param path String "The element's full path; empty is the element built just before."
+    param choreo Choreo "What plays."
+    param desc PlayDesc "How it runs."
+    returns u32
+  }
+
+  fn playTimeline {
+    doc "Play one timeline (by name) on an element: og.ui.play with a single step."
+    param path String "The element's full path; empty is the element built just before."
+    param timeline String "The timeline."
+    param desc PlayDesc "How it runs."
+    returns u32
+  }
+
+  fn seek {
+    doc "Move a play to a time; it fires no events on the way. Returns false for an unknown play."
+    param play u32 "The play."
+    param ms f32 "The time, ms."
+    returns bool
+  }
+
+  fn pause {
+    doc "Hold a play where it is."
+    param play u32 "The play."
+    returns bool
+  }
+
+  fn resume {
+    doc "Let a held play go on."
+    param play u32 "The play."
+    returns bool
+  }
+
+  fn reverse {
+    doc "Turn a play round where it is: an interrupted opening closes from where it got to."
+    param play u32 "The play."
+    returns bool
+  }
+
+  fn stop {
+    doc "Stop a play: its elements go back to their own values (on their motion, if they have one)."
+    param play u32 "The play."
+    returns bool
+  }
+
+  fn playInfo {
+    doc "Where a play is; null once it is gone."
+    param play u32 "The play."
+    returns Option.PlayInfo
+  }
+
+  fn forceState {
+    doc "Force a state group of an element (the probe and agents render and check each state this way); null lets it go."
+    param path String "The element's full path."
+    param group String "The group."
+    param state Option.String "The state; null releases it."
+    returns Void
+  }
+
+  fn visualState {
+    doc "The state a group of an element is in (last tick); empty for none."
+    param path String "The element's full path."
+    param group String "The group."
+    returns String
+  }
+
+  fn animate {
+    doc "Any number on a spring or an ease (docs/ui.md §7.1: every value is animatable): call it every tick with the target and it answers this tick's value. A retarget keeps its value and velocity; under reduced motion it jumps."
+    param id String "Its id under the open element."
+    param target f32 "Where it is going."
+    param transition Transition "How it moves."
+    returns f32
+  }
+
+  fn gesture {
+    doc "What the drag or pinch on an element is doing."
+    param path String "The element's full path."
+    returns GestureInfo
+  }
+
+  fn motionEvents {
+    doc "The UI's motion events of the last frame: sounds, haptics, bursts, state changes, callbacks, ends, dismissals, drops and snaps."
+    returns List.UiMotionEvent
+  }
+
+  fn overlaps {
+    doc "The last frame's undeclared overlaps between elements (docs/ui.md §6.2), with both paths."
+    returns List.UiOverlap
+  }
+
+  fn layoutStats {
+    doc "What the last frame built, rebuilt, laid out and kept."
+    returns UiLayoutStats
+  }
+
+  # ── element draws (docs/ui.md §5): shapes, paints, effects, masks, layers ──
+
+  handle VectorArt "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill."
+  handle UiMaterial "A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through."
+
+  column VectorArt {
+    doc "A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill."
+    array Uint32Array
+    stride 2
+    value VectorArt
+  }
+
+  column UiMaterial {
+    doc "A UiMaterial handle field (0 is none): a UI material og.load.uiMaterial answered, kept for a LayerDesc or a custom paint."
+    array Uint32Array
+    stride 2
+    value UiMaterial
+  }
+
+  enum ShapeType {
+    doc "An element's outline (DrawShape.kind)."
+    variant rect "Its rectangle, with DrawShape.radii (or its radius) and corner."
+    variant ellipse "The ellipse inscribed in its rectangle (a circle when square; a capsule is a rect with radii of half its height)."
+    variant polygon "A regular polygon of sides vertices on the circle in its rectangle, the first at the top; inner under 1 makes a star."
+    variant arc "A ring segment on the circle in its rectangle: start, sweep and thickness (a ring at a full turn), with caps."
+    variant path "A line through points (CSS px from its top left), Béziers with curves; its fills draw the line."
+  }
+
+  enum CornerShape {
+    doc "How a rect's corners turn."
+    variant round "Circular arcs."
+    variant squircle "Continuous corners: a superellipse of DrawShape.squircle."
+    variant bevel "A straight cut across, the radius along each edge."
+    variant notch "A concave quarter circle cut in (an inset notch)."
+  }
+
+  enum LineCap {
+    doc "The end of an open line, an arc or a dash."
+    variant butt "Cut square at the end."
+    variant round "A half disc past the end."
+    variant square "Cut square half the width past the end."
+  }
+
+  enum LineJoin {
+    doc "Where a line's segments meet."
+    variant miter "Sharp, cut to a bevel past DrawShape.miterLimit half widths."
+    variant round "Rounded."
+    variant bevel "Cut across."
+  }
+
+  struct DrawShape {
+    doc "An element's outline; its fills, strokes, effects and clip take it."
+    desc true
+    field kind ShapeType "Which outline."
+    field radii Option.Array.f32.4 "A rect's corner radii, top left, top right, bottom right, bottom left; null is the element's radius at every corner." {
+      unit cssPx
+    }
+    field corner CornerShape "A rect's corner shape."
+    field squircle f32 "A squircle corner's exponent: 2 is round, 4 the iOS look." {
+      default 4
+      min 2
+      max 12
+    }
+    field sides u32 "A polygon's vertices." {
+      default 6
+      min 3
+      max 64
+    }
+    field inner f32 "A star's inner vertices as a fraction of its radius; 1 (or more) is a plain polygon." {
+      default 1
+      min 0
+      unit ratio
+    }
+    field rounding f32 "A polygon's corner rounding." {
+      unit cssPx
+    }
+    field rotation f32 "A polygon's turn, clockwise." {
+      unit rad
+    }
+    field start f32 "An arc's start, clockwise from 3 o'clock." {
+      unit rad
+    }
+    field sweep f32 "An arc's sweep, clockwise (a full turn or more: a ring)." {
+      default 6.2831855
+      unit rad
+    }
+    field thickness f32 "An arc's thickness, inwards from the circle." {
+      default 4
+      unit cssPx
+    }
+    field cap LineCap "An arc's or a path's ends."
+    field points List.Vector2 "A path's points, CSS px from the element's top left." {
+      unit cssPx
+    }
+    field curves bool "A path's points after the first come in threes: a cubic Bézier's two controls and its end."
+    field closed bool "A path returns to its first point."
+    field width f32 "A path's line width." {
+      default 2
+      min 0
+      unit cssPx
+    }
+    field join LineJoin "Where a path's segments meet."
+  }
+
+  enum GradientType {
+    doc "How a gradient (Gradient.type) runs over the element's box (fractions: 0,0 top left, 1,1 bottom right)."
+    variant linear "From `from` to `to`."
+    variant radial "Centred on `from`, `to` its x and y radii."
+    variant conic "Around `from`, starting at the angle to.x (radians clockwise from 3 o'clock)."
+    variant diamond "Centred on `from`, `to` its x and y radii, by |x|/rx + |y|/ry."
+  }
+
+  enum GradientSpread {
+    doc "What a gradient does past its ends."
+    variant pad "Holds the end stops' colours."
+    variant repeat "Starts over."
+    variant reflect "Runs back and forth."
+  }
+
+  struct GradientStop {
+    doc "A gradient's colour at an offset."
+    desc true
+    field offset f32 "Where along the gradient, 0 to 1." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field color Paint "Its colour: a theme token, resolved when the frame is drawn, or a literal."
+  }
+
+  struct Gradient {
+    doc "A gradient of up to 8 stops, mixed in OKLab (no grey middle between complementary colours) and dithered so a long shallow one shows no bands."
+    desc true
+    field type GradientType "Its shape."
+    field from Vector2 "Its start or centre, a fraction of the box." {
+      unit ratio
+    }
+    field to Vector2 "Its end, or its radii, a fraction of the box." {
+      default 0 1
+      unit ratio
+    }
+    field stops List.GradientStop "Its stops in order (at most 8)."
+    field spread GradientSpread "Past its ends."
+    field noDither bool "Draws it without the dither."
+  }
+
+  enum ImageFit {
+    doc "How an image fills the element's box."
+    variant fill "Stretched to the box."
+    variant cover "Scaled to cover the box, cropped around the focal point."
+    variant contain "Scaled to fit inside the box, placed by the focal point."
+    variant none "At its own size (one image pixel per CSS px), placed by the focal point."
+    variant nineSlice "Nine-slice: corners kept at slice, edges and centre filled by edges."
+    variant pattern "Tiled at tile CSS px, turned, offset and scrolling."
+  }
+
+  enum SliceEdges {
+    doc "How a nine-slice's edges and centre fill their length."
+    variant stretch "Stretched."
+    variant repeat "Tiled at the border's scale, cut at the end."
+    variant round "Tiled a whole number of times, stretched to fit."
+  }
+
+  struct SolidFill {
+    doc "A colour."
+    desc true
+    field color Paint "The colour: a theme token, resolved when the frame is drawn, or a literal."
+  }
+
+  struct ImageFill {
+    doc "A texture region with a fit."
+    desc true
+    field texture Texture "The texture (og.load.texture)."
+    field uv Option.Array.f32.4 "The region, [u0, v0, u1, v1] with v down; null is the whole texture."
+    field size Vector2 "The region's size in image pixels (none, nineSlice and pattern read it); zero is the texture's."
+    field tint Option.Paint "Multiplies it; null is white."
+    field fit ImageFit "How it fills the box."
+    field focal Vector2 "Where cover crops and contain or none place it, fractions of the free space." {
+      default 0.5 0.5
+      unit ratio
+    }
+    field slice Array.f32.4 "A nine-slice's border in image pixels: left, top, right, bottom."
+    field border Option.Array.f32.4 "A nine-slice's border as drawn, CSS px; null is slice."
+    field edges SliceEdges "A nine-slice's edges and centre."
+    field hollow bool "A nine-slice leaves its centre empty."
+    field tile Vector2 "A pattern's tile, CSS px; zero is size." {
+      unit cssPx
+    }
+    field patternRotation f32 "A pattern's turn." {
+      unit rad
+    }
+    field offset Vector2 "A pattern's offset." {
+      unit cssPx
+    }
+    field scroll Vector2 "A pattern's scroll, CSS px a second of the UI clock." {
+      unit cssPx
+    }
+  }
+
+  struct VectorFill {
+    doc "A cooked vector contained and centred in the box."
+    desc true
+    field vector VectorArt "The vector (og.load.vector)."
+    field tint Option.Paint "Multiplies its paints; null is white."
+  }
+
+  union Fill {
+    doc "One layer of an element's fill, or a stroke's paint."
+    tag kind
+    case solid SolidFill "A colour."
+    case gradient Gradient "A gradient."
+    case image ImageFill "An image with a fit, a nine-slice or a pattern."
+    case vector VectorFill "A cooked vector (as a stroke's paint, its tint)."
+  }
+
+  enum StrokeAlign {
+    doc "Which side of the outline a stroke lies on."
+    variant center "Across the outline."
+    variant inside "Inside it."
+    variant outside "Outside it."
+  }
+
+  struct Stroke {
+    doc "A stroke along the element's outline with a paint of its own (a gradient border is one stroke)."
+    desc true
+    field width f32 "Its width." {
+      default 1
+      min 0
+      unit cssPx
+    }
+    field align StrokeAlign "Which side of the outline."
+    field dash f32 "A dash's length; 0 is solid." {
+      min 0
+      unit cssPx
+    }
+    field gap f32 "The gap between dashes; 0 is the dash's length." {
+      min 0
+      unit cssPx
+    }
+    field dashOffset f32 "Where the dashes start along the outline (move it by the tick for marching ants)." {
+      unit cssPx
+    }
+    field dashCap LineCap "The dashes' ends."
+    field paint Option.Fill "Its paint; null is the theme's line colour."
+  }
+
+  struct ShadowEffect {
+    doc "A shadow: a drop shadow under the element, or an inner shadow cast inwards."
+    desc true
+    field offset Vector2 "How far it falls." {
+      default 0 4
+      unit cssPx
+    }
+    field blur f32 "Its softness (CSS blur: the Gaussian's deviation is half of it)." {
+      default 12
+      min 0
+      unit cssPx
+    }
+    field spread f32 "How far it grows (or with a negative value shrinks) past the shape." {
+      unit cssPx
+    }
+    field color Option.Paint "Its colour; null is the theme's shadow."
+  }
+
+  struct GlowEffect {
+    doc "A glow: around the element, or along its inside."
+    desc true
+    field blur f32 "Its softness." {
+      default 12
+      min 0
+      unit cssPx
+    }
+    field spread f32 "How far it grows past the shape." {
+      unit cssPx
+    }
+    field color Option.Paint "Its colour; null is the theme's primary."
+  }
+
+  struct BlurEffect {
+    doc "The element and its subtree blurred (drawn offscreen)."
+    desc true
+    field radius f32 "The blur." {
+      default 4
+      min 0
+      unit cssPx
+    }
+  }
+
+  struct BackdropEffect {
+    doc "What is under the element (the scene and the UI below it) blurred, its saturation and brightness scaled and tinted: glass."
+    desc true
+    field blur f32 "The blur." {
+      default 16
+      min 0
+      unit cssPx
+    }
+    field saturation f32 "Multiplies the saturation." {
+      default 1
+      min 0
+      unit ratio
+    }
+    field brightness f32 "Multiplies the brightness." {
+      default 1
+      min 0
+      unit ratio
+    }
+    field tint Option.Paint "Over the blur, by its alpha; null is the theme's panel at 60 %."
+  }
+
+  union Effect {
+    doc "An effect of the element."
+    tag kind
+    case dropShadow ShadowEffect "A drop shadow (several layer)."
+    case innerShadow ShadowEffect "An inner shadow."
+    case outerGlow GlowEffect "A glow around it."
+    case innerGlow GlowEffect "A glow along its inside."
+    case layerBlur BlurEffect "Its subtree blurred."
+    case backdrop BackdropEffect "Glass: what is under it blurred."
+  }
+
+  enum ClipMode {
+    doc "How an element cuts its children."
+    variant none "Not at all (a scroll container still clips to its rectangle)."
+    variant shape "To its shape, antialiased (a round avatar, a hex frame)."
+    variant mask "By DrawDesc.mask's alpha (the subtree draws offscreen)."
+  }
+
+  struct MaskDesc {
+    doc "An alpha mask over an element's subtree: a gradient's alpha, else an image's."
+    desc true
+    field gradient Option.Gradient "The gradient whose alpha masks (a list fading at its edge)."
+    field texture Option.Texture "The image whose alpha masks, stretched over the element."
+    field uv Option.Array.f32.4 "The image's region; null is the whole texture."
+  }
+
+  enum MaterialName {
+    doc "What a layer composites through: a built-in UI material, or a custom one. params is read per material."
+    variant plain "The layer as drawn."
+    variant dissolve "[threshold 0–1, edge width, noise scale (CSS px), _], [edge colour rgba]."
+    variant shine "[position 0–1 across the diagonal (negative sweeps by the clock at -position a second), width, angle (rad), intensity], [colour rgba]."
+    variant hologram "[scanline spacing (CSS px), flicker 0–1, chromatic split (CSS px), scanline strength], [tint rgba]."
+    variant glitch "[strength 0–1, slice height (CSS px), split (CSS px), rate (Hz)]."
+    variant ripple "[amplitude (CSS px), wavelength (CSS px), speed (CSS px/s), _], [centre x, y as fractions]."
+    variant pixelate "[cell size (CSS px)]."
+    variant colorAdjust "[hue (rad), saturation, brightness, grayscale 0–1]."
+    variant outline "[width (CSS px), _, _, _], [colour rgba]: an outline of the layer's alpha."
+    variant blur "[radius (CSS px)]."
+    variant custom "LayerDesc.custom, a `type ui-material`."
+  }
+
+  struct LayerDesc {
+    doc "The element's subtree drawn offscreen, then composited through a material (a card that dissolves, a hologram panel)."
+    desc true
+    field material MaterialName "The material."
+    field custom Option.UiMaterial "The custom material, for material custom."
+    field params List.f32 "Its parameters: up to four vec4s, flattened (16 numbers); for a custom material, missing ones are its defaults."
+  }
+
+  struct TextShadowDesc {
+    doc "A shadow under an element's text."
+    desc true
+    field offset Vector2 "How far it falls." {
+      default 0 2
+      unit cssPx
+    }
+    field blur f32 "Its softness." {
+      default 2
+      min 0
+      unit cssPx
+    }
+    field color Option.Paint "Its colour; null is the theme's shadow."
+  }
+
+  struct TextOutlineDesc {
+    doc "An outline around an element's glyphs."
+    desc true
+    field width f32 "Its width (up to the font's distance range)." {
+      default 2
+      min 0
+      unit cssPx
+    }
+    field color Option.Paint "Its colour; null is the theme's shadow."
+    field align StrokeAlign "Across the glyph's edge, inside it or outside it."
+  }
+
+  struct TextEffectsDesc {
+    doc "Effects of the text an element holds (its labels and rich text)."
+    desc true
+    field shadows List.TextShadowDesc "Shadows, under everything, in order."
+    field outline Option.TextOutlineDesc "An outline."
+    field fill Option.Gradient "A gradient fill over each line's box instead of its colour."
+  }
+
+  struct DrawDesc {
+    doc "What an element draws with (og.ui.setDraw), over its background: its shape, fills and strokes in order, effects, opacity and blend, how it clips its children, and whether its subtree draws offscreen through a material. Colours given as theme tokens follow the style; every value is data an agent can read and set."
+    desc true
+    field shape Option.DrawShape "Its outline; null is its rectangle with its radius."
+    field fills List.Fill "Fills, bottom first."
+    field strokes List.Stroke "Strokes, over the fills and the children, bottom first."
+    field effects List.Effect "Shadows, glows, blurs and backdrops."
+    field opacity f32 "Multiplies its paints (with a layer, its composite)." {
+      default 1
+      min 0
+      max 1
+    }
+    field blend BlendMode "How its paints (or its layer) mix with what is under them."
+    field clip ClipMode "How it cuts its children."
+    field mask Option.MaskDesc "The mask, for clip mask."
+    field layer Option.LayerDesc "Its subtree drawn offscreen and composited through a material."
+    field text Option.TextEffectsDesc "Effects of its text."
+  }
+
+  enum BlendMode {
+    doc "How a paint mixes with what is under it."
+    variant normal "Over it."
+    variant multiply "Multiplied: darkens."
+    variant screen "Screened: lightens."
+    variant add "Added: glows."
+    variant overlay "Multiply under half grey, screen over it."
+    variant softLight "A gentle overlay."
+    variant colorDodge "Brightens what is under it by the paint."
+  }
+
+  fn setDraw {
+    doc "Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §5). Call it right after the element's open or control; immediate mode, so every tick it is drawn."
+    param desc DrawDesc "What it draws with."
+    returns Void
+  }
+
+  # ── world-space UI (docs/ui.md §14, §5.5) ───────────────────────────────
+
+  struct WorldTarget {
+    doc "What an anchored element or a world panel is placed on: an entity (its world pose, down og.Parent) or a world point."
+    desc true
+    field entity Option.Entity "The entity; null places it on point."
+    field point Vector3 "The world point, when entity is null."
+  }
+
+  enum AnchorScaleMode {
+    doc "How an anchored element's size follows its distance from the camera."
+    variant constant "Its laid-out size at every distance (a nameplate that stays readable)."
+    variant distance "1 at reference world units, larger nearer and smaller farther, between minScale and maxScale (a tag that feels in the world)."
+  }
+
+  enum WorldOcclusion {
+    doc "What the scene in front of an anchored element does to it: a depth test of its point against the frame's depth, on the GPU."
+    variant none "Drawn over the scene."
+    variant fade "Drawn at occludedAlpha where the scene is in front."
+    variant hide "Not drawn where the scene is in front."
+  }
+
+  enum Declutter {
+    doc "How an anchored element that overlaps one of higher priority (or as high and nearer) resolves."
+    variant none "It overlaps."
+    variant shift "Moved the shortest way clear (else stacked above)."
+    variant stack "Moved above what it overlaps, one over another (a crowd's nameplates)."
+    variant hide "Faded out while it overlaps."
+  }
+
+  struct EdgeClampDesc {
+    doc "Edge clamping for a waypoint or a ping: off the screen or behind the camera it stays inside the safe area, on the edge toward its point, with an arrow pointing there."
+    desc true
+    field margin f32 "Inset from the safe area's edges." {
+      default 24
+      unit cssPx
+      min 0
+    }
+    field arrow Option.Paint "The arrow's ink; null draws none."
+    field arrowSize f32 "The arrow's length." {
+      default 14
+      unit cssPx
+      min 0
+    }
+  }
+
+  struct WorldAnchorDesc {
+    doc "An element anchored in the world (docs/ui.md §14): laid out at its own size and placed each tick on its target's point projected with the tick's camera. A nameplate, an interaction prompt, a speech bubble, a waypoint."
+    desc true
+    field target WorldTarget "What it sits on."
+    field offset Vector3 "Added to the point in world units (above a head: 0, 2, 0)."
+    field screenOffsetX f32 "Moves it right on the screen." {
+      unit cssPx
+    }
+    field screenOffsetY f32 "Moves it down on the screen." {
+      unit cssPx
+    }
+    field pivot Anchor "Its point that sits on the projected point; the default is its bottom centre."
+    field direction Direction "Which way it lays out its children; the default is a column."
+    field gap f32 "Space between children." {
+      unit cssPx
+    }
+    field padding Insets "Space inside its edges."
+    field align Align "Where children sit along the main axis."
+    field cross Cross "Where children sit across it."
+    field background Option.Paint "Its fill; null draws none."
+    field radius f32 "Corner radius." {
+      unit cssPx
+    }
+    field scale AnchorScaleMode "How its size follows its distance."
+    field reference f32 "For scale distance: the distance at which it is its laid-out size." {
+      default 10
+      unit m
+      min 0
+    }
+    field minScale f32 "For scale distance: the smallest it gets." {
+      default 0.25
+      min 0
+    }
+    field maxScale f32 "For scale distance: the largest it gets." {
+      default 2
+      min 0
+    }
+    field occlusion WorldOcclusion "What the scene in front of it does."
+    field occludedAlpha f32 "Its opacity behind the scene, for occlusion fade." {
+      default 0.25
+      min 0
+      max 1
+    }
+    field lod List.f32 "Level-of-detail distances, ascending: level k from lod[k - 1] on (AnchorInfo.lod; build less at a higher level)."
+    field maxDistance f32 "Hidden past this distance, fading over its last tenth; 0 never." {
+      unit m
+      min 0
+    }
+    field declutter Declutter "How it resolves against the anchors it overlaps."
+    field priority i32 "Higher keeps its place; equal priorities favour the nearer."
+    field clamp Option.EdgeClampDesc "Edge clamping; null lets it leave the screen."
+    field fadeTicks u32 "Ticks a fade (declutter, distance, appearing) takes; 0 is 6."
+  }
+
+  struct AnchorInfo {
+    doc "Where an anchored element stands: its distance and level of detail from this tick's camera, the rest as last tick placed it."
+    field inView bool "Its point is in front of the camera and within maxDistance (or clamped to the edge)."
+    field onScreen bool "Its point projects inside the screen."
+    field clamped bool "Held on the screen's edge."
+    field lod u32 "Its level of detail."
+    field distance f32 "From the camera." {
+      unit m
+    }
+    field x f32 "Where its pivot was drawn." {
+      unit cssPx
+    }
+    field y f32 "Where its pivot was drawn." {
+      unit cssPx
+    }
+    field angle f32 "Toward its point from the screen's centre, clockwise from +x (the edge arrow's)." {
+      unit rad
+    }
+    field scale f32 "The scale it was drawn at."
+    field alpha f32 "Its eased opacity (declutter, distance)." {
+      unit ratio
+    }
+  }
+
+  fn openWorldAnchor {
+    doc "Open an element anchored in the world, closed by close(): its children are an ordinary subtree (labels, bars, icons, buttons) laid out at its own size, then projected, scaled, depth tested, decluttered and clamped as desc says. Drawn under the screen's own elements. og.ui.setDraw after it draws its box. For thousands of tags of one kind (overhead bars on an army) use mass elements instead."
+    param id String "Its id; the probe path is the id alone."
+    param desc WorldAnchorDesc "What it sits on and how it follows the camera."
+    returns AnchorInfo
+  }
+
+  struct WorldPanelDesc {
+    doc "A world panel (docs/ui.md §14): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad."
+    desc true
+    field target Option.Texture "The colour of an og.render.renderTarget made with format rgba16float (RenderTargetInfo.texture); give the mesh's material it as map (lit) or emissiveMap with colour black (unlit). It shows the frame after the UI drew it. Null: laid out and hit, drawn nowhere."
+    field width f32 "Its layout width; the target's pixels spread over it." {
+      default 480
+      unit cssPx
+      min 1
+    }
+    field height f32 "Its layout height." {
+      default 320
+      unit cssPx
+      min 1
+    }
+    field quad Option.WorldTarget "Where its quad is: centred on the target's pose, facing its +Z (an og.render.planeGeometry of quadWidth by quadHeight on that entity). Null: no ray reaches it."
+    field rotation Quaternion "The quad's rotation after its target's."
+    field quadWidth f32 "The quad's width along its +X." {
+      default 1
+      unit m
+      min 0
+    }
+    field quadHeight f32 "The quad's height along its +Y." {
+      default 1
+      unit m
+      min 0
+    }
+    field direction Direction "Which way it lays out its children; the default is a column."
+    field gap f32 "Space between children." {
+      unit cssPx
+    }
+    field padding Insets "Space inside its edges."
+    field background Option.Paint "Its fill; null draws none (the target clears to transparent)."
+  }
+
+  struct PanelInfo {
+    doc "What the pointer does on a world panel this tick."
+    field pointed bool "The ray from the pointer meets the panel's quad (and no screen element is under it): its controls take the press."
+    field x f32 "Where on the panel, from its top left." {
+      unit cssPx
+    }
+    field y f32 "Where on the panel, from its top left." {
+      unit cssPx
+    }
+    field distance f32 "Along the ray to the hit." {
+      unit m
+    }
+  }
+
+  fn openWorldPanel {
+    doc "Open a world panel, closed by close(): its children are an ordinary UI (buttons, lists, fields) laid out at width by height and drawn into desc.target; a press on its quad reaches its controls. One render target per panel."
+    param id String "Its id; the probe path is the id alone."
+    param desc WorldPanelDesc "Its target, size and quad."
+    returns PanelInfo
+  }
+
+  enum MassKind {
+    doc "What a mass element template draws."
+    variant number "The instance's value as a number (a damage number, a score)."
+    variant text "One of strings, by the instance's value (a nameplate, a loot label)."
+    variant bar "A bar filled to the instance's value 0–1 with a ghost at its ghost (an overhead health bar)."
+    variant icon "Frame value of frames on texture (a status icon)."
+    variant particle "A particle of particleShape (confetti, sparks)."
+  }
+
+  enum MassEase {
+    doc "How a mass element's timeline moves into a key."
+    variant linear "Evenly."
+    variant out "Fast then slow."
+    variant in "Slow then fast."
+    variant back "Out, past the key and back (a pop)."
+    variant step "Holds the key before until this one."
+  }
+
+  enum MassSpace {
+    doc "Where a mass element's position is."
+    variant world "A world point, projected by the GPU each frame."
+    variant screen "CSS pixels of the screen."
+  }
+
+  enum ParticleShape {
+    doc "A particle's shape."
+    variant square "A rectangle of size (a long thin one is a streak)."
+    variant circle "A disc."
+    variant diamond "A diamond."
+  }
+
+  struct MassKey {
+    doc "A key of a mass element's timeline, evaluated in the shader."
+    desc true
+    field t f32 "Where in its life, 0–1." {
+      unit ratio
+      min 0
+      max 1
+    }
+    field offsetX f32 "Moves it right." {
+      unit cssPx
+    }
+    field offsetY f32 "Moves it down (negative rises)." {
+      unit cssPx
+    }
+    field scale f32 "Its scale." {
+      default 1
+      min 0
+    }
+    field alpha f32 "Its opacity." {
+      default 1
+      min 0
+      max 1
+    }
+    field ease MassEase "How it moves into this key."
+  }
+
+  struct MassTemplateDesc {
+    doc "A mass element template (docs/ui.md §14): declared once, then instanced thousands of times a frame with a few values each. No instance is laid out; its motion is the timeline, evaluated on the GPU."
+    desc true
+    field kind MassKind "What it draws."
+    field space MassSpace "Where instances' positions are."
+    field font Option.Font "Numbers and text: the font (one page); null is the UI's body font."
+    field texture Option.Texture "Icons: the texture its frames are in."
+    field strings List.String "Text: the strings an instance's value picks."
+    field frames List.f32 "Icons: uv rectangles, four numbers each (u0, v0, u1, v1)."
+    field decimals u32 "Numbers: digits after the point."
+    field plus bool "Numbers: a + before positive values."
+    field compact bool "Numbers: 12.3k, 4.5M."
+    field barBack Option.Paint "Bars: the track's ink; null is near black at 85 %."
+    field barGhost Option.Paint "Bars: the ghost's ink; null is pale."
+    field barRadius f32 "Bars: corner radius." {
+      unit cssPx
+      min 0
+    }
+    field particleShape ParticleShape "Particles: the shape."
+    field size Vector2 "Text and numbers: x is the em size; bars, icons and particles: width and height." {
+      unit cssPx
+    }
+    field pivot Vector2 "The element's point on its position, fractions (0.5, 1: its bottom centre)."
+    field lifetime u32 "Ticks an instance lives; 0 shows pushed instances for their tick only."
+    field keys List.MassKey "The timeline over its life (up to 8)."
+    field drift f32 "Each instance drifts sideways up to this far over its life, by its seed." {
+      unit cssPx
+    }
+    field gravity f32 "Added downward over its life, this much at its end." {
+      unit cssPx
+    }
+    field drag bool "Instances' velocity slows to rest over the life."
+    field reference f32 "World space: the distance at which it is its size, nearer larger and farther smaller; 0 keeps its screen size." {
+      unit m
+      min 0
+    }
+    field minScale f32 "World space: the smallest distance scale." {
+      default 0.25
+      min 0
+    }
+    field maxScale f32 "World space: the largest distance scale." {
+      default 4
+      min 0
+    }
+    field occlusion WorldOcclusion "World space: what the scene in front of an instance does."
+    field occludedAlpha f32 "Its opacity behind the scene, for occlusion fade." {
+      default 0.25
+      min 0
+      max 1
+    }
+    field outline Option.Paint "Text and numbers: an outline's ink; null draws none."
+    field outlineWidth f32 "Its width." {
+      default 2
+      unit cssPx
+      min 0
+    }
+  }
+
+  struct MassInstance {
+    doc "One mass element: a few values; its template does the rest."
+    desc true
+    field position Vector3 "A world point, or CSS pixels (x, y) in screen space."
+    field value f64 "The number, the string or frame index, or the bar's fill 0–1."
+    field color Option.Paint "Its ink (text, icon tint, bar fill, particle); null is white."
+    field scale f32 "Multiplies its timeline's scale (a critical hit)." {
+      default 1
+      min 0
+    }
+    field seed u32 "Its drift's side."
+    field ghost f32 "Bars: the ghost's fill 0–1." {
+      unit ratio
+    }
+    field velocity Vector2 "Travelled over its life." {
+      unit cssPx
+    }
+    field spin f32 "Turns over its life."
+    field rotation f32 "Its starting rotation, clockwise." {
+      unit rad
+    }
+  }
+
+  fn defineMass {
+    doc "Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle."
+    param name String "Its name."
+    param desc MassTemplateDesc "What it draws and how it moves."
+    returns u32
+  }
+
+  fn spawnMass {
+    doc "Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them."
+    param template u32 "From defineMass."
+    param instances List.MassInstance "The instances."
+    returns Void
+  }
+
+  fn pushMass {
+    doc "Show instances of a template for this tick only (overhead bars, nameplates, status icons rebuilt every tick with their values)."
+    param template u32 "From defineMass."
+    param instances List.MassInstance "The instances."
+    returns Void
+  }
+
+  fn massCount {
+    doc "The live spawned instances of a template."
+    param template u32 "From defineMass."
+    returns u32
+  }
+
+  enum EmitFrom {
+    doc "Where on its element a particle starts."
+    variant center "Its centre."
+    variant area "Anywhere inside its box."
+    variant edges "On its edges."
+  }
+
+  struct ParticlesDesc {
+    doc "UI particles from an element (docs/ui.md §5.5): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion."
+    desc true
+    field rate f32 "Particles a second while it is built." {
+      min 0
+    }
+    field burst u32 "Particles at once on a tick fire is set."
+    field fire bool "Throw the burst this tick."
+    field lifetimeMs f32 "How long a particle lives; 0 is 900." {
+      unit ms
+      min 0
+    }
+    field shape ParticleShape "Its shape."
+    field size Vector2 "Its size." {
+      default 8 8
+      unit cssPx
+    }
+    field colors List.Paint "Picked by each particle's seed; empty is the accent."
+    field travelMin f32 "The shortest way a particle flies over its life." {
+      default 40
+      unit cssPx
+      min 0
+    }
+    field travelMax f32 "The longest." {
+      default 120
+      unit cssPx
+      min 0
+    }
+    field direction f32 "Its heading, clockwise from +x (-π/2 is up)." {
+      default -1.5707964
+      unit rad
+    }
+    field spread f32 "The spread about the heading (2π is every way)." {
+      default 6.2831855
+      unit rad
+      min 0
+    }
+    field gravity f32 "Added downward over its life, this much at its end." {
+      unit cssPx
+    }
+    field drag bool "Its flight slows to rest." {
+      default true
+    }
+    field spin f32 "Turns over its life, up to this many either way." {
+      min 0
+    }
+    field align bool "Its rotation follows its heading (a streak flying outward)."
+    field from EmitFrom "Where it starts."
+    field endScale f32 "Its scale at the end of its life." {
+      default 1
+      min 0
+    }
+    field fade bool "Fades out toward its end." {
+      default true
+    }
+    field clip bool "Clipped by the element's clip (a scroll view, a masked panel)." {
+      default true
+    }
+  }
+
+  fn particles {
+    doc "Emit particles from the element built just before (a control, or a container just opened). Call every tick it emits; a burst throws on the ticks desc.fire is set. og.ui.burst is a preset of it."
+    param desc ParticlesDesc "What it throws."
+    returns Void
+  }
+
+  enum MetaKind {
+    doc "What a meta layer draws over the scene."
+    variant vignette "Its colour at the edges, clear in the middle (a damage vignette)."
+    variant tint "A flat tint."
+    variant material "The frame under it composited through a UI material (a ripple for sanity, a glitch for a hit)."
+  }
+
+  struct MetaDesc {
+    doc "A meta layer (docs/ui.md §14): full screen, over the scene and under the screen's elements, never taking input."
+    desc true
+    field kind MetaKind "What it draws."
+    field color Option.Paint "Vignette and tint: its ink; null is a deep red."
+    field inner f32 "Vignette: clear out to this fraction of the half diagonal." {
+      default 0.55
+      unit ratio
+      min 0
+      max 1
+    }
+    field outer f32 "Vignette: full colour from this fraction on." {
+      default 1
+      unit ratio
+      min 0
+      max 1
+    }
+    field material MaterialName "Material: the built-in material, or custom."
+    field custom Option.UiMaterial "Material: the custom material."
+    field params List.f32 "Material: its parameters, up to four vec4s flattened."
+    field intensity f32 "Its opacity." {
+      default 1
+      min 0
+      max 1
+    }
+    field pulseHz f32 "Pulses this many times a second (a low-health heartbeat); 0 is steady." {
+      unit hz
+      min 0
+    }
+    field pulseDepth f32 "How far a pulse dims it." {
+      default 0.5
+      unit ratio
+      min 0
+      max 1
+    }
+  }
+
+  fn meta {
+    doc "A meta layer this tick: a damage vignette, a low-health pulse, a material over the whole frame."
+    param id String "Its id."
+    param desc MetaDesc "What it draws."
+    returns Void
+  }
+
+  struct SceneViewportDesc {
+    doc "The viewport element (docs/ui.md §5.5): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in."
+    desc true
+    field texture Option.Texture "The target's colour (RenderTargetInfo.texture)."
+    field width Option.Size "Its width; null is 320 CSS px."
+    field height Option.Size "Its height; null is 320 CSS px."
+    field aspect f32 "Width over height; 0 is free." {
+      min 0
+    }
+    field cameraPosition Vector3 "Its camera's position, for rays."
+    field cameraTarget Vector3 "What its camera looks at, for rays."
+    field fov f32 "Its camera's vertical field of view; 0 gives no ray." {
+      default 50
+      unit deg
+      min 0
+    }
+    field background Option.Paint "Drawn under the view."
+    field radius f32 "Corner radius." {
+      unit cssPx
+    }
+    field label String "What the probe and the accessibility tree call it."
+  }
+
+  struct SceneViewportInfo {
+    doc "What the pointer does in a viewport this tick."
+    field width f32 "Its laid-out width, last tick." {
+      unit cssPx
+    }
+    field height f32 "Its laid-out height, last tick." {
+      unit cssPx
+    }
+    field pixelWidth u32 "The target width that fills it at the device's pixel ratio."
+    field pixelHeight u32 "The target height that fills it."
+    field hovered bool "The pointer is over it."
+    field pressed bool "A press that started in it is held."
+    field clicked bool "Pressed and released in it."
+    field drag Vector2 "The pointer's move while held this tick (orbit, turn)." {
+      unit cssPx
+    }
+    field wheel Vector2 "The wheel over it (zoom)."
+    field at Option.Vector2 "The pointer in it, fractions of its box from the top left."
+    field ray Option.Ray "The ray into its scene through the pointer."
+  }
+
+  fn sceneViewport {
+    doc "A viewport: a camera's render target shown in the layout, its drag, wheel and pointer ray handed back so a menu can orbit, pick and rotate."
+    param id String "Its id."
+    param desc SceneViewportDesc "What it shows and its camera."
+    returns SceneViewportInfo
+  }
+  # ── documents, layers and actions (docs/ui.md §8, §9, §10, §16) ─────────
+
+  struct UiDocEvent {
+    doc "Something a document did (docs/ui.md §10.2): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`."
+    field mount String "The document's mount: the screen's name, or a component instance's path."
+    field path String "The element's path."
+    field kind String "click, changed, select, emit, action, set or back."
+    field name String "The element's id (click), the prop (changed), the list (select), the event or action's name, or the viewmodel path a `set` wrote."
+    field value Json "The new value (changed, set), the row's index (select); null otherwise."
+  }
+
+  struct UiDocResponse {
+    doc "What mounting a document answers: its events this tick (and, for a screen, those of its builds code did not see), its root's path, and for a component its props after its two-way writes."
+    field path String "Its root's path; empty when it was not built."
+    field events List.UiDocEvent "Its events."
+    field props Json "A component's props after its writes (a screen's viewmodel is og.ui.screenVm's)."
+  }
+
+  struct UiLayer {
+    doc "A layer of the stack (docs/ui.md §8.1), as its screen declares it."
+    field serial u32 "Its number, unique for the UI's life: what push answered."
+    field screen String "The screen's name; also its layer's id, the first segment of its elements' paths."
+    field kind String "hud, menu, modal, popover, toast, tooltip or system."
+    field input String "game (input reaches gameplay), menu (input stays in the UI) or all."
+    field capture bool "It takes the pointer on its gaps too."
+    field pause bool "The game pauses while it is on the stack."
+    field under String "What happens to the layers under it: none, dim, blur or hide."
+    field back String "What Back does: pop, none or `emit <event>`."
+    field focus String "Where focus starts, a path below its root (empty: its first control)."
+    field remember bool "Focus returns where it was when it is the top again."
+    field top bool "It is the top layer."
+    field hidden bool "A layer above hides it: it is not built."
+    field inert bool "A menu layer above takes its input."
+  }
+
+  enum UiActionTrigger {
+    doc "When a UI action fires."
+    variant press "When a binding goes down."
+    variant release "When it comes up."
+    variant hold "When it has been held holdMs."
+  }
+
+  struct UiActionDesc {
+    doc "A named UI action (docs/ui.md §8.2) bound to og-input's controls: a component asks for an action, not a key."
+    field name String "Its name: confirm, back, tabNext, tabPrev, details, or the game's own."
+    field keys List.String "Key codes (KeyboardEvent.code: `Enter`, `KeyE`)."
+    field buttons List.String "Standard-mapping pad buttons (GamepadButton's names: `a`, `rightBumper`)."
+    field trigger UiActionTrigger "When it fires."
+    field holdMs f32 "How long a hold is (0: 500)." {
+      unit ms
+    }
+    field toggle bool "A hold's toggle alternative (XAG 107): a tap turns it on, the next tap off; og.ui.actionHeld answers true between."
+    field label String "What it says when no document gives it a hint."
+  }
+
+  enum UiDevice {
+    doc "The device a glyph set is for: the one the player used last."
+    variant keyboardMouse "Keyboard and mouse."
+    variant xbox "An Xbox pad."
+    variant playstation "A PlayStation pad."
+    variant switch "A Nintendo Switch pad (south is B)."
+    variant gamepad "A generic standard-mapping pad."
+    variant touch "A touch screen."
+  }
+
+  struct UiGlyph {
+    doc "An action's control on the device used last."
+    field icon String "The icon a style's set draws: `key.enter`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `touch.<action>`."
+    field text String "The text that names it: `Enter`, `A`, `×`."
+    field device UiDevice "The device it is for."
+  }
+
+  struct UiActionHint {
+    doc "One entry of the action bar: an action the top layer accepts, its hint and glyph."
+    field action String "The action."
+    field hint String "What it does here (the document's `actions` line, else its label)."
+    field icon String "Its glyph's icon."
+    field text String "Its glyph's text."
+    field hold bool "It is a hold."
+  }
+
+  fn screen {
+    doc "Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots after this call (og.ui.openSlot). Its bindings read the viewmodel every tick, a Capitalised root (`Wallet.gold`) the resource as of the last tick; two-way controls write into it (each write is a `set` event). Layers code does not mount are built at the frame's end with the viewmodel they have."
+    param name String "The screen's name (its `name` line)."
+    param vm Json "Its viewmodel: an object (null keeps the one it has)." {
+      optional true
+    }
+    returns UiDocResponse
+  }
+
+  fn component {
+    doc "Mount a component document (`type component`) here, inside whatever is open: its props are its viewmodel, its two-way writes come back in the answer's props."
+    param id String "The instance's root id."
+    param name String "The component's name."
+    param props Json "Its props: an object." {
+      optional true
+    }
+    returns UiDocResponse
+  }
+
+  fn openSlot {
+    doc "Open a document's slot (a `slot` element built this tick) so code fills it; its children follow until og.ui.close. False when no such slot was built this tick."
+    param path String "Its full path, or `<screen>/<slot id>`."
+    returns bool
+  }
+
+  fn push {
+    doc "Push a screen onto the layer stack (docs/ui.md §8.1); the layer under it remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it."
+    param world World "The world."
+    param screen String "The screen's name."
+    param vm Json "Its viewmodel (null: its document's first fixture, else an empty object)." {
+      optional true
+    }
+    returns Result.u32 "The layer's serial. Refused for a name no screen document has."
+  }
+
+  fn pop {
+    doc "Pop the top layer; the one under it takes its remembered focus. Answers the popped screen's name (empty: the stack was empty)."
+    param world World "The world."
+    returns String
+  }
+
+  fn replace {
+    doc "Replace the top layer with a screen."
+    param world World "The world."
+    param screen String "The screen's name."
+    param vm Json "Its viewmodel." {
+      optional true
+    }
+    returns Result.u32 "The new layer's serial."
+  }
+
+  fn clear {
+    doc "Empty the layer stack."
+    param world World "The world."
+    returns Void
+  }
+
+  fn layers {
+    doc "The layer stack, bottom first."
+    param world World "The world."
+    returns List.UiLayer
+  }
+
+  fn screenVm {
+    doc "A layer's viewmodel as its two-way bindings left it (the top layer of that screen); null when it is not on the stack."
+    param world World "The world."
+    param screen String "The screen's name."
+    returns Json
+  }
+
+  fn docEvents {
+    doc "Take the events of documents built where code did not see them (layers built at the frame's end); og.ui.screen answers its own."
+    param world World "The world."
+    returns List.UiDocEvent
+  }
+
+  fn gameInput {
+    doc "Gameplay takes input this tick: no layer whose input is `menu` is on the stack. Input goes to the top layer that takes it, once per tick."
+    param world World "The world."
+    returns bool
+  }
+
+  fn paused {
+    doc "A layer that pauses the game (`pause`) is on the stack: the engine holds the time scale at 0 while one is, and gives back the one it had."
+    param world World "The world."
+    returns bool
+  }
+
+  fn defineAction {
+    doc "Define (or redefine) a UI action. confirm (Enter, Space, A), back (Escape, B), tabNext (E, ], RB), tabPrev (Q, [, LB) and details (X, Y) are defined by default."
+    param world World "The world."
+    param desc UiActionDesc "The action."
+    returns Result.Void
+  }
+
+  fn action {
+    doc "The action fired this tick (a document's `on action` fires on the top layer that takes input)."
+    param name String "The action."
+    returns bool
+  }
+
+  fn actionHeld {
+    doc "A hold action is held past its hold, or its toggle is on."
+    param name String "The action."
+    returns bool
+  }
+
+  fn glyph {
+    doc "An action's glyph on the device used last: its first binding there. Null for an unknown action or one with no binding on that device."
+    param world World "The world."
+    param action String "The action."
+    returns Option.UiGlyph
+  }
+
+  fn device {
+    doc "The device the player used last (glyphs follow it live): a key or the mouse, a pad of the family set with og.ui.setDevice (Xbox by default), or a touch on a coarse pointer."
+    param world World "The world."
+    returns UiDevice
+  }
+
+  fn setDevice {
+    doc "Set the device (the host's when it knows: a pad's family from its id); a pad family also becomes what pad input shows from then on."
+    param world World "The world."
+    param device UiDevice "The device."
+    returns Void
+  }
+
+  fn actionBar {
+    doc "What an action bar component reads: the actions the top layer's document lists (`actions { confirm \"Buy\" }`), each with its hint and its glyph on the device used last."
+    param world World "The world."
+    returns List.UiActionHint
+  }
+
+  fn documentSchema {
+    doc "The reflected schema documents are validated against (docs/ui.md §10): every element kind and every prop, with its value type, the kinds it applies to and whether a control writes it back."
+    returns Json
+  }
+
+  fn setProp {
+    doc "Set a prop of a document element live (Tune, the probe's ui:set): presentation only, over the document's own line until og.ui.saveEdits writes it into the file. The value is written as the document's line would be (`token primary`, `grow`, `bind gold compact`)."
+    param world World "The world."
+    param path String "The element's full path."
+    param prop String "The prop (og.ui.documentSchema)."
+    param value String "Its value as a document line writes it."
+    returns Result.Void "Refused for an unknown prop or a value it does not take."
+  }
+
+  fn saveEdits {
+    doc "Write the live edits into their documents' `.ogt` files under the project's assets (each edited element's line of that prop replaced, or one added; every other line kept), as save_scene writes scenes; the documents take the new text at once. Answers the files written."
+    param world World "The world."
+    returns Result.List.String "Refused on a host with no project directory, or a write that fails."
+  }
+}
+
+# ── systems ───────────────────────────────────────────────────────────────
+

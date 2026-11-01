@@ -1,0 +1,412 @@
+module load {
+  skill og-game
+  doc "Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/."
+  doc "Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp."
+  doc "The game's bundle (`cooked`) is opened before the first tick and GameDesc.scene is spawned then. Loads from an open bundle complete at once on both hosts (the web host fetches the bundle's files before the engine starts); only og.load.bundle of another bundle can be pending, and it completes at a tick boundary."
+
+  handle Asset "A loaded bundle, scene or glTF asset."
+  handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
+  handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
+  handle Style "A cooked UI style: its values, atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
+  handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
+
+  column TextureArray {
+    doc "A TextureArray handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value TextureArray
+  }
+
+  column Asset {
+    doc "An Asset handle field."
+    array Uint32Array
+    stride 2
+    value Asset
+  }
+
+  column Sound {
+    doc "A Sound handle field."
+    array Uint32Array
+    stride 2
+    value Sound
+  }
+
+  column Font {
+    doc "A Font handle field (0 is none): a font og.load.font answered, kept for og.render.text or og.ui.configure."
+    array Uint32Array
+    stride 2
+    value Font
+  }
+
+  column Style {
+    doc "A Style handle field (0 is none): a UI style og.load.style answered, kept for og.ui.configure."
+    array Uint32Array
+    stride 2
+    value Style
+  }
+
+  enum LoadStatus {
+    doc "Where a load is."
+    variant pending "Still loading."
+    variant ready "Loaded; it can be instantiated."
+    variant failed "Failed; og.load.error gives the reason."
+  }
+
+  struct GltfDesc {
+    doc "How to load a glTF, as three.js GLTFLoader options where they apply."
+    desc true
+    field scene u32 "Which glTF scene to instantiate."
+    field castShadow bool "Whether the models instantiated from it cast shadows: world.instantiate of the handle and a scene's `model` line give their og.Model this castShadow. On when omitted, so a model loaded without a desc casts as it always has; false turns it off for the model (og.Model.castShadow turns it off for one instance). The flags belong to the asset: another og.load.gltf of the same path answers the same handle and sets them again, for the models instantiated after it." {
+      default true
+    }
+    field receiveShadow bool "Whether the models instantiated from it receive shadows (og.Model.receiveShadow, as castShadow): on when omitted; false lights them as if unshadowed by every light." {
+      default true
+    }
+  }
+
+  struct GltfInfo {
+    doc "What a loaded glTF holds."
+    field scenes u32 "How many scenes it has."
+    field geometries List.Geometry "Its geometries, in glTF mesh-primitive order."
+    field materials List.Material "Its materials, in glTF order, then the default material."
+    field animations List.String "Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name."
+  }
+
+  struct BundleInfo {
+    doc "An open cooked bundle."
+    field path String "The cooked directory it was opened from."
+    field assets u32 "Source assets it holds."
+    field outputs u32 "Cooked outputs (blobs) it holds."
+  }
+
+  struct FontInfo {
+    doc "A loaded font's metrics, in em units unless stated."
+    field glyphs u32 "Glyphs cooked into it."
+    field pages u32 "Atlas pages; the renderer draws one page per pass with one shared layout."
+    field emPx u32 "Atlas pixels per em."
+    field pxRange f32 "The distance range in atlas pixels."
+    field ascender f32 "Ascender above the baseline."
+    field descender f32 "Descender below the baseline (negative)."
+    field lineHeight f32 "Ascender minus descender plus the line gap."
+    field icons u32 "The icons of an icon set (an `.ogt` of `type icons`, SVGs cooked like a font for UiDesc.icons.font); 0 for a text font."
+  }
+
+  struct SoundInfo {
+    doc "A loaded sound."
+    field rate u32 "Samples per second." {
+      unit hz
+    }
+    field channels u32 "Interleaved channels."
+    field frames u32 "Samples per channel."
+    field seconds f32 "Its length." {
+      unit s
+    }
+    field chunks u32 "The chunks it was cooked in (`sound { stream true }` in its import settings, or a QOA file above 1 MiB), the first included; 0 when it was cooked whole. A chunked sound is never resident whole: the engine reads its chunks from about half a second behind each playhead to four seconds ahead (on the web, fetched like a streaming group's pack) and drops the rest."
+  }
+
+  struct TextureArrayInfo {
+    doc "What og.load.textureArray uploaded."
+    field array TextureArray "The array."
+    field width u32 "Each layer's width in texels."
+    field height u32 "Each layer's height in texels."
+    field layers u32 "Its layers, in the order the file lists them."
+    field levels u32 "Mip levels of each layer."
+    field format String "The encoding on the GPU: `rgba8`, or the block format the device takes for its kind (`bc7`, `bc5`, `astc4x4`, `etc2`, `eacrg11`)."
+    field bytes f64 "Bytes it takes on the GPU, every level of every layer (counted in the frame's texture bytes)."
+  }
+
+  component Model {
+    doc "Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one."
+    doc "The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck."
+    field asset Asset "The glTF asset."
+    field tint Color "A linear colour, 0 to 1 a channel, multiplied with every material's base colour on this instance only (white: as the glTF)." {
+      default 1 1 1
+    }
+    field flash f32 "A hit flash on this instance only: the lit colour mixed towards flashColor by this much (og.tween.flash fades it out)." {
+      min 0
+      max 1
+      tunable true
+    }
+    field flashColor Color "The flash's linear colour." {
+      default 1 1 1
+    }
+    field castShadow bool "Every mesh of the model casts shadows, as Mesh.castShadow: drawn into the sun's cascades and the shadowed lights' maps. On by default, unlike Mesh's (a loaded model casts, as it always has); false takes this instance out of every shadow pass. world.instantiate of a glTF and a scene's `model` line set it from the load's GltfDesc.castShadow, unless the scene gives the entity a `Model` table (whose castShadow is on unless it says false)." {
+      default true
+    }
+    field receiveShadow bool "Every mesh of the model receives shadows, as Mesh.receiveShadow; false lights this instance as if unshadowed by every light. On by default. Set as castShadow is, from GltfDesc.receiveShadow or the scene's `Model` table." {
+      default true
+    }
+    field visible bool "Whether it is drawn, as Mesh.visible: false skips every draw of this instance (its meshes, its shadows) while it keeps its transform, its animation and its physics, so a ghost car or a pickup waiting to respawn is hidden without moving it away." {
+      default true
+    }
+    field lodBias f32 "This instance's level of detail bias, multiplied with RenderSettings.lodBias: the cook simplifies every mesh into levels (a model's import settings, `model { lods 1 0.5 0.25 }` by default, the triangle fraction of each level; a glTF with MSFT_lod keeps its own levels) and measures each level's error against the full mesh, and the renderer draws the coarsest level whose error covers less than a pixel at the model's distance, with hysteresis so it does not flicker at the boundary. Above 1 keeps detail farther (a hero), below 1 drops it sooner (a crowd); 0 always draws the full mesh. dump_entity shows the level drawn." {
+      default 1
+      min 0
+      max 16
+      tunable true
+    }
+    field layers u32 "Three.js layers of every mesh of the model, as Mesh.layers." {
+      default 1
+    }
+    field static bool "Part of its scene's baked lighting: og bake lightmaps gives a static model lightmap UVs (xatlas, over its world-space triangles) and traces the light arriving at its surfaces from the scene into the scene's lightmap (`<scene>.lightmap.ogt` and `.ktx2` beside the scene). Once baked, the model draws with it (its ambient light from the lightmap instead of the sky; its lights' direct light, shadows and highlights still drawn every frame) for as long as the bake matches the scene. A scene entity says `static true` beside its `model` line; an unbaked static model draws as any model, and og doctor --project names the scene."
+  }
+
+  fn bundle {
+    doc "Open another cooked bundle (the game's own `cooked` is open before the first tick). Its loads read through it once it is ready."
+    param world World "The world that owns the asset."
+    param path String "The cooked directory, relative to the project (or the page), such as `dlc/cooked`."
+    returns Result.Asset "The bundle's handle: pending until its manifest is read, then ready or failed."
+  }
+
+  fn bundleInfo {
+    doc "What an open bundle holds."
+    param world World "The world that owns the asset."
+    param asset Asset "A bundle handle; the game's own bundle is og.load.bundle's first answer, also given by `defaultBundle`."
+    returns Result.BundleInfo "Refused for a pending, failed or non-bundle asset."
+  }
+
+  fn defaultBundle {
+    doc "The game's own bundle, opened before the first tick from `cooked/`."
+    param world World "The world that owns the asset."
+    returns Result.Asset "Refused when cooked/ was missing or unreadable (run og cook); the reason names the path."
+  }
+
+  fn gltf {
+    doc "Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once."
+    doc "A MagicaVoxel `.vox` cooks to a glTF and loads here too: greedy-meshed, flat-shaded, its palette as vertex colours, z-up turned y-up, each model about its centre (MagicaVoxel's pivot, with a scene graph or without). Its import settings (`models/hut.vox.ogt`, `type import`) size and place it: `model { voxScale 0.1 voxOrigin bottom }` is 0.1 m a voxel (default 1) and the lowest voxel on y = 0 (default `center`, the editor's origin). A `.vox` with frames (MagicaVoxel's animation) cooks to clips that swap the frames' models, played by og.AnimationPlayer as any skinned clip: `voxFps 8` (default 10) and `voxClip walk 0 3` (frames 0 to 3; default one clip `frames` of the file's playback range, else of every frame); a node's `_loop` repeats its keys as the editor plays them."
+    param world World "The world that owns the asset."
+    param path String "The asset id, such as `models/ship.glb`."
+    param desc GltfDesc "Scene and shadow options."
+    returns Result.Asset "The handle, or why it was refused (an uncooked path, a cook stamp mismatch, no open bundle)."
+  }
+
+  fn scene {
+    doc "Load a cooked scene (.ogt). world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name (`Transform` is og.Transform) and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning."
+    param world World "The world that owns the asset."
+    param path String "The scene's asset id, such as `scenes/main.ogt`."
+    returns Result.Asset
+  }
+
+  fn font {
+    doc "Load a cooked MSDF font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font."
+    param world World "The world that owns the font."
+    param path String "The font's asset id, such as `fonts/NotoSansSC-Regular-subset.ttf`."
+    returns Result.Font
+  }
+
+  fn fontInfo {
+    doc "A loaded font's metrics."
+    param world World "The world that owns the font."
+    param font Font "The font."
+    returns Result.FontInfo "Refused for a dead font."
+  }
+
+  fn sound {
+    doc "Load a cooked sound for the audio module. Sounds are `.wav`, `.mp3`, `.ogg` (Vorbis) and `.flac` files under assets/ (and procedural `.ogt` presets): og cook decodes each to 16-bit PCM and encodes it to QOA, so every format plays, streams and loops the same. The asset id keeps the source's extension (`audio/theme.mp3`)."
+    doc "A long sound (music, ambience) can be cooked in chunks of whole QOA frames: `sound { stream true chunk 4 }` in its import settings, `<file>.ogt` (`theme.mp3.ogt`; chunk in seconds, 1 to 60, default 4), and every sound whose QOA file would pass 1 MiB unless `stream false`. Its first chunk loads with it and the others follow the playheads (SoundInfo.chunks), so music is never resident whole; it plays sample for sample as the whole file would, loops and crossfades included. A sound cooked in chunks cannot join a streaming group."
+    param world World "The world that owns the sound."
+    param path String "The sound's asset id, such as `audio/blip.wav`."
+    returns Result.Sound
+  }
+
+  fn lut {
+    doc "A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. One in a streaming group's pack loads once its group is resident (refused before, naming the group); while the group is unloaded PostEffects.lut grades nothing with it, and it comes back under the same handle."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `luts/warm.cube`."
+    returns Result.Lut "Refused for a path not in the bundle (the reason says to run og cook)."
+  }
+
+  fn environment {
+    doc "A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it; `prefiltered true` takes a KTX2 cube's own mip chain as those levels instead (one already GGX-prefiltered by cmgen, IBLBaker or the glTF IBL sampler: level k of L at roughness k / (L - 1)), at the file's own size, without filtering it again. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `env/studio.ogt`."
+    returns Result.EnvironmentMap "Refused for a path not in the bundle (the reason says to run og cook) or not an environment map."
+  }
+
+  fn emitter {
+    doc "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (og-render §2 gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array \"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `fx/sparks.ogt`."
+    returns Result.ParticleEmitter "Refused for a path not in the bundle, or a texture or texture array it cannot load."
+  }
+
+  fn shader {
+    doc "A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; og-render §10), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `shaders/dissolve.ogt`."
+    returns Result.Shader "Refused for a path not in the bundle or not a shader."
+  }
+
+  fn post {
+    doc "A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (og-render §10 has the contract). The cook compiles it for every back end. Loaded once per path."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `post/crt.ogt`."
+    returns Result.Post "Refused for a path not in the bundle or not a post pass."
+  }
+
+  fn vector {
+    doc "A cooked vector for og.ui's VectorFill, from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges the UI pass antialiases at any size; anything outside the subset is refused by name. Loaded once per path."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `ui/emblem.ogt`."
+    returns Result.VectorArt "Refused for a path not in the bundle or not a vector."
+  }
+
+  fn uiMaterial {
+    doc "A custom UI material for og.ui's LayerDesc, from a cooked `.ogt` of `type ui-material`: `code` or `source` (a `.wgsl`) defining `fn material(m: MaterialInput, p: Params) -> vec4<f32>`, which returns the composite's straight-alpha linear colour at m.uv (0 to 1 over the layer; m.pixel, m.size in CSS px, m.time the UI clock), reading the layer with layer(uv) and layer_texel(), and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most four). The cook compiles it for every back end. Loaded once per path."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `ui/duotone.ogt`."
+    returns Result.UiMaterial "Refused for a path not in the bundle or not a UI material."
+  }
+
+  fn texture {
+    doc "Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load."
+    doc "Sources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is."
+    param world World "The world whose renderer owns the texture."
+    param path String "The texture's asset id, such as `textures/stone.png`."
+    returns Result.Texture
+  }
+
+  fn textureArray {
+    doc "Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color|normal|linear|pixel` and one `layer \"<file>\"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array."
+    doc "SpriteDesc.array (world and screen sprites), og.Sprite.array and 2D particle emitters (an emitter's `array` line) draw from its layers, one draw per array whatever layer each shows, with glow and the additive blend; an `array true` flipbook sheet cooks its frames into one (materials and terrain layers do not sample arrays yet). TextureArrayInfo and the frame's texture bytes report it. One in a streaming group's pack loads once its group is resident (refused before, naming the group); when the group unloads the renderer lets it go, og.render.sprite of it is refused and og.Sprite and particles of it draw nothing until the group is resident again, when it comes back under the same handle."
+    param world World "The world whose renderer owns the array."
+    param path String "The array's asset id, such as `tiles/ground.ogt`."
+    returns Result.TextureArrayInfo "Refused for a path not in the bundle (run og cook), not a texture array, or layers that do not agree."
+  }
+
+  fn style {
+    doc "Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 2 (docs/ui.md §12, what `og style upgrade` writes from version 1 and every built-in style is) adds the tokens (rarity, team, damage and chart colours each with its cue, the type scale per breakpoint, the space, size, radius and stroke scales, elevation, the shape language, motion springs and eases, sounds and haptics per UI event) and dresses parts by selector (`dress \"Button.base[pressed]\" { … }`); the tokens are carried, not yet drawn from. Version 1 still loads. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`."
+    param world World "The world whose UI uses it."
+    param path String "The asset id, such as `styles/pixel/style.ogt` or `@styles/pixel/style.ogt`."
+    returns Result.Style "Refused for a path not in the bundle, a style that does not parse (the reason names the line) or an asset it names that cannot load."
+  }
+
+  fn document {
+    doc "Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents) into the world's UI, where og.ui.screen, og.ui.push and og.ui.component name it by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document."
+    param world World "The world whose UI uses it."
+    param path String "The asset id, such as `ui/shop.ogt`."
+    returns Result.Void "Refused for a path not in the bundle or a document that does not parse (the reason names the line)."
+  }
+
+  fn look {
+    doc "Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `ui` (a UI style: a built-in style's slug, such as `cartoon`, or the game's own style file's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment, and the art contract's ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion, ArtCamera) with that resource's fields by name, an asset id where a field is a handle (`lut \"luts/warm.cube\"`, `palette \"palettes/dusk.hex\"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per path."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `looks/main.ogt`."
+    returns Result.Look "Refused for a path not in the bundle (the reason says to run og cook) or an asset it names that cannot load."
+  }
+
+  fn lookInfo {
+    doc "What a loaded look holds and sets."
+    param world World "The world that owns the look."
+    param look Look "The look."
+    returns Result.LookInfo "Refused for a look not loaded in this world."
+  }
+
+  fn palette {
+    doc "A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. Loaded once per path. One in a streaming group's pack loads once its group is resident; while the group is unloaded Stylise.palette quantises to no palette, and the palette comes back under the same handle."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `palettes/dusk.hex`."
+    returns Result.Palette "Refused for a path not in the bundle (the reason says to run og cook)."
+  }
+
+  fn soundInfo {
+    doc "A loaded sound's format and length."
+    param world World "The world that owns the sound."
+    param sound Sound "The sound."
+    returns Result.SoundInfo "Refused for a dead sound."
+  }
+
+  fn status {
+    doc "Where a load is."
+    param world World "The world that owns the asset."
+    param asset Asset "The handle."
+    returns LoadStatus
+  }
+
+  fn error {
+    doc "Why a load failed."
+    param world World "The world that owns the asset."
+    param asset Asset "The handle."
+    returns Option.String "The reason, naming the fix; null unless the load failed."
+  }
+
+  fn gltfInfo {
+    doc "What a ready glTF holds."
+    param world World "The world that owns the asset."
+    param asset Asset "A ready glTF handle."
+    returns Result.GltfInfo "Refused for a pending, failed or non-glTF asset."
+  }
+
+  fn animation {
+    doc "Load a cooked glTF's animation (its `<model>#anim` blob: the rig, the clips, the skin and morph streams) and register its skeleton and clips with og.anim. Loading the same model again answers the same handles."
+    doc "Clips are cooked as f32 samples, or with `animation { compress true tolerance 0.0001 }` in the model's import settings as quantised keys (rotations as 48-bit smallest-three, translations, scales and weights as 16 bits over each channel's range) with every frame dropped that interpolation rebuilds within the tolerance; either way every frame is rebuilt here and the clip plays as f32. Morph targets are cooked sparse (the vertices each moves)."
+    param world World "The world whose animation owns the assets."
+    param path String "The model's asset id, such as `models/walker.glb` (a `#anim` suffix is accepted)."
+    returns Result.Animation "Refused for an uncooked path, a model the cook wrote no `#anim` blob for (no skins, clips or morph targets), a cook stamp mismatch or an invalid rig."
+  }
+
+  fn rig {
+    doc "Load a cooked humanoid map (an `.ogt` of `type rig`: a naming scheme and bones named outright) for og.anim.retarget and og.anim.humanoid. Loading the same path again answers the same handle."
+    param world World "The world whose animation uses it."
+    param path String "The rig's asset id, such as `rigs/strider.ogt`."
+    returns Result.Rig "Refused for a path not in the bundle (run og cook) or a cook stamp mismatch."
+  }
+
+  fn flipbook {
+    doc "Load a cooked flipbook sheet (an `.ogt` of `type flipbook`, with its Aseprite or TexturePacker atlas resolved by the cook) and its texture, and register it with og.flipbook. A sheet with `array true` is cooked into a texture array instead (its frames, one size, cut out of the texture as layers): its sprites draw frame n as layer n, every sprite of the sheet one draw whichever frame each shows, and FlipbookInfo.array names the array. A sheet in a streaming group (its array and layers with it) loads once its group is resident (refused naming the group before), and its sprites draw nothing while the group is away. Loading the same path again answers the same handles."
+    param world World "The world whose animation and renderer own it."
+    param path String "The sheet's asset id, such as `sprites/hero.ogt`."
+    returns Result.FlipbookInfo "Refused for a path not in the bundle (run og cook) or a texture it cannot load."
+  }
+
+  fn tilemap {
+    doc "Load a cooked map (a tilemap `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`), its tilesets and their textures. Loading the same path again answers the same handles."
+    param world World "The world whose renderer and tilemaps own it."
+    param path String "The map's asset id, such as `maps/room.tmj`."
+    returns Result.TilemapInfo "Refused for a path not in the bundle, a missing tileset or texture, or a terrain its tileset lacks."
+  }
+
+  fn video {
+    doc "Load cooked footage (an `.ogt` of `type video`: `source` an .mp4, .webm or .mov beside it or under assets/, `fps`, `maxSeconds`, `size W H`, `kind color|pixel`, `audio`), which og cook turns with ffmpeg into a texture array of its frames and its sound track. Uploads the frames as one 2D-array texture and makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at: a material map, an og.Sprite or a UI image draws it like any texture. Load it in GameDesc.start (every process of an og render --jobs run loads it the same way, so its handles agree). Loading the same path again answers the same handles."
+    param world World "The world whose renderer and audio own it."
+    param path String "The video's asset id: the `.ogt`, such as `clips/intro.ogt`."
+    returns Result.VideoInfo "Refused for a path not in the bundle (run og cook: a video needs ffmpeg there, og doctor) or not a video."
+  }
+
+  fn videoInfo {
+    doc "A loaded video's size, frames, rate, length, texture and sound."
+    param world World "The world that loaded it."
+    param video Video "The video."
+    returns Result.VideoInfo "Refused for a handle og.load.video did not answer."
+  }
+
+  fn timeline {
+    doc "Load a timeline: an `.ogt` of `type timeline` (the og.timeline module's file: duration, paths and tracks of keys), cooked with its caption files imported. Loaded once per path; play it with an og.Timeline whose asset is the handle, or `timeline:play:<name>` on the command channel."
+    param world World "The world."
+    param path String "The timeline's asset id, such as `timelines/intro.ogt`."
+    returns Result.TimelineAsset "Refused for a path not in the bundle (run og cook) or a file that is not a timeline."
+  }
+
+  fn rig2d {
+    doc "Load a cooked 2D rig (an `.ogt` of `type rig2d`, written by hand or imported by the cook from DragonBones JSON) and its texture, and register it with og.skeleton2d. Loading the same path again answers the same handles."
+    param world World "The world whose animation and renderer own it."
+    param path String "The rig's asset id, such as `rigs/hero.ogt`."
+    returns Result.Rig2DInfo "Refused for a path not in the bundle (run og cook) or a texture it cannot load."
+  }
+
+  event AssetReady {
+    doc "A load completed."
+    field asset Asset "The handle."
+    field path String "The path it was loaded from."
+  }
+
+  event AssetFailed {
+    doc "A load failed."
+    field asset Asset "The handle."
+    field path String "The path it was loaded from."
+    field reason String "Why, naming the fix."
+  }
+}
+
+# ── physics ───────────────────────────────────────────────────────────────
+

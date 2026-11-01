@@ -1,7 +1,7 @@
 # og-probe
 
-The command channel and the probe (design §3.3, §3.4; IDL `commands` and
-`probe` in `crates/og-api/api.ogt`), over a world the host owns. It
+The command channel and the probe (design §3.3, §3.4; IDL `commands.ogt` and
+`probe.ogt` in `crates/og-api/api/`), over a world the host owns. It
 implements `RuntimeProbe` protocol 5 (`origin/packages/contracts/src/probe.ts`)
 plus the engine's wire members, served as JSON-RPC 2.0 over a loopback
 WebSocket on native and through a transport-free `call(json) -> json` the

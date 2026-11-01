@@ -1,7 +1,7 @@
 {
   "name": "@origingame/engine",
   "version": "0.7.7",
-  "description": "Origin Engine: the TypeScript API, generated from crates/og-api/api.ogt, its runtime on the web (wasm in a Worker) and native (napi addon) hosts, the player shell, and the agents' knowledge (skills, wiki, style catalogue) in knowledge/.",
+  "description": "Origin Engine: the TypeScript API, generated from crates/og-api/api/<module>.ogt, its runtime on the web (wasm in a Worker) and native (napi addon) hosts, the player shell, and the agents' knowledge (skills, wiki, style catalogue) in knowledge/.",
   "license": "MIT",
   "repository": {
     "type": "git",

@@ -300,7 +300,7 @@ function scaffold(roots: Roots, rules: Rules, overlay: string, files: readonly P
 /** The bundle the platform's production reader would build: text files only. */
 /**
  * The skills as one set: the wiki index's grouping (a `### \`og-x\`` heading
- * over its modules' rows, from each module's `skill` in api.ogt) names
+ * over its modules' rows, from each module's `skill` in api/<module>.ogt) names
  * shipped skills; the skill a module is grouped under names its overview
  * (`og api show <module>`) and no other skill does (they point to that
  * skill); and every section reference (`og-feel §4`, or `§4` for the skill's
@@ -321,7 +321,7 @@ function coherence(roots: Roots, files: readonly PayloadFile[], problems: string
     const heading = /^### `([^`]+)`$/.exec(line);
     if (heading) {
       group = heading[1]!;
-      if (!(SKILLS as readonly string[]).includes(group)) problems.push(`wiki/index.md: groups modules under ${group}, which is no skill this package ships; fix the modules' \`skill\` in api.ogt`);
+      if (!(SKILLS as readonly string[]).includes(group)) problems.push(`wiki/index.md: groups modules under ${group}, which is no skill this package ships; fix the modules' \`skill\` in crates/og-api/api/<module>.ogt`);
       continue;
     }
     const row = /^\| \[`([a-z0-9]+)`\]\(([a-z0-9]+)\.md\)/.exec(line);

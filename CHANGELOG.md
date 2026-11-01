@@ -11,7 +11,7 @@ everything compatible: new members that are off by default (an existing
 game draws and runs as before), variants appended to an enum, fixes,
 frames and speed. Either way every IDL member added, changed or removed
 is one line here, written at the merge that changes
-`crates/og-api/api.ogt`.
+`crates/og-api/api/<module>.ogt`.
 
 ## Unreleased
 

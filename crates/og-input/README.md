@@ -1,7 +1,7 @@
 # og-input
 
 Input as the game sees it (design §2.2, IDL `input` in
-`crates/og-api/api.ogt`): the engine-owned `og.Input`, `og.Pointers` and
+`crates/og-api/api/input.ogt`): the engine-owned `og.Input`, `og.Pointers` and
 `og.Gamepad` resources systems poll,
 the six input events, the `InputSink` the probe and the command channel
 deliver through, and the decoder for the web shell's SharedArrayBuffer input

@@ -1,4 +1,4 @@
-//! Origin Engine `og-idl`: the IDL (`crates/og-api/api.ogt`), its model,
+//! Origin Engine `og-idl`: the IDL (`crates/og-api/api/`), its model,
 //! validator and generators. See `crates/og-api/README.md` for the grammar
 //! and the rules, `docs/design.md` §3 for what the API is.
 //!
@@ -27,8 +27,8 @@ pub use model::Api;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-/// The IDL, relative to the repository root.
-pub const IDL_PATH: &str = "crates/og-api/api.ogt";
+/// The IDL directory, relative to the repository root.
+pub const IDL_PATH: &str = "crates/og-api/api";
 
 /// Directories whose every file is generated from the IDL, relative to the
 /// repository root. A file in them that the generator does not write is drift.
@@ -101,7 +101,7 @@ fn syntax_diagnostic(reason: &str) -> Diagnostic {
 #[derive(Debug)]
 pub enum ReadError {
     Io(PathBuf, std::io::Error),
-    Invalid(PathBuf, Vec<Diagnostic>),
+    Invalid(PathBuf, Vec<(PathBuf, Diagnostic)>),
 }
 
 impl fmt::Display for ReadError {
@@ -115,7 +115,7 @@ impl fmt::Display for ReadError {
                     p.display(),
                     diags.len()
                 )?;
-                for d in diags {
+                for (p, d) in diags {
                     writeln!(f, "  {}:{}: {}", p.display(), d.line, d.message)?;
                 }
                 Ok(())
@@ -126,10 +126,33 @@ impl fmt::Display for ReadError {
 
 impl std::error::Error for ReadError {}
 
-/// Read and validate an IDL file.
+/// Read the parts listed in `parts.txt` and validate their concatenation.
+/// Model lines remain global for generated quotes; diagnostics name the
+/// part and its local line.
 pub fn read(path: &Path) -> Result<Api, ReadError> {
-    let text = std::fs::read_to_string(path).map_err(|e| ReadError::Io(path.to_path_buf(), e))?;
-    parse(&text).map_err(|d| ReadError::Invalid(path.to_path_buf(), d))
+    let manifest = path.join("parts.txt");
+    let parts = std::fs::read_to_string(&manifest).map_err(|e| ReadError::Io(manifest, e))?;
+    let mut text = String::new();
+    let mut sources = vec![(0, path.to_path_buf())];
+    let mut offset = 0;
+    for name in parts.lines() {
+        let part = path.join(name);
+        let source = std::fs::read_to_string(&part).map_err(|e| ReadError::Io(part.clone(), e))?;
+        sources.push((offset, part));
+        offset += source.bytes().filter(|&b| b == b'\n').count();
+        text.push_str(&source);
+    }
+    parse(&text).map_err(|diags| {
+        let diags = diags
+            .into_iter()
+            .map(|mut d| {
+                let (offset, part) = sources.iter().rev().find(|(n, _)| *n < d.line).unwrap();
+                d.line -= offset;
+                (part.clone(), d)
+            })
+            .collect();
+        ReadError::Invalid(path.to_path_buf(), diags)
+    })
 }
 
 /// One generated file: its path relative to the repository root and its bytes.

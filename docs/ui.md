@@ -2,7 +2,7 @@
 
 The design of og-ui as the engine's game UI infrastructure. It is normative
 for `crates/og-ui`, the UI pass of `crates/og-render`, the UI members of the
-API (`module ui` in `crates/og-api/api.ogt`), the style format, the UI kinds
+API (`module ui` in `crates/og-api/api/ui.ogt`), the style format, the UI kinds
 of the art brief and the UI checks of `og`. `docs/design.md` §2.7 points
 here.
 

@@ -35,7 +35,7 @@ ordinary dependency).
 | `mixer` | `Mixer::new(MixerDesc, SoundBank)` / `Mixer::for_link`, `push`, `pump`, `render`, `render_until_tick`, `frames_until_tick`, `skip`, `stats`; `Clock::{Driven, Free}` |
 | `sink` | `HeadlessSink` (`Null` / `Capture`), `wav(pcm, channels, rate)` |
 
-## Records (for `api.ogt`)
+## Records (for `api/audio.ogt`)
 
 Field order, names and storage types are the layout (`og_core::reflect`);
 the IDL must declare them exactly so (an IDL record with the same name and
@@ -655,7 +655,7 @@ every engine (`modules.rs`) and publishes the link, `og.load.sound` puts
 the cooked sound in the engine's bank and answers that handle, `og run`
 opens a `null` sink (`capture` with `--audio out.wav`, `device` when
 asked), the web shell and engine Worker attach `WorkerAudio` and pump
-after each frame, `hello` lists `audio`, and `api.ogt`'s `audio` module
+after each frame, `hello` lists `audio`, and `api/audio.ogt`'s `audio` module
 declares the records, resources and events above (E6 added its own,
 §E6). Of §Records' note, `loop`, `spatial` and `playing` are `bool` now;
 `bus` is still a `u32` index. Evidence of the crate:

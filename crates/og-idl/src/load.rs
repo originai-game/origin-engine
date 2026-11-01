@@ -1,4 +1,4 @@
-//! Reads the `.ogt` tree of `api.ogt` into the IDL model.
+//! Reads the `.ogt` tree of `api/<module>.ogt` into the IDL model.
 //!
 //! Shape errors (an unknown key, a missing name, a malformed type) are
 //! reported here; meaning errors (an unknown type, a duplicate, a missing doc)

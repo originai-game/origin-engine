@@ -1,0 +1,36 @@
+type api
+version 1
+---
+# The Origin Engine API, declared once. Every TypeScript declaration, the
+# runtime binding table and the JSON schema are generated from this file
+# (`og api gen`); CI refuses generated files that differ (`og api check`).
+# Grammar and rules: crates/og-api/README.md. Design: docs/design.md §3.
+
+package "@origingame/engine"
+doc "The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory."
+doc "Every failure is a returned Result; desc objects may omit any field; nothing reads the wall clock inside a tick."
+
+unit m "metres"
+unit s "seconds of simulation time"
+unit ms "milliseconds"
+unit rad "radians"
+unit deg "degrees"
+unit hz "ticks or cycles per second"
+unit ticks "fixed simulation steps"
+unit cssPx "CSS pixels of the play surface, origin at the top left"
+unit ratio "a fraction between 0 and 1"
+unit bytes "bytes"
+unit kg "kilograms"
+unit newton "newtons: the force that gives a kilogram one metre per second squared"
+unit newtonSecond "newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second"
+unit mps "metres per second"
+unit mps2 "metres per second squared"
+unit radps "radians per second"
+unit perSecond "a rate per second: the fraction of a value that decays in one second"
+unit kgPerM3 "kilograms per cubic metre (per square metre in the 2D profile)"
+unit db "decibels"
+unit evPerSecond "exposure stops (EV) per second of simulation time"
+unit bpm "beats per minute"
+
+# ── math ──────────────────────────────────────────────────────────────────
+

@@ -1,0 +1,602 @@
+module input {
+  skill og-game
+  doc "Input as the game sees it: the Input resource for polling, events for edges."
+  doc "The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path."
+  doc "Several pointers at once (multi-touch) are og.Pointers; the first four gamepads, in the W3C standard mapping, are og.Gamepad. Both are world state, as og.Input is, so they replay."
+  doc "Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick."
+
+  const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
+  const MAX_GAMEPADS u32 4 "The most gamepads og.Gamepad reads: pads 0 to 3."
+
+  enum GamepadButton {
+    doc "A gamepad button in the W3C standard mapping, in its index order (a is button 0)."
+    variant a "The bottom face button (A, Cross)."
+    variant b "The right face button (B, Circle)."
+    variant x "The left face button (X, Square)."
+    variant y "The top face button (Y, Triangle)."
+    variant leftBumper "The left shoulder button."
+    variant rightBumper "The right shoulder button."
+    variant leftTrigger "The left trigger, as a button (its analog value is the leftTrigger axis)."
+    variant rightTrigger "The right trigger, as a button."
+    variant back "Back, Select or View."
+    variant start "Start, Options or Menu."
+    variant leftStick "The left stick pressed in."
+    variant rightStick "The right stick pressed in."
+    variant up "The d-pad's up."
+    variant down "The d-pad's down."
+    variant left "The d-pad's left."
+    variant right "The d-pad's right."
+    variant home "The home or guide button."
+  }
+
+  enum GamepadAxis {
+    doc "An analog input of a gamepad."
+    variant leftX "The left stick's x, -1 (left) to 1 (right)."
+    variant leftY "The left stick's y, -1 (up) to 1 (down), as the Gamepad API reports it."
+    variant rightX "The right stick's x."
+    variant rightY "The right stick's y, down positive."
+    variant leftTrigger "The left trigger, 0 to 1."
+    variant rightTrigger "The right trigger, 0 to 1."
+  }
+
+  enum KeyAction {
+    doc "What an injected key event does."
+    variant press "Down, then up on the next tick."
+    variant down "Held down until an up."
+    variant up "Released."
+  }
+
+  enum PointerAction {
+    doc "What an injected pointer event does."
+    variant click "Down, then up on the next tick, at the point."
+    variant move "A move to the point."
+    variant down "A press at the point."
+    variant up "A release at the point."
+  }
+
+  enum PointerButton {
+    doc "A physical pointer button; `none` is a hover move."
+    variant none "No button."
+    variant left "The primary button, or a touch."
+    variant middle "The middle button."
+    variant right "The secondary button."
+  }
+
+  struct Modifiers {
+    doc "Modifier keys held during a key event."
+    field alt bool "Alt or Option."
+    field control bool "Control."
+    field platform bool "Command on macOS, the Windows key on Windows."
+    field shift bool "Shift."
+  }
+
+  struct KeyInput {
+    doc "A key event. `key` names the physical key as KeyboardEvent.code does: ArrowRight, Space, KeyA."
+    field key String "The physical key code."
+    field action KeyAction "Press, down or up."
+    field modifiers Modifiers "Held modifiers; omitted means none." {
+      optional true
+    }
+    field at f32 "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5." {
+      min -1
+      max 1
+      optional true
+    }
+  }
+
+  struct PointerInput {
+    doc "A pointer event at a point in CSS pixels of the play surface."
+    field action PointerAction "Click, move, down or up."
+    field x f32 "Horizontal position." {
+      unit cssPx
+    }
+    field y f32 "Vertical position." {
+      unit cssPx
+    }
+    field button PointerButton "The button; `none` for a hover move."
+    field id u32 "Which pointer: 0 the primary one (the mouse, the first touch; what protocol 5 means), 1 to 4 further touches held at the same time (an engine extension). Omitted is 0." {
+      max 4
+      optional true
+    }
+    field at f32 "When it happened, in ticks from the start of the tick that reads it (-1 to 1; omitted is 0): the KeyDown, KeyUp, PointerDown or PointerUp it raises carry it. An engine extension of protocol 5." {
+      min -1
+      max 1
+      optional true
+    }
+    field movementX f32 "The mouse's relative movement since its last event (the browser's movementX), which keeps coming while the pointer is locked and x, y stand still: og.Pointers.movement sums pointer 0's over the tick for mouse-look. Omitted is 0. An engine extension of protocol 5." {
+      unit cssPx
+      optional true
+    }
+    field movementY f32 "The relative vertical movement (movementY, down positive). Omitted is 0." {
+      unit cssPx
+      optional true
+    }
+  }
+
+  struct PointerLockReport {
+    doc "The host reports whether the pointer is locked to the play surface now (an engine extension of protocol 5): the web shell sends one from the page's pointerlockchange, and a playtest can send its own; og.PointerLock.locked follows it."
+    field locked bool "Locked now (true) or released (false)."
+  }
+
+  struct GamepadInput {
+    doc "A gamepad's whole state (an engine extension of protocol 5): the shell sends one whenever a pad changes, and a playtest can send its own."
+    field pad u32 "Which pad, 0 to 3; omitted is 0." {
+      max 3
+      optional true
+    }
+    field connected bool "Whether the pad is connected (omitted is true); a disconnected pad holds nothing." {
+      optional true
+    }
+    field buttons List.GamepadButton "The buttons held (omitted is none)." {
+      optional true
+    }
+    field axes List.f32 "Left stick x, y, right stick x, y; each -1 to 1, y down. Missing values are 0." {
+      optional true
+    }
+    field triggers List.f32 "The left and right analog triggers, 0 to 1. Missing values are 0." {
+      optional true
+    }
+  }
+
+  struct WheelInput {
+    doc "A wheel or trackpad scroll at a point."
+    field x f32 "Horizontal position." {
+      unit cssPx
+    }
+    field y f32 "Vertical position." {
+      unit cssPx
+    }
+    field deltaX f32 "Horizontal scroll amount." {
+      unit cssPx
+    }
+    field deltaY f32 "Vertical scroll amount." {
+      unit cssPx
+    }
+  }
+
+  struct TextEntry {
+    doc "Typed or composed text (an engine extension of protocol 5): what the page's `beforeinput` inserted (a key's character, a paste, an input method's commit), or with `composing` an input method's composition so far. Raises TextInput events; the UI's focused text field takes them."
+    field text String "The text."
+    field composing bool "An input method's composition, not yet committed: it replaces the composition before it, and empty ends it. Omitted is false: committed text." {
+      optional true
+    }
+  }
+
+  enum A11yActionKind {
+    doc "What an assistive technology asks of a UI control."
+    variant focus "Move the UI's focus to it (with the focus ring)."
+    variant activate "Press it, as Enter on it would (a text control takes the focus)."
+    variant increment "Step an adjustable control (a slider, a stepper) up."
+    variant decrement "Step an adjustable control down."
+  }
+
+  struct A11yRequest {
+    doc "A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored; increment and decrement also take a stepper's spinbutton, whose buttons are the focusable controls)."
+    field action A11yActionKind "What is asked."
+    field path String "The control's path, as og.ui.a11y() names it."
+  }
+
+  union InjectedInput {
+    doc "One input event in the game's own vocabulary, as the probe's input() and playtest scripts carry it."
+    tag kind
+    case key KeyInput "A key event."
+    case pointer PointerInput "A pointer event."
+    case wheel WheelInput "A wheel event."
+    case gamepad GamepadInput "A gamepad's state."
+    case text TextEntry "Typed or composed text."
+    case a11y A11yRequest "A screen reader's request on a UI control."
+    case pointerLock PointerLockReport "The host's word on the pointer lock (og.PointerLock.locked)."
+  }
+
+  resource Input {
+    doc "The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods."
+    doc "Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4."
+    field pointer Vector2 "The pointer position." {
+      readonly true
+      unit cssPx
+    }
+    field pointerInside bool "Whether a pointer event has placed the pointer over the play surface." {
+      readonly true
+    }
+    field wheel Vector2 "Scroll accumulated during this tick." {
+      readonly true
+      unit cssPx
+    }
+    field buttons u32 "Held pointer buttons, as a mask." {
+      readonly true
+    }
+    field buttonsPressed u32 "Buttons that went down this tick." {
+      readonly true
+    }
+    field buttonsReleased u32 "Buttons that went up this tick." {
+      readonly true
+    }
+    field buttonsReleaseNext u32 "Buttons a click releases at the end of the next tick." {
+      readonly true
+    }
+    field keys0 u32 "Held keys, word 0: codes 0 to 31 of KEY_CODES." {
+      readonly true
+    }
+    field keys1 u32 "Held keys, word 1: codes 32 to 63 of KEY_CODES." {
+      readonly true
+    }
+    field keys2 u32 "Held keys, word 2: codes 64 to 95 of KEY_CODES." {
+      readonly true
+    }
+    field keys3 u32 "Held keys, word 3: codes 96 to 127 of KEY_CODES." {
+      readonly true
+    }
+    field pressed0 u32 "Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES." {
+      readonly true
+    }
+    field pressed1 u32 "Keys that went down this tick, word 1: codes 32 to 63 of KEY_CODES." {
+      readonly true
+    }
+    field pressed2 u32 "Keys that went down this tick, word 2: codes 64 to 95 of KEY_CODES." {
+      readonly true
+    }
+    field pressed3 u32 "Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES." {
+      readonly true
+    }
+    field released0 u32 "Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES." {
+      readonly true
+    }
+    field released1 u32 "Keys that went up this tick, word 1: codes 32 to 63 of KEY_CODES." {
+      readonly true
+    }
+    field released2 u32 "Keys that went up this tick, word 2: codes 64 to 95 of KEY_CODES." {
+      readonly true
+    }
+    field released3 u32 "Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES." {
+      readonly true
+    }
+    field releaseNext0 u32 "Keys a press releases at the end of the next tick, word 0: codes 0 to 31 of KEY_CODES." {
+      readonly true
+    }
+    field releaseNext1 u32 "Keys a press releases at the end of the next tick, word 1: codes 32 to 63 of KEY_CODES." {
+      readonly true
+    }
+    field releaseNext2 u32 "Keys a press releases at the end of the next tick, word 2: codes 64 to 95 of KEY_CODES." {
+      readonly true
+    }
+    field releaseNext3 u32 "Keys a press releases at the end of the next tick, word 3: codes 96 to 127 of KEY_CODES." {
+      readonly true
+    }
+    fn down {
+      doc "Whether a key is held."
+      param key String "A KeyboardEvent.code name, such as KeyW or Space."
+      returns bool
+    }
+    fn pressed {
+      doc "Whether a key went down this tick."
+      param key String "A KeyboardEvent.code name."
+      returns bool
+    }
+    fn released {
+      doc "Whether a key went up this tick."
+      param key String "A KeyboardEvent.code name."
+      returns bool
+    }
+    fn axis {
+      doc "-1, 0 or 1 from two keys, such as `axis(\"KeyA\", \"KeyD\")`."
+      param negative String "The key for -1."
+      param positive String "The key for +1."
+      returns f32
+    }
+    fn axis2 {
+      doc "A 2D axis from four keys, such as `axis2(\"KeyA\", \"KeyD\", \"KeyS\", \"KeyW\")`: each component -1, 0 or 1."
+      param left String "The key for x = -1."
+      param right String "The key for x = +1."
+      param down String "The key for y = -1."
+      param up String "The key for y = +1."
+      returns Vector2
+    }
+    fn buttonDown {
+      doc "Whether a pointer button is held."
+      param button PointerButton "The button."
+      returns bool
+    }
+    fn buttonPressed {
+      doc "Whether a pointer button went down this tick."
+      param button PointerButton "The button."
+      returns bool
+    }
+    fn buttonReleased {
+      doc "Whether a pointer button went up this tick."
+      param button PointerButton "The button."
+      returns bool
+    }
+  }
+
+  resource Pointers {
+    doc "Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. Pointer 0 is og.Input's pointer; ids 1 to 4 are further touches, in the order they landed (the lowest free id)."
+    doc "Edges last exactly one tick, as og.Input's do. Masks are bit `id`; read them through the methods."
+    field heldMask u32 "Pointers held down, as a mask." {
+      readonly true
+    }
+    field pressedMask u32 "Pointers that went down this tick." {
+      readonly true
+    }
+    field releasedMask u32 "Pointers that went up this tick." {
+      readonly true
+    }
+    field releaseNextMask u32 "Pointers a click releases at the end of the next tick." {
+      readonly true
+    }
+    field position0 Vector2 "Where pointer 0 is." {
+      readonly true
+      unit cssPx
+    }
+    field position1 Vector2 "Where pointer 1 is." {
+      readonly true
+      unit cssPx
+    }
+    field position2 Vector2 "Where pointer 2 is." {
+      readonly true
+      unit cssPx
+    }
+    field position3 Vector2 "Where pointer 3 is." {
+      readonly true
+      unit cssPx
+    }
+    field position4 Vector2 "Where pointer 4 is." {
+      readonly true
+      unit cssPx
+    }
+    field start0 Vector2 "Where pointer 0 went down." {
+      readonly true
+      unit cssPx
+    }
+    field start1 Vector2 "Where pointer 1 went down." {
+      readonly true
+      unit cssPx
+    }
+    field start2 Vector2 "Where pointer 2 went down." {
+      readonly true
+      unit cssPx
+    }
+    field start3 Vector2 "Where pointer 3 went down." {
+      readonly true
+      unit cssPx
+    }
+    field start4 Vector2 "Where pointer 4 went down." {
+      readonly true
+      unit cssPx
+    }
+    field movement Vector2 "The mouse's relative movement this tick: the sum of the movementX, movementY of pointer 0's events since the last tick (y down), zero again when the tick ends. Mouse-look reads it: it keeps coming while the pointer is locked (og.PointerLock), when the position stands still. The web shell fills it from the browser's movementX/Y; headless, only injected pointer events with movementX/Y move it." {
+      readonly true
+      unit cssPx
+    }
+    fn down {
+      doc "Whether a pointer is held."
+      param id u32 "The pointer, 0 to 4."
+      returns bool
+    }
+    fn pressed {
+      doc "Whether a pointer went down this tick."
+      param id u32 "The pointer, 0 to 4."
+      returns bool
+    }
+    fn released {
+      doc "Whether a pointer went up this tick."
+      param id u32 "The pointer, 0 to 4."
+      returns bool
+    }
+    fn position {
+      doc "Where a pointer is, in CSS pixels."
+      param id u32 "The pointer, 0 to 4."
+      returns Vector2
+    }
+    fn start {
+      doc "Where a pointer went down, in CSS pixels: a touch control claims the pointers that started on it."
+      param id u32 "The pointer, 0 to 4."
+      returns Vector2
+    }
+    fn count {
+      doc "How many pointers are held."
+      returns u32
+    }
+  }
+
+  resource PointerLock {
+    doc "Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), the host hides the cursor and locks the pointer to the play surface, and og.Pointers.movement carries the mouse's movement each tick. Off by default."
+    doc "On the web the shell reads `wanted` from each frame and asks for the lock on the next press on the canvas (browsers grant it only to a gesture, so the click that starts play takes it), releases it when `wanted` goes false, and reports `locked` from pointerlockchange: the player's Escape releases it, and `locked` goes false while `wanted` stays true, so show a \"click to look\" prompt then. While locked, og.Input.pointer and og.Pointers' positions stand still (the UI's hover stays where it was) and the mouse's buttons still press. Native runs (og run, og dev) are headless: `locked` stays false unless a script injects `{ kind: \"pointerLock\", locked: true }`. `locked` is the host's (session state, as og.Input is: a restore keeps it, lockstep peers do not compare it)."
+    field wanted bool "The game wants the pointer locked and the cursor hidden."
+    field locked bool "The pointer is locked now, as the host last reported it." {
+      readonly true
+    }
+  }
+
+  resource Gamepad {
+    doc "The first four gamepads in the W3C standard mapping, at the start of this tick (og-input's og.Gamepad). On the web the shell polls the pads each display frame and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys."
+    doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods."
+    field connectedMask u32 "Connected pads: bit `pad`." {
+      readonly true
+    }
+    field buttons0 u32 "Held buttons of pad 0." {
+      readonly true
+    }
+    field buttons1 u32 "Held buttons of pad 1." {
+      readonly true
+    }
+    field buttons2 u32 "Held buttons of pad 2." {
+      readonly true
+    }
+    field buttons3 u32 "Held buttons of pad 3." {
+      readonly true
+    }
+    field pressed0 u32 "Buttons of pad 0 that went down this tick." {
+      readonly true
+    }
+    field pressed1 u32 "Buttons of pad 1 that went down this tick." {
+      readonly true
+    }
+    field pressed2 u32 "Buttons of pad 2 that went down this tick." {
+      readonly true
+    }
+    field pressed3 u32 "Buttons of pad 3 that went down this tick." {
+      readonly true
+    }
+    field released0 u32 "Buttons of pad 0 that went up this tick." {
+      readonly true
+    }
+    field released1 u32 "Buttons of pad 1 that went up this tick." {
+      readonly true
+    }
+    field released2 u32 "Buttons of pad 2 that went up this tick." {
+      readonly true
+    }
+    field released3 u32 "Buttons of pad 3 that went up this tick." {
+      readonly true
+    }
+    field leftStick0 Vector2 "The left stick of pad 0, -1 to 1, y down." {
+      readonly true
+    }
+    field leftStick1 Vector2 "The left stick of pad 1, -1 to 1, y down." {
+      readonly true
+    }
+    field leftStick2 Vector2 "The left stick of pad 2, -1 to 1, y down." {
+      readonly true
+    }
+    field leftStick3 Vector2 "The left stick of pad 3, -1 to 1, y down." {
+      readonly true
+    }
+    field rightStick0 Vector2 "The right stick of pad 0, -1 to 1, y down." {
+      readonly true
+    }
+    field rightStick1 Vector2 "The right stick of pad 1, -1 to 1, y down." {
+      readonly true
+    }
+    field rightStick2 Vector2 "The right stick of pad 2, -1 to 1, y down." {
+      readonly true
+    }
+    field rightStick3 Vector2 "The right stick of pad 3, -1 to 1, y down." {
+      readonly true
+    }
+    field triggers0 Vector2 "The left (x) and right (y) triggers of pad 0, 0 to 1." {
+      readonly true
+    }
+    field triggers1 Vector2 "The left (x) and right (y) triggers of pad 1, 0 to 1." {
+      readonly true
+    }
+    field triggers2 Vector2 "The left (x) and right (y) triggers of pad 2, 0 to 1." {
+      readonly true
+    }
+    field triggers3 Vector2 "The left (x) and right (y) triggers of pad 3, 0 to 1." {
+      readonly true
+    }
+    fn connected {
+      doc "Whether a pad is connected."
+      param pad u32 "The pad, 0 to 3; omitted is 0." {
+        optional true
+      }
+      returns bool
+    }
+    fn down {
+      doc "Whether a button is held."
+      param button GamepadButton "The button."
+      param pad u32 "The pad, 0 to 3; omitted is 0." {
+        optional true
+      }
+      returns bool
+    }
+    fn pressed {
+      doc "Whether a button went down this tick."
+      param button GamepadButton "The button."
+      param pad u32 "The pad, 0 to 3; omitted is 0." {
+        optional true
+      }
+      returns bool
+    }
+    fn released {
+      doc "Whether a button went up this tick."
+      param button GamepadButton "The button."
+      param pad u32 "The pad, 0 to 3; omitted is 0." {
+        optional true
+      }
+      returns bool
+    }
+    fn axis {
+      doc "An analog input: a stick's x or y (-1 to 1, y down) or a trigger (0 to 1). Dead zones are the game's."
+      param axis GamepadAxis "Which input."
+      param pad u32 "The pad, 0 to 3; omitted is 0." {
+        optional true
+      }
+      returns f32
+    }
+  }
+
+  event KeyDown {
+    doc "A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems."
+    field key String "The physical key code."
+    field repeat bool "Whether this is an auto-repeat."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
+  }
+
+  event TextInput {
+    doc "Text typed or composed (an engine extension): the shell sends it from the page's `beforeinput` and composition events, the probe's `type:`, `compose:` and `commit:` from scripts. A text longer than 255 bytes arrives as several events in order. Key events still arrive for the keys; a text field types from these once a world has had one."
+    field text String "The text (whole characters)."
+    field composing bool "An input method's composition so far, not committed: it replaces the composition before it (empty ends it). False: committed text to insert."
+    field more bool "Continues the composition of the event before it (a composition longer than one event)."
+  }
+
+  event KeyUp {
+    doc "A key went up."
+    field key String "The physical key code."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
+  }
+
+  event PointerDown {
+    doc "A pointer button went down (or a touch landed)."
+    field x f32 "Horizontal position in CSS pixels."
+    field y f32 "Vertical position in CSS pixels."
+    field button PointerButton "The button."
+    field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
+  }
+
+  event PointerUp {
+    doc "A pointer button went up (or a touch lifted)."
+    field x f32 "Horizontal position in CSS pixels."
+    field y f32 "Vertical position in CSS pixels."
+    field button PointerButton "The button."
+    field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+      min -1
+      max 1
+    }
+  }
+
+  event PointerMove {
+    doc "A pointer moved."
+    field x f32 "Horizontal position in CSS pixels."
+    field y f32 "Vertical position in CSS pixels."
+    field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
+    field movementX f32 "The relative movement this event carried (movementX), CSS pixels; 0 when the host gave none. While the pointer is locked x and y stand still and only this moves."
+    field movementY f32 "The relative vertical movement (movementY, down positive), CSS pixels."
+  }
+
+  event Wheel {
+    doc "A wheel or trackpad scroll."
+    field deltaX f32 "Horizontal scroll in CSS pixels."
+    field deltaY f32 "Vertical scroll in CSS pixels."
+  }
+
+  event A11yAction {
+    doc "A screen reader's request on a UI control (an engine extension): the web shell sends it from its mirror of og.ui.a11y(); the UI takes it at the start of the next frame. A path longer than 255 bytes is refused."
+    field action A11yActionKind "What is asked."
+    field path String "The control's path, as og.ui.a11y() names it."
+  }
+}
+
+# ── camera ────────────────────────────────────────────────────────────────
+

@@ -1,5 +1,5 @@
 //! Origin Engine `og-api`: the host contract generated from the API declared
-//! in `api.ogt`, the traits `og-host-web` and `og-host-node` implement
+//! in `api/<module>.ogt`, the traits `og-host-web` and `og-host-node` implement
 //! (`og api gen` writes `src/generated/host.rs`), and the engine-owned record
 //! tables, re-exported from `og-records`. The IDL, its validator and
 //! generators are `og-idl`; the host-neutral runtime the hosts wrap is

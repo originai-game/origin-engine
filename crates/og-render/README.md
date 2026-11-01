@@ -579,7 +579,7 @@ reference scene (the showcase under TAA with a HUD; `metal` and
 
 ## From TypeScript
 
-Every E1 effect is declared from a game through the IDL (`crates/og-api/api.ogt`,
+Every E1 effect is declared from a game through the IDL (`crates/og-api/api/render.ogt`,
 module `render`), on both hosts, off by default:
 
 | og-render | TypeScript |

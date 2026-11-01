@@ -1,5 +1,5 @@
 //! `og.render.applyQuality` writes a graphics preset's row of
-//! RenderSettings' quality fields (the table in api.ogt's doc), records
+//! RenderSettings' quality fields (the table in api/render.ogt's doc), records
 //! the preset in RenderSettings.quality, and the renderer reads those
 //! fields and nothing else: what the probe's `get` reads of RenderSettings
 //! is the RenderQuality the renderer is handed.
@@ -133,7 +133,7 @@ fn apply_quality_writes_the_presets_row_and_the_renderer_reads_it() {
     assert_eq!(q, RenderQuality::default());
     assert_eq!(fields, as_fields("none", q));
 
-    // The table of api.ogt's applyQuality doc, written out independently.
+    // The table of api/render.ogt's applyQuality doc, written out independently.
     let table = [
         (
             "low",

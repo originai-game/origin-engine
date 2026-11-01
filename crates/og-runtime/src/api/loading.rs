@@ -91,7 +91,7 @@ pub fn og_render_apply_look(world: u32, look: f64) -> String {
 
 /// `og.render.applyQuality`: the preset's row of RenderSettings' quality
 /// fields (og-render's [`og_render::RenderQuality::preset`], the table in
-/// api.ogt's doc), written as the game would write them.
+/// api/render.ogt's doc), written as the game would write them.
 pub fn og_render_apply_quality(world: u32, preset: String) -> String {
     let row = match preset.as_str() {
         "low" => og_render::QualityPreset::Low,

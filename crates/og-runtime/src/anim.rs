@@ -5,7 +5,7 @@
 //! parameters and IK targets game code set this tick are posed this tick,
 //! and root motion reaches og.Transform before the physics step reads it.
 //! The components are the IDL's records: the world registers their layout
-//! from `api.ogt` first and og-anim adopts it (`tests/modules.rs` keeps the
+//! from `api/anim.ogt` first and og-anim adopts it (`tests/modules.rs` keeps the
 //! two equal); `og.AnimationEvent` carries a `str64` name, so og-anim
 //! registers it and the runtime reads it through og-anim's layout.
 //!

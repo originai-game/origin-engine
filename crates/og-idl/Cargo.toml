@@ -4,7 +4,7 @@ version = "0.7.7"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine IDL: crates/og-api/api.ogt, its model, validator and generators (TypeScript, binding table, schema, wiki, host traits and glue), behind `og api gen` and `og api check`."
+description = "Origin Engine IDL: crates/og-api/api/<module>.ogt, its model, validator and generators (TypeScript, binding table, schema, wiki, host traits and glue), behind `og api gen` and `og api check`."
 autotests = false
 
 [dependencies]

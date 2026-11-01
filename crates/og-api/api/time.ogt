@@ -1,0 +1,59 @@
+module time {
+  skill og-feel
+  doc "Simulation time. Game code never reads the wall clock; it reads Time."
+
+  resource Time {
+    doc "The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script."
+    field tick u32 "Fixed steps taken since load." {
+      readonly true
+      unit ticks
+    }
+    field dt f32 "The length of one tick: 1 / rate." {
+      readonly true
+      unit s
+    }
+    field elapsed f64 "Simulation time since load: tick * dt." {
+      readonly true
+      unit s
+    }
+    field rate u32 "The tick rate, from GameDesc.tick." {
+      readonly true
+      unit hz
+    }
+    field scale f32 "Global slow motion, set with og.time.setScale: 1 is normal, 0.5 half speed, 0 stopped. Physics, animation, flipbooks and tweens advance by scaledDt; the tick itself, the UI, input and the probe keep their pace." {
+      readonly true
+      default 1
+      min 0
+      max 10
+    }
+    field hitStop u32 "Ticks of hit stop left (og.time.hitStop): while above 0, scaledDt is 0." {
+      readonly true
+      unit ticks
+    }
+    field scaledDt f32 "This tick's scaled length: 0 during a hit stop, else dt * scale. Move gameplay by it so slow motion and hit stop reach game code too." {
+      readonly true
+      unit s
+    }
+    field scaledElapsed f64 "Scaled seconds since load: the sum of every finished tick's scaledDt." {
+      readonly true
+      unit s
+    }
+  }
+
+  fn setScale {
+    doc "Set the global time scale (slow motion): physics, og.anim, flipbooks and tweens advance by dt * scale from the system after the call; systems may call it."
+    param world World "The world."
+    param scale f32 "0 to 10: 1 is normal speed."
+    returns Result.Void "Refused outside 0..10."
+  }
+
+  fn hitStop {
+    doc "Freeze scaled time for `ticks` ticks from now (this tick included): physics, og.anim, flipbooks and scaled tweens hold while input, the UI, unscaled tweens and camera shake keep moving. A longer hit stop in progress is never shortened. Typical values at 60 Hz: 2-3 ticks for a light hit, 4-6 medium, 8-12 heavy, 12-20 a finishing blow (paired with slow motion)."
+    param world World "The world."
+    param ticks u32 "Ticks to hold."
+    returns Result.Void
+  }
+}
+
+# ── rng ───────────────────────────────────────────────────────────────────
+

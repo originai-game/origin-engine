@@ -1,6 +1,6 @@
 // @origingame/engine: the runtime implementation of the generated
 // declarations. Every export is typed by types/index.d.ts (the contract
-// generated from crates/og-api/api.ogt), so a runtime member that drifts
+// generated from crates/og-api/api/<module>.ogt), so a runtime member that drifts
 // from the IDL fails `bun run typecheck`.
 
 import type * as Api from "@origingame/engine";

@@ -3,8 +3,8 @@
 //! has a page, every declared name is in the index and every index link lands
 //! on an anchor, and every binding symbol the runtime binds is on a page.
 //!
-//! The IDL is the repository's `crates/og-api/api.ogt`; `OG_WIKI_TEST_IDL`
-//! names another file to run the same checks against.
+//! The IDL is the repository's `crates/og-api/api/`; `OG_WIKI_TEST_IDL`
+//! names another parts directory to run the same checks against.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 fn idl_path() -> PathBuf {
     match std::env::var("OG_WIKI_TEST_IDL") {
         Ok(p) => PathBuf::from(p),
-        Err(_) => Path::new(env!("CARGO_MANIFEST_DIR")).join("../og-api/api.ogt"),
+        Err(_) => Path::new(env!("CARGO_MANIFEST_DIR")).join("../og-api/api"),
     }
 }
 
@@ -25,8 +25,7 @@ struct Wiki {
 
 fn wiki() -> Wiki {
     let path = idl_path();
-    let text = std::fs::read_to_string(&path).unwrap();
-    let api = og_idl::parse(&text).unwrap_or_else(|d| panic!("{}: {d:?}", path.display()));
+    let api = og_idl::read(&path).unwrap_or_else(|e| panic!("{e}"));
     let files = og_idl::generate(&api);
     let prefix = format!("{}/", og_idl::WIKI_DIR);
     let pages = files
@@ -44,7 +43,7 @@ fn wiki() -> Wiki {
         .contents
         .clone();
     Wiki {
-        source: text.lines().map(str::to_string).collect(),
+        source: api.source.clone(),
         pages,
         bindings,
         api,

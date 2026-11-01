@@ -65,7 +65,7 @@ const queue: Array<(abi: HostAbi<Uint32Array, unknown>) => void> = [];
 export function bindHost(binding: HostBinding): void {
   const missing = SYMBOLS.filter((s) => typeof (binding.abi as unknown as Record<string, unknown>)[s] !== "function");
   if (missing.length > 0) {
-    throw new Error(`the ${binding.name} host lacks ${missing.length} binding symbol(s): ${missing.join(", ")}; rebuild it from the same api.ogt`);
+    throw new Error(`the ${binding.name} host lacks ${missing.length} binding symbol(s): ${missing.join(", ")}; rebuild it from the same api/<module>.ogt`);
   }
   // Entity arguments are checked here, so null or undefined is refused
   // naming the call on both hosts alike (generated/abi.ts).

@@ -1,6 +1,6 @@
 //! The reflected records audio adds to a world. The field order, names and
 //! types are the layout (`og_core::reflect`); `crates/og-audio/README.md`
-//! lists them for the IDL (`crates/og-api/api.ogt`).
+//! lists them for the IDL (`crates/og-api/api/audio.ogt`).
 
 use og_core::Reflect;
 use og_core::glam::{Quat, Vec3};

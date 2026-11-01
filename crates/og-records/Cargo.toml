@@ -4,7 +4,7 @@ version = "0.7.7"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine records: the engine-owned record and column tables generated from api.ogt (og-idl generates them), re-exported by og-api's host."
+description = "Origin Engine records: the engine-owned record and column tables generated from crates/og-api/api/<module>.ogt (og-idl generates them), re-exported by og-api's host."
 
 [features]
 # A published game (og-runtime's `publish`, through og-api's): RECORDS' field

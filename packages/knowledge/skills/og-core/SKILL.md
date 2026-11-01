@@ -4,7 +4,8 @@ description: The rules every Origin Engine game obeys — TypeScript only, a fix
 ---
 
 Origin Engine is a Rust engine with a TypeScript API, generated from one IDL
-(`crates/og-api/api.ogt` in the engine repository). The same game bundle runs
+(`crates/og-api/api/` in the engine repository, one `<module>.ogt` per module,
+ordered by `parts.txt`). The same game bundle runs
 in the browser (wasm in a Worker) and headless on the native host under
 `og run`. These rules are what makes that true; breaking one produces a game
 that works on one host, one seed or one machine and not the next.

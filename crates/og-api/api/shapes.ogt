@@ -1,0 +1,189 @@
+module shapes {
+  skill og-model
+  doc "Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js's Shape and Path, built by the same calls (moveTo, lineTo, quadraticCurveTo, bezierCurveTo, splineThru, arc, absarc, ellipse, absellipse, closePath) and flattened to points by getPoints, so a three.js outline is a paste. og.render.shapeGeometry, extrudeGeometry and sweepGeometry take them; only their points cross to the engine."
+  doc "They are TypeScript values, not world state: make them in start or a command and let the geometry made from them be what the world keeps. Points come from basic arithmetic (no Math.sin), so they are the same on every host."
+  doc "A prop of these parts belongs in an asset: an `.ogt` of `type model` names each part's geometry by its og.render call (`extrudeGeometry { shape { absarc 0 0 1 0 6.283185307179586 false } depth 0.2 }`), its shapes as og.Shape's calls one a line with `hole { }` blocks, places parts as mergeGeometries does (`position`, `quaternion`, `scale`, `mirror`, or several `at { }` blocks: one mesh drawn instanced), gives each a `material` and hangs it from a named `pivot` (a node). og cook builds it into the model blob a glTF cooks to (levels of detail, raycast BVH, nodes), refuses it past project.ogt's triangle and vertex budgets, and og dev re-cooks it on an edit; og.load.gltf and a scene's `model` line take it as any model. og-model §9 has a whole example."
+  place root
+
+  interface PathList {
+    doc "A shape's holes, as three.js Shape.holes: an array; push a path to add a hole."
+    prop length u32 "How many holes." {
+      host false
+    }
+    fn push {
+      doc "Add a hole (Array.push)."
+      host false
+      param path Path2 "The hole's outline, either winding."
+      returns u32
+    }
+  }
+
+  interface Path2 {
+    doc "An outline of curves, as three.js Path: each call adds a curve from the current point (moveTo only moves it). Every method but getPoints returns the path, so calls chain."
+    fn moveTo {
+      doc "Move the current point without drawing, as three.js Path.moveTo."
+      host false
+      param x f32 "x."
+      param y f32 "y."
+      returns This
+    }
+    fn lineTo {
+      doc "A straight line to (x, y), as three.js Path.lineTo."
+      host false
+      param x f32 "x."
+      param y f32 "y."
+      returns This
+    }
+    fn quadraticCurveTo {
+      doc "A quadratic Bézier curve through one control point to (x, y), as three.js Path.quadraticCurveTo."
+      host false
+      param cpX f32 "The control point's x."
+      param cpY f32 "The control point's y."
+      param x f32 "The end's x."
+      param y f32 "The end's y."
+      returns This
+    }
+    fn bezierCurveTo {
+      doc "A cubic Bézier curve through two control points to (x, y), as three.js Path.bezierCurveTo."
+      host false
+      param cp1X f32 "The first control point's x."
+      param cp1Y f32 "The first control point's y."
+      param cp2X f32 "The second control point's x."
+      param cp2Y f32 "The second control point's y."
+      param x f32 "The end's x."
+      param y f32 "The end's y."
+      returns This
+    }
+    fn splineThru {
+      doc "A Catmull-Rom spline from the current point through the points, as three.js Path.splineThru (a SplineCurve)."
+      host false
+      param points List.Vector2 "The points it passes through, in order."
+      returns This
+    }
+    fn arc {
+      doc "A circular arc centred at (x, y) from the current point, as three.js Path.arc."
+      host false
+      param x f32 "The centre's x, from the current point."
+      param y f32 "The centre's y, from the current point."
+      param radius f32 "The radius."
+      param startAngle f32 "Where it starts, from +x towards +y."
+      param endAngle f32 "Where it ends."
+      param clockwise bool "Go clockwise." {
+        default false
+      }
+      returns This
+    }
+    fn absarc {
+      doc "A circular arc centred at (x, y), as three.js Path.absarc: a line joins it to the current point when they differ."
+      host false
+      param x f32 "The centre's x."
+      param y f32 "The centre's y."
+      param radius f32 "The radius."
+      param startAngle f32 "Where it starts, from +x towards +y."
+      param endAngle f32 "Where it ends."
+      param clockwise bool "Go clockwise." {
+        default false
+      }
+      returns This
+    }
+    fn ellipse {
+      doc "An elliptic arc centred at (x, y) from the current point, as three.js Path.ellipse."
+      host false
+      param x f32 "The centre's x, from the current point."
+      param y f32 "The centre's y, from the current point."
+      param xRadius f32 "The radius along x."
+      param yRadius f32 "The radius along y."
+      param startAngle f32 "Where it starts."
+      param endAngle f32 "Where it ends."
+      param clockwise bool "Go clockwise." {
+        default false
+      }
+      param rotation f32 "The ellipse's turn round its centre." {
+        default 0
+      }
+      returns This
+    }
+    fn absellipse {
+      doc "An elliptic arc centred at (x, y), as three.js Path.absellipse."
+      host false
+      param x f32 "The centre's x."
+      param y f32 "The centre's y."
+      param xRadius f32 "The radius along x."
+      param yRadius f32 "The radius along y."
+      param startAngle f32 "Where it starts."
+      param endAngle f32 "Where it ends."
+      param clockwise bool "Go clockwise." {
+        default false
+      }
+      param rotation f32 "The ellipse's turn round its centre." {
+        default 0
+      }
+      returns This
+    }
+    fn setFromPoints {
+      doc "Start at the first point and draw lines through the rest, as three.js Path.setFromPoints."
+      host false
+      param points List.Vector2 "The points."
+      returns This
+    }
+    fn closePath {
+      doc "A line back to the first point when the outline does not end there, as three.js CurvePath.closePath."
+      host false
+      returns This
+    }
+    fn getPoints {
+      doc "The outline as points, as three.js CurvePath.getPoints: each curve divided into `divisions` (an ellipse twice as many, a spline as many per point, a line one), repeated points dropped."
+      host false
+      param divisions u32 "Divisions per curve." {
+        default 12
+      }
+      returns List.Vector2
+    }
+  }
+
+  interface Shape {
+    doc "An outline with holes, as three.js Shape."
+    extends Path2
+    prop holes PathList "The holes: `shape.holes.push(hole)`." {
+      host false
+    }
+    fn extractPoints {
+      doc "The outline's and the holes' points, as three.js Shape.extractPoints."
+      host false
+      param divisions u32 "Divisions per curve." {
+        default 12
+      }
+      returns ShapePoints
+    }
+  }
+
+  interface Path2Class {
+    doc "og.Path2: `new og.Path2(points?)`."
+    fn new {
+      doc "A path, through the points when given (setFromPoints)."
+      host false
+      param points Option.List.Vector2 "Points to start from." {
+        optional true
+      }
+      returns Path2
+    }
+  }
+
+  interface ShapeClass {
+    doc "og.Shape: `new og.Shape(points?)`."
+    fn new {
+      doc "A shape, through the points when given (setFromPoints)."
+      host false
+      param points Option.List.Vector2 "Points to start from." {
+        optional true
+      }
+      returns Shape
+    }
+  }
+
+  value Path2 Path2Class "three.js's Path (named Path2 beside og.path's 3D paths): `new og.Path2().moveTo(0, 0).lineTo(1, 0)`."
+  value Shape ShapeClass "three.js's Shape: `const s = new og.Shape(); s.moveTo(0, 0).lineTo(1, 0).lineTo(0, 1); s.holes.push(hole)`."
+}
+
+# ── load ──────────────────────────────────────────────────────────────────
+

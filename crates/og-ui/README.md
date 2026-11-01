@@ -1129,7 +1129,7 @@ snapshot and restore).
 
 ## In TypeScript
 
-The IDL module `ui` (`crates/og-api/api.ogt`, `og.ui` in
+The IDL module `ui` (`crates/og-api/api/ui.ogt`, `og.ui` in
 `packages/engine/types/index.d.ts`, `packages/knowledge/wiki/ui.md`) carries
 every call above with the same names in lowerCamelCase: value-carrying
 widgets return the new value (`og.ui.tabs(...).selected`,

@@ -1,5 +1,5 @@
 // Every member the IDL declares exists on the runtime object a game reaches
-// it through. types/bindings.json (generated from crates/og-api/api.ogt with
+// it through. types/bindings.json (generated from crates/og-api/api/<module>.ogt with
 // the .d.ts) lists each call with its path; the declarations alone cannot
 // catch a missing member, because src/index.ts assembles `og` from plain
 // objects cast to the declared type. og.load.textureArray was declared,

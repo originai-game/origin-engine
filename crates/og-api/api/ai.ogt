@@ -1,0 +1,227 @@
+module ai {
+  skill og-ai
+  doc "Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (og-ai §3 has every line), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent."
+  doc "An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick."
+  doc "Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard."
+
+  handle Behaviour "A loaded behaviour tree or state machine."
+
+  column Behaviour {
+    doc "A Behaviour handle field."
+    array Uint32Array
+    stride 2
+    value Behaviour
+  }
+
+  const AI_RUNNING u32 1 "AiAgent.status: the tree or state is still running."
+  const AI_SUCCESS u32 2 "AiAgent.status: the tree succeeded on the last think."
+  const AI_FAILURE u32 3 "AiAgent.status: the tree failed on the last think."
+
+  component AiAgent {
+    doc "An entity that thinks with a behaviour. Give it an og.NavAgent to move and an og.Perception to see and hear."
+    field behaviour Behaviour "The behaviour it runs (og.ai.load); 0 runs nothing."
+    field active bool "Thinks while true." {
+      default true
+    }
+    field thinkEvery u32 "Thinks every this many ticks (1: every tick); agents are staggered by their order." {
+      default 1
+      min 1
+      max 600
+      unit ticks
+    }
+    field status u32 "AI_RUNNING, AI_SUCCESS or AI_FAILURE after the last think (0 before the first; written by og.ai)." {
+      readonly true
+    }
+    field state u32 "The state machine's state, an index into BehaviourInfo.states (written by og.ai)." {
+      readonly true
+    }
+    field node u32 "The node it ran last, an index into BehaviourInfo.nodes (written by og.ai)." {
+      readonly true
+    }
+    field changes u32 "Times the state or the running node changed (written by og.ai)." {
+      readonly true
+    }
+  }
+
+  component Perception {
+    doc "What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness, except its own: a sound of its entity or of an entity under it (og.Parent), or a noise whose NoiseDesc.source is one of them."
+    field sight f32 "How far it sees." {
+      default 8
+      min 0
+      max 500
+      unit m
+      tunable true
+    }
+    field fov f32 "The width of its view cone (360: all round)." {
+      default 120
+      min 0
+      max 360
+      unit deg
+      tunable true
+    }
+    field eyeHeight f32 "Its eyes are this far above its position (+y)." {
+      min -10
+      max 10
+      unit m
+    }
+    field occlude bool "Colliders hide what is behind them." {
+      default true
+    }
+    field occluders u32 "Collision layers that block sight (0: every layer)."
+    field hearing f32 "How far it hears a sound of loudness 1 (a source's volume)." {
+      default 6
+      min 0
+      max 500
+      unit m
+      tunable true
+    }
+    field memory f32 "How long a lost target stays its target." {
+      default 3
+      min 0
+      max 600
+      unit s
+      tunable true
+    }
+    field team u32 "Its team: it perceives og.Perceivable entities of other teams."
+    field forward Vector3 "Where it looks; zero: the way it last moved (before it moves, the way its Transform faces: +Z in 3D, +X in 2D)."
+    field target Entity "What it sees or remembers seeing (written by og.ai)." {
+      readonly true
+    }
+    field sees bool "It sees the target now (written by og.ai)." {
+      readonly true
+    }
+    field lastSeen Vector3 "Where it last saw the target (written by og.ai)." {
+      unit m
+      readonly true
+    }
+    field sinceSeen f32 "Seconds since it last saw a target (written by og.ai; 1e6 before the first time)." {
+      default 1000000
+      unit s
+      readonly true
+    }
+    field heard bool "It heard something this tick (written by og.ai)." {
+      readonly true
+    }
+    field heardAt Vector3 "Where it last heard something (written by og.ai)." {
+      unit m
+      readonly true
+    }
+    field sinceHeard f32 "Seconds since it last heard something (written by og.ai; 1e6 before the first time)." {
+      default 1000000
+      unit s
+      readonly true
+    }
+  }
+
+  component Perceivable {
+    doc "Something agents of other teams can see."
+    field team u32 "Its team (agents of the same team ignore it)." {
+      default 1
+    }
+    field eyeHeight f32 "Agents look at a point this far above its position (+y)." {
+      min -10
+      max 10
+      unit m
+    }
+  }
+
+  event AiChanged {
+    doc "An agent's state or running node changed (systems read it the tick after)."
+    field entity Entity "The agent."
+    field state u32 "Its state now."
+    field node u32 "The node it runs now."
+    field status u32 "AI_RUNNING, AI_SUCCESS or AI_FAILURE."
+  }
+
+  struct BehaviourInfo {
+    doc "A loaded behaviour."
+    field behaviour Behaviour "What AiAgent.behaviour takes."
+    field name String "Its name."
+    field kind String "tree or machine."
+    field states List.String "A machine's states, by index (AiAgent.state)."
+    field nodes List.String "Its nodes' names, by index (AiAgent.node)."
+    field keys List.String "Its declared blackboard keys."
+  }
+
+  struct NoiseDesc {
+    doc "A noise agents may hear next tick."
+    desc true
+    field position Vector3 "Where it is." {
+      unit m
+    }
+    field loudness f32 "How loud: heard within Perception.hearing times this." {
+      default 1
+      min 0
+      max 100
+    }
+    field source Entity "Who makes it (0: nobody): that entity, and the agents it is under (og.Parent), do not hear it."
+  }
+
+  struct AiDescription {
+    doc "What an agent is doing."
+    field behaviour String "Its behaviour's name."
+    field kind String "tree or machine."
+    field state String "A machine's state (empty for a tree)."
+    field node String "The node it ran last, such as `chase`."
+    field path String "The path to it from the root, such as `selector > sequence chase > chase`."
+    field status String "running, success or failure."
+    field blackboard Json "Its blackboard, keys to numbers, booleans, points and entity handles."
+    field sees bool "It sees its target."
+    field target Entity "Its target (0: none)."
+  }
+
+  fn load {
+    doc "A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook)."
+    param world World "The world."
+    param path String "The behaviour asset, such as `ai/slime.ogt`."
+    returns Result.BehaviourInfo "Refused for a path that is not a cooked behaviour."
+  }
+
+  fn parse {
+    doc "A behaviour from text, now (tests and generated behaviours; assets go through og cook)."
+    param world World "The world."
+    param text String "The behaviour's `.ogt` text."
+    returns Result.BehaviourInfo "Refused with the first error's line and the fix."
+  }
+
+  fn get {
+    doc "A blackboard value of an agent as of its last think."
+    param world World "The world."
+    param entity Entity "The agent."
+    param key String "The key."
+    returns Json "A number, a boolean, a point `{x, y, z}`, an entity handle, or null for an unknown key or an agent that has not thought."
+  }
+
+  fn set {
+    doc "Set a blackboard value of an agent: a number, a boolean, a point `{x, y, z}` or an entity handle `{entity}`."
+    param world World "The world."
+    param entity Entity "The agent."
+    param key String "The key; built-in keys are refused."
+    param value Json "The value."
+    returns Result.Void "Refused for an agent that has not thought yet, a built-in key or another kind of value."
+  }
+
+  fn restart {
+    doc "Start an agent's behaviour afresh at its next think, as a new behaviour would: a machine in its initial state (its enter actions run again), a tree at its root, every timer and cooldown reset, the blackboard back to the declared keys, wander's centre where it then stands, and what it saw and heard forgotten. Actions without a speed keep the speed it first started with. For a new run or a respawn; an agent that has not thought yet starts afresh anyway."
+    param world World "The world."
+    param entity Entity "The agent."
+    returns Result.Void "Refused for a world without og.ai."
+  }
+
+  fn noise {
+    doc "Make a noise agents may hear next tick (a gunshot, a door, a thrown stone)."
+    param world World "The world."
+    param desc NoiseDesc "Where and how loud."
+    returns Result.Void "Refused for a world without og.ai."
+  }
+
+  fn describe {
+    doc "What an agent is doing: its state, the node it runs and the path to it, its status, its blackboard and its target."
+    param world World "The world."
+    param entity Entity "The agent."
+    returns Option.AiDescription "Null for an entity that has not thought."
+  }
+}
+
+# ── platform ──────────────────────────────────────────────────────────────
+

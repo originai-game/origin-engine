@@ -33,13 +33,16 @@ fn scratch_root() -> PathBuf {
     ));
     let _ = std::fs::remove_dir_all(&dir);
     let idl = dir.join(og_api_path());
-    std::fs::create_dir_all(idl.parent().unwrap()).unwrap();
-    std::fs::copy(repo().join(og_api_path()), &idl).unwrap();
+    std::fs::create_dir_all(&idl).unwrap();
+    for entry in std::fs::read_dir(repo().join(og_api_path())).unwrap() {
+        let entry = entry.unwrap();
+        std::fs::copy(entry.path(), idl.join(entry.file_name())).unwrap();
+    }
     dir
 }
 
 fn og_api_path() -> &'static str {
-    "crates/og-api/api.ogt"
+    "crates/og-api/api"
 }
 
 /// A stand-in tsrs in `dir`: `--version` names it `version`, a check

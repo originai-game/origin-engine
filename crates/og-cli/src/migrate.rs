@@ -238,7 +238,7 @@ const GEOMETRIES: &[Geometry] = &[
 /// TubeGeometry after its curve: `points` (a CatmullRomCurve3's) or `path`.
 const TUBE_PARAMS: &[&str] = &["tubularSegments", "radius", "radialSegments", "closed"];
 
-/// StandardMaterialDesc's fields (crates/og-api/api.ogt): a material
+/// StandardMaterialDesc's fields (crates/og-api/api/render.ogt): a material
 /// parameter of another name is dropped and listed. A test holds this to
 /// packages/engine/schema/api.schema.json.
 const STANDARD_FIELDS: &[&str] = &[
@@ -1361,7 +1361,7 @@ const hole = new THREE.Path();
 
     /// Every desc field, light field and og.render function the rewrite
     /// writes is one the generated API has, and every StandardMaterialDesc
-    /// field passes through: the tables cannot drift from api.ogt.
+    /// field passes through: the tables cannot drift from api/render.ogt.
     #[test]
     fn the_tables_match_the_generated_api() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

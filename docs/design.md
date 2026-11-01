@@ -1075,7 +1075,7 @@ the sheet and nothing else.
 
 ### 3.1 One IDL, two hosts **(D)**
 
-The engine's public API is declared once (`crates/og-api/api.ogt`, the same
+The engine's public API is declared once (`crates/og-api/api/<module>.ogt`, the same
 text format): modules, functions, desc structs, enums, events, with docs and
 ranges. From it the build generates:
 

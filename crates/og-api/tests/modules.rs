@@ -52,7 +52,10 @@ fn idl_schema(decl: &RecordDecl) -> Schema {
 fn check<T: Reflect>(failures: &mut Vec<String>) {
     let module = T::schema();
     let Some(decl) = RECORDS.iter().find(|r| r.schema == module.name) else {
-        failures.push(format!("{} is not declared in api.ogt", module.name));
+        failures.push(format!(
+            "{} is not declared in api/<module>.ogt",
+            module.name
+        ));
         return;
     };
     let idl = idl_schema(decl);
@@ -65,7 +68,7 @@ fn check<T: Reflect>(failures: &mut Vec<String>) {
                 .join(", ")
         };
         failures.push(format!(
-            "{}: api.ogt has [{}], the module registers [{}]",
+            "{}: api/<module>.ogt has [{}], the module registers [{}]",
             module.name,
             show(&idl),
             show(&module)
@@ -135,7 +138,7 @@ fn theme_color_names_every_palette_role() {
             ),
             _ => None,
         })
-        .expect("api.ogt declares ThemeColor");
+        .expect("api/<module>.ogt declares ThemeColor");
     assert_eq!(
         have,
         og_ui::Palette::NAMES,

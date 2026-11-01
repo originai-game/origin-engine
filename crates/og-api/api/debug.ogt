@@ -1,0 +1,102 @@
+module debug {
+  skill og-render
+  doc "Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds, levels of detail, and the lit image's terms: shadow cascades, ambient occlusion, albedo, image-based and direct light) the command channel's `debug:` actions switch."
+  doc "Development only: not in publish builds, where every member does nothing and answers its default, so a game may leave its debug draws in. Debug draw is rendering: it never feeds back into the simulation, and its draws are not world state (a snapshot or a replay does not carry them)."
+  publish false
+
+  struct DebugDrawDesc {
+    doc "How a debug shape looks and how long it lasts."
+    desc true
+    field color Color "The linear colour." {
+      default 1 1 0
+    }
+    field width f32 "Line width in CSS pixels." {
+      default 2
+      min 0
+    }
+    field duration u32 "How many ticks after this one it stays; 0 is this frame only (draw it every tick it should show)." {
+      unit ticks
+    }
+    field rotation Quaternion "The shape's rotation: a box's or a sphere's circles', the axes' frame."
+  }
+
+  fn line {
+    doc "A line from one point to another."
+    param world World "The world drawn in."
+    param from Vector3 "Where it starts."
+    param to Vector3 "Where it ends."
+    param desc DebugDrawDesc "Colour, width, duration."
+  }
+
+  fn box {
+    doc "A box's twelve edges, as three.js Box3Helper (turned by desc.rotation)."
+    param world World "The world drawn in."
+    param center Vector3 "Its centre."
+    param size Vector3 "Its extent along each axis."
+    param desc DebugDrawDesc "Colour, width, duration, rotation."
+  }
+
+  fn sphere {
+    doc "A sphere as its three great circles."
+    param world World "The world drawn in."
+    param center Vector3 "Its centre."
+    param radius f32 "Its radius."
+    param desc DebugDrawDesc "Colour, width, duration, rotation."
+  }
+
+  fn arrow {
+    doc "An arrow from one point to another, its head a fifth of its length (three.js ArrowHelper): a velocity, a force, a direction to a target."
+    param world World "The world drawn in."
+    param from Vector3 "Its tail."
+    param to Vector3 "Its tip."
+    param desc DebugDrawDesc "Colour, width, duration."
+  }
+
+  fn axes {
+    doc "A frame's three axes, as three.js AxesHelper: +x red, +y green, +z blue (desc.color is not read)."
+    param world World "The world drawn in."
+    param position Vector3 "The frame's origin."
+    param size f32 "Each axis's length."
+    param desc DebugDrawDesc "Width, duration and the frame's rotation."
+  }
+
+  fn text {
+    doc "A label anchored at a world point, drawn in screen space at a constant size in the UI's body font (a world with no UI font draws none), centred above the point: an entity's state, a counter, a name."
+    param world World "The world drawn in."
+    param position Vector3 "The point the label sits above."
+    param text String "The label."
+    param desc DebugDrawDesc "Colour and duration (width is the text's size in CSS pixels, 14 where it is 2 or less)."
+  }
+
+  fn clear {
+    doc "Remove every debug draw that is still showing."
+    param world World "The world drawn in."
+  }
+
+  fn setView {
+    doc "Show a debug view besides og.debug's draws (the command channel's `debug:<view>`); none shows the draws alone."
+    param world World "The world drawn in."
+    param view DebugView "The view."
+  }
+
+  fn view {
+    doc "The debug view shown."
+    param world World "The world asked."
+    returns DebugView
+  }
+
+  fn setEnabled {
+    doc "Show or hide every debug draw and view (`debug:on`, `debug:off`); on by default outside publish builds."
+    param world World "The world drawn in."
+    param enabled bool "Whether they show."
+  }
+
+  fn enabled {
+    doc "Whether debug draws and views show."
+    param world World "The world asked."
+    returns bool
+  }
+}
+
+# ── path (depth S2) ───────────────────────────────────────────────────────
+

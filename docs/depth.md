@@ -11,7 +11,7 @@ its own branch, merged by the coordinator (this repository's rules,
 `AGENTS.md` §Build and gate discipline). It is row F8 of `docs/release.md`.
 
 The design stays `docs/design.md`; each stream adds the section its feature
-needs there (named below) in its own commit, the IDL (`crates/og-api/api.ogt`)
+needs there (named below) in its own commit, the IDL (`crates/og-api/api/<module>.ogt`)
 is the contract, and the generated outputs (`og api gen --wiki`: the `.d.ts`,
 `packages/engine/src/generated/abi.ts`, the wiki) are committed with every
 IDL change. The three.js vocabulary rule holds: a type or parameter that has
@@ -37,8 +37,9 @@ a three.js name takes that name.
   leaves the `metal` file to the coordinator, who records it at the merge
   and reads it; the agent's evidence is its lavapipe frame, read and
   described in its notes.
-- **Shared files.** `api.ogt` is one file: a stream adds its own module or
-  appends inside the module it extends, never reorders. og-render's frame
+- **Shared files.** The IDL lives in `crates/og-api/api/<module>.ogt`:
+  a stream edits its module file, never reorders `api/parts.txt`, and
+  appends new module filenames to that list. og-render's frame
   graph, the lit WGSL and `og-cli/src/main.rs` are touched by several
   streams: new code goes in new files, a touch of a shared file is the
   smallest hook that reaches it, and the stream's notes list every shared

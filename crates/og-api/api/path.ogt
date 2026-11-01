@@ -1,0 +1,129 @@
+module path {
+  skill og-anim
+  doc "Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t."
+  doc "Make one with og.path.create, or declare it in a scene (`path \"<name>\" { kind catmullRom; closed false; point x y z ... }`) and find it by name with og.path.find; a timeline's camera rides one with `rail \"<name>\"`. og.PathFollower moves an entity along one, og.CameraRail.path moves the camera along one, og.render.tubeGeometry makes a tube along one (TubeGeometryDesc.path). Paths are assets: they are not world state, and a hot reload registers them again."
+
+  handle Path "A path: its points, kind and arc-length table."
+
+  column Path {
+    doc "A Path handle field (0 is none)."
+    array Uint32Array
+    stride 2
+    value Path
+  }
+
+  enum PathKind {
+    doc "How the points make the curve."
+    variant catmullRom "Through every point, as three.js CatmullRomCurve3: tension scales the tangents (0.5 is Catmull-Rom)."
+    variant bezier "Cubic Bezier segments: anchor, two controls, anchor, ... (3n + 1 points open, 3n closed)."
+    variant linear "Straight segments between the points."
+  }
+
+  column PathKind {
+    doc "A PathKind field: the variant's index."
+    array Uint32Array
+    stride 1
+    value PathKind
+  }
+
+  struct CurveDesc {
+    doc "What makes a path (three.js's Curve; PathDesc is og.nav's path query)."
+    desc true
+    field points List.Vector3 "The points, in order: at least 2 (catmullRom, linear), 3n + 1 open or 3n closed (bezier)."
+    field closed bool "Join the last point to the first; t wraps."
+    field kind PathKind "How the points make the curve."
+    field tension f32 "catmullRom's tangent scale, as three.js's tension." {
+      default 0.5
+      min 0
+      max 1
+    }
+  }
+
+  struct PathSample {
+    doc "A point of a path."
+    field position Vector3 "Where it is." {
+      unit m
+    }
+    field tangent Vector3 "The unit direction of travel."
+    field up Vector3 "A unit up perpendicular to the tangent: world +Y made perpendicular (world +Z where the path runs straight up or down)."
+  }
+
+  struct PathNearest {
+    doc "The point of a path nearest another point."
+    field t f32 "Its arc-length parameter, 0 to 1." {
+      unit ratio
+    }
+    field position Vector3 "Where it is." {
+      unit m
+    }
+    field distance f32 "How far it is from the point asked about." {
+      unit m
+    }
+  }
+
+  component PathFollower {
+    doc "Moves the entity along a path at `speed`, by the engine's og.path system after the game's systems and before physics: og.Transform.position is the path's point at `distance` plus `offset` (in the path's frame with align, else in world axes). Advanced by scaled time (slow motion, hit stop). The distance is the component's own field, so a snapshot, a restore and the world hash carry it, and writing it moves the entity there."
+    field path Path "The path (og.path.create or og.path.find); 0 does nothing."
+    field speed f32 "Metres per second along the path; negative goes backwards." {
+      default 1
+      unit mps
+      tunable true
+    }
+    field distance f32 "How far along the path it is, from its start; written every tick, set it to place the entity." {
+      unit m
+    }
+    field loop bool "Wrap at the end (and the start, going backwards); otherwise stop there and set `finished`." {
+      default true
+    }
+    field align bool "Turn og.Transform.quaternion to face along the tangent (local -Z forward, +Y the path's up)."
+    field offset Vector3 "Added to the path's point: along the path's right, up and backward axes with align, else world x, y and z." {
+      unit m
+    }
+    field playing bool "Moves while true." {
+      default true
+    }
+    field finished bool "Written: a path without loop reached its end." {
+      readonly true
+    }
+  }
+
+  fn create {
+    doc "Make a path from points."
+    param world World "The world."
+    param desc CurveDesc "The points, kind, closed and tension."
+    returns Result.Path "Refused for too few points for the kind (bezier needs 3n + 1 open, 3n closed) or a point that is not finite."
+  }
+
+  fn find {
+    doc "A path a loaded scene declares (`path \"<name>\" { ... }`), by name."
+    param world World "The world."
+    param name String "The path's name in its scene."
+    returns Result.Path "Refused for a name no spawned scene declares; the reason lists the names."
+  }
+
+  fn sample {
+    doc "The point at arc-length parameter t: 0 the start, 1 the end (a closed path wraps, an open one clamps). Equal steps of t are equal lengths along the curve."
+    param world World "The world."
+    param path Path "The path."
+    param t f32 "The parameter, 0 to 1."
+    returns Result.PathSample "Refused for a dead path."
+  }
+
+  fn length {
+    doc "Its length along the curve."
+    param world World "The world."
+    param path Path "The path."
+    returns Result.f32 "Metres; refused for a dead path."
+  }
+
+  fn nearest {
+    doc "The point of the path nearest a point, with its parameter: snapping to a track, projecting a pointer onto a rail."
+    param world World "The world."
+    param path Path "The path."
+    param point Vector3 "The point."
+    returns Result.PathNearest "Refused for a dead path."
+  }
+}
+
+# ── timeline (depth S2) ───────────────────────────────────────────────────
+

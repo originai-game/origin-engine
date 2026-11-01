@@ -32,7 +32,7 @@ bodies move in the xy plane and rotate about z; a transform keeps its z.
 | `world_pose(e, local, parent_of, transform_of)` | an entity's world position and rotation down the `og.Parent` chain (`og.Parent` is registered here by schema, like `og.Transform`) |
 | `SYSTEM_NAME` | `og.physics`, the system's and the state block's name |
 
-## Records (for `api.ogt`)
+## Records (for `api/physics.ogt`)
 
 Field order, names and storage types are the layout; the IDL declares them
 exactly so (an IDL record of the same name and layout is adopted). Codes
@@ -248,7 +248,7 @@ their means.
 ## Beyond rigid bodies (the E5 round)
 
 Components over the same rapier world and state block (`src/schema_ext.rs`,
-reached from TypeScript through `crates/og-api/api.ogt`'s physics module):
+reached from TypeScript through `crates/og-api/api/physics.ogt`'s physics module):
 
 | Record | What the step does with it |
 |---|---|
@@ -432,7 +432,7 @@ phases, `--bodies`, `--pairs` and `--rows` set those grains) and
 ## Status 2026-10-18 (what phase 1 still owes)
 
 - **Reaching TypeScript**: every record above is in the IDL's physics
-  module (`crates/og-api/api.ogt`, the E5 records since b8cdc04), and
+  module (`crates/og-api/api/physics.ogt`, the E5 records since b8cdc04), and
   og-runtime links og-physics for both hosts. The readouts (`ropePoints`,
   `clothPoints`, `fluidParticles`, `waterHeight`, `vehicleWheels`,
   `ragdollPose`) and the rig from an og-anim skeleton

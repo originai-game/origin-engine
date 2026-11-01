@@ -1,6 +1,6 @@
 // The UI kit: og.ui's game widget set (host calls and their callback sugar)
 // and the screen templates, merged into og.ui by the package entry. Every
-// member is declared in crates/og-api/api.ogt (module `ui`); the templates
+// member is declared in crates/og-api/api/ui.ogt (module `ui`); the templates
 // are `host false` functions written here over the calls.
 
 import { widgets } from "./bind.ts";

@@ -1,6 +1,6 @@
-//! The IDL contract: the repository's api.ogt is valid and covers what the
+//! The IDL contract: the repository's api/ parts are valid and cover what the
 //! design names; broken IDLs are refused with the right reason; the committed
-//! generated files are what api.ogt generates; and the generated declarations
+//! generated files are what the IDL generates; and the generated declarations
 //! type-check with the design's example.
 
 use og_idl::model::{Item, Member, RecordKind};

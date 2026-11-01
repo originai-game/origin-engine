@@ -47,7 +47,7 @@ name (then by index), so clips of one rig play on another with the same node
 names; a rig with other names or proportions plays them retargeted
 (§Retargeting).
 
-## Records (for `api.ogt`)
+## Records (for `api/anim.ogt`)
 
 Field order, names and storage types are the layout; the IDL declares them
 exactly so. `u64` asset fields are handles registered with the system (0 is

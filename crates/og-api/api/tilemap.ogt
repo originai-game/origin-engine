@@ -1,0 +1,149 @@
+module tilemap {
+  skill og-2d
+  doc "Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component."
+  doc "Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them."
+  doc "With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it)."
+  doc "Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position."
+
+  handle TilemapAsset "A loaded map: its layers, tilesets and objects."
+
+  column TilemapAsset {
+    doc "A TilemapAsset handle field."
+    array Uint32Array
+    stride 2
+    value TilemapAsset
+  }
+
+  component Tilemap {
+    doc "Draws a loaded map with its top-left corner at the entity's position (z included) and gives its collision layers static colliders. The og.tilemap system adopts it in the first tick it exists: from then on og.tilemap.setTile and getTile reach it."
+    field map TilemapAsset "The map (og.load.tilemap's `map`); 0 is none."
+    field layer i32 "The sprite layer of the map's layer 0; every layer draws at this plus its z (default: its index)." {
+      default -10
+    }
+    field color Color "A linear tint." {
+      default 1 1 1
+    }
+    field opacity f32 "The alpha, times each layer's." {
+      default 1
+      min 0
+      max 1
+    }
+    field visible bool "Whether it is drawn." {
+      default true
+    }
+    field collision bool "Give the layers marked collision static colliders (rectangles merged from the solid tiles)." {
+      default true
+    }
+    field colliderLayers u32 "The collision layers of those colliders, as bits (Collider.layers), for every collision layer of the map that names none of its own (a map layer's `colliderLayers`, with its `colliderMask`, puts a layer of grates on a one-way layer while the walls stay here)." {
+      default 1
+    }
+    field friction f32 "The colliders' friction." {
+      default 0.5
+      min 0
+      max 2
+    }
+    field palette Texture "A palette swap of every layer (og.Sprite.palette): the tile sets' index textures (the cook's `<id>#index`) drawn through row paletteRow of this texture of N rows; 0 is none."
+    field paletteRow u32 "The row of `palette` drawn (past the last, the last)."
+  }
+
+  struct TileLayerInfo {
+    doc "One layer of a map."
+    field name String "Its name."
+    field index u32 "Its index (what drawing order and z start from)."
+    field z i32 "Its sprite-layer offset from Tilemap.layer."
+    field parallax Vector2 "Its scroll factors: 1 1 moves with the world, 0.5 at half the camera's speed (far away), 0 stays with the camera."
+    field collision bool "Its solid tiles collide."
+    field colliderLayers u32 "The collision layers (og.Collider.layers bits) of its colliders, from its `colliderLayers` line or Tiled int property; 0 (unset) takes Tilemap.colliderLayers."
+    field colliderMask u32 "The layers its colliders collide with (og.Collider.mask bits), from its `colliderMask` line or Tiled int property; 0 (unset) is every layer."
+    field terrain String "The auto-tiling terrain of a terrain layer (its cells are 1 filled or 0 empty); empty for a tile layer."
+    field visible bool "Whether it is drawn."
+    field lit bool "Whether og.Lighting2D lights it when its sprite layer is in the lit range (true unless the Tiled layer's bool property `lit` or the `.ogt` layer's `lit` line says false)."
+  }
+
+  struct TileObject {
+    doc "An object of a map (a Tiled object, an LDtk entity, an `object` block): spawn points, doors, triggers."
+    field name String "Its name."
+    field kind String "Its type or class."
+    field position Vector2 "Its top-left corner, in world units relative to the map's top-left corner (y up, so below the corner is negative)." {
+      unit m
+    }
+    field size Vector2 "Its width and height (0 0 for a point)." {
+      unit m
+    }
+    field center Vector2 "Its centre, relative to the map's corner." {
+      unit m
+    }
+    field properties Map.String "Its custom properties, as text."
+  }
+
+  struct TilemapInfo {
+    doc "What og.load.tilemap loaded."
+    field map TilemapAsset "What Tilemap.map takes."
+    field width u32 "Cells across."
+    field height u32 "Cells down."
+    field tileWidth f32 "A cell's width in world units." {
+      unit m
+    }
+    field tileHeight f32 "A cell's height in world units." {
+      unit m
+    }
+    field layers List.TileLayerInfo "Its layers, drawing order."
+    field objects List.TileObject "Its objects."
+  }
+
+  struct SetTileDesc {
+    doc "One cell to change."
+    desc true
+    field entity Entity "The entity with the og.Tilemap."
+    field layer String "The layer's name."
+    field x u32 "The column (0 is the left)."
+    field y u32 "The row (0 is the top)."
+    field tile i32 "A tile layer: the tile id, -1 empty. A terrain layer: 1 fills, 0 clears, and the neighbours re-tile." {
+      min -1
+    }
+  }
+
+  struct TileCell {
+    doc "A cell of a map."
+    field x u32 "The column."
+    field y u32 "The row."
+    field inside bool "Whether the point was on the map."
+  }
+
+  fn setTile {
+    doc "Change a cell. It applies at once to getTile, and to drawing and colliders at the og.tilemap system (this tick when called before it). Deterministic: equal edits in equal order give equal maps."
+    param world World "The world."
+    param desc SetTileDesc "The map, the layer, the cell and the tile."
+    returns Result.Void "Refused for an entity whose map is not adopted yet, an unknown layer, a cell outside the map or a tile the tileset lacks."
+  }
+
+  fn getTile {
+    doc "A cell's tile id, -1 when empty: on a terrain layer the tile auto-tiling resolved from the neighbours (setTile writes 1 or 0 there; the id changes with them). -1 outside the map or before the map is adopted."
+    param world World "The world."
+    param entity Entity "The entity with the og.Tilemap."
+    param layer String "The layer's name."
+    param x u32 "The column."
+    param y u32 "The row."
+    returns i32
+  }
+
+  fn cellAt {
+    doc "The cell under a world point (its xy), for a map at its entity's position."
+    param world World "The world."
+    param entity Entity "The entity with the og.Tilemap."
+    param point Vector3 "A world point."
+    returns TileCell
+  }
+
+  fn cellCenter {
+    doc "A cell's centre in world coordinates (z of the map)."
+    param world World "The world."
+    param entity Entity "The entity with the og.Tilemap."
+    param x u32 "The column."
+    param y u32 "The row."
+    returns Vector3
+  }
+}
+
+# ── audio ─────────────────────────────────────────────────────────────────
+

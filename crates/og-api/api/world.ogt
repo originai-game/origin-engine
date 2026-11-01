@@ -1,0 +1,223 @@
+module world {
+  skill og-core
+  doc "The world: an archetype ECS. Entities are generational handles; components are columns in engine memory."
+  doc "Structural changes (spawn, despawn, insert, remove) invalidate typed views; the API refuses a stale view."
+
+  handle Entity {
+    doc "An entity: an index and a generation. The value is index + generation * 2^32, with the generation below 2^21, so it stays an exact JavaScript number."
+    doc "Generations start at 1, so 0 is never a live entity."
+  }
+
+  column Entity {
+    doc "An Entity field: (index, generation) pairs."
+    array Uint32Array
+    stride 2
+    value Entity
+  }
+
+  struct SpawnDesc {
+    doc "How to spawn an entity. `{}` spawns an unnamed entity at the origin with a Transform."
+    desc true
+    field name String "A unique name; the probe and the command channel address the entity by it. Empty leaves it unnamed."
+    field parent Option.Entity "The parent entity; the new entity's Transform is then relative to it. It gives the new entity an og.Parent, so inside a system og.Parent must be among the system's writes (as og.Transform must, unless `bare`)."
+    field position Vector3 "The initial Transform.position." {
+      unit m
+    }
+    field quaternion Quaternion "The initial Transform.quaternion."
+    field scale Vector3 "The initial Transform.scale." {
+      default 1 1 1
+    }
+    field bare bool "Spawn without a Transform: a pure data entity."
+  }
+
+  struct RestoreDesc {
+    doc "How world.restore takes a save."
+    desc true
+    field migrate bool "Map a type whose layout changed since the save field by field, by name, as a hot reload does: a field added since takes its default, a removed one is dropped, an enum value is mapped by its variant's name, a field of another type starts at its default, and a type this build no longer registers is dropped. Off, such a save is refused naming the type and its fields."
+  }
+
+  event WorldRestored {
+    doc "A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §8), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did."
+    field from u32 "The tick the world was at when the restore applied." {
+      unit ticks
+    }
+    field tick u32 "The saved tick: og.Time's tick right after the restore." {
+      unit ticks
+    }
+  }
+
+  struct QueryDesc {
+    doc "Which entities a query matches."
+    desc true
+    field with List.AnyComponent "Components an entity must have."
+    field without List.AnyComponent "Components an entity must not have."
+  }
+
+  interface World {
+    doc "The world a system, a command or a game callback is handed. Game code never holds a world beyond the call it was passed to."
+
+    prop tick u32 "Fixed steps taken since the world was created."
+
+    fn spawn {
+      doc "Spawn an entity."
+      param desc SpawnDesc "Name, parent and initial transform."
+      returns Result.Entity "The new entity, or why it was refused (a duplicate name, a dead parent)."
+    }
+
+    fn despawn {
+      doc "Despawn an entity and its descendants."
+      param entity Entity "The entity."
+      returns Result.Void "Refused for a dead entity."
+    }
+
+    fn alive {
+      doc "Whether an entity handle is live."
+      param entity Entity "The entity."
+      returns bool
+    }
+
+    fn has {
+      doc "Whether an entity has a component."
+      generic C AnyComponent
+      param entity Entity "The entity."
+      param component C "The component token."
+      returns bool
+    }
+
+    fn insert {
+      doc "Add a component to an entity, or overwrite it when present. A structural change."
+      generic C AnyComponent
+      param entity Entity "The entity."
+      param component C "The component token."
+      param value Partial.Value.C "Field values; omitted fields take their defaults." {
+        optional true
+      }
+      returns Result.Void "Refused for a dead entity or an unregistered component."
+    }
+
+    fn remove {
+      doc "Remove a component from an entity. A structural change."
+      generic C AnyComponent
+      param entity Entity "The entity."
+      param component C "The component token."
+      returns Result.Void "Refused for a dead entity or a component it does not have."
+    }
+
+    fn get {
+      doc "Copy one entity's component value. For bulk work use a system's typed views."
+      generic C AnyComponent
+      param entity Entity "The entity."
+      param component C "The component token."
+      returns Result.Value.C
+    }
+
+    fn set {
+      doc "Write some fields of one entity's component."
+      generic C AnyComponent
+      param entity Entity "The entity."
+      param component C "The component token."
+      param value Partial.Value.C "The fields to write."
+      returns Result.Void "Refused for a dead entity or a component it does not have."
+    }
+
+    fn resource {
+      doc "A resource's live value: the same handle in a world every time, its fields typed reads and writes of the resource's packed record (no JSON, whatever its size). The record is fetched again only by the first read after another engine call or a system boundary, and writes reach the engine in one call before the next engine call and when the system or command returns, so two handles agree and a read after an engine call sees the engine's value (og-core §4). Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log."
+      generic R AnyResource
+      param resource R "The resource token."
+      returns Result.Value.R "Refused for an unregistered resource (or, in a publish build, one the running system did not declare)."
+    }
+
+    fn find {
+      doc "The entity with a name."
+      param name String "The name given at spawn."
+      returns Option.Entity "Null when no live entity has the name."
+    }
+
+    fn nameOf {
+      doc "An entity's name."
+      param entity Entity "The entity."
+      returns Option.String "Null for an unnamed or dead entity."
+    }
+
+    fn query {
+      doc "A query over the current archetypes, for commands and callbacks (GameDesc.start, a command, a UI callback). Inside a system it is refused, by design: a system receives its one query (every component of its reads and writes) as its first argument; loop over another archetype in a system of its own."
+      param desc QueryDesc "The components to match."
+      returns Result.Query
+    }
+
+    fn events {
+      doc "The events of one type emitted during the previous tick and this one, oldest first. Inside a system the event must be among its reads or writes (undeclared: thrown, or in a publish build refused and logged once)."
+      generic E AnyEvent
+      param event E "The event token."
+      returns List.Value.E
+    }
+
+    fn emit {
+      doc "Emit an event; readers see it this tick and the next. Inside a system the event must be among its writes (undeclared: thrown, or in a publish build refused and logged once)."
+      generic E AnyEvent
+      param event E "The event token."
+      param payload Value.E "The event's fields."
+      returns Result.Void
+    }
+
+    fn instantiate {
+      doc "Spawn a loaded scene or glTF asset into the world: a root entity from the desc, then (for a scene) every scene entity under it with its components and names, or (for a glTF) a Model on the root."
+      doc "Scene entity names must be free: a name already in use refuses the whole instantiation before anything spawns."
+      param asset Asset "A ready asset from og.load."
+      param desc SpawnDesc "Name, parent and transform of the root entity."
+      returns Result.Entity "The root entity, or why it was refused (an asset still loading, a failed asset)."
+    }
+
+    fn snapshot {
+      doc "The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, deflated and base64-encoded after `og-save:1:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: \"slot1\", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (examples/hollowbell, a 2D platformer of 189 entities on a 96 x 48 tile map, saves to about 25 KiB; examples/kestrel-stair, a 3D world of 93 entities with skinned characters, cloths and minds, to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring."
+      returns Result.String "The save, or why not (the world could not be read)."
+    }
+
+    fn restore {
+      doc "Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources."
+      param save String "The text world.snapshot returned."
+      param desc RestoreDesc "Whether a type whose layout changed since the save is mapped field by field."
+      returns Result.Void "Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants): the reason names the type and the fields, and the fix (`{ migrate: true }`, or keeping a saved type's fields stable between releases)."
+    }
+  }
+
+  interface Query {
+    doc "A set of matched archetypes. Iterate archetypes, never entities one by one."
+    fn archetypes {
+      doc "The matched archetypes this tick."
+      returns List.ArchetypeView
+    }
+    fn count {
+      doc "The number of matched entities."
+      returns u32
+    }
+  }
+
+  interface ArchetypeView {
+    doc "One archetype's columns for this tick. Views are invalidated by structural changes; using a stale view throws with the tick and the system it belonged to."
+    prop count u32 "The number of entities in the archetype."
+    prop tick u32 "The tick this view belongs to."
+    prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1. These are not handles: for a handle use entity(i) (world.despawn, get, set, insert and remove refuse a bare index, naming the call)."
+    fn entity {
+      doc "The handle of entity i."
+      param index u32 "The row, from 0 to count - 1."
+      returns Entity
+    }
+    fn has {
+      doc "Whether the archetype carries a component."
+      generic C AnyComponent
+      param component C "The component token."
+      returns bool
+    }
+    fn column {
+      doc "The typed views of a component's fields: one typed array per field, `count * stride` long."
+      doc "Writing requires the component among the system's writes; reading among its reads or writes."
+      generic C AnyComponent
+      param component C "The component token."
+      returns View.C
+    }
+  }
+}
+
+# ── system ────────────────────────────────────────────────────────────────
+

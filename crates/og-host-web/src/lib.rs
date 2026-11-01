@@ -1,5 +1,5 @@
 //! Origin Engine web host (`docs/design.md` §2.2, §3.1): the binding symbols
-//! of `crates/og-api/api.ogt` as a wasm-bindgen module (`origin-engine.wasm`)
+//! of `crates/og-api/api/<module>.ogt` as a wasm-bindgen module (`origin-engine.wasm`)
 //! over an `og_ecs::World` and the renderer. It runs inside a dedicated
 //! Worker; the main thread transfers it an OffscreenCanvas and pumps input
 //! (`packages/engine/src/web/`).

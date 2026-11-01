@@ -1,0 +1,460 @@
+module atmosphere {
+  skill og-render
+  doc "Fog, a procedural sky, the day-night cycle, weather, the wind that sways vegetation and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before."
+  doc "The day-night clock is a function of the tick (DayNight.start plus the simulated time times speed), so it is the same on every run and after a restore; rendering reads the world and never writes it."
+
+  const WEATHER_NONE u32 0 "Weather.kind: clear."
+  const WEATHER_RAIN u32 1 "Weather.kind: rain streaks falling with the wind, the light dimmed and a grey distance fog."
+  const WEATHER_SNOW u32 2 "Weather.kind: flakes drifting down on gusts, a pale fog."
+  const WEATHER_DUST u32 3 "Weather.kind: dust blowing along the wind near the ground, a warm thick fog."
+  const WEATHER_MIST u32 4 "Weather.kind: no particles, a dense low height fog."
+
+  resource Fog {
+    doc "Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged."
+    field enabled bool "Draw the fog."
+    field color Color "The colour the fog tends to (linear, before exposure)." {
+      default 0.62 0.68 0.76
+    }
+    field density f32 "Exponential distance fog per metre past start, with or without end's ramp (0: none)." {
+      default 0.02
+      min 0
+      max 2
+      tunable true
+    }
+    field start f32 "The distance from the camera where distance fog starts." {
+      min 0
+      unit m
+      tunable true
+    }
+    field end f32 "The distance from the camera where fog is full: with end > start, a linear ramp from start to end applied together with density's exponential fog (0: no ramp)." {
+      min 0
+      unit m
+      tunable true
+    }
+    field heightDensity f32 "Height fog at and below height (0: none)." {
+      min 0
+      max 10
+      tunable true
+    }
+    field height f32 "The world height below which height fog is densest." {
+      unit m
+      tunable true
+    }
+    field falloff f32 "How fast height fog thins above height, per metre." {
+      default 0.5
+      min 0.0001
+      max 20
+      tunable true
+    }
+    field sunColor Color "The fog's colour looking into the sun (forward scattering)." {
+      default 1 0.86 0.62
+    }
+    field sunPower f32 "How tight the sun's glow in the fog is (higher: smaller)." {
+      default 8
+      min 0
+      max 256
+      tunable true
+    }
+    field maxOpacity f32 "The most the fog hides." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field sky f32 "How much of the fog covers the sky (0: the sky stays clear)." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field volumetric bool "Light the fog as a participating medium: within volumetricDistance of the camera the fog (density per metre, thickened below height by heightDensity and falloff, as above) scatters the sun through its shadow cascades, so light shafts fall through windows and between trees and move with the sun, and every point, spot and rect light it is lit by (up to RenderCapabilities.volumetricLights at each sample); it dims what lies behind it by the same amounts. RenderCapabilities.volumetricFog names the method (a froxel grid). Opaque surfaces and the sky are seen through the volume; blended surfaces, particles and sprites take the plain distance and height fog of the same medium. Past volumetricDistance nothing more is added."
+    field scattering f32 "How much of the light the fog takes from a ray it scatters (its albedo, tinted by color): 0 dims without glowing, 1 sends all of it on, above 1 brightens the shafts for effect." {
+      default 0.8
+      min 0
+      max 4
+      tunable true
+    }
+    field anisotropy f32 "Which way the fog scatters (Henyey–Greenstein g): 0 evenly, towards 1 forward (bright looking into the light: shafts against the sun), below 0 back towards the light." {
+      default 0.6
+      min -0.95
+      max 0.95
+      tunable true
+    }
+    field volumetricDistance f32 "How far from the camera the volume reaches." {
+      default 48
+      min 4
+      max 400
+      unit m
+    }
+  }
+
+  resource Sky {
+    doc "A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it (the image-based light follows it). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself."
+    field enabled bool "Draw and light by this sky."
+    field zenith Color "Overhead." {
+      default 0.18 0.36 0.78
+    }
+    field horizon Color "At the horizon." {
+      default 0.78 0.84 0.92
+    }
+    field ground Color "Below the horizon." {
+      default 0.16 0.14 0.12
+    }
+    field sunDirection Vector3 "Towards the sun (match your DirectionalLight)." {
+      default 0.45 0.8 0.35
+    }
+    field sunColor Color "The sun's colour." {
+      default 1 0.95 0.88
+    }
+    field sunSize f32 "The sun disc's angular radius (0: no disc)." {
+      default 1.8
+      min 0
+      max 20
+      unit deg
+      tunable true
+    }
+    field sunIntensity f32 "The disc's brightness." {
+      default 40
+      min 0
+      tunable true
+    }
+    field glow f32 "The glow around the sun." {
+      default 0.6
+      min 0
+      tunable true
+    }
+    field glowPower f32 "How tight the glow is." {
+      default 24
+      min 1
+      tunable true
+    }
+    field stars f32 "Stars where the sky is dark: 0 none, 1 a full night sky." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field brightness f32 "A multiplier on the whole sky." {
+      default 1.1
+      min 0
+      tunable true
+    }
+    field moonSize f32 "The moon disc's angular radius (0: no moon). It sets below the horizon and hides the stars behind it." {
+      min 0
+      max 20
+      unit deg
+      tunable true
+    }
+    field moonPhase f32 "How much of the moon is lit: 0 new, 0.25 the first quarter (its right half), 0.5 full, 0.75 the last quarter (its left half)." {
+      default 0.5
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field moonIntensity f32 "The lit moon's brightness." {
+      default 1.4
+      min 0
+      tunable true
+    }
+    field moonColor Color "The moon's colour." {
+      default 0.9 0.92 1
+    }
+    field moonDirection Vector3 "Towards the moon; zero puts it opposite sunDirection."
+  }
+
+  resource DayNight {
+    doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`."
+    field enabled bool "Run the cycle."
+    field start f32 "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset)." {
+      default 9
+      min 0
+      max 24
+      tunable true
+    }
+    field speed f32 "Game hours per simulated second (0.05: a day in 8 minutes; 0 holds the time)." {
+      default 0.05
+      min 0
+      max 24
+      tunable true
+    }
+    field tilt f32 "How far the sun's path leans from overhead." {
+      default 25
+      min 0
+      max 89
+      unit deg
+      tunable true
+    }
+    field azimuth f32 "Where the sun rises, turned about +y from +x." {
+      unit deg
+      tunable true
+    }
+    field lightIntensity f32 "A multiplier on the sun and moon light." {
+      default 1
+      min 0
+      max 10
+      tunable true
+    }
+    field tintFog bool "Turn the og.Fog colour towards the horizon's." {
+      default true
+    }
+    field step f32 "Game minutes between regenerations of the image-based light." {
+      default 10
+      min 1
+      max 120
+      tunable true
+    }
+    field moonSize f32 "The moon disc's angular radius, opposite the sun so it rises as the sun sets (0: no moon)." {
+      default 1.6
+      min 0
+      max 20
+      unit deg
+      tunable true
+    }
+    field moonPhase f32 "How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter." {
+      default 0.5
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+  }
+
+  resource Weather {
+    doc "A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation."
+    field kind u32 "WEATHER_NONE 0, WEATHER_RAIN 1, WEATHER_SNOW 2, WEATHER_DUST 3, WEATHER_MIST 4." {
+      min 0
+      max 4
+      label "Kind"
+    }
+    field intensity f32 "How heavy: scales the particle rate, the fog and the dimming." {
+      default 1
+      min 0
+      max 2
+      tunable true
+    }
+    field wind Vector3 "Where the wind blows the particles." {
+      default 1.5 0 0.5
+      unit mps
+      tunable true
+    }
+    field radius f32 "The size of the region around the camera the particles fill." {
+      default 18
+      min 1
+      max 200
+      unit m
+      tunable true
+    }
+    field tint Color "Multiplies the particles' colour." {
+      default 1 1 1
+    }
+    field dim f32 "How much of the preset's dimming of the sunlight applies." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field layer i32 "With an orthographic camera (2D), the sprite layer the particles draw in." {
+      default 50
+    }
+  }
+
+  resource Wind {
+    doc "The wind the renderer sways vegetation with: og.TerrainScatter copies lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind)."
+    field strength f32 "The mean lean: how far a copy's tip moves downwind per metre of its height (0.2: a 1 m stem's tip leans 20 cm); 0 is still." {
+      min 0
+      max 2
+      tunable true
+    }
+    field direction Vector3 "Where the wind blows: its horizontal part, normalised." {
+      default 1 0 0
+      tunable true
+    }
+    field speed f32 "How fast the gusts travel downwind, over a 10 m wave." {
+      default 3
+      min 0
+      max 50
+      unit mps
+      tunable true
+    }
+    field gust f32 "How much the lean varies in the gusts: 0 a steady lean, 1 from upright to twice the mean." {
+      default 0.6
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+  }
+
+  component Water {
+    doc "A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated)."
+    field size Vector2 "The extent along the entity's x and z." {
+      default 16 16
+      unit m
+      tunable true
+    }
+    field geometry Geometry "Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline, with the same colour by depth, refraction, foam and reflections. 0: the grid. A mesh surface has no wave heights."
+    field segments u32 "Grid cells per side (the height field's detail)." {
+      default 64
+      min 1
+      max 256
+    }
+    field shallow Color "Shallow water's colour (tints what is seen through it)." {
+      default 0.55 0.85 0.82
+    }
+    field deep Color "Deep water's colour." {
+      default 0.02 0.09 0.14
+    }
+    field depthFade f32 "The depth over which water turns from shallow to deep." {
+      default 2.5
+      min 0.01
+      unit m
+      tunable true
+    }
+    field opacity f32 "How opaque deep water gets." {
+      default 0.92
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field foam Color "The foam's colour." {
+      default 0.95 0.97 1
+    }
+    field foamWidth f32 "The water depth over which foam rings geometry (0: none)." {
+      default 0.35
+      min 0
+      unit m
+      tunable true
+    }
+    field waveScale f32 "Detail waves per metre." {
+      default 0.6
+      min 0
+      tunable true
+    }
+    field waveSpeed f32 "How fast the detail waves travel." {
+      default 1
+      tunable true
+    }
+    field waveStrength f32 "How strongly they bend the surface (0: a mirror)." {
+      default 0.35
+      min 0
+      max 4
+      tunable true
+    }
+    field refraction f32 "How far refraction shifts what is seen through the water." {
+      default 1
+      min 0
+      tunable true
+    }
+    field reflectivity f32 "How much it reflects." {
+      default 1
+      min 0
+      max 2
+      tunable true
+    }
+    field planarReflection f32 "Reflect the scene by drawing it again from the camera mirrored in the surface, at this fraction of the screen's resolution (0: off, the screen-space and sky reflections). One surface a frame, the first that asks (a grid surface before one over a mesh), or two with RenderOptions.planarReflections 2 (the second while it is in view); each costs about a second scene pass at that resolution." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field shadows f32 "How much the sun's shadows darken the surface: its highlight, foam and colour (0: none)." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field f0 f32 "The reflectance looking straight down (Schlick's F0): 0.02 for clean water; three.js Water.js reflects at least 0.3." {
+      default 0.02
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field reflectionBias f32 "A floor under the reflected colour: bias + (1 - bias) times the reflection (three.js Water.js: 0.1)." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field underwaterColor Color "With the camera below the surface: the water's fog colour." {
+      default 0.03 0.16 0.2
+    }
+    field underwaterDensity f32 "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, and the surface seen from below shows the sky inside Snell's window." {
+      default 0.09
+      min 0
+      max 2
+      tunable true
+    }
+    field caustics f32 "Caustics of the sunlight on everything below the surface (0: none). One surface a frame, the first that has them." {
+      min 0
+      max 4
+      tunable true
+    }
+    field causticsScale f32 "The caustics' cells per metre." {
+      default 0.6
+      min 0.01
+      max 10
+      tunable true
+    }
+    field normalMap Texture "Ripples from a tangent-space normal map (linear; red along +x, green along +z, blue up, as three.js' water normals) instead of the travelling waves: with flow 0, four layers drifting at three.js Water's rates over the world's xz times normalScale (its getNoise); with a flow, two layers sliding along it over the mesh's uv (or the grid's metres), cross-faded each 0.15 of a cycle (three.js Water2: then refraction 1 shifts the scene behind by N.xz · 0.05 of the screen, the reflection is tinted by shallow too, and there is no sun highlight). waveStrength scales the slopes (1: as the map), waveSpeed the lake's clock. 0: the travelling waves."
+    field normalScale f32 "The normal map's repeats per metre (the lake) or per uv unit (a flow)." {
+      default 1
+      min 0
+      tunable true
+    }
+    field glint f32 "three.js Water's sun glint: pow(eye . reflect(-sun, normal), 100) times the sun's light times this, on the reflected image, through the Fresnel term (three.js: spec × sunColor over the light's intensity). With glint the surface is three.js Water.js throughout: deep is its waterColor, the body (sunColor · max(L·N, 0) · sunColor · 0.15 + waterColor · max(N·V, 0)) shaded by the ripples and the shadows, sunColor = the light × glint / 2. 0: the default half-vector highlight and depth colour." {
+      min 0
+      tunable true
+    }
+    field flow Vector2 "Water2's flow: its direction in the mesh's uv (or the grid's x, z) and, as its length, the uv it slides per second. 0 0: the lake's four drifting layers." {
+      default 0 0
+      tunable true
+    }
+  }
+
+  component Water2D {
+    doc "Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface."
+    field top Color "The body's colour at the surface." {
+      default 0.16 0.5 0.72
+    }
+    field topOpacity f32 "Its opacity there." {
+      default 0.72
+      min 0
+      max 1
+      unit ratio
+    }
+    field bottom Color "The colour at the bottom." {
+      default 0.02 0.1 0.25
+    }
+    field bottomOpacity f32 "Its opacity there." {
+      default 0.92
+      min 0
+      max 1
+      unit ratio
+    }
+    field lip Color "The lip along the surface." {
+      default 0.8 0.95 1
+    }
+    field lipWidth f32 "How thick the lip is (0: none)." {
+      default 0.06
+      min 0
+      unit m
+      tunable true
+    }
+    field layer i32 "The sprite layer it is drawn in."
+  }
+
+  fn timeOfDay {
+    doc "The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads."
+    param world World "The world."
+    returns f32
+  }
+}
+
+# ── anim ──────────────────────────────────────────────────────────────────
+

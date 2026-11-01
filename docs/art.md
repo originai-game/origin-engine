@@ -71,7 +71,7 @@ pieces a style needs on a sprite. 4 makes the style measurable.
 
 ### 2.1 The contract: seven art resources in the look
 
-New IDL module `art` (`crates/og-api/api.ogt`), seven resources a look
+New IDL module `art` (`crates/og-api/api/art.ogt`), seven resources a look
 sets like the render ones (by reflected name, `og-bundle/src/look.rs`
 `LOOK_RESOURCES` grows by seven). Each field's zero value is "no
 constraint", so a look without them, and every existing game, cooks and
@@ -326,8 +326,8 @@ gate, record `metal` frames or publish. Evidence:
 Order: A0 now (the coordinator); A1 and P1 at once; after A1 merges, A2,
 A3 and A4; then A5, A6, A7; R last, then P1's pin move.
 
-Shared files and how they are touched: `api.ogt` (A1 adds the module; A4
-appends to `render`'s sprite records; nothing reorders), `og-cook`'s
+Shared files and how they are touched: `crates/og-api/api/art.ogt` (A1 adds
+the module) and `api/render.ogt` (A4 appends sprite records; nothing reorders), `og-cook`'s
 `cook/mod.rs` (A2 and A3 each add one call into a new `cook/conform/`
 module of their own: `conform/texture2d.rs`, `conform/mesh.rs`),
 `og-render`'s sprite shader (A4 only), `templates/looks/*.ogt` (A1 only;

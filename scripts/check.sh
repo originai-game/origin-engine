@@ -107,6 +107,7 @@ rule_gpu() {
 rule_wasm() { echo "crates third_party $RULE_COMMON"; }
 # og api check: the IDL, the generator and what it reads, og's api command,
 # and every directory it writes (og_idl::OUTPUT_DIRS).
+# crates/og-api includes api/parts.txt and every api/<module>.ogt part.
 rule_drift() {
   echo "crates/og-api $(og_crate_dirs -p og-idl -e normal,build | og_words) crates/og-cli \
 packages/engine/types packages/engine/schema packages/engine/src/generated \
@@ -599,7 +600,7 @@ step_size_gate() {
   "$OG_ROOT/scripts/size-gate.sh"
 }
 
-# `og api check` regenerates every IDL output (crates/og-api/api.ogt -> .d.ts,
+# `og api check` regenerates every IDL output (crates/og-api/api/<module>.ogt -> .d.ts,
 # wiki, JSON schema, Rust glue) and fails when a committed copy differs. The
 # command counts as available when `og --help` lists an `api` subcommand.
 step_drift() {

@@ -1,0 +1,75 @@
+module rng {
+  skill og-core
+  doc "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts."
+  doc "Inside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from."
+
+  interface RngStream {
+    doc "One generator stream, forked from the Rng resource for a subsystem that must not perturb the main sequence."
+    prop seed u32 "The stream's derived seed."
+    fn next {
+      doc "Uniform in [0, 1)."
+      returns f64
+    }
+    fn range {
+      doc "Uniform in [low, high)."
+      param low f64 "The inclusive lower bound."
+      param high f64 "The exclusive upper bound."
+      returns f64
+    }
+    fn integer {
+      doc "A uniform integer in [low, high]."
+      param low i32 "The inclusive lower bound."
+      param high i32 "The inclusive upper bound."
+      returns i32
+    }
+    fn chance {
+      doc "True with probability p."
+      param p f64 "The probability, between 0 and 1."
+      returns bool
+    }
+    fn fork {
+      doc "A fresh stream on a seed derived from this stream's seed and a label."
+      param label String "The subsystem's name; the same label always gives the same stream."
+      returns RngStream
+    }
+  }
+
+  resource Rng {
+    doc "The world's main random stream, seeded from GameDesc.seed (or the replay seed). Its state is part of every snapshot."
+    field seed u32 "The seed the stream started from." {
+      readonly true
+    }
+    field state u32 "The generator state; snapshot and restore carry it." {
+      readonly true
+    }
+    fn next {
+      doc "Uniform in [0, 1)."
+      returns f64
+    }
+    fn range {
+      doc "Uniform in [low, high)."
+      param low f64 "The inclusive lower bound."
+      param high f64 "The exclusive upper bound."
+      returns f64
+    }
+    fn integer {
+      doc "A uniform integer in [low, high]."
+      param low i32 "The inclusive lower bound."
+      param high i32 "The inclusive upper bound."
+      returns i32
+    }
+    fn chance {
+      doc "True with probability p."
+      param p f64 "The probability, between 0 and 1."
+      returns bool
+    }
+    fn fork {
+      doc "A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone. The same label gives the same stream every time, on every host, wherever the main stream is; og.Rng among a system's reads is enough."
+      param label String "The subsystem's name, such as `spawner`."
+      returns RngStream
+    }
+  }
+}
+
+# ── input ─────────────────────────────────────────────────────────────────
+

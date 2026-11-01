@@ -1,6 +1,6 @@
 # og-api
 
-The engine's public API, declared once in `api.ogt`, the generators that
+The engine's public API, declared once in `api/`, the generators that
 turn it into everything else (design §3.1), and the host-neutral runtime both
 hosts wrap. Four crates, so that an edit rebuilds only what compiles it:
 
@@ -8,12 +8,12 @@ hosts wrap. Four crates, so that an edit rebuilds only what compiles it:
 |---|---|---|
 | `og-idl` (`crates/og-idl`) | the IDL's model, validator and generators: `read`, `generate`, `write`, `check` | `og` (`og api gen`, `og api check`) |
 | `og-records` (`crates/og-records`) | the record and column tables (`RECORDS`, `COLUMNS` and their decl types), which `og_api::host` re-exports; no dependencies | `og-api`, `og`'s cook |
-| `og-api` (this crate) | `api.ogt` and what the generators write here: `og_api::host`, the traits; depends only on `og-records` | both hosts, `og-runtime` |
+| `og-api` (this crate) | `api/` and what the generators write here: `og_api::host`, the traits; depends only on `og-records` | both hosts, `og-runtime` |
 | `og-runtime` (`crates/og-runtime`) | the host-neutral runtime the traits call (below) | both hosts |
 
 `og api gen` rewrites only a file whose bytes change, and the generated Rust
 carries no IDL prose (a trait method names its TypeScript path; the docs
-live in `api.ogt`, the `.d.ts` and the wiki). So a doc-only IDL edit
+live in `api/<module>.ogt`, the `.d.ts` and the wiki). So a doc-only IDL edit
 rewrites the TypeScript, schema and wiki outputs and rebuilds no crate; an
 edit to a component field's doc rewrites `RECORDS` (the runtime's
 reflection serves it; each doc is written `doc!("...")`, empty with
@@ -36,9 +36,9 @@ and `og api check` (the gate's drift step) holds them to the IDL.
 | host ABI interface | `packages/engine/src/generated/abi.ts` | the TypeScript runtime (`HostAbi`, `SYMBOLS`) |
 | wiki: one page per module and `index.md` | `packages/knowledge/wiki/` | agents, through `@origingame/engine-knowledge` (mounted as the `og-game` skill's `reference/`) |
 
-Every generated file starts with a line saying it is generated from
-`api.ogt`. Wiki pages quote each declaration's IDL text with the line it
-starts on, its TypeScript form, its docs, its fields' defaults, ranges and
+Every generated file retains its historical `api.ogt` header; that name
+now means the concatenated IDL. Wiki pages quote each declaration's IDL text
+with the line it starts on, its TypeScript form, its docs, its fields' defaults, ranges and
 units, and its binding symbol; `index.md` maps every module, type, function
 and member to its anchor (`crates/og-idl/tests/wiki.rs` holds the quotes to
 the IDL and every link to an anchor). `og api gen` writes them (`--wiki`
@@ -48,14 +48,24 @@ a file in one of the generated directories (`og_idl::OUTPUT_DIRS`) that the
 generator does not write.
 
 ```
-og api gen     # after editing api.ogt
+og api gen     # after editing api/<module>.ogt
 og api gen --wiki   # the wiki pages alone
 og api check   # CI: exit 1 and the differing files on drift
 ```
 
 ## The `.ogt` grammar
 
-`api.ogt` is ordinary `.ogt` text read by `og_core::ogt`, the engine's one
+`api/parts.txt` lists the files in their original declaration order:
+`prelude.ogt` contains everything before the first module, and each
+`<module>.ogt` contains one whole module. Edit that module's file (for
+example `api/ui.ogt`); append a new module's filename to `parts.txt`.
+The loader concatenates the parts verbatim: keep their final newlines.
+No part gains a header; only the prelude has `type api`. Model lines and
+the wiki's historical `api.ogt` citations count through the concatenation,
+while errors name the part file and its own 1-based line. Missing parts
+are read errors. The generated outputs are unchanged by the split.
+
+The concatenation is ordinary `.ogt` text read by `og_core::ogt`, the engine's one
 reader (its module docs are the authority). The grammar, one construct per
 line:
 

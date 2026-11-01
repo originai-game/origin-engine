@@ -156,7 +156,7 @@ test("each module is taught by the one skill the wiki's index groups it under", 
     "skills/og-taste/SKILL.md: names `og api show ui`, which og-ui teaches; point to og-ui instead, so each module is taught in one place",
   ]);
   const grouped = added((r) => edit(join(r.pkg, "wiki/index.md"), (s) => s.replace("### `og-ai`", "### `og-enemies`")));
-  expect(grouped).toContain("wiki/index.md: groups modules under og-enemies, which is no skill this package ships; fix the modules' `skill` in api.ogt");
+  expect(grouped).toContain("wiki/index.md: groups modules under og-enemies, which is no skill this package ships; fix the modules' `skill` in crates/og-api/api/<module>.ogt");
 });
 
 test("a section reference names a numbered section that exists", () => {

@@ -1,0 +1,61 @@
+module transform {
+  skill og-game
+  doc "Transforms in the three.js vocabulary: position, quaternion and scale, composed into matrixWorld down the parent chain."
+
+  component Transform {
+    doc "Where an entity is, relative to its parent (or the world)."
+    field position Vector3 "The position, as three.js Object3D.position." {
+      unit m
+    }
+    field quaternion Quaternion "The rotation, as three.js Object3D.quaternion."
+    field scale Vector3 "The scale, as three.js Object3D.scale." {
+      default 1 1 1
+    }
+  }
+
+  component Parent {
+    doc "The entity this one's Transform is relative to. Set by SpawnDesc.parent."
+    field entity Entity "The parent."
+  }
+
+  component MatrixWorld {
+    doc "The world matrix the engine composes after the systems run, as three.js Object3D.matrixWorld."
+    field matrix Matrix4 "The composed world matrix." {
+      readonly true
+    }
+  }
+
+  fn compose {
+    doc "A matrix from position, rotation and scale, as three.js Matrix4.compose."
+    param position Vector3 "The translation."
+    param quaternion Quaternion "The rotation."
+    param scale Vector3 "The scale."
+    returns Matrix4
+  }
+
+  fn decompose {
+    doc "Position, rotation and scale from a matrix, as three.js Matrix4.decompose."
+    param matrix Matrix4 "An affine matrix."
+    returns Transform
+  }
+
+  fn lookAt {
+    doc "The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras."
+    param eye Vector3 "Where the viewer is."
+    param target Vector3 "What it looks at."
+    param up Vector3 "The up direction; the zero vector means +Y." {
+      optional true
+    }
+    returns Quaternion
+  }
+
+  fn fromAxisAngle {
+    doc "A rotation about an axis, as three.js Quaternion.setFromAxisAngle."
+    param axis Vector3 "A unit axis."
+    param angle f32 "The angle in radians."
+    returns Quaternion
+  }
+}
+
+# ── time ──────────────────────────────────────────────────────────────────
+

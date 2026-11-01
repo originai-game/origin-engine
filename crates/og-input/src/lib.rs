@@ -1,4 +1,4 @@
-//! Origin Engine input (design §2.2, IDL `input` in `crates/og-api/api.ogt`).
+//! Origin Engine input (design §2.2, IDL `input` in `crates/og-api/api/input.ogt`).
 //!
 //! | module | what it owns |
 //! |---|---|
