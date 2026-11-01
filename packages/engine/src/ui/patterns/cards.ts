@@ -9,8 +9,8 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  artSlot, clamp, flags, floating, floatingContent, frame, glow, grow, inside, keyHash, keyOf, kit, lastInteraction, line, mix, over, overProps,
-  paint, pips, pointer, px, rarityColor, recallPath, rememberPath, role, rtl, shadow, spring, st, still, surface, text, token, u, vgrad, vstate, xy, type Mut,
+  artSlot, clamp, fitStep, flags, floating, floatingContent, frame, glow, grow, inside, keyHash, keyOf, kit, lastInteraction, line, mix, over, overProps,
+  paint, pips, pointer, px, rarityColor, recallPath, rememberPath, role, rtl, shadow, spring, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
 } from "./core.ts";
 
 // ── the hand's state ────────────────────────────────────────────────────
@@ -67,6 +67,10 @@ interface FaceOpts {
   ready: boolean;
   /** Draw the rules (a card wide enough to read them). */
   rules: boolean;
+  /** Lifted, held or shown large: the name and rules at their reading size. */
+  big?: boolean;
+  /** It has the focus of keys and pads: the ring is the card's (the hand draws none). */
+  focused?: boolean;
 }
 
 /**
@@ -82,7 +86,11 @@ function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
   kit.setDraw({
     shape: { kind: "rect", radii: [r, r, r, r] },
     fills: [vgrad([[0, paint(mix(role("panelRaised"), edge, 0.14))], [1, paint(mix(role("panel"), edge, 0.06))]])],
-    strokes: [line(Math.max(2, Math.round(cw / 75)), paint(mix(edge, role("ink"), 0.12))), line(1, token("shadow", 0.5), "outside")],
+    strokes: [
+      line(Math.max(2, Math.round(cw / 75)), paint(mix(edge, role("ink"), 0.12))),
+      // Focused by keys or a pad: a ring in the focus ink just outside the card.
+      ...(o.focused ? [line(u(3), token("focus"), "outside")] : [line(1, token("shadow", 0.5), "outside")]),
+    ],
     effects: [shadow(Math.round(cw * 0.04), Math.round(cw * 0.1), 0.5), ...(glowing ? [glow(Math.round(cw * 0.1), paint(glowing, 0.85), 2)] : [])],
   });
   const pad = Math.max(4, Math.round(cw * 0.045));
@@ -91,7 +99,9 @@ function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
   // The banner: the name on a band of the frame's edge colour, darkened so the ink reads on any tier.
   const band = mix(role("well"), edge, 0.3);
   kit.open("Name", { width: grow(), direction: "row", align: "center", cross: "center", padding: xy(Math.round(pad * 1.2), Math.max(2, Math.round(pad * 0.6))), radius: Math.max(3, Math.round(r * 0.5)), background: paint(band), part: "Card.name", partClass: "badge" });
-  text("Text", c.name ?? "", { step: st(cw >= u(180) ? 15 : 13), nowrap: true, ellipsis: true, width: grow(), align: "center", font: "display", heading: true });
+  // The name whole: up to two lines, its step fitted to the banner where one word is wider than it (a narrow fan at large text).
+  const nameW = cw - pad * 2 - Math.round(pad * 2.4);
+  text("Text", c.name ?? "", { step: fitStep(c.name ?? "", nameW, o.big ? 18 : cw >= u(180) ? 15 : 13), maxLines: 2, width: grow(), align: "center", font: "display", heading: true });
   kit.close();
   if (o.rules) {
     kit.row("Type", { width: grow(), gap: u(6), cross: "center", align: "center", part: "Card.type", partClass: "panel" }, () => {
@@ -100,25 +110,45 @@ function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
     });
     if (c.text) {
       kit.open("Rules", { width: grow(), height: grow(), direction: "column", align: "center", cross: "center", padding: xy(Math.round(pad * 0.6), 0), part: "Card.text", partClass: "panel" });
-      kit.richText("Body", c.text, { step: st(cw >= u(180) ? 14 : 12), color: token("ink"), align: "center", width: grow() });
+      // Lifted, the rules read at the body size (16 px at the reference scale); at rest they are a glance.
+      kit.richText("Body", c.text, { step: st(o.big ? 16 : cw >= u(180) ? 14 : 12), color: token("ink"), align: "center", width: grow() });
       kit.close();
     }
   }
-  // The cost: a gem in the top start corner, its number in danger ink when raised or out of reach, success when lowered.
-  if (c.cost !== undefined && c.cost !== null) {
+  // The cost: a gem in the top start corner. Its number is in the ink unless something changed it: danger when it is raised or
+  // out of reach this turn, success when it is lowered (with a mark saying so, not only a colour). A card that cannot be played
+  // at all (a status, a curse) has no number: its gem carries a cross.
+  const hasCost = c.cost !== undefined && c.cost !== null;
+  if (hasCost || !o.playable) {
     // It grows with the player's text size (to half again), so its number stays inside it.
     const g = Math.round(Math.max(26, cw * 0.22) * Math.min(1.5, Math.max(1, frame().theme.textScale ?? 1)));
-    const tone: Api.ThemeColor = !o.playable || c.costUp ? "danger" : c.costDown ? "success" : "ink";
-    kit.open("Cost", { width: px(g), height: px(g), align: "center", cross: "center", part: `Card.cost${flags(c.costUp && "up", c.costDown && "down", !o.playable && "unaffordable")}`, partClass: "badge" });
+    const never = !hasCost;
+    const tone: Api.ThemeColor = never || !o.playable || c.costUp ? "danger" : c.costDown ? "success" : "ink";
+    kit.open("Cost", { width: px(g), height: px(g), align: "center", cross: "center", part: `Card.cost${flags(c.costUp && "up", c.costDown && "down", hasCost && !o.playable && "unaffordable", never && "unplayable")}`, partClass: "badge" });
+    const gem = never ? role("danger") : role("primary");
     kit.setDraw({
       shape: { kind: "ellipse" },
-      fills: [{ kind: "gradient", type: "radial", from: { x: 0.4, y: 0.35 }, to: { x: 0.5, y: 0.5 }, stops: [{ offset: 0, color: paint(mix(role("primary"), role("well"), 0.35)) }, { offset: 1, color: paint(mix(role("primary"), role("well"), 0.75)) }] }],
-      strokes: [line(2, paint(mix(role("primary"), role("ink"), 0.35))), line(1, token("shadow", 0.6), "outside")],
+      fills: [{ kind: "gradient", type: "radial", from: { x: 0.4, y: 0.35 }, to: { x: 0.5, y: 0.5 }, stops: [{ offset: 0, color: paint(mix(gem, role("well"), never ? 0.55 : 0.35)) }, { offset: 1, color: paint(mix(gem, role("well"), 0.8)) }] }],
+      strokes: [line(2, paint(mix(never || !o.playable ? role("danger") : role("primary"), role("ink"), 0.3))), line(1, token("shadow", 0.6), "outside")],
       effects: [shadow(2, 4, 0.5)],
     });
-    text("Value", `${c.cost}`, { step: st(g >= u(40) ? 20 : 15), color: tone, font: "mono", nowrap: true });
+    if (never) symbol("Never", "cross", Math.round(g * 0.5), role("ink"));
+    else text("Value", `${c.cost}`, { step: st(g >= u(40) ? 20 : 15), color: tone, font: "mono", nowrap: true });
     kit.close();
     over({ insets: { start: -Math.round(g * 0.18), top: -Math.round(g * 0.18) }, inert: true, z: 5 });
+    // Changed this turn: a chevron on the gem's end edge, down when lowered and up when raised.
+    if (hasCost && (c.costDown || c.costUp)) {
+      const m = Math.round(g * 0.46);
+      kit.open("Changed", { width: px(m), height: px(m), align: "center", cross: "center", part: `Card.costMark${flags(c.costDown ? "down" : "up")}`, partClass: "badge" });
+      kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token(c.costDown ? "success" : "danger") }], strokes: [line(1, token("shadow", 0.7), "outside")] });
+      kit.open("Chevron", { width: px(Math.round(m * 0.6)), height: px(Math.round(m * 0.6)) });
+      const q = Math.round(m * 0.6);
+      const pts = c.costDown ? [{ x: q * 0.15, y: q * 0.32 }, { x: q * 0.5, y: q * 0.7 }, { x: q * 0.85, y: q * 0.32 }] : [{ x: q * 0.15, y: q * 0.68 }, { x: q * 0.5, y: q * 0.3 }, { x: q * 0.85, y: q * 0.68 }];
+      kit.setDraw({ shape: { kind: "path", points: pts, width: Math.max(1.5, q * 0.18), cap: "round", join: "round" }, fills: [{ kind: "solid", color: token("onPrimary") }] });
+      kit.close();
+      kit.close();
+      over({ insets: { start: Math.round(g * 0.62), top: Math.round(g * 0.5) }, inert: true, z: 6 });
+    }
   }
   // Out of reach: the card under a shade (still readable), never faded to nothing.
   if (!o.playable) {
@@ -168,7 +198,9 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
   const w0 = Math.min(desc.cardWidth && desc.cardWidth > 0 ? desc.cardWidth : phone ? 96 : u(150), fanW * 0.34, (roomH * 0.3) / 1.4);
   const w = Math.round(n > 1 ? Math.max(Math.min(w0, 80), Math.min(w0, (fanW * 0.9) / (1 + 0.62 * (n - 1)))) : w0);
   const ch = Math.round(w * 1.4);
-  const liftW = Math.round(Math.min(Math.max(w * 1.3, phone ? 168 : u(196)), fanW * 0.62, (roomH * 0.62) / 1.4));
+  // Lifted, a card is laid out large enough that its rules read at the body size; larger again at large text.
+  const ts = Math.max(1, frame().theme.textScale ?? 1);
+  const liftW = Math.round(Math.min(Math.max(w * 1.45, phone ? 168 : u(240)) * Math.min(1.35, ts), fanW * 0.62, (roomH * 0.62) / 1.4));
   const liftH = Math.round(liftW * 1.4);
   // The fan's turn: a card's outermost corners swing out and down by it, so the box makes room for them.
   const per = (n > 1 ? Math.min(desc.spread && desc.spread > 0 ? desc.spread : 3, 36 / (n - 1)) : 0) * (Math.PI / 180);
@@ -235,8 +267,10 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
   if (held && p.released) {
     if (dragging) {
       if (dragAiming) {
+        // Let go on a target it cannot take (behind a taunt): refused, it shakes; let go on nothing: it goes back.
         const t = targetAt(p.x, p.y);
         if (t >= 0 && (targets[t]!.valid ?? true)) play(held, targets[t]!.key ?? "");
+        else if (t >= 0) refuse(held);
         else kit.feedback("cancel", -1);
       } else if (!dragging.needsTarget && p.y < playY) play(held, null);
     } else if (h.sel === h.held) activate(held, 2);
@@ -249,7 +283,10 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
   if (pAiming && p.pressed) {
     const t = targetAt(p.x, p.y);
     if (t >= 0 && (targets[t]!.valid ?? true)) play(pAiming, targets[t]!.key ?? "");
-    else {
+    else if (t >= 0) {
+      refuse(pAiming);
+      h.aim = 0;
+    } else {
       h.aim = 0;
       kit.feedback("cancel", -1);
     }
@@ -258,9 +295,14 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
   // ── which card lifts ──
   let hovered: string | null = null;
   const fanIx = lastInteraction(`${id}~fan`);
-  kit.open("Fan", { width: grow(), height: px(H), interactive: true, focusable: n > 0, adjustable: true, part: `CardHand.fan${flags(!!desc.disabled && "disabled")}`, partClass: "panel" });
+  // The fan's ring is up (keys or a pad put the focus on it, Response.ring of last tick): read in the hand's scope, where it is remembered.
+  const focusVisible = (kit.memory(`${id}~fan~ix`, 0) & 8) !== 0;
+  // The fan takes the focus and the arrows; its focus is drawn on the focused card (ownRing), not around the hand.
+  kit.open("Fan", { width: grow(), height: px(H), interactive: true, focusable: n > 0, adjustable: true, ownRing: true, part: `CardHand.fan${flags(!!desc.disabled && "disabled")}`, partClass: "panel" });
   for (const k of keys) if (lastInteraction(k).hovered) hovered = k;
-  const focusCard = fanIx.focused && n > 0 ? keys[h.cur]! : null;
+  // The cursor's card lifts while keys or a pad drive the hand (a finger's press also gives the fan the focus, and must
+  // not leave the cursor's card standing over the screen); the ring shows then too, as a browser's focus-visible.
+  const focusCard = fanIx.focused && focusVisible && n > 0 ? keys[h.cur]! : null;
   const heldNow = keyOf(keys, h.held);
   const selNow = keyOf(keys, h.sel);
   const lifted = heldNow ?? selNow ?? (touch ? null : hovered) ?? focusCard;
@@ -291,7 +333,9 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
       const startRoom = rtl() ? vp.width - sa.right - (fr.x + fr.width) : fr.x - sa.left;
       const endRoom = rtl() ? fr.x - sa.left : vp.width - sa.right - (fr.x + fr.width);
       const x = clamp(q.x - w / 2, -startRoom, fanW + endRoom - w);
-      const y = clamp(q.y - ch * 0.55, sa.top - fr.y, vp.height - sa.bottom - fr.y - ch);
+      // Its top stops a little over the play line's height above it: ready, it never rises over the screen's header.
+      const ceiling = Math.max(sa.top, playY - ch * 1.1) - fr.y;
+      const y = clamp(q.y - ch * 0.55, ceiling, vp.height - sa.bottom - fr.y - ch);
       Object.assign(pl, { x, y, rot: 0, z: 100, mode: "held" });
     } else {
       const aiming = (dragging && k === held && dragAiming) || (k === selNow && h.aim > 0);
@@ -338,7 +382,14 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
         ],
         state: [{ group: "lift", state: pl.mode }, { group: "play", state: playable ? "playable" : "unplayable" }],
       },
-    }, () => cardFace(c, pl.w, pl.h, { playable, ready, rules: pl.w >= u(140) }));
+    }, () => cardFace(c, pl.w, pl.h, {
+      playable,
+      ready,
+      // At rest at large text the rules are left to the lifted card (they would not fit the rest card).
+      rules: pl.w >= u(140) && (pl.mode !== "rest" || ts < 1.5),
+      big: pl.mode !== "rest" && pl.w >= u(200),
+      focused: fanIx.focused && focusVisible && i === h.cur,
+    }));
     kit.semantics({
       role: "option",
       name: [c.name ?? k, c.cost !== undefined && c.cost !== null ? `${c.cost}` : "", c.typeLine ?? ""].filter(Boolean).join(", "),
@@ -396,7 +447,7 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
   const fan = kit.close() as Api.Response;
   const fanPath = kit.lastPath();
   rememberPath(`${id}~fan`, fanPath);
-  kit.remember(`${id}~fan~ix`, (fan.hovered ? 1 : 0) | (fan.pressed ? 2 : 0) | (fan.focused ? 4 : 0));
+  kit.remember(`${id}~fan~ix`, (fan.hovered ? 1 : 0) | (fan.pressed ? 2 : 0) | (fan.focused ? 4 : 0) | (fan.ring ? 8 : 0));
   kit.props({
     states: [{ name: "interaction", states: [vstate("normal"), vstate("hover"), vstate("pressed"), vstate("focused"), vstate("disabled")], transitions: [] }],
   });
@@ -440,8 +491,10 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
   const m = floating(`${id}Inspect`, !!big, { scrim: true }, (s) => ({ x: (vp.width - s.width) / 2, y: (vp.height - s.height) / 2 }), (at) => {
     if (!big) return;
     floatingContent({ direction: "column", part: "CardHand.inspect", partClass: "panel" }, () => {
-      kit.open("Card", { width: px(bw), height: px(Math.round(bw * 1.4)), direction: "column", cross: "stretch", padding: all4(Math.round(bw * 0.045)), gap: Math.round(bw * 0.03), part: `Card.frame${flags(`rarity=${big.rarity ?? "none"}`, "inspect")}`, partClass: "card" });
-      cardFace(big, bw, Math.round(bw * 1.4), { playable: can(big) || !!desc.disabled, ready: false, rules: true });
+      // At large text it grows with its rules (its art gives up room first), never past the safe area.
+      const grown = ts >= 1.3;
+      kit.open("Card", { width: px(bw), height: grown ? null : px(Math.round(bw * 1.4)), direction: "column", cross: "stretch", padding: all4(Math.round(bw * 0.045)), gap: Math.round(bw * 0.03), part: `Card.frame${flags(`rarity=${big.rarity ?? "none"}`, "inspect")}`, partClass: "card" });
+      cardFace(big, bw, Math.round(bw * (grown ? 1.0 : 1.4)), { playable: can(big) || !!desc.disabled, ready: false, rules: true, big: true });
       kit.close();
       kit.semantics({ role: "dialog", name: big.name ?? "", description: plain(big.text ?? "") });
     });

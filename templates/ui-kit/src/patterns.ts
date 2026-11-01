@@ -113,6 +113,9 @@ const c = {
   turn: true,
   inspect: "",
   log: "",
+  /** A foe that refused a card (behind a taunt) and how many ticks its flash has left. */
+  refused: "",
+  refusedT: 0,
 };
 
 /** The combat table: two enemies (the second behind a taunt, so it cannot be targeted), the energy, the piles, and the hand. */
@@ -132,37 +135,36 @@ export function cardsScreen(): void {
   const foes = (): void => {
     // Where the table is short (a phone on its side, 200 % text), the enemies stand without their figures.
     const ts = Math.max(1, t.textScale ?? 1);
-    const room = vp.height - sa.top - sa.bottom - (small ? (portrait ? 116 : 64) : t.space.lg) - footH - t.space.sm - 48 * ts;
+    const room = vp.height - sa.top - sa.bottom - (small ? (portrait ? 60 + Math.round(56 * ts) : 64) : t.space.lg) - footH - t.space.sm - 48 * ts - (portrait ? 56 * ts : 0);
     const figH = small ? 60 : big ? 148 : 112;
     const figure = !landscape && room >= figH + 110 * ts;
     const foeW = portrait ? Math.floor((W - 2 * t.space.sm - t.space.md) / 2) : small ? 150 : big ? 240 : 176;
     og.ui.row("Foes", { gap: small ? t.space.md : t.space.xl, cross: "end" }, () => {
       for (const f of c.foes) {
+        const flash = c.refused === f.key && c.refusedT > 0;
         og.ui.column(f.key, { width: px(foeW), gap: t.space.xs, cross: "center", padding: { left: t.space.sm, top: t.space.sm, right: t.space.sm, bottom: t.space.sm }, radius: t.radius.panel, background: { token: "panel" } }, () => {
+          // A card refused on it: its edge in danger ink while the card shakes.
+          if (flash) og.ui.setDraw({ shape: { kind: "rect", radii: [t.radius.panel, t.radius.panel, t.radius.panel, t.radius.panel] }, fills: [{ kind: "solid", color: { token: "panel" } }], strokes: [{ width: 3, align: "inside", paint: { kind: "solid", color: { token: "danger" } } }] } as never);
           if (figure) og.ui.column("Figure", { width: px(small ? 56 : big ? 128 : 96), height: px(small ? 60 : big ? 148 : 112), radius: 48, background: { token: f.taunt ? "control" : "primarySoft" } }, () => {});
           og.ui.label("Name", f.name, { step: small ? "sm" : big ? "xl2" : "lg", font: "display", maxLines: 2, ellipsis: true, width: grow, align: "center" });
           // The hit points under the bar, not in it: a bar's inner label is small and would be cut at 200 %.
           og.ui.meter("Hp", f.hp, f.max, { kind: "health", width: grow });
           og.ui.label("HpText", `${f.hp} / ${f.max}`, { step: small ? "sm" : big ? "xl" : "base", font: "mono", nowrap: true });
-          if (f.taunt) og.ui.label("Note", "Behind a taunt", { step: small ? "sm" : big ? "lg" : "sm", color: { token: "inkMuted" }, width: grow, align: "center", maxLines: 2 });
+          if (f.taunt) {
+            // Behind a taunt: a shield and the words, lit in danger ink while a card it refused shakes.
+            og.ui.row("Taunt", { gap: t.space.xxs, cross: "center", align: "center", width: grow }, () => {
+              og.ui.icon("Shield", "shield", { size: small ? 16 : big ? 24 : 18, tint: { token: flash ? "danger" : "inkMuted" }, label: "" });
+              og.ui.label("Note", "Behind a taunt", { step: small ? "sm" : big ? "lg" : "sm", color: { token: flash ? "danger" : "inkMuted" }, maxLines: 2 });
+            });
+          }
         });
       }
     });
   };
-  og.ui.anchor("Cards", { anchor: "topLeft", margin: 0, width: px(W), height: px(vp.height - sa.top - sa.bottom), direction: "column", padding: { left: small ? t.space.sm : t.space.xl, top: small ? (portrait ? 116 : 64) : t.space.lg, right: small ? t.space.sm : t.space.xl, bottom: Math.round(footH + t.space.sm) } }, () => {
-    og.ui.row("Top", { width: grow, gap: t.space.md, cross: "center" }, () => {
-      og.ui.label("Title", "Combat", { step: small ? "xl2" : "xl4", heading: true, font: "display", nowrap: true });
-      og.ui.label("Turn", c.turn ? "Your turn" : "Enemy turn", { step: small ? "sm" : big ? "xl" : "base", color: { token: c.turn ? "success" : "warn" }, nowrap: true });
-      if (landscape) {
-        og.ui.spacer("Gap", grow);
-        foes();
-      }
-    });
-    // On a phone on its side the table has no height to spare: the enemies stand in the title's row.
-    if (!landscape) og.ui.row("Table", { width: grow, height: grow, align: "end", cross: "center", gap: small ? t.space.md : t.space.xl3, padding: { left: 0, top: 0, right: small ? 0 : t.space.xl3, bottom: 0 } }, foes);
-  });
-  // The hand along the foot, the energy at its start and End turn at its end.
-  og.ui.anchor("Foot", { anchor: "bottom", margin: 0, width: px(W), direction: "column", gap: t.space.xs, padding: { left: small ? t.space.xs : t.space.lg, top: 0, right: small ? t.space.xs : t.space.lg, bottom: small ? t.space.xs : t.space.md } }, () => {
+  if (c.refusedT > 0) c.refusedT -= 1;
+  // The energy and End turn. On a phone in portrait a lifted card stands over the foot, so they sit under the title.
+  const barTop = portrait;
+  const bar = (): void => {
     og.ui.row("Bar", { width: grow, cross: "center", gap: t.space.md }, () => {
       og.ui.row("Energy", { gap: t.space.xs, cross: "center", padding: { left: t.space.md, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, radius: 999, background: { token: "panelRaised" } }, () => {
         og.ui.label("Value", `${c.energy} / 3`, { step: small ? "lg" : "xl2", font: "mono", color: { token: "highlight" }, nowrap: true });
@@ -171,6 +173,23 @@ export function cardsScreen(): void {
       og.ui.spacer("Gap", grow);
       if (og.ui.button("EndTurn", c.turn ? "End turn" : "Waiting…", { variant: "primary", disabled: !c.turn, size: big ? "large" : "medium" }).clicked) c.turn = false;
     });
+  };
+  og.ui.anchor("Cards", { anchor: "topLeft", margin: 0, width: px(W), height: px(vp.height - sa.top - sa.bottom), direction: "column", padding: { left: small ? t.space.sm : t.space.xl, top: small ? (portrait ? 60 + Math.round(56 * Math.max(1, t.textScale ?? 1)) : 64) : t.space.lg, right: small ? t.space.sm : t.space.xl, bottom: Math.round(footH + t.space.sm) } }, () => {
+    og.ui.row("Top", { width: grow, gap: t.space.md, cross: "center" }, () => {
+      og.ui.label("Title", "Combat", { step: small ? "xl2" : "xl4", heading: true, font: "display", nowrap: true });
+      og.ui.label("Turn", c.turn ? "Your turn" : "Enemy turn", { step: small ? "sm" : big ? "xl" : "base", color: { token: c.turn ? "success" : "warn" }, nowrap: true });
+      if (landscape) {
+        og.ui.spacer("Gap", grow);
+        foes();
+      }
+    });
+    if (barTop) bar();
+    // On a phone on its side the table has no height to spare: the enemies stand in the title's row.
+    if (!landscape) og.ui.row("Table", { width: grow, height: grow, align: "end", cross: "center", gap: small ? t.space.md : t.space.xl3, padding: { left: 0, top: 0, right: small ? 0 : t.space.xl3, bottom: 0 } }, foes);
+  });
+  // The hand along the foot, the energy at its start and End turn at its end.
+  og.ui.anchor("Foot", { anchor: "bottom", margin: 0, width: px(W), direction: "column", gap: t.space.xs, padding: { left: small ? t.space.xs : t.space.lg, top: 0, right: small ? t.space.xs : t.space.lg, bottom: small ? t.space.xs : t.space.md } }, () => {
+    if (!barTop) bar();
     const r = og.ui.cardHand("Hand", {
       cards: c.hand.map((x) => ({ ...x, playable: x.playable !== false && (x.cost ?? 0) <= c.energy })),
       targets,
@@ -185,6 +204,11 @@ export function cardsScreen(): void {
       const foe = c.foes.find((f) => f.key === r.played!.target);
       if (foe) foe.hp = Math.max(0, foe.hp - 6);
       c.log = `${card.name}${foe ? ` → ${foe.name}` : ""}`;
+    }
+    // Refused on a target (a foe behind a taunt): that foe flashes while the card shakes.
+    if (r.refused && r.aiming?.target) {
+      c.refused = r.aiming.target;
+      c.refusedT = 36;
     }
     if (r.inspect) c.inspect = r.inspect;
     if (r.dismissed) c.inspect = "";
@@ -303,7 +327,7 @@ export function gachaScreen(): void {
       title: b.title,
       subtitle: b.subtitle,
       featured: b.key === "std" ? [] : [{ name: "Aria", title: "Tidecaller of the Moon", stars: 5, rarity: "legendary" }, { name: "Kael", title: "The Ember", stars: 4, rarity: "epic" }, { name: "Mira", title: "Of the Grove", stars: 4, rarity: "epic" }],
-      rateText: b.key === "std" ? "A [b]5★[/b] is guaranteed within [b]90[/b] wishes." : "[b]50 %[/b] chance your next 5★ is [color=highlight]Aria[/color]; a lost one makes the next one hers.",
+      rateText: b.key === "std" ? "A [b]5-star[/b] is guaranteed within [b]90[/b] wishes." : "[b]50 %[/b] chance your next 5-star is [color=highlight]Aria[/color]; a lost one makes the next one hers.",
       endsIn: b.endsIn,
       pity: g.pity,
       pityMax: 90,
@@ -337,6 +361,7 @@ export function patternsCommand(_world: World, args: readonly string[]): void {
   else if (key === "select") p.selected = value;
   else if (key === "inspect") c.inspect = value;
   else if (key === "turn") c.turn = value !== "off";
+  else if (key === "energy") c.energy = Number(value) || 0;
   else if (key === "picks") {
     r.picks = Number(value) || 1;
     r.selected = [];
@@ -357,6 +382,8 @@ export function patternsCommand(_world: World, args: readonly string[]): void {
     c.energy = 3;
     c.turn = true;
     c.inspect = "";
+    c.refused = "";
+    c.refusedT = 0;
     p.bag = BAG0.map((i) => ({ ...i }));
     p.slots = SLOTS0.map((s) => ({ ...s }));
     p.stash = STASH0.map((i) => ({ ...i }));

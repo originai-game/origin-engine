@@ -230,6 +230,91 @@ test("inventoryGrid: let go outside, the hand is reported released and a paperdo
   expect(equips[0]).toMatchObject({ slot: "hand", key: "sword", from: "Bag", swapped: null });
 });
 
+/** Pressed on `from` and held over `to` (not let go): the drag's state that tick. */
+function hold(engine: Engine, from: Element, to: string): void {
+  const [tx, ty] = to.split(",").map(Number) as [number, number];
+  const [fx, fy] = centre(from).split(",").map(Number) as [number, number];
+  const steps = [`0:touch_move:${fx},${fy}`, "0.05:touch_start"];
+  for (let k = 1; k <= 4; k++) steps.push(`${(0.05 + k * 0.05).toFixed(2)}:touch_move:${Math.round(fx + ((tx - fx) * k) / 4)},${Math.round(fy + ((ty - fy) * k) / 4)}`);
+  engine.probe.commands(steps.join(";"));
+  engine.advance(24);
+}
+const release = (engine: Engine) => {
+  engine.probe.commands("0:touch_end");
+  engine.advance(24);
+};
+
+test("inventoryGrid: what is carried says what a drop would do, each verdict its own mark: merge +n, swap, invalid", () => {
+  // Wrong: the verdict drawn only on the footprint under the carried item (hidden), the same mark for merge and swap, or a
+  // merge's count that is the whole carried stack rather than what the stack takes.
+  const b = bag();
+  const verdict = () => elements(b.engine).find((e) => e.path.endsWith("Ghost/Badge"))?.name;
+  // Let go off the grid each time: the item goes home, nothing moves.
+  const away = () => {
+    b.engine.probe.commands("0:touch_move:1270,700");
+    b.engine.advance(6);
+    release(b.engine);
+  };
+  hold(b.engine, byPath(b.engine, "Cells/potions2")!, cell(b.engine, 2, 0));
+  expect(verdict()).toBe("merge +4");
+  away();
+  b.items.find((i) => i.key === "potions")!.count = 18;
+  b.engine.advance(2);
+  hold(b.engine, byPath(b.engine, "Cells/potions2")!, cell(b.engine, 2, 0));
+  expect(verdict()).toBe("merge +2");
+  away();
+  hold(b.engine, byPath(b.engine, "Cells/potions2")!, cell(b.engine, 4, 0));
+  expect(verdict()).toBe("swap");
+  b.engine.probe.commands(`0:touch_move:${cell(b.engine, 2, 1)}`);
+  b.engine.advance(6);
+  expect(verdict()).toBe("invalid");
+  away();
+  expect(b.moves).toEqual([]);
+});
+
+test("paperdoll: while an item is carried, the slot under it says no in danger, and slots elsewhere that take it only hint", () => {
+  // Wrong: every slot that takes the item glowing the same whether or not it is under it, or a slot that refuses it
+  // looking like one that does.
+  const items = BAG.map((i) => ({ ...i }));
+  let carry: Api.InventoryCarry | null = null;
+  const engine = run(() => {
+    og.ui.row("Screen", { gap: 32 } as never, () => {
+      const g = og.ui.inventoryGrid("Bag", { columns: 8, rows: 4, cellSize: 50, items });
+      og.ui.paperdoll("Doll", {
+        slots: [{ key: "head", label: "Head", accept: ["helmet"], x: 0.5, y: 0.12 }, { key: "feet", label: "Feet", accept: ["feet"], x: 0.5, y: 0.85 }],
+        ...(carry ? { carry } : {}),
+      }, () => {});
+      carry = g.carried ?? (carry?.released ? null : carry);
+    });
+  });
+  const target = (k: string) => (byPath(engine, `Slots/${k}`) as unknown as { visualStates: Record<string, string> }).visualStates.target;
+  hold(engine, byPath(engine, "Cells/helm")!, centre(byPath(engine, "Slots/feet")!));
+  expect(target("feet")).toBe("rejects");
+  expect(byPath(engine, "Slots/feet/Rejects")).toBeDefined();
+  expect(target("head")).toBe("hint");
+  engine.probe.commands(`0:touch_move:${centre(byPath(engine, "Slots/head")!)}`);
+  engine.advance(6);
+  expect(target("head")).toBe("accepts");
+  expect(target("feet")).toBe("dim");
+  release(engine);
+});
+
+test("paperdoll: a compared stat's change is one signed run, sign first, in both directions; its text holds no U+2212", () => {
+  // Wrong: right to left the drawn sign lands after the number ("48 +"), or the game's "−6%" drawn with a minus a font lacks.
+  for (const rtl of [false, true]) {
+    const e = run(() => {
+      og.ui.paperdoll("Doll", { slots: [], compare: true, stats: [{ label: "Armor", value: "120", delta: 48 }, { label: "Speed", value: "12%", delta: -6, deltaText: "−6%" }] }, () => {});
+    }, undefined, rtl);
+    for (const k of [0, 1]) {
+      const mark = byPath(e, `Stat#${k}/Delta/Mark`)!;
+      const digits = byPath(e, `Stat#${k}/Delta/Text`)!;
+      expect(mark.x < digits.x).toBe(true);
+      expect(digits.text.includes("\u2212") || digits.text.startsWith("+") || digits.text.startsWith("-")).toBe(false);
+    }
+    expect(byPath(e, "Stat#1/Delta/Text")!.text).toBe("6%");
+  }
+});
+
 test("inventoryGrid: right to left, columns count from the right edge", () => {
   // Wrong: a pointer's cell read from the left of a mirrored grid (the item lands in the mirror cell).
   const b = bag(true);
@@ -258,12 +343,12 @@ const TARGETS: Api.CardTarget[] = [
 ];
 
 /** A hand along the bottom of a 1280×720 desktop (or right to left), the game removing each card played. */
-function hand(rtl = false) {
-  const cards = HAND.map((c) => ({ ...c }));
+export function hand(rtl = false, width = 1200, phone = false) {
+  const cards = (phone ? [...HAND, { key: "clash", name: "Clash", cost: 0, typeLine: "Attack", text: "Deal 14 damage." }] : HAND).map((c) => ({ ...c }));
   const played: Api.CardPlay[] = [];
   const results: Api.CardHandResult[] = [];
   const sys = defineSystem(`UpHand${systems++}`, {}, () => {
-    og.ui.anchor("Table", { anchor: "bottom", width: { kind: "fixed", px: 1200 }, direction: "column" } as never, () => {
+    og.ui.anchor("Table", { anchor: "bottom", width: { kind: "fixed", px: width }, direction: "column" } as never, () => {
       const r = og.ui.cardHand("Hand", { cards, targets: TARGETS, cardWidth: 150 });
       results.push(r);
       if (r.played) {
@@ -279,7 +364,7 @@ function hand(rtl = false) {
     og.i18n.load(engine.world, "strings/ar.ogt");
     og.i18n.setLocale(engine.world, "ar-EG");
   }
-  og.ui.previewViewport(engine.world, { width: 1280, height: 720, dpr: 1, coarsePointer: false, breakpoint: "desktop", safeArea: { left: 0, top: 0, right: 0, bottom: 0 } } as never);
+  og.ui.previewViewport(engine.world, phone ? { width: 390, height: 844, dpr: 3, coarsePointer: true, breakpoint: "phonePortrait", safeArea: { left: 0, top: 47, right: 0, bottom: 34 } } as never : { width: 1280, height: 720, dpr: 1, coarsePointer: false, breakpoint: "desktop", safeArea: { left: 0, top: 0, right: 0, bottom: 0 } } as never);
   engine.advance(6);
   return { engine, played, results, cards };
 }
@@ -587,4 +672,23 @@ test("pullSequence: Skip goes straight to the summary; Done closes it; a new tok
   expect(p.last().phase).toBe("idle");
   p.start(2);
   expect(p.last().phase).toBe("charge");
+});
+
+test("cardHand: let go on a target it cannot take, the card is refused there (it shakes) and the result names that target", () => {
+  // Wrong: a release on the taunted enemy silently cancels (no shake, nothing to say why), or plays.
+  const h = hand();
+  const louse = TARGETS[1]!.rect!;
+  drag(h.engine, cardEl(h.engine, "bash"), `${louse.x + 80},${louse.y + 90}`);
+  expect(h.played).toEqual([]);
+  expect(h.results.some((r) => r.refused === "bash" && r.aiming?.target === "louse")).toBe(true);
+});
+
+test("cardHand: on a phone, a refused drag leaves no card standing; the cursor's card lifts only for keys", () => {
+  // Wrong: the press gave the fan the focus, and the focused fan lifts its cursor's card (the refused Wound) over the screen.
+  const h = hand(false, 382, true);
+  h.engine.advance(60);
+  drag(h.engine, cardEl(h.engine, "wound"), "195,300");
+  expect(h.results.some((r) => r.refused === "wound")).toBe(true);
+  const standing = elements(h.engine).filter((e) => /Fan\/[a-z]+$/.test(e.path) && e.states.includes("selected"));
+  expect(standing.map((e) => e.id)).toEqual([]);
 });

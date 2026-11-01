@@ -110,7 +110,8 @@ export function scrimFill(edge: "bottom" | "top" | "start" | "end", strength = 0
 
 export type SymbolKind =
   | "lock" | "star" | "starOutline" | "coin" | "gem" | "crown" | "check" | "cross" | "plus" | "minus" | "dot" | "ring"
-  | "clock" | "heart" | "shield" | "sword" | "flag" | "pin" | "eye" | "rotate" | "split" | "chat" | "speaker" | "camera" | "grid" | "bolt";
+  | "clock" | "heart" | "shield" | "sword" | "flag" | "pin" | "eye" | "rotate" | "split" | "chat" | "speaker" | "camera" | "grid" | "bolt"
+  | "swap" | "ban";
 
 /**
  * A symbol drawn as shapes, `size` square, in `color`: what a style's icon
@@ -215,6 +216,22 @@ export function symbol(id: string, kind: SymbolKind, size: number, color: Rgba, 
       kit.setDraw({ shape: { kind: "arc", start: -Math.PI * 0.35, sweep: Math.PI * 1.55, thickness: w, cap: "round" }, fills: fill });
       kit.open("Head", { width: px(s), height: px(s) });
       kit.setDraw({ shape: path([p(0.62, 0.06), p(0.86, 0.2), p(0.66, 0.4)]), fills: fill });
+      kit.close();
+      kit.props({ position: "absolute", insets: { start: 0, top: 0 } });
+      break;
+    case "swap":
+      // Two arrows passing: the top one to the end, the bottom one back.
+      kit.setDraw({ shape: path([p(0.14, 0.34), p(0.84, 0.34), p(0.66, 0.16), p(0.84, 0.34), p(0.66, 0.52)]), fills: fill });
+      kit.open("Back", { width: px(s), height: px(s) });
+      kit.setDraw({ shape: path([p(0.86, 0.66), p(0.16, 0.66), p(0.34, 0.48), p(0.16, 0.66), p(0.34, 0.84)]), fills: fill });
+      kit.close();
+      kit.props({ position: "absolute", insets: { start: 0, top: 0 } });
+      break;
+    case "ban":
+      // A ring struck through (⊘), which a font may not hold.
+      kit.setDraw({ shape: { kind: "arc", thickness: w }, fills: fill });
+      kit.open("Bar", { width: px(s), height: px(s) });
+      kit.setDraw({ shape: path([p(0.26, 0.26), p(0.74, 0.74)]), fills: fill });
       kit.close();
       kit.props({ position: "absolute", insets: { start: 0, top: 0 } });
       break;
@@ -519,6 +536,32 @@ export function st(px0: number): Api.TypeStepName {
     const size = (th.typeRamp[s]?.size ?? 0) / k;
     if (size >= want && size < bestSize) {
       best = s;
+      bestSize = size;
+    }
+  }
+  return best;
+}
+
+/**
+ * The type step for one line of `s` in `width` CSS px: `px0`'s step (st),
+ * or the largest smaller one whose line fits (a card's name in a narrow fan
+ * at large text, where a word cannot wrap). Never below the reference
+ * size `min`. Measured by an estimate of the face's advance (0.6 em a
+ * character), so it errs on the small side.
+ */
+export function fitStep(s: string, width: number, px0: number, min = 11): Api.TypeStepName {
+  const th = frame().theme;
+  const want = st(px0);
+  const longest = Math.max(1, ...s.split(/\s+/).map((w) => [...w].length));
+  const fits = (size: number) => longest * size * 0.6 <= width;
+  if (fits(th.typeRamp[want]?.size ?? 0)) return want;
+  const floor = min * scale() - 0.01;
+  let best: Api.TypeStepName = st(min);
+  let bestSize = 0;
+  for (const k of STEPS) {
+    const size = th.typeRamp[k]?.size ?? 0;
+    if (size >= floor && fits(size) && size > bestSize && size <= (th.typeRamp[want]?.size ?? 0)) {
+      best = k;
       bestSize = size;
     }
   }

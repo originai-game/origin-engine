@@ -75,6 +75,11 @@ function gear(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void 
     b.shot(`${prefix}gear-drag-rejects`, 0.3);
     b.cmd(`touch_move_to:${BAG}/ring`, 0.2);
     b.shot(`${prefix}gear-drag-invalid`, 0.3);
+    // Let go there: refused, the error sound, and the helm shakes back home.
+    b.cmd("touch_end", 0.05);
+    b.shot(`${prefix}gear-drop-refused`, 0.1);
+    b.cmd(`touch_move_to:${BAG}/helm`, 0.4);
+    b.cmd("touch_start", 0.1);
     b.cmd("touch_move_to:Slots/head", 0.2);
     b.cmd("touch_end", 0.2);
     b.shot(`${prefix}gear-equipped`, 0.6);
@@ -142,12 +147,13 @@ function cards(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void
     b.cmd(`touch_move_to:${FAN}/bash`, 0.1);
     b.shot(`${prefix}cards-hover`, 0.5);
   }
-  // A card that plays on release, held below the play line, then above it (ready), let go back in the hand.
+  // A card that plays on release, held below the play line (over the middle of the hand), then above it over the table
+  // (ready: it stops under the header), let go back in the hand.
   b.cmd(`touch_move_to:${FAN}/defend`, 0.05);
   b.cmd("touch_start", 0.1);
-  b.cmd("touch_move_to:Foot/Bar/Energy", 0.2);
+  b.cmd(`touch_move_to:${FAN}`, 0.2);
   b.shot(`${prefix}cards-held`, 0.3);
-  b.cmd("touch_move_to:Cards/Top/Title", 0.2);
+  b.cmd("touch_move_to:Cards/Table", 0.2);
   b.shot(`${prefix}cards-ready`, 0.3);
   b.cmd(`touch_move_to:${FAN}/wound`, 0.2);
   b.cmd("touch_end", 0.4);
@@ -162,12 +168,24 @@ function cards(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void
   b.cmd("touch_end", 0.2);
   b.shot(`${prefix}cards-played`, 0.5);
   b.dump(`${prefix}cards-played`);
-  // Out of energy now for a 2-cost card: Inflame and Anger stay playable, an unplayable Wound shakes when tried.
-  b.cmd(`touch_move_to:${FAN}/wound`, 0.05);
-  b.cmd("touch_start", 0.05);
-  b.cmd("touch_move_to:Cards/Top/Title", 0.1);
+  // Refused by the taunt: Bash let go on the Red Louse shakes back, the louse's taunt mark lit in danger ink.
+  b.cmd("pat:reset", 0.3);
+  b.cmd(`touch_move_to:${FAN}/bash`, 0.05);
+  b.cmd("touch_start", 0.1);
+  b.cmd("touch_move_to:Foes/louse", 0.25);
+  b.cmd("touch_end", 0.05);
   b.shot(`${prefix}cards-refused`, 0.1);
+  b.dump(`${prefix}cards-refused`);
+  // An unplayable card (a Wound) shakes when tried: its gem carries a cross.
+  b.cmd(`touch_move_to:${FAN}/wound`, 0.4);
+  b.cmd("touch_start", 0.05);
+  b.cmd("touch_move_to:Cards/Table", 0.1);
+  b.shot(`${prefix}cards-unplayable`, 0.1);
   b.cmd("touch_end", 0.4);
+  // One energy left: Bash (2) shaded, its cost in danger ink; Inflame's lowered cost marked down.
+  b.cmd("pat:energy:1");
+  b.shot(`${prefix}cards-unaffordable`, 0.5);
+  b.dump(`${prefix}cards-unaffordable`);
   // A card drawn flies in; a card shown large; the enemy's turn.
   b.cmd("pat:draw:strike");
   b.shot(`${prefix}cards-drawn`, 0.25);
