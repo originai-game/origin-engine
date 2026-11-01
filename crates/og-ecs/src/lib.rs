@@ -9,6 +9,8 @@
 //! | [`SystemDesc`], [`SystemContext`] | declared systems and what they may touch |
 //! | [`Bundle`] | `()` or a tuple of components for spawning |
 //! | [`StateBlock`] | a module's state outside archetypes and resources, saved and restored with the world |
+//! | [`SnapshotEdit`], [`TypeValues`] | a snapshot opened for editing: what a save migration changes before a restore |
+//! | [`SelectionReport`] | what restoring a selection (tagged entities and chosen resources) did |
 //!
 //! The model:
 //!
@@ -34,6 +36,7 @@
 //!   future, [`World::restore`] brings it back, and [`World::world_hash`]
 //!   hashes it.
 
+mod edit;
 mod entity;
 mod query;
 mod registry;
@@ -43,6 +46,7 @@ mod state;
 mod storage;
 mod world;
 
+pub use edit::{SelectionReport, SnapshotEdit, TypeValues};
 pub use entity::Entity;
 pub use query::{ArchetypeView, QueryDesc, QueryIter};
 pub use registry::{FieldRef, SchemaId};

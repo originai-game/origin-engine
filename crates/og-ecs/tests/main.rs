@@ -10,6 +10,7 @@ mod host_schema;
 mod introspection;
 mod migrate;
 mod packed_access;
+mod saves;
 mod schedule;
 mod shared_schema;
 mod snapshot;

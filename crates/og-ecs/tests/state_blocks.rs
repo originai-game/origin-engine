@@ -142,6 +142,9 @@ fn a_world_without_blocks_snapshots_and_hashes_as_before() {
         &3u32.to_le_bytes(),
         "format 3 with blocks"
     );
+    // A save migration's edit writes the blocks back as they were.
+    let bytes = blocked.snapshot();
+    assert_eq!(blocked.edit_snapshot(&bytes).unwrap().to_bytes(), bytes);
     let mut again = world();
     again.restore(&plain.snapshot()).unwrap();
     assert_eq!(again.world_hash(), plain.world_hash());

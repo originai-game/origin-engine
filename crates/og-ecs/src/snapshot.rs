@@ -36,6 +36,12 @@
 //! provided the system made the snapshot its last write of the tick. A
 //! snapshot between ticks is format 2 or 3, as before.
 //!
+//! Format 5 is a selection ([`World::snapshot_selection`], the `edit`
+//! module): the type table, `u32 k, k × u32 type` (the filter), the
+//! selected entities' archetypes, the resources and the names, with no
+//! allocator, events, blocks or resume. [`World::restore`] refuses it;
+//! [`World::restore_selection`] takes it.
+//!
 //! `str` is a `u32` length then the bytes. Format 1 (the M1 snapshots) has
 //! only `str name, u64 layout_hash` per type and no names section; it is
 //! still read. [`World::restore`] maps types by name, requires equal layout
@@ -77,6 +83,10 @@ const FORMAT_BLOCKS: u32 = 3;
 const FORMAT_STATE: u32 = 1;
 /// Format 3 with the resume section: taken mid-tick.
 const FORMAT_RESUME: u32 = 4;
+/// A selection ([`World::snapshot_selection`]): the field table, the
+/// filter, the selected entities' archetypes, the chosen resources and the
+/// entities' names; no allocator, events, blocks or resume.
+pub(crate) const FORMAT_SELECTION: u32 = 5;
 const NAMES_TAG: &[u8; 4] = b"NAME";
 const RESUME_TAG: &[u8; 4] = b"RSUM";
 const BLOCKS_TAG: &[u8; 4] = b"BLOK";
@@ -85,23 +95,23 @@ fn field_type(name: &str) -> Option<FieldType> {
     FieldType::parse(name)
 }
 
-struct Writer(Vec<u8>);
+pub(crate) struct Writer(pub(crate) Vec<u8>);
 
 impl Writer {
-    fn u8(&mut self, v: u8) {
+    pub(crate) fn u8(&mut self, v: u8) {
         self.0.push(v);
     }
-    fn u32(&mut self, v: usize) {
+    pub(crate) fn u32(&mut self, v: usize) {
         self.0
             .extend_from_slice(&u32::try_from(v).expect("fits in u32").to_le_bytes());
     }
-    fn u64(&mut self, v: u64) {
+    pub(crate) fn u64(&mut self, v: u64) {
         self.0.extend_from_slice(&v.to_le_bytes());
     }
-    fn bytes(&mut self, b: &[u8]) {
+    pub(crate) fn bytes(&mut self, b: &[u8]) {
         self.0.extend_from_slice(b);
     }
-    fn sized(&mut self, b: &[u8]) {
+    pub(crate) fn sized(&mut self, b: &[u8]) {
         self.u32(b.len());
         self.bytes(b);
     }
@@ -112,7 +122,7 @@ struct Reader<'a> {
     pos: usize,
 }
 
-fn bad(reason: impl Into<String>) -> Error {
+pub(crate) fn bad(reason: impl Into<String>) -> Error {
     Error::new(ErrorKind::Parse, format!("snapshot: {}", reason.into()))
 }
 
@@ -193,14 +203,14 @@ impl MigrationReport {
 }
 
 /// One type of the snapshot's type table.
-struct SnapType {
-    name: String,
-    hash: u64,
+pub(crate) struct SnapType {
+    pub(crate) name: String,
+    pub(crate) hash: u64,
     /// The snapshot's own field table (format 2).
-    schema: Option<Schema>,
+    pub(crate) schema: Option<Schema>,
     /// Packed size of each field, from the field table or, in format 1, from
     /// this world's type of the same name and layout hash.
-    sizes: Vec<usize>,
+    pub(crate) sizes: Vec<usize>,
 }
 
 impl SnapType {
@@ -209,30 +219,33 @@ impl SnapType {
     }
 }
 
-struct SnapArchetype<'a> {
+pub(crate) struct SnapArchetype<'a> {
     /// Snapshot type indices in stored order.
-    stored: Vec<usize>,
-    entities: Vec<Entity>,
+    pub(crate) stored: Vec<usize>,
+    pub(crate) entities: Vec<Entity>,
     /// Per stored type, per field: `rows × size` bytes.
-    columns: Vec<Vec<&'a [u8]>>,
+    pub(crate) columns: Vec<Vec<&'a [u8]>>,
 }
 
 /// One event queue: snapshot type, current events, pending events.
-type Queue<'a> = (usize, Vec<&'a [u8]>, Vec<&'a [u8]>);
+pub(crate) type Queue<'a> = (usize, Vec<&'a [u8]>, Vec<&'a [u8]>);
 
 /// A snapshot read and validated, its types not yet mapped onto this world.
-struct Parsed<'a> {
-    types: Vec<SnapType>,
-    alloc: HandleAllocator,
-    slot_count: usize,
-    archetypes: Vec<SnapArchetype<'a>>,
-    resources: Vec<(usize, &'a [u8])>,
-    events: Vec<Queue<'a>>,
-    names: Vec<(Entity, String)>,
+pub(crate) struct Parsed<'a> {
+    pub(crate) types: Vec<SnapType>,
+    pub(crate) alloc: HandleAllocator,
+    pub(crate) slot_count: usize,
+    pub(crate) archetypes: Vec<SnapArchetype<'a>>,
+    pub(crate) resources: Vec<(usize, &'a [u8])>,
+    pub(crate) events: Vec<Queue<'a>>,
+    pub(crate) names: Vec<(Entity, String)>,
     /// State blocks (format 3): name, saved bytes.
-    blocks: Vec<(&'a str, &'a [u8])>,
+    pub(crate) blocks: Vec<(&'a str, &'a [u8])>,
     /// The system that took a mid-tick snapshot (format 4).
-    resume: Option<&'a str>,
+    pub(crate) resume: Option<&'a str>,
+    /// A selection (format 5): the types an entity had to carry to be
+    /// selected. Its allocator is empty and its entities are the saved ids.
+    pub(crate) selection: Option<Vec<usize>>,
 }
 
 impl Parsed<'_> {
@@ -270,7 +283,7 @@ fn other_layout(name: &str) -> Error {
 /// Whether `now` only adds fields to `saved`: every saved field is still
 /// there, of the same type (an enum with the same variants), and there is
 /// at least one more.
-fn only_added(saved: &Schema, now: &Schema) -> bool {
+pub(crate) fn only_added(saved: &Schema, now: &Schema) -> bool {
     now.fields.len() > saved.fields.len()
         && saved.fields.iter().all(|s| {
             now.fields
@@ -283,7 +296,7 @@ fn only_added(saved: &Schema, now: &Schema) -> bool {
 /// How a saved type's fields differ from this world's: ` (Game.coins
 /// added; Game.gold removed; Game.speed f32 -> f64)`, empty when only the
 /// metadata differs.
-fn layout_difference(saved: &Schema, now: &Schema) -> String {
+pub(crate) fn layout_difference(saved: &Schema, now: &Schema) -> String {
     let mut parts = Vec::new();
     let added: Vec<String> = now
         .fields
@@ -335,21 +348,162 @@ fn layout_difference(saved: &Schema, now: &Schema) -> String {
     }
 }
 
+/// The resources section: `u32 n, n × { u32 type, str bytes }`.
+fn read_resources<'a>(r: &mut Reader<'a>, types: &[SnapType]) -> Result<Vec<(usize, &'a [u8])>> {
+    let resource_count = r.count(8)?;
+    let mut resources: Vec<(usize, &[u8])> = Vec::with_capacity(resource_count);
+    for _ in 0..resource_count {
+        let t = r.u32()?;
+        if t >= types.len() {
+            return Err(bad(format!("type index {t} out of range")));
+        }
+        let data = r.sized()?;
+        if data.len() != types[t].size() {
+            return Err(bad(format!(
+                "resource '{}' is {} bytes, its layout {}",
+                types[t].name,
+                data.len(),
+                types[t].size()
+            )));
+        }
+        if resources.iter().any(|(u, _)| *u == t) {
+            return Err(bad(format!("resource '{}' appears twice", types[t].name)));
+        }
+        resources.push((t, data));
+    }
+    Ok(resources)
+}
+
+/// The rest of a selection after its type table: the filter, the
+/// archetypes (any entity ids, each once), the resources and the names.
+fn parse_selection<'a>(mut r: Reader<'a>, types: Vec<SnapType>) -> Result<Parsed<'a>> {
+    let type_at = |i: usize| -> Result<usize> {
+        if i < types.len() {
+            Ok(i)
+        } else {
+            Err(bad(format!("type index {i} out of range")))
+        }
+    };
+    let k = r.count(4)?;
+    let mut filter = Vec::with_capacity(k);
+    for _ in 0..k {
+        filter.push(type_at(r.u32()?)?);
+    }
+    let arch_count = r.count(8)?;
+    let mut seen = std::collections::BTreeSet::new();
+    let mut ids = std::collections::BTreeSet::new();
+    let mut archetypes = Vec::with_capacity(arch_count);
+    for a in 0..arch_count {
+        let k = r.count(4)?;
+        let mut stored = Vec::with_capacity(k);
+        for _ in 0..k {
+            stored.push(type_at(r.u32()?)?);
+        }
+        let mut sorted = stored.clone();
+        og_core::sort::sort(&mut sorted);
+        if sorted.windows(2).any(|w| w[0] == w[1]) {
+            return Err(bad(format!("archetype {a} repeats a type")));
+        }
+        let rows = r.count(8)?;
+        let mut entities = Vec::with_capacity(rows);
+        for _ in 0..rows {
+            let e = Entity(RawHandle::from_bits(r.u64()?));
+            if e.to_bits() == 0 || !seen.insert(e.index()) {
+                return Err(bad(format!("entity {e} appears twice, or is 0")));
+            }
+            ids.insert(e);
+            entities.push(e);
+        }
+        let mut columns = Vec::with_capacity(k);
+        for &t in &stored {
+            let mut fields = Vec::with_capacity(types[t].sizes.len());
+            for &size in &types[t].sizes {
+                let len = rows
+                    .checked_mul(size)
+                    .ok_or_else(|| bad("column size overflows"))?;
+                fields.push(r.take(len)?);
+            }
+            columns.push(fields);
+        }
+        archetypes.push(SnapArchetype {
+            stored,
+            entities,
+            columns,
+        });
+    }
+    let resources = read_resources(&mut r, &types)?;
+    let n = r.count(12)?;
+    let mut names: Vec<(Entity, String)> = Vec::with_capacity(n);
+    for _ in 0..n {
+        let e = Entity(RawHandle::from_bits(r.u64()?));
+        let name = r.str("entity name")?;
+        if !ids.contains(&e) {
+            return Err(bad(format!(
+                "name '{name}' belongs to {e}, which is not selected"
+            )));
+        }
+        if name.is_empty() || name.len() > MAX_NAME {
+            return Err(bad(format!("an entity name of {} bytes", name.len())));
+        }
+        if names.last().is_some_and(|(last, _)| *last >= e) {
+            return Err(bad("names are not in entity order, or an entity has two"));
+        }
+        if names.iter().any(|(_, n)| n == name) {
+            return Err(bad(format!("name '{name}' appears twice")));
+        }
+        names.push((e, name.to_owned()));
+    }
+    if r.pos != r.buf.len() {
+        return Err(bad(format!("{} trailing bytes", r.buf.len() - r.pos)));
+    }
+    Ok(Parsed {
+        types,
+        alloc: HandleAllocator::default(),
+        slot_count: 0,
+        archetypes,
+        resources,
+        events: Vec::new(),
+        names,
+        blocks: Vec::new(),
+        resume: None,
+        selection: Some(filter),
+    })
+}
+
+/// [`parse_any`] of a whole world's snapshot: a selection is refused.
 fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
+    let parsed = parse_any(registry, bytes)?;
+    if parsed.selection.is_some() {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            "snapshot: a selection (World::snapshot_selection), not a whole world: restore it with World::restore_selection",
+        ));
+    }
+    Ok(parsed)
+}
+
+/// Reads and validates a snapshot of any format, or a selection.
+pub(crate) fn parse_any<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
     let mut r = Reader { buf: bytes, pos: 0 };
     if r.take(4)? != MAGIC {
         return Err(bad("not a world snapshot (magic)"));
     }
     let format = r.u32()? as u32;
-    if ![FORMAT_STATE, FORMAT, FORMAT_BLOCKS, FORMAT_RESUME].contains(&format) {
+    if !(FORMAT_STATE..=FORMAT_SELECTION).contains(&format) {
         return Err(bad(format!(
-            "format {format}, this engine reads {FORMAT_STATE} to {FORMAT_RESUME}"
+            "format {format}, this engine reads {FORMAT_STATE} to {FORMAT_SELECTION}"
         )));
     }
-    // Formats 2, 3 and 4 share everything but the blocks and resume sections.
+    // Formats 2, 3 and 4 share everything but the blocks and resume
+    // sections; a selection (5) has their type table and names.
+    let selection = format == FORMAT_SELECTION;
     let resume_section = format == FORMAT_RESUME;
     let blocks_section = format == FORMAT_BLOCKS || resume_section;
-    let format = if blocks_section { FORMAT } else { format };
+    let format = if blocks_section || selection {
+        FORMAT
+    } else {
+        format
+    };
 
     let type_count = r.count(12)?;
     let mut types: Vec<SnapType> = Vec::with_capacity(type_count);
@@ -419,6 +573,10 @@ fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
             Err(bad(format!("type index {i} out of range")))
         }
     };
+
+    if selection {
+        return parse_selection(r, types);
+    }
 
     // Entity allocator.
     let slot_count = r.count(5)?;
@@ -502,25 +660,7 @@ fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
         )));
     }
 
-    // Resources.
-    let resource_count = r.count(8)?;
-    let mut resources: Vec<(usize, &[u8])> = Vec::with_capacity(resource_count);
-    for _ in 0..resource_count {
-        let t = type_at(r.u32()?)?;
-        let data = r.sized()?;
-        if data.len() != types[t].size() {
-            return Err(bad(format!(
-                "resource '{}' is {} bytes, its layout {}",
-                types[t].name,
-                data.len(),
-                types[t].size()
-            )));
-        }
-        if resources.iter().any(|(u, _)| *u == t) {
-            return Err(bad(format!("resource '{}' appears twice", types[t].name)));
-        }
-        resources.push((t, data));
-    }
+    let resources = read_resources(&mut r, &types)?;
 
     // Events.
     let queue_count = r.count(12)?;
@@ -601,6 +741,7 @@ fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
         names,
         blocks,
         resume,
+        selection: None,
     })
 }
 
@@ -697,8 +838,8 @@ enum Source {
 }
 
 /// How one snapshot type becomes one of this world's types.
-struct Plan {
-    target: SchemaId,
+pub(crate) struct Plan {
+    pub(crate) target: SchemaId,
     /// `None`: the layouts are identical, copy everything.
     fields: Option<Vec<Source>>,
     /// Byte ranges of the snapshot type's fields.
@@ -748,7 +889,7 @@ impl Plan {
     }
 
     /// One packed value of the snapshot type as this world's type.
-    fn convert(&self, value: &[u8], out: &mut Vec<u8>) {
+    pub(crate) fn convert(&self, value: &[u8], out: &mut Vec<u8>) {
         let Some(fields) = &self.fields else {
             out.extend_from_slice(value);
             return;
@@ -798,7 +939,7 @@ impl Plan {
     }
 }
 
-fn plan(
+pub(crate) fn plan(
     registry: &Registry,
     t: &SnapType,
     target: SchemaId,

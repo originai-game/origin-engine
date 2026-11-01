@@ -389,6 +389,8 @@ fn a_system_snapshots_the_world_while_it_holds_its_columns() {
     let live = w.entities().len();
     w.step().unwrap();
     let bytes = taken.lock().unwrap().take().unwrap();
+    // A save migration's edit writes the resume section back as it was.
+    assert_eq!(w.edit_snapshot(&bytes).unwrap().to_bytes(), bytes);
     // The spawn the system queued applied when it returned: one more now than in the snapshot.
     assert_eq!(w.entities().len(), live + 1);
     // The snapshot names the system that took it, so the world it restores

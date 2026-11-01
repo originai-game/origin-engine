@@ -242,6 +242,15 @@ impl<'w> SystemContext<'w> {
         self.world.snapshot_in_system(&self.system.name)
     }
 
+    /// [`World::snapshot_selection`] as this system sees the world.
+    pub fn snapshot_selection(
+        &self,
+        with: &[crate::SchemaId],
+        resources: &[crate::SchemaId],
+    ) -> Result<Vec<u8>> {
+        self.world.selection_in_system(with, resources)
+    }
+
     /// [`World::check_snapshot`] for a restore this system asks for.
     pub fn check_snapshot(&self, bytes: &[u8], migrate: bool) -> Result<()> {
         self.world.check_snapshot(bytes, migrate)
