@@ -321,6 +321,15 @@ macro_rules! handle {
             pub fn generation(self) -> u8 {
                 (self.0 >> INDEX_BITS) as u8
             }
+            /// The handle as one number (slot and generation), for a
+            /// snapshot that keeps it (og-ui's leaving elements).
+            pub fn to_bits(self) -> u32 {
+                self.0
+            }
+            /// The handle [`Self::to_bits`] gave.
+            pub fn from_bits(bits: u32) -> Self {
+                $name(bits)
+            }
             #[allow(dead_code)]
             pub(crate) fn from_index(index: usize) -> Self {
                 $name(index as u32)
