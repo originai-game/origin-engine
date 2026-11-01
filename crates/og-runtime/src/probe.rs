@@ -257,6 +257,7 @@ pub(crate) const MODULE_ACTIONS: &[&str] = &[
     "terrain_stream",
     "timeline",
     "turntable",
+    "ui",
     "view",
 ];
 
@@ -331,6 +332,8 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         }
         // og.net's lockstep: this peer's input and the world's hash.
         super::net::after_tick(id, world);
+        // The resources UI documents read, for the next tick's bindings.
+        super::modules::docs::snapshot(id, world);
     }));
     // og.net's lockstep holds a tick until every player's input for it is in.
     probe.set_gate(Box::new(move |world| super::net::gate(id, world)));
@@ -523,6 +526,10 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
     // And a timeline whose cooked output changed plays its edit from the
     // time it had (its playback is the og.timeline state block, restored).
     let failed = super::timeline::refresh(eng);
+    eng.state.borrow_mut().warnings.extend(failed);
+    // And a UI document or style whose cooked output changed applies in
+    // place, the UI's state kept (docs/ui.md §16.3).
+    let failed = super::modules::docs::refresh(eng);
     eng.state.borrow_mut().warnings.extend(failed);
 }
 

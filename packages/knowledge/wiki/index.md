@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1388 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1419 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -684,6 +684,7 @@ Field units the docs and Tune use.
 | [`og.load.bundle`](load.md#fn-bundle) | function | load | `og_load_bundle` |
 | [`og.load.bundleInfo`](load.md#fn-bundleInfo) | function | load | `og_load_bundle_info` |
 | [`og.load.defaultBundle`](load.md#fn-defaultBundle) | function | load | `og_load_default_bundle` |
+| [`og.load.document`](load.md#fn-document) | function | load | `og_load_document` |
 | [`og.load.emitter`](load.md#fn-emitter) | function | load | `og_load_emitter` |
 | [`og.load.environment`](load.md#fn-environment) | function | load | `og_load_environment` |
 | [`og.load.error`](load.md#fn-error) | function | load | `og_load_error` |
@@ -927,7 +928,10 @@ Field units the docs and Tune use.
 | [`og.tween.to`](tween.md#fn-to) | function | tween | `og_tween_to` |
 | [`og.TweenCompleted`](tween.md#record-TweenCompleted) | event | tween | — |
 | [`og.ui.a11y`](ui.md#fn-a11y) | function | ui | `og_ui_a11y` |
+| [`og.ui.action`](ui.md#fn-action) | function | ui | `og_ui_action` |
+| [`og.ui.actionBar`](ui.md#fn-actionBar) | function | ui | `og_ui_action_bar` |
 | [`og.ui.actionButton`](ui.md#fn-actionButton) | function | ui | `og_ui_action_button` |
+| [`og.ui.actionHeld`](ui.md#fn-actionHeld) | function | ui | `og_ui_action_held` |
 | [`og.ui.alertDialog`](ui.md#fn-alertDialog) | function | ui | — |
 | [`og.ui.anchor`](ui.md#fn-anchor) | function | ui | — |
 | [`og.ui.animate`](ui.md#fn-animate) | function | ui | `og_ui_animate` |
@@ -940,26 +944,34 @@ Field units the docs and Tune use.
 | [`og.ui.checkbox`](ui.md#fn-checkbox) | function | ui | `og_ui_checkbox` |
 | [`og.ui.checkboxList`](ui.md#fn-checkboxList) | function | ui | `og_ui_checkbox_list` |
 | [`og.ui.chip`](ui.md#fn-chip) | function | ui | `og_ui_chip` |
+| [`og.ui.clear`](ui.md#fn-clear) | function | ui | `og_ui_clear` |
 | [`og.ui.close`](ui.md#fn-close) | function | ui | `og_ui_close` |
 | [`og.ui.closeList`](ui.md#fn-closeList) | function | ui | `og_ui_close_list` |
 | [`og.ui.closeModal`](ui.md#fn-closeModal) | function | ui | `og_ui_close_modal` |
 | [`og.ui.column`](ui.md#fn-column) | function | ui | — |
+| [`og.ui.component`](ui.md#fn-component) | function | ui | `og_ui_component` |
 | [`og.ui.configure`](ui.md#fn-configure) | function | ui | `og_ui_configure` |
 | [`og.ui.confirmDialog`](ui.md#fn-confirmDialog) | function | ui | — |
 | [`og.ui.cooldown`](ui.md#fn-cooldown) | function | ui | `og_ui_cooldown` |
 | [`og.ui.counter`](ui.md#fn-counter) | function | ui | `og_ui_counter` |
 | [`og.ui.cutscene`](ui.md#fn-cutscene) | function | ui | — |
+| [`og.ui.defineAction`](ui.md#fn-defineAction) | function | ui | `og_ui_define_action` |
 | [`og.ui.defineTimeline`](ui.md#fn-defineTimeline) | function | ui | `og_ui_define_timeline` |
+| [`og.ui.device`](ui.md#fn-device) | function | ui | `og_ui_device` |
 | [`og.ui.dialogue`](ui.md#fn-dialogue) | function | ui | `og_ui_dialogue` |
 | [`og.ui.dismissToast`](ui.md#fn-dismissToast) | function | ui | `og_ui_dismiss_toast` |
 | [`og.ui.divider`](ui.md#fn-divider) | function | ui | `og_ui_divider` |
+| [`og.ui.docEvents`](ui.md#fn-docEvents) | function | ui | `og_ui_doc_events` |
+| [`og.ui.documentSchema`](ui.md#fn-documentSchema) | function | ui | `og_ui_document_schema` |
 | [`og.ui.dpad`](ui.md#fn-dpad) | function | ui | `og_ui_dpad` |
 | [`og.ui.dragging`](ui.md#fn-dragging) | function | ui | `og_ui_dragging` |
 | [`og.ui.focus`](ui.md#fn-focus) | function | ui | `og_ui_focus` |
 | [`og.ui.forceState`](ui.md#fn-forceState) | function | ui | `og_ui_force_state` |
 | [`og.ui.frameTheme`](ui.md#fn-frameTheme) | function | ui | `og_ui_frame_theme` |
 | [`og.ui.frameViewport`](ui.md#fn-frameViewport) | function | ui | `og_ui_frame_viewport` |
+| [`og.ui.gameInput`](ui.md#fn-gameInput) | function | ui | `og_ui_game_input` |
 | [`og.ui.gesture`](ui.md#fn-gesture) | function | ui | `og_ui_gesture` |
+| [`og.ui.glyph`](ui.md#fn-glyph) | function | ui | `og_ui_glyph` |
 | [`og.ui.grid`](ui.md#fn-grid) | function | ui | — |
 | [`og.ui.gridItem`](ui.md#fn-gridItem) | function | ui | `og_ui_grid_item` |
 | [`og.ui.hasIcon`](ui.md#fn-hasIcon) | function | ui | `og_ui_has_icon` |
@@ -971,6 +983,7 @@ Field units the docs and Tune use.
 | [`og.ui.joystick`](ui.md#fn-joystick) | function | ui | `og_ui_joystick` |
 | [`og.ui.keyValue`](ui.md#fn-keyValue) | function | ui | `og_ui_key_value` |
 | [`og.ui.label`](ui.md#fn-label) | function | ui | `og_ui_label` |
+| [`og.ui.layers`](ui.md#fn-layers) | function | ui | `og_ui_layers` |
 | [`og.ui.layoutStats`](ui.md#fn-layoutStats) | function | ui | `og_ui_layout_stats` |
 | [`og.ui.leaderboardScreen`](ui.md#fn-leaderboardScreen) | function | ui | — |
 | [`og.ui.levelSelect`](ui.md#fn-levelSelect) | function | ui | — |
@@ -991,35 +1004,45 @@ Field units the docs and Tune use.
 | [`og.ui.openModal`](ui.md#fn-openModal) | function | ui | `og_ui_open_modal` |
 | [`og.ui.openPanel`](ui.md#fn-openPanel) | function | ui | `og_ui_open_panel` |
 | [`og.ui.openScroll`](ui.md#fn-openScroll) | function | ui | `og_ui_open_scroll` |
+| [`og.ui.openSlot`](ui.md#fn-openSlot) | function | ui | `og_ui_open_slot` |
 | [`og.ui.openTransition`](ui.md#fn-openTransition) | function | ui | `og_ui_open_transition` |
 | [`og.ui.overlaps`](ui.md#fn-overlaps) | function | ui | `og_ui_overlaps` |
 | [`og.ui.panel`](ui.md#fn-panel) | function | ui | — |
 | [`og.ui.pause`](ui.md#fn-pause) | function | ui | `og_ui_pause` |
+| [`og.ui.paused`](ui.md#fn-paused) | function | ui | `og_ui_paused` |
 | [`og.ui.pauseMenu`](ui.md#fn-pauseMenu) | function | ui | — |
 | [`og.ui.platformerHud`](ui.md#fn-platformerHud) | function | ui | — |
 | [`og.ui.play`](ui.md#fn-play) | function | ui | `og_ui_play` |
 | [`og.ui.playInfo`](ui.md#fn-playInfo) | function | ui | `og_ui_play_info` |
 | [`og.ui.playTimeline`](ui.md#fn-playTimeline) | function | ui | `og_ui_play_timeline` |
+| [`og.ui.pop`](ui.md#fn-pop) | function | ui | `og_ui_pop` |
 | [`og.ui.previewViewport`](ui.md#fn-previewViewport) | function | ui | `og_ui_preview_viewport` |
 | [`og.ui.progress`](ui.md#fn-progress) | function | ui | `og_ui_progress` |
 | [`og.ui.props`](ui.md#fn-props) | function | ui | `og_ui_props` |
+| [`og.ui.push`](ui.md#fn-push) | function | ui | `og_ui_push` |
 | [`og.ui.puzzleHud`](ui.md#fn-puzzleHud) | function | ui | — |
 | [`og.ui.racingHud`](ui.md#fn-racingHud) | function | ui | — |
 | [`og.ui.radio`](ui.md#fn-radio) | function | ui | `og_ui_radio` |
 | [`og.ui.remember`](ui.md#fn-remember) | function | ui | `og_ui_remember` |
+| [`og.ui.replace`](ui.md#fn-replace) | function | ui | `og_ui_replace` |
 | [`og.ui.resultsScreen`](ui.md#fn-resultsScreen) | function | ui | — |
 | [`og.ui.resume`](ui.md#fn-resume) | function | ui | `og_ui_resume` |
 | [`og.ui.reverse`](ui.md#fn-reverse) | function | ui | `og_ui_reverse` |
 | [`og.ui.richText`](ui.md#fn-richText) | function | ui | `og_ui_rich_text` |
 | [`og.ui.row`](ui.md#fn-row) | function | ui | — |
+| [`og.ui.saveEdits`](ui.md#fn-saveEdits) | function | ui | `og_ui_save_edits` |
+| [`og.ui.screen`](ui.md#fn-screen) | function | ui | `og_ui_screen` |
 | [`og.ui.screenTransition`](ui.md#fn-screenTransition) | function | ui | `og_ui_screen_transition` |
+| [`og.ui.screenVm`](ui.md#fn-screenVm) | function | ui | `og_ui_screen_vm` |
 | [`og.ui.scroll`](ui.md#fn-scroll) | function | ui | — |
 | [`og.ui.seconds`](ui.md#fn-seconds) | function | ui | `og_ui_seconds` |
 | [`og.ui.seek`](ui.md#fn-seek) | function | ui | `og_ui_seek` |
 | [`og.ui.select`](ui.md#fn-select) | function | ui | `og_ui_select` |
+| [`og.ui.setDevice`](ui.md#fn-setDevice) | function | ui | `og_ui_set_device` |
 | [`og.ui.setDraw`](ui.md#fn-setDraw) | function | ui | `og_ui_set_draw` |
 | [`og.ui.setNavigation`](ui.md#fn-setNavigation) | function | ui | `og_ui_set_navigation` |
 | [`og.ui.setPlayers`](ui.md#fn-setPlayers) | function | ui | `og_ui_set_players` |
+| [`og.ui.setProp`](ui.md#fn-setProp) | function | ui | `og_ui_set_prop` |
 | [`og.ui.settingsScreen`](ui.md#fn-settingsScreen) | function | ui | — |
 | [`og.ui.shake`](ui.md#fn-shake) | function | ui | `og_ui_shake` |
 | [`og.ui.shooterHud`](ui.md#fn-shooterHud) | function | ui | — |
@@ -1464,11 +1487,19 @@ Field units the docs and Tune use.
 | [`u32()`](reflect.md#column-u32) | column kind | reflect | — |
 | [`UI_LAYER`](render.md#const-UI_LAYER) | constant | render | — |
 | [`UiAction`](ui.md#type-UiAction) | callback | ui | — |
+| [`UiActionDesc`](ui.md#type-UiActionDesc) | struct | ui | — |
+| [`UiActionHint`](ui.md#type-UiActionHint) | struct | ui | — |
+| [`UiActionTrigger`](ui.md#type-UiActionTrigger) | enum | ui | — |
 | [`UiBuild`](ui.md#type-UiBuild) | callback | ui | — |
 | [`UiDesc`](ui.md#type-UiDesc) | desc struct | ui | — |
+| [`UiDevice`](ui.md#type-UiDevice) | enum | ui | — |
+| [`UiDocEvent`](ui.md#type-UiDocEvent) | struct | ui | — |
+| [`UiDocResponse`](ui.md#type-UiDocResponse) | struct | ui | — |
 | [`UiDump`](probe.md#type-UiDump) | struct | probe | — |
 | [`UiElement`](probe.md#type-UiElement) | struct | probe | — |
+| [`UiGlyph`](ui.md#type-UiGlyph) | struct | ui | — |
 | [`UiItemBuild`](ui.md#type-UiItemBuild) | callback | ui | — |
+| [`UiLayer`](ui.md#type-UiLayer) | struct | ui | — |
 | [`UiLayoutStats`](ui.md#type-UiLayoutStats) | struct | ui | — |
 | [`UiMaterial`](ui.md#type-UiMaterial) | handle | ui | — |
 | [`UiMotionEvent`](ui.md#type-UiMotionEvent) | struct | ui | — |

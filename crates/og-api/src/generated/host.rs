@@ -392,6 +392,8 @@ pub trait LoadApi: Wire {
     fn og_load_texture_array(&self, world: u32, path: String) -> String;
     /// `og.load.style`
     fn og_load_style(&self, world: u32, path: String) -> String;
+    /// `og.load.document`
+    fn og_load_document(&self, world: u32, path: String) -> String;
     /// `og.load.look`
     fn og_load_look(&self, world: u32, path: String) -> String;
     /// `og.load.lookInfo`
@@ -818,6 +820,50 @@ pub trait UiApi: Wire {
     fn og_ui_layout_stats(&self) -> String;
     /// `og.ui.setDraw`
     fn og_ui_set_draw(&self, desc: Option<String>);
+    /// `og.ui.screen`
+    fn og_ui_screen(&self, name: String, vm: Option<String>) -> String;
+    /// `og.ui.component`
+    fn og_ui_component(&self, id: String, name: String, props: Option<String>) -> String;
+    /// `og.ui.openSlot`
+    fn og_ui_open_slot(&self, path: String) -> bool;
+    /// `og.ui.push`
+    fn og_ui_push(&self, world: u32, screen: String, vm: Option<String>) -> String;
+    /// `og.ui.pop`
+    fn og_ui_pop(&self, world: u32) -> String;
+    /// `og.ui.replace`
+    fn og_ui_replace(&self, world: u32, screen: String, vm: Option<String>) -> String;
+    /// `og.ui.clear`
+    fn og_ui_clear(&self, world: u32);
+    /// `og.ui.layers`
+    fn og_ui_layers(&self, world: u32) -> String;
+    /// `og.ui.screenVm`
+    fn og_ui_screen_vm(&self, world: u32, screen: String) -> String;
+    /// `og.ui.docEvents`
+    fn og_ui_doc_events(&self, world: u32) -> String;
+    /// `og.ui.gameInput`
+    fn og_ui_game_input(&self, world: u32) -> bool;
+    /// `og.ui.paused`
+    fn og_ui_paused(&self, world: u32) -> bool;
+    /// `og.ui.defineAction`
+    fn og_ui_define_action(&self, world: u32, desc: String) -> String;
+    /// `og.ui.action`
+    fn og_ui_action(&self, name: String) -> bool;
+    /// `og.ui.actionHeld`
+    fn og_ui_action_held(&self, name: String) -> bool;
+    /// `og.ui.glyph`
+    fn og_ui_glyph(&self, world: u32, action: String) -> String;
+    /// `og.ui.device`
+    fn og_ui_device(&self, world: u32) -> String;
+    /// `og.ui.setDevice`
+    fn og_ui_set_device(&self, world: u32, device: String);
+    /// `og.ui.actionBar`
+    fn og_ui_action_bar(&self, world: u32) -> String;
+    /// `og.ui.documentSchema`
+    fn og_ui_document_schema(&self) -> String;
+    /// `og.ui.setProp`
+    fn og_ui_set_prop(&self, world: u32, path: String, prop: String, value: String) -> String;
+    /// `og.ui.saveEdits`
+    fn og_ui_save_edits(&self, world: u32) -> String;
 }
 
 /// `commands`: packages/knowledge/wiki/commands.md.
@@ -1131,6 +1177,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_texture",
     "og_load_texture_array",
     "og_load_style",
+    "og_load_document",
     "og_load_look",
     "og_load_look_info",
     "og_load_palette",
@@ -1322,6 +1369,28 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_overlaps",
     "og_ui_layout_stats",
     "og_ui_set_draw",
+    "og_ui_screen",
+    "og_ui_component",
+    "og_ui_open_slot",
+    "og_ui_push",
+    "og_ui_pop",
+    "og_ui_replace",
+    "og_ui_clear",
+    "og_ui_layers",
+    "og_ui_screen_vm",
+    "og_ui_doc_events",
+    "og_ui_game_input",
+    "og_ui_paused",
+    "og_ui_define_action",
+    "og_ui_action",
+    "og_ui_action_held",
+    "og_ui_glyph",
+    "og_ui_device",
+    "og_ui_set_device",
+    "og_ui_action_bar",
+    "og_ui_document_schema",
+    "og_ui_set_prop",
+    "og_ui_save_edits",
     "og_commands_register",
     "og_commands_parse",
     "og_commands_help",

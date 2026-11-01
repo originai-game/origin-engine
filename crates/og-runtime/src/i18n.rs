@@ -39,6 +39,35 @@ fn info(engine: u32) -> Value {
     })
 }
 
+/// The active locale's language (its primary subtag, `en` with none): what
+/// UI documents format numbers and plurals by.
+pub(crate) fn language(engine: u32) -> String {
+    with(engine, |s| {
+        let l = s
+            .catalog
+            .active()
+            .map(|t| t.locale.clone())
+            .or_else(|| s.catalog.requested().map(str::to_string))
+            .unwrap_or_default();
+        let primary = l
+            .split(['-', '_'])
+            .next()
+            .unwrap_or("")
+            .to_ascii_lowercase();
+        if primary.is_empty() {
+            "en".to_string()
+        } else {
+            primary
+        }
+    })
+}
+
+/// A key's message in the active locale with no arguments, `None` when no
+/// table has it (a document's `key` prop).
+pub(crate) fn message(engine: u32, key: &str) -> Option<String> {
+    with(engine, |s| s.catalog.t(key, &BTreeMap::new()))
+}
+
 /// The host's locale at creation (`og run --locale`, the browser's language).
 pub(crate) fn request(engine: u32, locale: &str) {
     if !locale.trim().is_empty() {

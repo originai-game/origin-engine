@@ -327,6 +327,8 @@ export interface HostAbi<A, V> {
   og_load_texture_array(world: number, path: string): string;
   /** `og.load.style` */
   og_load_style(world: number, path: string): string;
+  /** `og.load.document` */
+  og_load_document(world: number, path: string): string;
   /** `og.load.look` */
   og_load_look(world: number, path: string): string;
   /** `og.load.lookInfo` */
@@ -709,6 +711,50 @@ export interface HostAbi<A, V> {
   og_ui_layout_stats(): string;
   /** `og.ui.setDraw` */
   og_ui_set_draw(desc: string | undefined): void;
+  /** `og.ui.screen` */
+  og_ui_screen(name: string, vm: string | undefined): string;
+  /** `og.ui.component` */
+  og_ui_component(id: string, name: string, props: string | undefined): string;
+  /** `og.ui.openSlot` */
+  og_ui_open_slot(path: string): boolean;
+  /** `og.ui.push` */
+  og_ui_push(world: number, screen: string, vm: string | undefined): string;
+  /** `og.ui.pop` */
+  og_ui_pop(world: number): string;
+  /** `og.ui.replace` */
+  og_ui_replace(world: number, screen: string, vm: string | undefined): string;
+  /** `og.ui.clear` */
+  og_ui_clear(world: number): void;
+  /** `og.ui.layers` */
+  og_ui_layers(world: number): string;
+  /** `og.ui.screenVm` */
+  og_ui_screen_vm(world: number, screen: string): string;
+  /** `og.ui.docEvents` */
+  og_ui_doc_events(world: number): string;
+  /** `og.ui.gameInput` */
+  og_ui_game_input(world: number): boolean;
+  /** `og.ui.paused` */
+  og_ui_paused(world: number): boolean;
+  /** `og.ui.defineAction` */
+  og_ui_define_action(world: number, desc: string): string;
+  /** `og.ui.action` */
+  og_ui_action(name: string): boolean;
+  /** `og.ui.actionHeld` */
+  og_ui_action_held(name: string): boolean;
+  /** `og.ui.glyph` */
+  og_ui_glyph(world: number, action: string): string;
+  /** `og.ui.device` */
+  og_ui_device(world: number): string;
+  /** `og.ui.setDevice` */
+  og_ui_set_device(world: number, device: string): void;
+  /** `og.ui.actionBar` */
+  og_ui_action_bar(world: number): string;
+  /** `og.ui.documentSchema` */
+  og_ui_document_schema(): string;
+  /** `og.ui.setProp` */
+  og_ui_set_prop(world: number, path: string, prop: string, value: string): string;
+  /** `og.ui.saveEdits` */
+  og_ui_save_edits(world: number): string;
   /** `og.commands.register` */
   og_commands_register(name: string, handler: number, desc: string | undefined): string;
   /** `og.commands.parse` */
@@ -985,6 +1031,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_texture",
   "og_load_texture_array",
   "og_load_style",
+  "og_load_document",
   "og_load_look",
   "og_load_look_info",
   "og_load_palette",
@@ -1176,6 +1223,28 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_overlaps",
   "og_ui_layout_stats",
   "og_ui_set_draw",
+  "og_ui_screen",
+  "og_ui_component",
+  "og_ui_open_slot",
+  "og_ui_push",
+  "og_ui_pop",
+  "og_ui_replace",
+  "og_ui_clear",
+  "og_ui_layers",
+  "og_ui_screen_vm",
+  "og_ui_doc_events",
+  "og_ui_game_input",
+  "og_ui_paused",
+  "og_ui_define_action",
+  "og_ui_action",
+  "og_ui_action_held",
+  "og_ui_glyph",
+  "og_ui_device",
+  "og_ui_set_device",
+  "og_ui_action_bar",
+  "og_ui_document_schema",
+  "og_ui_set_prop",
+  "og_ui_save_edits",
   "og_commands_register",
   "og_commands_parse",
   "og_commands_help",

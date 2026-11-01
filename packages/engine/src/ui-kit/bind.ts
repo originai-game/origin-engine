@@ -126,6 +126,34 @@ export const widgets = {
   motionEvents: (): Api.UiMotionEvent[] => parse(abi().og_ui_motion_events()),
   overlaps: (): Api.UiOverlap[] => parse(abi().og_ui_overlaps()),
   layoutStats: (): Api.UiLayoutStats => parse(abi().og_ui_layout_stats()),
+  // Documents, the layer stack, actions and glyphs (docs/ui.md §8, §9, §10).
+  screen: (name: string, vm?: unknown): Api.UiDocResponse => parse(abi().og_ui_screen(name, json(vm))),
+  component: (id: string, name: string, props?: unknown): Api.UiDocResponse =>
+    parse(abi().og_ui_component(id, name, json(props))),
+  openSlot: (path: string): boolean => abi().og_ui_open_slot(path),
+  push: (world: Api.World, screen: string, vm?: unknown): Api.Result<number> =>
+    parse(abi().og_ui_push(worldId(world), screen, json(vm))),
+  pop: (world: Api.World): string => abi().og_ui_pop(worldId(world)),
+  replace: (world: Api.World, screen: string, vm?: unknown): Api.Result<number> =>
+    parse(abi().og_ui_replace(worldId(world), screen, json(vm))),
+  clear: (world: Api.World): void => abi().og_ui_clear(worldId(world)),
+  layers: (world: Api.World): readonly Api.UiLayer[] => parse(abi().og_ui_layers(worldId(world))),
+  screenVm: (world: Api.World, screen: string): unknown => parse(abi().og_ui_screen_vm(worldId(world), screen)),
+  docEvents: (world: Api.World): readonly Api.UiDocEvent[] => parse(abi().og_ui_doc_events(worldId(world))),
+  gameInput: (world: Api.World): boolean => abi().og_ui_game_input(worldId(world)),
+  paused: (world: Api.World): boolean => abi().og_ui_paused(worldId(world)),
+  defineAction: (world: Api.World, desc: Api.UiActionDesc): Api.Result<void> =>
+    parse(abi().og_ui_define_action(worldId(world), JSON.stringify(desc))),
+  action: (name: string): boolean => abi().og_ui_action(name),
+  actionHeld: (name: string): boolean => abi().og_ui_action_held(name),
+  glyph: (world: Api.World, action: string): Api.UiGlyph | null => parse(abi().og_ui_glyph(worldId(world), action)),
+  device: (world: Api.World): Api.UiDevice => abi().og_ui_device(worldId(world)) as Api.UiDevice,
+  setDevice: (world: Api.World, device: Api.UiDevice): void => abi().og_ui_set_device(worldId(world), device),
+  actionBar: (world: Api.World): readonly Api.UiActionHint[] => parse(abi().og_ui_action_bar(worldId(world))),
+  documentSchema: (): unknown => parse(abi().og_ui_document_schema()),
+  setProp: (world: Api.World, path: string, prop: string, value: string): Api.Result<void> =>
+    parse(abi().og_ui_set_prop(worldId(world), path, prop, value)),
+  saveEdits: (world: Api.World): Api.Result<readonly string[]> => parse(abi().og_ui_save_edits(worldId(world))),
 };
 
 /** og.ui.list / og.ui.grid: open, build the items in view, collect clicks and drops, close. */

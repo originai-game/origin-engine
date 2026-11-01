@@ -579,6 +579,9 @@ impl LoadApi for NodeHost {
     fn og_load_style(&self, world: u32, path: String) -> String {
         rt::og_load_style(world, path)
     }
+    fn og_load_document(&self, world: u32, path: String) -> String {
+        rt::og_load_document(world, path)
+    }
     fn og_load_look(&self, world: u32, path: String) -> String {
         rt::og_load_look(world, path)
     }
@@ -1038,6 +1041,72 @@ impl UiApi for NodeHost {
     }
     fn og_ui_layout_stats(&self) -> String {
         rt::og_ui_layout_stats()
+    }
+    fn og_ui_screen(&self, name: String, vm: Option<String>) -> String {
+        rt::og_ui_screen(name, vm)
+    }
+    fn og_ui_component(&self, id: String, name: String, props: Option<String>) -> String {
+        rt::og_ui_component(id, name, props)
+    }
+    fn og_ui_open_slot(&self, path: String) -> bool {
+        rt::og_ui_open_slot(path)
+    }
+    fn og_ui_push(&self, world: u32, screen: String, vm: Option<String>) -> String {
+        rt::og_ui_push(world, screen, vm)
+    }
+    fn og_ui_pop(&self, world: u32) -> String {
+        rt::og_ui_pop(world)
+    }
+    fn og_ui_replace(&self, world: u32, screen: String, vm: Option<String>) -> String {
+        rt::og_ui_replace(world, screen, vm)
+    }
+    fn og_ui_clear(&self, world: u32) {
+        rt::og_ui_clear(world)
+    }
+    fn og_ui_layers(&self, world: u32) -> String {
+        rt::og_ui_layers(world)
+    }
+    fn og_ui_screen_vm(&self, world: u32, screen: String) -> String {
+        rt::og_ui_screen_vm(world, screen)
+    }
+    fn og_ui_doc_events(&self, world: u32) -> String {
+        rt::og_ui_doc_events(world)
+    }
+    fn og_ui_game_input(&self, world: u32) -> bool {
+        rt::og_ui_game_input(world)
+    }
+    fn og_ui_paused(&self, world: u32) -> bool {
+        rt::og_ui_paused(world)
+    }
+    fn og_ui_define_action(&self, world: u32, desc: String) -> String {
+        rt::og_ui_define_action(world, desc)
+    }
+    fn og_ui_action(&self, name: String) -> bool {
+        rt::og_ui_action(name)
+    }
+    fn og_ui_action_held(&self, name: String) -> bool {
+        rt::og_ui_action_held(name)
+    }
+    fn og_ui_glyph(&self, world: u32, action: String) -> String {
+        rt::og_ui_glyph(world, action)
+    }
+    fn og_ui_device(&self, world: u32) -> String {
+        rt::og_ui_device(world)
+    }
+    fn og_ui_set_device(&self, world: u32, device: String) {
+        rt::og_ui_set_device(world, device)
+    }
+    fn og_ui_action_bar(&self, world: u32) -> String {
+        rt::og_ui_action_bar(world)
+    }
+    fn og_ui_document_schema(&self) -> String {
+        rt::og_ui_document_schema()
+    }
+    fn og_ui_set_prop(&self, world: u32, path: String, prop: String, value: String) -> String {
+        rt::og_ui_set_prop(world, path, prop, value)
+    }
+    fn og_ui_save_edits(&self, world: u32) -> String {
+        rt::og_ui_save_edits(world)
     }
 }
 

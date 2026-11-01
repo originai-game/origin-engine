@@ -969,6 +969,12 @@ pub fn og_load_style(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_style(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_document")]
+pub fn og_load_document(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_document(&Host, world, path)
+}
+
 #[napi(js_name = "og_load_look")]
 pub fn og_load_look(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -2113,6 +2119,138 @@ pub fn og_ui_layout_stats(env: Env) -> String {
 pub fn og_ui_set_draw(env: Env, desc: Option<String>) {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_set_draw(&Host, desc)
+}
+
+#[napi(js_name = "og_ui_screen")]
+pub fn og_ui_screen(env: Env, name: String, vm: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_screen(&Host, name, vm)
+}
+
+#[napi(js_name = "og_ui_component")]
+pub fn og_ui_component(env: Env, id: String, name: String, props: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_component(&Host, id, name, props)
+}
+
+#[napi(js_name = "og_ui_open_slot")]
+pub fn og_ui_open_slot(env: Env, path: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_open_slot(&Host, path)
+}
+
+#[napi(js_name = "og_ui_push")]
+pub fn og_ui_push(env: Env, world: u32, screen: String, vm: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_push(&Host, world, screen, vm)
+}
+
+#[napi(js_name = "og_ui_pop")]
+pub fn og_ui_pop(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_pop(&Host, world)
+}
+
+#[napi(js_name = "og_ui_replace")]
+pub fn og_ui_replace(env: Env, world: u32, screen: String, vm: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_replace(&Host, world, screen, vm)
+}
+
+#[napi(js_name = "og_ui_clear")]
+pub fn og_ui_clear(env: Env, world: u32) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_clear(&Host, world)
+}
+
+#[napi(js_name = "og_ui_layers")]
+pub fn og_ui_layers(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_layers(&Host, world)
+}
+
+#[napi(js_name = "og_ui_screen_vm")]
+pub fn og_ui_screen_vm(env: Env, world: u32, screen: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_screen_vm(&Host, world, screen)
+}
+
+#[napi(js_name = "og_ui_doc_events")]
+pub fn og_ui_doc_events(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_doc_events(&Host, world)
+}
+
+#[napi(js_name = "og_ui_game_input")]
+pub fn og_ui_game_input(env: Env, world: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_game_input(&Host, world)
+}
+
+#[napi(js_name = "og_ui_paused")]
+pub fn og_ui_paused(env: Env, world: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_paused(&Host, world)
+}
+
+#[napi(js_name = "og_ui_define_action")]
+pub fn og_ui_define_action(env: Env, world: u32, desc: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_define_action(&Host, world, desc)
+}
+
+#[napi(js_name = "og_ui_action")]
+pub fn og_ui_action(env: Env, name: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_action(&Host, name)
+}
+
+#[napi(js_name = "og_ui_action_held")]
+pub fn og_ui_action_held(env: Env, name: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_action_held(&Host, name)
+}
+
+#[napi(js_name = "og_ui_glyph")]
+pub fn og_ui_glyph(env: Env, world: u32, action: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_glyph(&Host, world, action)
+}
+
+#[napi(js_name = "og_ui_device")]
+pub fn og_ui_device(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_device(&Host, world)
+}
+
+#[napi(js_name = "og_ui_set_device")]
+pub fn og_ui_set_device(env: Env, world: u32, device: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_set_device(&Host, world, device)
+}
+
+#[napi(js_name = "og_ui_action_bar")]
+pub fn og_ui_action_bar(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_action_bar(&Host, world)
+}
+
+#[napi(js_name = "og_ui_document_schema")]
+pub fn og_ui_document_schema(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_document_schema(&Host)
+}
+
+#[napi(js_name = "og_ui_set_prop")]
+pub fn og_ui_set_prop(env: Env, world: u32, path: String, prop: String, value: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_set_prop(&Host, world, path, prop, value)
+}
+
+#[napi(js_name = "og_ui_save_edits")]
+pub fn og_ui_save_edits(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_save_edits(&Host, world)
 }
 
 #[cfg(not(feature = "publish"))]

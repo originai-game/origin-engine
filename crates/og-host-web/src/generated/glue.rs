@@ -809,6 +809,11 @@ pub fn og_load_style(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_document(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_document(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_load_look(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_look(&Host, world, path)
 }
@@ -1761,6 +1766,116 @@ pub fn og_ui_layout_stats() -> String {
 #[wasm_bindgen]
 pub fn og_ui_set_draw(desc: Option<String>) {
     <Host as UiApi>::og_ui_set_draw(&Host, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_screen(name: String, vm: Option<String>) -> String {
+    <Host as UiApi>::og_ui_screen(&Host, name, vm)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_component(id: String, name: String, props: Option<String>) -> String {
+    <Host as UiApi>::og_ui_component(&Host, id, name, props)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_open_slot(path: String) -> bool {
+    <Host as UiApi>::og_ui_open_slot(&Host, path)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_push(world: u32, screen: String, vm: Option<String>) -> String {
+    <Host as UiApi>::og_ui_push(&Host, world, screen, vm)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_pop(world: u32) -> String {
+    <Host as UiApi>::og_ui_pop(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_replace(world: u32, screen: String, vm: Option<String>) -> String {
+    <Host as UiApi>::og_ui_replace(&Host, world, screen, vm)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_clear(world: u32) {
+    <Host as UiApi>::og_ui_clear(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_layers(world: u32) -> String {
+    <Host as UiApi>::og_ui_layers(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_screen_vm(world: u32, screen: String) -> String {
+    <Host as UiApi>::og_ui_screen_vm(&Host, world, screen)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_doc_events(world: u32) -> String {
+    <Host as UiApi>::og_ui_doc_events(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_game_input(world: u32) -> bool {
+    <Host as UiApi>::og_ui_game_input(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_paused(world: u32) -> bool {
+    <Host as UiApi>::og_ui_paused(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_define_action(world: u32, desc: String) -> String {
+    <Host as UiApi>::og_ui_define_action(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_action(name: String) -> bool {
+    <Host as UiApi>::og_ui_action(&Host, name)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_action_held(name: String) -> bool {
+    <Host as UiApi>::og_ui_action_held(&Host, name)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_glyph(world: u32, action: String) -> String {
+    <Host as UiApi>::og_ui_glyph(&Host, world, action)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_device(world: u32) -> String {
+    <Host as UiApi>::og_ui_device(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_set_device(world: u32, device: String) {
+    <Host as UiApi>::og_ui_set_device(&Host, world, device)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_action_bar(world: u32) -> String {
+    <Host as UiApi>::og_ui_action_bar(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_document_schema() -> String {
+    <Host as UiApi>::og_ui_document_schema(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_set_prop(world: u32, path: String, prop: String, value: String) -> String {
+    <Host as UiApi>::og_ui_set_prop(&Host, world, path, prop, value)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_save_edits(world: u32) -> String {
+    <Host as UiApi>::og_ui_save_edits(&Host, world)
 }
 
 #[cfg(not(feature = "publish"))]

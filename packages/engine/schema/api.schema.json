@@ -4780,6 +4780,27 @@
           "publish": true
         },
         {
+          "name": "document",
+          "doc": "Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents) into the world's UI, where og.ui.screen, og.ui.push and og.ui.component name it by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose UI uses it."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The asset id, such as `ui/shop.ogt`."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a path not in the bundle or a document that does not parse (the reason names the line).",
+          "publish": true
+        },
+        {
           "name": "look",
           "doc": "Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `ui` (a UI style: a built-in style's slug, such as `cartoon`, or the game's own style file's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment, and the art contract's ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion, ArtCamera) with that resource's fields by name, an asset id where a field is a handle (`lut \"luts/warm.cube\"`, `palette \"palettes/dusk.hex\"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per path.",
           "params": [
@@ -7992,7 +8013,15 @@
         "TextOutlineDesc",
         "TextEffectsDesc",
         "DrawDesc",
-        "BlendMode"
+        "BlendMode",
+        "UiDocEvent",
+        "UiDocResponse",
+        "UiLayer",
+        "UiActionTrigger",
+        "UiActionDesc",
+        "UiDevice",
+        "UiGlyph",
+        "UiActionHint"
       ],
       "consts": [],
       "functions": [
@@ -10388,6 +10417,395 @@
             }
           ],
           "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "screen",
+          "doc": "Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots after this call (og.ui.openSlot). Its bindings read the viewmodel every tick, a Capitalised root (`Wallet.gold`) the resource as of the last tick; two-way controls write into it (each write is a `set` event). Layers code does not mount are built at the frame's end with the viewmodel they have.",
+          "params": [
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The screen's name (its `name` line)."
+            },
+            {
+              "name": "vm",
+              "type": "Json",
+              "optional": true,
+              "doc": "Its viewmodel: an object (null keeps the one it has)."
+            }
+          ],
+          "returns": "UiDocResponse",
+          "publish": true
+        },
+        {
+          "name": "component",
+          "doc": "Mount a component document (`type component`) here, inside whatever is open: its props are its viewmodel, its two-way writes come back in the answer's props.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "The instance's root id."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The component's name."
+            },
+            {
+              "name": "props",
+              "type": "Json",
+              "optional": true,
+              "doc": "Its props: an object."
+            }
+          ],
+          "returns": "UiDocResponse",
+          "publish": true
+        },
+        {
+          "name": "openSlot",
+          "doc": "Open a document's slot (a `slot` element built this tick) so code fills it; its children follow until og.ui.close. False when no such slot was built this tick.",
+          "params": [
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "Its full path, or `<screen>/<slot id>`."
+            }
+          ],
+          "returns": "bool",
+          "publish": true
+        },
+        {
+          "name": "push",
+          "doc": "Push a screen onto the layer stack (docs/ui.md §8.1); the layer under it remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "screen",
+              "type": "String",
+              "optional": false,
+              "doc": "The screen's name."
+            },
+            {
+              "name": "vm",
+              "type": "Json",
+              "optional": true,
+              "doc": "Its viewmodel (null: its document's first fixture, else an empty object)."
+            }
+          ],
+          "returns": "Result<u32>",
+          "returnsDoc": "The layer's serial. Refused for a name no screen document has.",
+          "publish": true
+        },
+        {
+          "name": "pop",
+          "doc": "Pop the top layer; the one under it takes its remembered focus. Answers the popped screen's name (empty: the stack was empty).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "String",
+          "publish": true
+        },
+        {
+          "name": "replace",
+          "doc": "Replace the top layer with a screen.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "screen",
+              "type": "String",
+              "optional": false,
+              "doc": "The screen's name."
+            },
+            {
+              "name": "vm",
+              "type": "Json",
+              "optional": true,
+              "doc": "Its viewmodel."
+            }
+          ],
+          "returns": "Result<u32>",
+          "returnsDoc": "The new layer's serial.",
+          "publish": true
+        },
+        {
+          "name": "clear",
+          "doc": "Empty the layer stack.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "layers",
+          "doc": "The layer stack, bottom first.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "List<UiLayer>",
+          "publish": true
+        },
+        {
+          "name": "screenVm",
+          "doc": "A layer's viewmodel as its two-way bindings left it (the top layer of that screen); null when it is not on the stack.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "screen",
+              "type": "String",
+              "optional": false,
+              "doc": "The screen's name."
+            }
+          ],
+          "returns": "Json",
+          "publish": true
+        },
+        {
+          "name": "docEvents",
+          "doc": "Take the events of documents built where code did not see them (layers built at the frame's end); og.ui.screen answers its own.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "List<UiDocEvent>",
+          "publish": true
+        },
+        {
+          "name": "gameInput",
+          "doc": "Gameplay takes input this tick: no layer whose input is `menu` is on the stack. Input goes to the top layer that takes it, once per tick.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "bool",
+          "publish": true
+        },
+        {
+          "name": "paused",
+          "doc": "A layer that pauses the game (`pause`) is on the stack: the engine holds the time scale at 0 while one is, and gives back the one it had.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "bool",
+          "publish": true
+        },
+        {
+          "name": "defineAction",
+          "doc": "Define (or redefine) a UI action. confirm (Enter, Space, A), back (Escape, B), tabNext (E, ], RB), tabPrev (Q, [, LB) and details (X, Y) are defined by default.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "UiActionDesc",
+              "optional": false,
+              "doc": "The action."
+            }
+          ],
+          "returns": "Result<Void>",
+          "publish": true
+        },
+        {
+          "name": "action",
+          "doc": "The action fired this tick (a document's `on action` fires on the top layer that takes input).",
+          "params": [
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            }
+          ],
+          "returns": "bool",
+          "publish": true
+        },
+        {
+          "name": "actionHeld",
+          "doc": "A hold action is held past its hold, or its toggle is on.",
+          "params": [
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            }
+          ],
+          "returns": "bool",
+          "publish": true
+        },
+        {
+          "name": "glyph",
+          "doc": "An action's glyph on the device used last: its first binding there. Null for an unknown action or one with no binding on that device.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "action",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            }
+          ],
+          "returns": "Option<UiGlyph>",
+          "publish": true
+        },
+        {
+          "name": "device",
+          "doc": "The device the player used last (glyphs follow it live): a key or the mouse, a pad of the family set with og.ui.setDevice (Xbox by default), or a touch on a coarse pointer.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "UiDevice",
+          "publish": true
+        },
+        {
+          "name": "setDevice",
+          "doc": "Set the device (the host's when it knows: a pad's family from its id); a pad family also becomes what pad input shows from then on.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "device",
+              "type": "UiDevice",
+              "optional": false,
+              "doc": "The device."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "actionBar",
+          "doc": "What an action bar component reads: the actions the top layer's document lists (`actions { confirm \"Buy\" }`), each with its hint and its glyph on the device used last.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "List<UiActionHint>",
+          "publish": true
+        },
+        {
+          "name": "documentSchema",
+          "doc": "The reflected schema documents are validated against (docs/ui.md §10): every element kind and every prop, with its value type, the kinds it applies to and whether a control writes it back.",
+          "params": [],
+          "returns": "Json",
+          "publish": true
+        },
+        {
+          "name": "setProp",
+          "doc": "Set a prop of a document element live (Tune, the probe's ui:set): presentation only, over the document's own line until og.ui.saveEdits writes it into the file. The value is written as the document's line would be (`token primary`, `grow`, `bind gold compact`).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The element's full path."
+            },
+            {
+              "name": "prop",
+              "type": "String",
+              "optional": false,
+              "doc": "The prop (og.ui.documentSchema)."
+            },
+            {
+              "name": "value",
+              "type": "String",
+              "optional": false,
+              "doc": "Its value as a document line writes it."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an unknown prop or a value it does not take.",
+          "publish": true
+        },
+        {
+          "name": "saveEdits",
+          "doc": "Write the live edits into their documents' `.ogt` files under the project's assets (each edited element's line of that prop replaced, or one added; every other line kept), as save_scene writes scenes; the documents take the new text at once. Answers the files written.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "Result<List<String>>",
+          "returnsDoc": "Refused on a host with no project directory, or a write that fails.",
           "publish": true
         }
       ],
@@ -40314,6 +40732,300 @@
         "softLight": "A gentle overlay.",
         "colorDodge": "Brightens what is under it by the paint."
       }
+    },
+    "UiDocEvent": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "Something a document did (docs/ui.md §10.2): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`.",
+      "type": "object",
+      "properties": {
+        "mount": {
+          "type": "string",
+          "description": "The document's mount: the screen's name, or a component instance's path."
+        },
+        "path": {
+          "type": "string",
+          "description": "The element's path."
+        },
+        "kind": {
+          "type": "string",
+          "description": "click, changed, select, emit, action, set or back."
+        },
+        "name": {
+          "type": "string",
+          "description": "The element's id (click), the prop (changed), the list (select), the event or action's name, or the viewmodel path a `set` wrote."
+        },
+        "value": {
+          "description": "The new value (changed, set), the row's index (select); null otherwise."
+        }
+      },
+      "required": [
+        "mount",
+        "path",
+        "kind",
+        "name",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "UiDocResponse": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What mounting a document answers: its events this tick (and, for a screen, those of its builds code did not see), its root's path, and for a component its props after its two-way writes.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Its root's path; empty when it was not built."
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UiDocEvent"
+          },
+          "description": "Its events."
+        },
+        "props": {
+          "description": "A component's props after its writes (a screen's viewmodel is og.ui.screenVm's)."
+        }
+      },
+      "required": [
+        "path",
+        "events",
+        "props"
+      ],
+      "additionalProperties": false
+    },
+    "UiLayer": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A layer of the stack (docs/ui.md §8.1), as its screen declares it.",
+      "type": "object",
+      "properties": {
+        "serial": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its number, unique for the UI's life: what push answered."
+        },
+        "screen": {
+          "type": "string",
+          "description": "The screen's name; also its layer's id, the first segment of its elements' paths."
+        },
+        "kind": {
+          "type": "string",
+          "description": "hud, menu, modal, popover, toast, tooltip or system."
+        },
+        "input": {
+          "type": "string",
+          "description": "game (input reaches gameplay), menu (input stays in the UI) or all."
+        },
+        "capture": {
+          "type": "boolean",
+          "description": "It takes the pointer on its gaps too."
+        },
+        "pause": {
+          "type": "boolean",
+          "description": "The game pauses while it is on the stack."
+        },
+        "under": {
+          "type": "string",
+          "description": "What happens to the layers under it: none, dim, blur or hide."
+        },
+        "back": {
+          "type": "string",
+          "description": "What Back does: pop, none or `emit <event>`."
+        },
+        "focus": {
+          "type": "string",
+          "description": "Where focus starts, a path below its root (empty: its first control)."
+        },
+        "remember": {
+          "type": "boolean",
+          "description": "Focus returns where it was when it is the top again."
+        },
+        "top": {
+          "type": "boolean",
+          "description": "It is the top layer."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "A layer above hides it: it is not built."
+        },
+        "inert": {
+          "type": "boolean",
+          "description": "A menu layer above takes its input."
+        }
+      },
+      "required": [
+        "serial",
+        "screen",
+        "kind",
+        "input",
+        "capture",
+        "pause",
+        "under",
+        "back",
+        "focus",
+        "remember",
+        "top",
+        "hidden",
+        "inert"
+      ],
+      "additionalProperties": false
+    },
+    "UiActionTrigger": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "When a UI action fires.",
+      "type": "string",
+      "enum": [
+        "press",
+        "release",
+        "hold"
+      ],
+      "x-og-variants": {
+        "press": "When a binding goes down.",
+        "release": "When it comes up.",
+        "hold": "When it has been held holdMs."
+      }
+    },
+    "UiActionDesc": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A named UI action (docs/ui.md §8.2) bound to og-input's controls: a component asks for an action, not a key.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Its name: confirm, back, tabNext, tabPrev, details, or the game's own."
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Key codes (KeyboardEvent.code: `Enter`, `KeyE`)."
+        },
+        "buttons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Standard-mapping pad buttons (GamepadButton's names: `a`, `rightBumper`)."
+        },
+        "trigger": {
+          "$ref": "#/$defs/UiActionTrigger",
+          "description": "When it fires."
+        },
+        "holdMs": {
+          "type": "number",
+          "description": "How long a hold is (0: 500).",
+          "x-og-unit": "ms"
+        },
+        "toggle": {
+          "type": "boolean",
+          "description": "A hold's toggle alternative (XAG 107): a tap turns it on, the next tap off; og.ui.actionHeld answers true between."
+        },
+        "label": {
+          "type": "string",
+          "description": "What it says when no document gives it a hint."
+        }
+      },
+      "required": [
+        "name",
+        "keys",
+        "buttons",
+        "trigger",
+        "holdMs",
+        "toggle",
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "UiDevice": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "The device a glyph set is for: the one the player used last.",
+      "type": "string",
+      "enum": [
+        "keyboardMouse",
+        "xbox",
+        "playstation",
+        "switch",
+        "gamepad",
+        "touch"
+      ],
+      "x-og-variants": {
+        "keyboardMouse": "Keyboard and mouse.",
+        "xbox": "An Xbox pad.",
+        "playstation": "A PlayStation pad.",
+        "switch": "A Nintendo Switch pad (south is B).",
+        "gamepad": "A generic standard-mapping pad.",
+        "touch": "A touch screen."
+      }
+    },
+    "UiGlyph": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "An action's control on the device used last.",
+      "type": "object",
+      "properties": {
+        "icon": {
+          "type": "string",
+          "description": "The icon a style's set draws: `key.enter`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `touch.<action>`."
+        },
+        "text": {
+          "type": "string",
+          "description": "The text that names it: `Enter`, `A`, `×`."
+        },
+        "device": {
+          "$ref": "#/$defs/UiDevice",
+          "description": "The device it is for."
+        }
+      },
+      "required": [
+        "icon",
+        "text",
+        "device"
+      ],
+      "additionalProperties": false
+    },
+    "UiActionHint": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "One entry of the action bar: an action the top layer accepts, its hint and glyph.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "The action."
+        },
+        "hint": {
+          "type": "string",
+          "description": "What it does here (the document's `actions` line, else its label)."
+        },
+        "icon": {
+          "type": "string",
+          "description": "Its glyph's icon."
+        },
+        "text": {
+          "type": "string",
+          "description": "Its glyph's text."
+        },
+        "hold": {
+          "type": "boolean",
+          "description": "It is a hold."
+        }
+      },
+      "required": [
+        "action",
+        "hint",
+        "icon",
+        "text",
+        "hold"
+      ],
+      "additionalProperties": false
     },
     "CoreAction": {
       "x-og-kind": "enum",

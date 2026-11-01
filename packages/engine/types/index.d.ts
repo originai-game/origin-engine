@@ -9238,6 +9238,7 @@ export interface Model {
 
 
 
+
 /**
  * A load completed.
  *
@@ -23079,6 +23080,159 @@ export interface DrawDesc {
 export type BlendMode = "normal" | "multiply" | "screen" | "add" | "overlay" | "softLight" | "colorDodge";
 
 
+/**
+ * Something a document did (docs/ui.md §10.2): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`.
+ */
+export interface UiDocEvent {
+  /** The document's mount: the screen's name, or a component instance's path. */
+  readonly mount: string;
+  /** The element's path. */
+  readonly path: string;
+  /** click, changed, select, emit, action, set or back. */
+  readonly kind: string;
+  /**
+   * The element's id (click), the prop (changed), the list (select), the event or action's name, or the viewmodel path a `set` wrote.
+   */
+  readonly name: string;
+  /** The new value (changed, set), the row's index (select); null otherwise. */
+  readonly value: unknown;
+}
+
+/**
+ * What mounting a document answers: its events this tick (and, for a screen, those of its builds code did not see), its root's path, and for a component its props after its two-way writes.
+ */
+export interface UiDocResponse {
+  /** Its root's path; empty when it was not built. */
+  readonly path: string;
+  /** Its events. */
+  readonly events: readonly UiDocEvent[];
+  /** A component's props after its writes (a screen's viewmodel is og.ui.screenVm's). */
+  readonly props: unknown;
+}
+
+/** A layer of the stack (docs/ui.md §8.1), as its screen declares it. */
+export interface UiLayer {
+  /** Its number, unique for the UI's life: what push answered. */
+  readonly serial: number;
+  /** The screen's name; also its layer's id, the first segment of its elements' paths. */
+  readonly screen: string;
+  /** hud, menu, modal, popover, toast, tooltip or system. */
+  readonly kind: string;
+  /** game (input reaches gameplay), menu (input stays in the UI) or all. */
+  readonly input: string;
+  /** It takes the pointer on its gaps too. */
+  readonly capture: boolean;
+  /** The game pauses while it is on the stack. */
+  readonly pause: boolean;
+  /** What happens to the layers under it: none, dim, blur or hide. */
+  readonly under: string;
+  /** What Back does: pop, none or `emit <event>`. */
+  readonly back: string;
+  /** Where focus starts, a path below its root (empty: its first control). */
+  readonly focus: string;
+  /** Focus returns where it was when it is the top again. */
+  readonly remember: boolean;
+  /** It is the top layer. */
+  readonly top: boolean;
+  /** A layer above hides it: it is not built. */
+  readonly hidden: boolean;
+  /** A menu layer above takes its input. */
+  readonly inert: boolean;
+}
+
+/**
+ * When a UI action fires.
+ * - `"press"`: When a binding goes down.
+ * - `"release"`: When it comes up.
+ * - `"hold"`: When it has been held holdMs.
+ */
+export type UiActionTrigger = "press" | "release" | "hold";
+
+/**
+ * A named UI action (docs/ui.md §8.2) bound to og-input's controls: a component asks for an action, not a key.
+ */
+export interface UiActionDesc {
+  /** Its name: confirm, back, tabNext, tabPrev, details, or the game's own. */
+  readonly name: string;
+  /** Key codes (KeyboardEvent.code: `Enter`, `KeyE`). */
+  readonly keys: readonly string[];
+  /** Standard-mapping pad buttons (GamepadButton's names: `a`, `rightBumper`). */
+  readonly buttons: readonly string[];
+  /** When it fires. */
+  readonly trigger: UiActionTrigger;
+  /**
+   * How long a hold is (0: 500).
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly holdMs: number;
+  /**
+   * A hold's toggle alternative (XAG 107): a tap turns it on, the next tap off; og.ui.actionHeld answers true between.
+   */
+  readonly toggle: boolean;
+  /** What it says when no document gives it a hint. */
+  readonly label: string;
+}
+
+/**
+ * The device a glyph set is for: the one the player used last.
+ * - `"keyboardMouse"`: Keyboard and mouse.
+ * - `"xbox"`: An Xbox pad.
+ * - `"playstation"`: A PlayStation pad.
+ * - `"switch"`: A Nintendo Switch pad (south is B).
+ * - `"gamepad"`: A generic standard-mapping pad.
+ * - `"touch"`: A touch screen.
+ */
+export type UiDevice = "keyboardMouse" | "xbox" | "playstation" | "switch" | "gamepad" | "touch";
+
+/** An action's control on the device used last. */
+export interface UiGlyph {
+  /**
+   * The icon a style's set draws: `key.enter`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `touch.<action>`.
+   */
+  readonly icon: string;
+  /** The text that names it: `Enter`, `A`, `×`. */
+  readonly text: string;
+  /** The device it is for. */
+  readonly device: UiDevice;
+}
+
+/** One entry of the action bar: an action the top layer accepts, its hint and glyph. */
+export interface UiActionHint {
+  /** The action. */
+  readonly action: string;
+  /** What it does here (the document's `actions` line, else its label). */
+  readonly hint: string;
+  /** Its glyph's icon. */
+  readonly icon: string;
+  /** Its glyph's text. */
+  readonly text: string;
+  /** It is a hold. */
+  readonly hold: boolean;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ── systems ─────────────────────────────────────────────────────
 // Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
 
@@ -26713,6 +26867,14 @@ export declare namespace og {
      */
     function style(world: World, path: string): Result<Style>;
     /**
+     * Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents) into the world's UI, where og.ui.screen, og.ui.push and og.ui.component name it by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.
+     *
+     * @param world The world whose UI uses it.
+     * @param path The asset id, such as `ui/shop.ogt`.
+     * @returns Refused for a path not in the bundle or a document that does not parse (the reason names the line).
+     */
+    function document(world: World, path: string): Result<void>;
+    /**
      * Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `ui` (a UI style: a built-in style's slug, such as `cartoon`, or the game's own style file's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment, and the art contract's ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion, ArtCamera) with that resource's fields by name, an asset id where a field is a handle (`lut "luts/warm.cube"`, `palette "palettes/dusk.hex"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per path.
      *
      * @param world The world whose renderer owns it.
@@ -28697,6 +28859,154 @@ export declare namespace og {
      * @param desc What it draws with.
      */
     function setDraw(desc?: DrawDesc): void;
+    /**
+     * Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots after this call (og.ui.openSlot). Its bindings read the viewmodel every tick, a Capitalised root (`Wallet.gold`) the resource as of the last tick; two-way controls write into it (each write is a `set` event). Layers code does not mount are built at the frame's end with the viewmodel they have.
+     *
+     * @param name The screen's name (its `name` line).
+     * @param vm Its viewmodel: an object (null keeps the one it has).
+     */
+    function screen(name: string, vm?: unknown): UiDocResponse;
+    /**
+     * Mount a component document (`type component`) here, inside whatever is open: its props are its viewmodel, its two-way writes come back in the answer's props.
+     *
+     * @param id The instance's root id.
+     * @param name The component's name.
+     * @param props Its props: an object.
+     */
+    function component(id: string, name: string, props?: unknown): UiDocResponse;
+    /**
+     * Open a document's slot (a `slot` element built this tick) so code fills it; its children follow until og.ui.close. False when no such slot was built this tick.
+     *
+     * @param path Its full path, or `<screen>/<slot id>`.
+     */
+    function openSlot(path: string): boolean;
+    /**
+     * Push a screen onto the layer stack (docs/ui.md §8.1); the layer under it remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.
+     *
+     * @param world The world.
+     * @param screen The screen's name.
+     * @param vm Its viewmodel (null: its document's first fixture, else an empty object).
+     * @returns The layer's serial. Refused for a name no screen document has.
+     */
+    function push(world: World, screen: string, vm?: unknown): Result<number>;
+    /**
+     * Pop the top layer; the one under it takes its remembered focus. Answers the popped screen's name (empty: the stack was empty).
+     *
+     * @param world The world.
+     */
+    function pop(world: World): string;
+    /**
+     * Replace the top layer with a screen.
+     *
+     * @param world The world.
+     * @param screen The screen's name.
+     * @param vm Its viewmodel.
+     * @returns The new layer's serial.
+     */
+    function replace(world: World, screen: string, vm?: unknown): Result<number>;
+    /**
+     * Empty the layer stack.
+     *
+     * @param world The world.
+     */
+    function clear(world: World): void;
+    /**
+     * The layer stack, bottom first.
+     *
+     * @param world The world.
+     */
+    function layers(world: World): readonly UiLayer[];
+    /**
+     * A layer's viewmodel as its two-way bindings left it (the top layer of that screen); null when it is not on the stack.
+     *
+     * @param world The world.
+     * @param screen The screen's name.
+     */
+    function screenVm(world: World, screen: string): unknown;
+    /**
+     * Take the events of documents built where code did not see them (layers built at the frame's end); og.ui.screen answers its own.
+     *
+     * @param world The world.
+     */
+    function docEvents(world: World): readonly UiDocEvent[];
+    /**
+     * Gameplay takes input this tick: no layer whose input is `menu` is on the stack. Input goes to the top layer that takes it, once per tick.
+     *
+     * @param world The world.
+     */
+    function gameInput(world: World): boolean;
+    /**
+     * A layer that pauses the game (`pause`) is on the stack: the engine holds the time scale at 0 while one is, and gives back the one it had.
+     *
+     * @param world The world.
+     */
+    function paused(world: World): boolean;
+    /**
+     * Define (or redefine) a UI action. confirm (Enter, Space, A), back (Escape, B), tabNext (E, ], RB), tabPrev (Q, [, LB) and details (X, Y) are defined by default.
+     *
+     * @param world The world.
+     * @param desc The action.
+     */
+    function defineAction(world: World, desc: UiActionDesc): Result<void>;
+    /**
+     * The action fired this tick (a document's `on action` fires on the top layer that takes input).
+     *
+     * @param name The action.
+     */
+    function action(name: string): boolean;
+    /**
+     * A hold action is held past its hold, or its toggle is on.
+     *
+     * @param name The action.
+     */
+    function actionHeld(name: string): boolean;
+    /**
+     * An action's glyph on the device used last: its first binding there. Null for an unknown action or one with no binding on that device.
+     *
+     * @param world The world.
+     * @param action The action.
+     */
+    function glyph(world: World, action: string): UiGlyph | null;
+    /**
+     * The device the player used last (glyphs follow it live): a key or the mouse, a pad of the family set with og.ui.setDevice (Xbox by default), or a touch on a coarse pointer.
+     *
+     * @param world The world.
+     */
+    function device(world: World): UiDevice;
+    /**
+     * Set the device (the host's when it knows: a pad's family from its id); a pad family also becomes what pad input shows from then on.
+     *
+     * @param world The world.
+     * @param device The device.
+     */
+    function setDevice(world: World, device: UiDevice): void;
+    /**
+     * What an action bar component reads: the actions the top layer's document lists (`actions { confirm "Buy" }`), each with its hint and its glyph on the device used last.
+     *
+     * @param world The world.
+     */
+    function actionBar(world: World): readonly UiActionHint[];
+    /**
+     * The reflected schema documents are validated against (docs/ui.md §10): every element kind and every prop, with its value type, the kinds it applies to and whether a control writes it back.
+     */
+    function documentSchema(): unknown;
+    /**
+     * Set a prop of a document element live (Tune, the probe's ui:set): presentation only, over the document's own line until og.ui.saveEdits writes it into the file. The value is written as the document's line would be (`token primary`, `grow`, `bind gold compact`).
+     *
+     * @param world The world.
+     * @param path The element's full path.
+     * @param prop The prop (og.ui.documentSchema).
+     * @param value Its value as a document line writes it.
+     * @returns Refused for an unknown prop or a value it does not take.
+     */
+    function setProp(world: World, path: string, prop: string, value: string): Result<void>;
+    /**
+     * Write the live edits into their documents' `.ogt` files under the project's assets (each edited element's line of that prop replaced, or one added; every other line kept), as save_scene writes scenes; the documents take the new text at once. Answers the files written.
+     *
+     * @param world The world.
+     * @returns Refused on a host with no project directory, or a write that fails.
+     */
+    function saveEdits(world: World): Result<readonly string[]>;
   }
   /**
    * Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.

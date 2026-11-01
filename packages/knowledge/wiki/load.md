@@ -60,6 +60,7 @@ module load {
 | [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
 | [`og.load.textureArray`](#fn-textureArray) | function | Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color\|normal\|linear\|pixel` and one `layer "<file>"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array. |
 | [`og.load.style`](#fn-style) | function | Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 2 (docs/ui.md §12, what `og style upgrade` writes from version 1 and every built-in style is) adds the tokens (rarity, team, damage and chart colours each with its cue, the type scale per breakpoint, the space, size, radius and stroke scales, elevation, the shape language, motion springs and eases, sounds and haptics per UI event) and dresses parts by selector (`dress "Button.base[pressed]" { … }`); the tokens are carried, not yet drawn from. Version 1 still loads. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`. |
+| [`og.load.document`](#fn-document) | function | Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents) into the world's UI, where og.ui.screen, og.ui.push and og.ui.component name it by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document. |
 | [`og.load.look`](#fn-look) | function | Load a look: an `.ogt` of `type look` binding a frame's art direction as data. Its top-level `name`, `extends` (a built-in preset's slug, such as `anime-cel-3d`, or another look's asset id: the game's own `assets/looks/<slug>.ogt` wins over the built-in preset of that slug), `ui` (a UI style: a built-in style's slug, such as `cartoon`, or the game's own style file's asset id) and `antialias`, then one block per resource it sets (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment, and the art contract's ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion, ArtCamera) with that resource's fields by name, an asset id where a field is a handle (`lut "luts/warm.cube"`, `palette "palettes/dusk.hex"`). The cook validates every field against the resources' reflected schema and flattens `extends`, so the blob is the whole look. The textures, LUTs, palettes, environment map and UI style it names are loaded with it. Loaded once per path. |
 | [`og.load.lookInfo`](#fn-lookInfo) | function | What a loaded look holds and sets. |
 | [`og.load.palette`](#fn-palette) | function | A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. Loaded once per path. One in a streaming group's pack loads once its group is resident; while the group is unloaded Stylise.palette quantises to no palette, and the palette comes back under the same handle. |
@@ -632,6 +633,36 @@ fn style {
 
 <sub>`api.ogt` line 5991</sub>
 
+<a id="fn-document"></a>
+
+### `og.load.document`
+
+Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents) into the world's UI, where og.ui.screen, og.ui.push and og.ui.component name it by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.
+
+```ts
+og.load.document(world: World, path: string): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose UI uses it. |
+| `path` | `string` | no | The asset id, such as `ui/shop.ogt`. |
+
+**Returns** `Result<void>`: Refused for a path not in the bundle or a document that does not parse (the reason names the line).
+
+Binding symbol `og_load_document` · publish builds: kept
+
+```ogt
+fn document {
+  doc "Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents) into the world's UI, where og.ui.screen, og.ui.push and og.ui.component name it by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document."
+  param world World "The world whose UI uses it."
+  param path String "The asset id, such as `ui/shop.ogt`."
+  returns Result.Void "Refused for a path not in the bundle or a document that does not parse (the reason names the line)."
+}
+```
+
+<sub>`api.ogt` line 5998</sub>
+
 <a id="fn-look"></a>
 
 ### `og.load.look`
@@ -660,7 +691,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 5998</sub>
+<sub>`api.ogt` line 6005</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -690,7 +721,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 6005</sub>
+<sub>`api.ogt` line 6012</sub>
 
 <a id="fn-palette"></a>
 
@@ -720,7 +751,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 6012</sub>
+<sub>`api.ogt` line 6019</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -750,7 +781,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 6019</sub>
+<sub>`api.ogt` line 6026</sub>
 
 <a id="fn-status"></a>
 
@@ -780,7 +811,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 6026</sub>
+<sub>`api.ogt` line 6033</sub>
 
 <a id="fn-error"></a>
 
@@ -810,7 +841,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 6033</sub>
+<sub>`api.ogt` line 6040</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -840,7 +871,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 6040</sub>
+<sub>`api.ogt` line 6047</sub>
 
 <a id="fn-animation"></a>
 
@@ -873,7 +904,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 6047</sub>
+<sub>`api.ogt` line 6054</sub>
 
 <a id="fn-rig"></a>
 
@@ -903,7 +934,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 6055</sub>
+<sub>`api.ogt` line 6062</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -933,7 +964,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 6062</sub>
+<sub>`api.ogt` line 6069</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -963,7 +994,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 6069</sub>
+<sub>`api.ogt` line 6076</sub>
 
 <a id="fn-video"></a>
 
@@ -993,7 +1024,7 @@ fn video {
 }
 ```
 
-<sub>`api.ogt` line 6076</sub>
+<sub>`api.ogt` line 6083</sub>
 
 <a id="fn-videoInfo"></a>
 
@@ -1023,7 +1054,7 @@ fn videoInfo {
 }
 ```
 
-<sub>`api.ogt` line 6083</sub>
+<sub>`api.ogt` line 6090</sub>
 
 <a id="fn-timeline"></a>
 
@@ -1053,7 +1084,7 @@ fn timeline {
 }
 ```
 
-<sub>`api.ogt` line 6090</sub>
+<sub>`api.ogt` line 6097</sub>
 
 <a id="fn-rig2d"></a>
 
@@ -1083,7 +1114,7 @@ fn rig2d {
 }
 ```
 
-<sub>`api.ogt` line 6097</sub>
+<sub>`api.ogt` line 6104</sub>
 
 ## Components, resources and events
 
@@ -1171,7 +1202,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 6104</sub>
+<sub>`api.ogt` line 6111</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1196,7 +1227,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 6110</sub>
+<sub>`api.ogt` line 6117</sub>
 
 ## Types
 

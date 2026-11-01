@@ -19,6 +19,14 @@
 //! the world hash carry it with the physics world (`og.physics`) and the
 //! audio stream (its resources).
 
+pub(crate) mod docs;
+pub use docs::{
+    og_load_document, og_ui_action, og_ui_action_bar, og_ui_action_held, og_ui_clear,
+    og_ui_component, og_ui_define_action, og_ui_device, og_ui_doc_events, og_ui_document_schema,
+    og_ui_game_input, og_ui_glyph, og_ui_layers, og_ui_open_slot, og_ui_paused, og_ui_pop,
+    og_ui_push, og_ui_replace, og_ui_save_edits, og_ui_screen, og_ui_screen_vm, og_ui_set_device,
+    og_ui_set_prop,
+};
 mod motion;
 pub use motion::{
     og_ui_animate, og_ui_define_timeline, og_ui_force_state, og_ui_gesture, og_ui_layout_stats,
@@ -104,6 +112,15 @@ pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> SharedUi {
     });
     ui.set_icons(icons);
     ui.set_style_name(&style_name);
+    // A hot reload keeps the documents loaded (and the timelines they define).
+    if let Some(p) = previous {
+        let p = p.lock();
+        for name in p.documents() {
+            if let Some(d) = p.document(&name) {
+                ui.define_document(d.clone());
+            }
+        }
+    }
     SharedUi::new(ui)
 }
 
@@ -174,9 +191,13 @@ pub(crate) fn mount_back(
 ) -> Result<Mounted, String> {
     let shared = ui.clone();
     world
-        .add_system(SystemDesc::new(UI_END), move |_ctx| {
-            BUILDING.with(|b| b.set(None));
-            let warnings = shared.lock().end().warnings.clone();
+        .add_system(SystemDesc::new(UI_END), move |ctx| {
+            let warnings = {
+                let mut ui = shared.lock();
+                docs::end_of_frame(engine_id, &mut ui, ctx);
+                BUILDING.with(|b| b.set(None));
+                ui.end().warnings.clone()
+            };
             if !warnings.is_empty() {
                 note_warnings(engine_id, warnings);
             }
@@ -1020,7 +1041,11 @@ pub(crate) struct LoadedStyle {
 
 /// `og.load.style`: a cooked UI style, its atlas, fonts, icons and sounds loaded with it.
 pub fn og_load_style(world: u32, path: String) -> String {
-    match engine(world).and_then(|eng| load_style(&eng, &path)) {
+    match engine(world).and_then(|eng| {
+        let i = load_style(&eng, &path)?;
+        docs::note_styles(&eng);
+        Ok(i)
+    }) {
         Ok(i) => ok(json!(super::assets::handle(i) as f64)),
         Err(e) => refuse(e),
     }
