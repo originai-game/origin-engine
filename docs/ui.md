@@ -717,6 +717,26 @@ Every screen is checked under a pseudo-locale that lengthens text by 40 %
 and adds accents and brackets, under a CJK locale and under a right-to-left
 locale (mirrored layout). No box is sized to its English text.
 
+### 15.4 The review bar (owner, 2026-11-01)
+
+The UI is held to the level of shipped commercial games, and the
+coordinator reviews every UI merge from U6 on against it, frame by frame:
+
+- Each genre showcase is read beside screenshots of two shipped games of
+  its genre, and a screen that reads as a prototype beside them is held.
+- Every changed screen is read at desktop 1920×1080, tablet, phone
+  portrait 390×844 and phone landscape, in every built-in style, and under
+  the pseudo-locale, a CJK locale, a right-to-left locale and 200 % text.
+- `og ui check` reports nothing. A declared overlap is not a way to merge
+  a known defect: the kit's Gallery overlap is fixed, not carried.
+- Every interactive part is captured idle, hovered, pressed, focused and
+  disabled, and each transition is recorded as a clip and watched.
+- No placeholder survives: no flat-fill loading screen, no button whose
+  edge does not show, secondary text at 4.5:1 on its own scrim, and no two
+  seed styles that read as one.
+- A merge with a defect seen in a frame is held and fixed, never recorded
+  as a reference.
+
 ## 16. Agent tooling: read, write, preview, check
 
 This is the base an agent stands on to adjust a UI.
