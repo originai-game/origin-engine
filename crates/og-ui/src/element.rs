@@ -944,6 +944,21 @@ impl Ui {
             }
             false
         };
+        // What of a node a scroll leaves in view: its rectangle cut by every
+        // scrolling ancestor's (an element scrolled out of a list overlaps
+        // nothing drawn outside it).
+        let shown = |i: usize| -> Rect {
+            let mut r = self.nodes[i].rect;
+            let mut j = self.nodes[i].parent;
+            while j != NONE {
+                let n = &self.nodes[j];
+                if n.el.scroll || n.el.scroll_x {
+                    r = r.intersect(&n.rect);
+                }
+                j = n.parent;
+            }
+            r
+        };
         let ancestors = |mut j: usize| {
             let mut set = std::collections::BTreeSet::new();
             while j != NONE {
@@ -985,7 +1000,7 @@ impl Ui {
                     if sub.contains(&o) || up.contains(&o) {
                         continue;
                     }
-                    let r = self.nodes[a].rect.intersect(&self.nodes[o].rect);
+                    let r = shown(a).intersect(&shown(o));
                     if !area(&r) {
                         continue;
                     }
@@ -1018,7 +1033,7 @@ impl Ui {
             }
             for (k, &a) in n.children.iter().enumerate() {
                 for &b in &n.children[k + 1..] {
-                    let r = self.nodes[a].rect.intersect(&self.nodes[b].rect);
+                    let r = shown(a).intersect(&shown(b));
                     if !area(&r) || out.len() >= MAX {
                         continue;
                     }
