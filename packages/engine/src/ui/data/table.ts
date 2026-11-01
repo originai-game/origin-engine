@@ -15,6 +15,12 @@ import { formatNumber, groupNumber } from "./format.ts";
 // ── states: empty, loading, error ───────────────────────────────────────
 
 /** What a data view shows instead of rows: a skeleton while loading, a message and Retry on error, a message when empty. Answers whether Retry was pressed. */
+/** A list's or grid's set height while it shows a state: its least, so a
+ * message that wraps at a large text size grows the panel, never spills. */
+function stateHeight(h: Api.Size | null | undefined): Api.Size | null {
+  return h && h.kind === "fixed" ? fit(h.px) : h ?? null;
+}
+
 export function dataState(id: string, s: Api.DataStateDesc, rows: number, rowHeight: number): boolean {
   const { t } = frame();
   let retry = false;
@@ -55,9 +61,10 @@ export function dataList(id: string, desc: Api.DataListDesc, build: Api.UiItemBu
   const rowH = byText(desc.rowHeight ?? Math.max(t.row, 48));
   let clicked: number | null = null;
   let retry = false;
-  kit.open(id, { direction: "column", width: desc.width ?? grow(), height: desc.height ?? null, cross: "stretch", part: "List.frame", partClass: "panel" });
+  const state = !!(desc.loading || desc.error || count === 0);
+  kit.open(id, { direction: "column", width: desc.width ?? grow(), height: state ? stateHeight(desc.height) : desc.height ?? null, cross: "stretch", part: "List.frame", partClass: "panel" });
   try {
-    if (desc.loading || desc.error || count === 0) {
+    if (state) {
       retry = dataState("State", desc, count || 4, rowH);
     } else {
       const r = kit.openList("Rows", { count, rowHeight: rowH, gap: desc.gap ?? 0, width: grow(), height: desc.height ? grow() : null, padding: xy(0, 0) }) as Api.ListRange;
@@ -96,9 +103,10 @@ export function dataGrid(id: string, desc: Api.DataGridDesc, build: Api.UiItemBu
   const cellW = desc.cellWidth ?? 0;
   let clicked: number | null = null;
   let retry = false;
-  kit.open(id, { direction: "column", width: desc.width ?? grow(), height: desc.height ?? null, cross: "stretch", part: "Grid.frame", partClass: "panel" });
+  const state = !!(desc.loading || desc.error || count === 0);
+  kit.open(id, { direction: "column", width: desc.width ?? grow(), height: state ? stateHeight(desc.height) : desc.height ?? null, cross: "stretch", part: "Grid.frame", partClass: "panel" });
   try {
-    if (desc.loading || desc.error || count === 0) {
+    if (state) {
       retry = dataState("State", desc, 4, desc.cellHeight || cellW || 64);
     } else {
       const r = kit.openGrid("Cells", { count, cellWidth: cellW, cellHeight: desc.cellHeight ?? 0, columns: desc.columns ?? 0, gap: desc.gap ?? t.sm, width: grow(), height: desc.height ? grow() : null, padding: desc.padding ?? xy(0, 0) }) as Api.ListRange;
@@ -216,13 +224,15 @@ export function table(id: string, desc: Api.TableDesc): Api.TableResult {
   // A small text's rough advance at the text size: a cell whose value is likely cut says it whole in a tooltip.
   const charW = 9 * Math.max(1, frame().theme.textScale ?? 1);
   const colW = new Map(cols.map((c) => [c, widthOf(c)] as const));
-  kit.open(id, { direction: "column", width: desc.width ?? grow(), height: desc.height ?? null, cross: "stretch", gap: t.sm });
+  // A state (loading, error, empty, no match) grows the table past its set height rather than spill.
+  const state = !!(desc.loading || desc.error || tableOrder(rows, all_, sortBy, descending, filter).length === 0);
+  kit.open(id, { direction: "column", width: desc.width ?? grow(), height: state ? stateHeight(desc.height) : desc.height ?? null, cross: "stretch", gap: t.sm });
   try {
     if (desc.search ?? true) {
       const f = kit.textField("Search", filter, { placeholder: desc.searchPlaceholder || "Search", width: grow() }) as Api.FieldResult;
       if (f.response.changed) filter = f.value;
     }
-    kit.open("Grid", { direction: "column", width: grow(), height: desc.height ? grow() : null, cross: "stretch", radius: t.panel, background: token("panel"), part: "Table.frame", partClass: "panel" });
+    kit.open("Grid", { direction: "column", width: grow(), height: desc.height && !state ? grow() : null, cross: "stretch", radius: t.panel, background: token("panel"), part: "Table.frame", partClass: "panel" });
     try {
       // The header: one cell a column, a button for the sortable ones.
       kit.row("Header", { width: grow(), height: fit(Math.max(40, t.controlMd)), padding: xy(t.sm, 0), cross: "center", background: token("panelRaised"), part: "Table.header", partClass: "bar" }, () => {
