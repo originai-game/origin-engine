@@ -25,13 +25,14 @@ mod a11y;
 mod draw;
 pub mod dress;
 pub(crate) mod edit;
+pub mod element;
 pub mod glyphs;
 mod id;
 mod input;
 mod juice;
 mod layout;
 pub mod markup;
-mod motion;
+pub mod motion;
 mod nav;
 mod probe;
 mod rich;
@@ -50,6 +51,11 @@ mod widgets;
 pub use a11y::{A11yNode, A11yTree};
 pub use draw::{DrawCmd, DrawItem, EmitDesc, atlas_texture};
 pub use dress::{DressFrame, Dressing, Selector};
+pub use element::{
+    Affine, Dismiss, DragAxis, DragSpec, DropSpec, Edges, GridFlow, GridPlace, GridSpec,
+    LayoutMode, LayoutStats, Orientation, Overlap, Patch, PinchSpec, Position, Prop, Props, Query,
+    Track, Transform, Values, Variant,
+};
 pub use id::{Id, ui_id, ui_idi};
 pub use input::{GamepadFrame, InputFrame, InputSource, Nav, OgInput, UiKey};
 pub use juice::{
@@ -59,7 +65,12 @@ pub use juice::{
 pub use layout::{
     Align, Anchor, Cross, Direction, Element, FontRole, Insets, Rect, Size, TextAlign,
 };
-pub use motion::{TransitionKind, cubic_bezier, ease_exit, ease_out};
+pub use motion::{
+    Choreo, Ease, EventKind, GestureInfo, Key, KeyEase, MotionDump, MotionToken, MotionTokens,
+    PlayDesc, PlayInfo, PresenceSpec, Reduced, Repeat, SpringSpec, StaggerFrom, StateGroup,
+    StateTransition, Timeline, TimelineEvent, TimelineTrack, Transition, TransitionKind, UiEvent,
+    VisualState, cubic_bezier, ease_exit, ease_out,
+};
 pub use probe::{SharedUi, UiProbe};
 pub use rich::{RichTextDesc, RichTextResponse};
 pub use slot::{Aspect, SlotKind, SlotSpec};

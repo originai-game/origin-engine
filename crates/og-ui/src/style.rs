@@ -323,6 +323,10 @@ pub struct Theme {
     /// drawn from. A version 1 style and the prototype style have the set
     /// [`crate::tokens::StyleTokens::derive`] makes of their values.
     pub tokens: crate::tokens::StyleTokens,
+    /// The style's motion personality (docs/ui.md §7.7): named springs,
+    /// enter and exit eases, stagger, overshoot, the reduced-motion
+    /// fallback. A style file's motion block fills it.
+    pub motion: crate::motion::MotionTokens,
 }
 
 impl Default for Theme {
@@ -373,6 +377,7 @@ impl Theme {
             reduced_motion: false,
             reduced_transparency: false,
             art,
+            motion: crate::motion::MotionTokens::default(),
             tokens: derived,
         }
     }

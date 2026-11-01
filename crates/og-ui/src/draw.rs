@@ -15,6 +15,7 @@
 //! discards what falls outside it, so a scrolled row, a rotated chevron or a
 //! half-visible line of text is cut exactly at the container's edge.
 
+use crate::element::Affine;
 use crate::layout::Rect;
 use og_core::glam::{Vec2, Vec3};
 use og_render::{ColorSpace, FontHandle, Mips, Overlay, Sprite, Text, TextureData, TextureHandle};
@@ -98,6 +99,10 @@ pub enum DrawCmd {
 pub struct DrawItem {
     pub level: i32,
     pub cmd: DrawCmd,
+    /// The map from the command's coordinates to the screen: the identity,
+    /// except under an element's rotation or skew (og-ui bakes translation
+    /// and scale into the command itself). Its clip is in screen space.
+    pub transform: Affine,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -120,6 +125,37 @@ impl DrawCmd {
                 texture: Some(t), ..
             } => Batch::Texture(*t),
             DrawCmd::Text { font, .. } => Batch::Font(*font),
+        }
+    }
+
+    /// Its clip rectangle.
+    pub(crate) fn clip(&self) -> &Rect {
+        match self {
+            DrawCmd::Glass { clip, .. }
+            | DrawCmd::Quad { clip, .. }
+            | DrawCmd::Image { clip, .. }
+            | DrawCmd::Bar { clip, .. }
+            | DrawCmd::Half { clip, .. }
+            | DrawCmd::Text { clip, .. } => clip,
+        }
+    }
+
+    /// What it covers before its clip.
+    pub(crate) fn unclipped(&self) -> Rect {
+        let all = Rect::new(-1e9, -1e9, 2e9, 2e9);
+        match self {
+            DrawCmd::Quad { rect, .. }
+            | DrawCmd::Image { rect, .. }
+            | DrawCmd::Glass { rect, .. } => *rect,
+            DrawCmd::Text { bounds, .. } => *bounds,
+            other => {
+                let mut c = other.clone();
+                match &mut c {
+                    DrawCmd::Bar { clip, .. } | DrawCmd::Half { clip, .. } => *clip = all,
+                    _ => {}
+                }
+                c.bounds()
+            }
         }
     }
 
@@ -158,13 +194,22 @@ impl DrawCmd {
 /// transition's dissolve is 1,620 quads over the frame, and testing each
 /// against every earlier command was 7 to 17 ms of a dev tick (Lantern
 /// Vale's playtests, tests/evidence/P4/perf-2).
-pub(crate) fn assign_levels(cmds: Vec<DrawCmd>) -> Vec<DrawItem> {
-    let bounds: Vec<Rect> = cmds.iter().map(DrawCmd::bounds).collect();
+pub(crate) fn assign_levels(cmds: Vec<(DrawCmd, Affine)>) -> Vec<DrawItem> {
+    let bounds: Vec<Rect> = cmds
+        .iter()
+        .map(|(c, m)| {
+            if m.is_identity() {
+                c.bounds()
+            } else {
+                m.map_rect(&c.unclipped()).intersect(c.clip())
+            }
+        })
+        .collect();
     let grid = Grid::over(&bounds);
     let mut cells: Vec<Vec<u32>> = vec![Vec::new(); grid.cols * grid.rows];
     let mut items: Vec<DrawItem> = Vec::with_capacity(cmds.len());
     let mut placed: Vec<(Rect, Batch, i32)> = Vec::with_capacity(cmds.len());
-    for (cmd, bounds) in cmds.into_iter().zip(bounds) {
+    for ((cmd, transform), bounds) in cmds.into_iter().zip(bounds) {
         if bounds.is_empty() {
             continue;
         }
@@ -188,7 +233,11 @@ pub(crate) fn assign_levels(cmds: Vec<DrawCmd>) -> Vec<DrawItem> {
             }
         }
         placed.push((bounds, batch, level));
-        items.push(DrawItem { level, cmd });
+        items.push(DrawItem {
+            level,
+            cmd,
+            transform,
+        });
     }
     items
 }
@@ -362,10 +411,24 @@ fn clip_index(overlay: &mut Overlay, known: &mut Vec<(Rect, u32)>, clip: &Rect) 
     i
 }
 
+/// An element's rotation, scale and placement as a sprite takes them: the
+/// map's turn (radians, clockwise on screen) and its scale along its own
+/// axes (a skew is not drawn by sprites and is left out).
+fn decompose(m: &Affine) -> (f32, f32, f32) {
+    let sx = (m.a * m.a + m.b * m.b).sqrt();
+    let angle = m.b.atan2(m.a);
+    let sy = if sx > 0.0 { m.determinant() / sx } else { 0.0 };
+    (angle, sx, sy)
+}
+
 pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
     let mut known: Vec<(Rect, u32)> = Vec::new();
     for item in items {
         let layer = desc.layer + item.level;
+        if !item.transform.is_identity() {
+            emit_transformed(item, desc, layer, overlay, &mut known);
+            continue;
+        }
         match &item.cmd {
             DrawCmd::Glass {
                 rect,
@@ -493,6 +556,163 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
     }
 }
 
+/// A command under a rotation (or skew): each sprite and text placed by the
+/// map, turned by its angle and scaled along its own axes.
+fn emit_transformed(
+    item: &DrawItem,
+    desc: &EmitDesc,
+    layer: i32,
+    overlay: &mut Overlay,
+    known: &mut Vec<(Rect, u32)>,
+) {
+    let m = item.transform;
+    let (angle, sx, sy) = decompose(&m);
+    let rect_sprite = |r: Rect, uv: [f32; 4], tex: TextureHandle, color: [f32; 4], c: u32| {
+        let (x, y) = m.apply(r.x, r.y);
+        Sprite {
+            texture: Some(tex),
+            position: Vec3::new(x, y, 0.0),
+            size: Vec2::new(r.width * sx, r.height * sy),
+            anchor: Vec2::ZERO,
+            rotation: angle,
+            color,
+            uv_rect: uv,
+            layer,
+            clip: Some(c),
+        }
+    };
+    match &item.cmd {
+        DrawCmd::Glass {
+            rect,
+            radius,
+            blur,
+            tint,
+            alpha,
+            clip,
+        } => {
+            // Glass blurs an upright rectangle: its bounds under the map.
+            let c = clip_index(overlay, known, clip);
+            let r = m.map_rect(rect);
+            overlay.glass.push(og_render::Glass {
+                position: Vec2::new(r.x, r.y),
+                size: Vec2::new(r.width, r.height),
+                radius: *radius * sx.min(sy),
+                blur: *blur,
+                tint: *tint,
+                alpha: *alpha,
+                layer,
+                clip: Some(c),
+            });
+        }
+        DrawCmd::Quad {
+            rect,
+            radius,
+            color,
+            clip,
+        } => {
+            let c = clip_index(overlay, known, clip);
+            for (piece, uv) in nine_slice(*rect, *radius) {
+                if !piece.is_empty() {
+                    overlay
+                        .sprites
+                        .push(rect_sprite(piece, uv, desc.atlas, *color, c));
+                }
+            }
+        }
+        DrawCmd::Image {
+            rect,
+            texture,
+            uv,
+            color,
+            clip,
+        } => {
+            let (tex, uv) = match texture {
+                Some(t) => (*t, *uv),
+                None => (desc.atlas, [0.5, 0.5, 0.5, 0.5]),
+            };
+            let c = clip_index(overlay, known, clip);
+            overlay.sprites.push(rect_sprite(*rect, uv, tex, *color, c));
+        }
+        DrawCmd::Bar {
+            center,
+            w,
+            h,
+            angle: a,
+            color,
+            clip,
+        } => {
+            let c = clip_index(overlay, known, clip);
+            let (x, y) = m.apply(center.0, center.1);
+            overlay.sprites.push(Sprite {
+                texture: Some(desc.atlas),
+                position: Vec3::new(x, y, 0.0),
+                size: Vec2::new(*w * sx, *h * sy),
+                anchor: Vec2::new(0.5, 0.5),
+                rotation: *a + angle,
+                color: *color,
+                uv_rect: [0.5, 0.5, 0.5, 0.5],
+                layer,
+                clip: Some(c),
+            })
+        }
+        DrawCmd::Half {
+            center,
+            radius,
+            angle: a,
+            color,
+            clip,
+        } => {
+            let c = clip_index(overlay, known, clip);
+            let (x, y) = m.apply(center.0, center.1);
+            overlay.sprites.push(Sprite {
+                texture: Some(desc.atlas),
+                position: Vec3::new(x, y, 0.0),
+                size: Vec2::new(*radius * sx, 2.0 * radius * sy),
+                anchor: Vec2::new(0.0, 0.5),
+                rotation: *a + angle,
+                color: *color,
+                uv_rect: [0.5, 0.0, 1.0, 1.0],
+                layer,
+                clip: Some(c),
+            })
+        }
+        DrawCmd::Text {
+            x,
+            baseline,
+            size,
+            text,
+            color,
+            font,
+            clip,
+            tracking,
+            weight,
+            glow,
+            placements,
+            ..
+        } => {
+            let c = clip_index(overlay, known, clip);
+            let (px, py) = m.apply(*x, *baseline);
+            overlay.texts.push(Text {
+                font: *font,
+                text: text.clone(),
+                position: Vec3::new(px, py, 0.0),
+                size: *size * sy,
+                rotation: angle,
+                color: *color,
+                layer,
+                clip: Some(c),
+                tracking: *tracking,
+                weight: *weight * sy,
+                glow: glow.map(|(color, radius)| og_render::TextGlow {
+                    color,
+                    radius: radius * sy,
+                }),
+                placements: placements.clone(),
+            });
+        }
+    }
+}
+
 #[cfg(test)]
 mod levels {
     use super::*;
@@ -585,7 +805,11 @@ mod levels {
         cases.push(screen);
         for cmds in cases {
             let want = quadratic(&cmds);
-            let got: Vec<i32> = assign_levels(cmds).iter().map(|i| i.level).collect();
+            let got: Vec<i32> =
+                assign_levels(cmds.into_iter().map(|c| (c, Affine::IDENTITY)).collect())
+                    .iter()
+                    .map(|i| i.level)
+                    .collect();
             assert_eq!(got, want);
         }
     }

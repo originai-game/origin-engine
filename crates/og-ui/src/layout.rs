@@ -17,6 +17,7 @@
 //!    clip rectangles; rectangles snap to device pixels (`Viewport::dpr`).
 
 use crate::FontMetrics;
+use crate::element::{Edges, GridFlow, LayoutMode, Patch, Query, Track};
 use crate::motion::Fx;
 use crate::style::{Srgba, TypeStep};
 use crate::text::{Line, break_lines, is_cjk, longest_word, widest_line};
@@ -238,6 +239,9 @@ pub enum Cross {
     End,
     /// Fill the cross axis (a `Fit` child takes the parent's inner size).
     Stretch,
+    /// A row's children share their first text baseline (rows of mixed
+    /// type sizes); a column treats it as `Start`.
+    Baseline,
 }
 
 /// Horizontal alignment of text lines inside their element.
@@ -716,6 +720,21 @@ pub(crate) struct Node {
     pub a11y: crate::a11y::A11y,
     /// Its descendants enter one after another (a style's stagger).
     pub stagger: Option<Stagger>,
+    /// The element model beyond its box (`crate::element`).
+    pub props: crate::element::Props,
+    /// Its children out of the flow (absolute, anchored), in build order;
+    /// `children` holds the ones in the flow once the frame ends.
+    pub out: Vec<usize>,
+    /// A grid's resolved tracks and its children's cells.
+    pub grid: Option<GridLayout>,
+    /// Where it is drawn: its map from layout to screen (its transforms and
+    /// its ancestors'), and its box's bounds there.
+    pub world: crate::element::Affine,
+    pub screen: Rect,
+    /// Layout animation's offset and scale this tick (x, y, sx, sy).
+    pub flip: [f32; 4],
+    /// A drag's offset and a pinch's scale and turn (x, y, scale, radians).
+    pub gesture: [f32; 4],
     // Computed by the frame.
     pub alpha: f32,
     pub scale: f32,
@@ -775,6 +794,13 @@ impl Node {
             heading: false,
             a11y: crate::a11y::A11y::default(),
             stagger: None,
+            props: crate::element::Props::default(),
+            out: Vec::new(),
+            grid: None,
+            world: crate::element::Affine::IDENTITY,
+            screen: Rect::default(),
+            flip: [0.0, 0.0, 1.0, 1.0],
+            gesture: [0.0, 0.0, 1.0, 0.0],
             alpha: 1.0,
             scale: 1.0,
             inert: false,
@@ -956,6 +982,18 @@ impl TextCache {
         )
     }
 
+    /// Keeps `t`'s measurements through this frame's sweep: a node that
+    /// kept its layout (docs/ui.md §6.3) did not measure, but still uses them.
+    fn touch(&mut self, t: &TextContent) {
+        let frame = self.frame;
+        if let Some(list) = self.widths.get_mut(&t.text) {
+            list.iter_mut().for_each(|k| k.frame = frame);
+        }
+        if let Some(list) = self.lines.get_mut(&t.text) {
+            list.iter_mut().for_each(|k| k.frame = frame);
+        }
+    }
+
     /// Ends a frame: what it did not measure goes.
     pub(crate) fn sweep(&mut self) {
         let frame = self.frame;
@@ -1003,9 +1041,57 @@ pub(crate) fn preorder(nodes: &[Node], root: usize) -> Vec<usize> {
     let mut stack = vec![root];
     while let Some(i) = stack.pop() {
         order.push(i);
-        stack.extend(nodes[i].children.iter().rev());
+        let n = &nodes[i];
+        if n.out.is_empty() {
+            stack.extend(n.children.iter().rev());
+        } else {
+            stack.extend(all_children(n).into_iter().rev());
+        }
     }
     order
+}
+
+/// A node's children in and out of the flow, in build order (node indices
+/// grow in build order).
+pub(crate) fn all_children(n: &Node) -> Vec<usize> {
+    let mut all: Vec<usize> = n.children.iter().chain(&n.out).copied().collect();
+    all.sort_unstable();
+    all
+}
+
+/// The preorder with each node's children in drawing order: by `z`, then
+/// as built (a lifted card draws over its neighbours and is hit first).
+pub(crate) fn draw_order(nodes: &[Node], root: usize) -> Vec<usize> {
+    let mut order = Vec::new();
+    let mut stack = vec![root];
+    while let Some(i) = stack.pop() {
+        order.push(i);
+        let mut kids = all_children(&nodes[i]);
+        if kids.iter().any(|&c| nodes[c].props.z != 0) {
+            og_core::sort::sort_by_key(&mut kids, |&c| nodes[c].props.z);
+        }
+        stack.extend(kids.into_iter().rev());
+    }
+    order
+}
+
+/// For each position of `order` (a preorder), the position just past its
+/// subtree.
+pub(crate) fn subtree_ends(nodes: &[Node], order: &[usize]) -> Vec<usize> {
+    let mut ends = vec![order.len(); order.len()];
+    let mut open: Vec<usize> = Vec::new();
+    for (k, &i) in order.iter().enumerate() {
+        let parent = nodes[i].parent;
+        while let Some(&top) = open.last() {
+            if order[top] == parent {
+                break;
+            }
+            ends[top] = k;
+            open.pop();
+        }
+        open.push(k);
+    }
+    ends
 }
 
 /// Raises `items` (by index into `w`) towards a common level so their sum
@@ -1114,6 +1200,9 @@ fn gaps(gap: f32, n: usize) -> f32 {
 }
 
 fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
+    if nodes[i].props.layout == LayoutMode::Grid && matches!(nodes[i].content, Content::None) {
+        place_grid(nodes, i);
+    }
     let n = &nodes[i];
     let fonts = measure.fonts;
     let (pref, min) = match &n.content {
@@ -1133,6 +1222,14 @@ fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
         }),
         Content::Rich(rc) => crate::rich::rich_widths(rc, fonts),
         Content::Image { .. } => (0.0, 0.0),
+        Content::None if n.props.layout == LayoutMode::Stack => {
+            let kids = || n.children.iter().map(|&c| &nodes[c]);
+            (
+                kids().map(|c| c.pref_w).fold(0.0, f32::max),
+                kids().map(|c| c.min_w).fold(0.0, f32::max),
+            )
+        }
+        Content::None if n.props.layout == LayoutMode::Grid => grid_intrinsic(nodes, i, true),
         Content::None => {
             let k = n.children.len();
             let kids = n.children.iter().map(|&c| &nodes[c]);
@@ -1225,7 +1322,29 @@ fn main_sizes(
 }
 
 fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
+    // A container query reads the element's own width, now known.
+    if nodes[i].props.variants.iter().any(|v| v.when.container) {
+        let w = nodes[i].w;
+        let variants = nodes[i].props.variants.clone();
+        for v in variants.iter().filter(|v| v.when.container) {
+            if width_in(w, &v.when) {
+                apply_patch(&mut nodes[i], &v.set);
+            }
+        }
+    }
     let inner = (nodes[i].w - nodes[i].el.padding.horizontal()).max(0.0);
+    // Out of the flow: sized against the parent's box.
+    let outer = nodes[i].w;
+    for c in nodes[i].out.clone() {
+        let w = out_size(
+            nodes[c].el.width,
+            nodes[c].pref_w,
+            outer,
+            nodes[c].props.insets.start,
+            nodes[c].props.insets.end,
+        );
+        nodes[c].w = w;
+    }
     let fonts = measure.fonts;
     if let Content::Text(t) = &nodes[i].content {
         // A fit width snapped to the device pixel may land up to half a
@@ -1259,6 +1378,33 @@ fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
     let kids = nodes[i].children.clone();
     if kids.is_empty() {
         return;
+    }
+    match nodes[i].props.layout {
+        LayoutMode::Stack => {
+            for &c in &kids {
+                let n = &nodes[c];
+                let ins = n.props.insets;
+                let w = match (ins.start, ins.end) {
+                    (Some(s), Some(e)) if !matches!(n.el.width, Size::Fixed(_)) => {
+                        (inner - s - e).max(0.0)
+                    }
+                    _ => cross_size(
+                        n.el.width,
+                        n.pref_w,
+                        n.min_w,
+                        inner,
+                        el.cross == Cross::Stretch,
+                    ),
+                };
+                nodes[c].w = w;
+            }
+            return;
+        }
+        LayoutMode::Grid => {
+            grid_columns(nodes, i, inner);
+            return;
+        }
+        LayoutMode::Flex => {}
     }
     match el.direction {
         Direction::Column => {
@@ -1334,6 +1480,14 @@ fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
 fn size_h(nodes: &mut [Node], i: usize) {
     let n = &nodes[i];
     let (pref, min) = match &n.content {
+        Content::None if n.props.layout == LayoutMode::Stack => {
+            let kids = || n.children.iter().map(|&c| &nodes[c]);
+            (
+                kids().map(|c| c.pref_h).fold(0.0, f32::max),
+                kids().map(|c| c.min_h).fold(0.0, f32::max),
+            )
+        }
+        Content::None if n.props.layout == LayoutMode::Grid => grid_intrinsic(nodes, i, false),
         Content::Text(t) => {
             let h = n.lines.len().max(1) as f32 * t.line_height();
             (h, h)
@@ -1400,9 +1554,47 @@ fn size_h(nodes: &mut [Node], i: usize) {
 fn distribute_h(nodes: &mut [Node], i: usize) {
     let el = nodes[i].el;
     let inner = (nodes[i].h - el.padding.vertical()).max(0.0);
+    let outer = nodes[i].h;
+    for c in nodes[i].out.clone() {
+        let h = out_size(
+            nodes[c].el.height,
+            nodes[c].pref_h,
+            outer,
+            nodes[c].props.insets.top,
+            nodes[c].props.insets.bottom,
+        );
+        nodes[c].h = h;
+    }
     let kids = nodes[i].children.clone();
     if kids.is_empty() {
         return;
+    }
+    match nodes[i].props.layout {
+        LayoutMode::Stack => {
+            for &c in &kids {
+                let n = &nodes[c];
+                let ins = n.props.insets;
+                let h = match (ins.top, ins.bottom) {
+                    (Some(t), Some(b)) if !matches!(n.el.height, Size::Fixed(_)) => {
+                        (inner - t - b).max(0.0)
+                    }
+                    _ => cross_size(
+                        n.el.height,
+                        n.pref_h,
+                        n.min_h,
+                        inner,
+                        el.cross == Cross::Stretch,
+                    ),
+                };
+                nodes[c].h = h;
+            }
+            return;
+        }
+        LayoutMode::Grid => {
+            grid_rows(nodes, i, inner);
+            return;
+        }
+        LayoutMode::Flex => {}
     }
     match el.direction {
         Direction::Column => {
@@ -1466,13 +1658,99 @@ fn main_offsets(align: Align, free: f32, k: usize) -> (f32, f32) {
 
 fn cross_offset(cross: Cross, room: f32, size: f32) -> f32 {
     match cross {
-        Cross::Start | Cross::Stretch => 0.0,
+        Cross::Start | Cross::Stretch | Cross::Baseline => 0.0,
         Cross::Center => (room - size) / 2.0,
         Cross::End => room - size,
     }
 }
 
 fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f32)) {
+    // Out of the flow: placed by its insets in the parent's box (an
+    // anchored one is moved onto its target once every layer is placed).
+    let bx = Rect::new(nodes[i].x, nodes[i].y, nodes[i].w, nodes[i].h);
+    for c in nodes[i].out.clone() {
+        let (w, h) = (nodes[c].w, nodes[c].h);
+        let (x, y) = place_in(
+            &bx,
+            w,
+            h,
+            &nodes[c].props.insets,
+            Align::Start,
+            Cross::Start,
+        );
+        nodes[c].x = x;
+        nodes[c].y = y;
+    }
+    if nodes[i].props.layout != LayoutMode::Flex && matches!(nodes[i].content, Content::None) {
+        let n = &nodes[i];
+        let (sx, sy) = if n.el.scroll || n.el.scroll_x {
+            scroll(n.key)
+        } else {
+            (0.0, 0.0)
+        };
+        let inner = Rect::new(
+            n.x + n.el.padding.left
+                - if n.el.scroll_x {
+                    sx.clamp(0.0, n.max_scroll_x())
+                } else {
+                    0.0
+                },
+            n.y + n.el.padding.top
+                - if n.el.scroll {
+                    sy.clamp(0.0, n.max_scroll())
+                } else {
+                    0.0
+                },
+            (n.w - n.el.padding.horizontal()).max(0.0),
+            (n.h - n.el.padding.vertical()).max(0.0),
+        );
+        let (align, cross) = (n.el.align, n.el.cross);
+        let kids = n.children.clone();
+        if n.props.layout == LayoutMode::Stack {
+            let mut extent = 0.0f32;
+            for &c in &kids {
+                let (w, h) = (nodes[c].w, nodes[c].h);
+                let (x, y) = place_in(&inner, w, h, &nodes[c].props.insets, align, cross);
+                nodes[c].x = x;
+                nodes[c].y = y;
+                extent = extent.max(w);
+            }
+            nodes[i].content_w = extent;
+        } else if let Some(g) = nodes[i].grid.clone() {
+            let offsets = |sizes: &[f32], gap: f32| {
+                let mut at = Vec::with_capacity(sizes.len() + 1);
+                let mut v = 0.0;
+                for s in sizes {
+                    at.push(v);
+                    v += s + gap;
+                }
+                at.push(v - gap);
+                at
+            };
+            let (cx, ry) = (offsets(&g.cols, g.col_gap), offsets(&g.rows, g.row_gap));
+            for (k, &c) in kids.iter().enumerate() {
+                let Some(&(col, row, cs, rs)) = g.cells.get(k) else {
+                    continue;
+                };
+                let span = |at: &[f32], sizes: &[f32], s: usize, n: usize, gap: f32| {
+                    let s = s.min(sizes.len());
+                    let e = (s + n).min(sizes.len());
+                    let len: f32 =
+                        sizes[s..e].iter().sum::<f32>() + gap * (e - s).saturating_sub(1) as f32;
+                    (at.get(s).copied().unwrap_or(0.0), len)
+                };
+                let (x0, cw) = span(&cx, &g.cols, col, cs, g.col_gap);
+                let (y0, rh) = span(&ry, &g.rows, row, rs, g.row_gap);
+                let cell = Rect::new(inner.x + x0, inner.y + y0, cw, rh);
+                let (w, h) = (nodes[c].w, nodes[c].h);
+                let (x, y) = place_in(&cell, w, h, &nodes[c].props.insets, align, cross);
+                nodes[c].x = x;
+                nodes[c].y = y;
+            }
+            nodes[i].content_w = cx.last().copied().unwrap_or(0.0);
+        }
+        return;
+    }
     // The content's extent along x, before the offsets (the horizontal range).
     let content_w = {
         let n = &nodes[i];
@@ -1561,8 +1839,655 @@ fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f32)) {
     }
 }
 
+/// Where a `w`×`h` box sits in `bx`: by its insets where they are set,
+/// else by `align` across and `cross` down.
+fn place_in(bx: &Rect, w: f32, h: f32, ins: &Edges, align: Align, cross: Cross) -> (f32, f32) {
+    let x = if ins.center_x {
+        bx.x + (bx.width - w) / 2.0 + ins.start.unwrap_or(0.0)
+    } else if let Some(s) = ins.start {
+        bx.x + s
+    } else if let Some(e) = ins.end {
+        bx.right() - e - w
+    } else {
+        match align {
+            Align::Start | Align::SpaceBetween => bx.x,
+            Align::Center => bx.x + (bx.width - w) / 2.0,
+            Align::End => bx.right() - w,
+        }
+    };
+    let y = if ins.center_y {
+        bx.y + (bx.height - h) / 2.0 + ins.top.unwrap_or(0.0)
+    } else if let Some(t) = ins.top {
+        bx.y + t
+    } else if let Some(b) = ins.bottom {
+        bx.bottom() - b - h
+    } else {
+        match cross {
+            Cross::Start | Cross::Stretch | Cross::Baseline => bx.y,
+            Cross::Center => bx.y + (bx.height - h) / 2.0,
+            Cross::End => bx.bottom() - h,
+        }
+    };
+    (x, y)
+}
+
+/// An out-of-flow element's size along one axis of its parent's box
+/// (`outer`), between insets `a` and `b`.
+fn out_size(size: Size, pref: f32, outer: f32, a: Option<f32>, b: Option<f32>) -> f32 {
+    match (a, b, size) {
+        (_, _, Size::Fixed(v)) => v,
+        (Some(a), Some(b), _) => (outer - a - b).max(0.0),
+        (_, _, Size::Percent(p)) => p * outer,
+        (_, _, Size::Grow { .. }) => {
+            let (lo, hi) = size.bounds();
+            (outer - a.unwrap_or(0.0) - b.unwrap_or(0.0)).clamp(lo, hi)
+        }
+        (_, _, Size::Fit { .. }) => {
+            let (lo, hi) = size.bounds();
+            pref.clamp(lo, hi)
+        }
+    }
+}
+
+/// `w` is in the query's width range.
+pub(crate) fn width_in(w: f32, q: &Query) -> bool {
+    (q.min_width <= 0.0 || w >= q.min_width) && (q.max_width <= 0.0 || w <= q.max_width)
+}
+
+/// Applies a variant's patch to a node.
+pub(crate) fn apply_patch(n: &mut Node, p: &Patch) {
+    if let Some(v) = p.direction {
+        n.el.direction = v;
+    }
+    if let Some(v) = p.width {
+        n.el.width = v;
+    }
+    if let Some(v) = p.height {
+        n.el.height = v;
+    }
+    if let Some(v) = p.padding {
+        n.el.padding = v;
+    }
+    if let Some(v) = p.gap {
+        n.el.gap = v;
+    }
+    if let Some(v) = p.align {
+        n.el.align = v;
+    }
+    if let Some(v) = p.cross {
+        n.el.cross = v;
+    }
+    if let Some(v) = p.wrap {
+        n.el.wrap = v;
+    }
+    if let Some(v) = p.layout {
+        n.props.layout = v;
+    }
+    if let Some(v) = &p.columns {
+        n.props.grid.columns = v.clone();
+    }
+    if let Some(v) = p.hidden {
+        n.hidden = v;
+    }
+    if !p.values.is_empty() {
+        let mut row = read_values(n);
+        for &(prop, v) in &p.values {
+            for &c in prop.channels() {
+                row[c] = v;
+            }
+        }
+        write_values(n, &row);
+    }
+}
+
+/// A node's animatable values, one per channel (`Prop::channels`).
+pub(crate) fn read_values(n: &Node) -> [f32; crate::element::CHANNELS] {
+    let t = &n.props.transform;
+    let bg = n.el.background.unwrap_or(Srgba {
+        rgb: [0, 0, 0],
+        alpha: 0.0,
+    });
+    let ink = match &n.content {
+        Content::Text(tc) => tc.color,
+        _ => Srgba::WHITE,
+    };
+    let c = |v: u8| f32::from(v) / 255.0;
+    [
+        t.x,
+        t.y,
+        t.scale_x,
+        t.scale_y,
+        t.rotate,
+        t.skew_x,
+        t.skew_y,
+        n.props.opacity,
+        n.el.radius,
+        c(bg.rgb[0]),
+        c(bg.rgb[1]),
+        c(bg.rgb[2]),
+        bg.alpha,
+        c(ink.rgb[0]),
+        c(ink.rgb[1]),
+        c(ink.rgb[2]),
+        ink.alpha,
+        n.props.z as f32,
+        f32::from(u8::from(n.props.inert)),
+    ]
+}
+
+/// Writes a row of channel values back into a node.
+pub(crate) fn write_values(n: &mut Node, v: &[f32; crate::element::CHANNELS]) {
+    let t = &mut n.props.transform;
+    t.x = v[0];
+    t.y = v[1];
+    t.scale_x = v[2];
+    t.scale_y = v[3];
+    t.rotate = v[4];
+    t.skew_x = v[5];
+    t.skew_y = v[6];
+    n.props.opacity = v[7].clamp(0.0, 1.0);
+    n.el.radius = v[8].max(0.0);
+    let u = |x: f32| (x.clamp(0.0, 1.0) * 255.0).round() as u8;
+    let bg = Srgba {
+        rgb: [u(v[9]), u(v[10]), u(v[11])],
+        alpha: v[12].clamp(0.0, 1.0),
+    };
+    if n.el.background.is_some() || bg.alpha > 0.0 {
+        n.el.background = Some(bg);
+    }
+    if let Content::Text(tc) = &mut n.content {
+        tc.color = Srgba {
+            rgb: [u(v[13]), u(v[14]), u(v[15])],
+            alpha: v[16].clamp(0.0, 1.0),
+        };
+    }
+    n.props.z = v[17].round() as i32;
+    n.props.inert = v[18] >= 0.5;
+}
+
+/// A grid's resolved tracks and where each child in the flow sits.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct GridLayout {
+    /// Per child in the flow: its column, row, column span, row span (0-based).
+    pub cells: Vec<(usize, usize, usize, usize)>,
+    pub ncols: usize,
+    pub nrows: usize,
+    pub cols: Vec<f32>,
+    pub rows: Vec<f32>,
+    pub col_gap: f32,
+    pub row_gap: f32,
+}
+
+/// Places a grid's children in its cells: named areas and explicit lines
+/// first, then the rest in flow order (`dense` back-fills holes).
+fn place_grid(nodes: &mut [Node], i: usize) {
+    let n = &nodes[i];
+    let spec = &n.props.grid;
+    let mut areas: Vec<(&str, usize, usize, usize, usize)> = Vec::new();
+    for (r, line) in spec.areas.iter().enumerate() {
+        for (c, name) in line.split_whitespace().enumerate() {
+            if name == "." {
+                continue;
+            }
+            match areas.iter_mut().find(|a| a.0 == name) {
+                Some(a) => {
+                    a.1 = a.1.min(c);
+                    a.2 = a.2.min(r);
+                    a.3 = a.3.max(c + 1);
+                    a.4 = a.4.max(r + 1);
+                }
+                None => areas.push((name, c, r, c + 1, r + 1)),
+            }
+        }
+    }
+    let row_flow = spec.flow == GridFlow::Row;
+    let area_cols = spec
+        .areas
+        .iter()
+        .map(|l| l.split_whitespace().count())
+        .max()
+        .unwrap_or(0);
+    let mut ncols = spec.columns.len().max(area_cols);
+    let mut nrows = spec.rows.len().max(spec.areas.len());
+    let kids = n.children.clone();
+    let mut cells = vec![(0usize, 0usize, 1usize, 1usize); kids.len()];
+    // Occupied cells, [row][col].
+    let mut occ: Vec<Vec<bool>> = Vec::new();
+    let mark = |occ: &mut Vec<Vec<bool>>, c: usize, r: usize, cs: usize, rs: usize| {
+        for rr in r..r + rs {
+            if occ.len() <= rr {
+                occ.resize(rr + 1, Vec::new());
+            }
+            let row = &mut occ[rr];
+            if row.len() < c + cs {
+                row.resize(c + cs, false);
+            }
+            for cell in &mut row[c..c + cs] {
+                *cell = true;
+            }
+        }
+    };
+    let free = |occ: &Vec<Vec<bool>>, c: usize, r: usize, cs: usize, rs: usize| {
+        (r..r + rs).all(|rr| {
+            (c..c + cs).all(|cc| {
+                !occ.get(rr)
+                    .and_then(|row| row.get(cc))
+                    .copied()
+                    .unwrap_or(false)
+            })
+        })
+    };
+    let mut auto = Vec::new();
+    for (k, &c) in kids.iter().enumerate() {
+        let p = &nodes[c].props.place;
+        let (cs, rs) = (p.column_span.max(1) as usize, p.row_span.max(1) as usize);
+        if !p.area.is_empty()
+            && let Some(a) = areas.iter().find(|a| a.0 == p.area)
+        {
+            cells[k] = (a.1, a.2, a.3 - a.1, a.4 - a.2);
+            mark(&mut occ, a.1, a.2, a.3 - a.1, a.4 - a.2);
+            continue;
+        }
+        if p.column > 0 && p.row > 0 {
+            let (col, row) = (p.column as usize - 1, p.row as usize - 1);
+            cells[k] = (col, row, cs, rs);
+            mark(&mut occ, col, row, cs, rs);
+            ncols = ncols.max(col + cs);
+            nrows = nrows.max(row + rs);
+            continue;
+        }
+        auto.push(k);
+    }
+    // The fixed axis (columns in a row flow) and the cursor along it.
+    let major = if row_flow { ncols.max(1) } else { nrows.max(1) };
+    let (mut cur_line, mut cur_at) = (0usize, 0usize);
+    for k in auto {
+        let p = &nodes[kids[k]].props.place;
+        let (cs, rs) = (p.column_span.max(1) as usize, p.row_span.max(1) as usize);
+        let (along, across) = if row_flow { (cs, rs) } else { (rs, cs) };
+        let along = along.min(major);
+        let fixed = if row_flow { p.column } else { p.row } as usize;
+        if spec.dense {
+            cur_line = 0;
+            cur_at = 0;
+        }
+        let (mut line, mut at) = (cur_line, cur_at);
+        if fixed > 0 {
+            at = (fixed - 1).min(major - along);
+            if at < cur_at && !spec.dense {
+                line += 1;
+            }
+        }
+        loop {
+            if at + along > major {
+                at = if fixed > 0 {
+                    (fixed - 1).min(major - along)
+                } else {
+                    0
+                };
+                line += 1;
+                continue;
+            }
+            let (c, r, w, h) = if row_flow {
+                (at, line, along, across)
+            } else {
+                (line, at, across, along)
+            };
+            if free(&occ, c, r, w, h) {
+                cells[k] = (c, r, w, h);
+                mark(&mut occ, c, r, w, h);
+                cur_line = line;
+                cur_at = at + along;
+                break;
+            }
+            if fixed > 0 {
+                line += 1;
+            } else {
+                at += 1;
+            }
+        }
+    }
+    for &(c, r, w, h) in &cells {
+        ncols = ncols.max(c + w);
+        nrows = nrows.max(r + h);
+    }
+    if row_flow {
+        ncols = ncols.max(major);
+    } else {
+        nrows = nrows.max(major);
+    }
+    let gap = n.el.gap;
+    let layout = GridLayout {
+        cells,
+        ncols,
+        nrows,
+        cols: Vec::new(),
+        rows: Vec::new(),
+        col_gap: spec.column_gap.unwrap_or(gap),
+        row_gap: spec.row_gap.unwrap_or(gap),
+    };
+    nodes[i].grid = Some(layout);
+}
+
+/// Track sizes along one axis: `items` are (first track, span, preferred,
+/// minimum); `avail` the inner size (`None`: intrinsic, every `fr` track
+/// as large as its content asks).
+fn track_sizes(
+    defs: &[Track],
+    auto_track: Track,
+    n: usize,
+    items: &[(usize, usize, f32, f32)],
+    avail: Option<f32>,
+    gap: f32,
+) -> Vec<f32> {
+    let def = |k: usize| defs.get(k).copied().unwrap_or(auto_track);
+    let mut content = vec![0.0f32; n];
+    let mut least = vec![0.0f32; n];
+    for &(s, span, pref, min) in items {
+        if span == 1 && s < n {
+            content[s] = content[s].max(pref);
+            least[s] = least[s].max(min);
+        }
+    }
+    let mut sizes: Vec<f32> = (0..n)
+        .map(|k| match def(k) {
+            Track::Px(v) => v,
+            Track::Percent(p) => avail.map_or(content[k], |a| p * a),
+            Track::Auto => content[k],
+            Track::MinMax { min, max } => content[k].clamp(min, max.max(min)),
+            Track::Fr(_) => {
+                if avail.is_some() {
+                    least[k]
+                } else {
+                    content[k]
+                }
+            }
+        })
+        .collect();
+    // A spanning item wider than its tracks grows their flexible ones.
+    for &(s, span, pref, _) in items {
+        if span <= 1 || s >= n {
+            continue;
+        }
+        let e = (s + span).min(n);
+        let have: f32 = sizes[s..e].iter().sum::<f32>() + gap * (e - s - 1) as f32;
+        if pref <= have {
+            continue;
+        }
+        let flex: Vec<usize> = (s..e)
+            .filter(|&k| matches!(def(k), Track::Auto | Track::Fr(_) | Track::MinMax { .. }))
+            .collect();
+        let grow = if flex.is_empty() {
+            (s..e).collect()
+        } else {
+            flex
+        };
+        let each = (pref - have) / grow.len() as f32;
+        for k in grow {
+            sizes[k] += each;
+        }
+    }
+    let fr: f32 = (0..n)
+        .map(|k| match def(k) {
+            Track::Fr(f) => f.max(0.0),
+            _ => 0.0,
+        })
+        .sum();
+    if fr > 0.0 {
+        match avail {
+            Some(a) => {
+                let fixed: f32 = (0..n)
+                    .filter(|&k| !matches!(def(k), Track::Fr(_)))
+                    .map(|k| sizes[k])
+                    .sum();
+                let free = (a - fixed - gap * n.saturating_sub(1) as f32).max(0.0);
+                let unit = free / fr;
+                for k in 0..n {
+                    if let Track::Fr(f) = def(k) {
+                        sizes[k] = (f.max(0.0) * unit).max(least[k]);
+                    }
+                }
+            }
+            None => {
+                // Every fr track as wide as the largest content per unit asks.
+                let unit = (0..n)
+                    .filter_map(|k| match def(k) {
+                        Track::Fr(f) if f > 0.0 => Some(sizes[k] / f),
+                        _ => None,
+                    })
+                    .fold(0.0, f32::max);
+                for (k, size) in sizes.iter_mut().enumerate() {
+                    if let Track::Fr(f) = def(k) {
+                        *size = f.max(0.0) * unit;
+                    }
+                }
+            }
+        }
+    }
+    sizes
+}
+
+fn grid_items(nodes: &[Node], i: usize, horizontal: bool) -> Vec<(usize, usize, f32, f32)> {
+    let n = &nodes[i];
+    let Some(g) = &n.grid else {
+        return Vec::new();
+    };
+    n.children
+        .iter()
+        .zip(&g.cells)
+        .map(|(&c, &(col, row, cs, rs))| {
+            let k = &nodes[c];
+            if horizontal {
+                (col, cs, k.pref_w, k.min_w)
+            } else {
+                (row, rs, k.pref_h, k.min_h)
+            }
+        })
+        .collect()
+}
+
+/// A grid's preferred and least size along one axis.
+fn grid_intrinsic(nodes: &[Node], i: usize, horizontal: bool) -> (f32, f32) {
+    let n = &nodes[i];
+    let Some(g) = &n.grid else {
+        return (0.0, 0.0);
+    };
+    let spec = &n.props.grid;
+    let (defs, count, gap) = if horizontal {
+        (&spec.columns, g.ncols, g.col_gap)
+    } else {
+        (&spec.rows, g.nrows, g.row_gap)
+    };
+    let items = grid_items(nodes, i, horizontal);
+    let gaps = gap * count.saturating_sub(1) as f32;
+    let pref: f32 = track_sizes(defs, spec.auto_track, count, &items, None, gap)
+        .iter()
+        .sum::<f32>()
+        + gaps;
+    let mins: Vec<(usize, usize, f32, f32)> =
+        items.iter().map(|&(s, n, _, m)| (s, n, m, m)).collect();
+    let min: f32 = track_sizes(defs, spec.auto_track, count, &mins, None, gap)
+        .iter()
+        .sum::<f32>()
+        + gaps;
+    (pref, min.min(pref))
+}
+
+/// Resolves a grid's columns at its inner width and sizes its children.
+fn grid_columns(nodes: &mut [Node], i: usize, inner: f32) {
+    let items = grid_items(nodes, i, true);
+    let n = &nodes[i];
+    let Some(g) = &n.grid else { return };
+    let spec = &n.props.grid;
+    let cols = track_sizes(
+        &spec.columns,
+        spec.auto_track,
+        g.ncols,
+        &items,
+        Some(inner),
+        g.col_gap,
+    );
+    let gap = g.col_gap;
+    let kids = n.children.clone();
+    let cells = g.cells.clone();
+    for (&c, &(col, _, cs, _)) in kids.iter().zip(&cells) {
+        let e = (col + cs).min(cols.len());
+        let span: f32 = cols[col.min(e)..e].iter().sum::<f32>()
+            + gap * (e.saturating_sub(col)).saturating_sub(1) as f32;
+        let k = &nodes[c];
+        nodes[c].w = match k.el.width {
+            Size::Fixed(v) => v,
+            Size::Percent(p) => p * span,
+            Size::Fit { .. } | Size::Grow { .. } => {
+                let (lo, hi) = k.el.width.bounds();
+                span.clamp(lo, hi)
+            }
+        };
+    }
+    if let Some(g) = nodes[i].grid.as_mut() {
+        g.cols = cols;
+    }
+}
+
+/// Resolves a grid's rows at its inner height and sizes its children.
+fn grid_rows(nodes: &mut [Node], i: usize, inner: f32) {
+    let items = grid_items(nodes, i, false);
+    let n = &nodes[i];
+    let Some(g) = &n.grid else { return };
+    let spec = &n.props.grid;
+    let rows = track_sizes(
+        &spec.rows,
+        spec.auto_track,
+        g.nrows,
+        &items,
+        Some(inner),
+        g.row_gap,
+    );
+    let gap = g.row_gap;
+    let kids = n.children.clone();
+    let cells = g.cells.clone();
+    for (&c, &(_, row, _, rs)) in kids.iter().zip(&cells) {
+        let e = (row + rs).min(rows.len());
+        let span: f32 = rows[row.min(e)..e].iter().sum::<f32>()
+            + gap * (e.saturating_sub(row)).saturating_sub(1) as f32;
+        let k = &nodes[c];
+        nodes[c].h = match k.el.height {
+            Size::Fixed(v) => v,
+            Size::Percent(p) => p * span,
+            Size::Fit { .. } | Size::Grow { .. } => {
+                let (lo, hi) = k.el.height.bounds();
+                span.clamp(lo, hi)
+            }
+        };
+    }
+    if let Some(g) = nodes[i].grid.as_mut() {
+        g.rows = rows;
+    }
+}
+
+/// Last frame's nodes and which of this frame's subtrees have the same
+/// layout inputs (docs/ui.md §6.3): a clean subtree given the same size
+/// keeps its layout (copied from last frame) instead of being laid out.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct LayoutCache {
+    /// Last frame's nodes, with their layout.
+    pub prev: Vec<Node>,
+    /// Per node of this frame: its twin in `prev` (NONE: new).
+    pub twin: Vec<usize>,
+    /// Per node: its subtree's layout inputs are unchanged.
+    pub clean: Vec<bool>,
+    /// Fonts, theme, direction or pixel ratio changed: nothing is clean.
+    pub epoch: u64,
+    pub prev_epoch: u64,
+    /// Nodes laid out this frame (the rest kept their layout).
+    pub laid_out: u32,
+    /// The theme, direction and pixel ratio last frame drew with: a change
+    /// makes nothing clean.
+    pub sig: Option<(crate::Theme, og_i18n::Direction, f32)>,
+    /// This frame keeps nothing (`epoch` or `sig` changed).
+    pub fresh: bool,
+    /// Each element's own draw commands last frame, by key, reused while
+    /// everything it draws from is unchanged.
+    pub cmds: og_core::IdMap<u64, Vec<crate::DrawCmd>>,
+}
+
+/// Everything an element's own commands are made from is as last frame
+/// (its ancestors' fills are checked by the caller, up the tree).
+pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
+    a.rect == b.rect
+        && a.clip == b.clip
+        && a.alpha == b.alpha
+        && a.world == b.world
+        && a.ring == b.ring
+        && a.pad_rings == b.pad_rings
+        && a.heading == b.heading
+        && a.disabled == b.disabled
+        && a.aux == b.aux
+        && a.scale == b.scale
+        && a.el == b.el
+        && a.content == b.content
+        && a.widget == b.widget
+        && a.shapes == b.shapes
+        && a.lines == b.lines
+        && a.rich_lines == b.rich_lines
+}
+
+impl LayoutCache {
+    /// Node `i`'s twin when its subtree is clean.
+    fn clean_twin(&self, i: usize) -> Option<&Node> {
+        if *self.clean.get(i)? {
+            self.prev.get(*self.twin.get(i)?)
+        } else {
+            None
+        }
+    }
+}
+
+/// The box props layout reads are equal.
+pub(crate) fn el_layout_eq(a: &Element, b: &Element) -> bool {
+    a.direction == b.direction
+        && a.width == b.width
+        && a.height == b.height
+        && a.padding == b.padding
+        && a.gap == b.gap
+        && a.align == b.align
+        && a.cross == b.cross
+        && a.wrap == b.wrap
+        && a.scroll == b.scroll
+        && a.scroll_x == b.scroll_x
+        && a.aspect == b.aspect
+}
+
+/// The content layout measures is equal (an ink may differ).
+pub(crate) fn content_layout_eq(a: &Content, b: &Content) -> bool {
+    match (a, b) {
+        (Content::Text(x), Content::Text(y)) => {
+            x.text == y.text
+                && x.step == y.step
+                && x.font == y.font
+                && x.wrap == y.wrap
+                && x.ellipsis == y.ellipsis
+                && x.max_lines == y.max_lines
+        }
+        (Content::Image { .. }, Content::Image { .. }) => true,
+        _ => a == b,
+    }
+}
+
+/// The element-model props layout reads are equal.
+pub(crate) fn props_layout_eq(a: &crate::element::Props, b: &crate::element::Props) -> bool {
+    a.position == b.position
+        && a.insets == b.insets
+        && a.layout == b.layout
+        && a.grid == b.grid
+        && a.place == b.place
+        && !a.variants.iter().any(|v| v.when.container)
+        && !b.variants.iter().any(|v| v.when.container)
+}
+
 /// Lays out the tree under `root` inside `area`. `scroll(key)` is a scroll
 /// container's offset; `dpr` snaps the final rectangles.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn layout(
     nodes: &mut [Node],
     root: usize,
@@ -1571,9 +2496,24 @@ pub(crate) fn layout(
     scroll: &dyn Fn(u64) -> (f32, f32),
     dpr: f32,
     clip: Rect,
+    kept: &mut LayoutCache,
 ) {
     let order = preorder(nodes, root);
+    let twin_of = |kept: &LayoutCache, i: usize| -> Option<usize> {
+        kept.clean_twin(i)?;
+        kept.twin.get(i).copied()
+    };
     for &i in order.iter().rev() {
+        if let Some(t) = twin_of(kept, i) {
+            let p = &kept.prev[t];
+            nodes[i].pref_w = p.pref_w;
+            nodes[i].min_w = p.min_w;
+            nodes[i].grid = p.grid.clone();
+            if let Content::Text(t) = &nodes[i].content {
+                measure.texts.touch(t);
+            }
+            continue;
+        }
         size_w(nodes, i, measure);
     }
     nodes[root].w = match nodes[root].el.width {
@@ -1585,10 +2525,37 @@ pub(crate) fn layout(
             area.width.clamp(lo, hi)
         }
     };
+    // A clean node at the width it had keeps its children's widths, its
+    // lines and its tracks.
+    let same_w = |nodes: &[Node], kept: &LayoutCache, i: usize| {
+        twin_of(kept, i).filter(|&t| kept.prev[t].w == nodes[i].w)
+    };
+    let kids_of = |n: &Node| all_children(n);
     for &i in &order {
+        if let Some(t) = same_w(nodes, kept, i) {
+            let p = &kept.prev[t];
+            nodes[i].lines = p.lines.clone();
+            nodes[i].rich_lines = p.rich_lines.clone();
+            nodes[i].rows = p.rows.clone();
+            nodes[i].grid = p.grid.clone();
+            for c in kids_of(&nodes[i]) {
+                if let Some(&tc) = kept.twin.get(c) {
+                    nodes[c].w = kept.prev[tc].w;
+                }
+            }
+            continue;
+        }
+        kept.laid_out += 1;
         distribute_w(nodes, i, measure);
     }
     for &i in order.iter().rev() {
+        if let Some(t) = same_w(nodes, kept, i) {
+            let p = &kept.prev[t];
+            nodes[i].pref_h = p.pref_h;
+            nodes[i].min_h = p.min_h;
+            nodes[i].content_h = p.content_h;
+            continue;
+        }
         size_h(nodes, i);
     }
     nodes[root].h = match nodes[root].el.height {
@@ -1600,12 +2567,41 @@ pub(crate) fn layout(
             area.height.clamp(lo, hi)
         }
     };
+    let same_wh = |nodes: &[Node], kept: &LayoutCache, i: usize| {
+        same_w(nodes, kept, i).filter(|&t| kept.prev[t].h == nodes[i].h)
+    };
     for &i in &order {
+        if let Some(t) = same_wh(nodes, kept, i) {
+            if let (Some(g), Some(pg)) = (nodes[i].grid.as_mut(), kept.prev[t].grid.as_ref()) {
+                g.rows = pg.rows.clone();
+            }
+            for c in kids_of(&nodes[i]) {
+                if let Some(&tc) = kept.twin.get(c) {
+                    nodes[c].h = kept.prev[tc].h;
+                }
+            }
+            continue;
+        }
         distribute_h(nodes, i);
     }
     nodes[root].x = area.x;
     nodes[root].y = area.y;
     for &i in &order {
+        if !nodes[i].scrolls()
+            && let Some(t) = same_wh(nodes, kept, i)
+        {
+            let p = &kept.prev[t];
+            let (px, py) = (p.x, p.y);
+            nodes[i].content_w = p.content_w;
+            for c in kids_of(&nodes[i]) {
+                if let Some(&tc) = kept.twin.get(c) {
+                    let q = &kept.prev[tc];
+                    nodes[c].x = nodes[i].x + (q.x - px);
+                    nodes[c].y = nodes[i].y + (q.y - py);
+                }
+            }
+            continue;
+        }
         position(nodes, i, scroll);
     }
     nodes[root].clip = clip;

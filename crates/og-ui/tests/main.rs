@@ -12,6 +12,7 @@ mod kit_gfx;
 mod layout;
 mod linebreak;
 mod materials_gfx;
+mod motion;
 mod pack_contrast;
 mod packs;
 mod probe;

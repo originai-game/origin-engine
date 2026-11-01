@@ -1,6 +1,7 @@
 //! The immediate-mode context: build a tree every tick, read responses back.
 
 use crate::draw::{DrawCmd, DrawItem, EmitDesc, assign_levels, emit};
+use crate::element::{Affine, LayoutStats, Overlap};
 use crate::id::{Id, child_key};
 use crate::input::{InputFrame, Nav};
 use crate::layout::{
@@ -8,6 +9,7 @@ use crate::layout::{
     NONE, Node, Rect, Shape, Size, TextAlign, TextContent, Widget, layout, preorder,
 };
 use crate::motion::Fx;
+use crate::motion::{Timeline, UiEvent};
 use crate::style::{Breakpoint, Density, Srgba, Theme, TypeStep};
 use crate::style_file::{Ink, Ornament, Slice, SliceFill, StylePart};
 use crate::text::{FontMetrics, UiFont};
@@ -306,40 +308,60 @@ pub struct Response {
     pub focused_by: u32,
 }
 
-pub(crate) const HIT_SCROLL: u8 = 1;
+pub(crate) const HIT_SCROLL: u16 = 1;
 /// A press focuses it with a caret (text field).
-pub(crate) const HIT_TEXT: u8 = 2;
+pub(crate) const HIT_TEXT: u16 = 2;
 /// Keyboard and gamepad focus can land on it.
-pub(crate) const HIT_NAV: u8 = 4;
+pub(crate) const HIT_NAV: u16 = 4;
 /// Left and right adjust it when focused.
-pub(crate) const HIT_ADJUST: u8 = 8;
+pub(crate) const HIT_ADJUST: u16 = 8;
 /// Outside its scroll container's view: navigation only, never the pointer.
-pub(crate) const HIT_OFFSCREEN: u8 = 16;
+pub(crate) const HIT_OFFSCREEN: u16 = 16;
 /// Pointer-interactive (buttons, backdrops, controls).
-pub(crate) const HIT_POINTER: u8 = 32;
+pub(crate) const HIT_POINTER: u16 = 32;
 /// A focus scope (dialog backdrop, open menu).
-pub(crate) const HIT_SCOPE: u8 = 64;
+pub(crate) const HIT_SCOPE: u16 = 64;
 /// ↑ and ↓ are its own while it is focused (a multi-line text control
 /// edits with them, a zoom view pans).
-pub(crate) const HIT_MULTILINE: u8 = 128;
+pub(crate) const HIT_MULTILINE: u16 = 128;
+/// It takes drops of dragged elements (`Props::drop`).
+pub(crate) const HIT_DROP: u16 = 256;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Hit {
     pub key: u64,
-    /// What is on screen (cut to the clip).
+    /// What is on screen (cut to the clip): the bounds of its transformed box.
     pub rect: Rect,
     /// The whole element, for navigation and scrolling into view.
     pub full: Rect,
-    pub flags: u8,
+    pub flags: u16,
     /// The nearest focus scope around it (0: none).
     pub scope: u64,
     /// The scroll container it sits in (0: none).
     pub scroller: u64,
+    /// A transformed element: the map from the screen to its layout box,
+    /// and that box (with its hit slop), tested after the clip.
+    pub inv: Affine,
+    pub local: Rect,
+    pub clip: Rect,
 }
 
 impl Hit {
-    pub fn has(&self, flag: u8) -> bool {
+    pub fn has(&self, flag: u16) -> bool {
         self.flags & flag != 0
+    }
+
+    /// The point is on it: inside its clip and, mapped back through its
+    /// transform, inside its box (with its hit slop).
+    pub fn contains(&self, x: f32, y: f32) -> bool {
+        if self.inv.is_identity() {
+            return self.rect.contains(x, y);
+        }
+        if !self.clip.contains(x, y) {
+            return false;
+        }
+        let (lx, ly) = self.inv.apply(x, y);
+        self.local.contains(lx, ly)
     }
 }
 
@@ -454,6 +476,8 @@ pub(crate) struct State {
     pub pad_focus: [u64; 3],
     /// Pads 1 to 3: the stick's held direction and since which tick.
     pub pad_stick: [(u8, u64); 3],
+    /// Motion in flight: channels, states, plays, ghosts, gestures.
+    pub motion: crate::motion::state::MotionState,
 }
 
 /// What navigation decided at the start of this frame.
@@ -536,6 +560,15 @@ pub struct UiFrame {
     /// The focused text control, for the host: where an input method's
     /// window goes, and the selection a copy takes (`None`: no text focus).
     pub text_input: Option<TextTarget>,
+    /// Overlaps no element declared (docs/ui.md §6.2), for `og ui check`.
+    pub overlaps: Vec<Overlap>,
+    /// What motion did this frame: timeline events (sounds, haptics,
+    /// callbacks), plays that ended, swipes, snaps and drops.
+    pub events: Vec<UiEvent>,
+    /// Elements built, rebuilt and laid out (docs/ui.md §6.3).
+    pub stats: LayoutStats,
+    /// Elements in visual states and the animations in flight, for `dump_ui`.
+    pub motion: Vec<crate::motion::run::MotionDump>,
 }
 
 /// What [`Ui::edit_marks`] draws one line's marks from.
@@ -766,6 +799,8 @@ pub struct Ui {
     pub(crate) input: InputFrame,
     pub(crate) nodes: Vec<Node>,
     pub(crate) kinds: Vec<(&'static str, bool)>,
+    /// Last frame's `kinds`, beside `kept.prev`.
+    prev_kinds: Vec<(&'static str, bool)>,
     pub(crate) stack: Vec<usize>,
     pub(crate) floating: Vec<usize>,
     pub(crate) last_closed: usize,
@@ -804,6 +839,25 @@ pub struct Ui {
     pub(crate) direction: og_i18n::Direction,
     /// Text measurements kept from the frames before (layout's).
     pub(crate) texts: crate::layout::TextCache,
+    /// Timelines by name hash (`define_timeline`): configuration, like the theme.
+    pub(crate) timelines: std::collections::BTreeMap<u64, (String, Timeline)>,
+    /// Plays asked for this tick, flattened at `end`.
+    pub(crate) pending_plays: Vec<crate::motion::run::PendingPlay>,
+    /// This frame's motion events (into `UiFrame::events`).
+    pub(crate) events: Vec<UiEvent>,
+    /// Last frame's drop targets and dragged elements: their paths, and the
+    /// tags each target takes.
+    pub(crate) drop_paths: IdMap<u64, String>,
+    pub(crate) drag_paths: IdMap<u64, String>,
+    pub(crate) drop_accepts: IdMap<u64, Vec<String>>,
+    /// Last frame's input hash of each element and its subtree, with its
+    /// layout, for reuse (docs/ui.md §6.3).
+    pub(crate) kept: crate::layout::LayoutCache,
+    /// This frame's counts (into `UiFrame::stats`).
+    pub(crate) stats: LayoutStats,
+    /// The map of the element whose commands are being made: a nine-slice
+    /// is cut at its size on the screen, its corners kept crisp.
+    drawing: Affine,
 }
 
 impl Default for Ui {
@@ -812,7 +866,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 9;
+const STATE_VERSION: u32 = 10;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,
@@ -853,6 +907,7 @@ impl Ui {
             input: InputFrame::default(),
             nodes: Vec::new(),
             kinds: Vec::new(),
+            prev_kinds: Vec::new(),
             stack: Vec::new(),
             floating: Vec::new(),
             last_closed: NONE,
@@ -876,6 +931,15 @@ impl Ui {
             gesture: false,
             direction: og_i18n::Direction::Ltr,
             texts: Default::default(),
+            timelines: Default::default(),
+            pending_plays: Vec::new(),
+            events: Vec::new(),
+            drop_paths: IdMap::new(),
+            drag_paths: IdMap::new(),
+            drop_accepts: IdMap::new(),
+            kept: Default::default(),
+            stats: LayoutStats::default(),
+            drawing: Affine::IDENTITY,
         }
     }
 
@@ -1092,6 +1156,7 @@ impl Ui {
 
     pub fn set_fonts(&mut self, fonts: Fonts) {
         self.fonts = fonts;
+        self.kept.epoch += 1;
         self.fonts.link();
         self.texts.clear();
     }
@@ -1154,6 +1219,11 @@ impl Ui {
         }
         self.viewport = viewport;
         self.theme = effective_theme(self.configured, &viewport);
+        // Last frame's nodes are kept to compare against (docs/ui.md §6.3).
+        if !self.building {
+            std::mem::swap(&mut self.kept.prev, &mut self.nodes);
+            std::mem::swap(&mut self.prev_kinds, &mut self.kinds);
+        }
         self.nodes.clear();
         self.kinds.clear();
         self.stack.clear();
@@ -1181,7 +1251,7 @@ impl Ui {
                 .find(|h| {
                     !h.has(HIT_OFFSCREEN)
                         && h.has(HIT_POINTER | HIT_SCROLL | HIT_TEXT)
-                        && h.rect.contains(p.x, p.y)
+                        && h.contains(p.x, p.y)
                 })
                 .map_or(0, |h| h.key)
         } else {
@@ -1791,33 +1861,18 @@ impl Ui {
             damping: 0.55,
             response_ms: t.durations_ms.instant,
         });
-        let dt = 1.0 / self.ticks_per_second as f32;
-        // Each spring keeps its value in `a` and its velocity in `b`.
+        // Each spring is a motion channel (docs/ui.md §7.2): a retarget
+        // keeps its value and velocity, so an interrupted hover never jumps.
         let step = |ui: &mut Ui, name: &str, spring: crate::theme::Spring, target: f32| -> f32 {
-            let spring = og_tween::Spring {
-                damping: spring.damping,
-                response_ms: spring.response_ms,
-            };
             let k = child_key(key, name);
-            let fresh = !ui.has_anim(k);
-            let mut a = ui.anim(k);
-            if t.reduced_motion || (fresh && target == 0.0) {
-                a.a = target;
-                a.b = 0.0;
+            let spec = crate::motion::SpringSpec::from_theme(spring);
+            let fresh = !ui.state.motion.channels.contains_key(&k);
+            let from = if fresh && target != 0.0 {
+                Some(0.0)
             } else {
-                let s = spring.step(
-                    og_tween::SpringState {
-                        value: a.a,
-                        velocity: a.b,
-                    },
-                    target,
-                    dt,
-                );
-                a.a = s.value;
-                a.b = s.velocity;
-            }
-            ui.set_anim(k, a);
-            a.a
+                None
+            };
+            ui.animate_key(k, target, crate::motion::Transition::Spring(spec), from)
         };
         let hover = step(
             self,
@@ -2349,6 +2404,9 @@ impl Ui {
         }
         self.build_toasts();
         self.building = false;
+        // Breakpoint and orientation variants (docs/ui.md §6.2), before
+        // anything is laid out.
+        self.apply_variants();
         // Hidden slots (a closed dialog, a finished transition) take no room.
         for i in 0..self.nodes.len() {
             if self.nodes[i].hidden {
@@ -2360,7 +2418,21 @@ impl Ui {
                 .filter(|&c| !self.nodes[c].hidden)
                 .collect();
             self.nodes[i].children = kept;
+            // Out of the flow (absolute, anchored): laid out against the box.
+            if self.nodes[i]
+                .children
+                .iter()
+                .any(|&c| self.nodes[c].props.out_of_flow())
+            {
+                let kids = std::mem::take(&mut self.nodes[i].children);
+                let (out, flow): (Vec<usize>, Vec<usize>) = kids
+                    .into_iter()
+                    .partition(|&c| self.nodes[c].props.out_of_flow());
+                self.nodes[i].children = flow;
+                self.nodes[i].out = out;
+            }
         }
+        self.reuse_check();
         let mut floating: Vec<usize> = self
             .floating
             .iter()
@@ -2393,6 +2465,7 @@ impl Ui {
             &offset,
             dpr,
             screen,
+            &mut self.kept,
         );
         let safe = Rect::new(
             vp.safe_area.left,
@@ -2449,6 +2522,7 @@ impl Ui {
                         &offset,
                         dpr,
                         screen,
+                        &mut self.kept,
                     );
                 }
                 continue;
@@ -2469,6 +2543,7 @@ impl Ui {
                     &offset,
                     dpr,
                     screen,
+                    &mut self.kept,
                 );
                 continue;
             }
@@ -2481,7 +2556,16 @@ impl Ui {
                 ),
                 _ => safe,
             };
-            layout(&mut self.nodes, f, area, &mut measure, &offset, dpr, screen);
+            layout(
+                &mut self.nodes,
+                f,
+                area,
+                &mut measure,
+                &offset,
+                dpr,
+                screen,
+                &mut self.kept,
+            );
             let (w, h) = (self.nodes[f].w, self.nodes[f].h);
             let (x, y) = match float {
                 Float::Anchored { anchor, dx, dy, .. } => {
@@ -2532,6 +2616,7 @@ impl Ui {
                 &offset,
                 dpr,
                 screen,
+                &mut self.kept,
             );
         }
         self.texts.sweep();
@@ -2540,16 +2625,32 @@ impl Ui {
         for &f in &self.floating {
             order.extend(preorder(&self.nodes, f));
         }
+        self.align_baselines(&order);
+        self.place_anchored(&order);
         if self.direction == og_i18n::Direction::Rtl {
-            // Right to left: the whole layout mirrored about the surface's centre.
+            // Right to left: the whole layout mirrored about the surface's
+            // centre, and with it each transform (moves and turns the other way).
             for &i in &order {
                 let r = &mut self.nodes[i].rect;
                 r.x = vp.width - r.x - r.width;
+                let t = self.nodes[i].props.transform;
+                if !t.is_identity() {
+                    self.nodes[i].props.transform = t.mirrored();
+                }
             }
         }
+        let overlaps = self.find_overlaps(&order);
         self.apply_shakes(&order);
         self.apply_stagger(&order);
-        self.apply_fx(&order);
+        self.run_motion(&order);
+        self.apply_bursts(&order);
+        // Drawn and hit in z order among siblings.
+        let mut order = crate::layout::draw_order(&self.nodes, 0);
+        for &f in &self.floating {
+            order.extend(crate::layout::draw_order(&self.nodes, f));
+        }
+        self.apply_world(&order);
+        self.note_drag_and_drop(&order);
 
         // Interaction state for the next tick.
         let mut present: IdMap<u64, usize> =
@@ -2669,16 +2770,19 @@ impl Ui {
                 top_scope = n.key;
                 top_locked = n.locked;
             }
-            let visible = n.rect.intersect(&n.clip);
+            let visible = n.screen.intersect(&n.clip);
             // Scrolled or clipped out of view: not on screen, not listed. A
             // zero-size element (an empty spacer) is listed where it sits.
-            let (r, c) = (&n.rect, &n.clip);
+            let (r, c) = (&n.screen, &n.clip);
             let outside =
                 r.x > c.right() || r.right() < c.x || r.y > c.bottom() || r.bottom() < c.y;
             // A control laid out past the screen's edge with no scroller to
             // bring it back (a menu taller than a landscape phone): the
             // player cannot reach it, so the frame says which and by how much.
             if n.el.interactive && scroller_of[i] == 0 && !r.is_empty() && !n.inert {
+                // Where layout put it: a transform's move (a card thrown
+                // off by a swipe) is not a layout that does not fit.
+                let r = &n.rect;
                 let cut = (screen.x - r.x)
                     .max(r.right() - screen.right())
                     .max(screen.y - r.y)
@@ -2693,12 +2797,15 @@ impl Ui {
                     ));
                 }
             }
-            let mut flags = 0u8;
+            let mut flags = 0u16;
             if n.scrolls() && !n.el.interactive {
                 flags |= HIT_SCROLL;
             }
-            if n.el.interactive || n.backdrop {
+            if n.el.interactive || n.backdrop || n.props.drag.is_some() || n.props.pinch.is_some() {
                 flags |= HIT_POINTER;
+            }
+            if n.props.drop.is_some() {
+                flags |= HIT_DROP;
             }
             if n.focusable {
                 flags |= HIT_TEXT;
@@ -2715,13 +2822,30 @@ impl Ui {
             if n.scope {
                 flags |= HIT_SCOPE;
             }
-            let hit = |rect: Rect, flags: u8| Hit {
-                key: n.key,
-                rect,
-                full: *r,
-                flags,
-                scope: scope_of[i],
-                scroller: scroller_of[i],
+            let slop = n.props.hit_slop.max(0.0);
+            let transformed = !n.world.is_identity();
+            let inv = if transformed {
+                n.world.invert().unwrap_or(Affine::IDENTITY)
+            } else {
+                Affine::IDENTITY
+            };
+            let hit = |rect: Rect, flags: u16| {
+                let rect = if slop > 0.0 {
+                    n.world.map_rect(&n.rect.outset(slop)).intersect(&n.clip)
+                } else {
+                    rect
+                };
+                Hit {
+                    key: n.key,
+                    rect,
+                    full: *r,
+                    flags,
+                    scope: scope_of[i],
+                    scroller: scroller_of[i],
+                    inv,
+                    local: n.rect.outset(slop),
+                    clip: n.clip,
+                }
             };
             let range = crate::a11y::range_of(n).filter(|_| !role.is_empty());
             let node = |states: Vec<String>| crate::a11y::A11yNode {
@@ -2755,7 +2879,7 @@ impl Ui {
             if !role.is_empty() {
                 tree.push((n.key, node(states.clone())));
             }
-            if !visible.is_empty() && flags != 0 && !n.inert {
+            if (!visible.is_empty() || slop > 0.0) && flags != 0 && !n.inert {
                 hits.push(hit(visible, flags));
             }
             let parent = if n.parent == NONE {
@@ -2793,6 +2917,7 @@ impl Ui {
                     unreachable!("links come from rich text")
                 };
                 for (l, lr) in self.rich_links(i) {
+                    let lr = n.world.map_rect(&lr);
                     let shown = lr.intersect(&n.clip);
                     if shown.is_empty() {
                         continue;
@@ -2805,6 +2930,9 @@ impl Ui {
                             flags: HIT_POINTER | HIT_NAV,
                             scope: scope_of[i],
                             scroller: scroller_of[i],
+                            inv: Affine::IDENTITY,
+                            local: shown,
+                            clip: n.clip,
                         });
                     }
                     let text: String = rc
@@ -2954,9 +3082,14 @@ impl Ui {
         self.state.hits = hits;
 
         let mut cmds = self.commands(&order);
+        self.record_matches(&order);
         if let Some(c) = self.cover {
-            self.cover_commands(&c, &mut cmds);
+            let mut cover = Vec::new();
+            self.cover_commands(&c, &mut cover);
+            cmds.extend(cover.into_iter().map(|c| (c, Affine::IDENTITY)));
         }
+        let cmds: Vec<(DrawCmd, Affine)> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
+        let motion_dump = self.motion_dump(&order);
         let mut focus_paths: [String; 4] = Default::default();
         let focused = [
             self.state.focus,
@@ -2986,6 +3119,13 @@ impl Ui {
             focus_paths,
             a11y,
             text_input: self.text_target.take(),
+            overlaps,
+            events: std::mem::take(&mut self.events),
+            stats: LayoutStats {
+                laid_out: self.kept.laid_out,
+                ..self.stats
+            },
+            motion: motion_dump,
         };
         &self.frame
     }
@@ -3049,135 +3189,280 @@ impl Ui {
         a.t
     }
 
-    /// Applies each transition to its subtree: moves and scales the
-    /// rectangles (and the clips its own scroll containers make), multiplies
-    /// opacity, and makes the subtree inert while it moves.
-    fn apply_fx(&mut self, order: &[usize]) {
-        let pos: IdMap<usize, usize> =
-            IdMap::from_iter(order.iter().enumerate().map(|(k, &i)| (i, k)));
-        for k in 0..order.len() {
-            let i = order[k];
+    /// Each element's map onto the screen (docs/ui.md §6.1): its layout
+    /// animation, its drag and pinch, its transition's movement and its own
+    /// transform, about its box, composed with its parent's; its opacity
+    /// multiplied down the tree; inert where a transition moves it, a state
+    /// or timeline holds it, or its parent is. Clips made by a transformed
+    /// scroll container move with it.
+    fn apply_world(&mut self, order: &[usize]) {
+        for &i in order {
             let parent = self.nodes[i].parent;
-            let (alpha, scale, inert) = if parent == NONE {
-                (1.0, 1.0, false)
+            let (alpha, inert, pw) = if parent == NONE {
+                (1.0, false, Affine::IDENTITY)
             } else {
                 let p = &self.nodes[parent];
-                (p.alpha, p.scale, p.inert)
+                (p.alpha, p.inert, p.world)
             };
             let n = &mut self.nodes[i];
-            n.alpha = alpha;
-            n.scale = scale;
-            n.inert = inert;
-            let Some(fx) = n.fx else { continue };
-            n.alpha *= fx.alpha;
-            n.scale *= fx.scale;
-            n.inert |= fx.inert;
-            if fx == Fx::default() {
-                continue;
+            n.alpha = alpha * n.props.opacity.clamp(0.0, 1.0);
+            n.scale = 1.0;
+            n.inert = inert || n.props.inert;
+            let r = n.rect;
+            let (cx, cy) = r.center();
+            let mut local = Affine::IDENTITY;
+            let [fx, fy, fsx, fsy] = n.flip;
+            if fx != 0.0 || fy != 0.0 || fsx != 1.0 || fsy != 1.0 {
+                local = Affine::translate(fx, fy).mul(&Affine::scale(fsx, fsy).about(r.x, r.y));
             }
-            // The subtree is the contiguous run of the preorder after i.
-            let (px, py) = n.rect.center();
-            let mut end = k + 1;
-            let last = {
-                let mut j = i;
-                while let Some(&c) = self.nodes[j].children.last() {
-                    j = c;
-                }
-                j
-            };
-            if last != i {
-                end = pos[&last] + 1;
+            let [gx, gy, gs, gr] = n.gesture;
+            if gx != 0.0 || gy != 0.0 || gs != 1.0 || gr != 0.0 {
+                let turn = Affine::rotate(gr).mul(&Affine::scale(gs, gs)).about(cx, cy);
+                local = local.mul(&Affine::translate(gx, gy)).mul(&turn);
             }
-            let tf = |r: Rect| {
-                Rect::new(
-                    px + (r.x - px) * fx.scale + fx.dx,
-                    py + (r.y - py) * fx.scale + fx.dy,
-                    r.width * fx.scale,
-                    r.height * fx.scale,
-                )
-            };
-            let inside: std::collections::BTreeSet<usize> =
-                og_core::sort::set(order[k..end].iter().copied());
-            for &j in &order[k..end] {
-                let n = &mut self.nodes[j];
-                n.rect = tf(n.rect);
-                if n.clip_src != NONE && inside.contains(&n.clip_src) {
-                    n.clip = tf(n.clip);
+            if let Some(f) = n.fx {
+                n.alpha *= f.alpha;
+                n.inert |= f.inert;
+                if f.dx != 0.0 || f.dy != 0.0 || f.scale != 1.0 {
+                    local = local
+                        .mul(&Affine::translate(f.dx, f.dy))
+                        .mul(&Affine::scale(f.scale, f.scale).about(cx, cy));
                 }
+            }
+            if !n.props.transform.is_identity() {
+                local = local.mul(&n.props.transform.matrix(&r));
+            }
+            n.world = if local.is_identity() {
+                pw
+            } else {
+                pw.mul(&local)
+            };
+            n.screen = n.world.map_rect(&r);
+        }
+        for &i in order {
+            let src = self.nodes[i].clip_src;
+            if src != NONE && !self.nodes[src].world.is_identity() {
+                let w = self.nodes[src].world;
+                let c = self.nodes[i].clip;
+                self.nodes[i].clip = w.map_rect(&c);
             }
         }
     }
 
-    fn commands(&self, order: &[usize]) -> Vec<DrawCmd> {
-        let t = &self.theme;
-        let p = &t.palette;
+    /// The frame's draw commands with their maps (docs/ui.md §6.1): each
+    /// element's in its layout box, mapped by its world (an axis-aligned
+    /// map is baked into the command, a turn or skew is left for the
+    /// overlay); a scroll container's bars after its content; leaving
+    /// elements (ghosts) after their parent's subtree, or last; and the
+    /// drawing of every element with an exit or a match key frozen for
+    /// next tick.
+    fn commands(&mut self, order: &[usize]) -> Vec<(DrawCmd, Affine)> {
         let dpr = self.viewport.dpr();
         let snap = |v: f32| (v * dpr).round() / dpr;
-        let mut cmds = Vec::new();
-        // Enter/leave walk so scroll indicators draw over their content.
-        let mut leave: Vec<(usize, usize)> = Vec::new(); // (node, depth of its subtree end)
-        let depth_end = |i: usize| -> usize {
-            // The last node of i's subtree in preorder.
-            let mut j = i;
-            while let Some(&last) = self.nodes[j].children.last() {
-                j = last;
-            }
-            j
-        };
-        for &i in order {
+        let ends = crate::layout::subtree_ends(&self.nodes, order);
+        let mut cmds: Vec<(DrawCmd, Affine)> = Vec::new();
+        let ghosts = std::mem::take(&mut self.state.motion.ghosts);
+        let present: std::collections::BTreeSet<u64> =
+            order.iter().map(|&i| self.nodes[i].key).collect();
+        let mut drawn = vec![false; ghosts.len()];
+        let mut frozen: IdMap<u64, crate::motion::state::Frozen> = IdMap::new();
+        // Open subtrees: (node, its first command, the order position past it).
+        let mut open: Vec<(usize, usize, usize)> = Vec::new();
+        // Elements whose commands and ancestors' fills are as last frame
+        // (docs/ui.md §6.3): their commands are last frame's.
+        let mut same = vec![false; self.nodes.len()];
+        let mut next: IdMap<u64, Vec<DrawCmd>> = IdMap::new();
+        let prev_kinds = std::mem::take(&mut self.prev_kinds);
+        for (k, &i) in order.iter().enumerate() {
             let n = &self.nodes[i];
+            let world = n.world;
+            let start = cmds.len();
+            let twin = self.kept.twin.get(i).copied().unwrap_or(NONE);
+            // Rich text draws from the tick (its moving spans), focus and
+            // the hot link as well: it is always made again.
+            same[i] = !self.kept.fresh
+                && !matches!(n.content, Content::Rich(_))
+                && self.kept.prev.get(twin).is_some_and(|b| {
+                    crate::layout::draw_eq(n, b) && self.kinds[i] == prev_kinds[twin]
+                })
+                && (n.parent == NONE || same[n.parent]);
             if i != 0 || n.el.background.is_some() {
-                self.node_commands(i, &mut cmds, &snap);
+                let mut local = Vec::new();
+                if same[i]
+                    && let Some(c) = self.kept.cmds.get(&n.key)
+                {
+                    local = c.clone();
+                    self.stats.kept_commands += 1;
+                } else if world.is_identity() {
+                    self.node_commands(i, &mut local, &snap);
+                } else if let Some(inv) = world.invert() {
+                    // Drawn in its layout box: its screen clip taken there.
+                    let screen_clip = n.clip;
+                    self.nodes[i].clip = inv.map_rect(&screen_clip);
+                    self.drawing = world;
+                    self.node_commands(i, &mut local, &snap);
+                    self.drawing = Affine::IDENTITY;
+                    self.nodes[i].clip = screen_clip;
+                }
+                next.insert(self.nodes[i].key, local.clone());
+                cmds.extend(local.into_iter().map(|c| (c, world)));
             }
-            if n.scrolls() {
-                leave.push((i, depth_end(i)));
-            }
-            while let Some(&(s, end)) = leave.last() {
-                if end != i {
+            open.push((i, start, ends[k]));
+            while let Some(&(j, first, end)) = open.last() {
+                if end != k + 1 {
                     break;
                 }
-                leave.pop();
-                let sn = &self.nodes[s];
-                let max_x = sn.max_scroll_x();
-                if max_x > 0.0 {
-                    let inner_w = sn.w - sn.el.padding.horizontal();
-                    let track = sn.rect;
-                    let bar_w =
-                        crate::scroll::bar_len(track.width, inner_w, sn.content_w, t.space.xl);
-                    let off = self.state.scroll_x.get(&sn.key).copied().unwrap_or(0.0);
-                    let x = crate::scroll::bar_start(track.x, track.width, bar_w, off, max_x);
-                    let h = t.space.xs;
-                    cmds.push(DrawCmd::Quad {
-                        rect: Rect::new(x, track.bottom() - h - t.space.xxs, bar_w, h).snapped(dpr),
-                        radius: t.radius.bar,
-                        color: p.control_strong.linear(),
-                        clip: sn.clip.intersect(&sn.rect),
-                    });
+                open.pop();
+                let key = self.nodes[j].key;
+                for (g, ghost) in ghosts.iter().enumerate() {
+                    if !drawn[g] && ghost.frozen.parent == key {
+                        drawn[g] = true;
+                        self.ghost_commands(ghost, &mut cmds);
+                    }
                 }
-                let max = sn.max_scroll();
-                if max > 0.0 {
-                    let inner_h = sn.h - sn.el.padding.vertical();
-                    let track = sn.rect;
-                    let bar_h = (track.height * inner_h / sn.content_h).max(t.space.xl);
-                    let off = self
-                        .state
-                        .scroll
-                        .get(&sn.key)
-                        .copied()
-                        .unwrap_or(0.0)
-                        .clamp(0.0, max);
-                    let y = track.y + (track.height - bar_h) * off / max;
-                    let w = t.space.xs;
-                    cmds.push(DrawCmd::Quad {
-                        rect: Rect::new(track.right() - w - t.space.xxs, y, w, bar_h).snapped(dpr),
-                        radius: t.radius.bar,
-                        color: p.control_strong.linear(),
-                        clip: sn.clip.intersect(&sn.rect),
-                    });
+                if self.nodes[j].scrolls() {
+                    let mut bars = Vec::new();
+                    self.scroll_bar_commands(j, &mut bars);
+                    let w = self.nodes[j].world;
+                    cmds.extend(bars.into_iter().map(|c| (c, w)));
+                }
+                let nj = &self.nodes[j];
+                if nj.props.exit.is_some() || !nj.props.match_key.is_empty() {
+                    let inv = nj.world.invert().unwrap_or(Affine::IDENTITY);
+                    let parent = if nj.parent == NONE {
+                        0
+                    } else {
+                        self.nodes[nj.parent].key
+                    };
+                    frozen.insert(
+                        key,
+                        crate::motion::state::Frozen {
+                            cmds: cmds[first..]
+                                .iter()
+                                .map(|(c, m)| (c.clone(), inv.mul(m)))
+                                .collect(),
+                            rect: nj.rect,
+                            world: nj.world,
+                            alpha: nj.alpha,
+                            parent: if present.contains(&parent) { parent } else { 0 },
+                            path: self.path_of(j),
+                            exit: nj.props.exit.clone(),
+                            match_key: if nj.props.match_key.is_empty() {
+                                0
+                            } else {
+                                crate::motion::state::name_hash(&nj.props.match_key)
+                            },
+                            radius: nj.el.radius,
+                        },
+                    );
                 }
             }
         }
+        for (g, ghost) in ghosts.iter().enumerate() {
+            if !drawn[g] {
+                self.ghost_commands(ghost, &mut cmds);
+            }
+        }
+        self.state.motion.ghosts = ghosts;
+        self.state.motion.frozen = frozen;
+        self.kept.cmds = next;
         cmds
+    }
+
+    /// A leaving element's frozen drawing, moved by its exit (about its
+    /// box's centre) or onto the element it morphs into, and faded.
+    fn ghost_commands(&self, g: &crate::motion::state::Ghost, cmds: &mut Vec<(DrawCmd, Affine)>) {
+        let f = &g.frozen;
+        let mut v = [0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+        for (c, ch) in &g.channels {
+            if let Some(slot) = v.get_mut(*c as usize) {
+                *slot = ch.value;
+            }
+        }
+        let world = if g.morph_to != 0 {
+            let to = self
+                .nodes
+                .iter()
+                .find(|n| n.key == g.morph_to)
+                .map(|n| n.screen);
+            match to {
+                Some(to) => Affine::rect_to_rect(&f.world.map_rect(&f.rect), &to).mul(&f.world),
+                None => f.world,
+            }
+        } else {
+            let t = crate::element::Transform {
+                x: v[0],
+                y: v[1],
+                scale_x: v[2],
+                scale_y: v[3],
+                rotate: v[4],
+                skew_x: v[5],
+                skew_y: v[6],
+                ..crate::element::Transform::IDENTITY
+            };
+            f.world.mul(&t.matrix(&f.rect))
+        };
+        let fade = v[7].clamp(0.0, 1.0);
+        if fade <= 0.0 {
+            return;
+        }
+        for (c, rel) in &f.cmds {
+            let mut c = c.clone();
+            fade_cmd(&mut c, fade);
+            cmds.push((c, world.mul(rel)));
+        }
+    }
+
+    /// A scroll container's bars, over its content.
+    fn scroll_bar_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {
+        let t = &self.theme;
+        let p = &t.palette;
+        let dpr = self.viewport.dpr();
+        let sn = &self.nodes[s];
+        let clip = if sn.world.is_identity() {
+            sn.clip.intersect(&sn.rect)
+        } else {
+            sn.world
+                .invert()
+                .map_or(sn.clip, |inv| inv.map_rect(&sn.clip))
+                .intersect(&sn.rect)
+        };
+        let max_x = sn.max_scroll_x();
+        if max_x > 0.0 {
+            let inner_w = sn.w - sn.el.padding.horizontal();
+            let track = sn.rect;
+            let bar_w = crate::scroll::bar_len(track.width, inner_w, sn.content_w, t.space.xl);
+            let off = self.state.scroll_x.get(&sn.key).copied().unwrap_or(0.0);
+            let x = crate::scroll::bar_start(track.x, track.width, bar_w, off, max_x);
+            let h = t.space.xs;
+            cmds.push(DrawCmd::Quad {
+                rect: Rect::new(x, track.bottom() - h - t.space.xxs, bar_w, h).snapped(dpr),
+                radius: t.radius.bar,
+                color: p.control_strong.linear(),
+                clip,
+            });
+        }
+        let max = sn.max_scroll();
+        if max > 0.0 {
+            let inner_h = sn.h - sn.el.padding.vertical();
+            let track = sn.rect;
+            let bar_h = (track.height * inner_h / sn.content_h).max(t.space.xl);
+            let off = self
+                .state
+                .scroll
+                .get(&sn.key)
+                .copied()
+                .unwrap_or(0.0)
+                .clamp(0.0, max);
+            let y = track.y + (track.height - bar_h) * off / max;
+            let w = t.space.xs;
+            cmds.push(DrawCmd::Quad {
+                rect: Rect::new(track.right() - w - t.space.xxs, y, w, bar_h).snapped(dpr),
+                radius: t.radius.bar,
+                color: p.control_strong.linear(),
+                clip,
+            });
+        }
     }
 
     fn node_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>, snap: &dyn Fn(f32) -> f32) {
@@ -3726,6 +4011,53 @@ impl Ui {
         }
     }
 
+    /// [`nine`] under the element's map: an upright, unmirrored scale cuts
+    /// the slice at its size on the screen (its corners keep their size, as
+    /// a hover's lift or a press's squash always drew), then maps the pieces
+    /// back into the layout box for [`bake`] to map forward.
+    fn nine(
+        &self,
+        atlas: TextureHandle,
+        s: Slice,
+        rect: Rect,
+        tint: Srgba,
+        clip: Rect,
+        cmds: &mut Vec<DrawCmd>,
+    ) {
+        let m = self.drawing;
+        let inv = m
+            .invert()
+            .filter(|_| m.is_axis_aligned() && m.a > 0.0 && m.d > 0.0);
+        let Some(inv) = inv.filter(|_| !m.is_identity()) else {
+            return nine(atlas, s, rect, tint, clip, cmds);
+        };
+        let mut pieces = Vec::new();
+        nine(
+            atlas,
+            s,
+            m.map_rect(&rect),
+            tint,
+            m.map_rect(&clip),
+            &mut pieces,
+        );
+        cmds.extend(pieces.into_iter().map(|c| match c {
+            DrawCmd::Image {
+                rect,
+                texture,
+                uv,
+                color,
+                clip,
+            } => DrawCmd::Image {
+                rect: inv.map_rect(&rect),
+                texture,
+                uv,
+                color,
+                clip: inv.map_rect(&clip),
+            },
+            c => c,
+        }));
+    }
+
     /// A styled background: the part's shadow and glow, its nine-slice
     /// frame (tinted by `backdrop`), the tiled texture and the corner ornaments.
     #[allow(clippy::too_many_arguments)]
@@ -3748,7 +4080,7 @@ impl Ui {
             let r = rect.outset(sh.spread);
             let r = Rect::new(r.x + sh.dx, r.y + sh.dy, r.width, r.height);
             match art.soft.filter(|_| sh.blur > 0.0) {
-                Some(soft) => nine(
+                Some(soft) => self.nine(
                     atlas,
                     soft,
                     r.outset(sh.blur),
@@ -3766,7 +4098,7 @@ impl Ui {
         }
         if let (Some(g), Some(soft)) = (art.glow(part), art.soft) {
             let c = g.ink.color(p).fade(g.alpha * fade);
-            nine(atlas, soft, rect.outset(g.size), c, clip, cmds);
+            self.nine(atlas, soft, rect.outset(g.size), c, clip, cmds);
         }
         // Glass: the blurred frame under the part, then its own frame
         // thinned to the glass's fill; under reduced transparency an opaque
@@ -3796,7 +4128,7 @@ impl Ui {
         } else {
             Srgba::WHITE.fade(fade * thin)
         };
-        nine(atlas, slice, rect, tint, clip, cmds);
+        self.nine(atlas, slice, rect, tint, clip, cmds);
         if let Some(tile) = art.tile(part) {
             let inner = Rect::new(
                 rect.x + tile.inset,
@@ -4080,9 +4412,14 @@ impl Ui {
             u64_(&mut b, h.key);
             rect(&mut b, &h.rect);
             rect(&mut b, &h.full);
-            b.push(h.flags);
+            b.extend_from_slice(&h.flags.to_le_bytes());
             u64_(&mut b, h.scope);
             u64_(&mut b, h.scroller);
+            for v in [h.inv.a, h.inv.b, h.inv.c, h.inv.d, h.inv.e, h.inv.f] {
+                f32_(&mut b, v);
+            }
+            rect(&mut b, &h.local);
+            rect(&mut b, &h.clip);
         }
         u64_(&mut b, s.tick);
         b.push(
@@ -4201,6 +4538,7 @@ impl Ui {
         }
         b.push(u8::from(s.caret_upstream) | u8::from(s.killing) << 1);
         text(&mut b, &s.kill);
+        crate::motion::codec::W(&mut b).motion(&s.motion);
         b
     }
 
@@ -4434,9 +4772,19 @@ impl Reader<'_> {
                 key: self.u64()?,
                 rect: self.rect()?,
                 full: self.rect()?,
-                flags: self.u8()?,
+                flags: u16::from_le_bytes(self.take()?),
                 scope: self.u64()?,
                 scroller: self.u64()?,
+                inv: Affine {
+                    a: self.f32()?,
+                    b: self.f32()?,
+                    c: self.f32()?,
+                    d: self.f32()?,
+                    e: self.f32()?,
+                    f: self.f32()?,
+                },
+                local: self.rect()?,
+                clip: self.rect()?,
             });
         }
         s.tick = self.u64()?;
@@ -4577,6 +4925,12 @@ impl Reader<'_> {
         s.caret_upstream = flags & 1 != 0;
         s.killing = flags & 2 != 0;
         s.kill = self.string()?;
+        let mut r = crate::motion::codec::R {
+            bytes: self.bytes,
+            at: self.at,
+        };
+        s.motion = r.motion()?;
+        self.at = r.at;
         Some(s)
     }
 }
@@ -4639,4 +4993,156 @@ fn keep_out(r: Rect, anchor: Anchor, c: Rect, gap: f32, bounds: Rect, others: &[
         Some(a) if cost(a) < cost(along) => a,
         _ => along,
     }
+}
+
+/// A command's colours faded by `k` (a leaving element's opacity).
+fn fade_cmd(c: &mut DrawCmd, k: f32) {
+    match c {
+        DrawCmd::Glass { alpha, .. } => *alpha *= k,
+        DrawCmd::Quad { color, .. }
+        | DrawCmd::Image { color, .. }
+        | DrawCmd::Bar { color, .. }
+        | DrawCmd::Half { color, .. } => color[3] *= k,
+        DrawCmd::Text { color, glow, .. } => {
+            color[3] *= k;
+            if let Some((g, _)) = glow {
+                g[3] *= k;
+            }
+        }
+    }
+}
+
+/// A command with its map applied where the map keeps rectangles upright
+/// (translation and scale): the identity left over. A turn or skew stays
+/// with the command for the overlay, its clip taken onto the screen.
+pub(crate) fn bake(c: DrawCmd, m: Affine) -> (DrawCmd, Affine) {
+    if m.is_identity() {
+        return (c, m);
+    }
+    let r = |r: &Rect| m.map_rect(r);
+    if !m.is_axis_aligned() {
+        let mut c = c;
+        match &mut c {
+            DrawCmd::Glass { clip, .. }
+            | DrawCmd::Quad { clip, .. }
+            | DrawCmd::Image { clip, .. }
+            | DrawCmd::Bar { clip, .. }
+            | DrawCmd::Half { clip, .. }
+            | DrawCmd::Text { clip, .. } => *clip = r(clip),
+        }
+        return (c, m);
+    }
+    let (sx, sy) = (m.a.abs(), m.d.abs());
+    let k = sx.min(sy);
+    let p = |x: f32, y: f32| m.apply(x, y);
+    let c = match c {
+        DrawCmd::Glass {
+            rect,
+            radius,
+            blur,
+            tint,
+            alpha,
+            clip,
+        } => DrawCmd::Glass {
+            rect: r(&rect),
+            radius: radius * k,
+            blur,
+            tint,
+            alpha,
+            clip: r(&clip),
+        },
+        DrawCmd::Quad {
+            rect,
+            radius,
+            color,
+            clip,
+        } => DrawCmd::Quad {
+            rect: r(&rect),
+            radius: radius * k,
+            color,
+            clip: r(&clip),
+        },
+        DrawCmd::Image {
+            rect,
+            texture,
+            uv,
+            color,
+            clip,
+        } => {
+            // A mirroring scale flips the picture: its region swaps ends.
+            let mut uv = uv;
+            if m.a < 0.0 {
+                uv.swap(0, 2);
+            }
+            if m.d < 0.0 {
+                uv.swap(1, 3);
+            }
+            DrawCmd::Image {
+                rect: r(&rect),
+                texture,
+                uv,
+                color,
+                clip: r(&clip),
+            }
+        }
+        DrawCmd::Bar {
+            center,
+            w,
+            h,
+            angle,
+            color,
+            clip,
+        } => DrawCmd::Bar {
+            center: p(center.0, center.1),
+            w: w * sx,
+            h: h * sy,
+            angle,
+            color,
+            clip: r(&clip),
+        },
+        DrawCmd::Half {
+            center,
+            radius,
+            angle,
+            color,
+            clip,
+        } => DrawCmd::Half {
+            center: p(center.0, center.1),
+            radius: radius * k,
+            angle,
+            color,
+            clip: r(&clip),
+        },
+        DrawCmd::Text {
+            x,
+            baseline,
+            size,
+            text,
+            color,
+            font,
+            bounds,
+            clip,
+            tracking,
+            weight,
+            glow,
+            placements,
+        } => {
+            let (x, baseline) = p(x, baseline);
+            DrawCmd::Text {
+                x,
+                baseline,
+                size: size * sy,
+                text,
+                color,
+                font,
+                bounds: r(&bounds),
+                clip: r(&clip),
+                tracking,
+                weight: weight * sy,
+                glow: glow.map(|(c, g)| (c, g * sy)),
+                placements,
+            }
+        }
+    };
+    (c, Affine::IDENTITY)
 }

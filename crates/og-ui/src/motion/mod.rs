@@ -14,6 +14,8 @@ pub mod spring;
 pub(crate) mod state;
 pub mod timeline;
 
+pub use gesture::GestureInfo;
+pub use run::{MotionDump, PlayInfo};
 pub use spring::{Ease, MotionToken, MotionTokens, Reduced, SpringSpec, Transition};
 pub use timeline::{
     Choreo, EventKind, Key, KeyEase, PlayDesc, Repeat, StaggerFrom, Timeline, TimelineEvent,

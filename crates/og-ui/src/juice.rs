@@ -299,35 +299,8 @@ impl Ui {
             Size::Fixed(w) => w,
             _ => 32.0,
         };
-        let radius = if desc.radius > 0.0 {
-            desc.radius
-        } else {
-            1.4 * size
-        };
-        let count = if desc.count == 0 { 8 } else { desc.count };
         let color = desc.color.unwrap_or(t.palette.primary);
-        let e = ease_out(k);
-        let fade = 1.0 - k * k;
-        let mut shapes = Vec::new();
-        for r in 0..count {
-            let a = (r as f32 + 0.5 * (r % 2) as f32) * std::f32::consts::TAU / count as f32;
-            let (c, s) = (a.cos(), a.sin());
-            let dist = radius * (0.35 + 0.65 * e) * if r % 2 == 0 { 1.0 } else { 0.7 };
-            let len = (size * 0.45 * (1.0 - e)).max(2.0);
-            let w = (size * 0.08).max(2.0);
-            shapes.push(Shape::Bar {
-                frame: Frame::centered(c * dist, s * dist, len, w),
-                angle: a,
-                color: color.fade(fade),
-            });
-            let spark = (size * 0.12 * (1.0 - k)).max(1.5);
-            let d2 = dist * 1.15;
-            shapes.push(Shape::Rect {
-                frame: Frame::centered(c * d2 + s * 3.0, s * d2 - c * 3.0, spark, spark),
-                radius: spark,
-                color: color.fade(fade * 0.8),
-            });
-        }
+        let shapes = burst_shapes(size, desc.count, desc.radius, color, k);
         self.nodes[anchor].shapes.extend(shapes);
     }
 
@@ -605,6 +578,63 @@ impl Ui {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/// The rays and sparks of a burst at progress `k` (0–1) around an element
+/// `size` px across.
+fn burst_shapes(size: f32, count: u32, radius: f32, color: Srgba, k: f32) -> Vec<Shape> {
+    let radius = if radius > 0.0 { radius } else { 1.4 * size };
+    let count = if count == 0 { 8 } else { count };
+    let e = ease_out(k);
+    let fade = 1.0 - k * k;
+    let mut shapes = Vec::new();
+    for r in 0..count {
+        let a = (r as f32 + 0.5 * (r % 2) as f32) * std::f32::consts::TAU / count as f32;
+        let (c, s) = (a.cos(), a.sin());
+        let dist = radius * (0.35 + 0.65 * e) * if r % 2 == 0 { 1.0 } else { 0.7 };
+        let len = (size * 0.45 * (1.0 - e)).max(2.0);
+        let w = (size * 0.08).max(2.0);
+        shapes.push(Shape::Bar {
+            frame: Frame::centered(c * dist, s * dist, len, w),
+            angle: a,
+            color: color.fade(fade),
+        });
+        let spark = (size * 0.12 * (1.0 - k)).max(1.5);
+        let d2 = dist * 1.15;
+        shapes.push(Shape::Rect {
+            frame: Frame::centered(c * d2 + s * 3.0, s * d2 - c * 3.0, spark, spark),
+            radius: spark,
+            color: color.fade(fade * 0.8),
+        });
+    }
+    shapes
+}
+
+impl Ui {
+    /// Bursts a timeline's events started, drawn on their elements.
+    pub(crate) fn apply_bursts(&mut self, order: &[usize]) {
+        if self.state.motion.bursts.is_empty() {
+            return;
+        }
+        let now = self.state.tick;
+        let t = self.theme;
+        let ticks = self.ticks_for(t.durations_ms.slow + t.durations_ms.base) as f32;
+        let bursts = self.state.motion.bursts.clone();
+        for &i in order {
+            let key = self.nodes[i].key;
+            for b in bursts.iter().filter(|b| b.key == key) {
+                let k = (now - b.since) as f32 / ticks;
+                if !(0.0..1.0).contains(&k) {
+                    continue;
+                }
+                let r = self.nodes[i].rect;
+                let size = r.width.min(r.height).max(8.0);
+                let color = b.color.unwrap_or(t.palette.primary);
+                let shapes = burst_shapes(size, b.count, b.radius, color, k);
+                self.nodes[i].shapes.extend(shapes);
             }
         }
     }
