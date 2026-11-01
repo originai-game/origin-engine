@@ -51,6 +51,8 @@ pub struct Layer {
 pub struct LayerStack {
     pub layers: Vec<Layer>,
     pub next: u32,
+    /// The game's time scale when a pausing layer was pushed (restored when none is left).
+    pub held_scale: Option<f32>,
 }
 
 /// A layer as the probe lists it (`dump_ui:layers`).
@@ -201,6 +203,25 @@ impl Ui {
         self.layer_stack().iter().any(|l| l.spec.pause)
     }
 
+    /// The time scale the game should take now, given its current one: 0
+    /// once a pausing layer is on the stack (the current one kept), the
+    /// kept one once none is; `None` when nothing changes.
+    pub fn pause_time_scale(&mut self, current: f32) -> Option<f32> {
+        let paused = self.paused();
+        let st = &mut self.docs.layers;
+        match (paused, st.held_scale) {
+            (true, None) => {
+                st.held_scale = Some(current);
+                Some(0.0)
+            }
+            (false, Some(s)) => {
+                st.held_scale = None;
+                Some(s)
+            }
+            _ => None,
+        }
+    }
+
     /// The input mode of the top layer that takes input (`game` with none).
     pub fn input_mode(&self) -> InputMode {
         self.layer_stack()
@@ -291,13 +312,7 @@ impl Ui {
             }
         }
         // Layers draw in stack order, whoever built them first.
-        let order: Vec<String> = self
-            .docs
-            .layers
-            .layers
-            .iter()
-            .map(layer_id)
-            .collect();
+        let order: Vec<String> = self.docs.layers.layers.iter().map(layer_id).collect();
         let rank = |ui: &Ui, f: usize| {
             let n = &ui.nodes[f];
             if n.float == Float::Modal && ui.kinds[f].0 == "layer" {
@@ -424,6 +439,7 @@ impl Ui {
         let d = &self.docs;
         json!({
             "next": d.layers.next,
+            "heldScale": d.layers.held_scale,
             "layers": d.layers.layers.iter().map(|l| json!({
                 "serial": l.serial, "screen": l.screen, "vm": l.vm, "focus": l.focus.to_string(), "wasTop": l.was_top,
             })).collect::<Vec<_>>(),
@@ -436,6 +452,7 @@ impl Ui {
         let d = &mut self.docs;
         let key = |v: &Value| v.as_str().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
         d.layers.next = v["next"].as_u64().unwrap_or(0) as u32;
+        d.layers.held_scale = v["heldScale"].as_f64().map(|x| x as f32);
         d.layers.layers = v["layers"]
             .as_array()
             .map(|a| {

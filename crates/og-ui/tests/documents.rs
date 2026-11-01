@@ -334,6 +334,57 @@ fn a_menu_over_the_hud_takes_input_back_and_focus() {
 }
 
 #[test]
+fn dump_ui_names_each_elements_layer_source_bindings_and_states() {
+    let mut ui = ui();
+    ui.push_screen("hud", json!({ "gold": 1500 })).unwrap();
+    let vm = UiDocument::parse("x", SHOP)
+        .unwrap()
+        .fixture("rich")
+        .cloned()
+        .unwrap();
+    ui.push_screen("shop", vm).unwrap();
+    tick(&mut ui, InputFrame::default());
+    tick(&mut ui, InputFrame::default());
+    ui.set_doc_prop("shop/Shop/Header/Title", "text", "\"Bazaar\"")
+        .unwrap();
+    tick(&mut ui, InputFrame::default());
+    let els = ui.probe_elements();
+    let find = |p: &str| els.iter().find(|e| e.path == p).unwrap().to_json();
+    // Same id under two layers: each answers with its own layer and line.
+    let shop_gold = find("shop/Shop/Header/Gold");
+    let hud_gold = find("hud/Bar/Gold");
+    assert_eq!(shop_gold["layer"], json!("shop"));
+    assert_eq!(hud_gold["layer"], json!("hud"));
+    assert_eq!(shop_gold["source"], json!("ui/shop.ogt:42"), "{shop_gold}");
+    assert_eq!(hud_gold["source"], json!("ui/hud.ogt:15"), "{hud_gold}");
+    assert_eq!(
+        shop_gold["bindings"],
+        json!([{ "prop": "text", "expr": "bind gold compact", "value": "1.25M" }]),
+    );
+    assert_eq!(
+        find("shop/Shop/Header/Title")["edits"],
+        json!({ "text": "\"Bazaar\"" })
+    );
+    assert_eq!(find("shop/Shop/Preview")["slot"]["kind"], json!("code"));
+    // The second item is not selected: its state group says so.
+    let second = find("shop/Shop/Items/Item#1");
+    assert_eq!(
+        second["visualStates"]["selection"],
+        json!("off"),
+        "{second}"
+    );
+    let extra = ui.probe_extra();
+    let layers = extra["layers"].as_array().unwrap();
+    assert_eq!(layers.len(), 2);
+    assert_eq!(layers[1]["screen"], json!("shop"));
+    assert_eq!(layers[1]["focused"], json!("shop/Shop/Footer/Buy"));
+    assert_eq!(
+        extra["edits"],
+        json!([{ "path": "shop/Shop/Header/Title", "prop": "text", "value": "\"Bazaar\"" }])
+    );
+}
+
+#[test]
 fn a_probe_edit_is_saved_into_its_line_alone() {
     let mut ui = ui();
     ui.push_screen("shop", Value::Null).unwrap();

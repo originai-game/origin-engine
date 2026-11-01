@@ -4,7 +4,7 @@
 //! the members that need it refuse exactly as protocol 5 says.
 
 use og_ecs::{Entity, World};
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 
 /// A frame read back from the renderer.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -248,6 +248,15 @@ pub struct UiElement {
     pub y: f32,
     pub width: f32,
     pub height: f32,
+    /// What the UI module knows of it beyond the above, each an optional
+    /// field of its JSON (docs/ui.md §16.1): `layer` (the screen whose
+    /// layer it is in), `source` (`ui/shop.ogt:42`, the document line that
+    /// built it), `bindings` (`[{prop, expr, value}]`), `visualStates`
+    /// (`{group: state}`), `edits` (`{prop: value}`, the probe's
+    /// presentation edits on it), `motion` (`{moving, plays, leaving}`),
+    /// `slot` (its art slot's spec, or `{"kind": "code"}` for a slot code
+    /// fills). Empty: none of them.
+    pub detail: Map<String, Value>,
 }
 
 impl UiElement {
@@ -256,11 +265,21 @@ impl UiElement {
     }
 
     pub fn to_json(&self) -> Value {
-        json!({
-            "id": self.id, "parent": self.parent, "path": self.path, "kind": self.kind, "disabled": self.disabled, "clipped": self.clipped, "text": self.text,
+        let mut v = json!({
+            "id": self.id, "parent": self.parent, "kind": self.kind, "disabled": self.disabled, "clipped": self.clipped, "text": self.text,
             "role": self.role, "name": self.name, "value": self.value, "states": self.states,
             "opaque": self.opaque, "x": self.x, "y": self.y, "width": self.width, "height": self.height,
-        })
+        });
+        if let Value::Object(o) = &mut v {
+            // `path` (optional): the element's full path, absent when unknown.
+            if !self.path.is_empty() {
+                o.insert("path".into(), json!(self.path));
+            }
+            for (k, x) in &self.detail {
+                o.entry(k.clone()).or_insert_with(|| x.clone());
+            }
+        }
+        v
     }
 }
 
@@ -280,6 +299,16 @@ pub trait UiTree {
     /// The name of the UI style the game configured: empty for the
     /// engine's placeholder `prototype`. `None` when unknown.
     fn style(&self, _world: &World) -> Option<String> {
+        None
+    }
+
+    /// The UI's state beyond its elements, as optional fields of
+    /// `dump_ui` (docs/ui.md §16.1): `layers` (the layer stack, bottom
+    /// first), `motion` (every element in a visual state or with motion
+    /// in flight), `actions` (the UI actions, the device used last, the
+    /// action bar), `documents` (the documents loaded), `edits` (the
+    /// probe's presentation edits). `None`: none.
+    fn extra(&self, _world: &World) -> Option<Map<String, Value>> {
         None
     }
 }

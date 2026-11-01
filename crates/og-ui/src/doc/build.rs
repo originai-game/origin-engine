@@ -1589,3 +1589,28 @@ fn qualify(doc: &str, tl: &str) -> String {
         format!("{doc}/{tl}")
     }
 }
+
+/// An art slot's spec as JSON (the probe's `slot`, the art brief's input).
+pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
+    use crate::slot::SlotAspect;
+    let aspect = |a: &crate::slot::Aspect| json!([a.w, a.h]);
+    json!({
+        "name": s.name,
+        "kind": s.kind.name(),
+        "aspect": match &s.aspect {
+            SlotAspect::One(a) => aspect(a),
+            SlotAspect::AnyOf(v) => Value::Array(v.iter().map(aspect).collect()),
+            SlotAspect::Range(a, b) => json!({ "min": aspect(a), "max": aspect(b) }),
+            SlotAspect::Free => json!("free"),
+        },
+        "focal": s.focal,
+        "safe": s.safe,
+        "fit": match s.fit {
+            crate::slot::Fit::Cover => "cover",
+            crate::slot::Fit::Contain => "contain",
+            crate::slot::Fit::Fill => "fill",
+            crate::slot::Fit::NineSlice => "nineSlice",
+            crate::slot::Fit::Tile => "tile",
+        },
+    })
+}

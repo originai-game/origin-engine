@@ -2945,6 +2945,7 @@ impl Ui {
                 y: visible.y,
                 width: visible.width,
                 height: visible.height,
+                detail: Default::default(),
             });
             // A rich text's links: children for the probe, controls for input.
             if !n.links.is_empty() {
@@ -3012,6 +3013,7 @@ impl Ui {
                         y: shown.y,
                         width: shown.width,
                         height: shown.height,
+                        detail: Default::default(),
                     });
                 }
             }

@@ -357,6 +357,21 @@ pub fn stamp_of(event: &Value) -> f32 {
 /// og.Time as game code reads it (`world.resource(og.Time)`, a system's
 /// `time`): the clock, its rate, and the time scale the world keeps in
 /// og.TimeScale (scale, hitStop, scaledDt, scaledElapsed).
+/// A resource's fields as JSON by name (a UI viewmodel's reflected root,
+/// docs/ui.md §9): `None` for a name that is no resource of the world.
+pub fn resource_json(world: &World, name: &str) -> Option<Value> {
+    let id = world
+        .id_by_name(name)
+        .ok()
+        .filter(|&id| world.has_resource_id(id))?;
+    if name == <og_core::Time as og_core::Reflect>::NAME {
+        return Some(Value::Object(time_json(world)));
+    }
+    let schema = world.schema(id).ok()?;
+    let bytes = world.resource_bytes(id).ok()?;
+    Some(Value::Object(value::component_json(schema, &bytes)))
+}
+
 pub fn time_json(world: &World) -> Map<String, Value> {
     let t = world.time();
     let s = world.time_scale();
@@ -1653,8 +1668,14 @@ impl Probe {
             }
             #[cfg(not(feature = "publish"))]
             "dump_world" | "dump_ui" => {
+                // `dump_ui:layers[:path]`: the layer stack alone.
+                let layers =
+                    step.action == "dump_ui" && args.first().is_some_and(|a| a == "layers");
+                let args: &[String] = if layers { &args[1..] } else { args };
                 let dump = if step.action == "dump_world" {
                     self.dump_world(world)
+                } else if layers {
+                    self.dump_layers(world)
                 } else {
                     self.dump_ui(world)
                 };
@@ -2722,7 +2743,26 @@ impl Probe {
         // The style's name ("" is the engine's placeholder, prototype): a
         // check that the game dressed its UI reads it here.
         let style = self.ui.as_ref().and_then(|ui| ui.style(world));
-        json!({"kind": "ui", "tick": world.time().tick, "surface": surface, "style": style, "elements": elements})
+        let mut dump = json!({"kind": "ui", "tick": world.time().tick, "surface": surface, "style": style, "elements": elements});
+        if let (Some(extra), Value::Object(o)) =
+            (self.ui.as_ref().and_then(|ui| ui.extra(world)), &mut dump)
+        {
+            for (k, v) in extra {
+                o.entry(k).or_insert(v);
+            }
+        }
+        dump
+    }
+
+    /// `dump_ui:layers`: the layer stack alone (docs/ui.md §16.1).
+    pub fn dump_layers(&self, world: &World) -> Value {
+        let layers = self
+            .ui
+            .as_ref()
+            .and_then(|ui| ui.extra(world))
+            .and_then(|mut e| e.remove("layers"))
+            .unwrap_or_else(|| json!([]));
+        json!({"kind": "layers", "tick": world.time().tick, "layers": layers})
     }
 }
 

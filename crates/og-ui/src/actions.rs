@@ -237,6 +237,8 @@ pub struct Actions {
     pub(crate) states: Vec<ActionState>,
     /// Fired this tick.
     pub(crate) fired: Vec<String>,
+    /// Fired between ticks (the probe's `ui:action`): they fire next tick.
+    pub(crate) pending: Vec<String>,
     pub(crate) device: Device,
     /// The pad family a pad's input shows (the host's guess from the pad's id).
     pub(crate) pad: Device,
@@ -280,10 +282,13 @@ impl Ui {
         self.ensure_actions();
     }
 
-    /// Every action defined.
-    pub fn action_defs(&mut self) -> Vec<ActionDesc> {
-        self.ensure_actions();
-        self.actions.defs.clone()
+    /// Every action defined (the defaults until one is).
+    pub fn action_defs(&self) -> Vec<ActionDesc> {
+        if self.actions.defined {
+            self.actions.defs.clone()
+        } else {
+            default_actions()
+        }
     }
 
     /// The action fired this tick.
@@ -304,9 +309,12 @@ impl Ui {
         s.toggled || (s.down && s.held_fired)
     }
 
-    /// Fires an action this tick (a document's `action` trigger, a test).
+    /// Fires an action this tick (a document's `action` trigger, a test),
+    /// or between ticks the next tick.
     pub fn fire_action(&mut self, name: &str) {
-        if !self.action_fired(name) {
+        if !self.building {
+            self.actions.pending.push(name.to_string());
+        } else if !self.action_fired(name) {
             self.actions.fired.push(name.to_string());
         }
     }
@@ -335,9 +343,8 @@ impl Ui {
     }
 
     /// An action's glyph on the current device: its first binding there.
-    pub fn glyph(&mut self, name: &str) -> Option<Glyph> {
-        self.ensure_actions();
-        let d = self.actions.defs.iter().find(|d| d.name == name)?.clone();
+    pub fn glyph(&self, name: &str) -> Option<Glyph> {
+        let d = self.action_defs().into_iter().find(|d| d.name == name)?;
         let device = self.actions.device;
         Some(if device.pad() {
             pad_glyph(device, d.buttons.first()?)
@@ -354,8 +361,8 @@ impl Ui {
     /// The action bar: the actions the top layer's document lists, each
     /// with its hint and glyph (none: the default actions it accepts, Back
     /// when Back does something).
-    pub fn action_bar(&mut self) -> Vec<ActionHint> {
-        self.ensure_actions();
+    pub fn action_bar(&self) -> Vec<ActionHint> {
+        let defs = self.action_defs();
         let top = self
             .layer_stack()
             .into_iter()
@@ -370,7 +377,7 @@ impl Ui {
         };
         let mut out = Vec::new();
         for (a, hint) in listed {
-            let def = self.actions.defs.iter().find(|d| d.name == a).cloned();
+            let def = defs.iter().find(|d| d.name == a).cloned();
             let Some(glyph) = self.glyph(&a) else {
                 continue;
             };
@@ -391,7 +398,7 @@ impl Ui {
     /// Reads this tick's input into the actions and the last device (from `begin`).
     pub(crate) fn actions_begin(&mut self, input: &InputFrame) {
         self.ensure_actions();
-        self.actions.fired.clear();
+        self.actions.fired = std::mem::take(&mut self.actions.pending);
         // The last device: a key or the mouse, a pad, a touch.
         let pad_used = input.gamepad.pressed != 0 || input.gamepad.stick.length() > 0.5;
         let touch = self.viewport.coarse_pointer && (input.pressed || input.pointers.pressed != 0);
@@ -462,13 +469,12 @@ impl Ui {
     }
 
     /// The actions' state as JSON (dump_ui's `actions`).
-    pub fn actions_json(&mut self) -> Value {
-        self.ensure_actions();
+    pub fn actions_json(&self) -> Value {
         let fired = self.actions.fired.clone();
         json!({
             "device": self.actions.device.name(),
             "fired": fired,
-            "defined": self.actions.defs.iter().map(|d| json!({
+            "defined": self.action_defs().iter().map(|d| json!({
                 "name": d.name, "keys": d.keys, "buttons": d.buttons, "label": d.label, "toggle": d.toggle,
                 "trigger": match d.trigger { ActionTrigger::Press => json!("press"), ActionTrigger::Release => json!("release"), ActionTrigger::Hold(ms) => json!({ "hold": ms }) },
             })).collect::<Vec<_>>(),

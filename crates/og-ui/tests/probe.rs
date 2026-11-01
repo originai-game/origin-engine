@@ -371,3 +371,30 @@ fn a_path_names_the_element_under_its_own_ancestors() {
     assert_eq!(b.path, "B/Row/Buy");
     assert!(a.y < b.y, "A's Buy ({}) is above B's ({})", a.y, b.y);
 }
+
+#[test]
+fn dump_ui_carries_the_layer_stack_and_dump_ui_layers_answers_it_alone() {
+    let mut rig = Rig::new();
+    {
+        let mut ui = rig.ui.lock();
+        ui.define_document(
+            UiDocument::parse("ui/shop.ogt", crate::documents::SHOP).expect("shop parses"),
+        );
+        ui.push_screen("shop", Value::Null).expect("push");
+    }
+    rig.ticks(2);
+    let dump = rig.probe.dump_ui(&rig.world);
+    let layers = dump["layers"].as_array().expect("dump_ui has layers");
+    assert_eq!(layers.len(), 1);
+    assert_eq!(layers[0]["screen"], Value::from("shop"));
+    let buy = dump["elements"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["path"] == "shop/Shop/Footer/Buy")
+        .expect("the shop's Buy button in dump_ui");
+    assert_eq!(buy["layer"], Value::from("shop"));
+    let alone = rig.probe.dump_layers(&rig.world);
+    assert_eq!(alone["kind"], Value::from("layers"));
+    assert_eq!(alone["layers"], dump["layers"]);
+}
