@@ -7,7 +7,7 @@
 // and the number pops when it lands.
 
 import type * as Api from "@origingame/engine";
-import { a11y, absolute, box, clamp01, close, easeOut, frame, formatNumber, groups, icon, kit, lit, mix, msToTicks, now, open, pop, px, reduced, role, sel, solid, stepSize, text, token, xy, ts, apply } from "./core.ts";
+import { a11y, absolute, box, clamp01, close, easeOut, frame, formatNumber, groups, icon, kit, lit, mix, msToTicks, now, open, pop, px, reduced, role, sel, solid, stepSize, text, token, xy, ts, apply, fitWidth } from "./core.ts";
 
 export { formatNumber };
 
@@ -20,30 +20,6 @@ export function numberCounter(id: string, value: number, desc: Api.NumberCounter
     });
   } else shown = counter(id, value, desc, false, 0);
   return shown;
-}
-
-/** The largest step no larger than `step` at which a text `ems` em wide fits `room` px. */
-function fitWidth(step: Api.TypeStepName, ems: number, room: number): Api.TypeStepName {
-  const ramp = frame().theme.typeRamp;
-  const cap = stepSize(step).size;
-  if (cap * ems <= room) return step;
-  let best = step;
-  let bestSize = 0;
-  let least = step;
-  let leastSize = Infinity;
-  for (const [name, st] of Object.entries(ramp)) {
-    const size = st?.size ?? 0;
-    if (size <= 0 || size > cap) continue;
-    if (size < leastSize) {
-      least = name as Api.TypeStepName;
-      leastSize = size;
-    }
-    if (size * ems <= room && size > bestSize) {
-      best = name as Api.TypeStepName;
-      bestSize = size;
-    }
-  }
-  return bestSize > 0 ? best : least;
 }
 
 function counter(id: string, value: number, desc: Api.NumberCounterDesc, hud: boolean, radius: number): number {
@@ -61,7 +37,11 @@ function counter(id: string, value: number, desc: Api.NumberCounterDesc, hud: bo
   const holder = kit.openPath();
   const held = holder ? kit.bounds(holder)?.width ?? 0 : 0;
   const self = holder ? kit.bounds(`${holder}/${id}`)?.width ?? 0 : 0;
-  const room = held > 0 && Math.abs(held - self) > 1 ? held : 0;
+  // Once capped it stays capped: a capped counter is as wide as its
+  // holder, which would otherwise read as the anchor case on the next tick.
+  const capKey = `${id}.capped`;
+  const room = held > 0 && (Math.abs(held - self) > 1 || kit.memory(capKey, 0) > 0) ? held : 0;
+  kit.remember(capKey, room > 0 ? 1 : 0);
   const path = open(id, {
     direction: "row",
     gap: tk.sm,
@@ -113,18 +93,20 @@ function counter(id: string, value: number, desc: Api.NumberCounterDesc, hud: bo
   // until it fits: digits never wrap.
   const ends = [formatNumber(value, format), formatNumber(counting ? from : value, format)];
   const widest = ends[0]!.length >= ends[1]!.length ? ends[0]! : ends[1]!;
-  if (room > 0) step = fitWidth(step, widest.length * 0.62 * 1.12, room);
+  // The icon (0.8 em and a gap) shares the line with the numerals.
+  if (room > 0) step = fitWidth(step, widest.length * 0.62 * 1.12 + (desc.icon ? 0.8 : 0), room - (desc.icon ? tk.sm : 0));
   if (desc.icon) icon("Icon", desc.icon, Math.round(stepSize(step).size * 0.8), desc.icon === "coin" ? token("gold") : token("ink"));
   const popRoom = Math.ceil(widest.length * stepSize(step).size * 0.62 * 0.12);
   const popPad = desc.align === "end" ? { left: popRoom, right: 0 } : desc.align === "center" ? { left: Math.ceil(popRoom / 2), right: Math.ceil(popRoom / 2) } : { left: 0, right: popRoom };
   kit.column("Body", { gap: 0, cross: desc.align === "end" ? "end" : desc.align === "center" ? "center" : "start", padding: { top: 0, bottom: 0, ...popPad } }, () => {
     const roll = desc.roll !== false && counting && (format.notation ?? "grouped") === "grouped" && (format.exponent ?? 0) === 0 && Math.abs(value) < 1e15 && Math.abs(from) < 1e15;
-    text("Sizer", widest, { step, font: desc.font ?? "mono", nowrap: true, outline: hud ? 1 : false }, { opacity: 0, inert: true });
+    text("Sizer", widest, { step, font: desc.font ?? "mono", nowrap: true, outline: 1 }, { opacity: 0, inert: true });
     const at = desc.align === "end" ? { end: 0, top: 0 } : desc.align === "center" ? { centerX: true, top: 0 } : { start: 0, top: 0 };
     if (roll) digits("Value", shown, format, step, desc.font ?? "mono", inkNow, hud);
-    else text("Value", formatNumber(shown, format), { step, font: desc.font ?? "mono", color: inkNow, nowrap: true, outline: hud ? 1 : false });
+    else text("Value", formatNumber(shown, format), { step, font: desc.font ?? "mono", color: inkNow, nowrap: true, outline: 1 });
     apply(absolute(at, { transform: { scaleX: scale, scaleY: scale, pivotX: desc.align === "end" ? 1 : desc.align === "center" ? 0.5 : 0 } }));
-    if (desc.label) text("Label", desc.label, { step: ts(13), color: token("inkMuted"), nowrap: true, outline: hud ? 0.7 : false });
+    // Over a scene as often as on a card: outlined like the progress labels, so it reads at 4.5:1 on either.
+    if (desc.label) text("Label", desc.label, { step: ts(13), color: token("ink", 0.88), nowrap: true, outline: 0.9 });
   });
   // The +n of a rise, in its own place beside the number: it rises a little and fades.
   const dAt = kit.memory("deltaAt", -1e9);
@@ -160,19 +142,26 @@ function digits(id: string, shown: number, format: Api.NumberFormatDesc, step: A
     let i = 0;
     for (const ch of textNow) {
       if (ch < "0" || ch > "9") {
-        text(kit.idi("Sep", i++), ch, { step, font, color: ink, nowrap: true, outline: hud ? 1 : false });
+        text(kit.idi("Sep", i++), ch, { step, font, color: ink, nowrap: true, outline: 1 });
         continue;
       }
       const place = 10 ** k;
       const below = Math.floor(whole) % place;
       const carry = below === place - 1 ? frac : 0;
       const d = Number(ch);
-      box(kit.idi("Digit", i++), { direction: "column", height: px(line), part: sel("NumberCounter", "digit") }, { clip: "shape" }, () => {
-        kit.column("Wheel", { gap: 0 }, () => {
-          text("D", String(d), { step, font, color: ink, nowrap: true, outline: hud ? 1 : false });
-          text("N", String((d + 1) % 10), { step, font, color: ink, nowrap: true, outline: hud ? 1 : false });
-        });
-        apply({ transform: { y: -carry * line } });
+      // The wheel shows through a window the height of a numeral, centred on
+      // the line, not the whole line box: the next digit never hangs below
+      // the others' baseline (or above their tops) while it turns in.
+      const win = Math.min(line, Math.ceil(stepSize(step).size * 0.92));
+      const top = Math.floor((line - win) / 2);
+      box(kit.idi("Digit", i++), { direction: "column", height: px(line), part: sel("NumberCounter", "digit") }, undefined, () => {
+        box("Window", { direction: "column", height: px(win) }, { clip: "shape" }, () => {
+          kit.column("Wheel", { gap: 0 }, () => {
+            text("D", String(d), { step, font, color: ink, nowrap: true, outline: 1 });
+            text("N", String((d + 1) % 10), { step, font, color: ink, nowrap: true, outline: 1 });
+          });
+          apply({ transform: { y: -top - carry * line } });
+        }, { transform: { y: top } });
       });
       k -= 1;
     }

@@ -9,7 +9,7 @@
 // clamped inside the safe area, mirrored right to left.
 
 import type * as Api from "@origingame/engine";
-import { a11y, arc, bp, box, clamp, clamp01, close, drop, frame, groups, icon, kit, leaf, lit, msToTicks, open, pct, px, rarityColor, rarityPips, role, sel, shapeOf, solid, sound, stroke, text, token, vgrad, xy, type Rgba, ts, apply, floatFloor } from "./core.ts";
+import { a11y, arc, bp, box, clamp, clamp01, close, drop, frame, groups, icon, kit, leaf, lit, msToTicks, open, pct, px, rarityColor, rarityPips, role, sel, shapeOf, solid, sound, stroke, text, token, vgrad, xy, type Rgba, ts, apply, floatFloor, u } from "./core.ts";
 
 interface Placed {
   x: number;
@@ -138,7 +138,8 @@ function card(id: string, desc: Api.TooltipCardDesc, target: string, open_: bool
   out.depth = Math.max(out.depth, depth);
 
   const rare = rarityColor(desc.rarity);
-  const width = desc.width || (b.phone ? 300 : 340);
+  // Its text grows with the HUD's scale (a 1440 p ultrawide), so does the card: 340 at 1080 p.
+  const width = desc.width || (b.phone ? 300 : Math.max(340, u(227)));
   const compare = !!desc.compareTitle && (desc.compareStats?.length ?? 0) > 0;
   const total = compare ? width * 2 + tk.sm : width;
   const trig = target ? kit.bounds(target) : null;

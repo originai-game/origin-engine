@@ -7,7 +7,7 @@
 // are the UI's own, seeded, so a replay throws the same.
 
 import type * as Api from "@origingame/engine";
-import { a11y, absolute, box, clamp01, easeBack, easeOut, frame, groups, kit, leaf, lit, msToTicks, now, pct, px, radial, reduced, role, sel, solid, sound, stroke, text, token, glow, vgrad, fill as fillText, ts, apply } from "./core.ts";
+import { a11y, absolute, box, clamp01, easeBack, easeOut, frame, groups, kit, leaf, lit, msToTicks, now, pct, px, radial, reduced, role, sel, solid, sound, stroke, text, token, glow, vgrad, fill as fillText, ts, apply, fitWidth } from "./core.ts";
 
 const DURATION_MS: Record<Api.CelebrationKind, number> = { confetti: 3000, burst: 1000, levelUp: 2600, fireworks: 3500 };
 
@@ -109,8 +109,13 @@ export function celebration(id: string, desc: Api.CelebrationDesc = {}): void {
   const enter = clamp01(age / msToTicks(450));
   const leave = clamp01((age - (dur - msToTicks(450))) / msToTicks(450));
   const gold = role("gold");
+  const vp = frame().viewport;
+  const stageW = Math.min(420, vp.width - vp.safeArea.left - vp.safeArea.right - frame().t.gutter * 2);
+  const title = (desc.title ?? "Level up").toUpperCase();
+  // The word fits the stage at its overshoot (1.1×): a long word or 200 % text steps down, never off the screen.
+  const titleStep = fitWidth(ts(40, true), title.length * 0.6 * 1.1, stageW);
   kit.anchor(id, { anchor: "center", direction: "column", cross: "center", over: true }, () => {
-    box("Stage", { width: px(420), height: px(300), align: "center", cross: "center", direction: "column" }, undefined, () => {
+    box("Stage", { width: px(stageW), height: px(300), align: "center", cross: "center", direction: "column" }, undefined, () => {
       if (!still) {
         // Rays turning behind the word, fading at their tips.
         leaf("Rays", { width: px(420), height: px(420), part: sel("Celebration", "rays") }, {
@@ -128,8 +133,8 @@ export function celebration(id: string, desc: Api.CelebrationDesc = {}): void {
         leaf("Glow", { width: px(260), height: px(160) }, { shape: { kind: "ellipse" }, fills: [radial([[0, lit(gold, 0.35)], [1, lit(gold, 0)]])] }, absolute({ centerX: true, centerY: true }, { opacity: 1 - leave }));
       }
       const s = still ? 1 : 0.4 + 0.6 * easeBack(enter, 2.4);
-      text("Title", (desc.title ?? "Level up").toUpperCase(), {
-        step: ts(40, true),
+      text("Title", title, {
+        step: titleStep,
         font: "display",
         nowrap: true,
         color: lit(gold),

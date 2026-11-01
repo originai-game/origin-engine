@@ -8,7 +8,7 @@
 // no movement.
 
 import type * as Api from "@origingame/engine";
-import { a11y, box, bp, clamp01, frame, hudText, kit, leaf, minText, msToTicks, now, px, scale, sel, solid, token, type Paint, apply, claimBand } from "./core.ts";
+import { a11y, box, bp, clamp01, frame, hudText, kit, leaf, minText, msToTicks, now, px, scale, sel, solid, token, type Paint, apply, claimBand, isolate, role, luminance, mix } from "./core.ts";
 
 const SIZE: Record<Api.SubtitleSize, number> = { small: 0.022, medium: 0.03, large: 0.038, huge: 0.048 };
 
@@ -28,12 +28,17 @@ function stepFor(want: number): Api.TypeStepName {
 }
 
 /** A Paint as rich-text colour markup: a palette role by name, a literal by hex. */
+/**
+ * The speaker's colour as markup, lifted toward white until it reads on the
+ * band at 4.5:1 wherever the band is: its luminance at least 0.45 against
+ * the band's darkest-over-white (a black band at 75 % over white, 0.05).
+ */
 function markupColor(p: Paint | undefined): string {
-  if (!p) return "highlight";
-  if (p.token) return p.token;
-  const c = p.color ?? { r: 1, g: 1, b: 1 };
+  const c = !p ? role("highlight") : p.token ? role(p.token) : { r: p.color?.r ?? 1, g: p.color?.g ?? 1, b: p.color?.b ?? 1, a: 1 };
+  let k = { r: clamp01(c.r), g: clamp01(c.g), b: clamp01(c.b), a: 1 };
+  for (let i = 0; i < 20 && luminance(k) < 0.45; i++) k = mix(k, { r: 1, g: 1, b: 1, a: 1 }, 0.15);
   const h = (v: number) => Math.round(clamp01(v) * 255).toString(16).padStart(2, "0");
-  return `#${h(c.r)}${h(c.g)}${h(c.b)}`;
+  return `#${h(k.r)}${h(k.g)}${h(k.b)}`;
 }
 
 const escape = (s: string): string => s.replace(/\[/g, "[[");
@@ -51,7 +56,8 @@ export function subtitles(id: string, desc: Api.SubtitlesDesc = {}): void {
   const safeW = vp.width - vp.safeArea.left - vp.safeArea.right;
   // About 42 characters a line at this size, never wider than 70 % of the safe area (92 % on a phone).
   const width = Math.min(safeW * (b.phone ? 0.92 : 0.7), em * 0.55 * 42 + tk.lg * 2);
-  const bg = clamp01(set.background ?? 0.75);
+  // The band: at least 75 % black, so the white text and speakers' colours hold 4.5:1 over any scene (XAG 104).
+  const bg = clamp01(set.background ?? 0.78);
   const all = desc.lines ?? [];
   const captions = set.captions ? all.filter((l) => l.caption) : [];
   const speech = all.filter((l) => !l.caption).slice(-2);
@@ -76,7 +82,8 @@ function line(l: Api.SubtitleLine, set: Api.SubtitleSettings, step: Api.TypeStep
   // A caption is bracketed (once: a text that brings its own brackets keeps them), its bracket escaped as the text's are.
   const bare = l.caption ? (l.text ?? "").replace(/^\[(.*)\]$/s, "$1") : (l.text ?? "");
   const body = l.caption ? `[[${escape(bare)}]` : escape(bare);
-  const markup = speaker ? `[color=${color}][b]${escape(speaker)}:[/b][/color] ${body}` : body;
+  // Beside a speaker each part is isolated, so an English line under an Arabic name keeps its full stop.
+  const markup = speaker ? `[color=${color}][b]${isolate(escape(speaker))}:[/b][/color] ${isolate(body)}` : body;
   box(key, {
     direction: "row",
     cross: "center",

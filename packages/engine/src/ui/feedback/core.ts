@@ -267,9 +267,15 @@ export function arc(fraction: number, thickness: number, cap: Api.LineCap = "rou
 
 /** The HUD's text treatment: an outline and a soft shadow in the style's shadow, so text reads over any game. */
 export function hudText(strength = 1): Api.TextEffectsDesc {
+  // A solid outline, a drop and a soft halo round the glyphs, as a shipped
+  // HUD's ink has: the outline holds the edges, the halo darkens the ground
+  // between strokes, so small text reads at 4.5:1 on a bright or busy scene.
   return {
-    outline: { width: 2 * strength, color: token("shadow", 0.85), align: "outside" },
-    shadows: [{ offset: { x: 0, y: 1.5 }, blur: 3, color: token("shadow", 0.6) }],
+    outline: { width: Math.max(1.5, 2 * strength), color: token("shadow", 1), align: "outside" },
+    shadows: [
+      { offset: { x: 0, y: 1.5 }, blur: 3, color: token("shadow", 0.7) },
+      { offset: { x: 0, y: 0 }, blur: 6 * Math.max(0.6, strength), color: token("shadow", 0.55) },
+    ],
   };
 }
 
@@ -376,6 +382,30 @@ export function tsFit(n: number, maxPx: number, display = false): Api.TypeStepNa
 export function stepSize(step: Api.TypeStepName): { size: number; line: number } {
   const s = frame().theme.typeRamp[step];
   return { size: s?.size ?? 16, line: s?.lineHeight ?? 22 };
+}
+
+/** The largest step no larger than `step` at which a text `ems` em wide fits `room` px. */
+export function fitWidth(step: Api.TypeStepName, ems: number, room: number): Api.TypeStepName {
+  const ramp = frame().theme.typeRamp;
+  const cap = stepSize(step).size;
+  if (cap * ems <= room) return step;
+  let best = step;
+  let bestSize = 0;
+  let least = step;
+  let leastSize = Infinity;
+  for (const [name, st] of Object.entries(ramp)) {
+    const size = st?.size ?? 0;
+    if (size <= 0 || size > cap) continue;
+    if (size < leastSize) {
+      least = name as Api.TypeStepName;
+      leastSize = size;
+    }
+    if (size * ems <= room && size > bestSize) {
+      best = name as Api.TypeStepName;
+      bestSize = size;
+    }
+  }
+  return bestSize > 0 ? best : least;
 }
 
 /**
@@ -657,6 +687,16 @@ export function floatFloor(): number {
     if (b.height === vp.height && b.tick >= t - 1 && b.tick <= t) floor = Math.min(floor, b.top - f.t.sm);
   }
   return floor;
+}
+
+/**
+ * Game text set inside a composed string (a speaker's name before a line,
+ * a name before a role) wrapped in a bidi isolate (FSI … PDI): its own
+ * direction and punctuation stay put inside a right-to-left UI, and it
+ * sets nothing of the string around it. og-ui never draws the isolate.
+ */
+export function isolate(s: string): string {
+  return s ? `\u2068${s}\u2069` : s;
 }
 
 /** The viewport's breakpoint flags. */
