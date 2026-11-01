@@ -121,4 +121,9 @@ example scenes, frames on Metal, frame times against three.js on WebGPU.
 
 | Stream | Thread | Branch | State |
 |---|---|---|---|
-| (filled by the coordinator as streams start and merge) | | | |
+| G1-2 | [T-d77ec7d3](https://ampcode.com/threads/T-d77ec7d3-271f-4b67-9d15-d46a5959df5a) | `g1-input-actions` | started 2026-11-01 |
+| G1-6 | [T-01a197e9](https://ampcode.com/threads/T-01a197e9-a4d5-742d-9c41-fa7086e21b35) | `g1-sourcemaps-telemetry` | started 2026-11-01 |
+| U6b, U6c | — | — | next, once the og-ui split batch is on main |
+| G1-1, G1-5 | — | — | after og-runtime's file split (which waits for og-bundle) |
+| G1-3 | — | — | after og-bundle |
+| G1-4, U6a, U6d | — | — | as slots free (U6a after G1-2) |
