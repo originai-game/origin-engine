@@ -61,6 +61,7 @@ stream; an L or XL stream may be split by the coordinator).
 | G1-3 | Optimised glTF refused, extensions dropped, few texture formats | Draco, `EXT_meshopt_compression`, `KHR_mesh_quantization`, `KHR_texture_basisu`, `EXT_texture_webp` read; `KHR_texture_transform` (runtime UV transform), `KHR_materials_unlit`, `KHR_lights_punctual`, `EXT_mesh_gpu_instancing`, `KHR_materials_variants` honoured; webp, tga, psd (flattened) and dds sources | og-cook importers, og-render material UV transform | M |
 | G1-4 | Phones run hot, no recovery from device loss, no GPU memory view | Frame-rate cap and power mode (30/60/native), automatic quality from frame time with hysteresis, render scale and dynamic resolution, device-lost recovery (rebuild GPU resources from the bundle), GPU memory accounting in the memory report and `og doctor` budgets | og-host-web, web shell, og-render `quality`, og-runtime `memory` | L |
 | G1-5 | Saves break across versions; whole-world only, capped | A save version per game, migration hooks in TypeScript (rename, transform, drop), engine-component migrations shipped with `og upgrade`, selective saves (tagged entities and resources), the cap measured against a 5,000-entity world and raised or streamed | og-runtime save, og-ecs, og-cli `upgrade` | L |
+| G1-7 | PC is a first-class target (owner, 2026-11-01), and its presentation has no settings | A graphics settings model and its page in U6d's settings tree: quality preset, render scale, frame cap and vsync, fullscreen; aspect ratios from 16:10 to 32:9 with HUD safe zones and UI that never stretches; a window moved between monitors of different DPI; mouse sensitivity, raw input and acceleration off; bindings by physical key (`code`) so AZERTY and QWERTZ play, shown by the layout's label | og-host-web, web shell, og-render `quality`, og-ui safe area | M |
 | G1-6 | Errors point at bundle lines; crash reports carry a name | Source maps in dev and publish (uploaded beside the build, not served), stacks mapped in `og` and the platform; crash reports with stack, tick, engine version, device, GPU and adapter limits; frame-time and hitch histograms and session events in telemetry | `packages/engine/src/node` build, web shell transport | M |
 
 ### G2. Gameplay depth (after G1, before or beside R)
@@ -116,7 +117,10 @@ After R, as the plan's final stage:
   to play (iOS below 26, Android below 12, Firefox for Android), an estimate
   from caniuse. The share is measured on the platform's real traffic and
   the owner decides then; until then the WebGL2 tier stays retired.
-- **Real devices.** The device list (`docs/release.md` §6 item 5) and every
+- **Real devices, PC and phone alike.** PC is measured as fully as phones:
+  Windows with NVIDIA, AMD and Intel integrated GPUs, a Mac on Apple
+  silicon, Linux with a Vulkan GPU, each in Chrome, Edge, Firefox and
+  Safari where they run, at 1080p, 1440p, 4K and ultrawide. The device list (`docs/release.md` §6 item 5) and every
   real-phone measurement: G1-4's power mode, automatic quality and device
   loss are built and tested on the runners until then, and their phone
   numbers are taken here.
