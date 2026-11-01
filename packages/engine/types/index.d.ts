@@ -20885,7 +20885,7 @@ export interface MenuDesc {
    */
   readonly minWidth?: number;
   /**
-   * Its greatest width; 0 is 360.
+   * Its greatest width; 0 is 360 at 100 % text, growing with the player's text size. Never past the screen: past it a label wraps.
    *
    * @default 0
    * @range 0..
@@ -21420,6 +21420,12 @@ export interface ActionHintsDesc {
 export interface ActionHintsResult {
   /** The action of the hint pressed (a touch, a click): act as if the control fired. */
   readonly pressed: string | null;
+  /**
+   * The room it takes from its edge of the screen, the safe area under it included (as laid out last tick): a scrolling screen pads its content's end by it, so nothing hides under the bar. Under a finger it is a bar of buttons across the bottom.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height: number;
 }
 
 /**

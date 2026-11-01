@@ -2030,7 +2030,7 @@ module ui {
       unit cssPx
       min 0
     }
-    field maxWidth f32 "Its greatest width; 0 is 360." {
+    field maxWidth f32 "Its greatest width; 0 is 360 at 100 % text, growing with the player's text size. Never past the screen: past it a label wraps." {
       unit cssPx
       min 0
     }
@@ -2232,6 +2232,9 @@ module ui {
   struct ActionHintsResult {
     doc "What the action bar answered this tick."
     field pressed Option.String "The action of the hint pressed (a touch, a click): act as if the control fired."
+    field height f32 "The room it takes from its edge of the screen, the safe area under it included (as laid out last tick): a scrolling screen pads its content's end by it, so nothing hides under the bar. Under a finger it is a bar of buttons across the bottom." {
+      unit cssPx
+    }
   }
 
   struct RadialItem {
