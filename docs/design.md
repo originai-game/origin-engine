@@ -1368,7 +1368,7 @@ raised in its own commit.
 
 | Budget | Target |
 |---|---|
-| engine wasm, brotli | reported per download (the largest variant a player loads); pursued at wave ends, not a ceiling on features (2026-11-01). Model weights and other assets are not in it |
+| engine wasm, brotli | ≤ 16 MB per download (the largest variant a player loads), raised from 4 MB on 2026-11-01: a ceiling against accidental growth, not a figure to cut features for; size is still pursued at wave ends. Model weights and other assets are not in it |
 | first frame, a current iPhone, 4G, small game | ≤ 2.0 s click to first frame (the play-surface budget) |
 | first frame, iPhone 13, Wi-Fi, mid-size 3D scene | ≤ 1.5 s |
 | TS system over 10,000 entities (one archetype, 2 components) | ≤ 1.0 ms per tick on a current iPhone |

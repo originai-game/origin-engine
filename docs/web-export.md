@@ -197,10 +197,11 @@ cannot be instantiated at all, and most hosts a game is shared on are not
 isolated. So the default `origin-engine_bg.wasm` stays single-threaded
 (the module every page can load), and a `--publish` build whose
 `isolation` is not `off` also ships `origin-engine-lanes_bg.wasm`. A page
-downloads one of them, so the 4 MiB brotli budget holds per download: the
-size gate measures each (`scripts/size-gate.sh`; on 2026-10-19 the publish
-wasm was 3,153,927 B and the lanes wasm 3,156,913 B brotli, 75 % of the
-budget; the lanes round grew the single-threaded wasm by about 4 KB). Both
+downloads one of them, so the 16 MiB brotli budget (4 MiB until
+2026-11-01, design §7) holds per download: the size gate measures each
+(`scripts/size-gate.sh`; on 2026-10-19 the publish wasm was 3,153,927 B
+and the lanes wasm 3,156,913 B brotli, 75 % of the 4 MiB budget then; the
+lanes round grew the single-threaded wasm by about 4 KB). Both
 are one per physics profile (§Variants): the single-threaded module since
 owed row 44, the lanes module since owed row 71. The
 lanes build needs nightly-only flags on the stable toolchain
@@ -291,7 +292,7 @@ ships the variants of the game's physics profile (project.ogt `profile`),
 single-threaded and lanes, so a page never downloads the physics of the
 other profile:
 
-| Variant | Where | Built with (og-host-web) | Physics | brotli, of 4 MiB (2026-10-25, r4/size-2, shipping `wasm` profile) |
+| Variant | Where | Built with (og-host-web) | Physics | brotli, of the 4 MiB budget then (2026-10-25, r4/size-2, shipping `wasm` profile) |
 |---|---|---|---|---|
 | 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,physics3d,shaping` | rapier3d | 3,283,141 B (78.3 %) |
 | 3D lanes | `dist/web-publish/origin-engine-lanes*`, `snippets/` | the same, wasm atomics (§Lanes) | rapier3d (`parallel`) | 3,320,422 B (79.2 %, the largest download) |

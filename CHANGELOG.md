@@ -24,6 +24,8 @@ is one line here, written at the merge that changes
   `Archetype.entities holds (index, generation) pairs; use a.entity(i) for a
   handle`, logged once per system and call), and `world.spawn` in a system
   that did not declare `og.Parent` or `og.Transform` says spawn wrote it.
+- The wasm download budget is 16 MB brotli (was 4 MB): a ceiling against
+  accidental growth, not a reason to cut a feature (design §7).
 - Added: `og style eject <slug> [<name>] [--project <dir>] [--force]` writes
   a built-in UI style (style.ogt, atlas, icons, fonts with their import
   settings, licences) byte for byte into the game's `assets/styles/<name>/`

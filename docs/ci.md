@@ -1034,9 +1034,12 @@ never the sum of every wasm the gate builds. The table prints each
 variant's brotli size with its download and its share of the budget.
 Change the number in its own commit, with the measured value from
 `target/evidence/size-gate.json` and the reason in the message; a raise above
-a design §7 target also changes design §7 in the same commit. The core budget
-is 4 MB brotli; the design's 6 MB with physics and animation becomes a second
-key (e.g. `wasm_full_brotli_bytes`) when a feature-gated build exists.
+a design §7 target also changes design §7 in the same commit. The budget is
+16 MB brotli per download (raised from 4 MB on 2026-11-01, the owner's
+quality-first decision, design §7 and §8): one ceiling for every variant,
+with no second tier. It catches accidental growth (a dependency pulled in by
+mistake, monomorphisation, doc strings in a publish build) and is never a
+reason to cut a feature down.
 
 ## Re-capturing gfx references
 
@@ -1086,9 +1089,8 @@ reference belongs to; a frame from another tier never replaces a Metal reference
    closure (tests/evidence/r4/size-2/NOTES.md measured 0.9 MB of them). A
    publish build carries no reflected or record field docs (og-core's and
    og-api's `publish`), so a new doc string costs a publish module nothing.
-4. Only when the growth is intended and unavoidable, update the budget as
-   above. Physics was expected to push past 4 MB; measured at 49ed935 it adds
-   0.69 MB brotli (3D), 0.54 MB (2D) or 1.05 MB (both) to og-host-web's
-   1.10 MB (`tests/evidence/M6/physics-wasm-size.json`), so it fits. If it
-   ever does not, the answer is a feature-gated physics crate, not a budget
-   raise (docs/phase-1.md §5).
+4. When the growth is intended (a feature that needs the code), update the
+   budget as above rather than cutting the feature: quality comes first
+   (design §7). Measured at 49ed935, physics adds 0.69 MB brotli (3D),
+   0.54 MB (2D) or 1.05 MB (both) to og-host-web's 1.10 MB
+   (`tests/evidence/M6/physics-wasm-size.json`).

@@ -7,9 +7,11 @@
 # publish variants and the 3D and 2D lanes variants, scripts/wasm-crates.txt), after
 # wasm-bindgen and wasm-opt -Oz. Per download: a page downloads one of them,
 # so each is held to it and the largest is what counts, never the sum
-# (design §7: engine wasm, brotli, <= 4 MB core; docs/web-export.md
-# §Variants, §Lanes).
-wasm_core_brotli_bytes 4194304
+# (design §7: engine wasm, brotli, <= 16 MB per download; docs/web-export.md
+# §Variants, §Lanes). Raised from 4 MB (4194304) on 2026-11-01, the owner's
+# quality-first decision: a ceiling against accidental growth, not a
+# reason to cut a feature.
+wasm_core_brotli_bytes 16777216
 
 # optional: a scaffold with no cdylib crate yet passes the size gate with
 #           nothing to measure.
