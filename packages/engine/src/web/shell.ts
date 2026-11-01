@@ -90,6 +90,10 @@ export interface ShellOptions {
   readonly platform?: PlatformHost;
   /** Record the run's trace from the boot on, the boot scene's loads included (`trace()` reads it; `trace("start")` begins one later). */
   readonly trace?: boolean;
+  /** Count the played frames for field telemetry (`call("telemetry")` takes the counts; frames.ts). */
+  readonly telemetry?: boolean;
+  /** A file of the bundle did not arrive, at the boot or later: its path under `cooked/` and why (`http_<status>`, `timeout`, `network`). */
+  readonly onLoadFailure?: (failure: { readonly file: string; readonly reason: string }) => void;
 }
 
 /** The pixel size of a canvas laid out at `cssWidth`×`cssHeight` on this display, with the DPR cap. */
@@ -224,6 +228,7 @@ export class Shell {
   #onLog: ShellOptions["onLog"];
   #onCrash: ShellOptions["onCrash"];
   #onFirstFrame: ShellOptions["onFirstFrame"];
+  #onLoadFailure: ShellOptions["onLoadFailure"];
   #next = 1;
   #rpcNext = 1;
   #pumping = false;
@@ -271,6 +276,10 @@ export class Shell {
         const message = m.message ?? "the engine stopped";
         const error = (m as unknown as { error?: HostError }).error ?? { kind: "error", message, tick: this.#beatTick, lane: null, location: null };
         this.#crashed(message, error);
+        return;
+      }
+      if (m.type === "load-failure") {
+        this.#onLoadFailure?.(m as unknown as { file: string; reason: string });
         return;
       }
       if (m.type === "beat") {
@@ -343,6 +352,7 @@ export class Shell {
     const early = (e: MessageEvent) => {
       const m = e.data as { type: string; lines?: string[] };
       if (m.type === "log" && m.lines) options.onLog?.(m.lines);
+      if (m.type === "load-failure") options.onLoadFailure?.(m as unknown as { file: string; reason: string });
     };
     worker.addEventListener("message", early);
     const offscreen = canvas.transferControlToOffscreen();
@@ -416,6 +426,7 @@ export class Shell {
         ...(options.expect ? { expect: options.expect } : {}),
         ...(options.prime ? { prime: true } : {}),
         ...(options.trace ? { trace: true } : {}),
+        ...(options.telemetry ? { telemetry: true } : {}),
         viewport: { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false, ...pagePreferences() },
       },
       [offscreen],
@@ -432,6 +443,7 @@ export class Shell {
     shell.#onLog = options.onLog;
     shell.#onCrash = options.onCrash;
     shell.#onFirstFrame = options.onFirstFrame;
+    shell.#onLoadFailure = options.onLoadFailure;
     shell.#playing = options.autoplay ?? true;
     shell.#viewport = { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false };
     shell.#beat = shell.#watched = performance.now();

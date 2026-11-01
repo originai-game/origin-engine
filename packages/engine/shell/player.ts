@@ -2,8 +2,9 @@
 // origin/packages/contracts/src/player-wire.ts), game side: the shell says
 // `hello` at startup and owns its readiness: `loading` with the real bytes
 // received, `ready` at the first rendered frame, `fail` before ready,
-// `crash` after it (an error name and a fingerprint only), one `sample`
-// with the startup milestones and the renderer. It hears `hello`, `start`,
+// `crash` after it (an error name and a fingerprint, and with field
+// telemetry on the stack's frames, the tick and the session's context),
+// `sample`s with the boot's stages and the frames played (./telemetry.ts). It hears `hello`, `start`,
 // `gesture`, `pause` and `resume` from the Player, and the `result` of each
 // `call` it made (og.platform's calls, through ./platform.ts).
 //
@@ -222,11 +223,12 @@ export function connectPlayer(events: PlayerEvents) {
       post("fail", { code, message: message.slice(0, 400), retryable });
       lastValue = -1;
     },
-    crash(name: string, message: string) {
+    /** `fields`: field telemetry's crash details (telemetry.ts crashFields), absent when the build opts out. */
+    crash(name: string, message: string, fields?: Record<string, unknown>) {
       ended = true;
-      post("crash", { name: /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(name) ? name : "Error", fingerprint: fingerprint(message) });
+      post("crash", { ...fields, name: /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(name) ? name : "Error", fingerprint: fingerprint(message) });
     },
-    sample(fields: { renderer?: string; timings?: Record<string, number> }) {
+    sample(fields: Record<string, unknown>) {
       post("sample", { substrate: "origin-engine", ...fields });
     },
     event(name: string, attrs?: Record<string, string | number | boolean | null>) {

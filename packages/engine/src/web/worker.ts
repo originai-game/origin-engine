@@ -32,11 +32,13 @@
 // the engine's log and the Worker's console (the crash card shows the last
 // 200); { type: "text", target } when the UI's focused text control changes
 // and { type: "copy", text } when a copy took text (text-input.ts); { type: "haptics", patterns } when the UI's feedback played haptics (haptics.ts); { type: "a11y", tree } when the UI's
-// accessibility tree changed (a11y.ts); { type: "pointer-lock", wanted } when og.PointerLock.wanted
+// accessibility tree changed (a11y.ts); { type: "load-failure", file, reason } when a file
+// of the bundle did not arrive (loadFailure: field telemetry's load failures); { type: "pointer-lock", wanted } when og.PointerLock.wanted
 // changed (the shell requests the lock on the next press on the canvas, or exits it);
 // { type: "result", id, value | error } for `call` (`advance`,
-// `command`, `hash`, `frame`, `probe`, and `timings`: the played frames'
-// display intervals and engine work); { type: "rpc",
+// `command`, `hash`, `frame`, `probe`, `timings`: the played frames'
+// display intervals and engine work, and `telemetry`: their counts since the
+// last take, frames.ts, with `start`'s `telemetry: true`); { type: "rpc",
 // frame } for an answer that did not cross the ring.
 //
 // Requests on the ring are served between frames by the request loop
@@ -49,6 +51,7 @@
 import { boundHost, createEngine, systemClock, type Engine, type GameToken } from "../runtime.ts";
 import type { PlatformAnswer, PlatformHost } from "../platform-local.ts";
 import { loadWebHost, type WebGlue } from "./host.ts";
+import { FrameCounter } from "./frames.ts";
 import { drainRing, stampAt, type InjectedInput } from "./input.ts";
 import { WorkerAudio, type AudioLatencyMessage, type AudioMessage, type WebAudioGlue } from "./audio.ts";
 import { readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
@@ -96,6 +99,8 @@ interface Start {
   prime?: boolean;
   /** Record the run's trace from the boot on (src/trace.ts; the shell's `trace()` reads it). */
   trace?: boolean;
+  /** Count the played frames for field telemetry (frames.ts; the `telemetry` call takes them). */
+  telemetry?: boolean;
 }
 
 type Viewport = { width: number; height: number; dpr: number; safeArea?: Record<string, number>; covered?: Record<string, number>; coarsePointer?: boolean; reducedMotion?: boolean; highContrast?: boolean; reducedTransparency?: boolean; macKeys?: boolean };
@@ -224,6 +229,30 @@ export const FETCH_DEADLINE_MS = 300_000;
 /** How many of the first group's files the boot fetches at once. */
 export const FETCH_CONCURRENCY = 24;
 
+/**
+ * A file of the bundle that did not arrive, told to the page (`{ type:
+ * "load-failure", file, reason }`, field telemetry's load failures): `file`
+ * is its path under `cooked/` (no origin), `reason` one of `http_<status>`,
+ * `timeout` or `network` (no message text).
+ */
+export function loadFailure(url: string, e: unknown): { type: "load-failure"; file: string; reason: string } {
+  const text = e instanceof Error ? `${e.name} ${e.message}` : String(e);
+  const status = /HTTP (\d{3})/.exec(text)?.[1];
+  const cooked = url.replace(/[?#].*$/, "").split("/cooked/");
+  return {
+    type: "load-failure",
+    file: (cooked.length > 1 ? `cooked/${cooked[cooked.length - 1]}` : url.slice(url.lastIndexOf("/") + 1)).slice(0, 160),
+    reason: status ? `http_${status}` : /timeout|abort/i.test(text) ? "timeout" : "network",
+  };
+}
+const tellLoadFailure = (url: string, e: unknown) => {
+  try {
+    (globalThis as { postMessage?: (m: unknown) => void }).postMessage?.(loadFailure(url, e));
+  } catch {
+    /* no page to tell */
+  }
+};
+
 async function bytesOf(url: string, received?: Received, onChunk?: () => void): Promise<Uint8Array> {
   const r = await fetch(url, typeof AbortSignal?.timeout === "function" ? { signal: AbortSignal.timeout(FETCH_DEADLINE_MS) } : {});
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -301,6 +330,7 @@ export async function preloadBundle(
   try {
     manifest = new TextDecoder().decode(await bytesOf(manifestPath));
   } catch (e) {
+    tellLoadFailure(manifestPath, e);
     glue.og_web_fail_file(manifestPath, `cannot fetch ${manifestPath} (${e instanceof Error ? e.message : String(e)}); run og cook and serve cooked/ next to the page`);
     return { files: 0, failed: 1, manifest: null, textures: [], streamed: 0 };
   }
@@ -324,6 +354,7 @@ export async function preloadBundle(
       blobs.set(o.id, bytes);
     } catch (e) {
       failed++;
+      tellLoadFailure(path, e);
       glue.og_web_fail_file(path, `cannot fetch ${path} (${e instanceof Error ? e.message : String(e)})`);
     }
     ++fetched;
@@ -428,7 +459,10 @@ export function installFetcher(glue: WebExtras, manifest: string, basis: { js: s
   glue.og_web_set_fetcher((path: string) => {
     bytesOf(path)
       .then((bytes) => put(path, bytes))
-      .catch((e: unknown) => glue.og_web_fail_file(path, `cannot fetch ${path} (${e instanceof Error ? e.message : String(e)})`));
+      .catch((e: unknown) => {
+        tellLoadFailure(path, e);
+        glue.og_web_fail_file(path, `cannot fetch ${path} (${e instanceof Error ? e.message : String(e)})`);
+      });
   });
 }
 
@@ -624,6 +658,8 @@ export function startWorker(game: GameToken): void {
   const intervals = new Float32Array(FRAME_RECORDS);
   const work = new Float32Array(FRAME_RECORDS);
   let recorded = 0;
+  /** Field telemetry's frame counts (frames.ts), when the page's build has telemetry on; null otherwise. */
+  let frameCounter: FrameCounter | null = null;
   /**
    * An event with the page's time becomes one with its `at` within the tick
    * that reads it (input.ts stampAt): `now` is this Worker's clock now (a
@@ -740,6 +776,7 @@ export function startWorker(game: GameToken): void {
         if (last) {
           intervals[recorded % FRAME_RECORDS] = now - last;
           work[recorded % FRAME_RECORDS] = performance.now() - began;
+          frameCounter?.add(now - last, work[recorded % FRAME_RECORDS]!);
           recorded++;
         }
         behind = answered.behind ?? 0;
@@ -881,6 +918,8 @@ export function startWorker(game: GameToken): void {
       return { status: JSON.parse(abi.og_net_status(e.id)), hash: JSON.parse(abi.og_net_hash(e.id)), room: JSON.parse(abi.og_platform_room_info(e.id)) };
     },
     // The frames played since the last reset (at most FRAME_RECORDS, oldest first); `true` resets.
+    /** Field telemetry: the frames played since the last take (frames.ts FrameStats), counting from now on; null when the page's build has telemetry off. */
+    telemetry: () => frameCounter?.take() ?? null,
     timings: (_, [reset]) => {
       const n = Math.min(recorded, FRAME_RECORDS);
       const at = (a: Float32Array) => Array.from({ length: n }, (_, i) => Math.round(a[(recorded - n + i) % FRAME_RECORDS]! * 1000) / 1000);
@@ -914,6 +953,7 @@ export function startWorker(game: GameToken): void {
   self.onmessage = async ({ data }) => {
     if (data.type === "start") {
       try {
+        if (data.telemetry) frameCounter = new FrameCounter();
         const received = new Received((data.expect?.wasm ?? 0) + (data.expect?.cooked ?? 0));
         const progress = (value: number, stage: string) =>
           self.postMessage({ type: "progress", value: Math.min(1, value), stage, loaded: received.loaded, total: received.total });

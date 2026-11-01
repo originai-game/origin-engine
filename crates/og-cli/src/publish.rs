@@ -16,6 +16,7 @@
 //!   icon "assets/icon.png"  # a square PNG ≥ 192 px; absent: the brand tile
 //!   short_name "Runner"     # the installed app's name
 //!   color_textures etc1s    # etc1s | uastc: over `cook { color_textures }` for this export's cook
+//!   telemetry on            # on | off: field telemetry (crash details, frame times, load stages)
 //! }
 //! ```
 //!
@@ -82,6 +83,7 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
             "orientation" => json!(word(e, &file, &["any", "landscape", "portrait"])?),
             "fullscreen" => json!(word(e, &file, &["off", "gesture"])?),
             "gate" => json!(word(e, &file, &["tap", "none"])?),
+            "telemetry" => json!(word(e, &file, &["on", "off"])?),
             "made_with" => json!(word(e, &file, &["true", "false"])? == "true"),
             "dpr_cap" => {
                 let n = e
@@ -113,7 +115,7 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
             "short_name" => json!(text(e, &file)?),
             other => {
                 return Err(format!(
-                    "{file}:{}: publish has no `{other}`; it takes probe, out, isolation, fit, aspect, orientation, dpr_cap, fullscreen, gate, made_with, icon, short_name and color_textures",
+                    "{file}:{}: publish has no `{other}`; it takes probe, out, isolation, fit, aspect, orientation, dpr_cap, fullscreen, gate, made_with, icon, short_name, color_textures and telemetry",
                     e.line
                 ));
             }

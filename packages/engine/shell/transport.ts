@@ -16,6 +16,11 @@
 // `offline`. The credential travels only as `Authorization: Bearer` on these
 // requests; it is kept in memory, and a guest's also under the Player's
 // `og_token_<game>` key. Nothing here touches og.platform's own storage.
+//
+// Field telemetry rides `crash` and `sample` (./telemetry.ts): the fields a
+// crash report and a sample carry beyond protocol 2's, what the play origin
+// must keep when it files them, and the throttle are docs/web-export.md
+// §Telemetry (the platform's side: docs/platform-asks.md #17).
 
 import { fingerprint, timeOf, type PlayerEvents, type PlayerResult } from "./player.ts";
 
@@ -146,8 +151,8 @@ export interface PageConnection {
   loading(value: number | null, label?: string): void;
   ready(): void;
   fail(code: string, message: string, retryable: boolean): void;
-  /** After ready: the game stopped (only an error name and a fingerprint of the message leave the page). */
-  crash(name: string, message: string): void;
+  /** After ready: the game stopped (an error name and a fingerprint of the message; with field telemetry, `fields`: telemetry.ts crashFields). */
+  crash(name: string, message: string, fields?: Record<string, unknown>): void;
   sample(fields: Record<string, unknown>): void;
   event(name: string, attrs?: Record<string, string | number | boolean | null>): void;
   request(method: string, args?: Record<string, unknown>): Promise<PlayerResult>;
@@ -476,9 +481,9 @@ export function connectPage(game: PageGame, env: TransportEnv, events: PlayerEve
       failed = true;
       report({ kind: "fail", code, message: message.slice(0, 400), retryable });
     },
-    crash(name, message) {
+    crash(name, message, fields) {
       failed = true;
-      report({ kind: "crash", name: /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(name) ? name : "Error", fingerprint: fingerprint(message) });
+      report({ ...fields, kind: "crash", name: /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(name) ? name : "Error", fingerprint: fingerprint(message) });
     },
     sample(fields) {
       report({ kind: "sample", substrate: "origin-engine", ...fields });

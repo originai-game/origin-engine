@@ -10,6 +10,7 @@ modules next to the engine Worker.
 | `page.ts` | the main thread (`play.js`): boot splash and real progress, the play gate (audio unlock, fullscreen, wake lock), letterbox and safe area, the engine Worker, the audio worklet, the Player link and the platform bridge |
 | `player.ts` | Player protocol 2, game side: `hello`, `loading`, `ready` on the first drawn frame, `fail`, `crash`, `sample`, `event`; hears `hello`, `start`, `gesture`, `pause`, `resume`; `request(method, args)` sends a `call` and resolves with its `result` (matched by id) |
 | `platform.ts` | `og.platform` on the web: the Worker's platform calls answered through the Player (`save.get`/`save.set` hold the store, `leaderboard.submit`/`top`, telemetry as `event`s), held until the Player's `hello` when framed, and the browser's storage (`src/platform-local.ts`) where there is no Player or no such method; what protocol 2 lacks is `docs/platform-asks.md` |
+| `telemetry.ts` | field telemetry (docs/web-export.md §Telemetry): the browser, device and GPU context, the crash report's fields and the play samples, coarse and with nothing personal; none of it with `publish { telemetry off }` |
 | `wire.ts` | the platform's `og-probe` wire (probe protocol 5) over the engine's in-page probe, origin-checked |
 | `sw.ts` | the publish build's service worker: the whole build precached under its content hash |
 | `brand.ts`, `brand/`, `shell.css` | the brand marks, motion and tokens (vendored from the platform's `packages/brand`) |

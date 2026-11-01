@@ -38,10 +38,18 @@ import { connectPlayer } from "./player.ts";
 import { connectPage, pageGame, type PageConnection, type PageInfo } from "./transport.ts";
 import { deferredPlatform, HELLO_WAIT_MS, playerPlatform, playerRooms, storagePersistence } from "./platform.ts";
 import { localPlatform, memoryPersistence, type PlatformHost } from "../src/platform-local.ts";
+import type { HostError } from "../src/web/shell.ts";
+import type { FrameStats } from "../src/web/frames.ts";
+import { mapStack } from "../src/sourcemap.ts";
+import { browserOf, crashFields, deviceOf, gpuOf, memoryOf, playFields, type Context, type MemoryInfo } from "./telemetry.ts";
 
 /** The page's configuration (`<script type="application/json" id="og-config">`, written by og build). */
 export interface ShellConfig {
   readonly engine: string;
+  /** The build's id (og-build.json `sourcemaps.build`): a crash report's `build`. */
+  readonly buildId: string;
+  /** project.ogt `publish { telemetry }`: `off` measures and sends nothing beyond the session's lifecycle. */
+  readonly telemetry: "on" | "off";
   readonly build: "publish" | "dev";
   readonly name: string;
   readonly profile: "2d" | "3d";
@@ -66,6 +74,12 @@ const TIMINGS_GLOBAL = "__og_timings__";
 const REPLAY_SEED_PARAM = "replay-seed";
 const TRACE_PARAM = "trace";
 const LOG_LINES = 200;
+/** Field telemetry's throttle (docs/web-export.md §Telemetry): a play sample at most this often, on a hidden page after at least the second, at most this many a session. */
+const SAMPLE_EVERY_MS = 60_000;
+const SAMPLE_HIDDEN_MS = 10_000;
+const SAMPLES_MAX = 60;
+/** The files that did not arrive, kept for the next sample, and reported at most this many a session. */
+const FAILURES_MAX = 100;
 const INSTALL_DISMISSED = "og-install-dismissed";
 
 const MEMBERS = [
@@ -115,6 +129,8 @@ export function readConfig(doc: Document = document): ShellConfig {
   const c = JSON.parse(text) as Partial<ShellConfig>;
   return {
     engine: c.engine ?? "0.0.0",
+    buildId: typeof c.buildId === "string" ? c.buildId : "",
+    telemetry: c.telemetry === "off" ? "off" : "on",
     build: c.build === "publish" ? "publish" : "dev",
     name: c.name ?? "Origin Engine",
     profile: c.profile === "2d" ? "2d" : "3d",
@@ -189,6 +205,35 @@ export async function play(): Promise<PlayHandle> {
   const roomLink = query.get("room") ?? undefined;
   const t0 = performance.now();
   const log = new LogTail();
+  // ── field telemetry (./telemetry.ts): nothing of it in a build that opts out ──
+  const telemetry = config.telemetry !== "off";
+  const nav = navigator as Navigator & { deviceMemory?: number; userAgentData?: { brands?: Array<{ brand: string; version: string }> } };
+  let context: Context | null = telemetry
+    ? {
+        engine: config.engine,
+        build: config.buildId,
+        browser: browserOf(nav.userAgent, nav.userAgentData?.brands),
+        device: deviceOf({
+          ua: nav.userAgent,
+          coarse: matchMedia?.("(pointer: coarse)").matches ?? false,
+          touchPoints: nav.maxTouchPoints ?? 0,
+          screen: { width: screen.width, height: screen.height },
+          dpr: devicePixelRatio,
+          ...(nav.hardwareConcurrency ? { cores: nav.hardwareConcurrency } : {}),
+          ...(nav.deviceMemory ? { memory: nav.deviceMemory } : {}),
+        }),
+        gpu: null,
+      }
+    : null;
+  /** The engine's memory as last read (a crash report carries it: the Worker may not answer after one). */
+  let lastMemory: MemoryInfo | null = null;
+  const failures: Array<{ file: string; reason: string }> = [];
+  let failuresSeen = 0;
+  const onLoadFailure = (f: { file: string; reason: string }) => {
+    if (!telemetry || failuresSeen >= FAILURES_MAX) return;
+    failuresSeen++;
+    failures.push({ file: f.file, reason: f.reason });
+  };
   const playerEvents: import("./player.ts").PlayerEvents = {};
   // A top-level page the platform published (`window.__OG_GAME`) speaks Player protocol 2 to
   // its play origin over HTTP (./transport.ts); a framed page to its Player over postMessage;
@@ -314,10 +359,10 @@ export async function play(): Promise<PlayHandle> {
   // ── the error card (§6) ──────────────────────────────────────────────
   let shellRef: Shell | null = null;
   // `retryable` false: a reload cannot help (a browser without WebGPU).
-  const fail = async (title: string, message: string, after: boolean, retryable = true) => {
+  const fail = async (title: string, message: string, after: boolean, retryable = true, cause?: HostError) => {
     if (phase === "failed") return;
     phase = "failed";
-    if (after) player.crash("EngineCrash", message);
+    if (after) player.crash("EngineCrash", message, context ? crashFields(cause ?? { kind: "error", message, tick: null, lane: null, location: null }, context, lastMemory) : undefined);
     else player.fail("engine_start", message, retryable);
     let dump = "";
     if (shellRef) {
@@ -340,6 +385,8 @@ export async function play(): Promise<PlayHandle> {
     $("og-gate")?.setAttribute("hidden", "");
     card.querySelector("h1")!.textContent = title;
     card.querySelector("p")!.textContent = message;
+    // A dev build serves its maps (§Source maps): the card shows the game's .ts lines.
+    if (config.build === "dev") void devStack(message).then((mapped) => mapped !== message && (card.querySelector("p")!.textContent = mapped));
     const pre = card.querySelector<HTMLElement>("#og-error-log");
     if (pre) pre.textContent = log.lines.join("\n") || "(no log lines)";
     const dumpPre = card.querySelector<HTMLElement>("#og-error-dump");
@@ -436,6 +483,70 @@ export async function play(): Promise<PlayHandle> {
     readied = true;
     player.ready();
   };
+
+  // ── field telemetry's samples (docs/web-export.md §Telemetry) ─────────
+  const within = <T>(p: Promise<T>, ms = 1500): Promise<T | null> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    return Promise.race([p.catch(() => null), new Promise<null>((r) => (timer = setTimeout(() => r(null), ms)))]).finally(() => clearTimeout(timer));
+  };
+  // The adapter the page asks for (the Worker's is asked the same way): its vendor, architecture and limits.
+  const gpuReady = telemetry
+    ? within(
+        Promise.resolve((navigator as { gpu?: { requestAdapter(): Promise<Parameters<typeof gpuOf>[0] | null> } }).gpu?.requestAdapter() ?? null).then((a) => {
+          const gpu = a ? gpuOf(a) : null;
+          if (context) context = { ...context, gpu };
+          return gpu;
+        }),
+        5000,
+      )
+    : null;
+  const readMemory = async () => {
+    if (shellRef) lastMemory = memoryOf(await within(shellRef.call("memory"))) ?? lastMemory;
+    return lastMemory;
+  };
+  /** Once, at the first frame: the boot's stages, the renderer, the lanes, the context, the memory and what did not arrive. */
+  const bootSample = async () => {
+    for (let i = 0; !shellRef && i < 100; i++) await new Promise((r) => setTimeout(r, 20));
+    await gpuReady;
+    const memory = await readMemory();
+    const { at: _at, ...stages } = shellRef?.boot ?? {};
+    const lanes = shellRef?.ready.lanes;
+    player.sample({
+      phase: "boot",
+      renderer: shellRef?.tier ?? "unknown",
+      timings: { firstFrame: Math.round(firstFrameAt), boot: Math.round(firstFrameAt - t0) },
+      stages,
+      ...(lanes ? { lanes: { on: lanes.on, threads: lanes.threads } } : {}),
+      ...context,
+      ...(memory ? { memory } : {}),
+      ...(failures.length ? { failures: failures.splice(0, 20) } : {}),
+    });
+  };
+  let samples = 0;
+  let lastSample = 0;
+  let playingSince = 0;
+  /** The frames since the last sample, when `gap` ms passed since it (SAMPLES_MAX a session). */
+  const playSample = async (gap: number) => {
+    const now = performance.now();
+    if (!telemetry || !shellRef || !playingSince || samples >= SAMPLES_MAX || now - lastSample < gap) return;
+    lastSample = now;
+    const frames = (await within(shellRef.call("telemetry"))) as FrameStats | null;
+    const memory = await readMemory();
+    if ((!frames || frames.count === 0) && failures.length === 0) return;
+    samples++;
+    player.sample(playFields("play", frames, memory, failures.splice(0, 20), { ms: Math.round(now - playingSince), samples }));
+  };
+  /** The page goes: what is left, without waiting for the Worker (the hidden page already sent its frames). */
+  const endSample = () => {
+    if (!telemetry || !playingSince) return;
+    player.sample(playFields("end", null, lastMemory, failures.splice(0, 20), { ms: Math.round(performance.now() - playingSince), samples }));
+  };
+  /** A dev build's stack mapped with the maps it serves beside its bundles; the text as it was when they are not there. */
+  const devStack = async (text: string): Promise<string> => {
+    const map = (f: string) => within(fetch(new URL(`./${f}.map`, location.href)).then((r) => (r.ok ? r.text() : null)));
+    const [game, play] = await Promise.all([map("game.js"), map("play.js")]);
+    return game || play ? mapStack(text, { "game.js": game, "play.js": play }) : text;
+  };
   let shell: Shell;
   try {
     shell = await Shell.start({
@@ -461,12 +572,14 @@ export async function play(): Promise<PlayHandle> {
       ...(config.expect.wasm + config.expect.cooked > 0 ? { expect: config.expect } : {}),
       onProgress: (v) => setProgress(v),
       onLog: (lines) => log.push(lines),
-      onCrash: (message) => void fail(readied ? T.stopped : T.startFailed, message, readied),
+      onCrash: (message, error) => void fail(readied ? T.stopped : T.startFailed, message, readied, true, error),
+      telemetry,
+      onLoadFailure,
       onFirstFrame: () => {
         firstFrameAt = performance.now();
         performance.mark?.("og:first-frame");
         ready();
-        player.sample({ renderer: shell?.tier ?? "unknown", timings: { firstFrame: Math.round(firstFrameAt), boot: Math.round(firstFrameAt - t0) } });
+        if (telemetry) void bootSample();
       },
     });
   } catch (e) {
@@ -555,6 +668,10 @@ export async function play(): Promise<PlayHandle> {
     badge?.setAttribute("data-playing", "");
     back?.setAttribute("data-playing", "");
     page?.start();
+    if (telemetry && !playingSince) {
+      playingSince = lastSample = performance.now();
+      setInterval(() => void playSample(SAMPLE_EVERY_MS), SAMPLE_EVERY_MS / 4);
+    }
     if (!harness) shell.play(!pausedByPlayer && document.visibilityState === "visible");
     void lockWake();
   };
@@ -570,9 +687,14 @@ export async function play(): Promise<PlayHandle> {
       wake = null;
     }
   };
-  document.addEventListener("visibilitychange", () => pauseFor(document.visibilityState !== "visible"));
+  document.addEventListener("visibilitychange", () => {
+    pauseFor(document.visibilityState !== "visible");
+    // A hidden page may never come back: its frames go now (the clock is paused, so none are lost).
+    if (document.visibilityState !== "visible") void playSample(SAMPLE_HIDDEN_MS);
+  });
   addEventListener("pagehide", () => {
     pauseFor(true);
+    endSample();
     page?.end({ ready: firstFrameAt > 0, failed: phase === "failed" });
   });
   pollGamepads((e) => shell.inject(e));

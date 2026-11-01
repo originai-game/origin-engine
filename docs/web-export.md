@@ -444,6 +444,57 @@ as the rest of the build's do.
   an error's text into report frames, as the shell does. These signatures
   are a contract with the platform: a change to them is a break.
 
+## Telemetry
+
+Field telemetry is what the shell tells the Player about a session beyond
+its lifecycle. It rides the existing protocol-2 messages (`crash` and
+`sample`) on both transports: `postMessage` to a framed Player, and the
+top-level page's `report` (which keeps its batching, its 20 messages and
+64 KiB per report, and its 200 unsent at most). `publish { telemetry off }`
+(og-build.json's config `telemetry`) measures and sends none of it: the
+Worker counts no frames, the page reads no adapter or memory, and only
+`start`, `ready`, `fail`, the boot `sample` with `renderer` and `timings`,
+`crash` with `name` and `fingerprint`, `heartbeat` and `end` go, as before.
+
+**Nothing personal.** A browser is its family, major version and OS family
+(never the user-agent string); a device is its class and the figures any
+page reads (`hardwareConcurrency`, `deviceMemory`, DPR to a quarter); a GPU
+is the adapter's `vendor` and `architecture`, the limits and features below
+(never its `description` or driver); a stack is its frames with each
+location cut to the file name (never an origin, a path, a query or the
+error's message: a game's message may hold what a player typed, so only its
+fingerprint leaves); a load failure is a path under `cooked/` and a reason
+code. No identifier is added: the report's `session` and `device` are the
+ones the transport already had. (`shell/telemetry.ts`.)
+
+**Throttled.** The Worker counts each played frame into fixed bins
+(`src/web/frames.ts`: no allocation, no message per frame); the page takes
+the counts in a `sample` at most once a minute while playing, when the page
+is hidden (at least 10 s after the last), and never more than 60 a
+session. At most 20 load failures go per sample and 100 a session.
+
+| Message | Fields added (all optional to the play origin) |
+|---|---|
+| `crash` | `cause` (`panic`, `error`, `hang`), `tick` (the world's, or null), `lane` (a panic's lanes site), `location` (a panic's `crates/…:line:col`), `stack` (string[], at most 48 frames of 240 characters, `at f (game.js:1:2345)` or `f@game.js:1:2345`), `engine` (version), `build` (og-build.json `sourcemaps.build`), `browser { name, major, os }`, `device { class: phone \| tablet \| desktop, cores, memory, dpr, touch }`, `gpu { vendor, architecture, fallback, limits: { maxTextureDimension2D, … }, features: string[] } \| null`, `memory { linear, heapLive, heapPeak, streamUsed, streamBudget, audio, entities } \| null` (bytes; entities a count) |
+| `sample` `phase: "boot"` (once, at the first frame) | beside `renderer` and `timings`: `stages` (the Worker's boot in ms: `wasm`, `bundle`, `create`, `attach`, `transcode`, `prime`, `settle`, `present`), `lanes { on, threads }`, `engine`, `build`, `browser`, `device`, `gpu`, `memory`, `failures` |
+| `sample` `phase: "play"` | `frames { count, ms, bins, interval, work, hitches, longHitches, max }` (`bins`: the 11 upper edges in ms, 8.4 to 250; `interval` and `work`: 12 counts each, the last above 250 ms; a hitch is an interval of 50 ms or more, a long one 250 ms or more), `memory`, `failures [{ file, reason: http_<status> \| timeout \| network }]`, `session { ms, samples }` (play time so far and the play samples sent) |
+| `sample` `phase: "end"` (on `pagehide`) | `memory` as last read, `failures` not yet sent, `session` |
+
+A stack's frames name the bundle's lines; `build` names the maps that
+resolve them (§Source maps, `mapStack`). The session's start and end are
+the transport's `start` and `end` (`durationMs`, `ready`, `failed`).
+
+**The platform's side** (to accept; until it does, the engine changes
+nothing it already sends): the play origin's `report` endpoint and the
+framed Player keep the fields above when they file `crash` and `sample`
+(today a `crash` is filed with `name` and `fingerprint` only and a `sample`
+with `renderer` and `timings`); they must not answer 400 for a message that
+carries them, since a report answered 400 is dropped whole. It stores each
+publish build's `sourcemaps/` privately under `sourcemaps.build` before it
+uploads the release to the game's origin, and maps a crash's `stack` with
+`mapStack` from `@origingame/engine/sourcemap` when it shows the report.
+`docs/platform-asks.md` #17.
+
 ## project.ogt `publish`
 
 ```text
@@ -461,6 +512,7 @@ publish {
   icon "assets/icon.png"  # square PNG ≥ 192 px; absent: the brand tile
   short_name "Runner"     # the installed app's name
   color_textures etc1s    # etc1s | uastc: this export's colour textures (default: cook's)
+  telemetry on            # on | off: field telemetry (§Telemetry)
 }
 ```
 
@@ -604,8 +656,10 @@ The shell says `hello` (`substrate: "origin-engine"`) at startup and owns its
 readiness: `loading` with the byte fraction, `ready` at the first rendered
 frame (or two seconds after the boot when nothing renders), `fail`
 (`engine_start`, retryable) before it, `crash` (`EngineCrash` and a
-fingerprint of the message, nothing else) after it, and one `sample` with
-`renderer` (the tier) and `timings.firstFrame` and `timings.boot`. A framed
+fingerprint of the message, and with field telemetry on the fields of
+§Telemetry) after it, and `sample`s: the boot's at the first frame, with
+`renderer` (the tier) and `timings.firstFrame` and `timings.boot`, and with
+telemetry on the frames played (§Telemetry). A framed
 page (and the Stage overlay's own document, below) waits 300 ms for a
 Player's `hello` before drawing its own gate; under
 a Player that answered, the shell draws no gate: it plays on `start` (or a
@@ -768,6 +822,7 @@ plays alone on the browser's storage, as before.
   `page.back`, the game's page on the site. There is no purchase hand-off:
   protocol 2 has no commerce store.
 
+`tests/web-shell-crash.test.ts` checks a crash report's fields end to end (the Worker's frame counts, the stack, tick and context, nothing personal), and `tests/sourcemap.test.ts` the mapping.
 `tests/platform-page.test.ts` runs the transport against a stand-in play
 origin (the code stripped and sent only in the body; an account kept out of
 storage and a stored one never resumed without a code; one guest for two

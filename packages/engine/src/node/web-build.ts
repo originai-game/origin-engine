@@ -100,6 +100,14 @@ export interface PublishSettings {
   readonly icon: string | null;
   /** The installed app's short name; absent: the name. */
   readonly shortName: string | null;
+  /**
+   * Field telemetry (docs/web-export.md §Telemetry): `on` reports a crash's
+   * stack, tick and context, the boot's stages, frame-time and hitch counts
+   * and load failures to the Player; `off` measures and sends none of it,
+   * only the lifecycle protocol 2 needs (`start`, `ready`, `fail`, `crash`
+   * with its name and fingerprint, `end`).
+   */
+  readonly telemetry: "on" | "off";
 }
 
 export interface ProjectSettings {
@@ -123,6 +131,7 @@ export const DEFAULT_PUBLISH: PublishSettings = {
   madeWith: true,
   icon: null,
   shortName: null,
+  telemetry: "on",
 };
 
 /** The settings of a project read without og (tests): name, id, engine and profile; publish defaults. */
@@ -690,6 +699,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const config = {
     engine: ENGINE_VERSION,
     buildId,
+    telemetry: p.telemetry,
     build: publish ? "publish" : "dev",
     name: settings.name,
     profile: settings.profile,
