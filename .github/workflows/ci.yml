@@ -3,19 +3,23 @@
 # Keep logic in the scripts so local and CI runs match.
 name: ci
 
-# Not on every push (docs/ci.md §CI, 2026-10-31): the local gate is the
-# signal for a merge (the coordinator's functional lane and the wave-end
-# run). The shared runner records main once a night, only when main moved
-# since the last nightly, and every PR; the Actions tab runs it by hand.
+# By hand only (docs/ci.md §CI, 2026-11-01): no push, pull request or
+# schedule starts it. The local gate is the signal for a merge (the
+# coordinator's functional lane and the wave-end run); run one lane here
+# when a shared-runner record is needed:
+# `gh workflow run ci.yml --ref <branch> -f lane=gate`.
 on:
-  pull_request:
-  schedule:
-    - cron: "17 3 * * *" # nightly gate and perf, 03:17 UTC, when main moved
   workflow_dispatch:
+    inputs:
+      lane:
+        description: "The lane to run (docs/ci.md §Lanes)"
+        type: choice
+        options: [gate, quick, functional, perf]
+        default: gate
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.lane }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -41,27 +45,9 @@ env:
   OG_TEST_TIME_SCALE: "3"
 
 jobs:
-  # The nightly runs only when main moved since the last completed nightly:
-  # a red night stays red until a commit lands or someone runs it by hand.
-  changed:
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      actions: read
-    outputs:
-      run: ${{ steps.last.outputs.run }}
-    steps:
-      - id: last
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          last=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --event schedule --status completed --limit 1 --json headSha --jq '.[0].headSha // ""')
-          if [ "$last" = "$GITHUB_SHA" ]; then echo "main unchanged since the last nightly ($last)" >&2; echo run=false; else echo run=true; fi >> "$GITHUB_OUTPUT"
-
-  # The quick lane (docs/ci.md §Lanes): the loop's signal on every PR.
+  # The quick lane (docs/ci.md §Lanes).
   quick:
-    if: github.event_name == 'pull_request'
+    if: inputs.lane == 'quick'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     container: &container
@@ -107,9 +93,9 @@ jobs:
           path: target/evidence/**
 
   # The functional lane: what a merge to main passes locally (AGENTS.md
-  # §When to run the gate), the PR signal beside quick.
+  # §When to run the gate).
   functional:
-    if: github.event_name == 'pull_request'
+    if: inputs.lane == 'functional'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     container: *container
@@ -139,8 +125,7 @@ jobs:
 
   # The full lane with CI set: every step and test, the shipping wasm profile.
   gate:
-    needs: changed
-    if: ${{ !cancelled() && (github.event_name != 'schedule' || needs.changed.outputs.run == 'true') }}
+    if: inputs.lane == 'gate'
     runs-on: ubuntu-latest
     timeout-minutes: 240
     container: *container
@@ -187,9 +172,8 @@ jobs:
             target/evidence/check-summary.txt
 
   # The perf suite (docs/ci.md §What runs where, `make perf`).
-  perf-nightly:
-    needs: changed
-    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changed.outputs.run == 'true') }}
+  perf:
+    if: inputs.lane == 'perf'
     runs-on: ubuntu-latest
     timeout-minutes: 240
     container: *container

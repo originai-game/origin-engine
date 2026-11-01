@@ -97,9 +97,9 @@ records the OOM receipt, driver controls, reload timings, and setup checks.
 
 | Lane | Steps | When | Warm, Apple M4 Pro, another agent on the machine |
 |---|---|---|---|
-| `scripts/check.sh functional` | fmt clippy test drift bun-functional | after each batch of merges on main, and CI job `functional` on every PR: what a merge must pass (every test and the GPU reference frames, the generated API, the packages' tests on the native host); the web module is the last full lane's, and when a crate changed since, the tests that compare the two hosts' hashes skip (`OG_WASM_STALE`) and run in the full lane; no wasm build, size, determinism or browser tiers | 90–160 s |
-| `scripts/check.sh quick` | fmt clippy test-quick drift bun-quick | the loop while working; CI job `quick` on every PR | 19–26 s (test-quick 16–20 s for 225 tests, 256 with og-ui's and og-render's GPU tests) |
-| `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism | path-aware once per batch of merges on main, by the one session that runs gates (§When to run what); `--all` once at the end of a round, before its final commit and report; CI job `gate` on every PR and nightly when main moved | `--all` 84–101 s, steps concurrent (test 54–69 for 437 tests beside wasm-opt 54–69, then size-gate 22–25 beside bun-test 14–18), 121–135 s at a load average of 24–32; with nothing changed 30 s |
+| `scripts/check.sh functional` | fmt clippy test drift bun-functional | after each batch of merges on main, and CI job `functional` by hand: what a merge must pass (every test and the GPU reference frames, the generated API, the packages' tests on the native host); the web module is the last full lane's, and when a crate changed since, the tests that compare the two hosts' hashes skip (`OG_WASM_STALE`) and run in the full lane; no wasm build, size, determinism or browser tiers | 90–160 s |
+| `scripts/check.sh quick` | fmt clippy test-quick drift bun-quick | the loop while working; CI job `quick` by hand | 19–26 s (test-quick 16–20 s for 225 tests, 256 with og-ui's and og-render's GPU tests) |
+| `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism | path-aware once per batch of merges on main, by the one session that runs gates (§When to run what); `--all` once at the end of a round, before its final commit and report; CI job `gate` by hand | `--all` 84–101 s, steps concurrent (test 54–69 for 437 tests beside wasm-opt 54–69, then size-gate 22–25 beside bun-test 14–18), 121–135 s at a load average of 24–32; with nothing changed 30 s |
 
 Both lanes are path-aware. A step that passes records the working tree it
 passed on in `<target>/og-gate/green/<step>`: a git tree of the whole
@@ -262,7 +262,7 @@ split, and the lowest such crate is its cause.
 
 ## What runs where
 
-| Step | Command | Lane | CI `quick` (PR) | CI `functional` (PR) | CI `gate` (PR, nightly when main moved, manual) | CI `perf-nightly` (03:17 UTC when main moved, manual) |
+| Step | Command | Lane | CI `quick` (manual) | CI `functional` (manual) | CI `gate` (manual) | CI `perf` (manual) |
 |---|---|---|---|---|---|---|
 | `fmt` | `cargo fmt --all --check` | every | yes | yes | yes | |
 | `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | every | yes | yes | yes | |
@@ -292,19 +292,18 @@ it the steps fall back to `cargo test`.
 
 ### CI
 
-**GitHub Actions runs on PRs, nightly and by hand, never on a push.** It
-was off during the build-out (removed 2026-10-21: the shared runner was
-slower than the local gate, billed, and added nothing the gate does not
-cover; the history at 53b876f7 and 9d220790 and docs/phase-1.md's ci-green
-section hold what it was when it last ran green) and came back on
-2026-10-25 with the repository published, on every push to main. That
-started a 60-minute gate for each of about 200 pushes in October, half of
-them red or cancelled by the next push, so on 2026-10-31 the owner moved
-main's record to the nightly: the triggers are `pull_request`, the
-schedule (03:17 UTC) and `workflow_dispatch`. The nightly's `changed` job
-compares main with the last completed scheduled run and skips `gate` and
-`perf-nightly` when main did not move; a red night stays red until a
-commit lands or someone runs the workflow by hand.
+**GitHub Actions runs only by hand.** No push, pull request or schedule
+starts a workflow; someone runs one when a shared-runner record is needed
+(`gh workflow run ci.yml --ref <branch> -f lane=gate|quick|functional|perf`,
+or the Actions tab). It was off during the build-out (removed 2026-10-21:
+the shared runner was slower than the local gate, billed, and added
+nothing the gate does not cover; the history at 53b876f7 and 9d220790 and
+docs/phase-1.md's ci-green section hold what it was when it last ran
+green) and came back on 2026-10-25 with the repository published, on every
+push to main. That started a 60-minute gate for each of about 200 pushes
+in October, half of them red or cancelled by the next push, so the owner
+turned every automatic trigger off (2026-10-31: push; 2026-11-01: pull
+requests and the nightly). CodeQL's default setup is off too.
 
 `.github/workflows/ci.yml` only provisions the machine
 (`.github/actions/provision`: disk, the toolchain from
@@ -315,11 +314,10 @@ a `debian:trixie` container with `--init`, whose Lavapipe (LLVM 19.1.7) is
 the og-lavapipe image's that records the vulkan-cpu references (Ubuntu
 24.04's LLVM 20.1.2 missed two of them by RMSE 0.0003 and 0.0005). The
 jobs, with the times measured on the two-vCPU runner when the workflow
-last ran green: `quick` (PRs, 12.5 min, timeout 45) and `functional` (PRs,
-35 min, timeout 90), `gate` (PRs, the nightly and by hand, `scripts/check.sh` with
+last ran green: `quick` (12.5 min, timeout 45) and `functional` (35 min,
+timeout 90), `gate` (`scripts/check.sh` with
 `CI` set so nothing is skipped and the shipping wasm profile is measured,
-`OG_GATE_JOBS=1`, 60 min, timeout 240), `perf-nightly` (the schedule when main
-moved and by hand, `scripts/perf.sh --measure`: a measurement, not a baseline check,
+`OG_GATE_JOBS=1`, 60 min, timeout 240), `perf` (`scripts/perf.sh --measure`: a measurement, not a baseline check,
 145 min, timeout 240). The runner's environment: `OG_GATE_MACHINE_LOCK=0`
 (one gate per runner), `OG_BUN_TEST_TIMEOUT=60000` and
 `OG_TEST_TIME_SCALE=3` (a render test on two vCPU of Lavapipe takes 5 to
@@ -345,9 +343,8 @@ artifact to the machine that runs `verify` and `publish`.
 The process does not change: the functional lane for every merge, `--all`
 and web-reference (or `scripts/wave-end.sh`) at a wave's end, by the one
 session that merges (AGENTS.md §Build and gate discipline), is what a
-merge must pass, and metal is the frame authority. CI is the shared
-runner's nightly record of main and of every PR, and the nightly's
-measurement.
+merge must pass, and metal is the frame authority. CI is a record
+someone asks for, never a gate that runs by itself.
 Two intermittent failures were known when the workflow last ran (og-cook's
 `cooking_twice_gives_identical_bytes`, row 80; the particle test's SIGSEGV,
 row 81); a red run is read before it is re-run. Both are closed. The
