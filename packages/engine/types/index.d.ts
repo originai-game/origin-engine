@@ -21098,6 +21098,547 @@ export interface SheetResult {
   readonly visible: boolean;
 }
 
+/**
+ * How the selected tab is marked.
+ * - `"underline"`: An underline that slides between tabs (the default).
+ * - `"pill"`: A pill behind the tab, on a track.
+ */
+export type TabVariant = "underline" | "pill";
+
+/**
+ * A tab.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TabItem {
+  /**
+   * What it says.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * An icon before it; empty is none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * A count badge after it; empty is none.
+   *
+   * @default ""
+   */
+  readonly badge?: string;
+  /**
+   * The badge's tone.
+   *
+   * @default "primary"
+   */
+  readonly badgeTone?: Tone;
+  /**
+   * Shown but not selectable.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+}
+
+/**
+ * Tabs over the panel the game builds for the selected one.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TabBarDesc {
+  /**
+   * The tabs.
+   *
+   * @default []
+   */
+  readonly tabs?: readonly TabItem[];
+  /**
+   * The selected tab (keep TabBarResult.selected).
+   *
+   * @default 0
+   */
+  readonly selected?: number;
+  /**
+   * How the selected tab is marked.
+   *
+   * @default "underline"
+   */
+  readonly variant?: TabVariant;
+  /**
+   * The tabPrev and tabNext actions (Q and E, LB and RB) step through the tabs, their glyphs at the row's ends.
+   *
+   * @default true
+   */
+  readonly bumpers?: boolean;
+  /**
+   * Stepping past the last tab comes back to the first.
+   *
+   * @default true
+   */
+  readonly wrap?: boolean;
+  /**
+   * The tabs share the row's width.
+   *
+   * @default false
+   */
+  readonly fill?: boolean;
+  /**
+   * Space between the row and the panel; null is space.md.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number | null;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * The panel's height; null fits.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * What a screen reader calls the tab list.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/** What a tab bar answered this tick. */
+export interface TabBarResult {
+  /** The selected tab after this tick: keep it. */
+  readonly selected: number;
+  /** It changed this tick. */
+  readonly changed: boolean;
+}
+
+/**
+ * Pages side by side that a drag or a flick moves, snapping to a page.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CarouselDesc {
+  /**
+   * How many pages.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * The current page (keep CarouselResult.index).
+   *
+   * @default 0
+   */
+  readonly index?: number;
+  /**
+   * How much of the pages beside the current one shows; null is 24 on a phone, else 0.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly peek?: number | null;
+  /**
+   * Space between pages; null is space.md.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number | null;
+  /**
+   * Previous and next buttons; null is all but a phone.
+   *
+   * @default null
+   */
+  readonly arrows?: boolean | null;
+  /**
+   * Page dots under it.
+   *
+   * @default true
+   */
+  readonly dots?: boolean;
+  /**
+   * The arrows wrap around.
+   *
+   * @default false
+   */
+  readonly loop?: boolean;
+  /**
+   * Move on by itself after this long untouched; 0 never (and never under reduced motion).
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly autoplayMs?: number;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * The pages' height; null fits.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * What a screen reader calls it.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/** What a carousel answered this tick. */
+export interface CarouselResult {
+  /** The current page after this tick: keep it. */
+  readonly index: number;
+  /** It changed this tick. */
+  readonly changed: boolean;
+}
+
+/**
+ * A step of a breadcrumb path.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface Crumb {
+  /**
+   * What it says.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * An icon before it; empty is none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+}
+
+/**
+ * The path to where the player is; every crumb but the last is a link back.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface BreadcrumbsDesc {
+  /**
+   * The crumbs, the current page last.
+   *
+   * @default []
+   */
+  readonly items?: readonly Crumb[];
+  /**
+   * The most crumbs shown before the middle collapses into a menu; null is 3 on a phone, else 5.
+   *
+   * @default null
+   */
+  readonly maxShown?: number | null;
+  /**
+   * The collapsed crumbs' button's accessible name; empty is Show path.
+   *
+   * @default ""
+   */
+  readonly moreLabel?: string;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * What a screen reader calls it; empty is Breadcrumb.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/** What breadcrumbs answered this tick. */
+export interface BreadcrumbsResult {
+  /** The crumb pressed (go back to it). */
+  readonly chosen: number | null;
+}
+
+/**
+ * Previous and next, the first and last pages and the pages around the current one.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PaginationDesc {
+  /**
+   * How many pages.
+   *
+   * @default 1
+   */
+  readonly pages?: number;
+  /**
+   * The current page, from 0 (keep PageResult.page).
+   *
+   * @default 0
+   */
+  readonly page?: number;
+  /**
+   * Pages shown each side of the current one; null is 1.
+   *
+   * @default null
+   */
+  readonly siblings?: number | null;
+  /**
+   * Only `4 / 20` between the arrows; null is a phone's.
+   *
+   * @default null
+   */
+  readonly compact?: boolean | null;
+  /**
+   * The tabPrev and tabNext actions page.
+   *
+   * @default false
+   */
+  readonly bumpers?: boolean;
+  /**
+   * Previous's accessible name; empty is Previous page.
+   *
+   * @default ""
+   */
+  readonly prevLabel?: string;
+  /**
+   * Next's accessible name; empty is Next page.
+   *
+   * @default ""
+   */
+  readonly nextLabel?: string;
+  /**
+   * Its width; null fits.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * What a screen reader calls it; empty is Pagination.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/** What pagination answered this tick. */
+export interface PageResult {
+  /** The current page after this tick: keep it. */
+  readonly page: number;
+  /** It changed this tick. */
+  readonly changed: boolean;
+}
+
+/**
+ * A hint of the action bar: an action, its glyph on the device in use and what it does.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ActionHint {
+  /**
+   * The action's name (answered when the hint is pressed).
+   *
+   * @default ""
+   */
+  readonly action?: string;
+  /**
+   * What it does (`Buy`, `Back`).
+   *
+   * @default ""
+   */
+  readonly hint?: string;
+  /**
+   * The glyph's icon (og.ui.glyph's).
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * The glyph as text (`Enter`, `A`, `LB`).
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * It fires on a hold: a ring fills.
+   *
+   * @default false
+   */
+  readonly hold?: boolean;
+  /**
+   * How far the hold has gone.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly progress?: number;
+}
+
+/**
+ * The action bar (docs/ui.md §8.2): the actions the top layer accepts, each its glyph and its hint, at an edge.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ActionHintsDesc {
+  /**
+   * The hints, as og.ui.actionBar answers them.
+   *
+   * @default []
+   */
+  readonly hints?: readonly ActionHint[];
+  /**
+   * The edge it sits on.
+   *
+   * @default "bottomRight"
+   */
+  readonly anchor?: Anchor;
+  /**
+   * A HUD backing behind it.
+   *
+   * @default true
+   */
+  readonly background?: boolean;
+  /**
+   * What a screen reader calls it; empty is Actions.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/** What the action bar answered this tick. */
+export interface ActionHintsResult {
+  /** The action of the hint pressed (a touch, a click): act as if the control fired. */
+  readonly pressed: string | null;
+}
+
+/**
+ * A slice of a radial wheel.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RadialItem {
+  /**
+   * What it is.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its icon; empty is none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * A line the centre shows while it is chosen.
+   *
+   * @default ""
+   */
+  readonly detail?: string;
+  /**
+   * Shown but not choosable.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+}
+
+/**
+ * A radial wheel: slices around a centre, chosen by where the pointer or a stick points.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RadialDesc {
+  /**
+   * The slices, clockwise from the top.
+   *
+   * @default []
+   */
+  readonly items?: readonly RadialItem[];
+  /**
+   * A stick's direction (x right, y down, -1 to 1); null reads the pointer.
+   *
+   * @default null
+   */
+  readonly aim?: Vector2 | null;
+  /**
+   * How far the stick must point before a slice is chosen.
+   *
+   * @default 0.35
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly deadZone?: number;
+  /**
+   * The press or stick that opened it was let go: pick the slice it points at.
+   *
+   * @default false
+   */
+  readonly release?: boolean;
+  /**
+   * Its radius; null is up to 170, at most 36 % of the short side.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly radius?: number | null;
+  /**
+   * The centre's radius as a fraction of the wheel's.
+   *
+   * @default 0.42
+   * @range 0.2..0.8
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly hole?: number;
+  /**
+   * What the centre shows when nothing is chosen.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * Each slice's label under its icon.
+   *
+   * @default true
+   */
+  readonly labels?: boolean;
+  /**
+   * Dim what is behind it.
+   *
+   * @default true
+   */
+  readonly dim?: boolean;
+}
+
+/** What a radial wheel answered this tick. */
+export interface RadialResult {
+  /** The slice picked (a release, a press). */
+  readonly chosen: number | null;
+  /** The slice pointed at. */
+  readonly hovered: number | null;
+  /** Back or a press outside asked to close it. */
+  readonly dismissed: boolean;
+}
+
+
+
+
+
+
+
 
 
 
@@ -32574,6 +33115,51 @@ export declare namespace og {
      * @param build Builds its body.
      */
     function sheet(id: string, open: boolean, desc: SheetDesc, build: UiBuild): SheetResult;
+    /**
+     * Tabs with a sliding indicator and bumpers over the panel of the selected one.
+     *
+     * @param id Its id.
+     * @param desc Tabs and the selected one.
+     * @param build Builds the selected tab's panel by its index.
+     */
+    function tabBar(id: string, desc: TabBarDesc, build: UiItemBuild): TabBarResult;
+    /**
+     * Pages a drag or a flick moves, snapping to a page, with arrows and dots.
+     *
+     * @param id Its id.
+     * @param desc Count, the current page and options.
+     * @param build Builds a page by its index (the current one and two each side).
+     */
+    function carousel(id: string, desc: CarouselDesc, build: UiItemBuild): CarouselResult;
+    /**
+     * The path to where the player is, collapsing its middle into a menu when long.
+     *
+     * @param id Its id.
+     * @param desc The crumbs.
+     */
+    function breadcrumbs(id: string, desc?: BreadcrumbsDesc): BreadcrumbsResult;
+    /**
+     * Previous, next and the pages around the current one.
+     *
+     * @param id Its id.
+     * @param desc Pages and the current one.
+     */
+    function pagination(id: string, desc?: PaginationDesc): PageResult;
+    /**
+     * The action bar: each action the top layer accepts as its glyph and hint; on touch, buttons.
+     *
+     * @param id Its id.
+     * @param desc The hints and the edge.
+     */
+    function actionHints(id: string, desc?: ActionHintsDesc): ActionHintsResult;
+    /**
+     * A radial wheel chosen by where the pointer or a stick points.
+     *
+     * @param id Its id.
+     * @param open Whether it is open.
+     * @param desc Slices, aim and release.
+     */
+    function radialMenu(id: string, open: boolean, desc?: RadialDesc): RadialResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

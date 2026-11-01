@@ -8951,6 +8951,23 @@
         "SheetEdge",
         "SheetDesc",
         "SheetResult",
+        "TabVariant",
+        "TabItem",
+        "TabBarDesc",
+        "TabBarResult",
+        "CarouselDesc",
+        "CarouselResult",
+        "Crumb",
+        "BreadcrumbsDesc",
+        "BreadcrumbsResult",
+        "PaginationDesc",
+        "PageResult",
+        "ActionHint",
+        "ActionHintsDesc",
+        "ActionHintsResult",
+        "RadialItem",
+        "RadialDesc",
+        "RadialResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -11197,6 +11214,150 @@
             }
           ],
           "returns": "SheetResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "tabBar",
+          "doc": "Tabs with a sliding indicator and bumpers over the panel of the selected one.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "TabBarDesc",
+              "optional": false,
+              "doc": "Tabs and the selected one."
+            },
+            {
+              "name": "build",
+              "type": "UiItemBuild",
+              "optional": false,
+              "doc": "Builds the selected tab's panel by its index."
+            }
+          ],
+          "returns": "TabBarResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "carousel",
+          "doc": "Pages a drag or a flick moves, snapping to a page, with arrows and dots.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "CarouselDesc",
+              "optional": false,
+              "doc": "Count, the current page and options."
+            },
+            {
+              "name": "build",
+              "type": "UiItemBuild",
+              "optional": false,
+              "doc": "Builds a page by its index (the current one and two each side)."
+            }
+          ],
+          "returns": "CarouselResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "breadcrumbs",
+          "doc": "The path to where the player is, collapsing its middle into a menu when long.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "BreadcrumbsDesc",
+              "optional": true,
+              "doc": "The crumbs."
+            }
+          ],
+          "returns": "BreadcrumbsResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "pagination",
+          "doc": "Previous, next and the pages around the current one.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "PaginationDesc",
+              "optional": true,
+              "doc": "Pages and the current one."
+            }
+          ],
+          "returns": "PageResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "actionHints",
+          "doc": "The action bar: each action the top layer accepts as its glyph and hint; on touch, buttons.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ActionHintsDesc",
+              "optional": true,
+              "doc": "The hints and the edge."
+            }
+          ],
+          "returns": "ActionHintsResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "radialMenu",
+          "doc": "A radial wheel chosen by where the pointer or a stick points.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "open",
+              "type": "bool",
+              "optional": false,
+              "doc": "Whether it is open."
+            },
+            {
+              "name": "desc",
+              "type": "RadialDesc",
+              "optional": true,
+              "doc": "Slices, aim and release."
+            }
+          ],
+          "returns": "RadialResult",
           "publish": true,
           "host": false
         },
@@ -38577,6 +38738,742 @@
         "detent",
         "dismissed",
         "visible"
+      ],
+      "additionalProperties": false
+    },
+    "TabVariant": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How the selected tab is marked.",
+      "type": "string",
+      "enum": [
+        "underline",
+        "pill"
+      ],
+      "x-og-variants": {
+        "underline": "An underline that slides between tabs (the default).",
+        "pill": "A pill behind the tab, on a track."
+      }
+    },
+    "TabItem": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A tab.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "What it says.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon before it; empty is none.",
+          "default": ""
+        },
+        "badge": {
+          "type": "string",
+          "description": "A count badge after it; empty is none.",
+          "default": ""
+        },
+        "badgeTone": {
+          "$ref": "#/$defs/Tone",
+          "description": "The badge's tone.",
+          "default": "primary"
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but not selectable.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "TabBarDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Tabs over the panel the game builds for the selected one.",
+      "type": "object",
+      "properties": {
+        "tabs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TabItem"
+          },
+          "description": "The tabs.",
+          "default": []
+        },
+        "selected": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The selected tab (keep TabBarResult.selected).",
+          "default": 0
+        },
+        "variant": {
+          "$ref": "#/$defs/TabVariant",
+          "description": "How the selected tab is marked.",
+          "default": "underline"
+        },
+        "bumpers": {
+          "type": "boolean",
+          "description": "The tabPrev and tabNext actions (Q and E, LB and RB) step through the tabs, their glyphs at the row's ends.",
+          "default": true
+        },
+        "wrap": {
+          "type": "boolean",
+          "description": "Stepping past the last tab comes back to the first.",
+          "default": true
+        },
+        "fill": {
+          "type": "boolean",
+          "description": "The tabs share the row's width.",
+          "default": false
+        },
+        "gap": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Space between the row and the panel; null is space.md.",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The panel's height; null fits.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls the tab list.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "TabBarResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a tab bar answered this tick.",
+      "type": "object",
+      "properties": {
+        "selected": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The selected tab after this tick: keep it."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "It changed this tick."
+        }
+      },
+      "required": [
+        "selected",
+        "changed"
+      ],
+      "additionalProperties": false
+    },
+    "CarouselDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Pages side by side that a drag or a flick moves, snapping to a page.",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many pages.",
+          "default": 0
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The current page (keep CarouselResult.index).",
+          "default": 0
+        },
+        "peek": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How much of the pages beside the current one shows; null is 24 on a phone, else 0.",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "gap": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Space between pages; null is space.md.",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "arrows": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Previous and next buttons; null is all but a phone.",
+          "default": null
+        },
+        "dots": {
+          "type": "boolean",
+          "description": "Page dots under it.",
+          "default": true
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "The arrows wrap around.",
+          "default": false
+        },
+        "autoplayMs": {
+          "type": "number",
+          "description": "Move on by itself after this long untouched; 0 never (and never under reduced motion).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The pages' height; null fits.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls it.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "CarouselResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a carousel answered this tick.",
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The current page after this tick: keep it."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "It changed this tick."
+        }
+      },
+      "required": [
+        "index",
+        "changed"
+      ],
+      "additionalProperties": false
+    },
+    "Crumb": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A step of a breadcrumb path.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "What it says.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon before it; empty is none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "BreadcrumbsDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The path to where the player is; every crumb but the last is a link back.",
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Crumb"
+          },
+          "description": "The crumbs, the current page last.",
+          "default": []
+        },
+        "maxShown": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The most crumbs shown before the middle collapses into a menu; null is 3 on a phone, else 5.",
+          "default": null
+        },
+        "moreLabel": {
+          "type": "string",
+          "description": "The collapsed crumbs' button's accessible name; empty is Show path.",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls it; empty is Breadcrumb.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "BreadcrumbsResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What breadcrumbs answered this tick.",
+      "type": "object",
+      "properties": {
+        "chosen": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The crumb pressed (go back to it)."
+        }
+      },
+      "required": [
+        "chosen"
+      ],
+      "additionalProperties": false
+    },
+    "PaginationDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Previous and next, the first and last pages and the pages around the current one.",
+      "type": "object",
+      "properties": {
+        "pages": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many pages.",
+          "default": 1
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The current page, from 0 (keep PageResult.page).",
+          "default": 0
+        },
+        "siblings": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Pages shown each side of the current one; null is 1.",
+          "default": null
+        },
+        "compact": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Only `4 / 20` between the arrows; null is a phone's.",
+          "default": null
+        },
+        "bumpers": {
+          "type": "boolean",
+          "description": "The tabPrev and tabNext actions page.",
+          "default": false
+        },
+        "prevLabel": {
+          "type": "string",
+          "description": "Previous's accessible name; empty is Previous page.",
+          "default": ""
+        },
+        "nextLabel": {
+          "type": "string",
+          "description": "Next's accessible name; empty is Next page.",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls it; empty is Pagination.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "PageResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What pagination answered this tick.",
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The current page after this tick: keep it."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "It changed this tick."
+        }
+      },
+      "required": [
+        "page",
+        "changed"
+      ],
+      "additionalProperties": false
+    },
+    "ActionHint": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A hint of the action bar: an action, its glyph on the device in use and what it does.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "The action's name (answered when the hint is pressed).",
+          "default": ""
+        },
+        "hint": {
+          "type": "string",
+          "description": "What it does (`Buy`, `Back`).",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "The glyph's icon (og.ui.glyph's).",
+          "default": ""
+        },
+        "text": {
+          "type": "string",
+          "description": "The glyph as text (`Enter`, `A`, `LB`).",
+          "default": ""
+        },
+        "hold": {
+          "type": "boolean",
+          "description": "It fires on a hold: a ring fills.",
+          "default": false
+        },
+        "progress": {
+          "type": "number",
+          "description": "How far the hold has gone.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ActionHintsDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The action bar (docs/ui.md §8.2): the actions the top layer accepts, each its glyph and its hint, at an edge.",
+      "type": "object",
+      "properties": {
+        "hints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActionHint"
+          },
+          "description": "The hints, as og.ui.actionBar answers them.",
+          "default": []
+        },
+        "anchor": {
+          "$ref": "#/$defs/Anchor",
+          "description": "The edge it sits on.",
+          "default": "bottomRight"
+        },
+        "background": {
+          "type": "boolean",
+          "description": "A HUD backing behind it.",
+          "default": true
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls it; empty is Actions.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "ActionHintsResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the action bar answered this tick.",
+      "type": "object",
+      "properties": {
+        "pressed": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The action of the hint pressed (a touch, a click): act as if the control fired."
+        }
+      },
+      "required": [
+        "pressed"
+      ],
+      "additionalProperties": false
+    },
+    "RadialItem": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A slice of a radial wheel.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "What it is.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "Its icon; empty is none.",
+          "default": ""
+        },
+        "detail": {
+          "type": "string",
+          "description": "A line the centre shows while it is chosen.",
+          "default": ""
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but not choosable.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "RadialDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A radial wheel: slices around a centre, chosen by where the pointer or a stick points.",
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RadialItem"
+          },
+          "description": "The slices, clockwise from the top.",
+          "default": []
+        },
+        "aim": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Vector2"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A stick's direction (x right, y down, -1 to 1); null reads the pointer.",
+          "default": null
+        },
+        "deadZone": {
+          "type": "number",
+          "description": "How far the stick must point before a slice is chosen.",
+          "default": 0.35,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "release": {
+          "type": "boolean",
+          "description": "The press or stick that opened it was let go: pick the slice it points at.",
+          "default": false
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its radius; null is up to 170, at most 36 % of the short side.",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "hole": {
+          "type": "number",
+          "description": "The centre's radius as a fraction of the wheel's.",
+          "default": 0.42,
+          "minimum": 0.2,
+          "maximum": 0.8,
+          "x-og-unit": "ratio"
+        },
+        "title": {
+          "type": "string",
+          "description": "What the centre shows when nothing is chosen.",
+          "default": ""
+        },
+        "labels": {
+          "type": "boolean",
+          "description": "Each slice's label under its icon.",
+          "default": true
+        },
+        "dim": {
+          "type": "boolean",
+          "description": "Dim what is behind it.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "RadialResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a radial wheel answered this tick.",
+      "type": "object",
+      "properties": {
+        "chosen": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The slice picked (a release, a press)."
+        },
+        "hovered": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The slice pointed at."
+        },
+        "dismissed": {
+          "type": "boolean",
+          "description": "Back or a press outside asked to close it."
+        }
+      },
+      "required": [
+        "chosen",
+        "hovered",
+        "dismissed"
       ],
       "additionalProperties": false
     },
