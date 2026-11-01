@@ -1285,6 +1285,10 @@ impl UiApi for WebHost {
     fn og_ui_force_state(&self, path: String, group: String, state: String) {
         rt::og_ui_force_state(path, group, state)
     }
+    fn og_ui_open_path(&self) -> String {
+        rt::og_ui_open_path()
+    }
+
     fn og_ui_visual_state(&self, path: String, group: String) -> String {
         rt::og_ui_visual_state(path, group)
     }

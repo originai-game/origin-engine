@@ -61,6 +61,7 @@ impl Ui {
             stats: LayoutStats::default(),
             drawing: Affine::IDENTITY,
             draws: Default::default(),
+            dressable: Default::default(),
             docs: Default::default(),
             actions: Default::default(),
             world: Default::default(),
@@ -445,6 +446,7 @@ impl Ui {
         self.stack.clear();
         self.floating.clear();
         self.draws.clear();
+        self.dressable.clear();
         self.warnings.clear();
         self.last_closed = NONE;
         self.building = true;

@@ -837,6 +837,8 @@ export interface HostAbi<A, V> {
   og_ui_play_info(play: number): string;
   /** `og.ui.forceState` */
   og_ui_force_state(path: string, group: string, state: string): void;
+  /** `og.ui.openPath` */
+  og_ui_open_path(): string;
   /** `og.ui.visualState` */
   og_ui_visual_state(path: string, group: string): string;
   /** `og.ui.animate` */
@@ -1448,6 +1450,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_stop",
   "og_ui_play_info",
   "og_ui_force_state",
+  "og_ui_open_path",
   "og_ui_visual_state",
   "og_ui_animate",
   "og_ui_gesture",

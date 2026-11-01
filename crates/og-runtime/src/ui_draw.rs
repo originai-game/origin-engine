@@ -106,7 +106,11 @@ pub fn og_ui_set_draw(desc: Option<String>) {
         materials: &materials,
     };
     let draw = read.draw(&d);
-    with_ui("og.ui.setDraw", |ui| ui.set_draw(draw));
+    if d["dressable"].as_bool().unwrap_or(false) {
+        with_ui("og.ui.setDraw", |ui| ui.set_draw_dressable(draw));
+    } else {
+        with_ui("og.ui.setDraw", |ui| ui.set_draw(draw));
+    }
 }
 
 /// A LayerDesc's material and parameters as og-render takes them (a meta

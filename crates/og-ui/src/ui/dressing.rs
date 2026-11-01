@@ -287,6 +287,9 @@ impl Ui {
         self.part_draws.clear();
         for &i in order {
             if self.draws.contains_key(&i) {
+                if self.dressable.contains(&i) {
+                    self.restyle_draw(i);
+                }
                 continue;
             }
             let n = &self.nodes[i];
@@ -311,6 +314,49 @@ impl Ui {
                 continue;
             }
             self.part_draws.insert(i, d);
+        }
+    }
+
+    /// A component's default draw of element `i` (`Ui::set_draw_dressable`)
+    /// under the style's dressing of its part: each list the dressing sets
+    /// replaces the draw's, a rect takes the dressing's corner, and a
+    /// dressing with atlas art draws the part instead (its background).
+    fn restyle_draw(&mut self, i: usize) {
+        let Some(part) = self.nodes[i].el.part else {
+            return;
+        };
+        let r = self.dress.resolve(&part);
+        if r.matched == 0 {
+            return;
+        }
+        if r.frame.slice.is_some() && self.theme.art.atlas.is_some() {
+            self.draws.remove(&i);
+            return;
+        }
+        let dressed = r.element_draw(&part, &self.theme, None);
+        let Some(d) = self.draws.get_mut(&i) else {
+            return;
+        };
+        let a = &r.draw;
+        use crate::dress::{CLEAR_EFFECTS, CLEAR_FILLS, CLEAR_STROKES};
+        if !a.fills.is_empty() || a.cleared & CLEAR_FILLS != 0 {
+            d.fills = dressed.fills;
+        }
+        if !a.strokes.is_empty() || a.cleared & CLEAR_STROKES != 0 {
+            d.strokes = dressed.strokes;
+        }
+        if !a.effects.is_empty() || a.cleared & CLEAR_EFFECTS != 0 {
+            d.effects = dressed.effects;
+        }
+        if a.material.is_some() || a.mask.is_some() {
+            d.layer = dressed.layer;
+            d.clip = dressed.clip;
+        }
+        if a.blend.is_some() {
+            d.blend = dressed.blend;
+        }
+        if r.frame.shape.is_some() && matches!(d.shape, crate::paint::ShapeKind::Rect { .. }) {
+            d.shape = dressed.shape;
         }
     }
 

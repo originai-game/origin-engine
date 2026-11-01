@@ -2499,6 +2499,12 @@ pub fn og_ui_force_state(env: Env, path: String, group: String, state: String) {
     <Host as UiApi>::og_ui_force_state(&Host, path, group, state)
 }
 
+#[napi(js_name = "og_ui_open_path")]
+pub fn og_ui_open_path(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_open_path(&Host)
+}
+
 #[napi(js_name = "og_ui_visual_state")]
 pub fn og_ui_visual_state(env: Env, path: String, group: String) -> String {
     let _env = crate::EnvScope::enter(&env);

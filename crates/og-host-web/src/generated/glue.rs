@@ -2084,6 +2084,11 @@ pub fn og_ui_force_state(path: String, group: String, state: String) {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_open_path() -> String {
+    <Host as UiApi>::og_ui_open_path(&Host)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_visual_state(path: String, group: String) -> String {
     <Host as UiApi>::og_ui_visual_state(&Host, path, group)
 }

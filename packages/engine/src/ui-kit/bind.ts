@@ -139,6 +139,7 @@ export const widgets = {
   forceState: (path: string, group: string, state: string | null): void =>
     abi().og_ui_force_state(path, group, JSON.stringify(state ?? null)),
   visualState: (path: string, group: string): string => abi().og_ui_visual_state(path, group),
+  openPath: (): string => abi().og_ui_open_path(),
   animate: (id: string, target: number, transition: Api.Transition): number => abi().og_ui_animate(id, target, JSON.stringify(transition)),
   gesture: (path: string): Api.GestureInfo => parse(abi().og_ui_gesture(path)),
   motionEvents: (): Api.UiMotionEvent[] => parse(abi().og_ui_motion_events()),

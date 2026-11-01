@@ -357,6 +357,9 @@ pub struct Ui {
     drawing: Affine,
     /// What elements of this frame draw with ([`Ui::set_draw`]), by node.
     pub(crate) draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
+    /// The draws of [`Ui::set_draw_dressable`]: a component's own look for
+    /// a part, which a style that dresses the part restyles.
+    pub(crate) dressable: std::collections::HashSet<usize>,
     /// Documents, their mounts and the layer stack (docs/ui.md §8.1, §10).
     pub(crate) docs: crate::doc::build::DocHost,
     /// Named UI actions and the last device (docs/ui.md §8.2).

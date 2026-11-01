@@ -943,6 +943,8 @@ pub trait UiApi: Wire {
     fn og_ui_play_info(&self, play: u32) -> String;
     /// `og.ui.forceState`
     fn og_ui_force_state(&self, path: String, group: String, state: String);
+    /// `og.ui.openPath`
+    fn og_ui_open_path(&self) -> String;
     /// `og.ui.visualState`
     fn og_ui_visual_state(&self, path: String, group: String) -> String;
     /// `og.ui.animate`
@@ -1591,6 +1593,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_stop",
     "og_ui_play_info",
     "og_ui_force_state",
+    "og_ui_open_path",
     "og_ui_visual_state",
     "og_ui_animate",
     "og_ui_gesture",

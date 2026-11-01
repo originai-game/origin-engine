@@ -5656,6 +5656,11 @@ module ui {
     returns Void
   }
 
+  fn openPath {
+    doc "The full path of the innermost open container (an open row, panel, anchor or world anchor), as bounds, visualState, forceState, playTimeline and the probe name it; empty at the top level. A component reads its root's path right after opening it, to name its parts in those calls."
+    returns String
+  }
+
   fn visualState {
     doc "The state a group of an element is in (last tick); empty for none."
     param path String "The element's full path."
@@ -6128,6 +6133,7 @@ module ui {
     field mask Option.MaskDesc "The mask, for clip mask."
     field layer Option.LayerDesc "Its subtree drawn offscreen and composited through a material."
     field text Option.TextEffectsDesc "Effects of its text."
+    field dressable bool "The draw is a component's own look for the part its element names (ElementDesc.part): where the style dresses that part, each list the dressing sets (fills, strokes, effects, material, mask, blend) replaces the draw's, a rect takes the dressing's corner, and atlas art replaces the draw. The draw's shape stays, so a ring, a star or a segment keeps its geometry in every style. False: the draw is the game's and the style never touches it."
   }
 
   enum BlendMode {

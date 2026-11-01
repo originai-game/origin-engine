@@ -113,6 +113,17 @@ impl Ui {
         parts.join("/")
     }
 
+    /// The path of the innermost open container, as the probe, `bounds`,
+    /// `visual_state` and `force_state` name it; empty at the top level.
+    /// A component reads its root's path right after opening it, to name
+    /// its parts in those calls.
+    pub fn open_path(&self) -> String {
+        match self.stack.last() {
+            Some(&i) if i != 0 => self.probe_path(i),
+            _ => String::new(),
+        }
+    }
+
     /// The path the probe lists an element by: [`Ui::path_of`], and for a
     /// layer placed against another element (a tooltip) that element's path
     /// before its own id, as its `parent` is that element's id.
@@ -174,6 +185,20 @@ impl Ui {
     pub fn set_draw(&mut self, draw: crate::paint::ElementDraw) {
         if let Some(last) = self.nodes.len().checked_sub(1) {
             self.draws.insert(last, draw);
+            self.dressable.remove(&last);
+        }
+    }
+
+    /// [`Ui::set_draw`] as a component's default look of the part the
+    /// element names (`Element::part`): where the style dresses that part,
+    /// the dressing's fills, strokes, effects, material, blend and mask
+    /// replace the draw's (each list the dressing sets), and its atlas art
+    /// replaces the whole draw; the draw's shape stays, so a ring, a star
+    /// or a segment keeps its geometry in every style (docs/ui.md §12.3).
+    pub fn set_draw_dressable(&mut self, draw: crate::paint::ElementDraw) {
+        if let Some(last) = self.nodes.len().checked_sub(1) {
+            self.draws.insert(last, draw);
+            self.dressable.insert(last);
         }
     }
 

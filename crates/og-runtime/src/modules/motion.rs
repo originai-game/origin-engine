@@ -542,6 +542,10 @@ pub fn og_ui_force_state(path: String, group: String, state: String) {
     });
 }
 
+pub fn og_ui_open_path() -> String {
+    with_ui("og.ui.openPath", |ui| ui.open_path()).unwrap_or_default()
+}
+
 pub fn og_ui_visual_state(path: String, group: String) -> String {
     with_ui("og.ui.visualState", |ui| ui.visual_state(&path, &group))
         .flatten()

@@ -29553,6 +29553,7 @@ export interface UiLayoutStats {
 
 
 
+
 /**
  * A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill.
  *
@@ -30476,6 +30477,12 @@ export interface DrawDesc {
    * @default null
    */
   readonly text?: TextEffectsDesc | null;
+  /**
+   * The draw is a component's own look for the part its element names (ElementDesc.part): where the style dresses that part, each list the dressing sets (fills, strokes, effects, material, mask, blend) replaces the draw's, a rect takes the dressing's corner, and atlas art replaces the draw. The draw's shape stays, so a ring, a star or a segment keeps its geometry in every style. False: the draw is the game's and the style never touches it.
+   *
+   * @default false
+   */
+  readonly dressable?: boolean;
 }
 
 /**
@@ -38193,6 +38200,10 @@ export declare namespace og {
      * @param state The state; null releases it.
      */
     function forceState(path: string, group: string, state: string | null): void;
+    /**
+     * The full path of the innermost open container (an open row, panel, anchor or world anchor), as bounds, visualState, forceState, playTimeline and the probe name it; empty at the top level. A component reads its root's path right after opening it, to name its parts in those calls.
+     */
+    function openPath(): string;
     /**
      * The state a group of an element is in (last tick); empty for none.
      *

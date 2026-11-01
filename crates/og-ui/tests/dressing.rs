@@ -494,3 +494,65 @@ fn a_focus_ring_is_cut_under_a_drawn_fill_never_over_it() {
         "the card's own fill is drawn last: {over:?}"
     );
 }
+
+/// A component's own look for a part (`Ui::set_draw_dressable`): a style
+/// that dresses the part repaints it and the component's geometry stays;
+/// a game's plain `set_draw` is never restyled. Ways it could fail: the
+/// dressing ignored (the component's blue drawn in every style), the arc
+/// replaced by the dressing's rectangle, or a plain draw repainted too.
+#[test]
+fn a_components_dressable_draw_takes_the_dressing_and_keeps_its_shape() {
+    use og_ui::paint::{Cap, ColorRef, ElementDraw, Paint, ShapeKind};
+    let gold = Srgba::rgb(0xff, 0xd3, 0x4a);
+    let blue = Srgba::rgb(0, 0, 255);
+    let mut ui = dressed("dress \"Gauge.ring\" {\n  fill \"#ffd34a\"\n}\n");
+    let ring = || ElementDraw {
+        shape: ShapeKind::Arc {
+            start: 0.0,
+            sweep: 3.0,
+            thickness: 6.0,
+            cap: Cap::Round,
+        },
+        fills: vec![Paint::Solid(ColorRef::Literal(blue))],
+        ..ElementDraw::default()
+    };
+    let el = || Element {
+        width: Size::px(48.0),
+        height: Size::px(48.0),
+        part: Some(PartRef::parse("Gauge.ring", ElementClass::Bar).unwrap()),
+        ..Element::default()
+    };
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.open("Dressable", el());
+    ui.set_draw_dressable(ring());
+    ui.close();
+    ui.open("Plain", el());
+    ui.set_draw(ring());
+    ui.close();
+    ui.end();
+    let arcs: Vec<[f32; 4]> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|it| match &it.cmd {
+            DrawCmd::Shape { shape, .. }
+                if shape.mode == og_render::UiMode::Fill
+                    && matches!(shape.geometry, og_render::UiGeometry::Arc { .. }) =>
+            {
+                it.cmd.filled().map(|(_, c)| c)
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(arcs.len(), 2, "both rings keep their arc: {arcs:?}");
+    assert!(
+        near(arcs[0], gold),
+        "the dressable ring takes the style's fill: {:?}",
+        arcs[0]
+    );
+    assert!(
+        near(arcs[1], blue),
+        "the plain draw keeps the game's: {:?}",
+        arcs[1]
+    );
+}
