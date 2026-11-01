@@ -175,10 +175,22 @@ export function abilityBar(id: string, desc: Api.AbilityBarDesc = {}): Api.Abili
   let clicked: string | null = null;
   const pressed: string[] = [];
   const size = u(desc.size || (bp().phone ? 48 : 56));
+  const gap = desc.gap || tk.sm;
+  const row = (desc.direction ?? "row") === "row";
+  // More slots than the safe area holds wrap into rows (a phone's bar), never off the screen.
+  const vp = frame().viewport;
+  const room = vp.width - vp.safeArea.left - vp.safeArea.right - tk.gutter * 2 - tk.sm * 2;
+  const perRow = Math.max(1, Math.floor((room + gap) / (size + gap)));
+  const count = (desc.slots ?? []).length;
+  const wraps = row && count > perRow;
+  const cols = wraps ? Math.ceil(count / Math.ceil(count / perRow)) : count;
   hudPlace(id, anchor, () => {
     box(id, {
       direction: desc.direction ?? "row",
-      gap: desc.gap || tk.sm,
+      gap,
+      wrap: wraps,
+      ...(wraps ? { width: px(cols * size + (cols - 1) * gap + tk.sm * 2) } : {}),
+      align: "center",
       padding: { left: tk.sm, right: tk.sm, top: u(10), bottom: tk.sm },
       cross: "end",
       part: sel("AbilityBar", "frame"),

@@ -18,8 +18,37 @@ export function anchorOf(desc: { anchor?: Api.Anchor | null }, fallback: Api.Anc
  * gutter) when `anchor` is set, else in place.
  */
 export function hudPlace(id: string, anchor: Api.Anchor | null, build: (inAnchor: boolean) => void, more: Partial<Api.AnchorDesc> = {}): void {
-  if (anchor) kit.anchor(`${id}Hud`, { anchor, direction: "column", cross: crossOf(anchor), ...more }, () => build(true));
-  else build(false);
+  if (!anchor) {
+    build(false);
+    return;
+  }
+  // Components anchored at one point stack in the order they are built
+  // (a compass over the round timer, a killfeed under the minimap), each
+  // moved past the ones before it by their sizes last tick, kept in the
+  // UI's memory: the defaults never draw one HUD piece over another.
+  const t = kit.tick();
+  const key = `~hudStack/${anchor}`;
+  const first = kit.memory(`${key}/tick`, -1) !== t;
+  // How far the groups before it reach from the anchor's line: down from
+  // a top edge, up from a bottom one, down from the middle of a side.
+  const reach = first ? 0 : kit.memory(`${key}/reach`, 0);
+  const path = `${id}Hud`;
+  const h = kit.bounds(path)?.height ?? 0;
+  const gap = frame().t.sm;
+  const middle = !anchor.startsWith("top") && !anchor.startsWith("bottom");
+  let dy: number;
+  let next: number;
+  if (middle) {
+    dy = first ? 0 : reach + gap + h / 2;
+    next = dy + h / 2;
+  } else {
+    dy = first ? 0 : reach + gap;
+    next = dy + h;
+  }
+  kit.remember(`${key}/tick`, t);
+  kit.remember(`${key}/reach`, next);
+  if (anchor.startsWith("bottom")) dy = -dy;
+  kit.anchor(path, { anchor, direction: "column", cross: crossOf(anchor), ...more, offsetY: dy + (more.offsetY ?? 0) }, () => build(true));
 }
 
 /** How an anchored group lines its children up by where it sits. */

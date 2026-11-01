@@ -354,6 +354,32 @@ test("og.ui.comboCounter, judgement, turnOrder, scorebug, speedometer, flightHud
   expect(states(at(dump(e), "ComboHud/Combo")).combo).toBe("idle");
 });
 
+test("components anchored at one point stack in the order built instead of drawing over each other", () => {
+  const e = engineFor("HudStack", () => {
+    og.ui.compass("Compass", { heading: 0 });
+    og.ui.hudTimer("Round", { seconds: 42 });
+    og.ui.resourceBar("Res", { items: [{ key: "g", name: "Gold", amount: 10 }] });
+    og.ui.objectiveTracker("Obj", { quests: [{ key: "q", title: "Hold", steps: [{ key: "s", text: "Hold the line" }] }] });
+    og.ui.comboCounter("Combo", { count: 12 });
+    og.ui.ammoCounter("Ammo", { magazine: 12, magazineMax: 30 });
+    og.ui.speedometer("Speed", { speed: 120 });
+  });
+  e.advance(3);
+  const els = dump(e);
+  const overlap = (a: string, b: string): boolean => {
+    const p = at(els, a)!;
+    const q = at(els, b)!;
+    return Math.min(p.y + p.height, q.y + q.height) - Math.max(p.y, q.y) > 0.5 && Math.min(p.x + p.width, q.x + q.width) - Math.max(p.x, q.x) > 0.5;
+  };
+  expect([overlap("CompassHud", "RoundHud"), overlap("RoundHud", "ResHud"), overlap("CompassHud", "ResHud")]).toEqual([false, false, false]);
+  expect(at(els, "CompassHud")!.y).toBeLessThan(at(els, "RoundHud")!.y);
+  // At a side's middle: the first centred, the next under it.
+  expect(overlap("ObjHud", "ComboHud")).toBe(false);
+  // At a bottom corner: the second rises over the first.
+  expect(overlap("AmmoHud", "SpeedHud")).toBe(false);
+  expect(at(els, "SpeedHud")!.y).toBeLessThan(at(els, "AmmoHud")!.y);
+});
+
 const VIEWPORTS = {
   desktop: { width: 1920, height: 1080, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" },
   ultrawide: { width: 3440, height: 1440, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" },
@@ -366,7 +392,7 @@ test("every corner HUD piece stays inside the safe area at every breakpoint", ()
   for (const [name, vp] of Object.entries(VIEWPORTS)) {
     const e = engineFor(`HudSafe${name}`, () => {
       og.ui.statBar("HP", { value: 64, label: "HP", showValue: true, anchor: "bottomLeft" });
-      og.ui.abilityBar("Bar", { slots: ["q", "w", "e", "r"].map((key) => ({ key, hotkey: key.toUpperCase(), cooldown: 2, cooldownMax: 5 })) });
+      og.ui.abilityBar("Bar", { slots: ["q", "w", "e", "r", "d", "f", "g", "h"].map((key) => ({ key, hotkey: key.toUpperCase(), cooldown: 2, cooldownMax: 5 })) });
       og.ui.ammoCounter("Ammo", { magazine: 18, magazineMax: 30, reserve: 120 });
       og.ui.minimapView("Map", { zone: "Docks" });
       og.ui.killfeed("Feed", { entries: [{ key: "a", killer: "Wraith", victim: "Bloodhound", weaponText: "R-99", at: 0 }] });

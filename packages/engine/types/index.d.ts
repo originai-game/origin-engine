@@ -32547,7 +32547,7 @@ export interface KillfeedDesc {
    */
   readonly durationMs?: number;
   /**
-   * Opens its own anchored group there; null builds it in place.
+   * Opens its own anchored group there (top right; on a phone in portrait top centre, stacked under the compass and the timer built before it, in landscape mid-right); null builds it in place.
    *
    * @default "topRight"
    */
@@ -43171,7 +43171,7 @@ export declare namespace og {
      */
     function abilitySlot(id: string, desc?: AbilitySlotDesc): Response;
     /**
-     * An ability bar: abilitySlot for each slot, in a row (or a column) on the HUD frame.
+     * An ability bar: abilitySlot for each slot, in a row (or a column) on the HUD frame; a row with more slots than the safe area holds wraps into even rows (eight slots on a phone are two rows of four).
      * Parts: AbilityBar.frame and each slot's. Accessibility: a group named by its slots. Probe ids: <id>/<key>.
      *
      * @param id Its id.

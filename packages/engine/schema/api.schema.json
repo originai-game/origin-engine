@@ -13819,7 +13819,7 @@
         },
         {
           "name": "abilityBar",
-          "doc": "An ability bar: abilitySlot for each slot, in a row (or a column) on the HUD frame.\nParts: AbilityBar.frame and each slot's. Accessibility: a group named by its slots. Probe ids: <id>/<key>.",
+          "doc": "An ability bar: abilitySlot for each slot, in a row (or a column) on the HUD frame; a row with more slots than the safe area holds wraps into even rows (eight slots on a phone are two rows of four).\nParts: AbilityBar.frame and each slot's. Accessibility: a group named by its slots. Probe ids: <id>/<key>.",
           "params": [
             {
               "name": "id",
@@ -55795,7 +55795,7 @@
               "type": "null"
             }
           ],
-          "description": "Opens its own anchored group there; null builds it in place.",
+          "description": "Opens its own anchored group there (top right; on a phone in portrait top centre, stacked under the compass and the timer built before it, in landscape mid-right); null builds it in place.",
           "default": "topRight"
         }
       },

@@ -171,7 +171,10 @@ export function killfeed(id: string, desc: Api.KillfeedDesc = {}): void {
   const max = desc.max || (phone ? 3 : 5);
   const live = (desc.entries ?? []).filter((x) => t - (x.at ?? 0) < life && t >= (x.at ?? 0));
   const shown = live.slice(-max).reverse();
-  hudPlace(id, anchorOf(desc, "topRight"), () => {
+  // A phone's top edge is the compass's and the timer's: in portrait the feed
+  // stacks under them, in landscape it sits mid-right, clear of the crosshair.
+  const place: Api.Anchor = !phone ? "topRight" : frame().viewport.breakpoint === "phonePortrait" ? "top" : "right";
+  hudPlace(id, anchorOf(desc, place), () => {
     box(id, { direction: "column", gap: u(4), cross: "end", part: sel("Killfeed", "frame") }, undefined, () => {
       for (const x of shown) {
         const age = t - (x.at ?? 0);
