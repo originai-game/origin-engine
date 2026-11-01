@@ -88,7 +88,7 @@ typography {
   }
   heading 32 36 0 600 display
   body 16 20 0 400 body
-  label 16 18 0 600 body
+  label 16 20 0 600 body
   caption 16 18 0 400 body
   numeric 16 24 0 600 numeric
 }

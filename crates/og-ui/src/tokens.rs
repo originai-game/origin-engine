@@ -734,7 +734,8 @@ impl StyleTokens {
                 step(r.display_sm, 700, FontRole::Display, 0.875),
                 step(r.xl, 600, FontRole::Display, 1.0),
                 step(r.body, 400, FontRole::Body, 1.0),
-                step(r.meta, 600, FontRole::Body, 1.0),
+                // A button's and a tab's label: version 1 set them in body.
+                step(r.body, 600, FontRole::Body, 1.0),
                 step(r.caption, 400, FontRole::Body, 1.0),
                 step(r.lg, 600, FontRole::Mono, 1.0),
             ],

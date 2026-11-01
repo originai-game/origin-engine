@@ -1076,7 +1076,7 @@ def tokens_lines(s):
     ramp = s["ramp"]
     fonts = dict(display="display", title="display", heading="display", body="body", label="body", caption="body",
                  numeric="numeric")
-    steps = dict(display="displayLg", title="displaySm", heading="xl", body="body", label="meta", caption="caption",
+    steps = dict(display="displayLg", title="displaySm", heading="xl", body="body", label="body", caption="caption",
                  numeric="lg")
     L.append("typography {")
     for role, step in steps.items():

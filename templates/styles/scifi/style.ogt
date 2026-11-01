@@ -85,7 +85,7 @@ typography {
   title 26 32 0.06 700 display
   heading 19 26 0.04 500 display
   body 14 20 0 500 body
-  label 12 16 0.06 500 body
+  label 14 20 0.06 500 body
   caption 12 16 0.04 500 body
   numeric 17 24 0 400 numeric
 }

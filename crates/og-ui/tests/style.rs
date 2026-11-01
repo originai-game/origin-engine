@@ -1645,3 +1645,44 @@ fn a_styles_motion_tokens_drive_the_motion_code() {
         assert_eq!(theme.motion.stagger_ms, tokens.motion.stagger_ms, "{slug}");
     }
 }
+
+/// A version 1 style's buttons and tabs set their labels in its ramp's
+/// `body` step, as they did before widgets drew as parts: the `label`
+/// role its tokens derive is that step (at a label's weight), and its
+/// upgrade carries it. With `label` taken from `meta`, a game whose body
+/// is 18 px drew Play at 13 px (sparkorb, lampdive and five more, on metal).
+#[test]
+fn a_version_1_styles_button_and_tab_labels_keep_its_body_size() {
+    let v1 = STYLE.replace(
+        "name \"test\"\n",
+        "name \"test\"\nramp {\n  body 18 26\n  meta 13 18\n}\n",
+    );
+    let old = parse_style(&v1).expect("the version 1 style parses");
+    let new = parse_style(&upgrade_style(&v1).expect("it upgrades")).expect("it parses");
+    for file in [&old, &new] {
+        let mut ui = drawing_ui();
+        ui.set_theme(file.theme(None, [0; 6]));
+        ui.set_dressings(file.dressings.clone());
+        let mut tab = 0;
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.button("Play", "Play", ButtonDesc::default());
+        ui.tabs("Tabs", &["Bag", "Map"], &mut tab, TabsDesc::default());
+        ui.end();
+        let size = |label: &str| {
+            ui.frame()
+                .items
+                .iter()
+                .find_map(|it| match &it.cmd {
+                    DrawCmd::Text { text, size, .. } if text == label => Some(*size),
+                    _ => None,
+                })
+                .unwrap_or_else(|| panic!("no {label} drawn"))
+        };
+        assert_eq!(
+            (size("Play"), size("Map")),
+            (18.0, 18.0),
+            "v{}",
+            file.version
+        );
+    }
+}
