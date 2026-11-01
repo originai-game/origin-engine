@@ -8926,6 +8926,31 @@
         "WipeSide",
         "ScreenTransitionDesc",
         "ScreenTransitionResult",
+        "CardVariant",
+        "CardMedia",
+        "CardDesc",
+        "ScrollAreaDesc",
+        "AccordionSection",
+        "AccordionDesc",
+        "AccordionResult",
+        "SplitViewDesc",
+        "SplitResult",
+        "DialogTone",
+        "DialogAction",
+        "DialogDesc",
+        "DialogResult",
+        "ConfirmationDesc",
+        "FloatSide",
+        "FloatAlign",
+        "PopoverDesc",
+        "PopoverResult",
+        "MenuEntryKind",
+        "MenuEntry",
+        "MenuDesc",
+        "MenuChoice",
+        "SheetEdge",
+        "SheetDesc",
+        "SheetResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -10872,6 +10897,306 @@
           ],
           "returns": "Void",
           "publish": true
+        },
+        {
+          "name": "card",
+          "doc": "A card over a body the game builds. Answers its response (clicked when interactive).",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "CardDesc",
+              "optional": false,
+              "doc": "Variant, media, titles and state."
+            },
+            {
+              "name": "build",
+              "type": "UiBuild",
+              "optional": false,
+              "doc": "Builds its body."
+            }
+          ],
+          "returns": "Response",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "scrollArea",
+          "doc": "A scroll container whose content fades out at an edge where more lies beyond.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ScrollAreaDesc",
+              "optional": false,
+              "doc": "Axes, size and fades."
+            },
+            {
+              "name": "build",
+              "type": "UiBuild",
+              "optional": false,
+              "doc": "Builds its content."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "accordion",
+          "doc": "Sections whose headers open and close their bodies; the sections under one move on the panel spring.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "AccordionDesc",
+              "optional": false,
+              "doc": "Sections and the open ones."
+            },
+            {
+              "name": "build",
+              "type": "UiItemBuild",
+              "optional": false,
+              "doc": "Builds an open section's body by its index."
+            }
+          ],
+          "returns": "AccordionResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "splitView",
+          "doc": "Two panes with a divider a drag moves and a press of the focused divider steps.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SplitViewDesc",
+              "optional": false,
+              "doc": "Direction, ratio and limits."
+            },
+            {
+              "name": "start",
+              "type": "UiBuild",
+              "optional": false,
+              "doc": "Builds the start pane."
+            },
+            {
+              "name": "end",
+              "type": "UiBuild",
+              "optional": false,
+              "doc": "Builds the end pane."
+            }
+          ],
+          "returns": "SplitResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "dialog",
+          "doc": "A dialog on the modal layer: tone mark, message, body and actions.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "open",
+              "type": "bool",
+              "optional": false,
+              "doc": "Whether it is open."
+            },
+            {
+              "name": "desc",
+              "type": "DialogDesc",
+              "optional": false,
+              "doc": "Title, message, tone and actions."
+            },
+            {
+              "name": "build",
+              "type": "UiBuild",
+              "optional": false,
+              "doc": "Builds its body under the message."
+            }
+          ],
+          "returns": "DialogResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "confirm",
+          "doc": "A confirmation dialog: the message, Cancel and the action (danger when it cannot be undone).",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "open",
+              "type": "bool",
+              "optional": false,
+              "doc": "Whether it is open."
+            },
+            {
+              "name": "desc",
+              "type": "ConfirmationDesc",
+              "optional": true,
+              "doc": "Message and labels."
+            }
+          ],
+          "returns": "ConfirmResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "popover",
+          "doc": "A popover beside an element with an arrow at it; Back or a press outside dismisses it.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "open",
+              "type": "bool",
+              "optional": false,
+              "doc": "Whether it is open."
+            },
+            {
+              "name": "desc",
+              "type": "PopoverDesc",
+              "optional": false,
+              "doc": "The element, the side and the size."
+            },
+            {
+              "name": "build",
+              "type": "UiBuild",
+              "optional": false,
+              "doc": "Builds its content."
+            }
+          ],
+          "returns": "PopoverResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "menu",
+          "doc": "A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "open",
+              "type": "bool",
+              "optional": false,
+              "doc": "Whether it is open."
+            },
+            {
+              "name": "desc",
+              "type": "MenuDesc",
+              "optional": true,
+              "doc": "Entries and where it hangs."
+            }
+          ],
+          "returns": "MenuChoice",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "contextMenu",
+          "doc": "A menu at a point: where a right press or a long press happened.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "open",
+              "type": "bool",
+              "optional": false,
+              "doc": "Whether it is open."
+            },
+            {
+              "name": "at",
+              "type": "Vector2",
+              "optional": false,
+              "doc": "The point, CSS px."
+            },
+            {
+              "name": "desc",
+              "type": "MenuDesc",
+              "optional": true,
+              "doc": "Entries."
+            }
+          ],
+          "returns": "MenuChoice",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "sheet",
+          "doc": "A sheet sliding in from the bottom (resting at detents, dragged) or a side.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "open",
+              "type": "bool",
+              "optional": false,
+              "doc": "Whether it is open."
+            },
+            {
+              "name": "desc",
+              "type": "SheetDesc",
+              "optional": false,
+              "doc": "Edge, detents and title."
+            },
+            {
+              "name": "build",
+              "type": "UiBuild",
+              "optional": false,
+              "doc": "Builds its body."
+            }
+          ],
+          "returns": "SheetResult",
+          "publish": true,
+          "host": false
         },
         {
           "name": "mainMenu",
@@ -37173,6 +37498,1083 @@
         "covering",
         "revealing",
         "cover"
+      ],
+      "additionalProperties": false
+    },
+    "CardVariant": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How a card stands off what it sits on.",
+      "type": "string",
+      "enum": [
+        "raised",
+        "flat",
+        "outlined",
+        "inset"
+      ],
+      "x-og-variants": {
+        "raised": "A raised panel with the card class's elevation (the default).",
+        "flat": "A flat panel, no shadow.",
+        "outlined": "A panel with an outline and no shadow.",
+        "inset": "A well sunk into the surface."
+      }
+    },
+    "CardMedia": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A card's media slot: art the game fills, or a placeholder drawn from the style when it has none.",
+      "type": "object",
+      "properties": {
+        "texture": {
+          "$ref": "#/$defs/Texture",
+          "description": "The art (og.load.texture), covering the slot; 0 draws the placeholder.",
+          "default": 0
+        },
+        "aspect": {
+          "type": "number",
+          "description": "Width over height; 0 is 16:9.",
+          "default": 0,
+          "minimum": 0
+        },
+        "focal": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The art's point kept in view when cover crops it, fractions of the free space.",
+          "default": {
+            "x": 0.5,
+            "y": 0.5
+          }
+        },
+        "icon": {
+          "type": "string",
+          "description": "The placeholder's icon (og.ui.icon's name); empty is `image`.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "What the art shows, for a screen reader; empty is decorative.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "CardDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A card: media, an eyebrow, a title, a subtitle and a corner badge over a body the game builds.",
+      "type": "object",
+      "properties": {
+        "variant": {
+          "$ref": "#/$defs/CardVariant",
+          "description": "How it stands off what it sits on.",
+          "default": "raised"
+        },
+        "media": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CardMedia"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The media slot over the body; null is none.",
+          "default": null
+        },
+        "eyebrow": {
+          "type": "string",
+          "description": "A small line over the title (a category, a rarity); empty is none.",
+          "default": ""
+        },
+        "title": {
+          "type": "string",
+          "description": "The title; empty is none.",
+          "default": ""
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "A line under the title; empty is none.",
+          "default": ""
+        },
+        "badge": {
+          "type": "string",
+          "description": "A badge in the top end corner; empty is none.",
+          "default": ""
+        },
+        "badgeTone": {
+          "$ref": "#/$defs/Tone",
+          "description": "The badge's tone.",
+          "default": "neutral"
+        },
+        "interactive": {
+          "type": "boolean",
+          "description": "The whole card is a button: it lifts under the pointer and the focus, sinks when pressed, and answers clicked.",
+          "default": false
+        },
+        "selected": {
+          "type": "boolean",
+          "description": "Ringed in the focus ink (Card.frame[selected]).",
+          "default": false
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height; null fits.",
+          "default": null
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Space around the body; null is space.lg.",
+          "default": null,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScrollAreaDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A scroll area: og.ui's scroll container whose content fades out at an edge where more lies beyond.",
+      "type": "object",
+      "properties": {
+        "axes": {
+          "$ref": "#/$defs/ScrollAxes",
+          "description": "Which ways it scrolls.",
+          "default": "vertical"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height (it scrolls inside); null fits the content.",
+          "default": null
+        },
+        "padding": {
+          "$ref": "#/$defs/Insets",
+          "description": "Space around the content.",
+          "default": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        },
+        "gap": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Space between children; null is space.sm.",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "fade": {
+          "type": "number",
+          "description": "How far the edge fades reach; 0 is 24.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "fadeInto": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ThemeColor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The surface the content fades into; null is panel.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls the region.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "AccordionSection": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A section of an accordion: its header's title, subtitle and badge.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The header's title.",
+          "default": ""
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "A line under it; empty is none.",
+          "default": ""
+        },
+        "badge": {
+          "type": "string",
+          "description": "A badge at the header's end; empty is none.",
+          "default": ""
+        },
+        "badgeTone": {
+          "$ref": "#/$defs/Tone",
+          "description": "The badge's tone.",
+          "default": "neutral"
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "The header is shown but does not open.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "AccordionDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An accordion: sections whose headers open and close their bodies.",
+      "type": "object",
+      "properties": {
+        "sections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AccordionSection"
+          },
+          "description": "The sections, in order.",
+          "default": []
+        },
+        "expanded": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "The open sections' indices (keep AccordionResult.expanded).",
+          "default": []
+        },
+        "single": {
+          "type": "boolean",
+          "description": "Opening one closes the others.",
+          "default": false
+        },
+        "dividers": {
+          "type": "boolean",
+          "description": "Hairlines between sections.",
+          "default": true
+        },
+        "gap": {
+          "type": "number",
+          "description": "Space between sections.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "AccordionResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What an accordion answered this tick.",
+      "type": "object",
+      "properties": {
+        "toggled": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The section whose header was pressed."
+        },
+        "expanded": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "The open sections after this tick: keep them and pass them back."
+        }
+      },
+      "required": [
+        "toggled",
+        "expanded"
+      ],
+      "additionalProperties": false
+    },
+    "SplitViewDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Two panes with a divider between them that a drag moves.",
+      "type": "object",
+      "properties": {
+        "direction": {
+          "$ref": "#/$defs/Direction",
+          "description": "Side by side (row) or one over the other (column).",
+          "default": "row"
+        },
+        "ratio": {
+          "type": "number",
+          "description": "The start pane's share of the room (keep SplitResult.ratio).",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "minStart": {
+          "type": "number",
+          "description": "The start pane's least size; 0 is 120.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "minEnd": {
+          "type": "number",
+          "description": "The end pane's least size; 0 is 120.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "snaps": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "The ratios a press of the focused divider steps through; empty is a third, a half, two thirds.",
+          "default": []
+        },
+        "keepOnPhone": {
+          "type": "boolean",
+          "description": "Stay side by side on a phone in portrait (it stacks by default).",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height; null grows.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls the divider.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "SplitResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a split view answered this tick.",
+      "type": "object",
+      "properties": {
+        "ratio": {
+          "type": "number",
+          "description": "The start pane's share after this tick: keep it and pass it back."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "The divider was moved or stepped this tick."
+        },
+        "stacked": {
+          "type": "boolean",
+          "description": "It is stacked (a phone in portrait)."
+        }
+      },
+      "required": [
+        "ratio",
+        "changed",
+        "stacked"
+      ],
+      "additionalProperties": false
+    },
+    "DialogTone": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A dialog's tone, shown by a mark as well as its colour.",
+      "type": "string",
+      "enum": [
+        "neutral",
+        "info",
+        "success",
+        "warn",
+        "danger"
+      ],
+      "x-og-variants": {
+        "neutral": "No mark (the default).",
+        "info": "Information: an i.",
+        "success": "Success: a tick.",
+        "warn": "A warning: an exclamation.",
+        "danger": "Danger: a cross."
+      }
+    },
+    "DialogAction": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A button of a dialog.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The id answered when it is pressed; also its probe id.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "What it says; empty is its id.",
+          "default": ""
+        },
+        "variant": {
+          "$ref": "#/$defs/ButtonVariant",
+          "description": "Its weight: the primary sits last in a row and first in a phone's stack.",
+          "default": "secondary"
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "autofocus": {
+          "type": "boolean",
+          "description": "It takes the focus when the dialog opens.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "DialogDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A dialog: a title, a tone mark, a message, a body the game builds and a row of actions.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Its title.",
+          "default": ""
+        },
+        "message": {
+          "type": "string",
+          "description": "The message, as rich text markup (og.ui.richText).",
+          "default": ""
+        },
+        "tone": {
+          "$ref": "#/$defs/DialogTone",
+          "description": "Its tone.",
+          "default": "neutral"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DialogAction"
+          },
+          "description": "The buttons; ordered by weight on each breakpoint.",
+          "default": []
+        },
+        "cancelId": {
+          "type": "string",
+          "description": "The action that cancels (its sound is cancel's); empty is `cancel`.",
+          "default": ""
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Back and the backdrop do not dismiss it.",
+          "default": false
+        },
+        "wide": {
+          "type": "boolean",
+          "description": "640 CSS px wide instead of 460.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null is 460 (wide 640), at most the surface less its gutters.",
+          "default": null
+        },
+        "transition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TransitionKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How it enters and leaves; null is the style's.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "DialogResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a dialog answered this tick.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The id of the action pressed."
+        },
+        "dismissed": {
+          "type": "boolean",
+          "description": "Back or the backdrop asked to close it."
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "It is on screen (open, or leaving)."
+        }
+      },
+      "required": [
+        "action",
+        "dismissed",
+        "visible"
+      ],
+      "additionalProperties": false
+    },
+    "ConfirmationDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A confirmation: a message, Cancel and the action.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Its title.",
+          "default": ""
+        },
+        "message": {
+          "type": "string",
+          "description": "What will happen, as rich text markup.",
+          "default": ""
+        },
+        "confirmLabel": {
+          "type": "string",
+          "description": "The action's label; empty is Confirm.",
+          "default": ""
+        },
+        "cancelLabel": {
+          "type": "string",
+          "description": "Cancel's label; empty is Cancel.",
+          "default": ""
+        },
+        "danger": {
+          "type": "boolean",
+          "description": "The action cannot be undone: the danger variant, and Cancel takes the focus.",
+          "default": false
+        },
+        "tone": {
+          "$ref": "#/$defs/DialogTone",
+          "description": "Its tone when it is not danger.",
+          "default": "neutral"
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Back and the backdrop do not cancel.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "FloatSide": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "Where a floating surface hangs off what it belongs to; start and end follow the writing direction.",
+      "type": "string",
+      "enum": [
+        "below",
+        "above",
+        "start",
+        "end"
+      ],
+      "x-og-variants": {
+        "below": "Below it (the default).",
+        "above": "Above it.",
+        "start": "At its start.",
+        "end": "At its end."
+      }
+    },
+    "FloatAlign": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How a floating surface lines up with what it belongs to.",
+      "type": "string",
+      "enum": [
+        "start",
+        "center",
+        "end"
+      ],
+      "x-og-variants": {
+        "start": "Their start edges.",
+        "center": "Centred on it.",
+        "end": "Their end edges."
+      }
+    },
+    "PopoverDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A popover beside an element, flipped where there is no room and kept on screen, with an arrow at the element.",
+      "type": "object",
+      "properties": {
+        "anchor": {
+          "type": "string",
+          "description": "The path of the element it belongs to (og.ui.lastPath right after building it); empty centres it.",
+          "default": ""
+        },
+        "side": {
+          "$ref": "#/$defs/FloatSide",
+          "description": "The side it prefers.",
+          "default": "below"
+        },
+        "align": {
+          "$ref": "#/$defs/FloatAlign",
+          "description": "How it lines up with the element.",
+          "default": "center"
+        },
+        "arrow": {
+          "type": "boolean",
+          "description": "Draw an arrow at the element.",
+          "default": true
+        },
+        "offset": {
+          "type": "number",
+          "description": "Extra distance from the element.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "title": {
+          "type": "string",
+          "description": "A title over the content; empty is none.",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits, at most 360.",
+          "default": null
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Space inside; null is space.md.",
+          "default": null,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PopoverResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a popover answered this tick.",
+      "type": "object",
+      "properties": {
+        "dismissed": {
+          "type": "boolean",
+          "description": "Back or a press outside asked to close it."
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "It is on screen (open, or leaving)."
+        }
+      },
+      "required": [
+        "dismissed",
+        "visible"
+      ],
+      "additionalProperties": false
+    },
+    "MenuEntryKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a menu's entry is.",
+      "type": "string",
+      "enum": [
+        "item",
+        "check",
+        "radio",
+        "separator",
+        "header"
+      ],
+      "x-og-variants": {
+        "item": "A command (the default).",
+        "check": "A command with a check mark (menuitemcheckbox).",
+        "radio": "One of a group (menuitemradio).",
+        "separator": "A hairline between groups.",
+        "header": "A group's caption."
+      }
+    },
+    "MenuEntry": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An entry of a menu. An entry whose `parent` names another's id sits in that entry's submenu.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The id answered when it is chosen; also its probe id.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "What it says.",
+          "default": ""
+        },
+        "kind": {
+          "$ref": "#/$defs/MenuEntryKind",
+          "description": "What it is.",
+          "default": "item"
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon before the label; empty is none.",
+          "default": ""
+        },
+        "shortcut": {
+          "type": "string",
+          "description": "A shortcut shown at the end (`Ctrl+S`).",
+          "default": ""
+        },
+        "checked": {
+          "type": "boolean",
+          "description": "A check or radio entry is on.",
+          "default": false
+        },
+        "danger": {
+          "type": "boolean",
+          "description": "A destructive command: the danger ink.",
+          "default": false
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "parent": {
+          "type": "string",
+          "description": "The id of the entry whose submenu it is in; empty is the top level.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "MenuDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A menu hanging from an element, or at a point (a context menu).",
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MenuEntry"
+          },
+          "description": "Its entries, submenus' too.",
+          "default": []
+        },
+        "anchor": {
+          "type": "string",
+          "description": "The path of the element it hangs from.",
+          "default": ""
+        },
+        "at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Vector2"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A point it opens at instead (CSS px): where a right press or a long press happened.",
+          "default": null
+        },
+        "side": {
+          "$ref": "#/$defs/FloatSide",
+          "description": "The side of the element it prefers.",
+          "default": "below"
+        },
+        "align": {
+          "$ref": "#/$defs/FloatAlign",
+          "description": "How it lines up with the element.",
+          "default": "start"
+        },
+        "minWidth": {
+          "type": "number",
+          "description": "Its least width; 0 is 200.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "maxWidth": {
+          "type": "number",
+          "description": "Its greatest width; 0 is 360.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls it.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "MenuChoice": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a menu answered this tick.",
+      "type": "object",
+      "properties": {
+        "chosen": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The id of the entry chosen: close it."
+        },
+        "dismissed": {
+          "type": "boolean",
+          "description": "It asked to close (a choice, Back, a press outside)."
+        }
+      },
+      "required": [
+        "chosen",
+        "dismissed"
+      ],
+      "additionalProperties": false
+    },
+    "SheetEdge": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "The edge a sheet slides in from; start and end follow the writing direction.",
+      "type": "string",
+      "enum": [
+        "bottom",
+        "end",
+        "start"
+      ],
+      "x-og-variants": {
+        "bottom": "The bottom (the default).",
+        "end": "The end side.",
+        "start": "The start side."
+      }
+    },
+    "SheetDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A sheet: a surface that slides in from an edge over a scrim; a bottom sheet rests at detents and a drag moves it.",
+      "type": "object",
+      "properties": {
+        "edge": {
+          "$ref": "#/$defs/SheetEdge",
+          "description": "The edge it comes from.",
+          "default": "bottom"
+        },
+        "detents": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "A bottom sheet's rest heights, fractions of the room; empty is 0.5 and 0.92.",
+          "default": []
+        },
+        "detent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The detent it rests at (keep SheetResult.detent).",
+          "default": 0
+        },
+        "size": {
+          "type": "number",
+          "description": "A side sheet's width; 0 is 400.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "title": {
+          "type": "string",
+          "description": "A title at its top; empty is none.",
+          "default": ""
+        },
+        "dismissible": {
+          "type": "boolean",
+          "description": "A drag past the lowest detent, a swipe outwards, Back or the scrim close it.",
+          "default": true
+        },
+        "scrim": {
+          "type": "boolean",
+          "description": "Dim what is behind it.",
+          "default": true
+        },
+        "handle": {
+          "type": "boolean",
+          "description": "A bottom sheet's grab handle.",
+          "default": true
+        },
+        "closeButton": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A close button by the title; null is a side sheet's only.",
+          "default": null
+        },
+        "closeLabel": {
+          "type": "string",
+          "description": "The close button's accessible name; empty is Close.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "SheetResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a sheet answered this tick.",
+      "type": "object",
+      "properties": {
+        "detent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The detent it rests at after this tick: keep it."
+        },
+        "dismissed": {
+          "type": "boolean",
+          "description": "It asked to close: set open false."
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "It is on screen (open, or leaving)."
+        }
+      },
+      "required": [
+        "detent",
+        "dismissed",
+        "visible"
       ],
       "additionalProperties": false
     },
