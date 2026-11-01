@@ -135,8 +135,12 @@ and the fallback where tsrs has no package.
 ### 2.4 Time and determinism **(D)**
 
 - Fixed tick (default 60 Hz, per project), accumulator with a cap; render
-  interpolates between the last two ticks. Game code never reads wall-clock
-  time: `Time` is a resource with `tick`, `dt`, `elapsed`.
+  interpolates between the last two ticks (`RenderSettings.interpolate`,
+  on by default: a display frame blends by the accumulator's fraction, a
+  frame on a tick boundary and every probe capture draw the tick, so
+  reference frames are the ticks'; og-runtime's `interpolate.rs`). Game
+  code never reads wall-clock time: `Time` is a resource with `tick`,
+  `dt`, `elapsed`.
 - Randomness is `Rng` resources seeded from the project seed and the entity
   or system that owns them; the sequence is identical on wasm and native (the
   Web scaffold's `rng.ts` and `rng.rs` test vectors are inherited).

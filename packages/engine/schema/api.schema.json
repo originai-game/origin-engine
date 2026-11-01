@@ -3329,6 +3329,7 @@
         "QualityPreset",
         "QualityPreset",
         "RenderSettings",
+        "Interpolation",
         "Lut",
         "EnvironmentMap",
         "ParticleEmitter",
@@ -3469,6 +3470,41 @@
         }
       ],
       "functions": [
+        {
+          "name": "snap",
+          "doc": "Draw entity, and everything under it through og.Parent, at its tick transform on the frames until the next tick instead of blending from where it was (RenderSettings.interpolate): call it on the tick a game teleports, respawns or resets an entity, so it does not glide across the screen. A move past RenderSettings.snapDistance snaps without it. Systems and commands may call it; it is presentation only and never reaches the world, world_hash or a snapshot.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer draws it."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The entity that was moved."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a dead entity.",
+          "publish": true
+        },
+        {
+          "name": "snapCamera",
+          "doc": "Draw og.Camera at its tick pose on the frames until the next tick instead of blending from where it was: a cut. A camera move past RenderSettings.snapDistance snaps without it. Presentation only, as og.render.snap.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer draws it."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
         {
           "name": "ribbon",
           "doc": "Draw a ribbon this frame. Systems and commands may call it; the list is cleared at every tick.",
@@ -18438,6 +18474,33 @@
           "default": 4,
           "minimum": 1,
           "maximum": 4
+        },
+        "interpolate": {
+          "type": "boolean",
+          "description": "Draw what moves between the last two ticks. A display frame that falls between ticks (a 60 Hz tick on a 120 or 144 Hz screen) draws every entity's world transform and og.Camera's position and rotation blended from the tick before the last to the last, by the time past the last tick over the tick's length (positions and scales lerped, rotations slerped), so camera pans, cars and bullets glide instead of judder; the frame then shows the world up to one tick late. A frame on a tick boundary (a host that steps whole ticks: og run without --realtime, og render, og test) draws the last tick exactly, as do the probe's screenshots and captures, so reference frames are the ticks'. Presentation only: the simulation, world_hash, snapshots, replays, lockstep, the probe and dump_* read the ticks, never the blend. og.Interpolation opts an entity out; og.render.snap and snapDistance keep a teleport from gliding.",
+          "default": true
+        },
+        "snapDistance": {
+          "type": "number",
+          "description": "An entity or og.Camera that moved further than this between the last two ticks is drawn at the last tick, not blended: a teleport or a respawn this far needs no og.render.snap. 0 never snaps by distance.",
+          "default": 10,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Interpolation": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "How the renderer draws this entity between ticks while RenderSettings.interpolate is on; an entity without it is blended. Presentation only: the renderer reads it, the simulation never does.",
+      "type": "object",
+      "properties": {
+        "off": {
+          "type": "boolean",
+          "description": "Draw this entity, and everything under it through og.Parent, at the last tick's transform on every frame, never blended: a marker the game already moves every frame, or an object that jumps on purpose (a clock hand that ticks).",
+          "default": false
         }
       },
       "additionalProperties": false

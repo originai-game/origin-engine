@@ -257,6 +257,10 @@ export interface HostAbi<A, V> {
   og_camera_punch(world: number, amount: number): string;
   /** `og.camera.kick` */
   og_camera_kick(world: number, direction: string, distance: number): string;
+  /** `og.render.snap` */
+  og_render_snap(world: number, entity: number): string;
+  /** `og.render.snapCamera` */
+  og_render_snap_camera(world: number): void;
   /** `og.render.ribbon` */
   og_render_ribbon(world: number, desc: string | undefined): string;
   /** `og.render.sprite` */
@@ -1074,6 +1078,8 @@ export const SYMBOLS: readonly string[] = [
   "og_camera_shake",
   "og_camera_punch",
   "og_camera_kick",
+  "og_render_snap",
+  "og_render_snap_camera",
   "og_render_ribbon",
   "og_render_sprite",
   "og_render_floating_text",
@@ -1496,6 +1502,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_world_name_of(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("world.nameOf", "entity", entity);
       return abi.og_world_name_of(world, entity);
+    },
+    og_render_snap(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.render.snap", "entity", entity);
+      return abi.og_render_snap(world, entity);
     },
     og_physics_apply_force(world: number, entity: number, force: string, point: string | undefined) {
       if (typeof entity !== "number") notEntity("og.physics.applyForce", "entity", entity);

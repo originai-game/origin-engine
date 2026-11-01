@@ -273,6 +273,41 @@ pub fn og_render_capabilities(world: u32) -> String {
         .to_string()
 }
 
+/// `og.render.snap`: `entity` drawn at its tick until the next tick
+/// (`super::interpolate`).
+pub fn og_render_snap(world: u32, entity: f64) -> String {
+    result_void((|| {
+        let eng = engine(world)?;
+        let (e, tick) = match running(world) {
+            Some(f) => {
+                // SAFETY: the frame is published while its system runs.
+                let ctx = unsafe { f.ctx() };
+                let e = live(&eng, "render.snap", entity, |e| Ok(ctx.is_alive(e)))?;
+                (e, ctx.time().tick)
+            }
+            None => {
+                let w = eng.world()?;
+                let e = live(&eng, "render.snap", entity, |e| Ok(w.is_alive(e)))?;
+                (e, w.time().tick)
+            }
+        };
+        eng.render.borrow_mut().interp.snap(e.to_bits(), tick);
+        Ok(())
+    })())
+}
+
+/// `og.render.snapCamera`.
+pub fn og_render_snap_camera(world: u32) {
+    if let Ok(eng) = engine(world) {
+        let tick = match running(world) {
+            // SAFETY: the frame is published while its system runs.
+            Some(f) => unsafe { f.ctx() }.time().tick,
+            None => eng.world().map_or(0, |w| w.time().tick),
+        };
+        eng.render.borrow_mut().interp.snap_camera(tick);
+    }
+}
+
 pub fn og_render_text(world: u32, desc: Option<String>) -> String {
     result_void((|| {
         let eng = engine(world)?;

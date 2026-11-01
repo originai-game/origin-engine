@@ -75,17 +75,18 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         return refuse("frame was called from inside a system");
     }
     let paused = eng.probe.borrow().paused();
-    let due = {
+    let (due, before, tick_ms) = {
         let mut st = eng.state.borrow_mut();
+        let tick_ms = 1000.0 / f64::from(st.rate);
+        let before = st.accumulator_ms;
         if paused || !elapsed_ms.is_finite() || elapsed_ms < 0.0 {
-            0
+            (0, before, tick_ms)
         } else {
-            let tick_ms = 1000.0 / f64::from(st.rate);
             let cap = f64::from(st.max_catch_up) * tick_ms;
             st.accumulator_ms = (st.accumulator_ms + elapsed_ms).min(cap);
             let n = (st.accumulator_ms / tick_ms).floor() as u32;
             st.accumulator_ms -= f64::from(n) * tick_ms;
-            n
+            (n, before, tick_ms)
         }
     };
     if let Err(e) = tick_boundary(&eng) {
@@ -104,7 +105,11 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     if ticks > 0 {
         eng.state.borrow_mut().step_ms = step_ms(&eng, t0) / f64::from(ticks);
     }
-    let rendered = match render(&eng) {
+    // Drawn between the last two ticks by the accumulator's fraction
+    // (RenderSettings.interpolate), or at the tick on a tick boundary.
+    let after = eng.state.borrow().accumulator_ms;
+    let alpha = super::interpolate::frame_alpha(before, after, tick_ms, ticks < due);
+    let rendered = match render(&eng, alpha) {
         Ok(r) => r,
         Err(e) => return refuse(e),
     };
@@ -220,7 +225,9 @@ fn text_entry(eng: &Engine) -> (Value, Option<String>) {
     (text, copy)
 }
 
-fn render(eng: &Engine) -> Result<bool, String> {
+/// Draws the frame, between the last two ticks at `alpha`
+/// (`super::interpolate`) or at the tick (`None`).
+fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
     if eng.render.borrow().backend.is_none() {
         return Ok(false);
     }
@@ -234,7 +241,9 @@ fn render(eng: &Engine) -> Result<bool, String> {
         let world = eng.world()?;
         let mut rs = eng.render.borrow_mut();
         rs.art.contract = super::art::contract(eng);
+        rs.interp.alpha = alpha;
         super::extract::extract(world, &mut rs);
+        rs.interp.alpha = None;
         super::probes::load_bakes(eng, &mut rs);
         let rs = &mut *rs;
         if let Some(b) = rs.backend.as_mut() {

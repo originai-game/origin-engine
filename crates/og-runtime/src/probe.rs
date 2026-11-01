@@ -62,10 +62,12 @@ impl Capture for RuntimeCapture {
     }
 
     fn restore_state(&mut self, state: u64) {
-        if let Ok(mut rs) = self.render.try_borrow_mut()
-            && let Some(b) = rs.backend.as_mut()
-        {
-            b.restore_state(state);
+        if let Ok(mut rs) = self.render.try_borrow_mut() {
+            // Nothing for a frame to blend from until the next tick.
+            rs.interp.forget();
+            if let Some(b) = rs.backend.as_mut() {
+                b.restore_state(state);
+            }
         }
     }
 
@@ -112,7 +114,7 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
         "dump_render",
         og_probe::CommandDesc {
             usage: "dump_render[:path]".into(),
-            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), render time, and how many og.Model entities drew each level of detail".into(),
+            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), render time, how many og.Model entities drew each level of detail, and the fraction between the last two ticks it was drawn at (interpolation, null at the tick)".into(),
         },
         0,
         move |_world, _args| {
@@ -130,6 +132,10 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
                 "renderMs": (st.render_ms * 1000.0).round() / 1000.0,
                 "debugView": super::geometry::current_view(&rs),
                 "lodLevels": &levels[..last],
+                // The fraction of the way from the tick before the last to
+                // the last the frame was drawn at (RenderSettings.interpolate),
+                // null when it was drawn at the tick.
+                "interpolation": rs.interp.drawn,
                 // The frame's reflection probes: baked ones sampling a capture
                 // `og bake probes` wrote (`bakedFromCache`) or drawing their own.
                 "reflectionProbes": rs.scene.reflection_probes.iter().map(|p| json!({
@@ -343,6 +349,9 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         if let Ok(eng) = engine(id) {
             super::save::before_tick(&eng, world);
             super::geometry::before_tick(&eng, world);
+            if let Ok(mut rs) = eng.render.try_borrow_mut() {
+                super::interpolate::before_tick(&mut rs, world);
+            }
         }
     }));
     if let Some(ui) = eng.state.borrow().ui.as_ref() {
@@ -474,6 +483,9 @@ pub(crate) fn set_reloader(eng: &Rc<Engine>) {
 /// when the probe kept the old bundle.
 pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
     super::e6::after_reload(eng.id, swapped);
+    if swapped && let Ok(mut rs) = eng.render.try_borrow_mut() {
+        rs.interp.forget();
+    }
     let Some(a) = eng.state.borrow_mut().reloaded.take() else {
         return;
     };

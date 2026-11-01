@@ -46,6 +46,73 @@ pub struct Hierarchy {
     /// nothing moved since the one before (the raycast record's cost test
     /// counts them).
     pub(crate) walked: usize,
+    /// A display frame between ticks: [`Hierarchy::world_of`] answers the
+    /// blend of the previous tick's world matrix and this one's
+    /// (`crate::interpolate`).
+    blend: Option<Box<Blend>>,
+}
+
+/// What a display frame between two ticks blends with
+/// ([`Hierarchy::set_blend`]).
+pub(crate) struct Blend {
+    /// The transforms as the last tick started.
+    pub prev: Hierarchy,
+    /// 0 draws `prev`, 1 the tick's own.
+    pub alpha: f32,
+    /// The squared distance past which a move between the ticks is a
+    /// teleport, drawn at the tick (infinite: none).
+    pub snap_sq: f32,
+    /// Entities drawn at the tick with everything under them
+    /// (og.Interpolation.off, og.render.snap), by bits.
+    pub held: IdMap<u64, ()>,
+}
+
+impl Blend {
+    /// The drawn world matrix of `e`, whose tick world matrix is `m`
+    /// (`parent`: the tick's og.Parent links).
+    fn of(&mut self, parent: &IdMap<u64, u64>, e: u64, m: Mat4) -> Mat4 {
+        if !self.held.is_empty() {
+            let mut cur = e;
+            for _ in 0..=256 {
+                if self.held.contains_key(&cur) {
+                    return m;
+                }
+                match parent.get(&cur) {
+                    Some(&p) => cur = p,
+                    None => break,
+                }
+            }
+        }
+        // Spawned during the tick: nothing to come from.
+        if !self.prev.knows(e) {
+            return m;
+        }
+        blend(self.prev.world_of(e), m, self.alpha, self.snap_sq)
+    }
+}
+
+/// `a` to `b` at `t`: translation and scale lerped, rotation slerped with
+/// og-core's math (`og_core::math::quat_slerp`, no host `libm`); `b` when
+/// the translation moved more than `snap_sq`'s root, and either end exactly
+/// at 0 and 1.
+fn blend(a: Mat4, b: Mat4, t: f32, snap_sq: f32) -> Mat4 {
+    if a == b || t >= 1.0 {
+        return b;
+    }
+    if t <= 0.0 {
+        return a;
+    }
+    let (s0, r0, t0) = a.to_scale_rotation_translation();
+    let (s1, r1, t1) = b.to_scale_rotation_translation();
+    if t0.distance_squared(t1) > snap_sq {
+        return b;
+    }
+    let r = if r0 == r1 {
+        r1
+    } else {
+        og_core::math::quat_slerp(r0, r1, t).normalize()
+    };
+    Mat4::from_scale_rotation_translation(s0.lerp(s1, t), r, t0.lerp(t1, t))
 }
 
 /// What [`Hierarchy::capture`] leaves for [`Hierarchy::apply`]: per
@@ -400,8 +467,38 @@ impl Hierarchy {
         }
     }
 
-    /// The world matrix of an entity: its local transform after its parents'.
+    /// Blends every world matrix [`Hierarchy::world_of`] answers with
+    /// `blend.prev`'s until [`Hierarchy::take_blend`].
+    pub(crate) fn set_blend(&mut self, blend: Blend) {
+        self.blend = Some(Box::new(blend));
+    }
+
+    /// Ends [`Hierarchy::set_blend`]: the previous tick's hierarchy back.
+    pub(crate) fn take_blend(&mut self) -> Option<Hierarchy> {
+        self.blend.take().map(|b| b.prev)
+    }
+
+    /// Whether `e` has og.Transform here.
+    fn knows(&mut self, e: u64) -> bool {
+        if self.pending.is_some() {
+            self.apply();
+        }
+        self.slot(e).is_some()
+    }
+
+    /// The world matrix of an entity as drawn: its local transform after
+    /// its parents', blended with the previous tick's on a frame between
+    /// ticks ([`Hierarchy::set_blend`]).
     pub(crate) fn world_of(&mut self, e: u64) -> Mat4 {
+        let m = self.tick_world_of(e);
+        match self.blend.as_mut() {
+            Some(b) => b.of(&self.parent, e, m),
+            None => m,
+        }
+    }
+
+    /// The world matrix of an entity at the tick: its local transform after its parents'.
+    fn tick_world_of(&mut self, e: u64) -> Mat4 {
         // Checked in place: the raycast record asks once per target.
         if self.pending.is_some() {
             self.apply();

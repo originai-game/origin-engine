@@ -759,6 +759,18 @@ pub fn og_camera_kick(env: Env, world: u32, direction: String, distance: f64) ->
     <Host as CameraApi>::og_camera_kick(&Host, world, direction, distance)
 }
 
+#[napi(js_name = "og_render_snap")]
+pub fn og_render_snap(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_snap(&Host, world, entity)
+}
+
+#[napi(js_name = "og_render_snap_camera")]
+pub fn og_render_snap_camera(env: Env, world: u32) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_snap_camera(&Host, world)
+}
+
 #[napi(js_name = "og_render_ribbon")]
 pub fn og_render_ribbon(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

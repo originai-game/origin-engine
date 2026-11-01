@@ -578,6 +578,12 @@ impl RenderApi for WebHost {
     fn og_render_look(&self, world: u32) -> String {
         rt::og_render_look(world)
     }
+    fn og_render_snap(&self, world: u32, entity: f64) -> String {
+        rt::og_render_snap(world, entity)
+    }
+    fn og_render_snap_camera(&self, world: u32) {
+        rt::og_render_snap_camera(world)
+    }
     fn og_render_text(&self, world: u32, desc: Option<String>) -> String {
         rt::og_render_text(world, desc)
     }

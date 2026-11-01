@@ -52,6 +52,21 @@ is one line here, written at the merge that changes
 - Fixed: keys held when the window loses focus or the page is hidden are
   released, and pads come to rest with the keys they map to.
 
+- **Rendering interpolates between ticks (docs/design.md §2.4).** A
+  display frame between two ticks (a 60 Hz tick on a 120 or 144 Hz
+  screen) draws every entity's world transform and og.Camera's pose
+  blended from the tick before the last to the last by the accumulator's
+  fraction, so the picture is smooth and up to a tick late; frames on
+  tick boundaries (og run without --realtime, og render, og test), the
+  probe's screenshots and captures draw the tick as before, so no
+  reference frame moves, and the simulation, its hash and replays are
+  unchanged. On by default: a game that teleports an entity calls
+  `og.render.snap` on that tick, or it glides there over one tick unless
+  it jumped past `RenderSettings.snapDistance`. Added to the IDL:
+  `RenderSettings.interpolate` (true) and `snapDistance` (10 m), the
+  component `og.Interpolation { off }`, `og.render.snap(world, entity)`
+  and `og.render.snapCamera(world)`; `dump_render` reports the frame's
+  `interpolation`.
 - Field factories `VectorArt()` and `UiMaterial()` for the two handle
   types U1 added without one (og.load.vector, og.load.uiMaterial): every
   handle type of the API has its factory again, as

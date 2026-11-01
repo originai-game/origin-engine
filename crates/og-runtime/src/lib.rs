@@ -45,6 +45,7 @@ mod fx;
 mod geometry;
 mod glyphs;
 mod i18n;
+mod interpolate;
 mod lanes;
 mod look;
 mod memory;

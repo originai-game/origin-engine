@@ -306,6 +306,10 @@ fn apply_keeping(
     keep: &[&str],
 ) -> Result<(), String> {
     let from = world.time().tick;
+    // Nothing for a frame to blend from until the next tick.
+    if let Ok(mut rs) = eng.render.try_borrow_mut() {
+        rs.interp.forget();
+    }
     let kept: Vec<(og_ecs::SchemaId, Vec<u8>)> = SESSION
         .iter()
         .chain(keep.iter())

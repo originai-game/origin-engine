@@ -20,10 +20,11 @@ mod frame;
 mod hierarchy;
 
 use super::{
-    art, assets, atmosphere, baked, environment, feel, fx, geometry, glyphs, modules, probes,
-    review, skeleton2d, terrain, video, views,
+    art, assets, atmosphere, baked, environment, feel, fx, geometry, glyphs, interpolate, modules,
+    probes, review, skeleton2d, terrain, video, views,
 };
 pub(crate) use frame::extract;
+pub(crate) use hierarchy::Blend;
 pub use hierarchy::Hierarchy;
 
 use super::codec::{Layout, Rec, Row, Slot as FieldSlot};
@@ -289,6 +290,8 @@ pub(crate) struct RenderState {
     pub art: super::art::ArtState,
     /// The vectors and UI materials elements draw with (`super::ui_draw`).
     pub ui_draw: super::ui_draw::UiDrawState,
+    /// Interpolation between ticks (`super::interpolate`).
+    pub interp: super::interpolate::InterpState,
 }
 
 impl RenderState {
@@ -334,11 +337,12 @@ impl RenderState {
             review: None,
             art: Default::default(),
             ui_draw: Default::default(),
+            interp: Default::default(),
         }
     }
 }
 
-fn f(v: &Value, key: &str, default: f32) -> f32 {
+pub(crate) fn f(v: &Value, key: &str, default: f32) -> f32 {
     v[key].as_f64().map_or(default, |x| x as f32)
 }
 
@@ -350,7 +354,7 @@ fn color(v: &Value, default: f32) -> Vec3 {
     Vec3::new(f(v, "r", default), f(v, "g", default), f(v, "b", default))
 }
 
-fn on(v: &Value, key: &str, default: bool) -> bool {
+pub(crate) fn on(v: &Value, key: &str, default: bool) -> bool {
     match &v[key] {
         Value::Bool(b) => *b,
         Value::Number(n) => n.as_f64().is_some_and(|x| x != 0.0),
@@ -549,6 +553,8 @@ pub(crate) struct DrawLayouts {
     pub points: Option<Layout>,
     /// og.ReflectionProbe (`super::probes`).
     pub probe: Option<Layout>,
+    /// og.Interpolation (`super::interpolate`).
+    pub interpolation: Option<Layout>,
     /// og.CameraView and og.Mirror (`super::views`).
     pub views: super::views::ViewLayouts,
     /// The engine's physics, for the debug view (`super::geometry`).

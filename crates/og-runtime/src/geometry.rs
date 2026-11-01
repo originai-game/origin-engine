@@ -110,13 +110,32 @@ pub(crate) struct GeoState {
     /// that tick.
     record: Option<(u64, Record)>,
     /// The transforms and parents as the record's tick started: the
-    /// record's world matrices are composed from them.
+    /// record's world matrices are composed from them, and a display frame
+    /// between ticks blends from them (`super::interpolate`).
     hierarchy: Hierarchy,
     /// Those of the last raycast between ticks, which reads the world as
     /// it is (its own, so the record's stay as its tick started).
     now: Hierarchy,
     /// The record's og.Mesh half and what it was read from.
     meshes: Meshes,
+}
+
+impl GeoState {
+    /// The tick the raycast record was read as it started.
+    pub(crate) fn record_tick(&self) -> Option<u64> {
+        self.record.as_ref().map(|r| r.0)
+    }
+
+    /// The record's hierarchy (the transforms as its tick started), lent
+    /// to a display frame's blend (`super::interpolate`) until
+    /// [`GeoState::put_hierarchy`].
+    pub(crate) fn take_hierarchy(&mut self) -> Hierarchy {
+        std::mem::take(&mut self.hierarchy)
+    }
+
+    pub(crate) fn put_hierarchy(&mut self, h: Hierarchy) {
+        self.hierarchy = h;
+    }
 }
 
 /// The drawn og.Mesh rows of the last tick start, kept while the columns

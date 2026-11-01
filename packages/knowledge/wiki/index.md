@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1499 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1502 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -726,6 +726,7 @@ Field units the docs and Tune use.
 | [`og.input.setDeadzones`](input.md#fn-setDeadzones) | function | input | `og_input_set_deadzones` |
 | [`og.input.setToggle`](input.md#fn-setToggle) | function | input | `og_input_set_toggle` |
 | [`og.input.startCapture`](input.md#fn-startCapture) | function | input | `og_input_start_capture` |
+| [`og.Interpolation`](render.md#record-Interpolation) | component | render | — |
 | [`og.Joint`](physics.md#record-Joint) | component | physics | — |
 | [`og.JointLimit`](anim.md#record-JointLimit) | component | anim | — |
 | [`og.KeyDown`](input.md#record-KeyDown) | event | input | — |
@@ -898,6 +899,8 @@ Field units the docs and Tune use.
 | [`og.render.setShaderParam`](render.md#fn-setShaderParam) | function | render | `og_render_set_shader_param` |
 | [`og.render.shaderMaterial`](render.md#fn-shaderMaterial) | function | render | `og_render_shader_material` |
 | [`og.render.shapeGeometry`](render.md#fn-shapeGeometry) | function | render | `og_render_shape_geometry` |
+| [`og.render.snap`](render.md#fn-snap) | function | render | `og_render_snap` |
+| [`og.render.snapCamera`](render.md#fn-snapCamera) | function | render | `og_render_snap_camera` |
 | [`og.render.sphereGeometry`](render.md#fn-sphereGeometry) | function | render | `og_render_sphere_geometry` |
 | [`og.render.sprite`](render.md#fn-sprite) | function | render | `og_render_sprite` |
 | [`og.render.standardMaterial`](render.md#fn-standardMaterial) | function | render | `og_render_standard_material` |

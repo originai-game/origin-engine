@@ -21,8 +21,8 @@ mod tick;
 pub use tick::{advance, answer_call, call_rpc, frame, take_log, take_outputs};
 mod resources;
 use crate::{
-    anim, api, art, assets, atmosphere, codec, e6, extract, feel, fx, i18n, look, modules, ok_void,
-    probes, save, stream, terrain, timeline, trace, video, views,
+    anim, api, art, assets, atmosphere, codec, e6, extract, feel, fx, i18n, interpolate, look,
+    modules, ok_void, probes, save, stream, terrain, timeline, trace, video, views,
 };
 pub(crate) use resources::{bump_layout_epoch, world_query_views, write_resource_value};
 pub use resources::{

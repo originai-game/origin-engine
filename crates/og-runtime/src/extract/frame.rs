@@ -21,9 +21,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let framed = super::review::bounds(rs, &h, &ids);
     rs.ids.instances = ids;
     let size = backend_size(rs);
-    let layouts = &rs.draw;
     let camera = resource(world, rs.camera.as_ref());
     let settings = resource(world, rs.settings.as_ref());
+    // A display frame between ticks: every world matrix and the camera
+    // from here on are blended with the tick before (`super::interpolate`).
+    super::interpolate::begin(world, rs, settings.as_deref(), &mut h);
+    let layouts = &rs.draw;
     rs.atmo.palettes.clear();
     rs.ids.sprites.clear();
     let scene = &mut rs.scene;
@@ -72,15 +75,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         .and_then(|c| c["layers"].as_u64())
         .map_or(1, |x| x as u32);
     if let Some(c) = &camera {
-        let q = &c["quaternion"];
-        let rot = Quat::from_xyzw(
-            f(q, "x", 0.0),
-            f(q, "y", 0.0),
-            f(q, "z", 0.0),
-            f(q, "w", 1.0),
-        )
-        .normalize();
-        let position = vec3(&c["position"]);
+        let (position, rot) = super::interpolate::camera_pose(c);
+        let (position, rot) = super::interpolate::camera(&rs.interp, position, rot);
         let cam = &mut scene.camera;
         cam.position = position;
         cam.target = position + rot * Vec3::NEG_Z;
@@ -589,6 +585,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::video::extract(world, rs);
     // The UI, over everything else, in the overlay.
     super::modules::emit(rs);
+    super::interpolate::end(rs, &mut h);
     rs.hierarchy = h;
 }
 

@@ -59,6 +59,17 @@ is an engine feature request, not something to work around in the game.
   on every og.platform answer. A replay records them like a key press.
 - Rendering never feeds back into simulation: do not read camera or screen
   state to decide game logic.
+- Frames fall between ticks: on a screen faster than the tick (120 or
+  144 Hz) the renderer draws every entity and og.Camera blended from the
+  tick before the last to the last (`RenderSettings.interpolate`, on by
+  default), so motion is smooth and the picture is up to a tick behind the
+  world. On the tick a system teleports, respawns or resets an entity it
+  calls `og.render.snap(world, e)` (`og.render.snapCamera(world)` for a
+  camera cut), or the entity glides there over a tick; a jump past
+  `RenderSettings.snapDistance` (10 m) snaps by itself, and
+  `og.Interpolation { off: true }` draws an entity and its children at
+  the tick always. Screenshots, `og run`'s and `og render`'s frames, the
+  probe and `dump_*` are the ticks.
 - The engine may spread its own work over the cores (physics, skinning,
   culling: the lanes), and it gives the same result to the bit as one
   thread. Game systems always run on the engine thread, one after another,
