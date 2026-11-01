@@ -108,14 +108,18 @@ stream; an L or XL stream may be split by the coordinator).
 Acceptance of R: a photoreal forest reference scene and three.js#35191's
 example scenes, frames on Metal, frame times against three.js on WebGPU.
 
-## 3. Open with the owner
+## 3. Compatibility and real devices: last (owner, 2026-11-01)
+
+After R, as the plan's final stage:
 
 - **Reach.** WebGPU only leaves roughly 15–25 % of mobile-web players unable
   to play (iOS below 26, Android below 12, Firefox for Android), an estimate
-  from caniuse. The WebGL2 tier was retired on 2026-11-01; this plan keeps
-  that and measures the share on the platform's real traffic.
-- **The real-phone device list** (`docs/release.md` §6 item 5), which G1-4
-  is measured on.
+  from caniuse. The share is measured on the platform's real traffic and
+  the owner decides then; until then the WebGL2 tier stays retired.
+- **Real devices.** The device list (`docs/release.md` §6 item 5) and every
+  real-phone measurement: G1-4's power mode, automatic quality and device
+  loss are built and tested on the runners until then, and their phone
+  numbers are taken here.
 
 ## 4. Status
 
