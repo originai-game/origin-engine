@@ -134,9 +134,13 @@ module ui {
 | [`SkeletonDesc`](#type-SkeletonDesc) | desc struct | A skeleton: the neutral fill standing in for content that is loading. |
 | [`UiItemBuild`](#type-UiItemBuild) | callback | Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it. |
 | [`og.ui.breakpoint`](#fn-breakpoint) | function | The size class of the play surface of the frame being built (desktop outside a frame). |
+| [`UiPointer`](#type-UiPointer) | struct | The primary pointer as the UI reads it this tick. |
+| [`og.ui.framePointer`](#fn-framePointer) | function | The primary pointer of the frame being built, without the world: for a component that hit-tests a shape it draws itself (a pie's wedges, a wheel's slices) by angle and radius rather than by rectangles. Keys and pads reach the same choices through focusable parts. |
 | [`og.ui.frameViewport`](#fn-frameViewport) | function | The play surface of the frame being built: og.ui.viewport without the world, for code that only builds UI. |
 | [`og.ui.hasIcon`](#fn-hasIcon) | function | Whether the icon atlas has an icon of this name (templates draw a fallback otherwise). |
 | [`og.ui.seconds`](#fn-seconds) | function | The UI's clock in seconds: frames built over the tick rate (simulation time, never the wall clock). |
+| [`og.ui.lastPath`](#fn-lastPath) | function | The full path of the element built just before (a container just closed, or a widget), as og.ui.bounds, og.ui.gesture, og.ui.forceState and the probe name it: a component reads its own parts' rectangles and gestures by it. Empty when nothing was built before it. |
+| [`og.ui.frameDirection`](#fn-frameDirection) | function | The writing direction of the frame being built, `ltr` or `rtl` (og.i18n's locale sets it): code that draws its own arrows, chevrons or progress along a line mirrors them by it; layout mirrors rows and insets itself. |
 | [`og.ui.frameTheme`](#fn-frameTheme) | function | The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the templates). |
 | [`og.ui.openAnchor`](#fn-openAnchor) | function | Open an anchored group, closed by close(): og.ui.anchor without the callback. |
 | [`og.ui.anchor`](#fn-anchor) | function | An anchored group built by `build`: a layer at a point of the safe area, over the tree, for HUD corners and touch controls. |
@@ -203,6 +207,101 @@ module ui {
 | [`ScreenTransitionResult`](#type-ScreenTransitionResult) | struct | Where a screen transition is this tick. |
 | [`og.ui.screenTransition`](#fn-screenTransition) | function | A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade. |
 | [`og.ui.previewViewport`](#fn-previewViewport) | function | Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`). |
+| [`CardVariant`](#type-CardVariant) | enum | How a card stands off what it sits on. |
+| [`CardMedia`](#type-CardMedia) | desc struct | A card's media slot: art the game fills, or a placeholder drawn from the style when it has none. |
+| [`CardDesc`](#type-CardDesc) | desc struct | A card: media, an eyebrow, a title, a subtitle and a corner badge over a body the game builds. |
+| [`ScrollAreaDesc`](#type-ScrollAreaDesc) | desc struct | A scroll area: og.ui's scroll container whose content fades out at an edge where more lies beyond. |
+| [`AccordionSection`](#type-AccordionSection) | desc struct | A section of an accordion: its header's title, subtitle and badge. |
+| [`AccordionDesc`](#type-AccordionDesc) | desc struct | An accordion: sections whose headers open and close their bodies. |
+| [`AccordionResult`](#type-AccordionResult) | struct | What an accordion answered this tick. |
+| [`SplitViewDesc`](#type-SplitViewDesc) | desc struct | Two panes with a divider between them that a drag moves. |
+| [`SplitResult`](#type-SplitResult) | struct | What a split view answered this tick. |
+| [`DialogTone`](#type-DialogTone) | enum | A dialog's tone, shown by a mark as well as its colour. |
+| [`DialogAction`](#type-DialogAction) | desc struct | A button of a dialog. |
+| [`DialogDesc`](#type-DialogDesc) | desc struct | A dialog: a title, a tone mark, a message, a body the game builds and a row of actions. |
+| [`DialogResult`](#type-DialogResult) | struct | What a dialog answered this tick. |
+| [`ConfirmationDesc`](#type-ConfirmationDesc) | desc struct | A confirmation: a message, Cancel and the action. |
+| [`FloatSide`](#type-FloatSide) | enum | Where a floating surface hangs off what it belongs to; start and end follow the writing direction. |
+| [`FloatAlign`](#type-FloatAlign) | enum | How a floating surface lines up with what it belongs to. |
+| [`PopoverDesc`](#type-PopoverDesc) | desc struct | A popover beside an element, flipped where there is no room and kept on screen, with an arrow at the element. |
+| [`PopoverResult`](#type-PopoverResult) | struct | What a popover answered this tick. |
+| [`MenuEntryKind`](#type-MenuEntryKind) | enum | What a menu's entry is. |
+| [`MenuEntry`](#type-MenuEntry) | desc struct | An entry of a menu. An entry whose `parent` names another's id sits in that entry's submenu. |
+| [`MenuDesc`](#type-MenuDesc) | desc struct | A menu hanging from an element, or at a point (a context menu). |
+| [`MenuChoice`](#type-MenuChoice) | struct | What a menu answered this tick. |
+| [`SheetEdge`](#type-SheetEdge) | enum | The edge a sheet slides in from; start and end follow the writing direction. |
+| [`SheetDesc`](#type-SheetDesc) | desc struct | A sheet: a surface that slides in from an edge over a scrim; a bottom sheet rests at detents and a drag moves it. |
+| [`SheetResult`](#type-SheetResult) | struct | What a sheet answered this tick. |
+| [`TabVariant`](#type-TabVariant) | enum | How the selected tab is marked. |
+| [`TabItem`](#type-TabItem) | desc struct | A tab. |
+| [`TabBarDesc`](#type-TabBarDesc) | desc struct | Tabs over the panel the game builds for the selected one. |
+| [`TabBarResult`](#type-TabBarResult) | struct | What a tab bar answered this tick. |
+| [`CarouselDesc`](#type-CarouselDesc) | desc struct | Pages side by side that a drag or a flick moves, snapping to a page. |
+| [`CarouselResult`](#type-CarouselResult) | struct | What a carousel answered this tick. |
+| [`Crumb`](#type-Crumb) | desc struct | A step of a breadcrumb path. |
+| [`BreadcrumbsDesc`](#type-BreadcrumbsDesc) | desc struct | The path to where the player is; every crumb but the last is a link back. |
+| [`BreadcrumbsResult`](#type-BreadcrumbsResult) | struct | What breadcrumbs answered this tick. |
+| [`PaginationDesc`](#type-PaginationDesc) | desc struct | Previous and next, the first and last pages and the pages around the current one. |
+| [`PageResult`](#type-PageResult) | struct | What pagination answered this tick. |
+| [`ActionHint`](#type-ActionHint) | desc struct | A hint of the action bar: an action, its glyph on the device in use and what it does. |
+| [`ActionHintsDesc`](#type-ActionHintsDesc) | desc struct | The action bar (docs/ui.md §8.2): the actions the top layer accepts, each its glyph and its hint, at an edge. |
+| [`ActionHintsResult`](#type-ActionHintsResult) | struct | What the action bar answered this tick. |
+| [`RadialItem`](#type-RadialItem) | desc struct | A slice of a radial wheel. |
+| [`RadialDesc`](#type-RadialDesc) | desc struct | A radial wheel: slices around a centre, chosen by where the pointer or a stick points. |
+| [`RadialResult`](#type-RadialResult) | struct | What a radial wheel answered this tick. |
+| [`DataStateDesc`](#type-DataStateDesc) | desc struct | What a data view shows instead of its rows: loading, an error, or nothing. |
+| [`DataListDesc`](#type-DataListDesc) | desc struct | A virtualised list with its empty, loading and error states. |
+| [`DataListResult`](#type-DataListResult) | struct | What a data list or grid answered this tick. |
+| [`DataGridDesc`](#type-DataGridDesc) | desc struct | A virtualised grid of equal cells with its empty, loading and error states. |
+| [`NumberFormat`](#type-NumberFormat) | enum | How a number reads in a data view. |
+| [`TableColumn`](#type-TableColumn) | desc struct | A column of a table: the row field it shows and how. |
+| [`TableDesc`](#type-TableDesc) | desc struct | A sortable, filterable table of rows by columns; only the rows in view are built. |
+| [`TableResult`](#type-TableResult) | struct | What a table answered this tick: keep the sort and the filter. |
+| [`TreeItem`](#type-TreeItem) | desc struct | An item of a tree; an item whose `parent` names another's id sits under it. |
+| [`TreeDesc`](#type-TreeDesc) | desc struct | A tree of expandable items; the visible rows are virtualised. |
+| [`TreeResult`](#type-TreeResult) | struct | What a tree answered this tick. |
+| [`GraphNodeState`](#type-GraphNodeState) | enum | A graph node's state, shown by its ring and a mark as well as its colour. |
+| [`GraphNodeShape`](#type-GraphNodeShape) | enum | A graph node's outline. |
+| [`GraphNode`](#type-GraphNode) | desc struct | A node of a graph, at a position in the graph's own units. |
+| [`GraphLink`](#type-GraphLink) | desc struct | A link between two nodes. |
+| [`NodeGraphDesc`](#type-NodeGraphDesc) | desc struct | A pan-and-zoom graph of nodes and links: skill and tech trees, run maps, flowcharts. |
+| [`NodeGraphResult`](#type-NodeGraphResult) | struct | What a graph answered this tick. |
+| [`ChartKind`](#type-ChartKind) | enum | What a chart draws. |
+| [`ChartSeries`](#type-ChartSeries) | desc struct | A series of a chart: its name and a value a category. |
+| [`ChartDesc`](#type-ChartDesc) | desc struct | A chart: line, area, bar, radar, pie or donut, with axes, a legend, a tooltip and its states. |
+| [`ChartResult`](#type-ChartResult) | struct | What a chart answered this tick. |
+| [`KeyValueRow`](#type-KeyValueRow) | desc struct | A row of key-value rows. |
+| [`KeyValueRowsDesc`](#type-KeyValueRowsDesc) | desc struct | Key-value rows: a stat sheet, an item's properties. |
+| [`StatCompareRow`](#type-StatCompareRow) | desc struct | A stat compared: its value now and the value it would take. |
+| [`StatCompareDesc`](#type-StatCompareDesc) | desc struct | Stat-compare rows: an equip screen's comparison, each change a signed delta with a mark. |
+| [`CalendarMark`](#type-CalendarMark) | desc struct | Something on a day: a dot in a tone, or a claimed tick for a login calendar. |
+| [`CalendarDesc`](#type-CalendarDesc) | desc struct | A month grid of days: today, a selected day, a range, marks, and days that cannot be chosen. |
+| [`CalendarResult`](#type-CalendarResult) | struct | What a calendar answered this tick. |
+| [`og.ui.card`](#fn-card) | function | A card over a body the game builds. Answers its response (clicked when interactive). |
+| [`og.ui.scrollArea`](#fn-scrollArea) | function | A scroll container whose content fades out at an edge where more lies beyond. |
+| [`og.ui.accordion`](#fn-accordion) | function | Sections whose headers open and close their bodies; the sections under one move on the panel spring. |
+| [`og.ui.splitView`](#fn-splitView) | function | Two panes with a divider a drag moves and a press of the focused divider steps. |
+| [`og.ui.dialog`](#fn-dialog) | function | A dialog on the modal layer: tone mark, message, body and actions. |
+| [`og.ui.confirm`](#fn-confirm) | function | A confirmation dialog: the message, Cancel and the action (danger when it cannot be undone). |
+| [`og.ui.popover`](#fn-popover) | function | A popover beside an element with an arrow at it; Back or a press outside dismisses it. |
+| [`og.ui.menu`](#fn-menu) | function | A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point. |
+| [`og.ui.contextMenu`](#fn-contextMenu) | function | A menu at a point: where a right press or a long press happened. |
+| [`og.ui.sheet`](#fn-sheet) | function | A sheet sliding in from the bottom (resting at detents, dragged) or a side. |
+| [`og.ui.tabBar`](#fn-tabBar) | function | Tabs with a sliding indicator and bumpers over the panel of the selected one. |
+| [`og.ui.carousel`](#fn-carousel) | function | Pages a drag or a flick moves, snapping to a page, with arrows and dots. |
+| [`og.ui.breadcrumbs`](#fn-breadcrumbs) | function | The path to where the player is, collapsing its middle into a menu when long. |
+| [`og.ui.pagination`](#fn-pagination) | function | Previous, next and the pages around the current one. |
+| [`og.ui.actionHints`](#fn-actionHints) | function | The action bar: each action the top layer accepts as its glyph and hint; on touch, buttons. |
+| [`og.ui.radialMenu`](#fn-radialMenu) | function | A radial wheel chosen by where the pointer or a stick points. |
+| [`og.ui.dataList`](#fn-dataList) | function | A virtualised list with its empty, loading and error states. |
+| [`og.ui.dataGrid`](#fn-dataGrid) | function | A virtualised grid of cells with its empty, loading and error states. |
+| [`og.ui.table`](#fn-table) | function | A sortable, filterable table; only the rows in view are built, so 10,000 rows and more stay within budget. |
+| [`og.ui.tree`](#fn-tree) | function | A tree of expandable items, virtualised. |
+| [`og.ui.nodeGraph`](#fn-nodeGraph) | function | A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts. |
+| [`og.ui.chart`](#fn-chart) | function | A line, area, bar, radar, pie or donut chart. |
+| [`og.ui.keyValueRows`](#fn-keyValueRows) | function | Key-value rows: labels at the start, values at the end. |
+| [`og.ui.statCompare`](#fn-statCompare) | function | Stat-compare rows: current, new and the signed change with its mark. |
+| [`og.ui.calendar`](#fn-calendar) | function | A month grid of days. |
 | [`UiAction`](#type-UiAction) | callback | A template's action, by its id (a menu item, `buy:<item>`, `share`). |
 | [`SettingsChanged`](#type-SettingsChanged) | callback | The settings after a change: persist them (cloud save, local storage through the shell) and apply them. |
 | [`MenuItem`](#type-MenuItem) | desc struct | An item of a menu: an id the game acts on and the label a player reads. |
@@ -389,6 +488,8 @@ module ui {
 | [`TextEffectsDesc`](#type-TextEffectsDesc) | desc struct | Effects of the text an element holds (its labels and rich text). |
 | [`DrawDesc`](#type-DrawDesc) | desc struct | What an element draws with (og.ui.setDraw), over its background: its shape, fills and strokes in order, effects, opacity and blend, how it clips its children, and whether its subtree draws offscreen through a material. Colours given as theme tokens follow the style; every value is data an agent can read and set. |
 | [`BlendMode`](#type-BlendMode) | enum | How a paint mixes with what is under it. |
+| [`SemanticsDesc`](#type-SemanticsDesc) | desc struct | What a component tells the accessibility tree about an element it built from containers (docs/ui.md §11): a role other than its kind's, a name, a value and states. Absent fields leave what the element's kind gives it. |
+| [`og.ui.semantics`](#fn-semantics) | function | Give the element built just before (a container just closed, or a widget) a role, a name, a value and states for the accessibility tree and the probe's dump (dump_ui's role, name, value, states). Components built from containers call it so a screen reader meets a menu, a tree or a table, not rows of buttons. Answers false, with a frame warning, when no element was built before it or the role is unknown. |
 | [`og.ui.setDraw`](#fn-setDraw) | function | Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §5). Call it right after the element's open or control; immediate mode, so every tick it is drawn. |
 | [`WorldTarget`](#type-WorldTarget) | desc struct | What an anchored element or a world panel is placed on: an entity (its world pose, down og.Parent) or a world point. |
 | [`AnchorScaleMode`](#type-AnchorScaleMode) | enum | How an anchored element's size follows its distance from the camera. |
@@ -445,6 +546,7 @@ module ui {
 | [`og.ui.action`](#fn-action) | function | The action fired this tick (a document's `on action` fires on the top layer that takes input). |
 | [`og.ui.actionHeld`](#fn-actionHeld) | function | A hold action is held past its hold, or its toggle is on. |
 | [`og.ui.glyph`](#fn-glyph) | function | An action's glyph on the device used last: its first binding there. Null for an unknown action or one with no binding on that device. |
+| [`og.ui.frameGlyph`](#fn-frameGlyph) | function | An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. Null for an unknown action, one with no binding on that device, or outside a frame being built. |
 | [`og.ui.device`](#fn-device) | function | The device the player used last (glyphs follow it live): a key or the mouse, a pad of the family set with og.ui.setDevice (Xbox by default), or a touch on a coarse pointer. |
 | [`og.ui.setDevice`](#fn-setDevice) | function | Set the device (the host's when it knows: a pad's family from its id); a pad family also becomes what pad input shows from then on. |
 | [`og.ui.actionBar`](#fn-actionBar) | function | What an action bar component reads: the actions the top layer's document lists (`actions { confirm "Buy" }`), each with its hint and its glyph on the device used last. |
@@ -482,7 +584,7 @@ fn configure {
 }
 ```
 
-<sub>`api.ogt` line 12323</sub>
+<sub>`api.ogt` line 12333</sub>
 
 <a id="fn-viewport"></a>
 
@@ -510,7 +612,7 @@ fn viewport {
 }
 ```
 
-<sub>`api.ogt` line 12330</sub>
+<sub>`api.ogt` line 12340</sub>
 
 <a id="fn-theme"></a>
 
@@ -538,7 +640,7 @@ fn theme {
 }
 ```
 
-<sub>`api.ogt` line 12336</sub>
+<sub>`api.ogt` line 12346</sub>
 
 <a id="fn-open"></a>
 
@@ -568,7 +670,7 @@ fn open {
 }
 ```
 
-<sub>`api.ogt` line 12342</sub>
+<sub>`api.ogt` line 12352</sub>
 
 <a id="fn-openPanel"></a>
 
@@ -598,7 +700,7 @@ fn openPanel {
 }
 ```
 
-<sub>`api.ogt` line 12349</sub>
+<sub>`api.ogt` line 12359</sub>
 
 <a id="fn-openScroll"></a>
 
@@ -628,7 +730,7 @@ fn openScroll {
 }
 ```
 
-<sub>`api.ogt` line 12356</sub>
+<sub>`api.ogt` line 12366</sub>
 
 <a id="fn-close"></a>
 
@@ -651,7 +753,7 @@ fn close {
 }
 ```
 
-<sub>`api.ogt` line 12363</sub>
+<sub>`api.ogt` line 12373</sub>
 
 <a id="fn-row"></a>
 
@@ -684,7 +786,7 @@ fn row {
 }
 ```
 
-<sub>`api.ogt` line 12368</sub>
+<sub>`api.ogt` line 12378</sub>
 
 <a id="fn-column"></a>
 
@@ -717,7 +819,7 @@ fn column {
 }
 ```
 
-<sub>`api.ogt` line 12377</sub>
+<sub>`api.ogt` line 12387</sub>
 
 <a id="fn-panel"></a>
 
@@ -750,7 +852,7 @@ fn panel {
 }
 ```
 
-<sub>`api.ogt` line 12386</sub>
+<sub>`api.ogt` line 12396</sub>
 
 <a id="fn-scroll"></a>
 
@@ -783,7 +885,7 @@ fn scroll {
 }
 ```
 
-<sub>`api.ogt` line 12395</sub>
+<sub>`api.ogt` line 12405</sub>
 
 <a id="fn-richText"></a>
 
@@ -815,7 +917,7 @@ fn richText {
 }
 ```
 
-<sub>`api.ogt` line 12422</sub>
+<sub>`api.ogt` line 12432</sub>
 
 <a id="fn-label"></a>
 
@@ -847,7 +949,7 @@ fn label {
 }
 ```
 
-<sub>`api.ogt` line 12430</sub>
+<sub>`api.ogt` line 12440</sub>
 
 <a id="fn-button"></a>
 
@@ -879,7 +981,7 @@ fn button {
 }
 ```
 
-<sub>`api.ogt` line 12438</sub>
+<sub>`api.ogt` line 12448</sub>
 
 <a id="fn-image"></a>
 
@@ -909,7 +1011,7 @@ fn image {
 }
 ```
 
-<sub>`api.ogt` line 12446</sub>
+<sub>`api.ogt` line 12456</sub>
 
 <a id="fn-zoomView"></a>
 
@@ -939,7 +1041,7 @@ fn zoomView {
 }
 ```
 
-<sub>`api.ogt` line 12453</sub>
+<sub>`api.ogt` line 12463</sub>
 
 <a id="fn-progress"></a>
 
@@ -971,7 +1073,7 @@ fn progress {
 }
 ```
 
-<sub>`api.ogt` line 12460</sub>
+<sub>`api.ogt` line 12470</sub>
 
 <a id="fn-slider"></a>
 
@@ -1003,7 +1105,7 @@ fn slider {
 }
 ```
 
-<sub>`api.ogt` line 12468</sub>
+<sub>`api.ogt` line 12478</sub>
 
 <a id="fn-toggle"></a>
 
@@ -1035,7 +1137,7 @@ fn toggle {
 }
 ```
 
-<sub>`api.ogt` line 12476</sub>
+<sub>`api.ogt` line 12486</sub>
 
 <a id="fn-textField"></a>
 
@@ -1067,7 +1169,7 @@ fn textField {
 }
 ```
 
-<sub>`api.ogt` line 12484</sub>
+<sub>`api.ogt` line 12494</sub>
 
 <a id="fn-textArea"></a>
 
@@ -1099,7 +1201,7 @@ fn textArea {
 }
 ```
 
-<sub>`api.ogt` line 12492</sub>
+<sub>`api.ogt` line 12502</sub>
 
 <a id="fn-tooltip"></a>
 
@@ -1127,7 +1229,7 @@ fn tooltip {
 }
 ```
 
-<sub>`api.ogt` line 12500</sub>
+<sub>`api.ogt` line 12510</sub>
 
 <a id="fn-idi"></a>
 
@@ -1158,7 +1260,7 @@ fn idi {
 }
 ```
 
-<sub>`api.ogt` line 12506</sub>
+<sub>`api.ogt` line 12516</sub>
 
 <a id="fn-breakpoint"></a>
 
@@ -1181,7 +1283,30 @@ fn breakpoint {
 }
 ```
 
-<sub>`api.ogt` line 12971</sub>
+<sub>`api.ogt` line 12981</sub>
+
+<a id="fn-framePointer"></a>
+
+### `og.ui.framePointer`
+
+The primary pointer of the frame being built, without the world: for a component that hit-tests a shape it draws itself (a pie's wedges, a wheel's slices) by angle and radius rather than by rectangles. Keys and pads reach the same choices through focusable parts.
+
+```ts
+og.ui.framePointer(): UiPointer
+```
+
+**Returns** `UiPointer`.
+
+Binding symbol `og_ui_frame_pointer` · publish builds: kept
+
+```ogt
+fn framePointer {
+  doc "The primary pointer of the frame being built, without the world: for a component that hit-tests a shape it draws itself (a pie's wedges, a wheel's slices) by angle and radius rather than by rectangles. Keys and pads reach the same choices through focusable parts."
+  returns UiPointer
+}
+```
+
+<sub>`api.ogt` line 12998</sub>
 
 <a id="fn-frameViewport"></a>
 
@@ -1204,7 +1329,7 @@ fn frameViewport {
 }
 ```
 
-<sub>`api.ogt` line 12976</sub>
+<sub>`api.ogt` line 13003</sub>
 
 <a id="fn-hasIcon"></a>
 
@@ -1232,7 +1357,7 @@ fn hasIcon {
 }
 ```
 
-<sub>`api.ogt` line 12981</sub>
+<sub>`api.ogt` line 13008</sub>
 
 <a id="fn-seconds"></a>
 
@@ -1255,7 +1380,53 @@ fn seconds {
 }
 ```
 
-<sub>`api.ogt` line 12987</sub>
+<sub>`api.ogt` line 13014</sub>
+
+<a id="fn-lastPath"></a>
+
+### `og.ui.lastPath`
+
+The full path of the element built just before (a container just closed, or a widget), as og.ui.bounds, og.ui.gesture, og.ui.forceState and the probe name it: a component reads its own parts' rectangles and gestures by it. Empty when nothing was built before it.
+
+```ts
+og.ui.lastPath(): string
+```
+
+**Returns** `string`.
+
+Binding symbol `og_ui_last_path` · publish builds: kept
+
+```ogt
+fn lastPath {
+  doc "The full path of the element built just before (a container just closed, or a widget), as og.ui.bounds, og.ui.gesture, og.ui.forceState and the probe name it: a component reads its own parts' rectangles and gestures by it. Empty when nothing was built before it."
+  returns String
+}
+```
+
+<sub>`api.ogt` line 13019</sub>
+
+<a id="fn-frameDirection"></a>
+
+### `og.ui.frameDirection`
+
+The writing direction of the frame being built, `ltr` or `rtl` (og.i18n's locale sets it): code that draws its own arrows, chevrons or progress along a line mirrors them by it; layout mirrors rows and insets itself.
+
+```ts
+og.ui.frameDirection(): string
+```
+
+**Returns** `string`.
+
+Binding symbol `og_ui_frame_direction` · publish builds: kept
+
+```ogt
+fn frameDirection {
+  doc "The writing direction of the frame being built, `ltr` or `rtl` (og.i18n's locale sets it): code that draws its own arrows, chevrons or progress along a line mirrors them by it; layout mirrors rows and insets itself."
+  returns String
+}
+```
+
+<sub>`api.ogt` line 13024</sub>
 
 <a id="fn-frameTheme"></a>
 
@@ -1278,7 +1449,7 @@ fn frameTheme {
 }
 ```
 
-<sub>`api.ogt` line 12992</sub>
+<sub>`api.ogt` line 13029</sub>
 
 <a id="fn-openAnchor"></a>
 
@@ -1308,7 +1479,7 @@ fn openAnchor {
 }
 ```
 
-<sub>`api.ogt` line 12997</sub>
+<sub>`api.ogt` line 13034</sub>
 
 <a id="fn-anchor"></a>
 
@@ -1341,7 +1512,7 @@ fn anchor {
 }
 ```
 
-<sub>`api.ogt` line 13004</sub>
+<sub>`api.ogt` line 13041</sub>
 
 <a id="fn-openTransition"></a>
 
@@ -1373,7 +1544,7 @@ fn openTransition {
 }
 ```
 
-<sub>`api.ogt` line 13013</sub>
+<sub>`api.ogt` line 13050</sub>
 
 <a id="fn-transition"></a>
 
@@ -1408,7 +1579,7 @@ fn transition {
 }
 ```
 
-<sub>`api.ogt` line 13021</sub>
+<sub>`api.ogt` line 13058</sub>
 
 <a id="fn-openModal"></a>
 
@@ -1440,7 +1611,7 @@ fn openModal {
 }
 ```
 
-<sub>`api.ogt` line 13031</sub>
+<sub>`api.ogt` line 13068</sub>
 
 <a id="fn-closeModal"></a>
 
@@ -1463,7 +1634,7 @@ fn closeModal {
 }
 ```
 
-<sub>`api.ogt` line 13039</sub>
+<sub>`api.ogt` line 13076</sub>
 
 <a id="fn-modal"></a>
 
@@ -1498,7 +1669,7 @@ fn modal {
 }
 ```
 
-<sub>`api.ogt` line 13044</sub>
+<sub>`api.ogt` line 13081</sub>
 
 <a id="fn-spotlight"></a>
 
@@ -1530,7 +1701,7 @@ fn spotlight {
 }
 ```
 
-<sub>`api.ogt` line 13054</sub>
+<sub>`api.ogt` line 13091</sub>
 
 <a id="fn-bounds"></a>
 
@@ -1558,7 +1729,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 13062</sub>
+<sub>`api.ogt` line 13099</sub>
 
 <a id="fn-openList"></a>
 
@@ -1588,7 +1759,7 @@ fn openList {
 }
 ```
 
-<sub>`api.ogt` line 13068</sub>
+<sub>`api.ogt` line 13105</sub>
 
 <a id="fn-openGrid"></a>
 
@@ -1618,7 +1789,7 @@ fn openGrid {
 }
 ```
 
-<sub>`api.ogt` line 13075</sub>
+<sub>`api.ogt` line 13112</sub>
 
 <a id="fn-listItem"></a>
 
@@ -1648,7 +1819,7 @@ fn listItem {
 }
 ```
 
-<sub>`api.ogt` line 13082</sub>
+<sub>`api.ogt` line 13119</sub>
 
 <a id="fn-gridItem"></a>
 
@@ -1678,7 +1849,7 @@ fn gridItem {
 }
 ```
 
-<sub>`api.ogt` line 13089</sub>
+<sub>`api.ogt` line 13126</sub>
 
 <a id="fn-closeList"></a>
 
@@ -1701,7 +1872,7 @@ fn closeList {
 }
 ```
 
-<sub>`api.ogt` line 13096</sub>
+<sub>`api.ogt` line 13133</sub>
 
 <a id="fn-dragging"></a>
 
@@ -1729,7 +1900,7 @@ fn dragging {
 }
 ```
 
-<sub>`api.ogt` line 13101</sub>
+<sub>`api.ogt` line 13138</sub>
 
 <a id="fn-list"></a>
 
@@ -1762,7 +1933,7 @@ fn list {
 }
 ```
 
-<sub>`api.ogt` line 13107</sub>
+<sub>`api.ogt` line 13144</sub>
 
 <a id="fn-grid"></a>
 
@@ -1795,7 +1966,7 @@ fn grid {
 }
 ```
 
-<sub>`api.ogt` line 13116</sub>
+<sub>`api.ogt` line 13153</sub>
 
 <a id="fn-tabs"></a>
 
@@ -1829,7 +2000,7 @@ fn tabs {
 }
 ```
 
-<sub>`api.ogt` line 13125</sub>
+<sub>`api.ogt` line 13162</sub>
 
 <a id="fn-select"></a>
 
@@ -1863,7 +2034,7 @@ fn select {
 }
 ```
 
-<sub>`api.ogt` line 13134</sub>
+<sub>`api.ogt` line 13171</sub>
 
 <a id="fn-stepper"></a>
 
@@ -1895,7 +2066,7 @@ fn stepper {
 }
 ```
 
-<sub>`api.ogt` line 13143</sub>
+<sub>`api.ogt` line 13180</sub>
 
 <a id="fn-radio"></a>
 
@@ -1929,7 +2100,7 @@ fn radio {
 }
 ```
 
-<sub>`api.ogt` line 13151</sub>
+<sub>`api.ogt` line 13188</sub>
 
 <a id="fn-checkbox"></a>
 
@@ -1961,7 +2132,7 @@ fn checkbox {
 }
 ```
 
-<sub>`api.ogt` line 13160</sub>
+<sub>`api.ogt` line 13197</sub>
 
 <a id="fn-checkboxList"></a>
 
@@ -1993,7 +2164,7 @@ fn checkboxList {
 }
 ```
 
-<sub>`api.ogt` line 13168</sub>
+<sub>`api.ogt` line 13205</sub>
 
 <a id="fn-chip"></a>
 
@@ -2025,7 +2196,7 @@ fn chip {
 }
 ```
 
-<sub>`api.ogt` line 13176</sub>
+<sub>`api.ogt` line 13213</sub>
 
 <a id="fn-badge"></a>
 
@@ -2057,7 +2228,7 @@ fn badge {
 }
 ```
 
-<sub>`api.ogt` line 13184</sub>
+<sub>`api.ogt` line 13221</sub>
 
 <a id="fn-divider"></a>
 
@@ -2087,7 +2258,7 @@ fn divider {
 }
 ```
 
-<sub>`api.ogt` line 13192</sub>
+<sub>`api.ogt` line 13229</sub>
 
 <a id="fn-spacer"></a>
 
@@ -2117,7 +2288,7 @@ fn spacer {
 }
 ```
 
-<sub>`api.ogt` line 13199</sub>
+<sub>`api.ogt` line 13236</sub>
 
 <a id="fn-keyValue"></a>
 
@@ -2151,7 +2322,7 @@ fn keyValue {
 }
 ```
 
-<sub>`api.ogt` line 13206</sub>
+<sub>`api.ogt` line 13243</sub>
 
 <a id="fn-skeleton"></a>
 
@@ -2181,7 +2352,7 @@ fn skeleton {
 }
 ```
 
-<sub>`api.ogt` line 13215</sub>
+<sub>`api.ogt` line 13252</sub>
 
 <a id="fn-spinner"></a>
 
@@ -2211,7 +2382,7 @@ fn spinner {
 }
 ```
 
-<sub>`api.ogt` line 13222</sub>
+<sub>`api.ogt` line 13259</sub>
 
 <a id="fn-icon"></a>
 
@@ -2243,7 +2414,7 @@ fn icon {
 }
 ```
 
-<sub>`api.ogt` line 13229</sub>
+<sub>`api.ogt` line 13266</sub>
 
 <a id="fn-meter"></a>
 
@@ -2277,7 +2448,7 @@ fn meter {
 }
 ```
 
-<sub>`api.ogt` line 13237</sub>
+<sub>`api.ogt` line 13274</sub>
 
 <a id="fn-cooldown"></a>
 
@@ -2309,7 +2480,7 @@ fn cooldown {
 }
 ```
 
-<sub>`api.ogt` line 13246</sub>
+<sub>`api.ogt` line 13283</sub>
 
 <a id="fn-minimap"></a>
 
@@ -2339,7 +2510,7 @@ fn minimap {
 }
 ```
 
-<sub>`api.ogt` line 13254</sub>
+<sub>`api.ogt` line 13291</sub>
 
 <a id="fn-dialogue"></a>
 
@@ -2369,7 +2540,7 @@ fn dialogue {
 }
 ```
 
-<sub>`api.ogt` line 13261</sub>
+<sub>`api.ogt` line 13298</sub>
 
 <a id="fn-joystick"></a>
 
@@ -2399,7 +2570,7 @@ fn joystick {
 }
 ```
 
-<sub>`api.ogt` line 13268</sub>
+<sub>`api.ogt` line 13305</sub>
 
 <a id="fn-dpad"></a>
 
@@ -2429,7 +2600,7 @@ fn dpad {
 }
 ```
 
-<sub>`api.ogt` line 13275</sub>
+<sub>`api.ogt` line 13312</sub>
 
 <a id="fn-actionButton"></a>
 
@@ -2461,7 +2632,7 @@ fn actionButton {
 }
 ```
 
-<sub>`api.ogt` line 13282</sub>
+<sub>`api.ogt` line 13319</sub>
 
 <a id="fn-toast"></a>
 
@@ -2493,7 +2664,7 @@ fn toast {
 }
 ```
 
-<sub>`api.ogt` line 13290</sub>
+<sub>`api.ogt` line 13327</sub>
 
 <a id="fn-dismissToast"></a>
 
@@ -2523,7 +2694,7 @@ fn dismissToast {
 }
 ```
 
-<sub>`api.ogt` line 13298</sub>
+<sub>`api.ogt` line 13335</sub>
 
 <a id="fn-navigate"></a>
 
@@ -2553,7 +2724,7 @@ fn navigate {
 }
 ```
 
-<sub>`api.ogt` line 13305</sub>
+<sub>`api.ogt` line 13342</sub>
 
 <a id="fn-back"></a>
 
@@ -2576,7 +2747,7 @@ fn back {
 }
 ```
 
-<sub>`api.ogt` line 13312</sub>
+<sub>`api.ogt` line 13349</sub>
 
 <a id="fn-setPlayers"></a>
 
@@ -2604,7 +2775,7 @@ fn setPlayers {
 }
 ```
 
-<sub>`api.ogt` line 13317</sub>
+<sub>`api.ogt` line 13354</sub>
 
 <a id="fn-focus"></a>
 
@@ -2632,7 +2803,7 @@ fn focus {
 }
 ```
 
-<sub>`api.ogt` line 13323</sub>
+<sub>`api.ogt` line 13360</sub>
 
 <a id="fn-a11y"></a>
 
@@ -2655,7 +2826,7 @@ fn a11y {
 }
 ```
 
-<sub>`api.ogt` line 13362</sub>
+<sub>`api.ogt` line 13399</sub>
 
 <a id="fn-feedback"></a>
 
@@ -2685,7 +2856,7 @@ fn feedback {
 }
 ```
 
-<sub>`api.ogt` line 13367</sub>
+<sub>`api.ogt` line 13404</sub>
 
 <a id="fn-setHaptics"></a>
 
@@ -2713,7 +2884,7 @@ fn setHaptics {
 }
 ```
 
-<sub>`api.ogt` line 13374</sub>
+<sub>`api.ogt` line 13411</sub>
 
 <a id="fn-setNavigation"></a>
 
@@ -2741,7 +2912,7 @@ fn setNavigation {
 }
 ```
 
-<sub>`api.ogt` line 13380</sub>
+<sub>`api.ogt` line 13417</sub>
 
 <a id="fn-memory"></a>
 
@@ -2771,7 +2942,7 @@ fn memory {
 }
 ```
 
-<sub>`api.ogt` line 13386</sub>
+<sub>`api.ogt` line 13423</sub>
 
 <a id="fn-remember"></a>
 
@@ -2801,7 +2972,7 @@ fn remember {
 }
 ```
 
-<sub>`api.ogt` line 13393</sub>
+<sub>`api.ogt` line 13430</sub>
 
 <a id="fn-tick"></a>
 
@@ -2824,7 +2995,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 13400</sub>
+<sub>`api.ogt` line 13437</sub>
 
 <a id="fn-counter"></a>
 
@@ -2856,7 +3027,7 @@ fn counter {
 }
 ```
 
-<sub>`api.ogt` line 13423</sub>
+<sub>`api.ogt` line 13460</sub>
 
 <a id="fn-burst"></a>
 
@@ -2884,7 +3055,7 @@ fn burst {
 }
 ```
 
-<sub>`api.ogt` line 13450</sub>
+<sub>`api.ogt` line 13487</sub>
 
 <a id="fn-shake"></a>
 
@@ -2912,7 +3083,7 @@ fn shake {
 }
 ```
 
-<sub>`api.ogt` line 13470</sub>
+<sub>`api.ogt` line 13507</sub>
 
 <a id="fn-screenTransition"></a>
 
@@ -2944,7 +3115,7 @@ fn screenTransition {
 }
 ```
 
-<sub>`api.ogt` line 13516</sub>
+<sub>`api.ogt` line 13553</sub>
 
 <a id="fn-previewViewport"></a>
 
@@ -2974,7 +3145,822 @@ fn previewViewport {
 }
 ```
 
-<sub>`api.ogt` line 13524</sub>
+<sub>`api.ogt` line 13561</sub>
+
+<a id="fn-card"></a>
+
+### `og.ui.card`
+
+A card over a body the game builds. Answers its response (clicked when interactive).
+
+```ts
+og.ui.card(id: string, desc: CardDesc, build: UiBuild): Response
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `CardDesc` | no | Variant, media, titles and state. |
+| `build` | `UiBuild` | no | Builds its body. |
+
+**Returns** `Response`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn card {
+  doc "A card over a body the game builds. Answers its response (clicked when interactive)."
+  host false
+  param id String "Its id."
+  param desc CardDesc "Variant, media, titles and state."
+  param build UiBuild "Builds its body."
+  returns Response
+}
+```
+
+<sub>`api.ogt` line 14535</sub>
+
+<a id="fn-scrollArea"></a>
+
+### `og.ui.scrollArea`
+
+A scroll container whose content fades out at an edge where more lies beyond.
+
+```ts
+og.ui.scrollArea(id: string, desc: ScrollAreaDesc, build: UiBuild): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `ScrollAreaDesc` | no | Axes, size and fades. |
+| `build` | `UiBuild` | no | Builds its content. |
+
+**Returns** `void`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn scrollArea {
+  doc "A scroll container whose content fades out at an edge where more lies beyond."
+  host false
+  param id String "Its id."
+  param desc ScrollAreaDesc "Axes, size and fades."
+  param build UiBuild "Builds its content."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 14544</sub>
+
+<a id="fn-accordion"></a>
+
+### `og.ui.accordion`
+
+Sections whose headers open and close their bodies; the sections under one move on the panel spring.
+
+```ts
+og.ui.accordion(id: string, desc: AccordionDesc, build: UiItemBuild): AccordionResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `AccordionDesc` | no | Sections and the open ones. |
+| `build` | `UiItemBuild` | no | Builds an open section's body by its index. |
+
+**Returns** `AccordionResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn accordion {
+  doc "Sections whose headers open and close their bodies; the sections under one move on the panel spring."
+  host false
+  param id String "Its id."
+  param desc AccordionDesc "Sections and the open ones."
+  param build UiItemBuild "Builds an open section's body by its index."
+  returns AccordionResult
+}
+```
+
+<sub>`api.ogt` line 14553</sub>
+
+<a id="fn-splitView"></a>
+
+### `og.ui.splitView`
+
+Two panes with a divider a drag moves and a press of the focused divider steps.
+
+```ts
+og.ui.splitView(id: string, desc: SplitViewDesc, start: UiBuild, end: UiBuild): SplitResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `SplitViewDesc` | no | Direction, ratio and limits. |
+| `start` | `UiBuild` | no | Builds the start pane. |
+| `end` | `UiBuild` | no | Builds the end pane. |
+
+**Returns** `SplitResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn splitView {
+  doc "Two panes with a divider a drag moves and a press of the focused divider steps."
+  host false
+  param id String "Its id."
+  param desc SplitViewDesc "Direction, ratio and limits."
+  param start UiBuild "Builds the start pane."
+  param end UiBuild "Builds the end pane."
+  returns SplitResult
+}
+```
+
+<sub>`api.ogt` line 14562</sub>
+
+<a id="fn-dialog"></a>
+
+### `og.ui.dialog`
+
+A dialog on the modal layer: tone mark, message, body and actions.
+
+```ts
+og.ui.dialog(id: string, open: boolean, desc: DialogDesc, build: UiBuild): DialogResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `open` | `boolean` | no | Whether it is open. |
+| `desc` | `DialogDesc` | no | Title, message, tone and actions. |
+| `build` | `UiBuild` | no | Builds its body under the message. |
+
+**Returns** `DialogResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn dialog {
+  doc "A dialog on the modal layer: tone mark, message, body and actions."
+  host false
+  param id String "Its id."
+  param open bool "Whether it is open."
+  param desc DialogDesc "Title, message, tone and actions."
+  param build UiBuild "Builds its body under the message."
+  returns DialogResult
+}
+```
+
+<sub>`api.ogt` line 14572</sub>
+
+<a id="fn-confirm"></a>
+
+### `og.ui.confirm`
+
+A confirmation dialog: the message, Cancel and the action (danger when it cannot be undone).
+
+```ts
+og.ui.confirm(id: string, open: boolean, desc?: ConfirmationDesc): ConfirmResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `open` | `boolean` | no | Whether it is open. |
+| `desc` | `ConfirmationDesc` | yes | Message and labels. |
+
+**Returns** `ConfirmResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn confirm {
+  doc "A confirmation dialog: the message, Cancel and the action (danger when it cannot be undone)."
+  host false
+  param id String "Its id."
+  param open bool "Whether it is open."
+  param desc ConfirmationDesc "Message and labels."
+  returns ConfirmResult
+}
+```
+
+<sub>`api.ogt` line 14582</sub>
+
+<a id="fn-popover"></a>
+
+### `og.ui.popover`
+
+A popover beside an element with an arrow at it; Back or a press outside dismisses it.
+
+```ts
+og.ui.popover(id: string, open: boolean, desc: PopoverDesc, build: UiBuild): PopoverResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `open` | `boolean` | no | Whether it is open. |
+| `desc` | `PopoverDesc` | no | The element, the side and the size. |
+| `build` | `UiBuild` | no | Builds its content. |
+
+**Returns** `PopoverResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn popover {
+  doc "A popover beside an element with an arrow at it; Back or a press outside dismisses it."
+  host false
+  param id String "Its id."
+  param open bool "Whether it is open."
+  param desc PopoverDesc "The element, the side and the size."
+  param build UiBuild "Builds its content."
+  returns PopoverResult
+}
+```
+
+<sub>`api.ogt` line 14591</sub>
+
+<a id="fn-menu"></a>
+
+### `og.ui.menu`
+
+A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point.
+
+```ts
+og.ui.menu(id: string, open: boolean, desc?: MenuDesc): MenuChoice
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `open` | `boolean` | no | Whether it is open. |
+| `desc` | `MenuDesc` | yes | Entries and where it hangs. |
+
+**Returns** `MenuChoice`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn menu {
+  doc "A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point."
+  host false
+  param id String "Its id."
+  param open bool "Whether it is open."
+  param desc MenuDesc "Entries and where it hangs."
+  returns MenuChoice
+}
+```
+
+<sub>`api.ogt` line 14601</sub>
+
+<a id="fn-contextMenu"></a>
+
+### `og.ui.contextMenu`
+
+A menu at a point: where a right press or a long press happened.
+
+```ts
+og.ui.contextMenu(id: string, open: boolean, at: Vector2, desc?: MenuDesc): MenuChoice
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `open` | `boolean` | no | Whether it is open. |
+| `at` | `Vector2` | no | The point, CSS px. |
+| `desc` | `MenuDesc` | yes | Entries. |
+
+**Returns** `MenuChoice`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn contextMenu {
+  doc "A menu at a point: where a right press or a long press happened."
+  host false
+  param id String "Its id."
+  param open bool "Whether it is open."
+  param at Vector2 "The point, CSS px."
+  param desc MenuDesc "Entries."
+  returns MenuChoice
+}
+```
+
+<sub>`api.ogt` line 14610</sub>
+
+<a id="fn-sheet"></a>
+
+### `og.ui.sheet`
+
+A sheet sliding in from the bottom (resting at detents, dragged) or a side.
+
+```ts
+og.ui.sheet(id: string, open: boolean, desc: SheetDesc, build: UiBuild): SheetResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `open` | `boolean` | no | Whether it is open. |
+| `desc` | `SheetDesc` | no | Edge, detents and title. |
+| `build` | `UiBuild` | no | Builds its body. |
+
+**Returns** `SheetResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn sheet {
+  doc "A sheet sliding in from the bottom (resting at detents, dragged) or a side."
+  host false
+  param id String "Its id."
+  param open bool "Whether it is open."
+  param desc SheetDesc "Edge, detents and title."
+  param build UiBuild "Builds its body."
+  returns SheetResult
+}
+```
+
+<sub>`api.ogt` line 14620</sub>
+
+<a id="fn-tabBar"></a>
+
+### `og.ui.tabBar`
+
+Tabs with a sliding indicator and bumpers over the panel of the selected one.
+
+```ts
+og.ui.tabBar(id: string, desc: TabBarDesc, build: UiItemBuild): TabBarResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `TabBarDesc` | no | Tabs and the selected one. |
+| `build` | `UiItemBuild` | no | Builds the selected tab's panel by its index. |
+
+**Returns** `TabBarResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn tabBar {
+  doc "Tabs with a sliding indicator and bumpers over the panel of the selected one."
+  host false
+  param id String "Its id."
+  param desc TabBarDesc "Tabs and the selected one."
+  param build UiItemBuild "Builds the selected tab's panel by its index."
+  returns TabBarResult
+}
+```
+
+<sub>`api.ogt` line 14630</sub>
+
+<a id="fn-carousel"></a>
+
+### `og.ui.carousel`
+
+Pages a drag or a flick moves, snapping to a page, with arrows and dots.
+
+```ts
+og.ui.carousel(id: string, desc: CarouselDesc, build: UiItemBuild): CarouselResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `CarouselDesc` | no | Count, the current page and options. |
+| `build` | `UiItemBuild` | no | Builds a page by its index (the current one and two each side). |
+
+**Returns** `CarouselResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn carousel {
+  doc "Pages a drag or a flick moves, snapping to a page, with arrows and dots."
+  host false
+  param id String "Its id."
+  param desc CarouselDesc "Count, the current page and options."
+  param build UiItemBuild "Builds a page by its index (the current one and two each side)."
+  returns CarouselResult
+}
+```
+
+<sub>`api.ogt` line 14639</sub>
+
+<a id="fn-breadcrumbs"></a>
+
+### `og.ui.breadcrumbs`
+
+The path to where the player is, collapsing its middle into a menu when long.
+
+```ts
+og.ui.breadcrumbs(id: string, desc?: BreadcrumbsDesc): BreadcrumbsResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `BreadcrumbsDesc` | yes | The crumbs. |
+
+**Returns** `BreadcrumbsResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn breadcrumbs {
+  doc "The path to where the player is, collapsing its middle into a menu when long."
+  host false
+  param id String "Its id."
+  param desc BreadcrumbsDesc "The crumbs."
+  returns BreadcrumbsResult
+}
+```
+
+<sub>`api.ogt` line 14648</sub>
+
+<a id="fn-pagination"></a>
+
+### `og.ui.pagination`
+
+Previous, next and the pages around the current one.
+
+```ts
+og.ui.pagination(id: string, desc?: PaginationDesc): PageResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `PaginationDesc` | yes | Pages and the current one. |
+
+**Returns** `PageResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn pagination {
+  doc "Previous, next and the pages around the current one."
+  host false
+  param id String "Its id."
+  param desc PaginationDesc "Pages and the current one."
+  returns PageResult
+}
+```
+
+<sub>`api.ogt` line 14656</sub>
+
+<a id="fn-actionHints"></a>
+
+### `og.ui.actionHints`
+
+The action bar: each action the top layer accepts as its glyph and hint; on touch, buttons.
+
+```ts
+og.ui.actionHints(id: string, desc?: ActionHintsDesc): ActionHintsResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `ActionHintsDesc` | yes | The hints and the edge. |
+
+**Returns** `ActionHintsResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn actionHints {
+  doc "The action bar: each action the top layer accepts as its glyph and hint; on touch, buttons."
+  host false
+  param id String "Its id."
+  param desc ActionHintsDesc "The hints and the edge."
+  returns ActionHintsResult
+}
+```
+
+<sub>`api.ogt` line 14664</sub>
+
+<a id="fn-radialMenu"></a>
+
+### `og.ui.radialMenu`
+
+A radial wheel chosen by where the pointer or a stick points.
+
+```ts
+og.ui.radialMenu(id: string, open: boolean, desc?: RadialDesc): RadialResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `open` | `boolean` | no | Whether it is open. |
+| `desc` | `RadialDesc` | yes | Slices, aim and release. |
+
+**Returns** `RadialResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn radialMenu {
+  doc "A radial wheel chosen by where the pointer or a stick points."
+  host false
+  param id String "Its id."
+  param open bool "Whether it is open."
+  param desc RadialDesc "Slices, aim and release."
+  returns RadialResult
+}
+```
+
+<sub>`api.ogt` line 14672</sub>
+
+<a id="fn-dataList"></a>
+
+### `og.ui.dataList`
+
+A virtualised list with its empty, loading and error states.
+
+```ts
+og.ui.dataList(id: string, desc: DataListDesc, build: UiItemBuild): DataListResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `DataListDesc` | no | Count, size, selection and state. |
+| `build` | `UiItemBuild` | no | Builds a row's content by its index. |
+
+**Returns** `DataListResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn dataList {
+  doc "A virtualised list with its empty, loading and error states."
+  host false
+  param id String "Its id."
+  param desc DataListDesc "Count, size, selection and state."
+  param build UiItemBuild "Builds a row's content by its index."
+  returns DataListResult
+}
+```
+
+<sub>`api.ogt` line 14681</sub>
+
+<a id="fn-dataGrid"></a>
+
+### `og.ui.dataGrid`
+
+A virtualised grid of cells with its empty, loading and error states.
+
+```ts
+og.ui.dataGrid(id: string, desc: DataGridDesc, build: UiItemBuild): DataListResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `DataGridDesc` | no | Count, cell size, selection and state. |
+| `build` | `UiItemBuild` | no | Builds a cell's content by its index. |
+
+**Returns** `DataListResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn dataGrid {
+  doc "A virtualised grid of cells with its empty, loading and error states."
+  host false
+  param id String "Its id."
+  param desc DataGridDesc "Count, cell size, selection and state."
+  param build UiItemBuild "Builds a cell's content by its index."
+  returns DataListResult
+}
+```
+
+<sub>`api.ogt` line 14690</sub>
+
+<a id="fn-table"></a>
+
+### `og.ui.table`
+
+A sortable, filterable table; only the rows in view are built, so 10,000 rows and more stay within budget.
+
+```ts
+og.ui.table(id: string, desc?: TableDesc): TableResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `TableDesc` | yes | Rows, columns, the sort and the filter. |
+
+**Returns** `TableResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn table {
+  doc "A sortable, filterable table; only the rows in view are built, so 10,000 rows and more stay within budget."
+  host false
+  param id String "Its id."
+  param desc TableDesc "Rows, columns, the sort and the filter."
+  returns TableResult
+}
+```
+
+<sub>`api.ogt` line 14699</sub>
+
+<a id="fn-tree"></a>
+
+### `og.ui.tree`
+
+A tree of expandable items, virtualised.
+
+```ts
+og.ui.tree(id: string, desc?: TreeDesc): TreeResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `TreeDesc` | yes | Items and the open ones. |
+
+**Returns** `TreeResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn tree {
+  doc "A tree of expandable items, virtualised."
+  host false
+  param id String "Its id."
+  param desc TreeDesc "Items and the open ones."
+  returns TreeResult
+}
+```
+
+<sub>`api.ogt` line 14707</sub>
+
+<a id="fn-nodeGraph"></a>
+
+### `og.ui.nodeGraph`
+
+A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts.
+
+```ts
+og.ui.nodeGraph(id: string, desc?: NodeGraphDesc): NodeGraphResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `NodeGraphDesc` | yes | Nodes, links and the zoom. |
+
+**Returns** `NodeGraphResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn nodeGraph {
+  doc "A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts."
+  host false
+  param id String "Its id."
+  param desc NodeGraphDesc "Nodes, links and the zoom."
+  returns NodeGraphResult
+}
+```
+
+<sub>`api.ogt` line 14715</sub>
+
+<a id="fn-chart"></a>
+
+### `og.ui.chart`
+
+A line, area, bar, radar, pie or donut chart.
+
+```ts
+og.ui.chart(id: string, desc?: ChartDesc): ChartResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `ChartDesc` | yes | The kind, the series and the categories. |
+
+**Returns** `ChartResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn chart {
+  doc "A line, area, bar, radar, pie or donut chart."
+  host false
+  param id String "Its id."
+  param desc ChartDesc "The kind, the series and the categories."
+  returns ChartResult
+}
+```
+
+<sub>`api.ogt` line 14723</sub>
+
+<a id="fn-keyValueRows"></a>
+
+### `og.ui.keyValueRows`
+
+Key-value rows: labels at the start, values at the end.
+
+```ts
+og.ui.keyValueRows(id: string, desc?: KeyValueRowsDesc): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `KeyValueRowsDesc` | yes | The rows. |
+
+**Returns** `void`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn keyValueRows {
+  doc "Key-value rows: labels at the start, values at the end."
+  host false
+  param id String "Its id."
+  param desc KeyValueRowsDesc "The rows."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 14731</sub>
+
+<a id="fn-statCompare"></a>
+
+### `og.ui.statCompare`
+
+Stat-compare rows: current, new and the signed change with its mark.
+
+```ts
+og.ui.statCompare(id: string, desc?: StatCompareDesc): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `StatCompareDesc` | yes | The stats. |
+
+**Returns** `void`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn statCompare {
+  doc "Stat-compare rows: current, new and the signed change with its mark."
+  host false
+  param id String "Its id."
+  param desc StatCompareDesc "The stats."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 14739</sub>
+
+<a id="fn-calendar"></a>
+
+### `og.ui.calendar`
+
+A month grid of days.
+
+```ts
+og.ui.calendar(id: string, desc?: CalendarDesc): CalendarResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `CalendarDesc` | yes | The month, today, the selection and marks. |
+
+**Returns** `CalendarResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn calendar {
+  doc "A month grid of days."
+  host false
+  param id String "Its id."
+  param desc CalendarDesc "The month, today, the selection and marks."
+  returns CalendarResult
+}
+```
+
+<sub>`api.ogt` line 14747</sub>
 
 <a id="fn-mainMenu"></a>
 
@@ -3005,7 +3991,7 @@ fn mainMenu {
 }
 ```
 
-<sub>`api.ogt` line 14295</sub>
+<sub>`api.ogt` line 15528</sub>
 
 <a id="fn-pauseMenu"></a>
 
@@ -3036,7 +4022,7 @@ fn pauseMenu {
 }
 ```
 
-<sub>`api.ogt` line 14303</sub>
+<sub>`api.ogt` line 15536</sub>
 
 <a id="fn-settingsScreen"></a>
 
@@ -3067,7 +4053,7 @@ fn settingsScreen {
 }
 ```
 
-<sub>`api.ogt` line 14311</sub>
+<sub>`api.ogt` line 15544</sub>
 
 <a id="fn-platformerHud"></a>
 
@@ -3098,7 +4084,7 @@ fn platformerHud {
 }
 ```
 
-<sub>`api.ogt` line 14319</sub>
+<sub>`api.ogt` line 15552</sub>
 
 <a id="fn-shooterHud"></a>
 
@@ -3129,7 +4115,7 @@ fn shooterHud {
 }
 ```
 
-<sub>`api.ogt` line 14327</sub>
+<sub>`api.ogt` line 15560</sub>
 
 <a id="fn-puzzleHud"></a>
 
@@ -3160,7 +4146,7 @@ fn puzzleHud {
 }
 ```
 
-<sub>`api.ogt` line 14335</sub>
+<sub>`api.ogt` line 15568</sub>
 
 <a id="fn-idleHud"></a>
 
@@ -3191,7 +4177,7 @@ fn idleHud {
 }
 ```
 
-<sub>`api.ogt` line 14343</sub>
+<sub>`api.ogt` line 15576</sub>
 
 <a id="fn-racingHud"></a>
 
@@ -3222,7 +4208,7 @@ fn racingHud {
 }
 ```
 
-<sub>`api.ogt` line 14351</sub>
+<sub>`api.ogt` line 15584</sub>
 
 <a id="fn-cutscene"></a>
 
@@ -3253,7 +4239,7 @@ fn cutscene {
 }
 ```
 
-<sub>`api.ogt` line 14359</sub>
+<sub>`api.ogt` line 15592</sub>
 
 <a id="fn-shopScreen"></a>
 
@@ -3284,7 +4270,7 @@ fn shopScreen {
 }
 ```
 
-<sub>`api.ogt` line 14367</sub>
+<sub>`api.ogt` line 15600</sub>
 
 <a id="fn-inventoryScreen"></a>
 
@@ -3315,7 +4301,7 @@ fn inventoryScreen {
 }
 ```
 
-<sub>`api.ogt` line 14375</sub>
+<sub>`api.ogt` line 15608</sub>
 
 <a id="fn-levelSelect"></a>
 
@@ -3346,7 +4332,7 @@ fn levelSelect {
 }
 ```
 
-<sub>`api.ogt` line 14383</sub>
+<sub>`api.ogt` line 15616</sub>
 
 <a id="fn-resultsScreen"></a>
 
@@ -3377,7 +4363,7 @@ fn resultsScreen {
 }
 ```
 
-<sub>`api.ogt` line 14391</sub>
+<sub>`api.ogt` line 15624</sub>
 
 <a id="fn-leaderboardScreen"></a>
 
@@ -3408,7 +4394,7 @@ fn leaderboardScreen {
 }
 ```
 
-<sub>`api.ogt` line 14399</sub>
+<sub>`api.ogt` line 15632</sub>
 
 <a id="fn-tutorialOverlay"></a>
 
@@ -3439,7 +4425,7 @@ fn tutorialOverlay {
 }
 ```
 
-<sub>`api.ogt` line 14407</sub>
+<sub>`api.ogt` line 15640</sub>
 
 <a id="fn-loadingScreen"></a>
 
@@ -3470,7 +4456,7 @@ fn loadingScreen {
 }
 ```
 
-<sub>`api.ogt` line 14415</sub>
+<sub>`api.ogt` line 15648</sub>
 
 <a id="fn-confirmDialog"></a>
 
@@ -3501,7 +4487,7 @@ fn confirmDialog {
 }
 ```
 
-<sub>`api.ogt` line 14423</sub>
+<sub>`api.ogt` line 15656</sub>
 
 <a id="fn-alertDialog"></a>
 
@@ -3532,7 +4518,7 @@ fn alertDialog {
 }
 ```
 
-<sub>`api.ogt` line 14431</sub>
+<sub>`api.ogt` line 15664</sub>
 
 <a id="fn-props"></a>
 
@@ -3560,7 +4546,7 @@ fn props {
 }
 ```
 
-<sub>`api.ogt` line 15100</sub>
+<sub>`api.ogt` line 16333</sub>
 
 <a id="fn-defineTimeline"></a>
 
@@ -3590,7 +4576,7 @@ fn defineTimeline {
 }
 ```
 
-<sub>`api.ogt` line 15106</sub>
+<sub>`api.ogt` line 16339</sub>
 
 <a id="fn-play"></a>
 
@@ -3622,7 +4608,7 @@ fn play {
 }
 ```
 
-<sub>`api.ogt` line 15113</sub>
+<sub>`api.ogt` line 16346</sub>
 
 <a id="fn-playTimeline"></a>
 
@@ -3654,7 +4640,7 @@ fn playTimeline {
 }
 ```
 
-<sub>`api.ogt` line 15121</sub>
+<sub>`api.ogt` line 16354</sub>
 
 <a id="fn-seek"></a>
 
@@ -3684,7 +4670,7 @@ fn seek {
 }
 ```
 
-<sub>`api.ogt` line 15129</sub>
+<sub>`api.ogt` line 16362</sub>
 
 <a id="fn-pause"></a>
 
@@ -3712,7 +4698,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 15136</sub>
+<sub>`api.ogt` line 16369</sub>
 
 <a id="fn-resume"></a>
 
@@ -3740,7 +4726,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 15142</sub>
+<sub>`api.ogt` line 16375</sub>
 
 <a id="fn-reverse"></a>
 
@@ -3768,7 +4754,7 @@ fn reverse {
 }
 ```
 
-<sub>`api.ogt` line 15148</sub>
+<sub>`api.ogt` line 16381</sub>
 
 <a id="fn-stop"></a>
 
@@ -3796,7 +4782,7 @@ fn stop {
 }
 ```
 
-<sub>`api.ogt` line 15154</sub>
+<sub>`api.ogt` line 16387</sub>
 
 <a id="fn-playInfo"></a>
 
@@ -3824,7 +4810,7 @@ fn playInfo {
 }
 ```
 
-<sub>`api.ogt` line 15160</sub>
+<sub>`api.ogt` line 16393</sub>
 
 <a id="fn-forceState"></a>
 
@@ -3856,7 +4842,7 @@ fn forceState {
 }
 ```
 
-<sub>`api.ogt` line 15166</sub>
+<sub>`api.ogt` line 16399</sub>
 
 <a id="fn-visualState"></a>
 
@@ -3886,7 +4872,7 @@ fn visualState {
 }
 ```
 
-<sub>`api.ogt` line 15174</sub>
+<sub>`api.ogt` line 16407</sub>
 
 <a id="fn-animate"></a>
 
@@ -3918,7 +4904,7 @@ fn animate {
 }
 ```
 
-<sub>`api.ogt` line 15181</sub>
+<sub>`api.ogt` line 16414</sub>
 
 <a id="fn-gesture"></a>
 
@@ -3946,7 +4932,7 @@ fn gesture {
 }
 ```
 
-<sub>`api.ogt` line 15189</sub>
+<sub>`api.ogt` line 16422</sub>
 
 <a id="fn-motionEvents"></a>
 
@@ -3969,7 +4955,7 @@ fn motionEvents {
 }
 ```
 
-<sub>`api.ogt` line 15195</sub>
+<sub>`api.ogt` line 16428</sub>
 
 <a id="fn-overlaps"></a>
 
@@ -3992,7 +4978,7 @@ fn overlaps {
 }
 ```
 
-<sub>`api.ogt` line 15200</sub>
+<sub>`api.ogt` line 16433</sub>
 
 <a id="fn-layoutStats"></a>
 
@@ -4015,7 +5001,35 @@ fn layoutStats {
 }
 ```
 
-<sub>`api.ogt` line 15205</sub>
+<sub>`api.ogt` line 16438</sub>
+
+<a id="fn-semantics"></a>
+
+### `og.ui.semantics`
+
+Give the element built just before (a container just closed, or a widget) a role, a name, a value and states for the accessibility tree and the probe's dump (dump_ui's role, name, value, states). Components built from containers call it so a screen reader meets a menu, a tree or a table, not rows of buttons. Answers false, with a frame warning, when no element was built before it or the role is unknown.
+
+```ts
+og.ui.semantics(desc?: SemanticsDesc): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `desc` | `SemanticsDesc` | yes | Its role, name, value and states. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_ui_semantics` · publish builds: kept
+
+```ogt
+fn semantics {
+  doc "Give the element built just before (a container just closed, or a widget) a role, a name, a value and states for the accessibility tree and the probe's dump (dump_ui's role, name, value, states). Components built from containers call it so a screen reader meets a menu, a tree or a table, not rows of buttons. Answers false, with a frame warning, when no element was built before it or the role is unknown."
+  param desc SemanticsDesc "Its role, name, value and states."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 16909</sub>
 
 <a id="fn-setDraw"></a>
 
@@ -4043,7 +5057,7 @@ fn setDraw {
 }
 ```
 
-<sub>`api.ogt` line 15658</sub>
+<sub>`api.ogt` line 16915</sub>
 
 <a id="fn-openWorldAnchor"></a>
 
@@ -4073,7 +5087,7 @@ fn openWorldAnchor {
 }
 ```
 
-<sub>`api.ogt` line 15788</sub>
+<sub>`api.ogt` line 17045</sub>
 
 <a id="fn-openWorldPanel"></a>
 
@@ -4103,7 +5117,7 @@ fn openWorldPanel {
 }
 ```
 
-<sub>`api.ogt` line 15843</sub>
+<sub>`api.ogt` line 17100</sub>
 
 <a id="fn-defineMass"></a>
 
@@ -4133,7 +5147,7 @@ fn defineMass {
 }
 ```
 
-<sub>`api.ogt` line 15988</sub>
+<sub>`api.ogt` line 17245</sub>
 
 <a id="fn-spawnMass"></a>
 
@@ -4163,7 +5177,7 @@ fn spawnMass {
 }
 ```
 
-<sub>`api.ogt` line 15995</sub>
+<sub>`api.ogt` line 17252</sub>
 
 <a id="fn-pushMass"></a>
 
@@ -4193,7 +5207,7 @@ fn pushMass {
 }
 ```
 
-<sub>`api.ogt` line 16002</sub>
+<sub>`api.ogt` line 17259</sub>
 
 <a id="fn-massCount"></a>
 
@@ -4221,7 +5235,7 @@ fn massCount {
 }
 ```
 
-<sub>`api.ogt` line 16009</sub>
+<sub>`api.ogt` line 17266</sub>
 
 <a id="fn-particles"></a>
 
@@ -4249,7 +5263,7 @@ fn particles {
 }
 ```
 
-<sub>`api.ogt` line 16082</sub>
+<sub>`api.ogt` line 17339</sub>
 
 <a id="fn-meta"></a>
 
@@ -4279,7 +5293,7 @@ fn meta {
 }
 ```
 
-<sub>`api.ogt` line 16132</sub>
+<sub>`api.ogt` line 17389</sub>
 
 <a id="fn-sceneViewport"></a>
 
@@ -4309,7 +5323,7 @@ fn sceneViewport {
 }
 ```
 
-<sub>`api.ogt` line 16183</sub>
+<sub>`api.ogt` line 17440</sub>
 
 <a id="fn-screen"></a>
 
@@ -4341,7 +5355,7 @@ fn screen {
 }
 ```
 
-<sub>`api.ogt` line 16273</sub>
+<sub>`api.ogt` line 17530</sub>
 
 <a id="fn-component"></a>
 
@@ -4375,7 +5389,7 @@ fn component {
 }
 ```
 
-<sub>`api.ogt` line 16282</sub>
+<sub>`api.ogt` line 17539</sub>
 
 <a id="fn-openSlot"></a>
 
@@ -4403,7 +5417,7 @@ fn openSlot {
 }
 ```
 
-<sub>`api.ogt` line 16292</sub>
+<sub>`api.ogt` line 17549</sub>
 
 <a id="fn-push"></a>
 
@@ -4437,7 +5451,7 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 16298</sub>
+<sub>`api.ogt` line 17555</sub>
 
 <a id="fn-pop"></a>
 
@@ -4465,7 +5479,7 @@ fn pop {
 }
 ```
 
-<sub>`api.ogt` line 16308</sub>
+<sub>`api.ogt` line 17565</sub>
 
 <a id="fn-replace"></a>
 
@@ -4499,7 +5513,7 @@ fn replace {
 }
 ```
 
-<sub>`api.ogt` line 16314</sub>
+<sub>`api.ogt` line 17571</sub>
 
 <a id="fn-clear"></a>
 
@@ -4527,7 +5541,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 16324</sub>
+<sub>`api.ogt` line 17581</sub>
 
 <a id="fn-layers"></a>
 
@@ -4555,7 +5569,7 @@ fn layers {
 }
 ```
 
-<sub>`api.ogt` line 16330</sub>
+<sub>`api.ogt` line 17587</sub>
 
 <a id="fn-screenVm"></a>
 
@@ -4585,7 +5599,7 @@ fn screenVm {
 }
 ```
 
-<sub>`api.ogt` line 16336</sub>
+<sub>`api.ogt` line 17593</sub>
 
 <a id="fn-docEvents"></a>
 
@@ -4613,7 +5627,7 @@ fn docEvents {
 }
 ```
 
-<sub>`api.ogt` line 16343</sub>
+<sub>`api.ogt` line 17600</sub>
 
 <a id="fn-gameInput"></a>
 
@@ -4641,7 +5655,7 @@ fn gameInput {
 }
 ```
 
-<sub>`api.ogt` line 16349</sub>
+<sub>`api.ogt` line 17606</sub>
 
 <a id="fn-paused"></a>
 
@@ -4669,7 +5683,7 @@ fn paused {
 }
 ```
 
-<sub>`api.ogt` line 16355</sub>
+<sub>`api.ogt` line 17612</sub>
 
 <a id="fn-defineAction"></a>
 
@@ -4699,7 +5713,7 @@ fn defineAction {
 }
 ```
 
-<sub>`api.ogt` line 16361</sub>
+<sub>`api.ogt` line 17618</sub>
 
 <a id="fn-action"></a>
 
@@ -4727,7 +5741,7 @@ fn action {
 }
 ```
 
-<sub>`api.ogt` line 16368</sub>
+<sub>`api.ogt` line 17625</sub>
 
 <a id="fn-actionHeld"></a>
 
@@ -4755,7 +5769,7 @@ fn actionHeld {
 }
 ```
 
-<sub>`api.ogt` line 16374</sub>
+<sub>`api.ogt` line 17631</sub>
 
 <a id="fn-glyph"></a>
 
@@ -4785,7 +5799,35 @@ fn glyph {
 }
 ```
 
-<sub>`api.ogt` line 16380</sub>
+<sub>`api.ogt` line 17637</sub>
+
+<a id="fn-frameGlyph"></a>
+
+### `og.ui.frameGlyph`
+
+An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. Null for an unknown action, one with no binding on that device, or outside a frame being built.
+
+```ts
+og.ui.frameGlyph(action: string): UiGlyph | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `action` | `string` | no | The action. |
+
+**Returns** `UiGlyph | null`.
+
+Binding symbol `og_ui_frame_glyph` · publish builds: kept
+
+```ogt
+fn frameGlyph {
+  doc "An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. Null for an unknown action, one with no binding on that device, or outside a frame being built."
+  param action String "The action."
+  returns Option.UiGlyph
+}
+```
+
+<sub>`api.ogt` line 17644</sub>
 
 <a id="fn-device"></a>
 
@@ -4813,7 +5855,7 @@ fn device {
 }
 ```
 
-<sub>`api.ogt` line 16387</sub>
+<sub>`api.ogt` line 17650</sub>
 
 <a id="fn-setDevice"></a>
 
@@ -4843,7 +5885,7 @@ fn setDevice {
 }
 ```
 
-<sub>`api.ogt` line 16393</sub>
+<sub>`api.ogt` line 17656</sub>
 
 <a id="fn-actionBar"></a>
 
@@ -4871,7 +5913,7 @@ fn actionBar {
 }
 ```
 
-<sub>`api.ogt` line 16400</sub>
+<sub>`api.ogt` line 17663</sub>
 
 <a id="fn-documentSchema"></a>
 
@@ -4894,7 +5936,7 @@ fn documentSchema {
 }
 ```
 
-<sub>`api.ogt` line 16406</sub>
+<sub>`api.ogt` line 17669</sub>
 
 <a id="fn-setProp"></a>
 
@@ -4928,7 +5970,7 @@ fn setProp {
 }
 ```
 
-<sub>`api.ogt` line 16411</sub>
+<sub>`api.ogt` line 17674</sub>
 
 <a id="fn-saveEdits"></a>
 
@@ -4956,7 +5998,7 @@ fn saveEdits {
 }
 ```
 
-<sub>`api.ogt` line 16420</sub>
+<sub>`api.ogt` line 17683</sub>
 
 ## Types
 
@@ -5520,6 +6562,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `scroll` | `boolean` | `false` | — | — | — | Scroll its content vertically and clip it. |
 | `scrollX` | `boolean` | `false` | — | — | — | Scroll its content horizontally and clip it (with scroll: both ways). |
 | `interactive` | `boolean` | `false` | — | — | — | Report a Response from close(), as a button does. |
+| `focusable` | `boolean` | `false` | — | — | — | With interactive: keys and pads reach it (a card, a menu item, a component's tab), it takes the focus ring, and Enter, Space and the pad's A press it, as a button. Its role is button unless og.ui.semantics gives another. |
+| `adjustable` | `boolean` | `false` | — | — | — | With focusable: Left and Right (a pad's left and right) are its own while it has the focus: they step it (Response.adjust) instead of moving the focus, as a slider's do (a menu row opening its submenu, a carousel, a divider). |
 | `background` | `Paint \| null` | `null` | — | — | — | Its fill; null draws none. |
 | `radius` | `number` | `0` | — | `cssPx` | — | Corner radius. |
 | `frame` | `StylePart \| null` | `null` | — | — | — | The style frame its background takes (a HUD element, a card); null is a plain fill. Without a style the fill is drawn either way. |
@@ -5544,6 +6588,8 @@ struct ElementDesc {
   field scroll bool "Scroll its content vertically and clip it."
   field scrollX bool "Scroll its content horizontally and clip it (with scroll: both ways)."
   field interactive bool "Report a Response from close(), as a button does."
+  field focusable bool "With interactive: keys and pads reach it (a card, a menu item, a component's tab), it takes the focus ring, and Enter, Space and the pad's A press it, as a button. Its role is button unless og.ui.semantics gives another."
+  field adjustable bool "With focusable: Left and Right (a pad's left and right) are its own while it has the focus: they step it (Response.adjust) instead of moving the focus, as a slider's do (a menu row opening its submenu, a carousel, a divider)."
   field background Option.Paint "Its fill; null draws none."
   field radius f32 "Corner radius." {
     unit cssPx
@@ -5595,7 +6641,7 @@ struct LabelDesc {
 }
 ```
 
-<sub>`api.ogt` line 12022</sub>
+<sub>`api.ogt` line 12024</sub>
 
 <a id="type-ButtonDesc"></a>
 
@@ -5625,7 +6671,7 @@ struct ButtonDesc {
 }
 ```
 
-<sub>`api.ogt` line 12036</sub>
+<sub>`api.ogt` line 12038</sub>
 
 <a id="type-PanelDesc"></a>
 
@@ -5661,7 +6707,7 @@ struct PanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 12046</sub>
+<sub>`api.ogt` line 12048</sub>
 
 <a id="type-ScrollAxes"></a>
 
@@ -5686,7 +6732,7 @@ enum ScrollAxes {
 }
 ```
 
-<sub>`api.ogt` line 12059</sub>
+<sub>`api.ogt` line 12061</sub>
 
 <a id="type-ScrollDesc"></a>
 
@@ -5718,7 +6764,7 @@ struct ScrollDesc {
 }
 ```
 
-<sub>`api.ogt` line 12066</sub>
+<sub>`api.ogt` line 12068</sub>
 
 <a id="type-ImageDesc"></a>
 
@@ -5754,7 +6800,7 @@ struct ImageDesc {
 }
 ```
 
-<sub>`api.ogt` line 12078</sub>
+<sub>`api.ogt` line 12080</sub>
 
 <a id="type-ZoomViewDesc"></a>
 
@@ -5796,7 +6842,7 @@ struct ZoomViewDesc {
 }
 ```
 
-<sub>`api.ogt` line 12092</sub>
+<sub>`api.ogt` line 12094</sub>
 
 <a id="type-ZoomResult"></a>
 
@@ -5819,7 +6865,7 @@ struct ZoomResult {
 }
 ```
 
-<sub>`api.ogt` line 12111</sub>
+<sub>`api.ogt` line 12113</sub>
 
 <a id="type-ProgressDesc"></a>
 
@@ -5841,7 +6887,7 @@ struct ProgressDesc {
 }
 ```
 
-<sub>`api.ogt` line 12118</sub>
+<sub>`api.ogt` line 12120</sub>
 
 <a id="type-SliderDesc"></a>
 
@@ -5871,7 +6917,7 @@ struct SliderDesc {
 }
 ```
 
-<sub>`api.ogt` line 12124</sub>
+<sub>`api.ogt` line 12126</sub>
 
 <a id="type-FieldDesc"></a>
 
@@ -5897,7 +6943,7 @@ struct FieldDesc {
 }
 ```
 
-<sub>`api.ogt` line 12135</sub>
+<sub>`api.ogt` line 12137</sub>
 
 <a id="type-TextAreaDesc"></a>
 
@@ -5925,7 +6971,7 @@ struct TextAreaDesc {
 }
 ```
 
-<sub>`api.ogt` line 12143</sub>
+<sub>`api.ogt` line 12145</sub>
 
 <a id="type-Response"></a>
 
@@ -5944,6 +6990,7 @@ What happened to an element this tick. Edges (clicked, changed, submitted) are t
 | `dropped` | `number \| null` | `null` | — | — | — | A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop). |
 | `pad` | `number \| null` | `null` | — | — | — | The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer). |
 | `focusedBy` | `number` | `0` | — | — | — | Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads). |
+| `adjust` | `number` | `0` | — | — | — | An adjustable element's (ElementDesc.adjustable) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise. |
 
 ```ogt
 struct Response {
@@ -5957,10 +7004,11 @@ struct Response {
   field dropped Option.u32 "A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop)."
   field pad Option.u32 "The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer)."
   field focusedBy u32 "Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads)."
+  field adjust i32 "An adjustable element's (ElementDesc.adjustable) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise."
 }
 ```
 
-<sub>`api.ogt` line 12152</sub>
+<sub>`api.ogt` line 12154</sub>
 
 <a id="type-SliderResult"></a>
 
@@ -5970,7 +7018,7 @@ A slider's response and its value after this tick's input.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 }` | — | — | — | What happened to it. |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0 }` | — | — | — | What happened to it. |
 | `value` | `number` | `0` | — | — | — | The value, to keep in game state and pass back next tick. |
 
 ```ogt
@@ -5981,7 +7029,7 @@ struct SliderResult {
 }
 ```
 
-<sub>`api.ogt` line 12165</sub>
+<sub>`api.ogt` line 12168</sub>
 
 <a id="type-ToggleResult"></a>
 
@@ -5991,7 +7039,7 @@ A toggle's response and its state after this tick's input.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 }` | — | — | — | What happened to it. |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0 }` | — | — | — | What happened to it. |
 | `on` | `boolean` | `false` | — | — | — | The state, to keep in game state and pass back next tick. |
 
 ```ogt
@@ -6002,7 +7050,7 @@ struct ToggleResult {
 }
 ```
 
-<sub>`api.ogt` line 12171</sub>
+<sub>`api.ogt` line 12174</sub>
 
 <a id="type-FieldResult"></a>
 
@@ -6012,7 +7060,7 @@ A text field's response and its text after this tick's input.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 }` | — | — | — | What happened to it. |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0 }` | — | — | — | What happened to it. |
 | `value` | `string` | `""` | — | — | — | The text, to keep in game state and pass back next tick. |
 
 ```ogt
@@ -6023,7 +7071,7 @@ struct FieldResult {
 }
 ```
 
-<sub>`api.ogt` line 12177</sub>
+<sub>`api.ogt` line 12180</sub>
 
 <a id="type-Viewport"></a>
 
@@ -6082,7 +7130,7 @@ struct Viewport {
 }
 ```
 
-<sub>`api.ogt` line 12183</sub>
+<sub>`api.ogt` line 12186</sub>
 
 <a id="type-UiDesc"></a>
 
@@ -6104,6 +7152,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `contrast` | `Contrast` | `"standard"` | — | — | — | Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast). |
 | `primaryColor` | `Color \| null` | `null` | — | — | — | An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's. |
 | `reducedMotion` | `boolean` | `false` | — | — | — | Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion). |
+| `textScale` | `number` | `1` | 1 … 2 | `ratio` | — | The player's text size (a settings screen's slider, kept with the other settings): every text size and leading is multiplied by it and the layout grows around the text (control, row and header heights by the leading body text gains), never clipping it. 1 is the style's sizes; docs/ui.md §15.2 holds every screen to 2. |
 | `reducedTransparency` | `boolean` | `false` | — | — | — | Nothing is see-through: glass parts (a style's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on. |
 | `icons` | `IconAtlasDesc \| null` | `null` | — | — | — | The icon atlas og.ui.icon draws from; null takes the style's. |
 | `toastAnchor` | `Anchor \| null` | `null` | — | — | — | Where toasts stack; null is the bottom centre. |
@@ -6125,6 +7174,12 @@ struct UiDesc {
   field contrast Contrast "Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast)."
   field primaryColor Option.Color "An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's."
   field reducedMotion bool "Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion)."
+  field textScale f32 "The player's text size (a settings screen's slider, kept with the other settings): every text size and leading is multiplied by it and the layout grows around the text (control, row and header heights by the leading body text gains), never clipping it. 1 is the style's sizes; docs/ui.md §15.2 holds every screen to 2." {
+    default 1
+    min 1
+    max 2
+    unit ratio
+  }
   field reducedTransparency bool "Nothing is see-through: glass parts (a style's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on."
   field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from; null takes the style's."
   field toastAnchor Option.Anchor "Where toasts stack; null is the bottom centre."
@@ -6137,7 +7192,7 @@ struct UiDesc {
 }
 ```
 
-<sub>`api.ogt` line 12217</sub>
+<sub>`api.ogt` line 12220</sub>
 
 <a id="type-UiSounds"></a>
 
@@ -6169,7 +7224,7 @@ struct UiSounds {
 }
 ```
 
-<sub>`api.ogt` line 12241</sub>
+<sub>`api.ogt` line 12250</sub>
 
 <a id="type-StylePart"></a>
 
@@ -6204,7 +7259,7 @@ enum StylePart {
 }
 ```
 
-<sub>`api.ogt` line 12252</sub>
+<sub>`api.ogt` line 12261</sub>
 
 <a id="type-TypeStep"></a>
 
@@ -6235,7 +7290,7 @@ struct TypeStep {
 }
 ```
 
-<sub>`api.ogt` line 12264</sub>
+<sub>`api.ogt` line 12273</sub>
 
 <a id="type-ControlSizes"></a>
 
@@ -6280,7 +7335,7 @@ struct ControlSizes {
 }
 ```
 
-<sub>`api.ogt` line 12278</sub>
+<sub>`api.ogt` line 12287</sub>
 
 <a id="type-UiTheme"></a>
 
@@ -6300,6 +7355,7 @@ The style values the UI draws with, read-only.
 | `style` | `string` | `""` | — | — | — | The configured style's name; empty for the prototype style. |
 | `contrast` | `Contrast` | `"standard"` | — | — | — | The variant in effect: high when the game asked for it or the page prefers more contrast. |
 | `reducedMotion` | `boolean` | `false` | — | — | — | Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement. |
+| `textScale` | `number` | `0` | — | — | — | The player's text scale in effect (UiDesc.textScale, 1 to 2): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this. |
 | `reducedTransparency` | `boolean` | `false` | — | — | — | Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too. |
 | `tokens` | `unknown` | `null` | — | — | — | The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric, at each breakpoint: size, lineHeight, trackingEm, weight, font), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses). |
 
@@ -6316,12 +7372,13 @@ struct UiTheme {
   field style String "The configured style's name; empty for the prototype style."
   field contrast Contrast "The variant in effect: high when the game asked for it or the page prefers more contrast."
   field reducedMotion bool "Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement."
+  field textScale f32 "The player's text scale in effect (UiDesc.textScale, 1 to 2): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this."
   field reducedTransparency bool "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
   field tokens Json "The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric, at each breakpoint: size, lineHeight, trackingEm, weight, font), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
 }
 ```
 
-<sub>`api.ogt` line 12303</sub>
+<sub>`api.ogt` line 12312</sub>
 
 <a id="type-UiBuild"></a>
 
@@ -6341,7 +7398,7 @@ callback UiBuild {
 }
 ```
 
-<sub>`api.ogt` line 12319</sub>
+<sub>`api.ogt` line 12329</sub>
 
 <a id="type-RichTextDesc"></a>
 
@@ -6373,7 +7430,7 @@ struct RichTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 12404</sub>
+<sub>`api.ogt` line 12414</sub>
 
 <a id="type-RichTextResult"></a>
 
@@ -6383,7 +7440,7 @@ What a rich text's links did this tick.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 }` | — | — | — | Its links together: hovered while one is, clicked when one was. |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0 }` | — | — | — | Its links together: hovered while one is, clicked when one was. |
 | `link` | `string \| null` | `null` | — | — | — | The link clicked this tick: its `[link=…]` id. |
 | `hovered` | `string \| null` | `null` | — | — | — | The link under the pointer. |
 
@@ -6396,7 +7453,7 @@ struct RichTextResult {
 }
 ```
 
-<sub>`api.ogt` line 12415</sub>
+<sub>`api.ogt` line 12425</sub>
 
 <a id="type-Anchor"></a>
 
@@ -6433,7 +7490,7 @@ enum Anchor {
 }
 ```
 
-<sub>`api.ogt` line 12516</sub>
+<sub>`api.ogt` line 12526</sub>
 
 <a id="type-TransitionKind"></a>
 
@@ -6466,7 +7523,7 @@ enum TransitionKind {
 }
 ```
 
-<sub>`api.ogt` line 12529</sub>
+<sub>`api.ogt` line 12539</sub>
 
 <a id="type-Tone"></a>
 
@@ -6499,7 +7556,7 @@ enum Tone {
 }
 ```
 
-<sub>`api.ogt` line 12540</sub>
+<sub>`api.ogt` line 12550</sub>
 
 <a id="type-MeterKind"></a>
 
@@ -6526,7 +7583,7 @@ enum MeterKind {
 }
 ```
 
-<sub>`api.ogt` line 12551</sub>
+<sub>`api.ogt` line 12561</sub>
 
 <a id="type-Breakpoint"></a>
 
@@ -6553,7 +7610,7 @@ enum Breakpoint {
 }
 ```
 
-<sub>`api.ogt` line 12559</sub>
+<sub>`api.ogt` line 12569</sub>
 
 <a id="type-Contrast"></a>
 
@@ -6576,7 +7633,7 @@ enum Contrast {
 }
 ```
 
-<sub>`api.ogt` line 12567</sub>
+<sub>`api.ogt` line 12577</sub>
 
 <a id="type-NavIntent"></a>
 
@@ -6611,7 +7668,7 @@ enum NavIntent {
 }
 ```
 
-<sub>`api.ogt` line 12573</sub>
+<sub>`api.ogt` line 12583</sub>
 
 <a id="type-UiRect"></a>
 
@@ -6644,7 +7701,7 @@ struct UiRect {
 }
 ```
 
-<sub>`api.ogt` line 12585</sub>
+<sub>`api.ogt` line 12595</sub>
 
 <a id="type-IconAtlasDesc"></a>
 
@@ -6680,7 +7737,7 @@ struct IconAtlasDesc {
 }
 ```
 
-<sub>`api.ogt` line 12601</sub>
+<sub>`api.ogt` line 12611</sub>
 
 <a id="type-AnchorDesc"></a>
 
@@ -6740,7 +7797,7 @@ struct AnchorDesc {
 }
 ```
 
-<sub>`api.ogt` line 12617</sub>
+<sub>`api.ogt` line 12627</sub>
 
 <a id="type-TransitionDesc"></a>
 
@@ -6774,7 +7831,7 @@ struct TransitionDesc {
 }
 ```
 
-<sub>`api.ogt` line 12646</sub>
+<sub>`api.ogt` line 12656</sub>
 
 <a id="type-Presence"></a>
 
@@ -6801,7 +7858,7 @@ struct Presence {
 }
 ```
 
-<sub>`api.ogt` line 12661</sub>
+<sub>`api.ogt` line 12671</sub>
 
 <a id="type-ModalDesc"></a>
 
@@ -6835,7 +7892,7 @@ struct ModalDesc {
 }
 ```
 
-<sub>`api.ogt` line 12671</sub>
+<sub>`api.ogt` line 12681</sub>
 
 <a id="type-ModalResult"></a>
 
@@ -6856,7 +7913,7 @@ struct ModalResult {
 }
 ```
 
-<sub>`api.ogt` line 12683</sub>
+<sub>`api.ogt` line 12693</sub>
 
 <a id="type-SpotlightDesc"></a>
 
@@ -6881,7 +7938,7 @@ struct SpotlightDesc {
 }
 ```
 
-<sub>`api.ogt` line 12689</sub>
+<sub>`api.ogt` line 12699</sub>
 
 <a id="type-ListDesc"></a>
 
@@ -6920,7 +7977,7 @@ struct ListDesc {
 }
 ```
 
-<sub>`api.ogt` line 12698</sub>
+<sub>`api.ogt` line 12708</sub>
 
 <a id="type-ListRange"></a>
 
@@ -6941,7 +7998,7 @@ struct ListRange {
 }
 ```
 
-<sub>`api.ogt` line 12715</sub>
+<sub>`api.ogt` line 12725</sub>
 
 <a id="type-ListResult"></a>
 
@@ -6964,7 +8021,7 @@ struct ListResult {
 }
 ```
 
-<sub>`api.ogt` line 12721</sub>
+<sub>`api.ogt` line 12731</sub>
 
 <a id="type-GridDesc"></a>
 
@@ -7011,7 +8068,7 @@ struct GridDesc {
 }
 ```
 
-<sub>`api.ogt` line 12728</sub>
+<sub>`api.ogt` line 12738</sub>
 
 <a id="type-TabsDesc"></a>
 
@@ -7037,7 +8094,7 @@ struct TabsDesc {
 }
 ```
 
-<sub>`api.ogt` line 12751</sub>
+<sub>`api.ogt` line 12761</sub>
 
 <a id="type-ChoiceResult"></a>
 
@@ -7047,7 +8104,7 @@ A choice control's response and the chosen index after this tick's input.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 }` | — | — | — | What happened to it; changed when the choice moved. |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0 }` | — | — | — | What happened to it; changed when the choice moved. |
 | `selected` | `number` | `0` | — | — | — | The chosen index, to keep in game state and pass back next tick. |
 
 ```ogt
@@ -7058,7 +8115,7 @@ struct ChoiceResult {
 }
 ```
 
-<sub>`api.ogt` line 12759</sub>
+<sub>`api.ogt` line 12769</sub>
 
 <a id="type-SelectDesc"></a>
 
@@ -7086,7 +8143,7 @@ struct SelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 12765</sub>
+<sub>`api.ogt` line 12775</sub>
 
 <a id="type-StepperDesc"></a>
 
@@ -7118,7 +8175,7 @@ struct StepperDesc {
 }
 ```
 
-<sub>`api.ogt` line 12774</sub>
+<sub>`api.ogt` line 12784</sub>
 
 <a id="type-StepperResult"></a>
 
@@ -7128,7 +8185,7 @@ A stepper's response and value after this tick's input.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 }` | — | — | — | What happened to it. |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0 }` | — | — | — | What happened to it. |
 | `value` | `number` | `0` | — | — | — | The value, to keep in game state and pass back next tick. |
 
 ```ogt
@@ -7139,7 +8196,7 @@ struct StepperResult {
 }
 ```
 
-<sub>`api.ogt` line 12787</sub>
+<sub>`api.ogt` line 12797</sub>
 
 <a id="type-RadioDesc"></a>
 
@@ -7163,7 +8220,7 @@ struct RadioDesc {
 }
 ```
 
-<sub>`api.ogt` line 12793</sub>
+<sub>`api.ogt` line 12803</sub>
 
 <a id="type-CheckListResult"></a>
 
@@ -7173,7 +8230,7 @@ A checkbox list's response and values after this tick's input.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 }` | — | — | — | What happened to it; changed when any box flipped. |
+| `response` | `Response` | `{ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0 }` | — | — | — | What happened to it; changed when any box flipped. |
 | `values` | `readonly boolean[]` | `[]` | — | — | — | The values, to keep in game state and pass back next tick. |
 
 ```ogt
@@ -7184,7 +8241,7 @@ struct CheckListResult {
 }
 ```
 
-<sub>`api.ogt` line 12800</sub>
+<sub>`api.ogt` line 12810</sub>
 
 <a id="type-ToastDesc"></a>
 
@@ -7211,7 +8268,7 @@ struct ToastDesc {
 }
 ```
 
-<sub>`api.ogt` line 12806</sub>
+<sub>`api.ogt` line 12816</sub>
 
 <a id="type-ChipDesc"></a>
 
@@ -7235,7 +8292,7 @@ struct ChipDesc {
 }
 ```
 
-<sub>`api.ogt` line 12816</sub>
+<sub>`api.ogt` line 12826</sub>
 
 <a id="type-MeterDesc"></a>
 
@@ -7270,7 +8327,7 @@ struct MeterDesc {
 }
 ```
 
-<sub>`api.ogt` line 12823</sub>
+<sub>`api.ogt` line 12833</sub>
 
 <a id="type-CooldownDesc"></a>
 
@@ -7299,7 +8356,7 @@ struct CooldownDesc {
 }
 ```
 
-<sub>`api.ogt` line 12837</sub>
+<sub>`api.ogt` line 12847</sub>
 
 <a id="type-IconDesc"></a>
 
@@ -7328,7 +8385,7 @@ struct IconDesc {
 }
 ```
 
-<sub>`api.ogt` line 12848</sub>
+<sub>`api.ogt` line 12858</sub>
 
 <a id="type-MapMarker"></a>
 
@@ -7360,7 +8417,7 @@ struct MapMarker {
 }
 ```
 
-<sub>`api.ogt` line 12859</sub>
+<sub>`api.ogt` line 12869</sub>
 
 <a id="type-MinimapDesc"></a>
 
@@ -7393,7 +8450,7 @@ struct MinimapDesc {
 }
 ```
 
-<sub>`api.ogt` line 12872</sub>
+<sub>`api.ogt` line 12882</sub>
 
 <a id="type-DialogueDesc"></a>
 
@@ -7429,7 +8486,7 @@ struct DialogueDesc {
 }
 ```
 
-<sub>`api.ogt` line 12885</sub>
+<sub>`api.ogt` line 12895</sub>
 
 <a id="type-DialogueResult"></a>
 
@@ -7452,7 +8509,7 @@ struct DialogueResult {
 }
 ```
 
-<sub>`api.ogt` line 12899</sub>
+<sub>`api.ogt` line 12909</sub>
 
 <a id="type-JoystickDesc"></a>
 
@@ -7483,7 +8540,7 @@ struct JoystickDesc {
 }
 ```
 
-<sub>`api.ogt` line 12906</sub>
+<sub>`api.ogt` line 12916</sub>
 
 <a id="type-JoystickResult"></a>
 
@@ -7506,7 +8563,7 @@ struct JoystickResult {
 }
 ```
 
-<sub>`api.ogt` line 12920</sub>
+<sub>`api.ogt` line 12930</sub>
 
 <a id="type-DpadDesc"></a>
 
@@ -7531,7 +8588,7 @@ struct DpadDesc {
 }
 ```
 
-<sub>`api.ogt` line 12927</sub>
+<sub>`api.ogt` line 12937</sub>
 
 <a id="type-DpadResult"></a>
 
@@ -7556,7 +8613,7 @@ struct DpadResult {
 }
 ```
 
-<sub>`api.ogt` line 12936</sub>
+<sub>`api.ogt` line 12946</sub>
 
 <a id="type-ActionButtonDesc"></a>
 
@@ -7585,7 +8642,7 @@ struct ActionButtonDesc {
 }
 ```
 
-<sub>`api.ogt` line 12944</sub>
+<sub>`api.ogt` line 12954</sub>
 
 <a id="type-SkeletonDesc"></a>
 
@@ -7614,7 +8671,7 @@ struct SkeletonDesc {
 }
 ```
 
-<sub>`api.ogt` line 12955</sub>
+<sub>`api.ogt` line 12965</sub>
 
 <a id="type-UiItemBuild"></a>
 
@@ -7639,7 +8696,36 @@ callback UiItemBuild {
 }
 ```
 
-<sub>`api.ogt` line 12966</sub>
+<sub>`api.ogt` line 12976</sub>
+
+<a id="type-UiPointer"></a>
+
+### `UiPointer` (struct)
+
+The primary pointer as the UI reads it this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `x` | `number` | `0` | — | `cssPx` | — | Its x from the surface's left. |
+| `y` | `number` | `0` | — | `cssPx` | — | Its y from the surface's top. |
+| `inside` | `boolean` | `false` | — | — | — | It is over the surface: false for a mouse that left it, or a touch screen with no finger down. |
+| `down` | `boolean` | `false` | — | — | — | Its button or finger is down. |
+
+```ogt
+struct UiPointer {
+  doc "The primary pointer as the UI reads it this tick."
+  field x f32 "Its x from the surface's left." {
+    unit cssPx
+  }
+  field y f32 "Its y from the surface's top." {
+    unit cssPx
+  }
+  field inside bool "It is over the surface: false for a mouse that left it, or a touch screen with no finger down."
+  field down bool "Its button or finger is down."
+}
+```
+
+<sub>`api.ogt` line 12986</sub>
 
 <a id="type-A11yNode"></a>
 
@@ -7655,7 +8741,7 @@ One node of the accessibility tree: an element with a role (layout containers an
 | `name` | `string` | `""` | — | — | — | Its accessible name: what a screen reader says it is. A text field or area is named by the label before it in its row, else by its placeholder, else by its id; never by the text in it (that is its value). |
 | `description` | `string` | `""` | — | — | — | Read after the name (aria-description): a text field's placeholder when a label names it; empty for none. |
 | `value` | `string` | `""` | — | — | — | Its value as text (a slider's number, a progress's percent, a field's text); empty for none. |
-| `states` | `readonly string[]` | `[]` | — | — | — | Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view). |
+| `states` | `readonly string[]` | `[]` | — | — | — | Its states: disabled, focused, focusable, checked, selected, expanded, collapsed (expandable and closed), pressed, busy, offscreen (a scroll container cuts it out of view). |
 | `valueMin` | `number \| null` | `null` | — | — | — | A range's smallest value (aria-valuemin): a slider's min, a bounded stepper's, 0 for a progress (in percent) and a meter; null for a stepper without bounds and a control that is no range. |
 | `valueMax` | `number \| null` | `null` | — | — | — | A range's largest value (aria-valuemax): a slider's max, a bounded stepper's, 100 for a progress, a meter's max; null as valueMin is. |
 | `valueNow` | `number \| null` | `null` | — | — | — | A range's value as a number (aria-valuenow; value says it as people read it): a slider's, a stepper's, a meter's, a progress's percent; null for a control that is no range. |
@@ -7673,7 +8759,7 @@ struct A11yNode {
   field name String "Its accessible name: what a screen reader says it is. A text field or area is named by the label before it in its row, else by its placeholder, else by its id; never by the text in it (that is its value)."
   field description String "Read after the name (aria-description): a text field's placeholder when a label names it; empty for none."
   field value String "Its value as text (a slider's number, a progress's percent, a field's text); empty for none."
-  field states List.String "Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view)."
+  field states List.String "Its states: disabled, focused, focusable, checked, selected, expanded, collapsed (expandable and closed), pressed, busy, offscreen (a scroll container cuts it out of view)."
   field valueMin Option.f32 "A range's smallest value (aria-valuemin): a slider's min, a bounded stepper's, 0 for a progress (in percent) and a meter; null for a stepper without bounds and a control that is no range."
   field valueMax Option.f32 "A range's largest value (aria-valuemax): a slider's max, a bounded stepper's, 100 for a progress, a meter's max; null as valueMin is."
   field valueNow Option.f32 "A range's value as a number (aria-valuenow; value says it as people read it): a slider's, a stepper's, a meter's, a progress's percent; null for a control that is no range."
@@ -7692,7 +8778,7 @@ struct A11yNode {
 }
 ```
 
-<sub>`api.ogt` line 13329</sub>
+<sub>`api.ogt` line 13366</sub>
 
 <a id="type-A11yTree"></a>
 
@@ -7715,7 +8801,7 @@ struct A11yTree {
 }
 ```
 
-<sub>`api.ogt` line 13355</sub>
+<sub>`api.ogt` line 13392</sub>
 
 <a id="type-CounterDesc"></a>
 
@@ -7758,7 +8844,7 @@ struct CounterDesc {
 }
 ```
 
-<sub>`api.ogt` line 13405</sub>
+<sub>`api.ogt` line 13442</sub>
 
 <a id="type-BurstDesc"></a>
 
@@ -7797,7 +8883,7 @@ struct BurstDesc {
 }
 ```
 
-<sub>`api.ogt` line 13431</sub>
+<sub>`api.ogt` line 13468</sub>
 
 <a id="type-ShakeDesc"></a>
 
@@ -7829,7 +8915,7 @@ struct ShakeDesc {
 }
 ```
 
-<sub>`api.ogt` line 13456</sub>
+<sub>`api.ogt` line 13493</sub>
 
 <a id="type-ScreenWipe"></a>
 
@@ -7858,7 +8944,7 @@ enum ScreenWipe {
 }
 ```
 
-<sub>`api.ogt` line 13476</sub>
+<sub>`api.ogt` line 13513</sub>
 
 <a id="type-WipeSide"></a>
 
@@ -7885,7 +8971,7 @@ enum WipeSide {
 }
 ```
 
-<sub>`api.ogt` line 13485</sub>
+<sub>`api.ogt` line 13522</sub>
 
 <a id="type-ScreenTransitionDesc"></a>
 
@@ -7918,7 +9004,7 @@ struct ScreenTransitionDesc {
 }
 ```
 
-<sub>`api.ogt` line 13493</sub>
+<sub>`api.ogt` line 13530</sub>
 
 <a id="type-ScreenTransitionResult"></a>
 
@@ -7945,7 +9031,2443 @@ struct ScreenTransitionResult {
 }
 ```
 
-<sub>`api.ogt` line 13506</sub>
+<sub>`api.ogt` line 13543</sub>
+
+<a id="type-CardVariant"></a>
+
+### `CardVariant` (enum)
+
+How a card stands off what it sits on.
+
+A string: one of the variants below. The zero value is `"raised"`.
+
+| Variant | Doc |
+|---|---|
+| `"raised"` | A raised panel with the card class's elevation (the default). |
+| `"flat"` | A flat panel, no shadow. |
+| `"outlined"` | A panel with an outline and no shadow. |
+| `"inset"` | A well sunk into the surface. |
+
+```ogt
+enum CardVariant {
+  doc "How a card stands off what it sits on."
+  variant raised "A raised panel with the card class's elevation (the default)."
+  variant flat "A flat panel, no shadow."
+  variant outlined "A panel with an outline and no shadow."
+  variant inset "A well sunk into the surface."
+}
+```
+
+<sub>`api.ogt` line 13575</sub>
+
+<a id="type-CardMedia"></a>
+
+### `CardMedia` (desc struct)
+
+A card's media slot: art the game fills, or a placeholder drawn from the style when it has none.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `texture` | `Texture` | `0` | — | — | — | The art (og.load.texture), covering the slot; 0 draws the placeholder. |
+| `aspect` | `number` | `0` | ≥ 0 | — | — | Width over height; 0 is 16:9. |
+| `focal` | `Vector2` | `{ x: 0.5, y: 0.5 }` | — | — | — | The art's point kept in view when cover crops it, fractions of the free space. |
+| `icon` | `string` | `""` | — | — | — | The placeholder's icon (og.ui.icon's name); empty is `image`. |
+| `label` | `string` | `""` | — | — | — | What the art shows, for a screen reader; empty is decorative. |
+
+```ogt
+struct CardMedia {
+  doc "A card's media slot: art the game fills, or a placeholder drawn from the style when it has none."
+  desc true
+  field texture Texture "The art (og.load.texture), covering the slot; 0 draws the placeholder."
+  field aspect f32 "Width over height; 0 is 16:9." {
+    min 0
+  }
+  field focal Vector2 "The art's point kept in view when cover crops it, fractions of the free space." {
+    default 0.5 0.5
+  }
+  field icon String "The placeholder's icon (og.ui.icon's name); empty is `image`."
+  field label String "What the art shows, for a screen reader; empty is decorative."
+}
+```
+
+<sub>`api.ogt` line 13583</sub>
+
+<a id="type-CardDesc"></a>
+
+### `CardDesc` (desc struct)
+
+A card: media, an eyebrow, a title, a subtitle and a corner badge over a body the game builds.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `variant` | `CardVariant` | `"raised"` | — | — | — | How it stands off what it sits on. |
+| `media` | `CardMedia \| null` | `null` | — | — | — | The media slot over the body; null is none. |
+| `eyebrow` | `string` | `""` | — | — | — | A small line over the title (a category, a rarity); empty is none. |
+| `title` | `string` | `""` | — | — | — | The title; empty is none. |
+| `subtitle` | `string` | `""` | — | — | — | A line under the title; empty is none. |
+| `badge` | `string` | `""` | — | — | — | A badge in the top end corner; empty is none. |
+| `badgeTone` | `Tone` | `"neutral"` | — | — | — | The badge's tone. |
+| `interactive` | `boolean` | `false` | — | — | — | The whole card is a button: it lifts under the pointer and the focus, sinks when pressed, and answers clicked. |
+| `selected` | `boolean` | `false` | — | — | — | Ringed in the focus ink (Card.frame[selected]). |
+| `disabled` | `boolean` | `false` | — | — | — | Shown but inert. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null fits. |
+| `height` | `Size \| null` | `null` | — | — | — | Its height; null fits. |
+| `padding` | `number \| null` | `null` | — | `cssPx` | — | Space around the body; null is space.lg. |
+
+```ogt
+struct CardDesc {
+  doc "A card: media, an eyebrow, a title, a subtitle and a corner badge over a body the game builds."
+  desc true
+  field variant CardVariant "How it stands off what it sits on."
+  field media Option.CardMedia "The media slot over the body; null is none."
+  field eyebrow String "A small line over the title (a category, a rarity); empty is none."
+  field title String "The title; empty is none."
+  field subtitle String "A line under the title; empty is none."
+  field badge String "A badge in the top end corner; empty is none."
+  field badgeTone Tone "The badge's tone."
+  field interactive bool "The whole card is a button: it lifts under the pointer and the focus, sinks when pressed, and answers clicked."
+  field selected bool "Ringed in the focus ink (Card.frame[selected])."
+  field disabled bool "Shown but inert."
+  field width Option.Size "Its width; null fits."
+  field height Option.Size "Its height; null fits."
+  field padding Option.f32 "Space around the body; null is space.lg." {
+    unit cssPx
+  }
+}
+```
+
+<sub>`api.ogt` line 13597</sub>
+
+<a id="type-ScrollAreaDesc"></a>
+
+### `ScrollAreaDesc` (desc struct)
+
+A scroll area: og.ui's scroll container whose content fades out at an edge where more lies beyond.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `axes` | `ScrollAxes` | `"vertical"` | — | — | — | Which ways it scrolls. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `height` | `Size \| null` | `null` | — | — | — | Its height (it scrolls inside); null fits the content. |
+| `padding` | `Insets` | `{ left: 0, top: 0, right: 0, bottom: 0 }` | — | — | — | Space around the content. |
+| `gap` | `number \| null` | `null` | — | `cssPx` | — | Space between children; null is space.sm. |
+| `fade` | `number` | `0` | ≥ 0 | `cssPx` | — | How far the edge fades reach; 0 is 24. |
+| `fadeInto` | `ThemeColor \| null` | `null` | — | — | — | The surface the content fades into; null is panel. |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls the region. |
+
+```ogt
+struct ScrollAreaDesc {
+  doc "A scroll area: og.ui's scroll container whose content fades out at an edge where more lies beyond."
+  desc true
+  field axes ScrollAxes "Which ways it scrolls."
+  field width Option.Size "Its width; null grows."
+  field height Option.Size "Its height (it scrolls inside); null fits the content."
+  field padding Insets "Space around the content."
+  field gap Option.f32 "Space between children; null is space.sm." {
+    unit cssPx
+  }
+  field fade f32 "How far the edge fades reach; 0 is 24." {
+    unit cssPx
+    min 0
+  }
+  field fadeInto Option.ThemeColor "The surface the content fades into; null is panel."
+  field label String "What a screen reader calls the region."
+}
+```
+
+<sub>`api.ogt` line 13617</sub>
+
+<a id="type-AccordionSection"></a>
+
+### `AccordionSection` (desc struct)
+
+A section of an accordion: its header's title, subtitle and badge.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `title` | `string` | `""` | — | — | — | The header's title. |
+| `subtitle` | `string` | `""` | — | — | — | A line under it; empty is none. |
+| `badge` | `string` | `""` | — | — | — | A badge at the header's end; empty is none. |
+| `badgeTone` | `Tone` | `"neutral"` | — | — | — | The badge's tone. |
+| `disabled` | `boolean` | `false` | — | — | — | The header is shown but does not open. |
+
+```ogt
+struct AccordionSection {
+  doc "A section of an accordion: its header's title, subtitle and badge."
+  desc true
+  field title String "The header's title."
+  field subtitle String "A line under it; empty is none."
+  field badge String "A badge at the header's end; empty is none."
+  field badgeTone Tone "The badge's tone."
+  field disabled bool "The header is shown but does not open."
+}
+```
+
+<sub>`api.ogt` line 13635</sub>
+
+<a id="type-AccordionDesc"></a>
+
+### `AccordionDesc` (desc struct)
+
+An accordion: sections whose headers open and close their bodies.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `sections` | `readonly AccordionSection[]` | `[]` | — | — | — | The sections, in order. |
+| `expanded` | `readonly number[]` | `[]` | — | — | — | The open sections' indices (keep AccordionResult.expanded). |
+| `single` | `boolean` | `false` | — | — | — | Opening one closes the others. |
+| `dividers` | `boolean` | `true` | — | — | — | Hairlines between sections. |
+| `gap` | `number` | `0` | ≥ 0 | `cssPx` | — | Space between sections. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+
+```ogt
+struct AccordionDesc {
+  doc "An accordion: sections whose headers open and close their bodies."
+  desc true
+  field sections List.AccordionSection "The sections, in order."
+  field expanded List.u32 "The open sections' indices (keep AccordionResult.expanded)."
+  field single bool "Opening one closes the others."
+  field dividers bool "Hairlines between sections." {
+    default true
+  }
+  field gap f32 "Space between sections." {
+    unit cssPx
+    min 0
+  }
+  field width Option.Size "Its width; null grows."
+}
+```
+
+<sub>`api.ogt` line 13645</sub>
+
+<a id="type-AccordionResult"></a>
+
+### `AccordionResult` (struct)
+
+What an accordion answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `toggled` | `number \| null` | `null` | — | — | — | The section whose header was pressed. |
+| `expanded` | `readonly number[]` | `[]` | — | — | — | The open sections after this tick: keep them and pass them back. |
+
+```ogt
+struct AccordionResult {
+  doc "What an accordion answered this tick."
+  field toggled Option.u32 "The section whose header was pressed."
+  field expanded List.u32 "The open sections after this tick: keep them and pass them back."
+}
+```
+
+<sub>`api.ogt` line 13661</sub>
+
+<a id="type-SplitViewDesc"></a>
+
+### `SplitViewDesc` (desc struct)
+
+Two panes with a divider between them that a drag moves.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `direction` | `Direction` | `"row"` | — | — | — | Side by side (row) or one over the other (column). |
+| `ratio` | `number` | `0.5` | 0 … 1 | `ratio` | — | The start pane's share of the room (keep SplitResult.ratio). |
+| `minStart` | `number` | `0` | ≥ 0 | `cssPx` | — | The start pane's least size; 0 is 120. |
+| `minEnd` | `number` | `0` | ≥ 0 | `cssPx` | — | The end pane's least size; 0 is 120. |
+| `snaps` | `readonly number[]` | `[]` | — | — | — | The ratios a press of the focused divider steps through; empty is a third, a half, two thirds. |
+| `keepOnPhone` | `boolean` | `false` | — | — | — | Stay side by side on a phone in portrait (it stacks by default). |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `height` | `Size \| null` | `null` | — | — | — | Its height; null grows. |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls the divider. |
+
+```ogt
+struct SplitViewDesc {
+  doc "Two panes with a divider between them that a drag moves."
+  desc true
+  field direction Direction "Side by side (row) or one over the other (column)."
+  field ratio f32 "The start pane's share of the room (keep SplitResult.ratio)." {
+    default 0.5
+    min 0
+    max 1
+    unit ratio
+  }
+  field minStart f32 "The start pane's least size; 0 is 120." {
+    unit cssPx
+    min 0
+  }
+  field minEnd f32 "The end pane's least size; 0 is 120." {
+    unit cssPx
+    min 0
+  }
+  field snaps List.f32 "The ratios a press of the focused divider steps through; empty is a third, a half, two thirds."
+  field keepOnPhone bool "Stay side by side on a phone in portrait (it stacks by default)."
+  field width Option.Size "Its width; null grows."
+  field height Option.Size "Its height; null grows."
+  field label String "What a screen reader calls the divider."
+}
+```
+
+<sub>`api.ogt` line 13667</sub>
+
+<a id="type-SplitResult"></a>
+
+### `SplitResult` (struct)
+
+What a split view answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `ratio` | `number` | `0` | — | — | — | The start pane's share after this tick: keep it and pass it back. |
+| `changed` | `boolean` | `false` | — | — | — | The divider was moved or stepped this tick. |
+| `stacked` | `boolean` | `false` | — | — | — | It is stacked (a phone in portrait). |
+
+```ogt
+struct SplitResult {
+  doc "What a split view answered this tick."
+  field ratio f32 "The start pane's share after this tick: keep it and pass it back."
+  field changed bool "The divider was moved or stepped this tick."
+  field stacked bool "It is stacked (a phone in portrait)."
+}
+```
+
+<sub>`api.ogt` line 13692</sub>
+
+<a id="type-DialogTone"></a>
+
+### `DialogTone` (enum)
+
+A dialog's tone, shown by a mark as well as its colour.
+
+A string: one of the variants below. The zero value is `"neutral"`.
+
+| Variant | Doc |
+|---|---|
+| `"neutral"` | No mark (the default). |
+| `"info"` | Information: an i. |
+| `"success"` | Success: a tick. |
+| `"warn"` | A warning: an exclamation. |
+| `"danger"` | Danger: a cross. |
+
+```ogt
+enum DialogTone {
+  doc "A dialog's tone, shown by a mark as well as its colour."
+  variant neutral "No mark (the default)."
+  variant info "Information: an i."
+  variant success "Success: a tick."
+  variant warn "A warning: an exclamation."
+  variant danger "Danger: a cross."
+}
+```
+
+<sub>`api.ogt` line 13699</sub>
+
+<a id="type-DialogAction"></a>
+
+### `DialogAction` (desc struct)
+
+A button of a dialog.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `id` | `string` | `""` | — | — | — | The id answered when it is pressed; also its probe id. |
+| `label` | `string` | `""` | — | — | — | What it says; empty is its id. |
+| `variant` | `ButtonVariant` | `"secondary"` | — | — | — | Its weight: the primary sits last in a row and first in a phone's stack. |
+| `disabled` | `boolean` | `false` | — | — | — | Shown but inert. |
+| `autofocus` | `boolean` | `false` | — | — | — | It takes the focus when the dialog opens. |
+
+```ogt
+struct DialogAction {
+  doc "A button of a dialog."
+  desc true
+  field id String "The id answered when it is pressed; also its probe id."
+  field label String "What it says; empty is its id."
+  field variant ButtonVariant "Its weight: the primary sits last in a row and first in a phone's stack."
+  field disabled bool "Shown but inert."
+  field autofocus bool "It takes the focus when the dialog opens."
+}
+```
+
+<sub>`api.ogt` line 13708</sub>
+
+<a id="type-DialogDesc"></a>
+
+### `DialogDesc` (desc struct)
+
+A dialog: a title, a tone mark, a message, a body the game builds and a row of actions.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `title` | `string` | `""` | — | — | — | Its title. |
+| `message` | `string` | `""` | — | — | — | The message, as rich text markup (og.ui.richText). |
+| `tone` | `DialogTone` | `"neutral"` | — | — | — | Its tone. |
+| `actions` | `readonly DialogAction[]` | `[]` | — | — | — | The buttons; ordered by weight on each breakpoint. |
+| `cancelId` | `string` | `""` | — | — | — | The action that cancels (its sound is cancel's); empty is `cancel`. |
+| `locked` | `boolean` | `false` | — | — | — | Back and the backdrop do not dismiss it. |
+| `wide` | `boolean` | `false` | — | — | — | 640 CSS px wide instead of 460. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null is 460 (wide 640), at most the surface less its gutters. |
+| `transition` | `TransitionKind \| null` | `null` | — | — | — | How it enters and leaves; null is the style's. |
+
+```ogt
+struct DialogDesc {
+  doc "A dialog: a title, a tone mark, a message, a body the game builds and a row of actions."
+  desc true
+  field title String "Its title."
+  field message String "The message, as rich text markup (og.ui.richText)."
+  field tone DialogTone "Its tone."
+  field actions List.DialogAction "The buttons; ordered by weight on each breakpoint."
+  field cancelId String "The action that cancels (its sound is cancel's); empty is `cancel`."
+  field locked bool "Back and the backdrop do not dismiss it."
+  field wide bool "640 CSS px wide instead of 460."
+  field width Option.Size "Its width; null is 460 (wide 640), at most the surface less its gutters."
+  field transition Option.TransitionKind "How it enters and leaves; null is the style's."
+}
+```
+
+<sub>`api.ogt` line 13718</sub>
+
+<a id="type-DialogResult"></a>
+
+### `DialogResult` (struct)
+
+What a dialog answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `action` | `string \| null` | `null` | — | — | — | The id of the action pressed. |
+| `dismissed` | `boolean` | `false` | — | — | — | Back or the backdrop asked to close it. |
+| `visible` | `boolean` | `false` | — | — | — | It is on screen (open, or leaving). |
+
+```ogt
+struct DialogResult {
+  doc "What a dialog answered this tick."
+  field action Option.String "The id of the action pressed."
+  field dismissed bool "Back or the backdrop asked to close it."
+  field visible bool "It is on screen (open, or leaving)."
+}
+```
+
+<sub>`api.ogt` line 13732</sub>
+
+<a id="type-ConfirmationDesc"></a>
+
+### `ConfirmationDesc` (desc struct)
+
+A confirmation: a message, Cancel and the action.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `title` | `string` | `""` | — | — | — | Its title. |
+| `message` | `string` | `""` | — | — | — | What will happen, as rich text markup. |
+| `confirmLabel` | `string` | `""` | — | — | — | The action's label; empty is Confirm. |
+| `cancelLabel` | `string` | `""` | — | — | — | Cancel's label; empty is Cancel. |
+| `danger` | `boolean` | `false` | — | — | — | The action cannot be undone: the danger variant, and Cancel takes the focus. |
+| `tone` | `DialogTone` | `"neutral"` | — | — | — | Its tone when it is not danger. |
+| `locked` | `boolean` | `false` | — | — | — | Back and the backdrop do not cancel. |
+
+```ogt
+struct ConfirmationDesc {
+  doc "A confirmation: a message, Cancel and the action."
+  desc true
+  field title String "Its title."
+  field message String "What will happen, as rich text markup."
+  field confirmLabel String "The action's label; empty is Confirm."
+  field cancelLabel String "Cancel's label; empty is Cancel."
+  field danger bool "The action cannot be undone: the danger variant, and Cancel takes the focus."
+  field tone DialogTone "Its tone when it is not danger."
+  field locked bool "Back and the backdrop do not cancel."
+}
+```
+
+<sub>`api.ogt` line 13739</sub>
+
+<a id="type-FloatSide"></a>
+
+### `FloatSide` (enum)
+
+Where a floating surface hangs off what it belongs to; start and end follow the writing direction.
+
+A string: one of the variants below. The zero value is `"below"`.
+
+| Variant | Doc |
+|---|---|
+| `"below"` | Below it (the default). |
+| `"above"` | Above it. |
+| `"start"` | At its start. |
+| `"end"` | At its end. |
+
+```ogt
+enum FloatSide {
+  doc "Where a floating surface hangs off what it belongs to; start and end follow the writing direction."
+  variant below "Below it (the default)."
+  variant above "Above it."
+  variant start "At its start."
+  variant end "At its end."
+}
+```
+
+<sub>`api.ogt` line 13751</sub>
+
+<a id="type-FloatAlign"></a>
+
+### `FloatAlign` (enum)
+
+How a floating surface lines up with what it belongs to.
+
+A string: one of the variants below. The zero value is `"start"`.
+
+| Variant | Doc |
+|---|---|
+| `"start"` | Their start edges. |
+| `"center"` | Centred on it. |
+| `"end"` | Their end edges. |
+
+```ogt
+enum FloatAlign {
+  doc "How a floating surface lines up with what it belongs to."
+  variant start "Their start edges."
+  variant center "Centred on it."
+  variant end "Their end edges."
+}
+```
+
+<sub>`api.ogt` line 13759</sub>
+
+<a id="type-PopoverDesc"></a>
+
+### `PopoverDesc` (desc struct)
+
+A popover beside an element, flipped where there is no room and kept on screen, with an arrow at the element.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `anchor` | `string` | `""` | — | — | — | The path of the element it belongs to (og.ui.lastPath right after building it); empty centres it. |
+| `side` | `FloatSide` | `"below"` | — | — | — | The side it prefers. |
+| `align` | `FloatAlign` | `"center"` | — | — | — | How it lines up with the element. |
+| `arrow` | `boolean` | `true` | — | — | — | Draw an arrow at the element. |
+| `offset` | `number` | `0` | — | `cssPx` | — | Extra distance from the element. |
+| `title` | `string` | `""` | — | — | — | A title over the content; empty is none. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null fits, at most 360. |
+| `padding` | `number \| null` | `null` | — | `cssPx` | — | Space inside; null is space.md. |
+
+```ogt
+struct PopoverDesc {
+  doc "A popover beside an element, flipped where there is no room and kept on screen, with an arrow at the element."
+  desc true
+  field anchor String "The path of the element it belongs to (og.ui.lastPath right after building it); empty centres it."
+  field side FloatSide "The side it prefers."
+  field align FloatAlign "How it lines up with the element." {
+    default center
+  }
+  field arrow bool "Draw an arrow at the element." {
+    default true
+  }
+  field offset f32 "Extra distance from the element." {
+    unit cssPx
+  }
+  field title String "A title over the content; empty is none."
+  field width Option.Size "Its width; null fits, at most 360."
+  field padding Option.f32 "Space inside; null is space.md." {
+    unit cssPx
+  }
+}
+```
+
+<sub>`api.ogt` line 13766</sub>
+
+<a id="type-PopoverResult"></a>
+
+### `PopoverResult` (struct)
+
+What a popover answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `dismissed` | `boolean` | `false` | — | — | — | Back or a press outside asked to close it. |
+| `visible` | `boolean` | `false` | — | — | — | It is on screen (open, or leaving). |
+
+```ogt
+struct PopoverResult {
+  doc "What a popover answered this tick."
+  field dismissed bool "Back or a press outside asked to close it."
+  field visible bool "It is on screen (open, or leaving)."
+}
+```
+
+<sub>`api.ogt` line 13787</sub>
+
+<a id="type-MenuEntryKind"></a>
+
+### `MenuEntryKind` (enum)
+
+What a menu's entry is.
+
+A string: one of the variants below. The zero value is `"item"`.
+
+| Variant | Doc |
+|---|---|
+| `"item"` | A command (the default). |
+| `"check"` | A command with a check mark (menuitemcheckbox). |
+| `"radio"` | One of a group (menuitemradio). |
+| `"separator"` | A hairline between groups. |
+| `"header"` | A group's caption. |
+
+```ogt
+enum MenuEntryKind {
+  doc "What a menu's entry is."
+  variant item "A command (the default)."
+  variant check "A command with a check mark (menuitemcheckbox)."
+  variant radio "One of a group (menuitemradio)."
+  variant separator "A hairline between groups."
+  variant header "A group's caption."
+}
+```
+
+<sub>`api.ogt` line 13793</sub>
+
+<a id="type-MenuEntry"></a>
+
+### `MenuEntry` (desc struct)
+
+An entry of a menu. An entry whose `parent` names another's id sits in that entry's submenu.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `id` | `string` | `""` | — | — | — | The id answered when it is chosen; also its probe id. |
+| `label` | `string` | `""` | — | — | — | What it says. |
+| `kind` | `MenuEntryKind` | `"item"` | — | — | — | What it is. |
+| `icon` | `string` | `""` | — | — | — | An icon before the label; empty is none. |
+| `shortcut` | `string` | `""` | — | — | — | A shortcut shown at the end (`Ctrl+S`). |
+| `checked` | `boolean` | `false` | — | — | — | A check or radio entry is on. |
+| `danger` | `boolean` | `false` | — | — | — | A destructive command: the danger ink. |
+| `disabled` | `boolean` | `false` | — | — | — | Shown but inert. |
+| `parent` | `string` | `""` | — | — | — | The id of the entry whose submenu it is in; empty is the top level. |
+
+```ogt
+struct MenuEntry {
+  doc "An entry of a menu. An entry whose `parent` names another's id sits in that entry's submenu."
+  desc true
+  field id String "The id answered when it is chosen; also its probe id."
+  field label String "What it says."
+  field kind MenuEntryKind "What it is."
+  field icon String "An icon before the label; empty is none."
+  field shortcut String "A shortcut shown at the end (`Ctrl+S`)."
+  field checked bool "A check or radio entry is on."
+  field danger bool "A destructive command: the danger ink."
+  field disabled bool "Shown but inert."
+  field parent String "The id of the entry whose submenu it is in; empty is the top level."
+}
+```
+
+<sub>`api.ogt` line 13802</sub>
+
+<a id="type-MenuDesc"></a>
+
+### `MenuDesc` (desc struct)
+
+A menu hanging from an element, or at a point (a context menu).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entries` | `readonly MenuEntry[]` | `[]` | — | — | — | Its entries, submenus' too. |
+| `anchor` | `string` | `""` | — | — | — | The path of the element it hangs from. |
+| `at` | `Vector2 \| null` | `null` | — | — | — | A point it opens at instead (CSS px): where a right press or a long press happened. |
+| `side` | `FloatSide` | `"below"` | — | — | — | The side of the element it prefers. |
+| `align` | `FloatAlign` | `"start"` | — | — | — | How it lines up with the element. |
+| `minWidth` | `number` | `0` | ≥ 0 | `cssPx` | — | Its least width; 0 is 200. |
+| `maxWidth` | `number` | `0` | ≥ 0 | `cssPx` | — | Its greatest width; 0 is 360 at 100 % text, growing with the player's text size. Never past the screen: past it a label wraps. |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls it. |
+
+```ogt
+struct MenuDesc {
+  doc "A menu hanging from an element, or at a point (a context menu)."
+  desc true
+  field entries List.MenuEntry "Its entries, submenus' too."
+  field anchor String "The path of the element it hangs from."
+  field at Option.Vector2 "A point it opens at instead (CSS px): where a right press or a long press happened."
+  field side FloatSide "The side of the element it prefers."
+  field align FloatAlign "How it lines up with the element."
+  field minWidth f32 "Its least width; 0 is 200." {
+    unit cssPx
+    min 0
+  }
+  field maxWidth f32 "Its greatest width; 0 is 360 at 100 % text, growing with the player's text size. Never past the screen: past it a label wraps." {
+    unit cssPx
+    min 0
+  }
+  field label String "What a screen reader calls it."
+}
+```
+
+<sub>`api.ogt` line 13816</sub>
+
+<a id="type-MenuChoice"></a>
+
+### `MenuChoice` (struct)
+
+What a menu answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `chosen` | `string \| null` | `null` | — | — | — | The id of the entry chosen: close it. |
+| `dismissed` | `boolean` | `false` | — | — | — | It asked to close (a choice, Back, a press outside). |
+
+```ogt
+struct MenuChoice {
+  doc "What a menu answered this tick."
+  field chosen Option.String "The id of the entry chosen: close it."
+  field dismissed bool "It asked to close (a choice, Back, a press outside)."
+}
+```
+
+<sub>`api.ogt` line 13835</sub>
+
+<a id="type-SheetEdge"></a>
+
+### `SheetEdge` (enum)
+
+The edge a sheet slides in from; start and end follow the writing direction.
+
+A string: one of the variants below. The zero value is `"bottom"`.
+
+| Variant | Doc |
+|---|---|
+| `"bottom"` | The bottom (the default). |
+| `"end"` | The end side. |
+| `"start"` | The start side. |
+
+```ogt
+enum SheetEdge {
+  doc "The edge a sheet slides in from; start and end follow the writing direction."
+  variant bottom "The bottom (the default)."
+  variant end "The end side."
+  variant start "The start side."
+}
+```
+
+<sub>`api.ogt` line 13841</sub>
+
+<a id="type-SheetDesc"></a>
+
+### `SheetDesc` (desc struct)
+
+A sheet: a surface that slides in from an edge over a scrim; a bottom sheet rests at detents and a drag moves it.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `edge` | `SheetEdge` | `"bottom"` | — | — | — | The edge it comes from. |
+| `detents` | `readonly number[]` | `[]` | — | — | — | A bottom sheet's rest heights, fractions of the room; empty is 0.5 and 0.92. |
+| `detent` | `number` | `0` | — | — | — | The detent it rests at (keep SheetResult.detent). |
+| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | A side sheet's width; 0 is 400. |
+| `title` | `string` | `""` | — | — | — | A title at its top; empty is none. |
+| `dismissible` | `boolean` | `true` | — | — | — | A drag past the lowest detent, a swipe outwards, Back or the scrim close it. |
+| `scrim` | `boolean` | `true` | — | — | — | Dim what is behind it. |
+| `handle` | `boolean` | `true` | — | — | — | A bottom sheet's grab handle. |
+| `closeButton` | `boolean \| null` | `null` | — | — | — | A close button by the title; null is a side sheet's only. |
+| `closeLabel` | `string` | `""` | — | — | — | The close button's accessible name; empty is Close. |
+
+```ogt
+struct SheetDesc {
+  doc "A sheet: a surface that slides in from an edge over a scrim; a bottom sheet rests at detents and a drag moves it."
+  desc true
+  field edge SheetEdge "The edge it comes from."
+  field detents List.f32 "A bottom sheet's rest heights, fractions of the room; empty is 0.5 and 0.92."
+  field detent u32 "The detent it rests at (keep SheetResult.detent)."
+  field size f32 "A side sheet's width; 0 is 400." {
+    unit cssPx
+    min 0
+  }
+  field title String "A title at its top; empty is none."
+  field dismissible bool "A drag past the lowest detent, a swipe outwards, Back or the scrim close it." {
+    default true
+  }
+  field scrim bool "Dim what is behind it." {
+    default true
+  }
+  field handle bool "A bottom sheet's grab handle." {
+    default true
+  }
+  field closeButton Option.bool "A close button by the title; null is a side sheet's only."
+  field closeLabel String "The close button's accessible name; empty is Close."
+}
+```
+
+<sub>`api.ogt` line 13848</sub>
+
+<a id="type-SheetResult"></a>
+
+### `SheetResult` (struct)
+
+What a sheet answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `detent` | `number` | `0` | — | — | — | The detent it rests at after this tick: keep it. |
+| `dismissed` | `boolean` | `false` | — | — | — | It asked to close: set open false. |
+| `visible` | `boolean` | `false` | — | — | — | It is on screen (open, or leaving). |
+
+```ogt
+struct SheetResult {
+  doc "What a sheet answered this tick."
+  field detent u32 "The detent it rests at after this tick: keep it."
+  field dismissed bool "It asked to close: set open false."
+  field visible bool "It is on screen (open, or leaving)."
+}
+```
+
+<sub>`api.ogt` line 13872</sub>
+
+<a id="type-TabVariant"></a>
+
+### `TabVariant` (enum)
+
+How the selected tab is marked.
+
+A string: one of the variants below. The zero value is `"underline"`.
+
+| Variant | Doc |
+|---|---|
+| `"underline"` | An underline that slides between tabs (the default). |
+| `"pill"` | A pill behind the tab, on a track. |
+
+```ogt
+enum TabVariant {
+  doc "How the selected tab is marked."
+  variant underline "An underline that slides between tabs (the default)."
+  variant pill "A pill behind the tab, on a track."
+}
+```
+
+<sub>`api.ogt` line 13879</sub>
+
+<a id="type-TabItem"></a>
+
+### `TabItem` (desc struct)
+
+A tab.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `label` | `string` | `""` | — | — | — | What it says. |
+| `icon` | `string` | `""` | — | — | — | An icon before it; empty is none. |
+| `badge` | `string` | `""` | — | — | — | A count badge after it; empty is none. |
+| `badgeTone` | `Tone` | `"primary"` | — | — | — | The badge's tone. |
+| `disabled` | `boolean` | `false` | — | — | — | Shown but not selectable. |
+
+```ogt
+struct TabItem {
+  doc "A tab."
+  desc true
+  field label String "What it says."
+  field icon String "An icon before it; empty is none."
+  field badge String "A count badge after it; empty is none."
+  field badgeTone Tone "The badge's tone." {
+    default primary
+  }
+  field disabled bool "Shown but not selectable."
+}
+```
+
+<sub>`api.ogt` line 13885</sub>
+
+<a id="type-TabBarDesc"></a>
+
+### `TabBarDesc` (desc struct)
+
+Tabs over the panel the game builds for the selected one.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `tabs` | `readonly TabItem[]` | `[]` | — | — | — | The tabs. |
+| `selected` | `number` | `0` | — | — | — | The selected tab (keep TabBarResult.selected). |
+| `variant` | `TabVariant` | `"underline"` | — | — | — | How the selected tab is marked. |
+| `bumpers` | `boolean` | `true` | — | — | — | The tabPrev and tabNext actions (Q and E, LB and RB) step through the tabs, their glyphs on the device used last (keyboard, Xbox, PlayStation, Switch) at the row's ends. |
+| `wrap` | `boolean` | `true` | — | — | — | Stepping past the last tab comes back to the first. |
+| `fill` | `boolean` | `false` | — | — | — | The tabs share the row's width. |
+| `gap` | `number \| null` | `null` | — | `cssPx` | — | Space between the row and the panel; null is space.md. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `height` | `Size \| null` | `null` | — | — | — | The panel's height; null fits. |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls the tab list. |
+
+```ogt
+struct TabBarDesc {
+  doc "Tabs over the panel the game builds for the selected one."
+  desc true
+  field tabs List.TabItem "The tabs."
+  field selected u32 "The selected tab (keep TabBarResult.selected)."
+  field variant TabVariant "How the selected tab is marked."
+  field bumpers bool "The tabPrev and tabNext actions (Q and E, LB and RB) step through the tabs, their glyphs on the device used last (keyboard, Xbox, PlayStation, Switch) at the row's ends." {
+    default true
+  }
+  field wrap bool "Stepping past the last tab comes back to the first." {
+    default true
+  }
+  field fill bool "The tabs share the row's width."
+  field gap Option.f32 "Space between the row and the panel; null is space.md." {
+    unit cssPx
+  }
+  field width Option.Size "Its width; null grows."
+  field height Option.Size "The panel's height; null fits."
+  field label String "What a screen reader calls the tab list."
+}
+```
+
+<sub>`api.ogt` line 13897</sub>
+
+<a id="type-TabBarResult"></a>
+
+### `TabBarResult` (struct)
+
+What a tab bar answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `selected` | `number` | `0` | — | — | — | The selected tab after this tick: keep it. |
+| `changed` | `boolean` | `false` | — | — | — | It changed this tick. |
+
+```ogt
+struct TabBarResult {
+  doc "What a tab bar answered this tick."
+  field selected u32 "The selected tab after this tick: keep it."
+  field changed bool "It changed this tick."
+}
+```
+
+<sub>`api.ogt` line 13918</sub>
+
+<a id="type-CarouselDesc"></a>
+
+### `CarouselDesc` (desc struct)
+
+Pages side by side that a drag or a flick moves, snapping to a page.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `count` | `number` | `0` | — | — | — | How many pages. |
+| `index` | `number` | `0` | — | — | — | The current page (keep CarouselResult.index). |
+| `peek` | `number \| null` | `null` | — | `cssPx` | — | How much of the pages beside the current one shows; null is 24 on a phone, else 0. |
+| `gap` | `number \| null` | `null` | — | `cssPx` | — | Space between pages; null is space.md. |
+| `arrows` | `boolean \| null` | `null` | — | — | — | Previous and next buttons; null is all but a phone. |
+| `dots` | `boolean` | `true` | — | — | — | Page dots under it. |
+| `loop` | `boolean` | `false` | — | — | — | The arrows wrap around. |
+| `autoplayMs` | `number` | `0` | ≥ 0 | `ms` | — | Move on by itself after this long untouched; 0 never (and never under reduced motion). |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `height` | `Size \| null` | `null` | — | — | — | The pages' height; null fits. |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls it. |
+
+```ogt
+struct CarouselDesc {
+  doc "Pages side by side that a drag or a flick moves, snapping to a page."
+  desc true
+  field count u32 "How many pages."
+  field index u32 "The current page (keep CarouselResult.index)."
+  field peek Option.f32 "How much of the pages beside the current one shows; null is 24 on a phone, else 0." {
+    unit cssPx
+  }
+  field gap Option.f32 "Space between pages; null is space.md." {
+    unit cssPx
+  }
+  field arrows Option.bool "Previous and next buttons; null is all but a phone."
+  field dots bool "Page dots under it." {
+    default true
+  }
+  field loop bool "The arrows wrap around."
+  field autoplayMs f32 "Move on by itself after this long untouched; 0 never (and never under reduced motion)." {
+    unit ms
+    min 0
+  }
+  field width Option.Size "Its width; null grows."
+  field height Option.Size "The pages' height; null fits."
+  field label String "What a screen reader calls it."
+}
+```
+
+<sub>`api.ogt` line 13924</sub>
+
+<a id="type-CarouselResult"></a>
+
+### `CarouselResult` (struct)
+
+What a carousel answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `index` | `number` | `0` | — | — | — | The current page after this tick: keep it. |
+| `changed` | `boolean` | `false` | — | — | — | It changed this tick. |
+
+```ogt
+struct CarouselResult {
+  doc "What a carousel answered this tick."
+  field index u32 "The current page after this tick: keep it."
+  field changed bool "It changed this tick."
+}
+```
+
+<sub>`api.ogt` line 13949</sub>
+
+<a id="type-Crumb"></a>
+
+### `Crumb` (desc struct)
+
+A step of a breadcrumb path.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `label` | `string` | `""` | — | — | — | What it says. |
+| `icon` | `string` | `""` | — | — | — | An icon before it; empty is none. |
+
+```ogt
+struct Crumb {
+  doc "A step of a breadcrumb path."
+  desc true
+  field label String "What it says."
+  field icon String "An icon before it; empty is none."
+}
+```
+
+<sub>`api.ogt` line 13955</sub>
+
+<a id="type-BreadcrumbsDesc"></a>
+
+### `BreadcrumbsDesc` (desc struct)
+
+The path to where the player is; every crumb but the last is a link back.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `items` | `readonly Crumb[]` | `[]` | — | — | — | The crumbs, the current page last. |
+| `maxShown` | `number \| null` | `null` | — | — | — | The most crumbs shown before the middle collapses into a menu; null is 3 on a phone, else 5. |
+| `moreLabel` | `string` | `""` | — | — | — | The collapsed crumbs' button's accessible name; empty is Show path. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls it; empty is Breadcrumb. |
+
+```ogt
+struct BreadcrumbsDesc {
+  doc "The path to where the player is; every crumb but the last is a link back."
+  desc true
+  field items List.Crumb "The crumbs, the current page last."
+  field maxShown Option.u32 "The most crumbs shown before the middle collapses into a menu; null is 3 on a phone, else 5."
+  field moreLabel String "The collapsed crumbs' button's accessible name; empty is Show path."
+  field width Option.Size "Its width; null grows."
+  field label String "What a screen reader calls it; empty is Breadcrumb."
+}
+```
+
+<sub>`api.ogt` line 13962</sub>
+
+<a id="type-BreadcrumbsResult"></a>
+
+### `BreadcrumbsResult` (struct)
+
+What breadcrumbs answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `chosen` | `number \| null` | `null` | — | — | — | The crumb pressed (go back to it). |
+
+```ogt
+struct BreadcrumbsResult {
+  doc "What breadcrumbs answered this tick."
+  field chosen Option.u32 "The crumb pressed (go back to it)."
+}
+```
+
+<sub>`api.ogt` line 13972</sub>
+
+<a id="type-PaginationDesc"></a>
+
+### `PaginationDesc` (desc struct)
+
+Previous and next, the first and last pages and the pages around the current one.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `pages` | `number` | `1` | — | — | — | How many pages. |
+| `page` | `number` | `0` | — | — | — | The current page, from 0 (keep PageResult.page). |
+| `siblings` | `number \| null` | `null` | — | — | — | Pages shown each side of the current one; null is 1. |
+| `compact` | `boolean \| null` | `null` | — | — | — | Only `4 / 20` between the arrows; null is a phone's. |
+| `bumpers` | `boolean` | `false` | — | — | — | The tabPrev and tabNext actions page. |
+| `prevLabel` | `string` | `""` | — | — | — | Previous's accessible name; empty is Previous page. |
+| `nextLabel` | `string` | `""` | — | — | — | Next's accessible name; empty is Next page. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null fits. |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls it; empty is Pagination. |
+
+```ogt
+struct PaginationDesc {
+  doc "Previous and next, the first and last pages and the pages around the current one."
+  desc true
+  field pages u32 "How many pages." {
+    default 1
+  }
+  field page u32 "The current page, from 0 (keep PageResult.page)."
+  field siblings Option.u32 "Pages shown each side of the current one; null is 1."
+  field compact Option.bool "Only `4 / 20` between the arrows; null is a phone's."
+  field bumpers bool "The tabPrev and tabNext actions page."
+  field prevLabel String "Previous's accessible name; empty is Previous page."
+  field nextLabel String "Next's accessible name; empty is Next page."
+  field width Option.Size "Its width; null fits."
+  field label String "What a screen reader calls it; empty is Pagination."
+}
+```
+
+<sub>`api.ogt` line 13977</sub>
+
+<a id="type-PageResult"></a>
+
+### `PageResult` (struct)
+
+What pagination answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `page` | `number` | `0` | — | — | — | The current page after this tick: keep it. |
+| `changed` | `boolean` | `false` | — | — | — | It changed this tick. |
+
+```ogt
+struct PageResult {
+  doc "What pagination answered this tick."
+  field page u32 "The current page after this tick: keep it."
+  field changed bool "It changed this tick."
+}
+```
+
+<sub>`api.ogt` line 13993</sub>
+
+<a id="type-ActionHint"></a>
+
+### `ActionHint` (desc struct)
+
+A hint of the action bar: an action, its glyph on the device in use and what it does.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `action` | `string` | `""` | — | — | — | The action's name (answered when the hint is pressed). |
+| `hint` | `string` | `""` | — | — | — | What it does (`Buy`, `Back`). |
+| `icon` | `string` | `""` | — | — | — | The glyph's icon, for an action with no glyph on the device in use (a UI action's own glyph, og.ui.frameGlyph, follows the device live and wins). |
+| `text` | `string` | `""` | — | — | — | The glyph as text (`Enter`, `A`, `LB`), with the same fallback as icon. |
+| `hold` | `boolean` | `false` | — | — | — | It fires on a hold: a ring fills. |
+| `progress` | `number` | `0` | 0 … 1 | `ratio` | — | How far the hold has gone. |
+
+```ogt
+struct ActionHint {
+  doc "A hint of the action bar: an action, its glyph on the device in use and what it does."
+  desc true
+  field action String "The action's name (answered when the hint is pressed)."
+  field hint String "What it does (`Buy`, `Back`)."
+  field icon String "The glyph's icon, for an action with no glyph on the device in use (a UI action's own glyph, og.ui.frameGlyph, follows the device live and wins)."
+  field text String "The glyph as text (`Enter`, `A`, `LB`), with the same fallback as icon."
+  field hold bool "It fires on a hold: a ring fills."
+  field progress f32 "How far the hold has gone." {
+    min 0
+    max 1
+    unit ratio
+  }
+}
+```
+
+<sub>`api.ogt` line 13999</sub>
+
+<a id="type-ActionHintsDesc"></a>
+
+### `ActionHintsDesc` (desc struct)
+
+The action bar (docs/ui.md §8.2): the actions the top layer accepts, each its glyph and its hint, at an edge.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `hints` | `readonly ActionHint[]` | `[]` | — | — | — | The hints, as og.ui.actionBar answers them. |
+| `anchor` | `Anchor` | `"bottomRight"` | — | — | — | The edge it sits on. |
+| `background` | `boolean` | `true` | — | — | — | A HUD backing behind it. |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls it; empty is Actions. |
+
+```ogt
+struct ActionHintsDesc {
+  doc "The action bar (docs/ui.md §8.2): the actions the top layer accepts, each its glyph and its hint, at an edge."
+  desc true
+  field hints List.ActionHint "The hints, as og.ui.actionBar answers them."
+  field anchor Anchor "The edge it sits on." {
+    default bottomRight
+  }
+  field background bool "A HUD backing behind it." {
+    default true
+  }
+  field label String "What a screen reader calls it; empty is Actions."
+}
+```
+
+<sub>`api.ogt` line 14014</sub>
+
+<a id="type-ActionHintsResult"></a>
+
+### `ActionHintsResult` (struct)
+
+What the action bar answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `pressed` | `string \| null` | `null` | — | — | — | The action of the hint pressed (a touch, a click): act as if the control fired. |
+| `height` | `number` | `0` | — | `cssPx` | — | The room it takes from its edge of the screen, the safe area under it included (as laid out last tick): a scrolling screen pads its content's end by it, so nothing hides under the bar. Under a finger it is a bar of buttons across the bottom. |
+
+```ogt
+struct ActionHintsResult {
+  doc "What the action bar answered this tick."
+  field pressed Option.String "The action of the hint pressed (a touch, a click): act as if the control fired."
+  field height f32 "The room it takes from its edge of the screen, the safe area under it included (as laid out last tick): a scrolling screen pads its content's end by it, so nothing hides under the bar. Under a finger it is a bar of buttons across the bottom." {
+    unit cssPx
+  }
+}
+```
+
+<sub>`api.ogt` line 14027</sub>
+
+<a id="type-RadialItem"></a>
+
+### `RadialItem` (desc struct)
+
+A slice of a radial wheel.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `label` | `string` | `""` | — | — | — | What it is. |
+| `icon` | `string` | `""` | — | — | — | Its icon; empty is none. |
+| `detail` | `string` | `""` | — | — | — | A line the centre shows while it is chosen. |
+| `disabled` | `boolean` | `false` | — | — | — | Shown but not choosable. |
+
+```ogt
+struct RadialItem {
+  doc "A slice of a radial wheel."
+  desc true
+  field label String "What it is."
+  field icon String "Its icon; empty is none."
+  field detail String "A line the centre shows while it is chosen."
+  field disabled bool "Shown but not choosable."
+}
+```
+
+<sub>`api.ogt` line 14035</sub>
+
+<a id="type-RadialDesc"></a>
+
+### `RadialDesc` (desc struct)
+
+A radial wheel: slices around a centre, chosen by where the pointer or a stick points.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `items` | `readonly RadialItem[]` | `[]` | — | — | — | The slices, clockwise from the top. |
+| `aim` | `Vector2 \| null` | `null` | — | — | — | A stick's direction (x right, y down, -1 to 1); null reads the pointer. |
+| `deadZone` | `number` | `0.35` | 0 … 1 | `ratio` | — | How far the stick must point before a slice is chosen. |
+| `release` | `boolean` | `false` | — | — | — | The press or stick that opened it was let go: pick the slice it points at. |
+| `radius` | `number \| null` | `null` | — | `cssPx` | — | Its radius; null is up to 170, at most 36 % of the short side. |
+| `hole` | `number` | `0.42` | 0.2 … 0.8 | `ratio` | — | The centre's radius as a fraction of the wheel's. |
+| `title` | `string` | `""` | — | — | — | What the centre shows when nothing is chosen. |
+| `labels` | `boolean` | `true` | — | — | — | Each slice's label under its icon. |
+| `dim` | `boolean` | `true` | — | — | — | Dim what is behind it. |
+
+```ogt
+struct RadialDesc {
+  doc "A radial wheel: slices around a centre, chosen by where the pointer or a stick points."
+  desc true
+  field items List.RadialItem "The slices, clockwise from the top."
+  field aim Option.Vector2 "A stick's direction (x right, y down, -1 to 1); null reads the pointer."
+  field deadZone f32 "How far the stick must point before a slice is chosen." {
+    default 0.35
+    min 0
+    max 1
+    unit ratio
+  }
+  field release bool "The press or stick that opened it was let go: pick the slice it points at."
+  field radius Option.f32 "Its radius; null is up to 170, at most 36 % of the short side." {
+    unit cssPx
+  }
+  field hole f32 "The centre's radius as a fraction of the wheel's." {
+    default 0.42
+    min 0.2
+    max 0.8
+    unit ratio
+  }
+  field title String "What the centre shows when nothing is chosen."
+  field labels bool "Each slice's label under its icon." {
+    default true
+  }
+  field dim bool "Dim what is behind it." {
+    default true
+  }
+}
+```
+
+<sub>`api.ogt` line 14044</sub>
+
+<a id="type-RadialResult"></a>
+
+### `RadialResult` (struct)
+
+What a radial wheel answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `chosen` | `number \| null` | `null` | — | — | — | The slice picked (a release, a press). |
+| `hovered` | `number \| null` | `null` | — | — | — | The slice pointed at. |
+| `dismissed` | `boolean` | `false` | — | — | — | Back or a press outside asked to close it. |
+
+```ogt
+struct RadialResult {
+  doc "What a radial wheel answered this tick."
+  field chosen Option.u32 "The slice picked (a release, a press)."
+  field hovered Option.u32 "The slice pointed at."
+  field dismissed bool "Back or a press outside asked to close it."
+}
+```
+
+<sub>`api.ogt` line 14074</sub>
+
+<a id="type-DataStateDesc"></a>
+
+### `DataStateDesc` (desc struct)
+
+What a data view shows instead of its rows: loading, an error, or nothing.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `loading` | `boolean` | `false` | — | — | — | Loading: skeleton rows. |
+| `error` | `string` | `""` | — | — | — | An error to show with Retry; empty is none. |
+| `emptyLabel` | `string` | `""` | — | — | — | What it says when there is nothing; empty is Nothing here yet. |
+| `emptyHint` | `string` | `""` | — | — | — | A line under it (what to do). |
+| `retry` | `boolean` | `true` | — | — | — | The error has a Retry button. |
+| `retryLabel` | `string` | `""` | — | — | — | Retry's label; empty is Retry. |
+| `loadingLabel` | `string` | `""` | — | — | — | What a screen reader hears while loading; empty is Loading. |
+
+```ogt
+struct DataStateDesc {
+  doc "What a data view shows instead of its rows: loading, an error, or nothing."
+  desc true
+  field loading bool "Loading: skeleton rows."
+  field error String "An error to show with Retry; empty is none."
+  field emptyLabel String "What it says when there is nothing; empty is Nothing here yet."
+  field emptyHint String "A line under it (what to do)."
+  field retry bool "The error has a Retry button." {
+    default true
+  }
+  field retryLabel String "Retry's label; empty is Retry."
+  field loadingLabel String "What a screen reader hears while loading; empty is Loading."
+}
+```
+
+<sub>`api.ogt` line 14081</sub>
+
+<a id="type-DataListDesc"></a>
+
+### `DataListDesc` (desc struct)
+
+A virtualised list with its empty, loading and error states.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `count` | `number` | `0` | — | — | — | How many rows. |
+| `rowHeight` | `number \| null` | `null` | — | `cssPx` | — | Every row's height; null is the density's row height, at least 48. |
+| `gap` | `number` | `0` | ≥ 0 | `cssPx` | — | Space between rows. |
+| `selected` | `number \| null` | `null` | — | — | — | The selected row. |
+| `striped` | `boolean` | `false` | — | — | — | Every other row is marked (List.row[odd]). |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `height` | `Size \| null` | `null` | — | — | — | Its height (it scrolls inside); null fits. |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls it. |
+| `loading` | `boolean` | `false` | — | — | — | Loading: skeleton rows. |
+| `error` | `string` | `""` | — | — | — | An error to show with Retry; empty is none. |
+| `emptyLabel` | `string` | `""` | — | — | — | What it says when there are no rows. |
+| `emptyHint` | `string` | `""` | — | — | — | A line under it. |
+| `retry` | `boolean` | `true` | — | — | — | The error has a Retry button. |
+| `retryLabel` | `string` | `""` | — | — | — | Retry's label. |
+| `loadingLabel` | `string` | `""` | — | — | — | What a screen reader hears while loading. |
+
+```ogt
+struct DataListDesc {
+  doc "A virtualised list with its empty, loading and error states."
+  desc true
+  field count u32 "How many rows."
+  field rowHeight Option.f32 "Every row's height; null is the density's row height, at least 48." {
+    unit cssPx
+  }
+  field gap f32 "Space between rows." {
+    unit cssPx
+    min 0
+  }
+  field selected Option.u32 "The selected row."
+  field striped bool "Every other row is marked (List.row[odd])."
+  field width Option.Size "Its width; null grows."
+  field height Option.Size "Its height (it scrolls inside); null fits."
+  field label String "What a screen reader calls it."
+  field loading bool "Loading: skeleton rows."
+  field error String "An error to show with Retry; empty is none."
+  field emptyLabel String "What it says when there are no rows."
+  field emptyHint String "A line under it."
+  field retry bool "The error has a Retry button." {
+    default true
+  }
+  field retryLabel String "Retry's label."
+  field loadingLabel String "What a screen reader hears while loading."
+}
+```
+
+<sub>`api.ogt` line 14095</sub>
+
+<a id="type-DataListResult"></a>
+
+### `DataListResult` (struct)
+
+What a data list or grid answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `clicked` | `number \| null` | `null` | — | — | — | The row or cell pressed (or activated). |
+| `retry` | `boolean` | `false` | — | — | — | Retry was pressed. |
+
+```ogt
+struct DataListResult {
+  doc "What a data list or grid answered this tick."
+  field clicked Option.u32 "The row or cell pressed (or activated)."
+  field retry bool "Retry was pressed."
+}
+```
+
+<sub>`api.ogt` line 14122</sub>
+
+<a id="type-DataGridDesc"></a>
+
+### `DataGridDesc` (desc struct)
+
+A virtualised grid of equal cells with its empty, loading and error states.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `count` | `number` | `0` | — | — | — | How many cells. |
+| `cellWidth` | `number` | `0` | ≥ 0 | `cssPx` | — | A cell's width; 0 is 64 (see GridDesc.cellWidth). |
+| `cellHeight` | `number` | `0` | ≥ 0 | `cssPx` | — | A cell's height; 0 is its width. |
+| `columns` | `number` | `0` | — | — | — | Cells across; 0 is as many as fit. |
+| `gap` | `number \| null` | `null` | — | `cssPx` | — | Space between cells; null is space.sm. |
+| `padding` | `Insets \| null` | `null` | — | — | — | Space inside; null is none. |
+| `selected` | `number \| null` | `null` | — | — | — | The selected cell. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `height` | `Size \| null` | `null` | — | — | — | Its height (it scrolls inside); null fits. |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls it. |
+| `loading` | `boolean` | `false` | — | — | — | Loading: skeleton rows. |
+| `error` | `string` | `""` | — | — | — | An error to show with Retry; empty is none. |
+| `emptyLabel` | `string` | `""` | — | — | — | What it says when there are no cells. |
+| `emptyHint` | `string` | `""` | — | — | — | A line under it. |
+| `retry` | `boolean` | `true` | — | — | — | The error has a Retry button. |
+| `retryLabel` | `string` | `""` | — | — | — | Retry's label. |
+| `loadingLabel` | `string` | `""` | — | — | — | What a screen reader hears while loading. |
+
+```ogt
+struct DataGridDesc {
+  doc "A virtualised grid of equal cells with its empty, loading and error states."
+  desc true
+  field count u32 "How many cells."
+  field cellWidth f32 "A cell's width; 0 is 64 (see GridDesc.cellWidth)." {
+    unit cssPx
+    min 0
+  }
+  field cellHeight f32 "A cell's height; 0 is its width." {
+    unit cssPx
+    min 0
+  }
+  field columns u32 "Cells across; 0 is as many as fit."
+  field gap Option.f32 "Space between cells; null is space.sm." {
+    unit cssPx
+  }
+  field padding Option.Insets "Space inside; null is none."
+  field selected Option.u32 "The selected cell."
+  field width Option.Size "Its width; null grows."
+  field height Option.Size "Its height (it scrolls inside); null fits."
+  field label String "What a screen reader calls it."
+  field loading bool "Loading: skeleton rows."
+  field error String "An error to show with Retry; empty is none."
+  field emptyLabel String "What it says when there are no cells."
+  field emptyHint String "A line under it."
+  field retry bool "The error has a Retry button." {
+    default true
+  }
+  field retryLabel String "Retry's label."
+  field loadingLabel String "What a screen reader hears while loading."
+}
+```
+
+<sub>`api.ogt` line 14128</sub>
+
+<a id="type-NumberFormat"></a>
+
+### `NumberFormat` (enum)
+
+How a number reads in a data view.
+
+A string: one of the variants below. The zero value is `"grouped"`.
+
+| Variant | Doc |
+|---|---|
+| `"grouped"` | Grouped digits: 12,840 (the default). |
+| `"percent"` | A fraction as a percentage: 0.42 is 42%. |
+| `"compact"` | Compact units: 12.4K, 3.40M. |
+| `"plain"` | As it is. |
+
+```ogt
+enum NumberFormat {
+  doc "How a number reads in a data view."
+  variant grouped "Grouped digits: 12,840 (the default)."
+  variant percent "A fraction as a percentage: 0.42 is 42%."
+  variant compact "Compact units: 12.4K, 3.40M."
+  variant plain "As it is."
+}
+```
+
+<sub>`api.ogt` line 14160</sub>
+
+<a id="type-TableColumn"></a>
+
+### `TableColumn` (desc struct)
+
+A column of a table: the row field it shows and how.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `key` | `string` | `""` | — | — | — | The field of each row it shows. |
+| `label` | `string` | `""` | — | — | — | Its header; empty is the key. |
+| `width` | `number \| null` | `null` | — | `cssPx` | — | Its width; null shares what is left. |
+| `numeric` | `boolean` | `false` | — | — | — | Numbers: aligned to the end in the mono face, sorted by value, descending first. |
+| `format` | `NumberFormat` | `"grouped"` | — | — | — | How its numbers read. |
+| `digits` | `number` | `0` | — | — | — | Decimals. |
+| `unit` | `string` | `""` | — | — | — | A unit after its numbers. |
+| `sortable` | `boolean` | `true` | — | — | — | A press on its header sorts by it. |
+| `filterable` | `boolean` | `true` | — | — | — | The search reads it. |
+| `priority` | `number` | `0` | — | — | — | On a phone the columns that fit are kept, highest priority first. |
+| `toneKey` | `string` | `""` | — | — | — | A field of each row naming its cell's tone (`up`, `down`, `success`, `danger`). |
+
+```ogt
+struct TableColumn {
+  doc "A column of a table: the row field it shows and how."
+  desc true
+  field key String "The field of each row it shows."
+  field label String "Its header; empty is the key."
+  field width Option.f32 "Its width; null shares what is left." {
+    unit cssPx
+  }
+  field numeric bool "Numbers: aligned to the end in the mono face, sorted by value, descending first."
+  field format NumberFormat "How its numbers read."
+  field digits u32 "Decimals."
+  field unit String "A unit after its numbers."
+  field sortable bool "A press on its header sorts by it." {
+    default true
+  }
+  field filterable bool "The search reads it." {
+    default true
+  }
+  field priority i32 "On a phone the columns that fit are kept, highest priority first."
+  field toneKey String "A field of each row naming its cell's tone (`up`, `down`, `success`, `danger`)."
+}
+```
+
+<sub>`api.ogt` line 14168</sub>
+
+<a id="type-TableDesc"></a>
+
+### `TableDesc` (desc struct)
+
+A sortable, filterable table of rows by columns; only the rows in view are built.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `rows` | `unknown` | `null` | — | — | — | The rows: an array of objects, the columns' keys their fields. Pass the same array while it is unchanged: the sort and the filter are computed once per change of the rows, the sort or the filter. |
+| `columns` | `readonly TableColumn[]` | `[]` | — | — | — | The columns. |
+| `sortBy` | `number` | `-1` | — | — | — | The column sorted by; -1 is the rows' own order (keep TableResult.sortBy). |
+| `descending` | `boolean` | `false` | — | — | — | Sorted high to low (keep TableResult.descending). |
+| `filter` | `string` | `""` | — | — | — | The search text (keep TableResult.filter). |
+| `search` | `boolean` | `true` | — | — | — | A search field over it. |
+| `searchPlaceholder` | `string` | `""` | — | — | — | The search field's placeholder; empty is Search. |
+| `selected` | `number \| null` | `null` | — | — | — | The selected row, by its index in rows. |
+| `rowHeight` | `number \| null` | `null` | — | `cssPx` | — | Every row's height; null is 40 (48 on a phone). |
+| `striped` | `boolean` | `true` | — | — | — | Every other row shaded. |
+| `footer` | `boolean` | `true` | — | — | — | A count line under it (`120 of 10,000`). |
+| `countLabel` | `string` | `""` | — | — | — | The count line, with {shown} and {total}; empty is `{shown} of {total}`. |
+| `noMatchLabel` | `string` | `""` | — | — | — | What it says when the filter keeps no row; empty is No matches. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `height` | `Size \| null` | `null` | — | — | — | Its height (the rows scroll inside); null fits. |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls it. |
+| `loading` | `boolean` | `false` | — | — | — | Loading: skeleton rows. |
+| `error` | `string` | `""` | — | — | — | An error to show with Retry; empty is none. |
+| `emptyLabel` | `string` | `""` | — | — | — | What it says when there are no rows. |
+| `emptyHint` | `string` | `""` | — | — | — | A line under it. |
+| `retry` | `boolean` | `true` | — | — | — | The error has a Retry button. |
+| `retryLabel` | `string` | `""` | — | — | — | Retry's label. |
+| `loadingLabel` | `string` | `""` | — | — | — | What a screen reader hears while loading. |
+
+```ogt
+struct TableDesc {
+  doc "A sortable, filterable table of rows by columns; only the rows in view are built."
+  desc true
+  field rows Json "The rows: an array of objects, the columns' keys their fields. Pass the same array while it is unchanged: the sort and the filter are computed once per change of the rows, the sort or the filter."
+  field columns List.TableColumn "The columns."
+  field sortBy i32 "The column sorted by; -1 is the rows' own order (keep TableResult.sortBy)." {
+    default -1
+  }
+  field descending bool "Sorted high to low (keep TableResult.descending)."
+  field filter String "The search text (keep TableResult.filter)."
+  field search bool "A search field over it." {
+    default true
+  }
+  field searchPlaceholder String "The search field's placeholder; empty is Search."
+  field selected Option.u32 "The selected row, by its index in rows."
+  field rowHeight Option.f32 "Every row's height; null is 40 (48 on a phone)." {
+    unit cssPx
+  }
+  field striped bool "Every other row shaded." {
+    default true
+  }
+  field footer bool "A count line under it (`120 of 10,000`)." {
+    default true
+  }
+  field countLabel String "The count line, with {shown} and {total}; empty is `{shown} of {total}`."
+  field noMatchLabel String "What it says when the filter keeps no row; empty is No matches."
+  field width Option.Size "Its width; null grows."
+  field height Option.Size "Its height (the rows scroll inside); null fits."
+  field label String "What a screen reader calls it."
+  field loading bool "Loading: skeleton rows."
+  field error String "An error to show with Retry; empty is none."
+  field emptyLabel String "What it says when there are no rows."
+  field emptyHint String "A line under it."
+  field retry bool "The error has a Retry button." {
+    default true
+  }
+  field retryLabel String "Retry's label."
+  field loadingLabel String "What a screen reader hears while loading."
+}
+```
+
+<sub>`api.ogt` line 14190</sub>
+
+<a id="type-TableResult"></a>
+
+### `TableResult` (struct)
+
+What a table answered this tick: keep the sort and the filter.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `sortBy` | `number` | `0` | — | — | — | The column sorted by. |
+| `descending` | `boolean` | `false` | — | — | — | High to low. |
+| `filter` | `string` | `""` | — | — | — | The search text. |
+| `clicked` | `number \| null` | `null` | — | — | — | The row pressed, by its index in rows. |
+| `retry` | `boolean` | `false` | — | — | — | Retry was pressed. |
+| `changed` | `boolean` | `false` | — | — | — | The sort or the filter changed this tick. |
+
+```ogt
+struct TableResult {
+  doc "What a table answered this tick: keep the sort and the filter."
+  field sortBy i32 "The column sorted by."
+  field descending bool "High to low."
+  field filter String "The search text."
+  field clicked Option.u32 "The row pressed, by its index in rows."
+  field retry bool "Retry was pressed."
+  field changed bool "The sort or the filter changed this tick."
+}
+```
+
+<sub>`api.ogt` line 14230</sub>
+
+<a id="type-TreeItem"></a>
+
+### `TreeItem` (desc struct)
+
+An item of a tree; an item whose `parent` names another's id sits under it.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `id` | `string` | `""` | — | — | — | Its id: answered when it is chosen, and its children's parent. |
+| `parent` | `string` | `""` | — | — | — | Its parent's id; empty is the top level. |
+| `label` | `string` | `""` | — | — | — | What it says. |
+| `icon` | `string` | `""` | — | — | — | An icon before it; empty is none. |
+| `badge` | `string` | `""` | — | — | — | A badge after it; empty is none. |
+| `badgeTone` | `Tone` | `"neutral"` | — | — | — | The badge's tone. |
+| `disabled` | `boolean` | `false` | — | — | — | Shown but not choosable. |
+
+```ogt
+struct TreeItem {
+  doc "An item of a tree; an item whose `parent` names another's id sits under it."
+  desc true
+  field id String "Its id: answered when it is chosen, and its children's parent."
+  field parent String "Its parent's id; empty is the top level."
+  field label String "What it says."
+  field icon String "An icon before it; empty is none."
+  field badge String "A badge after it; empty is none."
+  field badgeTone Tone "The badge's tone."
+  field disabled bool "Shown but not choosable."
+}
+```
+
+<sub>`api.ogt` line 14240</sub>
+
+<a id="type-TreeDesc"></a>
+
+### `TreeDesc` (desc struct)
+
+A tree of expandable items; the visible rows are virtualised.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `items` | `readonly TreeItem[]` | `[]` | — | — | — | The items, each after its parent or not: order among siblings is kept. |
+| `expanded` | `readonly string[]` | `[]` | — | — | — | The open items' ids (keep TreeResult.expanded). |
+| `selected` | `string` | `""` | — | — | — | The selected item's id. |
+| `toggleOnPress` | `boolean` | `true` | — | — | — | A press on an item with children opens or closes it as well as choosing it. |
+| `rowHeight` | `number \| null` | `null` | — | `cssPx` | — | Every row's height; null is 36 (44 on a phone). |
+| `indent` | `number \| null` | `null` | — | `cssPx` | — | Each level's indent; null is 20. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `height` | `Size \| null` | `null` | — | — | — | Its height (the rows scroll inside); null fits. |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls it. |
+
+```ogt
+struct TreeDesc {
+  doc "A tree of expandable items; the visible rows are virtualised."
+  desc true
+  field items List.TreeItem "The items, each after its parent or not: order among siblings is kept."
+  field expanded List.String "The open items' ids (keep TreeResult.expanded)."
+  field selected String "The selected item's id."
+  field toggleOnPress bool "A press on an item with children opens or closes it as well as choosing it." {
+    default true
+  }
+  field rowHeight Option.f32 "Every row's height; null is 36 (44 on a phone)." {
+    unit cssPx
+  }
+  field indent Option.f32 "Each level's indent; null is 20." {
+    unit cssPx
+  }
+  field width Option.Size "Its width; null grows."
+  field height Option.Size "Its height (the rows scroll inside); null fits."
+  field label String "What a screen reader calls it."
+}
+```
+
+<sub>`api.ogt` line 14252</sub>
+
+<a id="type-TreeResult"></a>
+
+### `TreeResult` (struct)
+
+What a tree answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `chosen` | `string \| null` | `null` | — | — | — | The item pressed. |
+| `toggled` | `string \| null` | `null` | — | — | — | The item opened or closed. |
+| `expanded` | `readonly string[]` | `[]` | — | — | — | The open items after this tick: keep them. |
+
+```ogt
+struct TreeResult {
+  doc "What a tree answered this tick."
+  field chosen Option.String "The item pressed."
+  field toggled Option.String "The item opened or closed."
+  field expanded List.String "The open items after this tick: keep them."
+}
+```
+
+<sub>`api.ogt` line 14272</sub>
+
+<a id="type-GraphNodeState"></a>
+
+### `GraphNodeState` (enum)
+
+A graph node's state, shown by its ring and a mark as well as its colour.
+
+A string: one of the variants below. The zero value is `"available"`.
+
+| Variant | Doc |
+|---|---|
+| `"available"` | Can be taken (the default). |
+| `"locked"` | Not yet: faint, with a lock's bar. |
+| `"active"` | In progress: the primary ink and a glow. |
+| `"done"` | Taken: a tick; links from it are solid. |
+| `"current"` | Where the player is: the highlight ink and a dot. |
+
+```ogt
+enum GraphNodeState {
+  doc "A graph node's state, shown by its ring and a mark as well as its colour."
+  variant available "Can be taken (the default)."
+  variant locked "Not yet: faint, with a lock's bar."
+  variant active "In progress: the primary ink and a glow."
+  variant done "Taken: a tick; links from it are solid."
+  variant current "Where the player is: the highlight ink and a dot."
+}
+```
+
+<sub>`api.ogt` line 14279</sub>
+
+<a id="type-GraphNodeShape"></a>
+
+### `GraphNodeShape` (enum)
+
+A graph node's outline.
+
+A string: one of the variants below. The zero value is `"circle"`.
+
+| Variant | Doc |
+|---|---|
+| `"circle"` | A circle (the default). |
+| `"square"` | A rounded square. |
+| `"hex"` | A hexagon. |
+| `"diamond"` | A diamond. |
+
+```ogt
+enum GraphNodeShape {
+  doc "A graph node's outline."
+  variant circle "A circle (the default)."
+  variant square "A rounded square."
+  variant hex "A hexagon."
+  variant diamond "A diamond."
+}
+```
+
+<sub>`api.ogt` line 14288</sub>
+
+<a id="type-GraphNode"></a>
+
+### `GraphNode` (desc struct)
+
+A node of a graph, at a position in the graph's own units.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `id` | `string` | `""` | — | — | — | Its id; links name it. |
+| `x` | `number` | `0` | — | — | — | Across, in graph units (CSS px at zoom 1). |
+| `y` | `number` | `0` | — | — | — | Down. |
+| `label` | `string` | `""` | — | — | — | Its name, under it. |
+| `icon` | `string` | `""` | — | — | — | Its icon; empty shows the label's first letters. |
+| `state` | `GraphNodeState` | `"available"` | — | — | — | Its state. |
+| `shape` | `GraphNodeShape` | `"circle"` | — | — | — | Its outline. |
+| `kind` | `string` | `""` | — | — | — | A selector flag a style dresses (`boss`, `shop`). |
+| `disabled` | `boolean` | `false` | — | — | — | Shown but not pressable. |
+
+```ogt
+struct GraphNode {
+  doc "A node of a graph, at a position in the graph's own units."
+  desc true
+  field id String "Its id; links name it."
+  field x f32 "Across, in graph units (CSS px at zoom 1)."
+  field y f32 "Down."
+  field label String "Its name, under it."
+  field icon String "Its icon; empty shows the label's first letters."
+  field state GraphNodeState "Its state."
+  field shape GraphNodeShape "Its outline."
+  field kind String "A selector flag a style dresses (`boss`, `shop`)."
+  field disabled bool "Shown but not pressable."
+}
+```
+
+<sub>`api.ogt` line 14296</sub>
+
+<a id="type-GraphLink"></a>
+
+### `GraphLink` (desc struct)
+
+A link between two nodes.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `from` | `string` | `""` | — | — | — | The node it starts at. |
+| `to` | `string` | `""` | — | — | — | The node it ends at. |
+| `active` | `boolean` | `false` | — | — | — | Drawn solid in the primary ink (a path taken). |
+
+```ogt
+struct GraphLink {
+  doc "A link between two nodes."
+  desc true
+  field from String "The node it starts at."
+  field to String "The node it ends at."
+  field active bool "Drawn solid in the primary ink (a path taken)."
+}
+```
+
+<sub>`api.ogt` line 14310</sub>
+
+<a id="type-NodeGraphDesc"></a>
+
+### `NodeGraphDesc` (desc struct)
+
+A pan-and-zoom graph of nodes and links: skill and tech trees, run maps, flowcharts.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `nodes` | `readonly GraphNode[]` | `[]` | — | — | — | The nodes. |
+| `links` | `readonly GraphLink[]` | `[]` | — | — | — | The links, under the nodes. |
+| `zoom` | `number` | `1` | — | — | — | Its zoom (keep NodeGraphResult.zoom). |
+| `minZoom` | `number` | `0.5` | — | — | — | The least zoom. |
+| `maxZoom` | `number` | `2` | — | — | — | The greatest zoom. |
+| `nodeSize` | `number \| null` | `null` | — | `cssPx` | — | A node's size at zoom 1; null is 56 (52 on a phone). |
+| `curved` | `boolean` | `true` | — | — | — | Links bend as a run map's paths. |
+| `labels` | `boolean` | `true` | — | — | — | Names under the nodes. |
+| `selected` | `string` | `""` | — | — | — | The selected node's id: ringed in the focus ink. |
+| `zoomInLabel` | `string` | `""` | — | — | — | Zoom in's accessible name. |
+| `zoomOutLabel` | `string` | `""` | — | — | — | Zoom out's accessible name. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `height` | `Size \| null` | `null` | — | — | — | Its height; null is 420 (360 on a phone). |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls it. |
+
+```ogt
+struct NodeGraphDesc {
+  doc "A pan-and-zoom graph of nodes and links: skill and tech trees, run maps, flowcharts."
+  desc true
+  field nodes List.GraphNode "The nodes."
+  field links List.GraphLink "The links, under the nodes."
+  field zoom f32 "Its zoom (keep NodeGraphResult.zoom)." {
+    default 1
+  }
+  field minZoom f32 "The least zoom." {
+    default 0.5
+  }
+  field maxZoom f32 "The greatest zoom." {
+    default 2
+  }
+  field nodeSize Option.f32 "A node's size at zoom 1; null is 56 (52 on a phone)." {
+    unit cssPx
+  }
+  field curved bool "Links bend as a run map's paths." {
+    default true
+  }
+  field labels bool "Names under the nodes." {
+    default true
+  }
+  field selected String "The selected node's id: ringed in the focus ink."
+  field zoomInLabel String "Zoom in's accessible name."
+  field zoomOutLabel String "Zoom out's accessible name."
+  field width Option.Size "Its width; null grows."
+  field height Option.Size "Its height; null is 420 (360 on a phone)."
+  field label String "What a screen reader calls it."
+}
+```
+
+<sub>`api.ogt` line 14318</sub>
+
+<a id="type-NodeGraphResult"></a>
+
+### `NodeGraphResult` (struct)
+
+What a graph answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `chosen` | `string \| null` | `null` | — | — | — | The node pressed. |
+| `zoom` | `number` | `0` | — | — | — | The zoom after this tick: keep it. |
+| `changed` | `boolean` | `false` | — | — | — | The zoom changed this tick. |
+
+```ogt
+struct NodeGraphResult {
+  doc "What a graph answered this tick."
+  field chosen Option.String "The node pressed."
+  field zoom f32 "The zoom after this tick: keep it."
+  field changed bool "The zoom changed this tick."
+}
+```
+
+<sub>`api.ogt` line 14349</sub>
+
+<a id="type-ChartKind"></a>
+
+### `ChartKind` (enum)
+
+What a chart draws.
+
+A string: one of the variants below. The zero value is `"line"`.
+
+| Variant | Doc |
+|---|---|
+| `"line"` | Lines through the values (the default). |
+| `"area"` | Lines with the area under them filled, stacked with stacked. |
+| `"bar"` | Bars, grouped or stacked. |
+| `"radar"` | A polygon a series over rings, one axis a category (at least three). |
+| `"pie"` | The first series' values as wedges, with a legend. |
+| `"donut"` | A pie with a hole that shows the total, or the hovered value. |
+
+```ogt
+enum ChartKind {
+  doc "What a chart draws."
+  variant line "Lines through the values (the default)."
+  variant area "Lines with the area under them filled, stacked with stacked."
+  variant bar "Bars, grouped or stacked."
+  variant radar "A polygon a series over rings, one axis a category (at least three)."
+  variant pie "The first series' values as wedges, with a legend."
+  variant donut "A pie with a hole that shows the total, or the hovered value."
+}
+```
+
+<sub>`api.ogt` line 14356</sub>
+
+<a id="type-ChartSeries"></a>
+
+### `ChartSeries` (desc struct)
+
+A series of a chart: its name and a value a category.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `label` | `string` | `""` | — | — | — | Its name, in the legend and the tooltip. |
+| `values` | `readonly number[]` | `[]` | — | — | — | A value for each category. |
+| `color` | `string` | `""` | — | — | — | Its colour as `#rrggbb`; empty is the style's series colour for its place. |
+
+```ogt
+struct ChartSeries {
+  doc "A series of a chart: its name and a value a category."
+  desc true
+  field label String "Its name, in the legend and the tooltip."
+  field values List.f32 "A value for each category."
+  field color String "Its colour as `#rrggbb`; empty is the style's series colour for its place."
+}
+```
+
+<sub>`api.ogt` line 14366</sub>
+
+<a id="type-ChartDesc"></a>
+
+### `ChartDesc` (desc struct)
+
+A chart: line, area, bar, radar, pie or donut, with axes, a legend, a tooltip and its states.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `kind` | `ChartKind` | `"line"` | — | — | — | What it draws. |
+| `series` | `readonly ChartSeries[]` | `[]` | — | — | — | The series. |
+| `categories` | `readonly string[]` | `[]` | — | — | — | The categories' names: the x axis, a radar's axes, a pie's wedges. |
+| `title` | `string` | `""` | — | — | — | A title over it; empty is none. |
+| `subtitle` | `string` | `""` | — | — | — | A line under the title. |
+| `stacked` | `boolean` | `false` | — | — | — | Bars and areas stack instead of standing side by side. |
+| `smooth` | `boolean` | `true` | — | — | — | Lines curve through the values (monotone: never past them). |
+| `dots` | `boolean \| null` | `null` | — | — | — | A dot on every value; null is on short series. |
+| `min` | `number \| null` | `null` | — | — | — | The value axis's start; null fits the data (with zero for bars and areas). |
+| `max` | `number \| null` | `null` | — | — | — | Its end; null fits the data. |
+| `format` | `NumberFormat` | `"grouped"` | — | — | — | How values read. |
+| `digits` | `number` | `0` | — | — | — | Decimals. |
+| `unit` | `string` | `""` | — | — | — | A unit after values in the tooltip. |
+| `axis` | `boolean` | `true` | — | — | — | The value and category axes. |
+| `grid` | `boolean` | `true` | — | — | — | Grid lines at the value ticks. |
+| `legend` | `boolean \| null` | `null` | — | — | — | A legend; null is when there is more than one series (a pie lists its wedges always). |
+| `hole` | `number` | `0.62` | 0.2 … 0.9 | `ratio` | — | A donut's hole, as a fraction of its radius. |
+| `totalLabel` | `string` | `""` | — | — | — | What a donut's centre says under the total; empty is Total. |
+| `selected` | `number \| null` | `null` | — | — | — | The category marked as selected. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `height` | `number \| null` | `null` | — | `cssPx` | — | The plot's height; null is 240 (200 on a phone). |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls it; its description is made from the data. |
+| `loading` | `boolean` | `false` | — | — | — | Loading. |
+| `error` | `string` | `""` | — | — | — | An error to show with Retry; empty is none. |
+| `emptyLabel` | `string` | `""` | — | — | — | What it says with no data; empty is No data yet. |
+| `emptyHint` | `string` | `""` | — | — | — | A line under it. |
+| `retry` | `boolean` | `true` | — | — | — | The error has a Retry button. |
+| `retryLabel` | `string` | `""` | — | — | — | Retry's label. |
+| `loadingLabel` | `string` | `""` | — | — | — | What a screen reader hears while loading. |
+
+```ogt
+struct ChartDesc {
+  doc "A chart: line, area, bar, radar, pie or donut, with axes, a legend, a tooltip and its states."
+  desc true
+  field kind ChartKind "What it draws."
+  field series List.ChartSeries "The series."
+  field categories List.String "The categories' names: the x axis, a radar's axes, a pie's wedges."
+  field title String "A title over it; empty is none."
+  field subtitle String "A line under the title."
+  field stacked bool "Bars and areas stack instead of standing side by side."
+  field smooth bool "Lines curve through the values (monotone: never past them)." {
+    default true
+  }
+  field dots Option.bool "A dot on every value; null is on short series."
+  field min Option.f32 "The value axis's start; null fits the data (with zero for bars and areas)."
+  field max Option.f32 "Its end; null fits the data."
+  field format NumberFormat "How values read."
+  field digits u32 "Decimals."
+  field unit String "A unit after values in the tooltip."
+  field axis bool "The value and category axes." {
+    default true
+  }
+  field grid bool "Grid lines at the value ticks." {
+    default true
+  }
+  field legend Option.bool "A legend; null is when there is more than one series (a pie lists its wedges always)."
+  field hole f32 "A donut's hole, as a fraction of its radius." {
+    default 0.62
+    min 0.2
+    max 0.9
+    unit ratio
+  }
+  field totalLabel String "What a donut's centre says under the total; empty is Total."
+  field selected Option.u32 "The category marked as selected."
+  field width Option.Size "Its width; null grows."
+  field height Option.f32 "The plot's height; null is 240 (200 on a phone)." {
+    unit cssPx
+  }
+  field label String "What a screen reader calls it; its description is made from the data."
+  field loading bool "Loading."
+  field error String "An error to show with Retry; empty is none."
+  field emptyLabel String "What it says with no data; empty is No data yet."
+  field emptyHint String "A line under it."
+  field retry bool "The error has a Retry button." {
+    default true
+  }
+  field retryLabel String "Retry's label."
+  field loadingLabel String "What a screen reader hears while loading."
+}
+```
+
+<sub>`api.ogt` line 14374</sub>
+
+<a id="type-ChartResult"></a>
+
+### `ChartResult` (struct)
+
+What a chart answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `hovered` | `number \| null` | `null` | — | — | — | The category under the pointer or the focus. |
+| `clicked` | `number \| null` | `null` | — | — | — | The category pressed. |
+| `retry` | `boolean` | `false` | — | — | — | Retry was pressed. |
+
+```ogt
+struct ChartResult {
+  doc "What a chart answered this tick."
+  field hovered Option.u32 "The category under the pointer or the focus."
+  field clicked Option.u32 "The category pressed."
+  field retry bool "Retry was pressed."
+}
+```
+
+<sub>`api.ogt` line 14423</sub>
+
+<a id="type-KeyValueRow"></a>
+
+### `KeyValueRow` (desc struct)
+
+A row of key-value rows.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `label` | `string` | `""` | — | — | — | The key. |
+| `value` | `string` | `""` | — | — | — | The value. |
+| `hint` | `string` | `""` | — | — | — | A line under the key; empty is none. |
+| `icon` | `string` | `""` | — | — | — | An icon before the key; empty is none. |
+| `tone` | `string` | `""` | — | — | — | The value's ink: success, warn, danger, info, primary, gold, health, mana, xp; empty is ink. |
+| `mono` | `boolean \| null` | `null` | — | — | — | The value in the mono face; null is when it reads as a number. |
+
+```ogt
+struct KeyValueRow {
+  doc "A row of key-value rows."
+  desc true
+  field label String "The key."
+  field value String "The value."
+  field hint String "A line under the key; empty is none."
+  field icon String "An icon before the key; empty is none."
+  field tone String "The value's ink: success, warn, danger, info, primary, gold, health, mana, xp; empty is ink."
+  field mono Option.bool "The value in the mono face; null is when it reads as a number."
+}
+```
+
+<sub>`api.ogt` line 14430</sub>
+
+<a id="type-KeyValueRowsDesc"></a>
+
+### `KeyValueRowsDesc` (desc struct)
+
+Key-value rows: a stat sheet, an item's properties.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `rows` | `readonly KeyValueRow[]` | `[]` | — | — | — | The rows. |
+| `title` | `string` | `""` | — | — | — | A caption over them; empty is none. |
+| `dense` | `boolean` | `false` | — | — | — | Smaller type and less space. |
+| `dividers` | `boolean` | `true` | — | — | — | Hairlines between rows. |
+| `striped` | `boolean` | `false` | — | — | — | Every other row shaded instead of hairlines. |
+| `inset` | `number` | `0` | ≥ 0 | `cssPx` | — | Space at each row's ends. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls the list when it has no title. |
+
+```ogt
+struct KeyValueRowsDesc {
+  doc "Key-value rows: a stat sheet, an item's properties."
+  desc true
+  field rows List.KeyValueRow "The rows."
+  field title String "A caption over them; empty is none."
+  field dense bool "Smaller type and less space."
+  field dividers bool "Hairlines between rows." {
+    default true
+  }
+  field striped bool "Every other row shaded instead of hairlines."
+  field inset f32 "Space at each row's ends." {
+    unit cssPx
+    min 0
+  }
+  field width Option.Size "Its width; null grows."
+  field label String "What a screen reader calls the list when it has no title."
+}
+```
+
+<sub>`api.ogt` line 14441</sub>
+
+<a id="type-StatCompareRow"></a>
+
+### `StatCompareRow` (desc struct)
+
+A stat compared: its value now and the value it would take.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `label` | `string` | `""` | — | — | — | The stat. |
+| `current` | `number` | `0` | — | — | — | Its value now. |
+| `next` | `number \| null` | `null` | — | — | — | The value it would take; null is no change. |
+| `max` | `number \| null` | `null` | — | — | — | The stat's scale: a bar shows the values and the change; null is no bar. |
+| `lowerIsBetter` | `boolean` | `false` | — | — | — | Less is better (a cooldown, a cost): a fall is green. |
+| `format` | `NumberFormat` | `"grouped"` | — | — | — | How its values read. |
+| `digits` | `number` | `0` | — | — | — | Decimals. |
+| `unit` | `string` | `""` | — | — | — | A unit after them. |
+| `icon` | `string` | `""` | — | — | — | An icon before the label; empty is none. |
+
+```ogt
+struct StatCompareRow {
+  doc "A stat compared: its value now and the value it would take."
+  desc true
+  field label String "The stat."
+  field current f32 "Its value now."
+  field next Option.f32 "The value it would take; null is no change."
+  field max Option.f32 "The stat's scale: a bar shows the values and the change; null is no bar."
+  field lowerIsBetter bool "Less is better (a cooldown, a cost): a fall is green."
+  field format NumberFormat "How its values read."
+  field digits u32 "Decimals."
+  field unit String "A unit after them."
+  field icon String "An icon before the label; empty is none."
+}
+```
+
+<sub>`api.ogt` line 14459</sub>
+
+<a id="type-StatCompareDesc"></a>
+
+### `StatCompareDesc` (desc struct)
+
+Stat-compare rows: an equip screen's comparison, each change a signed delta with a mark.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `rows` | `readonly StatCompareRow[]` | `[]` | — | — | — | The stats. |
+| `currentLabel` | `string` | `""` | — | — | — | A header over the current values (`Equipped`); empty is no header. |
+| `nextLabel` | `string` | `""` | — | — | — | A header over the new values (`Selected`). |
+| `dividers` | `boolean` | `false` | — | — | — | Hairlines between rows. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls the list. |
+
+```ogt
+struct StatCompareDesc {
+  doc "Stat-compare rows: an equip screen's comparison, each change a signed delta with a mark."
+  desc true
+  field rows List.StatCompareRow "The stats."
+  field currentLabel String "A header over the current values (`Equipped`); empty is no header."
+  field nextLabel String "A header over the new values (`Selected`)."
+  field dividers bool "Hairlines between rows."
+  field width Option.Size "Its width; null grows."
+  field label String "What a screen reader calls the list."
+}
+```
+
+<sub>`api.ogt` line 14473</sub>
+
+<a id="type-CalendarMark"></a>
+
+### `CalendarMark` (desc struct)
+
+Something on a day: a dot in a tone, or a claimed tick for a login calendar.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `date` | `string` | `""` | — | — | — | The day, `YYYY-MM-DD`. |
+| `kind` | `string` | `""` | — | — | — | `claimed` draws a tick; anything else a dot. |
+| `tone` | `string` | `""` | — | — | — | The dot's tone: primary, success, warn, danger, info, gold, neutral. |
+| `label` | `string` | `""` | — | — | — | What it is, for a screen reader (`Double rewards`). |
+
+```ogt
+struct CalendarMark {
+  doc "Something on a day: a dot in a tone, or a claimed tick for a login calendar."
+  desc true
+  field date String "The day, `YYYY-MM-DD`."
+  field kind String "`claimed` draws a tick; anything else a dot."
+  field tone String "The dot's tone: primary, success, warn, danger, info, gold, neutral."
+  field label String "What it is, for a screen reader (`Double rewards`)."
+}
+```
+
+<sub>`api.ogt` line 14484</sub>
+
+<a id="type-CalendarDesc"></a>
+
+### `CalendarDesc` (desc struct)
+
+A month grid of days: today, a selected day, a range, marks, and days that cannot be chosen.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `year` | `number` | `0` | — | — | — | The year shown; 0 is today's (keep CalendarResult.year). |
+| `month` | `number` | `0` | — | — | — | The month shown, 1 to 12; 0 is today's (keep CalendarResult.month). |
+| `today` | `string` | `""` | — | — | — | Today, `YYYY-MM-DD` (the game's clock, never read inside the tick). |
+| `selected` | `string` | `""` | — | — | — | The selected day. |
+| `rangeStart` | `string` | `""` | — | — | — | A range's first day: shaded to rangeEnd. |
+| `rangeEnd` | `string` | `""` | — | — | — | A range's last day. |
+| `min` | `string` | `""` | — | — | — | The first day that can be chosen; empty is none. |
+| `max` | `string` | `""` | — | — | — | The last; empty is none. |
+| `disabled` | `readonly string[]` | `[]` | — | — | — | Days that cannot be chosen. |
+| `marks` | `readonly CalendarMark[]` | `[]` | — | — | — | Marks on days. |
+| `weekStart` | `number` | `1` | ≤ 6 | — | — | The first day of the week, 0 Sunday to 6 Saturday. |
+| `monthNames` | `readonly string[]` | `[]` | — | — | — | The months' names, January first; empty is English. |
+| `weekdayNames` | `readonly string[]` | `[]` | — | — | — | The weekdays' names, Sunday first; empty is English. |
+| `weekdayShort` | `readonly string[]` | `[]` | — | — | — | The weekday heads, Sunday first; empty is the names' first letters. |
+| `showOutside` | `boolean` | `true` | — | — | — | The days of the months before and after, faint. |
+| `bumpers` | `boolean` | `false` | — | — | — | The tabPrev and tabNext actions turn the month. |
+| `cellSize` | `number \| null` | `null` | — | `cssPx` | — | A day's height; null is 44. |
+| `todayLabel` | `string` | `""` | — | — | — | What a screen reader adds for today; empty is today. |
+| `claimedLabel` | `string` | `""` | — | — | — | What it adds for a claimed day; empty is claimed. |
+| `prevLabel` | `string` | `""` | — | — | — | Previous month's accessible name. |
+| `nextLabel` | `string` | `""` | — | — | — | Next month's accessible name. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null fits seven days. |
+
+```ogt
+struct CalendarDesc {
+  doc "A month grid of days: today, a selected day, a range, marks, and days that cannot be chosen."
+  desc true
+  field year u32 "The year shown; 0 is today's (keep CalendarResult.year)."
+  field month u32 "The month shown, 1 to 12; 0 is today's (keep CalendarResult.month)."
+  field today String "Today, `YYYY-MM-DD` (the game's clock, never read inside the tick)."
+  field selected String "The selected day."
+  field rangeStart String "A range's first day: shaded to rangeEnd."
+  field rangeEnd String "A range's last day."
+  field min String "The first day that can be chosen; empty is none."
+  field max String "The last; empty is none."
+  field disabled List.String "Days that cannot be chosen."
+  field marks List.CalendarMark "Marks on days."
+  field weekStart u32 "The first day of the week, 0 Sunday to 6 Saturday." {
+    default 1
+    max 6
+  }
+  field monthNames List.String "The months' names, January first; empty is English."
+  field weekdayNames List.String "The weekdays' names, Sunday first; empty is English."
+  field weekdayShort List.String "The weekday heads, Sunday first; empty is the names' first letters."
+  field showOutside bool "The days of the months before and after, faint." {
+    default true
+  }
+  field bumpers bool "The tabPrev and tabNext actions turn the month."
+  field cellSize Option.f32 "A day's height; null is 44." {
+    unit cssPx
+  }
+  field todayLabel String "What a screen reader adds for today; empty is today."
+  field claimedLabel String "What it adds for a claimed day; empty is claimed."
+  field prevLabel String "Previous month's accessible name."
+  field nextLabel String "Next month's accessible name."
+  field width Option.Size "Its width; null fits seven days."
+}
+```
+
+<sub>`api.ogt` line 14493</sub>
+
+<a id="type-CalendarResult"></a>
+
+### `CalendarResult` (struct)
+
+What a calendar answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `selected` | `string \| null` | `null` | — | — | — | The day pressed. |
+| `year` | `number` | `0` | — | — | — | The year shown after this tick: keep it. |
+| `month` | `number` | `0` | — | — | — | The month shown: keep it. |
+| `changed` | `boolean` | `false` | — | — | — | The month was turned this tick. |
+
+```ogt
+struct CalendarResult {
+  doc "What a calendar answered this tick."
+  field selected Option.String "The day pressed."
+  field year u32 "The year shown after this tick: keep it."
+  field month u32 "The month shown: keep it."
+  field changed bool "The month was turned this tick."
+}
+```
+
+<sub>`api.ogt` line 14527</sub>
 
 <a id="type-UiAction"></a>
 
@@ -7970,7 +11492,7 @@ callback UiAction {
 }
 ```
 
-<sub>`api.ogt` line 13533</sub>
+<sub>`api.ogt` line 14757</sub>
 
 <a id="type-SettingsChanged"></a>
 
@@ -7995,7 +11517,7 @@ callback SettingsChanged {
 }
 ```
 
-<sub>`api.ogt` line 13538</sub>
+<sub>`api.ogt` line 14762</sub>
 
 <a id="type-MenuItem"></a>
 
@@ -8023,7 +11545,7 @@ struct MenuItem {
 }
 ```
 
-<sub>`api.ogt` line 13543</sub>
+<sub>`api.ogt` line 14767</sub>
 
 <a id="type-MenuResult"></a>
 
@@ -8042,7 +11564,7 @@ struct MenuResult {
 }
 ```
 
-<sub>`api.ogt` line 13552</sub>
+<sub>`api.ogt` line 14776</sub>
 
 <a id="type-MainMenuDesc"></a>
 
@@ -8074,7 +11596,7 @@ struct MainMenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 13557</sub>
+<sub>`api.ogt` line 14781</sub>
 
 <a id="type-PauseMenuDesc"></a>
 
@@ -8104,7 +11626,7 @@ struct PauseMenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 13568</sub>
+<sub>`api.ogt` line 14792</sub>
 
 <a id="type-KeyBinding"></a>
 
@@ -8130,7 +11652,7 @@ struct KeyBinding {
 }
 ```
 
-<sub>`api.ogt` line 13579</sub>
+<sub>`api.ogt` line 14803</sub>
 
 <a id="type-LanguageOption"></a>
 
@@ -8154,7 +11676,7 @@ struct LanguageOption {
 }
 ```
 
-<sub>`api.ogt` line 13587</sub>
+<sub>`api.ogt` line 14811</sub>
 
 <a id="type-GameSettings"></a>
 
@@ -8174,6 +11696,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `showFps` | `boolean` | `false` | — | — | — | Show the frame rate. |
 | `reducedMotion` | `boolean` | `false` | — | — | — | Keep state changes, drop movement (the UI's transitions only fade). |
 | `highContrast` | `boolean` | `false` | — | — | — | The high-contrast theme. |
+| `textScale` | `number` | `1` | 1 … 2 | `ratio` | — | The text size, 1 to 2: UiDesc.textScale (the settings screen configures it in SettingsDesc.world; without one the game passes it to og.ui.configure in onChange). |
 | `vibration` | `boolean` | `true` | — | — | — | Vibrate on hits (where the device can). |
 | `invertY` | `boolean` | `false` | — | — | — | Invert the vertical look axis. |
 | `sensitivity` | `number` | `1` | 0.1 … 3 | — | — | Look sensitivity. |
@@ -8209,6 +11732,12 @@ struct GameSettings {
   field showFps bool "Show the frame rate."
   field reducedMotion bool "Keep state changes, drop movement (the UI's transitions only fade)."
   field highContrast bool "The high-contrast theme."
+  field textScale f32 "The text size, 1 to 2: UiDesc.textScale (the settings screen configures it in SettingsDesc.world; without one the game passes it to og.ui.configure in onChange)." {
+    default 1
+    min 1
+    max 2
+    unit ratio
+  }
   field vibration bool "Vibrate on hits (where the device can)." {
     default true
   }
@@ -8229,7 +11758,7 @@ struct GameSettings {
 }
 ```
 
-<sub>`api.ogt` line 13594</sub>
+<sub>`api.ogt` line 14818</sub>
 
 <a id="type-SettingsDesc"></a>
 
@@ -8246,7 +11775,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `languages` | `readonly LanguageOption[]` | `[]` | — | — | — | The languages offered; empty hides the Language tab. |
 | `onChange` | `SettingsChanged \| null` | `null` | — | — | — | Called on every change (apply it at once: volume, contrast). |
 | `onSave` | `SettingsChanged \| null` | `null` | — | — | — | Called when the screen closes after changes (persist here). |
-| `world` | `World \| null` | `null` | — | — | — | The world the graphics preset is drawn in: when the player picks another preset the screen calls og.render.applyQuality(world, preset) before onChange (with GameSettings.display, og.render.setDisplay(world, display) instead, which never writes the world). The Controls tab sets the mouse's raw input (og.input.setMouse) and, with lookAction, its sensitivity there too. Null leaves applying them to the game. Inside a system, the system declares RenderSettings among its writes. |
+| `world` | `World \| null` | `null` | — | — | — | The world the graphics preset is drawn in: when the player picks another preset the screen calls og.render.applyQuality(world, preset) before onChange (with GameSettings.display, og.render.setDisplay(world, display) instead, which never writes the world), and another text size og.ui.configure(world, { textScale }). The Controls tab sets the mouse's raw input (og.input.setMouse) and, with lookAction, its sensitivity there too. Null leaves applying them to the game. Inside a system, the system declares RenderSettings among its writes. |
 | `lookAction` | `string` | `""` | — | — | — | The axis action (`look`) the Controls tab's Sensitivity and Invert vertical look set for the mouse: og.input.setSensitivity(world, { action, device: keyboardMouse, scale: sensitivity, invertY }). Empty leaves them to the game. |
 | `title` | `string` | `"Settings"` | — | — | — | The dialog's title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t). |
 | `audioLabel` | `string` | `"Audio"` | — | — | — | The Audio tab. |
@@ -8264,6 +11793,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `fpsLabel` | `string` | `"Show frame rate"` | — | — | — | The frame-rate toggle. |
 | `motionLabel` | `string` | `"Reduce motion"` | — | — | — | The reduced-motion toggle. |
 | `contrastLabel` | `string` | `"High contrast"` | — | — | — | The high-contrast toggle. |
+| `textSizeLabel` | `string` | `"Text size"` | — | — | — | The text-size slider. |
 | `sensitivityLabel` | `string` | `"Sensitivity"` | — | — | — | The look sensitivity's slider. |
 | `invertLabel` | `string` | `"Invert vertical look"` | — | — | — | The invert-Y checkbox. |
 | `vibrationLabel` | `string` | `"Vibration"` | — | — | — | The vibration checkbox. |
@@ -8295,7 +11825,7 @@ struct SettingsDesc {
   field languages List.LanguageOption "The languages offered; empty hides the Language tab."
   field onChange Option.SettingsChanged "Called on every change (apply it at once: volume, contrast)."
   field onSave Option.SettingsChanged "Called when the screen closes after changes (persist here)."
-  field world Option.World "The world the graphics preset is drawn in: when the player picks another preset the screen calls og.render.applyQuality(world, preset) before onChange (with GameSettings.display, og.render.setDisplay(world, display) instead, which never writes the world). The Controls tab sets the mouse's raw input (og.input.setMouse) and, with lookAction, its sensitivity there too. Null leaves applying them to the game. Inside a system, the system declares RenderSettings among its writes."
+  field world Option.World "The world the graphics preset is drawn in: when the player picks another preset the screen calls og.render.applyQuality(world, preset) before onChange (with GameSettings.display, og.render.setDisplay(world, display) instead, which never writes the world), and another text size og.ui.configure(world, { textScale }). The Controls tab sets the mouse's raw input (og.input.setMouse) and, with lookAction, its sensitivity there too. Null leaves applying them to the game. Inside a system, the system declares RenderSettings among its writes."
   field lookAction String "The axis action (`look`) the Controls tab's Sensitivity and Invert vertical look set for the mouse: og.input.setSensitivity(world, { action, device: keyboardMouse, scale: sensitivity, invertY }). Empty leaves them to the game."
   field title String "The dialog's title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
     default "Settings"
@@ -8344,6 +11874,9 @@ struct SettingsDesc {
   }
   field contrastLabel String "The high-contrast toggle." {
     default "High contrast"
+  }
+  field textSizeLabel String "The text-size slider." {
+    default "Text size"
   }
   field sensitivityLabel String "The look sensitivity's slider." {
     default "Sensitivity"
@@ -8411,7 +11944,7 @@ struct SettingsDesc {
 }
 ```
 
-<sub>`api.ogt` line 13639</sub>
+<sub>`api.ogt` line 14869</sub>
 
 <a id="type-SettingsResult"></a>
 
@@ -8434,7 +11967,7 @@ struct SettingsResult {
 }
 ```
 
-<sub>`api.ogt` line 13762</sub>
+<sub>`api.ogt` line 14995</sub>
 
 <a id="type-Ability"></a>
 
@@ -8464,7 +11997,7 @@ struct Ability {
 }
 ```
 
-<sub>`api.ogt` line 13769</sub>
+<sub>`api.ogt` line 15002</sub>
 
 <a id="type-PlatformerHudDesc"></a>
 
@@ -8510,7 +12043,7 @@ struct PlatformerHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 13780</sub>
+<sub>`api.ogt` line 15013</sub>
 
 <a id="type-HudResult"></a>
 
@@ -8537,7 +12070,7 @@ struct HudResult {
 }
 ```
 
-<sub>`api.ogt` line 13801</sub>
+<sub>`api.ogt` line 15034</sub>
 
 <a id="type-ShooterHudDesc"></a>
 
@@ -8599,7 +12132,7 @@ struct ShooterHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 13810</sub>
+<sub>`api.ogt` line 15043</sub>
 
 <a id="type-PuzzleHudDesc"></a>
 
@@ -8645,7 +12178,7 @@ struct PuzzleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 13841</sub>
+<sub>`api.ogt` line 15074</sub>
 
 <a id="type-Currency"></a>
 
@@ -8675,7 +12208,7 @@ struct Currency {
 }
 ```
 
-<sub>`api.ogt` line 13863</sub>
+<sub>`api.ogt` line 15096</sub>
 
 <a id="type-Generator"></a>
 
@@ -8711,7 +12244,7 @@ struct Generator {
 }
 ```
 
-<sub>`api.ogt` line 13873</sub>
+<sub>`api.ogt` line 15106</sub>
 
 <a id="type-IdleHudDesc"></a>
 
@@ -8751,7 +12284,7 @@ struct IdleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 13887</sub>
+<sub>`api.ogt` line 15120</sub>
 
 <a id="type-RaceSplit"></a>
 
@@ -8777,7 +12310,7 @@ struct RaceSplit {
 }
 ```
 
-<sub>`api.ogt` line 13906</sub>
+<sub>`api.ogt` line 15139</sub>
 
 <a id="type-RacingHudDesc"></a>
 
@@ -8873,7 +12406,7 @@ struct RacingHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 13914</sub>
+<sub>`api.ogt` line 15147</sub>
 
 <a id="type-DialogueLine"></a>
 
@@ -8899,7 +12432,7 @@ struct DialogueLine {
 }
 ```
 
-<sub>`api.ogt` line 13972</sub>
+<sub>`api.ogt` line 15205</sub>
 
 <a id="type-CutsceneDesc"></a>
 
@@ -8937,7 +12470,7 @@ struct CutsceneDesc {
 }
 ```
 
-<sub>`api.ogt` line 13980</sub>
+<sub>`api.ogt` line 15213</sub>
 
 <a id="type-CutsceneResult"></a>
 
@@ -8960,7 +12493,7 @@ struct CutsceneResult {
 }
 ```
 
-<sub>`api.ogt` line 13997</sub>
+<sub>`api.ogt` line 15230</sub>
 
 <a id="type-ShopItem"></a>
 
@@ -8994,7 +12527,7 @@ struct ShopItem {
 }
 ```
 
-<sub>`api.ogt` line 14004</sub>
+<sub>`api.ogt` line 15237</sub>
 
 <a id="type-ShopDesc"></a>
 
@@ -9052,7 +12585,7 @@ struct ShopDesc {
 }
 ```
 
-<sub>`api.ogt` line 14016</sub>
+<sub>`api.ogt` line 15249</sub>
 
 <a id="type-ShopResult"></a>
 
@@ -9075,7 +12608,7 @@ struct ShopResult {
 }
 ```
 
-<sub>`api.ogt` line 14047</sub>
+<sub>`api.ogt` line 15280</sub>
 
 <a id="type-InventoryItem"></a>
 
@@ -9107,7 +12640,7 @@ struct InventoryItem {
 }
 ```
 
-<sub>`api.ogt` line 14054</sub>
+<sub>`api.ogt` line 15287</sub>
 
 <a id="type-InventoryDesc"></a>
 
@@ -9151,7 +12684,7 @@ struct InventoryDesc {
 }
 ```
 
-<sub>`api.ogt` line 14065</sub>
+<sub>`api.ogt` line 15298</sub>
 
 <a id="type-SlotMove"></a>
 
@@ -9172,7 +12705,7 @@ struct SlotMove {
 }
 ```
 
-<sub>`api.ogt` line 14087</sub>
+<sub>`api.ogt` line 15320</sub>
 
 <a id="type-InventoryResult"></a>
 
@@ -9197,7 +12730,7 @@ struct InventoryResult {
 }
 ```
 
-<sub>`api.ogt` line 14093</sub>
+<sub>`api.ogt` line 15326</sub>
 
 <a id="type-LevelInfo"></a>
 
@@ -9225,7 +12758,7 @@ struct LevelInfo {
 }
 ```
 
-<sub>`api.ogt` line 14101</sub>
+<sub>`api.ogt` line 15334</sub>
 
 <a id="type-LevelSelectDesc"></a>
 
@@ -9265,7 +12798,7 @@ struct LevelSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 14110</sub>
+<sub>`api.ogt` line 15343</sub>
 
 <a id="type-LevelSelectResult"></a>
 
@@ -9286,7 +12819,7 @@ struct LevelSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 14129</sub>
+<sub>`api.ogt` line 15362</sub>
 
 <a id="type-StatRow"></a>
 
@@ -9310,7 +12843,7 @@ struct StatRow {
 }
 ```
 
-<sub>`api.ogt` line 14135</sub>
+<sub>`api.ogt` line 15368</sub>
 
 <a id="type-ScoreFormat"></a>
 
@@ -9333,7 +12866,7 @@ enum ScoreFormat {
 }
 ```
 
-<sub>`api.ogt` line 14142</sub>
+<sub>`api.ogt` line 15375</sub>
 
 <a id="type-ResultsDesc"></a>
 
@@ -9395,7 +12928,7 @@ struct ResultsDesc {
 }
 ```
 
-<sub>`api.ogt` line 14148</sub>
+<sub>`api.ogt` line 15381</sub>
 
 <a id="type-LeaderboardEntry"></a>
 
@@ -9423,7 +12956,7 @@ struct LeaderboardEntry {
 }
 ```
 
-<sub>`api.ogt` line 14179</sub>
+<sub>`api.ogt` line 15412</sub>
 
 <a id="type-LeaderboardDesc"></a>
 
@@ -9463,7 +12996,7 @@ struct LeaderboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 14188</sub>
+<sub>`api.ogt` line 15421</sub>
 
 <a id="type-LeaderboardResult"></a>
 
@@ -9488,7 +13021,7 @@ struct LeaderboardResult {
 }
 ```
 
-<sub>`api.ogt` line 14206</sub>
+<sub>`api.ogt` line 15439</sub>
 
 <a id="type-TutorialStep"></a>
 
@@ -9514,7 +13047,7 @@ struct TutorialStep {
 }
 ```
 
-<sub>`api.ogt` line 14214</sub>
+<sub>`api.ogt` line 15447</sub>
 
 <a id="type-TutorialDesc"></a>
 
@@ -9556,7 +13089,7 @@ struct TutorialDesc {
 }
 ```
 
-<sub>`api.ogt` line 14222</sub>
+<sub>`api.ogt` line 15455</sub>
 
 <a id="type-TutorialResult"></a>
 
@@ -9579,7 +13112,7 @@ struct TutorialResult {
 }
 ```
 
-<sub>`api.ogt` line 14242</sub>
+<sub>`api.ogt` line 15475</sub>
 
 <a id="type-LoadingDesc"></a>
 
@@ -9612,7 +13145,7 @@ struct LoadingDesc {
 }
 ```
 
-<sub>`api.ogt` line 14249</sub>
+<sub>`api.ogt` line 15482</sub>
 
 <a id="type-ConfirmDesc"></a>
 
@@ -9648,7 +13181,7 @@ struct ConfirmDesc {
 }
 ```
 
-<sub>`api.ogt` line 14263</sub>
+<sub>`api.ogt` line 15496</sub>
 
 <a id="type-ConfirmResult"></a>
 
@@ -9669,7 +13202,7 @@ struct ConfirmResult {
 }
 ```
 
-<sub>`api.ogt` line 14278</sub>
+<sub>`api.ogt` line 15511</sub>
 
 <a id="type-AlertDesc"></a>
 
@@ -9699,7 +13232,7 @@ struct AlertDesc {
 }
 ```
 
-<sub>`api.ogt` line 14284</sub>
+<sub>`api.ogt` line 15517</sub>
 
 <a id="type-UiProp"></a>
 
@@ -9758,7 +13291,7 @@ enum UiProp {
 }
 ```
 
-<sub>`api.ogt` line 14439</sub>
+<sub>`api.ogt` line 15672</sub>
 
 <a id="type-LayoutMode"></a>
 
@@ -9783,7 +13316,7 @@ enum LayoutMode {
 }
 ```
 
-<sub>`api.ogt` line 14463</sub>
+<sub>`api.ogt` line 15696</sub>
 
 <a id="type-Position"></a>
 
@@ -9808,7 +13341,7 @@ enum Position {
 }
 ```
 
-<sub>`api.ogt` line 14470</sub>
+<sub>`api.ogt` line 15703</sub>
 
 <a id="type-GridFlow"></a>
 
@@ -9831,7 +13364,7 @@ enum GridFlow {
 }
 ```
 
-<sub>`api.ogt` line 14477</sub>
+<sub>`api.ogt` line 15710</sub>
 
 <a id="type-DragAxis"></a>
 
@@ -9858,7 +13391,7 @@ enum DragAxis {
 }
 ```
 
-<sub>`api.ogt` line 14483</sub>
+<sub>`api.ogt` line 15716</sub>
 
 <a id="type-EaseName"></a>
 
@@ -9885,7 +13418,7 @@ enum EaseName {
 }
 ```
 
-<sub>`api.ogt` line 14491</sub>
+<sub>`api.ogt` line 15724</sub>
 
 <a id="type-MotionToken"></a>
 
@@ -9916,7 +13449,7 @@ enum MotionToken {
 }
 ```
 
-<sub>`api.ogt` line 14499</sub>
+<sub>`api.ogt` line 15732</sub>
 
 <a id="type-ReducedMotion"></a>
 
@@ -9941,7 +13474,7 @@ enum ReducedMotion {
 }
 ```
 
-<sub>`api.ogt` line 14509</sub>
+<sub>`api.ogt` line 15742</sub>
 
 <a id="type-Orientation"></a>
 
@@ -9964,7 +13497,7 @@ enum Orientation {
 }
 ```
 
-<sub>`api.ogt` line 14516</sub>
+<sub>`api.ogt` line 15749</sub>
 
 <a id="type-Repeat"></a>
 
@@ -9989,7 +13522,7 @@ enum Repeat {
 }
 ```
 
-<sub>`api.ogt` line 14522</sub>
+<sub>`api.ogt` line 15755</sub>
 
 <a id="type-UiTransform"></a>
 
@@ -10041,7 +13574,7 @@ struct UiTransform {
 }
 ```
 
-<sub>`api.ogt` line 14529</sub>
+<sub>`api.ogt` line 15762</sub>
 
 <a id="type-Edges"></a>
 
@@ -10081,7 +13614,7 @@ struct Edges {
 }
 ```
 
-<sub>`api.ogt` line 14557</sub>
+<sub>`api.ogt` line 15790</sub>
 
 <a id="type-TrackPx"></a>
 
@@ -10102,7 +13635,7 @@ struct TrackPx {
 }
 ```
 
-<sub>`api.ogt` line 14576</sub>
+<sub>`api.ogt` line 15809</sub>
 
 <a id="type-TrackFr"></a>
 
@@ -10123,7 +13656,7 @@ struct TrackFr {
 }
 ```
 
-<sub>`api.ogt` line 14583</sub>
+<sub>`api.ogt` line 15816</sub>
 
 <a id="type-TrackRange"></a>
 
@@ -10148,7 +13681,7 @@ struct TrackRange {
 }
 ```
 
-<sub>`api.ogt` line 14590</sub>
+<sub>`api.ogt` line 15823</sub>
 
 <a id="type-TrackPercent"></a>
 
@@ -10169,7 +13702,7 @@ struct TrackPercent {
 }
 ```
 
-<sub>`api.ogt` line 14600</sub>
+<sub>`api.ogt` line 15833</sub>
 
 <a id="type-TrackAuto"></a>
 
@@ -10183,7 +13716,7 @@ struct TrackAuto {
 }
 ```
 
-<sub>`api.ogt` line 14607</sub>
+<sub>`api.ogt` line 15840</sub>
 
 <a id="type-Track"></a>
 
@@ -10213,7 +13746,7 @@ union Track {
 }
 ```
 
-<sub>`api.ogt` line 14611</sub>
+<sub>`api.ogt` line 15844</sub>
 
 <a id="type-GridSpec"></a>
 
@@ -10253,7 +13786,7 @@ struct GridSpec {
 }
 ```
 
-<sub>`api.ogt` line 14621</sub>
+<sub>`api.ogt` line 15854</sub>
 
 <a id="type-GridPlace"></a>
 
@@ -10283,7 +13816,7 @@ struct GridPlace {
 }
 ```
 
-<sub>`api.ogt` line 14638</sub>
+<sub>`api.ogt` line 15871</sub>
 
 <a id="type-PropValue"></a>
 
@@ -10304,7 +13837,7 @@ struct PropValue {
 }
 ```
 
-<sub>`api.ogt` line 14648</sub>
+<sub>`api.ogt` line 15881</sub>
 
 <a id="type-UiQuery"></a>
 
@@ -10338,7 +13871,7 @@ struct UiQuery {
 }
 ```
 
-<sub>`api.ogt` line 14654</sub>
+<sub>`api.ogt` line 15887</sub>
 
 <a id="type-UiPatch"></a>
 
@@ -10384,7 +13917,7 @@ struct UiPatch {
 }
 ```
 
-<sub>`api.ogt` line 14668</sub>
+<sub>`api.ogt` line 15901</sub>
 
 <a id="type-UiVariant"></a>
 
@@ -10405,7 +13938,7 @@ struct UiVariant {
 }
 ```
 
-<sub>`api.ogt` line 14687</sub>
+<sub>`api.ogt` line 15920</sub>
 
 <a id="type-SpringSpec"></a>
 
@@ -10435,7 +13968,7 @@ struct SpringSpec {
 }
 ```
 
-<sub>`api.ogt` line 14693</sub>
+<sub>`api.ogt` line 15926</sub>
 
 <a id="type-TweenSpec"></a>
 
@@ -10464,7 +13997,7 @@ struct TweenSpec {
 }
 ```
 
-<sub>`api.ogt` line 14706</sub>
+<sub>`api.ogt` line 15939</sub>
 
 <a id="type-TokenRef"></a>
 
@@ -10483,7 +14016,7 @@ struct TokenRef {
 }
 ```
 
-<sub>`api.ogt` line 14717</sub>
+<sub>`api.ogt` line 15950</sub>
 
 <a id="type-InstantSpec"></a>
 
@@ -10497,7 +14030,7 @@ struct InstantSpec {
 }
 ```
 
-<sub>`api.ogt` line 14722</sub>
+<sub>`api.ogt` line 15955</sub>
 
 <a id="type-Transition"></a>
 
@@ -10525,7 +14058,7 @@ union Transition {
 }
 ```
 
-<sub>`api.ogt` line 14726</sub>
+<sub>`api.ogt` line 15959</sub>
 
 <a id="type-DismissSpec"></a>
 
@@ -10551,7 +14084,7 @@ struct DismissSpec {
 }
 ```
 
-<sub>`api.ogt` line 14735</sub>
+<sub>`api.ogt` line 15968</sub>
 
 <a id="type-SnapPoint"></a>
 
@@ -10576,7 +14109,7 @@ struct SnapPoint {
 }
 ```
 
-<sub>`api.ogt` line 14744</sub>
+<sub>`api.ogt` line 15977</sub>
 
 <a id="type-DragSpec"></a>
 
@@ -10618,7 +14151,7 @@ struct DragSpec {
 }
 ```
 
-<sub>`api.ogt` line 14754</sub>
+<sub>`api.ogt` line 15987</sub>
 
 <a id="type-PinchSpec"></a>
 
@@ -10644,7 +14177,7 @@ struct PinchSpec {
 }
 ```
 
-<sub>`api.ogt` line 14771</sub>
+<sub>`api.ogt` line 16004</sub>
 
 <a id="type-DropSpec"></a>
 
@@ -10666,7 +14199,7 @@ struct DropSpec {
 }
 ```
 
-<sub>`api.ogt` line 14779</sub>
+<sub>`api.ogt` line 16012</sub>
 
 <a id="type-PresenceSpec"></a>
 
@@ -10700,7 +14233,7 @@ struct PresenceSpec {
 }
 ```
 
-<sub>`api.ogt` line 14785</sub>
+<sub>`api.ogt` line 16018</sub>
 
 <a id="type-VisualState"></a>
 
@@ -10725,7 +14258,7 @@ struct VisualState {
 }
 ```
 
-<sub>`api.ogt` line 14799</sub>
+<sub>`api.ogt` line 16032</sub>
 
 <a id="type-StateTransition"></a>
 
@@ -10748,7 +14281,7 @@ struct StateTransition {
 }
 ```
 
-<sub>`api.ogt` line 14807</sub>
+<sub>`api.ogt` line 16040</sub>
 
 <a id="type-StateGroup"></a>
 
@@ -10771,7 +14304,7 @@ struct StateGroup {
 }
 ```
 
-<sub>`api.ogt` line 14814</sub>
+<sub>`api.ogt` line 16047</sub>
 
 <a id="type-StateValue"></a>
 
@@ -10792,7 +14325,7 @@ struct StateValue {
 }
 ```
 
-<sub>`api.ogt` line 14821</sub>
+<sub>`api.ogt` line 16054</sub>
 
 <a id="type-ElementProps"></a>
 
@@ -10872,7 +14405,7 @@ struct ElementProps {
 }
 ```
 
-<sub>`api.ogt` line 14827</sub>
+<sub>`api.ogt` line 16060</sub>
 
 <a id="type-EaseKey"></a>
 
@@ -10891,7 +14424,7 @@ struct EaseKey {
 }
 ```
 
-<sub>`api.ogt` line 14865</sub>
+<sub>`api.ogt` line 16098</sub>
 
 <a id="type-HoldKey"></a>
 
@@ -10905,7 +14438,7 @@ struct HoldKey {
 }
 ```
 
-<sub>`api.ogt` line 14870</sub>
+<sub>`api.ogt` line 16103</sub>
 
 <a id="type-LinearKey"></a>
 
@@ -10919,7 +14452,7 @@ struct LinearKey {
 }
 ```
 
-<sub>`api.ogt` line 14874</sub>
+<sub>`api.ogt` line 16107</sub>
 
 <a id="type-BezierKey"></a>
 
@@ -10938,7 +14471,7 @@ struct BezierKey {
 }
 ```
 
-<sub>`api.ogt` line 14878</sub>
+<sub>`api.ogt` line 16111</sub>
 
 <a id="type-KeyEase"></a>
 
@@ -10968,7 +14501,7 @@ union KeyEase {
 }
 ```
 
-<sub>`api.ogt` line 14883</sub>
+<sub>`api.ogt` line 16116</sub>
 
 <a id="type-TimelineKey"></a>
 
@@ -10993,7 +14526,7 @@ struct TimelineKey {
 }
 ```
 
-<sub>`api.ogt` line 14893</sub>
+<sub>`api.ogt` line 16126</sub>
 
 <a id="type-TimelineTrack"></a>
 
@@ -11016,7 +14549,7 @@ struct TimelineTrack {
 }
 ```
 
-<sub>`api.ogt` line 14902</sub>
+<sub>`api.ogt` line 16135</sub>
 
 <a id="type-SoundEvent"></a>
 
@@ -11039,7 +14572,7 @@ struct SoundEvent {
 }
 ```
 
-<sub>`api.ogt` line 14909</sub>
+<sub>`api.ogt` line 16142</sub>
 
 <a id="type-HapticEvent"></a>
 
@@ -11058,7 +14591,7 @@ struct HapticEvent {
 }
 ```
 
-<sub>`api.ogt` line 14917</sub>
+<sub>`api.ogt` line 16150</sub>
 
 <a id="type-BurstEvent"></a>
 
@@ -11083,7 +14616,7 @@ struct BurstEvent {
 }
 ```
 
-<sub>`api.ogt` line 14922</sub>
+<sub>`api.ogt` line 16155</sub>
 
 <a id="type-StateEvent"></a>
 
@@ -11104,7 +14637,7 @@ struct StateEvent {
 }
 ```
 
-<sub>`api.ogt` line 14931</sub>
+<sub>`api.ogt` line 16164</sub>
 
 <a id="type-CallbackEvent"></a>
 
@@ -11123,7 +14656,7 @@ struct CallbackEvent {
 }
 ```
 
-<sub>`api.ogt` line 14937</sub>
+<sub>`api.ogt` line 16170</sub>
 
 <a id="type-TimelineAction"></a>
 
@@ -11153,7 +14686,7 @@ union TimelineAction {
 }
 ```
 
-<sub>`api.ogt` line 14942</sub>
+<sub>`api.ogt` line 16175</sub>
 
 <a id="type-TimelineEvent"></a>
 
@@ -11178,7 +14711,7 @@ struct TimelineEvent {
 }
 ```
 
-<sub>`api.ogt` line 14952</sub>
+<sub>`api.ogt` line 16185</sub>
 
 <a id="type-TimelineLabel"></a>
 
@@ -11201,7 +14734,7 @@ struct TimelineLabel {
 }
 ```
 
-<sub>`api.ogt` line 14961</sub>
+<sub>`api.ogt` line 16194</sub>
 
 <a id="type-UiTimeline"></a>
 
@@ -11231,7 +14764,7 @@ struct UiTimeline {
 }
 ```
 
-<sub>`api.ogt` line 14969</sub>
+<sub>`api.ogt` line 16202</sub>
 
 <a id="type-ChoreoPlay"></a>
 
@@ -11256,7 +14789,7 @@ struct ChoreoPlay {
 }
 ```
 
-<sub>`api.ogt` line 14980</sub>
+<sub>`api.ogt` line 16213</sub>
 
 <a id="type-ChoreoSteps"></a>
 
@@ -11275,7 +14808,7 @@ struct ChoreoSteps {
 }
 ```
 
-<sub>`api.ogt` line 14989</sub>
+<sub>`api.ogt` line 16222</sub>
 
 <a id="type-ChoreoStagger"></a>
 
@@ -11308,7 +14841,7 @@ struct ChoreoStagger {
 }
 ```
 
-<sub>`api.ogt` line 14994</sub>
+<sub>`api.ogt` line 16227</sub>
 
 <a id="type-ChoreoCascade"></a>
 
@@ -11329,7 +14862,7 @@ struct ChoreoCascade {
 }
 ```
 
-<sub>`api.ogt` line 15009</sub>
+<sub>`api.ogt` line 16242</sub>
 
 <a id="type-Choreo"></a>
 
@@ -11359,7 +14892,7 @@ union Choreo {
 }
 ```
 
-<sub>`api.ogt` line 15015</sub>
+<sub>`api.ogt` line 16248</sub>
 
 <a id="type-PlayDesc"></a>
 
@@ -11395,7 +14928,7 @@ struct PlayDesc {
 }
 ```
 
-<sub>`api.ogt` line 15025</sub>
+<sub>`api.ogt` line 16258</sub>
 
 <a id="type-PlayInfo"></a>
 
@@ -11426,7 +14959,7 @@ struct PlayInfo {
 }
 ```
 
-<sub>`api.ogt` line 15039</sub>
+<sub>`api.ogt` line 16272</sub>
 
 <a id="type-GestureInfo"></a>
 
@@ -11475,7 +15008,7 @@ struct GestureInfo {
 }
 ```
 
-<sub>`api.ogt` line 15052</sub>
+<sub>`api.ogt` line 16285</sub>
 
 <a id="type-UiMotionEvent"></a>
 
@@ -11504,7 +15037,7 @@ struct UiMotionEvent {
 }
 ```
 
-<sub>`api.ogt` line 15074</sub>
+<sub>`api.ogt` line 16307</sub>
 
 <a id="type-UiOverlap"></a>
 
@@ -11529,7 +15062,7 @@ struct UiOverlap {
 }
 ```
 
-<sub>`api.ogt` line 15084</sub>
+<sub>`api.ogt` line 16317</sub>
 
 <a id="type-UiLayoutStats"></a>
 
@@ -11554,7 +15087,7 @@ struct UiLayoutStats {
 }
 ```
 
-<sub>`api.ogt` line 15092</sub>
+<sub>`api.ogt` line 16325</sub>
 
 <a id="type-VectorArt"></a>
 
@@ -11568,7 +15101,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle VectorArt "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill."
 ```
 
-<sub>`api.ogt` line 15212</sub>
+<sub>`api.ogt` line 16445</sub>
 
 <a id="type-UiMaterial"></a>
 
@@ -11582,7 +15115,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle UiMaterial "A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through."
 ```
 
-<sub>`api.ogt` line 15213</sub>
+<sub>`api.ogt` line 16446</sub>
 
 <a id="type-ShapeType"></a>
 
@@ -11611,7 +15144,7 @@ enum ShapeType {
 }
 ```
 
-<sub>`api.ogt` line 15229</sub>
+<sub>`api.ogt` line 16462</sub>
 
 <a id="type-CornerShape"></a>
 
@@ -11638,7 +15171,7 @@ enum CornerShape {
 }
 ```
 
-<sub>`api.ogt` line 15238</sub>
+<sub>`api.ogt` line 16471</sub>
 
 <a id="type-LineCap"></a>
 
@@ -11663,7 +15196,7 @@ enum LineCap {
 }
 ```
 
-<sub>`api.ogt` line 15246</sub>
+<sub>`api.ogt` line 16479</sub>
 
 <a id="type-LineJoin"></a>
 
@@ -11688,7 +15221,7 @@ enum LineJoin {
 }
 ```
 
-<sub>`api.ogt` line 15253</sub>
+<sub>`api.ogt` line 16486</sub>
 
 <a id="type-DrawShape"></a>
 
@@ -11715,6 +15248,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `points` | `readonly Vector2[]` | `[]` | — | `cssPx` | — | A path's points, CSS px from the element's top left. |
 | `curves` | `boolean` | `false` | — | — | — | A path's points after the first come in threes: a cubic Bézier's two controls and its end. |
 | `closed` | `boolean` | `false` | — | — | — | A path returns to its first point. |
+| `filled` | `boolean` | `false` | — | — | — | A path is an area: its fills cover the inside of the closed outline through its points (even-odd) instead of drawing its line, and its strokes outline it, as any other shape's (an area chart, a radar's polygon, a pie's wedge). |
 | `width` | `number` | `2` | ≥ 0 | `cssPx` | — | A path's line width. |
 | `join` | `LineJoin` | `"miter"` | — | — | — | Where a path's segments meet. |
 
@@ -11765,6 +15299,7 @@ struct DrawShape {
   }
   field curves bool "A path's points after the first come in threes: a cubic Bézier's two controls and its end."
   field closed bool "A path returns to its first point."
+  field filled bool "A path is an area: its fills cover the inside of the closed outline through its points (even-odd) instead of drawing its line, and its strokes outline it, as any other shape's (an area chart, a radar's polygon, a pie's wedge)."
   field width f32 "A path's line width." {
     default 2
     min 0
@@ -11774,7 +15309,7 @@ struct DrawShape {
 }
 ```
 
-<sub>`api.ogt` line 15260</sub>
+<sub>`api.ogt` line 16493</sub>
 
 <a id="type-GradientType"></a>
 
@@ -11801,7 +15336,7 @@ enum GradientType {
 }
 ```
 
-<sub>`api.ogt` line 15314</sub>
+<sub>`api.ogt` line 16548</sub>
 
 <a id="type-GradientSpread"></a>
 
@@ -11826,7 +15361,7 @@ enum GradientSpread {
 }
 ```
 
-<sub>`api.ogt` line 15322</sub>
+<sub>`api.ogt` line 16556</sub>
 
 <a id="type-GradientStop"></a>
 
@@ -11854,7 +15389,7 @@ struct GradientStop {
 }
 ```
 
-<sub>`api.ogt` line 15329</sub>
+<sub>`api.ogt` line 16563</sub>
 
 <a id="type-Gradient"></a>
 
@@ -11891,7 +15426,7 @@ struct Gradient {
 }
 ```
 
-<sub>`api.ogt` line 15340</sub>
+<sub>`api.ogt` line 16574</sub>
 
 <a id="type-ImageFit"></a>
 
@@ -11922,7 +15457,7 @@ enum ImageFit {
 }
 ```
 
-<sub>`api.ogt` line 15356</sub>
+<sub>`api.ogt` line 16590</sub>
 
 <a id="type-SliceEdges"></a>
 
@@ -11947,7 +15482,7 @@ enum SliceEdges {
 }
 ```
 
-<sub>`api.ogt` line 15366</sub>
+<sub>`api.ogt` line 16600</sub>
 
 <a id="type-SolidFill"></a>
 
@@ -11969,7 +15504,7 @@ struct SolidFill {
 }
 ```
 
-<sub>`api.ogt` line 15373</sub>
+<sub>`api.ogt` line 16607</sub>
 
 <a id="type-ImageFill"></a>
 
@@ -12028,7 +15563,7 @@ struct ImageFill {
 }
 ```
 
-<sub>`api.ogt` line 15379</sub>
+<sub>`api.ogt` line 16613</sub>
 
 <a id="type-VectorFill"></a>
 
@@ -12052,7 +15587,7 @@ struct VectorFill {
 }
 ```
 
-<sub>`api.ogt` line 15409</sub>
+<sub>`api.ogt` line 16643</sub>
 
 <a id="type-Fill"></a>
 
@@ -12080,7 +15615,7 @@ union Fill {
 }
 ```
 
-<sub>`api.ogt` line 15416</sub>
+<sub>`api.ogt` line 16650</sub>
 
 <a id="type-StrokeAlign"></a>
 
@@ -12105,7 +15640,7 @@ enum StrokeAlign {
 }
 ```
 
-<sub>`api.ogt` line 15425</sub>
+<sub>`api.ogt` line 16659</sub>
 
 <a id="type-Stroke"></a>
 
@@ -12151,7 +15686,7 @@ struct Stroke {
 }
 ```
 
-<sub>`api.ogt` line 15432</sub>
+<sub>`api.ogt` line 16666</sub>
 
 <a id="type-ShadowEffect"></a>
 
@@ -12188,7 +15723,7 @@ struct ShadowEffect {
 }
 ```
 
-<sub>`api.ogt` line 15456</sub>
+<sub>`api.ogt` line 16690</sub>
 
 <a id="type-GlowEffect"></a>
 
@@ -12220,7 +15755,7 @@ struct GlowEffect {
 }
 ```
 
-<sub>`api.ogt` line 15474</sub>
+<sub>`api.ogt` line 16708</sub>
 
 <a id="type-BlurEffect"></a>
 
@@ -12246,7 +15781,7 @@ struct BlurEffect {
 }
 ```
 
-<sub>`api.ogt` line 15488</sub>
+<sub>`api.ogt` line 16722</sub>
 
 <a id="type-BackdropEffect"></a>
 
@@ -12301,7 +15836,7 @@ struct BackdropEffect {
 }
 ```
 
-<sub>`api.ogt` line 15498</sub>
+<sub>`api.ogt` line 16732</sub>
 
 <a id="type-GlassWeight"></a>
 
@@ -12328,7 +15863,7 @@ enum GlassWeight {
 }
 ```
 
-<sub>`api.ogt` line 15528</sub>
+<sub>`api.ogt` line 16762</sub>
 
 <a id="type-Elevation"></a>
 
@@ -12355,7 +15890,7 @@ enum Elevation {
 }
 ```
 
-<sub>`api.ogt` line 15536</sub>
+<sub>`api.ogt` line 16770</sub>
 
 <a id="type-Effect"></a>
 
@@ -12387,7 +15922,7 @@ union Effect {
 }
 ```
 
-<sub>`api.ogt` line 15544</sub>
+<sub>`api.ogt` line 16778</sub>
 
 <a id="type-ClipMode"></a>
 
@@ -12412,7 +15947,7 @@ enum ClipMode {
 }
 ```
 
-<sub>`api.ogt` line 15555</sub>
+<sub>`api.ogt` line 16789</sub>
 
 <a id="type-MaskDesc"></a>
 
@@ -12438,7 +15973,7 @@ struct MaskDesc {
 }
 ```
 
-<sub>`api.ogt` line 15562</sub>
+<sub>`api.ogt` line 16796</sub>
 
 <a id="type-MaterialName"></a>
 
@@ -12479,7 +16014,7 @@ enum MaterialName {
 }
 ```
 
-<sub>`api.ogt` line 15570</sub>
+<sub>`api.ogt` line 16804</sub>
 
 <a id="type-LayerDesc"></a>
 
@@ -12505,7 +16040,7 @@ struct LayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 15585</sub>
+<sub>`api.ogt` line 16819</sub>
 
 <a id="type-TextShadowDesc"></a>
 
@@ -12538,7 +16073,7 @@ struct TextShadowDesc {
 }
 ```
 
-<sub>`api.ogt` line 15593</sub>
+<sub>`api.ogt` line 16827</sub>
 
 <a id="type-TextOutlineDesc"></a>
 
@@ -12568,7 +16103,7 @@ struct TextOutlineDesc {
 }
 ```
 
-<sub>`api.ogt` line 15608</sub>
+<sub>`api.ogt` line 16842</sub>
 
 <a id="type-TextEffectsDesc"></a>
 
@@ -12594,7 +16129,7 @@ struct TextEffectsDesc {
 }
 ```
 
-<sub>`api.ogt` line 15620</sub>
+<sub>`api.ogt` line 16854</sub>
 
 <a id="type-DrawDesc"></a>
 
@@ -12638,7 +16173,7 @@ struct DrawDesc {
 }
 ```
 
-<sub>`api.ogt` line 15628</sub>
+<sub>`api.ogt` line 16862</sub>
 
 <a id="type-BlendMode"></a>
 
@@ -12671,7 +16206,51 @@ enum BlendMode {
 }
 ```
 
-<sub>`api.ogt` line 15647</sub>
+<sub>`api.ogt` line 16881</sub>
+
+<a id="type-SemanticsDesc"></a>
+
+### `SemanticsDesc` (desc struct)
+
+What a component tells the accessibility tree about an element it built from containers (docs/ui.md §11): a role other than its kind's, a name, a value and states. Absent fields leave what the element's kind gives it.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `role` | `string` | `""` | — | — | — | Its role: button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, tabpanel, radiogroup, progressbar, meter, timer, status, alert, dialog, alertdialog, tooltip, separator, group, region, navigation, toolbar, menu, menubar, menuitem, menuitemcheckbox, menuitemradio, list, listitem, tree, treeitem, table, grid, row, rowheader, columnheader, cell, gridcell, figure or scrollbar; empty keeps its kind's. |
+| `name` | `string \| null` | `null` | — | — | — | Its accessible name; null keeps what it shows. |
+| `description` | `string \| null` | `null` | — | — | — | Read after the name; null is none. |
+| `value` | `string \| null` | `null` | — | — | — | Its value as people read it (`3 of 12`, `Sorted ascending`); null is none. |
+| `checked` | `boolean \| null` | `null` | — | — | — | Checked (a menu item's check); null is not checkable. |
+| `selected` | `boolean \| null` | `null` | — | — | — | Selected (a tab, a row, an option); null is not selectable. |
+| `expanded` | `boolean \| null` | `null` | — | — | — | Expanded (an accordion header, a tree item, a menu button); null is not expandable. |
+| `busy` | `boolean` | `false` | — | — | — | Loading. |
+| `disabled` | `boolean` | `false` | — | — | — | Shown but inert (a disabled menu item, a locked tab): disabled in the tree, and its interaction state group's disabled state. |
+| `valueMin` | `number \| null` | `null` | — | — | — | A range's smallest value. |
+| `valueMax` | `number \| null` | `null` | — | — | — | A range's largest value. |
+| `valueNow` | `number \| null` | `null` | — | — | — | A range's value as a number (a scroll position, a page); null is no range. |
+
+```ogt
+struct SemanticsDesc {
+  doc "What a component tells the accessibility tree about an element it built from containers (docs/ui.md §11): a role other than its kind's, a name, a value and states. Absent fields leave what the element's kind gives it."
+  desc true
+  field role String "Its role: button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, tabpanel, radiogroup, progressbar, meter, timer, status, alert, dialog, alertdialog, tooltip, separator, group, region, navigation, toolbar, menu, menubar, menuitem, menuitemcheckbox, menuitemradio, list, listitem, tree, treeitem, table, grid, row, rowheader, columnheader, cell, gridcell, figure or scrollbar; empty keeps its kind's."
+  field name Option.String "Its accessible name; null keeps what it shows."
+  field description Option.String "Read after the name; null is none."
+  field value Option.String "Its value as people read it (`3 of 12`, `Sorted ascending`); null is none."
+  field checked Option.bool "Checked (a menu item's check); null is not checkable."
+  field selected Option.bool "Selected (a tab, a row, an option); null is not selectable."
+  field expanded Option.bool "Expanded (an accordion header, a tree item, a menu button); null is not expandable."
+  field busy bool "Loading."
+  field disabled bool "Shown but inert (a disabled menu item, a locked tab): disabled in the tree, and its interaction state group's disabled state."
+  field valueMin Option.f32 "A range's smallest value."
+  field valueMax Option.f32 "A range's largest value."
+  field valueNow Option.f32 "A range's value as a number (a scroll position, a page); null is no range."
+}
+```
+
+<sub>`api.ogt` line 16892</sub>
 
 <a id="type-WorldTarget"></a>
 
@@ -12695,7 +16274,7 @@ struct WorldTarget {
 }
 ```
 
-<sub>`api.ogt` line 15666</sub>
+<sub>`api.ogt` line 16923</sub>
 
 <a id="type-AnchorScaleMode"></a>
 
@@ -12718,7 +16297,7 @@ enum AnchorScaleMode {
 }
 ```
 
-<sub>`api.ogt` line 15673</sub>
+<sub>`api.ogt` line 16930</sub>
 
 <a id="type-WorldOcclusion"></a>
 
@@ -12743,7 +16322,7 @@ enum WorldOcclusion {
 }
 ```
 
-<sub>`api.ogt` line 15679</sub>
+<sub>`api.ogt` line 16936</sub>
 
 <a id="type-Declutter"></a>
 
@@ -12770,7 +16349,7 @@ enum Declutter {
 }
 ```
 
-<sub>`api.ogt` line 15686</sub>
+<sub>`api.ogt` line 16943</sub>
 
 <a id="type-EdgeClampDesc"></a>
 
@@ -12804,7 +16383,7 @@ struct EdgeClampDesc {
 }
 ```
 
-<sub>`api.ogt` line 15694</sub>
+<sub>`api.ogt` line 16951</sub>
 
 <a id="type-WorldAnchorDesc"></a>
 
@@ -12897,7 +16476,7 @@ struct WorldAnchorDesc {
 }
 ```
 
-<sub>`api.ogt` line 15710</sub>
+<sub>`api.ogt` line 16967</sub>
 
 <a id="type-AnchorInfo"></a>
 
@@ -12944,7 +16523,7 @@ struct AnchorInfo {
 }
 ```
 
-<sub>`api.ogt` line 15764</sub>
+<sub>`api.ogt` line 17021</sub>
 
 <a id="type-WorldPanelDesc"></a>
 
@@ -13004,7 +16583,7 @@ struct WorldPanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 15795</sub>
+<sub>`api.ogt` line 17052</sub>
 
 <a id="type-PanelInfo"></a>
 
@@ -13035,7 +16614,7 @@ struct PanelInfo {
 }
 ```
 
-<sub>`api.ogt` line 15829</sub>
+<sub>`api.ogt` line 17086</sub>
 
 <a id="type-MassKind"></a>
 
@@ -13064,7 +16643,7 @@ enum MassKind {
 }
 ```
 
-<sub>`api.ogt` line 15850</sub>
+<sub>`api.ogt` line 17107</sub>
 
 <a id="type-MassEase"></a>
 
@@ -13093,7 +16672,7 @@ enum MassEase {
 }
 ```
 
-<sub>`api.ogt` line 15859</sub>
+<sub>`api.ogt` line 17116</sub>
 
 <a id="type-MassSpace"></a>
 
@@ -13116,7 +16695,7 @@ enum MassSpace {
 }
 ```
 
-<sub>`api.ogt` line 15868</sub>
+<sub>`api.ogt` line 17125</sub>
 
 <a id="type-ParticleShape"></a>
 
@@ -13141,7 +16720,7 @@ enum ParticleShape {
 }
 ```
 
-<sub>`api.ogt` line 15874</sub>
+<sub>`api.ogt` line 17131</sub>
 
 <a id="type-MassKey"></a>
 
@@ -13188,7 +16767,7 @@ struct MassKey {
 }
 ```
 
-<sub>`api.ogt` line 15881</sub>
+<sub>`api.ogt` line 17138</sub>
 
 <a id="type-MassTemplateDesc"></a>
 
@@ -13288,7 +16867,7 @@ struct MassTemplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 15907</sub>
+<sub>`api.ogt` line 17164</sub>
 
 <a id="type-MassInstance"></a>
 
@@ -13335,7 +16914,7 @@ struct MassInstance {
 }
 ```
 
-<sub>`api.ogt` line 15965</sub>
+<sub>`api.ogt` line 17222</sub>
 
 <a id="type-EmitFrom"></a>
 
@@ -13360,7 +16939,7 @@ enum EmitFrom {
 }
 ```
 
-<sub>`api.ogt` line 16015</sub>
+<sub>`api.ogt` line 17272</sub>
 
 <a id="type-ParticlesDesc"></a>
 
@@ -13454,7 +17033,7 @@ struct ParticlesDesc {
 }
 ```
 
-<sub>`api.ogt` line 16022</sub>
+<sub>`api.ogt` line 17279</sub>
 
 <a id="type-MetaKind"></a>
 
@@ -13479,7 +17058,7 @@ enum MetaKind {
 }
 ```
 
-<sub>`api.ogt` line 16088</sub>
+<sub>`api.ogt` line 17345</sub>
 
 <a id="type-MetaDesc"></a>
 
@@ -13541,7 +17120,7 @@ struct MetaDesc {
 }
 ```
 
-<sub>`api.ogt` line 16095</sub>
+<sub>`api.ogt` line 17352</sub>
 
 <a id="type-SceneViewportDesc"></a>
 
@@ -13589,7 +17168,7 @@ struct SceneViewportDesc {
 }
 ```
 
-<sub>`api.ogt` line 16139</sub>
+<sub>`api.ogt` line 17396</sub>
 
 <a id="type-SceneViewportInfo"></a>
 
@@ -13634,7 +17213,7 @@ struct SceneViewportInfo {
 }
 ```
 
-<sub>`api.ogt` line 16162</sub>
+<sub>`api.ogt` line 17419</sub>
 
 <a id="type-UiDocEvent"></a>
 
@@ -13661,7 +17240,7 @@ struct UiDocEvent {
 }
 ```
 
-<sub>`api.ogt` line 16191</sub>
+<sub>`api.ogt` line 17448</sub>
 
 <a id="type-UiDocResponse"></a>
 
@@ -13684,7 +17263,7 @@ struct UiDocResponse {
 }
 ```
 
-<sub>`api.ogt` line 16200</sub>
+<sub>`api.ogt` line 17457</sub>
 
 <a id="type-UiLayer"></a>
 
@@ -13727,7 +17306,7 @@ struct UiLayer {
 }
 ```
 
-<sub>`api.ogt` line 16207</sub>
+<sub>`api.ogt` line 17464</sub>
 
 <a id="type-UiActionTrigger"></a>
 
@@ -13752,7 +17331,7 @@ enum UiActionTrigger {
 }
 ```
 
-<sub>`api.ogt` line 16224</sub>
+<sub>`api.ogt` line 17481</sub>
 
 <a id="type-UiActionDesc"></a>
 
@@ -13789,7 +17368,7 @@ struct UiActionDesc {
 }
 ```
 
-<sub>`api.ogt` line 16231</sub>
+<sub>`api.ogt` line 17488</sub>
 
 <a id="type-UiDevice"></a>
 
@@ -13820,7 +17399,7 @@ enum UiDevice {
 }
 ```
 
-<sub>`api.ogt` line 16247</sub>
+<sub>`api.ogt` line 17504</sub>
 
 <a id="type-UiGlyph"></a>
 
@@ -13843,7 +17422,7 @@ struct UiGlyph {
 }
 ```
 
-<sub>`api.ogt` line 16257</sub>
+<sub>`api.ogt` line 17514</sub>
 
 <a id="type-UiActionHint"></a>
 
@@ -13870,7 +17449,7 @@ struct UiActionHint {
 }
 ```
 
-<sub>`api.ogt` line 16264</sub>
+<sub>`api.ogt` line 17521</sub>
 
 ## Column kinds
 
@@ -13890,7 +17469,7 @@ column VectorArt {
 }
 ```
 
-<sub>`api.ogt` line 15215</sub>
+<sub>`api.ogt` line 16448</sub>
 
 ```ogt
 column UiMaterial {
@@ -13901,4 +17480,4 @@ column UiMaterial {
 }
 ```
 
-<sub>`api.ogt` line 15222</sub>
+<sub>`api.ogt` line 16455</sub>
