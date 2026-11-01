@@ -691,6 +691,27 @@ impl ElementDraw {
         if self.clip == Clip::Shape {
             out.push(DrawCmd::PopClip);
         }
+        out.extend(self.strokes(theme, at));
+        out.extend(self.composite(at));
+        out
+    }
+
+    /// [`ElementDraw::leave`] for a draw whose strokes were drawn with its
+    /// fills ([`ElementDraw::strokes`] after [`ElementDraw::enter`]): a
+    /// style part's border, under its label, so the two batch on their
+    /// levels (docs/ui.md §5.7).
+    pub(crate) fn leave_stroked(&self, at: &Placed) -> Vec<DrawCmd> {
+        let mut out = Vec::new();
+        if self.clip == Clip::Shape {
+            out.push(DrawCmd::PopClip);
+        }
+        out.extend(self.composite(at));
+        out
+    }
+
+    /// Its strokes.
+    pub(crate) fn strokes(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
+        let mut out = Vec::new();
         let (opacity, blend) = if self.layered() {
             (at.alpha, Blend::Normal)
         } else {
@@ -711,6 +732,12 @@ impl ElementDraw {
                 blend,
             ));
         }
+        out
+    }
+
+    /// The layer's composite, when it draws offscreen.
+    fn composite(&self, at: &Placed) -> Vec<DrawCmd> {
+        let mut out = Vec::new();
         if self.layered() {
             // The composite covers the layer; a mask or a material clips
             // to the element's shape only when it clips.

@@ -3685,6 +3685,15 @@ impl Ui {
             }
             if let Some(d) = &draw {
                 cmds.extend(d.enter(&theme, &placed(n)).into_iter().map(|c| (c, world)));
+                // A style part's border draws with its fills, under its
+                // label; a game's draw strokes over its subtree.
+                if !game_draw {
+                    cmds.extend(
+                        d.strokes(&theme, &placed(n))
+                            .into_iter()
+                            .map(|c| (c, world)),
+                    );
+                }
             }
             let twin = self.kept.twin.get(i).copied().unwrap_or(NONE);
             // Rich text draws from the tick (its moving spans), focus and
@@ -3743,10 +3752,13 @@ impl Ui {
                     let w = self.nodes[j].world;
                     cmds.extend(bars.into_iter().map(|c| (c, w)));
                 }
-                if let Some(d) = self.draws.get(&j).or_else(|| self.part_draws.get(&j)) {
-                    let w = self.nodes[j].world;
+                let w = self.nodes[j].world;
+                if let Some(d) = self.draws.get(&j) {
                     let at = placed(&self.nodes[j]);
                     cmds.extend(d.leave(&theme, &at).into_iter().map(|c| (c, w)));
+                } else if let Some(d) = self.part_draws.get(&j) {
+                    let at = placed(&self.nodes[j]);
+                    cmds.extend(d.leave_stroked(&at).into_iter().map(|c| (c, w)));
                 }
                 if let Some(m) = self.world_marks(key) {
                     cmds.extend(m.leave.iter().map(|c| (c.clone(), Affine::IDENTITY)));

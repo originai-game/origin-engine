@@ -264,3 +264,14 @@ fn the_players_haptics_setting_scales_the_pattern_and_zero_turns_it_off() {
     assert_eq!(off[0].haptic.count, 0, "off plays no pattern");
     assert!(off[0].sound != 0, "but still its sound");
 }
+
+/// tooltip a level (five).
+#[test]
+fn a_parts_border_draws_under_its_label() {
+    let (shot, _) = with_test_font(sample_screen_shot);
+    assert!(
+        shot.ui.frame().levels() <= 4,
+        "{} levels",
+        shot.ui.frame().levels()
+    );
+}
