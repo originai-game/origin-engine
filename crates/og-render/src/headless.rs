@@ -17,6 +17,12 @@ impl Renderer {
         pollster::block_on(Renderer::new(desc))
     }
 
+    /// [`Renderer::recreate`] headless, blocking: a renderer like this one
+    /// on a new device (after [`Renderer::lost`]).
+    pub fn recreate_blocking(&self) -> Result<Renderer, RenderError> {
+        pollster::block_on(self.recreate(None))
+    }
+
     /// Blocks until the GPU has finished every submitted frame.
     pub fn wait_idle(&self) -> Result<(), RenderError> {
         self.device

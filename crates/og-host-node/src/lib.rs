@@ -497,7 +497,9 @@ impl OffscreenBackend {
     fn draw(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
         if let Some(why) = self.renderer.lost() {
             eprintln!("og-host-node: the GPU device was {why}; making the renderer again");
-            let renderer = pollster::block_on(self.renderer.recreate(None))
+            let renderer = self
+                .renderer
+                .recreate_blocking()
                 .map_err(|e| format!("the GPU device was {why}, and a new one failed: {e}"))?;
             let device = renderer.device().clone();
             self.renderer = renderer;

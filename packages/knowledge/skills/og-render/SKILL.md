@@ -14,7 +14,7 @@ Frame time is og-build §9.
 - §1 Effects: post, particles, trails and beams, decals, 2D lighting,
   materials, texture repeat, the HUD.
 - §2 Particle emitters: every line of a `type particles`.
-- §3 Light, exposure, shadows, antialiasing and graphics quality.
+- §3 Light, exposure, shadows, antialiasing, graphics quality and the display (frame cap, render scale, automatic quality).
 - §4 Baked lighting, volumetric fog, area lights and cookies.
 - §5 Levels of detail, reflection probes and screen-space reflections.
 - §6 Atmosphere and water: fog, sky, day and night, weather, water.
@@ -305,6 +305,35 @@ render sprite 12
   ```
 
   Inside a system, declare `og.RenderSettings` among its writes.
+
+- **Display: frame cap, battery saver, render scale, automatic
+  quality** (`og.render.setDisplay(world, settings)`, read back with
+  `og.render.display(world)`). Presentation only: the settings are not in
+  the world, so hashes, saves and replays never see them, and a native run
+  (`og run`, `og test`, reference frames) draws at scale 1 whatever they
+  say; they take effect in the browser.
+  - `frameCap`: `auto` (60 on phones, the display's rate on desktops),
+    `display`, `fps60`, `fps30`. Skipped display frames still read input
+    and the fixed tick is unchanged.
+  - `batterySaver`: 30 frames a second, render scale at most 0.75,
+    automatic quality on.
+  - `renderScale` 0.5–2: the 3D scene at that fraction of the display,
+    scaled up bilinearly; the UI and screen text stay sharp.
+  - `autoQuality` (on by default), `autoMinScale` (0.5), `autoPresetSteps`
+    (1): while frames run over the cap's interval the scale drops a tenth
+    at a time, then the quality is capped at medium (and low with 2),
+    without writing RenderSettings; it comes back up when there is room,
+    and never oscillates. Turn it off for a game whose look must not move
+    (pixel art draws on its own grid and ignores the scale anyway).
+
+  ```ts
+  og.render.setDisplay(world, { frameCap: "fps30", autoQuality: false, renderScale: 0.8 });
+  const d = og.render.display(world); // d.renderScale, d.presetSteps, d.maxFps, d.gpu.total, d.deviceLosses
+  ```
+
+  A lost GPU device (iOS Safari after the page was in the background) is
+  recovered by the engine: the next frames draw the world as it is, the
+  game never sees it (`display(world).deviceLosses` counts them).
 
 ## 4. Baked lighting, volumetric fog, area lights and cookies
 
