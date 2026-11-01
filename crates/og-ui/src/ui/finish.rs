@@ -470,6 +470,7 @@ impl Ui {
             if n.adjust {
                 flags |= HIT_ADJUST;
             }
+            flags |= u16::from(n.claim) << crate::ui::HIT_CLAIM_SHIFT;
             if n.scope {
                 flags |= HIT_SCOPE;
             }

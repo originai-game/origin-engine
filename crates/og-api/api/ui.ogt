@@ -198,6 +198,15 @@ module ui {
     }
   }
 
+  struct ArrowClaim {
+    doc "Which arrows a focused element claims (ElementDesc.arrows); none by default."
+    desc true
+    field left bool "Left steps it."
+    field right bool "Right steps it."
+    field up bool "Up steps it."
+    field down bool "Down steps it."
+  }
+
   struct ElementDesc {
     doc "A container: its layout and its look."
     desc true
@@ -216,6 +225,7 @@ module ui {
     field interactive bool "Report a Response from close(), as a button does."
     field focusable bool "With interactive: keys and pads reach it (a card, a menu item, a component's tab), it takes the focus ring, and Enter, Space and the pad's A press it, as a button. Its role is button unless og.ui.semantics gives another."
     field adjustable bool "With focusable: Left and Right (a pad's left and right) are its own while it has the focus: they step it (Response.adjust) instead of moving the focus, as a slider's do (a menu row opening its submenu, a carousel, a divider)."
+    field arrows ArrowClaim "With focusable: the arrows (a pad's d-pad and stick) it claims one by one while it has the focus: each steps it (Response.adjust for Left and Right, Response.adjustY for Up and Down) instead of moving the focus. A grid's own cursor (an inventory, a level map) claims the ones that keep it inside, so the focus leaves it at its edges."
     field background Option.Paint "Its fill; null draws none."
     field radius f32 "Corner radius." {
       unit cssPx
@@ -375,6 +385,7 @@ module ui {
     field pad Option.u32 "The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer)."
     field focusedBy u32 "Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads)."
     field adjust i32 "An adjustable element's (ElementDesc.adjustable) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise."
+    field adjustY i32 "An element claiming Up and Down (ElementDesc.arrows) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise."
   }
 
   struct SliderResult {

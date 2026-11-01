@@ -160,7 +160,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2002 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2003 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -214,6 +214,7 @@ Field units the docs and Tune use.
 | [`ArchetypeView.has`](world.md#member-ArchetypeView-has) | method | world | `og_archetype_view_has` |
 | [`ArchetypeView.rows`](world.md#member-ArchetypeView-rows) | property | world | `og_archetype_view_get_rows` |
 | [`ArchetypeView.tick`](world.md#member-ArchetypeView-tick) | property | world | `og_archetype_view_get_tick` |
+| [`ArrowClaim`](ui.md#type-ArrowClaim) | desc struct | ui | — |
 | [`ArtBrush`](art.md#type-ArtBrush) | enum | art | — |
 | [`ArtBrush()`](art.md#column-ArtBrush) | column kind | art | — |
 | [`ArtFilter`](art.md#type-ArtFilter) | enum | art | — |

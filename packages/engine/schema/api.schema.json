@@ -9727,6 +9727,7 @@
         "Size",
         "Insets",
         "Paint",
+        "ArrowClaim",
         "ElementDesc",
         "LabelDesc",
         "ButtonDesc",
@@ -40075,6 +40076,35 @@
       },
       "additionalProperties": false
     },
+    "ArrowClaim": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Which arrows a focused element claims (ElementDesc.arrows); none by default.",
+      "type": "object",
+      "properties": {
+        "left": {
+          "type": "boolean",
+          "description": "Left steps it.",
+          "default": false
+        },
+        "right": {
+          "type": "boolean",
+          "description": "Right steps it.",
+          "default": false
+        },
+        "up": {
+          "type": "boolean",
+          "description": "Up steps it.",
+          "default": false
+        },
+        "down": {
+          "type": "boolean",
+          "description": "Down steps it.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
     "ElementDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
@@ -40165,6 +40195,11 @@
           "type": "boolean",
           "description": "With focusable: Left and Right (a pad's left and right) are its own while it has the focus: they step it (Response.adjust) instead of moving the focus, as a slider's do (a menu row opening its submenu, a carousel, a divider).",
           "default": false
+        },
+        "arrows": {
+          "$ref": "#/$defs/ArrowClaim",
+          "description": "With focusable: the arrows (a pad's d-pad and stick) it claims one by one while it has the focus: each steps it (Response.adjust for Left and Right, Response.adjustY for Up and Down) instead of moving the focus. A grid's own cursor (an inventory, a level map) claims the ones that keep it inside, so the focus leaves it at its edges.",
+          "default": {}
         },
         "background": {
           "anyOf": [
@@ -40927,6 +40962,12 @@
           "minimum": -2147483648,
           "maximum": 2147483647,
           "description": "An adjustable element's (ElementDesc.adjustable) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise."
+        },
+        "adjustY": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "An element claiming Up and Down (ElementDesc.arrows) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise."
         }
       },
       "required": [
@@ -40939,7 +40980,8 @@
         "dropped",
         "pad",
         "focusedBy",
-        "adjust"
+        "adjust",
+        "adjustY"
       ],
       "additionalProperties": false
     },

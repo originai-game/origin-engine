@@ -280,6 +280,8 @@ pub(crate) struct Node {
     pub nav: bool,
     /// Left and right adjust it when focused (slider, stepper).
     pub adjust: bool,
+    /// The arrows it claims while focused ([`crate::ARROW_LEFT`] …).
+    pub claim: u8,
     /// Draw the focus ring (focused by keyboard or gamepad).
     pub ring: bool,
     /// Bit k: pad k + 1's focus is on it (its ring in that player's colour).
@@ -366,6 +368,7 @@ impl Node {
             fx: None,
             nav: false,
             adjust: false,
+            claim: 0,
             ring: false,
             pad_rings: 0,
             hidden: false,

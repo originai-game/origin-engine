@@ -236,9 +236,28 @@ impl Ui {
             let before = self.state.focus;
             let current = cands.iter().position(|h| h.key == self.state.focus);
             let adjustable = current.is_some_and(|i| cands[i].has(HIT_ADJUST));
+            // The arrows the focused element claims (Element::arrows).
+            let claim = current.map_or(0, |i| (cands[i].flags >> crate::ui::HIT_CLAIM_SHIFT) as u8);
+            let claimed = |bit: u8| claim & bit != 0;
             let next = match (nav, current) {
                 (Nav::Left | Nav::Right, Some(_)) if adjustable => {
                     self.nav.adjust += if nav == Nav::Right { 1 } else { -1 };
+                    None
+                }
+                (Nav::Left, Some(_)) if claimed(crate::ui::ARROW_LEFT) => {
+                    self.nav.adjust -= 1;
+                    None
+                }
+                (Nav::Right, Some(_)) if claimed(crate::ui::ARROW_RIGHT) => {
+                    self.nav.adjust += 1;
+                    None
+                }
+                (Nav::Up, Some(_)) if claimed(crate::ui::ARROW_UP) => {
+                    self.nav.adjust_y -= 1;
+                    None
+                }
+                (Nav::Down, Some(_)) if claimed(crate::ui::ARROW_DOWN) => {
+                    self.nav.adjust_y += 1;
                     None
                 }
                 (Nav::Next, None) => Some(cands[0].key),

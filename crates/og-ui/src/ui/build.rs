@@ -224,9 +224,19 @@ impl Ui {
         self.last_closed = i;
         if self.nodes[i].el.interactive && self.nodes[i].el.focusable {
             let adjustable = self.nodes[i].el.adjustable;
+            let claim = self.nodes[i].el.arrows
+                | if adjustable {
+                    crate::ui::ARROW_LEFT | crate::ui::ARROW_RIGHT
+                } else {
+                    0
+                };
             let mut r = self.nav_target(i, adjustable);
-            if adjustable && r.focused {
+            self.nodes[i].claim = claim;
+            if r.focused && claim & (crate::ui::ARROW_LEFT | crate::ui::ARROW_RIGHT) != 0 {
                 r.adjust = self.nav.adjust;
+            }
+            if r.focused && claim & (crate::ui::ARROW_UP | crate::ui::ARROW_DOWN) != 0 {
+                r.adjust_y = self.nav.adjust_y;
             }
             r
         } else if self.nodes[i].el.interactive {

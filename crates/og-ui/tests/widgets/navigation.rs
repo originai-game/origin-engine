@@ -875,6 +875,60 @@ fn an_adjustable_container_takes_left_and_right_while_focused() {
     );
 }
 
+/// A focusable container that claims some arrows (Element::arrows) takes
+/// those one by one while it has the focus (Left and Right in
+/// Response.adjust, Up and Down in Response.adjust_y) and lets the others
+/// move the focus: a grid's cursor at its bottom edge gives Down back.
+/// Ways it could fail: a claim of Down that also eats Up, a claimed arrow
+/// that still moves the focus, or the vertical step reported in adjust.
+#[test]
+fn a_container_claims_single_arrows_while_focused() {
+    #[derive(Default)]
+    struct Grid {
+        x: i32,
+        y: i32,
+    }
+    let mut rig = Rig::new(Grid::default());
+    let b = &mut |ui: &mut Ui, s: &mut Grid| {
+        ui.button("Above", "Above", ButtonDesc::default());
+        ui.open(
+            "Grid",
+            Element {
+                interactive: true,
+                focusable: true,
+                arrows: og_ui::ARROW_RIGHT | og_ui::ARROW_DOWN,
+                padding: Insets::all(8.0),
+                ..Element::row()
+            },
+        );
+        ui.label("Name", "Grid", LabelDesc::default());
+        let r = ui.close();
+        s.x += r.adjust;
+        s.y += r.adjust_y;
+        ui.button("Below", "Below", ButtonDesc::default());
+    };
+    rig.idle(2, b);
+    rig.key(UiKey::Tab, b);
+    rig.key(UiKey::Tab, b);
+    assert_eq!(rig.ui.focus_path(0), "Grid");
+    rig.key(UiKey::Right, b);
+    rig.key(UiKey::Down, b);
+    rig.key(UiKey::Down, b);
+    assert_eq!(
+        (rig.state.x, rig.state.y),
+        (1, 2),
+        "Right steps x, Down steps y"
+    );
+    assert_eq!(rig.ui.focus_path(0), "Grid", "and the focus stays");
+    rig.key(UiKey::Up, b);
+    assert_eq!(
+        rig.ui.focus_path(0),
+        "Above",
+        "an unclaimed Up moves the focus"
+    );
+    assert_eq!(rig.state.y, 2);
+}
+
 /// `last_path` names the element just built by its full path (what
 /// `bounds` and `gesture` take), inside nested containers and after a
 /// container closes; empty before anything is built.

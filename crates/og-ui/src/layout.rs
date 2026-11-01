@@ -300,6 +300,13 @@ pub struct Element {
     /// instead of moving the focus (a menu row opening its submenu, a
     /// carousel, a divider).
     pub adjustable: bool,
+    /// With focusable: the arrows it claims while it has the focus, bits of
+    /// [`crate::ARROW_LEFT`], [`crate::ARROW_RIGHT`], [`crate::ARROW_UP`]
+    /// and [`crate::ARROW_DOWN`]: each steps it ([`crate::Response::adjust`]
+    /// for Left and Right, [`crate::Response::adjust_y`] for Up and Down)
+    /// instead of moving the focus. A grid's own cursor claims the arrows
+    /// that keep it inside, so the focus leaves it at its edges.
+    pub arrows: u8,
     pub background: Option<Srgba>,
     /// Corner radius in CSS pixels (clamped to half the shorter side).
     pub radius: f32,

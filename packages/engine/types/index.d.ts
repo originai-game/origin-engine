@@ -20086,6 +20086,38 @@ export interface Paint {
 }
 
 /**
+ * Which arrows a focused element claims (ElementDesc.arrows); none by default.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ArrowClaim {
+  /**
+   * Left steps it.
+   *
+   * @default false
+   */
+  readonly left?: boolean;
+  /**
+   * Right steps it.
+   *
+   * @default false
+   */
+  readonly right?: boolean;
+  /**
+   * Up steps it.
+   *
+   * @default false
+   */
+  readonly up?: boolean;
+  /**
+   * Down steps it.
+   *
+   * @default false
+   */
+  readonly down?: boolean;
+}
+
+/**
  * A container: its layout and its look.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -20170,6 +20202,12 @@ export interface ElementDesc {
    * @default false
    */
   readonly adjustable?: boolean;
+  /**
+   * With focusable: the arrows (a pad's d-pad and stick) it claims one by one while it has the focus: each steps it (Response.adjust for Left and Right, Response.adjustY for Up and Down) instead of moving the focus. A grid's own cursor (an inventory, a level map) claims the ones that keep it inside, so the focus leaves it at its edges.
+   *
+   * @default {}
+   */
+  readonly arrows?: ArrowClaim;
   /**
    * Its fill; null draws none.
    *
@@ -20702,6 +20740,10 @@ export interface Response {
    * An adjustable element's (ElementDesc.adjustable) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise.
    */
   readonly adjust: number;
+  /**
+   * An element claiming Up and Down (ElementDesc.arrows) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise.
+   */
+  readonly adjustY: number;
 }
 
 /** A slider's response and its value after this tick's input. */

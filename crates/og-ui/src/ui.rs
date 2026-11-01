@@ -65,7 +65,19 @@ pub struct Response {
     /// focus: +1 for each press of Right, -1 for Left (the screen's
     /// directions, not the reading order); 0 for any other element.
     pub adjust: i32,
+    /// An element claiming Up and Down ([`crate::Element::arrows`]): -1 for
+    /// each press of Up, +1 for Down this tick while it has the focus.
+    pub adjust_y: i32,
 }
+
+/// [`crate::Element::arrows`]: Left is its own while it has the focus.
+pub const ARROW_LEFT: u8 = 1;
+/// Right is its own.
+pub const ARROW_RIGHT: u8 = 2;
+/// Up is its own.
+pub const ARROW_UP: u8 = 4;
+/// Down is its own.
+pub const ARROW_DOWN: u8 = 8;
 
 pub(crate) const HIT_SCROLL: u16 = 1;
 /// A press focuses it with a caret (text field).
@@ -85,6 +97,8 @@ pub(crate) const HIT_SCOPE: u16 = 64;
 pub(crate) const HIT_MULTILINE: u16 = 128;
 /// It takes drops of dragged elements (`Props::drop`).
 pub(crate) const HIT_DROP: u16 = 256;
+/// The arrows it claims while focused: [`ARROW_LEFT`] … shifted by 9.
+pub(crate) const HIT_CLAIM_SHIFT: u16 = 9;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Hit {
@@ -258,6 +272,8 @@ pub(crate) struct NavFrame {
     pub back: bool,
     /// Left (-1) and right (+1) on an adjustable control.
     pub adjust: i32,
+    /// Up (-1) and down (+1) on a control that claims them.
+    pub adjust_y: i32,
     /// `activate` came from pad 0's A.
     pub pad0: bool,
     /// The control pads 1 to 3 pressed with A (0: none).
