@@ -305,8 +305,13 @@ function screenIndex(name: string): number {
   return Math.max(0, SCREENS.indexOf(name as Screen));
 }
 
-function settingsOf(d: DemoState): GameSettings {
+function settingsOf(world: World, d: DemoState): GameSettings {
   return {
+    // The PC graphics page and the raw mouse switch read the engine, which
+    // holds them (presentation and host state, never the world): the screen
+    // applies a change itself, and they are saved with the rest.
+    display: og.render.display(world).settings,
+    rawMouse: og.input.mouse(world).raw,
     masterVolume: d.masterVolume,
     musicVolume: d.musicVolume,
     sfxVolume: d.sfxVolume,
@@ -348,6 +353,15 @@ function takeSettings(world: World, d: DemoState, s: Partial<GameSettings>, load
   d.vibration = flag(s.vibration, d.vibration);
   d.invertY = flag(s.invertY, d.invertY);
   d.sensitivity = num(s.sensitivity, d.sensitivity);
+  // The screen applied its own changes; a load puts the saved ones back.
+  if (loaded && s.display && typeof s.display === "object") {
+    const r = og.render.setDisplay(world, s.display);
+    if (!r.ok) throw new Error(r.reason);
+  }
+  if (loaded && typeof s.rawMouse === "boolean") {
+    const r = og.input.setMouse(world, { raw: s.rawMouse });
+    if (!r.ok) throw new Error(r.reason);
+  }
   const language = LANGUAGES.findIndex((l) => l.code === s.language);
   if (language >= 0 || !loaded) {
     const at = Math.max(0, language);
@@ -792,7 +806,9 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
     case "settings": {
       const r = og.ui.settingsScreen("Settings", {
         open: true,
-        settings: settingsOf(d),
+        settings: settingsOf(world, d),
+        // The world the screen applies the graphics page and the mouse to.
+        world,
         languages: LANGUAGES,
         // The screen's own words, from the active table (og-i18n §2).
         title: tr(world, "settings.title"),

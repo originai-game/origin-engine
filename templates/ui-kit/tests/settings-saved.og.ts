@@ -4,6 +4,10 @@
 // on its first tick and comes back muted and in Chinese, the main menu's
 // words from the zh-CN table (examples/WEB-FINDINGS.md #10: the kit saved
 // its settings and never read them, so a reload came back in English).
+// On the way it turns on Battery saver on the Graphics tab, which is the
+// PC graphics page (the kit passes og.render.display's settings and its
+// world: G1-7 had left the template on the quality-only page), and the
+// saved og.settings carry it.
 import { playtest } from "@origingame/engine/playtest";
 import { SCREEN, demo, tap, ui } from "./lib.ts";
 
@@ -15,12 +19,15 @@ export default playtest({
   commands: [
     "0.3:show:settings",
     tap(0.7, "Mute"),
-    tap(1.0, "Section/Tab#3"),
-    tap(1.4, "Languages/Option#1"),
-    tap(1.8, "Done"),
-    "2.4:dump_entity:demo:saved.json",
-    "2.4:dump_platform:platform.json",
-    "2.5:quit",
+    tap(1.0, "Section/Tab#1"),
+    tap(1.3, "Battery"),
+    "1.6:dump_ui:graphics.json",
+    tap(1.8, "Section/Tab#3"),
+    tap(2.2, "Languages/Option#1"),
+    tap(2.6, "Done"),
+    "3.2:dump_entity:demo:saved.json",
+    "3.2:dump_platform:platform.json",
+    "3.3:quit",
   ].join(";"),
   then: [
     {
@@ -34,8 +41,11 @@ export default playtest({
     t.equal(saved.saves, 1, "and ran the save hook once");
     t.ok(saved.muted && saved.language === 1, "muted, in 简体中文");
     const stored = run.json<{ calls: Call[] }>("platform.json").calls.filter((c) => c.method === "store.set" && c.args["key"] === "og.settings");
-    const value = stored[0]?.args["value"] as { language?: string; muted?: boolean } | undefined;
+    const value = stored[0]?.args["value"] as { language?: string; muted?: boolean; display?: { batterySaver?: boolean } } | undefined;
     t.ok(stored.length === 1 && value?.language === "zh-CN" && value.muted === true, "og.settings written once, with the language and the mute");
+    const page = new Set(ui(run, "graphics.json").map((e) => e.text));
+    t.ok(["Render scale", "Frame rate limit", "V-Sync", "Fullscreen", "Graphics processor"].every((w) => page.has(w)), "the Graphics tab is the PC graphics page");
+    t.equal(value?.display?.batterySaver, true, "and its battery saver is saved with the rest");
 
     const next = run.then[0]!;
     t.equal(next.warnings.join("; "), "", "the relaunch ran without warnings");
