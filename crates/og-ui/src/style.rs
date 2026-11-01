@@ -316,6 +316,17 @@ pub struct Theme {
     /// ([`Theme::to_reduced_transparency`]). A game reads it to flatten
     /// its own (IDL `UiTheme.reducedTransparency`).
     pub reduced_transparency: bool,
+    /// The player's text scale (docs/ui.md §15.2), 1 to 2: every text size
+    /// and leading grows by it (the type ramp here and each role's step,
+    /// [`crate::Ui::type_step`]), and control, row and header heights by
+    /// the leading body text gains ([`Theme::sizes`]), so layout grows
+    /// instead of clipping. A UI applies it from the next frame on.
+    pub text_scale: f32,
+    /// The scale `type_ramp` already carries: [`Theme::to_text_scale`]
+    /// scales by `text_scale` over it, so applying it twice changes
+    /// nothing. 1 for a theme as a style made it.
+    #[doc(hidden)]
+    pub ramp_scale: f32,
     /// The style's art (`crate::style_file`: frames, ornaments, fonts, motion,
     /// sounds); the default dresses nothing.
     pub art: crate::style_file::Art,
@@ -376,6 +387,8 @@ impl Theme {
             outline: false,
             reduced_motion: false,
             reduced_transparency: false,
+            text_scale: 1.0,
+            ramp_scale: 1.0,
             art,
             motion: crate::motion::MotionTokens::default(),
             tokens: derived,
@@ -431,6 +444,29 @@ impl Theme {
             p.scrim = p.scrim.over(p.backdrop);
         }
         t.reduced_transparency = true;
+        t
+    }
+
+    /// This theme with its type ramp at `text_scale` (clamped to 1 to 2):
+    /// every step's size and leadings scaled, whatever scale the ramp
+    /// carried before.
+    pub fn to_text_scale(self) -> Theme {
+        let mut t = self;
+        let s = if t.text_scale.is_finite() {
+            t.text_scale.clamp(1.0, 2.0)
+        } else {
+            1.0
+        };
+        let k = s / t.ramp_scale;
+        if k != 1.0 {
+            for step in t.type_ramp.steps_mut() {
+                step.size *= k;
+                step.line_height *= k;
+                step.cjk_line_height *= k;
+            }
+        }
+        t.text_scale = s;
+        t.ramp_scale = s;
         t
     }
 
@@ -492,7 +528,7 @@ impl Theme {
 
     /// The control sizes for a viewport.
     pub fn sizes(&self, viewport: &crate::Viewport) -> Density {
-        match self.density {
+        let d = match self.density {
             DensityMode::Mouse => tokens::MOUSE,
             DensityMode::Pad => tokens::PAD,
             DensityMode::Touch => tokens::TOUCH,
@@ -503,6 +539,17 @@ impl Theme {
                     tokens::MOUSE
                 }
             }
+        };
+        // Text at 200 % needs taller controls: each grows by the leading
+        // body text gains, its padding kept.
+        let grow = (self.ramp_scale - 1.0) * self.type_ramp.body.line_height / self.ramp_scale;
+        Density {
+            control_lg: d.control_lg + grow,
+            control_md: d.control_md + grow,
+            control_sm: d.control_sm + grow,
+            header: d.header + grow,
+            row: d.row + grow,
+            ..d
         }
     }
 }

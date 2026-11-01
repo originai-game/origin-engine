@@ -385,7 +385,8 @@ const STATE_VERSION: u32 = 11;
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,
 /// and reduced transparency (the page's or the game's) the flat variant
-/// (a game's own settings can only add to what the page asks).
+/// (a game's own settings can only add to what the page asks); the type
+/// ramp takes the player's text scale.
 fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
     let mut t = theme;
     if viewport.high_contrast && t.contrast != crate::style::Contrast::High {
@@ -395,7 +396,7 @@ fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
     if t.reduced_transparency || viewport.reduced_transparency {
         t = t.to_reduced_transparency();
     }
-    t
+    t.to_text_scale()
 }
 
 /// A style's `textGlow` size is how far the old four offset copies reached;

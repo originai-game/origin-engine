@@ -433,6 +433,12 @@ module ui {
     field contrast Contrast "Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast)."
     field primaryColor Option.Color "An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's."
     field reducedMotion bool "Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion)."
+    field textScale f32 "The player's text size (a settings screen's slider, kept with the other settings): every text size and leading is multiplied by it and the layout grows around the text (control, row and header heights by the leading body text gains), never clipping it. 1 is the style's sizes; docs/ui.md §15.2 holds every screen to 2." {
+      default 1
+      min 1
+      max 2
+      unit ratio
+    }
     field reducedTransparency bool "Nothing is see-through: glass parts (a style's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on."
     field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from; null takes the style's."
     field toastAnchor Option.Anchor "Where toasts stack; null is the bottom centre."
@@ -518,6 +524,7 @@ module ui {
     field style String "The configured style's name; empty for the prototype style."
     field contrast Contrast "The variant in effect: high when the game asked for it or the page prefers more contrast."
     field reducedMotion bool "Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement."
+    field textScale f32 "The player's text scale in effect (UiDesc.textScale, 1 to 2): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this."
     field reducedTransparency bool "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
     field tokens Json "The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric, at each breakpoint: size, lineHeight, trackingEm, weight, font), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
   }
@@ -3017,6 +3024,12 @@ module ui {
     field showFps bool "Show the frame rate."
     field reducedMotion bool "Keep state changes, drop movement (the UI's transitions only fade)."
     field highContrast bool "The high-contrast theme."
+    field textScale f32 "The text size, 1 to 2: UiDesc.textScale (the settings screen configures it in SettingsDesc.world; without one the game passes it to og.ui.configure in onChange)." {
+      default 1
+      min 1
+      max 2
+      unit ratio
+    }
     field vibration bool "Vibrate on hits (where the device can)." {
       default true
     }
@@ -3044,7 +3057,7 @@ module ui {
     field languages List.LanguageOption "The languages offered; empty hides the Language tab."
     field onChange Option.SettingsChanged "Called on every change (apply it at once: volume, contrast)."
     field onSave Option.SettingsChanged "Called when the screen closes after changes (persist here)."
-    field world Option.World "The world the graphics preset is drawn in: when the player picks another preset the screen calls og.render.applyQuality(world, preset) before onChange (with GameSettings.display, og.render.setDisplay(world, display) instead, which never writes the world). The Controls tab sets the mouse's raw input (og.input.setMouse) and, with lookAction, its sensitivity there too. Null leaves applying them to the game. Inside a system, the system declares RenderSettings among its writes."
+    field world Option.World "The world the graphics preset is drawn in: when the player picks another preset the screen calls og.render.applyQuality(world, preset) before onChange (with GameSettings.display, og.render.setDisplay(world, display) instead, which never writes the world), and another text size og.ui.configure(world, { textScale }). The Controls tab sets the mouse's raw input (og.input.setMouse) and, with lookAction, its sensitivity there too. Null leaves applying them to the game. Inside a system, the system declares RenderSettings among its writes."
     field lookAction String "The axis action (`look`) the Controls tab's Sensitivity and Invert vertical look set for the mouse: og.input.setSensitivity(world, { action, device: keyboardMouse, scale: sensitivity, invertY }). Empty leaves them to the game."
     field title String "The dialog's title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t)." {
       default "Settings"
@@ -3093,6 +3106,9 @@ module ui {
     }
     field contrastLabel String "The high-contrast toggle." {
       default "High contrast"
+    }
+    field textSizeLabel String "The text-size slider." {
+      default "Text size"
     }
     field sensitivityLabel String "The look sensitivity's slider." {
       default "Sensitivity"

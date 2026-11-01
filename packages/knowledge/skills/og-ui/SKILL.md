@@ -764,9 +764,9 @@ What `og ui check` reports (docs/ui.md §16.5), each with the fix:
 | `primary-actions` | more than one primary button in a layer | all but one `secondary` |
 | `feedback` | a styled game without hover and press sounds; a custom interactive container without visual states | the style's sounds; a `press` state group |
 | `budget` | over 300 elements in a frame | a virtual list, fewer wrappers |
+| `text-scale` | at 200 % text (`UiDesc.textScale` 2; the check runs it in the game's locale and the pseudo-locale), a text cut, or a text that did not grow (a fixed size of the game's own) | let boxes fit their text; size from the ramp's steps, or multiply your own sizes by `og.ui.theme().textScale` |
 
-Not checkable yet, and reported as such: 200 % text scale (og-ui has no
-text scale), a layer without Back (the layer stack), motion bounds and
+Not checkable yet, and reported as such: a layer without Back (the layer stack), motion bounds and
 reduced-motion fallbacks (the style's motion tokens on states), art
 slots on their placeholder. og.ui.overlaps and og.ui.layoutStats read the
 same overlap and counts from game code.

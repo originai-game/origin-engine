@@ -3,7 +3,8 @@
 // screen answers the new ones every tick and calls the hooks: onChange on
 // every change (apply it at once), onSave when it closes after changes.
 // A new graphics preset is applied to SettingsDesc.world by the screen
-// itself (og.render.applyQuality) before onChange.
+// itself (og.render.applyQuality) before onChange, and a new text size
+// (og.ui.configure's textScale).
 //
 // With GameSettings.display (og.render.display(world).settings) the Graphics
 // tab is the PC graphics page: the preset, render scale, frame-rate limit,
@@ -35,6 +36,7 @@ export function settingsWithDefaults(s: Api.GameSettings = {}): Settings {
     showFps: s.showFps ?? false,
     reducedMotion: s.reducedMotion ?? false,
     highContrast: s.highContrast ?? false,
+    textScale: Math.min(2, Math.max(1, s.textScale ?? 1)),
     vibration: s.vibration ?? true,
     invertY: s.invertY ?? false,
     sensitivity: s.sensitivity ?? 1,
@@ -119,6 +121,7 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
           s.showFps = (kit.toggle("Fps", s.showFps, desc.fpsLabel ?? "Show frame rate") as Api.ToggleResult).on;
           s.reducedMotion = (kit.toggle("Motion", s.reducedMotion, desc.motionLabel ?? "Reduce motion") as Api.ToggleResult).on;
           s.highContrast = (kit.toggle("Contrast", s.highContrast, desc.contrastLabel ?? "High contrast") as Api.ToggleResult).on;
+          s.textScale = sliderRow("TextSize", desc.textSizeLabel ?? "Text size", s.textScale, { min: 1, max: 2, step: 0.25 }, pct(s.textScale));
           break;
         }
         case "controls": {
@@ -173,6 +176,12 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
     // The vibration switch is the player's haptic strength (og.ui.setHaptics):
     // off silences the style's patterns on the pad and the phone.
     if (s.vibration !== before.vibration) kit.setHaptics(s.vibration ? 1 : 0);
+    // The text size is the UI's (og.ui.configure keeps every other field);
+    // without a world the game applies it in onChange.
+    if (s.textScale !== before.textScale && desc.world) {
+      const r = kit.configure(desc.world as never, { textScale: s.textScale }) as Api.Result<void>;
+      if (!r.ok) throw new Error(`og.ui.settingsScreen: ${r.reason}`);
+    }
     desc.onChange?.(s);
   }
   if (closed && dirty) {
@@ -234,5 +243,6 @@ function graphicsPage(s: Settings, d: Api.DisplaySettings, desc: Api.SettingsDes
     s.showFps = (kit.toggle("Fps", s.showFps, desc.fpsLabel ?? "Show frame rate") as Api.ToggleResult).on;
     s.reducedMotion = (kit.toggle("Motion", s.reducedMotion, desc.motionLabel ?? "Reduce motion") as Api.ToggleResult).on;
     s.highContrast = (kit.toggle("Contrast", s.highContrast, desc.contrastLabel ?? "High contrast") as Api.ToggleResult).on;
+    s.textScale = sliderRow("TextSize", desc.textSizeLabel ?? "Text size", s.textScale, { min: 1, max: 2, step: 0.25 }, `${Math.round(s.textScale * 100)}%`);
   });
 }

@@ -692,11 +692,15 @@ impl Ui {
     /// Japanese and Korean text a line height half again its size.
     pub fn type_step(&self, role: crate::tokens::TypeRole) -> TypeStep {
         let tok = self.theme.tokens.typography.get(role, self.breakpoint());
+        // The tokens are the style's as authored; the player's text scale
+        // grows them here (the ramp carries it already).
+        let k = self.theme.ramp_scale;
+        let (size, line_height) = (tok.size * k, tok.line_height * k);
         TypeStep {
-            size: tok.size,
-            line_height: tok.line_height,
+            size,
+            line_height,
             tracking_em: tok.tracking_em,
-            cjk_line_height: tok.line_height.max((tok.size * 1.45).round()),
+            cjk_line_height: line_height.max((size * 1.45).round()),
             cjk_tracking_em: 0.0,
         }
     }
