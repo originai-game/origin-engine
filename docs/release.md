@@ -81,7 +81,9 @@ What holds from this commit:
    `agent-server/scripts/e2b/origin-engine.json` names a package version,
    not a SHA; `project.ogt`'s `engine "<v>"` pins the same thing per Game
    (decision E9); `og` compares the two and says so (§4 row R1).
-4. **Local first, in this order, for every version.** The gate on `main`;
+4. **Local first, in this order, for every version.** The GitHub `ci`
+   workflow is not a step and never blocks a release (`docs/ci.md` §CI).
+   The gate on `main`;
    `scripts/release.sh pack` and `verify` (the install test on this
    machine, in a linux-x64 container and, `--instabox`, in an InstaBox
    machine, §3); publish; the platform's local stack (`stage-engine`,

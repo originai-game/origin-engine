@@ -344,7 +344,8 @@ The process does not change: the functional lane for every merge, `--all`
 and web-reference (or `scripts/wave-end.sh`) at a wave's end, by the one
 session that merges (AGENTS.md §Build and gate discipline), is what a
 merge must pass, and metal is the frame authority. CI is a record
-someone asks for, never a gate that runs by itself.
+someone asks for, never a gate that runs by itself and never a
+precondition of a release or a publish (docs/release.md §3).
 Two intermittent failures were known when the workflow last ran (og-cook's
 `cooking_twice_gives_identical_bytes`, row 80; the particle test's SIGSEGV,
 row 81); a red run is read before it is re-run. Both are closed. The
