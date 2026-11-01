@@ -33837,6 +33837,11 @@
           "description": "Report a Response from close(), as a button does.",
           "default": false
         },
+        "focusable": {
+          "type": "boolean",
+          "description": "With interactive: keys and pads reach it (a card, a menu item, a component's tab), it takes the focus ring, and Enter, Space and the pad's A press it, as a button. Its role is button unless og.ui.semantics gives another.",
+          "default": false
+        },
         "background": {
           "anyOf": [
             {

@@ -187,7 +187,9 @@ impl Ui {
         }
         let i = self.stack.pop().unwrap_or(0);
         self.last_closed = i;
-        if self.nodes[i].el.interactive {
+        if self.nodes[i].el.interactive && self.nodes[i].el.focusable {
+            self.nav_target(i, false)
+        } else if self.nodes[i].el.interactive {
             self.respond(self.nodes[i].key)
         } else {
             Response::default()

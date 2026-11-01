@@ -295,6 +295,11 @@ pub const PROPS: &[PropSpec] = &[
     p!("aspect", Ty::Num, "Width over height (0: none)."),
     p!("interactive", Ty::Bool, "It reports clicks (`on click`)."),
     p!(
+        "focusable",
+        Ty::Bool,
+        "With interactive: keys and pads reach it and press it."
+    ),
+    p!(
         "visible",
         Ty::Bool,
         "False leaves it (and its subtree) out of the tree."

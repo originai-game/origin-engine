@@ -406,6 +406,7 @@ impl Ui {
                 "frame",
                 "aspect",
                 "interactive",
+                "focusable",
                 "wrap",
             ] {
                 if r.has(name) {

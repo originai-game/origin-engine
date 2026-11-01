@@ -17903,6 +17903,12 @@ export interface ElementDesc {
    */
   readonly interactive?: boolean;
   /**
+   * With interactive: keys and pads reach it (a card, a menu item, a component's tab), it takes the focus ring, and Enter, Space and the pad's A press it, as a button. Its role is button unless og.ui.semantics gives another.
+   *
+   * @default false
+   */
+  readonly focusable?: boolean;
+  /**
    * Its fill; null draws none.
    *
    * @default null
