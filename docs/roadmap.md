@@ -138,8 +138,9 @@ After R, as the plan's final stage:
 | G1-5 | [T-4157fcd5](https://ampcode.com/threads/T-4157fcd5-17e7-43b7-8471-59ff1b6b6356) | `g1-save-migration` | started 2026-11-01 |
 | og-cook cook/mod.rs, look.rs split | — | — | after G1-3 |
 | G1-3 | [T-01a1980c](https://ampcode.com/threads/T-01a1980c-a132-73a9-96bf-c2ebfbde9c2e) | `g1-gltf-formats` | merged 2026-11-01 (main 1c1451ea, five gltf references) |
-| G1-4 | [T-532b590f](https://ampcode.com/threads/T-532b590f-cff8-4ccc-89da-b4c97a97180a) | `g1-frame-quality` | reviewed at 6a6c8474; rebasing, re-transcode after device loss |
+| G1-4 | [T-532b590f](https://ampcode.com/threads/T-532b590f-cff8-4ccc-89da-b4c97a97180a) | `g1-frame-quality` | reviewed at 6f0acdb4 (re-transcode after loss added), merging; browser checks on studio-win after |
 | U6a | [T-820be2e3](https://ampcode.com/threads/T-820be2e3-deeb-441a-b49f-aa37ad4dc058) | `u6a-controls` | started 2026-11-01 |
-| G1-7, U6d | — | — | as slots free |
+| G1-7 | [T-29a2d81f](https://ampcode.com/threads/T-29a2d81f-1300-4ea8-b96f-6b9e0a17f76a) | `g1-pc-presentation` | started 2026-11-01 |
+| U6d | — | — | next free slot |
 | png-references | [T-858f4e1e](https://ampcode.com/threads/T-858f4e1e-a6d7-464a-aaef-a8e3b74d89c0) | `png-references` | merged 2026-11-01 (main 90ee1b43; 423 files pixel-exact, 211.0 → 114.3 MB): record paths write Best + adaptive PNG (fast encoders since 10-17/10-25 made 309 references 167 MB), existing ones recompressed pixel-exact |
 | web-tests | — | — | owed: tests/web/player.ts and export.ts wait on fixed sleeps, so a fresh headless profile's warm-up on D3D12 fails them; "behind the gate the game took its first tick" reads 2 for 1 on both machines (older than G1-6) |
