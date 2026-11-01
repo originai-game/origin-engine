@@ -48,8 +48,20 @@ export interface PartDesc extends Api.ElementDesc {
  */
 export function open(id: string, desc: PartDesc, draw?: Api.DrawDesc): string {
   kit.open(id, desc);
-  if (draw) kit.setDraw({ ...draw, dressable: true });
+  dressOrBare(desc, draw);
   return kit.openPath();
+}
+
+/**
+ * A part's own draw, which a style dressing the part restyles. A part
+ * without one (a layout box that only names itself for a style) draws
+ * nothing until a style dresses it: without this, og-ui gives a named
+ * part its class's undressed hairline, which reads as debug bounds round
+ * a crosshair or a column of dials.
+ */
+function dressOrBare(desc: PartDesc, draw: Api.DrawDesc | undefined): void {
+  if (draw) kit.setDraw({ ...draw, dressable: true });
+  else if (desc.part) kit.setDraw({ dressable: true });
 }
 
 /** Closes what `open` opened, then gives it the element model's props. */
@@ -96,7 +108,7 @@ export function box(id: string, desc: PartDesc, draw: Api.DrawDesc | undefined, 
 /** A part without children (a fill, a ring, a pip). */
 export function leaf(id: string, desc: PartDesc, draw?: Api.DrawDesc, props?: Props): void {
   kit.open(id, desc);
-  if (draw) kit.setDraw({ ...draw, dressable: true });
+  dressOrBare(desc, draw);
   kit.close();
   apply(props);
 }

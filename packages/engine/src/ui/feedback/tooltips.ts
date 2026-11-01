@@ -252,7 +252,7 @@ function statRow(id: string, s: Api.TooltipStat, deltas: boolean): void {
     if (deltas && d !== 0) {
       const good = s.better ? d < 0 : d > 0;
       const ink = role(good ? "success" : "danger");
-      kit.row("Delta", { gap: 2, cross: "center", part: sel("TooltipCard", "delta", d > 0 ? "up" : "down") }, () => {
+      box("Delta", { direction: "row", gap: 2, cross: "center", part: sel("TooltipCard", "delta", d > 0 ? "up" : "down") }, undefined, () => {
         // An up or down mark, so better and worse are not told by colour alone.
         leaf("Mark", { width: px(8), height: px(7) }, {
           shape: { kind: "polygon", sides: 3, rotation: d > 0 ? 0 : Math.PI },

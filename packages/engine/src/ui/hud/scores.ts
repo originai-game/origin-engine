@@ -320,7 +320,7 @@ export function resourceBar(id: string, desc: Api.ResourceBarDesc = {}): void {
           if (desc.rates !== false && rate !== 0) {
             // The direction as a drawn mark (no font need carry ▲▼), then the amount a second.
             const rateInk = lit(rate > 0 ? role("success") : role("danger"));
-            kit.row("Rate", { gap: u(2), cross: "center", part: sel("ResourceBar", "rate", rate > 0 ? "up" : "down") }, () => {
+            box("Rate", { direction: "row", gap: u(2), cross: "center", part: sel("ResourceBar", "rate", rate > 0 ? "up" : "down") }, undefined, () => {
               leaf("Mark", { width: px(u(7)), height: px(u(6)) }, { shape: { kind: "polygon", sides: 3, rotation: rate > 0 ? 0 : Math.PI }, fills: [solid(rateInk)] });
               text("Text", `${formatNumber(Math.abs(rate), { ...fmt, decimals: Math.abs(rate) < 100 && !Number.isInteger(rate) ? 1 : 0 })}${r.rateSuffix ?? "/s"}`, {
                 step: ts(11), font: "mono", color: rateInk, nowrap: true, outline: 0.8,
