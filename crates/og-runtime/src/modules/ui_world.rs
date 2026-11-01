@@ -212,6 +212,7 @@ fn anchor_desc(theme: &Theme, d: &Value) -> WorldAnchorDesc {
             }
         }),
         fade_ticks: d["fadeTicks"].as_u64().unwrap_or(0) as u32,
+        contain: d["contain"].as_bool().unwrap_or(false),
     }
 }
 

@@ -251,6 +251,10 @@ pub struct WorldAnchorDesc {
     pub clamp: Option<EdgeClamp>,
     /// Ticks a fade (declutter, distance, entering) takes (0: 6).
     pub fade_ticks: u32,
+    /// Without `clamp`: while its point is in the safe area its box is kept
+    /// inside it (a tag near the edge slides in rather than being cut), and
+    /// it fades out as the point leaves the safe area.
+    pub contain: bool,
 }
 
 impl Default for WorldAnchorDesc {
@@ -269,6 +273,7 @@ impl Default for WorldAnchorDesc {
             priority: 0,
             clamp: None,
             fade_ticks: 0,
+            contain: false,
         }
     }
 }

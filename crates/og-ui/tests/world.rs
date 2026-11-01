@@ -115,6 +115,38 @@ fn an_anchor_sits_on_its_projected_point_and_scales_with_distance() {
 }
 
 #[test]
+fn a_contained_tag_slides_in_from_the_edge_and_fades_as_its_point_leaves() {
+    let mut ui = ui();
+    let at = |x: f32, contain: bool| WorldAnchorDesc {
+        target: WorldTarget::Point(Vec3::new(x, 0.0, 0.0)),
+        contain,
+        ..WorldAnchorDesc::default()
+    };
+    let mut gone = AnchorInfo::default();
+    run(&mut ui, 30, |ui| {
+        // Its point on the screen, a few px in from the right edge.
+        tag(ui, "Cut", at(4.12, false));
+        tag(ui, "In", at(4.12, true));
+        // Its point well off the screen to the right.
+        gone = tag(ui, "Gone", at(9.0, true));
+    });
+    let p = view().project(Vec3::new(4.12, 0.0, 0.0), W, H).unwrap();
+    assert!(p.0 < W, "the point is on the screen: {p:?}");
+    let (cx, _, cw, _) = rect(&ui, "Cut");
+    let (ix, _, iw, _) = rect(&ui, "In");
+    // The frame reports an element's box cut to the screen.
+    assert!(cw < iw - 10.0, "uncontained it is cut: {cx} + {cw}");
+    assert!(
+        (ix + iw - W).abs() < 1.0,
+        "contained it ends at the edge, whole: {ix} + {iw}"
+    );
+    assert!(
+        gone.alpha < 0.01,
+        "its point off the screen, it has faded: {gone:?}"
+    );
+}
+
+#[test]
 fn crowded_anchors_resolve_by_priority() {
     let overlap = |a: (f32, f32, f32, f32), b: (f32, f32, f32, f32)| {
         a.0 < b.0 + b.2 && b.0 < a.0 + a.2 && a.1 < b.1 + b.3 && b.1 < a.1 + a.3

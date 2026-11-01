@@ -8571,6 +8571,7 @@ module ui {
     field priority i32 "Higher keeps its place; equal priorities favour the nearer."
     field clamp Option.EdgeClampDesc "Edge clamping; null lets it leave the screen."
     field fadeTicks u32 "Ticks a fade (declutter, distance, appearing) takes; 0 is 6."
+    field contain bool "Without clamp: while its point is in the safe area its box is kept inside it (a nameplate near the edge slides in rather than being cut), and it fades out as the point leaves the safe area."
   }
 
   struct AnchorInfo {

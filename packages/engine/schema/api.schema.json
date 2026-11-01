@@ -60036,6 +60036,11 @@
           "maximum": 4294967295,
           "description": "Ticks a fade (declutter, distance, appearing) takes; 0 is 6.",
           "default": 0
+        },
+        "contain": {
+          "type": "boolean",
+          "description": "Without clamp: while its point is in the safe area its box is kept inside it (a nameplate near the edge slides in rather than being cut), and it fades out as the point leaves the safe area.",
+          "default": false
         }
       },
       "additionalProperties": false

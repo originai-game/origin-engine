@@ -192,6 +192,30 @@ impl Ui {
                 }
             } else if projected.is_none() {
                 alpha = 0.0;
+            } else if d.contain {
+                // Slid inside the safe area, fading as its point leaves it.
+                let (x, y) = (at.x - d.screen_offset.x, at.y - d.screen_offset.y);
+                let out = (safe.x - x)
+                    .max(x - safe.right())
+                    .max(safe.y - y)
+                    .max(y - safe.bottom())
+                    .max(0.0);
+                alpha *= (1.0 - out / half.x.max(16.0)).clamp(0.0, 1.0);
+                let b = Rect::new(
+                    at.x - pivot.0 * half.x * 2.0,
+                    at.y - pivot.1 * half.y * 2.0,
+                    half.x * 2.0,
+                    half.y * 2.0,
+                );
+                let into = |lo: f32, len: f32, min: f32, room: f32| {
+                    if len >= room || lo < min {
+                        min - lo
+                    } else {
+                        (min + room - (lo + len)).min(0.0)
+                    }
+                };
+                at.x += into(b.x, b.width, safe.x, safe.width);
+                at.y += into(b.y, b.height, safe.y, safe.height);
             } else {
                 // Culled once its whole box is off the screen.
                 let b = Rect::new(

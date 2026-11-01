@@ -35713,6 +35713,12 @@ export interface WorldAnchorDesc {
    * @default 0
    */
   readonly fadeTicks?: number;
+  /**
+   * Without clamp: while its point is in the safe area its box is kept inside it (a nameplate near the edge slides in rather than being cut), and it fades out as the point leaves the safe area.
+   *
+   * @default false
+   */
+  readonly contain?: boolean;
 }
 
 /**
