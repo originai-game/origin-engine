@@ -52,6 +52,7 @@ import { boundHost, createEngine, systemClock, type Engine, type GameToken } fro
 import type { PlatformAnswer, PlatformHost } from "../platform-local.ts";
 import { loadWebHost, type WebGlue } from "./host.ts";
 import { FrameCounter } from "./frames.ts";
+import { FramePacer } from "./pacing.ts";
 import { drainRing, stampAt, type InjectedInput } from "./input.ts";
 import { WorkerAudio, type AudioLatencyMessage, type AudioMessage, type WebAudioGlue } from "./audio.ts";
 import { readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
@@ -187,6 +188,10 @@ export interface WebExtras {
   og_web_gpu?(engine: number): string;
   /** Make one pipeline no frame used yet (og-render's Renderer::warm); false when none is left. */
   og_web_warm?(engine: number): boolean;
+  /** The display's refresh interval the Worker measured, ms (automatic quality's budget at no frame cap). */
+  og_web_display_interval?(engine: number, ms: number): void;
+  /** Test hook: destroy the GPU device; the renderer is made again on a new one and the game goes on. */
+  og_web_lose_device?(engine: number): boolean;
   /** `og render`'s every-frame capture (development builds): the display frame drawn last as RGBA8 rows at the canvas's size; empty until its readback lands. */
   og_web_render_frame?(engine: number): Uint8Array;
   /** The first Rust panic recorded (JSON: kind, message, location, tick, lane), or `null`. */
@@ -786,16 +791,32 @@ export function startWorker(game: GameToken): void {
     if (engine && rpc) for (const frame of readFrames(rpc.requests)) serve(frame, true);
   };
 
+  /** The frame cap (og.render.setDisplay, each frame's `maxFps`) and the display's measured interval (pacing.ts). */
+  const pacer = new FramePacer();
+  let maxFps = 0;
+  let toldDisplayMs = 0;
   const frame = (now: number) => {
     scheduled = false;
     if (!engine || crashed) return;
+    let drawn = true;
     try {
+      // Input on every display frame, drawn or not: a capped frame's input is no later than the cap's interval.
       pumpInput(now);
       // Retries first: a capture asked this frame is requested now and answered on a later frame.
       retry();
       drainRpc();
-      // The clock holds while a capture waits for its readback.
       if (playing && retries.length === 0) {
+        drawn = pacer.frame(now, maxFps);
+        const d = pacer.displayMs;
+        if (d > 0 && Math.abs(d - toldDisplayMs) > toldDisplayMs * 0.05) {
+          toldDisplayMs = d;
+          glueRef?.og_web_display_interval?.(engine.id, d);
+        }
+      }
+      // The clock holds while a capture waits for its readback; a display
+      // frame the cap skips is not drawn, and the next drawn one is handed
+      // the time since the last drawn one, so the fixed tick runs on.
+      if (playing && retries.length === 0 && drawn) {
         const began = performance.now();
         const answered = engine.frame(last ? now - last : 0);
         if (!answered.ok) {
@@ -809,6 +830,7 @@ export function startWorker(game: GameToken): void {
           recorded++;
         }
         behind = answered.behind ?? 0;
+        if (typeof answered.maxFps === "number") maxFps = answered.maxFps;
         relay(answered);
         pumpRoom(engine);
         if (typeof answered.tick === "number") lastTick = answered.tick;
@@ -828,7 +850,7 @@ export function startWorker(game: GameToken): void {
       lastBeat = now;
       self.postMessage({ type: "beat", tick: lastTick });
     }
-    last = now;
+    if (drawn) last = now;
     if (playing || retries.length > 0) schedule();
   };
   /**
@@ -931,6 +953,10 @@ export function startWorker(game: GameToken): void {
       const rgba = glueRef?.og_web_render_frame?.(e.id);
       return rgba && rgba.length > 0 ? rgba : null;
     },
+    /** What the display draws now (og.render.display: the frame cap, render scale, automatic quality, device losses, GPU memory). */
+    display: (e) => JSON.parse(boundHost()!.abi.og_render_display(e.id)),
+    /** Test hook: destroy the GPU device (og_web_lose_device); the next frames make the renderer again and the game goes on. */
+    loseDevice: (e) => glueRef?.og_web_lose_device?.(e.id) ?? false,
     /** What the lanes did so far (crates/og-runtime/src/lanes.rs `report`). */
     lanes: () => JSON.parse(glueRef?.og_web_lanes?.() ?? "null"),
     /** Test hook: the next item at lanes site `site` panics (og_web_lanes_fault); false when the module has no such hook or site. */
@@ -1184,6 +1210,7 @@ export function startWorker(game: GameToken): void {
     if (data.type === "play") {
       playing = data.on;
       last = 0;
+      pacer.reset();
       if (playing) schedule();
     }
     if (data.type === "call") {

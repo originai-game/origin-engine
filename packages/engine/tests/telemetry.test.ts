@@ -2,7 +2,7 @@
 // frame bins and hitch counts, and the page's browser and device classes.
 import { expect, test } from "bun:test";
 import { FRAME_BINS, FrameCounter } from "../src/web/frames.ts";
-import { browserOf, deviceOf } from "../shell/telemetry.ts";
+import { browserOf, deviceOf, memoryOf } from "../shell/telemetry.ts";
 
 test("frames fall in the bin whose upper edge they do not pass; hitches count from 50 ms, long ones from 250 ms", () => {
   const c = new FrameCounter();
@@ -32,4 +32,11 @@ test("browsers and devices are classed from coarse facts", () => {
   expect(deviceOf({ ua: ipad, coarse: true, touchPoints: 5, screen: { width: 820, height: 1180 }, dpr: 2 }).class).toBe("tablet");
   expect(deviceOf({ ua: ipad, coarse: false, touchPoints: 0, screen: { width: 1512, height: 982 }, dpr: 2 }).class).toBe("desktop");
   expect(browserOf("Mozilla/5.0 (X11; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0")).toEqual({ name: "firefox", major: 144, os: "linux" });
+});
+
+test("a memory report carries the renderer's GPU memory, and null figures where the engine has no renderer", () => {
+  const m = memoryOf({ linear: 64, heap: { live: 8, peak: 9 }, stream: null, audio: null, world: { entities: 2 }, gpu: { textures: 1000, meshes: 200, renderTargets: 30, buffers: 4, total: 1234 } });
+  expect([m?.gpuTotal, m?.gpuTextures, m?.gpuTargets]).toEqual([1234, 1000, 30]);
+  const none = memoryOf({ linear: 64, heap: null, stream: null, audio: null, world: { entities: 0 }, gpu: null });
+  expect([none?.gpuTotal, none?.gpuTextures, none?.heapLive]).toEqual([null, null, null]);
 });

@@ -1276,6 +1276,8 @@ export class Engine {
     a11y?: Api.A11yTree;
     /** og.PointerLock.wanted: the game asks for the pointer lock (the web shell requests it on the next press on the canvas, and exits it when false). */
     pointerLock?: boolean;
+    /** The frame cap og.render.setDisplay resolved to (0: the display's rate): the web Worker draws at most this many frames a second (web/pacing.ts). */
+    maxFps?: number;
   } {
     this.pumpPlatform();
     const answer = parse<{ ok: boolean; ticks?: number }>(abi().og_engine_frame(this.id, elapsedMs));
@@ -1424,6 +1426,8 @@ export const render = Object.freeze({
   capabilities: (world: WorldImpl) => parse(abi().og_render_capabilities(world.id)),
   applyLook: (world: WorldImpl, look: number) => parse(abi().og_render_apply_look(world.id, look)),
   applyQuality: (world: WorldImpl, preset: string) => parse(abi().og_render_apply_quality(world.id, preset)),
+  setDisplay: (world: WorldImpl, settings?: unknown) => parse(abi().og_render_set_display(world.id, json(settings))),
+  display: (world: WorldImpl) => parse(abi().og_render_display(world.id)),
   look: (world: WorldImpl) => parse(abi().og_render_look(world.id)),
   snap: (world: WorldImpl, entity: number) => parse(abi().og_render_snap(world.id, entity)),
   snapCamera: (world: WorldImpl) => abi().og_render_snap_camera(world.id),

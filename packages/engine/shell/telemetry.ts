@@ -49,6 +49,10 @@ export interface MemoryInfo {
   readonly streamBudget: number | null;
   readonly audio: number | null;
   readonly entities: number | null;
+  /** The renderer's GPU memory (ProbeMemory.gpu, og-render's GpuMemory): its total and the textures and render targets within it. */
+  readonly gpuTotal?: number | null;
+  readonly gpuTextures?: number | null;
+  readonly gpuTargets?: number | null;
 }
 
 /** The limits a report carries: the ones the renderer's paths depend on. */
@@ -158,7 +162,7 @@ export function gpuOf(adapter: { info?: unknown; limits?: unknown; features?: re
 
 /** The probe's `memory` (ProbeMemory) as a report's figures; null when the engine did not answer. */
 export function memoryOf(m: unknown): MemoryInfo | null {
-  const p = m as { linear?: unknown; heap?: { live?: unknown; peak?: unknown } | null; stream?: { used?: unknown; budget?: unknown } | null; audio?: unknown; world?: { entities?: unknown } } | null;
+  const p = m as { linear?: unknown; heap?: { live?: unknown; peak?: unknown } | null; stream?: { used?: unknown; budget?: unknown } | null; audio?: unknown; world?: { entities?: unknown }; gpu?: { total?: unknown; textures?: unknown; renderTargets?: unknown } | null } | null;
   if (!p || typeof p !== "object") return null;
   const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
   return {
@@ -169,6 +173,9 @@ export function memoryOf(m: unknown): MemoryInfo | null {
     streamBudget: n(p.stream?.budget),
     audio: n(p.audio),
     entities: n(p.world?.entities),
+    gpuTotal: n(p.gpu?.total),
+    gpuTextures: n(p.gpu?.textures),
+    gpuTargets: n(p.gpu?.renderTargets),
   };
 }
 
