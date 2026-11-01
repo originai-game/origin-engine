@@ -135,7 +135,7 @@ After R, as the plan's final stage:
 | U6c | [T-52f25cda](https://ampcode.com/threads/T-52f25cda-5a9c-42e6-a2b3-dbe62c284b35) | `u6c-feedback-hud-world` | started 2026-11-01 |
 | split-runtime-3 | [T-76cca373](https://ampcode.com/threads/T-76cca373-5286-44fd-849d-775944160cf5) | `split-runtime-3` | merged 2026-11-01 (main 3aca1209) |
 | G1-1 | [T-ed474375](https://ampcode.com/threads/T-ed474375-d637-48c0-8d9a-9ca91cf6b7b6) | `g1-render-interpolation` | merged 2026-11-01 (main 3ad53786, with g1-save-added-fields); 120 Hz look waits on macrunner's console |
-| G1-5 | [T-4157fcd5](https://ampcode.com/threads/T-4157fcd5-17e7-43b7-8471-59ff1b6b6356) | `g1-save-migration` | started 2026-11-01 |
+| G1-5 | [T-4157fcd5](https://ampcode.com/threads/T-4157fcd5-17e7-43b7-8471-59ff1b6b6356) | `g1-save-migration` | reviewed at 4b504b39, merging after G1-4 (cap stays 512 KiB: 5,000 entities measured 437 KiB); follow-up g1-save-names |
 | og-cook cook/mod.rs, look.rs split | — | — | after G1-3 |
 | G1-3 | [T-01a1980c](https://ampcode.com/threads/T-01a1980c-a132-73a9-96bf-c2ebfbde9c2e) | `g1-gltf-formats` | merged 2026-11-01 (main 1c1451ea, five gltf references) |
 | G1-4 | [T-532b590f](https://ampcode.com/threads/T-532b590f-cff8-4ccc-89da-b4c97a97180a) | `g1-frame-quality` | reviewed at 6f0acdb4 (re-transcode after loss added), merging; browser checks on studio-win after |
