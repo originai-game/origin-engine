@@ -198,7 +198,12 @@ impl Ui {
         let i = self.stack.pop().unwrap_or(0);
         self.last_closed = i;
         if self.nodes[i].el.interactive && self.nodes[i].el.focusable {
-            self.nav_target(i, false)
+            let adjustable = self.nodes[i].el.adjustable;
+            let mut r = self.nav_target(i, adjustable);
+            if adjustable && r.focused {
+                r.adjust = self.nav.adjust;
+            }
+            r
         } else if self.nodes[i].el.interactive {
             self.respond(self.nodes[i].key)
         } else {

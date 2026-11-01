@@ -146,6 +146,7 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
         scroll_x: d["scrollX"].as_bool().unwrap_or(false),
         interactive: d["interactive"].as_bool().unwrap_or(false),
         focusable: d["focusable"].as_bool().unwrap_or(false),
+        adjustable: d["adjustable"].as_bool().unwrap_or(false),
         background: paint(theme, &d["background"]),
         radius: f(d, "radius", 0.0),
         frame: frame_part(&d["frame"]),
@@ -187,7 +188,7 @@ pub(super) fn response(r: Response) -> Value {
     json!({
         "hovered": r.hovered, "pressed": r.pressed, "clicked": r.clicked,
         "changed": r.changed, "focused": r.focused, "submitted": r.submitted,
-        "dropped": r.dropped, "pad": r.pad, "focusedBy": r.focused_by,
+        "dropped": r.dropped, "pad": r.pad, "focusedBy": r.focused_by, "adjust": r.adjust,
     })
 }
 

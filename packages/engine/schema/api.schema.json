@@ -34295,6 +34295,11 @@
           "description": "With interactive: keys and pads reach it (a card, a menu item, a component's tab), it takes the focus ring, and Enter, Space and the pad's A press it, as a button. Its role is button unless og.ui.semantics gives another.",
           "default": false
         },
+        "adjustable": {
+          "type": "boolean",
+          "description": "With focusable: Left and Right (a pad's left and right) are its own while it has the focus: they step it (Response.adjust) instead of moving the focus, as a slider's do (a menu row opening its submenu, a carousel, a divider).",
+          "default": false
+        },
         "background": {
           "anyOf": [
             {
@@ -35025,6 +35030,12 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads)."
+        },
+        "adjust": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "An adjustable element's (ElementDesc.adjustable) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise."
         }
       },
       "required": [
@@ -35036,7 +35047,8 @@
         "submitted",
         "dropped",
         "pad",
-        "focusedBy"
+        "focusedBy",
+        "adjust"
       ],
       "additionalProperties": false
     },
