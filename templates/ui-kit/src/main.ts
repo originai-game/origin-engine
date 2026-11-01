@@ -19,12 +19,14 @@
 import { og, defineComponent, defineResource, defineSystem, bool, f32, f64, str, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
 import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, navigationScreen, overlaysScreen } from "./components.ts";
+import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundationsScreen, rangesScreen } from "./controls.ts";
 
 export const SCREENS = [
   "gallery", "widgets", "mainMenu", "pause", "settings", "platformer", "shooter", "puzzle", "idle", "racing",
   "cutscene", "shop", "inventory", "levels", "results", "leaderboard", "tutorial", "loading", "confirm", "alert", "toasts",
   "players", "text", "materials",
   "containers", "navigation", "overlays", "data", "charts", "chartsMore", "graph",
+  "foundations", "controls", "ranges", "fields", "bindings",
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
@@ -71,6 +73,11 @@ const BLURBS: Record<Screen, string> = {
   charts: "Line, area and grouped bar charts",
   chartsMore: "Stacked bars, radar and donut charts",
   graph: "Skill tree graph and calendar",
+  foundations: "Text, prose, icons, art slots, shapes, viewport, effects",
+  controls: "Buttons, hold to confirm, switches, checkboxes, radios, segmented, cycler",
+  ranges: "Sliders, range slider, steppers",
+  fields: "Text fields, search, selects, colour picker",
+  bindings: "Key bindings and the on-screen keyboard",
 };
 
 /** The demo's state: one entity named "demo" (dump_entity:demo reads it). */
@@ -1115,6 +1122,26 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       graphScreen();
       back = og.ui.back();
       break;
+    case "foundations":
+      foundationsScreen();
+      back = og.ui.back();
+      break;
+    case "controls":
+      controlsScreen();
+      back = og.ui.back();
+      break;
+    case "ranges":
+      rangesScreen();
+      back = og.ui.back();
+      break;
+    case "fields":
+      // Back closes an open list or the search's suggestions first (their focus scopes take it).
+      fieldsScreen();
+      break;
+    case "bindings":
+      // Back cancels a capture or closes the keyboard first.
+      bindingsScreen(world);
+      break;
     case "toasts": {
       const t = og.ui.frameTheme();
       og.ui.anchor("ToastDemo", { anchor: "center", direction: "column", gap: t.space.sm, width: { kind: "fixed", px: 300 }, padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, background: { token: "panel" }, radius: t.radius.panel }, () => {
@@ -1238,7 +1265,9 @@ export default og.game({
     },
     mixed: (world, args) => update(world, { mixed: args[0] !== "off" }),
     offline: (world, args) => update(world, { offline: args[0] !== "off" }),
-    demo: (world, args) => demoCommand(world, args),
+    demo: (world, args) => {
+      if (!controlsDemo(world, args)) demoCommand(world, args);
+    },
   },
   commandHelp: {
     show: { usage: `<${SCREENS.join("|")}>`, doc: "Open a screen of the kit (its usage lists them all: og ui check reads it)." },
@@ -1251,7 +1280,7 @@ export default og.game({
     transition: { usage: "<none|fade|wipe|iris|dissolve|slide>", doc: "Send screen changes through og.ui.screenTransition." },
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
     mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },
-    demo: { usage: "<overlay|data|aim|text|device|reset>:<value>", doc: "A component preview's state: demo:overlay:menu (menu, submenu, context, popover, dialog, confirm, sheet, sideSheet, radial, none), demo:data:loading (rows, loading, empty, error), demo:aim:0.7,-0.7 (the radial wheel's stick), demo:text:200 (the player's text size, 100 to 200 %), demo:device:playstation (the device prompts are drawn for: keyboardMouse, xbox, playstation, switch)." },
+    demo: { usage: "<overlay|data|aim|text|device|reset|keyboard|controls>:<value>", doc: "A component preview's state: demo:overlay:menu (menu, submenu, context, popover, dialog, confirm, sheet, sideSheet, radial, none), demo:data:loading (rows, loading, empty, error), demo:aim:0.7,-0.7 (the radial wheel's stick), demo:text:200 (the player's text size, 100 to 200 %), demo:device:playstation (the device prompts are drawn for, and the key-binding rows': keyboardMouse, xbox, playstation, switch), demo:keyboard:kana (letters, symbols, numeric, kana, none: the on-screen keyboard on the bindings screen), demo:controls:reset (the controls previews' state)." },
     offline: { usage: "<on|off>", doc: "The leaderboard's rows fail to load: its error message and Retry (which loads again)." },
   },
   facts: (world) => {

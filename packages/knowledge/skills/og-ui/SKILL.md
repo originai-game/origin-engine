@@ -120,6 +120,36 @@ style's sounds; a style dresses its parts (`Menu.item[hover]`,
 `overlays`, `data`, `charts` and `graph` screens (`demo:overlay:<name>`,
 `demo:data:<loading|empty|error>` pick a state).
 
+### Components: foundations and controls
+
+The same contract for the smallest parts: the state is the game's (pass
+`on`, `value`, `selected` in, keep what comes back), every part a finger
+presses is at least 44 px on a coarse pointer, Left and Right step what
+is adjustable (mirrored right to left), and a style dresses the parts
+(`Button.base[primary][hover]`, `Toggle.track[on]`, `Slider.knob[pressed]`,
+`Rebind.slot[capturing]`).
+
+| The game needs | Call | It answers |
+|---|---|---|
+| Text by role, prose | `og.ui.text(id, value, { role: "title" \| "heading" \| "body" \| "caption" \| "numeric", tone })`, `og.ui.prose(id, markup, {})` | nothing, `RichTextResult` |
+| An icon, art, a shape | `og.ui.iconMark(id, name, { plate, badge, dot })`, `og.ui.artSlot(id, { texture, kind, aspect, mask, loading })` (a placeholder until the art is there), `og.ui.shapeBox(id, { kind, fill, glow })` | nothing |
+| A divider, a gap | `og.ui.separator(id, { label, vertical, strong })`, `og.ui.space(id, { step, grow })` | nothing |
+| A character preview | `og.ui.viewFrame(id, { texture, yaw, pitch, zoom, hint })` (drag, wheel, Left/Right turn it) | `yaw`, `pitch`, `zoom`, `view` |
+| Sparks, a shine | `og.ui.emitter(id, { preset })`, `og.ui.effectLayer(id, { material, sweep }, build)` | nothing |
+| A button | `og.ui.pushButton(id, label, { variant: "primary" \| "secondary" \| "ghost" \| "quiet" \| "danger", size, icon, badge, loading, disabledReason })`, `og.ui.iconButton(id, icon, { label, badge, dot })` | its response (`clicked`) |
+| A destructive confirm | `og.ui.holdButton(id, label, { holdMs, toggle })` (keys and pads always tap to start, tap to stop) | `confirmed`, `progress` |
+| On and off | `og.ui.toggleSwitch(id, on, { label, description })`, `og.ui.checkField(id, checked, { label, mixed, invalid })` | `on`, `changed` |
+| One of a few | `og.ui.radioGroup(id, { options, selected, variant: "cards" })`, `og.ui.segmented(id, { items, selected })`, `og.ui.cycler(id, options, index, {})` | `selected`, `changed` |
+| A value | `og.ui.valueSlider(id, value, { min, max, step, format, marks, origin })`, `og.ui.rangeSlider(id, low, high, { minGap })`, `og.ui.numberStepper(id, value, { min, max, step })` | `value` (`low`, `high`), `committed` |
+| Text in | `og.ui.inputField(id, value, { label, helper, error, clearable, maxChars, counter })`, `og.ui.inputArea(...)`, `og.ui.searchBox(id, query, { suggestions, filter, recent })` | `value`, `submitted`, `chosen` |
+| A select, a colour | `og.ui.dropdown(id, { options, selected, searchable })`, `og.ui.colorPicker(id, color, { swatches, alpha })` | `selected`, `color`, `hex` |
+| A controls page | `og.ui.keyBindingRow(world, id, { action, device, slots })` (og.input's capture, its conflict asked inline: Swap, Replace, Cancel) | `capturing`, `changed`, `conflict` |
+| Typing with a pad or a finger | `og.ui.onScreenKeyboard(id, open, { value, layout, kana, compose, candidates })` (Y erases, LB/RB move the caret) | `value`, `composition`, `submitted`, `closed` |
+
+`templates/ui-kit` shows them on its `foundations`, `controls`, `ranges`,
+`fields` and `bindings` screens (`demo:keyboard:<letters|kana|numeric|none>`,
+`demo:device:<keyboardMouse|xbox|playstation|switch>` pick a state).
+
 ## 3. Below the templates: the widget set
 
 Layout (`row`, `column`, `panel`, `scroll`, `anchor`), text and controls

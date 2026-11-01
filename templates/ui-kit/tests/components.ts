@@ -11,7 +11,7 @@ export interface Script {
 }
 
 /** Builds a script: `at` advances the clock, `shot` takes a frame. */
-function builder(t0: number) {
+export function builder(t0: number) {
   const steps: string[] = [];
   const files: string[] = [];
   let t = t0;
