@@ -2,6 +2,12 @@
 
 use super::*;
 
+mod draw_sprites;
+
+mod draw_strips;
+
+mod draw_glow;
+
 mod stylise_uniforms;
 
 mod post_uniforms;
@@ -2783,224 +2789,24 @@ impl Renderer {
         };
         // Glowing sprites into a glow buffer (group 0 set: the camera's).
         let draw_glow = |pass: &mut wgpu::RenderPass, runs: &[sprites::SpriteRun]| -> u32 {
-            let mut draws = 0;
-            pass.set_bind_group(2, glow_fx_group, &[]);
-            // Plain sprites first (sorted before arrays), then each array's.
-            let mut on_array = None;
-            for run in runs {
-                let array = matches!(run.source, RunSource::Array(..));
-                if on_array != Some(array) {
-                    pass.set_pipeline(match array {
-                        false => &self.sprite_glow_pipeline,
-                        true => {
-                            &self
-                                .sprite_arrays
-                                .as_ref()
-                                .expect("made before the pass")
-                                .glow
-                        }
-                    });
-                    on_array = Some(array);
-                }
-                let group = match run.source {
-                    RunSource::Sprite(_, Some(t)) => self.cache.sprite_groups[t.index()]
-                        .as_ref()
-                        .expect("made before the pass"),
-                    RunSource::Array(_, a) => {
-                        &self.cache.sprite_array_groups[a.index()]
-                            .as_ref()
-                            .expect("made before the pass")
-                            .0
-                    }
-                    _ => &self.white_sprite_group,
-                };
-                pass.set_bind_group(1, group, &[]);
-                let start = run.first as u64 * SPRITE_STRIDE;
-                pass.set_vertex_buffer(
-                    0,
-                    self.sprite_buffer
-                        .slice(start..start + run.count as u64 * SPRITE_STRIDE),
-                );
-                pass.draw(0..6, 0..run.count);
-                draws += 1;
-            }
-            draws
+            self.frame_draw_glow(pass, runs, glow_fx_group)
         };
         // Trails, ribbons and beams drawn with the 3D scene (layered 2D
         // trails go with the sprites): the main camera's or a view's runs.
         let draw_strips = |pass: &mut wgpu::RenderPass, runs: &[ribbons::RibbonRun]| -> u32 {
-            let mut draws = 0;
-            for run in runs.iter().filter(|r| r.layer.is_none()) {
-                pass.set_pipeline(
-                    &self.ribbon_pipelines[match run.blend {
-                        ParticleBlend::Additive => 0,
-                        ParticleBlend::Alpha => 1,
-                    }],
-                );
-                pass.set_bind_group(
-                    1,
-                    match run.texture {
-                        None => &self.white_sprite_group,
-                        Some(t) => self.cache.ribbon_groups[t.index()]
-                            .as_ref()
-                            .expect("made before the pass"),
-                    },
-                    &[],
-                );
-                let stride = std::mem::size_of::<ribbons::RibbonVertex>() as u64;
-                let start = run.first as u64 * stride;
-                pass.set_vertex_buffer(
-                    0,
-                    self.ribbon_buffer
-                        .slice(start..start + run.count as u64 * stride),
-                );
-                pass.draw(0..run.count, 0..1);
-                draws += 1;
-            }
-            draws
+            self.frame_draw_strips(pass, runs)
         };
         // Sprites and text over a camera's scene, in sorted order: the main
         // camera's runs with its effect group and metaball fields, or a
         // view's (`view`: every run tone mapped, no HDR alpha cover).
         // Answers the draws made.
-        let draw_sprites = |pass: &mut wgpu::RenderPass,
-                            runs: &[sprites::SpriteRun],
-                            fx: &wgpu::BindGroup,
-                            fields: &[wgpu::BindGroup],
-                            view: bool|
-         -> u32 {
-            let mut draws = 0;
-            pass.set_bind_group(2, fx, &[]);
-            let mut current: Option<(bool, SpriteBlend, bool)> = None;
-            let mut covered = false;
-            for run in runs {
-                // A view keeps no HDR alpha: every run is tone mapped there.
-                let tone_mapped = run.tone_mapped || view;
-                if !tone_mapped && !covered {
-                    // The HDR alpha to 1 before the first untonemapped run.
-                    pass.set_pipeline(&self.sprite_cover_pipeline);
-                    pass.draw(0..3, 0..1);
-                    draws += 1;
-                    covered = true;
-                    current = None;
-                }
-                if let RunSource::Metaballs(i) = run.source
-                    && let Some(group) = self.metaballs.field_of(i).and_then(|f| fields.get(f))
-                {
-                    self.metaballs.composite(pass, group, i);
-                    draws += 1;
-                    pass.set_bind_group(2, fx, &[]);
-                    current = None;
-                    continue;
-                }
-                if let RunSource::Strip(blend, texture) = run.source {
-                    pass.set_pipeline(
-                        &self.ribbon_pipelines[usize::from(blend != ParticleBlend::Additive as u8)],
-                    );
-                    pass.set_bind_group(
-                        1,
-                        match texture {
-                            None => &self.white_sprite_group,
-                            Some(t) => self.cache.ribbon_groups[t.index()]
-                                .as_ref()
-                                .expect("made before the pass"),
-                        },
-                        &[],
-                    );
-                    let stride = std::mem::size_of::<ribbons::RibbonVertex>() as u64;
-                    let start = run.first as u64 * stride;
-                    pass.set_vertex_buffer(
-                        0,
-                        self.ribbon_buffer
-                            .slice(start..start + run.count as u64 * stride),
-                    );
-                    pass.draw(0..run.count, 0..1);
-                    draws += 1;
-                    // The sprite pipeline and its groups again.
-                    pass.set_bind_group(2, fx, &[]);
-                    current = None;
-                    continue;
-                }
-                if let RunSource::Mesh(i) = run.source {
-                    let mesh = &scene.sprite_meshes[i as usize];
-                    pass.set_bind_group(
-                        1,
-                        match mesh.texture {
-                            None => &self.white_sprite_group,
-                            Some(t) => self.cache.sprite_groups[t.index()]
-                                .as_ref()
-                                .expect("made before the pass"),
-                        },
-                        &[],
-                    );
-                    self.sprite_meshes
-                        .as_ref()
-                        .expect("made before the pass")
-                        .draw(pass, mesh.blend, run.first, run.count);
-                    draws += 1;
-                    current = None;
-                    continue;
-                }
-                if let RunSource::Array(blend, a) = run.source {
-                    let arrays = self.sprite_arrays.as_ref().expect("made before the pass");
-                    pass.set_pipeline(arrays.pipeline(blend, tone_mapped));
-                    let (group, _) = self.cache.sprite_array_groups[a.index()]
-                        .as_ref()
-                        .expect("made before the pass");
-                    pass.set_bind_group(1, group, &[]);
-                    let start = run.first as u64 * SPRITE_STRIDE;
-                    pass.set_vertex_buffer(
-                        0,
-                        self.sprite_buffer
-                            .slice(start..start + run.count as u64 * SPRITE_STRIDE),
-                    );
-                    pass.draw(0..6, 0..run.count);
-                    draws += 1;
-                    current = None;
-                    continue;
-                }
-                let (msdf, blend, group) = match run.source {
-                    RunSource::Strip(..)
-                    | RunSource::Metaballs(_)
-                    | RunSource::Mesh(_)
-                    | RunSource::Array(..) => {
-                        unreachable!("drawn above")
-                    }
-                    RunSource::Sprite(blend, None) => (false, blend, &self.white_sprite_group),
-                    RunSource::Sprite(blend, Some(t)) => (
-                        false,
-                        blend,
-                        self.cache.sprite_groups[t.index()]
-                            .as_ref()
-                            .expect("made before the pass"),
-                    ),
-                    RunSource::Font(f) => (
-                        true,
-                        SpriteBlend::Alpha,
-                        &self.cache.fonts[f.index()].bind_group,
-                    ),
-                };
-                if current != Some((msdf, blend, tone_mapped)) {
-                    pass.set_pipeline(match (msdf, blend, tone_mapped) {
-                        (true, _, _) => &self.msdf_pipeline,
-                        (false, SpriteBlend::Alpha, false) => &self.sprite_untonemapped_pipeline,
-                        (false, SpriteBlend::Alpha, true) => &self.sprite_pipeline,
-                        (false, SpriteBlend::Additive, _) => &self.sprite_additive_pipeline,
-                    });
-                    current = Some((msdf, blend, tone_mapped));
-                }
-                pass.set_bind_group(1, group, &[]);
-                let start = run.first as u64 * SPRITE_STRIDE;
-                pass.set_vertex_buffer(
-                    0,
-                    self.sprite_buffer
-                        .slice(start..start + run.count as u64 * SPRITE_STRIDE),
-                );
-                pass.draw(0..6, 0..run.count);
-                draws += 1;
-            }
-            draws
-        };
+        let draw_sprites =
+            |pass: &mut wgpu::RenderPass,
+             runs: &[sprites::SpriteRun],
+             fx: &wgpu::BindGroup,
+             fields: &[wgpu::BindGroup],
+             view: bool|
+             -> u32 { self.frame_draw_sprites(pass, runs, fx, fields, view, scene) };
         // The transparent meshes of `list` and the billboards sorted among
         // them (`sprites::SpriteFrame::billboards`): the billboards' drop
         // shadows first, then each billboard before the first run nearer
