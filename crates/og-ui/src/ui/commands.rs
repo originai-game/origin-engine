@@ -1,0 +1,573 @@
+use super::*;
+
+impl Ui {
+    /// Staggered entrances: under a node with a stagger, the k-th drawn
+    /// leaf (a label, a control, an icon) enters `k` steps after the first;
+    /// a long list shortens the step so the cascade ends within one more
+    /// entrance. The cascade is only seen: a control takes input as soon as
+    /// the panel's own entrance (inert while it moves) has played, where it
+    /// is drawn, not when its place in the cascade has.
+    pub(super) fn apply_stagger(&mut self, order: &[usize]) {
+        let now = self.state.tick as f32;
+        let (reduced, distance) = (self.theme.reduced_motion, self.theme.space.lg);
+        for &i in order {
+            let Some(st) = self.nodes[i].stagger else {
+                continue;
+            };
+            let leaves: Vec<usize> = preorder(&self.nodes, i)
+                .into_iter()
+                .skip(1)
+                .filter(|&j| {
+                    let n = &self.nodes[j];
+                    n.children.is_empty()
+                        && !matches!(n.widget, Widget::Spacer)
+                        && (!matches!(n.content, Content::None)
+                            || n.el.background.is_some()
+                            || !matches!(n.widget, Widget::None)
+                            || !n.shapes.is_empty())
+                })
+                .collect();
+            // The whole cascade takes at most one entrance more.
+            let step = if leaves.len() > 1 {
+                st.step.min(st.ticks / (leaves.len() - 1) as f32)
+            } else {
+                st.step
+            };
+            for (k, &j) in leaves.iter().enumerate() {
+                let start = st.since as f32 + step * k as f32;
+                let p = ((now - start + 1.0) / st.ticks).clamp(0.0, 1.0);
+                if p >= 1.0 || self.nodes[j].fx.is_some() {
+                    continue;
+                }
+                self.nodes[j].fx = Some(crate::motion::fx(
+                    st.kind,
+                    crate::motion::ease_out(p),
+                    distance,
+                    reduced,
+                ));
+            }
+        }
+    }
+
+    /// The tick `key` was first seen on (kept while it is asked every tick).
+    pub(crate) fn since(&mut self, key: u64) -> u64 {
+        let fresh = !self.has_anim(key);
+        let mut a = self.anim(key);
+        if fresh {
+            a.t = self.state.tick;
+        }
+        self.set_anim(key, a);
+        a.t
+    }
+
+    /// Each element's map onto the screen (docs/ui.md §6.1): its layout
+    /// animation, its drag and pinch, its transition's movement and its own
+    /// transform, about its box, composed with its parent's; its opacity
+    /// multiplied down the tree; inert where a transition moves it, a state
+    /// or timeline holds it, or its parent is. Clips made by a transformed
+    /// scroll container move with it.
+    pub(super) fn apply_world(&mut self, order: &[usize]) {
+        for &i in order {
+            let parent = self.nodes[i].parent;
+            let (alpha, inert, pw) = if parent == NONE {
+                (1.0, false, Affine::IDENTITY)
+            } else {
+                let p = &self.nodes[parent];
+                (p.alpha, p.inert, p.world)
+            };
+            let n = &mut self.nodes[i];
+            n.alpha = alpha * n.props.opacity.clamp(0.0, 1.0);
+            n.scale = 1.0;
+            n.inert = inert || n.props.inert;
+            let r = n.rect;
+            let (cx, cy) = r.center();
+            let mut local = Affine::IDENTITY;
+            let [fx, fy, fsx, fsy] = n.flip;
+            if fx != 0.0 || fy != 0.0 || fsx != 1.0 || fsy != 1.0 {
+                local = Affine::translate(fx, fy).mul(&Affine::scale(fsx, fsy).about(r.x, r.y));
+            }
+            let [gx, gy, gs, gr] = n.gesture;
+            if gx != 0.0 || gy != 0.0 || gs != 1.0 || gr != 0.0 {
+                let turn = Affine::rotate(gr).mul(&Affine::scale(gs, gs)).about(cx, cy);
+                local = local.mul(&Affine::translate(gx, gy)).mul(&turn);
+            }
+            if let Some(f) = n.fx {
+                n.alpha *= f.alpha;
+                n.inert |= f.inert;
+                if f.dx != 0.0 || f.dy != 0.0 || f.scale != 1.0 {
+                    local = local
+                        .mul(&Affine::translate(f.dx, f.dy))
+                        .mul(&Affine::scale(f.scale, f.scale).about(cx, cy));
+                }
+            }
+            if !n.props.transform.is_identity() {
+                local = local.mul(&n.props.transform.matrix(&r));
+            }
+            n.world = if local.is_identity() {
+                pw
+            } else {
+                pw.mul(&local)
+            };
+            n.screen = n.world.map_rect(&r);
+        }
+        for &i in order {
+            let src = self.nodes[i].clip_src;
+            if src != NONE && !self.nodes[src].world.is_identity() {
+                let w = self.nodes[src].world;
+                let c = self.nodes[i].clip;
+                self.nodes[i].clip = w.map_rect(&c);
+            }
+        }
+    }
+
+    /// The frame's draw commands with their maps (docs/ui.md §6.1): each
+    /// element's in its layout box, mapped by its world (an axis-aligned
+    /// map is baked into the command, a turn or skew is left for the
+    /// overlay); a scroll container's bars after its content; leaving
+    /// elements (ghosts) after their parent's subtree, or last; and the
+    /// drawing of every element with an exit or a match key frozen for
+    /// next tick.
+    pub(super) fn commands(&mut self, order: &[usize]) -> Vec<(DrawCmd, Affine)> {
+        let dpr = self.viewport.dpr();
+        let snap = |v: f32| (v * dpr).round() / dpr;
+        let ends = crate::layout::subtree_ends(&self.nodes, order);
+        let mut cmds: Vec<(DrawCmd, Affine)> = Vec::new();
+        let ghosts = std::mem::take(&mut self.state.motion.ghosts);
+        let present: std::collections::BTreeSet<u64> =
+            order.iter().map(|&i| self.nodes[i].key).collect();
+        let mut drawn = vec![false; ghosts.len()];
+        let mut frozen: IdMap<u64, crate::motion::state::Frozen> = IdMap::new();
+        // Open subtrees: (node, its first command, the order position past it).
+        let mut open: Vec<(usize, usize, usize)> = Vec::new();
+        // Elements whose commands and ancestors' fills are as last frame
+        // (docs/ui.md §6.3): their commands are last frame's.
+        let mut same = vec![false; self.nodes.len()];
+        let mut next: IdMap<u64, Vec<DrawCmd>> = IdMap::new();
+        let prev_kinds = std::mem::take(&mut self.prev_kinds);
+        let theme = self.theme;
+        // An element's draw (crate::paint) in its layout box, at its
+        // opacity; its clip is the screen's (bake leaves draw commands be).
+        let press_scale = theme.press_scale;
+        let placed = |n: &crate::layout::Node| crate::paint::Placed {
+            rect: part_rect(n, press_scale),
+            radius: n.el.radius,
+            clip: n.clip,
+            alpha: n.alpha,
+        };
+        for (k, &i) in order.iter().enumerate() {
+            let n = &self.nodes[i];
+            let world = n.world;
+            let start = cmds.len();
+            let game_draw = self.draws.contains_key(&i);
+            let draw = self
+                .draws
+                .get(&i)
+                .or_else(|| self.part_draws.get(&i))
+                .cloned();
+            if let Some(m) = self.world_marks(n.key) {
+                cmds.extend(m.enter.iter().map(|c| (c.clone(), Affine::IDENTITY)));
+            }
+            if let Some(d) = &draw {
+                cmds.extend(d.enter(&theme, &placed(n)).into_iter().map(|c| (c, world)));
+                // A style part's border draws with its fills, under its
+                // label; a game's draw strokes over its subtree.
+                if !game_draw {
+                    cmds.extend(
+                        d.strokes(&theme, &placed(n))
+                            .into_iter()
+                            .map(|c| (c, world)),
+                    );
+                }
+            }
+            let twin = self.kept.twin.get(i).copied().unwrap_or(NONE);
+            // Rich text draws from the tick (its moving spans), focus and
+            // the hot link as well: it is always made again.
+            same[i] = !self.kept.fresh
+                && !matches!(n.content, Content::Rich(_))
+                && self.kept.prev.get(twin).is_some_and(|b| {
+                    crate::layout::draw_eq(n, b) && self.kinds[i] == prev_kinds[twin]
+                })
+                && (n.parent == NONE || same[n.parent])
+                && !game_draw;
+            if i != 0 || n.el.background.is_some() {
+                let mut local = Vec::new();
+                if same[i]
+                    && let Some(c) = self.kept.cmds.get(&n.key)
+                {
+                    local = c.clone();
+                    self.stats.kept_commands += 1;
+                } else if world.is_identity() {
+                    self.node_commands(i, &mut local, &snap);
+                } else if let Some(inv) = world.invert() {
+                    // Drawn in its layout box: its screen clip taken there.
+                    let screen_clip = n.clip;
+                    self.nodes[i].clip = inv.map_rect(&screen_clip);
+                    self.drawing = world;
+                    self.node_commands(i, &mut local, &snap);
+                    self.drawing = Affine::IDENTITY;
+                    self.nodes[i].clip = screen_clip;
+                }
+                if let Some(d) = &draw {
+                    d.style_text(&theme, &mut local);
+                }
+                next.insert(self.nodes[i].key, local.clone());
+                cmds.extend(local.into_iter().map(|c| (c, world)));
+            }
+            if let Some(d) = &draw {
+                let at = placed(&self.nodes[i]);
+                cmds.extend(d.children(&at).into_iter().map(|c| (c, world)));
+            }
+            open.push((i, start, ends[k]));
+            while let Some(&(j, first, end)) = open.last() {
+                if end != k + 1 {
+                    break;
+                }
+                open.pop();
+                let key = self.nodes[j].key;
+                for (g, ghost) in ghosts.iter().enumerate() {
+                    if !drawn[g] && ghost.frozen.parent == key {
+                        drawn[g] = true;
+                        self.ghost_commands(ghost, &mut cmds);
+                    }
+                }
+                if self.nodes[j].scrolls() {
+                    let mut bars = Vec::new();
+                    self.scroll_bar_commands(j, &mut bars);
+                    let w = self.nodes[j].world;
+                    cmds.extend(bars.into_iter().map(|c| (c, w)));
+                }
+                let w = self.nodes[j].world;
+                if let Some(d) = self.draws.get(&j) {
+                    let at = placed(&self.nodes[j]);
+                    cmds.extend(d.leave(&theme, &at).into_iter().map(|c| (c, w)));
+                } else if let Some(d) = self.part_draws.get(&j) {
+                    let at = placed(&self.nodes[j]);
+                    cmds.extend(d.leave_stroked(&at).into_iter().map(|c| (c, w)));
+                }
+                if let Some(m) = self.world_marks(key) {
+                    cmds.extend(m.leave.iter().map(|c| (c.clone(), Affine::IDENTITY)));
+                }
+                let nj = &self.nodes[j];
+                if nj.props.exit.is_some() || !nj.props.match_key.is_empty() {
+                    let inv = nj.world.invert().unwrap_or(Affine::IDENTITY);
+                    let parent = if nj.parent == NONE {
+                        0
+                    } else {
+                        self.nodes[nj.parent].key
+                    };
+                    frozen.insert(
+                        key,
+                        crate::motion::state::Frozen {
+                            cmds: cmds[first..]
+                                .iter()
+                                .filter(|(c, _)| !matches!(c, DrawCmd::World(_)))
+                                .map(|(c, m)| (c.clone(), inv.mul(m)))
+                                .collect(),
+                            rect: nj.rect,
+                            world: nj.world,
+                            alpha: nj.alpha,
+                            parent: if present.contains(&parent) { parent } else { 0 },
+                            path: self.path_of(j),
+                            exit: nj.props.exit.clone(),
+                            match_key: if nj.props.match_key.is_empty() {
+                                0
+                            } else {
+                                crate::motion::state::name_hash(&nj.props.match_key)
+                            },
+                            radius: nj.el.radius,
+                        },
+                    );
+                }
+            }
+        }
+        for (g, ghost) in ghosts.iter().enumerate() {
+            if !drawn[g] {
+                self.ghost_commands(ghost, &mut cmds);
+            }
+        }
+        self.state.motion.ghosts = ghosts;
+        self.state.motion.frozen = frozen;
+        self.kept.cmds = next;
+        cmds
+    }
+
+    /// A leaving element's frozen drawing, moved by its exit (about its
+    /// box's centre) or onto the element it morphs into, and faded.
+    fn ghost_commands(&self, g: &crate::motion::state::Ghost, cmds: &mut Vec<(DrawCmd, Affine)>) {
+        let f = &g.frozen;
+        let mut v = [0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+        for (c, ch) in &g.channels {
+            if let Some(slot) = v.get_mut(*c as usize) {
+                *slot = ch.value;
+            }
+        }
+        let world = if g.morph_to != 0 {
+            let to = self
+                .nodes
+                .iter()
+                .find(|n| n.key == g.morph_to)
+                .map(|n| n.screen);
+            match to {
+                Some(to) => Affine::rect_to_rect(&f.world.map_rect(&f.rect), &to).mul(&f.world),
+                None => f.world,
+            }
+        } else {
+            let t = crate::element::Transform {
+                x: v[0],
+                y: v[1],
+                scale_x: v[2],
+                scale_y: v[3],
+                rotate: v[4],
+                skew_x: v[5],
+                skew_y: v[6],
+                ..crate::element::Transform::IDENTITY
+            };
+            f.world.mul(&t.matrix(&f.rect))
+        };
+        let fade = v[7].clamp(0.0, 1.0);
+        if fade <= 0.0 {
+            return;
+        }
+        for (c, rel) in &f.cmds {
+            let mut c = c.clone();
+            fade_cmd(&mut c, fade);
+            cmds.push((c, world.mul(rel)));
+        }
+    }
+
+    /// A scroll container's bars, over its content.
+    fn scroll_bar_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {
+        let t = &self.theme;
+        let p = &t.palette;
+        let dpr = self.viewport.dpr();
+        let sn = &self.nodes[s];
+        let clip = if sn.world.is_identity() {
+            sn.clip.intersect(&sn.rect)
+        } else {
+            sn.world
+                .invert()
+                .map_or(sn.clip, |inv| inv.map_rect(&sn.clip))
+                .intersect(&sn.rect)
+        };
+        let max_x = sn.max_scroll_x();
+        if max_x > 0.0 {
+            let inner_w = sn.w - sn.el.padding.horizontal();
+            let track = sn.rect;
+            let bar_w = crate::scroll::bar_len(track.width, inner_w, sn.content_w, t.space.xl);
+            let off = self.state.scroll_x.get(&sn.key).copied().unwrap_or(0.0);
+            let x = crate::scroll::bar_start(track.x, track.width, bar_w, off, max_x);
+            let h = t.space.xs;
+            cmds.push(DrawCmd::Quad {
+                rect: Rect::new(x, track.bottom() - h - t.space.xxs, bar_w, h).snapped(dpr),
+                radius: t.radius.bar,
+                color: p.control_strong.linear(),
+                clip,
+            });
+        }
+        let max = sn.max_scroll();
+        if max > 0.0 {
+            let inner_h = sn.h - sn.el.padding.vertical();
+            let track = sn.rect;
+            let bar_h = (track.height * inner_h / sn.content_h).max(t.space.xl);
+            let off = self
+                .state
+                .scroll
+                .get(&sn.key)
+                .copied()
+                .unwrap_or(0.0)
+                .clamp(0.0, max);
+            let y = track.y + (track.height - bar_h) * off / max;
+            let w = t.space.xs;
+            cmds.push(DrawCmd::Quad {
+                rect: Rect::new(track.right() - w - t.space.xxs, y, w, bar_h).snapped(dpr),
+                radius: t.radius.bar,
+                color: p.control_strong.linear(),
+                clip,
+            });
+        }
+    }
+}
+
+/// A command's colours faded by `k` (a leaving element's opacity).
+fn fade_cmd(c: &mut DrawCmd, k: f32) {
+    match c {
+        DrawCmd::Glass { alpha, .. } => *alpha *= k,
+        DrawCmd::Quad { color, .. }
+        | DrawCmd::Image { color, .. }
+        | DrawCmd::Bar { color, .. }
+        | DrawCmd::Half { color, .. } => color[3] *= k,
+        DrawCmd::Text { color, glow, .. } => {
+            color[3] *= k;
+            if let Some((g, _)) = glow {
+                g[3] *= k;
+            }
+        }
+        // The UI pass's commands (crate::paint).
+        DrawCmd::StyledText { text, .. } => fade_cmd(text, k),
+        DrawCmd::Shape { shape, .. } => shape.opacity *= k,
+        DrawCmd::Vector { tint, .. } => tint[3] *= k,
+        DrawCmd::EndLayer { opacity, .. } => *opacity *= k,
+        DrawCmd::World(w) => {
+            if let crate::world::WorldCmd::Mass { batch, .. } = &mut **w {
+                for i in &mut batch.instances {
+                    i.color[3] *= k;
+                }
+            }
+        }
+        DrawCmd::PushClip { .. } | DrawCmd::PopClip | DrawCmd::BeginLayer { .. } => {}
+    }
+}
+
+/// A command with its map applied where the map keeps rectangles upright
+/// (translation and scale): the identity left over. A turn or skew stays
+/// with the command for the overlay, its clip taken onto the screen.
+pub(crate) fn bake(c: DrawCmd, m: Affine) -> (DrawCmd, Affine) {
+    if m.is_identity() {
+        return (c, m);
+    }
+    let r = |r: &Rect| m.map_rect(r);
+    if !m.is_axis_aligned() {
+        let mut c = c;
+        match &mut c {
+            DrawCmd::Glass { clip, .. }
+            | DrawCmd::Quad { clip, .. }
+            | DrawCmd::Image { clip, .. }
+            | DrawCmd::Bar { clip, .. }
+            | DrawCmd::Half { clip, .. }
+            | DrawCmd::Text { clip, .. } => *clip = r(clip),
+            DrawCmd::StyledText { text, .. } => {
+                if let Some(clip) = text.clip_mut() {
+                    *clip = r(clip);
+                }
+            }
+            // The UI pass's own commands keep the screen's clip and take
+            // the whole map where they are emitted.
+            _ => {}
+        }
+        return (c, m);
+    }
+    let (sx, sy) = (m.a.abs(), m.d.abs());
+    let k = sx.min(sy);
+    let p = |x: f32, y: f32| m.apply(x, y);
+    let c = match c {
+        DrawCmd::Glass {
+            rect,
+            radius,
+            blur,
+            tint,
+            alpha,
+            clip,
+        } => DrawCmd::Glass {
+            rect: r(&rect),
+            radius: radius * k,
+            blur,
+            tint,
+            alpha,
+            clip: r(&clip),
+        },
+        DrawCmd::Quad {
+            rect,
+            radius,
+            color,
+            clip,
+        } => DrawCmd::Quad {
+            rect: r(&rect),
+            radius: radius * k,
+            color,
+            clip: r(&clip),
+        },
+        DrawCmd::Image {
+            rect,
+            texture,
+            uv,
+            color,
+            clip,
+        } => {
+            // A mirroring scale flips the picture: its region swaps ends.
+            let mut uv = uv;
+            if m.a < 0.0 {
+                uv.swap(0, 2);
+            }
+            if m.d < 0.0 {
+                uv.swap(1, 3);
+            }
+            DrawCmd::Image {
+                rect: r(&rect),
+                texture,
+                uv,
+                color,
+                clip: r(&clip),
+            }
+        }
+        DrawCmd::Bar {
+            center,
+            w,
+            h,
+            angle,
+            color,
+            clip,
+        } => DrawCmd::Bar {
+            center: p(center.0, center.1),
+            w: w * sx,
+            h: h * sy,
+            angle,
+            color,
+            clip: r(&clip),
+        },
+        DrawCmd::Half {
+            center,
+            radius,
+            angle,
+            color,
+            clip,
+        } => DrawCmd::Half {
+            center: p(center.0, center.1),
+            radius: radius * k,
+            angle,
+            color,
+            clip: r(&clip),
+        },
+        DrawCmd::Text {
+            x,
+            baseline,
+            size,
+            text,
+            color,
+            font,
+            bounds,
+            clip,
+            tracking,
+            weight,
+            glow,
+            placements,
+        } => {
+            let (x, baseline) = p(x, baseline);
+            DrawCmd::Text {
+                x,
+                baseline,
+                size: size * sy,
+                text,
+                color,
+                font,
+                bounds: r(&bounds),
+                clip: r(&clip),
+                tracking,
+                weight: weight * sy,
+                glow: glow.map(|(c, g)| (c, g * sy)),
+                placements,
+            }
+        }
+        DrawCmd::StyledText { text, mut effects } => {
+            let (text, _) = bake(*text, m);
+            crate::draw::scale_effects(&mut effects, &m);
+            DrawCmd::StyledText {
+                text: Box::new(text),
+                effects,
+            }
+        }
+        // The UI pass's own commands take the whole map where they are
+        // emitted (a non-uniform scale bends a corner exactly).
+        other => return (other, m),
+    };
+    (c, Affine::IDENTITY)
+}
