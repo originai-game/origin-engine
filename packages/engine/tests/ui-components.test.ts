@@ -7,8 +7,8 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { og, defineSystem } from "@origingame/engine";
-import { loadNativeHost } from "../src/node/index.ts";
-import { pseudo } from "../src/node/ui-check.ts";
+import { loadNativeHost, native } from "../src/node/index.ts";
+import { checkFrame, checkScale, pseudo, type UiCell, type UiFrameSnapshot } from "../src/node/ui-check.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { tableOrder } from "../src/ui/data/table.ts";
 import { niceTicks, formatDelta, formatNumber } from "../src/ui/data/format.ts";
@@ -349,6 +349,11 @@ test("carousel: the next arrow moves on a page, the dots say which is current", 
   const engine = run(() => {
     index = og.ui.carousel("Featured", { count: 4, index, height: { kind: "fixed", px: 160 } }, (k) => og.ui.label("Title", `Banner ${k}`, {})).index;
   });
+  // A page is as wide as the viewport between the arrows, and the arrows stay beside it.
+  const clip = byPath(engine, "Viewport/Clip")!;
+  const page = byPath(engine, "Track/Page#0")!;
+  expect(page.width).toBeGreaterThan(clip.width * 0.9);
+  expect(byPath(engine, "Viewport/Next")!.x).toBeGreaterThanOrEqual(clip.x + clip.width - 1);
   tap(engine, "Viewport/Next");
   expect(index).toBe(1);
   expect(find(engine, (e) => e.id === "Dot#1")?.states).toContain("selected");
@@ -672,6 +677,76 @@ test("right to left: breadcrumbs, tabs and the calendar's arrows run from the ri
   expect(x("Header/Prev")).toBeGreaterThan(x("Header/Next"));
   expect(x("Week#0/Cell#0")).toBeGreaterThan(x("Week#0/Cell#6"));
 });
+
+// ── 200 % text ──────────────────────────────────────────────────────────
+
+test("200 % text: the containers, navigation and data components grow with the text and cut none of it, on a desktop and a phone", () => {
+  // Wrong: a part sized in fixed pixels around its text (a row, a chip, a header), so at the
+  // player's largest text size it clips, or a text drawn at a fixed size the scale never reaches.
+  const ui = native() as unknown as { og_node_ui_frame(id: number): string };
+  const nav = () => {
+    og.ui.tabBar("Tabs", { tabs: [{ label: "Equipment" }, { label: "Skills" }, { label: "Codex" }] }, () => {});
+    og.ui.breadcrumbs("Path", { items: [{ label: "Home" }, { label: "Inventory" }, { label: "Swords" }] });
+    og.ui.pagination("Pages", { page: 3, pages: 9 });
+    og.ui.accordion("Faq", { sections: [{ title: "Rules", subtitle: "How a round is played" }], expanded: [0] }, () => og.ui.label("Text", "Each round lasts three minutes.", {}));
+    og.ui.actionHints("Hints", { hints: [{ action: "confirm", text: "Select" }, { action: "back", text: "Back" }, { action: "details", text: "Hold to sell", hold: true, progress: 0.4 }] });
+    og.ui.carousel("Featured", { count: 3, index: 0, height: { kind: "fixed", px: 140 } }, (k) => og.ui.label("Title", `Banner ${k}`, {}));
+    og.ui.card("Card", { title: "Ember Blade", eyebrow: "Legendary", interactive: true } as never, () => og.ui.label("Body", "Deals fire damage over time.", {}));
+    og.ui.menu("Menu", true, { at: { x: 40, y: 40 }, entries: [{ id: "copy", label: "Copy", shortcut: "Ctrl+C" }, { id: "sort", label: "Sort by" }, { id: "n", label: "Name", parent: "sort" }] });
+    og.ui.confirm("Delete", true, { title: "Delete save?", message: "This cannot be undone.", confirmLabel: "Delete", danger: true });
+  };
+  const data = () => {
+    og.ui.statCompare("Compare", { rows: [{ label: "Attack", current: 120, next: 138 }, { label: "Weight", current: 12, next: 9, lowerIsBetter: true }] });
+    og.ui.table("Board", { columns: COLUMNS, rows: ROWS.slice(0, 40), height: { kind: "fixed", px: 220 } as never });
+    og.ui.keyValueRows("Stats", { title: "Run", rows: [{ label: "Time", value: "12:40", mono: true }, { label: "Gold", value: "1,280", hint: "+120 today" }] });
+    og.ui.calendar("Days", { year: 2026, month: 11, today: "2026-11-01", selected: "2026-11-12" } as never);
+    og.ui.tree("Codex", { items: [{ id: "beasts", label: "Beasts" }, { id: "wolf", parent: "beasts", label: "Wolf" }, { id: "places", label: "Places" }], expanded: ["beasts"], height: { kind: "fixed", px: 160 } } as never);
+    og.ui.chart("Gold", { kind: "bar", title: "Gold per day", categories: ["Mon", "Tue", "Wed", "Thu"], series: [{ label: "Gold", values: [120, 340, 260, 410] }] });
+  };
+  // Tall surfaces: everything is laid out on screen, nothing scrolled away.
+  for (const [bp, w, h, coarse, build, probe] of [["desktop", 1280, 1800, false, nav, "Equipment"], ["desktop", 1280, 1800, false, data, "Attack"], ["phonePortrait", 390, 1800, true, nav, "Equipment"], ["phonePortrait", 390, 1800, true, data, "Attack"]] as const) {
+    const frames: UiFrameSnapshot[] = [];
+    for (const scale of [1, 2]) {
+      const engine = run(build, Math.min(640, w - 32), kit);
+      og.ui.previewViewport(engine.world, { width: w, height: h, dpr: 1, coarsePointer: coarse, breakpoint: bp } as never);
+      // A font, so text is measured as drawn (without one og-ui estimates and draws none).
+      const font = og.load.font(engine.world, "fonts/NotoSansSC-Regular-subset.ttf");
+      if (!font.ok) throw new Error(font.reason);
+      og.ui.configure(engine.world, { font: font.value, textScale: scale });
+      engine.advance(30);
+      frames.push(JSON.parse(ui.og_node_ui_frame(engine.id)) as UiFrameSnapshot);
+      engine.destroy();
+    }
+    const cell: UiCell = { screen: "components", breakpoint: bp, locale: "", style: "", scale: 200, highContrast: false };
+    expect(frames[1]!.texts.find((x) => x.text === probe)!.size).toBeCloseTo(frames[0]!.texts.find((x) => x.text === probe)!.size * 2, 1);
+    const found = [...checkFrame(frames[1]!, cell), ...checkScale(frames[0]!, frames[1]!, cell)].filter((f) => f.rule === "text-scale" && f.severity === "error");
+    expect(found.map((f) => `${f.paths.join(" × ")}: ${f.measured}`)).toEqual([]);
+    // And no text spills out of the part that holds it (a fixed-height row its text outgrew,
+    // which nothing clips, so the cut rule cannot see it).
+    const els = frames[1]!.elements;
+    const spills: string[] = [];
+    const parentOf = (i: number): number => {
+      let j = i - 1;
+      while (j >= 0 && els[j]!.id !== els[i]!.parent) j--;
+      return j;
+    };
+    els.forEach((e, i) => {
+      if (e.kind !== "label" || !e.text || e.clipped) return;
+      // Every holder up to the first that scrolls (or is cut by one) holds it whole.
+      for (let j = parentOf(i); j >= 0; j = parentOf(j)) {
+        const p = els[j]!;
+        // A floating surface's content is moved off its modal panel by a transform.
+        if (p.kind === "scroll" || p.kind === "panel" || p.clipped) break;
+        // A zero-height holder centres its text on a line by design (a chart's axis ticks).
+        if (p.height > 0 && (e.y < p.y - 0.5 || e.y + e.height > p.y + p.height + 0.5)) {
+          spills.push(`${bp} ${p.id} ⊅ ${e.id} "${e.text}": ${e.y}+${e.height} in ${p.y}+${p.height}`);
+          break;
+        }
+      }
+    });
+    expect(spills).toEqual([]);
+  }
+}, 30_000);
 
 // ── formats ─────────────────────────────────────────────────────────────
 

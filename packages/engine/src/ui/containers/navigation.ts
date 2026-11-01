@@ -64,7 +64,7 @@ export function tabBar(id: string, desc: Api.TabBarDesc, build: Api.UiItemBuild)
             washBy: 0.08,
             disabled: tab.disabled ?? false,
             width: desc.fill ? grow() : null,
-            height: px(Math.max(phone ? 44 : 40, t.controlMd)),
+            height: fit(Math.max(phone ? 44 : 40, t.controlMd)),
             padding: xy(t.md, 0),
             gap: t.xs,
             align: "center",
@@ -115,7 +115,7 @@ function indicator(id: string, row: string, k: number, pill: boolean): void {
 /** A bumper hint at a tab row's end: its action's key cap (Q, E); a press steps as the action does. */
 function bumper(id: string, action: "tabPrev" | "tabNext", onPress: () => void): void {
   const g = action === "tabPrev" ? { text: "Q", icon: "key.q" } : { text: "E", icon: "key.e" };
-  const r = surface(id, { part: "Tabs.bumper", cls: "chip", fill: null, focusable: false, width: fit(44), padding: xy(4, 4), align: "center", cross: "center", height: px(44), semantics: { role: "button", name: action === "tabPrev" ? "Previous tab" : "Next tab", description: g.text } }, () => {
+  const r = surface(id, { part: "Tabs.bumper", cls: "chip", fill: null, focusable: false, width: fit(44), padding: xy(4, 4), align: "center", cross: "center", height: fit(44), semantics: { role: "button", name: action === "tabPrev" ? "Previous tab" : "Next tab", description: g.text } }, () => {
     glyphCap("Glyph", g, 24);
   });
   if (r.clicked) onPress();
@@ -171,7 +171,8 @@ export function carousel(id: string, desc: Api.CarouselDesc, build: Api.UiItemBu
         if (arrows) arrow("Prev", "back", index > 0 || (desc.loop ?? false), () => (index = desc.loop ? (index - 1 + count) % count : Math.max(0, index - 1)));
         kit.open("Clip", { direction: "row", width: grow(), height: desc.height ?? null, padding: xy(peek, 0), interactive: true, focusable: true, part: "Carousel.viewport", partClass: "panel" });
         kit.setDraw({ clip: "shape" });
-        kit.open("Track", { direction: "row", gap, cross: "stretch" });
+        // As wide as one page: the pages past it overflow into the clip instead of widening it.
+        kit.open("Track", { direction: "row", width: px(pageW), gap, cross: "stretch" });
         for (let k = 0; k < count; k++) {
           const dist = Math.abs(k - index);
           kit.open(kit.idi("Page", k), { direction: "column", width: px(pageW), cross: "stretch", part: `Carousel.page${flags(k === index && "current")}`, partClass: "card" });
@@ -191,7 +192,7 @@ export function carousel(id: string, desc: Api.CarouselDesc, build: Api.UiItemBu
         kit.semantics({ role: "region", name: desc.label ?? "", value: `${index + 1} / ${count}` });
         const clip = kit.lastPath();
         const vb = kit.bounds(clip);
-        if (vb) kit.remember("~view", vb.width);
+        if (vb) viewW = vb.width;
         if (r.focused) {
           // The focused carousel takes the arrows, as a pad's left and right.
           if (kit.action("tabPrev")) index = Math.max(0, index - 1);
@@ -200,7 +201,10 @@ export function carousel(id: string, desc: Api.CarouselDesc, build: Api.UiItemBu
         if (arrows) arrow("Next", "forward", index < count - 1 || (desc.loop ?? false), () => (index = desc.loop ? (index + 1) % count : Math.min(count - 1, index + 1)));
       });
     };
+    let viewW = size;
     row();
+    // Remembered in the carousel's own scope, where the next tick reads it.
+    kit.remember("~view", viewW);
     if ((desc.dots ?? true) && count > 1) dots("Dots", count, index, (k) => (index = k));
   } finally {
     kit.close();
@@ -253,7 +257,7 @@ export function breadcrumbs(id: string, desc: Api.BreadcrumbsDesc): Api.Breadcru
     shown.forEach((k, j) => {
       if (j > 0) chevron(kit.idi("Sep", j), "forward", 14, role("inkFaint"), 0, 1.5);
       if (k === -1) {
-        const r = surface("More", { part: "Breadcrumbs.more", cls: "chip", fill: null, width: fit(tall), height: px(tall), padding: xy(t.xs, 0), align: "center", cross: "center", semantics: { role: "button", name: desc.moreLabel || "Show path", expanded: openMore } }, () => mark("Dots", "more", 18, role("inkMuted")));
+        const r = surface("More", { part: "Breadcrumbs.more", cls: "chip", fill: null, width: fit(tall), height: fit(tall), padding: xy(t.xs, 0), align: "center", cross: "center", semantics: { role: "button", name: desc.moreLabel || "Show path", expanded: openMore } }, () => mark("Dots", "more", 18, role("inkMuted")));
         if (r.clicked) nextMore = !openMore;
         return;
       }
@@ -263,7 +267,7 @@ export function breadcrumbs(id: string, desc: Api.BreadcrumbsDesc): Api.Breadcru
         text(kit.idi("Crumb", k), it.label ?? "", { step: "sm", nowrap: true, ellipsis: true, font: "display" });
         kit.semantics({ role: "link", name: it.label ?? "", selected: true, value: "current page" });
       } else {
-        const r = surface(kit.idi("Crumb", k), { part: "Breadcrumbs.crumb", cls: "chip", fill: null, height: px(tall), padding: xy(t.xs, 0), gap: t.xs, semantics: { role: "link", name: it.label ?? "" } }, () => {
+        const r = surface(kit.idi("Crumb", k), { part: "Breadcrumbs.crumb", cls: "chip", fill: null, height: fit(tall), padding: xy(t.xs, 0), gap: t.xs, semantics: { role: "link", name: it.label ?? "" } }, () => {
           if (it.icon) kit.icon("Icon", it.icon, { size: 16, tint: token("inkMuted"), label: "" });
           text("Label", it.label ?? "", { step: "sm", color: "inkMuted", nowrap: true, ellipsis: true });
         });
@@ -323,7 +327,7 @@ export function pagination(id: string, desc: Api.PaginationDesc): Api.PageResult
           return;
         }
         const on = k === page;
-        const r = surface(kit.idi("Page", k), { part: "Pagination.page", cls: "button", flags: [on ? "current" : ""], selected: on, fill: null, selectedFill: role("primary"), width: fit(40), height: px(40), padding: xy(t.xs, 0), align: "center", cross: "center", semantics: { role: "button", name: `${k + 1}`, selected: on } }, () => {
+        const r = surface(kit.idi("Page", k), { part: "Pagination.page", cls: "button", flags: [on ? "current" : ""], selected: on, fill: null, selectedFill: role("primary"), width: fit(40), height: fit(40), padding: xy(t.xs, 0), align: "center", cross: "center", semantics: { role: "button", name: `${k + 1}`, selected: on } }, () => {
           text("Number", `${k + 1}`, { step: "sm", font: "mono", color: on ? "onPrimary" : "ink", nowrap: true });
         });
         if (r.clicked) page = k;
@@ -362,7 +366,7 @@ export function actionHints(id: string, desc: Api.ActionHintsDesc): Api.ActionHi
         flags: [h.hold ? "hold" : "", touch ? "touch" : ""],
         fill: touch ? role("control") : null,
         focusable: touch,
-        height: px(touch ? 44 : 36),
+        height: fit(touch ? 44 : 36),
         padding: xy(touch ? t.md : t.xs, 0),
         gap: t.sm,
         semantics: { role: "button", name: h.hint ?? h.action ?? "", ...(glyph.text && !touch ? { description: glyph.text } : {}) },

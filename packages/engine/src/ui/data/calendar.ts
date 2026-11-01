@@ -4,7 +4,7 @@
 // the tick), and the names of the months and weekdays in its language.
 
 import type * as Api from "@origingame/engine";
-import { chevron, clamp, flags, frame, grow, kit, mark, paint, px, role, spring, still, surface, text, token } from "../containers/base.ts";
+import { chevron, clamp, fit, flags, frame, grow, kit, mark, paint, px, role, spring, still, surface, text, token } from "../containers/base.ts";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -131,7 +131,7 @@ export function calendar(id: string, desc: Api.CalendarDesc): Api.CalendarResult
             focusable: inMonth && !blocked,
             direction: "column",
             width: grow(),
-            height: px(cell),
+            height: fit(cell),
             gap: 1,
             align: "center",
             cross: "center",

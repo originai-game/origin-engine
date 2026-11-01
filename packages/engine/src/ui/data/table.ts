@@ -8,7 +8,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  all, chevron, flags, frame, grow, kit, mark, px, role, spring, surface, text, token, xy,
+  all, byText, chevron, fit, flags, frame, grow, kit, mark, px, role, spring, surface, text, token, xy,
 } from "../containers/base.ts";
 import { formatNumber, groupNumber } from "./format.ts";
 
@@ -52,7 +52,7 @@ export function dataState(id: string, s: Api.DataStateDesc, rows: number, rowHei
 export function dataList(id: string, desc: Api.DataListDesc, build: Api.UiItemBuild): Api.DataListResult {
   const { t } = frame();
   const count = Math.max(0, desc.count ?? 0);
-  const rowH = desc.rowHeight ?? Math.max(t.row, 48);
+  const rowH = byText(desc.rowHeight ?? Math.max(t.row, 48));
   let clicked: number | null = null;
   let retry = false;
   kit.open(id, { direction: "column", width: desc.width ?? grow(), height: desc.height ?? null, cross: "stretch", part: "List.frame", partClass: "panel" });
@@ -208,7 +208,7 @@ export function table(id: string, desc: Api.TableDesc): Api.TableResult {
   let filter = desc.filter ?? "";
   let clicked: number | null = null;
   let retry = false;
-  const rowH = desc.rowHeight ?? (phone ? 48 : 40);
+  const rowH = byText(desc.rowHeight ?? (phone ? 48 : 40));
   const colIndex = (c: Api.TableColumn) => all_.indexOf(c);
   kit.open(id, { direction: "column", width: desc.width ?? grow(), height: desc.height ?? null, cross: "stretch", gap: t.sm });
   try {
@@ -219,7 +219,7 @@ export function table(id: string, desc: Api.TableDesc): Api.TableResult {
     kit.open("Grid", { direction: "column", width: grow(), height: desc.height ? grow() : null, cross: "stretch", radius: t.panel, background: token("panel"), part: "Table.frame", partClass: "panel" });
     try {
       // The header: one cell a column, a button for the sortable ones.
-      kit.row("Header", { width: grow(), height: px(Math.max(40, t.controlMd)), padding: xy(t.sm, 0), cross: "center", background: token("panelRaised"), part: "Table.header", partClass: "bar" }, () => {
+      kit.row("Header", { width: grow(), height: fit(Math.max(40, t.controlMd)), padding: xy(t.sm, 0), cross: "center", background: token("panelRaised"), part: "Table.header", partClass: "bar" }, () => {
         cols.forEach((c) => {
           const k = colIndex(c);
           const on = k === sortBy;
@@ -237,7 +237,7 @@ export function table(id: string, desc: Api.TableDesc): Api.TableResult {
             flags: [on ? "sorted" : "", on ? (descending ? "descending" : "ascending") : ""],
             fill: null,
             width,
-            height: px(36),
+            height: fit(36),
             padding: xy(t.xs, 0),
             gap: t.xxs,
             align: end ? "end" : "start",

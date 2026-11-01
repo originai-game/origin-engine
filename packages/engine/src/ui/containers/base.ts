@@ -62,6 +62,15 @@ export function rtl(): boolean {
   return kit.frameDirection() === "rtl";
 }
 
+/**
+ * A fixed height that holds text, at the player's text scale
+ * (UiDesc.textScale): a virtual list's row height grows with its text, so
+ * the rows stay whole at 200 %.
+ */
+export function byText(h: number): number {
+  return Math.round(h * Math.max(1, frame().theme.textScale ?? 1));
+}
+
 /** Reduced motion is asked for: movement jumps. */
 export function still(): boolean {
   return frame().theme.reducedMotion;
@@ -347,8 +356,10 @@ export function text(id: string, value: string, d: { step?: Api.TypeStepName; co
  * drawn from the glyph's text: a keyboard key as a rounded cap, a pad face
  * button as a disc, a bumper or trigger as a pill.
  */
-export function glyphCap(id: string, glyph: { text: string; icon: string }, size: number): void {
+export function glyphCap(id: string, glyph: { text: string; icon: string }, size0: number): void {
   const t = frame().t;
+  // A cap's name is text: it grows with the player's text size.
+  const size = byText(size0);
   const pad = /^(xbox|ps|switch|pad)\./.test(glyph.icon);
   const shoulder = /bumper|trigger|\.(lb|rb|lt|rt|l1|r1|l2|r2|l|r|zl|zr)$/i.test(glyph.icon) || /^(LB|RB|LT|RT|L1|R1|L2|R2|ZL|ZR)$/.test(glyph.text);
   const face = pad && !shoulder;

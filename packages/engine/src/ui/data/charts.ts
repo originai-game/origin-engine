@@ -8,7 +8,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  clamp, flags, frame, grow, kit, mix, over, paint, pointerFrom, px, rememberPath, role, rtl, series, spring, still, surface, text, token, xy,
+  clamp, fit, flags, frame, grow, kit, mix, over, paint, pointerFrom, px, rememberPath, role, rtl, series, spring, still, surface, text, token, xy,
   type Rgba,
 } from "../containers/base.ts";
 import { dataState } from "./table.ts";
@@ -233,10 +233,12 @@ function cartesian(cx: Ctx, W: number, H: number): { hovered: number | null; cli
   const tickText = (v: number) => formatNumber(v, desc.format === "plain" ? "grouped" : desc.format, desc.format === "percent" ? Math.max(0, tickDigits - 2) : tickDigits, "");
   let hovered: number | null = null;
   let clicked: number | null = null;
+  // Room above the top line and below the bottom one for half a tick label (more at a large text size).
+  const padY = Math.max(PAD, Math.ceil((frame().theme.typeRamp.caption?.lineHeight ?? 18) / 2));
   kit.row("Plot", { width: grow(), height: px(H), gap: t.xs, cross: "stretch" }, () => {
     // The value axis: the tick labels, top to bottom, each centred on its line.
     if (desc.axis !== false) {
-      kit.column("ValueAxis", { height: grow(), align: "spaceBetween", cross: "end", padding: xy(0, PAD) }, () => {
+      kit.column("ValueAxis", { height: grow(), align: "spaceBetween", cross: "end", padding: xy(0, padY) }, () => {
         [...ticks].reverse().forEach((v, k) => {
           kit.row(kit.idi("Tick", k), { height: px(0), cross: "center" }, () => text("Text", tickText(v), { step: "caption", color: "inkFaint", nowrap: true, font: "mono" }));
         });
@@ -244,8 +246,8 @@ function cartesian(cx: Ctx, W: number, H: number): { hovered: number | null; cli
     }
     kit.open("Area", { direction: "column", width: grow(), height: grow() });
     const Wi = Math.max(0, W - 2 * PAD);
-    const Hi = Math.max(0, H - 2 * PAD);
-    const y = (v: number) => PAD + ((yHi - v) / Math.max(1e-9, yHi - yLo)) * Hi;
+    const Hi = Math.max(0, H - 2 * padY);
+    const y = (v: number) => padY + ((yHi - v) / Math.max(1e-9, yHi - yLo)) * Hi;
     const band = n > 0 ? Wi / n : Wi;
     const xs = (i: number) => (bar ? PAD + band * (i + 0.5) : n <= 1 ? PAD + Wi / 2 : PAD + (i * Wi) / (n - 1));
     const phys = (x: number) => (flip ? W - x : x);
@@ -305,7 +307,7 @@ function cartesian(cx: Ctx, W: number, H: number): { hovered: number | null; cli
         if (hot >= 0 && hot < n) {
           kit.open("Crosshair", { width: px(1), height: px(Hi), background: token("lineStrong"), part: "Chart.crosshair", partClass: "bar" });
           kit.close();
-          over({ insets: { start: Math.round(xs(hot)), top: PAD }, inert: true, z: 5 });
+          over({ insets: { start: Math.round(xs(hot)), top: padY }, inert: true, z: 5 });
         }
       }
       // A target per category: hover, touch, focus and press.
@@ -478,7 +480,7 @@ function radar(cx: Ctx, W: number, H: number): { hovered: number | null; clicked
         fill: null,
         washBy: 0.06,
         width: px(w),
-        height: px(28),
+        height: fit(28),
         padding: xy(4, 0),
         align: align === "center" ? "center" : align === "end" ? "end" : "start",
         semantics: { role: "button", name: `${cx.cats[k] ?? k + 1}: ${values.map((v, s) => `${values.length > 1 ? `${cx.names[s]} ` : ""}${cx.fmt(v[k] ?? 0)}`).join(", ")}` },
@@ -588,7 +590,7 @@ function pie(cx: Ctx, W0: number, H: number): { hovered: number | null; clicked:
         fill: null,
         washBy: 0.08,
         width: grow(),
-        height: px(phone ? 44 : 36),
+        height: fit(phone ? 44 : 36),
         padding: xy(t.sm, 0),
         gap: t.sm,
         semantics: { role: "button", name: `${cx.cats[k] ?? k + 1}, ${cx.fmt(cx.values[0]![k]!)}, ${pct(val)}`, selected: desc.selected === k },

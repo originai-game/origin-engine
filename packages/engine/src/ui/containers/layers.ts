@@ -262,7 +262,7 @@ function menuRows(entries: readonly Api.MenuEntry[], parent: string, desc: Api.M
         // Left and Right are the rows' own: forward opens a submenu, back closes this one.
         adjustable: true,
         width: grow(),
-        height: px(Math.max(ROW, t.controlMd)),
+        height: fit(Math.max(ROW, t.controlMd)),
         padding: xy(t.sm, 0),
         gap: t.sm,
         semantics: {
