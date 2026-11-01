@@ -1,0 +1,548 @@
+use super::*;
+
+#[test]
+fn anchored_groups_keep_out_of_the_host_control() {
+    let mut rig = Rig::new(());
+    let b = &mut |ui: &mut Ui, _: &mut ()| {
+        for (id, anchor) in [
+            ("Place", Anchor::TopLeft),
+            ("Clock", Anchor::Top),
+            ("Times", Anchor::TopRight),
+        ] {
+            ui.anchor(
+                id,
+                AnchorDesc {
+                    anchor,
+                    ..AnchorDesc::default()
+                },
+                |ui| {
+                    ui.label("Text", "1/8  lap 2/3", LabelDesc::default());
+                },
+            );
+        }
+    };
+    rig.idle(1, b);
+    let at = |rig: &Rig<()>, id: &str| rig.ui.frame().element(id).expect(id).clone();
+    let (place, clock, times) = (at(&rig, "Place"), at(&rig, "Clock"), at(&rig, "Times"));
+    assert!(place.x < 40.0, "no control: the corner itself ({place:?})");
+    // The web shell's Back: 12, 12 to 52, 52 CSS px.
+    rig.vp.covered = Rect::new(12.0, 12.0, 40.0, 40.0);
+    rig.idle(1, b);
+    let moved = at(&rig, "Place");
+    assert!(
+        moved.x >= 52.0 && (moved.y - place.y).abs() < 0.5,
+        "the top-left group moves right of the control, at the same height: {moved:?}"
+    );
+    assert_eq!(at(&rig, "Clock"), clock, "a group clear of it stays");
+    assert_eq!(at(&rig, "Times"), times, "a group clear of it stays");
+}
+
+/// On a phone a top-left group moved right of the host's control would
+/// land on the top-right group beside it (a shooter HUD's vitals on its
+/// kills and pause): it steps down past the control instead, at the same
+/// x, and a group with room to its right still moves right (Brasswick #15).
+#[test]
+fn a_corner_group_steps_down_past_the_control_when_moving_along_lands_on_another() {
+    let mut rig = Rig::new(());
+    rig.vp = Viewport {
+        width: 390.0,
+        height: 844.0,
+        dpr: 3.0,
+        safe_area: Insets {
+            left: 0.0,
+            top: 47.0,
+            right: 0.0,
+            bottom: 34.0,
+        },
+        coarse_pointer: true,
+        ..Viewport::default()
+    };
+    let wide = std::cell::Cell::new(240.0);
+    let b = &mut |ui: &mut Ui, _: &mut ()| {
+        ui.anchor(
+            "Vitals",
+            AnchorDesc {
+                anchor: Anchor::TopLeft,
+                width: Size::Fixed(wide.get()),
+                height: Size::Fixed(20.0),
+                ..AnchorDesc::default()
+            },
+            |_| {},
+        );
+        ui.anchor(
+            "Kills",
+            AnchorDesc {
+                anchor: Anchor::TopRight,
+                width: Size::Fixed(110.0),
+                height: Size::Fixed(44.0),
+                ..AnchorDesc::default()
+            },
+            |_| {},
+        );
+    };
+    rig.idle(1, b);
+    let at = |rig: &Rig<()>, id: &str| rig.ui.frame().element(id).expect(id).clone();
+    let (free, kills) = (at(&rig, "Vitals"), at(&rig, "Kills"));
+    assert!(free.x + free.width <= kills.x, "apart without the control");
+    // The web shell's Back, top left inside the safe area.
+    rig.vp.covered = Rect::new(12.0, 59.0, 40.0, 40.0);
+    rig.idle(1, b);
+    let moved = at(&rig, "Vitals");
+    assert_eq!(at(&rig, "Kills"), kills, "the group clear of it stays");
+    assert!(
+        (moved.x - free.x).abs() < 0.5 && moved.y >= 99.0,
+        "down past the control at the same x: {moved:?}"
+    );
+    assert!(
+        moved.x + moved.width <= kills.x || moved.y >= kills.y + kills.height,
+        "and off the other group: {moved:?} {kills:?}"
+    );
+    // A narrow group has room along the edge: it moves right, as on a desktop.
+    wide.set(120.0);
+    rig.idle(1, b);
+    let narrow = at(&rig, "Vitals");
+    assert!(
+        narrow.x >= 52.0 && (narrow.y - free.y).abs() < 0.5,
+        "a group with room moves right at the same height: {narrow:?}"
+    );
+}
+
+#[test]
+fn anchors_sit_in_the_safe_area_and_touch_controls_keep_44px() {
+    let mut rig = Rig::new(JoystickResponse::default());
+    rig.vp = Viewport {
+        width: 390.0,
+        height: 844.0,
+        dpr: 3.0,
+        safe_area: Insets {
+            left: 0.0,
+            top: 47.0,
+            right: 0.0,
+            bottom: 34.0,
+        },
+        coarse_pointer: true,
+        ..Viewport::default()
+    };
+    let b = &mut |ui: &mut Ui, s: &mut JoystickResponse| {
+        ui.anchor(
+            "Score",
+            AnchorDesc {
+                anchor: Anchor::TopRight,
+                ..AnchorDesc::default()
+            },
+            |ui| {
+                ui.label("Points", "1200", LabelDesc::default());
+            },
+        );
+        ui.anchor(
+            "Pad",
+            AnchorDesc {
+                anchor: Anchor::BottomLeft,
+                ..AnchorDesc::default()
+            },
+            |ui| {
+                *s = ui.joystick(
+                    "Stick",
+                    JoystickDesc {
+                        size: 60.0,
+                        ..JoystickDesc::default()
+                    },
+                );
+            },
+        );
+        ui.anchor(
+            "Buttons",
+            AnchorDesc {
+                anchor: Anchor::BottomRight,
+                ..AnchorDesc::default()
+            },
+            |ui| {
+                ui.action_button(
+                    "Jump",
+                    "Jump",
+                    &ActionButtonDesc {
+                        size: 20.0,
+                        ..ActionButtonDesc::default()
+                    },
+                );
+                ui.dpad("Dpad", DpadDesc { size: 60.0 });
+            },
+        );
+    };
+    rig.idle(1, b);
+    assert_eq!(rig.ui.breakpoint(), Breakpoint::PhonePortrait);
+    let gutter = rig.ui.sizes().gutter;
+    let score = rig.ui.frame().element("Score").expect("score").clone();
+    assert!(
+        (score.y - (47.0 + gutter)).abs() < 0.5,
+        "under the notch: {score:?}"
+    );
+    assert!((score.x + score.width - (390.0 - gutter)).abs() < 0.5);
+    let pad = rig.ui.frame().element("Pad").expect("pad").clone();
+    assert!(
+        (pad.y + pad.height - (844.0 - 34.0 - gutter)).abs() < 0.5,
+        "above the home indicator: {pad:?}"
+    );
+    for id in ["Stick", "Jump", "Dpad/Up", "Dpad/Left"] {
+        let e = rig.ui.frame().element(id).expect(id);
+        assert!(
+            e.width >= 44.0 && e.height >= 44.0,
+            "{id} is {}×{}",
+            e.width,
+            e.height
+        );
+    }
+    // Drag the stick to the right edge.
+    let c = rig.center("Stick");
+    let r = rig.ui.frame().element("Stick").unwrap().width / 2.0;
+    rig.step(press(c), b);
+    rig.step(
+        InputFrame {
+            pointer: c + Vec2::new(r * 2.0, 0.0),
+            pointer_inside: true,
+            down: true,
+            ..InputFrame::default()
+        },
+        b,
+    );
+    assert!(
+        rig.state.active && (rig.state.x - 1.0).abs() < 1e-4 && rig.state.y.abs() < 1e-4,
+        "{:?}",
+        rig.state
+    );
+    rig.step(release(c), b);
+    assert!(!rig.state.active && rig.state.x == 0.0);
+}
+
+/// A game's own primary colour: hover and press move it towards opposite
+/// ends of the scale (a dark one lightens hovered, a light one darkens),
+/// and the ink on it is whichever of the palette's inks reads better.
+///
+/// Ways it could fail: the hover and press tones swapped for a light
+/// primary, the ink picked by luminance alone, the soft wash losing the
+/// palette's alpha.
+#[test]
+fn a_game_primary_derives_its_hover_press_and_ink() {
+    let dark = Theme::dark();
+    let navy = dark.with_primary(Srgba::rgb(0x20, 0x30, 0x80));
+    let p = navy.palette;
+    assert_eq!(p.primary, Srgba::rgb(0x20, 0x30, 0x80));
+    assert!(
+        p.primary_hover.luminance() > p.primary.luminance(),
+        "a dark primary lightens hovered"
+    );
+    assert!(
+        p.primary_active.luminance() < p.primary.luminance(),
+        "and darkens pressed"
+    );
+    assert_eq!(p.on_primary, dark.palette.ink, "light ink on navy");
+    assert_eq!(p.primary_soft.alpha, dark.palette.primary_soft.alpha);
+    assert_eq!(p.primary_soft.rgb, p.primary.rgb);
+    let lemon = dark.with_primary(Srgba::rgb(0xf0, 0xe0, 0x60)).palette;
+    assert!(
+        lemon.primary_hover.luminance() < lemon.primary.luminance(),
+        "a light primary darkens hovered"
+    );
+    assert!(lemon.primary_active.luminance() > lemon.primary.luminance());
+    assert_eq!(
+        lemon.on_primary, dark.palette.ink_inverse,
+        "dark ink on lemon"
+    );
+    // The accent ink follows the game's colour (not the style's) and reads
+    // on its own wash over a panel; a hue in the middle of the scale moves
+    // towards the scheme's ink until it does.
+    for c in [
+        Srgba::rgb(0xf0, 0xe0, 0x60),
+        Srgba::rgb(0xbe, 0x1e, 0x32),
+        Srgba::rgb(0x20, 0x30, 0x80),
+    ] {
+        for base in [Theme::dark(), Theme::light()] {
+            let q = base.with_primary(c).palette;
+            assert_ne!(
+                q.highlight, base.palette.highlight,
+                "{c:?}: highlight follows the primary"
+            );
+            let wash = q.primary_soft.over_linear(q.panel);
+            assert!(
+                q.highlight.contrast(wash) >= 5.0,
+                "{c:?}: the accent reads {:.2}:1 on its wash",
+                q.highlight.contrast(wash)
+            );
+        }
+    }
+    let hc = Theme::high_contrast(Scheme::Dark);
+    assert_eq!(
+        hc.palette.ink_muted, dark.palette.ink,
+        "muted ink takes ink"
+    );
+    assert!(hc.outline);
+}
+
+/// A type step's tracking spaces Latin glyphs (each advance plus tracking
+/// em: the label is wider by that per character and its draw command
+/// carries it to og-render), and leaves CJK text as the font sets it.
+/// Ways it could fail: the ramp's tracking is ignored (equal widths),
+/// measured but not drawn (the text overruns its box), or applied to CJK.
+#[test]
+fn a_steps_tracking_spaces_latin_glyphs_and_not_cjk() {
+    let width = |tracking: f32, text: &str| {
+        let mut scene = og_render::RenderScene::new();
+        let mut ui = ui_with_font(add_test_font(&mut scene));
+        let mut t = *ui.theme();
+        t.type_ramp.xl.tracking_em = tracking;
+        ui.set_theme(t);
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.label(
+            "L",
+            text,
+            LabelDesc {
+                step: Some(t.type_ramp.xl),
+                nowrap: true,
+                ..LabelDesc::default()
+            },
+        );
+        ui.end();
+        let drawn = ui
+            .frame()
+            .items
+            .iter()
+            .find_map(|i| match &i.cmd {
+                DrawCmd::Text { tracking, .. } => Some(*tracking),
+                _ => None,
+            })
+            .unwrap_or(f32::NAN);
+        (ui.frame().element("L").expect("label").width, drawn)
+    };
+    let size = Theme::default().type_ramp.xl.size;
+    let (plain, _) = width(0.0, "Origin");
+    let (wide, drawn) = width(0.1, "Origin");
+    assert!(
+        (wide - plain - 6.0 * 0.1 * size).abs() < 0.75,
+        "six glyphs, each 0.1 em further: {plain} then {wide}"
+    );
+    assert_eq!(drawn, 0.1, "the draw command carries the tracking");
+    let (cjk_plain, _) = width(0.0, "原点引擎");
+    let (cjk_wide, cjk_drawn) = width(0.1, "原点引擎");
+    assert_eq!(cjk_plain, cjk_wide, "CJK keeps the font's spacing");
+    assert_eq!(cjk_drawn, 0.0);
+}
+
+/// An icon set (an MTSDF font, `IconAtlas::font`): `icon` draws its glyph
+/// (U+E000 + the icon's index) fitted to the icon's square in its ink,
+/// rich text's `[icon=]` draws the same glyph inline, and the probe reads
+/// the icon's name.
+#[test]
+fn an_icon_set_draws_its_glyphs_in_their_squares() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut scene = og_render::RenderScene::new();
+    let set = add_test_font(&mut scene);
+    let font = set.handle.expect("the test font draws");
+    ui.set_icons(IconAtlas {
+        font: Some(set),
+        names: vec!["heart".into(), "star".into()],
+        ..IconAtlas::default()
+    });
+    assert!(ui.has_icon("star") && !ui.has_icon("moon"));
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+        ui.icon(
+            "Star",
+            "star",
+            IconDesc {
+                size: 32.0,
+                tint: Some(Srgba::rgb(255, 0, 0)),
+                ..IconDesc::default()
+            },
+        );
+        ui.rich_text("Line", "Gold [icon=heart] left", RichTextDesc::default());
+        ui.end();
+    }
+    let star = ui.frame().element("Star").expect("the icon").clone();
+    assert_eq!(star.text, "star", "the probe reads its name");
+    let glyphs: Vec<(String, f32, Rect, [f32; 4])> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|it| match &it.cmd {
+            DrawCmd::Text {
+                text,
+                size,
+                bounds,
+                color,
+                font: f,
+                ..
+            } if *f == font && text.chars().all(|c| ('\u{E000}'..='\u{E001}').contains(&c)) => {
+                Some((text.clone(), *size, *bounds, *color))
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(glyphs.len(), 2, "two icon glyphs drawn: {glyphs:?}");
+    let (text, size, bounds, color) = &glyphs[0];
+    assert_eq!(text, "\u{E001}", "star is icon 1");
+    assert_eq!(*size, 32.0);
+    assert_eq!(
+        (bounds.x, bounds.y, bounds.width, bounds.height),
+        (star.x, star.y, 32.0, 32.0),
+        "fitted to the icon's square"
+    );
+    assert_eq!(color[0], 1.0, "in its ink");
+    assert_eq!(
+        glyphs[1].0, "\u{E000}",
+        "rich text's [icon=heart] is icon 0"
+    );
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+}
+
+/// Kestrel-stair FINDINGS #15: a grid lays out exactly `columns` cells a
+/// row, whatever its width: a fit grid that many cells of the asked width,
+/// a growing one with the cells sharing its width (wider than asked, or
+/// narrower down to the touch target), so a level select's two columns
+/// are two and an inventory's six are six.
+#[test]
+fn a_grid_lays_out_exactly_its_columns_whatever_its_width() {
+    struct G {
+        columns: u32,
+        width: Size,
+        cell: f32,
+    }
+    let b = &mut |ui: &mut Ui, g: &mut G| {
+        ui.open(
+            "Box",
+            Element {
+                width: Size::Fixed(500.0),
+                ..Element::default()
+            },
+        );
+        ui.grid(
+            "Grid",
+            GridDesc {
+                count: 13,
+                cell_width: g.cell,
+                columns: g.columns,
+                width: g.width,
+                height: Some(Size::Fixed(560.0)),
+                ..GridDesc::default()
+            },
+            None,
+            |_, _| {},
+        );
+        ui.close();
+    };
+    let rows = |rig: &Rig<G>| -> Vec<Vec<(f32, f32)>> {
+        let mut rows: Vec<Vec<(f32, f32)>> = Vec::new();
+        for i in 0..13 {
+            let Some(e) = rig.ui.frame().element(&format!("Box/Grid/Cell#{i}")) else {
+                continue;
+            };
+            match rows.last_mut() {
+                Some(r) if (r[0].1 - e.y).abs() < 0.5 => r.push((e.width, e.y)),
+                _ => rows.push(vec![(e.width, e.y)]),
+            }
+        }
+        rows
+    };
+    // Two columns in 500 px: two cards of (500 + 8) / 2 - 8 = 246 px, not four of 104.
+    let mut rig = Rig::new(G {
+        columns: 2,
+        width: Size::grow(),
+        cell: 104.0,
+    });
+    rig.idle(3, b);
+    let r = rows(&rig);
+    assert!(
+        r.iter().take(6).all(|row| row.len() == 2),
+        "rows of two: {r:?}"
+    );
+    assert!(
+        (r[0][0].0 - 246.0).abs() < 0.1,
+        "the cards share the width: {r:?}"
+    );
+    // Six columns of 104 asked in 500 px: six narrower cells a row, not four.
+    let mut rig = Rig::new(G {
+        columns: 6,
+        width: Size::grow(),
+        cell: 104.0,
+    });
+    rig.idle(3, b);
+    let r = rows(&rig);
+    assert!(
+        r.iter().take(2).all(|row| row.len() == 6),
+        "rows of six: {r:?}"
+    );
+    assert!(r[0][0].0 >= 44.0 && r[0][0].0 < 104.0, "{r:?}");
+    // A fit grid: the columns at the asked width.
+    let mut rig = Rig::new(G {
+        columns: 3,
+        width: Size::fit(),
+        cell: 72.0,
+    });
+    rig.idle(3, b);
+    let r = rows(&rig);
+    assert!(
+        r.iter().take(4).all(|row| row.len() == 3) && r[0][0].0 == 72.0,
+        "{r:?}"
+    );
+    // No columns: as many of the asked width as fit (500 / 112 → 4).
+    let mut rig = Rig::new(G {
+        columns: 0,
+        width: Size::grow(),
+        cell: 104.0,
+    });
+    rig.idle(3, b);
+    let r = rows(&rig);
+    assert!(r[0].len() == 4 && r[0][0].0 == 104.0, "{r:?}");
+}
+
+/// A menu taller than the screen (a title menu on a landscape phone): the
+/// frame names the control the player cannot reach; the same menu in a
+/// scroll container, or on a screen it fits, raises nothing.
+#[test]
+fn a_control_past_the_screen_edge_with_nothing_to_scroll_to_it_is_named() {
+    let menu = |ui: &mut Ui, scrolls: bool| {
+        let rows = |ui: &mut Ui| {
+            for k in 0..6u32 {
+                ui.button(ui_idi("Item", k), "Play", ButtonDesc::default());
+            }
+        };
+        if scrolls {
+            ui.scroll(
+                "Menu",
+                ScrollDesc {
+                    height: Size::Fixed(110.0),
+                    ..ScrollDesc::default()
+                },
+                rows,
+            );
+        } else {
+            ui.column("Menu", Element::default(), rows);
+        }
+    };
+    let warnings = |w: f32, h: f32, scrolls: bool| {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.begin(InputFrame::default(), Viewport::new(w, h));
+        menu(&mut ui, scrolls);
+        ui.end().warnings.clone()
+    };
+    let short = warnings(800.0, 120.0, false);
+    let cut: Vec<&String> = short
+        .iter()
+        .filter(|w| w.contains("past the 800x120 screen"))
+        .collect();
+    assert!(
+        cut.iter().any(|w| w.contains("Item#5")),
+        "the last row is named: {short:?}"
+    );
+    assert!(
+        !cut.iter().any(|w| w.contains("Item#0")),
+        "the first row fits: {short:?}"
+    );
+    assert!(
+        warnings(800.0, 600.0, false).is_empty(),
+        "a screen it fits raises nothing"
+    );
+    assert!(
+        warnings(800.0, 120.0, true).is_empty(),
+        "a scroll container reaches every row"
+    );
+}
