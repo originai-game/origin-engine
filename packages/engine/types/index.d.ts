@@ -20498,6 +20498,18 @@ export interface GameSettings {
    */
   readonly sensitivity?: number;
   /**
+   * Raw mouse input while the pointer is locked (og.input.setMouse: no OS acceleration where the browser grants unadjustedMovement).
+   *
+   * @default true
+   */
+  readonly rawMouse?: boolean;
+  /**
+   * The player's graphics settings (og.render.display(world).settings, kept here so they are saved with the rest): with them the Graphics tab is the PC graphics page (the preset, render scale, frame-rate limit, V-Sync as the browser fixes it, adaptive quality, battery saver, fullscreen and the GPU's power preference, which says it applies after a restart) and the screen applies each change with og.render.setDisplay(SettingsDesc.world, display). Null: the Graphics tab shows the preset alone, applied with og.render.applyQuality as before.
+   *
+   * @default null
+   */
+  readonly display?: DisplaySettings | null;
+  /**
    * The language code.
    *
    * @default "en"
@@ -20548,11 +20560,17 @@ export interface SettingsDesc {
    */
   readonly onSave?: SettingsChanged | null;
   /**
-   * The world the graphics preset is drawn in: when the player picks another preset the screen calls og.render.applyQuality(world, preset) before onChange. Null leaves applying it to the game. Inside a system, the system declares RenderSettings among its writes.
+   * The world the graphics preset is drawn in: when the player picks another preset the screen calls og.render.applyQuality(world, preset) before onChange (with GameSettings.display, og.render.setDisplay(world, display) instead, which never writes the world). The Controls tab sets the mouse's raw input (og.input.setMouse) and, with lookAction, its sensitivity there too. Null leaves applying them to the game. Inside a system, the system declares RenderSettings among its writes.
    *
    * @default null
    */
   readonly world?: World | null;
+  /**
+   * The axis action (`look`) the Controls tab's Sensitivity and Invert vertical look set for the mouse: og.input.setSensitivity(world, { action, device: keyboardMouse, scale: sensitivity, invertY }). Empty leaves them to the game.
+   *
+   * @default ""
+   */
+  readonly lookAction?: string;
   /**
    * The dialog's title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t).
    *
@@ -20685,6 +20703,96 @@ export interface SettingsDesc {
    * @default "Languages"
    */
   readonly languagesLabel?: string;
+  /**
+   * The render scale's slider (GameSettings.display).
+   *
+   * @default "Render scale"
+   */
+  readonly renderScaleLabel?: string;
+  /**
+   * The frame-rate limit's select.
+   *
+   * @default "Frame rate limit"
+   */
+  readonly frameCapLabel?: string;
+  /**
+   * The frame-rate limit's automatic choice (FrameCap auto).
+   *
+   * @default "Automatic"
+   */
+  readonly frameCapAutoLabel?: string;
+  /**
+   * The frame-rate limit at the display's rate (FrameCap display).
+   *
+   * @default "Display's rate"
+   */
+  readonly frameCapDisplayLabel?: string;
+  /**
+   * The V-Sync row.
+   *
+   * @default "V-Sync"
+   */
+  readonly vsyncLabel?: string;
+  /**
+   * What the V-Sync row says: the browser always presents on the display's refresh.
+   *
+   * @default "On (set by the browser)"
+   */
+  readonly vsyncValueLabel?: string;
+  /**
+   * The adaptive quality toggle (DisplaySettings.autoQuality).
+   *
+   * @default "Adapt quality to hold the frame rate"
+   */
+  readonly autoQualityLabel?: string;
+  /**
+   * The battery saver toggle.
+   *
+   * @default "Battery saver"
+   */
+  readonly batteryLabel?: string;
+  /**
+   * The fullscreen toggle.
+   *
+   * @default "Fullscreen"
+   */
+  readonly fullscreenLabel?: string;
+  /**
+   * The power preference's select.
+   *
+   * @default "Graphics processor"
+   */
+  readonly powerLabel?: string;
+  /**
+   * The high-performance GPU.
+   *
+   * @default "High performance"
+   */
+  readonly highPerformanceLabel?: string;
+  /**
+   * The low-power GPU.
+   *
+   * @default "Low power"
+   */
+  readonly lowPowerLabel?: string;
+  /**
+   * Shown under the power preference while it differs from the GPU the page loaded with.
+   *
+   * @default "Applies after a restart"
+   */
+  readonly restartLabel?: string;
+  /**
+   * The raw mouse input toggle (GameSettings.rawMouse).
+   *
+   * @default "Raw mouse input"
+   */
+  readonly rawMouseLabel?: string;
+  /**
+   * Shown under it where the browser has no raw input (og.input.mouse's rawUnsupported).
+   *
+   * @default "Not available in this browser"
+   */
+  readonly rawUnavailableLabel?: string;
 }
 
 /** The settings screen's answer this tick. */
