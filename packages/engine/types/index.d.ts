@@ -29992,7 +29992,7 @@ export interface TooltipCardDesc {
    */
   readonly width?: number;
   /**
-   * Where it prefers to sit against the trigger: right (the end side), left, top or bottom; it flips and clamps to stay inside the safe area.
+   * Where it prefers to sit against the trigger: right (the end side), left, top or bottom. It sits beside the whole group the trigger is in (the panel or column, so it never covers its own trigger's panel) when there is room on either side of it, else beside the trigger; it flips and clamps to stay inside the safe area.
    *
    * @default "right"
    */

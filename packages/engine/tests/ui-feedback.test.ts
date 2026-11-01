@@ -9,9 +9,11 @@
 //   while the game still lists it, shows more than max, stacks oldest
 //   nearest the edge, or reads an alert as a polite status;
 // - a count badge shows 120 instead of 99+, or shows at 0;
-// - a counter jumps to its value instead of counting, or never lands;
+// - a counter jumps to its value instead of counting, never lands, or
+//   spills out of a narrow holder;
 // - a tooltip shows before its delay, never pins, or sits on top of
-//   its trigger instead of beside it (or off the safe area at the edge);
+//   its trigger or the panel it is in instead of beside it (or off the
+//   safe area at the edge);
 // - a progress bar tells a screen reader nothing of its value;
 // - subtitles show three speech lines, or captions the player turned off.
 import { beforeAll, expect, test } from "bun:test";
@@ -138,7 +140,8 @@ test("og.ui.tooltipCard: shows after its delay beside its trigger, pins after re
   let open = true;
   let r: ReturnType<typeof og.ui.tooltipCard> | null = null;
   const e = engineFor("FbTip", () => {
-    og.ui.anchor("Bar", { anchor: "right", margin: 16 }, () => {
+    // The trigger is at the end of a wider panel: the card must clear the panel, not just the trigger.
+    og.ui.anchor("Bar", { anchor: "right", margin: 16, direction: "column", cross: "end", width: { kind: "fixed", px: 320 } }, () => {
       og.ui.button("Sword", "Sword", {});
       r = og.ui.tooltipCard("Tip", {
         open, target: "Sword", title: "Ashbringer", rarity: "legendary", subtitle: "Legendary sword",
@@ -158,8 +161,10 @@ test("og.ui.tooltipCard: shows after its delay beside its trigger, pins after re
   const sword = at(els, "Bar/Sword")!;
   expect(tip.role).toBe("tooltip");
   expect(tip.name).toBe("Ashbringer");
-  // The trigger is at the right edge: the card flips to its left, inside the surface.
-  expect(tip.x + tip.width).toBeLessThanOrEqual(sword.x + 1);
+  // The trigger is at the right edge: the card flips to the left of its whole panel, inside the surface.
+  const bar = at(els, "Bar")!;
+  expect(sword.x).toBeGreaterThan(bar.x + 100);
+  expect(tip.x + tip.width).toBeLessThanOrEqual(bar.x + 1);
   expect(tip.x).toBeGreaterThanOrEqual(0);
   expect(at(els, "Tip/Card/Stats/Stat#0/Delta/Text")!.text).toBe("12");
   expect(at(els, "Tip/Card/Stats/Stat#0/Delta/Mark")).toBeDefined();

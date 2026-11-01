@@ -16,8 +16,14 @@ interface Placed {
   y: number;
 }
 
-/** Where a card of `w` × `h` sits beside `r`, preferring `side`, inside the safe area (screen coordinates). */
-export function place(r: Api.UiRect, w: number, h: number, side: Api.Anchor, gap: number): Placed {
+/**
+ * Where a card of `w` × `h` sits beside `r`, preferring `side`, inside the
+ * safe area (screen coordinates). With `column` (the group the trigger
+ * sits in) the card goes beside the whole column when there is room on
+ * either side of it, so it never covers its own trigger's panel; else
+ * beside the trigger.
+ */
+export function place(r: Api.UiRect, w: number, h: number, side: Api.Anchor, gap: number, column?: Api.UiRect | null): Placed {
   const f = frame();
   const vp = f.viewport;
   const s = vp.safeArea;
@@ -28,6 +34,23 @@ export function place(r: Api.UiRect, w: number, h: number, side: Api.Anchor, gap
   // Right to left, the end side is the left.
   const rtl = kit.frameDirection() === "rtl";
   const want = rtl && (side === "right" || side === "left") ? (side === "right" ? "left" : "right") : side;
+  if (column && (want === "right" || want === "left")) {
+    const colRight = column.x + column.width + gap + w <= hi.x;
+    const colLeft = column.x - gap - w >= lo.x;
+    if (colRight || colLeft) {
+      const right = want === "right" ? colRight : !colLeft;
+      const x = right ? column.x + column.width + gap : column.x - gap - w;
+      return { x, y: clamp(r.y, lo.y, Math.max(lo.y, hi.y - h)) };
+    }
+  } else if (column) {
+    const colBelow = column.y + column.height + gap + h <= hi.y;
+    const colAbove = column.y - gap - h >= lo.y;
+    if (colBelow || colAbove) {
+      const below = want === "bottom" ? colBelow : !colAbove;
+      const y = below ? column.y + column.height + gap : column.y - gap - h;
+      return { x: clamp(r.x + r.width / 2 - w / 2, lo.x, Math.max(lo.x, hi.x - w)), y };
+    }
+  }
   const fitsRight = r.x + r.width + gap + w <= hi.x;
   const fitsLeft = r.x - gap - w >= lo.x;
   const fitsBelow = r.y + r.height + gap + h <= hi.y;
@@ -123,7 +146,11 @@ function card(id: string, desc: Api.TooltipCardDesc, target: string, open_: bool
   // Before it was ever laid out its height is unknown: it hangs from the
   // bottom of the screen for that one (invisible) tick rather than spill.
   const h = own?.height ?? f.viewport.height;
-  const at = trig ? place(trig, total, h, desc.placement ?? "right", tk.sm) : { x: f.viewport.width / 2 - total / 2, y: f.viewport.height / 3 };
+  // The column the trigger sits in: its top-level group (for a keyword
+  // link, the card that holds it), unless that is the trigger itself.
+  const top = target.split("/")[0] ?? "";
+  const column = top && top !== target ? kit.bounds(top) : null;
+  const at = trig ? place(trig, total, h, desc.placement ?? "right", tk.sm, column) : { x: f.viewport.width / 2 - total / 2, y: f.viewport.height / 3 };
   const first = shownFor === 0;
   const pinProgress = pinnable && !pinned ? clamp01((rest - delay) / pinTicks) : pinned ? 1 : 0;
 
