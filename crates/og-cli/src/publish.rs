@@ -221,3 +221,37 @@ pub fn refuse_3d_world(root: &Path, settings: &Value) -> Result<(), String> {
         hits.join("\n")
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    /// `settings` of a project.ogt whose publish block is `publish`.
+    fn settings_of(name: &str, publish: &str) -> Result<serde_json::Value, String> {
+        let dir = std::env::temp_dir().join(format!("og-publish-{name}-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("project.ogt");
+        std::fs::write(
+            &file,
+            format!(
+                "type project\nversion 1\n---\nname \"T\"\nid \"t\"\npublish {{\n{publish}}}\n"
+            ),
+        )
+        .unwrap();
+        let out = super::settings(&file);
+        std::fs::remove_dir_all(&dir).ok();
+        out
+    }
+
+    #[test]
+    fn telemetry_off_reaches_the_web_build_and_a_bad_value_names_its_line() {
+        let off = settings_of("off", "  telemetry off\n").unwrap();
+        assert_eq!(off["publish"]["telemetry"], "off");
+        // Absent: the web build's default (`on`) applies, so nothing is written.
+        let absent = settings_of("absent", "  gate tap\n").unwrap();
+        assert!(absent["publish"].get("telemetry").is_none());
+        let bad = settings_of("bad", "  telemetry maybe\n").unwrap_err();
+        assert!(
+            bad.contains(":7: publish.telemetry is `maybe`; use one of on, off"),
+            "{bad}"
+        );
+    }
+}
