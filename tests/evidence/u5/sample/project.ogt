@@ -1,0 +1,12 @@
+type project
+version 1
+---
+# The U5 sample (docs/ui.md §14, §5.5): an arena with world-space UI.
+# tests/evidence/u5/NOTES.md has the commands and what each frame shows.
+name "U5 world UI sample"
+id "u5-sample"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
