@@ -194,3 +194,45 @@ fn every_button_role_reads_at_4_5_to_1_on_its_fill_in_both_themes_and_every_stat
     assert_eq!(rows.len(), 96);
     assert!(failing.is_empty(), "under 4.5:1:\n{}", failing.join("\n"));
 }
+
+/// The selected tab's label against the `knob` it sits on, in both themes,
+/// once its ground has slid in. Ways this could fail: the label drawn in
+/// `ink` on a `knob` as light as it (the dark theme's: 1:1, a blank white
+/// pill on the kit's settings tabs).
+#[test]
+fn the_selected_tab_label_reads_at_4_5_to_1_in_both_themes() {
+    let mut failing = Vec::new();
+    for (theme_name, theme) in [("light", Theme::light()), ("dark", Theme::dark())] {
+        let p = theme.palette;
+        let mut scene = og_render::RenderScene::new();
+        let mut ui = ui_with_font(add_test_font(&mut scene));
+        ui.set_theme(theme);
+        let vp = Viewport::new(800.0, 600.0);
+        for _ in 0..120 {
+            ui.begin(InputFrame::default(), vp);
+            ui.panel(
+                "G",
+                PanelDesc {
+                    background: Some(p.panel_raised),
+                    ..PanelDesc::default()
+                },
+                |ui| {
+                    let mut at = 1;
+                    ui.tabs(
+                        "Tabs",
+                        &["Audio", "Graphics", "Controls"],
+                        &mut at,
+                        TabsDesc::default(),
+                    );
+                },
+            );
+            ui.end();
+        }
+        let (ink, fill) = measured(&ui, "Graphics", rgb(p.panel_raised));
+        let r = ratio(ink, fill);
+        if r < 4.5 {
+            failing.push(format!("{theme_name}: {r:.2}:1"));
+        }
+    }
+    assert!(failing.is_empty(), "under 4.5:1:\n{}", failing.join("\n"));
+}

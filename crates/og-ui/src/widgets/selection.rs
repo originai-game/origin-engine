@@ -67,11 +67,20 @@ impl Ui {
             out.clicked |= r.clicked;
             let on = *selected == k;
             let p = &t.palette;
-            let mut c = self.role_text(
-                label,
-                crate::tokens::TypeRole::Label,
-                if on { p.ink } else { p.ink_muted },
-            );
+            // The selected tab's label sits on `knob`, which a dark palette
+            // makes as light as its `ink` (the prototype's dark: both f0,
+            // 1:1): it takes whichever ink reads 4.5:1 there.
+            let ink = if on {
+                let ground = p.knob.fade(1.0);
+                [p.ink, p.ink_inverse, p.on_primary]
+                    .into_iter()
+                    .find(|c| c.contrast(ground) >= 4.5)
+                    .or_else(|| p.ink.readable_on(ground, 4.5))
+                    .unwrap_or(p.ink_inverse)
+            } else {
+                p.ink_muted
+            };
+            let mut c = self.role_text(label, crate::tokens::TypeRole::Label, ink);
             c.align = TextAlign::Center;
             // The selected tab's ground slides in on the `ui` spring.
             let sel = self.spring_to(
