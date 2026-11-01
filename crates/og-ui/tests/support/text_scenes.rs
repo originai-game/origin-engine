@@ -93,11 +93,10 @@ pub fn text_scene(name: &str, fonts: &[CookedFont]) -> Result<(RenderScene, Rend
 /// The UI frames drawn over the theme's background into one scene, at
 /// [`vp`]'s device size, untonemapped.
 fn shot(uis: &[&Ui], mut scene: RenderScene) -> (RenderScene, RenderDesc) {
-    let atlas = scene.add_texture(atlas_texture());
     let v = vp();
     let mut overlay = og_render::Overlay::new(v.width, v.height, v.dpr);
     for ui in uis {
-        ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
+        ui.frame().emit(&EmitDesc::default(), &mut overlay);
     }
     scene.overlay = Some(overlay);
     let bg = uis[0].theme().palette.backdrop.linear();

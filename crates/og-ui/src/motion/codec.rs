@@ -232,6 +232,11 @@ impl W<'_> {
                     self.f32(p.y);
                 }
             }
+            // The UI pass's commands (crate::draw_codec).
+            other => {
+                self.u8(6);
+                self.ui_cmd(other);
+            }
         }
     }
 
@@ -584,6 +589,7 @@ impl R<'_> {
                     placements,
                 }
             }
+            6 => self.ui_cmd()?,
             _ => return None,
         })
     }

@@ -164,8 +164,6 @@ pub(crate) enum RunSource {
     Strip(u8, Option<TextureHandle>),
     /// A 2D fluid's metaball composite (the fluid's index this frame).
     Metaballs(u8),
-    /// The overlay's glass panels (the blur pyramid, src/glass.rs).
-    Glass,
     /// Sprites drawn from layers of a texture array, and their blend.
     Array(SpriteBlend, TextureArrayHandle),
     /// [`RenderScene::sprite_meshes`]' mesh `n`: `first`/`count` are

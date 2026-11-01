@@ -243,9 +243,8 @@ pub(crate) struct RenderState {
     /// the surface (`Viewport.covered`), over whatever the host reports,
     /// so a native run lays out as the published page with its Back does.
     pub cover: Option<og_ui::Rect>,
-    /// The engine's UI, drawn over every frame, and its atlas once added.
+    /// The engine's UI, drawn over every frame.
     pub ui: Option<og_ui::SharedUi>,
-    pub ui_atlas: Option<og_render::TextureHandle>,
     /// A UI font's first atlas page → every page, so text is drawn per page.
     pub ui_pages: BTreeMap<FontHandle, Vec<FontHandle>>,
     /// Fonts (by index into `fonts`) that render missing characters at run
@@ -307,7 +306,6 @@ impl RenderState {
             viewport: None,
             cover: None,
             ui: None,
-            ui_atlas: None,
             ui_pages: BTreeMap::new(),
             runtime_fonts: IdMap::new(),
             notes: Vec::new(),

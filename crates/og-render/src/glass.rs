@@ -70,6 +70,13 @@ pub(crate) struct GlassTargets {
     /// over overlay content).
     pub source_linear_view: Option<wgpu::TextureView>,
     levels: Vec<wgpu::TextureView>,
+    /// The whole pyramid, for the UI pass's backdrops (src/ui/pass.rs).
+    pub pyramid_view: wgpu::TextureView,
+    /// A copy of `source` as the overlay stood before a blend that reads
+    /// what is under it (`UiBlend::Overlay` and the others), and its view.
+    source: wgpu::Texture,
+    behind: wgpu::Texture,
+    pub behind_view: wgpu::TextureView,
     /// The pyramid for the overlay's glass runs (the sprite layout).
     pub overlay_group: wgpu::BindGroup,
     blit_group: wgpu::BindGroup,
@@ -201,10 +208,27 @@ impl GlassPasses {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_SRC,
             view_formats: &view_formats,
         });
         let source_view = source.create_view(&Default::default());
+        let behind = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("glass behind"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let behind_view = behind.create_view(&Default::default());
         let source_linear_view = linear.map(|f| {
             source.create_view(&wgpu::TextureViewDescriptor {
                 label: Some("glass source (sRGB view)"),
@@ -308,6 +332,10 @@ impl GlassPasses {
             source_view,
             source_linear_view,
             levels,
+            pyramid_view,
+            source,
+            behind,
+            behind_view,
             overlay_group,
             blit_group,
             down_groups,
@@ -324,6 +352,21 @@ impl GlassPasses {
         decode: bool,
     ) -> u32 {
         self.blit(encoder, targets, output) + self.pyramid(queue, encoder, targets, decode)
+    }
+
+    /// Copies the source as it is now into `behind` (what a blend that
+    /// reads the destination reads).
+    pub fn copy_behind(&self, encoder: &mut crate::Encoder, targets: &GlassTargets) -> u32 {
+        encoder.copy_texture_to_texture(
+            targets.source.as_image_copy(),
+            targets.behind.as_image_copy(),
+            wgpu::Extent3d {
+                width: targets.size.0,
+                height: targets.size.1,
+                depth_or_array_layers: 1,
+            },
+        );
+        1
     }
 
     /// Copies the source to the output, unchanged.

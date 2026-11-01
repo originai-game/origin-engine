@@ -1022,7 +1022,6 @@ fn every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame() 
                     color_space: ColorSpace::Srgb,
                     mips: Mips::None,
                 });
-                let shapes = scene.add_texture(og_ui::atlas_texture());
                 let mut ui = Ui::new(UiDesc {
                     fonts: Fonts {
                         body: add_cooked(&mut scene, body),
@@ -1095,8 +1094,8 @@ fn every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame() 
                 let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
                 ui.frame().emit(
                     &EmitDesc {
-                        atlas: shapes,
                         layer: 0,
+                        time: 0.0,
                     },
                     &mut overlay,
                 );

@@ -1255,6 +1255,9 @@ pub struct Overlay {
     /// Clip rectangles `[x, y, width, height]` in overlay space, indexed by
     /// [`Sprite::clip`] and [`Text::clip`]; pixels outside are discarded.
     pub clips: Vec<[f32; 4]>,
+    /// The UI pass's shapes, clip shapes, layers, text effects and vectors
+    /// ([`crate::ui`]), sorted with the sprites and text by layer.
+    pub ui: crate::ui::UiList,
 }
 
 /// The UI's layer among screen sprites and screen text (the IDL's
@@ -1294,6 +1297,7 @@ impl Overlay {
             height,
             scale,
             clips: Vec::new(),
+            ui: crate::ui::UiList::default(),
         }
     }
 
@@ -1557,6 +1561,11 @@ pub struct RenderScene {
     /// their parameters, by handle.
     pub posts: Vec<crate::PostShader>,
     pub post_params: Vec<[[f32; 4]; crate::MAX_SHADER_PARAMS]>,
+    /// Cooked vectors the overlay's UI draws ([`RenderScene::add_ui_vector`]).
+    pub ui_vectors: Vec<crate::ui::UiVectorData>,
+    /// Custom materials UI layers composite through
+    /// ([`RenderScene::add_ui_material`]).
+    pub ui_materials: Vec<crate::ui::UiMaterialShader>,
     /// The custom post passes the frame runs, in order (at most
     /// [`crate::MAX_CUSTOM_POSTS`]), after the built-in effects and before
     /// exposure, bloom and the tone curve (`PostEffects.custom` in the API).
@@ -1639,6 +1648,8 @@ impl RenderScene {
             camera_layers: 1,
             posts: Vec::new(),
             post_params: Vec::new(),
+            ui_vectors: Vec::new(),
+            ui_materials: Vec::new(),
             custom_post: Vec::new(),
             views: Vec::new(),
             tick: 0,

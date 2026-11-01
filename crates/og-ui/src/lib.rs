@@ -1,8 +1,8 @@
 //! Origin Engine UI (`docs/design.md` §2.7): an immediate-mode toolkit whose
 //! tree is declared every tick, laid out Clay-style in one pass, styled by
 //! the game's own UI style (the placeholder `prototype` until it picks
-//! one; never the platform's design language), drawn through og-render's screen-space overlay
-//! (sprites and MSDF text over the finished frame), and addressable by the probe through stable string ids.
+//! one; never the platform's design language), drawn through og-render's UI pass
+//! (analytic shapes and MSDF text over the finished frame, `paint`), and addressable by the probe through stable string ids.
 //!
 //! ```ignore
 //! ui.begin(InputFrame::from_world(&world).unwrap_or_default(), viewport);
@@ -14,7 +14,7 @@
 //! });
 //! let frame = ui.end();
 //! let overlay = scene.overlay.get_or_insert_with(|| Overlay::new(vp.width, vp.height, vp.dpr));
-//! frame.emit(&EmitDesc { atlas, layer: 1000 }, overlay);
+//! frame.emit(&EmitDesc { layer: 1000, time: ui.seconds() as f32 }, overlay);
 //! ```
 //!
 //! Everything is in CSS pixels of the play surface (origin top left, y down),
@@ -23,6 +23,7 @@
 
 mod a11y;
 mod draw;
+mod draw_codec;
 pub mod dress;
 pub(crate) mod edit;
 pub mod element;
@@ -34,6 +35,7 @@ mod layout;
 pub mod markup;
 pub mod motion;
 mod nav;
+pub mod paint;
 mod probe;
 mod rich;
 mod scroll;
@@ -49,7 +51,7 @@ mod ui;
 mod widgets;
 
 pub use a11y::{A11yNode, A11yTree};
-pub use draw::{DrawCmd, DrawItem, EmitDesc, atlas_texture};
+pub use draw::{DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, MAX_LAYERS};
 pub use dress::{DressFrame, Dressing, Selector};
 pub use element::{
     Affine, Dismiss, DragAxis, DragSpec, DropSpec, Edges, GridFlow, GridPlace, GridSpec,

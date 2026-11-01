@@ -340,9 +340,9 @@ pub struct Shot {
 
 /// Emits `ui`'s frame into `scene`'s overlay on the theme's background
 /// (no tonemap) and sizes the renderer to `vp` in device pixels.
-pub fn shot(ui: Ui, mut scene: RenderScene, atlas: og_render::TextureHandle, vp: Viewport) -> Shot {
+pub fn shot(ui: Ui, mut scene: RenderScene, vp: Viewport) -> Shot {
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
-    ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
@@ -418,11 +418,10 @@ pub fn sample_screen_shot(font: &FontFiles) -> (Shot, Sample) {
     let vp = viewport();
     let mut scene = RenderScene::new();
     let font = add_font(&mut scene, font);
-    let atlas = scene.add_texture(atlas_texture());
     let mut ui = ui_with_font(font);
     let mut s = Sample::default();
     sample_session(&mut ui, &mut s);
-    (shot(ui, scene, atlas, vp), s)
+    (shot(ui, scene, vp), s)
 }
 
 /// The game widget set's state.
@@ -615,7 +614,6 @@ pub fn widget_set_shot(font: &FontFiles) -> Shot {
     };
     let mut scene = RenderScene::new();
     let font = add_font(&mut scene, font);
-    let atlas = scene.add_texture(atlas_texture());
     let mut ui = ui_with_font(font);
     let mut s = Kit {
         hp: 100.0,
@@ -679,7 +677,7 @@ pub fn widget_set_shot(font: &FontFiles) -> Shot {
     for _ in 0..20 {
         step(&mut ui, &mut s, InputFrame::hover(p.x, p.y));
     }
-    shot(ui, scene, atlas, vp)
+    shot(ui, scene, vp)
 }
 
 /// The fields of `text-fields-2` and the text they hold.
@@ -738,14 +736,12 @@ pub fn fields_screen(ui: &mut Ui, f: &mut Fields, top: f32) {
 pub fn text_fields_shot(font: &FontFiles) -> Shot {
     let mut scene = RenderScene::new();
     let font = add_font(&mut scene, font);
-    let atlas = scene.add_texture(atlas_texture());
     let (ui, area) = text_fields_uis(&font);
     let vp = text_fields_viewport();
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
     // The area's UI under the fields' (each band leaves the other's empty).
-    area.frame()
-        .emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
-    ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
+    area.frame().emit(&EmitDesc::default(), &mut overlay);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
@@ -946,7 +942,6 @@ pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, 
     };
     let mut scene = RenderScene::new();
     let font = add_font(&mut scene, font);
-    let atlas = scene.add_texture(atlas_texture());
     let mut ui = ui_with_font(font);
     let mut theme = *ui.theme();
     // Tight tracking: glyph quads overlap their neighbours.
@@ -987,7 +982,7 @@ pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, 
         ui.end();
     }
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
-    ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));

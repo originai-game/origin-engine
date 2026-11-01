@@ -45,7 +45,6 @@ fn screen_sprites_above_the_ui_layer_draw_over_the_ui() {
 
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
-    let atlas = scene.add_texture(atlas_texture());
     let mut ui = ui_with_font(font);
     let vp = Viewport::new(320.0, 180.0);
     ui.begin(InputFrame::default(), vp);
@@ -63,8 +62,8 @@ fn screen_sprites_above_the_ui_layer_draw_over_the_ui() {
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
     ui.frame().emit(
         &EmitDesc {
-            atlas,
             layer: UI_OVERLAY_LAYER,
+            time: 0.0,
         },
         &mut overlay,
     );

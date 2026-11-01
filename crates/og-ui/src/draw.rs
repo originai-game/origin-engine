@@ -1,31 +1,45 @@
-//! From a laid-out frame to og-render's overlay ([`og_render::Overlay`]).
+//! From a laid-out frame to og-render's overlay ([`og_render::Overlay`]):
+//! the UI pass's analytic shapes ([`og_render::UiShape`]), MSDF text, the
+//! UI's clip shapes and offscreen layers (`docs/ui.md` §5).
 //!
-//! Every rectangle (solid, rounded, a texture-less image) is a 9-slice of one
-//! small atlas texture (a white disc, [`atlas_texture`]), so all of them
-//! share one sprite run; images with their own texture and MSDF text are
-//! the other runs. og-render sorts by (layer, kind, texture), so draw order is
-//! kept with **painter levels**: a command's level is one above every earlier
+//! Every rectangle, bar, half disc, image and glass panel is a UI shape:
+//! a signed distance evaluated per pixel, so its edge is exact at any
+//! scale. og-render sorts by (layer, kind, texture), so draw order is kept
+//! with **painter levels**: a command's level is one above every earlier
 //! command it overlaps that batches differently, and equal to that of an
 //! overlapping earlier command of its own batch. Commands of different
 //! batches on one level never overlap, so the sort cannot reorder anything
-//! visible, and a typical screen is two to four draws.
+//! visible, and a typical screen is two to four draws (§5.7).
 //!
-//! **Clipping is per pixel**: every sprite and text carries the index of its
-//! clip rectangle in [`og_render::Overlay::clips`], and the overlay pass
-//! discards what falls outside it, so a scrolled row, a rotated chevron or a
-//! half-visible line of text is cut exactly at the container's edge.
+//! **Clipping is per pixel**: every command carries its clip rectangle,
+//! and the commands between a [`DrawCmd::PushClip`] and its
+//! [`DrawCmd::PopClip`] are also cut to its shape, antialiased (a rounded
+//! panel's children, nested). The commands between a
+//! [`DrawCmd::BeginLayer`] and its [`DrawCmd::EndLayer`] draw into a layer
+//! of their own, with levels of their own, and the layer is one command of
+//! its parent: its composite, through its material.
+//!
+//! **Every command carries its element's map** ([`DrawItem::transform`]):
+//! og-ui bakes translation and scale into the old commands, and a turn or
+//! skew reaches here, where every shape, clip, vector and layer composite
+//! takes the whole map (a 2×2 about its centre, so a skew is exact) and
+//! text takes it per glyph. A transformed command's clip rectangle is in
+//! screen space.
 
 use crate::element::Affine;
 use crate::layout::Rect;
-use og_core::glam::{Vec2, Vec3};
-use og_render::{ColorSpace, FontHandle, Mips, Overlay, Sprite, Text, TextureData, TextureHandle};
+use og_core::glam::Vec2;
+use og_render::{
+    FontHandle, Overlay, Text, TextureHandle, UiBlend, UiGeometry, UiMaterial, UiMode, UiPaint,
+    UiShape, UiVectorHandle,
+};
 
 /// One thing to draw, in CSS pixels.
 #[derive(Clone, Debug, PartialEq)]
 pub enum DrawCmd {
     /// Glass: the frame under `rect` blurred by `blur` CSS px, tinted
     /// (`tint`: linear RGB, alpha how much covers the blur), masked to the
-    /// rounded rectangle, at `alpha` (og-render's [`og_render::Glass`]).
+    /// rounded rectangle, at `alpha`: a backdrop ([`og_render::UiMode::Backdrop`]).
     Glass {
         rect: Rect,
         radius: f32,
@@ -51,8 +65,7 @@ pub enum DrawCmd {
         clip: Rect,
     },
     /// A solid bar `w`×`h` centred at `center`, rotated clockwise on screen by
-    /// `angle` radians (chevrons, ticks, crosses). Drawn only when it lies
-    /// wholly inside its clip.
+    /// `angle` radians (chevrons, ticks, crosses).
     Bar {
         center: (f32, f32),
         w: f32,
@@ -62,8 +75,7 @@ pub enum DrawCmd {
         clip: Rect,
     },
     /// Half a disc of `radius` around `center`, on the side `angle` points to
-    /// (0: right, clockwise on screen): the atlas disc's right half on a
-    /// rotated quad. Pies and rings are two of them. Drawn only inside its clip.
+    /// (0: right, clockwise on screen). Pies and rings are two of them.
     Half {
         center: (f32, f32),
         radius: f32,
@@ -92,70 +104,284 @@ pub enum DrawCmd {
         /// character of `text`; empty: the font's advances and kerning.
         placements: Vec<og_render::GlyphPlacement>,
     },
+    /// A [`DrawCmd::Text`] with effects drawn from its font's distance
+    /// field: shadows, an outline, a gradient fill (§5.6).
+    StyledText {
+        text: Box<DrawCmd>,
+        effects: Box<og_render::UiTextEffects>,
+    },
+    /// Any UI shape: geometry, paint, mode, opacity and blend. Its `layer`
+    /// and `clip` are set when it is emitted.
+    Shape {
+        shape: Box<UiShape>,
+        clip: Rect,
+    },
+    /// A cooked vector contained and centred in `rect`.
+    Vector {
+        vector: UiVectorHandle,
+        rect: Rect,
+        transform: [f32; 4],
+        tint: [f32; 4],
+        clip: Rect,
+    },
+    /// Cuts what follows, until its [`DrawCmd::PopClip`], to a shape
+    /// centred on `center` with half extent `half` (nested cuts multiply).
+    PushClip {
+        geometry: UiGeometry,
+        center: (f32, f32),
+        half: (f32, f32),
+    },
+    PopClip,
+    /// What follows, until its [`DrawCmd::EndLayer`], draws offscreen.
+    /// `rect` (the union of what it draws, grown by `expand`) is set when
+    /// levels are assigned.
+    BeginLayer {
+        material: UiMaterial,
+        params: [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
+        mask: Option<og_render::UiMask>,
+        expand: f32,
+        rect: Rect,
+    },
+    /// The layer's composite: `geometry` over `rect` (`None`: the layer's
+    /// whole rectangle), at `opacity` with `blend`.
+    EndLayer {
+        geometry: Option<UiGeometry>,
+        rect: Rect,
+        opacity: f32,
+        blend: UiBlend,
+        clip: Rect,
+    },
 }
 
-/// A command and the painter level it draws on.
+/// A command and the painter level it draws on (in its layer's levels,
+/// for the commands between a layer's start and end).
 #[derive(Clone, Debug, PartialEq)]
 pub struct DrawItem {
     pub level: i32,
     pub cmd: DrawCmd,
     /// The map from the command's coordinates to the screen: the identity,
     /// except under an element's rotation or skew (og-ui bakes translation
-    /// and scale into the command itself). Its clip is in screen space.
+    /// and scale into the old commands; a shape, vector, clip or layer
+    /// keeps any map). Its clip is in screen space.
     pub transform: Affine,
 }
 
+/// How a command batches in og-render's overlay (its sort key there).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Batch {
-    Glass,
-    Atlas,
-    Texture(TextureHandle),
+    /// A UI shape: its pipeline (blend) and texture.
+    Ui(u8, Option<TextureHandle>),
+    Backdrop,
     Font(FontHandle),
+    Vector(UiVectorHandle),
+    /// A layer's composite (each its own).
+    Composite(u32),
+}
+
+fn pipe_of(blend: UiBlend) -> u8 {
+    match blend {
+        UiBlend::Normal => 0,
+        UiBlend::Multiply => 1,
+        UiBlend::Screen => 2,
+        UiBlend::Add => 3,
+        _ => 4,
+    }
+}
+
+/// The smallest rectangle holding both.
+fn union(a: &Rect, b: &Rect) -> Rect {
+    let x = a.x.min(b.x);
+    let y = a.y.min(b.y);
+    Rect::new(
+        x,
+        y,
+        a.right().max(b.right()) - x,
+        a.bottom().max(b.bottom()) - y,
+    )
+}
+
+/// A UI shape's bounds: its quad grown by what its mode draws outside it,
+/// turned by its transform.
+fn shape_bounds(s: &UiShape) -> Rect {
+    let (mut center, mut half) = (s.center, s.half);
+    if let UiGeometry::Polyline {
+        points,
+        width,
+        join,
+        ..
+    } = &s.geometry
+    {
+        let (mut lo, mut hi) = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
+        for p in points {
+            lo = lo.min(*p);
+            hi = hi.max(*p);
+        }
+        if points.is_empty() {
+            return Rect::default();
+        }
+        let limit = match join {
+            og_render::UiJoin::Miter(l) => l.max(1.5),
+            _ => 1.5,
+        };
+        let m = s.transform;
+        let mid = (lo + hi) * 0.5;
+        center += Vec2::new(m[0] * mid.x + m[2] * mid.y, m[1] * mid.x + m[3] * mid.y);
+        half = (hi - lo) * 0.5 + Vec2::splat(0.5 * width * limit);
+    }
+    let mut grow = 1.0;
+    let mut shift = Vec2::ZERO;
+    match s.mode {
+        UiMode::Stroke(st) => {
+            let off = match st.align {
+                og_render::UiAlign::Inside => -0.5,
+                og_render::UiAlign::Center => 0.0,
+                og_render::UiAlign::Outside => 0.5,
+            } * st.width;
+            grow += (0.5 * st.width + off).max(0.0);
+        }
+        UiMode::Shadow {
+            offset,
+            blur,
+            spread,
+        } => {
+            grow += 1.5 * blur.max(0.0) + spread.max(0.0);
+            shift = offset;
+        }
+        _ => {}
+    }
+    let m = s.transform;
+    let (hx, hy) = (half.x + grow, half.y + grow);
+    let ex = m[0].abs() * hx + m[2].abs() * hy;
+    let ey = m[1].abs() * hx + m[3].abs() * hy;
+    let shift = Vec2::new(
+        m[0] * shift.x + m[2] * shift.y,
+        m[1] * shift.x + m[3] * shift.y,
+    );
+    let c = center + shift;
+    union(
+        &Rect::new(c.x - ex, c.y - ey, 2.0 * ex, 2.0 * ey),
+        &Rect::new(center.x - ex, center.y - ey, 2.0 * ex, 2.0 * ey),
+    )
+}
+
+/// The 2×2 part of `m` as og-render's `[a, b, c, d]`.
+fn linear(m: &Affine) -> [f32; 4] {
+    [m.a, m.b, m.c, m.d]
+}
+
+/// `l · r` of two 2×2 matrices in og-render's order.
+fn mul2(l: [f32; 4], r: [f32; 4]) -> [f32; 4] {
+    [
+        l[0] * r[0] + l[2] * r[1],
+        l[1] * r[0] + l[3] * r[1],
+        l[0] * r[2] + l[2] * r[3],
+        l[1] * r[2] + l[3] * r[3],
+    ]
+}
+
+/// A UI shape under the map `m`: its centre moved, its local space
+/// composed with the map's linear part (rotation, scale and skew).
+fn mapped_shape(mut s: UiShape, m: &Affine) -> UiShape {
+    if m.is_identity() {
+        return s;
+    }
+    let (x, y) = m.apply(s.center.x, s.center.y);
+    s.center = Vec2::new(x, y);
+    s.transform = mul2(linear(m), s.transform);
+    s
+}
+
+/// A command's bounds on the screen under its map.
+fn mapped_bounds(c: &DrawCmd, m: &Affine) -> Rect {
+    if m.is_identity() {
+        return c.bounds();
+    }
+    match c {
+        DrawCmd::Shape { shape, clip } => {
+            shape_bounds(&mapped_shape((**shape).clone(), m)).intersect(clip)
+        }
+        _ => m.map_rect(&c.unclipped()).intersect(c.clip()),
+    }
 }
 
 impl DrawCmd {
-    fn batch(&self) -> Batch {
-        match self {
-            DrawCmd::Glass { .. } => Batch::Glass,
-            DrawCmd::Quad { .. }
-            | DrawCmd::Bar { .. }
-            | DrawCmd::Half { .. }
-            | DrawCmd::Image { texture: None, .. } => Batch::Atlas,
-            DrawCmd::Image {
-                texture: Some(t), ..
-            } => Batch::Texture(*t),
-            DrawCmd::Text { font, .. } => Batch::Font(*font),
-        }
-    }
-
-    /// Its clip rectangle.
+    /// Its clip rectangle (a bracket's: everything).
     pub(crate) fn clip(&self) -> &Rect {
+        const ALL: Rect = Rect {
+            x: -1e9,
+            y: -1e9,
+            width: 2e9,
+            height: 2e9,
+        };
         match self {
             DrawCmd::Glass { clip, .. }
             | DrawCmd::Quad { clip, .. }
             | DrawCmd::Image { clip, .. }
             | DrawCmd::Bar { clip, .. }
             | DrawCmd::Half { clip, .. }
-            | DrawCmd::Text { clip, .. } => clip,
+            | DrawCmd::Text { clip, .. }
+            | DrawCmd::Shape { clip, .. }
+            | DrawCmd::Vector { clip, .. }
+            | DrawCmd::EndLayer { clip, .. } => clip,
+            DrawCmd::StyledText { text, .. } => text.clip(),
+            DrawCmd::PushClip { .. } | DrawCmd::PopClip | DrawCmd::BeginLayer { .. } => &ALL,
+        }
+    }
+
+    /// Its clip rectangle, to set (a bracket has none).
+    pub(crate) fn clip_mut(&mut self) -> Option<&mut Rect> {
+        match self {
+            DrawCmd::Glass { clip, .. }
+            | DrawCmd::Quad { clip, .. }
+            | DrawCmd::Image { clip, .. }
+            | DrawCmd::Bar { clip, .. }
+            | DrawCmd::Half { clip, .. }
+            | DrawCmd::Text { clip, .. }
+            | DrawCmd::Shape { clip, .. }
+            | DrawCmd::Vector { clip, .. }
+            | DrawCmd::EndLayer { clip, .. } => Some(clip),
+            DrawCmd::StyledText { text, .. } => text.clip_mut(),
+            DrawCmd::PushClip { .. } | DrawCmd::PopClip | DrawCmd::BeginLayer { .. } => None,
         }
     }
 
     /// What it covers before its clip.
     pub(crate) fn unclipped(&self) -> Rect {
-        let all = Rect::new(-1e9, -1e9, 2e9, 2e9);
+        let mut c = self.clone();
+        if let Some(clip) = c.clip_mut() {
+            *clip = Rect::new(-1e9, -1e9, 2e9, 2e9);
+        }
+        c.bounds()
+    }
+
+    fn batch(&self) -> Batch {
         match self {
-            DrawCmd::Quad { rect, .. }
-            | DrawCmd::Image { rect, .. }
-            | DrawCmd::Glass { rect, .. } => *rect,
-            DrawCmd::Text { bounds, .. } => *bounds,
-            other => {
-                let mut c = other.clone();
-                match &mut c {
-                    DrawCmd::Bar { clip, .. } | DrawCmd::Half { clip, .. } => *clip = all,
-                    _ => {}
+            DrawCmd::Glass { .. } => Batch::Backdrop,
+            DrawCmd::Quad { .. }
+            | DrawCmd::Bar { .. }
+            | DrawCmd::Half { .. }
+            | DrawCmd::Image { texture: None, .. } => Batch::Ui(0, None),
+            DrawCmd::Image {
+                texture: Some(t), ..
+            } => Batch::Ui(0, Some(*t)),
+            DrawCmd::Text { font, .. } => Batch::Font(*font),
+            DrawCmd::StyledText { text, .. } => text.batch(),
+            DrawCmd::Shape { shape, .. } => {
+                if matches!(shape.mode, UiMode::Backdrop { .. }) {
+                    return Batch::Backdrop;
                 }
-                c.bounds()
+                let texture = match &shape.paint {
+                    UiPaint::Image(im) => Some(im.texture),
+                    _ => None,
+                };
+                Batch::Ui(pipe_of(shape.blend), texture)
             }
+            DrawCmd::Vector { vector, .. } => Batch::Vector(*vector),
+            // Brackets: never levelled (empty bounds).
+            DrawCmd::PushClip { .. }
+            | DrawCmd::PopClip
+            | DrawCmd::BeginLayer { .. }
+            | DrawCmd::EndLayer { .. } => Batch::Ui(0, None),
         }
     }
 
@@ -163,8 +389,24 @@ impl DrawCmd {
         match self {
             DrawCmd::Quad { rect, clip, .. }
             | DrawCmd::Image { rect, clip, .. }
-            | DrawCmd::Glass { rect, clip, .. } => rect.intersect(clip),
+            | DrawCmd::Glass { rect, clip, .. }
+            | DrawCmd::Vector { rect, clip, .. } => rect.intersect(clip),
             DrawCmd::Text { bounds, clip, .. } => bounds.intersect(clip),
+            DrawCmd::StyledText { text, effects } => {
+                let DrawCmd::Text { bounds, clip, .. } = &**text else {
+                    return text.bounds();
+                };
+                let mut b = *bounds;
+                let reach = effects.outline.map_or(0.0, |o| o.width);
+                b = b.outset(reach);
+                for s in &effects.shadows {
+                    let moved = Rect::new(b.x + s.offset.x, b.y + s.offset.y, b.width, b.height)
+                        .outset(s.blur.max(0.0));
+                    b = union(&b, &moved);
+                }
+                b.intersect(clip)
+            }
+            DrawCmd::Shape { shape, clip } => shape_bounds(shape).intersect(clip),
             DrawCmd::Bar {
                 center, w, h, clip, ..
             } => {
@@ -183,37 +425,174 @@ impl DrawCmd {
                 2.0 * radius,
             )
             .intersect(clip),
+            DrawCmd::PushClip { .. }
+            | DrawCmd::PopClip
+            | DrawCmd::BeginLayer { .. }
+            | DrawCmd::EndLayer { .. } => Rect::default(),
         }
     }
 }
 
-/// Assigns painter levels in submission order: a command goes above every
-/// earlier one it overlaps (on the same level when they share a batch).
-/// Each placed rectangle is filed in the cells of a coarse grid it touches,
-/// and a command tests only the rectangles of its own cells: a screen
-/// transition's dissolve is 1,620 quads over the frame, and testing each
-/// against every earlier command was 7 to 17 ms of a dev tick (Lantern
-/// Vale's playtests, tests/evidence/P4/perf-2).
-pub(crate) fn assign_levels(cmds: Vec<(DrawCmd, Affine)>) -> Vec<DrawItem> {
-    let bounds: Vec<Rect> = cmds
+/// One command of a level space, or a layer: its start and end in the
+/// space, its own items between.
+enum Entry {
+    Cmd(DrawCmd, Affine),
+    /// A clip bracket: drawn where it stands, never levelled.
+    Bracket(DrawCmd, Affine),
+    Layer {
+        begin: Box<(DrawCmd, Affine)>,
+        items: Vec<DrawItem>,
+        end: Box<(DrawCmd, Affine)>,
+        bounds: Rect,
+    },
+}
+
+/// Collects one space's entries from `cmds` until its `EndLayer` (`None`:
+/// the frame's end), levelling each layer's own space on the way.
+fn collect(
+    cmds: &mut std::vec::IntoIter<(DrawCmd, Affine)>,
+    layers: &mut u32,
+) -> (Vec<Entry>, Option<(DrawCmd, Affine)>) {
+    let mut entries = Vec::new();
+    while let Some((cmd, m)) = cmds.next() {
+        match cmd {
+            DrawCmd::PushClip { .. } | DrawCmd::PopClip => entries.push(Entry::Bracket(cmd, m)),
+            DrawCmd::BeginLayer { .. } => {
+                let (inner, end) = collect(cmds, layers);
+                let mut bounds = Rect::default();
+                let items = levelled(inner, layers, Some(&mut bounds));
+                let mut begin = cmd;
+                let end = end.unwrap_or((
+                    DrawCmd::EndLayer {
+                        geometry: None,
+                        rect: bounds,
+                        opacity: 1.0,
+                        blend: UiBlend::Normal,
+                        clip: Rect::new(-1e9, -1e9, 2e9, 2e9),
+                    },
+                    Affine::IDENTITY,
+                ));
+                // The layer's rectangle is on the screen: the union of what
+                // its items draw there, whatever their maps.
+                if let DrawCmd::BeginLayer { rect, expand, .. } = &mut begin {
+                    let r = bounds.outset(*expand);
+                    *rect = r;
+                    bounds = r;
+                }
+                if let (DrawCmd::EndLayer { clip, .. }, _) = &end {
+                    bounds = bounds.intersect(clip);
+                }
+                entries.push(Entry::Layer {
+                    begin: Box::new((begin, m)),
+                    items,
+                    end: Box::new(end),
+                    bounds,
+                });
+            }
+            DrawCmd::EndLayer { .. } => return (entries, Some((cmd, m))),
+            other => entries.push(Entry::Cmd(other, m)),
+        }
+    }
+    (entries, None)
+}
+
+/// Levels a space's entries and flattens them; `drawn` gets the union of
+/// what they draw.
+fn levelled(entries: Vec<Entry>, layers: &mut u32, drawn: Option<&mut Rect>) -> Vec<DrawItem> {
+    let keyed: Vec<(Rect, Batch)> = entries
         .iter()
-        .map(|(c, m)| {
-            if m.is_identity() {
-                c.bounds()
-            } else {
-                m.map_rect(&c.unclipped()).intersect(c.clip())
+        .map(|e| match e {
+            Entry::Cmd(c, m) => (mapped_bounds(c, m), c.batch()),
+            Entry::Bracket(..) => (Rect::default(), Batch::Ui(0, None)),
+            Entry::Layer { bounds, .. } => {
+                *layers += 1;
+                (*bounds, Batch::Composite(*layers))
             }
         })
         .collect();
+    let levels = assign(&keyed);
+    if let Some(u) = drawn {
+        let mut acc: Option<Rect> = None;
+        for (r, _) in &keyed {
+            if !r.is_empty() {
+                acc = Some(acc.map_or(*r, |a| union(&a, r)));
+            }
+        }
+        *u = acc.unwrap_or_default();
+    }
+    let mut out = Vec::with_capacity(entries.len());
+    for (entry, level) in entries.into_iter().zip(levels) {
+        match (entry, level) {
+            (Entry::Bracket(cmd, transform), _) => out.push(DrawItem {
+                level: 0,
+                cmd,
+                transform,
+            }),
+            (Entry::Cmd(cmd, transform), Some(level)) => out.push(DrawItem {
+                level,
+                cmd,
+                transform,
+            }),
+            (
+                Entry::Layer {
+                    begin, items, end, ..
+                },
+                Some(level),
+            ) => {
+                out.push(DrawItem {
+                    level,
+                    cmd: begin.0,
+                    transform: begin.1,
+                });
+                out.extend(items);
+                out.push(DrawItem {
+                    level,
+                    cmd: end.0,
+                    transform: end.1,
+                });
+            }
+            // Nothing to draw.
+            (_, None) => {}
+        }
+    }
+    out
+}
+
+/// Assigns painter levels in submission order (see the module
+/// documentation); each command's bounds are taken under its map.
+pub(crate) fn assign_levels(cmds: Vec<(DrawCmd, Affine)>) -> Vec<DrawItem> {
+    let mut layers = 0;
+    let mut it = cmds.into_iter();
+    let mut entries = Vec::new();
+    loop {
+        let (more, end) = collect(&mut it, &mut layers);
+        entries.extend(more);
+        // A stray end closes nothing.
+        if end.is_none() {
+            break;
+        }
+    }
+    levelled(entries, &mut layers, None)
+}
+
+/// The levels of `keyed` (bounds and batch) in submission order: a command
+/// goes above every earlier one it overlaps (on the same level when they
+/// share a batch); `None` for empty bounds. Each placed rectangle is filed
+/// in the cells of a coarse grid it touches, and a command tests only the
+/// rectangles of its own cells: a screen transition's dissolve is 1,620
+/// quads over the frame, and testing each against every earlier command was
+/// 7 to 17 ms of a dev tick (Lantern Vale's playtests, tests/evidence/P4/perf-2).
+fn assign(keyed: &[(Rect, Batch)]) -> Vec<Option<i32>> {
+    let bounds: Vec<Rect> = keyed.iter().map(|(r, _)| *r).collect();
     let grid = Grid::over(&bounds);
     let mut cells: Vec<Vec<u32>> = vec![Vec::new(); grid.cols * grid.rows];
-    let mut items: Vec<DrawItem> = Vec::with_capacity(cmds.len());
-    let mut placed: Vec<(Rect, Batch, i32)> = Vec::with_capacity(cmds.len());
-    for ((cmd, transform), bounds) in cmds.into_iter().zip(bounds) {
+    let mut out = Vec::with_capacity(keyed.len());
+    let mut placed: Vec<(Rect, Batch, i32)> = Vec::with_capacity(keyed.len());
+    for &(bounds, batch) in keyed {
         if bounds.is_empty() {
+            out.push(None);
             continue;
         }
-        let batch = cmd.batch();
         let (cols, rows) = grid.span(&bounds);
         let mut level = 0;
         for row in rows.clone() {
@@ -233,16 +612,12 @@ pub(crate) fn assign_levels(cmds: Vec<(DrawCmd, Affine)>) -> Vec<DrawItem> {
             }
         }
         placed.push((bounds, batch, level));
-        items.push(DrawItem {
-            level,
-            cmd,
-            transform,
-        });
+        out.push(Some(level));
     }
-    items
+    out
 }
 
-/// [`assign_levels`]' grid: about one cell for every four commands, at
+/// [`assign`]'s grid: about one cell for every four commands, at
 /// most 64 by 64 cells of at least 32 CSS px, over the commands' bounds. A rectangle is filed in every cell its closed
 /// extent touches (clamped to the grid), so two rectangles that overlap
 /// share a cell.
@@ -315,121 +690,239 @@ impl Grid {
     }
 }
 
-/// Where a frame's sprites and text go.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// Where a frame's shapes and text go.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct EmitDesc {
-    /// The scene's handle of [`atlas_texture`].
-    pub atlas: TextureHandle,
     /// The overlay layer of painter level 0; level n draws on `layer + n`.
-    /// Put the UI above other overlay sprites with a high base.
+    /// Put the UI above other overlay sprites with a high base. A UI layer
+    /// ([`DrawCmd::BeginLayer`]) takes [`LAYER_SPAN`] overlay layers of its
+    /// own from `layer` + [`LAYER_BASE`].
     pub layer: i32,
+    /// The UI clock in seconds (`Ui::seconds`): patterns scroll and layer
+    /// materials move by it.
+    pub time: f32,
 }
 
-/// The atlas: a 64×64 white disc (alpha is coverage, 8×8 supersampled),
-/// linear, with mips. Add it to the scene once and pass its handle in
-/// [`EmitDesc::atlas`].
-pub fn atlas_texture() -> TextureData {
-    const N: u32 = 64;
-    let r = N as f32 / 2.0;
-    let mut rgba = Vec::with_capacity((N * N * 4) as usize);
-    for y in 0..N {
-        for x in 0..N {
-            let mut covered = 0u32;
-            for sy in 0..8 {
-                for sx in 0..8 {
-                    let px = x as f32 + (sx as f32 + 0.5) / 8.0 - r;
-                    let py = y as f32 + (sy as f32 + 0.5) / 8.0 - r;
-                    if px * px + py * py <= r * r {
-                        covered += 1;
-                    }
-                }
-            }
-            let a = (covered * 255 + 32) / 64;
-            rgba.extend_from_slice(&[255, 255, 255, a as u8]);
-        }
-    }
-    TextureData {
-        width: N,
-        height: N,
-        rgba,
-        color_space: ColorSpace::Linear,
-        mips: Mips::Generate,
-    }
-}
+/// Past the main levels: where the UI's offscreen layers take their
+/// overlay layers.
+pub const LAYER_BASE: i32 = 1 << 19;
+/// The overlay layers of one offscreen layer (its painter levels).
+pub const LAYER_SPAN: i32 = 4096;
+/// The most offscreen layers one frame draws; past them a layer's subtree
+/// draws in place.
+pub const MAX_LAYERS: u32 = 120;
 
-fn sprite(
-    rect: Rect,
-    uv: [f32; 4],
-    texture: TextureHandle,
-    color: [f32; 4],
-    layer: i32,
-    clip: u32,
-) -> Sprite {
-    Sprite {
-        texture: Some(texture),
-        position: Vec3::new(rect.x, rect.y, 0.0),
-        size: Vec2::new(rect.width, rect.height),
-        anchor: Vec2::ZERO,
-        rotation: 0.0,
-        color,
-        uv_rect: uv,
-        layer,
-        clip: Some(clip),
-    }
-}
-
-/// The nine pieces of a rounded rectangle (fewer when `radius` is 0).
-fn nine_slice(rect: Rect, radius: f32) -> Vec<(Rect, [f32; 4])> {
-    let r = radius.min(rect.width / 2.0).min(rect.height / 2.0).max(0.0);
-    let c = [0.5, 0.5, 0.5, 0.5];
-    if r <= 0.0 {
-        return vec![(rect, c)];
-    }
-    let (x0, x1, x2, x3) = (rect.x, rect.x + r, rect.right() - r, rect.right());
-    let (y0, y1, y2, y3) = (rect.y, rect.y + r, rect.bottom() - r, rect.bottom());
-    let cell = |a: f32, b: f32, c: f32, d: f32| Rect::new(a, b, c - a, d - b);
-    vec![
-        (cell(x0, y0, x1, y1), [0.0, 0.0, 0.5, 0.5]),
-        (cell(x1, y0, x2, y1), [0.5, 0.0, 0.5, 0.5]),
-        (cell(x2, y0, x3, y1), [0.5, 0.0, 1.0, 0.5]),
-        (cell(x0, y1, x1, y2), [0.0, 0.5, 0.5, 0.5]),
-        (cell(x1, y1, x2, y2), c),
-        (cell(x2, y1, x3, y2), [0.5, 0.5, 1.0, 0.5]),
-        (cell(x0, y2, x1, y3), [0.0, 0.5, 0.5, 1.0]),
-        (cell(x1, y2, x2, y3), [0.5, 0.5, 0.5, 1.0]),
-        (cell(x2, y2, x3, y3), [0.5, 0.5, 1.0, 1.0]),
+/// A rectangle as og-render's `[x0, y0, width, height]` key.
+fn key(r: &Rect) -> [u32; 4] {
+    [
+        r.x.to_bits(),
+        r.y.to_bits(),
+        r.width.to_bits(),
+        r.height.to_bits(),
     ]
 }
 
-/// The overlay clip index of a rectangle, adding it the first time.
-fn clip_index(overlay: &mut Overlay, known: &mut Vec<(Rect, u32)>, clip: &Rect) -> u32 {
-    if let Some((_, i)) = known.iter().rev().find(|(r, _)| r == clip) {
-        return *i;
-    }
-    let i = overlay.add_clip([clip.x, clip.y, clip.width, clip.height]);
-    known.push((*clip, i));
-    i
+/// A cut to a shape in force: its geometry, its own record in the UI's
+/// clip list and the record of the cut under it.
+struct Cut {
+    id: u32,
+    record: u32,
+    below: Option<u32>,
+    geometry: UiGeometry,
+    center: Vec2,
+    half: Vec2,
+    transform: [f32; 4],
 }
 
-/// An element's rotation, scale and placement as a sprite takes them: the
-/// map's turn (radians, clockwise on screen) and its scale along its own
-/// axes (a skew is not drawn by sprites and is left out).
-fn decompose(m: &Affine) -> (f32, f32, f32) {
-    let sx = (m.a * m.a + m.b * m.b).sqrt();
-    let angle = m.b.atan2(m.a);
-    let sy = if sx > 0.0 { m.determinant() / sx } else { 0.0 };
-    (angle, sx, sy)
+struct Clips {
+    known: std::collections::HashMap<([u32; 4], Option<u32>), u32>,
+    cuts: Vec<Cut>,
+    next_cut: u32,
+}
+
+impl Clips {
+    /// The overlay clip index of a rectangle under the cuts in force,
+    /// adding it (and its cut's shape) the first time.
+    fn index(&mut self, overlay: &mut Overlay, clip: &Rect) -> u32 {
+        let top = self.cuts.last();
+        let k = (key(clip), top.map(|c| c.id));
+        if let Some(i) = self.known.get(&k) {
+            return *i;
+        }
+        let i = overlay.add_clip([clip.x, clip.y, clip.width, clip.height]);
+        if let Some(c) = top {
+            overlay.ui.clips.push(og_render::UiClip {
+                rect: i,
+                geometry: c.geometry.clone(),
+                center: c.center,
+                half: c.half,
+                transform: c.transform,
+                parent: c.below,
+            });
+        }
+        self.known.insert(k, i);
+        i
+    }
+
+    /// Starts a cut, its shape under `m`: its own record (on a clip
+    /// rectangle of its own) is the parent of the cuts inside it.
+    fn push(
+        &mut self,
+        overlay: &mut Overlay,
+        geometry: UiGeometry,
+        center: Vec2,
+        half: Vec2,
+        m: &Affine,
+    ) {
+        let below = self.cuts.last().map(|c| c.record);
+        let rect = overlay.add_clip([-1e9, -1e9, 2e9, 2e9]);
+        let (cx, cy) = m.apply(center.x, center.y);
+        let center = Vec2::new(cx, cy);
+        let transform = linear(m);
+        overlay.ui.clips.push(og_render::UiClip {
+            rect,
+            geometry: geometry.clone(),
+            center,
+            half,
+            transform,
+            parent: below,
+        });
+        self.next_cut += 1;
+        self.cuts.push(Cut {
+            id: self.next_cut,
+            record: overlay.ui.clips.len() as u32 - 1,
+            below,
+            geometry,
+            center,
+            half,
+            transform,
+        });
+    }
+}
+
+/// A space of levels: its base overlay layer and its UI layer.
+struct Space {
+    base: i32,
+    layer: Option<u32>,
+}
+
+/// A UI shape, laid on `layer` and clip `clip`.
+fn placed(mut shape: UiShape, layer: i32, clip: u32) -> UiShape {
+    shape.layer = layer;
+    shape.clip = Some(clip);
+    shape
+}
+
+fn rect_shape(rect: Rect, radius: f32, color: [f32; 4]) -> UiShape {
+    UiShape::rect([rect.x, rect.y, rect.width, rect.height], radius, color)
 }
 
 pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
-    let mut known: Vec<(Rect, u32)> = Vec::new();
+    let mut clips = Clips {
+        known: std::collections::HashMap::new(),
+        cuts: Vec::new(),
+        next_cut: 0,
+    };
+    overlay.ui.time = desc.time;
+    let mut spaces = vec![Space {
+        base: desc.layer,
+        layer: None,
+    }];
     for item in items {
-        let layer = desc.layer + item.level;
-        if !item.transform.is_identity() {
-            emit_transformed(item, desc, layer, overlay, &mut known);
-            continue;
-        }
+        let space = spaces.last().expect("the frame's space");
+        let layer = space.base + item.level;
+        let m = &item.transform;
+        // A shape laid on this item's layer and clip, under its map.
+        let put = |overlay: &mut Overlay, s: UiShape, c: u32| {
+            overlay.ui.shapes.push(placed(mapped_shape(s, m), layer, c));
+        };
         match &item.cmd {
+            DrawCmd::PushClip {
+                geometry,
+                center,
+                half,
+            } => clips.push(
+                overlay,
+                geometry.clone(),
+                Vec2::new(center.0, center.1),
+                Vec2::new(half.0, half.1),
+                m,
+            ),
+            DrawCmd::PopClip => {
+                clips.cuts.pop();
+            }
+            DrawCmd::BeginLayer {
+                material,
+                params,
+                mask,
+                rect,
+                ..
+            } => {
+                let k = overlay.ui.layers.len() as u32;
+                if k >= MAX_LAYERS || rect.is_empty() {
+                    // Drawn in place, over what its composite would be over.
+                    spaces.push(Space {
+                        base: layer,
+                        layer: None,
+                    });
+                    continue;
+                }
+                let base = desc.layer + LAYER_BASE + k as i32 * LAYER_SPAN;
+                overlay.ui.layers.push(og_render::UiLayer {
+                    capture: [base, base + LAYER_SPAN - 1],
+                    rect: [rect.x, rect.y, rect.width, rect.height],
+                    material: *material,
+                    params: *params,
+                    mask: mask.clone(),
+                });
+                spaces.push(Space {
+                    base,
+                    layer: Some(k),
+                });
+            }
+            DrawCmd::EndLayer {
+                geometry,
+                rect,
+                opacity,
+                blend,
+                clip,
+            } => {
+                let Some(done) = spaces.pop() else {
+                    continue;
+                };
+                let Some(k) = done.layer else {
+                    continue;
+                };
+                let parent = spaces.last().map_or(desc.layer, |s| s.base);
+                let [lx, ly, lw, lh] = overlay.ui.layers[k as usize].rect;
+                // A composite's shape is the element's, under its map; the
+                // whole layer is its rectangle on the screen.
+                let (geometry, r, map) = match geometry {
+                    Some(g) => (g.clone(), *rect, *m),
+                    None => (
+                        UiGeometry::Rect {
+                            radii: [0.0; 4],
+                            corner: og_render::UiCorner::Round,
+                        },
+                        Rect::new(lx, ly, lw, lh),
+                        Affine::IDENTITY,
+                    ),
+                };
+                let c = clips.index(overlay, clip);
+                let s = UiShape {
+                    geometry,
+                    center: Vec2::new(r.x + r.width / 2.0, r.y + r.height / 2.0),
+                    half: Vec2::new(r.width / 2.0, r.height / 2.0),
+                    transform: [1.0, 0.0, 0.0, 1.0],
+                    paint: UiPaint::Layer(k),
+                    mode: UiMode::Fill,
+                    opacity: *opacity,
+                    blend: *blend,
+                    layer: parent + item.level,
+                    clip: Some(c),
+                };
+                overlay.ui.shapes.push(mapped_shape(s, &map));
+            }
             DrawCmd::Glass {
                 rect,
                 radius,
@@ -438,17 +931,15 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
                 alpha,
                 clip,
             } => {
-                let c = clip_index(overlay, &mut known, clip);
-                overlay.glass.push(og_render::Glass {
-                    position: og_core::glam::Vec2::new(rect.x, rect.y),
-                    size: og_core::glam::Vec2::new(rect.width, rect.height),
-                    radius: *radius,
+                let c = clips.index(overlay, clip);
+                let mut s = rect_shape(*rect, *radius, *tint);
+                s.mode = UiMode::Backdrop {
                     blur: *blur,
-                    tint: *tint,
-                    alpha: *alpha,
-                    layer,
-                    clip: Some(c),
-                });
+                    saturation: 1.0,
+                    brightness: 1.0,
+                };
+                s.opacity = *alpha;
+                put(overlay, s, c);
             }
             DrawCmd::Quad {
                 rect,
@@ -456,14 +947,11 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
                 color,
                 clip,
             } => {
-                let c = clip_index(overlay, &mut known, clip);
-                for (piece, uv) in nine_slice(*rect, *radius) {
-                    if !piece.is_empty() {
-                        overlay
-                            .sprites
-                            .push(sprite(piece, uv, desc.atlas, *color, layer, c));
-                    }
+                if rect.is_empty() {
+                    continue;
                 }
+                let c = clips.index(overlay, clip);
+                put(overlay, rect_shape(*rect, *radius, *color), c);
             }
             DrawCmd::Image {
                 rect,
@@ -472,14 +960,19 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
                 color,
                 clip,
             } => {
-                let (tex, uv) = match texture {
-                    Some(t) => (*t, *uv),
-                    None => (desc.atlas, [0.5, 0.5, 0.5, 0.5]),
-                };
-                let c = clip_index(overlay, &mut known, clip);
-                overlay
-                    .sprites
-                    .push(sprite(*rect, uv, tex, *color, layer, c));
+                let c = clips.index(overlay, clip);
+                let mut s = rect_shape(*rect, 0.0, *color);
+                if let Some(t) = texture {
+                    s.paint = UiPaint::Image(og_render::UiImage {
+                        texture: *t,
+                        uv: *uv,
+                        size: Vec2::new(rect.width, rect.height),
+                        tint: *color,
+                        fit: og_render::UiFit::Fill,
+                        focal: Vec2::splat(0.5),
+                    });
+                }
+                put(overlay, s, c);
             }
             DrawCmd::Bar {
                 center,
@@ -489,18 +982,15 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
                 color,
                 clip,
             } => {
-                let c = clip_index(overlay, &mut known, clip);
-                overlay.sprites.push(Sprite {
-                    texture: Some(desc.atlas),
-                    position: Vec3::new(center.0, center.1, 0.0),
-                    size: Vec2::new(*w, *h),
-                    anchor: Vec2::new(0.5, 0.5),
-                    rotation: *angle,
-                    color: *color,
-                    uv_rect: [0.5, 0.5, 0.5, 0.5],
-                    layer,
-                    clip: Some(c),
-                })
+                let c = clips.index(overlay, clip);
+                let (sin, cos) = angle.sin_cos();
+                let mut s = rect_shape(
+                    Rect::new(center.0 - w / 2.0, center.1 - h / 2.0, *w, *h),
+                    0.0,
+                    *color,
+                );
+                s.transform = [cos, sin, -sin, cos];
+                put(overlay, s, c);
             }
             DrawCmd::Half {
                 center,
@@ -509,213 +999,165 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
                 color,
                 clip,
             } => {
-                let c = clip_index(overlay, &mut known, clip);
-                overlay.sprites.push(Sprite {
-                    texture: Some(desc.atlas),
-                    position: Vec3::new(center.0, center.1, 0.0),
-                    size: Vec2::new(*radius, 2.0 * radius),
-                    anchor: Vec2::new(0.0, 0.5),
-                    rotation: *angle,
-                    color: *color,
-                    uv_rect: [0.5, 0.0, 1.0, 1.0],
-                    layer,
-                    clip: Some(c),
-                })
+                let c = clips.index(overlay, clip);
+                let mut s = rect_shape(
+                    Rect::new(
+                        center.0 - radius,
+                        center.1 - radius,
+                        2.0 * radius,
+                        2.0 * radius,
+                    ),
+                    0.0,
+                    *color,
+                );
+                s.geometry = UiGeometry::Arc {
+                    start: angle - std::f32::consts::FRAC_PI_2,
+                    sweep: std::f32::consts::PI,
+                    thickness: *radius,
+                    cap: og_render::UiCap::Butt,
+                };
+                put(overlay, s, c);
             }
-            DrawCmd::Text {
-                x,
-                baseline,
-                size,
-                text,
-                color,
-                font,
+            DrawCmd::Shape { shape, clip } => {
+                let c = clips.index(overlay, clip);
+                put(overlay, (**shape).clone(), c);
+            }
+            DrawCmd::Vector {
+                vector,
+                rect,
+                transform,
+                tint,
                 clip,
-                tracking,
-                weight,
-                glow,
-                placements,
-                ..
             } => {
-                let c = clip_index(overlay, &mut known, clip);
-                overlay.texts.push(Text {
-                    font: *font,
-                    text: text.clone(),
-                    position: Vec3::new(*x, *baseline, 0.0),
-                    size: *size,
-                    rotation: 0.0,
-                    color: *color,
+                let c = clips.index(overlay, clip);
+                // Its rectangle's centre moved by the map, its local space
+                // (about that centre) composed with the map's linear part.
+                let (cx, cy) = m.apply(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
+                overlay.ui.vectors.push(og_render::UiVectorDraw {
+                    vector: *vector,
+                    rect: [
+                        cx - rect.width / 2.0,
+                        cy - rect.height / 2.0,
+                        rect.width,
+                        rect.height,
+                    ],
+                    transform: mul2(linear(m), *transform),
+                    tint: *tint,
                     layer,
                     clip: Some(c),
-                    tracking: *tracking,
-                    weight: *weight,
-                    glow: glow.map(|(color, radius)| og_render::TextGlow { color, radius }),
-                    placements: placements.clone(),
                 });
+            }
+            DrawCmd::Text { .. } => {
+                let at = overlay.texts.len() as u32;
+                if emit_text(&item.cmd, layer, &mut clips, overlay) && !m.is_identity() {
+                    // No effects: the map alone.
+                    overlay.ui.text_effects.push(og_render::UiTextEffects {
+                        text: at,
+                        transform: linear(m),
+                        ..Default::default()
+                    });
+                    map_text(overlay, at, m);
+                }
+            }
+            DrawCmd::StyledText { text, effects } => {
+                let at = overlay.texts.len() as u32;
+                if emit_text(text, layer, &mut clips, overlay) {
+                    let mut fx = (**effects).clone();
+                    fx.text = at;
+                    if !m.is_identity() {
+                        fx.transform = linear(m);
+                        let b = Rect::new(
+                            fx.fill_box[0],
+                            fx.fill_box[1],
+                            fx.fill_box[2],
+                            fx.fill_box[3],
+                        );
+                        let b = m.map_rect(&b);
+                        fx.fill_box = [b.x, b.y, b.width, b.height];
+                        map_text(overlay, at, m);
+                    }
+                    overlay.ui.text_effects.push(fx);
+                }
             }
         }
     }
 }
 
-/// A command under a rotation (or skew): each sprite and text placed by the
-/// map, turned by its angle and scaled along its own axes.
-fn emit_transformed(
-    item: &DrawItem,
-    desc: &EmitDesc,
-    layer: i32,
-    overlay: &mut Overlay,
-    known: &mut Vec<(Rect, u32)>,
-) {
-    let m = item.transform;
-    let (angle, sx, sy) = decompose(&m);
-    let rect_sprite = |r: Rect, uv: [f32; 4], tex: TextureHandle, color: [f32; 4], c: u32| {
-        let (x, y) = m.apply(r.x, r.y);
-        Sprite {
-            texture: Some(tex),
-            position: Vec3::new(x, y, 0.0),
-            size: Vec2::new(r.width * sx, r.height * sy),
-            anchor: Vec2::ZERO,
-            rotation: angle,
-            color,
-            uv_rect: uv,
-            layer,
-            clip: Some(c),
-        }
-    };
-    match &item.cmd {
-        DrawCmd::Glass {
-            rect,
-            radius,
-            blur,
-            tint,
-            alpha,
-            clip,
-        } => {
-            // Glass blurs an upright rectangle: its bounds under the map.
-            let c = clip_index(overlay, known, clip);
-            let r = m.map_rect(rect);
-            overlay.glass.push(og_render::Glass {
-                position: Vec2::new(r.x, r.y),
-                size: Vec2::new(r.width, r.height),
-                radius: *radius * sx.min(sy),
-                blur: *blur,
-                tint: *tint,
-                alpha: *alpha,
-                layer,
-                clip: Some(c),
-            });
-        }
-        DrawCmd::Quad {
-            rect,
-            radius,
-            color,
-            clip,
-        } => {
-            let c = clip_index(overlay, known, clip);
-            for (piece, uv) in nine_slice(*rect, *radius) {
-                if !piece.is_empty() {
-                    overlay
-                        .sprites
-                        .push(rect_sprite(piece, uv, desc.atlas, *color, c));
-                }
-            }
-        }
-        DrawCmd::Image {
-            rect,
-            texture,
-            uv,
-            color,
-            clip,
-        } => {
-            let (tex, uv) = match texture {
-                Some(t) => (*t, *uv),
-                None => (desc.atlas, [0.5, 0.5, 0.5, 0.5]),
-            };
-            let c = clip_index(overlay, known, clip);
-            overlay.sprites.push(rect_sprite(*rect, uv, tex, *color, c));
-        }
-        DrawCmd::Bar {
-            center,
-            w,
-            h,
-            angle: a,
-            color,
-            clip,
-        } => {
-            let c = clip_index(overlay, known, clip);
-            let (x, y) = m.apply(center.0, center.1);
-            overlay.sprites.push(Sprite {
-                texture: Some(desc.atlas),
-                position: Vec3::new(x, y, 0.0),
-                size: Vec2::new(*w * sx, *h * sy),
-                anchor: Vec2::new(0.5, 0.5),
-                rotation: *a + angle,
-                color: *color,
-                uv_rect: [0.5, 0.5, 0.5, 0.5],
-                layer,
-                clip: Some(c),
-            })
-        }
-        DrawCmd::Half {
-            center,
-            radius,
-            angle: a,
-            color,
-            clip,
-        } => {
-            let c = clip_index(overlay, known, clip);
-            let (x, y) = m.apply(center.0, center.1);
-            overlay.sprites.push(Sprite {
-                texture: Some(desc.atlas),
-                position: Vec3::new(x, y, 0.0),
-                size: Vec2::new(*radius * sx, 2.0 * radius * sy),
-                anchor: Vec2::new(0.0, 0.5),
-                rotation: *a + angle,
-                color: *color,
-                uv_rect: [0.5, 0.0, 1.0, 1.0],
-                layer,
-                clip: Some(c),
-            })
-        }
-        DrawCmd::Text {
-            x,
-            baseline,
-            size,
-            text,
-            color,
-            font,
-            clip,
-            tracking,
-            weight,
-            glow,
-            placements,
-            ..
-        } => {
-            let c = clip_index(overlay, known, clip);
-            let (px, py) = m.apply(*x, *baseline);
-            overlay.texts.push(Text {
-                font: *font,
-                text: text.clone(),
-                position: Vec3::new(px, py, 0.0),
-                size: *size * sy,
-                rotation: angle,
-                color: *color,
-                layer,
-                clip: Some(c),
-                tracking: *tracking,
-                weight: *weight * sy,
-                glow: glow.map(|(color, radius)| og_render::TextGlow {
-                    color,
-                    radius: radius * sy,
-                }),
-                placements: placements.clone(),
-            });
-        }
+/// A styled text's effects under an upright map (translation and scale)
+/// baked into its text: offsets scaled per axis, widths by the text's
+/// height scale (as its size), the gradient's box moved.
+pub(crate) fn scale_effects(fx: &mut og_render::UiTextEffects, m: &Affine) {
+    let sy = m.d.abs();
+    for s in &mut fx.shadows {
+        s.offset = Vec2::new(s.offset.x * m.a, s.offset.y * m.d);
+        s.blur *= sy;
     }
+    if let Some(o) = &mut fx.outline {
+        o.width *= sy;
+    }
+    let b = Rect::new(
+        fx.fill_box[0],
+        fx.fill_box[1],
+        fx.fill_box[2],
+        fx.fill_box[3],
+    );
+    let b = m.map_rect(&b);
+    fx.fill_box = [b.x, b.y, b.width, b.height];
+}
+
+/// Moves text `at`'s pen by the map: its glyphs take the map's linear part
+/// from its [`og_render::UiTextEffects::transform`].
+fn map_text(overlay: &mut Overlay, at: u32, m: &Affine) {
+    let t = &mut overlay.texts[at as usize];
+    let (x, y) = m.apply(t.position.x, t.position.y);
+    t.position.x = x;
+    t.position.y = y;
+}
+
+/// Pushes a text command's text; false when it is not one.
+fn emit_text(cmd: &DrawCmd, layer: i32, clips: &mut Clips, overlay: &mut Overlay) -> bool {
+    let DrawCmd::Text {
+        x,
+        baseline,
+        size,
+        text,
+        color,
+        font,
+        clip,
+        tracking,
+        weight,
+        glow,
+        placements,
+        ..
+    } = cmd
+    else {
+        return false;
+    };
+    let c = clips.index(overlay, clip);
+    overlay.texts.push(Text {
+        font: *font,
+        text: text.clone(),
+        position: og_core::glam::Vec3::new(*x, *baseline, 0.0),
+        size: *size,
+        rotation: 0.0,
+        color: *color,
+        layer,
+        clip: Some(c),
+        tracking: *tracking,
+        weight: *weight,
+        glow: glow.map(|(color, radius)| og_render::TextGlow { color, radius }),
+        placements: placements.clone(),
+    });
+    true
 }
 
 #[cfg(test)]
 mod levels {
     use super::*;
+
+    fn plain(cmds: Vec<DrawCmd>) -> Vec<(DrawCmd, Affine)> {
+        cmds.into_iter().map(|c| (c, Affine::IDENTITY)).collect()
+    }
 
     /// The levels as every command tested against every earlier one (what
     /// the grid must answer).
@@ -740,12 +1182,19 @@ mod levels {
         out
     }
 
+    const ALL: Rect = Rect {
+        x: -1e9,
+        y: -1e9,
+        width: 2e9,
+        height: 2e9,
+    };
+
     fn quad(rect: Rect) -> DrawCmd {
         DrawCmd::Quad {
             rect,
             radius: 0.0,
             color: [1.0; 4],
-            clip: Rect::new(-1e9, -1e9, 2e9, 2e9),
+            clip: ALL,
         }
     }
 
@@ -755,7 +1204,7 @@ mod levels {
             texture: og_render::TextureHandle::from_slot(slot),
             uv: [0.0, 0.0, 1.0, 1.0],
             color: [1.0; 4],
-            clip: Rect::new(-1e9, -1e9, 2e9, 2e9),
+            clip: ALL,
         }
     }
 
@@ -805,12 +1254,113 @@ mod levels {
         cases.push(screen);
         for cmds in cases {
             let want = quadratic(&cmds);
-            let got: Vec<i32> =
-                assign_levels(cmds.into_iter().map(|c| (c, Affine::IDENTITY)).collect())
-                    .iter()
-                    .map(|i| i.level)
-                    .collect();
+            let got: Vec<i32> = assign_levels(plain(cmds)).iter().map(|i| i.level).collect();
             assert_eq!(got, want);
         }
+    }
+
+    fn begin() -> DrawCmd {
+        DrawCmd::BeginLayer {
+            material: UiMaterial::Plain,
+            params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+            mask: None,
+            expand: 4.0,
+            rect: Rect::default(),
+        }
+    }
+
+    fn end() -> DrawCmd {
+        DrawCmd::EndLayer {
+            geometry: None,
+            rect: Rect::default(),
+            opacity: 1.0,
+            blend: UiBlend::Normal,
+            clip: ALL,
+        }
+    }
+
+    /// A layer levels its own commands from 0 and is one command of its
+    /// parent, over what it overlaps there; its rectangle is what it draws.
+    #[test]
+    fn a_layer_is_one_command_of_its_parent_with_levels_of_its_own() {
+        let cmds = vec![
+            quad(Rect::new(0.0, 0.0, 100.0, 100.0)),
+            image(Rect::new(10.0, 10.0, 20.0, 20.0), 1),
+            begin(),
+            quad(Rect::new(20.0, 20.0, 40.0, 40.0)),
+            image(Rect::new(25.0, 25.0, 10.0, 10.0), 1),
+            quad(Rect::new(30.0, 30.0, 10.0, 10.0)),
+            end(),
+            quad(Rect::new(50.0, 50.0, 10.0, 10.0)),
+        ];
+        let items = assign_levels(plain(cmds));
+        let levels: Vec<i32> = items.iter().map(|i| i.level).collect();
+        // Outer: quad 0, image 1 (a texture is its own batch), layer 2 (over
+        // the image), quad 3 (over the layer); inside: quad 0, image 1, quad 2.
+        assert_eq!(levels, [0, 1, 2, 0, 1, 2, 2, 3]);
+        let DrawCmd::BeginLayer { rect, .. } = &items[2].cmd else {
+            panic!("{:?}", items[2]);
+        };
+        assert_eq!(*rect, Rect::new(16.0, 16.0, 48.0, 48.0));
+    }
+
+    /// The emitted layer captures its own range of overlay layers, and its
+    /// composite draws at its level in the parent; a cut adds a clip shape
+    /// for what is inside it, nested in the cut around it.
+    #[test]
+    fn layers_and_cuts_emit_their_ranges_and_shapes() {
+        let rounded = |r: f32| UiGeometry::Rect {
+            radii: [r; 4],
+            corner: og_render::UiCorner::Round,
+        };
+        let cmds = vec![
+            quad(Rect::new(0.0, 0.0, 100.0, 100.0)),
+            DrawCmd::PushClip {
+                geometry: rounded(10.0),
+                center: (50.0, 50.0),
+                half: (50.0, 50.0),
+            },
+            DrawCmd::PushClip {
+                geometry: rounded(4.0),
+                center: (50.0, 50.0),
+                half: (20.0, 20.0),
+            },
+            begin(),
+            quad(Rect::new(40.0, 40.0, 20.0, 20.0)),
+            end(),
+            DrawCmd::PopClip,
+            DrawCmd::PopClip,
+            quad(Rect::new(0.0, 0.0, 10.0, 10.0)),
+        ];
+        let items = assign_levels(plain(cmds));
+        let mut overlay = Overlay::new(200.0, 200.0, 1.0);
+        emit(
+            &items,
+            &EmitDesc {
+                layer: 100,
+                time: 2.5,
+            },
+            &mut overlay,
+        );
+        let ui = &overlay.ui;
+        assert_eq!(ui.time, 2.5);
+        assert_eq!(ui.layers.len(), 1);
+        let base = 100 + LAYER_BASE;
+        assert_eq!(ui.layers[0].capture, [base, base + LAYER_SPAN - 1]);
+        // Background, the layer's quad, its composite, the corner quad.
+        assert_eq!(ui.shapes.len(), 4);
+        assert_eq!(ui.shapes[1].layer, base);
+        assert_eq!(ui.shapes[2].paint, UiPaint::Layer(0));
+        assert_eq!(ui.shapes[2].layer, 101);
+        // Two cuts' own records, and the shape of each rectangle cut: the
+        // layer's quad and its composite inside both cuts.
+        let inner = ui.shapes[1].clip.expect("clipped");
+        let shape = ui.clips.iter().find(|c| c.rect == inner).expect("its cut");
+        assert_eq!(shape.geometry, rounded(4.0));
+        let outer = shape.parent.expect("nested") as usize;
+        assert_eq!(ui.clips[outer].geometry, rounded(10.0));
+        // The corner quad, after both cuts end, is cut by neither.
+        let after = ui.shapes[3].clip.expect("a rectangle");
+        assert!(ui.clips.iter().all(|c| c.rect != after));
     }
 }

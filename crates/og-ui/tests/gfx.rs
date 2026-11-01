@@ -107,7 +107,6 @@ fn sample_screen_matches_its_reference_frame() {
 fn a_scroll_container_clips_everything_it_draws() {
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
-    let atlas = scene.add_texture(atlas_texture());
     let mut ui = ui_with_font(font);
     let vp = Viewport::new(300.0, 200.0);
     let red = Srgba::rgb(230, 26, 26);
@@ -150,18 +149,18 @@ fn a_scroll_container_clips_everything_it_draws() {
         },
     );
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
-    ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
     // Rows reach past the list's edges before the clip: the cut is the GPU's.
     let (top, bottom) = (list.y, list.y + list.height);
-    let beyond = overlay
-        .sprites
+    let shapes = &overlay.ui.shapes;
+    let beyond = shapes
         .iter()
-        .filter(|s| s.position.y < top - 0.5 || s.position.y + s.size.y > bottom + 0.5)
+        .filter(|s| s.center.y - s.half.y < top - 0.5 || s.center.y + s.half.y > bottom + 0.5)
         .count();
     assert!(beyond > 0, "no row reaches past the list, nothing to clip");
     assert!(
-        overlay.sprites.iter().all(|s| s.clip.is_some()),
-        "every sprite carries a clip"
+        shapes.iter().all(|s| s.clip.is_some()),
+        "every shape carries a clip"
     );
     scene.overlay = Some(overlay);
     scene.environment.background = Background::Color(Vec3::ZERO);
@@ -324,7 +323,6 @@ fn rich_frame(markup: &str, step: StepOf) -> (Vec<u8>, usize, usize, [u8; 3]) {
     };
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
-    let atlas = scene.add_texture(atlas_texture());
     let mut ui = ui_with_font(font);
     for _ in 0..2 {
         ui.begin(InputFrame::default(), vp);
@@ -354,7 +352,7 @@ fn rich_frame(markup: &str, step: StepOf) -> (Vec<u8>, usize, usize, [u8; 3]) {
         ui.end();
     }
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
-    ui.frame().emit(&EmitDesc { atlas, layer: 0 }, &mut overlay);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.overlay = Some(overlay);
     let bg = ui.theme().palette.backdrop.linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
@@ -924,4 +922,140 @@ fn a_middle_squeezed_six_times_keeps_its_outline_as_dark_as_the_art() {
         "the outline through a 6× squeezed middle reads {squeezed}, the art's level 0 {level0} (fill {fill}): \
          the sampler picked the mip level by the squeezed axis"
     );
+}
+
+/// An element's skew reaches the UI pass whole (docs/ui.md §5, §6.1): a
+/// box's background (an old rounded quad) and an element draw's ellipse,
+/// both skewed 30° along x about their centres, cover the parallelogram,
+/// not their upright boxes, and a turn keeps the draw's exact shape.
+///
+/// Ways it could fail: the skew dropped where the map is split into a turn
+/// and a scale for sprites (U2's path: each box upright), the map applied
+/// to the corners but not the shape's local space (a sheared box with
+/// upright edges), or the draw's shapes left in the layout box.
+#[test]
+fn a_skewed_element_draws_its_parallelogram() {
+    let vp = Viewport {
+        width: 400.0,
+        height: 200.0,
+        dpr: 1.0,
+        ..Viewport::default()
+    };
+    let skew = Props {
+        transform: Transform {
+            skew_x: 30f32.to_radians(),
+            ..Transform::IDENTITY
+        },
+        ..Props::default()
+    };
+    let red = Srgba::rgb(255, 0, 0);
+    let mut ui = Ui::new(UiDesc::default());
+    let build = |ui: &mut Ui, props: &Props| {
+        ui.begin(InputFrame::default(), vp);
+        ui.open(
+            "Row",
+            Element {
+                direction: Direction::Row,
+                padding: Insets::all(60.0),
+                gap: 80.0,
+                ..Element::default()
+            },
+        );
+        for (id, draw) in [("Quad", false), ("Drawn", true)] {
+            ui.open_with(
+                id,
+                Element {
+                    width: Size::Fixed(100.0),
+                    height: Size::Fixed(60.0),
+                    background: (!draw).then_some(red),
+                    radius: 0.0,
+                    ..Element::default()
+                },
+                props.clone(),
+            );
+            if draw {
+                ui.set_draw(og_ui::paint::ElementDraw {
+                    shape: og_ui::paint::ShapeKind::Ellipse,
+                    fills: vec![og_ui::paint::Paint::Solid(red.into())],
+                    ..Default::default()
+                });
+            }
+            ui.close();
+        }
+        ui.close();
+        ui.end();
+    };
+    build(&mut ui, &Props::default());
+    let boxes: Vec<[f32; 4]> = ["Row/Quad", "Row/Drawn"]
+        .iter()
+        .map(|p| {
+            let e = ui.frame().element(p).expect("laid out");
+            [e.x, e.y, e.width, e.height]
+        })
+        .collect();
+    build(&mut ui, &skew);
+    let mut scene = RenderScene::new();
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.overlay = Some(overlay);
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.post.tonemap = Tonemap::None;
+    let desc = RenderDesc {
+        width: 400,
+        height: 200,
+        ..RenderDesc::default()
+    };
+    let (pixels, _) = rendered(&scene, &desc);
+    let red_at = |x: f32, y: f32| {
+        let i = (y as usize * 400 + x as usize) * 4;
+        pixels[i] > 200 && pixels[i + 1] < 40
+    };
+    let t = 30f32.to_radians().tan();
+    for (k, [x, y, w, h]) in boxes.into_iter().enumerate() {
+        let (cx, cy) = (x + w / 2.0, y + h / 2.0);
+        // 5 px in from the top and bottom: the edges there sit 25·tan 30°
+        // (14.4 px) left and right of the upright box's.
+        let (top, bottom) = (cy - h / 2.0 + 5.0, cy + h / 2.0 - 5.0);
+        let shift = t * (h / 2.0 - 5.0);
+        // The quad's corners; the ellipse's widest row is its centre, so
+        // its probes sit on the centre line moved by the skew there (none)
+        // and on rows a quarter up and down.
+        let (inside, outside) = if k == 0 {
+            (
+                [
+                    (cx + w / 2.0 + shift - 4.0, bottom),
+                    (cx - w / 2.0 - shift + 4.0, top),
+                ],
+                [
+                    (cx + w / 2.0 - shift + 4.0, top),
+                    (cx - w / 2.0 + shift - 4.0, bottom),
+                ],
+            )
+        } else {
+            let q = h / 4.0;
+            let half_w = w / 2.0 * (1.0 - 0.25f32).sqrt();
+            (
+                [
+                    (cx + half_w + t * q - 4.0, cy + q),
+                    (cx - half_w - t * q + 4.0, cy - q),
+                ],
+                [
+                    (cx + half_w - t * q + 4.0, cy - q),
+                    (cx - half_w + t * q - 4.0, cy + q),
+                ],
+            )
+        };
+        for (px, py) in inside {
+            assert!(
+                red_at(px, py),
+                "box {k}: ({px}, {py}) inside the skewed shape"
+            );
+        }
+        for (px, py) in outside {
+            assert!(
+                !red_at(px, py),
+                "box {k}: ({px}, {py}) outside the skewed shape"
+            );
+        }
+    }
 }

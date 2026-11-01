@@ -1581,9 +1581,6 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState) {
     if frame.items.is_empty() {
         return;
     }
-    let atlas = *rs
-        .ui_atlas
-        .get_or_insert_with(|| rs.scene.add_texture(og_ui::atlas_texture()));
     let vp = frame.viewport;
     // Scale 0 fits the viewport's height to the target (as a capture at
     // another size needs).
@@ -1593,12 +1590,13 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState) {
         .get_or_insert_with(|| og_render::Overlay::new(vp.width.max(1.0), vp.height.max(1.0), 0.0));
     let first_text = overlay.texts.len();
     let first_sprite = overlay.sprites.len();
+    let first_shape = overlay.ui.shapes.len();
     frame.emit(
         &og_ui::EmitDesc {
-            atlas,
             // Over the game's screen layers up to og_render::UI_LAYER, under
             // those above it (og_render::screen_layer).
             layer: og_render::UI_OVERLAY_LAYER,
+            time: ui.seconds() as f32,
         },
         overlay,
     );
@@ -1628,7 +1626,7 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState) {
         super::art::palette_icons(
             &rs.art.frame,
             overlay,
-            (first_sprite, first_text),
+            (first_sprite, first_text, first_shape),
             (icons.texture, &icon_fonts),
         );
     }

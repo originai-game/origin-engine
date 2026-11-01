@@ -858,6 +858,8 @@ pub struct Ui {
     /// The map of the element whose commands are being made: a nine-slice
     /// is cut at its size on the screen, its corners kept crisp.
     drawing: Affine,
+    /// What elements of this frame draw with ([`Ui::set_draw`]), by node.
+    pub(crate) draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
 }
 
 impl Default for Ui {
@@ -940,6 +942,7 @@ impl Ui {
             kept: Default::default(),
             stats: LayoutStats::default(),
             drawing: Affine::IDENTITY,
+            draws: Default::default(),
         }
     }
 
@@ -1228,6 +1231,7 @@ impl Ui {
         self.kinds.clear();
         self.stack.clear();
         self.floating.clear();
+        self.draws.clear();
         self.warnings.clear();
         self.last_closed = NONE;
         self.building = true;
@@ -1452,6 +1456,16 @@ impl Ui {
         n.ring = self.state.focus == key && self.state.focus_visible;
         n.pad_rings = (r.focused_by >> 1) as u8;
         r
+    }
+
+    /// Draws the element added last (a container just opened) with `draw`
+    /// (`docs/ui.md` §5): its shape, fills, strokes, effects, opacity,
+    /// blend, how it clips its children and whether its subtree draws
+    /// offscreen through a material; over its background.
+    pub fn set_draw(&mut self, draw: crate::paint::ElementDraw) {
+        if let Some(last) = self.nodes.len().checked_sub(1) {
+            self.draws.insert(last, draw);
+        }
     }
 
     /// Opens a container; children follow until [`Ui::close`].
@@ -3273,10 +3287,23 @@ impl Ui {
         let mut same = vec![false; self.nodes.len()];
         let mut next: IdMap<u64, Vec<DrawCmd>> = IdMap::new();
         let prev_kinds = std::mem::take(&mut self.prev_kinds);
+        let theme = self.theme;
+        // An element's draw (crate::paint) in its layout box, at its
+        // opacity; its clip is the screen's (bake leaves draw commands be).
+        let placed = |n: &crate::layout::Node| crate::paint::Placed {
+            rect: n.rect,
+            radius: n.el.radius,
+            clip: n.clip,
+            alpha: n.alpha,
+        };
         for (k, &i) in order.iter().enumerate() {
             let n = &self.nodes[i];
             let world = n.world;
             let start = cmds.len();
+            let draw = self.draws.get(&i).cloned();
+            if let Some(d) = &draw {
+                cmds.extend(d.enter(&theme, &placed(n)).into_iter().map(|c| (c, world)));
+            }
             let twin = self.kept.twin.get(i).copied().unwrap_or(NONE);
             // Rich text draws from the tick (its moving spans), focus and
             // the hot link as well: it is always made again.
@@ -3285,7 +3312,8 @@ impl Ui {
                 && self.kept.prev.get(twin).is_some_and(|b| {
                     crate::layout::draw_eq(n, b) && self.kinds[i] == prev_kinds[twin]
                 })
-                && (n.parent == NONE || same[n.parent]);
+                && (n.parent == NONE || same[n.parent])
+                && draw.is_none();
             if i != 0 || n.el.background.is_some() {
                 let mut local = Vec::new();
                 if same[i]
@@ -3304,8 +3332,15 @@ impl Ui {
                     self.drawing = Affine::IDENTITY;
                     self.nodes[i].clip = screen_clip;
                 }
+                if let Some(d) = &draw {
+                    d.style_text(&theme, &mut local);
+                }
                 next.insert(self.nodes[i].key, local.clone());
                 cmds.extend(local.into_iter().map(|c| (c, world)));
+            }
+            if let Some(d) = &draw {
+                let at = placed(&self.nodes[i]);
+                cmds.extend(d.children(&at).into_iter().map(|c| (c, world)));
             }
             open.push((i, start, ends[k]));
             while let Some(&(j, first, end)) = open.last() {
@@ -3325,6 +3360,11 @@ impl Ui {
                     self.scroll_bar_commands(j, &mut bars);
                     let w = self.nodes[j].world;
                     cmds.extend(bars.into_iter().map(|c| (c, w)));
+                }
+                if let Some(d) = self.draws.get(&j) {
+                    let w = self.nodes[j].world;
+                    let at = placed(&self.nodes[j]);
+                    cmds.extend(d.leave(&theme, &at).into_iter().map(|c| (c, w)));
                 }
                 let nj = &self.nodes[j];
                 if nj.props.exit.is_some() || !nj.props.match_key.is_empty() {
@@ -5009,6 +5049,12 @@ fn fade_cmd(c: &mut DrawCmd, k: f32) {
                 g[3] *= k;
             }
         }
+        // The UI pass's commands (crate::paint).
+        DrawCmd::StyledText { text, .. } => fade_cmd(text, k),
+        DrawCmd::Shape { shape, .. } => shape.opacity *= k,
+        DrawCmd::Vector { tint, .. } => tint[3] *= k,
+        DrawCmd::EndLayer { opacity, .. } => *opacity *= k,
+        DrawCmd::PushClip { .. } | DrawCmd::PopClip | DrawCmd::BeginLayer { .. } => {}
     }
 }
 
@@ -5029,6 +5075,14 @@ pub(crate) fn bake(c: DrawCmd, m: Affine) -> (DrawCmd, Affine) {
             | DrawCmd::Bar { clip, .. }
             | DrawCmd::Half { clip, .. }
             | DrawCmd::Text { clip, .. } => *clip = r(clip),
+            DrawCmd::StyledText { text, .. } => {
+                if let Some(clip) = text.clip_mut() {
+                    *clip = r(clip);
+                }
+            }
+            // The UI pass's own commands keep the screen's clip and take
+            // the whole map where they are emitted.
+            _ => {}
         }
         return (c, m);
     }
@@ -5143,6 +5197,17 @@ pub(crate) fn bake(c: DrawCmd, m: Affine) -> (DrawCmd, Affine) {
                 placements,
             }
         }
+        DrawCmd::StyledText { text, mut effects } => {
+            let (text, _) = bake(*text, m);
+            crate::draw::scale_effects(&mut effects, &m);
+            DrawCmd::StyledText {
+                text: Box::new(text),
+                effects,
+            }
+        }
+        // The UI pass's own commands take the whole map where they are
+        // emitted (a non-uniform scale bends a corner exactly).
+        other => return (other, m),
     };
     (c, Affine::IDENTITY)
 }

@@ -101,6 +101,15 @@ mod metaballs;
 mod mips;
 mod overlay;
 pub mod particles;
+pub mod ui;
+pub use ui::{
+    UI_GRADIENT_STOPS, UI_MATERIAL_PARAMS, UiAlign, UiBlend, UiBuiltin, UiCap, UiClip, UiCorner,
+    UiEdge, UiFit, UiGeometry, UiGradient, UiGradientKind, UiImage, UiJoin, UiLayer, UiList,
+    UiMask, UiMaterial, UiMaterialHandle, UiMaterialShader, UiMode, UiPaint, UiShape, UiSpread,
+    UiStop, UiStroke, UiTextEffects, UiTextOutline, UiTextShadow, UiVectorData, UiVectorDraw,
+    UiVectorHandle, UiVectorPaint, UiVectorStroke, UiVectorVertex, example_ui_material,
+    flatten_cubic, flatten_quad, oklab, oklab_to_linear, ui_material_module_source,
+};
 mod particles_gpu;
 mod pipeline_cache;
 pub use pipeline_cache::set_pipeline_cache_dir;
@@ -1612,6 +1621,8 @@ pub struct Renderer {
     instance_upload: upload::DirtyUpload,
     sprite_buffer: wgpu::Buffer,
     overlay: overlay::OverlayRenderer,
+    /// The UI pass's pipelines, tables and layers (src/ui/pass.rs).
+    ui: ui::pass::UiRenderer,
     /// The overlay's glass: its passes, and its textures for the output's size.
     glass: glass::GlassPasses,
     glass_targets: Option<glass::GlassTargets>,
@@ -3018,6 +3029,7 @@ impl Renderer {
             offscreen_linear.or(surface_linear),
             &sprite_layout,
         );
+        let ui = ui::pass::UiRenderer::new(&device, &queue, &overlay, &sprite_layout);
         let glass = glass::GlassPasses::new(&device, output_format);
         let lines = lines::LineRenderer::new(
             &device,
@@ -3134,6 +3146,7 @@ impl Renderer {
             instance_upload: upload::DirtyUpload::default(),
             sprite_buffer,
             overlay,
+            ui,
             glass,
             glass_targets: None,
             cache: SceneCache::default(),
@@ -5617,6 +5630,12 @@ impl Renderer {
                 |i| fonts.get(i).map(|f| &f.layout),
                 self.cache.textures.len(),
                 array_layers,
+                |v| scene.ui_vectors.get(v.index()),
+                overlay::OverlayTarget {
+                    scale: overlay::OverlayRenderer::scale(self.out_height, o),
+                    width: self.out_width,
+                    height: self.out_height,
+                },
             )?),
             None => None,
         };
@@ -5640,10 +5659,14 @@ impl Renderer {
                         self.overlay.linear_format,
                     );
             }
+            self.ui.prepare(&self.device, scene, of);
         }
         // Glass: the tonemap renders into the glass source, which becomes
-        // the output and the blur pyramid after the post passes.
-        let glass_on = scene.overlay.as_ref().is_some_and(|o| !o.glass.is_empty());
+        // the output and the blur pyramid after the post passes (glass, a
+        // UI backdrop, a blend that reads what is under it).
+        let glass_on = overlay_frame
+            .as_ref()
+            .is_some_and(overlay::OverlayFrame::reads_backdrop);
         if glass_on
             && self
                 .glass_targets
@@ -6686,8 +6709,24 @@ impl Renderer {
                 o,
                 !self.output_format.is_srgb() && !self.has_linear_view(target),
             );
-            self.queue
-                .write_buffer(&self.overlay.uniform, 0, bytemuck::cast_slice(&u));
+            let textures = &self.cache.textures;
+            let backdrop = self.glass_targets.as_ref().filter(|_| glass_on).map(|g| {
+                (
+                    &g.pyramid_view,
+                    &g.behind_view,
+                    !self.output_format.is_srgb(),
+                )
+            });
+            self.ui.upload(
+                &self.device,
+                &self.queue,
+                &self.overlay.layout,
+                scene,
+                of,
+                u,
+                backdrop,
+                |t| textures.get(t.index()).map(|g| g.view.clone()),
+            );
         }
         let (lights_2d, occluders_2d) = match scene.lighting_2d {
             Some(_) => self.lights_2d.write(
@@ -8527,7 +8566,6 @@ impl Renderer {
                     | RunSource::Array(..) => {
                         unreachable!("drawn above")
                     }
-                    RunSource::Glass => unreachable!("glass is the overlay's only"),
                     RunSource::Sprite(blend, None) => (false, blend, &self.white_sprite_group),
                     RunSource::Sprite(blend, Some(t)) => (
                         false,
@@ -10101,23 +10139,41 @@ impl Renderer {
             );
             stats.draw_calls += 1;
         }
+        // UI layers (src/ui/pass.rs): each drawn into its own target before
+        // the overlay that composites it.
+        if let Some(of) = &overlay_frame
+            && !of.layers.is_empty()
+        {
+            stats.draw_calls += self.draw_ui_layers(&mut encoder, scene, of);
+        }
         // Glass over overlay content (src/glass.rs): when overlay runs come
-        // before a glass run, the overlay draws into the glass source, the
-        // pyramid is rebuilt before each such glass run, and the source is
-        // copied to the output at the end. Otherwise the source is copied
-        // and blurred once, before the overlay, which draws into the output.
-        let runs: &[sprites::SpriteRun] = overlay_frame.as_ref().map_or(&[], |f| &f.runs);
+        // before a glass run (or a UI backdrop), the overlay draws into the
+        // glass source, the pyramid is rebuilt before each such run, and the
+        // source is copied to the output at the end. Otherwise the source is
+        // copied and blurred once, before the overlay, which draws into the
+        // output. A UI blend that reads what is under it always draws into
+        // the source, copied before it to what it reads.
+        let runs: &[overlay::OverlayRun] = overlay_frame.as_ref().map_or(&[], |f| f.main_runs());
         let decode = !self.output_format.is_srgb();
         let mut rebuilds = Vec::new();
+        let mut copies = Vec::new();
         let mut layered = None;
         if let (Some(g), true) = (&self.glass_targets, glass_on) {
             rebuilds = glass::rebuilds(
                 &runs
                     .iter()
-                    .map(|r| r.source == RunSource::Glass)
+                    .map(|r| r.source.needs_pyramid())
                     .collect::<Vec<_>>(),
             );
-            let over_content = rebuilds.first().is_some_and(|&i| i > 0) || rebuilds.len() > 1;
+            copies = glass::rebuilds(
+                &runs
+                    .iter()
+                    .map(|r| r.source.needs_copy())
+                    .collect::<Vec<_>>(),
+            );
+            let over_content = rebuilds.first().is_some_and(|&i| i > 0)
+                || rebuilds.len() > 1
+                || !copies.is_empty();
             // The overlay draws into the source through the view it blends in.
             layered = match (over_content, overlay_view) {
                 (false, _) => None,
@@ -10152,103 +10208,57 @@ impl Renderer {
                     .draw_overlay(&mut encoder, target, srgb_view, &line_frame);
         }
         // The overlay: over the finished frame, in the output (or its sRGB
-        // view), or in the glass source when glass lies over overlay content.
-        if !runs.is_empty() {
-            let pipelines = match overlay_view {
-                Some(_) => self
-                    .overlay
-                    .linear
-                    .as_ref()
-                    .expect("an sRGB view's pipelines"),
-                None => &self.overlay.output,
+        // view), or in the glass source when what it draws reads what is
+        // under it.
+        if let (false, Some(group0)) = (runs.is_empty(), self.ui_main_group()) {
+            let kind = match overlay_view {
+                Some(_) => ui::pass::TargetKind::Linear,
+                None => ui::pass::TargetKind::Output,
             };
             let target = layered.unwrap_or(overlay_view.unwrap_or(output));
-            // The runs between pyramid builds, each in a pass of its own:
-            // cut `k` ends the runs drawn before the k-th build.
-            let mut cuts: Vec<usize> = rebuilds.clone();
+            // The runs between the pyramid's builds and the target's copies,
+            // each in a pass of its own: before run `at`, what `events`
+            // lists (true: a pyramid, false: a copy).
+            let mut events: Vec<(usize, bool)> = rebuilds
+                .iter()
+                .map(|&i| (i, true))
+                .chain(copies.iter().map(|&i| (i, false)))
+                .collect();
+            og_core::sort::sort_by_key(&mut events, |e| *e);
+            let mut cuts: Vec<usize> = events.iter().map(|e| e.0).collect();
+            cuts.dedup();
             cuts.push(runs.len());
             let mut from = 0;
-            for (k, &to) in cuts.iter().enumerate() {
-                // The pyramid as the overlay stands before run `from`.
-                if k > 0
-                    && let Some(g) = self.glass_targets.as_ref()
-                {
-                    stats.draw_calls += self.glass.pyramid(&self.queue, &mut encoder, g, decode);
+            for &to in &cuts {
+                if to > from {
+                    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("overlay"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: target,
+                            depth_slice: None,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Load,
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                        multiview_mask: None,
+                    });
+                    stats.draw_calls +=
+                        self.draw_overlay_runs(&mut pass, scene, &runs[from..to], group0, kind);
                 }
-                if to == from {
-                    continue;
-                }
-                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("overlay"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: target,
-                        depth_slice: None,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    timestamp_writes: None,
-                    occlusion_query_set: None,
-                    multiview_mask: None,
-                });
-                pass.set_bind_group(0, &self.overlay.group, &[]);
-                let mut bound: Option<u8> = None;
-                for run in &runs[from..to] {
-                    // 0 sprite, 1 MSDF text, 2 glass, 3 a texture array's sprites.
-                    let (kind, group) = match run.source {
-                        RunSource::Sprite(_, None) => (0u8, &self.white_sprite_group),
-                        RunSource::Sprite(_, Some(t)) => (
-                            0,
-                            self.cache.sprite_groups[t.index()]
-                                .as_ref()
-                                .expect("made before the pass"),
-                        ),
-                        RunSource::Font(f) => (1, &self.cache.fonts[f.index()].bind_group),
-                        RunSource::Glass => (
-                            2,
-                            &self
-                                .glass_targets
-                                .as_ref()
-                                .expect("made with the overlay's glass")
-                                .overlay_group,
-                        ),
-                        RunSource::Array(_, a) => (
-                            3,
-                            &self.cache.sprite_array_groups[a.index()]
-                                .as_ref()
-                                .expect("made before the pass")
-                                .0,
-                        ),
-                        RunSource::Strip(..) | RunSource::Metaballs(_) | RunSource::Mesh(_) => {
-                            unreachable!("the overlay has no strips, fluids or meshes")
-                        }
-                    };
-                    if bound != Some(kind) {
-                        pass.set_pipeline(match kind {
-                            0 => &pipelines.sprite,
-                            1 => &pipelines.msdf,
-                            2 => &pipelines.glass,
-                            _ => self
-                                .sprite_arrays
-                                .as_ref()
-                                .expect("made before the pass")
-                                .overlay(overlay_view.is_some()),
-                        });
-                        bound = Some(kind);
+                // What the runs from `to` read, as the target stands now.
+                if let Some(g) = self.glass_targets.as_ref() {
+                    for &(_, pyramid) in events.iter().filter(|e| e.0 == to) {
+                        stats.draw_calls += if pyramid {
+                            self.glass.pyramid(&self.queue, &mut encoder, g, decode)
+                        } else {
+                            self.glass.copy_behind(&mut encoder, g)
+                        };
                     }
-                    pass.set_bind_group(1, group, &[]);
-                    let start = run.first as u64 * overlay::OVERLAY_STRIDE;
-                    pass.set_vertex_buffer(
-                        0,
-                        self.overlay
-                            .buffer
-                            .slice(start..start + run.count as u64 * overlay::OVERLAY_STRIDE),
-                    );
-                    pass.draw(0..6, 0..run.count);
-                    stats.draw_calls += 1;
                 }
                 from = to;
             }
