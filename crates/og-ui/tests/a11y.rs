@@ -719,6 +719,7 @@ fn semantics_give_containers_the_roles_components_need() {
                 assert!(ui.semantics(&Semantics {
                     role: Some("menuitem".into()),
                     expanded: (k == 1).then_some(false),
+                    disabled: k == 1,
                     ..Semantics::default()
                 }));
             }
@@ -764,6 +765,12 @@ fn semantics_give_containers_the_roles_components_need() {
         "{:?}",
         save.states
     );
+    assert!(
+        save.states.iter().any(|s| s == "disabled"),
+        "{:?}",
+        save.states
+    );
+    assert!(!open.states.iter().any(|s| s == "disabled"));
     assert!(tree.nodes.iter().all(|n| n.path != "Menu/Bad"));
     assert!(
         warnings
