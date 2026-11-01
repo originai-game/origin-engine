@@ -445,6 +445,42 @@ container, then `assemble`) does the same pack when a machine is
 unavailable; `scripts/release.sh fetch <run-id>` brings its artifact in
 with `verified` cleared.
 
+**The packing hosts (2026-11-01).** Each keeps a checkout only for
+packing, with a target directory that is never cleaned, so a pack reuses
+every compiled dependency; sccache serves the rest.
+
+- **Mac** (`macrunner`, 12 cores, 24 GB): the worktree
+  `/Volumes/app/origin-engine-release` (branch `release`, tracking
+  origin/main; `git pull` it to the release commit), its own `target/`,
+  and the shared sccache in `/Volumes/app/.sccache` (40 GiB). `pack` takes
+  only that target's lock (`scripts/lock.sh`), so it never waits on a
+  gate in another checkout. Run it under `nice -n 10` beside other
+  threads. The toolchain is the pinned one (`docs/ci.md` §Toolchain).
+- **Windows** (`studio-win`, Ryzen 5 5600G, 64 GB): `E:\src\origin-engine`
+  on a Dev Drive (ReFS, trusted, Defender performance mode). The drive is
+  `D:\DevDrive\dev.vhdx`, attached at boot by the SYSTEM task "Attach Dev
+  Drive E". sccache is 0.14.0 with `SCCACHE_DIR=E:\sccache` (30 GB).
+  Defender excludes the checkout, `.cargo`, `.rustup`, the sccache and bun
+  caches, and cargo, rustc, link and sccache. Git Bash, PowerShell 7,
+  Rust 1.99.1 (MSVC) and bun 1.4.4 are on the PATH of the `win` account
+  the Amp runner runs as. Restart the runner after changing its
+  environment.
+
+Measured at 0.7.7 (3f127210):
+
+| | Mac `release.sh pack` | Windows `build.sh --native` + `pack.sh --native` |
+|---|---|---|
+| cold (empty target) | 969 s: native 143, zigbuild linux-x64 157, five wasm builds 516, four wasm-opt 136 | 424 s + 5 s |
+| again, every Rust unit a cache hit | 263 s: native 48, linux-x64 48, wasm builds about 25, wasm-opt 130 | 148 s + 5 s |
+
+A version that changes crate sources lands between the two rows. What
+remains in the second row is fixed. The thin-LTO, codegen-units=1 links
+of `og` and `og-host-node` take about 46 and 40 s per platform; sccache
+cannot cache a bin or a cdylib. wasm-opt takes about 130 s. Neither
+changes without changing the shipped bytes. Both Mac runs gave
+byte-identical tarballs. The GitHub-hosted fallback took 17–20 min for
+the wasm and linux-x64 job alone.
+
 `pack` (local or the workflow's) holds the gate lock (a release build
 compiles beside nothing) and refuses a `native/` that is not release;
 `publish` refuses when `verify`
