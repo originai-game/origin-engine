@@ -7,7 +7,7 @@
 //! as `og_tests::gfx::render_built` does natively (the scene's update before
 //! each), and [`og_gfx_capture`] reads the last one back as RGBA8.
 //! og-ui's cooked-font text frames (`og-ui/text-bidi`, `text-kerning`,
-//! `text-edit`, `text-mixed-runs`: crates/og-ui/tests/support/text_scenes.rs)
+//! `text-edit`, `text-mixed-runs`: crates/og-tests-cooked/tests/support/text_scenes.rs)
 //! draw with fonts the module cannot cook: the runner cooks
 //! crates/og-ui/tests/text-fonts with `og cook` and hands over the cook's
 //! manifest ([`og_gfx_text_manifest`]) and each file under `cooked/`
@@ -18,14 +18,14 @@
 //! (`packages/engine/tests/web/reference-gfx.ts`).
 
 // og-ui's reference scenes, as og-ui's tests build them (`text_scenes`
-// reaches `super::scenes`, as it does in og-ui's `support`).
+// reaches `super::scenes`, as it does in og-tests-cooked's `support`).
 #[cfg(target_arch = "wasm32")]
 #[allow(dead_code)]
 #[path = "../../og-ui/tests/support/scenes.rs"]
 mod scenes;
 #[cfg(target_arch = "wasm32")]
 #[allow(dead_code)]
-#[path = "../../og-ui/tests/support/text_scenes.rs"]
+#[path = "../../og-tests-cooked/tests/support/text_scenes.rs"]
 mod text_scenes;
 
 #[cfg(target_arch = "wasm32")]

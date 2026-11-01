@@ -24,13 +24,10 @@ pub mod stylise_scenes;
 pub mod target_scenes;
 pub mod terrain_scenes;
 pub mod ui_scenes;
-// Cooked through og-cook (native only).
-#[cfg(not(target_arch = "wasm32"))]
-pub mod vox_scenes;
 // Posed by og-anim (native only).
 #[cfg(not(target_arch = "wasm32"))]
 pub mod skeleton_scenes;
-// Levels of detail cooked by og-cook, reflection probes and SSR (native only).
+// Reflection probes and SSR (native only; its cooked `lod-levels` is og-tests-cooked's).
 #[cfg(not(target_arch = "wasm32"))]
 pub mod depth_render_scenes;
 #[cfg(not(target_arch = "wasm32"))]

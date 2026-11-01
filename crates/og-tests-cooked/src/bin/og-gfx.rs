@@ -31,7 +31,8 @@
 
 use og_render::{Antialias, Bloom, Exposure, FrameStats, Light, LightKind, RenderTarget, Renderer};
 use og_tests::scenes::GfxScene;
-use og_tests::{compare, gfx, scenes};
+use og_tests::{compare, gfx};
+use og_tests_cooked::scenes;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::Instant;

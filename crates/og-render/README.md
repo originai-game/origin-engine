@@ -720,14 +720,14 @@ eight are counted. Each was checked by breaking the code it covers.
 
 ```sh
 export CARGO_TARGET_DIR=$PWD/target/agent-render   # any target dir works
-cargo test --release -p og-tests                   # gfx + the wasm32 compile check
-OG_GFX_CAPTURE=1 cargo test --release -p og-tests --test tests gfx::      # re-record this tier
-OG_GFX_CAPTURE=spheres-20k cargo test --release -p og-tests --test tests gfx::  # one scene
+cargo test --release -p og-tests -p og-tests-cooked                 # gfx + the wasm32 compile check
+OG_GFX_CAPTURE=1 cargo test --release -p og-tests -p og-tests-cooked --test tests gfx::      # re-record this tier
+OG_GFX_CAPTURE=spheres-20k cargo test --release -p og-tests -p og-tests-cooked --test tests gfx::  # one scene
 cargo test --release -p og-tests --test tests -- --ignored perf::          # perf vs crates/og-tests/perf/
 OG_PERF_RECORD=1 cargo test --release -p og-tests --test tests -- --ignored perf:: --test-threads=1
-cargo run --release -p og-tests --bin og-gfx -- --all --frames 120        # stats, timings, RMSE
-cargo run --release -p og-tests --bin og-gfx -- --costs                   # the feature-cost table
-OG_GFX_DEBUG_CASCADES=1 cargo run --release -p og-tests --bin og-gfx -- cascades-200m --out c.png
+cargo run --release -p og-tests-cooked --bin og-gfx -- --all --frames 120        # stats, timings, RMSE
+cargo run --release -p og-tests-cooked --bin og-gfx -- --costs                   # the feature-cost table
+OG_GFX_DEBUG_CASCADES=1 cargo run --release -p og-tests-cooked --bin og-gfx -- cascades-200m --out c.png
 ```
 
 **The `vulkan-cpu` tier** (Mesa lavapipe, what CI runs on) is recorded in the

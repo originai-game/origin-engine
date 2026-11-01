@@ -4,7 +4,7 @@
 //
 //   bun install --cwd tools/bench        # once: the pinned e2b SDK
 //   CARGO_TARGET_DIR=target/agent-render cargo zigbuild --release \
-//     --target x86_64-unknown-linux-gnu.2.31 -p og-tests --bin og-gfx --test tests
+//     --target x86_64-unknown-linux-gnu.2.31 -p og-tests-cooked --bin og-gfx -p og-tests --test tests
 //   bun crates/og-tests/scripts/capture-vulkan-cpu.ts
 //
 // In the sandbox: `og-gfx --all --capture` renders every scene on lavapipe;

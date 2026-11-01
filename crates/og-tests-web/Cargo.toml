@@ -16,7 +16,7 @@ og-tests = { path = "../og-tests" }
 og-render = { path = "../og-render", features = ["gltf"] }
 # og-ui's reference scenes (crates/og-ui/tests/support/scenes.rs, included by path).
 og-ui = { path = "../og-ui" }
-# og-ui's cooked-font text frames (crates/og-ui/tests/support/text_scenes.rs):
+# og-ui's cooked-font text frames (crates/og-tests-cooked/tests/support/text_scenes.rs):
 # the fonts' blobs decoded with og-cook's loaders, the scenes' direction and
 # typed text.
 og-cook = { path = "../og-cook", default-features = false, features = ["runtime"] }

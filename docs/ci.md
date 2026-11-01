@@ -111,7 +111,7 @@ changed:
 
 | Skipped | When nothing changed in | Then |
 |---|---|---|
-| each GPU package's reference tests, on its own (og-render, og-ui, og-tests: nextest `-E 'not package(<pkg>)'` for each skipped one in test, test-quick and test-windows; left out of the serial GPU run under cargo test) | that package and every workspace crate it builds on (`cargo tree`, with dev-dependencies), what they embed from outside `crates/` (`third_party/ltc`; `templates/looks` and `templates/styles` when og-cook is in the closure), and for og-ui the templates its tests read (`templates/ui-kit`, `templates/styles`, `templates/game/assets/fonts`, the five archetype styles). One key per package since 2026-11-01: an og-ui, og-cook or og-api change no longer reruns og-render's GPU tests | the rest of the test step runs; the step's summary line names the packages whose GPU tests were skipped |
+| each GPU package's reference tests, on its own (og-render, og-ui, og-tests, og-tests-cooked: nextest `-E 'not package(<pkg>)'` for each skipped one in test, test-quick and test-windows; left out of the serial GPU run under cargo test) | that package and every workspace crate it builds on (`cargo tree`, with dev-dependencies), what they embed from outside `crates/` (`third_party/ltc`; `templates/looks` and `templates/styles` when og-cook is in the closure), and for og-ui and og-tests-cooked the templates their tests read (`templates/ui-kit`, `templates/styles`, `templates/game/assets/fonts`, the five archetype styles). One key per package since 2026-11-01: an og-ui, og-cook or og-api change no longer reruns og-render's GPU tests. The tests that cook a project (og-tests' `vox-keyframes`, `lod-levels`, `terrain-generated` and `ui-vector`; og-ui's `text_gfx`, `materials_gfx` and `pack_contrast`) are og-tests-cooked's, so og-cook and the crates it builds on (og-api among them) are in no other GPU package's closure: an og-cook or og-api change reruns og-tests-cooked's GPU tests alone | the rest of the test step runs; the step's summary line names the packages whose GPU tests were skipped |
 | wasm-build, wasm-opt, size-gate | `crates/` | the last outputs in `target/og-wasm` are reused (only when every file they list exists; a step that ran upstream in this invocation always runs the next) |
 | drift | `crates/og-api` (`api.ogt`), og-idl and the crates it builds on, `crates/og-cli`, and every generated directory (`og_idl::OUTPUT_DIRS`), so a hand edit to a generated file is still caught | |
 | check-conformance (in no lane; `scripts/check.sh check-conformance`) | `packages/engine`, `templates/`, `examples/`, `crates/og-cli/src/check.rs`, `scripts/tsrs-diff.sh`, `scripts/tsrs-corpus/`, `scripts/install-tools.sh`, `scripts/lib.sh` | |
@@ -267,8 +267,8 @@ split, and the lowest such crate is its cause.
 |---|---|---|---|---|---|---|
 | `fmt` | `cargo fmt --all --check` | every | yes | yes | yes | |
 | `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | every | yes | yes | yes | |
-| `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest, og-ui and og-render after the rest with `--test-threads=1`); og-ui's and og-render's GPU tests left out when their inputs did not change (§Lanes) | quick | yes, on lavapipe | | | |
-| `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest, og-tests, og-ui and og-render after the rest with `--test-threads=1`); gfx tests in `og-tests`, left out with og-ui's and og-render's when their inputs did not change (§Lanes). Runs after `wasm-build`, whose og-render artifact `og-tests::wasm` takes when it is newer than og-render's sources (else that test runs `cargo check --target wasm32-unknown-unknown -p og-render` itself) | full, functional | | yes, on lavapipe | yes, on lavapipe | |
+| `test-quick` | `cargo nextest run --workspace --exclude og-tests` (`cargo test` without nextest, og-tests-cooked, og-ui and og-render after the rest with `--test-threads=1`); og-tests-cooked's, og-ui's and og-render's GPU tests left out when their inputs did not change (§Lanes) | quick | yes, on lavapipe | | | |
+| `test` | `cargo nextest run --workspace && cargo test --workspace --doc` (`cargo test --workspace` without nextest, og-tests, og-tests-cooked, og-ui and og-render after the rest with `--test-threads=1`); gfx tests in `og-tests` and `og-tests-cooked`, left out with og-ui's and og-render's when their inputs did not change (§Lanes). Runs after `wasm-build`, whose og-render artifact `og-tests::wasm` takes when it is newer than og-render's sources (else that test runs `cargo check --target wasm32-unknown-unknown -p og-render` itself) | full, functional | | yes, on lavapipe | yes, on lavapipe | |
 | `wasm-build` | `cargo build --profile wasm --target wasm32-unknown-unknown -p <crate> --lib` (`Cargo.toml`'s `[profile.wasm]`: release at opt-level s, the per-tick and per-frame crates at 3 and the load-time crates at z; `tests/evidence/r4/size-2/NOTES.md`) for `scripts/wasm-crates.txt`, plus the `publish` feature variant of crates marked `publish` in `target/wasm-<variant>/` (cargo 1.99 keeps one fingerprint per unit whatever its features, so two feature sets in one target dir recompiled og-probe, og-runtime and og-host-web on every run: 16.7 s and 12.2 s with nothing changed, 0.4 and 0.5 s apart; `tests/evidence/P2/tooling/wasm-build-relink.md`) and the lanes variants of crates marked `publish lanes` (one per `lanes` line: og-host-web's `lanes2d` then `lanes`, the 2D and the 3D publish features with wasm atomics, `scripts/wasm-lanes.sh` in `target/wasm-mt/`, which the two share; §The lanes wasm); copies to `target/og-wasm/raw/` | full | | | yes | |
 | `wasm-opt` | `wasm-bindgen --target web --out-name origin-engine` (`origin-engine-lanes` for a lanes variant, `-lanes*`; when the module uses it) then `scripts/wasm-opt.sh`, the one wasm-opt invocation (`-Oz --enable-bulk-memory --enable-nontrapping-float-to-int --low-memory-unused`; rustc links wasm32 stack-first, so the low 1 KiB is only the bottom of an overflowing stack), which `packages/engine/scripts/build.sh` also ships with (`--threads` adds `--enable-threads` for the lanes variant); `opt.txt` lists the shipping (publish and lanes, one of each per game profile) variants, `opt-all.txt` every one | full | | | yes | |
 | `size-gate` | `scripts/size-gate.sh`: brotli `-q 11` of each file in `opt.txt` ≤ `wasm_core_brotli_bytes` (a page downloads one variant; the table also prints the sum and the largest) | full | | | yes | |
@@ -291,7 +291,8 @@ file lock (og-cook's `tests/support`: the template and the rigged models,
 keyed by the test executable and the sources); `.config/nextest.toml` gives
 every slot to the tests that assert a wall-clock bound (and runs them last),
 two slots to the determinism runs that step two worlds or renderers at once,
-four at a time to the GPU-bound packages, and starts og-tests, the cooks,
+four at a time to the GPU-bound packages, and starts og-tests and
+og-tests-cooked, the cooks,
 the pile and the walk first. `scripts/install-tools.sh` installs it; without
 it the steps fall back to `cargo test`.
 
@@ -363,8 +364,8 @@ instance's thread walks that list to name an object, so two renderers
 made on two threads of one process can crash it. No test makes two
 renderers at once any more; nextest runs each test in its own process,
 and `cargo test` (the gate's fallback without nextest), which runs a
-binary's tests on threads of one process, runs og-tests, og-ui and
-og-render after the other crates with `--test-threads=1`
+binary's tests on threads of one process, runs og-tests,
+og-tests-cooked, og-ui and og-render after the other crates with `--test-threads=1`
 (`tests/evidence/debt3/particle-sigsegv/NOTES.md`).
 
 ### The vulkan-cpu tier's known divergences
@@ -627,7 +628,7 @@ describes the script as it is, for when the requirement returns.
 | `gate` | `scripts/check.sh --all` |
 | `web` | `scripts/check.sh web-reference` |
 | `release` | `scripts/release.sh pack` then `verify`: the five packages as release tarballs in `dist/release/<version>/` with `manifest.json`, and the install test (`tests/install/run.ts`) from them on this machine and in the linux-x64 container (docs/release.md §3); publish never runs here |
-| `cross` | `cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31` of `-p og-tests --bin og-gfx`, of og-ui's test binary (`--test tests`, run with the filters `gfx:: kit_gfx:: materials_gfx:: text_gfx::`) and of `-p og-host-node`, the addon copied to `packages/engine/native/origin-engine.linux-x64.node` |
+| `cross` | `cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31` of `-p og-tests-cooked --bin og-gfx`, of og-ui's test binary (`--test tests`, run with the filters `gfx:: kit_gfx:: materials_gfx:: text_gfx::`) and of `-p og-host-node`, the addon copied to `packages/engine/native/origin-engine.linux-x64.node` |
 | `prepare` | each template cooked (`og cook`, the gate's dev `og`) and bundled for the native host into `<template>/.og/game.native.js`, as `og test` does, on the Mac |
 | `gfx` | `og-gfx --all --capture target/lava-gfx` in `og-lavapipe-bun:local` (`docker run --rm -v <checkout>:<checkout> -w <checkout>`, `OG_TEST_ASSETS=<checkout>/crates/og-tests/assets`, the og-gfx binary as `--entrypoint`; no `--platform`: the amd64 image runs under emulation, and the checkout sits at its own path because the bundles hold absolute paths) |
 | `ui` | og-ui's GPU test binaries in the image, against `crates/og-ui/references/vulkan-cpu/` (else `metal`) |
@@ -960,13 +961,13 @@ judged against `metal`, which they match exactly (RMSE 0) on WebGPU
 native metal run gives against that reference. `text-fields-2` rides with
 them, and since release-f2 so do the four cooked-font text frames
 (`og-ui/text-bidi`, `text-kerning`, `text-edit`, `text-mixed-runs`,
-`crates/og-ui/tests/support/text_scenes.rs`): the module cannot cook, so
+`crates/og-tests-cooked/tests/support/text_scenes.rs`): the module cannot cook, so
 the runner first cooks `crates/og-ui/tests/text-fonts` (the fonts' import
 settings) with templates/ui-kit's font files through `og cook`
 (`tests/web/text-fonts.ts`, the `og` of `packages/engine/native/` or
 `$OG_BIN`), serves the blobs beside the module and hands each page the
 manifest and files (`og_gfx_text_manifest`, `og_gfx_text_file`), as og-ui's
-native `text_gfx` decodes the same cook from its bytes. They have not run
+native `text_gfx` (og-tests-cooked's) decodes the same cook from its bytes. They have not run
 in a browser on record yet.
 
 ### og-ui's kit frames in the browser

@@ -2004,11 +2004,27 @@ dependencies = [
  "image",
  "og-anim",
  "og-bake",
- "og-cook",
  "og-core",
  "og-geom",
  "og-render",
  "og-tilemap",
+]
+
+[[package]]
+name = "og-tests-cooked"
+version = "0.7.7"
+dependencies = [
+ "glam 0.34.1",
+ "image",
+ "og-anim",
+ "og-cook",
+ "og-core",
+ "og-i18n",
+ "og-input",
+ "og-render",
+ "og-tests",
+ "og-ui",
+ "serde_json",
 ]
 
 [[package]]
@@ -2061,7 +2077,6 @@ version = "0.7.7"
 dependencies = [
  "bytemuck",
  "image",
- "og-cook",
  "og-core",
  "og-ecs",
  "og-i18n",

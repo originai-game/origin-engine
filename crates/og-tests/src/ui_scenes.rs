@@ -15,8 +15,6 @@
 //!   mask, the built-in materials and a custom one.
 //! - `ui-text-effects`: text outline in, out and across, a gradient fill
 //!   and stacked shadows.
-//! - `ui-vector` (native: cooked by og-cook): an SVG emblem tessellated and
-//!   drawn at three sizes and turned.
 //! - `ui-world` (`docs/ui.md` §14): mass elements (damage numbers,
 //!   nameplates faded behind a wall, bars with a ghost, icons, a compact
 //!   score) and two occluded panels over a lit 3D scene.
@@ -96,7 +94,7 @@ fn gradient(kind: UiGradientKind, from: Vec2, to: Vec2, stops: &[(f32, [f32; 4])
 }
 
 /// A scene with an overlay of `ui` over a dark slate ground, untonemapped.
-fn overlay_scene(build: impl FnOnce(&mut RenderScene, &mut Overlay)) -> RenderScene {
+pub fn overlay_scene(build: impl FnOnce(&mut RenderScene, &mut Overlay)) -> RenderScene {
     let mut scene = RenderScene::new();
     let mut o = Overlay::new(W, H, 0.0);
     build(&mut scene, &mut o);

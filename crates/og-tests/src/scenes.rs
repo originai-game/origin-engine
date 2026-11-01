@@ -159,24 +159,6 @@ pub const SCENES: &[&str] = &[
     "ui-panel",
 ];
 
-/// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
-/// both): their content is cooked by og-cook at build time, which the
-/// browser's wasm build of the scenes does not carry.
-#[cfg(not(target_arch = "wasm32"))]
-pub const NATIVE_SCENES: &[&str] = &[
-    "vox-keyframes",
-    "skeleton-2d",
-    "lod-levels",
-    "probe-interior",
-    "ssr-wet-floor",
-    "baked-cornell",
-    "probe-two-rooms",
-    "probe-outdoor",
-    "baked-batches",
-    "terrain-generated",
-    "ui-vector",
-];
-
 /// A per-frame change (frame index from 0): moving sprites, an orbiting camera.
 pub type Update = fn(&mut RenderScene, u32);
 
@@ -847,13 +829,6 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::stylise_scenes::outline_voxels_scene();
             Ok(())
         },
-        // Owed row 63: a .vox transform keyed across frames, cooked and
-        // posed at frames 0 and 2 side by side.
-        #[cfg(not(target_arch = "wasm32"))]
-        "vox-keyframes" => |g, _| {
-            g.scene = crate::vox_scenes::keyframes_scene()?;
-            Ok(())
-        },
         // A 2D rig posed by og-anim on three slopes (IK feet, a deformed
         // mesh cape), drawn as sprite-batch triangles under 2D lighting.
         #[cfg(not(target_arch = "wasm32"))]
@@ -865,11 +840,6 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // three distances, each at the level its size on screen picks and
         // tinted as debugView lod tints it; a chrome sphere in a closed
         // room reflecting its reflection probe; SSR on a wet floor.
-        #[cfg(not(target_arch = "wasm32"))]
-        "lod-levels" => |g, _| {
-            g.scene = crate::depth_render_scenes::lod_scene()?.0;
-            Ok(())
-        },
         #[cfg(not(target_arch = "wasm32"))]
         "probe-interior" => |g, _| {
             g.scene = crate::depth_render_scenes::probe_scene(true);
@@ -962,13 +932,6 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         "terrain-grass" => |g, _| {
             g.scene = crate::terrain_scenes::grass_scene();
-            Ok(())
-        },
-        // Round 3: a terrain the cook generated (noise, erosion, a sea,
-        // rivers, biomes), its water at the cooked sea level.
-        #[cfg(not(target_arch = "wasm32"))]
-        "terrain-generated" => |g, _| {
-            g.scene = crate::terrain_scenes::generated_scene()?;
             Ok(())
         },
         // The rendering fields of the Grand View Garden fork merge
@@ -1145,11 +1108,6 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "ui-panel" => |g, _| {
             g.scene = crate::ui_scenes::panel();
             g.frames = 2;
-            Ok(())
-        },
-        #[cfg(not(target_arch = "wasm32"))]
-        "ui-vector" => |g, _| {
-            g.scene = crate::ui_scenes::vector()?;
             Ok(())
         },
         other => {

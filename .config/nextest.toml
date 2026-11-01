@@ -14,7 +14,7 @@
 gpu = { max-threads = 4 }
 
 [[profile.default.overrides]]
-filter = 'package(og-tests) | package(og-ui) | package(og-render)'
+filter = 'package(og-tests) | package(og-tests-cooked) | package(og-ui) | package(og-render)'
 test-group = 'gpu'
 
 [[profile.default.overrides]]
@@ -42,12 +42,13 @@ test(the_pile_is_deterministic_and_a_restore_at_tick_1800_ends_in_the_same_world
 '''
 threads-required = 2
 
-# The long poles start first: og-tests is the most work behind the
-# narrowest group (gpu, 4 at once), and og-cook's cooks, the pile and the
-# walk are the longest single tests. Started last, they set the wall time.
+# The long poles start first: og-tests and og-tests-cooked are the most
+# work behind the narrowest group (gpu, 4 at once), and og-cook's cooks,
+# the pile and the walk are the longest single tests. Started last, they
+# set the wall time.
 [[profile.default.overrides]]
 filter = '''
-package(og-tests) | (package(og-cook) & test(/^(animation|template)::/))
+package(og-tests) | package(og-tests-cooked) | (package(og-cook) & test(/^(animation|template)::/))
 | binary_id(og-physics::pile) | (package(og-anim) & test(/^walk::/))
 '''
 priority = 50

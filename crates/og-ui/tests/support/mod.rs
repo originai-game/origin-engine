@@ -5,7 +5,6 @@
 #![allow(dead_code)]
 
 mod scenes;
-pub mod text_scenes;
 
 use og_render::RenderScene;
 use og_ui::*;

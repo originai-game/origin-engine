@@ -1,6 +1,6 @@
 //! The scenes og-ui's reference frames are drawn from (`references/<tier>/`
 //! sample-screen, text-glow, glass, widget-set and text-fields-2; and
-//! text-mixed-runs, whose fonts `tests/text_gfx.rs` cooks), as scenes ready to
+//! text-mixed-runs, whose fonts og-tests-cooked's `tests/text_gfx.rs` cooks), as scenes ready to
 //! render: shared by the native tests (`tests/gfx.rs`, `tests/kit_gfx.rs`,
 //! through `support`) and the browser tiers (crates/og-tests-web includes
 //! this file, packages/engine/tests/web/reference-gfx.ts renders them), so
@@ -861,7 +861,7 @@ pub const MIXED_LINES: [&str; 5] = [
     "A wrapped paragraph of Latin words with 古い水車小屋 inside it, and مرحبا بك too, broken where it meets the column's edge.",
 ];
 
-/// The UI of `references/<tier>/text-mixed-runs.png` (`tests/text_gfx.rs`
+/// The UI of `references/<tier>/text-mixed-runs.png` (og-tests-cooked's `tests/text_gfx.rs`
 /// cooks its fonts and draws it at `vp`): the mixed lines as labels (the
 /// last one wrapping in a 300 px column), rich text with a bold Latin run
 /// beside CJK and Arabic spans, and a focused field holding a mixed name

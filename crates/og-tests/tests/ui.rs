@@ -97,11 +97,6 @@ fn ui_text_effects_match_their_reference() {
 }
 
 #[test]
-fn ui_vector_matches_its_reference() {
-    check("ui-vector");
-}
-
-#[test]
 fn ui_world_matches_its_reference() {
     check("ui-world");
 }
@@ -327,20 +322,6 @@ fn ui_layers_clip_mask_and_dissolve() {
         .filter(|&(qx, py)| near(px(&r, qx, py), back, 3.0))
         .count();
     assert!(holes > 1000, "{holes} pixels dissolved");
-}
-
-/// The cooked emblem's even-odd ring keeps its hole.
-#[test]
-fn ui_vector_fills_by_its_rule() {
-    let r = render("ui-vector");
-    // The 640 px emblem: view box 120 at 640/120 px a unit from (600, 40).
-    let k = 640.0 / 120.0;
-    let at = |ux: f32, uy: f32| px(&r, (600.0 + ux * k) as u32, (40.0 + uy * k) as u32);
-    let ring = at(60.0, 56.0 - 26.0);
-    let hole = at(60.0 + 16.0, 56.0 + 6.0);
-    println!("ring {ring:?} hole {hole:?}");
-    assert!(ring[2] > ring[0] + 40.0, "the ring is not blue: {ring:?}");
-    assert!(hole[0] > hole[2] + 60.0, "the hole is filled: {hole:?}");
 }
 
 /// World-space UI (`docs/ui.md` §14, `ui_scenes::world`): occluders hide a

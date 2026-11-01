@@ -43,7 +43,7 @@ fn copy_dir(from: &Path, to: &Path) {
 fn cooked() -> Vec<CookedFont> {
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-ui-text-fonts");
     let _ = std::fs::remove_dir_all(&root);
-    let here = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let here = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../og-ui");
     copy_dir(&here.join("tests/text-fonts"), &root);
     let src = here.join("../../templates/ui-kit/assets/fonts");
     for file in FONTS {
@@ -75,7 +75,7 @@ fn check(name: &str, (scene, desc): (RenderScene, RenderDesc)) -> og_render::Fra
         image::ColorType::Rgba8,
     )
     .expect("write frame");
-    let refs = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("references");
+    let refs = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../og-ui/references");
     let own = refs.join(&tier).join(format!("{name}.png"));
     if std::env::var_os("OG_UI_CAPTURE").is_some() {
         std::fs::create_dir_all(own.parent().expect("dir")).expect("reference dir");

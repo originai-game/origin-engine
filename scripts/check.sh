@@ -25,7 +25,7 @@
 # Path-aware (docs/ci.md §Lanes): a step that passes records the working
 # tree it passed on (<target>/og-gate/green/), and a later run skips what
 # none of its inputs changed since: each GPU package's reference tests on
-# its own (og-render, og-ui, og-tests: rule_gpu PKG),
+# its own (og-render, og-ui, og-tests, og-tests-cooked: rule_gpu PKG),
 # the wasm steps (crates/), drift (the IDL, og-idl, og and the generated
 # files), check-conformance (packages/engine, templates/, examples/, the
 # comparer, its corpus and the pins), web-reference (og-host-web's and og-tests-web's crates,
@@ -84,15 +84,17 @@ RULE_COMMON="Cargo.toml Cargo.lock rust-toolchain.toml .cargo .config scripts"
 # rule_gpu PKG: the inputs of one GPU package's reference tests: the
 # workspace crates in its closure (with dev-dependencies), what they embed
 # from outside crates/ (og-render's LTC table; og-cook's built-in looks and
-# styles, when og-cook is in the closure), and for og-ui the templates its
-# tests read. Each package has its own key, so a change below og-ui leaves
-# og-render's tests skipped (docs/ci.md §Lanes).
-GPU_PACKAGES="og-render og-ui og-tests"
+# styles, when og-cook is in the closure), and for og-ui and
+# og-tests-cooked (og-ui's tests that cook) the templates their tests read.
+# Each package has its own key, so a change below og-ui leaves og-render's
+# tests skipped, and one to og-cook or og-api only og-tests-cooked's run
+# (docs/ci.md §Lanes).
+GPU_PACKAGES="og-render og-ui og-tests og-tests-cooked"
 rule_gpu() {
   local dirs extra="third_party/ltc" g
   dirs="$(og_crate_dirs -p "$1" -e normal,build,dev | og_words)"
   case " $dirs " in *" crates/og-cook "*) extra="$extra templates/looks templates/styles" ;; esac
-  if [ "$1" = og-ui ]; then
+  if [ "$1" = og-ui ] || [ "$1" = og-tests-cooked ]; then
     extra="$extra templates/ui-kit templates/styles templates/game/assets/fonts"
     for g in idle/assets/styles/sparkorb roguelike/assets/styles/lampdive rhythm/assets/styles/lanebeat \
         tower-defense/assets/styles/pathguard third-person/assets/styles/ember; do
@@ -213,7 +215,7 @@ run_tests() {
     # renderers made on two threads trip the Vulkan loader's driver-unload
     # race (docs/ci.md §CI, phase-1 row 81), so the GPU crates run their
     # tests one at a time, after the rest.
-    local gpu_crates=(og-tests og-ui og-render)
+    local gpu_crates=(og-tests og-tests-cooked og-ui og-render)
     local args=(--workspace) gpu_args=()
     for pk in "${gpu_crates[@]}"; do
       args+=(--exclude "$pk")

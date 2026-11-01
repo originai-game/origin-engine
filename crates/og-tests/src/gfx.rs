@@ -258,8 +258,13 @@ pub fn render(scene: &str) -> Result<Rendered, String> {
 /// metal's (or records this tier's when capture is requested). On a mismatch, writes
 /// `<out_dir>/<tier>/<scene>.actual.png` and `.diff.png` and returns `Err`.
 pub fn check(scene: &str, out_dir: &Path) -> Result<GfxReport, String> {
-    let mut built = scenes::build(scene)?;
-    let rendered = render_built(&mut built)?;
+    check_built(scene, &mut scenes::build(scene)?, out_dir)
+}
+
+/// [`check`] of a scene already built as `scene`: og-tests-cooked's
+/// registry builds its own scenes and checks them here.
+pub fn check_built(scene: &str, built: &mut GfxScene, out_dir: &Path) -> Result<GfxReport, String> {
+    let rendered = render_built(built)?;
     let tier = rendered.info.backend_tier();
     let own = reference_path(&tier, scene);
     let mut report = GfxReport {

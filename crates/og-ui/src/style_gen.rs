@@ -10,7 +10,7 @@
 //! `styleArtBriefs`).
 //!
 //! A generated style is held to the same tests as a built-in one
-//! (og-ui's tests/packs.rs and pack_contrast.rs generate a matrix of
+//! (og-ui's tests/packs.rs and og-tests-cooked's pack_contrast.rs generate a matrix of
 //! them); the seed styles of `templates/styles` are generated here from
 //! their recorded choices, then read and kept.
 

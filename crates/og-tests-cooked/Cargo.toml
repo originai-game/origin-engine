@@ -1,0 +1,34 @@
+[package]
+name = "og-tests-cooked"
+version = "0.7.7"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine tests that cook a project: og-tests' gfx scenes made by og-cook and og-ui's cooked-font frames, apart so that og-tests and og-ui do not build on og-cook."
+publish = false
+autotests = false
+
+[dependencies]
+og-tests = { path = "../og-tests" }
+og-render = { path = "../og-render" }
+og-cook = { path = "../og-cook" }
+og-anim = { path = "../og-anim" }
+glam = { workspace = true }
+
+# og-ui's tests that cook (tests/text_gfx.rs, materials_gfx.rs,
+# pack_contrast.rs) and og-ui's test support they include by path.
+[dev-dependencies]
+og-ui = { path = "../og-ui" }
+og-core = { path = "../og-core" }
+og-input = { path = "../og-input" }
+og-i18n = { path = "../og-i18n" }
+image = { workspace = true }
+serde_json = "1"
+
+[[bin]]
+name = "og-gfx"
+path = "src/bin/og-gfx.rs"
+
+[[test]]
+name = "tests"
+path = "tests/main.rs"

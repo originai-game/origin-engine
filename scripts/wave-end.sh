@@ -19,7 +19,7 @@
 #              test from them on this machine and in the linux-x64 container
 #              (docs/release.md §3); what passes here is what publish ships
 #   cross      cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31:
-#              og-tests' og-gfx, og-ui's test binary and og-host-node,
+#              og-tests-cooked's og-gfx, og-ui's test binary and og-host-node,
 #              the addon copied to packages/engine/native/origin-engine.linux-x64.node
 #   prepare    each template cooked (`og cook`, the gate's dev og) and bundled
 #              for the native host (<template>/.og/game.native.js), on this machine
@@ -142,7 +142,7 @@ stage_conformance() { run scripts/tsrs-diff.sh; }
 stage_release() { run scripts/release.sh pack && run scripts/release.sh verify; }
 
 stage_cross() {
-  run cargo zigbuild --release --target "$TRIPLE.2.31" -p og-tests --bin og-gfx || return 1
+  run cargo zigbuild --release --target "$TRIPLE.2.31" -p og-tests-cooked --bin og-gfx || return 1
   # og-ui's test binary, which holds its GPU tests; cargo's JSON names the executable.
   local ui=(cargo zigbuild --release --target "$TRIPLE.2.31" -p og-ui --test tests --message-format=json-render-diagnostics)
   say "+ $(printf '%q ' "${ui[@]}")> $OUT/og-ui-tests.json"
