@@ -29,7 +29,7 @@ const kit = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "tem
   if (!existsSync(join(kit, "cooked"))) throw new Error(`og cook ${kit} wrote no cooked/`);
 }
 
-type Element = { id: string; parent: string; path: string; kind: string; text: string; role: string; name: string; value: string; states: string[]; disabled: boolean; x: number; y: number; width: number; height: number };
+type Element = { clipped?: boolean; id: string; parent: string; path: string; kind: string; text: string; role: string; name: string; value: string; states: string[]; disabled: boolean; x: number; y: number; width: number; height: number };
 
 let systems = 0;
 /** An engine whose one system builds `build` in a 640 px column at the centre of the surface. */
@@ -118,6 +118,45 @@ test("tabBar and actionHints: the bumpers and hints show the device's glyphs, fo
     const drawn = d === "playstation";
     expect([d, !!byPath(engine, "Hint#0/Glyph/Symbol"), !!byPath(engine, "Hint#0/Glyph/Text")]).toEqual([d, drawn, !drawn]);
   }
+});
+
+test("tabBar: tabs that do not fit scroll the selected one into view clear of the fades, fade where they are cut, and stop short of the bumpers", () => {
+  // Wrong: a native scroll that never moves to the selected tab (Codex cut against RB), a fade that
+  // never shows because a cut tab's box is the part in view, a strip that runs under the caps.
+  let sel = 0;
+  const engine = run(() => {
+    sel = og.ui.tabBar("Tabs", { tabs: ["Equipment", "Skills", "Inventory", "Codex", "Journal"].map((label) => ({ label })), selected: sel }, () => {}).selected;
+  }, 300);
+  const clip = () => byPath(engine, "Tabs/Bar/Clip")!;
+  const fades = () => ["FadeStart", "FadeEnd"].filter((f) => byPath(engine, `Clip/${f}`));
+  expect(fades()).toEqual(["FadeEnd"]);
+  for (let k = 0; k < 4; k++) key(engine, "KeyE");
+  engine.advance(30);
+  expect(sel).toBe(4);
+  const tab = byPath(engine, "Tabs/Tab#4")!;
+  const c = clip();
+  // Whole: the last tab rests at the end, where nothing more lies and no fade is drawn.
+  expect(tab.x).toBeGreaterThanOrEqual(c.x - 0.5);
+  expect(tab.x + tab.width).toBeLessThanOrEqual(c.x + c.width + 0.5);
+  expect(tab.clipped).toBeFalse();
+  // A middle tab revealed clears the fade at its edge.
+  key(engine, "KeyQ");
+  engine.advance(30);
+  const mid = byPath(engine, "Tabs/Tab#3")!;
+  expect(mid.x).toBeGreaterThanOrEqual(clip().x + 27.5);
+  key(engine, "KeyE");
+  engine.advance(30);
+  expect(fades()).toEqual(["FadeStart"]);
+  const next = byPath(engine, "Tabs/Bar/Next")!;
+  expect(c.x + c.width).toBeLessThanOrEqual(next.x + 0.5);
+  key(engine, "KeyQ");
+  key(engine, "KeyQ");
+  key(engine, "KeyQ");
+  key(engine, "KeyQ");
+  engine.advance(30);
+  expect(sel).toBe(0);
+  expect(fades()).toEqual(["FadeEnd"]);
+  expect(byPath(engine, "Tabs/Tab#0")!.x).toBeGreaterThanOrEqual(clip().x - 0.5);
 });
 
 // ── visual states ───────────────────────────────────────────────────────

@@ -37,7 +37,8 @@ const s = {
   day: "2026-11-13",
   month: 11,
   year: 2026,
-  radialAim: { x: 0.7, y: -0.7 },
+  /** The wheel's stick (demo:aim): none, so the wheel opens unaimed. */
+  radialAim: null as { x: number; y: number } | null,
   check: true,
   sort: "name",
   /** The action bar's room at the bottom (last tick's): the page keeps its content clear of it. */
@@ -51,12 +52,16 @@ export function demoCommand(world: World, args: readonly string[]): void {
     const r = og.ui.configure(world, { textScale: Math.min(2, Math.max(1, Number(value) / 100 || 1)) });
     if (!r.ok) throw new Error(r.reason);
   } else if (key === "device") og.ui.setDevice(world, value as UiDevice);
-  else if (key === "overlay") s.overlay = value;
+  else if (key === "overlay") {
+    s.overlay = value;
+    // Each opening of the wheel starts unaimed.
+    s.radialAim = null;
+  }
   else if (key === "data") s.data = value;
   else if (key === "aim") {
     const [x, y] = value.split(",").map(Number);
     s.radialAim = { x: x ?? 0, y: y ?? 0 };
-  } else if (key === "reset") Object.assign(s, { overlay: "none", data: "rows", tab: 0, page: 4, slide: 0, detent: 0, zoom: 1 });
+  } else if (key === "reset") Object.assign(s, { overlay: "none", data: "rows", tab: 0, page: 4, slide: 0, detent: 0, zoom: 1, radialAim: null });
 }
 
 function panel(id: string, title: string, width: Size, build: () => void): void {
@@ -218,7 +223,7 @@ export function overlaysScreen(): void {
   if (og.ui.sheet("Side", o === "sideSheet", { edge: "end", title: "Friends" }, () => {
     for (const [k, n] of ["Ava", "Kenji", "Lena"].entries()) og.ui.label(og.ui.idi("Friend", k), n, {});
   }).dismissed) close();
-  const w = og.ui.radialMenu("Wheel", o === "radial", { items: [{ label: "Sword", icon: "sword", detail: "Melee" }, { label: "Wand", icon: "magic-wand", detail: "Arcane" }, { label: "Bomb", icon: "bomb", detail: "3 left" }, { label: "Potion", icon: "potion" }, { label: "Shield", icon: "shield", disabled: true }, { label: "Map", icon: "map" }], aim: s.radialAim, title: "Quick select" });
+  const w = og.ui.radialMenu("Wheel", o === "radial", { items: [{ label: "Sword", icon: "sword", detail: "Melee" }, { label: "Wand", icon: "magic-wand", detail: "Arcane" }, { label: "Bomb", icon: "bomb", detail: "3 left" }, { label: "Potion", icon: "potion" }, { label: "Shield", icon: "shield", disabled: true }, { label: "Map", icon: "map" }], ...(s.radialAim ? { aim: s.radialAim } : {}), title: "Quick select" });
   if (w.chosen !== null || w.dismissed) close();
 }
 
