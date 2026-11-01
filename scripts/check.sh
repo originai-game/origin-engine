@@ -24,8 +24,8 @@
 #
 # Path-aware (docs/ci.md §Lanes): a step that passes records the working
 # tree it passed on (<target>/og-gate/green/), and a later run skips what
-# none of its inputs changed since: the GPU reference tests (og-tests,
-# og-ui, og-render and the crates they build on, templates/ui-kit/assets),
+# none of its inputs changed since: each GPU package's reference tests on
+# its own (og-render, og-ui, og-tests: rule_gpu PKG),
 # the wasm steps (crates/), drift (the IDL, og-idl, og and the generated
 # files), check-conformance (packages/engine, templates/, examples/, the
 # comparer, its corpus and the pins), web-reference (og-host-web's and og-tests-web's crates,
@@ -81,8 +81,25 @@ PASS_NOTE="" # what a step that passed left out, for the summary
 # The inputs of each path-aware rule (og_unchanged in scripts/lib.sh).
 # Everything reruns on a change to the build's own configuration.
 RULE_COMMON="Cargo.toml Cargo.lock rust-toolchain.toml .cargo .config scripts"
+# rule_gpu PKG: the inputs of one GPU package's reference tests: the
+# workspace crates in its closure (with dev-dependencies), what they embed
+# from outside crates/ (og-render's LTC table; og-cook's built-in looks and
+# styles, when og-cook is in the closure), and for og-ui the templates its
+# tests read. Each package has its own key, so a change below og-ui leaves
+# og-render's tests skipped (docs/ci.md §Lanes).
+GPU_PACKAGES="og-render og-ui og-tests"
 rule_gpu() {
-  echo "$(og_crate_dirs -p og-tests -p og-ui -p og-render -e normal,build,dev | og_words) templates/ui-kit/assets templates/styles $RULE_COMMON"
+  local dirs extra="third_party/ltc" g
+  dirs="$(og_crate_dirs -p "$1" -e normal,build,dev | og_words)"
+  case " $dirs " in *" crates/og-cook "*) extra="$extra templates/looks templates/styles" ;; esac
+  if [ "$1" = og-ui ]; then
+    extra="$extra templates/ui-kit templates/styles templates/game/assets/fonts"
+    for g in idle/assets/styles/sparkorb roguelike/assets/styles/lampdive rhythm/assets/styles/lanebeat \
+        tower-defense/assets/styles/pathguard third-person/assets/styles/ember; do
+      extra="$extra templates/archetypes/$g"
+    done
+  fi
+  echo "$dirs $extra $RULE_COMMON"
 }
 # third_party: the vendored crates the wasm links.
 rule_wasm() { echo "crates third_party $RULE_COMMON"; }
@@ -120,10 +137,6 @@ skip_unchanged() {
   return 0
 }
 
-# The GPU-bound packages; a test step leaves them out when skip_unchanged
-# says their inputs did not change.
-GPU_FILTER='package(og-tests) | package(og-ui) | package(og-render)'
-
 # fmt and clippy cover every workspace crate except scripts/gate-exclude.txt.
 gate_packages() {  # prints "-p a -p b ..." for the included crates
   local all ex c out=""
@@ -160,19 +173,24 @@ step_clippy() {
 # run_tests KEY DOC EXCLUDE...: the workspace's tests but the EXCLUDEd
 # packages, through cargo nextest (.config/nextest.toml) or else cargo test,
 # plus the doctests (nextest runs none) when DOC is 1. The GPU-bound
-# packages are left out when their inputs did not change since KEY.gpu
-# passed; KEY.gpu is recorded only by a run that included them.
+# packages are each left out when their inputs (rule_gpu PKG) did not
+# change since KEY.gpu.PKG passed; that key is recorded only by a run that
+# included the package.
 run_tests() {
-  local key="$1" doc="$2" gpu=1 rc pk
+  local key="$1" doc="$2" rc pk gpu_ran=() skipped=()
   shift 2
   local exclude=("$@")
-  if skip_unchanged "$key.gpu" "the GPU reference tests ($GPU_FILTER)" "$(rule_gpu)"; then
-    gpu=0
-    PASS_NOTE="the GPU reference tests skipped, $SKIP_NOTE"
-    SKIP_NOTE=""
-  else
-    og_green_clear "$key.gpu"
-  fi
+  for pk in $GPU_PACKAGES; do
+    case " ${exclude[*]+${exclude[*]}} " in *" $pk "*) continue ;; esac
+    if skip_unchanged "$key.gpu.$pk" "$pk's GPU reference tests" "$(rule_gpu "$pk")"; then
+      skipped+=("$pk")
+    else
+      og_green_clear "$key.gpu.$pk"
+      gpu_ran+=("$pk")
+    fi
+  done
+  SKIP_NOTE=""
+  [ "${#skipped[@]}" = 0 ] || PASS_NOTE="the GPU reference tests of ${skipped[*]} skipped, no input changed since they passed"
   # og-tests' gfx harness appends a line here for each frame on the
   # vulkan-cpu tier's known-divergence list (crates/og-tests/src/gfx.rs,
   # docs/ci.md §The vulkan-cpu tier's known divergences); nextest shows no
@@ -182,7 +200,7 @@ run_tests() {
   if command -v cargo-nextest >/dev/null 2>&1; then
     local args=(--workspace) filters=() expr=""
     for pk in ${exclude[@]+"${exclude[@]}"}; do args+=(--exclude "$pk"); done
-    [ "$gpu" = 1 ] || filters+=("not ($GPU_FILTER)")
+    for pk in ${skipped[@]+"${skipped[@]}"}; do filters+=("not package($pk)"); done
     # The functional lane builds no wasm: og-tests' check of the gate's
     # wasm32 build of og-render is the full lane's.
     [ "$FUNCTIONAL" = 1 ] && filters+=("not test(og_render_checks_for_wasm32)")
@@ -199,13 +217,13 @@ run_tests() {
     local args=(--workspace) gpu_args=()
     for pk in "${gpu_crates[@]}"; do
       args+=(--exclude "$pk")
-      case " ${exclude[*]+${exclude[*]}} " in *" $pk "*) ;; *) gpu_args+=(-p "$pk") ;; esac
+      case " ${gpu_ran[*]+${gpu_ran[*]}} " in *" $pk "*) gpu_args+=(-p "$pk") ;; esac
     done
     for pk in ${exclude[@]+"${exclude[@]}"}; do
       case " ${gpu_crates[*]} " in *" $pk "*) ;; *) args+=(--exclude "$pk") ;; esac
     done
     cargo test "${args[@]}"; rc=$?
-    if [ "$rc" -eq 0 ] && [ "$gpu" = 1 ] && [ "${#gpu_args[@]}" -gt 0 ]; then
+    if [ "$rc" -eq 0 ] && [ "${#gpu_args[@]}" -gt 0 ]; then
       cargo test "${gpu_args[@]}" -- --test-threads=1; rc=$?
     fi
   fi
@@ -214,7 +232,7 @@ run_tests() {
     sort "$known"
   fi
   [ "$rc" -eq 0 ] || return "$rc"
-  if [ "$gpu" = 1 ]; then og_green_set "$key.gpu"; fi
+  for pk in ${gpu_ran[@]+"${gpu_ran[@]}"}; do og_green_set "$key.gpu.$pk"; done
   return 0
 }
 
@@ -234,7 +252,7 @@ step_test_quick() { run_tests test-quick 0 og-tests; }
 WINDOWS_TESTS='(package(og-cli) & test(/windows/))'
 step_test_windows() {
   og_need cargo-nextest || return 1
-  local green changed="" f c p all="" gpu=1 expr="$WINDOWS_TESTS" crates=""
+  local green changed="" f c p all="" pk gpus="" expr="$WINDOWS_TESTS" crates=""
   green="$(og_green_get test-windows)"
   if [ "$FORCE_ALL" = 1 ]; then all="--all"
   elif [ -z "$green" ] || [ -z "${OG_GATE_TREE:-}" ]; then all="no earlier pass here to compare with"
@@ -256,23 +274,24 @@ step_test_windows() {
   done <<< "$changed"
   if [ -n "$all" ]; then
     og_say "test-windows: every test ($all)"
-    og_green_clear test-windows.gpu
+    for pk in $GPU_PACKAGES; do og_green_clear "test-windows.gpu.$pk"; done
     cargo nextest run --workspace || return 1
-    og_green_set test-windows.gpu
+    for pk in $GPU_PACKAGES; do og_green_set "test-windows.gpu.$pk"; done
     return 0
   fi
-  if skip_unchanged test-windows.gpu "the GPU reference tests ($GPU_FILTER)" "$(rule_gpu)"; then
-    gpu=0
-    SKIP_NOTE=""
-  else
-    og_green_clear test-windows.gpu
-    expr="$expr | $GPU_FILTER"
-  fi
+  for pk in $GPU_PACKAGES; do
+    if ! skip_unchanged "test-windows.gpu.$pk" "$pk's GPU reference tests" "$(rule_gpu "$pk")"; then
+      og_green_clear "test-windows.gpu.$pk"
+      gpus="$gpus $pk"
+      expr="$expr | package($pk)"
+    fi
+  done
+  SKIP_NOTE=""
   for c in $crates; do expr="$expr | rdeps(=$c)"; done
   og_say "test-windows: changed since ${green:0:12}:${crates:- no crate}; nextest -E '$expr'"
-  PASS_NOTE="the cfg(windows) tests${crates:+, the crates changed and their dependents:$crates}$([ "$gpu" = 1 ] && echo ", the GPU reference tests")"
+  PASS_NOTE="the cfg(windows) tests${crates:+, the crates changed and their dependents:$crates}${gpus:+, the GPU reference tests of$gpus}"
   cargo nextest run --workspace --no-tests=warn -E "$expr" || return 1
-  [ "$gpu" = 0 ] || og_green_set test-windows.gpu
+  for pk in $gpus; do og_green_set "test-windows.gpu.$pk"; done
 }
 
 # wasm_build VARIANT FEATURES CRATE...: builds scripts/wasm-crates.txt crates
