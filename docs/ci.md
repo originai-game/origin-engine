@@ -98,6 +98,7 @@ records the OOM receipt, driver controls, reload timings, and setup checks.
 | Lane | Steps | When | Warm, Apple M4 Pro, another agent on the machine |
 |---|---|---|---|
 | `scripts/check.sh functional` | fmt clippy test drift bun-functional ui-styles | after each batch of merges on main, and CI job `functional` by hand: what a merge must pass (every test and the GPU reference frames, the generated API, the packages' tests on the native host, every style pack's reference sheets); the web module is the last full lane's, and when a crate changed since, the tests that compare the two hosts' hashes skip (`OG_WASM_STALE`) and run in the full lane; no wasm build, size, determinism or browser tiers | 90–160 s |
+| `scripts/check.sh windows` | wasm-import test-windows web-reference | on studio-win beside the Mac's functional lane at the same commit, with the Mac's wasm (§Two machines) | measured in §Two machines |
 | `scripts/check.sh quick` | fmt clippy test-quick drift bun-quick | the loop while working; CI job `quick` by hand | 19–26 s (test-quick 16–20 s for 225 tests, 256 with og-ui's and og-render's GPU tests) |
 | `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism | path-aware once per batch of merges on main, by the one session that runs gates (§When to run what); `--all` once at the end of a round, before its final commit and report; CI job `gate` by hand | `--all` 84–101 s, steps concurrent (test 54–69 for 437 tests beside wasm-opt 54–69, then size-gate 22–25 beside bun-test 14–18), 121–135 s at a load average of 24–32; with nothing changed 30 s |
 
@@ -279,7 +280,10 @@ split, and the lowest such crate is its cause.
 | `bun-test` | `bun run test` in each `packages/*` with a `test` script (the engine's files in parallel workers, `bun test --parallel`; the engine's `typecheck` also checks the six templates' `src/` against the generated declarations, `packages/engine/tsconfig.templates.json`; their playtests run under bun in `og test`); `OG_GATE=1` makes `packages/engine/scripts/build.sh` take the dev addon and `og` and the gate's wasm instead of compiling release and wasm again (below) | full | | | yes | |
 | `determinism` | `tools/wasm-determinism/run.sh`: the same math digest and world hashes on the host and on wasm32 scalar and simd128 under node, the host release once more with lanes off and once with lanes on (failing when the lanes run did no parallel work), and the lanes wasm once per physics profile (`scripts/wasm-lanes.sh`, og-physics with `physics3d` or `physics2d` alone as the 3D and 2D lanes modules are built, bound by wasm-bindgen and run on one lane under node: the 2D world hash on the 2D lanes build, the 3D ones on the 3D) | full | | | yes (node from `actions/setup-node`) | |
 | perf | `scripts/perf.sh`: `cargo test -p og-tests -p og-runtime --release --no-fail-fast -- --ignored perf` against this machine's baselines (og-tests: `crates/og-tests/perf/<tier>-<adapter>/`, og-runtime: extraction of 20,000 meshes, `crates/og-runtime/perf/<cpu>/`); `--measure` records instead, copies the numbers to `target/evidence/perf/` and restores the tree | `make perf` | | | | `--measure` (below) |
-| `web-reference` | `OG_GATE=1 sh packages/engine/scripts/build.sh` first, so `packages/engine/native` holds this checkout's dev og and addon and `dist/web` the gate's wasm (a release build or an older gate leaves older ones there, and the tests cook every project with that og); then `bun tests/web/reference.ts` in `packages/engine`: templates/fx-showcase's five stations, then `bun tests/web/reference-e5.ts` for its eight E5 stations (each a fresh run like its playtest), then `bun tests/web/reference.ts --looks` for its looks station (37 presets in one run), then `bun tests/web/reference-gfx.ts` for og-tests' gfx scenes and og-ui's four scenes, then `bun tests/web/reference-ui.ts` for templates/ui-kit's 70 reference frames, then `bun tests/web/reference.ts --project templates/archetypes/third-person` for Ember Vale's three frames, then the same with `--project examples/brasswick` and `examples/meridian-loop` and `--playtest tests/frames.og.ts` for their nine and ten (§Browser reference tiers), in headless Chrome on WebGPU, compared with `references/webgpu` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), in no lane | | | | |
+| `web-reference` | `OG_GATE=1 sh packages/engine/scripts/build.sh` first, so `packages/engine/native` holds this checkout's dev og and addon and `dist/web` the gate's wasm (a release build or an older gate leaves older ones there, and the tests cook every project with that og); then, in `packages/engine`, seven groups, `OG_WEB_JOBS` at a time (§Two machines): `fx` (`bun tests/web/reference.ts`: templates/fx-showcase's five stations; `bun tests/web/reference-e5.ts`: its E5 stations, each a fresh run like its playtest; `bun tests/web/reference.ts --looks`: its looks station, 37 presets in one run), `ui` (`bun tests/web/reference-ui.ts`: templates/ui-kit's reference frames; `bun tests/web/a11y.ts`: the accessibility mirror), `gfx` (`bun tests/web/reference-gfx.ts`: og-tests' gfx scenes and og-ui's), `ember-vale` (`reference.ts --project templates/archetypes/third-person`: its three frames), `brasswick` and `meridian-loop` (`reference.ts --project examples/<game> --playtest tests/frames.og.ts`: their nine and ten), `lane-panic` (`bun tests/web/lane-panic.ts`) (§Browser reference tiers), in headless Chrome on WebGPU, compared with `references/webgpu` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), windows | | | | |
+| `wasm-export` | the web modules `wasm-opt` left in `target/og-wasm` (`opt/`, `bindgen/`, `opt.txt`, `opt-all.txt`) and their `stamp` (the commit, the wasm profile and the git tree of each of the wasm's inputs, `rule_wasm`), as `target/og-wasm.tar.gz`; needs `wasm-opt` (§Two machines) | `scripts/check.sh --only wasm-export` on the Mac | | | | |
+| `wasm-import` | `OG_WASM_FROM` (that archive, or a directory with its contents) into `target/og-wasm`, refused unless its stamp's input trees equal this checkout's (the paths that differ are named) (§Two machines) | windows | | | | |
+| `test-windows` | `cargo nextest run --workspace -E` the cfg(windows) tests (`package(og-cli) & test(/windows/)`), the GPU reference tests when their inputs changed (DX12's frames; as in `test`) and `rdeps(=<crate>)` of every crate changed since the step last passed on this machine; every test on a first run, a change to the build's configuration or `third_party`, or `--all` (§Two machines) | windows | | | | |
 
 `cargo nextest` runs test binaries in parallel, one process per test.
 Fixtures several tests read are made once across their processes under a
@@ -518,6 +522,61 @@ the load average past 100 and every step past its timeouts):
   wasm-build and wasm-opt, skipped when `crates/` did not change),
   `scripts/check.sh web-reference` for the browser tiers. Then `--all` once
   at the end of the round as above.
+
+## Two machines
+
+A merge's screenshots are judged on two machines: the Mac (`metal`) runs
+the functional lane, and studio-win (DX12 natively, Chrome on WebGPU over
+D3D12) runs what its platform adds to it at the same commit. Before
+2026-11-01 one Windows round took over an hour: it built the wasm itself
+(1045–1654 s), ran every test (nextest 859 s) and `og-gfx --all` (329–471 s)
+and the browser tiers in Chrome and in Edge one group after another
+(900–1039 s and 827–842 s). A round now runs this way:
+
+1. **The Mac builds the wasm first**: `scripts/check.sh --only wasm-export`
+   (wasm-build and wasm-opt, path-aware, then `target/og-wasm.tar.gz`).
+   The wasm is the same bytes on every platform (the release packing
+   relies on it too), so it is built once. The archive goes to studio-win
+   (any copy: the thread file transfer, a share), and the Mac goes on with
+   `scripts/check.sh functional`.
+2. **studio-win starts as soon as the archive is there**, at the same
+   commit: `OG_WASM_FROM=<archive> scripts/check.sh windows`. `wasm-import`
+   checks the archive's stamp: the git tree of each of the wasm's inputs
+   (`crates`, `third_party` and the build's configuration, the path-aware
+   rule of `wasm-build`) must equal this checkout's, untracked files
+   included, or the step fails and names the paths that differ. A wasm
+   built from other inputs is never used; a commit that touches none of
+   them (a doc, a template) takes the same wasm. studio-win builds only
+   its dev og and addon (`build.sh` under `OG_GATE=1`).
+3. **studio-win runs only what its platform adds**: `test-windows` (the
+   cfg(windows) tests, DX12's GPU reference frames when their inputs
+   changed, and the crates changed since its last pass with the crates
+   that depend on them; the Mac ran the rest at the commit) and
+   `web-reference` in Chrome. `og-gfx --all`, the table of every scene's
+   numbers, is a wave's end's, not a round's: the GPU reference tests are
+   the same scenes under the same comparison, and they fail. The wave's
+   end and a release run every test (`scripts/check.sh test`, `--all`).
+
+**Edge only before a release.** Chrome and Edge matched on all 561
+compared lines of a round (2026-11-01) and share the D3D12 backend, so
+during development the browser tiers on Windows run in Chrome alone.
+Edge (`CHROME_PATH` naming msedge.exe, `scripts/check.sh web-reference`)
+is a pre-release step, beside the wave's end (docs/release.md §3).
+
+**The browser tiers run in groups.** web-reference's runs are seven
+groups, each with the projects only it cooks and exports: two runs of
+fx-showcase (its stations, its E5 stations and its looks all cook and
+export it into `dist/test-reference/fx-showcase`) or of ui-kit (its frames
+and the accessibility mirror) side by side would write the same
+directories, so those stay in one group each. Every run serves on its own
+port and starts Chrome with its own profile directory (port 0 and a
+`mkdtemp` profile: `tests/web/serve.ts`, `cdp.ts`), and each group writes
+its own outputs. `OG_WEB_JOBS` groups run at a time (1 is the old serial
+order); each group's output is in
+`target/evidence/gate/web-reference/<group>.log`, printed in order at the
+end, and the step fails when any group does. A frame that differs between
+a serial and a parallel run is a defect to report, never a reason to
+raise a tolerance.
 
 ## The wave-end run
 

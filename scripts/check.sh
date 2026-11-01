@@ -3,6 +3,10 @@
 #
 #   scripts/check.sh            the path-aware full lane: during a round, after a change
 #   scripts/check.sh quick      the quick lane: fmt clippy test-quick drift bun-quick
+#   scripts/check.sh windows    the Windows lane: what studio-win adds to the Mac's
+#                               functional lane at the same commit (wasm-import
+#                               test-windows web-reference; OG_WASM_FROM names the
+#                               Mac's wasm-export; docs/ci.md §Two machines)
 #   scripts/check.sh STEP...    only the named steps
 #   scripts/check.sh --only STEP...
 #                               the named steps and the steps whose outputs they read
@@ -59,8 +63,13 @@ STEPS_QUICK="fmt clippy test-quick drift bun-quick"
 # host), without the wasm build, its size, determinism and the browser
 # tiers, which are a wave's end measurements (docs/ci.md §Lanes).
 STEPS_FUNCTIONAL="fmt clippy test drift bun-functional ui-styles"
-STEPS="$STEPS_FULL test-quick bun-quick bun-functional ui-styles web-reference check-conformance"
+# The Windows lane: the Mac's wasm at the same inputs instead of a wasm
+# build, the tests whose result a platform can change, and the browser
+# tiers in Chrome on D3D12 (docs/ci.md §Two machines).
+STEPS_WINDOWS="wasm-import test-windows web-reference"
+STEPS="$STEPS_FULL test-quick bun-quick bun-functional ui-styles web-reference check-conformance wasm-export wasm-import test-windows"
 FUNCTIONAL=0
+WINDOWS=0
 BUN_QUICK_PACKAGES="packages/knowledge packages/create"   # no native build needed
 WASM_TRIPLE=wasm32-unknown-unknown
 SKIP=3   # a step returns this to report SKIPPED instead of PASS
@@ -215,6 +224,57 @@ step_test() { run_tests test 1; }
 # Every crate's tests but og-tests (gfx, walks, perf-shaped suites).
 step_test_quick() { run_tests test-quick 0 og-tests; }
 
+# The tests whose result Windows can change, beside the Mac's functional
+# lane at the same commit (docs/ci.md §Two machines): the GPU reference
+# tests (DX12's frames; path-aware as in test), the cfg(windows) tests, and
+# the tests of every crate changed since this step last passed here, with
+# the crates that depend on it (nextest's rdeps). A change to the build's
+# configuration (RULE_COMMON), to third_party, a first run, or --all runs
+# every test. The wave's end and a release run the whole suite (test).
+WINDOWS_TESTS='(package(og-cli) & test(/windows/))'
+step_test_windows() {
+  og_need cargo-nextest || return 1
+  local green changed="" f c p all="" gpu=1 expr="$WINDOWS_TESTS" crates=""
+  green="$(og_green_get test-windows)"
+  if [ "$FORCE_ALL" = 1 ]; then all="--all"
+  elif [ -z "$green" ] || [ -z "${OG_GATE_TREE:-}" ]; then all="no earlier pass here to compare with"
+  elif ! changed="$(git -C "$OG_ROOT" diff --no-renames --name-only "$green" "$OG_GATE_TREE" 2>/dev/null)"; then
+    all="its last pass's tree is unknown here"
+  fi
+  while IFS= read -r f; do
+    [ -n "$f" ] && [ -z "$all" ] || continue
+    for p in $RULE_COMMON third_party; do
+      case "$f" in "$p" | "$p"/*) all="$f changed" ;; esac
+    done
+    case "$f" in crates/*/*)
+      c="${f#crates/}"; c="${c%%/*}"
+      # A removed crate has no tests left to select.
+      if [ -f "crates/$c/Cargo.toml" ]; then
+        case " $crates " in *" $c "*) ;; *) crates="$crates $c" ;; esac
+      fi ;;
+    esac
+  done <<< "$changed"
+  if [ -n "$all" ]; then
+    og_say "test-windows: every test ($all)"
+    og_green_clear test-windows.gpu
+    cargo nextest run --workspace || return 1
+    og_green_set test-windows.gpu
+    return 0
+  fi
+  if skip_unchanged test-windows.gpu "the GPU reference tests ($GPU_FILTER)" "$(rule_gpu)"; then
+    gpu=0
+    SKIP_NOTE=""
+  else
+    og_green_clear test-windows.gpu
+    expr="$expr | $GPU_FILTER"
+  fi
+  for c in $crates; do expr="$expr | rdeps(=$c)"; done
+  og_say "test-windows: changed since ${green:0:12}:${crates:- no crate}; nextest -E '$expr'"
+  PASS_NOTE="the cfg(windows) tests${crates:+, the crates changed and their dependents:$crates}$([ "$gpu" = 1 ] && echo ", the GPU reference tests")"
+  cargo nextest run --workspace --no-tests=warn -E "$expr" || return 1
+  [ "$gpu" = 0 ] || og_green_set test-windows.gpu
+}
+
 # wasm_build VARIANT FEATURES CRATE...: builds scripts/wasm-crates.txt crates
 # for wasm32 and copies each produced .wasm to $OG_WASM_OUT/raw/<name>[-VARIANT].wasm,
 # listed in built.txt (cargo keeps one uplifted file per crate, so a second
@@ -280,6 +340,7 @@ step_wasm_build() {
     return $SKIP
   fi
   rm -rf "$OG_WASM_OUT"; mkdir -p "$OG_WASM_OUT"; : > "$OG_WASM_OUT/built.txt"
+  printf '%s\n' "${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" > "$OG_WASM_OUT/profile"
   if ! rustup target list --installed 2>/dev/null | grep -qx "$WASM_TRIPLE"; then
     og_err "rust target $WASM_TRIPLE is not installed (rust-toolchain.toml lists it; run 'rustup target add $WASM_TRIPLE')"
     return 1
@@ -392,9 +453,11 @@ step_wasm_opt() {
   case "$RAN" in *" wasm-build "*) ;; *)
     if outputs_exist "$OG_WASM_OUT/opt-all.txt" \
         && skip_unchanged wasm-opt "wasm-opt (reusing $OG_WASM_OUT/opt)" "$(rule_wasm)"; then
+      wasm_stamp
       return $SKIP
     fi ;;
   esac
+  rm -f "$OG_WASM_OUT/stamp"
   mkdir -p "$OG_WASM_OUT/opt"; : > "$OG_WASM_OUT/opt.txt"; : > "$OG_WASM_OUT/opt-all.txt"
   if [ ! -s "$built" ]; then
     og_say "no wasm artifact to optimize"
@@ -419,6 +482,85 @@ step_wasm_opt() {
   else
     cp "$OG_WASM_OUT/opt-all.txt" "$OG_WASM_OUT/opt.txt"
   fi
+  wasm_stamp
+}
+
+# --- The wasm between machines (docs/ci.md §Two machines) --------------------
+# The wasm is the same bytes on every platform, so studio-win takes the
+# Mac's instead of building it: wasm-export packs it, wasm-import takes it
+# only when it was built from inputs equal to this checkout's.
+
+# wasm_inputs: "input PATH TREE" for each of the wasm's inputs (rule_wasm),
+# TREE its git object in this working tree (untracked files included), or
+# "none". Equal lines on two machines: the same wasm.
+wasm_inputs() {
+  local p
+  for p in $(rule_wasm); do
+    printf 'input %s %s\n' "$p" "$(git -C "$OG_ROOT" rev-parse -q --verify "$OG_GATE_TREE:$p" 2>/dev/null || echo none)"
+  done
+}
+
+# wasm_stamp: $OG_WASM_OUT/stamp, what the wasm there was built from: the
+# commit, the profile and wasm_inputs. Without a git tree, none.
+wasm_stamp() {
+  [ -n "${OG_GATE_TREE:-}" ] || return 0
+  {
+    printf 'commit %s\n' "$(git -C "$OG_ROOT" rev-parse HEAD)"
+    printf 'profile %s\n' "$(cat "$OG_WASM_OUT/profile" 2>/dev/null || echo unknown)"
+    wasm_inputs
+  } > "$OG_WASM_OUT/stamp"
+}
+
+# The web modules (wasm-opt's outputs and the bindgen glue build.sh copies)
+# and their stamp, as $OG_TARGET_DIR/og-wasm.tar.gz for another machine.
+step_wasm_export() {
+  local tar="$OG_TARGET_DIR/og-wasm.tar.gz"
+  if [ ! -f "$OG_WASM_OUT/stamp" ]; then
+    og_err "no $OG_WASM_OUT/stamp: wasm-opt writes it (scripts/check.sh --only wasm-export runs wasm-build and wasm-opt first)"
+    return 1
+  fi
+  # tar reads and writes stdio: GNU tar on Windows reads "E:/..." as a remote host.
+  (cd "$OG_WASM_OUT" && tar -czf - stamp opt.txt opt-all.txt opt bindgen) > "$tar" || return 1
+  og_say "$tar: $(og_bytes "$tar") B, built at $(awk '$1 == "commit" { print $2 }' "$OG_WASM_OUT/stamp") ($(awk '$1 == "profile" { print $2 }' "$OG_WASM_OUT/stamp") profile)"
+  og_say "on the other machine, at the same commit: OG_WASM_FROM=<its copy> scripts/check.sh windows"
+}
+
+# $OG_WASM_FROM (wasm-export's archive, or a directory with its contents)
+# into $OG_WASM_OUT, where build.sh takes the web modules from under
+# OG_GATE=1. Refused unless its stamp's inputs equal this checkout's.
+step_wasm_import() {
+  local from="${OG_WASM_FROM:-}" tmp="$OG_TARGET_DIR/og-wasm.import" theirs mine differ f
+  if [ -z "$from" ]; then
+    og_err "wasm-import: OG_WASM_FROM names no archive: copy the Mac's target/og-wasm.tar.gz here (scripts/check.sh --only wasm-export at this commit) and name it"
+    return 1
+  fi
+  if [ -z "${OG_GATE_TREE:-}" ]; then
+    og_err "wasm-import: no git tree here, so what $from was built from cannot be checked"
+    return 1
+  fi
+  rm -rf "$tmp"; mkdir -p "$tmp"
+  if [ -d "$from" ]; then cp -R "$from"/. "$tmp"/ || return 1
+  else tar -xzf - -C "$tmp" < "$from" || return 1
+  fi
+  if [ ! -f "$tmp/stamp" ]; then
+    og_err "wasm-import: $from has no stamp: it is not wasm-export's"
+    return 1
+  fi
+  theirs="$(grep '^input ' "$tmp/stamp")"
+  mine="$(wasm_inputs)"
+  if [ "$theirs" != "$mine" ]; then
+    differ="$(printf '%s\n' "$mine" | grep -vxF "$theirs" | awk '{ print $2 }' | og_words)"
+    og_err "wasm-import: $from was built at $(awk '$1 == "commit" { print $2 }' "$tmp/stamp"), whose wasm inputs differ from this checkout's (HEAD $(git -C "$OG_ROOT" rev-parse HEAD)) in: ${differ:-the list of inputs}"
+    og_err "export the wasm again at this commit, or check out the commit it was built at"
+    return 1
+  fi
+  rm -rf "$OG_WASM_OUT"
+  mv "$tmp" "$OG_WASM_OUT" || return 1
+  # The lists name the exporting machine's paths.
+  for f in opt.txt opt-all.txt; do
+    sed "s|.*/opt/|$OG_WASM_OUT/opt/|" "$OG_WASM_OUT/$f" > "$OG_WASM_OUT/$f.tmp" && mv "$OG_WASM_OUT/$f.tmp" "$OG_WASM_OUT/$f" || return 1
+  done
+  og_say "wasm-import: the wasm built at $(awk '$1 == "commit" { print $2 }' "$OG_WASM_OUT/stamp") ($(awk '$1 == "profile" { print $2 }' "$OG_WASM_OUT/stamp") profile), its inputs equal to this checkout's: $(og_words < "$OG_WASM_OUT/opt-all.txt" | sed "s|$OG_WASM_OUT/opt/||g")"
 }
 
 step_size_gate() {
@@ -559,14 +701,93 @@ step_bun_quick() {
   bun_test_packages $BUN_QUICK_PACKAGES
 }
 
-# The webgpu tier of templates/fx-showcase, of og-tests' own
-# gfx scenes and og-ui's (crates/og-tests-web), of og-ui's kit frames
-# (templates/ui-kit) and of Ember Vale's frames
-# (templates/archetypes/third-person) in headless Chrome (docs/ci.md
-# §Browser reference tiers; `make web-reference`). In no lane: CI has no
-# Chrome for Testing.
+# The browser tiers in headless Chrome on WebGPU (docs/ci.md §Browser
+# reference tiers; `make web-reference`): templates/fx-showcase, og-tests'
+# and og-ui's gfx scenes (crates/og-tests-web), og-ui's kit frames
+# (templates/ui-kit), Ember Vale, two example games, the lanes' panic and
+# the accessibility mirror. In the windows lane and a wave's end, no other:
+# CI has no Chrome for Testing.
+#
+# Seven groups, each with the projects only it cooks and exports (two
+# runs of one project in parallel would cook and export into the same
+# directories), run OG_WEB_JOBS at a time (WEB_JOBS_DEFAULT, measured per
+# machine in docs/ci.md §Two machines; 1 is the old serial order), each
+# group's output in $GATE_LOGS/web-reference/<group>.log, printed in order
+# at the end; the step fails when any group does. Every run serves on its
+# own port and starts Chrome with its own profile directory (port 0,
+# mkdtemp: tests/web/serve.ts, cdp.ts).
+WEB_GROUPS="fx ui gfx meridian-loop brasswick ember-vale lane-panic"
+case "$(uname -s)" in
+  MINGW*|MSYS*) WEB_JOBS_DEFAULT=3 ;;
+  *) WEB_JOBS_DEFAULT=3 ;;
+esac
+
+# Each web_<group> runs in packages/engine; non-zero when any of its runs failed.
+# templates/fx-showcase: its five stations; the E5 stations, each a fresh
+# run like its playtest; the looks station, every preset of the catalogue
+# in one run, each frame against its tier's reference, else metal's
+# (tests/looks-script.ts).
+web_fx() {
+  local rc=0
+  bun tests/web/reference.ts || rc=1
+  bun tests/web/reference-e5.ts || rc=1
+  bun tests/web/reference.ts --looks || rc=1
+  return "$rc"
+}
+# templates/ui-kit: og-ui's kit frames, each reference playtest a fresh run
+# like its own; then the accessibility mirror over its settings screen, a
+# screen reader's click, the live region and the page's preferences.
+web_ui() {
+  local rc=0
+  bun tests/web/reference-ui.ts || rc=1
+  bun tests/web/a11y.ts || rc=1
+  return "$rc"
+}
+# og-tests' scenes and og-ui's against their tier's reference, else metal's.
+web_gfx() { bun tests/web/reference-gfx.ts; }
+# Ember Vale's three frames: tests/frames.og.ts's commands without its
+# screenshots and quit, each shot at its screenshot's tick (60 t).
+web_ember_vale() {
+  # shellcheck disable=SC2054 # the commas are inside one --shots word
+  local tp=(--project templates/archetypes/third-person --out dist/test-reference/third-person
+    --script "1.0:run;1.1:warp:0;1.3:key_down:KeyF;3.5:key_up:KeyF;3.6:light:1;3.7:light:2;3.8:light:3"
+    --shots title@54,beacon@204,dawn@432)
+  bun tests/web/reference.ts "${tp[@]}"
+}
+# An example game's frames: its tests/frames.og.ts itself (--playtest: its
+# commands without its screenshots and quit, each shot at its screenshot's
+# tick, 60 t). Its style packs' art and fonts and its music are not
+# committed: a checkout without them makes them first (tools/make-assets.ts,
+# as wave-end.sh's stage_prepare and each README say).
+web_game() {
+  if ! ls "$OG_ROOT/examples/$1"/assets/styles/*/atlas.png "$OG_ROOT/examples/$1"/assets/music/*.wav > /dev/null 2>&1; then
+    og_say "web-reference: examples/$1 has no generated assets yet: bun tools/make-assets.ts"
+    (cd "$OG_ROOT/examples/$1" && bun tools/make-assets.ts) || return 1
+  fi
+  bun tests/web/reference.ts --project "examples/$1" --playtest tests/frames.og.ts --out "dist/test-reference/$1"
+}
+web_brasswick() { web_game brasswick; }
+web_meridian_loop() { web_game meridian-loop; }
+# A panic inside a lane reaches the page as a crash within 5 s, not a hang
+# (docs/web-export.md §Errors), and the same fault single-threaded.
+web_lane_panic() { bun tests/web/lane-panic.ts; }
+
+# web_launch GROUP DIR: runs web_<GROUP> in the background, its output in
+# DIR/GROUP.log; DIR/GROUP.rc appears last, when it has ended.
+web_launch() {
+  local g="$1" dir="$2"
+  (
+    t0="$(date +%s)"
+    (cd "$OG_ROOT/packages/engine" && "web_$(gate_key "$g")") < /dev/null > "$dir/$g.log" 2>&1; rc=$?
+    printf '%s\n' "$(( $(date +%s) - t0 ))" > "$dir/$g.time"
+    printf '%s\n' "$rc" > "$dir/$g.rc"
+  ) &
+}
+
 step_web_reference() {
-  local a c e g i k l n
+  local jobs="${OG_WEB_JOBS:-$WEB_JOBS_DEFAULT}" dir="$GATE_LOGS/web-reference" pending="$WEB_GROUPS"
+  local g running=0 failed="" times="" t0
+  case "$jobs" in ''|0|*[!0-9]*) og_err "OG_WEB_JOBS must be a number from 1"; return 1 ;; esac
   if skip_unchanged web-reference "web-reference" "$(rule_web)"; then return $SKIP; fi
   og_need bun || return 1
   # The tests cook each project with packages/engine/native's og and serve
@@ -574,45 +795,44 @@ step_web_reference() {
   # what a release build or an older gate left there (the measure lane's
   # 0.3.0 og refused fx-showcase's newer asset types, 2026-10-24).
   OG_GATE=1 sh packages/engine/scripts/build.sh || return 1
-  (cd packages/engine && bun tests/web/reference.ts); a=$?
-  # The E5 stations, each a fresh run like its playtest.
-  (cd packages/engine && bun tests/web/reference-e5.ts); c=$?
-  # The looks station: every preset of the catalogue in one run, each
-  # frame against its tier's reference, else metal's (tests/looks-script.ts).
-  (cd packages/engine && bun tests/web/reference.ts --looks); n=$?
-  # og-tests' scenes against their tier's reference, else metal's.
-  (cd packages/engine && bun tests/web/reference-gfx.ts); e=$?
-  # og-ui's kit frames, each reference playtest a fresh run like its own.
-  (cd packages/engine && bun tests/web/reference-ui.ts); g=$?
-  # Ember Vale's three frames: tests/frames.og.ts's commands without its
-  # screenshots and quit, each shot at its screenshot's tick (60 t).
-  # shellcheck disable=SC2054 # the commas are inside one --shots word
-  local tp=(--project templates/archetypes/third-person --out dist/test-reference/third-person
-    --script "1.0:run;1.1:warp:0;1.3:key_down:KeyF;3.5:key_up:KeyF;3.6:light:1;3.7:light:2;3.8:light:3"
-    --shots title@54,beacon@204,dawn@432)
-  (cd packages/engine && bun tests/web/reference.ts "${tp[@]}"); i=$?
-  # Brasswick's nine frames and Meridian Loop's ten: each game's
-  # tests/frames.og.ts itself (--playtest: its commands without its
-  # screenshots and quit, each shot at its screenshot's tick, 60 t). Their
-  # style packs' art and fonts and their music are not committed: a checkout
-  # without them makes them first (tools/make-assets.ts, as wave-end.sh's
-  # stage_prepare and each README say).
-  local p=0 game
-  for game in brasswick meridian-loop; do
-    if ! ls "examples/$game"/assets/styles/*/atlas.png "examples/$game"/assets/music/*.wav > /dev/null 2>&1; then
-      og_say "web-reference: examples/$game has no generated assets yet: bun tools/make-assets.ts"
-      (cd "examples/$game" && bun tools/make-assets.ts) || p=1
-    fi
-    local ex=(--project "examples/$game" --playtest tests/frames.og.ts --out "dist/test-reference/$game")
-    (cd packages/engine && bun tests/web/reference.ts "${ex[@]}") || p=1
+  rm -rf "$dir"; mkdir -p "$dir"
+  og_say "web-reference: $(printf '%s' "$WEB_GROUPS" | og_words), $jobs at a time (OG_WEB_JOBS); logs in ${dir#"$OG_ROOT"/}/"
+  t0="$(date +%s)"
+  while [ -n "$pending" ] || [ "$running" -gt 0 ]; do
+    while [ -n "$pending" ] && [ "$running" -lt "$jobs" ]; do
+      g="${pending%% *}"
+      pending="${pending#"$g"}"; pending="${pending# }"
+      web_launch "$g" "$dir"
+      running=$((running + 1))
+      og_say "web-reference: $g started (+$(( $(date +%s) - t0 ))s)"
+    done
+    for g in $WEB_GROUPS; do
+      [ -f "$dir/$g.rc" ] && [ ! -f "$dir/$g.done" ] || continue
+      : > "$dir/$g.done"
+      running=$((running - 1))
+      if [ "$(cat "$dir/$g.rc")" = 0 ]; then
+        og_say "web-reference: PASS $g ($(cat "$dir/$g.time")s)"
+      else
+        og_say "web-reference: FAIL $g (exit $(cat "$dir/$g.rc"), $(cat "$dir/$g.time")s)"
+        failed="$failed $g"
+      fi
+      times="$times${times:+, }$g $(cat "$dir/$g.time")s"
+    done
+    sleep 1
   done
-  # A panic inside a lane reaches the page as a crash within 5 s, not a hang
-  # (docs/web-export.md §Errors), and the same fault single-threaded.
-  (cd packages/engine && bun tests/web/lane-panic.ts); k=$?
-  # The accessibility mirror over ui-kit's settings screen, a screen
-  # reader's click, the live region and the page's preferences.
-  (cd packages/engine && bun tests/web/a11y.ts); l=$?
-  return $((a | c | e | g | i | k | l | n | p))
+  wait
+  for g in $WEB_GROUPS; do
+    og_say ""
+    og_say "---- web-reference $g (exit $(cat "$dir/$g.rc"), $(cat "$dir/$g.time")s)"
+    cat "$dir/$g.log"
+  done
+  og_say ""
+  og_say "web-reference: $(( $(date +%s) - t0 ))s at $jobs at a time: $times"
+  PASS_NOTE="$jobs groups at a time: $times"
+  if [ -n "$failed" ]; then
+    og_err "web-reference: failed:$failed"
+    return 1
+  fi
 }
 
 # --- Scheduling ---------------------------------------------------------------
@@ -635,6 +855,9 @@ step_needs() {
     wasm-opt) echo wasm-build ;;
     size-gate) echo wasm-opt ;;
     bun-test) echo wasm-opt ;;
+    wasm-export) echo wasm-opt ;;
+    # The Windows lane's browser tiers take the Mac's wasm (build.sh, OG_GATE=1).
+    web-reference) [ "$WINDOWS" = 0 ] || echo wasm-import ;;
   esac
 }
 
@@ -730,7 +953,7 @@ gate_cancel() {
 
 case "${1:-}" in
   --list) for s in $STEPS; do echo "$s"; done; exit 0 ;;
-  -h|--help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help) sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
 args=()
 ONLY=0
@@ -756,12 +979,13 @@ if [ "$FORCE_ALL" = 1 ]; then WASM_PROFILE_DEFAULT=wasm; else WASM_PROFILE_DEFAU
 
 if [ "$ONLY" = 1 ]; then
   [ "$#" -gt 0 ] || { og_err "--only needs at least one step (scripts/check.sh --list)"; exit 2; }
-  case "$1" in quick|functional) og_err "--only takes steps, not a lane"; exit 2 ;; esac
+  case "$1" in quick|functional|windows) og_err "--only takes steps, not a lane"; exit 2 ;; esac
 fi
 case "${1:-}" in
   "") selected="$STEPS_FULL" ;;
   quick) shift; selected="$STEPS_QUICK${*:+ $*}" ;;
   functional) shift; FUNCTIONAL=1; selected="$STEPS_FUNCTIONAL${*:+ $*}" ;;
+  windows) shift; WINDOWS=1; selected="$STEPS_WINDOWS${*:+ $*}" ;;
   *) selected="$*" ;;
 esac
 for s in $selected; do
