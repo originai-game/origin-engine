@@ -749,13 +749,22 @@ impl Ctx {
             if s.key == "transition" {
                 let w = words(s);
                 if w.len() < 3 {
-                    self.err(s.line, "transition <from|*> <to|*> <transition>");
+                    self.err(s.line, "transition <from|any> <to|any> <transition>");
                     continue;
                 }
                 match parse_transition(&s.values[2..]) {
+                    // `any` is the word for every state (`*` in og-ui's StateTransition).
                     Ok(t) => g.transitions.push(StateTransition {
-                        from: w[0].clone(),
-                        to: w[1].clone(),
+                        from: if w[0] == "any" {
+                            "*".into()
+                        } else {
+                            w[0].clone()
+                        },
+                        to: if w[1] == "any" {
+                            "*".into()
+                        } else {
+                            w[1].clone()
+                        },
                         transition: t,
                     }),
                     Err(why) => self.err(s.line, why),

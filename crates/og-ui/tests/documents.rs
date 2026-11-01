@@ -83,6 +83,7 @@ panel Shop {
           on {
             opacity 1
           }
+          transition any any spring 260 0.2
         }
       }
     }

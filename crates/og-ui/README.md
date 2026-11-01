@@ -238,7 +238,7 @@ panel Shop {                      # the one root element: <kind> [id] { … }
           background token primarySoft    # or ink; a palette role or "#rrggbb[aa]"
           enter bought            # a timeline played when the state is entered (exit: left)
         }
-        transition off on spring 260 0.2  # <from|*> <to|*> spring <ms> <bounce> | tween <ms> [ease] | token <name> | instant
+        transition off on spring 260 0.2  # <from|any> <to|any> spring <ms> <bounce> | tween <ms> [ease] | token <name> | instant
       }
     }
   }
