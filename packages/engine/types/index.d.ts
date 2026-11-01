@@ -29555,6 +29555,1185 @@ export interface UiLayoutStats {
 
 
 /**
+ * What a notification is, which sets its look, sound and default time.
+ * - `"standard"`: A plain message: a tone's accent and icon well (4 s).
+ * - `"achievement"`: An achievement: a medal well in gold, an eyebrow over the title, points (6 s); plays reward.
+ * - `"reward"`: An item or currency received: the icon well glows in the rarity's colour (5 s); plays reward.
+ * - `"alert"`: A warning that must be read: danger accent, read at once by a screen reader (8 s); plays warning.
+ * - `"social"`: A friend, invite or message: a round avatar slot (5 s).
+ */
+export type NotificationVariant = "standard" | "achievement" | "reward" | "alert" | "social";
+
+/**
+ * A loot tier (the style's rarity colours, each paired with its pips so no tier is told by colour alone).
+ * - `"none"`: No tier.
+ * - `"common"`: Common: one pip.
+ * - `"uncommon"`: Uncommon: two pips.
+ * - `"rare"`: Rare: three pips.
+ * - `"epic"`: Epic: four pips.
+ * - `"legendary"`: Legendary: five pips.
+ * - `"mythic"`: Mythic: six pips.
+ */
+export type Rarity = "none" | "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
+
+/**
+ * One notification of a stack, as the game's viewmodel holds it. The game appends one when something happens and drops the keys the stack reports expired or dismissed.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NotificationItem {
+  /**
+   * Its key, stable while it lives (also its probe id): posting a key again with a higher count merges it (×3).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * The headline.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * A line under it; empty is none (two lines at most, then an ellipsis).
+   *
+   * @default ""
+   */
+  readonly body?: string;
+  /**
+   * A small line over the title (Achievement unlocked); empty is none.
+   *
+   * @default ""
+   */
+  readonly eyebrow?: string;
+  /**
+   * An icon of the atlas in its well; empty draws the tone's mark.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * An art slot in the well instead of the icon (an item, an avatar).
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Its tone: the accent edge and the icon well.
+   *
+   * @default "neutral"
+   */
+  readonly tone?: Tone;
+  /**
+   * What it is.
+   *
+   * @default "standard"
+   */
+  readonly variant?: NotificationVariant;
+  /**
+   * A reward's tier: the well's glow and pips.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * og.ui.tick() when it was posted: its time runs from when it first shows (a queued one waits).
+   *
+   * @default 0
+   */
+  readonly at?: number;
+  /**
+   * How long it shows; 0 is the variant's time.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+  /**
+   * It stays until dismissed or its action is pressed.
+   *
+   * @default false
+   */
+  readonly sticky?: boolean;
+  /**
+   * How many times it happened (a ×3 chip from 2 on).
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * A progress bar under the body, 0 to 1 (an achievement 3 of 10 of the way).
+   *
+   * @default null
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly progress?: number | null;
+  /**
+   * The progress in words (3 / 10); empty is none.
+   *
+   * @default ""
+   */
+  readonly progressText?: string;
+  /**
+   * A value at the end (+50 G, 120 XP); empty is none.
+   *
+   * @default ""
+   */
+  readonly points?: string;
+  /**
+   * A button's label (Accept, View); empty is none.
+   *
+   * @default ""
+   */
+  readonly action?: string;
+}
+
+/**
+ * A stack of notifications (toasts) anchored in the safe area.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NotificationsDesc {
+  /**
+   * The game's notifications, oldest first; past their time they leave on their own.
+   *
+   * @default []
+   */
+  readonly items?: readonly NotificationItem[];
+  /**
+   * Where the stack sits; the default is the top right (the top centre on a phone in portrait).
+   *
+   * @default "topRight"
+   */
+  readonly anchor?: Anchor;
+  /**
+   * The most shown at once (later ones queue); 0 is 3 (2 on a phone).
+   *
+   * @default 0
+   */
+  readonly max?: number;
+  /**
+   * A card's width; 0 is 380 (the safe area's width less its gutters on a phone in portrait).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+  /**
+   * What a screen reader calls the swipe or press that dismisses one.
+   *
+   * @default "Dismiss"
+   */
+  readonly dismissLabel?: string;
+}
+
+/** What a notification stack answered this tick. */
+export interface NotificationsResult {
+  /** Keys whose time ran out this tick: drop them from the viewmodel. */
+  readonly expired: readonly string[];
+  /** Keys the player dismissed (a press on the card, a swipe, Back while it had focus). */
+  readonly dismissed: readonly string[];
+  /** The key whose action button was pressed this tick. */
+  readonly action: string | null;
+  /** The keys on screen, newest first. */
+  readonly shown: readonly string[];
+}
+
+
+/**
+ * What a count badge shows.
+ * - `"count"`: A number (99+ past max).
+ * - `"dot"`: A dot: something new, unnumbered.
+ * - `"label"`: A short word (NEW, HOT, -50%).
+ */
+export type BadgeKind = "count" | "dot" | "label";
+
+/**
+ * A count badge on the corner of the container it is built in (a tab, an inventory icon, a mailbox button).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CountBadgeDesc {
+  /**
+   * What it shows.
+   *
+   * @default "count"
+   */
+  readonly kind?: BadgeKind;
+  /**
+   * The count; 0 hides a count badge.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * Past this it shows max+; 0 is 99.
+   *
+   * @default 0
+   */
+  readonly max?: number;
+  /**
+   * The label badge's word.
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * Its tone; the default is danger, the convention for unread counts.
+   *
+   * @default "danger"
+   */
+  readonly tone?: Tone;
+  /**
+   * The corner of the container it sits on: topRight is the end side's top (mirrored right to left).
+   *
+   * @default "topRight"
+   */
+  readonly corner?: Anchor;
+  /**
+   * Pulse once when the count rises (the default).
+   *
+   * @default true
+   */
+  readonly pulse?: boolean;
+  /**
+   * What a screen reader says (3 unread); empty is the count.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+}
+
+
+/**
+ * A row of a tooltip's stats, with an optional comparison.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TooltipStat {
+  /**
+   * What it is (Damage).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its value as shown (42–58).
+   *
+   * @default ""
+   */
+  readonly value?: string;
+  /**
+   * Against what is compared (the equipped item): positive is better, drawn with an up mark in success; negative with a down mark in danger; 0 none.
+   *
+   * @default 0
+   */
+  readonly delta?: number;
+  /**
+   * The delta as shown (+12); empty formats delta.
+   *
+   * @default ""
+   */
+  readonly deltaText?: string;
+  /**
+   * Higher is worse for this stat (a cooldown): flips the marks' colours.
+   *
+   * @default false
+   */
+  readonly better?: boolean;
+}
+
+/**
+ * What a keyword link in a tooltip's body opens: a nested tooltip of its own.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TooltipLink {
+  /**
+   * The `[link=key]` id in the body.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its title.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * Its body: rich text, with links of its own.
+   *
+   * @default ""
+   */
+  readonly body?: string;
+}
+
+/**
+ * A rich tooltip card beside its trigger.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TooltipCardDesc {
+  /**
+   * The trigger is hovered or focused (its Response's hovered or focused): it shows after delayMs and stays while open, while pinned, or while the pointer is over it.
+   *
+   * @default false
+   */
+  readonly open?: boolean;
+  /**
+   * The trigger's path; a bare id names an element of the open container (built before this call). Empty places it at the pointer's last trigger rectangle of this tooltip.
+   *
+   * @default ""
+   */
+  readonly target?: string;
+  /**
+   * The title.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * A line under it (Legendary sword, Passive).
+   *
+   * @default ""
+   */
+  readonly subtitle?: string;
+  /**
+   * The title's colour and pips.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * An icon of the atlas beside the title.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * An art slot instead of the icon (item or ability icon, 1:1).
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * The body: rich text markup (og.ui.richText), its `[link=key]keyword[/link]` spans opening nested tooltips from links.
+   *
+   * @default ""
+   */
+  readonly body?: string;
+  /**
+   * Stat rows.
+   *
+   * @default []
+   */
+  readonly stats?: readonly TooltipStat[];
+  /**
+   * With comparison deltas: the heading over a second card of what is equipped (Equipped); empty draws no second card.
+   *
+   * @default ""
+   */
+  readonly compareTitle?: string;
+  /**
+   * The equipped item's stats, in the second card.
+   *
+   * @default []
+   */
+  readonly compareStats?: readonly TooltipStat[];
+  /**
+   * A last line (Sell for 120, a flavour quote) in the muted ink.
+   *
+   * @default ""
+   */
+  readonly footer?: string;
+  /**
+   * Action hints (Right-click to equip), each with its action's glyph when one is named [action:equip].
+   *
+   * @default []
+   */
+  readonly hints?: readonly string[];
+  /**
+   * What the body's links open.
+   *
+   * @default []
+   */
+  readonly links?: readonly TooltipLink[];
+  /**
+   * Rest before it shows; 0 is the style's slow duration.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly delayMs?: number;
+  /**
+   * It locks open: after pinMs of rest a ring fills on its corner and it stays when the pointer leaves the trigger, until the pointer leaves the card (as Paradox's games do); the pin action (middle mouse, T, a pad's Y) pins at once. Nested tooltips are always pinnable.
+   *
+   * @default true
+   */
+  readonly pinnable?: boolean;
+  /**
+   * Rest before it pins; 0 is 900.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly pinMs?: number;
+  /**
+   * Its width; 0 is 320 (300 on a phone).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+  /**
+   * Where it prefers to sit against the trigger: right (the end side), left, top or bottom; it flips and clamps to stay inside the safe area.
+   *
+   * @default "right"
+   */
+  readonly placement?: Anchor;
+  /**
+   * The pin hint under a pinned card.
+   *
+   * @default "Pinned"
+   */
+  readonly pinLabel?: string;
+}
+
+/** What a tooltip card did this tick. */
+export interface TooltipCardResult {
+  /** It is on screen (or leaving). */
+  readonly visible: boolean;
+  /** It is pinned. */
+  readonly pinned: boolean;
+  /** The link pressed in it (or in a nested card) this tick: its key. */
+  readonly link: string | null;
+  /** How many nested cards are open beneath it. */
+  readonly depth: number;
+}
+
+
+/**
+ * How a progress bar shows its value.
+ * - `"bar"`: A track filled from its start.
+ * - `"steps"`: Equal segments, each filled whole as the value passes it (a level's stages).
+ * - `"indeterminate"`: No value: a band sweeping along the track (loading of unknown length).
+ */
+export type ProgressStyle = "bar" | "steps" | "indeterminate";
+
+/**
+ * A progress bar.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ProgressBarDesc {
+  /**
+   * Done, 0 to 1.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly value?: number;
+  /**
+   * A second, paler fill ahead of value (downloaded, ahead of installed), 0 to 1.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly buffer?: number;
+  /**
+   * How it shows.
+   *
+   * @default "bar"
+   */
+  readonly style?: ProgressStyle;
+  /**
+   * For style steps: how many; 0 is 5.
+   *
+   * @default 0
+   */
+  readonly steps?: number;
+  /**
+   * A caption over it at the start (Downloading); empty is none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * The value in words at the end (2.1 of 4.5 GB); empty is the percent, with showValue.
+   *
+   * @default ""
+   */
+  readonly valueText?: string;
+  /**
+   * Show the value at the end.
+   *
+   * @default false
+   */
+  readonly showValue?: boolean;
+  /**
+   * Its fill's tone; neutral is the primary.
+   *
+   * @default "neutral"
+   */
+  readonly tone?: Tone;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * The track's height; 0 is 8 (6 on a phone).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly thickness?: number;
+  /**
+   * A highlight sweeps over the fill while it is short of done (still under reduced motion it stops).
+   *
+   * @default true
+   */
+  readonly sheen?: boolean;
+}
+
+
+/**
+ * A progress ring or spinner.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ProgressRingDesc {
+  /**
+   * Done, 0 to 1; null spins (indeterminate).
+   *
+   * @default null
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly value?: number | null;
+  /**
+   * Its diameter; 0 is 48.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * The ring's width; 0 is a tenth of the size, at least 3.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly thickness?: number;
+  /**
+   * The fill's tone; neutral is the primary.
+   *
+   * @default "neutral"
+   */
+  readonly tone?: Tone;
+  /**
+   * Text in the middle; empty is the percent for a value (none for a spinner), and none when the ring is under 40 px.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * What a screen reader calls it (Loading); empty is Progress.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+}
+
+
+/**
+ * What a skeleton stands in for.
+ * - `"lines"`: Lines of text: the last one shorter.
+ * - `"card"`: A card: an art block, a title and two lines.
+ * - `"row"`: A list row: an avatar, a title and a line.
+ * - `"avatar"`: A round avatar.
+ * - `"block"`: A block of the given size.
+ */
+export type SkeletonShape = "lines" | "card" | "row" | "avatar" | "block";
+
+/**
+ * A skeleton standing in for content that is loading.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SkeletonGroupDesc {
+  /**
+   * What it stands in for.
+   *
+   * @default "lines"
+   */
+  readonly shape?: SkeletonShape;
+  /**
+   * Lines, for lines; 0 is 3.
+   *
+   * @default 0
+   */
+  readonly lines?: number;
+  /**
+   * Repeats (rows of a list); 0 is 1.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * A block's or a card's art height; 0 is 120.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height?: number;
+  /**
+   * What a screen reader says while it loads.
+   *
+   * @default "Loading"
+   */
+  readonly name?: string;
+}
+
+
+/**
+ * How a number is written.
+ * - `"grouped"`: Every digit, grouped by thousands (12,840,000).
+ * - `"compact"`: Shortened past 9,999 to three significant digits with K, M, B, T, then scientific (12.8M).
+ * - `"letters"`: Shortened as idle games do: K, M, B, T, then aa, ab, … az, ba … (1.25ab), never running out.
+ * - `"scientific"`: Mantissa and exponent past 9,999 (1.28e7).
+ * - `"engineering"`: As scientific with the exponent a multiple of three (12.8e6).
+ */
+export type Notation = "grouped" | "compact" | "letters" | "scientific" | "engineering";
+
+/**
+ * How og.ui.formatNumber and the counters write a number.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NumberFormatDesc {
+  /**
+   * The notation.
+   *
+   * @default "grouped"
+   */
+  readonly notation?: Notation;
+  /**
+   * Digits after the point; null is none below 10,000 and three significant digits in the shortened forms.
+   *
+   * @default null
+   */
+  readonly decimals?: number | null;
+  /**
+   * The value is value × 10^exponent: numbers past 1e308 (an idle game's 1.5e420 is value 1.5, exponent 420).
+   *
+   * @default 0
+   */
+  readonly exponent?: number;
+  /**
+   * A + before positive values.
+   *
+   * @default false
+   */
+  readonly sign?: boolean;
+  /**
+   * Text before it ($).
+   *
+   * @default ""
+   */
+  readonly prefix?: string;
+  /**
+   * Text after it ( XP, %).
+   *
+   * @default ""
+   */
+  readonly suffix?: string;
+  /**
+   * The thousands separator.
+   *
+   * @default ","
+   */
+  readonly group?: string;
+  /**
+   * The decimal point.
+   *
+   * @default "."
+   */
+  readonly point?: string;
+}
+
+
+/**
+ * A big number that counts to its value.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NumberCounterDesc {
+  /**
+   * How it is written.
+   *
+   * @default {}
+   */
+  readonly format?: NumberFormatDesc;
+  /**
+   * The type step; null is xl3.
+   *
+   * @default null
+   */
+  readonly step?: TypeStepName | null;
+  /**
+   * The font; the default is mono (tabular digits that do not jitter).
+   *
+   * @default "mono"
+   */
+  readonly font?: FontRole;
+  /**
+   * The ink; null is ink.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * A caption under it (Score, Gold); empty is none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * An icon of the atlas before it (coin); empty is none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Each digit rolls to its next like an odometer while it counts (the default); off, the number counts in place.
+   *
+   * @default true
+   */
+  readonly roll?: boolean;
+  /**
+   * How long a change takes to count; 0 is 600 ms (a rise of more than a tenth takes up to 1.2 s).
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+  /**
+   * A rise throws its +n off the number, rising and fading (the default).
+   *
+   * @default true
+   */
+  readonly delta?: boolean;
+  /**
+   * Play counterTick as it counts, pitched higher through the count.
+   *
+   * @default false
+   */
+  readonly ticks?: boolean;
+  /**
+   * Opens its own anchored group there (on the HUD chip); null builds it in place.
+   *
+   * @default null
+   */
+  readonly anchor?: Anchor | null;
+  /**
+   * How it aligns in its column.
+   *
+   * @default "start"
+   */
+  readonly align?: TextAlign;
+}
+
+
+/**
+ * What a banner announces, which sets its look and timing.
+ * - `"title"`: A title card: an area or chapter name over a thin rule (Elden Ring's place names), slow fade (3 s).
+ * - `"wave"`: A wave or round: a band across the screen with a large title that slams in (2.4 s).
+ * - `"victory"`: A win: a gold band with a burst (3.5 s); plays success.
+ * - `"defeat"`: A loss: a dark band in danger (3.5 s); plays error.
+ * - `"warning"`: A warning across the screen (Boss approaching): danger stripes that pulse (3 s); plays warning.
+ */
+export type BannerKind = "title" | "wave" | "victory" | "defeat" | "warning";
+
+/**
+ * A full-width announcement.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface BannerDesc {
+  /**
+   * What it announces.
+   *
+   * @default "title"
+   */
+  readonly kind?: BannerKind;
+  /**
+   * The big line.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * A small line over it (Chapter II, Wave).
+   *
+   * @default ""
+   */
+  readonly eyebrow?: string;
+  /**
+   * A line under it.
+   *
+   * @default ""
+   */
+  readonly subtitle?: string;
+  /**
+   * og.ui.tick() when it should start: a later tick restarts it. Past its time it is gone.
+   *
+   * @default 0
+   */
+  readonly shownAt?: number;
+  /**
+   * How long it holds before it leaves; 0 is the kind's.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+  /**
+   * Where it sits; the default is the centre.
+   *
+   * @default "center"
+   */
+  readonly anchor?: Anchor;
+  /**
+   * An art slot behind the title (a boss portrait, a region's emblem; banner kind, about 4:1).
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+}
+
+/** Where a banner is. */
+export interface BannerResult {
+  /** On screen. */
+  readonly visible: boolean;
+  /** It finished this tick. */
+  readonly done: boolean;
+  /**
+   * 0 entering to 1 gone.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly progress: number;
+}
+
+
+/**
+ * A ribbon on a card or a result.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface UiRibbonDesc {
+  /**
+   * Its words (NEW, -50%, New best!).
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * Where on the open container: topLeft or topRight wrap the corner diagonally; top or bottom lie across as a banner with notched ends; center slaps it across the middle like a stamp.
+   *
+   * @default "topRight"
+   */
+  readonly corner?: Anchor;
+  /**
+   * Its colour; the default is primary.
+   *
+   * @default "primary"
+   */
+  readonly tone?: Tone;
+  /**
+   * og.ui.tick() when it slaps on (a stamp's motion and a sound); null shows it settled.
+   *
+   * @default null
+   */
+  readonly shownAt?: number | null;
+  /**
+   * What a screen reader says; empty is the text.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+}
+
+
+/**
+ * Which celebration plays.
+ * - `"confetti"`: Confetti falls over the screen from its top edge, tumbling and fluttering.
+ * - `"burst"`: Rays, sparks and a ring thrown from the open container's centre (a reward, a level's star).
+ * - `"levelUp"`: A level up: a ring of light expands, rays turn behind a big LEVEL UP and the new level, sparks rise.
+ * - `"fireworks"`: Shells rise and burst in rings across the top of the screen.
+ */
+export type CelebrationKind = "confetti" | "burst" | "levelUp" | "fireworks";
+
+/**
+ * A celebration effect.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CelebrationDesc {
+  /**
+   * Which one.
+   *
+   * @default "confetti"
+   */
+  readonly kind?: CelebrationKind;
+  /**
+   * og.ui.tick() when it fires: a later tick fires it again.
+   *
+   * @default 0
+   */
+  readonly at?: number;
+  /**
+   * Its colours; empty is the primary, gold and the style's chart series.
+   *
+   * @default []
+   */
+  readonly colors?: readonly Paint[];
+  /**
+   * How much: confetti count and burst reach scale by it.
+   *
+   * @default 1
+   * @range 0..3
+   */
+  readonly intensity?: number;
+  /**
+   * levelUp: the big word (LEVEL UP).
+   *
+   * @default "Level up"
+   */
+  readonly title?: string;
+  /**
+   * levelUp: the new level (12).
+   *
+   * @default ""
+   */
+  readonly value?: string;
+  /**
+   * How long it lasts; 0 is the kind's (confetti 3 s, burst 1 s, levelUp 2.6 s, fireworks 3.5 s).
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+}
+
+
+/**
+ * A row of stars earned.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface StarRatingDesc {
+  /**
+   * Stars earned.
+   *
+   * @default 0
+   */
+  readonly earned?: number;
+  /**
+   * Stars possible; 0 is 3.
+   *
+   * @default 0
+   */
+  readonly max?: number;
+  /**
+   * A star's size; 0 is 48 (the middle of three larger, as Angry Birds and Candy Crush do).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * og.ui.tick() when the stars start landing in turn (a results screen); null shows them settled.
+   *
+   * @default null
+   */
+  readonly revealAt?: number | null;
+  /**
+   * Between stars landing; 0 is 320.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly staggerMs?: number;
+  /**
+   * What a screen reader says ({earned} of {max} stars).
+   *
+   * @default "{earned} of {max} stars"
+   */
+  readonly name?: string;
+}
+
+
+/**
+ * The subtitle text size (XAG 104: the player chooses).
+ * - `"small"`: Small: the caption step, never under 18 px at 1080p.
+ * - `"medium"`: Medium (the default).
+ * - `"large"`: Large.
+ * - `"huge"`: Huge.
+ */
+export type SubtitleSize = "small" | "medium" | "large" | "huge";
+
+/**
+ * The player's subtitle settings (XAG 104), from a settings screen.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SubtitleSettings {
+  /**
+   * Subtitles show.
+   *
+   * @default true
+   */
+  readonly enabled?: boolean;
+  /**
+   * Sound captions show ([explosion], [footsteps]).
+   *
+   * @default false
+   */
+  readonly captions?: boolean;
+  /**
+   * The text size.
+   *
+   * @default "medium"
+   */
+  readonly size?: SubtitleSize;
+  /**
+   * The box behind the text: 0 none (the text keeps its outline), 1 opaque.
+   *
+   * @default 0.75
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly background?: number;
+  /**
+   * Each line begins with its speaker's name.
+   *
+   * @default true
+   */
+  readonly speakerNames?: boolean;
+  /**
+   * Each speaker's name in its colour.
+   *
+   * @default true
+   */
+  readonly speakerColors?: boolean;
+  /**
+   * An arrow beside a line whose speaker or sound is off screen, toward it.
+   *
+   * @default true
+   */
+  readonly directions?: boolean;
+}
+
+/**
+ * A line of dialogue or a sound caption showing now.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SubtitleLine {
+  /**
+   * Its key (its probe id), stable while it shows.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * What is said, or the sound ([door creaks]).
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * Who says it; empty for a sound caption or an unseen narrator.
+   *
+   * @default ""
+   */
+  readonly speaker?: string;
+  /**
+   * The speaker's colour; null is the highlight.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * A sound caption, not speech: shown in brackets, only with captions on.
+   *
+   * @default false
+   */
+  readonly caption?: boolean;
+  /**
+   * Where its source is, clockwise from straight ahead (0 ahead, π/2 right); null on screen. With directions on, an arrow points there.
+   *
+   * @default null
+   * @unit rad (radians)
+   */
+  readonly direction?: number | null;
+}
+
+/**
+ * The subtitles showing now.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SubtitlesDesc {
+  /**
+   * The lines showing now, oldest first: at most two speakers' lines show (the newest), captions above them.
+   *
+   * @default []
+   */
+  readonly lines?: readonly SubtitleLine[];
+  /**
+   * The player's settings.
+   *
+   * @default {}
+   */
+  readonly settings?: SubtitleSettings;
+  /**
+   * Extra space above the safe area's bottom (to sit over a HUD bar).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly bottom?: number;
+}
+
+
+/**
  * A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
@@ -38235,6 +39414,111 @@ export declare namespace og {
     function overlaps(): readonly UiOverlap[];
     /** What the last frame built, rebuilt, laid out and kept. */
     function layoutStats(): UiLayoutStats;
+    /**
+     * A notification stack (toasts, achievements, rewards, invites): cards anchored in the safe area, newest nearest the anchor's edge, that enter on the style's enter spring from that edge, reflow on its panel spring as others leave (layout animation), and leave sliding out. A card's lifetime drains along its bottom edge; the pointer resting on it holds the time; a press dismisses it, and a swipe toward the edge throws it off. More than max wait in a queue whose time does not run.
+     * Parts: Notification.card[<variant>][<tone>] (the card, partClass hud), Notification.accent (the start edge in the tone), Notification.well[rarity=<tier>] (the icon or art slot), Notification.title, Notification.body, Notification.count (the ×3 chip), Notification.progress and Notification.progressFill, Notification.life (the draining time line), Notification.action. Slots: each item's image (art kind item, achievement or avatar, 1:1).
+     * States: on each card, group life (entering, shown, leaving) and group tone (the item's tone). Motion: enter and exit springs, layout motion for the reflow, an achievement's well pops (emphasis spring). Sounds: notification, reward (achievement, reward) or warning (alert) when a card first shows. Accessibility: each card is a status (an alert: an alert) named by its eyebrow, title and body; its action a button. Probe ids: <id>/<key>, its Title, Body, Count, Action, Life.
+     *
+     * @param id Its id.
+     * @param desc The items and where they stack.
+     */
+    function notifications(id: string, desc?: NotificationsDesc): NotificationsResult;
+    /**
+     * A count badge: a small pill on a corner of the open container, outset by half its height so it straddles the edge, with a ring in the ground colour that cuts it from what it sits on. A count over max reads max+; a rise pops it (emphasis spring) and plays notification once. Hidden at 0.
+     * Parts: CountBadge.base[<kind>][<tone>], CountBadge.text. States: group count (none, some, overflow). Accessibility: status named by name or the count. Probe ids: <id>, <id>/Text. Call it inside the container it decorates, after its content; the container should not clip.
+     *
+     * @param id Its id.
+     * @param desc What it shows and where.
+     */
+    function countBadge(id: string, desc?: CountBadgeDesc): void;
+    /**
+     * A rich tooltip: a card in the tooltip layer beside its trigger, flipped and clamped inside the safe area, with a title in its rarity's colour and pips, an art slot, rich-text body whose keyword links open nested cards (to any depth, each pinnable, as in Crusader Kings III and Baldur's Gate 3), stat rows, a comparison card of what is equipped with up and down deltas (Diablo IV), a footer and action hints. It fades and rises in on the style's enter spring after delayMs; a pinnable card fills a ring at its corner and locks; a locked card stays while the pointer is on it or on a card it opened.
+     * Parts: TooltipCard.card[<rarity>][pinned], TooltipCard.header, TooltipCard.title, TooltipCard.subtitle, TooltipCard.well, TooltipCard.body, TooltipCard.stat, TooltipCard.delta[up|down], TooltipCard.compare (the second card), TooltipCard.footer, TooltipCard.hint, TooltipCard.pin (the ring). Slots: image (art kind item or ability, 1:1). States: group pin (resting, pinning, pinned). Sounds: open when it pins. Accessibility: tooltip named by the title, described by the body; its links are links. Probe ids: <id>, <id>/Title, <id>/Body (its links <id>/Body/<key>), <id>/Stat#i, <id>/Compare, <id>/Pin, a nested card <id>/<key>.
+     *
+     * @param id Its id (one per trigger).
+     * @param desc When it shows, what it says and where.
+     */
+    function tooltipCard(id: string, desc?: TooltipCardDesc): TooltipCardResult;
+    /**
+     * A progress bar: a rounded track, a fill that moves to its value on the style's ui spring (never jumping back on a retarget), a buffer ahead of it, a sweeping sheen while it works, segments for steps, a sweeping band when indeterminate, and a caption and value over it. Reaching 1 flashes the fill once and plays success.
+     * Parts: ProgressBar.track[<style>], ProgressBar.buffer, ProgressBar.fill[<tone>][done], ProgressBar.step[filled], ProgressBar.label, ProgressBar.value. States: group progress (working, done) and group mode (determinate, indeterminate). Accessibility: progressbar named by the label, 0 to 100 (busy when indeterminate). Probe ids: <id>, <id>/Track, <id>/Fill, <id>/Label, <id>/Value.
+     *
+     * @param id Its id.
+     * @param desc Its value and look.
+     */
+    function progressBar(id: string, desc?: ProgressBarDesc): void;
+    /**
+     * A progress ring: an arc filled clockwise from the top on the style's ui spring, or a spinning arc that grows and shrinks as it turns (Material's indeterminate ring, which reads as working at any size); a label in the middle. Under reduced motion the spinner pulses its opacity instead of turning.
+     * Parts: ProgressRing.track, ProgressRing.fill[<tone>][spinning], ProgressRing.label. States: group mode (determinate, indeterminate). Accessibility: progressbar (busy when spinning). Probe ids: <id>, <id>/Fill, <id>/Label.
+     *
+     * @param id Its id.
+     * @param desc Its value and size.
+     */
+    function progressRing(id: string, desc?: ProgressRingDesc): void;
+    /**
+     * A skeleton: shapes of the neutral fill where content will arrive, swept by one sheen across the whole group (not each piece on its own clock), cornered as the parts they stand for. The sheen stops under reduced motion and the shapes breathe their opacity instead.
+     * Parts: Skeleton.piece[<shape>], Skeleton.sheen. Accessibility: one progressbar, busy, named by name. Probe ids: <id>, <id>/Piece#i.
+     *
+     * @param id Its id.
+     * @param desc What it stands in for.
+     */
+    function skeletonGroup(id: string, desc?: SkeletonGroupDesc): void;
+    /**
+     * A number written in a notation: grouped, compact, idle letters, scientific or engineering, with a sign, prefix and suffix and the locale's separators, and past 1e308 through its exponent. Deterministic: the same text on every host.
+     *
+     * @param value The number (times 10^format.exponent).
+     * @param format How to write it.
+     */
+    function formatNumber(value: number, format?: NumberFormatDesc): string;
+    /**
+     * A number display for scores, currency and resources: written in its notation (idle letters past trillions, numbers past 1e308), counting to a new value on an ease-out, its digits rolling like an odometer, a +n delta flying off on a rise, a pop when it lands (emphasis spring) and a flash of danger on a fall; on the HUD chip with its outline when anchored. Returns the number shown this tick.
+     * Parts: NumberCounter.frame[hud], NumberCounter.value, NumberCounter.digit, NumberCounter.icon, NumberCounter.label, NumberCounter.delta[up|down]. States: group change (still, rising, falling). Sounds: counterTick while counting, if ticks. Accessibility: text named by the label, value the final number written out (not each frame of the count). Probe ids: <id>, <id>/Value (its text is the whole number shown), <id>/Label, <id>/Delta.
+     *
+     * @param id Its id.
+     * @param value The value to count to (times 10^format.exponent).
+     * @param desc How it looks and counts.
+     */
+    function numberCounter(id: string, value: number, desc?: NumberCounterDesc): number;
+    /**
+     * A full-width announcement: a wave or round band that slams in with a squash and a shake, a title card that fades up over a rule that draws out from its centre, a victory band with a burst and confetti, a defeat band, a warning with sweeping danger stripes. Its letters track in as it enters; it holds, then leaves on the style's exit ease. The tick-driven timing makes it the same in a replay.
+     * Parts: Banner.band[<kind>], Banner.rule, Banner.eyebrow, Banner.title, Banner.subtitle, Banner.stripes, Banner.art. Slots: image (art kind banner). States: group phase (entering, holding, leaving, gone). Sounds: by kind on entering. Accessibility: alert (warning, defeat) or status, named by eyebrow, title and subtitle. Probe ids: <id>, <id>/Title, <id>/Eyebrow, <id>/Subtitle.
+     *
+     * @param id Its id.
+     * @param desc What it says and when.
+     */
+    function banner(id: string, desc?: BannerDesc): BannerResult;
+    /**
+     * A ribbon: a diagonal band wrapping a corner of the open container with its folded tail, a notched banner across its top or bottom, or a stamp slapped across its middle (a New best!: it lands from large and turned, squashes, settles and puffs dust, emphasis spring). The open container should clip its corners for a corner ribbon.
+     * Parts: Ribbon.band[<corner>][<tone>], Ribbon.fold, Ribbon.text. States: group slap (waiting, landing, settled). Sounds: confirm when it lands. Accessibility: status named by the text. Probe ids: <id>, <id>/Text.
+     *
+     * @param id Its id.
+     * @param desc Its words and place.
+     */
+    function ribbon(id: string, desc?: UiRibbonDesc): void;
+    /**
+     * A celebration: confetti over the whole screen, a burst from the container it is built in, a level-up flourish centred on the screen, or fireworks. Particles are the UI's own (seeded, so a replay throws the same), drawn over the HUD and under dialogs; under reduced motion only the level-up's text and a soft glow show. Plays reward (levelUp, fireworks) or success (confetti, burst) when it fires.
+     * Parts: Celebration.ring, Celebration.rays, Celebration.title, Celebration.value (level up). States: group play (idle, playing). Accessibility: a level up is a status named by its title and value. Probe ids: <id>, <id>/Title, <id>/Value.
+     *
+     * @param id Its id.
+     * @param desc Which one and when.
+     */
+    function celebration(id: string, desc?: CelebrationDesc): void;
+    /**
+     * Stars earned: empty sockets, each earned star landing in turn from large with a turn and an overshoot (emphasis spring), a burst of sparks as it lands and a pitch rising star by star; the middle star of three sits higher and larger. Under reduced motion they fade in.
+     * Parts: StarRating.socket, StarRating.star[earned]. States: on each star, group star (empty, landing, earned). Sounds: reward, pitched up a step per star. Accessibility: image named by name. Probe ids: <id>, <id>/Star#i.
+     *
+     * @param id Its id.
+     * @param desc How many and when.
+     */
+    function starRating(id: string, desc?: StarRatingDesc): void;
+    /**
+     * Subtitles and captions to the Xbox Accessibility Guidelines' 104: centred at the bottom of the safe area, at most two lines of at most about 42 characters each across 70 % of the width (the box wraps by words, never by letters), in the player's size (never under 18 px at 1080p), on a box of the player's opacity (an outline when it is clear), with the speaker's name in their colour, sound captions in brackets above speech, an arrow toward a speaker off screen, new lines fading in quickly (never sliding: text that moves is harder to read).
+     * Parts: Subtitles.box, Subtitles.line, Subtitles.speaker, Subtitles.text, Subtitles.caption, Subtitles.arrow. Accessibility: a log whose new lines are read, each line text named speaker: text. Probe ids: <id>, <id>/<key>, its Speaker, Text, Arrow.
+     *
+     * @param id Its id.
+     * @param desc The lines and the settings.
+     */
+    function subtitles(id: string, desc?: SubtitlesDesc): void;
     /**
      * Give the element built just before (a container just closed, or a widget) a role, a name, a value and states for the accessibility tree and the probe's dump (dump_ui's role, name, value, states). Components built from containers call it so a screen reader meets a menu, a tree or a table, not rows of buttons. Answers false, with a frame warning, when no element was built before it or the role is unknown.
      *

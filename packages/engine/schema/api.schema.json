@@ -9463,6 +9463,36 @@
         "UiMotionEvent",
         "UiOverlap",
         "UiLayoutStats",
+        "NotificationVariant",
+        "Rarity",
+        "NotificationItem",
+        "NotificationsDesc",
+        "NotificationsResult",
+        "BadgeKind",
+        "CountBadgeDesc",
+        "TooltipStat",
+        "TooltipLink",
+        "TooltipCardDesc",
+        "TooltipCardResult",
+        "ProgressStyle",
+        "ProgressBarDesc",
+        "ProgressRingDesc",
+        "SkeletonShape",
+        "SkeletonGroupDesc",
+        "Notation",
+        "NumberFormatDesc",
+        "NumberCounterDesc",
+        "BannerKind",
+        "BannerDesc",
+        "BannerResult",
+        "UiRibbonDesc",
+        "CelebrationKind",
+        "CelebrationDesc",
+        "StarRatingDesc",
+        "SubtitleSize",
+        "SubtitleSettings",
+        "SubtitleLine",
+        "SubtitlesDesc",
         "VectorArt",
         "UiMaterial",
         "VectorArt",
@@ -13348,6 +13378,285 @@
           "params": [],
           "returns": "UiLayoutStats",
           "publish": true
+        },
+        {
+          "name": "notifications",
+          "doc": "A notification stack (toasts, achievements, rewards, invites): cards anchored in the safe area, newest nearest the anchor's edge, that enter on the style's enter spring from that edge, reflow on its panel spring as others leave (layout animation), and leave sliding out. A card's lifetime drains along its bottom edge; the pointer resting on it holds the time; a press dismisses it, and a swipe toward the edge throws it off. More than max wait in a queue whose time does not run.\nParts: Notification.card[<variant>][<tone>] (the card, partClass hud), Notification.accent (the start edge in the tone), Notification.well[rarity=<tier>] (the icon or art slot), Notification.title, Notification.body, Notification.count (the ×3 chip), Notification.progress and Notification.progressFill, Notification.life (the draining time line), Notification.action. Slots: each item's image (art kind item, achievement or avatar, 1:1).\nStates: on each card, group life (entering, shown, leaving) and group tone (the item's tone). Motion: enter and exit springs, layout motion for the reflow, an achievement's well pops (emphasis spring). Sounds: notification, reward (achievement, reward) or warning (alert) when a card first shows. Accessibility: each card is a status (an alert: an alert) named by its eyebrow, title and body; its action a button. Probe ids: <id>/<key>, its Title, Body, Count, Action, Life.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "NotificationsDesc",
+              "optional": true,
+              "doc": "The items and where they stack."
+            }
+          ],
+          "returns": "NotificationsResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "countBadge",
+          "doc": "A count badge: a small pill on a corner of the open container, outset by half its height so it straddles the edge, with a ring in the ground colour that cuts it from what it sits on. A count over max reads max+; a rise pops it (emphasis spring) and plays notification once. Hidden at 0.\nParts: CountBadge.base[<kind>][<tone>], CountBadge.text. States: group count (none, some, overflow). Accessibility: status named by name or the count. Probe ids: <id>, <id>/Text. Call it inside the container it decorates, after its content; the container should not clip.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "CountBadgeDesc",
+              "optional": true,
+              "doc": "What it shows and where."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "tooltipCard",
+          "doc": "A rich tooltip: a card in the tooltip layer beside its trigger, flipped and clamped inside the safe area, with a title in its rarity's colour and pips, an art slot, rich-text body whose keyword links open nested cards (to any depth, each pinnable, as in Crusader Kings III and Baldur's Gate 3), stat rows, a comparison card of what is equipped with up and down deltas (Diablo IV), a footer and action hints. It fades and rises in on the style's enter spring after delayMs; a pinnable card fills a ring at its corner and locks; a locked card stays while the pointer is on it or on a card it opened.\nParts: TooltipCard.card[<rarity>][pinned], TooltipCard.header, TooltipCard.title, TooltipCard.subtitle, TooltipCard.well, TooltipCard.body, TooltipCard.stat, TooltipCard.delta[up|down], TooltipCard.compare (the second card), TooltipCard.footer, TooltipCard.hint, TooltipCard.pin (the ring). Slots: image (art kind item or ability, 1:1). States: group pin (resting, pinning, pinned). Sounds: open when it pins. Accessibility: tooltip named by the title, described by the body; its links are links. Probe ids: <id>, <id>/Title, <id>/Body (its links <id>/Body/<key>), <id>/Stat#i, <id>/Compare, <id>/Pin, a nested card <id>/<key>.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id (one per trigger)."
+            },
+            {
+              "name": "desc",
+              "type": "TooltipCardDesc",
+              "optional": true,
+              "doc": "When it shows, what it says and where."
+            }
+          ],
+          "returns": "TooltipCardResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "progressBar",
+          "doc": "A progress bar: a rounded track, a fill that moves to its value on the style's ui spring (never jumping back on a retarget), a buffer ahead of it, a sweeping sheen while it works, segments for steps, a sweeping band when indeterminate, and a caption and value over it. Reaching 1 flashes the fill once and plays success.\nParts: ProgressBar.track[<style>], ProgressBar.buffer, ProgressBar.fill[<tone>][done], ProgressBar.step[filled], ProgressBar.label, ProgressBar.value. States: group progress (working, done) and group mode (determinate, indeterminate). Accessibility: progressbar named by the label, 0 to 100 (busy when indeterminate). Probe ids: <id>, <id>/Track, <id>/Fill, <id>/Label, <id>/Value.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ProgressBarDesc",
+              "optional": true,
+              "doc": "Its value and look."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "progressRing",
+          "doc": "A progress ring: an arc filled clockwise from the top on the style's ui spring, or a spinning arc that grows and shrinks as it turns (Material's indeterminate ring, which reads as working at any size); a label in the middle. Under reduced motion the spinner pulses its opacity instead of turning.\nParts: ProgressRing.track, ProgressRing.fill[<tone>][spinning], ProgressRing.label. States: group mode (determinate, indeterminate). Accessibility: progressbar (busy when spinning). Probe ids: <id>, <id>/Fill, <id>/Label.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ProgressRingDesc",
+              "optional": true,
+              "doc": "Its value and size."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "skeletonGroup",
+          "doc": "A skeleton: shapes of the neutral fill where content will arrive, swept by one sheen across the whole group (not each piece on its own clock), cornered as the parts they stand for. The sheen stops under reduced motion and the shapes breathe their opacity instead.\nParts: Skeleton.piece[<shape>], Skeleton.sheen. Accessibility: one progressbar, busy, named by name. Probe ids: <id>, <id>/Piece#i.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SkeletonGroupDesc",
+              "optional": true,
+              "doc": "What it stands in for."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "formatNumber",
+          "doc": "A number written in a notation: grouped, compact, idle letters, scientific or engineering, with a sign, prefix and suffix and the locale's separators, and past 1e308 through its exponent. Deterministic: the same text on every host.",
+          "params": [
+            {
+              "name": "value",
+              "type": "f64",
+              "optional": false,
+              "doc": "The number (times 10^format.exponent)."
+            },
+            {
+              "name": "format",
+              "type": "NumberFormatDesc",
+              "optional": true,
+              "doc": "How to write it."
+            }
+          ],
+          "returns": "String",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "numberCounter",
+          "doc": "A number display for scores, currency and resources: written in its notation (idle letters past trillions, numbers past 1e308), counting to a new value on an ease-out, its digits rolling like an odometer, a +n delta flying off on a rise, a pop when it lands (emphasis spring) and a flash of danger on a fall; on the HUD chip with its outline when anchored. Returns the number shown this tick.\nParts: NumberCounter.frame[hud], NumberCounter.value, NumberCounter.digit, NumberCounter.icon, NumberCounter.label, NumberCounter.delta[up|down]. States: group change (still, rising, falling). Sounds: counterTick while counting, if ticks. Accessibility: text named by the label, value the final number written out (not each frame of the count). Probe ids: <id>, <id>/Value (its text is the whole number shown), <id>/Label, <id>/Delta.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "value",
+              "type": "f64",
+              "optional": false,
+              "doc": "The value to count to (times 10^format.exponent)."
+            },
+            {
+              "name": "desc",
+              "type": "NumberCounterDesc",
+              "optional": true,
+              "doc": "How it looks and counts."
+            }
+          ],
+          "returns": "f64",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "banner",
+          "doc": "A full-width announcement: a wave or round band that slams in with a squash and a shake, a title card that fades up over a rule that draws out from its centre, a victory band with a burst and confetti, a defeat band, a warning with sweeping danger stripes. Its letters track in as it enters; it holds, then leaves on the style's exit ease. The tick-driven timing makes it the same in a replay.\nParts: Banner.band[<kind>], Banner.rule, Banner.eyebrow, Banner.title, Banner.subtitle, Banner.stripes, Banner.art. Slots: image (art kind banner). States: group phase (entering, holding, leaving, gone). Sounds: by kind on entering. Accessibility: alert (warning, defeat) or status, named by eyebrow, title and subtitle. Probe ids: <id>, <id>/Title, <id>/Eyebrow, <id>/Subtitle.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "BannerDesc",
+              "optional": true,
+              "doc": "What it says and when."
+            }
+          ],
+          "returns": "BannerResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "ribbon",
+          "doc": "A ribbon: a diagonal band wrapping a corner of the open container with its folded tail, a notched banner across its top or bottom, or a stamp slapped across its middle (a New best!: it lands from large and turned, squashes, settles and puffs dust, emphasis spring). The open container should clip its corners for a corner ribbon.\nParts: Ribbon.band[<corner>][<tone>], Ribbon.fold, Ribbon.text. States: group slap (waiting, landing, settled). Sounds: confirm when it lands. Accessibility: status named by the text. Probe ids: <id>, <id>/Text.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "UiRibbonDesc",
+              "optional": true,
+              "doc": "Its words and place."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "celebration",
+          "doc": "A celebration: confetti over the whole screen, a burst from the container it is built in, a level-up flourish centred on the screen, or fireworks. Particles are the UI's own (seeded, so a replay throws the same), drawn over the HUD and under dialogs; under reduced motion only the level-up's text and a soft glow show. Plays reward (levelUp, fireworks) or success (confetti, burst) when it fires.\nParts: Celebration.ring, Celebration.rays, Celebration.title, Celebration.value (level up). States: group play (idle, playing). Accessibility: a level up is a status named by its title and value. Probe ids: <id>, <id>/Title, <id>/Value.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "CelebrationDesc",
+              "optional": true,
+              "doc": "Which one and when."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "starRating",
+          "doc": "Stars earned: empty sockets, each earned star landing in turn from large with a turn and an overshoot (emphasis spring), a burst of sparks as it lands and a pitch rising star by star; the middle star of three sits higher and larger. Under reduced motion they fade in.\nParts: StarRating.socket, StarRating.star[earned]. States: on each star, group star (empty, landing, earned). Sounds: reward, pitched up a step per star. Accessibility: image named by name. Probe ids: <id>, <id>/Star#i.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "StarRatingDesc",
+              "optional": true,
+              "doc": "How many and when."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "subtitles",
+          "doc": "Subtitles and captions to the Xbox Accessibility Guidelines' 104: centred at the bottom of the safe area, at most two lines of at most about 42 characters each across 70 % of the width (the box wraps by words, never by letters), in the player's size (never under 18 px at 1080p), on a box of the player's opacity (an outline when it is clear), with the speaker's name in their colour, sound captions in brackets above speech, an arrow toward a speaker off screen, new lines fading in quickly (never sliding: text that moves is harder to read).\nParts: Subtitles.box, Subtitles.line, Subtitles.speaker, Subtitles.text, Subtitles.caption, Subtitles.arrow. Accessibility: a log whose new lines are read, each line text named speaker: text. Probe ids: <id>, <id>/<key>, its Speaker, Text, Arrow.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SubtitlesDesc",
+              "optional": true,
+              "doc": "The lines and the settings."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
         },
         {
           "name": "semantics",
@@ -51139,6 +51448,1371 @@
         "laidOut",
         "keptCommands"
       ],
+      "additionalProperties": false
+    },
+    "NotificationVariant": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a notification is, which sets its look, sound and default time.",
+      "type": "string",
+      "enum": [
+        "standard",
+        "achievement",
+        "reward",
+        "alert",
+        "social"
+      ],
+      "x-og-variants": {
+        "standard": "A plain message: a tone's accent and icon well (4 s).",
+        "achievement": "An achievement: a medal well in gold, an eyebrow over the title, points (6 s); plays reward.",
+        "reward": "An item or currency received: the icon well glows in the rarity's colour (5 s); plays reward.",
+        "alert": "A warning that must be read: danger accent, read at once by a screen reader (8 s); plays warning.",
+        "social": "A friend, invite or message: a round avatar slot (5 s)."
+      }
+    },
+    "Rarity": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A loot tier (the style's rarity colours, each paired with its pips so no tier is told by colour alone).",
+      "type": "string",
+      "enum": [
+        "none",
+        "common",
+        "uncommon",
+        "rare",
+        "epic",
+        "legendary",
+        "mythic"
+      ],
+      "x-og-variants": {
+        "none": "No tier.",
+        "common": "Common: one pip.",
+        "uncommon": "Uncommon: two pips.",
+        "rare": "Rare: three pips.",
+        "epic": "Epic: four pips.",
+        "legendary": "Legendary: five pips.",
+        "mythic": "Mythic: six pips."
+      }
+    },
+    "NotificationItem": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One notification of a stack, as the game's viewmodel holds it. The game appends one when something happens and drops the keys the stack reports expired or dismissed.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key, stable while it lives (also its probe id): posting a key again with a higher count merges it (×3).",
+          "default": ""
+        },
+        "title": {
+          "type": "string",
+          "description": "The headline.",
+          "default": ""
+        },
+        "body": {
+          "type": "string",
+          "description": "A line under it; empty is none (two lines at most, then an ellipsis).",
+          "default": ""
+        },
+        "eyebrow": {
+          "type": "string",
+          "description": "A small line over the title (Achievement unlocked); empty is none.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas in its well; empty draws the tone's mark.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An art slot in the well instead of the icon (an item, an avatar).",
+          "default": null
+        },
+        "tone": {
+          "$ref": "#/$defs/Tone",
+          "description": "Its tone: the accent edge and the icon well.",
+          "default": "neutral"
+        },
+        "variant": {
+          "$ref": "#/$defs/NotificationVariant",
+          "description": "What it is.",
+          "default": "standard"
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "A reward's tier: the well's glow and pips.",
+          "default": "none"
+        },
+        "at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.ui.tick() when it was posted: its time runs from when it first shows (a queued one waits).",
+          "default": 0
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "How long it shows; 0 is the variant's time.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "sticky": {
+          "type": "boolean",
+          "description": "It stays until dismissed or its action is pressed.",
+          "default": false
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many times it happened (a ×3 chip from 2 on).",
+          "default": 0
+        },
+        "progress": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A progress bar under the body, 0 to 1 (an achievement 3 of 10 of the way).",
+          "default": null,
+          "x-og-unit": "ratio"
+        },
+        "progressText": {
+          "type": "string",
+          "description": "The progress in words (3 / 10); empty is none.",
+          "default": ""
+        },
+        "points": {
+          "type": "string",
+          "description": "A value at the end (+50 G, 120 XP); empty is none.",
+          "default": ""
+        },
+        "action": {
+          "type": "string",
+          "description": "A button's label (Accept, View); empty is none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "NotificationsDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A stack of notifications (toasts) anchored in the safe area.",
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NotificationItem"
+          },
+          "description": "The game's notifications, oldest first; past their time they leave on their own.",
+          "default": []
+        },
+        "anchor": {
+          "$ref": "#/$defs/Anchor",
+          "description": "Where the stack sits; the default is the top right (the top centre on a phone in portrait).",
+          "default": "topRight"
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most shown at once (later ones queue); 0 is 3 (2 on a phone).",
+          "default": 0
+        },
+        "width": {
+          "type": "number",
+          "description": "A card's width; 0 is 380 (the safe area's width less its gutters on a phone in portrait).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "dismissLabel": {
+          "type": "string",
+          "description": "What a screen reader calls the swipe or press that dismisses one.",
+          "default": "Dismiss"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NotificationsResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a notification stack answered this tick.",
+      "type": "object",
+      "properties": {
+        "expired": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Keys whose time ran out this tick: drop them from the viewmodel."
+        },
+        "dismissed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Keys the player dismissed (a press on the card, a swipe, Back while it had focus)."
+        },
+        "action": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The key whose action button was pressed this tick."
+        },
+        "shown": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The keys on screen, newest first."
+        }
+      },
+      "required": [
+        "expired",
+        "dismissed",
+        "action",
+        "shown"
+      ],
+      "additionalProperties": false
+    },
+    "BadgeKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a count badge shows.",
+      "type": "string",
+      "enum": [
+        "count",
+        "dot",
+        "label"
+      ],
+      "x-og-variants": {
+        "count": "A number (99+ past max).",
+        "dot": "A dot: something new, unnumbered.",
+        "label": "A short word (NEW, HOT, -50%)."
+      }
+    },
+    "CountBadgeDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A count badge on the corner of the container it is built in (a tab, an inventory icon, a mailbox button).",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/BadgeKind",
+          "description": "What it shows.",
+          "default": "count"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The count; 0 hides a count badge.",
+          "default": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Past this it shows max+; 0 is 99.",
+          "default": 0
+        },
+        "text": {
+          "type": "string",
+          "description": "The label badge's word.",
+          "default": ""
+        },
+        "tone": {
+          "$ref": "#/$defs/Tone",
+          "description": "Its tone; the default is danger, the convention for unread counts.",
+          "default": "danger"
+        },
+        "corner": {
+          "$ref": "#/$defs/Anchor",
+          "description": "The corner of the container it sits on: topRight is the end side's top (mirrored right to left).",
+          "default": "topRight"
+        },
+        "pulse": {
+          "type": "boolean",
+          "description": "Pulse once when the count rises (the default).",
+          "default": true
+        },
+        "name": {
+          "type": "string",
+          "description": "What a screen reader says (3 unread); empty is the count.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "TooltipStat": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A row of a tooltip's stats, with an optional comparison.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "What it is (Damage).",
+          "default": ""
+        },
+        "value": {
+          "type": "string",
+          "description": "Its value as shown (42–58).",
+          "default": ""
+        },
+        "delta": {
+          "type": "number",
+          "description": "Against what is compared (the equipped item): positive is better, drawn with an up mark in success; negative with a down mark in danger; 0 none.",
+          "default": 0
+        },
+        "deltaText": {
+          "type": "string",
+          "description": "The delta as shown (+12); empty formats delta.",
+          "default": ""
+        },
+        "better": {
+          "type": "boolean",
+          "description": "Higher is worse for this stat (a cooldown): flips the marks' colours.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "TooltipLink": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "What a keyword link in a tooltip's body opens: a nested tooltip of its own.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The `[link=key]` id in the body.",
+          "default": ""
+        },
+        "title": {
+          "type": "string",
+          "description": "Its title.",
+          "default": ""
+        },
+        "body": {
+          "type": "string",
+          "description": "Its body: rich text, with links of its own.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "TooltipCardDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A rich tooltip card beside its trigger.",
+      "type": "object",
+      "properties": {
+        "open": {
+          "type": "boolean",
+          "description": "The trigger is hovered or focused (its Response's hovered or focused): it shows after delayMs and stays while open, while pinned, or while the pointer is over it.",
+          "default": false
+        },
+        "target": {
+          "type": "string",
+          "description": "The trigger's path; a bare id names an element of the open container (built before this call). Empty places it at the pointer's last trigger rectangle of this tooltip.",
+          "default": ""
+        },
+        "title": {
+          "type": "string",
+          "description": "The title.",
+          "default": ""
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "A line under it (Legendary sword, Passive).",
+          "default": ""
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "The title's colour and pips.",
+          "default": "none"
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas beside the title.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An art slot instead of the icon (item or ability icon, 1:1).",
+          "default": null
+        },
+        "body": {
+          "type": "string",
+          "description": "The body: rich text markup (og.ui.richText), its `[link=key]keyword[/link]` spans opening nested tooltips from links.",
+          "default": ""
+        },
+        "stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TooltipStat"
+          },
+          "description": "Stat rows.",
+          "default": []
+        },
+        "compareTitle": {
+          "type": "string",
+          "description": "With comparison deltas: the heading over a second card of what is equipped (Equipped); empty draws no second card.",
+          "default": ""
+        },
+        "compareStats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TooltipStat"
+          },
+          "description": "The equipped item's stats, in the second card.",
+          "default": []
+        },
+        "footer": {
+          "type": "string",
+          "description": "A last line (Sell for 120, a flavour quote) in the muted ink.",
+          "default": ""
+        },
+        "hints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Action hints (Right-click to equip), each with its action's glyph when one is named [action:equip].",
+          "default": []
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TooltipLink"
+          },
+          "description": "What the body's links open.",
+          "default": []
+        },
+        "delayMs": {
+          "type": "number",
+          "description": "Rest before it shows; 0 is the style's slow duration.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "pinnable": {
+          "type": "boolean",
+          "description": "It locks open: after pinMs of rest a ring fills on its corner and it stays when the pointer leaves the trigger, until the pointer leaves the card (as Paradox's games do); the pin action (middle mouse, T, a pad's Y) pins at once. Nested tooltips are always pinnable.",
+          "default": true
+        },
+        "pinMs": {
+          "type": "number",
+          "description": "Rest before it pins; 0 is 900.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "width": {
+          "type": "number",
+          "description": "Its width; 0 is 320 (300 on a phone).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "placement": {
+          "$ref": "#/$defs/Anchor",
+          "description": "Where it prefers to sit against the trigger: right (the end side), left, top or bottom; it flips and clamps to stay inside the safe area.",
+          "default": "right"
+        },
+        "pinLabel": {
+          "type": "string",
+          "description": "The pin hint under a pinned card.",
+          "default": "Pinned"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TooltipCardResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a tooltip card did this tick.",
+      "type": "object",
+      "properties": {
+        "visible": {
+          "type": "boolean",
+          "description": "It is on screen (or leaving)."
+        },
+        "pinned": {
+          "type": "boolean",
+          "description": "It is pinned."
+        },
+        "link": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The link pressed in it (or in a nested card) this tick: its key."
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many nested cards are open beneath it."
+        }
+      },
+      "required": [
+        "visible",
+        "pinned",
+        "link",
+        "depth"
+      ],
+      "additionalProperties": false
+    },
+    "ProgressStyle": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How a progress bar shows its value.",
+      "type": "string",
+      "enum": [
+        "bar",
+        "steps",
+        "indeterminate"
+      ],
+      "x-og-variants": {
+        "bar": "A track filled from its start.",
+        "steps": "Equal segments, each filled whole as the value passes it (a level's stages).",
+        "indeterminate": "No value: a band sweeping along the track (loading of unknown length)."
+      }
+    },
+    "ProgressBarDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A progress bar.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "description": "Done, 0 to 1.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "buffer": {
+          "type": "number",
+          "description": "A second, paler fill ahead of value (downloaded, ahead of installed), 0 to 1.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "style": {
+          "$ref": "#/$defs/ProgressStyle",
+          "description": "How it shows.",
+          "default": "bar"
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "For style steps: how many; 0 is 5.",
+          "default": 0
+        },
+        "label": {
+          "type": "string",
+          "description": "A caption over it at the start (Downloading); empty is none.",
+          "default": ""
+        },
+        "valueText": {
+          "type": "string",
+          "description": "The value in words at the end (2.1 of 4.5 GB); empty is the percent, with showValue.",
+          "default": ""
+        },
+        "showValue": {
+          "type": "boolean",
+          "description": "Show the value at the end.",
+          "default": false
+        },
+        "tone": {
+          "$ref": "#/$defs/Tone",
+          "description": "Its fill's tone; neutral is the primary.",
+          "default": "neutral"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "thickness": {
+          "type": "number",
+          "description": "The track's height; 0 is 8 (6 on a phone).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "sheen": {
+          "type": "boolean",
+          "description": "A highlight sweeps over the fill while it is short of done (still under reduced motion it stops).",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProgressRingDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A progress ring or spinner.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Done, 0 to 1; null spins (indeterminate).",
+          "default": null,
+          "x-og-unit": "ratio"
+        },
+        "size": {
+          "type": "number",
+          "description": "Its diameter; 0 is 48.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "thickness": {
+          "type": "number",
+          "description": "The ring's width; 0 is a tenth of the size, at least 3.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "tone": {
+          "$ref": "#/$defs/Tone",
+          "description": "The fill's tone; neutral is the primary.",
+          "default": "neutral"
+        },
+        "label": {
+          "type": "string",
+          "description": "Text in the middle; empty is the percent for a value (none for a spinner), and none when the ring is under 40 px.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "What a screen reader calls it (Loading); empty is Progress.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "SkeletonShape": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a skeleton stands in for.",
+      "type": "string",
+      "enum": [
+        "lines",
+        "card",
+        "row",
+        "avatar",
+        "block"
+      ],
+      "x-og-variants": {
+        "lines": "Lines of text: the last one shorter.",
+        "card": "A card: an art block, a title and two lines.",
+        "row": "A list row: an avatar, a title and a line.",
+        "avatar": "A round avatar.",
+        "block": "A block of the given size."
+      }
+    },
+    "SkeletonGroupDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A skeleton standing in for content that is loading.",
+      "type": "object",
+      "properties": {
+        "shape": {
+          "$ref": "#/$defs/SkeletonShape",
+          "description": "What it stands in for.",
+          "default": "lines"
+        },
+        "lines": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Lines, for lines; 0 is 3.",
+          "default": 0
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Repeats (rows of a list); 0 is 1.",
+          "default": 0
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "type": "number",
+          "description": "A block's or a card's art height; 0 is 120.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "name": {
+          "type": "string",
+          "description": "What a screen reader says while it loads.",
+          "default": "Loading"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Notation": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How a number is written.",
+      "type": "string",
+      "enum": [
+        "grouped",
+        "compact",
+        "letters",
+        "scientific",
+        "engineering"
+      ],
+      "x-og-variants": {
+        "grouped": "Every digit, grouped by thousands (12,840,000).",
+        "compact": "Shortened past 9,999 to three significant digits with K, M, B, T, then scientific (12.8M).",
+        "letters": "Shortened as idle games do: K, M, B, T, then aa, ab, … az, ba … (1.25ab), never running out.",
+        "scientific": "Mantissa and exponent past 9,999 (1.28e7).",
+        "engineering": "As scientific with the exponent a multiple of three (12.8e6)."
+      }
+    },
+    "NumberFormatDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "How og.ui.formatNumber and the counters write a number.",
+      "type": "object",
+      "properties": {
+        "notation": {
+          "$ref": "#/$defs/Notation",
+          "description": "The notation.",
+          "default": "grouped"
+        },
+        "decimals": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Digits after the point; null is none below 10,000 and three significant digits in the shortened forms.",
+          "default": null
+        },
+        "exponent": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The value is value × 10^exponent: numbers past 1e308 (an idle game's 1.5e420 is value 1.5, exponent 420).",
+          "default": 0
+        },
+        "sign": {
+          "type": "boolean",
+          "description": "A + before positive values.",
+          "default": false
+        },
+        "prefix": {
+          "type": "string",
+          "description": "Text before it ($).",
+          "default": ""
+        },
+        "suffix": {
+          "type": "string",
+          "description": "Text after it ( XP, %).",
+          "default": ""
+        },
+        "group": {
+          "type": "string",
+          "description": "The thousands separator.",
+          "default": ","
+        },
+        "point": {
+          "type": "string",
+          "description": "The decimal point.",
+          "default": "."
+        }
+      },
+      "additionalProperties": false
+    },
+    "NumberCounterDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A big number that counts to its value.",
+      "type": "object",
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/NumberFormatDesc",
+          "description": "How it is written.",
+          "default": {}
+        },
+        "step": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TypeStepName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The type step; null is xl3.",
+          "default": null
+        },
+        "font": {
+          "$ref": "#/$defs/FontRole",
+          "description": "The font; the default is mono (tabular digits that do not jitter).",
+          "default": "mono"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The ink; null is ink.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "A caption under it (Score, Gold); empty is none.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas before it (coin); empty is none.",
+          "default": ""
+        },
+        "roll": {
+          "type": "boolean",
+          "description": "Each digit rolls to its next like an odometer while it counts (the default); off, the number counts in place.",
+          "default": true
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "How long a change takes to count; 0 is 600 ms (a rise of more than a tenth takes up to 1.2 s).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "delta": {
+          "type": "boolean",
+          "description": "A rise throws its +n off the number, rising and fading (the default).",
+          "default": true
+        },
+        "ticks": {
+          "type": "boolean",
+          "description": "Play counterTick as it counts, pitched higher through the count.",
+          "default": false
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there (on the HUD chip); null builds it in place.",
+          "default": null
+        },
+        "align": {
+          "$ref": "#/$defs/TextAlign",
+          "description": "How it aligns in its column.",
+          "default": "start"
+        }
+      },
+      "additionalProperties": false
+    },
+    "BannerKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a banner announces, which sets its look and timing.",
+      "type": "string",
+      "enum": [
+        "title",
+        "wave",
+        "victory",
+        "defeat",
+        "warning"
+      ],
+      "x-og-variants": {
+        "title": "A title card: an area or chapter name over a thin rule (Elden Ring's place names), slow fade (3 s).",
+        "wave": "A wave or round: a band across the screen with a large title that slams in (2.4 s).",
+        "victory": "A win: a gold band with a burst (3.5 s); plays success.",
+        "defeat": "A loss: a dark band in danger (3.5 s); plays error.",
+        "warning": "A warning across the screen (Boss approaching): danger stripes that pulse (3 s); plays warning."
+      }
+    },
+    "BannerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A full-width announcement.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/BannerKind",
+          "description": "What it announces.",
+          "default": "title"
+        },
+        "title": {
+          "type": "string",
+          "description": "The big line.",
+          "default": ""
+        },
+        "eyebrow": {
+          "type": "string",
+          "description": "A small line over it (Chapter II, Wave).",
+          "default": ""
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "A line under it.",
+          "default": ""
+        },
+        "shownAt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.ui.tick() when it should start: a later tick restarts it. Past its time it is gone.",
+          "default": 0
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "How long it holds before it leaves; 0 is the kind's.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "anchor": {
+          "$ref": "#/$defs/Anchor",
+          "description": "Where it sits; the default is the centre.",
+          "default": "center"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An art slot behind the title (a boss portrait, a region's emblem; banner kind, about 4:1).",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "BannerResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "Where a banner is.",
+      "type": "object",
+      "properties": {
+        "visible": {
+          "type": "boolean",
+          "description": "On screen."
+        },
+        "done": {
+          "type": "boolean",
+          "description": "It finished this tick."
+        },
+        "progress": {
+          "type": "number",
+          "description": "0 entering to 1 gone.",
+          "x-og-unit": "ratio"
+        }
+      },
+      "required": [
+        "visible",
+        "done",
+        "progress"
+      ],
+      "additionalProperties": false
+    },
+    "UiRibbonDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A ribbon on a card or a result.",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Its words (NEW, -50%, New best!).",
+          "default": ""
+        },
+        "corner": {
+          "$ref": "#/$defs/Anchor",
+          "description": "Where on the open container: topLeft or topRight wrap the corner diagonally; top or bottom lie across as a banner with notched ends; center slaps it across the middle like a stamp.",
+          "default": "topRight"
+        },
+        "tone": {
+          "$ref": "#/$defs/Tone",
+          "description": "Its colour; the default is primary.",
+          "default": "primary"
+        },
+        "shownAt": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "og.ui.tick() when it slaps on (a stamp's motion and a sound); null shows it settled.",
+          "default": null
+        },
+        "name": {
+          "type": "string",
+          "description": "What a screen reader says; empty is the text.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "CelebrationKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "Which celebration plays.",
+      "type": "string",
+      "enum": [
+        "confetti",
+        "burst",
+        "levelUp",
+        "fireworks"
+      ],
+      "x-og-variants": {
+        "confetti": "Confetti falls over the screen from its top edge, tumbling and fluttering.",
+        "burst": "Rays, sparks and a ring thrown from the open container's centre (a reward, a level's star).",
+        "levelUp": "A level up: a ring of light expands, rays turn behind a big LEVEL UP and the new level, sparks rise.",
+        "fireworks": "Shells rise and burst in rings across the top of the screen."
+      }
+    },
+    "CelebrationDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A celebration effect.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/CelebrationKind",
+          "description": "Which one.",
+          "default": "confetti"
+        },
+        "at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.ui.tick() when it fires: a later tick fires it again.",
+          "default": 0
+        },
+        "colors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Paint"
+          },
+          "description": "Its colours; empty is the primary, gold and the style's chart series.",
+          "default": []
+        },
+        "intensity": {
+          "type": "number",
+          "description": "How much: confetti count and burst reach scale by it.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 3
+        },
+        "title": {
+          "type": "string",
+          "description": "levelUp: the big word (LEVEL UP).",
+          "default": "Level up"
+        },
+        "value": {
+          "type": "string",
+          "description": "levelUp: the new level (12).",
+          "default": ""
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "How long it lasts; 0 is the kind's (confetti 3 s, burst 1 s, levelUp 2.6 s, fireworks 3.5 s).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        }
+      },
+      "additionalProperties": false
+    },
+    "StarRatingDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A row of stars earned.",
+      "type": "object",
+      "properties": {
+        "earned": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Stars earned.",
+          "default": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Stars possible; 0 is 3.",
+          "default": 0
+        },
+        "size": {
+          "type": "number",
+          "description": "A star's size; 0 is 48 (the middle of three larger, as Angry Birds and Candy Crush do).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "revealAt": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "og.ui.tick() when the stars start landing in turn (a results screen); null shows them settled.",
+          "default": null
+        },
+        "staggerMs": {
+          "type": "number",
+          "description": "Between stars landing; 0 is 320.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "name": {
+          "type": "string",
+          "description": "What a screen reader says ({earned} of {max} stars).",
+          "default": "{earned} of {max} stars"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SubtitleSize": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "The subtitle text size (XAG 104: the player chooses).",
+      "type": "string",
+      "enum": [
+        "small",
+        "medium",
+        "large",
+        "huge"
+      ],
+      "x-og-variants": {
+        "small": "Small: the caption step, never under 18 px at 1080p.",
+        "medium": "Medium (the default).",
+        "large": "Large.",
+        "huge": "Huge."
+      }
+    },
+    "SubtitleSettings": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The player's subtitle settings (XAG 104), from a settings screen.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Subtitles show.",
+          "default": true
+        },
+        "captions": {
+          "type": "boolean",
+          "description": "Sound captions show ([explosion], [footsteps]).",
+          "default": false
+        },
+        "size": {
+          "$ref": "#/$defs/SubtitleSize",
+          "description": "The text size.",
+          "default": "medium"
+        },
+        "background": {
+          "type": "number",
+          "description": "The box behind the text: 0 none (the text keeps its outline), 1 opaque.",
+          "default": 0.75,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "speakerNames": {
+          "type": "boolean",
+          "description": "Each line begins with its speaker's name.",
+          "default": true
+        },
+        "speakerColors": {
+          "type": "boolean",
+          "description": "Each speaker's name in its colour.",
+          "default": true
+        },
+        "directions": {
+          "type": "boolean",
+          "description": "An arrow beside a line whose speaker or sound is off screen, toward it.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "SubtitleLine": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A line of dialogue or a sound caption showing now.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id), stable while it shows.",
+          "default": ""
+        },
+        "text": {
+          "type": "string",
+          "description": "What is said, or the sound ([door creaks]).",
+          "default": ""
+        },
+        "speaker": {
+          "type": "string",
+          "description": "Who says it; empty for a sound caption or an unseen narrator.",
+          "default": ""
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The speaker's colour; null is the highlight.",
+          "default": null
+        },
+        "caption": {
+          "type": "boolean",
+          "description": "A sound caption, not speech: shown in brackets, only with captions on.",
+          "default": false
+        },
+        "direction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where its source is, clockwise from straight ahead (0 ahead, π/2 right); null on screen. With directions on, an arrow points there.",
+          "default": null,
+          "x-og-unit": "rad"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SubtitlesDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The subtitles showing now.",
+      "type": "object",
+      "properties": {
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SubtitleLine"
+          },
+          "description": "The lines showing now, oldest first: at most two speakers' lines show (the newest), captions above them.",
+          "default": []
+        },
+        "settings": {
+          "$ref": "#/$defs/SubtitleSettings",
+          "description": "The player's settings.",
+          "default": {}
+        },
+        "bottom": {
+          "type": "number",
+          "description": "Extra space above the safe area's bottom (to sit over a HUD bar).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        }
+      },
       "additionalProperties": false
     },
     "VectorArt": {

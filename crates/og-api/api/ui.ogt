@@ -5697,6 +5697,585 @@ module ui {
     returns UiLayoutStats
   }
 
+  # ── components: feedback (docs/ui.md §11, Appendix E) ─────────────────
+  # Built only from the public primitives (open, setDraw, props, label,
+  # icon, particles, anchors), each with named parts a style dresses
+  # (`Notification.card[achievement]`), a viewmodel, state groups the
+  # probe can force (`ui:state:<path>.<group>=<state>`), motion on the
+  # style's tokens, sounds from its feedback set, an accessibility role
+  # and probe ids under its own id. Every word is the game's.
+
+  enum NotificationVariant {
+    doc "What a notification is, which sets its look, sound and default time."
+    variant standard "A plain message: a tone's accent and icon well (4 s)."
+    variant achievement "An achievement: a medal well in gold, an eyebrow over the title, points (6 s); plays reward."
+    variant reward "An item or currency received: the icon well glows in the rarity's colour (5 s); plays reward."
+    variant alert "A warning that must be read: danger accent, read at once by a screen reader (8 s); plays warning."
+    variant social "A friend, invite or message: a round avatar slot (5 s)."
+  }
+
+  enum Rarity {
+    doc "A loot tier (the style's rarity colours, each paired with its pips so no tier is told by colour alone)."
+    variant none "No tier."
+    variant common "Common: one pip."
+    variant uncommon "Uncommon: two pips."
+    variant rare "Rare: three pips."
+    variant epic "Epic: four pips."
+    variant legendary "Legendary: five pips."
+    variant mythic "Mythic: six pips."
+  }
+
+  struct NotificationItem {
+    doc "One notification of a stack, as the game's viewmodel holds it. The game appends one when something happens and drops the keys the stack reports expired or dismissed."
+    desc true
+    field key String "Its key, stable while it lives (also its probe id): posting a key again with a higher count merges it (×3)."
+    field title String "The headline."
+    field body String "A line under it; empty is none (two lines at most, then an ellipsis)."
+    field eyebrow String "A small line over the title (Achievement unlocked); empty is none."
+    field icon String "An icon of the atlas in its well; empty draws the tone's mark."
+    field image Option.Texture "An art slot in the well instead of the icon (an item, an avatar)."
+    field tone Tone "Its tone: the accent edge and the icon well."
+    field variant NotificationVariant "What it is."
+    field rarity Rarity "A reward's tier: the well's glow and pips."
+    field at u32 "og.ui.tick() when it was posted: its time runs from when it first shows (a queued one waits)."
+    field durationMs f32 "How long it shows; 0 is the variant's time." {
+      unit ms
+      min 0
+    }
+    field sticky bool "It stays until dismissed or its action is pressed."
+    field count u32 "How many times it happened (a ×3 chip from 2 on)."
+    field progress Option.f32 "A progress bar under the body, 0 to 1 (an achievement 3 of 10 of the way)." {
+      unit ratio
+    }
+    field progressText String "The progress in words (3 / 10); empty is none."
+    field points String "A value at the end (+50 G, 120 XP); empty is none."
+    field action String "A button's label (Accept, View); empty is none."
+  }
+
+  struct NotificationsDesc {
+    doc "A stack of notifications (toasts) anchored in the safe area."
+    desc true
+    field items List.NotificationItem "The game's notifications, oldest first; past their time they leave on their own."
+    field anchor Anchor "Where the stack sits; the default is the top right (the top centre on a phone in portrait)." {
+      default topRight
+    }
+    field max u32 "The most shown at once (later ones queue); 0 is 3 (2 on a phone)."
+    field width f32 "A card's width; 0 is 380 (the safe area's width less its gutters on a phone in portrait)." {
+      unit cssPx
+      min 0
+    }
+    field dismissLabel String "What a screen reader calls the swipe or press that dismisses one." {
+      default "Dismiss"
+    }
+  }
+
+  struct NotificationsResult {
+    doc "What a notification stack answered this tick."
+    field expired List.String "Keys whose time ran out this tick: drop them from the viewmodel."
+    field dismissed List.String "Keys the player dismissed (a press on the card, a swipe, Back while it had focus)."
+    field action Option.String "The key whose action button was pressed this tick."
+    field shown List.String "The keys on screen, newest first."
+  }
+
+  fn notifications {
+    doc "A notification stack (toasts, achievements, rewards, invites): cards anchored in the safe area, newest nearest the anchor's edge, that enter on the style's enter spring from that edge, reflow on its panel spring as others leave (layout animation), and leave sliding out. A card's lifetime drains along its bottom edge; the pointer resting on it holds the time; a press dismisses it, and a swipe toward the edge throws it off. More than max wait in a queue whose time does not run."
+    doc "Parts: Notification.card[<variant>][<tone>] (the card, partClass hud), Notification.accent (the start edge in the tone), Notification.well[rarity=<tier>] (the icon or art slot), Notification.title, Notification.body, Notification.count (the ×3 chip), Notification.progress and Notification.progressFill, Notification.life (the draining time line), Notification.action. Slots: each item's image (art kind item, achievement or avatar, 1:1)."
+    doc "States: on each card, group life (entering, shown, leaving) and group tone (the item's tone). Motion: enter and exit springs, layout motion for the reflow, an achievement's well pops (emphasis spring). Sounds: notification, reward (achievement, reward) or warning (alert) when a card first shows. Accessibility: each card is a status (an alert: an alert) named by its eyebrow, title and body; its action a button. Probe ids: <id>/<key>, its Title, Body, Count, Action, Life."
+    host false
+    param id String "Its id."
+    param desc NotificationsDesc "The items and where they stack."
+    returns NotificationsResult
+  }
+
+  enum BadgeKind {
+    doc "What a count badge shows."
+    variant count "A number (99+ past max)."
+    variant dot "A dot: something new, unnumbered."
+    variant label "A short word (NEW, HOT, -50%)."
+  }
+
+  struct CountBadgeDesc {
+    doc "A count badge on the corner of the container it is built in (a tab, an inventory icon, a mailbox button)."
+    desc true
+    field kind BadgeKind "What it shows."
+    field count u32 "The count; 0 hides a count badge."
+    field max u32 "Past this it shows max+; 0 is 99."
+    field text String "The label badge's word."
+    field tone Tone "Its tone; the default is danger, the convention for unread counts." {
+      default danger
+    }
+    field corner Anchor "The corner of the container it sits on: topRight is the end side's top (mirrored right to left)." {
+      default topRight
+    }
+    field pulse bool "Pulse once when the count rises (the default)." {
+      default true
+    }
+    field name String "What a screen reader says (3 unread); empty is the count."
+  }
+
+  fn countBadge {
+    doc "A count badge: a small pill on a corner of the open container, outset by half its height so it straddles the edge, with a ring in the ground colour that cuts it from what it sits on. A count over max reads max+; a rise pops it (emphasis spring) and plays notification once. Hidden at 0."
+    doc "Parts: CountBadge.base[<kind>][<tone>], CountBadge.text. States: group count (none, some, overflow). Accessibility: status named by name or the count. Probe ids: <id>, <id>/Text. Call it inside the container it decorates, after its content; the container should not clip."
+    host false
+    param id String "Its id."
+    param desc CountBadgeDesc "What it shows and where."
+    returns Void
+  }
+
+  struct TooltipStat {
+    doc "A row of a tooltip's stats, with an optional comparison."
+    desc true
+    field label String "What it is (Damage)."
+    field value String "Its value as shown (42–58)."
+    field delta f32 "Against what is compared (the equipped item): positive is better, drawn with an up mark in success; negative with a down mark in danger; 0 none."
+    field deltaText String "The delta as shown (+12); empty formats delta."
+    field better bool "Higher is worse for this stat (a cooldown): flips the marks' colours."
+  }
+
+  struct TooltipLink {
+    doc "What a keyword link in a tooltip's body opens: a nested tooltip of its own."
+    desc true
+    field key String "The `[link=key]` id in the body."
+    field title String "Its title."
+    field body String "Its body: rich text, with links of its own."
+  }
+
+  struct TooltipCardDesc {
+    doc "A rich tooltip card beside its trigger."
+    desc true
+    field open bool "The trigger is hovered or focused (its Response's hovered or focused): it shows after delayMs and stays while open, while pinned, or while the pointer is over it."
+    field target String "The trigger's path; a bare id names an element of the open container (built before this call). Empty places it at the pointer's last trigger rectangle of this tooltip."
+    field title String "The title."
+    field subtitle String "A line under it (Legendary sword, Passive)."
+    field rarity Rarity "The title's colour and pips."
+    field icon String "An icon of the atlas beside the title."
+    field image Option.Texture "An art slot instead of the icon (item or ability icon, 1:1)."
+    field body String "The body: rich text markup (og.ui.richText), its `[link=key]keyword[/link]` spans opening nested tooltips from links."
+    field stats List.TooltipStat "Stat rows."
+    field compareTitle String "With comparison deltas: the heading over a second card of what is equipped (Equipped); empty draws no second card."
+    field compareStats List.TooltipStat "The equipped item's stats, in the second card."
+    field footer String "A last line (Sell for 120, a flavour quote) in the muted ink."
+    field hints List.String "Action hints (Right-click to equip), each with its action's glyph when one is named [action:equip]."
+    field links List.TooltipLink "What the body's links open."
+    field delayMs f32 "Rest before it shows; 0 is the style's slow duration." {
+      unit ms
+      min 0
+    }
+    field pinnable bool "It locks open: after pinMs of rest a ring fills on its corner and it stays when the pointer leaves the trigger, until the pointer leaves the card (as Paradox's games do); the pin action (middle mouse, T, a pad's Y) pins at once. Nested tooltips are always pinnable." {
+      default true
+    }
+    field pinMs f32 "Rest before it pins; 0 is 900." {
+      unit ms
+      min 0
+    }
+    field width f32 "Its width; 0 is 320 (300 on a phone)." {
+      unit cssPx
+      min 0
+    }
+    field placement Anchor "Where it prefers to sit against the trigger: right (the end side), left, top or bottom; it flips and clamps to stay inside the safe area." {
+      default right
+    }
+    field pinLabel String "The pin hint under a pinned card." {
+      default "Pinned"
+    }
+  }
+
+  struct TooltipCardResult {
+    doc "What a tooltip card did this tick."
+    field visible bool "It is on screen (or leaving)."
+    field pinned bool "It is pinned."
+    field link Option.String "The link pressed in it (or in a nested card) this tick: its key."
+    field depth u32 "How many nested cards are open beneath it."
+  }
+
+  fn tooltipCard {
+    doc "A rich tooltip: a card in the tooltip layer beside its trigger, flipped and clamped inside the safe area, with a title in its rarity's colour and pips, an art slot, rich-text body whose keyword links open nested cards (to any depth, each pinnable, as in Crusader Kings III and Baldur's Gate 3), stat rows, a comparison card of what is equipped with up and down deltas (Diablo IV), a footer and action hints. It fades and rises in on the style's enter spring after delayMs; a pinnable card fills a ring at its corner and locks; a locked card stays while the pointer is on it or on a card it opened."
+    doc "Parts: TooltipCard.card[<rarity>][pinned], TooltipCard.header, TooltipCard.title, TooltipCard.subtitle, TooltipCard.well, TooltipCard.body, TooltipCard.stat, TooltipCard.delta[up|down], TooltipCard.compare (the second card), TooltipCard.footer, TooltipCard.hint, TooltipCard.pin (the ring). Slots: image (art kind item or ability, 1:1). States: group pin (resting, pinning, pinned). Sounds: open when it pins. Accessibility: tooltip named by the title, described by the body; its links are links. Probe ids: <id>, <id>/Title, <id>/Body (its links <id>/Body/<key>), <id>/Stat#i, <id>/Compare, <id>/Pin, a nested card <id>/<key>."
+    host false
+    param id String "Its id (one per trigger)."
+    param desc TooltipCardDesc "When it shows, what it says and where."
+    returns TooltipCardResult
+  }
+
+  enum ProgressStyle {
+    doc "How a progress bar shows its value."
+    variant bar "A track filled from its start."
+    variant steps "Equal segments, each filled whole as the value passes it (a level's stages)."
+    variant indeterminate "No value: a band sweeping along the track (loading of unknown length)."
+  }
+
+  struct ProgressBarDesc {
+    doc "A progress bar."
+    desc true
+    field value f32 "Done, 0 to 1." {
+      unit ratio
+      min 0
+      max 1
+    }
+    field buffer f32 "A second, paler fill ahead of value (downloaded, ahead of installed), 0 to 1." {
+      unit ratio
+      min 0
+      max 1
+    }
+    field style ProgressStyle "How it shows."
+    field steps u32 "For style steps: how many; 0 is 5."
+    field label String "A caption over it at the start (Downloading); empty is none."
+    field valueText String "The value in words at the end (2.1 of 4.5 GB); empty is the percent, with showValue."
+    field showValue bool "Show the value at the end."
+    field tone Tone "Its fill's tone; neutral is the primary."
+    field width Option.Size "Its width; null grows."
+    field thickness f32 "The track's height; 0 is 8 (6 on a phone)." {
+      unit cssPx
+      min 0
+    }
+    field sheen bool "A highlight sweeps over the fill while it is short of done (still under reduced motion it stops)." {
+      default true
+    }
+  }
+
+  fn progressBar {
+    doc "A progress bar: a rounded track, a fill that moves to its value on the style's ui spring (never jumping back on a retarget), a buffer ahead of it, a sweeping sheen while it works, segments for steps, a sweeping band when indeterminate, and a caption and value over it. Reaching 1 flashes the fill once and plays success."
+    doc "Parts: ProgressBar.track[<style>], ProgressBar.buffer, ProgressBar.fill[<tone>][done], ProgressBar.step[filled], ProgressBar.label, ProgressBar.value. States: group progress (working, done) and group mode (determinate, indeterminate). Accessibility: progressbar named by the label, 0 to 100 (busy when indeterminate). Probe ids: <id>, <id>/Track, <id>/Fill, <id>/Label, <id>/Value."
+    host false
+    param id String "Its id."
+    param desc ProgressBarDesc "Its value and look."
+    returns Void
+  }
+
+  struct ProgressRingDesc {
+    doc "A progress ring or spinner."
+    desc true
+    field value Option.f32 "Done, 0 to 1; null spins (indeterminate)." {
+      unit ratio
+    }
+    field size f32 "Its diameter; 0 is 48." {
+      unit cssPx
+      min 0
+    }
+    field thickness f32 "The ring's width; 0 is a tenth of the size, at least 3." {
+      unit cssPx
+      min 0
+    }
+    field tone Tone "The fill's tone; neutral is the primary."
+    field label String "Text in the middle; empty is the percent for a value (none for a spinner), and none when the ring is under 40 px."
+    field name String "What a screen reader calls it (Loading); empty is Progress."
+  }
+
+  fn progressRing {
+    doc "A progress ring: an arc filled clockwise from the top on the style's ui spring, or a spinning arc that grows and shrinks as it turns (Material's indeterminate ring, which reads as working at any size); a label in the middle. Under reduced motion the spinner pulses its opacity instead of turning."
+    doc "Parts: ProgressRing.track, ProgressRing.fill[<tone>][spinning], ProgressRing.label. States: group mode (determinate, indeterminate). Accessibility: progressbar (busy when spinning). Probe ids: <id>, <id>/Fill, <id>/Label."
+    host false
+    param id String "Its id."
+    param desc ProgressRingDesc "Its value and size."
+    returns Void
+  }
+
+  enum SkeletonShape {
+    doc "What a skeleton stands in for."
+    variant lines "Lines of text: the last one shorter."
+    variant card "A card: an art block, a title and two lines."
+    variant row "A list row: an avatar, a title and a line."
+    variant avatar "A round avatar."
+    variant block "A block of the given size."
+  }
+
+  struct SkeletonGroupDesc {
+    doc "A skeleton standing in for content that is loading."
+    desc true
+    field shape SkeletonShape "What it stands in for."
+    field lines u32 "Lines, for lines; 0 is 3."
+    field count u32 "Repeats (rows of a list); 0 is 1."
+    field width Option.Size "Its width; null grows."
+    field height f32 "A block's or a card's art height; 0 is 120." {
+      unit cssPx
+      min 0
+    }
+    field name String "What a screen reader says while it loads." {
+      default "Loading"
+    }
+  }
+
+  fn skeletonGroup {
+    doc "A skeleton: shapes of the neutral fill where content will arrive, swept by one sheen across the whole group (not each piece on its own clock), cornered as the parts they stand for. The sheen stops under reduced motion and the shapes breathe their opacity instead."
+    doc "Parts: Skeleton.piece[<shape>], Skeleton.sheen. Accessibility: one progressbar, busy, named by name. Probe ids: <id>, <id>/Piece#i."
+    host false
+    param id String "Its id."
+    param desc SkeletonGroupDesc "What it stands in for."
+    returns Void
+  }
+
+  enum Notation {
+    doc "How a number is written."
+    variant grouped "Every digit, grouped by thousands (12,840,000)."
+    variant compact "Shortened past 9,999 to three significant digits with K, M, B, T, then scientific (12.8M)."
+    variant letters "Shortened as idle games do: K, M, B, T, then aa, ab, … az, ba … (1.25ab), never running out."
+    variant scientific "Mantissa and exponent past 9,999 (1.28e7)."
+    variant engineering "As scientific with the exponent a multiple of three (12.8e6)."
+  }
+
+  struct NumberFormatDesc {
+    doc "How og.ui.formatNumber and the counters write a number."
+    desc true
+    field notation Notation "The notation."
+    field decimals Option.u32 "Digits after the point; null is none below 10,000 and three significant digits in the shortened forms."
+    field exponent i32 "The value is value × 10^exponent: numbers past 1e308 (an idle game's 1.5e420 is value 1.5, exponent 420)."
+    field sign bool "A + before positive values."
+    field prefix String "Text before it ($)."
+    field suffix String "Text after it ( XP, %)."
+    field group String "The thousands separator." {
+      default ","
+    }
+    field point String "The decimal point." {
+      default "."
+    }
+  }
+
+  fn formatNumber {
+    doc "A number written in a notation: grouped, compact, idle letters, scientific or engineering, with a sign, prefix and suffix and the locale's separators, and past 1e308 through its exponent. Deterministic: the same text on every host."
+    host false
+    param value f64 "The number (times 10^format.exponent)."
+    param format NumberFormatDesc "How to write it."
+    returns String
+  }
+
+  struct NumberCounterDesc {
+    doc "A big number that counts to its value."
+    desc true
+    field format NumberFormatDesc "How it is written."
+    field step Option.TypeStepName "The type step; null is xl3."
+    field font FontRole "The font; the default is mono (tabular digits that do not jitter)." {
+      default mono
+    }
+    field color Option.Paint "The ink; null is ink."
+    field label String "A caption under it (Score, Gold); empty is none."
+    field icon String "An icon of the atlas before it (coin); empty is none."
+    field roll bool "Each digit rolls to its next like an odometer while it counts (the default); off, the number counts in place." {
+      default true
+    }
+    field durationMs f32 "How long a change takes to count; 0 is 600 ms (a rise of more than a tenth takes up to 1.2 s)." {
+      unit ms
+      min 0
+    }
+    field delta bool "A rise throws its +n off the number, rising and fading (the default)." {
+      default true
+    }
+    field ticks bool "Play counterTick as it counts, pitched higher through the count."
+    field anchor Option.Anchor "Opens its own anchored group there (on the HUD chip); null builds it in place."
+    field align TextAlign "How it aligns in its column."
+  }
+
+  fn numberCounter {
+    doc "A number display for scores, currency and resources: written in its notation (idle letters past trillions, numbers past 1e308), counting to a new value on an ease-out, its digits rolling like an odometer, a +n delta flying off on a rise, a pop when it lands (emphasis spring) and a flash of danger on a fall; on the HUD chip with its outline when anchored. Returns the number shown this tick."
+    doc "Parts: NumberCounter.frame[hud], NumberCounter.value, NumberCounter.digit, NumberCounter.icon, NumberCounter.label, NumberCounter.delta[up|down]. States: group change (still, rising, falling). Sounds: counterTick while counting, if ticks. Accessibility: text named by the label, value the final number written out (not each frame of the count). Probe ids: <id>, <id>/Value (its text is the whole number shown), <id>/Label, <id>/Delta."
+    host false
+    param id String "Its id."
+    param value f64 "The value to count to (times 10^format.exponent)."
+    param desc NumberCounterDesc "How it looks and counts."
+    returns f64
+  }
+
+  enum BannerKind {
+    doc "What a banner announces, which sets its look and timing."
+    variant title "A title card: an area or chapter name over a thin rule (Elden Ring's place names), slow fade (3 s)."
+    variant wave "A wave or round: a band across the screen with a large title that slams in (2.4 s)."
+    variant victory "A win: a gold band with a burst (3.5 s); plays success."
+    variant defeat "A loss: a dark band in danger (3.5 s); plays error."
+    variant warning "A warning across the screen (Boss approaching): danger stripes that pulse (3 s); plays warning."
+  }
+
+  struct BannerDesc {
+    doc "A full-width announcement."
+    desc true
+    field kind BannerKind "What it announces."
+    field title String "The big line."
+    field eyebrow String "A small line over it (Chapter II, Wave)."
+    field subtitle String "A line under it."
+    field shownAt u32 "og.ui.tick() when it should start: a later tick restarts it. Past its time it is gone."
+    field durationMs f32 "How long it holds before it leaves; 0 is the kind's." {
+      unit ms
+      min 0
+    }
+    field anchor Anchor "Where it sits; the default is the centre." {
+      default center
+    }
+    field image Option.Texture "An art slot behind the title (a boss portrait, a region's emblem; banner kind, about 4:1)."
+  }
+
+  struct BannerResult {
+    doc "Where a banner is."
+    field visible bool "On screen."
+    field done bool "It finished this tick."
+    field progress f32 "0 entering to 1 gone." {
+      unit ratio
+    }
+  }
+
+  fn banner {
+    doc "A full-width announcement: a wave or round band that slams in with a squash and a shake, a title card that fades up over a rule that draws out from its centre, a victory band with a burst and confetti, a defeat band, a warning with sweeping danger stripes. Its letters track in as it enters; it holds, then leaves on the style's exit ease. The tick-driven timing makes it the same in a replay."
+    doc "Parts: Banner.band[<kind>], Banner.rule, Banner.eyebrow, Banner.title, Banner.subtitle, Banner.stripes, Banner.art. Slots: image (art kind banner). States: group phase (entering, holding, leaving, gone). Sounds: by kind on entering. Accessibility: alert (warning, defeat) or status, named by eyebrow, title and subtitle. Probe ids: <id>, <id>/Title, <id>/Eyebrow, <id>/Subtitle."
+    host false
+    param id String "Its id."
+    param desc BannerDesc "What it says and when."
+    returns BannerResult
+  }
+
+  struct UiRibbonDesc {
+    doc "A ribbon on a card or a result."
+    desc true
+    field text String "Its words (NEW, -50%, New best!)."
+    field corner Anchor "Where on the open container: topLeft or topRight wrap the corner diagonally; top or bottom lie across as a banner with notched ends; center slaps it across the middle like a stamp." {
+      default topRight
+    }
+    field tone Tone "Its colour; the default is primary." {
+      default primary
+    }
+    field shownAt Option.u32 "og.ui.tick() when it slaps on (a stamp's motion and a sound); null shows it settled."
+    field name String "What a screen reader says; empty is the text."
+  }
+
+  fn ribbon {
+    doc "A ribbon: a diagonal band wrapping a corner of the open container with its folded tail, a notched banner across its top or bottom, or a stamp slapped across its middle (a New best!: it lands from large and turned, squashes, settles and puffs dust, emphasis spring). The open container should clip its corners for a corner ribbon."
+    doc "Parts: Ribbon.band[<corner>][<tone>], Ribbon.fold, Ribbon.text. States: group slap (waiting, landing, settled). Sounds: confirm when it lands. Accessibility: status named by the text. Probe ids: <id>, <id>/Text."
+    host false
+    param id String "Its id."
+    param desc UiRibbonDesc "Its words and place."
+    returns Void
+  }
+
+  enum CelebrationKind {
+    doc "Which celebration plays."
+    variant confetti "Confetti falls over the screen from its top edge, tumbling and fluttering."
+    variant burst "Rays, sparks and a ring thrown from the open container's centre (a reward, a level's star)."
+    variant levelUp "A level up: a ring of light expands, rays turn behind a big LEVEL UP and the new level, sparks rise."
+    variant fireworks "Shells rise and burst in rings across the top of the screen."
+  }
+
+  struct CelebrationDesc {
+    doc "A celebration effect."
+    desc true
+    field kind CelebrationKind "Which one."
+    field at u32 "og.ui.tick() when it fires: a later tick fires it again."
+    field colors List.Paint "Its colours; empty is the primary, gold and the style's chart series."
+    field intensity f32 "How much: confetti count and burst reach scale by it." {
+      default 1
+      min 0
+      max 3
+    }
+    field title String "levelUp: the big word (LEVEL UP)." {
+      default "Level up"
+    }
+    field value String "levelUp: the new level (12)."
+    field durationMs f32 "How long it lasts; 0 is the kind's (confetti 3 s, burst 1 s, levelUp 2.6 s, fireworks 3.5 s)." {
+      unit ms
+      min 0
+    }
+  }
+
+  fn celebration {
+    doc "A celebration: confetti over the whole screen, a burst from the container it is built in, a level-up flourish centred on the screen, or fireworks. Particles are the UI's own (seeded, so a replay throws the same), drawn over the HUD and under dialogs; under reduced motion only the level-up's text and a soft glow show. Plays reward (levelUp, fireworks) or success (confetti, burst) when it fires."
+    doc "Parts: Celebration.ring, Celebration.rays, Celebration.title, Celebration.value (level up). States: group play (idle, playing). Accessibility: a level up is a status named by its title and value. Probe ids: <id>, <id>/Title, <id>/Value."
+    host false
+    param id String "Its id."
+    param desc CelebrationDesc "Which one and when."
+    returns Void
+  }
+
+  struct StarRatingDesc {
+    doc "A row of stars earned."
+    desc true
+    field earned u32 "Stars earned."
+    field max u32 "Stars possible; 0 is 3."
+    field size f32 "A star's size; 0 is 48 (the middle of three larger, as Angry Birds and Candy Crush do)." {
+      unit cssPx
+      min 0
+    }
+    field revealAt Option.u32 "og.ui.tick() when the stars start landing in turn (a results screen); null shows them settled."
+    field staggerMs f32 "Between stars landing; 0 is 320." {
+      unit ms
+      min 0
+    }
+    field name String "What a screen reader says ({earned} of {max} stars)." {
+      default "{earned} of {max} stars"
+    }
+  }
+
+  fn starRating {
+    doc "Stars earned: empty sockets, each earned star landing in turn from large with a turn and an overshoot (emphasis spring), a burst of sparks as it lands and a pitch rising star by star; the middle star of three sits higher and larger. Under reduced motion they fade in."
+    doc "Parts: StarRating.socket, StarRating.star[earned]. States: on each star, group star (empty, landing, earned). Sounds: reward, pitched up a step per star. Accessibility: image named by name. Probe ids: <id>, <id>/Star#i."
+    host false
+    param id String "Its id."
+    param desc StarRatingDesc "How many and when."
+    returns Void
+  }
+
+  enum SubtitleSize {
+    doc "The subtitle text size (XAG 104: the player chooses)."
+    variant small "Small: the caption step, never under 18 px at 1080p."
+    variant medium "Medium (the default)."
+    variant large "Large."
+    variant huge "Huge."
+  }
+
+  struct SubtitleSettings {
+    doc "The player's subtitle settings (XAG 104), from a settings screen."
+    desc true
+    field enabled bool "Subtitles show." {
+      default true
+    }
+    field captions bool "Sound captions show ([explosion], [footsteps])."
+    field size SubtitleSize "The text size." {
+      default medium
+    }
+    field background f32 "The box behind the text: 0 none (the text keeps its outline), 1 opaque." {
+      default 0.75
+      min 0
+      max 1
+      unit ratio
+    }
+    field speakerNames bool "Each line begins with its speaker's name." {
+      default true
+    }
+    field speakerColors bool "Each speaker's name in its colour." {
+      default true
+    }
+    field directions bool "An arrow beside a line whose speaker or sound is off screen, toward it." {
+      default true
+    }
+  }
+
+  struct SubtitleLine {
+    doc "A line of dialogue or a sound caption showing now."
+    desc true
+    field key String "Its key (its probe id), stable while it shows."
+    field text String "What is said, or the sound ([door creaks])."
+    field speaker String "Who says it; empty for a sound caption or an unseen narrator."
+    field color Option.Paint "The speaker's colour; null is the highlight."
+    field caption bool "A sound caption, not speech: shown in brackets, only with captions on."
+    field direction Option.f32 "Where its source is, clockwise from straight ahead (0 ahead, π/2 right); null on screen. With directions on, an arrow points there." {
+      unit rad
+    }
+  }
+
+  struct SubtitlesDesc {
+    doc "The subtitles showing now."
+    desc true
+    field lines List.SubtitleLine "The lines showing now, oldest first: at most two speakers' lines show (the newest), captions above them."
+    field settings SubtitleSettings "The player's settings."
+    field bottom f32 "Extra space above the safe area's bottom (to sit over a HUD bar)." {
+      unit cssPx
+      min 0
+    }
+  }
+
+  fn subtitles {
+    doc "Subtitles and captions to the Xbox Accessibility Guidelines' 104: centred at the bottom of the safe area, at most two lines of at most about 42 characters each across 70 % of the width (the box wraps by words, never by letters), in the player's size (never under 18 px at 1080p), on a box of the player's opacity (an outline when it is clear), with the speaker's name in their colour, sound captions in brackets above speech, an arrow toward a speaker off screen, new lines fading in quickly (never sliding: text that moves is harder to read)."
+    doc "Parts: Subtitles.box, Subtitles.line, Subtitles.speaker, Subtitles.text, Subtitles.caption, Subtitles.arrow. Accessibility: a log whose new lines are read, each line text named speaker: text. Probe ids: <id>, <id>/<key>, its Speaker, Text, Arrow."
+    host false
+    param id String "Its id."
+    param desc SubtitlesDesc "The lines and the settings."
+    returns Void
+  }
+
   # ── element draws (docs/ui.md §5): shapes, paints, effects, masks, layers ──
 
   handle VectorArt "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill."

@@ -35,6 +35,7 @@ import { targetsLoad, targetsRender } from "./targets.ts";
 import { lightRender } from "./light.ts";
 import { uiKit } from "./ui-kit/index.ts";
 import { components } from "./ui/index.ts";
+import { feedback } from "./ui/feedback/index.ts";
 
 // The math layer (IDL `math`): three.js's methods as pure functions over the plain structs.
 export { vec3, vec2, quat, mat4, box3, sphere, plane, frustum, ray, color } from "./math.ts";
@@ -249,6 +250,6 @@ export const og: typeof Api.og = Object.freeze({
   debug,
   path,
   timeline,
-  ui: Object.freeze({ ...ui, ...uiKit, ...components }),
+  ui: Object.freeze({ ...ui, ...uiKit, ...components, ...feedback }),
   systems: Object.freeze({ cameras }),
 }) as unknown as typeof Api.og;
