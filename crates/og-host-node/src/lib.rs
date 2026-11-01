@@ -495,17 +495,7 @@ impl OffscreenBackend {
     /// renderer on a new device from the same description, which uploads
     /// the scene again on this frame, so the game goes on.
     fn draw(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
-        if let Some(why) = self.renderer.lost() {
-            eprintln!("og-host-node: the GPU device was {why}; making the renderer again");
-            let renderer = self
-                .renderer
-                .recreate_blocking()
-                .map_err(|e| format!("the GPU device was {why}, and a new one failed: {e}"))?;
-            let device = renderer.device().clone();
-            self.renderer = renderer;
-            self.losses += 1;
-            DEVICES.with(|d| d.borrow_mut().insert(self.engine, device));
-        }
+        self.recreate()?;
         self.renderer
             .render(scene, &og_render::RenderTarget::Offscreen)
             .map(|s| {
@@ -513,6 +503,25 @@ impl OffscreenBackend {
                 self.triangles = s.triangles;
             })
             .map_err(|e| e.to_string())
+    }
+
+    /// A lost device replaced by a renderer on a new one from the same
+    /// description (`RenderBackend::recover`, and `draw` for the frames a
+    /// probe captures between two of the loop's).
+    fn recreate(&mut self) -> Result<(), String> {
+        let Some(why) = self.renderer.lost() else {
+            return Ok(());
+        };
+        eprintln!("og-host-node: the GPU device was {why}; making the renderer again");
+        let renderer = self
+            .renderer
+            .recreate_blocking()
+            .map_err(|e| format!("the GPU device was {why}, and a new one failed: {e}"))?;
+        let device = renderer.device().clone();
+        self.renderer = renderer;
+        self.losses += 1;
+        DEVICES.with(|d| d.borrow_mut().insert(self.engine, device));
+        Ok(())
     }
 }
 
@@ -610,6 +619,9 @@ impl RenderBackend for OffscreenBackend {
     }
     fn gpu_memory(&self) -> Option<og_render::GpuMemory> {
         Some(self.renderer.gpu_memory())
+    }
+    fn recover(&mut self) -> Result<bool, String> {
+        self.recreate().map(|()| false)
     }
     fn device_losses(&self) -> u32 {
         self.losses

@@ -333,7 +333,10 @@ render sprite 12
 
   A lost GPU device (iOS Safari after the page was in the background) is
   recovered by the engine: the next frames draw the world as it is, the
-  game never sees it (`display(world).deviceLosses` counts them).
+  game never sees it (`display(world).deviceLosses` counts them). A new
+  device that takes other texture encodings gets the cooked textures
+  transcoded again from the bundle; in the browser they draw as a flat
+  placeholder for the few frames that takes.
 
 ## 4. Baked lighting, volumetric fog, area lights and cookies
 

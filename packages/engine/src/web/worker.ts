@@ -172,6 +172,8 @@ export interface WebExtras {
   og_web_put_texture_encoded(id: string, format: string, width: number, height: number, srgb: boolean, levels: Uint8Array): string;
   og_web_texture_target(engine: number, manifest: string, id: string, bytes: Uint8Array): string;
   og_web_set_fetcher(fetch: (path: string) => void): void;
+  og_web_set_transcoder?(transcode: (id: string, ktx2: Uint8Array, target: string) => void): void;
+  og_web_fail_texture?(id: string, reason: string): void;
   og_web_set_inflater?(inflate: (key: number, bytes: Uint8Array) => void): void;
   og_web_put_inflated?(key: number, bytes: Uint8Array): void;
   og_web_fail_inflated?(key: number, reason: string): void;
@@ -465,30 +467,39 @@ function concat(parts: readonly Uint8Array[]): Uint8Array {
  */
 export function installFetcher(glue: WebExtras, manifest: string, basis: { js: string; wasm: string } | undefined, engine: () => number | null): void {
   let transcoder: Promise<BasisTranscoder> | null = null;
+  const loaded = (): Promise<BasisTranscoder> => {
+    let loading = transcoder;
+    if (!loading) {
+      const started = basis ? loadBasisTranscoder(basis.js, basis.wasm) : loadBasisTranscoder();
+      transcoder = loading = started;
+      // A load that failed is not kept: the next pack tries again.
+      started.catch(() => {
+        if (transcoder === started) transcoder = null;
+      });
+    }
+    return loading;
+  };
+  const transcode = async (id: string, ktx2: Uint8Array, target: string) => {
+    const out = transcodeKtx2(await loaded(), ktx2, isTextureFormat(target) ? target : "rgba8");
+    if (out.format === "rgba8") {
+      glue.og_web_put_texture(id, out.width, out.height, out.levels[0]!, out.srgb);
+    } else {
+      const refused = glue.og_web_put_texture_encoded(id, out.format, out.width, out.height, out.srgb, concat(out.levels));
+      if (refused) throw new Error(refused);
+    }
+  };
   const put = async (path: string, bytes: Uint8Array) => {
     const triples = /\/stream\/[^/]+\.ogb$/.test(path) && glue.og_web_pack_ktx2 ? glue.og_web_pack_ktx2(engine() ?? undefined, manifest, bytes) : [];
     for (let i = 0; i + 2 < triples.length; i += 3) {
-      let loading = transcoder;
-      if (!loading) {
-        const started = basis ? loadBasisTranscoder(basis.js, basis.wasm) : loadBasisTranscoder();
-        transcoder = loading = started;
-        // A load that failed is not kept: the next pack tries again.
-        started.catch(() => {
-          if (transcoder === started) transcoder = null;
-        });
-      }
-      const id = triples[i] as string;
-      const target = triples[i + 2] as string;
-      const out = transcodeKtx2(await loading, triples[i + 1] as Uint8Array, isTextureFormat(target) ? target : "rgba8");
-      if (out.format === "rgba8") {
-        glue.og_web_put_texture(id, out.width, out.height, out.levels[0]!, out.srgb);
-      } else {
-        const refused = glue.og_web_put_texture_encoded(id, out.format, out.width, out.height, out.srgb, concat(out.levels));
-        if (refused) throw new Error(refused);
-      }
+      await transcode(triples[i] as string, triples[i + 1] as Uint8Array, triples[i + 2] as string);
     }
     glue.og_web_put_file(path, bytes);
   };
+  // A device made again after a loss may take other encodings (og-host-web's
+  // texture hook): the engine hands back each texture transcoded for the old one.
+  glue.og_web_set_transcoder?.((id, ktx2, target) => {
+    transcode(id, ktx2, target).catch((e: unknown) => glue.og_web_fail_texture?.(id, e instanceof Error ? e.message : String(e)));
+  });
   glue.og_web_set_fetcher((path: string) => {
     bytesOf(path)
       .then((bytes) => put(path, bytes))

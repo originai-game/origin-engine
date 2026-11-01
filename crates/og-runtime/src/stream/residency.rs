@@ -15,7 +15,7 @@ enum Full {
 }
 
 /// A texture over its stand-in, in whichever form the host decoded it to.
-fn replace_texture(
+pub(crate) fn replace_texture(
     scene: &mut og_render::RenderScene,
     h: og_render::TextureHandle,
     src: TextureSource,
@@ -134,6 +134,9 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                         None => textures.push(rs.scene.add_texture_source(d)),
                     }
                 }
+                for (h, t) in textures.iter().zip(&model.textures) {
+                    rs.decoded.ids.insert(*h, t.id.clone());
+                }
                 for (((h, _), m), prim) in meshes.iter().zip(full).zip(&model.primitives) {
                     rs.scene.set_mesh(*h, m);
                     // The full model's cooked BVH replaces the proxy's.
@@ -148,8 +151,9 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                     }
                 }
             }
-            (Slot::Texture { handle, .. }, Full::Texture(d, pixel)) => {
+            (Slot::Texture { id, handle }, Full::Texture(d, pixel)) => {
                 replace_texture(&mut rs.scene, *handle, d);
+                rs.decoded.ids.insert(*handle, id.clone());
                 if pixel {
                     rs.scene
                         .set_texture_filter(*handle, og_render::TextureFilter::Nearest);

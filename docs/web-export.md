@@ -469,6 +469,19 @@ configured device (`getConfiguration()`; wgpu does not carry them on the
 web). Where a browser has no `getConfiguration` or `adapterInfo`, `vendor`
 and `architecture` are empty and the limits and features still go.
 
+**A lost device is made again on the same canvas.** iOS Safari loses the
+device after the page was in the background or under memory pressure; a
+GPU reset or `loseDevice` (the test hook) does too. The first frame that
+finds it lost asks for a new adapter and device on the same OffscreenCanvas
+(promises, so the frames until it lands draw nothing while the simulation
+goes on); the frame after uploads the whole scene again from the engine's
+CPU copy. When the new device takes other texture encodings than the lost
+one (no BC on the new adapter, say), each Basis texture transcoded for the
+old one goes back to the Worker's transcoder (`og_web_set_transcoder`, the
+KTX2 the engine reads from the bundle) and draws as the streaming
+placeholder until the new encoding lands; nothing in the old encoding
+reaches the new device.
+
 **Nothing personal.** A browser is its family, major version and OS family
 (never the user-agent string); a device is its class and the figures any
 page reads (`hardwareConcurrency`, `deviceMemory`, DPR to a quarter); a GPU

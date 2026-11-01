@@ -111,6 +111,14 @@ pub struct Successor {
 }
 
 impl Successor {
+    /// The new device's texture encodings chosen with `compression`
+    /// instead of the old description's (a test hook: a device that comes
+    /// back taking other encodings than the lost one, as a browser may).
+    pub fn with_texture_compression(mut self, compression: crate::TextureCompression) -> Successor {
+        self.desc.texture_compression = compression;
+        self
+    }
+
     /// The new renderer: `surface`, with the instance it was created from,
     /// is the canvas's or window's again (a surface is configured for one
     /// device); `None` makes a headless renderer. Its first frame uploads

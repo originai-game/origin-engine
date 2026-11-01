@@ -5,6 +5,7 @@
 //! `text_gfx`) over og-ui's own test support. A new test file is a `mod`
 //! line here.
 
+mod device_formats;
 mod gfx;
 mod materials_gfx;
 mod pack_contrast;

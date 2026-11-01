@@ -249,6 +249,12 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
         return Ok(false);
     }
     let t0 = rprobe::now_ms();
+    // A lost device is replaced before the frame is extracted, and what the
+    // new one takes in other encodings is decoded again for it first.
+    if let Some(b) = eng.render.borrow_mut().backend.as_mut() {
+        b.recover()?;
+    }
+    super::assets::retranscode(eng);
     // The tick this frame shows: its notes (and a missing glyph) are this tick's.
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
     let mut passes = Vec::new();

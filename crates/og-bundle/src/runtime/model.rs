@@ -219,6 +219,9 @@ pub struct ModelParts {
     /// Per `KHR_materials_variants` variant, every part's material under
     /// it (the part's own where the variant does not map its primitive).
     pub variants: Vec<Vec<MaterialHandle>>,
+    /// The model's textures in the scene, by [`CookedModel::textures`]
+    /// index.
+    pub textures: Vec<TextureHandle>,
 }
 
 impl ModelParts {
@@ -758,6 +761,7 @@ impl CookedModel {
             nodes,
             shown,
             variants,
+            textures: handles,
         }
     }
 }

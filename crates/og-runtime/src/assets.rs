@@ -18,7 +18,7 @@ use og_core::IdMap;
 use og_core::reflect::{FieldType, Schema};
 use og_ecs::Entity;
 use serde_json::{Map, Value, json};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// What a host answers for a read or a decode.
 pub enum Fetch<T> {
@@ -484,6 +484,9 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
     }
     let material_base = rs.scene.material_count();
     let parts = model.add_to_with(&mut rs.scene, &textures);
+    for (h, t) in parts.textures.iter().zip(&model.textures) {
+        rs.decoded.ids.insert(*h, t.id.clone());
+    }
     // Each primitive's raycast BVH, cooked into the blob: loaded with the
     // mesh, so the first og.render.raycast builds nothing.
     for (p, prim) in model.primitives.iter().enumerate() {
@@ -789,6 +792,7 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
     let (data, pixel) = decode_texture(eng, &id)?;
     let mut rs = eng.render.borrow_mut();
     let handle = rs.scene.add_texture_source(data);
+    rs.decoded.ids.insert(handle, id.clone());
     if pixel {
         rs.scene
             .set_texture_filter(handle, og_render::TextureFilter::Nearest);
@@ -807,19 +811,152 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
 /// A cooked texture decoded through the host's texture hook, and whether
 /// its kind is pixel art (sampled nearest).
 fn decode_texture(eng: &Engine, id: &str) -> Result<(og_render::TextureSource, bool), String> {
+    match decode(eng, id) {
+        Fetch::Ready(d) => Ok(d),
+        Fetch::Pending => Err(format!("{id}: the texture is still being transcoded")),
+        Fetch::Failed(e) => Err(e),
+    }
+}
+
+/// [`decode_texture`], with a texture the host is still transcoding
+/// answered `Pending`.
+fn decode(eng: &Engine, id: &str) -> Fetch<(og_render::TextureSource, bool)> {
     let formats = texture_formats(eng);
     let assets = eng.assets.borrow();
-    let (bytes, bundle) = assets.blob(id)?;
-    let tex = bundle
-        .texture(id, bytes.bytes())
-        .map_err(|e| e.to_string())?;
+    let tex = match assets
+        .blob(id)
+        .and_then(|(bytes, bundle)| bundle.texture(id, bytes.bytes()).map_err(|e| e.to_string()))
+    {
+        Ok(t) => t,
+        Err(e) => return Fetch::Failed(e),
+    };
     let pixel = tex.is_pixel_art();
     match hooks().map(|h| h.texture(&tex, formats.as_ref())) {
-        Some(Fetch::Ready(d)) => Ok((d, pixel)),
-        Some(Fetch::Pending) => Err(format!("{id}: the texture is still being transcoded")),
-        Some(Fetch::Failed(e)) => Err(format!("{id}: {e}")),
-        None => Err("no host is installed to decode textures".into()),
+        Some(Fetch::Ready(d)) => Fetch::Ready((d, pixel)),
+        Some(Fetch::Pending) => Fetch::Pending,
+        Some(Fetch::Failed(e)) => Fetch::Failed(format!("{id}: {e}")),
+        None => Fetch::Failed("no host is installed to decode textures".into()),
     }
+}
+
+/// The cooked textures in the renderer and the device encodings they
+/// were last checked against. A renderer made again after a lost device
+/// may take other encodings than the old one did (another adapter, a
+/// browser that came back without BC): what it does not take is decoded
+/// again from the bundle for it ([`retranscode`]), never uploaded as the
+/// old device's encoding.
+#[derive(Default)]
+pub(crate) struct Decoded {
+    /// Each scene texture decoded from a cooked texture, with its asset id.
+    pub ids: HashMap<og_render::TextureHandle, String>,
+    /// The encodings of the last check.
+    formats: Option<og_render::TextureFormats>,
+    /// Textures the host is still transcoding for the new device, drawn
+    /// as the streaming placeholder meanwhile.
+    pending: Vec<(og_render::TextureHandle, String)>,
+    /// Texture arrays (by load index) let go of until the host has
+    /// transcoded their layers, added again by [`resolve_texture_arrays`].
+    arrays_pending: Vec<usize>,
+}
+
+/// Before a frame, after the backend recovered from a lost device: when
+/// the device's texture encodings changed since the last frame, every
+/// cooked texture and texture array the renderer holds in an encoding the
+/// device does not take is decoded again from the bundle through the
+/// host's texture hook, for the new encodings. Natively the hook
+/// transcodes at once, so the frame draws as it did before the loss; the
+/// web host's Worker transcodes in the background, and those textures
+/// draw as the placeholder (arrays not at all) until they land.
+pub(crate) fn retranscode(eng: &Engine) {
+    let Some(formats) = texture_formats(eng) else {
+        return;
+    };
+    let takes_upload = |u: &og_render::TextureUpload| formats.supported.contains(&u.desc.format);
+    let takes = |s: &og_render::TextureSource| match s {
+        og_render::TextureSource::Encoded(u) => takes_upload(u),
+        _ => true,
+    };
+    let (stale, arrays) = {
+        let mut rs = eng.render.borrow_mut();
+        let rs = &mut *rs;
+        let mut stale = std::mem::take(&mut rs.decoded.pending);
+        let mut arrays = std::mem::take(&mut rs.decoded.arrays_pending);
+        if rs.decoded.formats.as_ref() != Some(&formats) {
+            rs.decoded.formats = Some(formats.clone());
+            let scene = &rs.scene;
+            rs.decoded.ids.retain(|h, _| scene.contains_texture(*h));
+            stale.extend(
+                rs.decoded
+                    .ids
+                    .iter()
+                    .filter(|(h, _)| scene.texture_upload(**h).is_some_and(|u| !takes_upload(u)))
+                    .map(|(h, id)| (*h, id.clone())),
+            );
+            for (i, a) in rs.texture_arrays.iter().enumerate() {
+                let old = a
+                    .handle
+                    .and_then(|h| scene.texture_array(h))
+                    .is_some_and(|d| !d.layers.iter().all(takes));
+                if old {
+                    arrays.push(i);
+                }
+            }
+        }
+        (stale, arrays)
+    };
+    let mut pending = Vec::new();
+    for (h, id) in stale {
+        let decoded = decode(eng, &id);
+        let mut rs = eng.render.borrow_mut();
+        match decoded {
+            Fetch::Ready((source, _)) => {
+                super::stream::replace_texture(&mut rs.scene, h, source);
+            }
+            Fetch::Pending => {
+                rs.scene.set_texture(h, super::stream::placeholder());
+                pending.push((h, id));
+            }
+            Fetch::Failed(e) => {
+                rs.scene.set_texture(h, super::stream::placeholder());
+                rs.notes.push(format!(
+                    "{id}: not decoded again for the new GPU device ({e}); drawn as a placeholder"
+                ));
+            }
+        }
+    }
+    let mut arrays_pending = Vec::new();
+    for i in arrays {
+        let Some((id, handle)) = eng
+            .render
+            .borrow()
+            .texture_arrays
+            .get(i)
+            .map(|a| (a.id.clone(), a.handle))
+        else {
+            continue;
+        };
+        let Some(h) = handle else {
+            // Let go of below on an earlier frame: added again once its
+            // layers decode.
+            if let Ok((added, _)) = add_texture_array(eng, &id) {
+                eng.render.borrow_mut().texture_arrays[i].handle = Some(added);
+            } else {
+                arrays_pending.push(i);
+            }
+            continue;
+        };
+        let data = texture_array_data(eng, &id);
+        let mut rs = eng.render.borrow_mut();
+        let replaced = data.and_then(|(d, _)| rs.scene.set_texture_array(h, d));
+        if replaced.is_err() {
+            rs.scene.remove_texture_array(h);
+            rs.texture_arrays[i].handle = None;
+            arrays_pending.push(i);
+        }
+    }
+    let mut rs = eng.render.borrow_mut();
+    rs.decoded.pending = pending;
+    rs.decoded.arrays_pending = arrays_pending;
 }
 
 /// A palette swap's index texture (docs/art.md §2.4,
@@ -841,6 +978,7 @@ fn link_index(eng: &Engine, id: &str, texture: og_render::TextureHandle) {
                     rs.scene
                         .set_texture_filter(h, og_render::TextureFilter::Nearest);
                 }
+                rs.decoded.ids.insert(h, name);
                 Some(h)
             }
             _ => None,

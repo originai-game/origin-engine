@@ -8,13 +8,18 @@
 //! moves, a replay diverges); the scale applied on the native host (the
 //! reference frames move); a preset step written into RenderSettings (the
 //! probe and a save see automatic quality's choice); the frame cap not
-//! answered with the frame, so the Worker never caps.
+//! answered with the frame, so the Worker never caps; a device made again
+//! after a loss handed the lost one's texture encodings (the frame is
+//! refused) or textures transcoded again for the old formats.
 
-use og_render::{GpuMemory, QualityPreset, RenderQuality, RenderScene, RgbaImage};
+use og_render::{
+    GpuMemory, QualityPreset, RenderQuality, RenderScene, RgbaImage, TextureFormat, TextureFormats,
+    TextureHandle, TextureSource,
+};
 use og_runtime::{
-    Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_game_game,
-    og_host_begin_bundle, og_render_display, og_render_set_display, set_hooks, set_render_backend,
-    set_viewport,
+    Dispatch, Fetch, Hooks, RenderBackend, lose_device, og_engine_create, og_engine_frame,
+    og_game_game, og_host_begin_bundle, og_load_texture, og_load_texture_array, og_render_display,
+    og_render_set_display, set_hooks, set_render_backend, set_viewport,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -220,5 +225,216 @@ fn preset_steps_cap_the_quality_drawn_not_the_settings() {
         settings["value"]["shadowMapScale"],
         json!(2.0),
         "{settings}"
+    );
+}
+
+// ── a device that comes back taking other texture encodings ─────────────
+
+/// Reads the cooked files from disk; textures transcode natively (the
+/// default texture hook).
+struct Disk;
+
+impl Hooks for Disk {
+    fn dispatch(&self, _call: &Dispatch) -> Result<String, String> {
+        Ok(String::new())
+    }
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        match std::fs::read(path) {
+            Ok(bytes) => Fetch::Ready(bytes),
+            Err(e) => Fetch::Failed(format!("{path}: {e}")),
+        }
+    }
+}
+
+/// A project with two colour textures (Basis-coded by the cook) and a
+/// texture array of them, cooked once per test process.
+fn textured_project() -> &'static std::path::Path {
+    static ROOT: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
+    ROOT.get_or_init(|| {
+        let repo = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let root = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+            .join(format!("og-runtime-device-formats-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let tex = root.join("assets/tex");
+        std::fs::create_dir_all(&tex).unwrap();
+        for name in ["crystal", "ember"] {
+            std::fs::copy(
+                repo.join(format!(
+                    "templates/archetypes/idle/assets/sprites/mote-{name}.png"
+                )),
+                tex.join(format!("{name}.png")),
+            )
+            .unwrap();
+        }
+        std::fs::write(
+            tex.join("layers.ogt"),
+            "type texture-array\nversion 1\n---\nlayer \"crystal.png\"\nlayer \"ember.png\"\n",
+        )
+        .unwrap();
+        let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        root
+    })
+}
+
+fn formats(compressed: bool) -> TextureFormats {
+    if compressed {
+        TextureFormats {
+            color: TextureFormat::Bc7,
+            normal: TextureFormat::Bc5,
+            data: TextureFormat::Bc7,
+            supported: vec![TextureFormat::Rgba8, TextureFormat::Bc7, TextureFormat::Bc5],
+        }
+    } else {
+        TextureFormats {
+            color: TextureFormat::Rgba8,
+            normal: TextureFormat::Rgba8,
+            data: TextureFormat::Rgba8,
+            supported: vec![TextureFormat::Rgba8],
+        }
+    }
+}
+
+/// Each texture and texture-array layer of a frame: its encoding and its
+/// first level's bytes.
+type Drawn = Vec<(String, Vec<u8>)>;
+
+fn drawn(source: &TextureSource) -> (String, Vec<u8>) {
+    match source {
+        TextureSource::Rgba(t) => ("rgba8".into(), t.rgba.clone()),
+        TextureSource::Encoded(u) => (u.desc.format.name().into(), u.levels[0].clone()),
+        TextureSource::Target(_) => ("target".into(), Vec::new()),
+    }
+}
+
+/// A device as og-render's is to the runtime: it takes the encodings of
+/// `formats` and refuses a frame holding any other (as the renderer's
+/// upload does, `RenderError::Unsupported`); lost, it comes back on
+/// `recover` taking `after`'s.
+struct Device {
+    formats: TextureFormats,
+    after: TextureFormats,
+    lost: bool,
+    losses: u32,
+    seen: Rc<RefCell<Drawn>>,
+}
+
+impl RenderBackend for Device {
+    fn tier(&self) -> String {
+        "test".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (64, 64)
+    }
+    fn texture_formats(&self) -> Option<TextureFormats> {
+        Some(self.formats.clone())
+    }
+    fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+        if self.lost {
+            return Err("lost".into());
+        }
+        let mut out = Vec::new();
+        let textures = (0..scene.texture_count() as u32)
+            .filter_map(|i| TextureHandle::from_slot(i + 1))
+            .filter_map(|h| {
+                scene
+                    .texture_upload(h)
+                    .map(|u| TextureSource::Encoded(u.clone()))
+                    .or_else(|| scene.texture(h).map(|t| TextureSource::Rgba(t.clone())))
+            });
+        let layers = scene
+            .texture_arrays()
+            .iter()
+            .flat_map(|a| a.layers.iter().cloned());
+        for source in textures.chain(layers) {
+            if let TextureSource::Encoded(u) = &source
+                && !self.formats.supported.contains(&u.desc.format)
+            {
+                return Err(format!("unsupported: {}", u.desc.format.name()));
+            }
+            out.push(drawn(&source));
+        }
+        *self.seen.borrow_mut() = out;
+        Ok(())
+    }
+    fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<RgbaImage> {
+        None
+    }
+    fn recover(&mut self) -> Result<bool, String> {
+        if self.lost {
+            self.lost = false;
+            self.losses += 1;
+            self.formats = self.after.clone();
+        }
+        Ok(false)
+    }
+    fn device_losses(&self) -> u32 {
+        self.losses
+    }
+    fn lose_device(&mut self) -> bool {
+        self.lost = true;
+        true
+    }
+}
+
+/// An engine on a [`Device`] taking `before`'s encodings (then `after`'s),
+/// with the project's texture and texture array loaded and drawn once.
+fn textured(before: bool, after: bool) -> (u32, Rc<RefCell<Drawn>>) {
+    let root = textured_project();
+    set_hooks(Rc::new(Disk));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let options = json!({ "root": root.to_str().unwrap() }).to_string();
+    let engine = answer(og_engine_create(game, options))["value"]
+        .as_u64()
+        .unwrap() as u32;
+    let seen = Rc::new(RefCell::new(Drawn::new()));
+    set_render_backend(
+        engine,
+        Some(Box::new(Device {
+            formats: formats(before),
+            after: formats(after),
+            lost: false,
+            losses: 0,
+            seen: seen.clone(),
+        })),
+    )
+    .unwrap();
+    for loaded in [
+        og_load_texture(engine, "tex/crystal.png".into()),
+        og_load_texture_array(engine, "tex/layers.ogt".into()),
+    ] {
+        assert_eq!(answer(loaded.clone())["ok"], json!(true), "{loaded}");
+    }
+    frames(engine, 1);
+    (engine, seen)
+}
+
+#[test]
+fn a_device_back_with_other_encodings_gets_its_textures_transcoded_again() {
+    let (engine, seen) = textured(true, false);
+    let before = seen.borrow().clone();
+    let encodings: Vec<&str> = before.iter().map(|(f, _)| f.as_str()).collect();
+    // The texture and both layers went to the first device as BC7 (the
+    // cook's Basis transcoded for it), beside the engine's own RGBA8 ones.
+    assert_eq!(
+        encodings.iter().filter(|f| **f == "bc7").count(),
+        3,
+        "{encodings:?}"
+    );
+
+    // Lost, and back taking RGBA8 only: the frame draws (no BC7 handed to
+    // the new device) and every cooked texture is transcoded again for it.
+    assert!(lose_device(engine));
+    frames(engine, 1);
+    let after = seen.borrow().clone();
+    assert!(after.iter().all(|(f, _)| f == "rgba8"), "{after:?}");
+    assert_eq!(answer(og_render_display(engine))["deviceLosses"], json!(1));
+
+    // The frame is the frame of an engine on that device from the start.
+    let (_, fresh) = textured(false, false);
+    assert!(
+        *fresh.borrow() == after,
+        "the textures transcoded again differ from those transcoded for the device at once"
     );
 }

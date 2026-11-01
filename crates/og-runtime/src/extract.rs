@@ -155,6 +155,15 @@ pub trait RenderBackend {
     fn gpu_memory(&self) -> Option<og_render::GpuMemory> {
         None
     }
+    /// Before a frame: when the device was lost, make the renderer again
+    /// on a new one (natively at once; the web host asks for one and
+    /// draws nothing until it lands). `Ok(true)` while there is no device
+    /// to draw on. The runtime calls it before it extracts the frame, so
+    /// textures the new device takes in other encodings are decoded again
+    /// first (`super::assets::retranscode`); `render` recovers too.
+    fn recover(&mut self) -> Result<bool, String> {
+        Ok(false)
+    }
     /// How many times the device was lost and the renderer made again on
     /// a new one (each backend recovers in its own `render`).
     fn device_losses(&self) -> u32 {
@@ -321,6 +330,9 @@ pub(crate) struct RenderState {
     pub interp: super::interpolate::InterpState,
     /// How the frame is presented (`super::display`).
     pub display: super::display::DisplayState,
+    /// The cooked textures in the renderer, decoded again for a new
+    /// device's encodings (`super::assets::retranscode`).
+    pub decoded: super::assets::Decoded,
 }
 
 impl RenderState {
@@ -368,6 +380,7 @@ impl RenderState {
             ui_draw: Default::default(),
             interp: Default::default(),
             display: Default::default(),
+            decoded: Default::default(),
         }
     }
 }

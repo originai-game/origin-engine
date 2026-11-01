@@ -51,7 +51,9 @@ mod residency;
 use super::{assets, environment, extract, fx, geometry, look};
 use loading::fetch_json;
 pub(crate) use loading::{fetch, refresh, update};
-pub(crate) use residency::{add_model, add_sound, add_texture, placeholder, resolve};
+pub(crate) use residency::{
+    add_model, add_sound, add_texture, placeholder, replace_texture, resolve,
+};
 use residency::{downgrade, release, retry_retained, upgrade};
 
 use super::engine::{Engine, engine, hooks};

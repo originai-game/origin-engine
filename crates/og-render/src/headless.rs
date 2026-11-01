@@ -1,7 +1,7 @@
 //! Native headless rendering: the executor path (lavapipe or a GPU). The
 //! readback itself is [`Renderer::capture`], shared with the web.
 
-use crate::{RenderDesc, RenderError, RenderScene, RenderTarget, Renderer, RgbaImage};
+use crate::{RenderDesc, RenderError, RenderScene, RenderTarget, Renderer, RgbaImage, Successor};
 
 /// Renders one frame of `scene` offscreen and returns its RGBA8 pixels
 /// (blocking; native only).
@@ -146,5 +146,12 @@ impl Renderer {
             height: h,
             pixels,
         })
+    }
+}
+
+impl Successor {
+    /// [`Successor::make`] headless, blocking (native only).
+    pub fn make_blocking(self) -> Result<Renderer, RenderError> {
+        pollster::block_on(self.make(None))
     }
 }

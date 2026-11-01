@@ -559,6 +559,26 @@ impl RenderScene {
         Ok(crate::TextureArrayHandle::from_parts(i, generation))
     }
 
+    /// Replaces a live texture array's layers (the same array in another
+    /// encoding, after the device changed): the renderer uploads it again
+    /// before the next frame and every sprite, emitter and material that
+    /// samples it draws the new layers. Refused when the layers disagree;
+    /// `Ok(false)` for a handle that is not live.
+    pub fn set_texture_array(
+        &mut self,
+        handle: crate::TextureArrayHandle,
+        data: crate::TextureArrayData,
+    ) -> Result<bool, String> {
+        data.info()?;
+        let i = handle.index();
+        if !self.texture_array_slots.live(i, handle.generation()) {
+            return Ok(false);
+        }
+        self.texture_arrays[i] = data;
+        self.texture_array_revisions[i] += 1;
+        Ok(true)
+    }
+
     /// Removes a texture array: the renderer frees it before the next frame
     /// and a later add reuses the slot under a new generation. A sprite
     /// still drawn from it ([`RenderScene::sprite_arrays`]) is refused at

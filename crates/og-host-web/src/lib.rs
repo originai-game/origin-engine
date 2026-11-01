@@ -75,6 +75,15 @@ thread_local! {
     static RESIZES: RefCell<IdMap<u32, (u32, u32)>> = const { RefCell::new(IdMap::new()) };
     /// The Worker's `fetch(path)` for files nobody fetched yet.
     static FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
+    /// The Worker's `transcode(id, ktx2, target)`, which transcodes a Basis
+    /// texture again for a device that came back with other encodings
+    /// after a loss and answers with `og_web_put_texture*` or
+    /// `og_web_fail_texture`.
+    static TRANSCODER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
+    /// Textures handed to the transcoder and not answered yet, and those
+    /// it failed, with the reason.
+    static TRANSCODING: RefCell<std::collections::BTreeSet<String>> = const { RefCell::new(std::collections::BTreeSet::new()) };
+    static UNTRANSCODED: RefCell<BTreeMap<String, String>> = const { RefCell::new(BTreeMap::new()) };
     /// The Worker's `inflate(key, bytes)` (DecompressionStream), and what it answered by key.
     static INFLATER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     static INFLATED: RefCell<IdMap<u64, Result<Vec<u8>, String>>> = const { RefCell::new(IdMap::new()) };
@@ -159,15 +168,24 @@ impl Hooks for WebHooks {
         texture: &og_bundle::runtime::CookedTexture,
         formats: Option<&og_render::TextureFormats>,
     ) -> Fetch<og_render::TextureSource> {
+        if TRANSCODING.with(|t| t.borrow().contains(&texture.id)) {
+            return Fetch::Pending;
+        }
+        if let Some(e) = UNTRANSCODED.with(|u| u.borrow_mut().remove(&texture.id)) {
+            return Fetch::Failed(e);
+        }
         if let Some(t) = TEXTURES.with(|t| t.borrow().get(&texture.id).cloned()) {
             if let og_render::TextureSource::Encoded(u) = &t {
                 let format = u.desc.format;
                 if !formats.is_some_and(|f| f.supported.contains(&format)) {
-                    return Fetch::Failed(format!(
-                        "{}: transcoded to {} for another renderer than this engine's",
-                        texture.id,
-                        format.name()
-                    ));
+                    // Transcoded for a device lost since: again, for this one.
+                    return retranscode(texture, formats).unwrap_or_else(|| {
+                        Fetch::Failed(format!(
+                            "{}: transcoded to {} for another renderer than this engine's",
+                            texture.id,
+                            format.name()
+                        ))
+                    });
                 }
             }
             return Fetch::Ready(t);
@@ -275,6 +293,51 @@ fn is_model(path: &str) -> bool {
     path.ends_with(".gltf.ogb") || path.ends_with(".glb.ogb")
 }
 
+/// Hands a Basis texture to the Worker's transcoder for `formats` (a
+/// device made again after a loss that does not take the encoding it was
+/// transcoded to): `Pending` until the Worker answers. `None` without a
+/// transcoder or for a texture that is not Basis-coded.
+fn retranscode(
+    texture: &og_bundle::runtime::CookedTexture,
+    formats: Option<&og_render::TextureFormats>,
+) -> Option<Fetch<og_render::TextureSource>> {
+    if texture.meta.codec == og_bundle::format::codec::RGBA8 || texture.ktx2.is_empty() {
+        return None;
+    }
+    TRANSCODER.with(|f| {
+        let transcode = f.borrow();
+        let transcode = transcode.as_ref()?;
+        let target = texture.target_format(formats).name();
+        let called = transcode.call3(
+            &JsValue::NULL,
+            &JsValue::from_str(&texture.id),
+            &js_sys::Uint8Array::from(texture.ktx2.as_slice()),
+            &JsValue::from_str(target),
+        );
+        Some(match called {
+            Ok(_) => {
+                TEXTURES.with(|t| t.borrow_mut().remove(&texture.id));
+                TRANSCODING.with(|t| t.borrow_mut().insert(texture.id.clone()));
+                Fetch::Pending
+            }
+            Err(e) => Fetch::Failed(format!("{}: the transcoder threw {e:?}", texture.id)),
+        })
+    })
+}
+
+/// The Worker's `transcode(id, ktx2, target)` (see [`TRANSCODER`]).
+#[wasm_bindgen]
+pub fn og_web_set_transcoder(transcode: js_sys::Function) {
+    TRANSCODER.with(|f| *f.borrow_mut() = Some(transcode));
+}
+
+/// A texture the transcoder could not transcode again, with the reason.
+#[wasm_bindgen]
+pub fn og_web_fail_texture(id: String, reason: String) {
+    TRANSCODING.with(|t| t.borrow_mut().remove(&id));
+    UNTRANSCODED.with(|u| u.borrow_mut().insert(id, reason));
+}
+
 fn drop_textures(ids: &[String]) {
     TEXTURES.with(|t| {
         let mut t = t.borrow_mut();
@@ -322,6 +385,7 @@ pub fn og_web_put_texture(id: String, width: u32, height: u32, rgba: Vec<u8>, sr
         },
         mips: og_render::Mips::Generate,
     };
+    TRANSCODING.with(|t| t.borrow_mut().remove(&id));
     TEXTURES.with(|t| {
         t.borrow_mut()
             .insert(id, og_render::TextureSource::Rgba(data))
@@ -369,8 +433,13 @@ pub fn og_web_put_texture_encoded(
         },
         levels: split,
     };
+    let again = TRANSCODING.with(|t| t.borrow_mut().remove(&id));
     if let Err(e) = upload.desc.validate(&upload.levels) {
-        return format!("{id}: {e}");
+        let reason = format!("{id}: {e}");
+        if again {
+            UNTRANSCODED.with(|u| u.borrow_mut().insert(id, reason.clone()));
+        }
+        return reason;
     }
     TEXTURES.with(|t| {
         t.borrow_mut()
@@ -855,7 +924,7 @@ mod canvas {
         /// the frames until it lands draw nothing while the simulation goes
         /// on, and the first frame after it draws the world as it is then,
         /// every mesh and texture uploaded again from the scene.
-        fn recover(&mut self) -> Result<bool, String> {
+        fn recover_device(&mut self) -> Result<bool, String> {
             if let Some(made) = RECOVERED.with(|m| m.borrow_mut().remove(&self.engine)) {
                 self.recovering = false;
                 let renderer = made.map_err(|e| {
@@ -935,7 +1004,7 @@ mod canvas {
             Some(self.renderer.info().clone())
         }
         fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
-            if self.recover()? {
+            if self.recover_device()? {
                 return Ok(());
             }
             if let Some((w, h)) = super::take_resize(self.engine) {
@@ -1092,6 +1161,9 @@ mod canvas {
         }
         fn gpu_memory(&self) -> Option<og_render::GpuMemory> {
             Some(self.renderer.gpu_memory())
+        }
+        fn recover(&mut self) -> Result<bool, String> {
+            self.recover_device()
         }
         fn device_losses(&self) -> u32 {
             self.losses
