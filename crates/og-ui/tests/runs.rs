@@ -27,6 +27,9 @@
 //!   cooked the same characters), the role's Latin given to the companion,
 //!   or the display role taking the body's companion →
 //!   `a_styles_cjk_companion_draws_its_chinese`
+//! - a display or numeric face's missing character (Orbitron has no
+//!   middle dot) left missing though the style's body face has it →
+//!   `a_display_face_falls_back_to_the_body_face`
 //! - a `[wave]`, `[shake]` or `[pulse]` span that mixes faces drawn still,
 //!   or its runs drawn from the wrong face when they move →
 //!   `a_moving_span_that_mixes_faces_moves`
@@ -524,4 +527,35 @@ fn a_styles_cjk_companion_draws_its_chinese() {
     };
     plain.link();
     assert_eq!(plain.for_text(FontRole::Body, "原点").handle, f.cjk.handle);
+}
+
+#[test]
+fn a_display_face_falls_back_to_the_body_face() {
+    let mut scene = RenderScene::new();
+    let f = faces(&mut scene);
+    // The display and numeric faces lack what the body face has, and the UI
+    // has no other font: the body draws it, the role's face the rest.
+    let mut fonts = Fonts {
+        body: f.cjk.clone(),
+        display: Some(f.latin.clone()),
+        mono: Some(f.latin.clone()),
+        ..Fonts::default()
+    };
+    fonts.link();
+    for role in [FontRole::Display, FontRole::Mono] {
+        let m = &fonts.for_text(role, "Round 原 7").metrics;
+        assert!(m.is_mixed(), "{role:?}: laid out per run");
+        assert_eq!(
+            runs(m, "Round 原 7"),
+            [0, 0, 0, 0, 0, 0, 1, 1, 0],
+            "{role:?}"
+        );
+    }
+    // The body's own text is never cut against itself.
+    assert!(
+        !fonts
+            .for_text(FontRole::Body, "Round 原 7")
+            .metrics
+            .is_mixed()
+    );
 }

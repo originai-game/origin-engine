@@ -237,8 +237,8 @@ impl Fonts {
     }
 
     /// Makes each role's mixed font ([`Fonts::for_text`]): the role's font
-    /// with `chain`, `fallbacks` and `fallback` after it, for a text that
-    /// mixes scripts. [`crate::Ui`] links the fonts it is given; call it
+    /// with `chain`, `fallbacks` and `fallback` after it (and, for every
+    /// role but body, the body face last), for a text that mixes scripts. [`crate::Ui`] links the fonts it is given; call it
     /// again after changing them by hand.
     pub fn link(&mut self) {
         let others: Vec<UiFont> = self
@@ -248,16 +248,24 @@ impl Fonts {
             .chain(self.fallback.as_ref())
             .map(UiFont::alone)
             .collect();
-        let linked = |companion: Option<&UiFont>| -> Option<std::sync::Arc<[UiFont]>> {
+        // A role other than body ends its runs with the body face: a mark
+        // its own face lacks (Orbitron has no middle dot) is drawn in the
+        // style's body rather than missing.
+        let body = self.body.alone();
+        let linked = |companion: Option<&UiFont>,
+                      last: Option<&UiFont>|
+         -> Option<std::sync::Arc<[UiFont]>> {
             let all: Vec<UiFont> = companion
                 .map(UiFont::alone)
                 .into_iter()
                 .chain(others.iter().cloned())
+                .chain(last.cloned())
                 .collect();
             (!all.is_empty()).then(|| all.into())
         };
-        let text_runs = linked(self.companion(FontRole::Body));
-        let display_runs = linked(self.companion(FontRole::Display));
+        let text_runs = linked(self.companion(FontRole::Body), None);
+        let mono_runs = linked(self.companion(FontRole::Mono), Some(&body));
+        let display_runs = linked(self.companion(FontRole::Display), Some(&body));
         let (text_prefer, display_prefer) = (
             usize::from(self.companion(FontRole::Body).is_some()),
             usize::from(self.companion(FontRole::Display).is_some()),
@@ -265,7 +273,7 @@ impl Fonts {
         let roles = [
             (Some(&mut self.body), &text_runs, text_prefer),
             (self.display.as_mut(), &display_runs, display_prefer),
-            (self.mono.as_mut(), &text_runs, text_prefer),
+            (self.mono.as_mut(), &mono_runs, text_prefer),
             (self.rounded.as_mut(), &display_runs, display_prefer),
         ];
         for (f, runs, prefer) in roles {
