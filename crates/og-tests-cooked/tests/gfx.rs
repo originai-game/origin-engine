@@ -5,6 +5,7 @@
 use og_tests_cooked::gfx;
 use std::path::PathBuf;
 
+mod gltf_extensions;
 mod overlay_effects;
 
 fn out_dir() -> PathBuf {

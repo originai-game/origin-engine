@@ -22,6 +22,11 @@ pub const NATIVE_SCENES: &[&str] = &[
     "baked-batches",
     "terrain-generated",
     "ui-vector",
+    "gltf-uv-transform",
+    "gltf-punctual-lights",
+    "gltf-instancing",
+    "gltf-variants-0",
+    "gltf-variants-1",
 ];
 
 /// Builds the scene called `name`: the scenes that cook here, every other
@@ -57,6 +62,28 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         #[cfg(not(target_arch = "wasm32"))]
         "ui-vector" => |g, _| {
             g.scene = crate::ui_scenes::vector()?;
+            Ok(())
+        },
+        // G1-3: glTF extensions through the cook (gltf_scenes).
+        #[cfg(not(target_arch = "wasm32"))]
+        "gltf-uv-transform" => |g, _| {
+            g.scene = crate::gltf_scenes::uv_transform_scene()?.0;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "gltf-punctual-lights" => |g, _| {
+            g.scene = crate::gltf_scenes::lights_scene()?.0;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "gltf-instancing" => |g, _| {
+            g.scene = crate::gltf_scenes::instancing_scene()?.0;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "gltf-variants-0" | "gltf-variants-1" => |g, name| {
+            let variant = usize::from(name == "gltf-variants-1");
+            g.scene = crate::gltf_scenes::variants_scene(variant)?.0;
             Ok(())
         },
         other => return og_tests::scenes::build(other),

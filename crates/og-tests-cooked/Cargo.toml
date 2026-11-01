@@ -14,6 +14,8 @@ og-render = { path = "../og-render" }
 og-cook = { path = "../og-cook" }
 og-anim = { path = "../og-anim" }
 glam = { workspace = true }
+# gltf_scenes writes its glTFs' JSON.
+serde_json = "1"
 
 # og-ui's tests that cook (tests/text_gfx.rs, materials_gfx.rs,
 # pack_contrast.rs) and og-ui's test support they include by path.
@@ -26,7 +28,6 @@ og-core = { path = "../og-core" }
 og-input = { path = "../og-input" }
 og-i18n = { path = "../og-i18n" }
 image = { workspace = true }
-serde_json = "1"
 
 [[bin]]
 name = "og-gfx"
