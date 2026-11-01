@@ -1,0 +1,15 @@
+type project
+version 1
+---
+# The component library's feedback, HUD and world components (docs/ui.md
+# §11, §14; U6c) on one stage: a lit ground with a few units for the world
+# tags and ground shapes, and a screen per group whose frames show each
+# component's states. See src/main.ts for its commands and film-*.txt for
+# the scripted frames.
+name "UI components"
+id "ui-components"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
