@@ -726,19 +726,25 @@ test("200 % text: the containers, navigation and data components grow with the t
     og.ui.actionHints("Hints", { hints: [{ action: "confirm", text: "Select" }, { action: "back", text: "Back" }, { action: "details", text: "Hold to sell", hold: true, progress: 0.4 }] });
     og.ui.carousel("Featured", { count: 3, index: 0, height: { kind: "fixed", px: 140 } }, (k) => og.ui.label("Title", `Banner ${k}`, {}));
     og.ui.card("Card", { title: "Ember Blade", eyebrow: "Legendary", interactive: true } as never, () => og.ui.label("Body", "Deals fire damage over time.", {}));
-    og.ui.menu("Menu", true, { at: { x: 40, y: 40 }, entries: [{ id: "copy", label: "Copy", shortcut: "Ctrl+C" }, { id: "sort", label: "Sort by" }, { id: "n", label: "Name", parent: "sort" }] });
+    // A narrow card at a fixed width: it grows with the text instead of breaking its title mid-word.
+    og.ui.card("Narrow", { title: "Moonblade", eyebrow: "Epic", badge: "New", interactive: true, width: { kind: "fixed", px: 110 }, media: { icon: "sword", aspect: 4 / 3 } } as never, () => {});
+    og.ui.tabBar("Pills", { tabs: [{ label: "Daily" }, { label: "Weekly" }, { label: "Season" }], selected: 1, variant: "pill", fill: true, bumpers: false }, () => {});
+    og.ui.breadcrumbs("Long", { items: [{ label: "Home" }, { label: "Inventory" }, { label: "Weapons" }, { label: "Swords" }, { label: "Rare" }, { label: "Moonblade" }], maxShown: 4 });
+    og.ui.menu("Menu", true, { at: { x: 40, y: 40 }, entries: [{ id: "copy", label: "Copy", shortcut: "Ctrl+C" }, { id: "compare", label: "Compare", shortcut: "C" }, { id: "sort", label: "Sort by" }, { id: "destroy", label: "Destroy", danger: true }, { id: "n", label: "Name", parent: "sort" }] });
     og.ui.confirm("Delete", true, { title: "Delete save?", message: "This cannot be undone.", confirmLabel: "Delete", danger: true });
   };
   const data = () => {
     og.ui.statCompare("Compare", { rows: [{ label: "Attack", current: 120, next: 138 }, { label: "Weight", current: 12, next: 9, lowerIsBetter: true }] });
-    og.ui.table("Board", { columns: COLUMNS, rows: ROWS.slice(0, 40), height: { kind: "fixed", px: 220 } as never });
+    // The guild drops first where the columns do not fit (a phone at 200 %); the score stays.
+    og.ui.table("Board", { columns: COLUMNS.map((c, k) => ({ ...c, priority: [2, 0, 1][k] })), rows: ROWS.slice(0, 40), height: { kind: "fixed", px: 220 } as never });
     og.ui.keyValueRows("Stats", { title: "Run", rows: [{ label: "Time", value: "12:40", mono: true }, { label: "Gold", value: "1,280", hint: "+120 today" }] });
     og.ui.calendar("Days", { year: 2026, month: 11, today: "2026-11-01", selected: "2026-11-12" } as never);
-    og.ui.tree("Codex", { items: [{ id: "beasts", label: "Beasts" }, { id: "wolf", parent: "beasts", label: "Wolf" }, { id: "places", label: "Places" }], expanded: ["beasts"], height: { kind: "fixed", px: 160 } } as never);
+    og.ui.tree("Codex", { items: [{ id: "beasts", label: "Beasts" }, { id: "wolf", parent: "beasts", label: "Wolf" }, { id: "moon", parent: "wolf", label: "Moonblade", badge: "New" }, { id: "places", label: "Places" }], expanded: ["beasts", "wolf"], width: { kind: "fixed", px: 300 }, height: { kind: "fixed", px: 360 } } as never);
+    og.ui.dataList("Mail", { count: 3, height: { kind: "fixed", px: 320 }, width: { kind: "fixed", px: 300 } } as never, (i) => og.ui.label("Subject", `Letter ${i + 1}: a gift for you`, { width: { kind: "grow" }, maxLines: 2, ellipsis: true } as never));
     og.ui.chart("Gold", { kind: "bar", title: "Gold per day", categories: ["Mon", "Tue", "Wed", "Thu"], series: [{ label: "Gold", values: [120, 340, 260, 410] }] });
   };
   // Tall surfaces: everything is laid out on screen, nothing scrolled away.
-  for (const [bp, w, h, coarse, build, probe] of [["desktop", 1280, 1800, false, nav, "Equipment"], ["desktop", 1280, 1800, false, data, "Attack"], ["phonePortrait", 390, 1800, true, nav, "Equipment"], ["phonePortrait", 390, 1800, true, data, "Attack"]] as const) {
+  for (const [bp, w, h, coarse, build, probe] of [["desktop", 1280, 2400, false, nav, "Equipment"], ["desktop", 1280, 3000, false, data, "Attack"], ["phonePortrait", 390, 2400, true, nav, "Equipment"], ["phonePortrait", 390, 3000, true, data, "Attack"]] as const) {
     const frames: UiFrameSnapshot[] = [];
     for (const scale of [1, 2]) {
       const engine = run(build, Math.min(640, w - 32), kit);
@@ -779,8 +785,48 @@ test("200 % text: the containers, navigation and data components grow with the t
       }
     });
     expect(spills).toEqual([]);
+    // Nothing truncated to a stub but data in a fixed column (a table's cells): headers, menus,
+    // crumbs, tabs, cards, the tree and the list's rows wrap or reflow instead.
+    const cut = checkFrame(frames[1]!, cell).filter((f) => f.rule === "text-truncated" && !f.paths.some((p) => p.includes("/Cell#")));
+    expect(cut.map((f) => `${bp} ${f.paths.join(" × ")}: ${f.measured}`)).toEqual([]);
+    // Under a finger every target is a whole 44 CSS px, at both text sizes (a dot, a crumb, a step).
+    if (coarse) {
+      for (const f of frames) {
+        const small = f.elements.filter((e) => /^(button|tab|link|menuitem|menuitemcheckbox|menuitemradio|columnheader)$/.test(e.role ?? "") && !e.clipped && !e.disabled && (e.width < 43.5 || e.height < 43.5));
+        expect(small.map((e) => `${bp} ${e.id} (${e.name}) ${Math.round(e.width)}×${Math.round(e.height)}`)).toEqual([]);
+      }
+    }
   }
-}, 30_000);
+}, 60_000);
+
+test("actionHints: under a finger a bar across the bottom that reaches into the safe area and answers its room; content kept above it meets none of it", () => {
+  // Wrong: a floating bar over the page's last rows, or one whose room leaves out the safe area.
+  let room = 0;
+  const sys = defineSystem(`UcBuild${systems++}`, {}, () => {
+    const vp = og.ui.frameViewport();
+    // A page from the safe area's top to the bar's room: what a screen does with the answer.
+    og.ui.anchor("Page", { anchor: "top", margin: 0, width: { kind: "grow" }, height: { kind: "fixed", px: Math.max(0, vp.height - vp.safeArea.top - room) } } as never, () => og.ui.label("Last", "The page's last line", {}));
+    room = og.ui.actionHints("Hints", { hints: [{ action: "confirm", hint: "Select" }, { action: "back", hint: "Back" }, { action: "details", hint: "Hold to sell", hold: true, progress: 0.5 }] }).height;
+  });
+  const created = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, {});
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  og.ui.previewViewport(engine.world, { width: 390, height: 844, dpr: 3, coarsePointer: true, breakpoint: "phonePortrait", safeArea: { left: 0, top: 47, right: 0, bottom: 34 } } as never);
+  engine.advance(12);
+  const bar = byPath(engine, "Hints")!;
+  expect(bar.y + bar.height).toBeCloseTo(844, 0);
+  expect(bar.width).toBeCloseTo(390, 0);
+  expect(room).toBeCloseTo(844 - bar.y, 0);
+  // Its buttons sit above the home indicator, each a whole target.
+  for (const k of [0, 1, 2]) {
+    const h = byPath(engine, `Hint#${k}`)!;
+    expect(h.y + h.height).toBeLessThanOrEqual(844 - 34 + 0.5);
+    expect(Math.min(h.width, h.height)).toBeGreaterThanOrEqual(43.5);
+  }
+  const page = elements(engine).filter((e) => e.path === "Page" || e.path.startsWith("Page/"));
+  expect(page.length).toBeGreaterThan(0);
+  expect(page.filter((e) => e.y + e.height > bar.y + 0.5).map((e) => e.path)).toEqual([]);
+});
 
 // ── formats ─────────────────────────────────────────────────────────────
 
