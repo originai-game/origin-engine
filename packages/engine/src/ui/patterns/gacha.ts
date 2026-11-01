@@ -1,0 +1,470 @@
+// Gacha (docs/ui.md §11 genre patterns, Appendix B: gacha banner and pull
+// results; pack opening): the banner the player pulls on, and the pull's
+// reveal. Where a pull is in its reveal is the component's own state
+// (og.ui.memory, so a snapshot carries it); the game only starts one (a new
+// token) and hears what the player pressed.
+
+import type * as Api from "@origingame/engine";
+import {
+  artSlot, btn, clamp, flags, floating, frame, glow, grow, keyHash, kit, line, mix, over, paint, priceTag, px, radial, rarityColor, rarityPips,
+  role, scrimFill, shadow, spring, st, still, surface, symbol, text, timerChip, token, u, vstate, xy, type Mut, type Rgba,
+} from "./core.ts";
+import { cornerTag, plainText } from "./rewards.ts";
+
+const fill = (template: string, v: Record<string, string | number>): string => template.replace(/\{(\w+)\}/g, (m, k: string) => (k in v ? `${v[k]}` : m));
+
+/** A row of `n` stars, `size` square: lit in `color`, drawn as shapes (a font may have no ★). `lit` stars of them shine; the rest are outlines. */
+export function stars(id: string, n: number, size: number, color: Rgba, lit = n, delays: number[] = []): void {
+  kit.open(id, { direction: "row", gap: Math.max(1, Math.round(size * 0.12)), cross: "center", part: "Gacha.stars", partClass: "badge" });
+  for (let k = 0; k < n; k++) {
+    const on = k < lit;
+    symbol(kit.idi("Star", k), on ? "star" : "starOutline", size, on ? color : mix(color, role("inkFaint"), 0.6));
+    kit.props({
+      states: [{ name: "lit", states: [vstate("off"), vstate("on")], transitions: [] }],
+      state: [{ group: "lit", state: on ? "on" : "off" }],
+      ...(delays[k] !== undefined ? { enter: { values: [{ prop: "opacity", value: 0 }, { prop: "scale", value: 2.2 }, { prop: "rotate", value: -0.6 }], transition: spring("emphasis"), delayMs: delays[k]! } } : {}),
+    });
+  }
+  kit.close();
+  kit.semantics({ role: "image", name: `${n} stars` });
+}
+
+/** The colour a pull's tier is felt in: the style's rarity colour, else the primary. */
+const tierInk = (r: Api.Rarity | undefined): Rgba => rarityColor(r) ?? role("primary");
+
+// ── the banner ──────────────────────────────────────────────────────────
+
+/**
+ * A gacha banner (Genshin Impact, Honkai: Star Rail, FGO): see
+ * `fn gachaBanner` in crates/og-api/api/ui.ogt.
+ */
+export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => void): Api.GachaBannerResult {
+  const { viewport: vp, t, phone } = frame();
+  const portrait = vp.breakpoint === "phonePortrait";
+  // A short frame (a phone on its side): the featured units drop their second line, the rail narrows.
+  const short = vp.height - vp.safeArea.top - vp.safeArea.bottom < 480;
+  const touch = frame().touch;
+  // Large text (150 % and over) on a phone: rows that held two things hold one.
+  const big = phone && (frame().theme.textScale ?? 1) >= 1.5;
+  const out: Mut<Api.GachaBannerResult> = { pull: 0, short: 0, banner: null, details: false, history: false };
+  const tabs = desc.banners ?? [];
+  const balance = desc.balance ?? 0;
+  const multiN = Math.max(1, desc.multiCount ?? 10);
+  const currency = desc.currency ?? "gem";
+
+  kit.open(id, { direction: "column", width: grow(), height: grow(), part: "Gacha.frame", partClass: "panel", radius: t.panel });
+  // The key art behind everything, and a scrim from the text's edge so the text reads on any art.
+  kit.open("Art", { width: grow(), height: grow(), direction: "column", part: "Gacha.art", partClass: "slot" });
+  art();
+  kit.close();
+  over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: -2, layoutMotion: spring("ui") });
+  kit.open("Scrim", { width: grow(), height: grow(), part: "Gacha.scrim", partClass: "panel" });
+  kit.setDraw({ shape: { kind: "rect" }, fills: [scrimFill(portrait ? "bottom" : "start", 0.9), scrimFill("bottom", 0.7)] });
+  kit.close();
+  over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: -1 });
+
+  kit.open("Body", { direction: portrait ? "column" : "row", width: grow(), height: grow(), gap: u(20), padding: xy(u(phone ? 12 : 28), u(phone ? 12 : 24)) });
+  // The banners: a rail at the start on a desktop, chips above on a phone.
+  if (tabs.length > 1) {
+    kit.open("Tabs", { direction: portrait ? "row" : "column", wrap: portrait, gap: u(8), width: portrait ? grow() : null, part: "Gacha.tabs", partClass: "panel" });
+    for (const b of tabs) {
+      const on = b.key === desc.current;
+      const r = surface(b.key ?? "", {
+        part: "Gacha.tab",
+        cls: "tab",
+        flags: [on ? "current" : "", b.fresh ? "fresh" : ""],
+        fill: mix(role("panel"), role("shadow"), 0.2),
+        selected: on,
+        selectedFill: mix(role("panelRaised"), role("primary"), 0.22),
+        direction: portrait ? "column" : "row",
+        // On a phone in portrait three tabs share the row; at large text each takes its own.
+        width: portrait ? (big ? grow() : px(Math.floor((vp.width - vp.safeArea.left - vp.safeArea.right - u(24) - u(8) * (tabs.length - 1)) / tabs.length))) : px(u(short ? 160 : 200)),
+        padding: xy(u(10), u(touch ? 12 : 8)),
+        gap: u(10),
+        radius: t.control,
+        semantics: { role: "tab", name: b.name ?? b.key ?? "", selected: on },
+      }, () => {
+        kit.setDraw({ shape: { kind: "rect", radii: [t.control, t.control, t.control, t.control] }, fills: [{ kind: "solid", color: token(on ? "panelRaised" : "panel", 0.92) }], strokes: [line(on ? 2 : 1, token(on ? "primary" : "line"))] });
+        if (!phone && !short) artSlot("Thumb", "Gacha.thumb", { texture: b.image ?? null, kind: "banner", width: px(u(44)), height: px(u(44)), radius: t.small });
+        kit.column("Text", { width: grow(), gap: 2, cross: portrait ? "center" : "start" }, () => {
+          text("Name", b.name ?? "", { step: st(14), font: "display", maxLines: 2, width: grow(), align: portrait ? "center" : "start" });
+          if (b.endsIn !== undefined && b.endsIn !== null && !portrait && !short) text("Ends", countdownShort(b.endsIn), { step: st(12), color: b.endsIn < 3600 ? "warn" : "inkMuted", nowrap: true, font: "mono" });
+        });
+        if (b.fresh) {
+          kit.open("Dot", { width: px(u(8)), height: px(u(8)) });
+          kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("danger") }] });
+          kit.close();
+          over({ insets: { end: u(6), top: u(6) }, inert: true });
+        }
+      });
+      if (r.clicked && !on) {
+        out.banner = b.key ?? null;
+        kit.feedback("tab", -1);
+      }
+    }
+    kit.close();
+    kit.semantics({ role: "tablist", name: desc.title ?? "" });
+    // Bumpers (Q and E) step through the banners.
+    const at = tabs.findIndex((b) => b.key === desc.current);
+    const step = (kit.action("tabNext") ? 1 : 0) - (kit.action("tabPrev") ? 1 : 0);
+    if (step !== 0 && at >= 0) {
+      out.banner = tabs[(at + step + tabs.length) % tabs.length]!.key ?? null;
+      kit.feedback("tab", -1);
+    }
+  }
+
+  // The banner's words, at the start over the scrim.
+  kit.open("Main", { direction: "column", width: grow(), height: grow(), gap: u(12) });
+  // The words scroll when they outgrow the frame (a phone on its side, 200 % text); the foot and its pulls never leave it.
+  kit.openScroll("Info", { width: portrait ? grow() : px(Math.min(u(460), Math.round(vp.width * 0.42))), height: grow(), gap: u(10), padding: xy(0, 0) });
+  {
+    if (desc.subtitle) text("Subtitle", desc.subtitle.toLocaleUpperCase(), { step: st(13), color: "highlight", font: "display", nowrap: true, ellipsis: true, width: grow() });
+    text("Title", desc.title ?? "", { step: st(phone ? 26 : 40), heading: true, font: "display", width: grow(), maxLines: 2, ellipsis: true });
+    if (desc.endsIn !== undefined && desc.endsIn !== null) {
+      timerChip("Timer", desc.endsIn, "");
+    }
+    const feat = desc.featured ?? [];
+    if (feat.length > 0) {
+      kit.column("Featured", { width: grow(), gap: u(6), part: "Gacha.featured", partClass: "panel" }, () => {
+        feat.forEach((f, k) => {
+          const ink = tierInk(f.rarity);
+          kit.row(kit.idi("Unit", k), { width: grow(), gap: u(10), cross: "center", padding: xy(u(10), u(6)), radius: t.small, part: `Gacha.unit${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "panel" }, () => {
+            kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, fills: [{ kind: "gradient", type: "linear", from: { x: 0, y: 0.5 }, to: { x: 1, y: 0.5 }, stops: [{ offset: 0, color: paint(ink, 0.42) }, { offset: 1, color: paint(ink, 0.05) }] }] });
+            kit.open("Edge", { width: px(3), height: grow() });
+            kit.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: paint(ink) }] });
+            kit.close();
+            kit.column("Text", { width: grow(), gap: 1 }, () => {
+              text("Name", f.name ?? "", { step: st(16), font: "display", nowrap: true, ellipsis: true, width: grow() });
+              if (f.title && !short) text("Title", f.title, { step: st(12), color: "inkMuted", maxLines: 2, width: grow() });
+            });
+            stars("Stars", f.stars ?? 0, u(14), ink);
+          });
+        });
+      });
+    }
+    if (desc.rateText) {
+      kit.open("Rate", { width: grow(), direction: "column", part: "Gacha.rate", partClass: "panel" });
+      kit.richText("Body", desc.rateText, { step: st(13), color: token("inkMuted"), width: grow() });
+      kit.close();
+    }
+  }
+  kit.close();
+
+  // The foot: details and history at the start, the pity and the purse, the pulls at the end.
+  kit.open("Foot", { direction: portrait ? "column" : "row", width: grow(), gap: u(portrait ? 10 : 14), cross: portrait ? "stretch" : "end" });
+  {
+    kit.row("Bar", { gap: u(8), cross: "center" }, () => {
+      if (btn("Details", desc.detailsLabel ?? "Details", { variant: "quiet", size: "sm", sym: "eye", part: "Gacha.details" }).clicked) out.details = true;
+      if (btn("History", desc.historyLabel ?? "History", { variant: "quiet", size: "sm", sym: "clock", part: "Gacha.history" }).clicked) out.history = true;
+    });
+    if (!portrait) {
+      kit.open("Spacer", { width: grow() });
+      kit.close();
+    }
+    kit.column("Pulls", { gap: u(8), cross: portrait ? "stretch" : "end", width: portrait ? grow() : null }, () => {
+      kit.row("Status", { gap: u(14), cross: "center", wrap: big, align: portrait ? "spaceBetween" : "start" }, () => {
+        if ((desc.pityMax ?? 0) > 0) pityMeter("Pity", desc.pity ?? 0, desc.pityMax!, desc.pityLabel ?? "Guaranteed in {left}");
+        kit.row("Purse", { gap: u(6), cross: "center", padding: xy(u(10), u(4)), radius: 999, background: token("shadow", 0.55), part: "Gacha.purse", partClass: "chip" }, () => {
+          priceTag("Balance", { amount: balance, currency, size: "md" });
+        });
+      });
+      kit.open("Buttons", { direction: big ? "column" : "row", gap: u(10), cross: big ? "stretch" : "center", width: portrait ? grow() : null });
+      {
+        const pull = (key: string, label: string, n: number, cost: number): void => {
+          const can = balance >= cost;
+          const r = btn(key, label, {
+            variant: n > 1 ? "premium" : "secondary",
+            size: "lg",
+            width: portrait ? grow() : null,
+            part: `Gacha.pull${flags(n > 1 ? "multi" : "single", !can && "short")}`,
+            name: `${label}, ${cost} ${currency}${can ? "" : `, ${desc.shortLabel ?? "not enough"}`}`,
+            before: () => {
+              priceTag("Price", { amount: cost, currency, affordable: can, size: "sm", shortLabel: desc.shortLabel ?? "not enough" });
+              kit.open("Sep", { width: px(1), height: px(u(18)), background: token("line") });
+              kit.close();
+            },
+          });
+          kit.props({ states: [{ name: "purse", states: [vstate("afford"), vstate("short")], transitions: [] }], state: [{ group: "purse", state: can ? "afford" : "short" }] });
+          if (r.clicked) {
+            if (can) out.pull = n;
+            else {
+              out.short = n;
+              kit.feedback("error", -1);
+            }
+          }
+        };
+        if ((desc.single ?? 0) > 0) pull("Single", desc.singleLabel ?? "Wish ×1", 1, desc.single!);
+        if ((desc.multi ?? 0) > 0) pull("Multi", fill(desc.multiLabel ?? "Wish ×{n}", { n: multiN }), multiN, desc.multi!);
+      }
+      kit.close();
+    });
+  }
+  kit.close();
+  kit.close();
+  kit.close();
+  kit.close();
+  return out;
+}
+
+/** Seconds as `2d 4h` or `3h 12m`, for a tab. */
+function countdownShort(seconds: number): string {
+  const s = Math.max(0, Math.ceil(seconds));
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+/** The pity meter: a thin bar toward the guarantee and how many pulls are left. */
+function pityMeter(id: string, pity: number, max: number, label: string): void {
+  const f = clamp(pity / max, 0, 1);
+  const w = u(140);
+  kit.column(id, { gap: u(4), cross: "end", part: "Gacha.pity", partClass: "bar" }, () => {
+    text("Label", fill(label, { left: Math.max(0, max - pity), max, pity }), { step: st(13), nowrap: true, color: f > 0.8 ? "highlight" : "ink" });
+    kit.open("Track", { width: px(w), height: px(u(6)), radius: 999, background: token("shadow", 0.6) });
+    kit.open("Fill", { width: px(Math.max(u(6), Math.round(w * f))), height: px(u(6)), radius: 999, background: token(f > 0.8 ? "highlight" : "primary") });
+    kit.close();
+    kit.close();
+  });
+  kit.semantics({ role: "meter", name: fill(label, { left: Math.max(0, max - pity), max, pity }), valueMin: 0, valueMax: max, valueNow: pity });
+}
+
+// ── the pull ────────────────────────────────────────────────────────────
+
+const CHARGE = 84;
+const PHASES: Api.PullPhase[] = ["idle", "charge", "reveal", "summary"];
+
+/**
+ * A pull's reveal (Genshin's wish, Star Rail's warp, a pack opening): see
+ * `fn pullSequence` in crates/og-api/api/ui.ogt.
+ */
+export function pullSequence(id: string, desc: Api.PullSequenceDesc): Api.PullSequenceResult {
+  const { viewport: vp, phone } = frame();
+  const portrait = vp.breakpoint === "phonePortrait";
+  const items = desc.items ?? [];
+  const n = items.length;
+  const tick = kit.tick();
+  const tok = desc.token ?? 0;
+  const out: Mut<Api.PullSequenceResult> = { phase: "idle", index: 0, revealed: null, again: false, done: false };
+
+  // Where the sequence is: a new token starts it from the charge.
+  kit.open(id, { direction: "column", width: px(0), height: px(0) });
+  let phase = kit.memory("~p.phase", 0);
+  let idx = kit.memory("~p.idx", 0);
+  let t0 = kit.memory("~p.t0", 0);
+  const seen = kit.memory("~p.tok", 0);
+  const shown = kit.memory("~p.shown", -1);
+  if (tok !== 0 && tok !== seen) {
+    phase = 1;
+    idx = 0;
+    t0 = tick;
+    kit.feedback("open", -1);
+  }
+  if (tok === 0 || n === 0) phase = 0;
+  const go = (p: number): void => {
+    phase = p;
+    t0 = tick;
+  };
+  const top = items.reduce<Api.PullItem | null>((b, x) => (!b || rarityPips(x.rarity) > rarityPips(b.rarity) ? x : b), null);
+  const reduced = still();
+  if (phase === 1 && (reduced || tick - t0 >= CHARGE)) go(2);
+
+  const open = phase !== 0;
+  let advance = false;
+  let skip = false;
+  const m = floating(`${id}Layer`, open, { scrim: true, locked: true, transition: "fade" }, () => ({ x: vp.safeArea.left, y: vp.safeArea.top }), () => {
+    if (!open) return;
+    // The layer sits inside the safe area; the scrim behind it covers the whole screen.
+    const W = vp.width - vp.safeArea.left - vp.safeArea.right;
+    const H = vp.height - vp.safeArea.top - vp.safeArea.bottom;
+    const stage = surface("Stage", {
+      part: `Pull.layer${flags(PHASES[phase] ?? "")}`,
+      cls: "panel",
+      fill: mix(role("well"), role("shadow"), 0.55),
+      washBy: 0,
+      direction: "column",
+      width: px(W),
+      height: px(H),
+      align: "center",
+      cross: "center",
+      radius: 0,
+      semantics: { role: "dialog", name: phase === 3 ? "Results" : top?.name ?? "" },
+      props: { states: [{ name: "phase", states: [vstate("charge"), vstate("reveal"), vstate("summary")], transitions: [] }], state: [{ group: "phase", state: PHASES[phase] === "idle" ? "charge" : PHASES[phase]! }] },
+    }, () => {
+      kit.open("Content", { direction: "column", width: grow(), height: grow(), align: "center", cross: "center", padding: xy(u(16), u(16)) });
+      if (phase === 1) charge(top, tick - t0, W, H);
+      else if (phase === 2) {
+        const it = items[clamp(idx, 0, n - 1)]!;
+        reveal(it, idx, n, tick - t0, W, H, desc.tapLabel ?? "Tap to continue");
+      } else if (phase === 3) summary(items, desc, W, H, (again) => {
+        if (again) out.again = true;
+        else out.done = true;
+      });
+      kit.close();
+      // Skip, at the top end, until the summary.
+      if (phase === 1 || phase === 2) {
+        kit.row("Bar", { gap: u(8) }, () => {
+          if (btn("Skip", desc.skipLabel ?? "Skip", { variant: "quiet", size: "sm", part: "Pull.skip" }).clicked) skip = true;
+        });
+        over({ insets: { end: u(16), top: u(12) }, z: 10 });
+      }
+    });
+    if (stage.clicked && phase !== 3) advance = true;
+  });
+  void m;
+
+  if (open) {
+    if (kit.back()) {
+      if (phase === 3) out.done = true;
+      else skip = true;
+    }
+    if (skip && phase !== 3) {
+      go(3);
+      kit.feedback("confirm", -1);
+    } else if (advance) {
+      if (phase === 1) go(2);
+      else if (phase === 2) {
+        if (idx + 1 < n) {
+          idx += 1;
+          t0 = tick;
+        } else go(3);
+      }
+    }
+    if (out.done) {
+      kit.feedback("close", -1);
+      phase = 0;
+    }
+    if (phase === 2 && shown !== idx + keyHash(`${tok}`) * 64) {
+      const it = items[idx]!;
+      out.revealed = it.key ?? null;
+      kit.feedback(rarityPips(it.rarity) >= 5 ? "success" : "reward", -1);
+    }
+  }
+  kit.remember("~p.shown", phase === 2 ? idx + keyHash(`${tok}`) * 64 : -1);
+  kit.remember("~p.phase", phase);
+  kit.remember("~p.idx", idx);
+  kit.remember("~p.t0", t0);
+  kit.remember("~p.tok", tok);
+  kit.close();
+  out.phase = PHASES[phase] ?? "idle";
+  out.index = idx;
+  void phone;
+  void portrait;
+  return out;
+}
+
+/** The charge: a light that gathers in the middle, its colour turning toward the pull's highest tier as it grows. */
+function charge(top: Api.PullItem | null, dt: number, W: number, H: number): void {
+  const k = still() ? 1 : clamp(dt / CHARGE, 0, 1);
+  const ease = 1 - (1 - k) ** 3;
+  const target = tierInk(top?.rarity);
+  // The first third is the primary's light; it turns to the tier's after it, so the tier is felt before it shows.
+  const ink = mix(role("primary"), target, clamp((k - 0.3) / 0.4, 0, 1));
+  const d = Math.round(Math.min(W, H) * (0.12 + 0.5 * ease));
+  kit.open("Charge", { width: px(d), height: px(d), align: "center", cross: "center", part: `Pull.charge${flags(`rarity=${top?.rarity ?? "none"}`)}`, partClass: "badge" });
+  kit.setDraw({ shape: { kind: "ellipse" }, fills: [radial([[0, paint({ r: 1, g: 1, b: 1, a: 1 }, 0.95)], [0.18, paint(ink, 0.9)], [0.6, paint(ink, 0.35)], [1, paint(ink, 0)]])], effects: [glow(Math.round(d * 0.25), paint(ink, 0.6), 2)] });
+  kit.close();
+  kit.semantics({ role: "status", name: "" });
+}
+
+/** One result large: its art, then its name, kind and stars landing one by one, a burst from legendary. */
+function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number, H: number, tap: string): void {
+  const { phone } = frame();
+  const ink = tierInk(it.rarity);
+  const landscape = W > H;
+  const artH = Math.round(Math.min(H * (landscape ? 0.62 : 0.5), u(560)));
+  const artW = Math.round(artH * 0.72);
+  kit.open("Reveal", { direction: landscape ? "row" : "column", gap: u(phone ? 16 : 40), align: "center", cross: "center", part: `Pull.reveal${flags(`rarity=${it.rarity ?? "none"}`)}`, partClass: "panel" });
+  kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "scale", value: 0.7 }, { prop: "rotate", value: -0.08 }], transition: spring("emphasis") } });
+  // A light behind the art in its tier's colour.
+  kit.open("Card", { width: px(artW), height: px(artH), part: "Pull.card", partClass: "card" });
+  kit.setDraw({ shape: { kind: "rect", radii: [u(14), u(14), u(14), u(14)] }, fills: [{ kind: "solid", color: token("well") }], strokes: [line(3, paint(ink)), line(1, token("shadow", 0.7), "outside")], effects: [glow(u(28), paint(ink, 0.7), 4), shadow(u(10), u(24), 0.6)] });
+  artSlot("Art", "Pull.art", { texture: it.image ?? null, kind: "character", rarity: it.rarity, width: px(artW - 6), height: px(artH - 6), radius: u(12) });
+  over({ insets: { start: 3, top: 3 }, inert: true });
+  if (it.isNew) {
+    cornerTag("New", "NEW");
+    over({ insets: { end: -u(8), top: -u(10) }, inert: true, z: 4 });
+  }
+  kit.close();
+  if (rarityPips(it.rarity) >= 5 && !still()) kit.burst({ count: 14, color: paint(ink), delayMs: 120 });
+  kit.column("Words", { gap: u(8), cross: landscape ? "start" : "center", width: landscape ? px(Math.min(u(440), Math.round(W * 0.36))) : grow() }, () => {
+    if (it.kind) text("Kind", it.kind.toLocaleUpperCase(), { step: st(14), color: mix(ink, role("ink"), 0.4), font: "display", nowrap: true });
+    text("Name", it.name ?? "", { step: st(phone ? 28 : 44), heading: true, font: "display", maxLines: 2, width: grow(), align: landscape ? "start" : "center" });
+    kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "x", value: u(-40) }], transition: spring("panel"), delayMs: 180 } });
+    const ns = it.stars ?? 0;
+    stars("Stars", ns, u(phone ? 22 : 30), ink, ns, Array.from({ length: ns }, (_, k) => 320 + k * 110));
+    if (it.extra) text("Extra", it.extra, { step: st(15), color: "highlight", maxLines: 2, width: grow(), align: landscape ? "start" : "center" });
+  });
+  kit.close();
+  kit.semantics({ role: "status", name: [it.name, `${it.stars ?? 0} stars`, it.isNew ? "new" : "", it.extra ?? ""].filter(Boolean).join(", ") });
+  // How far along, and how to go on.
+  kit.row("Hint", { gap: u(10), cross: "center", part: "Pull.hint", partClass: "chip", padding: xy(u(14), u(6)), radius: 999, background: token("shadow", 0.6) }, () => {
+    text("Count", `${idx + 1} / ${n}`, { step: st(14), font: "mono", color: "inkMuted", nowrap: true });
+    const g = kit.frameGlyph("confirm") as Api.UiGlyph | null;
+    if (g && !frame().touch) text("Glyph", g.text, { step: st(13), font: "mono", nowrap: true });
+    text("Text", tap, { step: st(14), nowrap: true });
+  });
+  over({ insets: { centerX: true, bottom: u(18) }, inert: true });
+  void dt;
+}
+
+/** Every result at once, the highest tiers first, then Again and Done. */
+function summary(items: readonly Api.PullItem[], desc: Api.PullSequenceDesc, W: number, H: number, done: (again: boolean) => void): void {
+  const { viewport: vp, phone } = frame();
+  const portrait = vp.breakpoint === "phonePortrait";
+  const order = items.map((x, i) => ({ x, i })).sort((a, b) => rarityPips(b.x.rarity) - rarityPips(a.x.rarity) || a.i - b.i).map((e) => e.x);
+  const n = order.length;
+  // A phone in portrait: two columns, one at large text (a long word must fit beside the art).
+  const cols = portrait ? ((frame().theme.textScale ?? 1) >= 1.5 ? 1 : 2) : Math.min(5, n);
+  const gap = u(phone ? 8 : 14);
+  const room = W - u(32);
+  const tw = Math.floor(Math.min(u(200), (room - gap * (cols - 1)) / cols));
+  // The art's height: a portrait card's on a desktop, as much as two rows leave on a short screen; a square at the start on a phone in portrait.
+  const rows = Math.ceil(n / cols);
+  const textH = u(phone ? 58 : 76) * Math.max(1, frame().theme.textScale ?? 1);
+  const artH = portrait ? u(56) : Math.max(u(40), Math.floor(Math.min((tw - u(16)) * 1.1, (H - u(phone ? 110 : 160)) / rows - gap - textH - u(16))));
+  kit.open("Summary", { direction: "column", gap: u(phone ? 10 : 18), cross: "center", width: grow(), height: grow(), align: "center", part: "Pull.summary", partClass: "panel" });
+  // The grid scrolls when the results outgrow the screen (a phone at large text); its bar stays.
+  const tall = rows * (artH * (portrait ? 0 : 1) + Math.max(portrait ? artH : 0, textH) + u(16)) + (rows - 1) * gap + u(20) > H - u(phone ? 110 : 160);
+  kit.openScroll("Grid", { width: px(cols * tw + (cols - 1) * gap), height: tall ? grow() : null, padding: xy(0, u(10)), gap: 0 });
+  kit.open("Tiles", { direction: "row", wrap: true, gap, width: px(cols * tw + (cols - 1) * gap), align: "center" });
+  order.forEach((it, k) => {
+    const ink = tierInk(it.rarity);
+    kit.open(it.key ?? kit.idi("Tile", k), { width: px(tw), direction: portrait ? "row" : "column", gap: u(8), padding: xy(u(8), u(8)), cross: portrait ? "center" : "stretch", part: `Pull.tile${flags(`rarity=${it.rarity ?? "none"}`, it.isNew && "new")}`, partClass: "card" });
+    kit.setDraw({ shape: { kind: "rect", radii: [u(10), u(10), u(10), u(10)] }, fills: [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 1 }, to: { x: 0.5, y: 0 }, stops: [{ offset: 0, color: paint(mix(role("panelRaised"), ink, 0.4)) }, { offset: 1, color: paint(mix(role("panel"), ink, 0.08)) }] }], strokes: [line(2, paint(ink)), line(1, token("shadow", 0.6), "outside")], ...(rarityPips(it.rarity) >= 5 ? { effects: [glow(u(12), paint(ink, 0.6), 1)] } : {}) });
+    artSlot("Art", "Pull.art", { texture: it.image ?? null, kind: "character", rarity: it.rarity, width: portrait ? px(artH) : grow(), height: px(artH), radius: u(6) });
+    kit.column("Text", { width: grow(), gap: 2, cross: portrait ? "start" : "center" }, () => {
+      text("Name", it.name ?? "", { step: st(14), font: "display", maxLines: 2, width: grow(), align: portrait ? "start" : "center" });
+      stars("Stars", it.stars ?? 0, u(12), ink);
+      if (it.extra) text("Extra", it.extra, { step: st(12), color: "highlight", maxLines: 2, width: grow(), align: portrait ? "start" : "center" });
+    });
+    if (it.isNew) {
+      cornerTag("New", "NEW");
+      over({ insets: { end: -u(4), top: -u(8) }, inert: true, z: 3 });
+    }
+    kit.close();
+    kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "y", value: u(30) }, { prop: "scale", value: 0.85 }], transition: spring("emphasis"), delayMs: 60 * k } });
+    kit.semantics({ role: "listitem", name: [it.name, `${it.stars ?? 0} stars`, it.isNew ? "new" : "", it.extra ?? ""].filter(Boolean).join(", ") });
+  });
+  kit.close();
+  kit.semantics({ role: "list", name: "Results" });
+  kit.close();
+  kit.row("Bar", { gap: u(12), cross: "center" }, () => {
+    if (desc.againLabel) {
+      const can = desc.affordable ?? true;
+      const r = btn("Again", fill(desc.againLabel, { n }), {
+        variant: "secondary",
+        size: "lg",
+        part: `Pull.again${flags(!can && "short")}`,
+        before: () => priceTag("Price", { amount: desc.againPrice ?? 0, currency: desc.currency ?? "gem", affordable: can, size: "sm" }),
+      });
+      if (r.clicked) {
+        if (can) done(true);
+        else kit.feedback("error", -1);
+      }
+    }
+    if (btn("Done", desc.doneLabel ?? "Done", { variant: "primary", size: "lg", part: "Pull.done" }).clicked) done(false);
+  });
+  kit.close();
+  void plainText;
+}

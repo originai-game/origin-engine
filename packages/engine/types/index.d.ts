@@ -28610,6 +28610,549 @@ export interface CardHandResult {
 
 
 /**
+ * One reward of a choice, as the game's viewmodel holds it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RewardOption {
+  /**
+   * Its key, stable while offered: its element id, so its probe path is <id>/Options/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * What it is (Thunder Strike, +20 % Max Health).
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * Its kind or source over the title (Relic, Boon of Zeus, Weapon).
+   *
+   * @default ""
+   */
+  readonly kind?: string;
+  /**
+   * What it does, as rich-text markup (og.ui.richText): [b], [color=…] and [icon=…] are honoured.
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * Its art (art kind item or card); without it a placeholder in its tier's colour.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * An icon of the style's set for the placeholder.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Its tier: the frame's colour, a glow from epic, and its pips.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * A short tag in its corner (New, Upgrade, Lv 3 → 4); empty draws none.
+   *
+   * @default ""
+   */
+  readonly tag?: string;
+  /**
+   * It cannot be taken (a requirement unmet): shaded with a lock, and a press shakes.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * Why, said under its text and to a screen reader.
+   *
+   * @default ""
+   */
+  readonly lockedHint?: string;
+}
+
+/**
+ * A choice of rewards and what it allows.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RewardChoiceDesc {
+  /**
+   * The rewards, start to end.
+   *
+   * @default []
+   */
+  readonly options?: readonly RewardOption[];
+  /**
+   * The heading over them (Choose a reward); empty is none.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * A line under it (Pick 1 of 3).
+   *
+   * @default ""
+   */
+  readonly subtitle?: string;
+  /**
+   * How many to take: 1 takes the one pressed at once (or after confirm with confirm); more need confirm.
+   *
+   * @default 1
+   * @range 1..
+   */
+  readonly picks?: number;
+  /**
+   * A press selects; a Confirm button takes the selection (a choice the player should not take by a slip).
+   *
+   * @default false
+   */
+  readonly confirm?: boolean;
+  /**
+   * The keys selected, for picks over one or confirm: the game passes back what it was answered.
+   *
+   * @default []
+   */
+  readonly selected?: readonly string[];
+  /**
+   * Rerolls left: a Reroll button with the count; 0 shows it spent; -1 shows none.
+   *
+   * @default -1
+   */
+  readonly rerolls?: number;
+  /**
+   * What a reroll costs, beside its label (50 gold); empty is free.
+   *
+   * @default ""
+   */
+  readonly rerollCost?: string;
+  /**
+   * Banishes left: a Banish button that arms banishing, after which a press on a reward banishes it; -1 shows none.
+   *
+   * @default -1
+   */
+  readonly banishes?: number;
+  /**
+   * A Skip button's label (Skip, Take 25 gold); empty shows none.
+   *
+   * @default ""
+   */
+  readonly skipLabel?: string;
+  /**
+   * The Confirm button's label.
+   *
+   * @default "Confirm"
+   */
+  readonly confirmLabel?: string;
+  /**
+   * The Reroll button's label.
+   *
+   * @default "Reroll"
+   */
+  readonly rerollLabel?: string;
+  /**
+   * The Banish button's label.
+   *
+   * @default "Banish"
+   */
+  readonly banishLabel?: string;
+  /**
+   * A reward's width; 0 is 260 on a desktop (scaled with the screen) and the phone's room. Its height follows its content.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly cardWidth?: number;
+}
+
+/** What the choice did this tick. */
+export interface RewardChoiceResult {
+  /**
+   * The rewards taken: one pressed (picks 1, no confirm), or the selection confirmed. Empty while none.
+   */
+  readonly picked: readonly string[];
+  /** The selection after this tick's press (pass it back as RewardChoiceDesc.selected). */
+  readonly selected: readonly string[];
+  /** Reroll was pressed: offer new rewards and one fewer reroll. */
+  readonly rerolled: boolean;
+  /** A reward banished: remove it and one banish. */
+  readonly banished: string | null;
+  /** Skip was pressed. */
+  readonly skipped: boolean;
+  /** The reward under the pointer or the focus. */
+  readonly hovered: string | null;
+  /** A locked reward pressed: it shook. */
+  readonly refused: string | null;
+}
+
+
+/**
+ * A featured unit of a banner (its rate-up).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GachaFeatured {
+  /**
+   * Its name.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * A line under it (Lightning Swordswoman).
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * Its stars, drawn as stars (never a glyph a font may lack).
+   *
+   * @default 0
+   */
+  readonly stars?: number;
+  /**
+   * Its tier's colour.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+}
+
+/**
+ * One banner of the set the player switches between.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GachaBannerTab {
+  /**
+   * Its key: its element id.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its short name (Event, Weapon, Standard).
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * A thumbnail (art kind banner); without it the tier wash.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Seconds until it ends; null for a permanent banner.
+   *
+   * @default null
+   * @unit s (seconds of simulation time)
+   */
+  readonly endsIn?: number | null;
+  /**
+   * New since the player last looked: a dot.
+   *
+   * @default false
+   */
+  readonly fresh?: boolean;
+}
+
+/**
+ * A gacha banner (its art, its featured units, its rules) and the player's purse.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GachaBannerDesc {
+  /**
+   * The banners; one or none draws no switcher.
+   *
+   * @default []
+   */
+  readonly banners?: readonly GachaBannerTab[];
+  /**
+   * The key of the banner shown.
+   *
+   * @default ""
+   */
+  readonly current?: string;
+  /**
+   * The banner's title over the art.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * A line under it (Event Wish · Character).
+   *
+   * @default ""
+   */
+  readonly subtitle?: string;
+  /**
+   * The featured units, beside the art.
+   *
+   * @default []
+   */
+  readonly featured?: readonly GachaFeatured[];
+  /**
+   * The rate-up rule, as rich text ([b]50 %[/b] chance the 5★ is featured).
+   *
+   * @default ""
+   */
+  readonly rateText?: string;
+  /**
+   * Seconds until it ends: a timer chip, urgent in its last hour.
+   *
+   * @default null
+   * @unit s (seconds of simulation time)
+   */
+  readonly endsIn?: number | null;
+  /**
+   * Pulls made toward the guarantee.
+   *
+   * @default 0
+   */
+  readonly pity?: number;
+  /**
+   * Pulls at which a top tier is guaranteed; 0 shows no pity meter.
+   *
+   * @default 0
+   */
+  readonly pityMax?: number;
+  /**
+   * What the meter says ({left} is the pulls left).
+   *
+   * @default "Guaranteed in {left}"
+   */
+  readonly pityLabel?: string;
+  /**
+   * The pull currency's name (its icon when the style has one).
+   *
+   * @default "gem"
+   */
+  readonly currency?: string;
+  /**
+   * How much of it the player has.
+   *
+   * @default 0
+   */
+  readonly balance?: number;
+  /**
+   * What one pull costs.
+   *
+   * @default 0
+   */
+  readonly single?: number;
+  /**
+   * What ten cost; 0 hides the ten-pull.
+   *
+   * @default 0
+   */
+  readonly multi?: number;
+  /**
+   * How many the multi pull draws.
+   *
+   * @default 10
+   */
+  readonly multiCount?: number;
+  /**
+   * The one-pull button.
+   *
+   * @default "Wish ×1"
+   */
+  readonly singleLabel?: string;
+  /**
+   * The ten-pull button ({n} is multiCount).
+   *
+   * @default "Wish ×{n}"
+   */
+  readonly multiLabel?: string;
+  /**
+   * Said with a price the balance cannot pay.
+   *
+   * @default "not enough"
+   */
+  readonly shortLabel?: string;
+  /**
+   * The rates and details button.
+   *
+   * @default "Details"
+   */
+  readonly detailsLabel?: string;
+  /**
+   * The pull history button.
+   *
+   * @default "History"
+   */
+  readonly historyLabel?: string;
+}
+
+/** What the banner did this tick. */
+export interface GachaBannerResult {
+  /**
+   * Pulls asked for this tick: 1, multiCount, or 0. The game checks the purse, spends it and starts og.ui.pullSequence.
+   */
+  readonly pull: number;
+  /** Pulls asked for that the balance cannot pay: offer the top-up (0 when none). */
+  readonly short: number;
+  /** Another banner picked. */
+  readonly banner: string | null;
+  /** Details was pressed. */
+  readonly details: boolean;
+  /** History was pressed. */
+  readonly history: boolean;
+}
+
+
+/**
+ * One result of a pull.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PullItem {
+  /**
+   * Its key within the pull: its element id.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * What was drawn.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * What sort it is (Character, Weapon, Light Cone).
+   *
+   * @default ""
+   */
+  readonly kind?: string;
+  /**
+   * Its stars, drawn as stars.
+   *
+   * @default 0
+   */
+  readonly stars?: number;
+  /**
+   * Its tier: the reveal's colour (the highest tier of a pull tints its charge), its glow, its burst from legendary.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * Its art (art kind character or item).
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Drawn for the first time: a New tag.
+   *
+   * @default false
+   */
+  readonly isNew?: boolean;
+  /**
+   * What a duplicate turned into (+10 Starglitter); empty for none.
+   *
+   * @default ""
+   */
+  readonly extra?: string;
+}
+
+/**
+ * A pull to reveal: start one by giving a new token.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PullSequenceDesc {
+  /**
+   * The pull's number: a change starts the sequence again from its charge; 0 shows nothing.
+   *
+   * @default 0
+   */
+  readonly token?: number;
+  /**
+   * What was drawn, in reveal order.
+   *
+   * @default []
+   */
+  readonly items?: readonly PullItem[];
+  /**
+   * The pull-again button in the summary ({n} is the count); empty shows none.
+   *
+   * @default "Again ×{n}"
+   */
+  readonly againLabel?: string;
+  /**
+   * Its price, in currency.
+   *
+   * @default 0
+   */
+  readonly againPrice?: number;
+  /**
+   * The currency of againPrice.
+   *
+   * @default "gem"
+   */
+  readonly currency?: string;
+  /**
+   * The purse pays againPrice.
+   *
+   * @default true
+   */
+  readonly affordable?: boolean;
+  /**
+   * The summary's close button.
+   *
+   * @default "Done"
+   */
+  readonly doneLabel?: string;
+  /**
+   * The skip-to-summary button.
+   *
+   * @default "Skip"
+   */
+  readonly skipLabel?: string;
+  /**
+   * What the reveal says to go on (a pad's confirm glyph beside it).
+   *
+   * @default "Tap to continue"
+   */
+  readonly tapLabel?: string;
+}
+
+/**
+ * Where a pull sequence is.
+ * - `"idle"`: Nothing shown (token 0, or closed).
+ * - `"charge"`: The charge: a light gathering in the colour of the pull's highest tier.
+ * - `"reveal"`: One result shown large, one after another.
+ * - `"summary"`: Every result at once.
+ */
+export type PullPhase = "idle" | "charge" | "reveal" | "summary";
+
+/** What the sequence did this tick. */
+export interface PullSequenceResult {
+  /** Where it is. */
+  readonly phase: PullPhase;
+  /** The result shown in reveal (0 first). */
+  readonly index: number;
+  /** A result revealed this tick (play its voice line, count it seen). */
+  readonly revealed: string | null;
+  /** Pull again was pressed in the summary. */
+  readonly again: boolean;
+  /** Done was pressed (or Back in the summary): it closed; set token to 0. */
+  readonly done: boolean;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -45836,6 +46379,31 @@ export declare namespace og {
      * @param desc The cards and their targets.
      */
     function cardHand(id: string, desc?: CardHandDesc): CardHandResult;
+    /**
+     * A choice of N rewards (Slay the Spire's card reward, Hades' boons, Vampire Survivors' level-up, Balatro's shop packs): each reward a card in its tier's colour with its art, kind, title, tag and rich-text effect, dealt in one after another and flipped face up. The card under the pointer or the focus lifts and its edge brightens; a press takes it (or selects it, with confirm or several picks, its ring and a tick in the focus ink), the taken one rises and grows while the others fall away. Reroll, Banish (armed, every card shows a cross until one is pressed) and Skip sit under the cards. Keys and pads move along the cards, confirm takes or selects, Back disarms banishing. Side by side on a desktop and a phone on its side; one above another, compact, on a phone in portrait.
+     * Parts: Reward.frame, Reward.card[rarity=<tier>][selected][banishing][locked], Reward.art, Reward.kind, Reward.title, Reward.text, Reward.tag, Reward.check, Reward.banishMark, Reward.actions, Reward.reroll, Reward.banish[armed], Reward.skip, Reward.confirm. Slots: each reward's art (art kind item or card). States: on each card, group selection (off, on) and fate (offered, banishing, locked). Motion: cards deal in with a stagger and turn face up on the emphasis spring; hover lifts on the ui spring; a taken card rises and the others fall and fade. Sounds: open as they deal, hover, select, confirm on a take, error on a locked one, toggle for banishing. Accessibility: a radiogroup (one pick) or group named by title; each reward a radio or checkbox named by its title, kind and tier, its effect as its description; locked said disabled with its hint. Probe ids: <id>/Options/<key>, <id>/Actions/Reroll, <id>/Actions/Banish, <id>/Actions/Skip, <id>/Actions/Confirm.
+     *
+     * @param id Its id.
+     * @param desc The rewards and what the choice allows.
+     */
+    function rewardChoice(id: string, desc?: RewardChoiceDesc): RewardChoiceResult;
+    /**
+     * A gacha banner (Genshin Impact, Honkai: Star Rail, Fate/Grand Order, Marvel Snap's spotlight): the key art the game builds across the screen under a scrim that keeps its text readable on any art, the title and subtitle, the featured units with their stars in their tier's colour, the rate-up rule, the time left (a timer chip, urgent in its last minute; a tab's time in warn ink in its last hour), the pity meter, the purse, and the one and ten pull buttons with their prices (a price the purse cannot pay in danger ink, said not only shown). A switcher of banners sits at the start edge on a desktop and above on a phone. Bumpers or Q and E switch banners; keys and pads move between the buttons.
+     * Parts: Gacha.frame, Gacha.art, Gacha.scrim, Gacha.featured, Gacha.unit[rarity=<tier>], Gacha.stars, Gacha.rate, Timer.chip[urgent], Gacha.pity, Gacha.purse, Gacha.pull[single|multi][short], Gacha.tabs, Gacha.tab[current][fresh], Gacha.details, Gacha.history. Slots: the key art (built by the game: art kind banner, the full frame); each tab's thumbnail. States: on each tab, group selection (off, on); on each pull button, group purse (afford, short). Motion: the art and text cross-fade when the banner changes (layout motion on the ui spring); the pull buttons lift under the pointer. Sounds: tab on a switch, press on a pull, error when short. Accessibility: a tablist of banners; the pulls are buttons named by their label and price (and not enough when short); the pity meter a meter; the timer a timer. Probe ids: <id>/Body/Tabs/<key>, <id>/Body/Main/Info/Title, <id>/Body/Main/Info/Timer, <id>/Body/Main/Info/Featured/Unit#<n>, <id>/Body/Main/Foot/Pulls/Buttons/Single, …/Buttons/Multi, …/Pulls/Status/Pity, …/Pulls/Status/Purse, <id>/Body/Main/Foot/Bar/Details, …/Bar/History.
+     *
+     * @param id Its id.
+     * @param desc The banner and the purse.
+     * @param art Builds the key art filling the frame (an art slot, a sceneViewport).
+     */
+    function gachaBanner(id: string, desc: GachaBannerDesc, art: UiBuild): GachaBannerResult;
+    /**
+     * A gacha pull's reveal (Genshin Impact's wish, Honkai: Star Rail's warp, a card pack opening), over everything as a modal layer: first the charge, a light that gathers and tints toward the pull's highest tier (blue, purple, gold) so the tier is felt before it is shown; then each result large, its art, name, kind and stars landing one by one in its tier's colour, a burst for legendary and above, a New tag or what a duplicate became; then every result in a summary grid, the highest tiers first in reading order. A press, a tap or confirm goes on; Skip (and Back during the charge or reveal) goes to the summary; Done or Back there closes it. Under reduced motion every step appears at once.
+     * Parts: Pull.layer, Pull.charge[rarity=<tier>], Pull.reveal[rarity=<tier>], Pull.art, Pull.name, Pull.kind, Pull.stars, Pull.star, Pull.new, Pull.extra, Pull.summary, Pull.tile[rarity=<tier>][new], Pull.skip, Pull.again[short], Pull.done, Pull.hint. Slots: each result's art (art kind character or item). States: on the layer, group phase (charge, reveal, summary); on each star, group lit (off, on). Motion: the charge grows and brightens on the emphasis spring; a revealed card enters scaled and turned, its stars land with a stagger; summary tiles deal in with a stagger. Sounds: open at the charge, reward on each reveal (success for legendary and above), select on each tile, close on Done. Accessibility: a dialog named for the pull; each result announced as it is revealed (a status: name, stars, new); the summary a list. Probe ids: <id>Layer/Panel/Stage (a press goes on), …/Stage/Content/Charge, …/Content/Reveal, …/Content/Summary/Grid/Tiles/<key> (the grid scrolls when it outgrows the screen), …/Summary/Bar/Again, …/Summary/Bar/Done, …/Stage/Bar/Skip.
+     *
+     * @param id Its id.
+     * @param desc The pull.
+     */
+    function pullSequence(id: string, desc?: PullSequenceDesc): PullSequenceResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

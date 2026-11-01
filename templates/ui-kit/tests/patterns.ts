@@ -206,12 +206,89 @@ function cards(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void
   b.cmd("pat:reset");
 }
 
+/** The reward choice in its states. */
+function rewards(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void {
+  const OPT = "Choice/Options";
+  b.cmd("show:rewards");
+  b.cmd("pat:reset");
+  // The deal: cards flip in one after another (a frame mid-deal, then dealt).
+  b.shot(`${prefix}rewards-deal`, 0.15);
+  b.shot(`${prefix}rewards-idle`, 0.8);
+  if (!phone) {
+    // Hover: the card lifts and its edge brightens.
+    b.cmd(`touch_move_to:${OPT}/vigor`, 0.1);
+    b.shot(`${prefix}rewards-hover`, 0.5);
+  }
+  // A locked reward pressed: it shakes and is refused.
+  b.seq((at) => tap(at, `${OPT}/crown`), 0.05);
+  b.shot(`${prefix}rewards-locked-shake`, 0.1);
+  // Banish armed: every card shows its cross; Back disarms.
+  b.seq((at) => tap(at, "Choice/Actions/Banish"), 0.3);
+  b.shot(`${prefix}rewards-banish-armed`, 0.4);
+  b.dump(`${prefix}rewards-banish`);
+  b.seq((at) => key(at, "Escape"), 0.3);
+  // Two picks: two selected (their ticks), the Confirm count.
+  b.cmd("pat:picks:2");
+  b.cmd("pat:rselect:thunder,vigor");
+  b.shot(`${prefix}rewards-selected`, 0.5);
+  b.dump(`${prefix}rewards-selected`);
+  b.cmd("pat:picks:1");
+  // Reroll: a new set deals in.
+  b.seq((at) => tap(at, "Choice/Actions/Reroll"), 0.2);
+  b.shot(`${prefix}rewards-rerolled`, 1.0);
+  // Taken: the one pressed rises, the others fall away.
+  b.seq((at) => tap(at, `${OPT}/gold`), 0.1);
+  b.shot(`${prefix}rewards-taken`, 0.2);
+  b.dump(`${prefix}rewards-taken`);
+  b.cmd("pat:reset");
+}
+
+/** The gacha banner and a pull in its states. */
+function gacha(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void {
+  const BTN = "Banner/Body/Main/Foot/Pulls/Buttons";
+  b.cmd("show:gacha");
+  b.cmd("pat:reset");
+  b.shot(`${prefix}gacha-idle`, 0.8);
+  b.dump(`${prefix}gacha-idle`);
+  if (!phone) {
+    b.cmd(`touch_move_to:${BTN}/Multi`, 0.1);
+    b.shot(`${prefix}gacha-hover`, 0.4);
+  }
+  // Another banner: its tab current, its art and title; then the purse too short for ten.
+  b.seq((at) => tap(at, "Banner/Body/Tabs/weapon"), 0.3);
+  b.shot(`${prefix}gacha-weapon`, 0.6);
+  b.cmd("pat:banner:event");
+  b.cmd("pat:balance:500");
+  b.shot(`${prefix}gacha-short`, 0.5);
+  b.dump(`${prefix}gacha-short`);
+  b.cmd("pat:balance:2400");
+  // A ten-pull: the charge (gold, the pull holds a 5★), the first reveal, the 5★ reveal, the summary.
+  b.seq((at) => tap(at, `${BTN}/Multi`), 0.05);
+  b.shot(`${prefix}gacha-charge`, 0.6);
+  b.shot(`${prefix}gacha-reveal`, 1.2);
+  for (let k = 0; k < 5; k++) b.seq((at) => tap(at, "PullLayer/Panel/Stage"), 0.25);
+  b.shot(`${prefix}gacha-reveal-legendary`, 0.9);
+  b.dump(`${prefix}gacha-reveal`);
+  b.seq((at) => tap(at, "PullLayer/Panel/Stage/Bar/Skip"), 0.2);
+  b.shot(`${prefix}gacha-summary`, 1.2);
+  b.dump(`${prefix}gacha-summary`);
+  b.seq((at) => key(at, "Escape"), 0.4);
+  // A single pull of a 5★ straight to its reveal.
+  b.cmd("pat:pull:1");
+  b.shot(`${prefix}gacha-single-reveal`, 2.2);
+  b.seq((at) => key(at, "Escape"), 0.2);
+  b.seq((at) => key(at, "Escape"), 0.4);
+  b.cmd("pat:reset");
+}
+
 /** Every pattern screen in its states, then right to left and at 200 % text. */
 export function patternsScript(phone: boolean): Script {
   const b = builder(0.3);
   if (phone) b.cmd("viewport:phone");
   gear(b, phone);
   cards(b, phone);
+  rewards(b, phone);
+  gacha(b, phone);
   b.cmd("locale:ar");
   b.cmd("show:gear");
   b.shot("rtl-gear", 0.8);
@@ -229,6 +306,15 @@ export function patternsScript(phone: boolean): Script {
   b.shot("rtl-cards-aim", 0.3);
   b.cmd("touch_end", 0.3);
   b.cmd("pat:reset");
+  b.cmd("show:rewards");
+  b.shot("rtl-rewards", 1.0);
+  b.cmd("show:gacha");
+  b.shot("rtl-gacha", 0.8);
+  b.cmd("pat:pull:10");
+  b.seq((at) => key(at, "Escape"), 0.2);
+  b.shot("rtl-gacha-summary", 1.2);
+  b.seq((at) => key(at, "Escape"), 0.4);
+  b.cmd("pat:reset");
   b.cmd("locale:en");
   b.cmd("demo:text:200");
   b.cmd("show:gear");
@@ -240,6 +326,15 @@ export function patternsScript(phone: boolean): Script {
   b.shot("text200-cards", 0.8);
   b.cmd("pat:inspect:bash");
   b.shot("text200-cards-inspect", 0.6);
+  b.cmd("pat:reset");
+  b.cmd("show:rewards");
+  b.shot("text200-rewards", 1.0);
+  b.cmd("show:gacha");
+  b.shot("text200-gacha", 0.8);
+  b.cmd("pat:pull:10");
+  b.seq((at) => key(at, "Escape"), 0.2);
+  b.shot("text200-gacha-summary", 1.2);
+  b.seq((at) => key(at, "Escape"), 0.4);
   b.cmd("pat:reset");
   b.cmd("demo:text:100");
   return b.end();

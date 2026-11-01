@@ -4361,6 +4361,228 @@ module ui {
     returns CardHandResult
   }
 
+  # ·· rewards: pick one of N ··
+
+  struct RewardOption {
+    doc "One reward of a choice, as the game's viewmodel holds it."
+    desc true
+    field key String "Its key, stable while offered: its element id, so its probe path is <id>/Options/<key>."
+    field title String "What it is (Thunder Strike, +20 % Max Health)."
+    field kind String "Its kind or source over the title (Relic, Boon of Zeus, Weapon)."
+    field text String "What it does, as rich-text markup (og.ui.richText): [b], [color=…] and [icon=…] are honoured."
+    field image Option.Texture "Its art (art kind item or card); without it a placeholder in its tier's colour."
+    field icon String "An icon of the style's set for the placeholder."
+    field rarity Rarity "Its tier: the frame's colour, a glow from epic, and its pips."
+    field tag String "A short tag in its corner (New, Upgrade, Lv 3 → 4); empty draws none."
+    field locked bool "It cannot be taken (a requirement unmet): shaded with a lock, and a press shakes."
+    field lockedHint String "Why, said under its text and to a screen reader."
+  }
+
+  struct RewardChoiceDesc {
+    doc "A choice of rewards and what it allows."
+    desc true
+    field options List.RewardOption "The rewards, start to end."
+    field title String "The heading over them (Choose a reward); empty is none."
+    field subtitle String "A line under it (Pick 1 of 3)."
+    field picks u32 "How many to take: 1 takes the one pressed at once (or after confirm with confirm); more need confirm." {
+      default 1
+      min 1
+    }
+    field confirm bool "A press selects; a Confirm button takes the selection (a choice the player should not take by a slip)."
+    field selected List.String "The keys selected, for picks over one or confirm: the game passes back what it was answered."
+    field rerolls i32 "Rerolls left: a Reroll button with the count; 0 shows it spent; -1 shows none." {
+      default -1
+    }
+    field rerollCost String "What a reroll costs, beside its label (50 gold); empty is free."
+    field banishes i32 "Banishes left: a Banish button that arms banishing, after which a press on a reward banishes it; -1 shows none." {
+      default -1
+    }
+    field skipLabel String "A Skip button's label (Skip, Take 25 gold); empty shows none."
+    field confirmLabel String "The Confirm button's label." {
+      default "Confirm"
+    }
+    field rerollLabel String "The Reroll button's label." {
+      default "Reroll"
+    }
+    field banishLabel String "The Banish button's label." {
+      default "Banish"
+    }
+    field cardWidth f32 "A reward's width; 0 is 260 on a desktop (scaled with the screen) and the phone's room. Its height follows its content." {
+      unit cssPx
+      min 0
+    }
+  }
+
+  struct RewardChoiceResult {
+    doc "What the choice did this tick."
+    field picked List.String "The rewards taken: one pressed (picks 1, no confirm), or the selection confirmed. Empty while none."
+    field selected List.String "The selection after this tick's press (pass it back as RewardChoiceDesc.selected)."
+    field rerolled bool "Reroll was pressed: offer new rewards and one fewer reroll."
+    field banished Option.String "A reward banished: remove it and one banish."
+    field skipped bool "Skip was pressed."
+    field hovered Option.String "The reward under the pointer or the focus."
+    field refused Option.String "A locked reward pressed: it shook."
+  }
+
+  fn rewardChoice {
+    doc "A choice of N rewards (Slay the Spire's card reward, Hades' boons, Vampire Survivors' level-up, Balatro's shop packs): each reward a card in its tier's colour with its art, kind, title, tag and rich-text effect, dealt in one after another and flipped face up. The card under the pointer or the focus lifts and its edge brightens; a press takes it (or selects it, with confirm or several picks, its ring and a tick in the focus ink), the taken one rises and grows while the others fall away. Reroll, Banish (armed, every card shows a cross until one is pressed) and Skip sit under the cards. Keys and pads move along the cards, confirm takes or selects, Back disarms banishing. Side by side on a desktop and a phone on its side; one above another, compact, on a phone in portrait."
+    doc "Parts: Reward.frame, Reward.card[rarity=<tier>][selected][banishing][locked], Reward.art, Reward.kind, Reward.title, Reward.text, Reward.tag, Reward.check, Reward.banishMark, Reward.actions, Reward.reroll, Reward.banish[armed], Reward.skip, Reward.confirm. Slots: each reward's art (art kind item or card). States: on each card, group selection (off, on) and fate (offered, banishing, locked). Motion: cards deal in with a stagger and turn face up on the emphasis spring; hover lifts on the ui spring; a taken card rises and the others fall and fade. Sounds: open as they deal, hover, select, confirm on a take, error on a locked one, toggle for banishing. Accessibility: a radiogroup (one pick) or group named by title; each reward a radio or checkbox named by its title, kind and tier, its effect as its description; locked said disabled with its hint. Probe ids: <id>/Options/<key>, <id>/Actions/Reroll, <id>/Actions/Banish, <id>/Actions/Skip, <id>/Actions/Confirm."
+    host false
+    param id String "Its id."
+    param desc RewardChoiceDesc "The rewards and what the choice allows."
+    returns RewardChoiceResult
+  }
+
+  # ·· gacha: the banner and the pull ··
+
+  struct GachaFeatured {
+    doc "A featured unit of a banner (its rate-up)."
+    desc true
+    field name String "Its name."
+    field title String "A line under it (Lightning Swordswoman)."
+    field stars u32 "Its stars, drawn as stars (never a glyph a font may lack)."
+    field rarity Rarity "Its tier's colour."
+  }
+
+  struct GachaBannerTab {
+    doc "One banner of the set the player switches between."
+    desc true
+    field key String "Its key: its element id."
+    field name String "Its short name (Event, Weapon, Standard)."
+    field image Option.Texture "A thumbnail (art kind banner); without it the tier wash."
+    field endsIn Option.f32 "Seconds until it ends; null for a permanent banner." {
+      unit s
+    }
+    field fresh bool "New since the player last looked: a dot."
+  }
+
+  struct GachaBannerDesc {
+    doc "A gacha banner (its art, its featured units, its rules) and the player's purse."
+    desc true
+    field banners List.GachaBannerTab "The banners; one or none draws no switcher."
+    field current String "The key of the banner shown."
+    field title String "The banner's title over the art."
+    field subtitle String "A line under it (Event Wish · Character)."
+    field featured List.GachaFeatured "The featured units, beside the art."
+    field rateText String "The rate-up rule, as rich text ([b]50 %[/b] chance the 5★ is featured)."
+    field endsIn Option.f32 "Seconds until it ends: a timer chip, urgent in its last hour." {
+      unit s
+    }
+    field pity u32 "Pulls made toward the guarantee."
+    field pityMax u32 "Pulls at which a top tier is guaranteed; 0 shows no pity meter."
+    field pityLabel String "What the meter says ({left} is the pulls left)." {
+      default "Guaranteed in {left}"
+    }
+    field currency String "The pull currency's name (its icon when the style has one)." {
+      default "gem"
+    }
+    field balance u32 "How much of it the player has."
+    field single u32 "What one pull costs."
+    field multi u32 "What ten cost; 0 hides the ten-pull."
+    field multiCount u32 "How many the multi pull draws." {
+      default 10
+    }
+    field singleLabel String "The one-pull button." {
+      default "Wish ×1"
+    }
+    field multiLabel String "The ten-pull button ({n} is multiCount)." {
+      default "Wish ×{n}"
+    }
+    field shortLabel String "Said with a price the balance cannot pay." {
+      default "not enough"
+    }
+    field detailsLabel String "The rates and details button." {
+      default "Details"
+    }
+    field historyLabel String "The pull history button." {
+      default "History"
+    }
+  }
+
+  struct GachaBannerResult {
+    doc "What the banner did this tick."
+    field pull u32 "Pulls asked for this tick: 1, multiCount, or 0. The game checks the purse, spends it and starts og.ui.pullSequence."
+    field short u32 "Pulls asked for that the balance cannot pay: offer the top-up (0 when none)."
+    field banner Option.String "Another banner picked."
+    field details bool "Details was pressed."
+    field history bool "History was pressed."
+  }
+
+  fn gachaBanner {
+    doc "A gacha banner (Genshin Impact, Honkai: Star Rail, Fate/Grand Order, Marvel Snap's spotlight): the key art the game builds across the screen under a scrim that keeps its text readable on any art, the title and subtitle, the featured units with their stars in their tier's colour, the rate-up rule, the time left (a timer chip, urgent in its last minute; a tab's time in warn ink in its last hour), the pity meter, the purse, and the one and ten pull buttons with their prices (a price the purse cannot pay in danger ink, said not only shown). A switcher of banners sits at the start edge on a desktop and above on a phone. Bumpers or Q and E switch banners; keys and pads move between the buttons."
+    doc "Parts: Gacha.frame, Gacha.art, Gacha.scrim, Gacha.featured, Gacha.unit[rarity=<tier>], Gacha.stars, Gacha.rate, Timer.chip[urgent], Gacha.pity, Gacha.purse, Gacha.pull[single|multi][short], Gacha.tabs, Gacha.tab[current][fresh], Gacha.details, Gacha.history. Slots: the key art (built by the game: art kind banner, the full frame); each tab's thumbnail. States: on each tab, group selection (off, on); on each pull button, group purse (afford, short). Motion: the art and text cross-fade when the banner changes (layout motion on the ui spring); the pull buttons lift under the pointer. Sounds: tab on a switch, press on a pull, error when short. Accessibility: a tablist of banners; the pulls are buttons named by their label and price (and not enough when short); the pity meter a meter; the timer a timer. Probe ids: <id>/Body/Tabs/<key>, <id>/Body/Main/Info/Title, <id>/Body/Main/Info/Timer, <id>/Body/Main/Info/Featured/Unit#<n>, <id>/Body/Main/Foot/Pulls/Buttons/Single, …/Buttons/Multi, …/Pulls/Status/Pity, …/Pulls/Status/Purse, <id>/Body/Main/Foot/Bar/Details, …/Bar/History."
+    host false
+    param id String "Its id."
+    param desc GachaBannerDesc "The banner and the purse."
+    param art UiBuild "Builds the key art filling the frame (an art slot, a sceneViewport)."
+    returns GachaBannerResult
+  }
+
+  struct PullItem {
+    doc "One result of a pull."
+    desc true
+    field key String "Its key within the pull: its element id."
+    field name String "What was drawn."
+    field kind String "What sort it is (Character, Weapon, Light Cone)."
+    field stars u32 "Its stars, drawn as stars."
+    field rarity Rarity "Its tier: the reveal's colour (the highest tier of a pull tints its charge), its glow, its burst from legendary."
+    field image Option.Texture "Its art (art kind character or item)."
+    field isNew bool "Drawn for the first time: a New tag."
+    field extra String "What a duplicate turned into (+10 Starglitter); empty for none."
+  }
+
+  struct PullSequenceDesc {
+    doc "A pull to reveal: start one by giving a new token."
+    desc true
+    field token u32 "The pull's number: a change starts the sequence again from its charge; 0 shows nothing."
+    field items List.PullItem "What was drawn, in reveal order."
+    field againLabel String "The pull-again button in the summary ({n} is the count); empty shows none." {
+      default "Again ×{n}"
+    }
+    field againPrice u32 "Its price, in currency."
+    field currency String "The currency of againPrice." {
+      default "gem"
+    }
+    field affordable bool "The purse pays againPrice." {
+      default true
+    }
+    field doneLabel String "The summary's close button." {
+      default "Done"
+    }
+    field skipLabel String "The skip-to-summary button." {
+      default "Skip"
+    }
+    field tapLabel String "What the reveal says to go on (a pad's confirm glyph beside it)." {
+      default "Tap to continue"
+    }
+  }
+
+  enum PullPhase {
+    doc "Where a pull sequence is."
+    variant idle "Nothing shown (token 0, or closed)."
+    variant charge "The charge: a light gathering in the colour of the pull's highest tier."
+    variant reveal "One result shown large, one after another."
+    variant summary "Every result at once."
+  }
+
+  struct PullSequenceResult {
+    doc "What the sequence did this tick."
+    field phase PullPhase "Where it is."
+    field index u32 "The result shown in reveal (0 first)."
+    field revealed Option.String "A result revealed this tick (play its voice line, count it seen)."
+    field again bool "Pull again was pressed in the summary."
+    field done bool "Done was pressed (or Back in the summary): it closed; set token to 0."
+  }
+
+  fn pullSequence {
+    doc "A gacha pull's reveal (Genshin Impact's wish, Honkai: Star Rail's warp, a card pack opening), over everything as a modal layer: first the charge, a light that gathers and tints toward the pull's highest tier (blue, purple, gold) so the tier is felt before it is shown; then each result large, its art, name, kind and stars landing one by one in its tier's colour, a burst for legendary and above, a New tag or what a duplicate became; then every result in a summary grid, the highest tiers first in reading order. A press, a tap or confirm goes on; Skip (and Back during the charge or reveal) goes to the summary; Done or Back there closes it. Under reduced motion every step appears at once."
+    doc "Parts: Pull.layer, Pull.charge[rarity=<tier>], Pull.reveal[rarity=<tier>], Pull.art, Pull.name, Pull.kind, Pull.stars, Pull.star, Pull.new, Pull.extra, Pull.summary, Pull.tile[rarity=<tier>][new], Pull.skip, Pull.again[short], Pull.done, Pull.hint. Slots: each result's art (art kind character or item). States: on the layer, group phase (charge, reveal, summary); on each star, group lit (off, on). Motion: the charge grows and brightens on the emphasis spring; a revealed card enters scaled and turned, its stars land with a stagger; summary tiles deal in with a stagger. Sounds: open at the charge, reward on each reveal (success for legendary and above), select on each tile, close on Done. Accessibility: a dialog named for the pull; each result announced as it is revealed (a status: name, stars, new); the summary a list. Probe ids: <id>Layer/Panel/Stage (a press goes on), …/Stage/Content/Charge, …/Content/Reveal, …/Content/Summary/Grid/Tiles/<key> (the grid scrolls when it outgrows the screen), …/Summary/Bar/Again, …/Summary/Bar/Done, …/Stage/Bar/Skip."
+    host false
+    param id String "Its id."
+    param desc PullSequenceDesc "The pull."
+    returns PullSequenceResult
+  }
+
   # ── end of the genre patterns ────────────────────────────────────────
 
   # ── the UI kit: screen templates (TypeScript over the calls above) ──────

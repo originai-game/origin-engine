@@ -160,7 +160,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2023 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2037 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -514,6 +514,10 @@ Field units the docs and Tune use.
 | [`FrustumMath.fromProjectionMatrix`](math.md#member-FrustumMath-fromProjectionMatrix) | method | math | — |
 | [`FrustumMath.intersectsBox`](math.md#member-FrustumMath-intersectsBox) | method | math | — |
 | [`FrustumMath.intersectsSphere`](math.md#member-FrustumMath-intersectsSphere) | method | math | — |
+| [`GachaBannerDesc`](ui.md#type-GachaBannerDesc) | desc struct | ui | — |
+| [`GachaBannerResult`](ui.md#type-GachaBannerResult) | struct | ui | — |
+| [`GachaBannerTab`](ui.md#type-GachaBannerTab) | desc struct | ui | — |
+| [`GachaFeatured`](ui.md#type-GachaFeatured) | desc struct | ui | — |
 | [`Game`](game.md#type-Game) | interface | game | — |
 | [`Game.systems`](game.md#member-Game-systems) | property | game | `og_game_get_systems` |
 | [`Game.tick`](game.md#member-Game-tick) | property | game | `og_game_get_tick` |
@@ -1295,6 +1299,7 @@ Field units the docs and Tune use.
 | [`og.ui.framePointer`](ui.md#fn-framePointer) | function | ui | `og_ui_frame_pointer` |
 | [`og.ui.frameTheme`](ui.md#fn-frameTheme) | function | ui | `og_ui_frame_theme` |
 | [`og.ui.frameViewport`](ui.md#fn-frameViewport) | function | ui | `og_ui_frame_viewport` |
+| [`og.ui.gachaBanner`](ui.md#fn-gachaBanner) | function | ui | — |
 | [`og.ui.gameInput`](ui.md#fn-gameInput) | function | ui | `og_ui_game_input` |
 | [`og.ui.gesture`](ui.md#fn-gesture) | function | ui | `og_ui_gesture` |
 | [`og.ui.glyph`](ui.md#fn-glyph) | function | ui | `og_ui_glyph` |
@@ -1386,6 +1391,7 @@ Field units the docs and Tune use.
 | [`og.ui.progressRing`](ui.md#fn-progressRing) | function | ui | — |
 | [`og.ui.props`](ui.md#fn-props) | function | ui | `og_ui_props` |
 | [`og.ui.prose`](ui.md#fn-prose) | function | ui | — |
+| [`og.ui.pullSequence`](ui.md#fn-pullSequence) | function | ui | — |
 | [`og.ui.push`](ui.md#fn-push) | function | ui | `og_ui_push` |
 | [`og.ui.pushButton`](ui.md#fn-pushButton) | function | ui | — |
 | [`og.ui.pushMass`](ui.md#fn-pushMass) | function | ui | `og_ui_push_mass` |
@@ -1403,6 +1409,7 @@ Field units the docs and Tune use.
 | [`og.ui.resultsScreen`](ui.md#fn-resultsScreen) | function | ui | — |
 | [`og.ui.resume`](ui.md#fn-resume) | function | ui | `og_ui_resume` |
 | [`og.ui.reverse`](ui.md#fn-reverse) | function | ui | `og_ui_reverse` |
+| [`og.ui.rewardChoice`](ui.md#fn-rewardChoice) | function | ui | — |
 | [`og.ui.ribbon`](ui.md#fn-ribbon) | function | ui | — |
 | [`og.ui.richText`](ui.md#fn-richText) | function | ui | `og_ui_rich_text` |
 | [`og.ui.row`](ui.md#fn-row) | function | ui | — |
@@ -1624,6 +1631,10 @@ Field units the docs and Tune use.
 | [`ProjectPointDesc`](physics.md#type-ProjectPointDesc) | desc struct | physics | — |
 | [`PropValue`](ui.md#type-PropValue) | struct | ui | — |
 | [`ProseDesc`](ui.md#type-ProseDesc) | desc struct | ui | — |
+| [`PullItem`](ui.md#type-PullItem) | desc struct | ui | — |
+| [`PullPhase`](ui.md#type-PullPhase) | enum | ui | — |
+| [`PullSequenceDesc`](ui.md#type-PullSequenceDesc) | desc struct | ui | — |
+| [`PullSequenceResult`](ui.md#type-PullSequenceResult) | struct | ui | — |
 | [`PushButtonDesc`](ui.md#type-PushButtonDesc) | desc struct | ui | — |
 | [`PuzzleHudDesc`](ui.md#type-PuzzleHudDesc) | desc struct | ui | — |
 | [`QualityPreset`](render.md#type-QualityPreset) | enum | render | — |
@@ -1699,6 +1710,9 @@ Field units the docs and Tune use.
 | [`RestoreDesc`](world.md#type-RestoreDesc) | desc struct | world | — |
 | [`ResultsDesc`](ui.md#type-ResultsDesc) | desc struct | ui | — |
 | [`RetargetDesc`](anim.md#type-RetargetDesc) | desc struct | anim | — |
+| [`RewardChoiceDesc`](ui.md#type-RewardChoiceDesc) | desc struct | ui | — |
+| [`RewardChoiceResult`](ui.md#type-RewardChoiceResult) | struct | ui | — |
+| [`RewardOption`](ui.md#type-RewardOption) | desc struct | ui | — |
 | [`RibbonDesc`](render.md#type-RibbonDesc) | desc struct | render | — |
 | [`RibbonPoint`](render.md#type-RibbonPoint) | desc struct | render | — |
 | [`RichTextDesc`](ui.md#type-RichTextDesc) | desc struct | ui | — |

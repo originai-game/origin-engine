@@ -9,7 +9,7 @@
 // a gallery, never saved.
 
 import { og } from "@origingame/engine";
-import type { CardTarget, GridItem, HandCard, InventoryCarry, InventoryMove, PaperdollSlot, Size, UiRect, World } from "@origingame/engine";
+import type { CardTarget, GridItem, HandCard, InventoryCarry, InventoryMove, PaperdollSlot, PullItem, RewardOption, Size, UiRect, World } from "@origingame/engine";
 
 /** A fixture the preview changes: its readonly fields writable. */
 type Mut<T> = { -readonly [K in keyof T]: T[K] };
@@ -191,6 +191,144 @@ export function cardsScreen(): void {
   });
 }
 
+// ── rewards: a run's reward after a fight ───────────────────────────────
+
+const OFFER0: RewardOption[] = [
+  { key: "thunder", title: "Thunder Strike", kind: "Boon of Zeus", text: "Your attacks call down [b]bolts[/b] for [color=highlight]+30[/color] damage.", rarity: "rare", icon: "bolt" },
+  { key: "vigor", title: "Heart of the Titan", kind: "Boon of Ares", text: "[b]+25 %[/b] Max Health; heal [color=success]10[/color] on each room cleared.", rarity: "epic", tag: "Upgrade", icon: "heart" },
+  { key: "crown", title: "Crown of Ages", kind: "Relic", text: "Start each fight with [b]2[/b] extra [color=info]Energy[/color].", rarity: "legendary", tag: "New", locked: true, lockedHint: "Clear the second boss to unlock", icon: "crown" },
+];
+const OFFER1: RewardOption[] = [
+  { key: "frost", title: "Frostbite", kind: "Boon of Demeter", text: "Hits [color=info]chill[/color] foes, slowing them by [b]20 %[/b].", rarity: "uncommon", icon: "shield" },
+  { key: "gold", title: "Midas Touch", kind: "Boon of Hermes", text: "Gain [b]40[/b] gold now and [b]5[/b] per kill.", rarity: "rare", icon: "coin" },
+  { key: "blade", title: "Stygian Edge", kind: "Weapon", text: "Your dash leaves a blade that deals [b]18[/b] damage.", rarity: "epic", tag: "Lv 3 → 4", icon: "sword" },
+];
+
+const r = {
+  offer: OFFER0.map((o) => ({ ...o })),
+  selected: [] as string[],
+  rerolls: 2,
+  banishes: 1,
+  picks: 1,
+  taken: "",
+};
+
+/** The reward after a fight (Hades' boons, Slay the Spire's card reward): three rewards, Reroll, Banish and Skip. */
+export function rewardsScreen(): void {
+  const vp = og.ui.frameViewport();
+  const two = r.picks > 1;
+  screen("Rewards", "Chamber cleared", r.taken ? `Taken: ${r.taken}` : two ? "Choose two boons, then confirm" : "Choose a boon", () => {
+    const res = og.ui.rewardChoice("Choice", {
+      options: r.offer,
+      title: "",
+      picks: r.picks,
+      selected: r.selected,
+      rerolls: r.rerolls,
+      rerollCost: "50 gold",
+      banishes: r.banishes,
+      skipLabel: "Skip · take 25 gold",
+      cardWidth: vp.height >= 1000 ? 340 : 0,
+    });
+    r.selected = [...res.selected];
+    if (res.picked.length > 0) {
+      r.taken = res.picked.map((k) => r.offer.find((o) => o.key === k)?.title ?? k).join(", ");
+      r.selected = [];
+    }
+    if (res.rerolled && r.rerolls > 0) {
+      r.rerolls -= 1;
+      r.offer = (r.offer[0]?.key === "thunder" ? OFFER1 : OFFER0).map((o) => ({ ...o }));
+      r.selected = [];
+    }
+    if (res.banished && r.banishes > 0) {
+      r.banishes -= 1;
+      r.offer = r.offer.filter((o) => o.key !== res.banished);
+    }
+    if (res.skipped) r.taken = "25 gold";
+  }, [{ action: "confirm", hint: "Take" }, { action: "back", hint: "Back" }]);
+}
+
+// ── gacha: a banner and its pull ────────────────────────────────────────
+
+const PULL1: PullItem[] = [{ key: "aria", name: "Aria, Tidecaller", kind: "Character", stars: 5, rarity: "legendary", isNew: true }];
+const PULL10: PullItem[] = [
+  { key: "p0", name: "Favonius Sword", kind: "Weapon", stars: 4, rarity: "epic" },
+  { key: "p1", name: "Iron Sting", kind: "Weapon", stars: 3, rarity: "rare" },
+  { key: "p2", name: "Slingshot", kind: "Weapon", stars: 3, rarity: "rare" },
+  { key: "p3", name: "Kael, the Ember", kind: "Character", stars: 4, rarity: "epic", extra: "+2 Starglitter" },
+  { key: "p4", name: "Debate Club", kind: "Weapon", stars: 3, rarity: "rare" },
+  { key: "p5", name: "Aria, Tidecaller", kind: "Character", stars: 5, rarity: "legendary", isNew: true },
+  { key: "p6", name: "Black Tassel", kind: "Weapon", stars: 3, rarity: "rare" },
+  { key: "p7", name: "Thrilling Tales", kind: "Weapon", stars: 3, rarity: "rare" },
+  { key: "p8", name: "Mira of the Grove", kind: "Character", stars: 4, rarity: "epic", isNew: true },
+  { key: "p9", name: "Cool Steel", kind: "Weapon", stars: 3, rarity: "rare" },
+];
+
+const g = {
+  banner: "event",
+  balance: 2400,
+  pity: 74,
+  token: 0,
+  items: [] as PullItem[],
+  log: "",
+};
+
+const BANNERS = [
+  { key: "event", name: "Moonlit Tide", title: "Moonlit Tide", subtitle: "Event wish · Character", endsIn: 3 * 86400 + 5 * 3600, fresh: false, hue: [0.12, 0.2, 0.45] },
+  { key: "weapon", name: "Epitome", title: "Epitome Invocation", subtitle: "Event wish · Weapon", endsIn: 50 * 60, fresh: true, hue: [0.38, 0.16, 0.12] },
+  { key: "std", name: "Wanderlust", title: "Wanderlust Invocation", subtitle: "Standard wish", endsIn: null, fresh: false, hue: [0.1, 0.28, 0.26] },
+] as const;
+
+/** Placeholder key art: a night sky in the banner's hue, a moon, and the featured figure's silhouette at the end side. */
+function keyArt(hue: readonly [number, number, number]): void {
+  const [cr, cg, cb] = hue;
+  const sky = (k: number) => ({ r: cr * k, g: cg * k, b: cb * k, a: 1 });
+  og.ui.column("Sky", { width: grow, height: grow }, () => {});
+  og.ui.setDraw({ shape: { kind: "rect" }, fills: [
+    { kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: sky(0.6) }, { offset: 0.7, color: sky(1.6) }, { offset: 1, color: sky(2.2) }] },
+    { kind: "gradient", type: "radial", from: { x: 0.72, y: 0.3 }, to: { x: 0.18, y: 0.3 }, stops: [{ offset: 0, color: { r: 1, g: 0.96, b: 0.85, a: 0.95 } }, { offset: 0.22, color: { r: 1, g: 0.9, b: 0.7, a: 0.6 } }, { offset: 1, color: { r: 1, g: 0.9, b: 0.7, a: 0 } }] },
+    { kind: "gradient", type: "radial", from: { x: 0.74, y: 0.95 }, to: { x: 0.2, y: 0.7 }, stops: [{ offset: 0, color: { r: 0.02, g: 0.02, b: 0.05, a: 0.95 } }, { offset: 0.55, color: { r: 0.02, g: 0.02, b: 0.05, a: 0.9 } }, { offset: 0.56, color: { r: 0.02, g: 0.02, b: 0.05, a: 0 } }] },
+  ] } as never);
+}
+
+/** A gacha banner and its pull: the pull is the game's (it spends the purse and draws the results) and the reveal the pattern's. */
+export function gachaScreen(): void {
+  const vp = og.ui.frameViewport();
+  const sa = vp.safeArea;
+  const small = phone();
+  const b = BANNERS.find((x) => x.key === g.banner) ?? BANNERS[0];
+  og.ui.anchor("Gacha", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", padding: { left: 0, top: small ? (vp.breakpoint === "phonePortrait" ? 112 : 60) : 0, right: 0, bottom: small ? 0 : 52 } }, () => {
+    const res = og.ui.gachaBanner("Banner", {
+      banners: BANNERS.map((x) => ({ key: x.key, name: x.name, endsIn: x.endsIn, fresh: x.fresh })),
+      current: b.key,
+      title: b.title,
+      subtitle: b.subtitle,
+      featured: b.key === "std" ? [] : [{ name: "Aria", title: "Tidecaller of the Moon", stars: 5, rarity: "legendary" }, { name: "Kael", title: "The Ember", stars: 4, rarity: "epic" }, { name: "Mira", title: "Of the Grove", stars: 4, rarity: "epic" }],
+      rateText: b.key === "std" ? "A [b]5★[/b] is guaranteed within [b]90[/b] wishes." : "[b]50 %[/b] chance your next 5★ is [color=highlight]Aria[/color]; a lost one makes the next one hers.",
+      endsIn: b.endsIn,
+      pity: g.pity,
+      pityMax: 90,
+      balance: g.balance,
+      single: 160,
+      multi: 1600,
+      currency: "gem",
+    }, () => keyArt(b.hue));
+    if (res.banner) g.banner = res.banner;
+    if (res.pull > 0 && g.balance >= res.pull * 160) {
+      g.balance -= res.pull * 160;
+      g.pity = (g.pity + res.pull) % 90;
+      g.items = (res.pull === 1 ? PULL1 : PULL10).map((x) => ({ ...x }));
+      g.token += 1;
+    }
+    if (res.short) g.log = `short ${res.short}`;
+  });
+  const seq = og.ui.pullSequence("Pull", { token: g.items.length > 0 ? g.token : 0, items: g.items, againPrice: g.items.length * 160, affordable: g.balance >= g.items.length * 160, againLabel: "Wish ×{n}" });
+  if (seq.again && g.balance >= g.items.length * 160) {
+    g.balance -= g.items.length * 160;
+    g.token += 1;
+  }
+  if (seq.done) g.items = [];
+}
+
 /** `pat:<key>:<value>`: a pattern preview's state (pick:<item>, highlight:<tag>, reset). */
 export function patternsCommand(_world: World, args: readonly string[]): void {
   const [key, value = ""] = args;
@@ -199,7 +337,17 @@ export function patternsCommand(_world: World, args: readonly string[]): void {
   else if (key === "select") p.selected = value;
   else if (key === "inspect") c.inspect = value;
   else if (key === "turn") c.turn = value !== "off";
-  else if (key === "draw") {
+  else if (key === "picks") {
+    r.picks = Number(value) || 1;
+    r.selected = [];
+  } else if (key === "rselect") r.selected = value ? value.split(",") : [];
+  else if (key === "balance") g.balance = Number(value) || 0;
+  else if (key === "banner") g.banner = value;
+  else if (key === "pull") {
+    // A pull resolved by the game: pull:1 or pull:10 starts its reveal.
+    g.items = (value === "1" ? PULL1 : PULL10).map((x) => ({ ...x }));
+    g.token += 1;
+  } else if (key === "draw") {
     // A card drawn: it flies in from the start edge.
     const k = `${value || "strike"}${c.hand.length}`;
     c.hand.push({ ...(HAND0.find((x) => x.key === (value || "strike")) ?? HAND0[0]!), key: k, fresh: true });
@@ -217,6 +365,16 @@ export function patternsCommand(_world: World, args: readonly string[]): void {
     p.selected = "helm";
     p.highlight = "";
     p.menu = null;
+    r.offer = OFFER0.map((o) => ({ ...o }));
+    r.selected = [];
+    r.rerolls = 2;
+    r.banishes = 1;
+    r.picks = 1;
+    r.taken = "";
+    g.banner = "event";
+    g.balance = 2400;
+    g.pity = 74;
+    g.items = [];
   }
 }
 

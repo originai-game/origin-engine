@@ -362,8 +362,9 @@ function currencyLook(currency: string): { sym: SymbolKind; color: Rgba } {
  */
 export function priceTag(id: string, d: { amount: number; currency?: string; original?: number; affordable?: boolean; free?: string; text?: string; size?: "sm" | "md" | "lg"; shortLabel?: string }): void {
   const { t } = frame();
-  const step: Api.TypeStepName = d.size === "lg" ? "lg" : d.size === "sm" ? "sm" : "base";
-  const iconSize = d.size === "lg" ? 22 : d.size === "sm" ? 14 : 18;
+  // Scaled with the surface (st, u): a price is read in play, 18 px at 1080p.
+  const step = st(d.size === "lg" ? 20 : d.size === "sm" ? 14 : 16);
+  const iconSize = u(d.size === "lg" ? 22 : d.size === "sm" ? 14 : 18);
   const can = d.affordable ?? true;
   kit.open(id, { direction: "row", gap: t.xxs + 2, cross: "center", part: `Price.tag${flags(!can && "short", !!d.original && d.original > d.amount && "discount")}`, partClass: "chip" });
   if (d.text !== undefined && d.text !== "") {
@@ -375,7 +376,7 @@ export function priceTag(id: string, d: { amount: number; currency?: string; ori
     symbol("Currency", look.sym, iconSize, look.color, { icon: d.currency, label: "" });
     if (d.original && d.original > d.amount) {
       kit.open("Was", { direction: "row" });
-      text("Value", grouped(d.original), { step: "sm", color: "inkMuted", nowrap: true, font: "mono" });
+      text("Value", grouped(d.original), { step: st(14), color: "inkMuted", nowrap: true, font: "mono" });
       kit.close();
       // The strike: a line across the old price, drawn (no font has a strikethrough mark everywhere).
       kit.open("Strike", { width: grow(), height: px(2), radius: 1, background: token("danger") });
@@ -393,10 +394,10 @@ export function priceTag(id: string, d: { amount: number; currency?: string; ori
 export function timerChip(id: string, seconds: number, label = ""): void {
   const { t } = frame();
   const urgent = seconds < 60;
-  kit.open(id, { direction: "row", gap: t.xxs + 2, cross: "center", padding: xy(t.sm, t.xxs), radius: 999, background: token(urgent ? "danger" : "well"), part: `Timer.chip${flags(urgent && "urgent")}`, partClass: "chip" });
-  symbol("Clock", "clock", 14, role(urgent ? "onPrimary" : "inkMuted"), { icon: "clock" });
-  if (label) text("Label", label, { step: "caption", color: urgent ? hex("#ffffff") : "inkMuted", nowrap: true });
-  text("Time", countdown(seconds), { step: "caption", color: urgent ? hex("#ffffff") : "ink", nowrap: true, font: "mono" });
+  kit.open(id, { direction: "row", gap: u(6), cross: "center", padding: xy(u(10), u(4)), radius: 999, background: token(urgent ? "danger" : "well"), part: `Timer.chip${flags(urgent && "urgent")}`, partClass: "chip" });
+  symbol("Clock", "clock", u(14), role(urgent ? "onPrimary" : "inkMuted"), { icon: "clock" });
+  if (label) text("Label", label, { step: st(13), color: urgent ? hex("#ffffff") : "inkMuted", nowrap: true });
+  text("Time", countdown(seconds), { step: st(13), color: urgent ? hex("#ffffff") : "ink", nowrap: true, font: "mono" });
   kit.close();
   kit.semantics({ role: "timer", name: [label, countdown(seconds)].filter(Boolean).join(" ") });
 }
@@ -555,7 +556,8 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
     align: "center",
     radius: t.control,
     ...(d.selected === undefined ? {} : { selected: d.selected, selectedFill: role("primarySoft") }),
-    semantics: { role: "button", name: d.name ?? label },
+    // A toggle (Banish armed) is said selected as it is drawn: the tree has no pressed state.
+    semantics: { role: "button", name: d.name ?? label, ...(d.selected === undefined ? {} : { selected: d.selected }) },
   }, () => {
     if (d.sym) symbol("Sym", d.sym, u(size === "sm" ? 14 : 18), ink);
     d.before?.();

@@ -9950,6 +9950,17 @@
         "CardPlay",
         "CardAim",
         "CardHandResult",
+        "RewardOption",
+        "RewardChoiceDesc",
+        "RewardChoiceResult",
+        "GachaFeatured",
+        "GachaBannerTab",
+        "GachaBannerDesc",
+        "GachaBannerResult",
+        "PullItem",
+        "PullSequenceDesc",
+        "PullPhase",
+        "PullSequenceResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -13451,6 +13462,75 @@
             }
           ],
           "returns": "CardHandResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "rewardChoice",
+          "doc": "A choice of N rewards (Slay the Spire's card reward, Hades' boons, Vampire Survivors' level-up, Balatro's shop packs): each reward a card in its tier's colour with its art, kind, title, tag and rich-text effect, dealt in one after another and flipped face up. The card under the pointer or the focus lifts and its edge brightens; a press takes it (or selects it, with confirm or several picks, its ring and a tick in the focus ink), the taken one rises and grows while the others fall away. Reroll, Banish (armed, every card shows a cross until one is pressed) and Skip sit under the cards. Keys and pads move along the cards, confirm takes or selects, Back disarms banishing. Side by side on a desktop and a phone on its side; one above another, compact, on a phone in portrait.\nParts: Reward.frame, Reward.card[rarity=<tier>][selected][banishing][locked], Reward.art, Reward.kind, Reward.title, Reward.text, Reward.tag, Reward.check, Reward.banishMark, Reward.actions, Reward.reroll, Reward.banish[armed], Reward.skip, Reward.confirm. Slots: each reward's art (art kind item or card). States: on each card, group selection (off, on) and fate (offered, banishing, locked). Motion: cards deal in with a stagger and turn face up on the emphasis spring; hover lifts on the ui spring; a taken card rises and the others fall and fade. Sounds: open as they deal, hover, select, confirm on a take, error on a locked one, toggle for banishing. Accessibility: a radiogroup (one pick) or group named by title; each reward a radio or checkbox named by its title, kind and tier, its effect as its description; locked said disabled with its hint. Probe ids: <id>/Options/<key>, <id>/Actions/Reroll, <id>/Actions/Banish, <id>/Actions/Skip, <id>/Actions/Confirm.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "RewardChoiceDesc",
+              "optional": true,
+              "doc": "The rewards and what the choice allows."
+            }
+          ],
+          "returns": "RewardChoiceResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "gachaBanner",
+          "doc": "A gacha banner (Genshin Impact, Honkai: Star Rail, Fate/Grand Order, Marvel Snap's spotlight): the key art the game builds across the screen under a scrim that keeps its text readable on any art, the title and subtitle, the featured units with their stars in their tier's colour, the rate-up rule, the time left (a timer chip, urgent in its last minute; a tab's time in warn ink in its last hour), the pity meter, the purse, and the one and ten pull buttons with their prices (a price the purse cannot pay in danger ink, said not only shown). A switcher of banners sits at the start edge on a desktop and above on a phone. Bumpers or Q and E switch banners; keys and pads move between the buttons.\nParts: Gacha.frame, Gacha.art, Gacha.scrim, Gacha.featured, Gacha.unit[rarity=<tier>], Gacha.stars, Gacha.rate, Timer.chip[urgent], Gacha.pity, Gacha.purse, Gacha.pull[single|multi][short], Gacha.tabs, Gacha.tab[current][fresh], Gacha.details, Gacha.history. Slots: the key art (built by the game: art kind banner, the full frame); each tab's thumbnail. States: on each tab, group selection (off, on); on each pull button, group purse (afford, short). Motion: the art and text cross-fade when the banner changes (layout motion on the ui spring); the pull buttons lift under the pointer. Sounds: tab on a switch, press on a pull, error when short. Accessibility: a tablist of banners; the pulls are buttons named by their label and price (and not enough when short); the pity meter a meter; the timer a timer. Probe ids: <id>/Body/Tabs/<key>, <id>/Body/Main/Info/Title, <id>/Body/Main/Info/Timer, <id>/Body/Main/Info/Featured/Unit#<n>, <id>/Body/Main/Foot/Pulls/Buttons/Single, …/Buttons/Multi, …/Pulls/Status/Pity, …/Pulls/Status/Purse, <id>/Body/Main/Foot/Bar/Details, …/Bar/History.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "GachaBannerDesc",
+              "optional": false,
+              "doc": "The banner and the purse."
+            },
+            {
+              "name": "art",
+              "type": "UiBuild",
+              "optional": false,
+              "doc": "Builds the key art filling the frame (an art slot, a sceneViewport)."
+            }
+          ],
+          "returns": "GachaBannerResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "pullSequence",
+          "doc": "A gacha pull's reveal (Genshin Impact's wish, Honkai: Star Rail's warp, a card pack opening), over everything as a modal layer: first the charge, a light that gathers and tints toward the pull's highest tier (blue, purple, gold) so the tier is felt before it is shown; then each result large, its art, name, kind and stars landing one by one in its tier's colour, a burst for legendary and above, a New tag or what a duplicate became; then every result in a summary grid, the highest tiers first in reading order. A press, a tap or confirm goes on; Skip (and Back during the charge or reveal) goes to the summary; Done or Back there closes it. Under reduced motion every step appears at once.\nParts: Pull.layer, Pull.charge[rarity=<tier>], Pull.reveal[rarity=<tier>], Pull.art, Pull.name, Pull.kind, Pull.stars, Pull.star, Pull.new, Pull.extra, Pull.summary, Pull.tile[rarity=<tier>][new], Pull.skip, Pull.again[short], Pull.done, Pull.hint. Slots: each result's art (art kind character or item). States: on the layer, group phase (charge, reveal, summary); on each star, group lit (off, on). Motion: the charge grows and brightens on the emphasis spring; a revealed card enters scaled and turned, its stars land with a stagger; summary tiles deal in with a stagger. Sounds: open at the charge, reward on each reveal (success for legendary and above), select on each tile, close on Done. Accessibility: a dialog named for the pull; each result announced as it is revealed (a status: name, stars, new); the summary a list. Probe ids: <id>Layer/Panel/Stage (a press goes on), …/Stage/Content/Charge, …/Content/Reveal, …/Content/Summary/Grid/Tiles/<key> (the grid scrolls when it outgrows the screen), …/Summary/Bar/Again, …/Summary/Bar/Done, …/Stage/Bar/Skip.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "PullSequenceDesc",
+              "optional": true,
+              "doc": "The pull."
+            }
+          ],
+          "returns": "PullSequenceResult",
           "publish": true,
           "host": false
         },
@@ -51303,6 +51383,683 @@
         "inspect",
         "dismissed",
         "refused"
+      ],
+      "additionalProperties": false
+    },
+    "RewardOption": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One reward of a choice, as the game's viewmodel holds it.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key, stable while offered: its element id, so its probe path is <id>/Options/<key>.",
+          "default": ""
+        },
+        "title": {
+          "type": "string",
+          "description": "What it is (Thunder Strike, +20 % Max Health).",
+          "default": ""
+        },
+        "kind": {
+          "type": "string",
+          "description": "Its kind or source over the title (Relic, Boon of Zeus, Weapon).",
+          "default": ""
+        },
+        "text": {
+          "type": "string",
+          "description": "What it does, as rich-text markup (og.ui.richText): [b], [color=…] and [icon=…] are honoured.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (art kind item or card); without it a placeholder in its tier's colour.",
+          "default": null
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the style's set for the placeholder.",
+          "default": ""
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "Its tier: the frame's colour, a glow from epic, and its pips.",
+          "default": "none"
+        },
+        "tag": {
+          "type": "string",
+          "description": "A short tag in its corner (New, Upgrade, Lv 3 → 4); empty draws none.",
+          "default": ""
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "It cannot be taken (a requirement unmet): shaded with a lock, and a press shakes.",
+          "default": false
+        },
+        "lockedHint": {
+          "type": "string",
+          "description": "Why, said under its text and to a screen reader.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "RewardChoiceDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A choice of rewards and what it allows.",
+      "type": "object",
+      "properties": {
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RewardOption"
+          },
+          "description": "The rewards, start to end.",
+          "default": []
+        },
+        "title": {
+          "type": "string",
+          "description": "The heading over them (Choose a reward); empty is none.",
+          "default": ""
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "A line under it (Pick 1 of 3).",
+          "default": ""
+        },
+        "picks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many to take: 1 takes the one pressed at once (or after confirm with confirm); more need confirm.",
+          "default": 1,
+          "minimum": 1
+        },
+        "confirm": {
+          "type": "boolean",
+          "description": "A press selects; a Confirm button takes the selection (a choice the player should not take by a slip).",
+          "default": false
+        },
+        "selected": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The keys selected, for picks over one or confirm: the game passes back what it was answered.",
+          "default": []
+        },
+        "rerolls": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Rerolls left: a Reroll button with the count; 0 shows it spent; -1 shows none.",
+          "default": -1
+        },
+        "rerollCost": {
+          "type": "string",
+          "description": "What a reroll costs, beside its label (50 gold); empty is free.",
+          "default": ""
+        },
+        "banishes": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Banishes left: a Banish button that arms banishing, after which a press on a reward banishes it; -1 shows none.",
+          "default": -1
+        },
+        "skipLabel": {
+          "type": "string",
+          "description": "A Skip button's label (Skip, Take 25 gold); empty shows none.",
+          "default": ""
+        },
+        "confirmLabel": {
+          "type": "string",
+          "description": "The Confirm button's label.",
+          "default": "Confirm"
+        },
+        "rerollLabel": {
+          "type": "string",
+          "description": "The Reroll button's label.",
+          "default": "Reroll"
+        },
+        "banishLabel": {
+          "type": "string",
+          "description": "The Banish button's label.",
+          "default": "Banish"
+        },
+        "cardWidth": {
+          "type": "number",
+          "description": "A reward's width; 0 is 260 on a desktop (scaled with the screen) and the phone's room. Its height follows its content.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RewardChoiceResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the choice did this tick.",
+      "type": "object",
+      "properties": {
+        "picked": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The rewards taken: one pressed (picks 1, no confirm), or the selection confirmed. Empty while none."
+        },
+        "selected": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The selection after this tick's press (pass it back as RewardChoiceDesc.selected)."
+        },
+        "rerolled": {
+          "type": "boolean",
+          "description": "Reroll was pressed: offer new rewards and one fewer reroll."
+        },
+        "banished": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A reward banished: remove it and one banish."
+        },
+        "skipped": {
+          "type": "boolean",
+          "description": "Skip was pressed."
+        },
+        "hovered": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The reward under the pointer or the focus."
+        },
+        "refused": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A locked reward pressed: it shook."
+        }
+      },
+      "required": [
+        "picked",
+        "selected",
+        "rerolled",
+        "banished",
+        "skipped",
+        "hovered",
+        "refused"
+      ],
+      "additionalProperties": false
+    },
+    "GachaFeatured": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A featured unit of a banner (its rate-up).",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Its name.",
+          "default": ""
+        },
+        "title": {
+          "type": "string",
+          "description": "A line under it (Lightning Swordswoman).",
+          "default": ""
+        },
+        "stars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its stars, drawn as stars (never a glyph a font may lack).",
+          "default": 0
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "Its tier's colour.",
+          "default": "none"
+        }
+      },
+      "additionalProperties": false
+    },
+    "GachaBannerTab": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One banner of the set the player switches between.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its element id.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its short name (Event, Weapon, Standard).",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A thumbnail (art kind banner); without it the tier wash.",
+          "default": null
+        },
+        "endsIn": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Seconds until it ends; null for a permanent banner.",
+          "default": null,
+          "x-og-unit": "s"
+        },
+        "fresh": {
+          "type": "boolean",
+          "description": "New since the player last looked: a dot.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "GachaBannerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A gacha banner (its art, its featured units, its rules) and the player's purse.",
+      "type": "object",
+      "properties": {
+        "banners": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GachaBannerTab"
+          },
+          "description": "The banners; one or none draws no switcher.",
+          "default": []
+        },
+        "current": {
+          "type": "string",
+          "description": "The key of the banner shown.",
+          "default": ""
+        },
+        "title": {
+          "type": "string",
+          "description": "The banner's title over the art.",
+          "default": ""
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "A line under it (Event Wish · Character).",
+          "default": ""
+        },
+        "featured": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GachaFeatured"
+          },
+          "description": "The featured units, beside the art.",
+          "default": []
+        },
+        "rateText": {
+          "type": "string",
+          "description": "The rate-up rule, as rich text ([b]50 %[/b] chance the 5★ is featured).",
+          "default": ""
+        },
+        "endsIn": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Seconds until it ends: a timer chip, urgent in its last hour.",
+          "default": null,
+          "x-og-unit": "s"
+        },
+        "pity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Pulls made toward the guarantee.",
+          "default": 0
+        },
+        "pityMax": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Pulls at which a top tier is guaranteed; 0 shows no pity meter.",
+          "default": 0
+        },
+        "pityLabel": {
+          "type": "string",
+          "description": "What the meter says ({left} is the pulls left).",
+          "default": "Guaranteed in {left}"
+        },
+        "currency": {
+          "type": "string",
+          "description": "The pull currency's name (its icon when the style has one).",
+          "default": "gem"
+        },
+        "balance": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How much of it the player has.",
+          "default": 0
+        },
+        "single": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "What one pull costs.",
+          "default": 0
+        },
+        "multi": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "What ten cost; 0 hides the ten-pull.",
+          "default": 0
+        },
+        "multiCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many the multi pull draws.",
+          "default": 10
+        },
+        "singleLabel": {
+          "type": "string",
+          "description": "The one-pull button.",
+          "default": "Wish ×1"
+        },
+        "multiLabel": {
+          "type": "string",
+          "description": "The ten-pull button ({n} is multiCount).",
+          "default": "Wish ×{n}"
+        },
+        "shortLabel": {
+          "type": "string",
+          "description": "Said with a price the balance cannot pay.",
+          "default": "not enough"
+        },
+        "detailsLabel": {
+          "type": "string",
+          "description": "The rates and details button.",
+          "default": "Details"
+        },
+        "historyLabel": {
+          "type": "string",
+          "description": "The pull history button.",
+          "default": "History"
+        }
+      },
+      "additionalProperties": false
+    },
+    "GachaBannerResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the banner did this tick.",
+      "type": "object",
+      "properties": {
+        "pull": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Pulls asked for this tick: 1, multiCount, or 0. The game checks the purse, spends it and starts og.ui.pullSequence."
+        },
+        "short": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Pulls asked for that the balance cannot pay: offer the top-up (0 when none)."
+        },
+        "banner": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Another banner picked."
+        },
+        "details": {
+          "type": "boolean",
+          "description": "Details was pressed."
+        },
+        "history": {
+          "type": "boolean",
+          "description": "History was pressed."
+        }
+      },
+      "required": [
+        "pull",
+        "short",
+        "banner",
+        "details",
+        "history"
+      ],
+      "additionalProperties": false
+    },
+    "PullItem": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One result of a pull.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key within the pull: its element id.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "What was drawn.",
+          "default": ""
+        },
+        "kind": {
+          "type": "string",
+          "description": "What sort it is (Character, Weapon, Light Cone).",
+          "default": ""
+        },
+        "stars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its stars, drawn as stars.",
+          "default": 0
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "Its tier: the reveal's colour (the highest tier of a pull tints its charge), its glow, its burst from legendary.",
+          "default": "none"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (art kind character or item).",
+          "default": null
+        },
+        "isNew": {
+          "type": "boolean",
+          "description": "Drawn for the first time: a New tag.",
+          "default": false
+        },
+        "extra": {
+          "type": "string",
+          "description": "What a duplicate turned into (+10 Starglitter); empty for none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "PullSequenceDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A pull to reveal: start one by giving a new token.",
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The pull's number: a change starts the sequence again from its charge; 0 shows nothing.",
+          "default": 0
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PullItem"
+          },
+          "description": "What was drawn, in reveal order.",
+          "default": []
+        },
+        "againLabel": {
+          "type": "string",
+          "description": "The pull-again button in the summary ({n} is the count); empty shows none.",
+          "default": "Again ×{n}"
+        },
+        "againPrice": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its price, in currency.",
+          "default": 0
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency of againPrice.",
+          "default": "gem"
+        },
+        "affordable": {
+          "type": "boolean",
+          "description": "The purse pays againPrice.",
+          "default": true
+        },
+        "doneLabel": {
+          "type": "string",
+          "description": "The summary's close button.",
+          "default": "Done"
+        },
+        "skipLabel": {
+          "type": "string",
+          "description": "The skip-to-summary button.",
+          "default": "Skip"
+        },
+        "tapLabel": {
+          "type": "string",
+          "description": "What the reveal says to go on (a pad's confirm glyph beside it).",
+          "default": "Tap to continue"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PullPhase": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "Where a pull sequence is.",
+      "type": "string",
+      "enum": [
+        "idle",
+        "charge",
+        "reveal",
+        "summary"
+      ],
+      "x-og-variants": {
+        "idle": "Nothing shown (token 0, or closed).",
+        "charge": "The charge: a light gathering in the colour of the pull's highest tier.",
+        "reveal": "One result shown large, one after another.",
+        "summary": "Every result at once."
+      }
+    },
+    "PullSequenceResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the sequence did this tick.",
+      "type": "object",
+      "properties": {
+        "phase": {
+          "$ref": "#/$defs/PullPhase",
+          "description": "Where it is."
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The result shown in reveal (0 first)."
+        },
+        "revealed": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A result revealed this tick (play its voice line, count it seen)."
+        },
+        "again": {
+          "type": "boolean",
+          "description": "Pull again was pressed in the summary."
+        },
+        "done": {
+          "type": "boolean",
+          "description": "Done was pressed (or Back in the summary): it closed; set token to 0."
+        }
+      },
+      "required": [
+        "phase",
+        "index",
+        "revealed",
+        "again",
+        "done"
       ],
       "additionalProperties": false
     },

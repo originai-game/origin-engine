@@ -394,3 +394,197 @@ test("cardHand: right to left, the hand fans from the right", () => {
   const h = hand(true);
   expect(cardEl(h.engine, "strike").x).toBeGreaterThan(cardEl(h.engine, "wound").x);
 });
+
+// ── reward choice ───────────────────────────────────────────────────────
+
+const REWARDS: Api.RewardOption[] = [
+  { key: "strike", title: "Thunder Strike", kind: "Attack", text: "Deal [b]12[/b] damage.", rarity: "rare" },
+  { key: "vigor", title: "Vigor", kind: "Boon", text: "+20 % Max Health.", rarity: "epic", tag: "New" },
+  { key: "crown", title: "Crown", kind: "Relic", text: "Gain a crown.", rarity: "legendary", locked: true, lockedHint: "Reach floor 3" },
+];
+
+/** A reward choice the game answers as it should: it keeps the selection, rerolls and banishes. */
+function rewards(extra: Partial<Api.RewardChoiceDesc> = {}) {
+  let options = REWARDS.map((o) => ({ ...o }));
+  let selected: string[] = [];
+  let rerolls = extra.rerolls ?? -1;
+  let banishes = extra.banishes ?? -1;
+  const results: Api.RewardChoiceResult[] = [];
+  const engine = run(() => {
+    const r = og.ui.rewardChoice("Rew", { ...extra, options, selected, rerolls, banishes, cardWidth: 240 });
+    results.push(r);
+    selected = [...r.selected];
+    if (r.rerolled) {
+      rerolls -= 1;
+      options = options.map((o) => ({ ...o, key: `${o.key}2` }));
+    }
+    if (r.banished) {
+      banishes -= 1;
+      options = options.filter((o) => o.key !== r.banished);
+    }
+  });
+  const press = (k: string) => {
+    const e = byPath(engine, `Rew/Options/${k}`) ?? byPath(engine, `Rew/Actions/${k}`)!;
+    engine.probe.commands(`0:touch_move:${centre(e)};0.05:touch_start;0.1:touch_end`);
+    engine.advance(14);
+  };
+  const picked = () => results.flatMap((r) => r.picked);
+  return { engine, results, press, picked, options: () => options };
+}
+
+test("rewardChoice: with one pick a press takes the reward at once; a locked one shakes and is refused", () => {
+  // Wrong: a locked reward taken, or a single pick waiting for a confirm it never shows.
+  const r = rewards();
+  r.press("crown");
+  expect(r.picked()).toEqual([]);
+  expect(r.results.some((x) => x.refused === "crown")).toBe(true);
+  expect(byPath(r.engine, "Rew/Options/crown")!.states).toContain("disabled");
+  r.press("vigor");
+  expect(r.picked()).toEqual(["vigor"]);
+  expect(byPath(r.engine, "Rew/Actions/Confirm") === undefined).toBe(true);
+});
+
+test("rewardChoice: with two picks presses select, a third press does not overflow, Confirm takes them in offer order", () => {
+  // Wrong: a press takes at once, the selection grows past picks, or the order follows the presses.
+  const r = rewards({ picks: 2 });
+  r.press("vigor");
+  r.press("strike");
+  expect(r.picked()).toEqual([]);
+  expect(byPath(r.engine, "Rew/Options/vigor")!.states).toContain("checked");
+  r.press("crown");
+  expect(r.results.at(-1)!.selected).toEqual(["strike", "vigor"]);
+  r.press("Confirm");
+  expect(r.picked()).toEqual(["strike", "vigor"]);
+});
+
+test("rewardChoice: Banish arms, every card shows its cross, the next press banishes rather than takes; Back disarms", () => {
+  // Wrong: an armed press takes the reward, the arming stays after a banish, or Back leaves it armed.
+  const r = rewards({ banishes: 2 });
+  r.press("Banish");
+  expect(byPath(r.engine, "Rew/Options/strike/Banish")).toBeDefined();
+  r.press("strike");
+  expect(r.picked()).toEqual([]);
+  expect(r.options().map((o) => o.key)).toEqual(["vigor", "crown"]);
+  expect(byPath(r.engine, "Rew/Options/vigor/Banish") === undefined).toBe(true);
+  r.press("Banish");
+  key(r.engine, "Escape");
+  expect(byPath(r.engine, "Rew/Options/vigor/Banish") === undefined).toBe(true);
+  r.press("vigor");
+  expect(r.picked()).toEqual(["vigor"]);
+});
+
+test("rewardChoice: Reroll offers new rewards until none are left, then is disabled", () => {
+  const r = rewards({ rerolls: 1 });
+  r.press("Reroll");
+  expect(r.options()[0]!.key).toBe("strike2");
+  expect(byPath(r.engine, "Rew/Actions/Reroll")!.disabled).toBe(true);
+  r.press("Reroll");
+  expect(r.options()[0]!.key).toBe("strike2");
+});
+
+test("rewardChoice: keys walk the rewards and Enter takes the focused one", () => {
+  // Wrong: the locked reward taken by Enter, or the keys skipping the cards.
+  const r = rewards();
+  key(r.engine, "Tab");
+  expect(r.results.at(-1)!.hovered).toBe("strike");
+  key(r.engine, "Tab");
+  key(r.engine, "Enter");
+  expect(r.picked()).toEqual(["vigor"]);
+});
+
+// ── gacha banner and pull ───────────────────────────────────────────────
+
+function banner(balance: number) {
+  let current = "event";
+  const results: Api.GachaBannerResult[] = [];
+  const engine = run(() => {
+    const r = og.ui.gachaBanner("Banner", {
+      banners: [{ key: "event", name: "Event" }, { key: "weapon", name: "Weapon" }, { key: "std", name: "Standard" }],
+      current, title: "Moonlit Tide", balance, single: 160, multi: 1600, pityMax: 90, pity: 72,
+      featured: [{ name: "Aria", stars: 5, rarity: "legendary" }],
+    }, () => {});
+    results.push(r);
+    if (r.banner) current = r.banner;
+  }, { width: 1280, height: 720 });
+  const press = (end: string) => {
+    engine.probe.commands(`0:touch_move:${centre(byPath(engine, end)!)};0.05:touch_start;0.1:touch_end`);
+    engine.advance(14);
+  };
+  return { engine, results, press, current: () => current };
+}
+
+test("gachaBanner: a pull the purse pays is asked for; one it cannot is reported short and said so", () => {
+  // Wrong: a pull asked for that the balance cannot pay (the game would spend money it has not), or short shown only by colour.
+  const b = banner(1000);
+  b.press("Buttons/Single");
+  expect(b.results.some((r) => r.pull === 1)).toBe(true);
+  b.press("Buttons/Multi");
+  expect(b.results.some((r) => r.pull === 10)).toBe(false);
+  expect(b.results.some((r) => r.short === 10)).toBe(true);
+  expect(byPath(b.engine, "Buttons/Multi")!.name).toContain("not enough");
+  expect(byPath(b.engine, "Pulls/Status/Pity")!.name).toBe("Guaranteed in 18");
+});
+
+test("gachaBanner: tabs and the bumpers switch banners, wrapping at the ends", () => {
+  const b = banner(5000);
+  b.press("Tabs/std");
+  expect(b.current()).toBe("std");
+  key(b.engine, "KeyE");
+  expect(b.current()).toBe("event");
+  key(b.engine, "KeyQ");
+  expect(b.current()).toBe("std");
+  expect(byPath(b.engine, "Tabs/std")!.states).toContain("selected");
+});
+
+const PULL: Api.PullItem[] = [
+  { key: "p1", name: "Iron Sword", stars: 3, rarity: "common" },
+  { key: "p2", name: "Aria", stars: 5, rarity: "legendary", isNew: true },
+  { key: "p3", name: "Bow", stars: 4, rarity: "epic", extra: "+2 Starglitter" },
+];
+
+function pull() {
+  let token = 0;
+  const results: Api.PullSequenceResult[] = [];
+  const engine = run(() => {
+    const r = og.ui.pullSequence("Pull", { token, items: PULL, againPrice: 1600 });
+    results.push(r);
+    if (r.done) token = 0;
+  });
+  const tap = () => {
+    engine.probe.commands("0:touch_move:640,360;0.05:touch_start;0.1:touch_end");
+    engine.advance(14);
+  };
+  return { engine, results, tap, start: (t: number) => { token = t; engine.advance(2); }, last: () => results.at(-1)! };
+}
+
+test("pullSequence: a new token charges, then reveals each result in order, then the summary sorts the highest tier first", () => {
+  // Wrong: the summary in draw order, a reveal skipped, or a reveal reported twice.
+  const p = pull();
+  expect(p.last().phase).toBe("idle");
+  p.start(1);
+  expect(p.last().phase).toBe("charge");
+  p.engine.advance(100);
+  expect(p.last().phase).toBe("reveal");
+  p.tap();
+  p.tap();
+  expect(p.last().index).toBe(2);
+  expect(p.results.flatMap((r) => (r.revealed ? [r.revealed] : []))).toEqual(["p1", "p2", "p3"]);
+  p.tap();
+  expect(p.last().phase).toBe("summary");
+  const tiles = elements(p.engine).filter((e) => e.role === "listitem").sort((a, b) => a.y - b.y || a.x - b.x).map((e) => e.path.split("/").at(-1));
+  expect(tiles).toEqual(["p2", "p3", "p1"]);
+});
+
+test("pullSequence: Skip goes straight to the summary; Done closes it; a new token starts again", () => {
+  const p = pull();
+  p.start(1);
+  p.engine.advance(4);
+  p.engine.probe.commands(`0:touch_move:${centre(byPath(p.engine, "Bar/Skip")!)};0.05:touch_start;0.1:touch_end`);
+  p.engine.advance(14);
+  expect(p.last().phase).toBe("summary");
+  key(p.engine, "Escape");
+  expect(p.results.some((r) => r.done)).toBe(true);
+  expect(p.last().phase).toBe("idle");
+  p.start(2);
+  expect(p.last().phase).toBe("charge");
+});

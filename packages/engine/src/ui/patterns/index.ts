@@ -5,9 +5,14 @@
 
 import { cardHand } from "./cards.ts";
 import { inventoryGrid, paperdoll } from "./inventory.ts";
+import { rewardChoice } from "./rewards.ts";
+import { gachaBanner, pullSequence } from "./gacha.ts";
 
 export const patterns = Object.freeze({
   cardHand,
   inventoryGrid,
   paperdoll,
+  rewardChoice,
+  gachaBanner,
+  pullSequence,
 });
