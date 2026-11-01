@@ -147,6 +147,7 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
         interactive: d["interactive"].as_bool().unwrap_or(false),
         focusable: d["focusable"].as_bool().unwrap_or(false),
         adjustable: d["adjustable"].as_bool().unwrap_or(false),
+        own_ring: d["ownRing"].as_bool().unwrap_or(false),
         arrows: {
             let a = &d["arrows"];
             [
@@ -200,7 +201,7 @@ pub(super) fn response(r: Response) -> Value {
     json!({
         "hovered": r.hovered, "pressed": r.pressed, "clicked": r.clicked,
         "changed": r.changed, "focused": r.focused, "submitted": r.submitted,
-        "dropped": r.dropped, "pad": r.pad, "focusedBy": r.focused_by, "adjust": r.adjust, "adjustY": r.adjust_y,
+        "dropped": r.dropped, "pad": r.pad, "focusedBy": r.focused_by, "adjust": r.adjust, "adjustY": r.adjust_y, "ring": r.ring,
     })
 }
 

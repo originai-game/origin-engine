@@ -68,6 +68,10 @@ pub struct Response {
     /// An element claiming Up and Down ([`crate::Element::arrows`]): -1 for
     /// each press of Up, +1 for Down this tick while it has the focus.
     pub adjust_y: i32,
+    /// The focus ring is up on it: the focus is on it and keys or a pad
+    /// put it there. With [`crate::Element::own_ring`] the component draws
+    /// that ring (and what keys show, a cursor's card lifted) itself.
+    pub ring: bool,
 }
 
 /// [`crate::Element::arrows`]: Left is its own while it has the focus.

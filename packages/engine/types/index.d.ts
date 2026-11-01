@@ -20209,6 +20209,12 @@ export interface ElementDesc {
    */
   readonly arrows?: ArrowClaim;
   /**
+   * With focusable: the component draws its own focus (a hand rings its focused card, a grid its cursor cell) while Response.ring says the ring is up; og-ui draws no ring around the element.
+   *
+   * @default false
+   */
+  readonly ownRing?: boolean;
+  /**
    * Its fill; null draws none.
    *
    * @default null
@@ -20744,6 +20750,10 @@ export interface Response {
    * An element claiming Up and Down (ElementDesc.arrows) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise.
    */
   readonly adjustY: number;
+  /**
+   * The focus ring is up on it: the focus is on it and keys or a pad put it there (a press of the pointer, or a focus returned by a closing dialog to a pointer's player, puts it away). With ElementDesc.ownRing the component draws its own ring and what keys show (a cursor's card lifted).
+   */
+  readonly ring: boolean;
 }
 
 /** A slider's response and its value after this tick's input. */

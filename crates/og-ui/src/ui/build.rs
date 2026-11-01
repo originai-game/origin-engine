@@ -173,9 +173,11 @@ impl Ui {
         let n = &mut self.nodes[i];
         n.nav = true;
         n.adjust = adjust;
-        n.ring = self.state.focus == key && self.state.focus_visible;
-        n.pad_rings = (r.focused_by >> 1) as u8;
-        r
+        let own = n.el.own_ring;
+        let ring = self.state.focus == key && self.state.focus_visible;
+        n.ring = !own && ring;
+        n.pad_rings = if own { 0 } else { (r.focused_by >> 1) as u8 };
+        Response { ring, ..r }
     }
 
     /// Draws the element added last (a container just opened) with `draw`

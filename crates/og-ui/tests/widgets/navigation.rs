@@ -875,6 +875,64 @@ fn an_adjustable_container_takes_left_and_right_while_focused() {
     );
 }
 
+/// A focusable container with own_ring draws no focus ring of its own (a
+/// hand rings its focused card): the focus still lands on it and Enter
+/// still presses it, and Response.ring tells it when to draw its own (keys
+/// put the focus there, not a press). Ways it could fail: the ring drawn
+/// anyway (a band around and behind the whole hand), own_ring taking the
+/// element out of the focus order, or ring up after a pointer's press.
+#[test]
+fn a_container_that_owns_its_ring_takes_the_focus_without_one() {
+    let mut rig = Rig::new(Vec::<(bool, bool)>::new());
+    let b = &mut |ui: &mut Ui, s: &mut Vec<(bool, bool)>| {
+        s.clear();
+        for k in 0..2u32 {
+            ui.open(
+                ui_idi("Hand", k),
+                Element {
+                    interactive: true,
+                    focusable: true,
+                    own_ring: k == 0,
+                    width: Size::Fixed(120.0),
+                    height: Size::Fixed(40.0),
+                    ..Element::row()
+                },
+            );
+            let r = ui.close();
+            s.push((r.clicked, r.ring));
+        }
+    };
+    let focus = rig.ui.theme().palette.focus.linear();
+    let rings = |rig: &Rig<Vec<(bool, bool)>>| {
+        rig.ui
+            .frame()
+            .items
+            .iter()
+            .filter(|i| matches!(&i.cmd, DrawCmd::Quad { color, .. } if *color == focus))
+            .count()
+    };
+    rig.idle(2, b);
+    rig.key(UiKey::Tab, b);
+    assert_eq!(rig.ui.focus_path(0), "Hand#0", "it takes the focus");
+    assert_eq!(rings(&rig), 0, "and draws no ring");
+    assert_eq!(
+        rig.state,
+        [(false, true), (false, false)],
+        "it is told the ring is up"
+    );
+    rig.key(UiKey::Enter, b);
+    assert_eq!(
+        rig.state,
+        [(true, true), (false, false)],
+        "Enter presses it"
+    );
+    rig.click("Hand#0", b);
+    assert!(!rig.state[0].1, "a pointer's press puts the ring away");
+    rig.key(UiKey::Tab, b);
+    assert_eq!(rig.ui.focus_path(0), "Hand#1");
+    assert!(rings(&rig) > 0, "a plain one draws its ring");
+}
+
 /// A focusable container that claims some arrows (Element::arrows) takes
 /// those one by one while it has the focus (Left and Right in
 /// Response.adjust, Up and Down in Response.adjust_y) and lets the others

@@ -307,6 +307,9 @@ pub struct Element {
     /// instead of moving the focus. A grid's own cursor claims the arrows
     /// that keep it inside, so the focus leaves it at its edges.
     pub arrows: u8,
+    /// With focusable: the component draws its own focus (a hand rings its
+    /// focused card, not the whole fan); og-ui draws no ring around it.
+    pub own_ring: bool,
     pub background: Option<Srgba>,
     /// Corner radius in CSS pixels (clamped to half the shorter side).
     pub radius: f32,
