@@ -4100,7 +4100,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `mapLayer` | `number` | `0` | — | — | — | The layer of mapArray drawn where the Mesh does not pick one (past the array's last layer: the last). |
 | `normalMapArray` | `TextureArray \| null` | `null` | — | — | — | A tangent-space normal map from layer normalMapLayer of a texture array (linear: cook it with `kind normal`), the counterpart of mapArray. |
 | `normalMapLayer` | `number` | `0` | — | — | — | The layer of normalMapArray read where the Mesh does not pick one. |
-| `mapOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs. |
+| `mapOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs. A transform's own texCoord (a second uv set) is not read: the cook notes it and every map samples TEXCOORD_0. |
 | `mapRepeat` | `Vector2` | `{ x: 1, y: 1 }` | — | — | — | How many times map repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells. |
 | `mapRotation` | `number` | `0` | — | `rad` | — | The uv rotation of map, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation. |
 | `metalnessMapOffset` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The uv offset metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too) is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs. |
@@ -4295,7 +4295,7 @@ struct StandardMaterialDesc {
   field mapLayer u32 "The layer of mapArray drawn where the Mesh does not pick one (past the array's last layer: the last)."
   field normalMapArray Option.TextureArray "A tangent-space normal map from layer normalMapLayer of a texture array (linear: cook it with `kind normal`), the counterpart of mapArray."
   field normalMapLayer u32 "The layer of normalMapArray read where the Mesh does not pick one."
-  field mapOffset Vector2 "The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs."
+  field mapOffset Vector2 "The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs. A transform's own texCoord (a second uv set) is not read: the cook notes it and every map samples TEXCOORD_0."
   field mapRepeat Vector2 "How many times map repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells." {
     default 1 1
   }

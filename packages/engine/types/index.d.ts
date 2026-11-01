@@ -4637,7 +4637,7 @@ export interface StandardMaterialDesc {
    */
   readonly normalMapLayer?: number;
   /**
-   * The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs.
+   * The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs. A transform's own texCoord (a second uv set) is not read: the cook notes it and every map samples TEXCOORD_0.
    *
    * @default { x: 0, y: 0 }
    */

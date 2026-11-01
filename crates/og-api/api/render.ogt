@@ -276,7 +276,7 @@ module render {
     field mapLayer u32 "The layer of mapArray drawn where the Mesh does not pick one (past the array's last layer: the last)."
     field normalMapArray Option.TextureArray "A tangent-space normal map from layer normalMapLayer of a texture array (linear: cook it with `kind normal`), the counterpart of mapArray."
     field normalMapLayer u32 "The layer of normalMapArray read where the Mesh does not pick one."
-    field mapOffset Vector2 "The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs."
+    field mapOffset Vector2 "The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs. A transform's own texCoord (a second uv set) is not read: the cook notes it and every map samples TEXCOORD_0."
     field mapRepeat Vector2 "How many times map repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells." {
       default 1 1
     }
