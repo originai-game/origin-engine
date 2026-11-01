@@ -6,7 +6,7 @@
 import type * as Api from "@origingame/engine";
 import { input } from "../../input.ts";
 import {
-  byText, clamp, control, drawn, fill, flags, frame, glyphCap, grow, kit, mix, paint, px, role, still, text, TOUCH, xy,
+  byText, clamp, control, drawn, fill, flags, frame, glyphCap, grow, keepPath, kit, mix, ownPath, paint, px, role, rtl, still, text, TOUCH, xy,
 } from "./base.ts";
 import { iconButton, pushButton } from "./buttons.ts";
 
@@ -58,8 +58,19 @@ export function keyBindingRow(world: Api.World, id: string, desc: Api.KeyBinding
   const locked = info?.locked ?? false;
   const label = desc.label || info?.label || action;
   const slots = deviceSlots(info?.bindings ?? [], pad, count);
-  const h = byText(Math.max(t.controlMd, frame().touch ? TOUCH : 0));
+  // The slot's height before the player's text size: a cap scales itself with the text (glyphCap).
+  const h0 = Math.max(t.controlMd, frame().touch ? TOUCH : 0);
+  const h = byText(h0);
   const labelOf = (name: string) => infos.find((a) => a.name === name)?.label || name;
+  // The slots stack (the first over the second, as wide as each other, at the end) when side by side they are wider than the row
+  // (two slots at 200 % text in a narrow column), as last tick measured them.
+  const self = ownPath(`Bind~${id}`);
+  const room = self ? kit.bounds(`${self}/Main`)?.width ?? 0 : 0;
+  const stack = room > 0 && kit.memory(`${id}~natW`, 0) > room + 0.5;
+  let natW = 0;
+  const slotMin = byText(pad ? 72 : 120);
+  // Reset's square (a small icon button), or the space it keeps.
+  const resetW = byText(frame().touch ? TOUCH : t.controlSm);
   kit.open(id, {
     direction: "column",
     width: grow(),
@@ -71,10 +82,16 @@ export function keyBindingRow(world: Api.World, id: string, desc: Api.KeyBinding
     partClass: "panel",
   });
   try {
-    kit.open("Main", { direction: "row", width: grow(), gap: t.sm, cross: "center" });
+    // The label, then the slots and Reset at the row's end; where they do not fit beside the label
+    // (a phone, a long label at 200 %), they wrap under it, still at the end.
+    kit.open("Main", { direction: "row", width: grow(), gap: t.sm, cross: "center", wrap: true, align: "end" });
+    kit.open("Name", { direction: "row", width: grow(byText(120)), gap: t.xs, cross: "center" });
     text("Label", label, { step: "body", color: locked ? "inkMuted" : "ink", width: grow(), maxLines: 2 });
     if (locked) drawn("Lock", "lock", byText(16), role("inkMuted"));
-    kit.open("Slots", { direction: "row", gap: t.xs, cross: "center" });
+    kit.close();
+    // Stacked, Reset goes under the slots too (a phone at 200 % has no room beside them).
+    kit.open("Bound", { direction: stack ? "column" : "row", gap: stack ? t.xs : t.sm, cross: stack ? "end" : "center" });
+    kit.open("Slots", { direction: stack ? "column" : "row", gap: t.xs, cross: stack ? "stretch" : "center" });
     slots.forEach((sl, i) => {
       const waiting = capturing && cap.slot === sl.slot;
       const pending = conflict && cap.slot === sl.slot;
@@ -87,7 +104,7 @@ export function keyBindingRow(world: Api.World, id: string, desc: Api.KeyBinding
         flags: [!sl.binding && !waiting && "empty", waiting && "capturing", pending && "conflict"],
         disabled: locked,
         direction: "row",
-        width: { kind: "fit", min: byText(pad ? 72 : 120) },
+        width: { kind: "fit", min: slotMin },
         height: px(h),
         padding: xy(t.sm, 0),
         gap: t.xxs,
@@ -105,7 +122,10 @@ export function keyBindingRow(world: Api.World, id: string, desc: Api.KeyBinding
           text("Waiting", desc.waitingLabel || (pad ? "Press a button…" : "Press a key…"), { step: "sm", color: "ink", nowrap: true });
           kit.props({ opacity: k });
         } else if (glyphs.length > 0) {
-          glyphs.forEach((g, k) => glyphCap(kit.idi("Cap", k), g, Math.round(h * 0.62)));
+          // A cluster (W A S D) on smaller caps, so four fit a phone's slot at 200 % text.
+          // A key cluster (W A S D) is the keyboard's own order, not the text's: built reversed right to left, so the mirror keeps it.
+          const order = glyphs.map((g, k) => ({ g, k }));
+          (rtl() ? order.reverse() : order).forEach(({ g, k }) => glyphCap(kit.idi("Cap", k), g, Math.round(h0 * (glyphs.length > 2 ? 0.5 : 0.62))));
         } else text("Empty", desc.emptyLabel || "—", { step: "body", color: "inkFaint", nowrap: true });
       });
       if (b.r.clicked && !locked) slotHit = sl.slot;
@@ -118,12 +138,17 @@ export function keyBindingRow(world: Api.World, id: string, desc: Api.KeyBinding
         changed = true;
         kit.feedback("back", -1);
       }
-    } else kit.spacer("Reset", px(byText(frame().t.controlSm)));
+    } else kit.spacer("Reset", px(resetW));
+    kit.close();
+    // Their width side by side at the slots' least width (not this row's caps), so every row of a list
+    // stacks or not alike and the slots line up in columns; with the gaps and Reset's (from the sizes, not
+    // measured: a row the page's edge cuts would measure only what shows).
+    natW = slots.length * slotMin + t.xs * (slots.length - 1) + t.sm + resetW;
     kit.close();
     if (capturing) {
       kit.open("Hint", { direction: "row", width: grow(), gap: t.xs, align: "end", cross: "center" });
       const g = kit.frameGlyph("back") as { text: string; icon: string } | null;
-      if (g) glyphCap("Glyph", g, byText(20));
+      if (g) glyphCap("Glyph", g, 20);
       text("Text", desc.cancelHint || (g ? "to cancel" : "Esc to cancel"), { step: "caption", color: "inkMuted", nowrap: true });
       kit.close();
     }
@@ -150,6 +175,9 @@ export function keyBindingRow(world: Api.World, id: string, desc: Api.KeyBinding
   } finally {
     kit.close();
   }
+  keepPath(`Bind~${id}`, kit.lastPath());
+  // In the scope it is read in (before the row opens), as its path is.
+  kit.remember(`${id}~natW`, natW);
   kit.semantics({ role: "group", name: label });
   // A capture with nothing in its way lands at once.
   if (ours && cap.done && cap.conflicts.length === 0) {

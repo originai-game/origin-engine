@@ -130,6 +130,10 @@ test("keyboard: the kana marks voice, half-voice and shrink and cycle back; kata
   expect(layoutRows("letters", false, false).flat().some((k) => k.kind === "layout" && k.to === "kana")).toBeFalse();
   expect(layoutRows("letters", false, true).flat().some((k) => k.kind === "layout" && k.to === "kana")).toBeTrue();
   expect(layoutRows("letters", true, false)[0]![0]).toEqual({ kind: "char", ch: "Q" });
+  // A masked number (a PIN) takes digits only; an open one keeps its sign and point.
+  const chars = (digits: boolean) => layoutRows("numeric", false, false, digits).flat().flatMap((k) => (k.kind === "char" ? [k.ch] : []));
+  expect(chars(true).sort().join("")).toBe("0123456789");
+  expect(chars(false)).toContain("-");
 });
 
 test("bindings: a device shows its own bindings by their index among the action's, then empty slots past the end", () => {

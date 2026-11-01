@@ -20,7 +20,8 @@ const ch = (s: string): Key[] => [...s].map((c) => ({ kind: "char", ch: c }));
 const KANA_ROWS = ["あかさたなはまやらわ", "いきしちにひみ\u3000り\u3000", "うくすつぬふむゆるを", "えけせてねへめ\u3000れん", "おこそとのほもよろー"];
 
 /** The keys of a layout (rows, the last one the action row), letters in the shift state given. */
-export function layoutRows(layout: Layout, shifted: boolean, kana: boolean): Key[][] {
+/** The keys of a layout. `digits`: a masked number (a PIN) takes digits only, no sign, point or caret keys. */
+export function layoutRows(layout: Layout, shifted: boolean, kana: boolean, digits = false): Key[][] {
   const up = (s: string) => (shifted ? s.toUpperCase() : s);
   const bottom = (to: Layout, label: string): Key[] => [
     { kind: "layout", to, label, wide: 1.5 },
@@ -35,6 +36,7 @@ export function layoutRows(layout: Layout, shifted: boolean, kana: boolean): Key
     case "symbols":
       return [ch("1234567890"), ch("@#$%&*-+()"), [...ch("!\"':;/?,."), { kind: "back", wide: 1.5 }], bottom("letters", "ABC")];
     case "numeric":
+      if (digits) return [ch("123"), ch("456"), ch("789"), [{ kind: "char", ch: "0", wide: 2 }, { kind: "back" }], [{ kind: "enter", wide: 3 }]];
       return [ch("123"), ch("456"), ch("789"), [{ kind: "char", ch: "-" }, { kind: "char", ch: "0" }, { kind: "char", ch: "." }], [{ kind: "left" }, { kind: "back" }, { kind: "right" }], [{ kind: "enter", wide: 3 }]];
     case "kana":
       return [
@@ -106,12 +108,21 @@ export function onScreenKeyboard(id: string, open: boolean, desc: Api.KeyboardDe
   // The layout shown, the shift (0 off, 1 once, 2 caps), the caret and the composition persist while it is open.
   const LAYOUTS: Layout[] = ["letters", "symbols", "numeric", "kana"];
   const opened = kit.memory(`${id}~was`, 0) > 0;
+  // The layout the game asks for: opening shows it, and so does the game asking for another while it is open.
+  const asked = LAYOUTS.indexOf(startLayout);
+  const askedBefore = kit.memory(`${id}~asked`, asked);
+  // The game switched the layout while it was open (its own layout key's switch, from outside).
+  const switched = open && opened && asked !== askedBefore;
   if (open && !opened) {
-    kit.remember(`${id}~layout`, LAYOUTS.indexOf(startLayout));
     kit.remember(`${id}~caret`, -1);
     kit.remember(`${id}~shift`, 0);
     drafts.set(id, "");
   }
+  if (open && (!opened || asked !== askedBefore)) {
+    kit.remember(`${id}~layout`, asked);
+    kit.remember(`${id}~shift`, 0);
+  }
+  kit.remember(`${id}~asked`, asked);
   kit.remember(`${id}~was`, open ? 1 : 0);
   let layout = LAYOUTS[clamp(kit.memory(`${id}~layout`, LAYOUTS.indexOf(startLayout)), 0, 3)] ?? "letters";
   if (layout === "kana" && !kana) layout = "letters";
@@ -142,6 +153,8 @@ export function onScreenKeyboard(id: string, open: boolean, desc: Api.KeyboardDe
     comp = "";
     insert(s);
   };
+  // Switched by the game to a layout that does not compose: the composition is committed, as the layout key does.
+  if (switched && comp && !composing) commit(comp);
   const press = (k: Key) => {
     switch (k.kind) {
       case "char": {
@@ -202,10 +215,19 @@ export function onScreenKeyboard(id: string, open: boolean, desc: Api.KeyboardDe
     }
   };
 
-  const rows = layoutRows(layout, shift > 0, kana);
+  const rows = layoutRows(layout, shift > 0, kana, desc.password ?? false);
   const wide = viewport.width >= 720;
-  const unit = byText(Math.max(frame().touch ? TOUCH : 40, Math.min(56, (Math.min(viewport.width, 980) - 2 * t.md) / 11.5 - t.xxs)));
   const panelW = Math.min(viewport.width - viewport.safeArea.left - viewport.safeArea.right, wide ? 980 : viewport.width);
+  // A key's height: a finger's 44 on touch, larger on a wide screen, with the text size, but the rows
+  // never taller than about three fifths of the screen. Its width: the widest row fills the panel at
+  // most, so a phone's ten letters fit across (narrower than tall, as every phone keyboard's are).
+  const base = Math.max(frame().touch ? TOUCH : 40, Math.min(56, (Math.min(viewport.width, 980) - 2 * t.md) / 11.5 - t.xxs));
+  const gap = t.xxs;
+  const keysRoom = (viewport.height - viewport.safeArea.top - viewport.safeArea.bottom) * 0.6;
+  const keyH = Math.round(Math.max(frame().touch ? TOUCH : 32, Math.min(byText(base), (keysRoom - gap * (rows.length - 1)) / rows.length)));
+  const units = Math.max(...rows.map((row) => row.reduce((a, k) => a + (k.wide ?? 1), 0)));
+  const fits = (panelW - 2 * t.md - gap * (units - 1)) / units;
+  const unit = Math.floor(Math.min(byText(base) * (layout === "numeric" ? 2.4 : 1), fits));
   const title = desc.title ?? "";
   const placeholder = desc.placeholder ?? "";
   const shown = desc.password ? "•".repeat([...value].length) : value;
@@ -244,7 +266,6 @@ export function onScreenKeyboard(id: string, open: boolean, desc: Api.KeyboardDe
       const cs = [...shown];
       const before = cs.slice(0, caret).join("");
       const after = cs.slice(caret).join("");
-      if (!value && !comp && placeholder) text("Placeholder", placeholder, { step: "body", color: "inkFaint", nowrap: true });
       if (before) text("Before", before, { step: "body", color: "ink", nowrap: true });
       if (comp) {
         kit.open("Composition", { direction: "column", cross: "stretch" });
@@ -257,6 +278,8 @@ export function onScreenKeyboard(id: string, open: boolean, desc: Api.KeyboardDe
       kit.open("Caret", { width: px(2), height: px(byText(22)), background: paint(role("focus")) });
       kit.close();
       kit.props({ opacity: blink });
+      // Empty, the caret waits at the start with the placeholder after it, as a field's does.
+      if (!value && !comp && placeholder) text("Placeholder", placeholder, { step: "body", color: "inkFaint", nowrap: true });
       if (after) text("After", after, { step: "body", color: "ink", nowrap: true });
       if (max > 0) {
         kit.spacer("Gap", grow());
@@ -284,16 +307,16 @@ export function onScreenKeyboard(id: string, open: boolean, desc: Api.KeyboardDe
         kit.close();
       }
       // The keys: a row is a row of buttons whose widths are units of the narrowest.
-      kit.open("Keys", { direction: "column", width: grow(), gap: t.xxs, cross: "center" });
+      kit.open("Keys", { direction: "column", width: grow(), gap, cross: "center" });
       const firstPath = { p: "" };
       rows.forEach((row, r) => {
-        kit.open(kit.idi("Row", r), { direction: "row", gap: t.xxs, align: "center" });
+        kit.open(kit.idi("Row", r), { direction: "row", gap, align: "center" });
         row.forEach((k, i) => {
           const name = keyName(k);
           const blank = k.kind === "char" && k.ch === "\u3000";
           const action = k.kind !== "char";
           const active = (k.kind === "shift" && shift > 0) || (k.kind === "layout" && k.to === layout);
-          const w = unit * (k.wide ?? 1) + t.xxs * ((k.wide ?? 1) - 1);
+          const w = unit * (k.wide ?? 1) + gap * ((k.wide ?? 1) - 1);
           const primary = k.kind === "enter";
           const b = control(kit.idi("Key", i), {
             part: "Keyboard.key",
@@ -301,7 +324,10 @@ export function onScreenKeyboard(id: string, open: boolean, desc: Api.KeyboardDe
             flags: [(k.wide ?? 1) > 1 && "wide", action && "action", active && "active", primary && "primary"],
             disabled: blank,
             width: px(Math.round(w)),
-            height: px(unit),
+            height: px(keyH),
+            // A finger's target spans the gap to its neighbours.
+            touch: 0,
+            props: { hitSlop: Math.ceil(gap / 2) },
             fill: primary ? role("primary") : active ? mix(role("control"), role("primary"), 0.25) : action ? role("controlStrong") : role("control"),
             washBy: 0.12,
             press: 0.94,
@@ -330,8 +356,8 @@ export function onScreenKeyboard(id: string, open: boolean, desc: Api.KeyboardDe
             // A finger's press shows the letter above it (it is under the finger).
             if (k.kind === "char" && ix === "pressed" && frame().touch && !still()) {
               kit.open("Popup", {
-                width: px(Math.round(unit * 1.2)),
-                height: px(Math.round(unit * 1.25)),
+                width: px(Math.round(Math.max(unit * 1.2, keyH * 0.9))),
+                height: px(Math.round(keyH * 1.25)),
                 align: "center",
                 cross: "center",
                 radius: t.control,
@@ -342,7 +368,7 @@ export function onScreenKeyboard(id: string, open: boolean, desc: Api.KeyboardDe
               kit.setDraw({ effects: elevation("floating") });
               text("Text", name, { step: "xl", color: "ink", nowrap: true });
               kit.close();
-              kit.props({ transform: { y: -Math.round(unit * 1.15) }, z: 5 });
+              kit.props({ transform: { y: -Math.round(keyH * 1.15) }, z: 5 });
             }
           });
           if (!firstPath.p && !blank) firstPath.p = b.path;
