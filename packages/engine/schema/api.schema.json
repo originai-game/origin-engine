@@ -8968,6 +8968,30 @@
         "RadialItem",
         "RadialDesc",
         "RadialResult",
+        "DataStateDesc",
+        "DataListDesc",
+        "DataListResult",
+        "DataGridDesc",
+        "NumberFormat",
+        "TableColumn",
+        "TableDesc",
+        "TableResult",
+        "TreeItem",
+        "TreeDesc",
+        "TreeResult",
+        "GraphNodeState",
+        "GraphNodeShape",
+        "GraphNode",
+        "GraphLink",
+        "NodeGraphDesc",
+        "NodeGraphResult",
+        "KeyValueRow",
+        "KeyValueRowsDesc",
+        "StatCompareRow",
+        "StatCompareDesc",
+        "CalendarMark",
+        "CalendarDesc",
+        "CalendarResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -11356,6 +11380,186 @@
             }
           ],
           "returns": "RadialResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "dataList",
+          "doc": "A virtualised list with its empty, loading and error states.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "DataListDesc",
+              "optional": false,
+              "doc": "Count, size, selection and state."
+            },
+            {
+              "name": "build",
+              "type": "UiItemBuild",
+              "optional": false,
+              "doc": "Builds a row's content by its index."
+            }
+          ],
+          "returns": "DataListResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "dataGrid",
+          "doc": "A virtualised grid of cells with its empty, loading and error states.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "DataGridDesc",
+              "optional": false,
+              "doc": "Count, cell size, selection and state."
+            },
+            {
+              "name": "build",
+              "type": "UiItemBuild",
+              "optional": false,
+              "doc": "Builds a cell's content by its index."
+            }
+          ],
+          "returns": "DataListResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "table",
+          "doc": "A sortable, filterable table; only the rows in view are built, so 10,000 rows and more stay within budget.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "TableDesc",
+              "optional": true,
+              "doc": "Rows, columns, the sort and the filter."
+            }
+          ],
+          "returns": "TableResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "tree",
+          "doc": "A tree of expandable items, virtualised.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "TreeDesc",
+              "optional": true,
+              "doc": "Items and the open ones."
+            }
+          ],
+          "returns": "TreeResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "nodeGraph",
+          "doc": "A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "NodeGraphDesc",
+              "optional": true,
+              "doc": "Nodes, links and the zoom."
+            }
+          ],
+          "returns": "NodeGraphResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "keyValueRows",
+          "doc": "Key-value rows: labels at the start, values at the end.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "KeyValueRowsDesc",
+              "optional": true,
+              "doc": "The rows."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "statCompare",
+          "doc": "Stat-compare rows: current, new and the signed change with its mark.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "StatCompareDesc",
+              "optional": true,
+              "doc": "The stats."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "calendar",
+          "doc": "A month grid of days.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "CalendarDesc",
+              "optional": true,
+              "doc": "The month, today, the selection and marks."
+            }
+          ],
+          "returns": "CalendarResult",
           "publish": true,
           "host": false
         },
@@ -39472,6 +39676,1530 @@
         "chosen",
         "hovered",
         "dismissed"
+      ],
+      "additionalProperties": false
+    },
+    "DataStateDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "What a data view shows instead of its rows: loading, an error, or nothing.",
+      "type": "object",
+      "properties": {
+        "loading": {
+          "type": "boolean",
+          "description": "Loading: skeleton rows.",
+          "default": false
+        },
+        "error": {
+          "type": "string",
+          "description": "An error to show with Retry; empty is none.",
+          "default": ""
+        },
+        "emptyLabel": {
+          "type": "string",
+          "description": "What it says when there is nothing; empty is Nothing here yet.",
+          "default": ""
+        },
+        "emptyHint": {
+          "type": "string",
+          "description": "A line under it (what to do).",
+          "default": ""
+        },
+        "retry": {
+          "type": "boolean",
+          "description": "The error has a Retry button.",
+          "default": true
+        },
+        "retryLabel": {
+          "type": "string",
+          "description": "Retry's label; empty is Retry.",
+          "default": ""
+        },
+        "loadingLabel": {
+          "type": "string",
+          "description": "What a screen reader hears while loading; empty is Loading.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "DataListDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A virtualised list with its empty, loading and error states.",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many rows.",
+          "default": 0
+        },
+        "rowHeight": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Every row's height; null is the density's row height, at least 48.",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "gap": {
+          "type": "number",
+          "description": "Space between rows.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "selected": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The selected row.",
+          "default": null
+        },
+        "striped": {
+          "type": "boolean",
+          "description": "Every other row is marked (List.row[odd]).",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height (it scrolls inside); null fits.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls it.",
+          "default": ""
+        },
+        "loading": {
+          "type": "boolean",
+          "description": "Loading: skeleton rows.",
+          "default": false
+        },
+        "error": {
+          "type": "string",
+          "description": "An error to show with Retry; empty is none.",
+          "default": ""
+        },
+        "emptyLabel": {
+          "type": "string",
+          "description": "What it says when there are no rows.",
+          "default": ""
+        },
+        "emptyHint": {
+          "type": "string",
+          "description": "A line under it.",
+          "default": ""
+        },
+        "retry": {
+          "type": "boolean",
+          "description": "The error has a Retry button.",
+          "default": true
+        },
+        "retryLabel": {
+          "type": "string",
+          "description": "Retry's label.",
+          "default": ""
+        },
+        "loadingLabel": {
+          "type": "string",
+          "description": "What a screen reader hears while loading.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "DataListResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a data list or grid answered this tick.",
+      "type": "object",
+      "properties": {
+        "clicked": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The row or cell pressed (or activated)."
+        },
+        "retry": {
+          "type": "boolean",
+          "description": "Retry was pressed."
+        }
+      },
+      "required": [
+        "clicked",
+        "retry"
+      ],
+      "additionalProperties": false
+    },
+    "DataGridDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A virtualised grid of equal cells with its empty, loading and error states.",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many cells.",
+          "default": 0
+        },
+        "cellWidth": {
+          "type": "number",
+          "description": "A cell's width; 0 is 64 (see GridDesc.cellWidth).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "cellHeight": {
+          "type": "number",
+          "description": "A cell's height; 0 is its width.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cells across; 0 is as many as fit.",
+          "default": 0
+        },
+        "gap": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Space between cells; null is space.sm.",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Insets"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Space inside; null is none.",
+          "default": null
+        },
+        "selected": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The selected cell.",
+          "default": null
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height (it scrolls inside); null fits.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls it.",
+          "default": ""
+        },
+        "loading": {
+          "type": "boolean",
+          "description": "Loading: skeleton rows.",
+          "default": false
+        },
+        "error": {
+          "type": "string",
+          "description": "An error to show with Retry; empty is none.",
+          "default": ""
+        },
+        "emptyLabel": {
+          "type": "string",
+          "description": "What it says when there are no cells.",
+          "default": ""
+        },
+        "emptyHint": {
+          "type": "string",
+          "description": "A line under it.",
+          "default": ""
+        },
+        "retry": {
+          "type": "boolean",
+          "description": "The error has a Retry button.",
+          "default": true
+        },
+        "retryLabel": {
+          "type": "string",
+          "description": "Retry's label.",
+          "default": ""
+        },
+        "loadingLabel": {
+          "type": "string",
+          "description": "What a screen reader hears while loading.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "NumberFormat": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How a number reads in a data view.",
+      "type": "string",
+      "enum": [
+        "grouped",
+        "percent",
+        "compact",
+        "plain"
+      ],
+      "x-og-variants": {
+        "grouped": "Grouped digits: 12,840 (the default).",
+        "percent": "A fraction as a percentage: 0.42 is 42%.",
+        "compact": "Compact units: 12.4K, 3.40M.",
+        "plain": "As it is."
+      }
+    },
+    "TableColumn": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A column of a table: the row field it shows and how.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The field of each row it shows.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "Its header; empty is the key.",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null shares what is left.",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "numeric": {
+          "type": "boolean",
+          "description": "Numbers: aligned to the end in the mono face, sorted by value, descending first.",
+          "default": false
+        },
+        "format": {
+          "$ref": "#/$defs/NumberFormat",
+          "description": "How its numbers read.",
+          "default": "grouped"
+        },
+        "digits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Decimals.",
+          "default": 0
+        },
+        "unit": {
+          "type": "string",
+          "description": "A unit after its numbers.",
+          "default": ""
+        },
+        "sortable": {
+          "type": "boolean",
+          "description": "A press on its header sorts by it.",
+          "default": true
+        },
+        "filterable": {
+          "type": "boolean",
+          "description": "The search reads it.",
+          "default": true
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "On a phone the columns that fit are kept, highest priority first.",
+          "default": 0
+        },
+        "toneKey": {
+          "type": "string",
+          "description": "A field of each row naming its cell's tone (`up`, `down`, `success`, `danger`).",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "TableDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A sortable, filterable table of rows by columns; only the rows in view are built.",
+      "type": "object",
+      "properties": {
+        "rows": {
+          "description": "The rows: an array of objects, the columns' keys their fields. Pass the same array while it is unchanged: the sort and the filter are computed once per change of the rows, the sort or the filter.",
+          "default": null
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TableColumn"
+          },
+          "description": "The columns.",
+          "default": []
+        },
+        "sortBy": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The column sorted by; -1 is the rows' own order (keep TableResult.sortBy).",
+          "default": -1
+        },
+        "descending": {
+          "type": "boolean",
+          "description": "Sorted high to low (keep TableResult.descending).",
+          "default": false
+        },
+        "filter": {
+          "type": "string",
+          "description": "The search text (keep TableResult.filter).",
+          "default": ""
+        },
+        "search": {
+          "type": "boolean",
+          "description": "A search field over it.",
+          "default": true
+        },
+        "searchPlaceholder": {
+          "type": "string",
+          "description": "The search field's placeholder; empty is Search.",
+          "default": ""
+        },
+        "selected": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The selected row, by its index in rows.",
+          "default": null
+        },
+        "rowHeight": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Every row's height; null is 40 (48 on a phone).",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "striped": {
+          "type": "boolean",
+          "description": "Every other row shaded.",
+          "default": true
+        },
+        "footer": {
+          "type": "boolean",
+          "description": "A count line under it (`120 of 10,000`).",
+          "default": true
+        },
+        "countLabel": {
+          "type": "string",
+          "description": "The count line, with {shown} and {total}; empty is `{shown} of {total}`.",
+          "default": ""
+        },
+        "noMatchLabel": {
+          "type": "string",
+          "description": "What it says when the filter keeps no row; empty is No matches.",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height (the rows scroll inside); null fits.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls it.",
+          "default": ""
+        },
+        "loading": {
+          "type": "boolean",
+          "description": "Loading: skeleton rows.",
+          "default": false
+        },
+        "error": {
+          "type": "string",
+          "description": "An error to show with Retry; empty is none.",
+          "default": ""
+        },
+        "emptyLabel": {
+          "type": "string",
+          "description": "What it says when there are no rows.",
+          "default": ""
+        },
+        "emptyHint": {
+          "type": "string",
+          "description": "A line under it.",
+          "default": ""
+        },
+        "retry": {
+          "type": "boolean",
+          "description": "The error has a Retry button.",
+          "default": true
+        },
+        "retryLabel": {
+          "type": "string",
+          "description": "Retry's label.",
+          "default": ""
+        },
+        "loadingLabel": {
+          "type": "string",
+          "description": "What a screen reader hears while loading.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "TableResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a table answered this tick: keep the sort and the filter.",
+      "type": "object",
+      "properties": {
+        "sortBy": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The column sorted by."
+        },
+        "descending": {
+          "type": "boolean",
+          "description": "High to low."
+        },
+        "filter": {
+          "type": "string",
+          "description": "The search text."
+        },
+        "clicked": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The row pressed, by its index in rows."
+        },
+        "retry": {
+          "type": "boolean",
+          "description": "Retry was pressed."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "The sort or the filter changed this tick."
+        }
+      },
+      "required": [
+        "sortBy",
+        "descending",
+        "filter",
+        "clicked",
+        "retry",
+        "changed"
+      ],
+      "additionalProperties": false
+    },
+    "TreeItem": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An item of a tree; an item whose `parent` names another's id sits under it.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its id: answered when it is chosen, and its children's parent.",
+          "default": ""
+        },
+        "parent": {
+          "type": "string",
+          "description": "Its parent's id; empty is the top level.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "What it says.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon before it; empty is none.",
+          "default": ""
+        },
+        "badge": {
+          "type": "string",
+          "description": "A badge after it; empty is none.",
+          "default": ""
+        },
+        "badgeTone": {
+          "$ref": "#/$defs/Tone",
+          "description": "The badge's tone.",
+          "default": "neutral"
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but not choosable.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "TreeDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A tree of expandable items; the visible rows are virtualised.",
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TreeItem"
+          },
+          "description": "The items, each after its parent or not: order among siblings is kept.",
+          "default": []
+        },
+        "expanded": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The open items' ids (keep TreeResult.expanded).",
+          "default": []
+        },
+        "selected": {
+          "type": "string",
+          "description": "The selected item's id.",
+          "default": ""
+        },
+        "toggleOnPress": {
+          "type": "boolean",
+          "description": "A press on an item with children opens or closes it as well as choosing it.",
+          "default": true
+        },
+        "rowHeight": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Every row's height; null is 36 (44 on a phone).",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "indent": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Each level's indent; null is 20.",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height (the rows scroll inside); null fits.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls it.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "TreeResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a tree answered this tick.",
+      "type": "object",
+      "properties": {
+        "chosen": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The item pressed."
+        },
+        "toggled": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The item opened or closed."
+        },
+        "expanded": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The open items after this tick: keep them."
+        }
+      },
+      "required": [
+        "chosen",
+        "toggled",
+        "expanded"
+      ],
+      "additionalProperties": false
+    },
+    "GraphNodeState": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A graph node's state, shown by its ring and a mark as well as its colour.",
+      "type": "string",
+      "enum": [
+        "available",
+        "locked",
+        "active",
+        "done",
+        "current"
+      ],
+      "x-og-variants": {
+        "available": "Can be taken (the default).",
+        "locked": "Not yet: faint, with a lock's bar.",
+        "active": "In progress: the primary ink and a glow.",
+        "done": "Taken: a tick; links from it are solid.",
+        "current": "Where the player is: the highlight ink and a dot."
+      }
+    },
+    "GraphNodeShape": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A graph node's outline.",
+      "type": "string",
+      "enum": [
+        "circle",
+        "square",
+        "hex",
+        "diamond"
+      ],
+      "x-og-variants": {
+        "circle": "A circle (the default).",
+        "square": "A rounded square.",
+        "hex": "A hexagon.",
+        "diamond": "A diamond."
+      }
+    },
+    "GraphNode": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A node of a graph, at a position in the graph's own units.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its id; links name it.",
+          "default": ""
+        },
+        "x": {
+          "type": "number",
+          "description": "Across, in graph units (CSS px at zoom 1).",
+          "default": 0
+        },
+        "y": {
+          "type": "number",
+          "description": "Down.",
+          "default": 0
+        },
+        "label": {
+          "type": "string",
+          "description": "Its name, under it.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "Its icon; empty shows the label's first letters.",
+          "default": ""
+        },
+        "state": {
+          "$ref": "#/$defs/GraphNodeState",
+          "description": "Its state.",
+          "default": "available"
+        },
+        "shape": {
+          "$ref": "#/$defs/GraphNodeShape",
+          "description": "Its outline.",
+          "default": "circle"
+        },
+        "kind": {
+          "type": "string",
+          "description": "A selector flag a style dresses (`boss`, `shop`).",
+          "default": ""
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but not pressable.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "GraphLink": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A link between two nodes.",
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The node it starts at.",
+          "default": ""
+        },
+        "to": {
+          "type": "string",
+          "description": "The node it ends at.",
+          "default": ""
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Drawn solid in the primary ink (a path taken).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "NodeGraphDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A pan-and-zoom graph of nodes and links: skill and tech trees, run maps, flowcharts.",
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GraphNode"
+          },
+          "description": "The nodes.",
+          "default": []
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GraphLink"
+          },
+          "description": "The links, under the nodes.",
+          "default": []
+        },
+        "zoom": {
+          "type": "number",
+          "description": "Its zoom (keep NodeGraphResult.zoom).",
+          "default": 1
+        },
+        "minZoom": {
+          "type": "number",
+          "description": "The least zoom.",
+          "default": 0.5
+        },
+        "maxZoom": {
+          "type": "number",
+          "description": "The greatest zoom.",
+          "default": 2
+        },
+        "nodeSize": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A node's size at zoom 1; null is 56 (52 on a phone).",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "curved": {
+          "type": "boolean",
+          "description": "Links bend as a run map's paths.",
+          "default": true
+        },
+        "labels": {
+          "type": "boolean",
+          "description": "Names under the nodes.",
+          "default": true
+        },
+        "selected": {
+          "type": "string",
+          "description": "The selected node's id: ringed in the focus ink.",
+          "default": ""
+        },
+        "zoomInLabel": {
+          "type": "string",
+          "description": "Zoom in's accessible name.",
+          "default": ""
+        },
+        "zoomOutLabel": {
+          "type": "string",
+          "description": "Zoom out's accessible name.",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height; null is 420 (360 on a phone).",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls it.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "NodeGraphResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a graph answered this tick.",
+      "type": "object",
+      "properties": {
+        "chosen": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The node pressed."
+        },
+        "zoom": {
+          "type": "number",
+          "description": "The zoom after this tick: keep it."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "The zoom changed this tick."
+        }
+      },
+      "required": [
+        "chosen",
+        "zoom",
+        "changed"
+      ],
+      "additionalProperties": false
+    },
+    "KeyValueRow": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A row of key-value rows.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "The key.",
+          "default": ""
+        },
+        "value": {
+          "type": "string",
+          "description": "The value.",
+          "default": ""
+        },
+        "hint": {
+          "type": "string",
+          "description": "A line under the key; empty is none.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon before the key; empty is none.",
+          "default": ""
+        },
+        "tone": {
+          "type": "string",
+          "description": "The value's ink: success, warn, danger, info, primary, gold, health, mana, xp; empty is ink.",
+          "default": ""
+        },
+        "mono": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The value in the mono face; null is when it reads as a number.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "KeyValueRowsDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Key-value rows: a stat sheet, an item's properties.",
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/KeyValueRow"
+          },
+          "description": "The rows.",
+          "default": []
+        },
+        "title": {
+          "type": "string",
+          "description": "A caption over them; empty is none.",
+          "default": ""
+        },
+        "dense": {
+          "type": "boolean",
+          "description": "Smaller type and less space.",
+          "default": false
+        },
+        "dividers": {
+          "type": "boolean",
+          "description": "Hairlines between rows.",
+          "default": true
+        },
+        "striped": {
+          "type": "boolean",
+          "description": "Every other row shaded instead of hairlines.",
+          "default": false
+        },
+        "inset": {
+          "type": "number",
+          "description": "Space at each row's ends.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls the list when it has no title.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "StatCompareRow": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A stat compared: its value now and the value it would take.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "The stat.",
+          "default": ""
+        },
+        "current": {
+          "type": "number",
+          "description": "Its value now.",
+          "default": 0
+        },
+        "next": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The value it would take; null is no change.",
+          "default": null
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The stat's scale: a bar shows the values and the change; null is no bar.",
+          "default": null
+        },
+        "lowerIsBetter": {
+          "type": "boolean",
+          "description": "Less is better (a cooldown, a cost): a fall is green.",
+          "default": false
+        },
+        "format": {
+          "$ref": "#/$defs/NumberFormat",
+          "description": "How its values read.",
+          "default": "grouped"
+        },
+        "digits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Decimals.",
+          "default": 0
+        },
+        "unit": {
+          "type": "string",
+          "description": "A unit after them.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon before the label; empty is none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "StatCompareDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Stat-compare rows: an equip screen's comparison, each change a signed delta with a mark.",
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StatCompareRow"
+          },
+          "description": "The stats.",
+          "default": []
+        },
+        "currentLabel": {
+          "type": "string",
+          "description": "A header over the current values (`Equipped`); empty is no header.",
+          "default": ""
+        },
+        "nextLabel": {
+          "type": "string",
+          "description": "A header over the new values (`Selected`).",
+          "default": ""
+        },
+        "dividers": {
+          "type": "boolean",
+          "description": "Hairlines between rows.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls the list.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "CalendarMark": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Something on a day: a dot in a tone, or a claimed tick for a login calendar.",
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "The day, `YYYY-MM-DD`.",
+          "default": ""
+        },
+        "kind": {
+          "type": "string",
+          "description": "`claimed` draws a tick; anything else a dot.",
+          "default": ""
+        },
+        "tone": {
+          "type": "string",
+          "description": "The dot's tone: primary, success, warn, danger, info, gold, neutral.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "What it is, for a screen reader (`Double rewards`).",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "CalendarDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A month grid of days: today, a selected day, a range, marks, and days that cannot be chosen.",
+      "type": "object",
+      "properties": {
+        "year": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The year shown; 0 is today's (keep CalendarResult.year).",
+          "default": 0
+        },
+        "month": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The month shown, 1 to 12; 0 is today's (keep CalendarResult.month).",
+          "default": 0
+        },
+        "today": {
+          "type": "string",
+          "description": "Today, `YYYY-MM-DD` (the game's clock, never read inside the tick).",
+          "default": ""
+        },
+        "selected": {
+          "type": "string",
+          "description": "The selected day.",
+          "default": ""
+        },
+        "rangeStart": {
+          "type": "string",
+          "description": "A range's first day: shaded to rangeEnd.",
+          "default": ""
+        },
+        "rangeEnd": {
+          "type": "string",
+          "description": "A range's last day.",
+          "default": ""
+        },
+        "min": {
+          "type": "string",
+          "description": "The first day that can be chosen; empty is none.",
+          "default": ""
+        },
+        "max": {
+          "type": "string",
+          "description": "The last; empty is none.",
+          "default": ""
+        },
+        "disabled": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Days that cannot be chosen.",
+          "default": []
+        },
+        "marks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CalendarMark"
+          },
+          "description": "Marks on days.",
+          "default": []
+        },
+        "weekStart": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The first day of the week, 0 Sunday to 6 Saturday.",
+          "default": 1,
+          "maximum": 6
+        },
+        "monthNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The months' names, January first; empty is English.",
+          "default": []
+        },
+        "weekdayNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The weekdays' names, Sunday first; empty is English.",
+          "default": []
+        },
+        "weekdayShort": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The weekday heads, Sunday first; empty is the names' first letters.",
+          "default": []
+        },
+        "showOutside": {
+          "type": "boolean",
+          "description": "The days of the months before and after, faint.",
+          "default": true
+        },
+        "bumpers": {
+          "type": "boolean",
+          "description": "The tabPrev and tabNext actions turn the month.",
+          "default": false
+        },
+        "cellSize": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A day's height; null is 44.",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "todayLabel": {
+          "type": "string",
+          "description": "What a screen reader adds for today; empty is today.",
+          "default": ""
+        },
+        "claimedLabel": {
+          "type": "string",
+          "description": "What it adds for a claimed day; empty is claimed.",
+          "default": ""
+        },
+        "prevLabel": {
+          "type": "string",
+          "description": "Previous month's accessible name.",
+          "default": ""
+        },
+        "nextLabel": {
+          "type": "string",
+          "description": "Next month's accessible name.",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits seven days.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "CalendarResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a calendar answered this tick.",
+      "type": "object",
+      "properties": {
+        "selected": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The day pressed."
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The year shown after this tick: keep it."
+        },
+        "month": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The month shown: keep it."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "The month was turned this tick."
+        }
+      },
+      "required": [
+        "selected",
+        "year",
+        "month",
+        "changed"
       ],
       "additionalProperties": false
     },

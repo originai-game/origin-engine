@@ -21633,6 +21633,1263 @@ export interface RadialResult {
   readonly dismissed: boolean;
 }
 
+/**
+ * What a data view shows instead of its rows: loading, an error, or nothing.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DataStateDesc {
+  /**
+   * Loading: skeleton rows.
+   *
+   * @default false
+   */
+  readonly loading?: boolean;
+  /**
+   * An error to show with Retry; empty is none.
+   *
+   * @default ""
+   */
+  readonly error?: string;
+  /**
+   * What it says when there is nothing; empty is Nothing here yet.
+   *
+   * @default ""
+   */
+  readonly emptyLabel?: string;
+  /**
+   * A line under it (what to do).
+   *
+   * @default ""
+   */
+  readonly emptyHint?: string;
+  /**
+   * The error has a Retry button.
+   *
+   * @default true
+   */
+  readonly retry?: boolean;
+  /**
+   * Retry's label; empty is Retry.
+   *
+   * @default ""
+   */
+  readonly retryLabel?: string;
+  /**
+   * What a screen reader hears while loading; empty is Loading.
+   *
+   * @default ""
+   */
+  readonly loadingLabel?: string;
+}
+
+/**
+ * A virtualised list with its empty, loading and error states.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DataListDesc {
+  /**
+   * How many rows.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * Every row's height; null is the density's row height, at least 48.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly rowHeight?: number | null;
+  /**
+   * Space between rows.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number;
+  /**
+   * The selected row.
+   *
+   * @default null
+   */
+  readonly selected?: number | null;
+  /**
+   * Every other row is marked (List.row[odd]).
+   *
+   * @default false
+   */
+  readonly striped?: boolean;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height (it scrolls inside); null fits.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * What a screen reader calls it.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Loading: skeleton rows.
+   *
+   * @default false
+   */
+  readonly loading?: boolean;
+  /**
+   * An error to show with Retry; empty is none.
+   *
+   * @default ""
+   */
+  readonly error?: string;
+  /**
+   * What it says when there are no rows.
+   *
+   * @default ""
+   */
+  readonly emptyLabel?: string;
+  /**
+   * A line under it.
+   *
+   * @default ""
+   */
+  readonly emptyHint?: string;
+  /**
+   * The error has a Retry button.
+   *
+   * @default true
+   */
+  readonly retry?: boolean;
+  /**
+   * Retry's label.
+   *
+   * @default ""
+   */
+  readonly retryLabel?: string;
+  /**
+   * What a screen reader hears while loading.
+   *
+   * @default ""
+   */
+  readonly loadingLabel?: string;
+}
+
+/** What a data list or grid answered this tick. */
+export interface DataListResult {
+  /** The row or cell pressed (or activated). */
+  readonly clicked: number | null;
+  /** Retry was pressed. */
+  readonly retry: boolean;
+}
+
+/**
+ * A virtualised grid of equal cells with its empty, loading and error states.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DataGridDesc {
+  /**
+   * How many cells.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * A cell's width; 0 is 64 (see GridDesc.cellWidth).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly cellWidth?: number;
+  /**
+   * A cell's height; 0 is its width.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly cellHeight?: number;
+  /**
+   * Cells across; 0 is as many as fit.
+   *
+   * @default 0
+   */
+  readonly columns?: number;
+  /**
+   * Space between cells; null is space.sm.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number | null;
+  /**
+   * Space inside; null is none.
+   *
+   * @default null
+   */
+  readonly padding?: Insets | null;
+  /**
+   * The selected cell.
+   *
+   * @default null
+   */
+  readonly selected?: number | null;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height (it scrolls inside); null fits.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * What a screen reader calls it.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Loading: skeleton rows.
+   *
+   * @default false
+   */
+  readonly loading?: boolean;
+  /**
+   * An error to show with Retry; empty is none.
+   *
+   * @default ""
+   */
+  readonly error?: string;
+  /**
+   * What it says when there are no cells.
+   *
+   * @default ""
+   */
+  readonly emptyLabel?: string;
+  /**
+   * A line under it.
+   *
+   * @default ""
+   */
+  readonly emptyHint?: string;
+  /**
+   * The error has a Retry button.
+   *
+   * @default true
+   */
+  readonly retry?: boolean;
+  /**
+   * Retry's label.
+   *
+   * @default ""
+   */
+  readonly retryLabel?: string;
+  /**
+   * What a screen reader hears while loading.
+   *
+   * @default ""
+   */
+  readonly loadingLabel?: string;
+}
+
+/**
+ * How a number reads in a data view.
+ * - `"grouped"`: Grouped digits: 12,840 (the default).
+ * - `"percent"`: A fraction as a percentage: 0.42 is 42%.
+ * - `"compact"`: Compact units: 12.4K, 3.40M.
+ * - `"plain"`: As it is.
+ */
+export type NumberFormat = "grouped" | "percent" | "compact" | "plain";
+
+/**
+ * A column of a table: the row field it shows and how.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TableColumn {
+  /**
+   * The field of each row it shows.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its header; empty is the key.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its width; null shares what is left.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number | null;
+  /**
+   * Numbers: aligned to the end in the mono face, sorted by value, descending first.
+   *
+   * @default false
+   */
+  readonly numeric?: boolean;
+  /**
+   * How its numbers read.
+   *
+   * @default "grouped"
+   */
+  readonly format?: NumberFormat;
+  /**
+   * Decimals.
+   *
+   * @default 0
+   */
+  readonly digits?: number;
+  /**
+   * A unit after its numbers.
+   *
+   * @default ""
+   */
+  readonly unit?: string;
+  /**
+   * A press on its header sorts by it.
+   *
+   * @default true
+   */
+  readonly sortable?: boolean;
+  /**
+   * The search reads it.
+   *
+   * @default true
+   */
+  readonly filterable?: boolean;
+  /**
+   * On a phone the columns that fit are kept, highest priority first.
+   *
+   * @default 0
+   */
+  readonly priority?: number;
+  /**
+   * A field of each row naming its cell's tone (`up`, `down`, `success`, `danger`).
+   *
+   * @default ""
+   */
+  readonly toneKey?: string;
+}
+
+/**
+ * A sortable, filterable table of rows by columns; only the rows in view are built.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TableDesc {
+  /**
+   * The rows: an array of objects, the columns' keys their fields. Pass the same array while it is unchanged: the sort and the filter are computed once per change of the rows, the sort or the filter.
+   *
+   * @default null
+   */
+  readonly rows?: unknown;
+  /**
+   * The columns.
+   *
+   * @default []
+   */
+  readonly columns?: readonly TableColumn[];
+  /**
+   * The column sorted by; -1 is the rows' own order (keep TableResult.sortBy).
+   *
+   * @default -1
+   */
+  readonly sortBy?: number;
+  /**
+   * Sorted high to low (keep TableResult.descending).
+   *
+   * @default false
+   */
+  readonly descending?: boolean;
+  /**
+   * The search text (keep TableResult.filter).
+   *
+   * @default ""
+   */
+  readonly filter?: string;
+  /**
+   * A search field over it.
+   *
+   * @default true
+   */
+  readonly search?: boolean;
+  /**
+   * The search field's placeholder; empty is Search.
+   *
+   * @default ""
+   */
+  readonly searchPlaceholder?: string;
+  /**
+   * The selected row, by its index in rows.
+   *
+   * @default null
+   */
+  readonly selected?: number | null;
+  /**
+   * Every row's height; null is 40 (48 on a phone).
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly rowHeight?: number | null;
+  /**
+   * Every other row shaded.
+   *
+   * @default true
+   */
+  readonly striped?: boolean;
+  /**
+   * A count line under it (`120 of 10,000`).
+   *
+   * @default true
+   */
+  readonly footer?: boolean;
+  /**
+   * The count line, with {shown} and {total}; empty is `{shown} of {total}`.
+   *
+   * @default ""
+   */
+  readonly countLabel?: string;
+  /**
+   * What it says when the filter keeps no row; empty is No matches.
+   *
+   * @default ""
+   */
+  readonly noMatchLabel?: string;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height (the rows scroll inside); null fits.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * What a screen reader calls it.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Loading: skeleton rows.
+   *
+   * @default false
+   */
+  readonly loading?: boolean;
+  /**
+   * An error to show with Retry; empty is none.
+   *
+   * @default ""
+   */
+  readonly error?: string;
+  /**
+   * What it says when there are no rows.
+   *
+   * @default ""
+   */
+  readonly emptyLabel?: string;
+  /**
+   * A line under it.
+   *
+   * @default ""
+   */
+  readonly emptyHint?: string;
+  /**
+   * The error has a Retry button.
+   *
+   * @default true
+   */
+  readonly retry?: boolean;
+  /**
+   * Retry's label.
+   *
+   * @default ""
+   */
+  readonly retryLabel?: string;
+  /**
+   * What a screen reader hears while loading.
+   *
+   * @default ""
+   */
+  readonly loadingLabel?: string;
+}
+
+/** What a table answered this tick: keep the sort and the filter. */
+export interface TableResult {
+  /** The column sorted by. */
+  readonly sortBy: number;
+  /** High to low. */
+  readonly descending: boolean;
+  /** The search text. */
+  readonly filter: string;
+  /** The row pressed, by its index in rows. */
+  readonly clicked: number | null;
+  /** Retry was pressed. */
+  readonly retry: boolean;
+  /** The sort or the filter changed this tick. */
+  readonly changed: boolean;
+}
+
+/**
+ * An item of a tree; an item whose `parent` names another's id sits under it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TreeItem {
+  /**
+   * Its id: answered when it is chosen, and its children's parent.
+   *
+   * @default ""
+   */
+  readonly id?: string;
+  /**
+   * Its parent's id; empty is the top level.
+   *
+   * @default ""
+   */
+  readonly parent?: string;
+  /**
+   * What it says.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * An icon before it; empty is none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * A badge after it; empty is none.
+   *
+   * @default ""
+   */
+  readonly badge?: string;
+  /**
+   * The badge's tone.
+   *
+   * @default "neutral"
+   */
+  readonly badgeTone?: Tone;
+  /**
+   * Shown but not choosable.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+}
+
+/**
+ * A tree of expandable items; the visible rows are virtualised.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TreeDesc {
+  /**
+   * The items, each after its parent or not: order among siblings is kept.
+   *
+   * @default []
+   */
+  readonly items?: readonly TreeItem[];
+  /**
+   * The open items' ids (keep TreeResult.expanded).
+   *
+   * @default []
+   */
+  readonly expanded?: readonly string[];
+  /**
+   * The selected item's id.
+   *
+   * @default ""
+   */
+  readonly selected?: string;
+  /**
+   * A press on an item with children opens or closes it as well as choosing it.
+   *
+   * @default true
+   */
+  readonly toggleOnPress?: boolean;
+  /**
+   * Every row's height; null is 36 (44 on a phone).
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly rowHeight?: number | null;
+  /**
+   * Each level's indent; null is 20.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly indent?: number | null;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height (the rows scroll inside); null fits.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * What a screen reader calls it.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/** What a tree answered this tick. */
+export interface TreeResult {
+  /** The item pressed. */
+  readonly chosen: string | null;
+  /** The item opened or closed. */
+  readonly toggled: string | null;
+  /** The open items after this tick: keep them. */
+  readonly expanded: readonly string[];
+}
+
+/**
+ * A graph node's state, shown by its ring and a mark as well as its colour.
+ * - `"available"`: Can be taken (the default).
+ * - `"locked"`: Not yet: faint, with a lock's bar.
+ * - `"active"`: In progress: the primary ink and a glow.
+ * - `"done"`: Taken: a tick; links from it are solid.
+ * - `"current"`: Where the player is: the highlight ink and a dot.
+ */
+export type GraphNodeState = "available" | "locked" | "active" | "done" | "current";
+
+/**
+ * A graph node's outline.
+ * - `"circle"`: A circle (the default).
+ * - `"square"`: A rounded square.
+ * - `"hex"`: A hexagon.
+ * - `"diamond"`: A diamond.
+ */
+export type GraphNodeShape = "circle" | "square" | "hex" | "diamond";
+
+/**
+ * A node of a graph, at a position in the graph's own units.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GraphNode {
+  /**
+   * Its id; links name it.
+   *
+   * @default ""
+   */
+  readonly id?: string;
+  /**
+   * Across, in graph units (CSS px at zoom 1).
+   *
+   * @default 0
+   */
+  readonly x?: number;
+  /**
+   * Down.
+   *
+   * @default 0
+   */
+  readonly y?: number;
+  /**
+   * Its name, under it.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its icon; empty shows the label's first letters.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Its state.
+   *
+   * @default "available"
+   */
+  readonly state?: GraphNodeState;
+  /**
+   * Its outline.
+   *
+   * @default "circle"
+   */
+  readonly shape?: GraphNodeShape;
+  /**
+   * A selector flag a style dresses (`boss`, `shop`).
+   *
+   * @default ""
+   */
+  readonly kind?: string;
+  /**
+   * Shown but not pressable.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+}
+
+/**
+ * A link between two nodes.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GraphLink {
+  /**
+   * The node it starts at.
+   *
+   * @default ""
+   */
+  readonly from?: string;
+  /**
+   * The node it ends at.
+   *
+   * @default ""
+   */
+  readonly to?: string;
+  /**
+   * Drawn solid in the primary ink (a path taken).
+   *
+   * @default false
+   */
+  readonly active?: boolean;
+}
+
+/**
+ * A pan-and-zoom graph of nodes and links: skill and tech trees, run maps, flowcharts.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NodeGraphDesc {
+  /**
+   * The nodes.
+   *
+   * @default []
+   */
+  readonly nodes?: readonly GraphNode[];
+  /**
+   * The links, under the nodes.
+   *
+   * @default []
+   */
+  readonly links?: readonly GraphLink[];
+  /**
+   * Its zoom (keep NodeGraphResult.zoom).
+   *
+   * @default 1
+   */
+  readonly zoom?: number;
+  /**
+   * The least zoom.
+   *
+   * @default 0.5
+   */
+  readonly minZoom?: number;
+  /**
+   * The greatest zoom.
+   *
+   * @default 2
+   */
+  readonly maxZoom?: number;
+  /**
+   * A node's size at zoom 1; null is 56 (52 on a phone).
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly nodeSize?: number | null;
+  /**
+   * Links bend as a run map's paths.
+   *
+   * @default true
+   */
+  readonly curved?: boolean;
+  /**
+   * Names under the nodes.
+   *
+   * @default true
+   */
+  readonly labels?: boolean;
+  /**
+   * The selected node's id: ringed in the focus ink.
+   *
+   * @default ""
+   */
+  readonly selected?: string;
+  /**
+   * Zoom in's accessible name.
+   *
+   * @default ""
+   */
+  readonly zoomInLabel?: string;
+  /**
+   * Zoom out's accessible name.
+   *
+   * @default ""
+   */
+  readonly zoomOutLabel?: string;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; null is 420 (360 on a phone).
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * What a screen reader calls it.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/** What a graph answered this tick. */
+export interface NodeGraphResult {
+  /** The node pressed. */
+  readonly chosen: string | null;
+  /** The zoom after this tick: keep it. */
+  readonly zoom: number;
+  /** The zoom changed this tick. */
+  readonly changed: boolean;
+}
+
+/**
+ * A row of key-value rows.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface KeyValueRow {
+  /**
+   * The key.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * The value.
+   *
+   * @default ""
+   */
+  readonly value?: string;
+  /**
+   * A line under the key; empty is none.
+   *
+   * @default ""
+   */
+  readonly hint?: string;
+  /**
+   * An icon before the key; empty is none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * The value's ink: success, warn, danger, info, primary, gold, health, mana, xp; empty is ink.
+   *
+   * @default ""
+   */
+  readonly tone?: string;
+  /**
+   * The value in the mono face; null is when it reads as a number.
+   *
+   * @default null
+   */
+  readonly mono?: boolean | null;
+}
+
+/**
+ * Key-value rows: a stat sheet, an item's properties.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface KeyValueRowsDesc {
+  /**
+   * The rows.
+   *
+   * @default []
+   */
+  readonly rows?: readonly KeyValueRow[];
+  /**
+   * A caption over them; empty is none.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * Smaller type and less space.
+   *
+   * @default false
+   */
+  readonly dense?: boolean;
+  /**
+   * Hairlines between rows.
+   *
+   * @default true
+   */
+  readonly dividers?: boolean;
+  /**
+   * Every other row shaded instead of hairlines.
+   *
+   * @default false
+   */
+  readonly striped?: boolean;
+  /**
+   * Space at each row's ends.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly inset?: number;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * What a screen reader calls the list when it has no title.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/**
+ * A stat compared: its value now and the value it would take.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface StatCompareRow {
+  /**
+   * The stat.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its value now.
+   *
+   * @default 0
+   */
+  readonly current?: number;
+  /**
+   * The value it would take; null is no change.
+   *
+   * @default null
+   */
+  readonly next?: number | null;
+  /**
+   * The stat's scale: a bar shows the values and the change; null is no bar.
+   *
+   * @default null
+   */
+  readonly max?: number | null;
+  /**
+   * Less is better (a cooldown, a cost): a fall is green.
+   *
+   * @default false
+   */
+  readonly lowerIsBetter?: boolean;
+  /**
+   * How its values read.
+   *
+   * @default "grouped"
+   */
+  readonly format?: NumberFormat;
+  /**
+   * Decimals.
+   *
+   * @default 0
+   */
+  readonly digits?: number;
+  /**
+   * A unit after them.
+   *
+   * @default ""
+   */
+  readonly unit?: string;
+  /**
+   * An icon before the label; empty is none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+}
+
+/**
+ * Stat-compare rows: an equip screen's comparison, each change a signed delta with a mark.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface StatCompareDesc {
+  /**
+   * The stats.
+   *
+   * @default []
+   */
+  readonly rows?: readonly StatCompareRow[];
+  /**
+   * A header over the current values (`Equipped`); empty is no header.
+   *
+   * @default ""
+   */
+  readonly currentLabel?: string;
+  /**
+   * A header over the new values (`Selected`).
+   *
+   * @default ""
+   */
+  readonly nextLabel?: string;
+  /**
+   * Hairlines between rows.
+   *
+   * @default false
+   */
+  readonly dividers?: boolean;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * What a screen reader calls the list.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/**
+ * Something on a day: a dot in a tone, or a claimed tick for a login calendar.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CalendarMark {
+  /**
+   * The day, `YYYY-MM-DD`.
+   *
+   * @default ""
+   */
+  readonly date?: string;
+  /**
+   * `claimed` draws a tick; anything else a dot.
+   *
+   * @default ""
+   */
+  readonly kind?: string;
+  /**
+   * The dot's tone: primary, success, warn, danger, info, gold, neutral.
+   *
+   * @default ""
+   */
+  readonly tone?: string;
+  /**
+   * What it is, for a screen reader (`Double rewards`).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/**
+ * A month grid of days: today, a selected day, a range, marks, and days that cannot be chosen.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CalendarDesc {
+  /**
+   * The year shown; 0 is today's (keep CalendarResult.year).
+   *
+   * @default 0
+   */
+  readonly year?: number;
+  /**
+   * The month shown, 1 to 12; 0 is today's (keep CalendarResult.month).
+   *
+   * @default 0
+   */
+  readonly month?: number;
+  /**
+   * Today, `YYYY-MM-DD` (the game's clock, never read inside the tick).
+   *
+   * @default ""
+   */
+  readonly today?: string;
+  /**
+   * The selected day.
+   *
+   * @default ""
+   */
+  readonly selected?: string;
+  /**
+   * A range's first day: shaded to rangeEnd.
+   *
+   * @default ""
+   */
+  readonly rangeStart?: string;
+  /**
+   * A range's last day.
+   *
+   * @default ""
+   */
+  readonly rangeEnd?: string;
+  /**
+   * The first day that can be chosen; empty is none.
+   *
+   * @default ""
+   */
+  readonly min?: string;
+  /**
+   * The last; empty is none.
+   *
+   * @default ""
+   */
+  readonly max?: string;
+  /**
+   * Days that cannot be chosen.
+   *
+   * @default []
+   */
+  readonly disabled?: readonly string[];
+  /**
+   * Marks on days.
+   *
+   * @default []
+   */
+  readonly marks?: readonly CalendarMark[];
+  /**
+   * The first day of the week, 0 Sunday to 6 Saturday.
+   *
+   * @default 1
+   * @range ..6
+   */
+  readonly weekStart?: number;
+  /**
+   * The months' names, January first; empty is English.
+   *
+   * @default []
+   */
+  readonly monthNames?: readonly string[];
+  /**
+   * The weekdays' names, Sunday first; empty is English.
+   *
+   * @default []
+   */
+  readonly weekdayNames?: readonly string[];
+  /**
+   * The weekday heads, Sunday first; empty is the names' first letters.
+   *
+   * @default []
+   */
+  readonly weekdayShort?: readonly string[];
+  /**
+   * The days of the months before and after, faint.
+   *
+   * @default true
+   */
+  readonly showOutside?: boolean;
+  /**
+   * The tabPrev and tabNext actions turn the month.
+   *
+   * @default false
+   */
+  readonly bumpers?: boolean;
+  /**
+   * A day's height; null is 44.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly cellSize?: number | null;
+  /**
+   * What a screen reader adds for today; empty is today.
+   *
+   * @default ""
+   */
+  readonly todayLabel?: string;
+  /**
+   * What it adds for a claimed day; empty is claimed.
+   *
+   * @default ""
+   */
+  readonly claimedLabel?: string;
+  /**
+   * Previous month's accessible name.
+   *
+   * @default ""
+   */
+  readonly prevLabel?: string;
+  /**
+   * Next month's accessible name.
+   *
+   * @default ""
+   */
+  readonly nextLabel?: string;
+  /**
+   * Its width; null fits seven days.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+}
+
+/** What a calendar answered this tick. */
+export interface CalendarResult {
+  /** The day pressed. */
+  readonly selected: string | null;
+  /** The year shown after this tick: keep it. */
+  readonly year: number;
+  /** The month shown: keep it. */
+  readonly month: number;
+  /** The month was turned this tick. */
+  readonly changed: boolean;
+}
+
+
+
+
+
+
+
+
+
 
 
 
@@ -33104,6 +34361,64 @@ export declare namespace og {
      * @param desc Slices, aim and release.
      */
     function radialMenu(id: string, open: boolean, desc?: RadialDesc): RadialResult;
+    /**
+     * A virtualised list with its empty, loading and error states.
+     *
+     * @param id Its id.
+     * @param desc Count, size, selection and state.
+     * @param build Builds a row's content by its index.
+     */
+    function dataList(id: string, desc: DataListDesc, build: UiItemBuild): DataListResult;
+    /**
+     * A virtualised grid of cells with its empty, loading and error states.
+     *
+     * @param id Its id.
+     * @param desc Count, cell size, selection and state.
+     * @param build Builds a cell's content by its index.
+     */
+    function dataGrid(id: string, desc: DataGridDesc, build: UiItemBuild): DataListResult;
+    /**
+     * A sortable, filterable table; only the rows in view are built, so 10,000 rows and more stay within budget.
+     *
+     * @param id Its id.
+     * @param desc Rows, columns, the sort and the filter.
+     */
+    function table(id: string, desc?: TableDesc): TableResult;
+    /**
+     * A tree of expandable items, virtualised.
+     *
+     * @param id Its id.
+     * @param desc Items and the open ones.
+     */
+    function tree(id: string, desc?: TreeDesc): TreeResult;
+    /**
+     * A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts.
+     *
+     * @param id Its id.
+     * @param desc Nodes, links and the zoom.
+     */
+    function nodeGraph(id: string, desc?: NodeGraphDesc): NodeGraphResult;
+    /**
+     * Key-value rows: labels at the start, values at the end.
+     *
+     * @param id Its id.
+     * @param desc The rows.
+     */
+    function keyValueRows(id: string, desc?: KeyValueRowsDesc): void;
+    /**
+     * Stat-compare rows: current, new and the signed change with its mark.
+     *
+     * @param id Its id.
+     * @param desc The stats.
+     */
+    function statCompare(id: string, desc?: StatCompareDesc): void;
+    /**
+     * A month grid of days.
+     *
+     * @param id Its id.
+     * @param desc The month, today, the selection and marks.
+     */
+    function calendar(id: string, desc?: CalendarDesc): CalendarResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *
