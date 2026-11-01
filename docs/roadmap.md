@@ -129,13 +129,13 @@ After R, as the plan's final stage:
 
 | Stream | Thread | Branch | State |
 |---|---|---|---|
-| G1-2 | [T-d77ec7d3](https://ampcode.com/threads/T-d77ec7d3-271f-4b67-9d15-d46a5959df5a) | `g1-input-actions` | reviewed at 1ace8ca4; rebasing onto the splits, version test and Gamepad v2 save test asked |
+| G1-2 | [T-d77ec7d3](https://ampcode.com/threads/T-d77ec7d3-271f-4b67-9d15-d46a5959df5a) | `g1-input-actions` | reviewed at 87001bc6, merging (simulation changed: golden replays re-recorded) |
 | G1-6 | [T-01a197e9](https://ampcode.com/threads/T-01a197e9-a4d5-742d-9c41-fa7086e21b35) | `g1-sourcemaps-telemetry` | merged 2026-11-01 (main 3aca1209); Chrome checked on macrunner; Safari blocked (macrunner's GUI session locked); studio-win Chrome/Edge pending |
 | U6b | [T-90964ef0](https://ampcode.com/threads/T-90964ef0-8bb4-40fd-947e-90c23eeb1649) | `u6b-containers-data` | started 2026-11-01 |
 | U6c | [T-52f25cda](https://ampcode.com/threads/T-52f25cda-5a9c-42e6-a2b3-dbe62c284b35) | `u6c-feedback-hud-world` | started 2026-11-01 |
 | split-runtime-3 | [T-76cca373](https://ampcode.com/threads/T-76cca373-5286-44fd-849d-775944160cf5) | `split-runtime-3` | merged 2026-11-01 (main 3aca1209) |
-| G1-1 | [T-ed474375](https://ampcode.com/threads/T-ed474375-d637-48c0-8d9a-9ca91cf6b7b6) | `g1-render-interpolation` | started 2026-11-01 |
-| G1-5 | — | — | next free slot |
+| G1-1 | [T-ed474375](https://ampcode.com/threads/T-ed474375-d637-48c0-8d9a-9ca91cf6b7b6) | `g1-render-interpolation` | reviewed at f6e6d2ab; sent back for skinned joints, world-anchored UI, motion blur |
+| G1-5 | [T-4157fcd5](https://ampcode.com/threads/T-4157fcd5-17e7-43b7-8471-59ff1b6b6356) | `g1-save-migration` | started 2026-11-01 |
 | og-cook cook/mod.rs, look.rs split | — | — | after G1-3 |
 | G1-3 | [T-01a1980c](https://ampcode.com/threads/T-01a1980c-a132-73a9-96bf-c2ebfbde9c2e) | `g1-gltf-formats` | started 2026-11-01 |
 | G1-4, U6a, U6d | — | — | as slots free (U6a after G1-2) |
