@@ -211,7 +211,7 @@ pub(crate) fn with_probe<T>(
     Ok(out)
 }
 
-fn flush_names(eng: &Engine) {
+pub(crate) fn flush_names(eng: &Engine) {
     let ops = std::mem::take(&mut eng.state.borrow_mut().name_ops);
     let Ok(world) = eng.world() else {
         return;

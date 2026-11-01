@@ -210,6 +210,9 @@ pub(crate) enum Command {
     Insert(Entity, SchemaId, Vec<u8>),
     Remove(Entity, SchemaId),
     Despawn(Entity),
+    /// A name for an entity, given (to one this batch spawns, or a live one)
+    /// when the system returns.
+    Name(Entity, String),
 }
 
 /// What a running system can see and do: exactly what it declared.
@@ -589,7 +592,7 @@ impl<'w> SystemContext<'w> {
     }
 
     /// The name of an entity, if it has one (names are readable by every
-    /// system; they change only between ticks).
+    /// system; one given in a system goes in when that system returns).
     pub fn name_of(&self, e: Entity) -> Option<&'w str> {
         self.world.name(e)
     }
@@ -597,6 +600,14 @@ impl<'w> SystemContext<'w> {
     /// The live entity holding a name.
     pub fn find(&self, name: &str) -> Option<Entity> {
         self.world.find(name)
+    }
+
+    /// Names `e` when the system returns, after the spawns it queued before
+    /// (any system may name), so the systems after it and a snapshot they
+    /// take have the name. A name another entity holds by then is not
+    /// given ([`World::set_name`]'s refusal): check [`Self::find`] first.
+    pub fn set_name(&mut self, e: Entity, name: &str) {
+        self.commands.push(Command::Name(e, name.to_string()));
     }
 
     /// Despawns `e` when the system returns (any system may despawn). A

@@ -13,7 +13,7 @@
 //   0.7.7 fixture restores, record for record as this build runs that game
 // - a selection that touches what it did not save → the untagged entity
 import { beforeAll, expect, test } from "bun:test";
-import { og, defineComponent, defineResource, u32 } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, u32 } from "@origingame/engine";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -186,4 +186,53 @@ test("a selection saves and restores only the tagged entities and the chosen res
   expect(w.resource(Score).value!.points).toBe(50);
   const c = w.get(coin, Wallet);
   expect(c.ok && c.value.gold).toBe(1234);
+});
+
+test("a save holds the names given since the last tick began, between ticks and by an earlier system", () => {
+  // A restore drops the names still queued for the world, so a name not in
+  // the save is lost for good.
+  const Mark = defineComponent("NamesMark", { n: u32() });
+  let mid = "";
+  const Spawner = defineSystem("NamesSpawner", { writes: [Mark] }, (_q, time, world) => {
+    if (time.tick === 2) world.spawn({ name: "made-in-system", bare: true });
+  });
+  const Saver = defineSystem("NamesSaver", { reads: [Mark], after: [Spawner] }, (_q, time, world) => {
+    if (time.tick === 2) {
+      const s = world.snapshot();
+      if (s.ok) mid = s.value;
+    }
+  });
+  const named = og.game({ tick: 60, seed: 7, systems: [Spawner, Saver] });
+  const make = () => {
+    const made = createEngine(named as unknown as GameToken);
+    if (!made.ok) throw new Error(made.reason);
+    return made.value;
+  };
+  const live = make();
+  const hero = live.world.spawn({ name: "between", bare: true });
+  if (!hero.ok) throw new Error(hero.reason);
+  const between = live.world.snapshot();
+  if (!between.ok) throw new Error(between.reason);
+  live.advance(4);
+  expect(mid).not.toBe("");
+
+  const a = make();
+  expect(a.world.restore(between.value).ok).toBeTrue();
+  a.advance(1);
+  expect(a.world.find("between")).toBe(hero.value);
+
+  // Restored mid-tick, the next step completes tick 2: the system's
+  // entity is in the save with its name, as in the world that saved it.
+  const b = make();
+  b.advance(1);
+  expect(b.world.restore(mid).ok).toBeTrue();
+  b.advance(2);
+  expect(b.world.find("made-in-system")).not.toBeNull();
+  expect(b.world.find("made-in-system")).toBe(live.world.find("made-in-system"));
+  // From the next tick on it is the world that saved (at the restoring
+  // tick itself the session's input-action block is the restoring engine's).
+  b.advance(1);
+  live.advance(1);
+  expect(b.world.tick).toBe(live.world.tick);
+  expect(b.hash()).toBe(live.hash());
 });

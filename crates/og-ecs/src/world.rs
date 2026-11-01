@@ -974,6 +974,12 @@ impl World {
                 }
                 Command::Insert(e, id, bytes) => self.insert_bytes(e, id, &bytes),
                 Command::Remove(e, id) => self.remove_id(e, id),
+                Command::Name(e, name) => {
+                    // As a name given between ticks: refused (taken, or
+                    // the entity gone), it is not given.
+                    let _ = self.set_name(e, &name);
+                    Ok(())
+                }
                 Command::Despawn(e) => {
                     if self.is_alive(e) {
                         self.despawn(e)

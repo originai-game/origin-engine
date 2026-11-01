@@ -15,6 +15,11 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- Fixed: a save holds the names given since the last tick began. An
+  entity named by `world.spawn` between ticks or by an earlier system
+  in the same tick restores with its name; a name given in a system goes
+  into the world when the system returns, with its spawn.
+
 - **Saves that survive game and engine updates (G1-5).** Added to the
   IDL: `GameDesc.saveVersion`, `GameDesc.migrations`, `SaveMigration`,
   `World.openSave`, `SaveEdit` (`version`, `types`, `has`, `records`,

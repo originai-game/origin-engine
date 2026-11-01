@@ -36,6 +36,10 @@
     ],
     "fixed": [
       {
+        "member": "world.snapshot, world.spawn",
+        "summary": "A save holds the names given since the last tick began: an entity named by world.spawn between ticks (GameDesc.start, a command) and then saved, or named by a system and saved by a later system in the same tick, restores with its name instead of losing it for good (a restore drops the names still queued for the world). A name given in a system now goes into the world when that system returns, with its spawn, so the world hash of that tick includes it (it used to from the next tick on)."
+      },
+      {
         "member": "World.restore",
         "summary": "An engine upgrade no longer refuses or resets a player's save: the engine migrates its own state in a save from an older build before the restore checks it (a table of steps by what moved and its version; og.ui's state block 9 -> 11, so a save from 0.7.7 restores without migrate, its game data, engine components and og.Rng record for record as this build runs the game)."
       },

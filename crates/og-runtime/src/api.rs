@@ -235,10 +235,18 @@ pub fn og_world_get_tick(world: u32) -> u32 {
 }
 
 pub(crate) fn set_name(eng: &Engine, e: Entity, name: &str) {
+    runtime_name(eng, e, name);
+    eng.state
+        .borrow_mut()
+        .name_ops
+        .push(NameOp::Set(e, name.to_string()));
+}
+
+/// The runtime's own view of a name (og.world.find reads it at once).
+fn runtime_name(eng: &Engine, e: Entity, name: &str) {
     let mut st = eng.state.borrow_mut();
     st.names.insert(name.to_string(), e.to_bits());
     st.name_of.insert(e.to_bits(), name.to_string());
-    st.name_ops.push(NameOp::Set(e, name.to_string()));
 }
 
 fn forget_name(eng: &Engine, e: Entity) {
@@ -360,7 +368,11 @@ fn spawn_in_system(eng: &Engine, f: &super::engine::Frame, desc: &Value) -> Resu
             }
         })?;
     if !name.is_empty() {
-        set_name(eng, e, &name);
+        // Into the world with the spawn, when the system returns: a
+        // snapshot a later system takes this tick has it.
+        runtime_name(eng, e, &name);
+        // SAFETY: as above.
+        unsafe { f.ctx() }.set_name(e, &name);
     }
     eng.state.borrow_mut().game_spawned.insert(e.to_bits());
     Ok(e)

@@ -156,6 +156,9 @@ pub fn og_world_snapshot(world: u32, desc: Option<String>) -> String {
             Err(e) => Err(e),
         }
     } else {
+        // Names given since the last tick began (a spawn in GameDesc.start or
+        // a command) go into the world first, so the save holds them.
+        super::probe::flush_names(&eng);
         match eng.world() {
             Ok(w) => match selection_ids(&desc, |n| w.id_by_name(n)) {
                 Ok(None) => Ok((w.snapshot(), w.time().tick)),
