@@ -10,6 +10,8 @@
 //!   test (the title)
 //! - a katakana run longer than the line never breaks → the same test (the
 //!   long run still fits the width)
+//! - a word split between characters because a box's max was narrower
+//!   than it (`Moonbla` / `de` in a card) → `a_fit_box_never_splits_a_word`
 //! - Latin text or a CJK line with no rule to apply breaks differently
 //!   than before → `text_without_a_rule_breaks_as_before`
 
@@ -76,4 +78,58 @@ fn text_without_a_rule_breaks_as_before() {
     assert_eq!(lines("one two three", 8.0), ["one two", "three"]);
     assert_eq!(lines("設定終了再開", 4.0), ["設定終了", "再開"]);
     assert_eq!(lines("한국어 설정", 3.0), ["한국어", "설정"]);
+}
+
+/// A wrapping label's lines in a column fitted between 0 and `max`
+/// character widths.
+fn lines_in_fit(text: &str, max: f32) -> Vec<String> {
+    let mut scene = og_render::RenderScene::new();
+    let font = UiFont {
+        metrics: FontMetrics::fixed(1.0),
+        ..add_test_font(&mut scene)
+    };
+    let mut ui = ui_with_font(font);
+    let size = ui.theme().type_ramp.body.size;
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.open(
+        "Card",
+        Element {
+            width: Size::Fit {
+                min: 0.0,
+                max: max * size + 0.01,
+            },
+            ..Element::column()
+        },
+    );
+    ui.label(
+        "Text",
+        text,
+        LabelDesc {
+            width: Size::Grow {
+                min: 0.0,
+                max: f32::INFINITY,
+            },
+            ..LabelDesc::default()
+        },
+    );
+    ui.close();
+    ui.end();
+    ui.frame()
+        .items
+        .iter()
+        .filter_map(|i| match &i.cmd {
+            DrawCmd::Text { text, .. } => Some(text.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn a_fit_box_never_splits_a_word() {
+    // The box grows to its longest word, and the words still wrap between them.
+    assert_eq!(
+        lines_in_fit("Moonblade of dusk", 6.0),
+        ["Moonblade", "of dusk"]
+    );
+    assert_eq!(lines_in_fit("one two three", 8.0), ["one two", "three"]);
 }
