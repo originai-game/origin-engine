@@ -571,8 +571,11 @@ function materialsScreen(d: DemoState): void {
 /** The Gallery button over every screen. */
 function galleryButton(world: World, d: DemoState): void {
   const bp = og.ui.breakpoint();
-  // On a phone the bottom corners belong to the touch controls.
-  og.ui.anchor("Back", { anchor: bp === "phonePortrait" || bp === "phoneLandscape" ? "top" : "bottomLeft", offsetY: bp === "phonePortrait" ? 52 : 0 }, () => {
+  // On a phone the bottom corners belong to the touch controls, and on the
+  // shooter's to its vitals (the button sat between Health and Armor: a
+  // stray label in the HUD at every desktop aspect); its top middle is free.
+  const top = bp === "phonePortrait" || bp === "phoneLandscape" || SCREENS[d.screen] === "shooter";
+  og.ui.anchor("Back", { anchor: top ? "top" : "bottomLeft", offsetY: bp === "phonePortrait" ? 52 : 0 }, () => {
     if (og.ui.button("Gallery", tr(world, "gallery.button"), { variant: "secondary", size: "small" }).clicked) d.screen = 0;
   });
 }
