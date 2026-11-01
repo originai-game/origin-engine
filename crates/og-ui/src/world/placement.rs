@@ -1,0 +1,620 @@
+use super::*;
+
+/// `p`'s level of detail.
+pub(super) fn lod_of(lod: &[f32], distance: f32) -> u32 {
+    lod.iter().take_while(|&&d| distance >= d).count() as u32
+}
+
+/// The scale an anchor takes at `distance`.
+fn scale_of(s: AnchorScale, distance: f32, ortho: bool) -> f32 {
+    match s {
+        AnchorScale::Constant => 1.0,
+        AnchorScale::Distance { .. } if ortho => 1.0,
+        AnchorScale::Distance {
+            reference,
+            min,
+            max,
+        } => (reference / distance.max(1e-3)).clamp(min.min(max), max.max(min)),
+    }
+}
+
+/// Where a box of half size `half` stands clamped inside `area` along the
+/// ray from `area`'s centre in `dir`.
+fn clamp_to_edge(area: Rect, half: Vec2, dir: Vec2) -> Vec2 {
+    let (cx, cy) = area.center();
+    let hx = (area.width / 2.0 - half.x).max(0.0);
+    let hy = (area.height / 2.0 - half.y).max(0.0);
+    let tx = if dir.x.abs() > 1e-6 {
+        hx / dir.x.abs()
+    } else {
+        f32::INFINITY
+    };
+    let ty = if dir.y.abs() > 1e-6 {
+        hy / dir.y.abs()
+    } else {
+        f32::INFINITY
+    };
+    let t = tx.min(ty);
+    Vec2::new(cx + dir.x * t, cy + dir.y * t)
+}
+
+/// The first spot clear of `placed` for `b` (moved by `shift` mode), or
+/// `None`: overlapping; `reach` bounds the move.
+fn declutter(mode: Declutter, b: Rect, placed: &[Rect], gap: f32, reach: f32) -> Option<Vec2> {
+    let clear = |r: &Rect| !placed.iter().any(|p| p.overlaps(r));
+    if clear(&b) {
+        return Some(Vec2::ZERO);
+    }
+    let moved = |d: Vec2| Rect::new(b.x + d.x, b.y + d.y, b.width, b.height);
+    if mode == Declutter::Shift {
+        // The shortest way clear of each box it meets, nearest first.
+        let mut tries: Vec<Vec2> = Vec::new();
+        for p in placed.iter().filter(|p| p.overlaps(&b)) {
+            tries.push(Vec2::new(0.0, p.y - gap - b.bottom()));
+            tries.push(Vec2::new(0.0, p.bottom() + gap - b.y));
+            tries.push(Vec2::new(p.x - gap - b.right(), 0.0));
+            tries.push(Vec2::new(p.right() + gap - b.x, 0.0));
+        }
+        og_core::sort::sort_by_key(&mut tries, |d| (d.length() * 16.0) as u32);
+        if let Some(d) = tries
+            .into_iter()
+            .find(|&d| d.length() <= reach && clear(&moved(d)))
+        {
+            return Some(d);
+        }
+    }
+    if matches!(mode, Declutter::Shift | Declutter::Stack) {
+        // Up over what it meets, again and again.
+        let mut d = Vec2::ZERO;
+        for _ in 0..16 {
+            let r = moved(d);
+            let Some(top) = placed
+                .iter()
+                .filter(|p| p.overlaps(&r))
+                .map(|p| p.y)
+                .reduce(f32::min)
+            else {
+                return Some(d);
+            };
+            d.y = top - gap - b.bottom();
+            if -d.y > reach {
+                return None;
+            }
+        }
+    }
+    None
+}
+
+impl Ui {
+    pub(super) fn world_anchors(&mut self) {
+        let vp = self.viewport;
+        let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
+        let safe = Rect::new(
+            vp.safe_area.left,
+            vp.safe_area.top,
+            vp.width - vp.safe_area.horizontal(),
+            vp.height - vp.safe_area.vertical(),
+        );
+        let anchors = std::mem::take(&mut self.world.anchors);
+        // Where each lands before decluttering.
+        struct Placed {
+            entry: usize,
+            key: u64,
+            at: Vec2,
+            pivot: (f32, f32),
+            scale: f32,
+            alpha: f32,
+            depth: f32,
+            info: AnchorInfo,
+            rect: Rect,
+            arrow: Option<(f32, Srgba, f32)>,
+        }
+        let mut placed: Vec<Placed> = Vec::new();
+        let view = self.world.view;
+        for (e, a) in anchors.iter().enumerate() {
+            let n = &self.nodes[a.node];
+            let key = n.key;
+            let r = n.rect;
+            let d = &a.desc;
+            let mut info = AnchorInfo {
+                scale: 1.0,
+                ..AnchorInfo::default()
+            };
+            let (Some(view), Some((p, _))) = (view, self.world.pose_of(d.target)) else {
+                placed.push(Placed {
+                    entry: e,
+                    key,
+                    at: Vec2::ZERO,
+                    pivot: d.pivot.fractions(),
+                    scale: 1.0,
+                    alpha: 0.0,
+                    depth: 0.0,
+                    info,
+                    rect: Rect::default(),
+                    arrow: None,
+                });
+                continue;
+            };
+            let p = p + d.offset;
+            let distance = (p - view.eye).length();
+            info.distance = distance;
+            info.lod = lod_of(&d.lod, distance);
+            let mut alpha = 1.0;
+            if d.max_distance > 0.0 {
+                let fade = d.max_distance * 0.1;
+                alpha = ((d.max_distance - distance) / fade.max(1e-3)).clamp(0.0, 1.0);
+            }
+            let scale = scale_of(d.scale, distance, view.orthographic);
+            info.scale = scale;
+            let projected = view.project(p, vp.width, vp.height);
+            let half = Vec2::new(r.width, r.height) * scale / 2.0;
+            let mut pivot = d.pivot.fractions();
+            let mut arrow = None;
+            let (at, depth) = match projected {
+                Some((x, y, depth)) => {
+                    let at = Vec2::new(x, y) + d.screen_offset;
+                    info.on_screen = screen.contains(x, y);
+                    info.in_view = alpha > 0.0;
+                    (at, depth)
+                }
+                None => {
+                    info.in_view = false;
+                    (Vec2::new(-1e5, -1e5), 0.0)
+                }
+            };
+            let mut at = at;
+            if let Some(c) = d.clamp {
+                let area = Rect::new(
+                    safe.x + c.margin,
+                    safe.y + c.margin,
+                    (safe.width - 2.0 * c.margin).max(0.0),
+                    (safe.height - 2.0 * c.margin).max(0.0),
+                );
+                let inside = projected.is_some()
+                    && at.x - half.x >= area.x
+                    && at.x + half.x <= area.right()
+                    && at.y - half.y >= area.y
+                    && at.y + half.y <= area.bottom();
+                if !inside {
+                    let dir = view.direction(p, vp.width, vp.height);
+                    let reach = c.arrow.map_or(0.0, |_| c.arrow_size);
+                    at = clamp_to_edge(area, half + Vec2::splat(reach), dir);
+                    pivot = (0.5, 0.5);
+                    info.clamped = true;
+                    info.angle = og_core::math::atan2(dir.y, dir.x);
+                    if let Some(color) = c.arrow {
+                        arrow = Some((info.angle, color, c.arrow_size));
+                    }
+                }
+                if alpha > 0.0 {
+                    info.in_view = true;
+                }
+            } else if projected.is_none() {
+                alpha = 0.0;
+            } else {
+                // Culled once its whole box is off the screen.
+                let b = Rect::new(
+                    at.x - pivot.0 * half.x * 2.0,
+                    at.y - pivot.1 * half.y * 2.0,
+                    half.x * 2.0,
+                    half.y * 2.0,
+                );
+                if !b.overlaps(&screen) {
+                    alpha = 0.0;
+                }
+            }
+            let rect = Rect::new(
+                at.x - pivot.0 * half.x * 2.0,
+                at.y - pivot.1 * half.y * 2.0,
+                half.x * 2.0,
+                half.y * 2.0,
+            );
+            placed.push(Placed {
+                entry: e,
+                key,
+                at,
+                pivot,
+                scale,
+                alpha,
+                depth,
+                info,
+                rect,
+                arrow,
+            });
+        }
+        // Declutter by priority, then nearness, then build order.
+        let mut by_rank: Vec<usize> = (0..placed.len()).collect();
+        by_rank.sort_by(|&x, &y| {
+            let (a, b) = (&placed[x], &placed[y]);
+            anchors[b.entry]
+                .desc
+                .priority
+                .cmp(&anchors[a.entry].desc.priority)
+                .then(a.info.distance.total_cmp(&b.info.distance))
+                .then(x.cmp(&y))
+        });
+        let gap = self.theme.space.xs;
+        let mut taken: Vec<Rect> = Vec::new();
+        let mut moves = vec![(Vec2::ZERO, 1.0f32); placed.len()];
+        for &k in &by_rank {
+            let pl = &placed[k];
+            if pl.alpha <= 0.0 || pl.rect.is_empty() {
+                continue;
+            }
+            let mode = anchors[pl.entry].desc.declutter;
+            if mode == Declutter::None {
+                taken.push(pl.rect);
+                continue;
+            }
+            let reach = 3.0 * pl.rect.height.max(pl.rect.width.min(160.0));
+            match declutter(mode, pl.rect, &taken, gap, reach) {
+                Some(d) => {
+                    let r = pl.rect;
+                    taken.push(Rect::new(r.x + d.x, r.y + d.y, r.width, r.height));
+                    moves[k] = (d, 1.0);
+                }
+                None => moves[k] = (Vec2::ZERO, 0.0),
+            }
+        }
+        // Eased toward this tick's values (world state), applied.
+        let mut seen = Vec::new();
+        for (k, pl) in placed.iter().enumerate() {
+            let d = &anchors[pl.entry].desc;
+            let (shift, keep) = moves[k];
+            let target_alpha = pl.alpha * keep;
+            let fresh = !self.world.state.smooth.contains_key(&pl.key);
+            let s = self.world.state.smooth.entry(pl.key).or_default();
+            let step = if d.fade_ticks == 0 {
+                1.0 / 6.0
+            } else {
+                1.0 / d.fade_ticks.clamp(1, 120) as f32
+            };
+            if fresh {
+                s.dx = shift.x;
+                s.dy = shift.y;
+                s.alpha = 0.0;
+            }
+            s.alpha = if s.alpha < target_alpha {
+                (s.alpha + step).min(target_alpha)
+            } else {
+                (s.alpha - step).max(target_alpha)
+            };
+            // Shifts glide (a third of the way a tick), so a crowd settles.
+            s.dx += (shift.x - s.dx) * 0.34;
+            s.dy += (shift.y - s.dy) * 0.34;
+            if (shift.x - s.dx).abs() < 0.05 {
+                s.dx = shift.x;
+            }
+            if (shift.y - s.dy).abs() < 0.05 {
+                s.dy = shift.y;
+            }
+            let s = *s;
+            seen.push(pl.key);
+            let node = anchors[pl.entry].node;
+            let r = self.nodes[node].rect;
+            let px = r.x + pl.pivot.0 * r.width;
+            let py = r.y + pl.pivot.1 * r.height;
+            let at = pl.at + Vec2::new(s.dx, s.dy);
+            let n = &mut self.nodes[node];
+            n.props.transform = Transform {
+                x: at.x - px,
+                y: at.y - py,
+                scale_x: pl.scale,
+                scale_y: pl.scale,
+                pivot_x: pl.pivot.0,
+                pivot_y: pl.pivot.1,
+                ..n.props.transform
+            };
+            n.props.opacity *= s.alpha;
+            if s.alpha < 0.05 {
+                n.props.inert = true;
+            }
+            let mut info = pl.info;
+            info.x = at.x;
+            info.y = at.y;
+            info.alpha = s.alpha;
+            self.world.last.insert(pl.key, info);
+            let mut marks = Marks::default();
+            if let Some(view) = self.world.view
+                && d.occlusion != WorldOcclusion::None
+                && !pl.info.clamped
+                && pl.depth > 0.0
+            {
+                let _ = view;
+                let alpha = match d.occlusion {
+                    WorldOcclusion::Fade { alpha } => alpha,
+                    _ => 0.0,
+                };
+                marks.enter.push(DrawCmd::World(Box::new(WorldCmd::Occlude {
+                    at: (pl.at.x, pl.at.y),
+                    depth: pl.depth,
+                    alpha,
+                })));
+                marks
+                    .leave
+                    .push(DrawCmd::World(Box::new(WorldCmd::EndOcclude)));
+            }
+            if let Some((angle, color, size)) = pl.arrow
+                && s.alpha > 0.0
+            {
+                // On the box's edge toward the point, pointing out.
+                let half = Vec2::new(r.width, r.height) * pl.scale / 2.0;
+                let dir = Vec2::new(og_core::math::cos(angle), og_core::math::sin(angle));
+                let tx = if dir.x.abs() > 1e-6 {
+                    half.x / dir.x.abs()
+                } else {
+                    f32::INFINITY
+                };
+                let ty = if dir.y.abs() > 1e-6 {
+                    half.y / dir.y.abs()
+                } else {
+                    f32::INFINITY
+                };
+                let c = at + dir * (tx.min(ty) + size * 0.6);
+                let mut shape = UiShape::rect(
+                    [c.x - size / 2.0, c.y - size / 2.0, size, size],
+                    0.0,
+                    color.fade(s.alpha).linear(),
+                );
+                // A triangle whose first vertex points along `angle`.
+                shape.geometry = UiGeometry::Polygon {
+                    sides: 3,
+                    inner: 1.0,
+                    rounding: 1.5,
+                    rotation: angle + std::f32::consts::FRAC_PI_2,
+                };
+                marks.leave.push(DrawCmd::Shape {
+                    shape: Box::new(shape),
+                    clip: screen,
+                });
+            }
+            if !marks.enter.is_empty() || !marks.leave.is_empty() {
+                self.world.marks.insert(pl.key, marks);
+            }
+        }
+        self.world.state.smooth.retain(|k, _| seen.contains(k));
+        self.world.last.retain(|k, _| seen.contains(k));
+        self.world.anchors = anchors;
+    }
+
+    pub(super) fn world_panels(&mut self) {
+        let mut hits = Vec::new();
+        for p in &self.world.panels {
+            let key = self.nodes[p.node].key;
+            if let Some(target) = p.desc.target {
+                self.world.marks.insert(
+                    key,
+                    Marks {
+                        enter: vec![DrawCmd::World(Box::new(WorldCmd::BeginPanel {
+                            target,
+                            rect: self.nodes[p.node].rect,
+                        }))],
+                        leave: vec![DrawCmd::World(Box::new(WorldCmd::EndPanel))],
+                    },
+                );
+            }
+            if let Some((t, rotation, size)) = p.desc.quad
+                && let Some((center, q)) = self.world.pose_of(t)
+            {
+                hits.push(PanelHit {
+                    key,
+                    rect: self.nodes[p.node].rect,
+                    center,
+                    rotation: q * rotation,
+                    size,
+                });
+            }
+        }
+        self.world.last_panels = hits;
+    }
+
+    pub(super) fn world_metas(&mut self) {
+        let metas = std::mem::take(&mut self.world.metas);
+        let vp = self.viewport;
+        let seconds = self.seconds() as f32;
+        for (i, m) in &metas {
+            let pulse = if m.pulse_hz > 0.0 {
+                let s = og_core::math::sin(seconds * m.pulse_hz * std::f32::consts::TAU);
+                1.0 - m.pulse_depth.clamp(0.0, 1.0) * (0.5 - 0.5 * s)
+            } else {
+                1.0
+            };
+            let alpha = (m.intensity * pulse).clamp(0.0, 1.0);
+            let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
+            let cmds = meta_cmds(&m.kind, screen, alpha);
+            let key = self.nodes[*i].key;
+            self.world.marks.insert(
+                key,
+                Marks {
+                    enter: cmds,
+                    leave: Vec::new(),
+                },
+            );
+        }
+        self.world.metas = metas;
+    }
+
+    /// The order with world anchors and meta layers drawn (and hit) under
+    /// the screen's own elements: right after the root, before its children.
+    pub(crate) fn world_order(&self, order: &mut Vec<usize>) {
+        if order.is_empty() {
+            return;
+        }
+        let under = |i: usize| -> bool {
+            let n = &self.nodes[i];
+            n.float == Float::World && !self.world.is_panel_node(i)
+        };
+        // Subtrees of world layers below the root (each a run of the order).
+        let mut moved = Vec::new();
+        let mut rest = Vec::with_capacity(order.len());
+        let mut k = 0;
+        while k < order.len() {
+            let i = order[k];
+            if under(i) {
+                let end = crate::layout::subtree_ends(&self.nodes, &order[k..])[0] + k;
+                moved.extend_from_slice(&order[k..end]);
+                k = end;
+            } else {
+                rest.push(i);
+                k += 1;
+            }
+        }
+        if moved.is_empty() {
+            return;
+        }
+        let mut out = Vec::with_capacity(order.len());
+        out.push(rest[0]);
+        out.extend(moved);
+        out.extend_from_slice(&rest[1..]);
+        *order = out;
+    }
+
+    /// What a node's commands are wrapped in (an occlusion test, a panel's
+    /// target, an edge arrow, a meta layer's paint, particles).
+    pub(crate) fn world_marks(&self, key: u64) -> Option<&Marks> {
+        self.world.marks.get(&key)
+    }
+}
+
+/// A meta layer's commands over `screen` at `alpha`.
+fn meta_cmds(kind: &MetaKind, screen: Rect, alpha: f32) -> Vec<DrawCmd> {
+    let r = [screen.x, screen.y, screen.width, screen.height];
+    match kind {
+        MetaKind::Tint { color } => vec![DrawCmd::Shape {
+            shape: Box::new(UiShape::rect(r, 0.0, color.fade(alpha).linear())),
+            clip: screen,
+        }],
+        MetaKind::Vignette {
+            color,
+            inner,
+            outer,
+        } => {
+            let c = color.linear();
+            let mut shape = UiShape::rect(r, 0.0, c);
+            // A radial gradient from the centre out to the corners.
+            shape.paint = og_render::UiPaint::Gradient(og_render::UiGradient {
+                kind: og_render::UiGradientKind::Radial,
+                from: Vec2::new(0.5, 0.5),
+                to: Vec2::new(1.0, 1.0),
+                stops: vec![
+                    og_render::UiStop {
+                        offset: inner.clamp(0.0, 1.0),
+                        color: [c[0], c[1], c[2], 0.0],
+                    },
+                    og_render::UiStop {
+                        offset: outer.clamp(0.0, 1.0).max(*inner + 1e-3),
+                        color: [c[0], c[1], c[2], c[3]],
+                    },
+                ],
+                ..Default::default()
+            });
+            shape.opacity = alpha;
+            vec![DrawCmd::Shape {
+                shape: Box::new(shape),
+                clip: screen,
+            }]
+        }
+        MetaKind::Material { material, params } => {
+            // The frame under it as a backdrop, in a layer composited
+            // through the material.
+            let mut back = UiShape::rect(r, 0.0, [1.0; 4]);
+            back.mode = og_render::UiMode::Backdrop {
+                blur: 0.0,
+                saturation: 1.0,
+                brightness: 1.0,
+            };
+            // No tint over the scene: the backdrop alone.
+            back.paint = og_render::UiPaint::Solid([1.0, 1.0, 1.0, 0.0]);
+            vec![
+                DrawCmd::BeginLayer {
+                    material: *material,
+                    params: *params,
+                    mask: None,
+                    expand: 0.0,
+                    rect: screen,
+                },
+                DrawCmd::Shape {
+                    shape: Box::new(back),
+                    clip: screen,
+                },
+                DrawCmd::EndLayer {
+                    geometry: None,
+                    rect: screen,
+                    opacity: alpha,
+                    blend: og_render::UiBlend::Normal,
+                    clip: screen,
+                },
+            ]
+        }
+    }
+}
+
+/// Maps a point by an element's map (particles spawn where it is drawn).
+pub(crate) fn mapped(m: &Affine, p: Vec2) -> Vec2 {
+    let (x, y) = m.apply(p.x, p.y);
+    Vec2::new(x, y)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn edge_clamp_meets_the_side_its_direction_points_to() {
+        let area = Rect::new(0.0, 0.0, 200.0, 100.0);
+        // Right: x at the right edge less the half width.
+        let p = clamp_to_edge(area, Vec2::new(10.0, 5.0), Vec2::new(1.0, 0.0));
+        assert_eq!(p, Vec2::new(190.0, 50.0));
+        // Steeply down-left: the bottom edge first.
+        let d = Vec2::new(-0.2, 1.0).normalize();
+        let p = clamp_to_edge(area, Vec2::new(10.0, 5.0), d);
+        assert!(
+            (p.y - 95.0).abs() < 1e-3 && p.x < 100.0 && p.x > 80.0,
+            "{p:?}"
+        );
+    }
+
+    #[test]
+    fn declutter_shifts_the_short_way_and_stacks_when_boxed_in() {
+        let a = Rect::new(0.0, 0.0, 100.0, 20.0);
+        // Overlapping a by 4 px at its bottom: down by 4 + gap is shortest.
+        let b = Rect::new(0.0, 16.0, 100.0, 20.0);
+        assert_eq!(
+            declutter(Declutter::Shift, b, &[a], 2.0, 100.0),
+            Some(Vec2::new(0.0, 6.0))
+        );
+        // Stack: always above.
+        assert_eq!(
+            declutter(Declutter::Stack, b, &[a], 2.0, 100.0),
+            Some(Vec2::new(0.0, -38.0))
+        );
+        assert_eq!(declutter(Declutter::Hide, b, &[a], 2.0, 100.0), None);
+        // Clear: no move.
+        let c = Rect::new(0.0, 40.0, 100.0, 20.0);
+        assert_eq!(
+            declutter(Declutter::Hide, c, &[a], 2.0, 100.0),
+            Some(Vec2::ZERO)
+        );
+    }
+
+    #[test]
+    fn a_point_behind_the_eye_points_the_way_to_turn() {
+        let v = WorldView::look_at(
+            Vec3::ZERO,
+            Vec3::NEG_Z,
+            Vec3::Y,
+            60.0,
+            16.0 / 9.0,
+            0.1,
+            100.0,
+        );
+        // Behind and to the right: not projected, and the arrow points right.
+        let p = Vec3::new(3.0, 0.0, 5.0);
+        assert!(v.project(p, 1280.0, 720.0).is_none());
+        assert!(v.direction(p, 1280.0, 720.0).x > 0.9);
+        // In front and up: y on the screen is up (negative).
+        let q = Vec3::new(0.0, 3.0, -5.0);
+        let (_, y, depth) = v.project(q, 1280.0, 720.0).unwrap();
+        assert!(y < 360.0 && (depth - 5.0).abs() < 1e-4);
+    }
+}
