@@ -1,0 +1,424 @@
+use super::*;
+
+/// The cooked texture kind of what a glTF material's texture holds.
+pub(super) fn texture_kind(k: og_render::gltf::TextureKind) -> u32 {
+    match k {
+        og_render::gltf::TextureKind::Color => kind::COLOR,
+        og_render::gltf::TextureKind::Normal => kind::NORMAL,
+        og_render::gltf::TextureKind::Linear => kind::LINEAR,
+    }
+}
+
+/// What a model cook reports besides the blob.
+pub struct ModelNotes {
+    pub notes: Vec<String>,
+    /// LOD 0 triangles and vertices of every primitive, summed.
+    pub triangles: usize,
+    pub vertices: usize,
+}
+
+/// Cooks a parsed glTF into a model blob. `texture_ids` are the asset ids
+/// of [`GltfSource::textures`], in order. A `proxy` (a streaming group's
+/// stand-in, `#proxy`) keeps each primitive's coarsest LOD and no textures.
+pub fn cook(
+    src: &GltfSource,
+    texture_ids: &[String],
+    opts: &MeshOptions,
+    stamp: u64,
+    proxy: bool,
+) -> Result<(Vec<u8>, ModelNotes), CookError> {
+    let doc = &src.doc;
+    let mut notes = src.warnings.clone();
+    let mut strings = Strings(Vec::new());
+    let tex_of = |t: Option<gltf::texture::Texture>, k: u32| -> u32 {
+        t.filter(|_| !proxy)
+            .and_then(|t| {
+                src.textures
+                    .iter()
+                    .position(|u| u.image == t.source().index() && u.kind == k)
+            })
+            .map_or(NONE, |i| i as u32)
+    };
+    // An untextured style's colours are baked into the vertices
+    // (`conform::mesh`): its materials draw white without a base texture.
+    let baked = opts
+        .conform
+        .as_ref()
+        .is_some_and(|c| c.bakes() && c.applies(src));
+    let mut materials = Vec::new();
+    for m in doc.materials() {
+        let pbr = m.pbr_metallic_roughness();
+        let e = m.emissive_factor();
+        let strength = m.emissive_strength().unwrap_or(1.0);
+        let (name_offset, name_len) = strings.add(m.name().unwrap_or(""));
+        let mut b = pbr.base_color_factor();
+        if baked {
+            b = [1.0, 1.0, 1.0, b[3]];
+        }
+        let p =
+            og_render::gltf::physical_extensions(doc, &m, |t, k| tex_of(Some(t), texture_kind(k)));
+        let t = |x: Option<u32>| x.unwrap_or(NONE);
+        materials.push(MaterialRow {
+            physical: p.present,
+            clearcoat: p.clearcoat,
+            clearcoat_roughness: p.clearcoat_roughness,
+            clearcoat_normal_scale: p.clearcoat_normal_scale,
+            sheen_r: p.sheen_color[0],
+            sheen_g: p.sheen_color[1],
+            sheen_b: p.sheen_color[2],
+            sheen_roughness: p.sheen_roughness,
+            transmission: p.transmission,
+            thickness: p.thickness,
+            attenuation_distance: p.attenuation_distance,
+            attenuation_r: p.attenuation_color[0],
+            attenuation_g: p.attenuation_color[1],
+            attenuation_b: p.attenuation_color[2],
+            ior: p.ior,
+            iridescence: p.iridescence,
+            iridescence_ior: p.iridescence_ior,
+            iridescence_min: p.iridescence_thickness[0],
+            iridescence_max: p.iridescence_thickness[1],
+            anisotropy: p.anisotropy,
+            anisotropy_rotation: p.anisotropy_rotation,
+            clearcoat_texture: t(p.clearcoat_texture),
+            clearcoat_roughness_texture: t(p.clearcoat_roughness_texture),
+            clearcoat_normal_texture: t(p.clearcoat_normal_texture),
+            sheen_color_texture: t(p.sheen_color_texture),
+            sheen_roughness_texture: t(p.sheen_roughness_texture),
+            transmission_texture: t(p.transmission_texture),
+            thickness_texture: t(p.thickness_texture),
+            iridescence_texture: t(p.iridescence_texture),
+            iridescence_thickness_texture: t(p.iridescence_thickness_texture),
+            anisotropy_texture: t(p.anisotropy_texture),
+            base_r: b[0],
+            base_g: b[1],
+            base_b: b[2],
+            base_a: b[3],
+            emissive_r: e[0] * strength,
+            emissive_g: e[1] * strength,
+            emissive_b: e[2] * strength,
+            metallic: pbr.metallic_factor(),
+            roughness: pbr.roughness_factor(),
+            normal_scale: m.normal_texture().map_or(1.0, |t| t.scale()),
+            occlusion_strength: m.occlusion_texture().map_or(1.0, |t| t.strength()),
+            alpha_mode: match m.alpha_mode() {
+                gltf::material::AlphaMode::Opaque => alpha::OPAQUE,
+                gltf::material::AlphaMode::Mask => alpha::MASK,
+                gltf::material::AlphaMode::Blend => alpha::BLEND,
+            },
+            alpha_cutoff: m.alpha_cutoff().unwrap_or(0.5),
+            double_sided: m.double_sided() as u32,
+            base_color_texture: tex_of(
+                pbr.base_color_texture()
+                    .map(|t| t.texture())
+                    .filter(|_| !baked),
+                kind::COLOR,
+            ),
+            metallic_roughness_texture: tex_of(
+                pbr.metallic_roughness_texture().map(|t| t.texture()),
+                kind::LINEAR,
+            ),
+            normal_texture: tex_of(m.normal_texture().map(|t| t.texture()), kind::NORMAL),
+            emissive_texture: tex_of(m.emissive_texture().map(|t| t.texture()), kind::COLOR),
+            occlusion_texture: tex_of(m.occlusion_texture().map(|t| t.texture()), kind::LINEAR),
+            name_offset,
+            name_len,
+        });
+    }
+    // The default material (glTF's, matching og-render's gltf bridge).
+    let default_material = materials.len() as u32;
+    let (name_offset, name_len) = strings.add("default");
+    let grey = if baked { 1.0 } else { 0.8 };
+    materials.push(MaterialRow {
+        base_r: grey,
+        base_g: grey,
+        base_b: grey,
+        base_a: 1.0,
+        roughness: 0.6,
+        normal_scale: 1.0,
+        occlusion_strength: 1.0,
+        alpha_cutoff: 0.5,
+        base_color_texture: NONE,
+        metallic_roughness_texture: NONE,
+        normal_texture: NONE,
+        emissive_texture: NONE,
+        occlusion_texture: NONE,
+        clearcoat_texture: NONE,
+        clearcoat_roughness_texture: NONE,
+        clearcoat_normal_texture: NONE,
+        sheen_color_texture: NONE,
+        sheen_roughness_texture: NONE,
+        transmission_texture: NONE,
+        thickness_texture: NONE,
+        iridescence_texture: NONE,
+        iridescence_thickness_texture: NONE,
+        anisotropy_texture: NONE,
+        name_offset,
+        name_len,
+        ..Default::default()
+    });
+
+    let mut prims: Vec<PrimitiveRow> = Vec::new();
+    let mut lods: Vec<LodRow> = Vec::new();
+    let mut meshes: Vec<MeshRow> = Vec::new();
+    let mut vertices: Vec<u8> = Vec::new();
+    let mut indices: Vec<u8> = Vec::new();
+    let mut bvh_nodes: Vec<BvhNodeRow> = Vec::new();
+    let mut bvh_tris: Vec<u32> = Vec::new();
+    let lod_meshes = msft_lod(doc, &mut notes);
+    let mut changes = Vec::new();
+    let mut hulls: Vec<u8> = Vec::new();
+    for mesh in doc.meshes() {
+        let first = prims.len() as u32;
+        for (pi, prim) in mesh.primitives().enumerate() {
+            let what = format!("mesh '{}' primitive {pi}", mesh.name().unwrap_or(""));
+            if prim.mode() != gltf::mesh::Mode::Triangles {
+                notes.push(format!(
+                    "{what}: mode {:?} is not cooked (triangles only)",
+                    prim.mode()
+                ));
+                continue;
+            }
+            let material = prim
+                .material()
+                .index()
+                .map_or(default_material, |i| i as u32);
+            let normal_mapped = !proxy && prim.material().normal_texture().is_some();
+            // MSFT_lod: the same primitive of each coarser mesh is a level.
+            let mut levels = vec![prim.clone()];
+            for &m in lod_meshes.get(&mesh.index()).into_iter().flatten() {
+                match doc.meshes().nth(m).and_then(|lm| lm.primitives().nth(pi)) {
+                    Some(lp) if lp.mode() == gltf::mesh::Mode::Triangles => levels.push(lp),
+                    _ => {
+                        notes.push(format!(
+                            "{what}: MSFT_lod mesh {m} has no triangle primitive {pi}; its levels stop there"
+                        ));
+                        break;
+                    }
+                }
+            }
+            match cook_primitive(src, &levels, material, normal_mapped, opts, proxy)
+                .map_err(|e| CookError(format!("{what}: {e}")))?
+            {
+                Some(mut c) => {
+                    while !vertices.len().is_multiple_of(4) {
+                        vertices.push(0);
+                    }
+                    while !indices.len().is_multiple_of(4) {
+                        indices.push(0);
+                    }
+                    c.row.vertex_offset = vertices.len() as u32;
+                    c.row.vertex_size = c.vertices.len() as u32;
+                    c.row.index_offset = indices.len() as u32;
+                    c.row.index_size = c.indices.len() as u32;
+                    c.row.lod_first = lods.len() as u32;
+                    c.row.bvh_node_first = bvh_nodes.len() as u32;
+                    c.row.bvh_node_count = c.bvh_nodes.len() as u32;
+                    c.row.bvh_tri_first = bvh_tris.len() as u32;
+                    c.row.bvh_tri_count = c.bvh_tris.len() as u32;
+                    bvh_nodes.extend_from_slice(&c.bvh_nodes);
+                    bvh_tris.extend_from_slice(&c.bvh_tris);
+                    vertices.extend_from_slice(&c.vertices);
+                    indices.extend_from_slice(&c.indices);
+                    lods.extend_from_slice(&c.lods);
+                    changes.extend(c.conformed.take());
+                    hulls.extend((c.hull.len() as u32).to_le_bytes());
+                    hulls.extend(c.hull.iter().flatten().flat_map(|x| x.to_le_bytes()));
+                    prims.push(c.row);
+                }
+                None => notes.push(format!("{what}: no geometry")),
+            }
+        }
+        let (name_offset, name_len) = strings.add(mesh.name().unwrap_or(""));
+        meshes.push(MeshRow {
+            primitive_first: first,
+            primitive_count: prims.len() as u32 - first,
+            name_offset,
+            name_len,
+        });
+    }
+
+    let NodeOrder { new_index, rows } = node_order(doc, &mut |s| strings.add(s))?;
+    let nodes = rows;
+    let mut scenes = Vec::new();
+    let mut roots: Vec<u32> = Vec::new();
+    for sc in doc.scenes() {
+        let first = roots.len() as u32;
+        roots.extend(sc.nodes().map(|n| new_index[n.index()]));
+        let (name_offset, name_len) = strings.add(sc.name().unwrap_or(""));
+        scenes.push(SceneRow {
+            root_first: first,
+            root_count: roots.len() as u32 - first,
+            name_offset,
+            name_len,
+        });
+    }
+    let default_scene = doc
+        .default_scene()
+        .map(|s| s.index() as u32)
+        .unwrap_or(if scenes.is_empty() { NONE } else { 0 });
+
+    // Bounds of the default scene's vertices with node transforms, from the
+    // source positions: what og-render's glTF bridge computes, less the
+    // nodes hidden at rest (`KHR_node_visibility` `visible: false`) and
+    // what is under them, which the rest pose does not draw (an animated
+    // `.vox`'s frames after 0).
+    let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
+    if let Some(scene) = doc.default_scene().or_else(|| doc.scenes().next()) {
+        let mut stack: Vec<(gltf::Node, Mat4)> =
+            scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
+        while let Some((node, parent)) = stack.pop() {
+            if node
+                .extension_value("KHR_node_visibility")
+                .and_then(|v| v.get("visible")?.as_bool())
+                == Some(false)
+            {
+                continue;
+            }
+            let (t, r, s) = node.transform().decomposed();
+            let world = parent
+                * Mat4::from_scale_rotation_translation(
+                    Vec3::from(s),
+                    Quat::from_array(r),
+                    Vec3::from(t),
+                );
+            if let Some(mesh) = node.mesh() {
+                for prim in mesh
+                    .primitives()
+                    .filter(|p| p.mode() == gltf::mesh::Mode::Triangles)
+                {
+                    let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
+                    if let Some(ps) = reader.read_positions() {
+                        for p in ps {
+                            let w = world.transform_point3(Vec3::from(p));
+                            lo = lo.min(w);
+                            hi = hi.max(w);
+                        }
+                    }
+                }
+            }
+            for c in node.children() {
+                stack.push((c, world));
+            }
+        }
+    }
+    if lo.x > hi.x {
+        (lo, hi) = (Vec3::ZERO, Vec3::ZERO);
+    }
+    let skipped_animations = doc.animations().count() as u32;
+    let skipped_skins = doc.skins().count() as u32;
+    if skipped_animations + skipped_skins > 0 {
+        notes.push(format!(
+            "{skipped_animations} animation(s) and {skipped_skins} skin(s): in the #anim blob; this blob holds the bind pose"
+        ));
+    }
+    let mut texture_refs = Vec::new();
+    // `ArtTexels.filter nearest` cooks colour textures as pixel art
+    // (`conform::mesh::texture`): the loader samples them nearest.
+    let nearest = opts
+        .conform
+        .as_ref()
+        .is_some_and(|c| c.filter == super::conform::mesh::Filter::Nearest);
+    for (i, u) in src.textures.iter().enumerate().filter(|_| !proxy) {
+        let (id_offset, id_len) = strings.add(&texture_ids[i]);
+        texture_refs.push(TextureRefRow {
+            id_offset,
+            id_len,
+            kind: if nearest && u.kind == kind::COLOR {
+                kind::PIXEL
+            } else {
+                u.kind
+            },
+        });
+    }
+    let meta = ModelMeta {
+        primitive_count: prims.len() as u32,
+        mesh_count: meshes.len() as u32,
+        material_count: materials.len() as u32,
+        texture_count: texture_refs.len() as u32,
+        node_count: nodes.len() as u32,
+        scene_count: scenes.len() as u32,
+        default_scene,
+        skipped_animations,
+        skipped_skins,
+        min_x: lo.x,
+        min_y: lo.y,
+        min_z: lo.z,
+        max_x: hi.x,
+        max_y: hi.y,
+        max_z: hi.z,
+    };
+    let mut w = BlobWriter::new(
+        format::Model::type_hash(),
+        format::Model::schema_version(),
+        stamp,
+    );
+    w.table("meta", &[meta], row_hash::<ModelMeta>())
+        .table("primitives", &prims, row_hash::<PrimitiveRow>())
+        .table("lods", &lods, row_hash::<LodRow>())
+        .table("meshes", &meshes, row_hash::<MeshRow>())
+        .table("materials", &materials, row_hash::<MaterialRow>())
+        .table("textures", &texture_refs, row_hash::<TextureRefRow>())
+        .table("nodes", &nodes, row_hash::<NodeRow>())
+        .table("scenes", &scenes, row_hash::<SceneRow>())
+        .table("roots", &roots, 0)
+        .raw("strings", strings.0, 1)
+        .raw("vertices", vertices, 16)
+        .raw("indices", indices, 16)
+        .raw("bvh_nodes", zlib(bytemuck::cast_slice(&bvh_nodes)), 4)
+        .raw("bvh_tris", zlib(bytemuck::cast_slice(&bvh_tris)), 4);
+    // The art contract's outline hull (`conform::mesh` gives the layout).
+    if let Some(c) = &opts.conform
+        && let Some(l) = &c.line
+        && !changes.is_empty()
+    {
+        let mut section = super::conform::mesh::hull_header(l, prims.len());
+        section.extend(hulls);
+        w.raw("outline", section, 4);
+    }
+    if let Some(c) = &opts.conform {
+        notes.extend(super::conform::mesh::notes(c, src, &changes));
+    }
+    let bvh_bytes = w_len_of_bvh(&bvh_nodes, &bvh_tris);
+    let tris: usize = prims
+        .iter()
+        .map(|p| lods[p.lod_first as usize].index_count as usize / 3)
+        .sum();
+    let tris_lod: Vec<usize> = (0..prims.iter().map(|p| p.lod_count).max().unwrap_or(1) as usize)
+        .map(|l| {
+            prims
+                .iter()
+                .map(|p| {
+                    let k = (l as u32).min(p.lod_count - 1);
+                    lods[(p.lod_first + k) as usize].index_count as usize / 3
+                })
+                .sum()
+        })
+        .collect();
+    notes.push(format!(
+        "{} primitives, {tris} triangles; LOD triangles {:?}; {} materials, {} textures, {} nodes",
+        prims.len(),
+        tris_lod,
+        materials.len(),
+        texture_refs.len(),
+        nodes.len()
+    ));
+    notes.push(if opts.raycast {
+        format!(
+            "raycast BVH: {} nodes, {bvh_bytes} bytes (`model {{ raycast false }}` leaves it out)",
+            bvh_nodes.len()
+        )
+    } else {
+        "raycast false: no BVH cooked; the first og.render.raycast that reaches it builds one"
+            .into()
+    });
+    let vertices = prims.iter().map(|p| p.vertex_count as usize).sum();
+    Ok((
+        w.finish(),
+        ModelNotes {
+            notes,
+            triangles: tris,
+            vertices,
+        },
+    ))
+}
