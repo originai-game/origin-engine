@@ -151,6 +151,62 @@ export interface HostAbi<A, V> {
   og_rng_chance(world: number, p: number): boolean;
   /** `Rng.fork` */
   og_rng_fork(world: number, label: string): number;
+  /** `og.input.defineAction` */
+  og_input_define_action(world: number, desc: string | undefined): string;
+  /** `og.input.actions` */
+  og_input_actions(world: number): string;
+  /** `og.input.action` */
+  og_input_action(world: number, name: string): string;
+  /** `og.input.actionDown` */
+  og_input_action_down(world: number, name: string): boolean;
+  /** `og.input.actionPressed` */
+  og_input_action_pressed(world: number, name: string): boolean;
+  /** `og.input.actionReleased` */
+  og_input_action_released(world: number, name: string): boolean;
+  /** `og.input.actionHeld` */
+  og_input_action_held(world: number, name: string): boolean;
+  /** `og.input.actionValue` */
+  og_input_action_value(world: number, name: string): number;
+  /** `og.input.actionVector` */
+  og_input_action_vector(world: number, name: string): string;
+  /** `og.input.setContexts` */
+  og_input_set_contexts(world: number, contexts: string): void;
+  /** `og.input.contexts` */
+  og_input_contexts(world: number): string;
+  /** `og.input.rebind` */
+  og_input_rebind(world: number, desc: string | undefined): string;
+  /** `og.input.conflicts` */
+  og_input_conflicts(world: number, desc: string | undefined): string;
+  /** `og.input.resetBindings` */
+  og_input_reset_bindings(world: number, action: string | undefined): string;
+  /** `og.input.setToggle` */
+  og_input_set_toggle(world: number, action: string, on: boolean): string;
+  /** `og.input.saveBindings` */
+  og_input_save_bindings(world: number): string;
+  /** `og.input.loadBindings` */
+  og_input_load_bindings(world: number, text: string): string;
+  /** `og.input.startCapture` */
+  og_input_start_capture(world: number, desc: string | undefined): string;
+  /** `og.input.capture` */
+  og_input_capture(world: number): string;
+  /** `og.input.cancelCapture` */
+  og_input_cancel_capture(world: number): void;
+  /** `og.input.applyCapture` */
+  og_input_apply_capture(world: number, policy: string | undefined): string;
+  /** `og.input.glyph` */
+  og_input_glyph(world: number, action: string, device: string | undefined): string;
+  /** `og.input.glyphs` */
+  og_input_glyphs(world: number, action: string, device: string | undefined): string;
+  /** `og.input.controlGlyph` */
+  og_input_control_glyph(control: string, device: string | undefined): string;
+  /** `og.input.device` */
+  og_input_device(world: number): string;
+  /** `og.input.padDevice` */
+  og_input_pad_device(world: number, pad: number): string;
+  /** `og.input.setDeadzones` */
+  og_input_set_deadzones(world: number, desc: string | undefined): string;
+  /** `og.input.rumble` */
+  og_input_rumble(world: number, desc: string | undefined): string;
   /** `Input.down` */
   og_input_down(world: number, key: string): boolean;
   /** `Input.pressed` */
@@ -965,6 +1021,34 @@ export const SYMBOLS: readonly string[] = [
   "og_rng_integer",
   "og_rng_chance",
   "og_rng_fork",
+  "og_input_define_action",
+  "og_input_actions",
+  "og_input_action",
+  "og_input_action_down",
+  "og_input_action_pressed",
+  "og_input_action_released",
+  "og_input_action_held",
+  "og_input_action_value",
+  "og_input_action_vector",
+  "og_input_set_contexts",
+  "og_input_contexts",
+  "og_input_rebind",
+  "og_input_conflicts",
+  "og_input_reset_bindings",
+  "og_input_set_toggle",
+  "og_input_save_bindings",
+  "og_input_load_bindings",
+  "og_input_start_capture",
+  "og_input_capture",
+  "og_input_cancel_capture",
+  "og_input_apply_capture",
+  "og_input_glyph",
+  "og_input_glyphs",
+  "og_input_control_glyph",
+  "og_input_device",
+  "og_input_pad_device",
+  "og_input_set_deadzones",
+  "og_input_rumble",
   "og_input_down",
   "og_input_pressed",
   "og_input_released",

@@ -290,6 +290,10 @@ fn apply_keeping(
             Some((id, world.resource_bytes(id).ok()?))
         })
         .collect();
+    // The player's bindings and dead zones outlive a load (the actions'
+    // state is the save's, as og.Input's edges come from what follows).
+    let actions = eng.state.borrow().actions.clone();
+    let kept_actions = actions.as_ref().map(|a| og_input::actions::lock(a).clone());
     if pending.migrate {
         world
             .restore_migrating(&pending.snapshot)
@@ -301,6 +305,9 @@ fn apply_keeping(
     }
     for (id, bytes) in kept {
         let _ = world.insert_resource_bytes(id, &bytes);
+    }
+    if let (Some(a), Some(map)) = (actions, kept_actions) {
+        og_input::actions::lock(&a).keep_player(&map);
     }
     let to = world.time().tick;
     {

@@ -41,6 +41,7 @@ fn pad(pad: u32, buttons: &[&str], lx: f32, rt: f32) -> InjectedInput {
             .sum(),
         axes: [lx, 0.0, 0.0, 0.0],
         triggers: [0.0, rt],
+        device: None,
     })
 }
 
@@ -103,11 +104,11 @@ fn script() -> Vec<Vec<InjectedInput>> {
         ],
         // 4: a click on touch 3 (held through this tick, released at its end).
         vec![touch(Click, 3, 50.0, 50.0)],
-        // 5: an id past the five pointers and pad 4 are refused; the pad disconnects.
+        // 5: an id past the five pointers and pad 8 are refused; the pad disconnects.
         vec![
             touch(Down, 5, 1.0, 1.0),
             InjectedInput::Gamepad(GamepadState {
-                pad: 4,
+                pad: 8,
                 ..Default::default()
             }),
             InjectedInput::Gamepad(GamepadState {
@@ -141,7 +142,7 @@ fn pads_and_touches_over_a_scripted_sequence() {
     assert_eq!(
         accepted.iter().filter(|a| !**a).count(),
         2,
-        "pointer id 5 and pad 4 are refused, nothing else: {accepted:?}"
+        "pointer id 5 and pad 8 are refused, nothing else: {accepted:?}"
     );
     let seen = log.lock().unwrap().clone();
     let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR"));

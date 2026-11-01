@@ -871,34 +871,53 @@ impl Pointers {
     }
 }
 
-/// The first four gamepads in the W3C standard mapping, at the start of this
-/// tick (IDL `input.Gamepad`). Buttons are masks over
-/// [`crate::GAMEPAD_BUTTONS`] (bit 0 A ... bit 16 home), one word per pad;
-/// sticks are -1..1 with y down, triggers 0..1. Edges last exactly one tick;
-/// a press and a release between two ticks leave both edges set. A pad's
-/// state arrives whole ([`GamepadState`]) whenever the shell sees it change,
-/// through the same ring as keys, so it is world state and replays.
+/// Up to eight gamepads, at the start of this tick (IDL `input.Gamepad`).
+/// Pads in the W3C standard mapping arrive as they are; the web shell maps
+/// the others to it through its table (`gamepad.ts`). Buttons are masks
+/// over [`crate::GAMEPAD_BUTTONS`] (bit 0 A ... bit 16 home), one word per
+/// pad; sticks are -1..1 with y down, triggers 0..1, both raw (dead zones
+/// are the action map's: [`crate::ActionMap`]). Edges last exactly one
+/// tick; a press and a release between two ticks leave both edges set. A
+/// pad's state arrives whole ([`GamepadState`]) whenever the shell sees it
+/// change, through the same ring as keys, so it is world state and replays.
+/// `devices` holds each pad's family, four bits per pad ([`Gamepad::device`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
-#[reflect(name = "og.Gamepad", version = 1)]
+#[reflect(name = "og.Gamepad", version = 2)]
 pub struct Gamepad {
     /// Connected pads: bit `pad`.
     #[reflect(name = "connectedMask")]
     pub connected: u32,
-    /// Held buttons of pads 0 to 3.
+    /// Each pad's family, four bits per pad (pad `p` at bit `4p`): a
+    /// [`crate::Device`] index (1 Xbox, 2 PlayStation, 3 Switch, 4 a
+    /// generic pad), 0 when the host did not say.
+    pub devices: u32,
+    /// Held buttons of pads 0 to 7.
     pub buttons0: u32,
     pub buttons1: u32,
     pub buttons2: u32,
     pub buttons3: u32,
+    pub buttons4: u32,
+    pub buttons5: u32,
+    pub buttons6: u32,
+    pub buttons7: u32,
     /// Buttons that went down this tick.
     pub pressed0: u32,
     pub pressed1: u32,
     pub pressed2: u32,
     pub pressed3: u32,
+    pub pressed4: u32,
+    pub pressed5: u32,
+    pub pressed6: u32,
+    pub pressed7: u32,
     /// Buttons that went up this tick.
     pub released0: u32,
     pub released1: u32,
     pub released2: u32,
     pub released3: u32,
+    pub released4: u32,
+    pub released5: u32,
+    pub released6: u32,
+    pub released7: u32,
     /// Left sticks.
     #[reflect(name = "leftStick0")]
     pub left_stick0: Vec2,
@@ -908,6 +927,14 @@ pub struct Gamepad {
     pub left_stick2: Vec2,
     #[reflect(name = "leftStick3")]
     pub left_stick3: Vec2,
+    #[reflect(name = "leftStick4")]
+    pub left_stick4: Vec2,
+    #[reflect(name = "leftStick5")]
+    pub left_stick5: Vec2,
+    #[reflect(name = "leftStick6")]
+    pub left_stick6: Vec2,
+    #[reflect(name = "leftStick7")]
+    pub left_stick7: Vec2,
     /// Right sticks.
     #[reflect(name = "rightStick0")]
     pub right_stick0: Vec2,
@@ -917,15 +944,27 @@ pub struct Gamepad {
     pub right_stick2: Vec2,
     #[reflect(name = "rightStick3")]
     pub right_stick3: Vec2,
+    #[reflect(name = "rightStick4")]
+    pub right_stick4: Vec2,
+    #[reflect(name = "rightStick5")]
+    pub right_stick5: Vec2,
+    #[reflect(name = "rightStick6")]
+    pub right_stick6: Vec2,
+    #[reflect(name = "rightStick7")]
+    pub right_stick7: Vec2,
     /// Left (x) and right (y) analog triggers.
     pub triggers0: Vec2,
     pub triggers1: Vec2,
     pub triggers2: Vec2,
     pub triggers3: Vec2,
+    pub triggers4: Vec2,
+    pub triggers5: Vec2,
+    pub triggers6: Vec2,
+    pub triggers7: Vec2,
 }
 
 /// What a pad reports for one of its analog inputs.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GamepadAxis {
     LeftX,
     LeftY,
@@ -945,57 +984,212 @@ impl GamepadAxis {
         "rightTrigger",
     ];
 
+    /// Every axis, in variant order.
+    pub const ALL: [GamepadAxis; 6] = [
+        GamepadAxis::LeftX,
+        GamepadAxis::LeftY,
+        GamepadAxis::RightX,
+        GamepadAxis::RightY,
+        GamepadAxis::LeftTrigger,
+        GamepadAxis::RightTrigger,
+    ];
+
     pub fn from_name(name: &str) -> Option<GamepadAxis> {
-        use GamepadAxis::*;
-        let all = [LeftX, LeftY, RightX, RightY, LeftTrigger, RightTrigger];
-        Self::NAMES.iter().position(|n| *n == name).map(|i| all[i])
+        Self::NAMES
+            .iter()
+            .position(|n| *n == name)
+            .map(|i| Self::ALL[i])
+    }
+
+    /// Its IDL name.
+    pub fn name(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+
+    /// A trigger (0..1), not a stick axis (-1..1).
+    pub fn is_trigger(self) -> bool {
+        matches!(self, GamepadAxis::LeftTrigger | GamepadAxis::RightTrigger)
     }
 }
 
+/// One pad's words, mutable.
+struct PadMut<'a> {
+    held: &'a mut u32,
+    pressed: &'a mut u32,
+    released: &'a mut u32,
+    left: &'a mut Vec2,
+    right: &'a mut Vec2,
+    triggers: &'a mut Vec2,
+}
+
 impl Gamepad {
-    fn words(&mut self, pad: usize) -> (&mut u32, &mut u32, &mut u32) {
+    fn pad_mut(&mut self, pad: usize) -> PadMut<'_> {
+        macro_rules! pm {
+            ($b:ident, $p:ident, $r:ident, $l:ident, $rs:ident, $t:ident) => {
+                PadMut {
+                    held: &mut self.$b,
+                    pressed: &mut self.$p,
+                    released: &mut self.$r,
+                    left: &mut self.$l,
+                    right: &mut self.$rs,
+                    triggers: &mut self.$t,
+                }
+            };
+        }
         match pad {
-            0 => (&mut self.buttons0, &mut self.pressed0, &mut self.released0),
-            1 => (&mut self.buttons1, &mut self.pressed1, &mut self.released1),
-            2 => (&mut self.buttons2, &mut self.pressed2, &mut self.released2),
-            _ => (&mut self.buttons3, &mut self.pressed3, &mut self.released3),
+            0 => pm!(
+                buttons0,
+                pressed0,
+                released0,
+                left_stick0,
+                right_stick0,
+                triggers0
+            ),
+            1 => pm!(
+                buttons1,
+                pressed1,
+                released1,
+                left_stick1,
+                right_stick1,
+                triggers1
+            ),
+            2 => pm!(
+                buttons2,
+                pressed2,
+                released2,
+                left_stick2,
+                right_stick2,
+                triggers2
+            ),
+            3 => pm!(
+                buttons3,
+                pressed3,
+                released3,
+                left_stick3,
+                right_stick3,
+                triggers3
+            ),
+            4 => pm!(
+                buttons4,
+                pressed4,
+                released4,
+                left_stick4,
+                right_stick4,
+                triggers4
+            ),
+            5 => pm!(
+                buttons5,
+                pressed5,
+                released5,
+                left_stick5,
+                right_stick5,
+                triggers5
+            ),
+            6 => pm!(
+                buttons6,
+                pressed6,
+                released6,
+                left_stick6,
+                right_stick6,
+                triggers6
+            ),
+            _ => pm!(
+                buttons7,
+                pressed7,
+                released7,
+                left_stick7,
+                right_stick7,
+                triggers7
+            ),
         }
     }
 
-    fn analog(&mut self, pad: usize) -> (&mut Vec2, &mut Vec2, &mut Vec2) {
-        match pad {
+    /// Pad `pad`'s (held, pressed, released, left stick, right stick,
+    /// triggers); `None` past [`MAX_GAMEPADS`].
+    fn pad(&self, pad: u32) -> Option<(u32, u32, u32, Vec2, Vec2, Vec2)> {
+        if pad as usize >= MAX_GAMEPADS {
+            return None;
+        }
+        Some(match pad {
             0 => (
-                &mut self.left_stick0,
-                &mut self.right_stick0,
-                &mut self.triggers0,
+                self.buttons0,
+                self.pressed0,
+                self.released0,
+                self.left_stick0,
+                self.right_stick0,
+                self.triggers0,
             ),
             1 => (
-                &mut self.left_stick1,
-                &mut self.right_stick1,
-                &mut self.triggers1,
+                self.buttons1,
+                self.pressed1,
+                self.released1,
+                self.left_stick1,
+                self.right_stick1,
+                self.triggers1,
             ),
             2 => (
-                &mut self.left_stick2,
-                &mut self.right_stick2,
-                &mut self.triggers2,
+                self.buttons2,
+                self.pressed2,
+                self.released2,
+                self.left_stick2,
+                self.right_stick2,
+                self.triggers2,
+            ),
+            3 => (
+                self.buttons3,
+                self.pressed3,
+                self.released3,
+                self.left_stick3,
+                self.right_stick3,
+                self.triggers3,
+            ),
+            4 => (
+                self.buttons4,
+                self.pressed4,
+                self.released4,
+                self.left_stick4,
+                self.right_stick4,
+                self.triggers4,
+            ),
+            5 => (
+                self.buttons5,
+                self.pressed5,
+                self.released5,
+                self.left_stick5,
+                self.right_stick5,
+                self.triggers5,
+            ),
+            6 => (
+                self.buttons6,
+                self.pressed6,
+                self.released6,
+                self.left_stick6,
+                self.right_stick6,
+                self.triggers6,
             ),
             _ => (
-                &mut self.left_stick3,
-                &mut self.right_stick3,
-                &mut self.triggers3,
+                self.buttons7,
+                self.pressed7,
+                self.released7,
+                self.left_stick7,
+                self.right_stick7,
+                self.triggers7,
             ),
-        }
+        })
     }
 
-    /// Held buttons, pressed and released this tick of `pad` (zeros past 3).
+    /// Held buttons, pressed and released this tick of `pad` (zeros past 7).
     pub fn masks(&self, pad: u32) -> (u32, u32, u32) {
-        match pad {
-            0 => (self.buttons0, self.pressed0, self.released0),
-            1 => (self.buttons1, self.pressed1, self.released1),
-            2 => (self.buttons2, self.pressed2, self.released2),
-            3 => (self.buttons3, self.pressed3, self.released3),
-            _ => (0, 0, 0),
+        self.pad(pad).map_or((0, 0, 0), |p| (p.0, p.1, p.2))
+    }
+
+    /// The family the host told for `pad` (`None`: it did not say, or no
+    /// such pad).
+    pub fn device(&self, pad: u32) -> Option<crate::Device> {
+        if pad as usize >= MAX_GAMEPADS {
+            return None;
         }
+        crate::Device::from_index((self.devices >> (4 * pad)) & 0xF).filter(|d| d.is_pad())
     }
 
     /// Whether `pad` is connected.
@@ -1018,14 +1212,10 @@ impl Gamepad {
         button < 32 && self.masks(pad).2 & (1 << button) != 0
     }
 
-    /// One analog input of `pad` (0 past pad 3).
+    /// One analog input of `pad` (0 past pad 7).
     pub fn axis(&self, axis: GamepadAxis, pad: u32) -> f32 {
-        let (l, r, t) = match pad {
-            0 => (self.left_stick0, self.right_stick0, self.triggers0),
-            1 => (self.left_stick1, self.right_stick1, self.triggers1),
-            2 => (self.left_stick2, self.right_stick2, self.triggers2),
-            3 => (self.left_stick3, self.right_stick3, self.triggers3),
-            _ => return 0.0,
+        let Some((_, _, _, l, r, t)) = self.pad(pad) else {
+            return 0.0;
         };
         match axis {
             GamepadAxis::LeftX => l.x,
@@ -1052,22 +1242,29 @@ impl Gamepad {
             return false;
         }
         let next = if state.connected { state.buttons } else { 0 };
-        let (held, pressed, released) = self.words(pad);
-        *pressed |= next & !*held;
-        *released |= *held & !next;
-        *held = next;
+        let p = self.pad_mut(pad);
+        *p.pressed |= next & !*p.held;
+        *p.released |= *p.held & !next;
+        *p.held = next;
         let clamp = |v: f32, lo: f32| v.clamp(lo, 1.0);
-        let (l, r, t) = self.analog(pad);
         if state.connected {
-            *l = Vec2::new(clamp(state.axes[0], -1.0), clamp(state.axes[1], -1.0));
-            *r = Vec2::new(clamp(state.axes[2], -1.0), clamp(state.axes[3], -1.0));
-            *t = Vec2::new(clamp(state.triggers[0], 0.0), clamp(state.triggers[1], 0.0));
+            *p.left = Vec2::new(clamp(state.axes[0], -1.0), clamp(state.axes[1], -1.0));
+            *p.right = Vec2::new(clamp(state.axes[2], -1.0), clamp(state.axes[3], -1.0));
+            *p.triggers = Vec2::new(clamp(state.triggers[0], 0.0), clamp(state.triggers[1], 0.0));
             self.connected |= 1 << pad;
         } else {
-            *l = Vec2::ZERO;
-            *r = Vec2::ZERO;
-            *t = Vec2::ZERO;
+            *p.left = Vec2::ZERO;
+            *p.right = Vec2::ZERO;
+            *p.triggers = Vec2::ZERO;
             self.connected &= !(1 << pad);
+        }
+        // The family stays while the pad is connected and is forgotten
+        // when it goes; a state that does not say keeps what was said.
+        let shift = 4 * pad as u32;
+        if !state.connected {
+            self.devices &= !(0xF << shift);
+        } else if let Some(d) = state.device {
+            self.devices = (self.devices & !(0xF << shift)) | (d.index() << shift);
         }
         true
     }
@@ -1075,9 +1272,9 @@ impl Gamepad {
     /// The end of a tick: this tick's edges expire.
     pub fn end_tick(&mut self) {
         for pad in 0..MAX_GAMEPADS {
-            let (_, pressed, released) = self.words(pad);
-            *pressed = 0;
-            *released = 0;
+            let p = self.pad_mut(pad);
+            *p.pressed = 0;
+            *p.released = 0;
         }
     }
 }

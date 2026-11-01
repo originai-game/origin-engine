@@ -369,6 +369,146 @@ pub fn og_rng_fork(world: u32, label: String) -> u32 {
 }
 
 #[wasm_bindgen]
+pub fn og_input_define_action(world: u32, desc: Option<String>) -> String {
+    <Host as InputApi>::og_input_define_action(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_input_actions(world: u32) -> String {
+    <Host as InputApi>::og_input_actions(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_input_action(world: u32, name: String) -> String {
+    <Host as InputApi>::og_input_action(&Host, world, name)
+}
+
+#[wasm_bindgen]
+pub fn og_input_action_down(world: u32, name: String) -> bool {
+    <Host as InputApi>::og_input_action_down(&Host, world, name)
+}
+
+#[wasm_bindgen]
+pub fn og_input_action_pressed(world: u32, name: String) -> bool {
+    <Host as InputApi>::og_input_action_pressed(&Host, world, name)
+}
+
+#[wasm_bindgen]
+pub fn og_input_action_released(world: u32, name: String) -> bool {
+    <Host as InputApi>::og_input_action_released(&Host, world, name)
+}
+
+#[wasm_bindgen]
+pub fn og_input_action_held(world: u32, name: String) -> bool {
+    <Host as InputApi>::og_input_action_held(&Host, world, name)
+}
+
+#[wasm_bindgen]
+pub fn og_input_action_value(world: u32, name: String) -> f64 {
+    <Host as InputApi>::og_input_action_value(&Host, world, name)
+}
+
+#[wasm_bindgen]
+pub fn og_input_action_vector(world: u32, name: String) -> String {
+    <Host as InputApi>::og_input_action_vector(&Host, world, name)
+}
+
+#[wasm_bindgen]
+pub fn og_input_set_contexts(world: u32, contexts: String) {
+    <Host as InputApi>::og_input_set_contexts(&Host, world, contexts)
+}
+
+#[wasm_bindgen]
+pub fn og_input_contexts(world: u32) -> String {
+    <Host as InputApi>::og_input_contexts(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_input_rebind(world: u32, desc: Option<String>) -> String {
+    <Host as InputApi>::og_input_rebind(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_input_conflicts(world: u32, desc: Option<String>) -> String {
+    <Host as InputApi>::og_input_conflicts(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_input_reset_bindings(world: u32, action: Option<String>) -> String {
+    <Host as InputApi>::og_input_reset_bindings(&Host, world, action)
+}
+
+#[wasm_bindgen]
+pub fn og_input_set_toggle(world: u32, action: String, on: bool) -> String {
+    <Host as InputApi>::og_input_set_toggle(&Host, world, action, on)
+}
+
+#[wasm_bindgen]
+pub fn og_input_save_bindings(world: u32) -> String {
+    <Host as InputApi>::og_input_save_bindings(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_input_load_bindings(world: u32, text: String) -> String {
+    <Host as InputApi>::og_input_load_bindings(&Host, world, text)
+}
+
+#[wasm_bindgen]
+pub fn og_input_start_capture(world: u32, desc: Option<String>) -> String {
+    <Host as InputApi>::og_input_start_capture(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_input_capture(world: u32) -> String {
+    <Host as InputApi>::og_input_capture(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_input_cancel_capture(world: u32) {
+    <Host as InputApi>::og_input_cancel_capture(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_input_apply_capture(world: u32, policy: Option<String>) -> String {
+    <Host as InputApi>::og_input_apply_capture(&Host, world, policy)
+}
+
+#[wasm_bindgen]
+pub fn og_input_glyph(world: u32, action: String, device: Option<String>) -> String {
+    <Host as InputApi>::og_input_glyph(&Host, world, action, device)
+}
+
+#[wasm_bindgen]
+pub fn og_input_glyphs(world: u32, action: String, device: Option<String>) -> String {
+    <Host as InputApi>::og_input_glyphs(&Host, world, action, device)
+}
+
+#[wasm_bindgen]
+pub fn og_input_control_glyph(control: String, device: Option<String>) -> String {
+    <Host as InputApi>::og_input_control_glyph(&Host, control, device)
+}
+
+#[wasm_bindgen]
+pub fn og_input_device(world: u32) -> String {
+    <Host as InputApi>::og_input_device(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_input_pad_device(world: u32, pad: u32) -> String {
+    <Host as InputApi>::og_input_pad_device(&Host, world, pad)
+}
+
+#[wasm_bindgen]
+pub fn og_input_set_deadzones(world: u32, desc: Option<String>) -> String {
+    <Host as InputApi>::og_input_set_deadzones(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_input_rumble(world: u32, desc: Option<String>) -> String {
+    <Host as InputApi>::og_input_rumble(&Host, world, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_input_down(world: u32, key: String) -> bool {
     <Host as InputApi>::og_input_down(&Host, world, key)
 }

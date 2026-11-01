@@ -4362,6 +4362,9 @@ module ui {
     }
     field toggle bool "A hold's toggle alternative (XAG 107): a tap turns it on, the next tap off; og.ui.actionHeld answers true between."
     field label String "What it says when no document gives it a hint."
+    field action String "A gameplay action (og.input.defineAction) it follows instead of keys and buttons: it is down when that action is, and its glyph is that action's binding on the device used last, so the player's rebinding moves the prompt too. Empty: keys and buttons." {
+      optional true
+    }
   }
 
   enum UiDevice {

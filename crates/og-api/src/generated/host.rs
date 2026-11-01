@@ -201,6 +201,62 @@ pub trait RngApi: Wire {
 
 /// `input`: packages/knowledge/wiki/input.md.
 pub trait InputApi: Wire {
+    /// `og.input.defineAction`
+    fn og_input_define_action(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.input.actions`
+    fn og_input_actions(&self, world: u32) -> String;
+    /// `og.input.action`
+    fn og_input_action(&self, world: u32, name: String) -> String;
+    /// `og.input.actionDown`
+    fn og_input_action_down(&self, world: u32, name: String) -> bool;
+    /// `og.input.actionPressed`
+    fn og_input_action_pressed(&self, world: u32, name: String) -> bool;
+    /// `og.input.actionReleased`
+    fn og_input_action_released(&self, world: u32, name: String) -> bool;
+    /// `og.input.actionHeld`
+    fn og_input_action_held(&self, world: u32, name: String) -> bool;
+    /// `og.input.actionValue`
+    fn og_input_action_value(&self, world: u32, name: String) -> f64;
+    /// `og.input.actionVector`
+    fn og_input_action_vector(&self, world: u32, name: String) -> String;
+    /// `og.input.setContexts`
+    fn og_input_set_contexts(&self, world: u32, contexts: String);
+    /// `og.input.contexts`
+    fn og_input_contexts(&self, world: u32) -> String;
+    /// `og.input.rebind`
+    fn og_input_rebind(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.input.conflicts`
+    fn og_input_conflicts(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.input.resetBindings`
+    fn og_input_reset_bindings(&self, world: u32, action: Option<String>) -> String;
+    /// `og.input.setToggle`
+    fn og_input_set_toggle(&self, world: u32, action: String, on: bool) -> String;
+    /// `og.input.saveBindings`
+    fn og_input_save_bindings(&self, world: u32) -> String;
+    /// `og.input.loadBindings`
+    fn og_input_load_bindings(&self, world: u32, text: String) -> String;
+    /// `og.input.startCapture`
+    fn og_input_start_capture(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.input.capture`
+    fn og_input_capture(&self, world: u32) -> String;
+    /// `og.input.cancelCapture`
+    fn og_input_cancel_capture(&self, world: u32);
+    /// `og.input.applyCapture`
+    fn og_input_apply_capture(&self, world: u32, policy: Option<String>) -> String;
+    /// `og.input.glyph`
+    fn og_input_glyph(&self, world: u32, action: String, device: Option<String>) -> String;
+    /// `og.input.glyphs`
+    fn og_input_glyphs(&self, world: u32, action: String, device: Option<String>) -> String;
+    /// `og.input.controlGlyph`
+    fn og_input_control_glyph(&self, control: String, device: Option<String>) -> String;
+    /// `og.input.device`
+    fn og_input_device(&self, world: u32) -> String;
+    /// `og.input.padDevice`
+    fn og_input_pad_device(&self, world: u32, pad: u32) -> String;
+    /// `og.input.setDeadzones`
+    fn og_input_set_deadzones(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.input.rumble`
+    fn og_input_rumble(&self, world: u32, desc: Option<String>) -> String;
     /// `Input.down`
     fn og_input_down(&self, world: u32, key: String) -> bool;
     /// `Input.pressed`
@@ -1108,6 +1164,34 @@ pub const SYMBOLS: &[&str] = &[
     "og_rng_integer",
     "og_rng_chance",
     "og_rng_fork",
+    "og_input_define_action",
+    "og_input_actions",
+    "og_input_action",
+    "og_input_action_down",
+    "og_input_action_pressed",
+    "og_input_action_released",
+    "og_input_action_held",
+    "og_input_action_value",
+    "og_input_action_vector",
+    "og_input_set_contexts",
+    "og_input_contexts",
+    "og_input_rebind",
+    "og_input_conflicts",
+    "og_input_reset_bindings",
+    "og_input_set_toggle",
+    "og_input_save_bindings",
+    "og_input_load_bindings",
+    "og_input_start_capture",
+    "og_input_capture",
+    "og_input_cancel_capture",
+    "og_input_apply_capture",
+    "og_input_glyph",
+    "og_input_glyphs",
+    "og_input_control_glyph",
+    "og_input_device",
+    "og_input_pad_device",
+    "og_input_set_deadzones",
+    "og_input_rumble",
     "og_input_down",
     "og_input_pressed",
     "og_input_released",

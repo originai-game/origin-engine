@@ -323,7 +323,7 @@ pub fn og_input_button_released(world: u32, b: String) -> bool {
 
 /// A copy of an input resource as of this tick (inside a system, through
 /// its context, which refuses it unless the system reads it).
-fn input_res<R: og_core::Reflect + Copy + Send + Sync + 'static, T>(
+pub(super) fn input_res<R: og_core::Reflect + Copy + Send + Sync + 'static, T>(
     world: u32,
     f: impl FnOnce(&R) -> T,
     refused: T,

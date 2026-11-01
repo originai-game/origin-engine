@@ -500,6 +500,7 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
         st.warnings.extend(a.warnings);
         st.physics = Some(a.mounted.physics.clone());
         st.ui = Some(a.mounted.ui.clone());
+        st.actions = Some(a.mounted.actions.clone());
         st.anim = Some(a.anim.clone());
         st.feel = Some(a.feel.clone());
     }

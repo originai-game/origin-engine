@@ -26,6 +26,7 @@ import {
 } from "./runtime.ts";
 import { cameras } from "./systems/cameras.ts";
 import { ai, i18n, nav, net, platform } from "./e6.ts";
+import { input } from "./input.ts";
 import { path, stream, terrain, timeline } from "./p2.ts";
 import { debug, depthRender } from "./depth.ts";
 import { geomRender, Path2, Shape } from "./geom.ts";
@@ -141,7 +142,7 @@ export const REPLAY_SEED_PARAM: typeof Api.REPLAY_SEED_PARAM = "replay-seed";
 export const PLAYTEST_MAX_TICKS: typeof Api.PLAYTEST_MAX_TICKS = 3600;
 export const PROBE_PROGRAM_MAX_OPERATIONS: typeof Api.PROBE_PROGRAM_MAX_OPERATIONS = 256;
 export const MAX_POINTERS: typeof Api.MAX_POINTERS = 5;
-export const MAX_GAMEPADS: typeof Api.MAX_GAMEPADS = 4;
+export const MAX_GAMEPADS: typeof Api.MAX_GAMEPADS = 8;
 export const MAX_LIGHTS: typeof Api.MAX_LIGHTS = 256;
 export const MAX_CLUSTER_LIGHTS: typeof Api.MAX_CLUSTER_LIGHTS = 64;
 export const MAX_REFLECTION_PROBES: typeof Api.MAX_REFLECTION_PROBES = 8;
@@ -236,6 +237,7 @@ export const og: typeof Api.og = Object.freeze({
   platform,
   i18n,
   net,
+  input,
   terrain,
   stream,
   debug,

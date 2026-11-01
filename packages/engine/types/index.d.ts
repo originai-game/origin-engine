@@ -1407,7 +1407,7 @@ export interface World {
    */
   snapshot(): Result<string>;
   /**
-   * Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
+   * Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the player's action bindings and dead zones (og.input), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.
    *
    * @param save The text world.snapshot returned.
    * @param desc Whether a type whose layout changed since the save is mapped field by field.
@@ -1861,14 +1861,527 @@ export interface Rng {
 // ── input ───────────────────────────────────────────────────────
 // Input as the game sees it: the Input resource for polling, events for edges.
 // The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path.
-// Several pointers at once (multi-touch) are og.Pointers; the first four gamepads, in the W3C standard mapping, are og.Gamepad. Both are world state, as og.Input is, so they replay.
+// Several pointers at once (multi-touch) are og.Pointers; up to eight gamepads, mapped to the W3C standard layout, are og.Gamepad. Both are world state, as og.Input is, so they replay.
+// Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in contexts, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is.
 // Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.
 
 /** The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4. */
 export declare const MAX_POINTERS: 5;
 
-/** The most gamepads og.Gamepad reads: pads 0 to 3. */
-export declare const MAX_GAMEPADS: 4;
+/** The most gamepads og.Gamepad reads: pads 0 to 7. */
+export declare const MAX_GAMEPADS: 8;
+
+/**
+ * A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is. og.ui's UiDevice has the same values.
+ * - `"keyboardMouse"`: Keyboard and mouse.
+ * - `"xbox"`: An Xbox pad (and the family a pad whose kind the host could not tell is drawn as).
+ * - `"playstation"`: A PlayStation pad.
+ * - `"switch"`: A Nintendo Switch pad (its south button is B).
+ * - `"gamepad"`: A generic pad: glyphs name positions (South, East).
+ * - `"touch"`: A touch screen.
+ */
+export type InputDevice = "keyboardMouse" | "xbox" | "playstation" | "switch" | "gamepad" | "touch";
+
+/**
+ * What an action gives.
+ * - `"button"`: On or off: down, pressed, released, held. An analog control (a trigger, a half axis) presses it at ActionDesc.threshold and lets go under three quarters of it.
+ * - `"axis"`: One value, -1 to 1: A and D, a stick's x, a trigger (0 to 1), the wheel, the mouse's x movement (CSS px).
+ * - `"axis2"`: Two values, x right and y up: WASD, a stick, the d-pad, a touch stick, the mouse's movement.
+ */
+export type ActionKind = "button" | "axis" | "axis2";
+
+/**
+ * Where on the play surface a touch binding's touches must start, in fractions of it from the top left; a zone of no size is all of it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TouchZone {
+  /**
+   * Its left edge.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly x?: number;
+  /**
+   * Its top edge.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly y?: number;
+  /**
+   * Its width (0: the whole surface).
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly width?: number;
+  /**
+   * Its height (0: the whole surface).
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly height?: number;
+}
+
+/**
+ * One binding of an action: a control, or a composite of parts (A and D as one axis, WASD as two). Controls are named by strings: a key code (`KeyW`, `Space`), `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy` (the mouse's movement this tick, CSS px), `wheel.x`, `wheel.y` (notches of 100 CSS px), `pad.a` to `pad.home` (GamepadButton's names, any pad), `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY` (a stick), `pad.dpad`, `touch` (a touch held) and `touch.xy` (a touch stick). A one-axis control takes `+` or `-` for its half (`pad.leftX+`: 0 to 1, a direction as a button).
+ * Every y is up-positive in actions (W, the stick pushed up, the mouse moved up, the wheel scrolled up, a touch dragged up: +1), whatever the raw og.Gamepad says. A binding with neither a control nor parts is an unbound slot.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface InputBinding {
+  /**
+   * The control; empty for a composite or an unbound slot.
+   *
+   * @default ""
+   */
+  readonly control?: string;
+  /**
+   * An axis composite's control for -1 (`KeyA`).
+   *
+   * @default ""
+   */
+  readonly negative?: string;
+  /**
+   * An axis composite's control for +1 (`KeyD`).
+   *
+   * @default ""
+   */
+  readonly positive?: string;
+  /**
+   * A two-axis composite's control for y = 1 (`KeyW`).
+   *
+   * @default ""
+   */
+  readonly up?: string;
+  /**
+   * A two-axis composite's control for y = -1.
+   *
+   * @default ""
+   */
+  readonly down?: string;
+  /**
+   * A two-axis composite's control for x = -1.
+   *
+   * @default ""
+   */
+  readonly left?: string;
+  /**
+   * A two-axis composite's control for x = 1.
+   *
+   * @default ""
+   */
+  readonly right?: string;
+  /**
+   * Multiplies the value: the binding's sensitivity (a mouse look's 0.1, a stick's 2); negative inverts it.
+   *
+   * @default 1
+   */
+  readonly scale?: number;
+  /**
+   * A two-axis value's y is turned over (inverted look).
+   *
+   * @default false
+   */
+  readonly invertY?: boolean;
+  /**
+   * A pad axis's dead zone for this binding, over the pad's (og.input.setDeadzones) when above 0: values inside it read 0 and the rest is rescaled to reach 1.
+   *
+   * @default 0
+   * @range 0..0.95
+   */
+  readonly deadzone?: number;
+  /**
+   * `touch`, `touch.xy`: where a touch must start to count (empty: anywhere).
+   *
+   * @default {}
+   */
+  readonly zone?: TouchZone;
+  /**
+   * `touch.xy`: how far a touch drags for a full deflection (0: 64).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly radius?: number;
+}
+
+/**
+ * A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. Actions are read once per tick, before the game's systems, from og.Input, og.Pointers and og.Gamepad, so they replay with them; the player rebinds them (og.input.rebind, og.input.startCapture) and a settings screen lists them (og.input.actions).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ActionDesc {
+  /**
+   * Its name.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Button, one axis or two.
+   *
+   * @default "button"
+   */
+  readonly kind?: ActionKind;
+  /**
+   * Its context (og.input.setContexts): `gameplay`, `menu`, `vehicle`, or the game's own.
+   *
+   * @default "gameplay"
+   */
+  readonly context?: string;
+  /**
+   * What a settings screen and prompts call it (empty: its name).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * The default bindings, in slot order: the player's rebinding replaces a slot, reset brings these back.
+   *
+   * @default []
+   */
+  readonly bindings?: readonly InputBinding[];
+  /**
+   * Where an analog value presses it (a button; and an axis's down).
+   *
+   * @default 0.5
+   * @range 0.01..1
+   */
+  readonly threshold?: number;
+  /**
+   * A dead zone on its combined value (radial for two axes), after each binding's own.
+   *
+   * @default 0
+   * @range 0..0.95
+   */
+  readonly deadzone?: number;
+  /**
+   * How long it is down before `held` (0: never), counted in ticks.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly holdMs?: number;
+  /**
+   * The player cannot rebind it (pause, a debug key).
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * A button whose press turns it on and the next press off (a hold's alternative, XAG 107); the player may change it (og.input.setToggle).
+   *
+   * @default false
+   */
+  readonly toggle?: boolean;
+}
+
+/** An action this tick. */
+export interface ActionState {
+  /** Its binding is past the threshold (or its toggle is on). */
+  readonly down: boolean;
+  /** It went down this tick (a press and a release between two ticks set both edges). */
+  readonly pressed: boolean;
+  /** It went up this tick. */
+  readonly released: boolean;
+  /** Down for its holdMs. */
+  readonly held: boolean;
+  /**
+   * A button's strength (0 to 1: a trigger's travel), an axis's value, a two-axis value's length.
+   */
+  readonly value: number;
+  /** A two-axis action's value (x right, y up); value and 0 for the others. */
+  readonly vector: Vector2;
+  /** The device whose binding drove it last. */
+  readonly device: InputDevice;
+}
+
+/** An action as a controls screen lists it. */
+export interface ActionInfo {
+  /** Its name. */
+  readonly name: string;
+  /** Its kind. */
+  readonly kind: ActionKind;
+  /** Its context. */
+  readonly context: string;
+  /** Its label (its name when it has none). */
+  readonly label: string;
+  /** Its bindings now: the player's, else the defaults. */
+  readonly bindings: readonly InputBinding[];
+  /** Its default bindings. */
+  readonly defaults: readonly InputBinding[];
+  /** The player cannot rebind it. */
+  readonly locked: boolean;
+  /** It toggles (the player's choice, else its desc's). */
+  readonly toggle: boolean;
+  /** The player changed its bindings. */
+  readonly rebound: boolean;
+}
+
+/**
+ * Another binding a rebinding would share a control with: an action of the same context (or another slot of the same action).
+ */
+export interface BindingConflict {
+  /** The other action. */
+  readonly action: string;
+  /** Its binding's slot. */
+  readonly slot: number;
+  /** The shared control, as the new binding names it. */
+  readonly control: string;
+  /** The context they share. */
+  readonly context: string;
+}
+
+/**
+ * What a rebinding does with a control another action holds.
+ * - `"refuse"`: Change nothing and answer the conflicts (a controls screen asks the player).
+ * - `"swap"`: The other action takes what this slot had.
+ * - `"replace"`: The other action loses the control (its slot is left unbound).
+ * - `"allow"`: Bind it anyway: both actions read it.
+ */
+export type ConflictPolicy = "refuse" | "swap" | "replace" | "allow";
+
+/**
+ * A player's rebinding of one slot of an action.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RebindDesc {
+  /**
+   * The action.
+   *
+   * @default ""
+   */
+  readonly action?: string;
+  /**
+   * Which binding: 0 the first; one past the last adds one.
+   *
+   * @default 0
+   */
+  readonly slot?: number;
+  /**
+   * A composite's part to change (`up`, `down`, `left`, `right`, `negative`, `positive`); empty sets the whole binding.
+   *
+   * @default ""
+   */
+  readonly part?: string;
+  /**
+   * The new binding; for a part, its control is the part's.
+   *
+   * @default {}
+   */
+  readonly binding?: InputBinding;
+  /**
+   * What to do with a control another action holds.
+   *
+   * @default "refuse"
+   */
+  readonly policy?: ConflictPolicy;
+}
+
+/** What a rebinding did. */
+export interface RebindAnswer {
+  /** The binding changed (false: refused over conflicts). */
+  readonly applied: boolean;
+  /** The bindings it shared a control with. */
+  readonly conflicts: readonly BindingConflict[];
+}
+
+/**
+ * Which devices a capture takes.
+ * - `"any"`: Keyboard, mouse and pads.
+ * - `"keyboardMouse"`: Keyboard and mouse.
+ * - `"gamepad"`: Pads.
+ */
+export type CaptureAccept = "any" | "keyboardMouse" | "gamepad";
+
+/**
+ * A capture of the player's next input for a slot of an action: a controls screen's "press a key". From the next tick every action reads nothing until it ends; what was pressed for it moves no action until it is let go.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CaptureDesc {
+  /**
+   * The action.
+   *
+   * @default ""
+   */
+  readonly action?: string;
+  /**
+   * Which binding: 0 the first; one past the last adds one.
+   *
+   * @default 0
+   */
+  readonly slot?: number;
+  /**
+   * A composite's part (`up` of WASD); empty: the whole binding (a two-axis action then takes a stick or the d-pad).
+   *
+   * @default ""
+   */
+  readonly part?: string;
+  /**
+   * The devices it takes.
+   *
+   * @default "any"
+   */
+  readonly accept?: CaptureAccept;
+  /**
+   * Controls that cancel it (empty: `Escape` and `pad.back`).
+   *
+   * @default []
+   */
+  readonly cancel?: readonly string[];
+  /**
+   * It cancels itself after this long (0: never), counted in ticks.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly timeoutMs?: number;
+}
+
+/** Where a capture is: waiting, done with the control it took, or cancelled. */
+export interface CaptureState {
+  /** It waits for input. */
+  readonly active: boolean;
+  /** It took a control: apply it with og.input.applyCapture (or show the conflicts first). */
+  readonly done: boolean;
+  /** The player cancelled it, or it timed out. */
+  readonly cancelled: boolean;
+  /** The action. */
+  readonly action: string;
+  /** The slot. */
+  readonly slot: number;
+  /** The part. */
+  readonly part: string;
+  /** The control it took. */
+  readonly control: string;
+  /** The slot's binding with that control in it. */
+  readonly binding: InputBinding;
+  /** What applying it would share a control with. */
+  readonly conflicts: readonly BindingConflict[];
+}
+
+/** A control's glyph, for prompts and a controls screen. */
+export interface InputGlyph {
+  /**
+   * The icon a style's set draws: `key.space`, `mouse.left`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `xbox.stickL`, `key.wasd`, `touch.stick`.
+   */
+  readonly icon: string;
+  /** The text that names it: `Space`, `LMB`, `A`, `×`, `L Stick`, `W A S D`. */
+  readonly text: string;
+  /** The device it is drawn for. */
+  readonly device: InputDevice;
+  /** The control it names (a composite's: its parts', space-separated). */
+  readonly control: string;
+}
+
+/**
+ * A pad's dead zones: what its sticks and triggers read as rest. The player's to set (a settings slider); og.input.saveBindings keeps them.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DeadzoneDesc {
+  /**
+   * The pad, 0 to 7; -1 every pad.
+   *
+   * @default -1
+   * @range -1..7
+   */
+  readonly pad?: number;
+  /**
+   * The sticks' (radial for a stick's two axes).
+   *
+   * @default 0.15
+   * @range 0..0.95
+   */
+  readonly stick?: number;
+  /**
+   * The triggers'.
+   *
+   * @default 0.05
+   * @range 0..0.95
+   */
+  readonly trigger?: number;
+}
+
+/**
+ * A rumble of a pad's motors: output for the host, never world state (a replay does not repeat it).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RumbleDesc {
+  /**
+   * The pad, 0 to 7; -1 every connected pad.
+   *
+   * @default -1
+   * @range -1..7
+   */
+  readonly pad?: number;
+  /**
+   * The heavy (low-frequency) motor.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly low?: number;
+  /**
+   * The light (high-frequency) motor.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly high?: number;
+  /**
+   * How long; 0 stops the pad's rumble.
+   *
+   * @default 200
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly ms?: number;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /**
  * A gamepad button in the W3C standard mapping, in its index order (a is button 0).
@@ -2016,9 +2529,9 @@ export interface PointerLockReport {
  */
 export interface GamepadInput {
   /**
-   * Which pad, 0 to 3; omitted is 0.
+   * Which pad, 0 to 7; omitted is 0.
    *
-   * @range ..3
+   * @range ..7
    */
   readonly pad?: number;
   /** Whether the pad is connected (omitted is true); a disconnected pad holds nothing. */
@@ -2029,6 +2542,10 @@ export interface GamepadInput {
   readonly axes?: readonly number[];
   /** The left and right analog triggers, 0 to 1. Missing values are 0. */
   readonly triggers?: readonly number[];
+  /**
+   * The pad's family as the host tells it from the pad's id (xbox, playstation, switch, or gamepad for a pad it cannot place); omitted keeps what was said. Glyphs follow it.
+   */
+  readonly device?: InputDevice;
 }
 
 /** A wheel or trackpad scroll at a point. */
@@ -2470,8 +2987,8 @@ export interface PointerLock {
 }
 
 /**
- * The first four gamepads in the W3C standard mapping, at the start of this tick (og-input's og.Gamepad). On the web the shell polls the pads each display frame and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys.
- * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods.
+ * Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout: on the web the shell polls the pads each display frame, maps a pad the browser does not map (Firefox, Linux, many third-party pads) through its table, and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys.
+ * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice).
  *
  * The `Gamepad` resource (token `og.Gamepad`).
  */
@@ -2482,6 +2999,12 @@ export interface Gamepad {
    * @readonly written by the engine
    */
   readonly connectedMask: number;
+  /**
+   * Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 when the host did not say.
+   *
+   * @readonly written by the engine
+   */
+  readonly devices: number;
   /**
    * Held buttons of pad 0.
    *
@@ -2507,6 +3030,30 @@ export interface Gamepad {
    */
   readonly buttons3: number;
   /**
+   * Held buttons of pad 4.
+   *
+   * @readonly written by the engine
+   */
+  readonly buttons4: number;
+  /**
+   * Held buttons of pad 5.
+   *
+   * @readonly written by the engine
+   */
+  readonly buttons5: number;
+  /**
+   * Held buttons of pad 6.
+   *
+   * @readonly written by the engine
+   */
+  readonly buttons6: number;
+  /**
+   * Held buttons of pad 7.
+   *
+   * @readonly written by the engine
+   */
+  readonly buttons7: number;
+  /**
    * Buttons of pad 0 that went down this tick.
    *
    * @readonly written by the engine
@@ -2530,6 +3077,30 @@ export interface Gamepad {
    * @readonly written by the engine
    */
   readonly pressed3: number;
+  /**
+   * Buttons of pad 4 that went down this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly pressed4: number;
+  /**
+   * Buttons of pad 5 that went down this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly pressed5: number;
+  /**
+   * Buttons of pad 6 that went down this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly pressed6: number;
+  /**
+   * Buttons of pad 7 that went down this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly pressed7: number;
   /**
    * Buttons of pad 0 that went up this tick.
    *
@@ -2555,6 +3126,30 @@ export interface Gamepad {
    */
   readonly released3: number;
   /**
+   * Buttons of pad 4 that went up this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly released4: number;
+  /**
+   * Buttons of pad 5 that went up this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly released5: number;
+  /**
+   * Buttons of pad 6 that went up this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly released6: number;
+  /**
+   * Buttons of pad 7 that went up this tick.
+   *
+   * @readonly written by the engine
+   */
+  readonly released7: number;
+  /**
    * The left stick of pad 0, -1 to 1, y down.
    *
    * @readonly written by the engine
@@ -2578,6 +3173,30 @@ export interface Gamepad {
    * @readonly written by the engine
    */
   readonly leftStick3: Vector2;
+  /**
+   * The left stick of pad 4, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly leftStick4: Vector2;
+  /**
+   * The left stick of pad 5, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly leftStick5: Vector2;
+  /**
+   * The left stick of pad 6, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly leftStick6: Vector2;
+  /**
+   * The left stick of pad 7, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly leftStick7: Vector2;
   /**
    * The right stick of pad 0, -1 to 1, y down.
    *
@@ -2603,6 +3222,30 @@ export interface Gamepad {
    */
   readonly rightStick3: Vector2;
   /**
+   * The right stick of pad 4, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly rightStick4: Vector2;
+  /**
+   * The right stick of pad 5, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly rightStick5: Vector2;
+  /**
+   * The right stick of pad 6, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly rightStick6: Vector2;
+  /**
+   * The right stick of pad 7, -1 to 1, y down.
+   *
+   * @readonly written by the engine
+   */
+  readonly rightStick7: Vector2;
+  /**
    * The left (x) and right (y) triggers of pad 0, 0 to 1.
    *
    * @readonly written by the engine
@@ -2627,37 +3270,61 @@ export interface Gamepad {
    */
   readonly triggers3: Vector2;
   /**
+   * The left (x) and right (y) triggers of pad 4, 0 to 1.
+   *
+   * @readonly written by the engine
+   */
+  readonly triggers4: Vector2;
+  /**
+   * The left (x) and right (y) triggers of pad 5, 0 to 1.
+   *
+   * @readonly written by the engine
+   */
+  readonly triggers5: Vector2;
+  /**
+   * The left (x) and right (y) triggers of pad 6, 0 to 1.
+   *
+   * @readonly written by the engine
+   */
+  readonly triggers6: Vector2;
+  /**
+   * The left (x) and right (y) triggers of pad 7, 0 to 1.
+   *
+   * @readonly written by the engine
+   */
+  readonly triggers7: Vector2;
+  /**
    * Whether a pad is connected.
    *
-   * @param pad The pad, 0 to 3; omitted is 0.
+   * @param pad The pad, 0 to 7; omitted is 0.
    */
   connected(pad?: number): boolean;
   /**
    * Whether a button is held.
    *
    * @param button The button.
-   * @param pad The pad, 0 to 3; omitted is 0.
+   * @param pad The pad, 0 to 7; omitted is 0.
    */
   down(button: GamepadButton, pad?: number): boolean;
   /**
    * Whether a button went down this tick.
    *
    * @param button The button.
-   * @param pad The pad, 0 to 3; omitted is 0.
+   * @param pad The pad, 0 to 7; omitted is 0.
    */
   pressed(button: GamepadButton, pad?: number): boolean;
   /**
    * Whether a button went up this tick.
    *
    * @param button The button.
-   * @param pad The pad, 0 to 3; omitted is 0.
+   * @param pad The pad, 0 to 7; omitted is 0.
    */
   released(button: GamepadButton, pad?: number): boolean;
   /**
-   * An analog input: a stick's x or y (-1 to 1, y down) or a trigger (0 to 1). Dead zones are the game's.
+   * An analog input, raw: a stick's x or y (-1 to 1, y down) or a trigger (0 to 1). Actions read sticks past their dead zones and y up (og.input.defineAction).
    *
    * @param axis Which input.
-   * @param pad The pad, 0 to 3; omitted is 0.
+   * @param pad The pad, 0 to 7; omitted is 0.
    */
   axis(axis: GamepadAxis, pad?: number): number;
 }
@@ -24289,6 +24956,10 @@ export interface UiActionDesc {
   readonly toggle: boolean;
   /** What it says when no document gives it a hint. */
   readonly label: string;
+  /**
+   * A gameplay action (og.input.defineAction) it follows instead of keys and buttons: it is down when that action is, and its glyph is that action's binding on the device used last, so the player's rebinding moves the prompt too. Empty: keys and buttons.
+   */
+  readonly action?: string;
 }
 
 /**
@@ -26588,7 +27259,7 @@ export interface TimelineInfo {
 // ── net ─────────────────────────────────────────────────────────
 // Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it.
 // Inputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone.
-// Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input).
+// Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the gameplay actions of og.input, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input or og.input's actions).
 
 /**
  * Lockstep's settings and this peer's place. The game sets enabled, players, inputDelay and hashEvery (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.
@@ -27263,10 +27934,10 @@ export declare namespace og {
    */
   const PointerLock: ResourceType<{ readonly wanted: FieldSpec<"bool">; readonly locked: FieldSpec<"bool"> }, PointerLock>;
   /**
-   * The first four gamepads in the W3C standard mapping, at the start of this tick (og-input's og.Gamepad). On the web the shell polls the pads each display frame and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys.
-   * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods.
+   * Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout: on the web the shell polls the pads each display frame, maps a pad the browser does not map (Firefox, Linux, many third-party pads) through its table, and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys.
+   * Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice).
    */
-  const Gamepad: ResourceType<{ readonly connectedMask: FieldSpec<"u32">; readonly buttons0: FieldSpec<"u32">; readonly buttons1: FieldSpec<"u32">; readonly buttons2: FieldSpec<"u32">; readonly buttons3: FieldSpec<"u32">; readonly pressed0: FieldSpec<"u32">; readonly pressed1: FieldSpec<"u32">; readonly pressed2: FieldSpec<"u32">; readonly pressed3: FieldSpec<"u32">; readonly released0: FieldSpec<"u32">; readonly released1: FieldSpec<"u32">; readonly released2: FieldSpec<"u32">; readonly released3: FieldSpec<"u32">; readonly leftStick0: FieldSpec<"Vector2">; readonly leftStick1: FieldSpec<"Vector2">; readonly leftStick2: FieldSpec<"Vector2">; readonly leftStick3: FieldSpec<"Vector2">; readonly rightStick0: FieldSpec<"Vector2">; readonly rightStick1: FieldSpec<"Vector2">; readonly rightStick2: FieldSpec<"Vector2">; readonly rightStick3: FieldSpec<"Vector2">; readonly triggers0: FieldSpec<"Vector2">; readonly triggers1: FieldSpec<"Vector2">; readonly triggers2: FieldSpec<"Vector2">; readonly triggers3: FieldSpec<"Vector2"> }, Gamepad>;
+  const Gamepad: ResourceType<{ readonly connectedMask: FieldSpec<"u32">; readonly devices: FieldSpec<"u32">; readonly buttons0: FieldSpec<"u32">; readonly buttons1: FieldSpec<"u32">; readonly buttons2: FieldSpec<"u32">; readonly buttons3: FieldSpec<"u32">; readonly buttons4: FieldSpec<"u32">; readonly buttons5: FieldSpec<"u32">; readonly buttons6: FieldSpec<"u32">; readonly buttons7: FieldSpec<"u32">; readonly pressed0: FieldSpec<"u32">; readonly pressed1: FieldSpec<"u32">; readonly pressed2: FieldSpec<"u32">; readonly pressed3: FieldSpec<"u32">; readonly pressed4: FieldSpec<"u32">; readonly pressed5: FieldSpec<"u32">; readonly pressed6: FieldSpec<"u32">; readonly pressed7: FieldSpec<"u32">; readonly released0: FieldSpec<"u32">; readonly released1: FieldSpec<"u32">; readonly released2: FieldSpec<"u32">; readonly released3: FieldSpec<"u32">; readonly released4: FieldSpec<"u32">; readonly released5: FieldSpec<"u32">; readonly released6: FieldSpec<"u32">; readonly released7: FieldSpec<"u32">; readonly leftStick0: FieldSpec<"Vector2">; readonly leftStick1: FieldSpec<"Vector2">; readonly leftStick2: FieldSpec<"Vector2">; readonly leftStick3: FieldSpec<"Vector2">; readonly leftStick4: FieldSpec<"Vector2">; readonly leftStick5: FieldSpec<"Vector2">; readonly leftStick6: FieldSpec<"Vector2">; readonly leftStick7: FieldSpec<"Vector2">; readonly rightStick0: FieldSpec<"Vector2">; readonly rightStick1: FieldSpec<"Vector2">; readonly rightStick2: FieldSpec<"Vector2">; readonly rightStick3: FieldSpec<"Vector2">; readonly rightStick4: FieldSpec<"Vector2">; readonly rightStick5: FieldSpec<"Vector2">; readonly rightStick6: FieldSpec<"Vector2">; readonly rightStick7: FieldSpec<"Vector2">; readonly triggers0: FieldSpec<"Vector2">; readonly triggers1: FieldSpec<"Vector2">; readonly triggers2: FieldSpec<"Vector2">; readonly triggers3: FieldSpec<"Vector2">; readonly triggers4: FieldSpec<"Vector2">; readonly triggers5: FieldSpec<"Vector2">; readonly triggers6: FieldSpec<"Vector2">; readonly triggers7: FieldSpec<"Vector2"> }, Gamepad>;
   /**
    * A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems.
    */
@@ -27289,6 +27960,214 @@ export declare namespace og {
    * A screen reader's request on a UI control (an engine extension): the web shell sends it from its mirror of og.ui.a11y(); the UI takes it at the start of the next frame. A path longer than 255 bytes is refused.
    */
   const A11yAction: EventType<A11yAction>;
+  /**
+   * Input as the game sees it: the Input resource for polling, events for edges.
+   * The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path.
+   * Several pointers at once (multi-touch) are og.Pointers; up to eight gamepads, mapped to the W3C standard layout, are og.Gamepad. Both are world state, as og.Input is, so they replay.
+   * Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in contexts, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is.
+   * Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.
+   */
+  namespace input {
+    /**
+     * Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it.
+     *
+     * @param world The world.
+     * @param desc The action.
+     * @returns Refused, naming the fix, for a binding whose control names none or that does not fit the kind (a stick on a button, a key alone on a two-axis action).
+     */
+    function defineAction(world: World, desc?: ActionDesc): Result<void>;
+    /**
+     * Every action, in definition order, with its bindings now and its defaults: what a controls screen lists.
+     *
+     * @param world The world.
+     */
+    function actions(world: World): readonly ActionInfo[];
+    /**
+     * An action this tick: down, the edges, held, its value and vector, and the device that drove it. Null for an unknown action.
+     *
+     * @param world The world.
+     * @param name The action.
+     */
+    function action(world: World, name: string): ActionState | null;
+    /**
+     * Whether an action is down this tick (false for an unknown one).
+     *
+     * @param world The world.
+     * @param name The action.
+     */
+    function actionDown(world: World, name: string): boolean;
+    /**
+     * Whether an action went down this tick.
+     *
+     * @param world The world.
+     * @param name The action.
+     */
+    function actionPressed(world: World, name: string): boolean;
+    /**
+     * Whether an action went up this tick.
+     *
+     * @param world The world.
+     * @param name The action.
+     */
+    function actionReleased(world: World, name: string): boolean;
+    /**
+     * Whether an action has been down for its holdMs.
+     *
+     * @param world The world.
+     * @param name The action.
+     */
+    function actionHeld(world: World, name: string): boolean;
+    /**
+     * An action's value: a button's strength (0 to 1), an axis's value, a two-axis value's length. 0 for an unknown action.
+     *
+     * @param world The world.
+     * @param name The action.
+     */
+    function actionValue(world: World, name: string): number;
+    /**
+     * A two-axis action's value (x right, y up; each -1 to 1 but the mouse's movement); (value, 0) for the others.
+     *
+     * @param world The world.
+     * @param name The action.
+     */
+    function actionVector(world: World, name: string): Vector2;
+    /**
+     * The contexts whose actions are live, first the one whose bindings win a control another context also binds (`["vehicle", "gameplay"]`: E exits the car, not interacts). Empty (the default) is every context, none winning. Takes effect from the next tick's actions.
+     *
+     * @param world The world.
+     * @param contexts The live contexts, by priority.
+     */
+    function setContexts(world: World, contexts: readonly string[]): void;
+    /**
+     * The live contexts as og.input.setContexts set them (empty: every context).
+     *
+     * @param world The world.
+     */
+    function contexts(world: World): readonly string[];
+    /**
+     * Rebind one slot of an action (or one part of a composite) for the player. With policy refuse (the default) a binding that shares a control with another action of its context changes nothing and answers the conflicts; swap, replace and allow resolve them. The player's bindings stay until reset and are what og.input.saveBindings writes.
+     *
+     * @param world The world.
+     * @param desc The action, slot, part, binding and policy.
+     * @returns Refused for an unknown or locked action, a slot past one after the last, a part the kind has not, or a binding that does not fit.
+     */
+    function rebind(world: World, desc?: RebindDesc): Result<RebindAnswer>;
+    /**
+     * What a rebinding would share a control with, changing nothing.
+     *
+     * @param world The world.
+     * @param desc The rebinding.
+     */
+    function conflicts(world: World, desc?: RebindDesc): Result<readonly BindingConflict[]>;
+    /**
+     * Back to the defaults: one action's bindings and toggle, or (no action) every action's, and the pads' dead zones.
+     *
+     * @param world The world.
+     * @param action The action; omitted is every action.
+     */
+    function resetBindings(world: World, action?: string): Result<void>;
+    /**
+     * The player's choice for a button action: a press turns it on and the next off (true), or it is down while held (false).
+     *
+     * @param world The world.
+     * @param action The action.
+     * @param on Toggle.
+     */
+    function setToggle(world: World, action: string, on: boolean): Result<void>;
+    /**
+     * The player's settings as text to keep (og.platform.saveSettings, a save): every rebound action's bindings, the toggles and the dead zones that differ from the defaults.
+     *
+     * @param world The world.
+     */
+    function saveBindings(world: World): string;
+    /**
+     * Take what og.input.saveBindings wrote, in place of the player's settings now. Bindings for an action not defined yet are kept until it is (load at start, before or after defining).
+     *
+     * @param world The world.
+     * @param text The saved text.
+     * @returns A warning for each entry it could not take (that action keeps its defaults); refused for text that is not saved bindings.
+     */
+    function loadBindings(world: World, text: string): Result<readonly string[]>;
+    /**
+     * Start capturing the player's next input for a slot of an action (a controls screen's "press a key"): read og.input.capture each tick until it is done or cancelled, then og.input.applyCapture.
+     *
+     * @param world The world.
+     * @param desc The action, slot, part and the devices it takes.
+     * @returns Refused for an unknown or locked action, a slot or part a rebinding would refuse, or a cancel control that names none.
+     */
+    function startCapture(world: World, desc?: CaptureDesc): Result<void>;
+    /**
+     * Where the capture is: active while it waits, done with the control it took, its binding and the conflicts applying it would meet, or cancelled.
+     *
+     * @param world The world.
+     */
+    function capture(world: World): CaptureState;
+    /**
+     * Stop a capture without taking anything.
+     *
+     * @param world The world.
+     */
+    function cancelCapture(world: World): void;
+    /**
+     * Apply what the capture took: og.input.rebind with its slot and binding.
+     *
+     * @param world The world.
+     * @param policy What to do with a conflict; omitted is refuse.
+     * @returns Refused when no capture is done.
+     */
+    function applyCapture(world: World, policy?: ConflictPolicy): Result<RebindAnswer>;
+    /**
+     * An action's prompt glyph: its first binding on the device (the device used last when omitted); a composite's in one (`W A S D`, `key.wasd`). Null for an unknown action or one with no binding on that device.
+     *
+     * @param world The world.
+     * @param action The action.
+     * @param device The device; omitted is the one used last.
+     */
+    function glyph(world: World, action: string, device?: InputDevice): InputGlyph | null;
+    /**
+     * An action's first binding on the device, one glyph per control (a composite's parts in prompt order: up, left, down, right; negative, positive). Empty for an unknown action or one with no binding there.
+     *
+     * @param world The world.
+     * @param action The action.
+     * @param device The device; omitted is the one used last.
+     */
+    function glyphs(world: World, action: string, device?: InputDevice): readonly InputGlyph[];
+    /**
+     * A control's glyph (what a capture took, before it is applied). Null for a name that names no control.
+     *
+     * @param control The control.
+     * @param device The device it is drawn for (a pad's family); omitted is xbox for a pad control.
+     */
+    function controlGlyph(control: string, device?: InputDevice): InputGlyph | null;
+    /**
+     * The device the player used last: a key or the mouse, a pad (its family as the host told it, else xbox), or a touch. Prompts follow it live.
+     *
+     * @param world The world.
+     */
+    function device(world: World): InputDevice;
+    /**
+     * A pad's family as the host told it from the pad's id (Xbox, PlayStation, Switch or a generic pad). Null for a pad that is not connected or that the host did not name.
+     *
+     * @param world The world.
+     * @param pad The pad, 0 to 7.
+     */
+    function padDevice(world: World, pad: number): InputDevice | null;
+    /**
+     * A pad's dead zones (or every pad's): the player's setting, kept by og.input.saveBindings.
+     *
+     * @param world The world.
+     * @param desc The pad and its dead zones.
+     */
+    function setDeadzones(world: World, desc?: DeadzoneDesc): Result<void>;
+    /**
+     * Rumble a pad (or every connected pad): the web shell plays it on the pad's vibration actuator. Output only: it never feeds back into the simulation, and a native run records it in the frame answer's `rumble`.
+     *
+     * @param world The world.
+     * @param desc The pad, the motors and how long.
+     * @returns Refused for a pad outside -1 to 7 or a value that is not finite.
+     */
+    function rumble(world: World, desc?: RumbleDesc): Result<void>;
+  }
   /**
    * The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation.
    */
@@ -30588,7 +31467,7 @@ export declare namespace og {
   /**
    * Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it.
    * Inputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone.
-   * Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input).
+   * Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the gameplay actions of og.input, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input or og.input's actions).
    */
   namespace net {
     /**

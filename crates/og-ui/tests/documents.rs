@@ -459,6 +459,7 @@ fn a_hold_has_a_toggle_and_glyphs_follow_the_device() {
         trigger: ActionTrigger::Hold(500.0),
         toggle: true,
         label: "Sprint".into(),
+        action: String::new(),
     });
     let held = |pressed: bool| InputFrame {
         keys_held: vec!["ShiftLeft"],
@@ -511,4 +512,57 @@ fn the_readme_lists_the_schema() {
         readme.contains(&og_ui::doc::schema::markdown()),
         "the README's prop table differs from og_ui::doc::schema::markdown(): paste it in"
     );
+}
+
+#[test]
+fn a_ui_action_follows_a_gameplay_action_and_its_rebinding() {
+    let mut ui = ui();
+    ui.define_action(ActionDesc {
+        name: "inventory".into(),
+        label: "Inventory".into(),
+        action: "openBag".into(),
+        ..ActionDesc::default()
+    });
+    let feed = |bindings: &[&str], pressed: bool| {
+        vec![og_input::ActionFeed {
+            name: "openBag".into(),
+            state: og_input::ActionState {
+                down: pressed,
+                pressed,
+                ..Default::default()
+            },
+            bindings: bindings
+                .iter()
+                .map(|b| og_input::Binding::control(b))
+                .collect(),
+        }]
+    };
+    // Its own keys and buttons are not read: Tab alone does not fire it.
+    tick(
+        &mut ui,
+        InputFrame {
+            keys_held: vec!["Tab"],
+            keys_pressed: vec!["Tab"],
+            ..InputFrame::default()
+        }
+        .with_actions(feed(&["KeyI", "pad.y"], false)),
+    );
+    assert!(!ui.action("inventory"));
+    tick(
+        &mut ui,
+        InputFrame::default().with_actions(feed(&["KeyI", "pad.y"], true)),
+    );
+    assert!(
+        ui.action("inventory"),
+        "the gameplay action's press fires it"
+    );
+    assert_eq!(ui.glyph("inventory").unwrap().text, "I");
+    // The player rebinds the gameplay action: the prompt follows.
+    tick(
+        &mut ui,
+        InputFrame::default().with_actions(feed(&["KeyB", "pad.y"], false)),
+    );
+    assert_eq!(ui.glyph("inventory").unwrap().text, "B");
+    ui.set_device(Device::PlayStation);
+    assert_eq!(ui.glyph("inventory").unwrap().icon, "ps.triangle");
 }

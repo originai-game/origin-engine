@@ -441,6 +441,174 @@ pub fn og_rng_fork(env: Env, world: u32, label: String) -> u32 {
     <Host as RngApi>::og_rng_fork(&Host, world, label)
 }
 
+#[napi(js_name = "og_input_define_action")]
+pub fn og_input_define_action(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_define_action(&Host, world, desc)
+}
+
+#[napi(js_name = "og_input_actions")]
+pub fn og_input_actions(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_actions(&Host, world)
+}
+
+#[napi(js_name = "og_input_action")]
+pub fn og_input_action(env: Env, world: u32, name: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_action(&Host, world, name)
+}
+
+#[napi(js_name = "og_input_action_down")]
+pub fn og_input_action_down(env: Env, world: u32, name: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_action_down(&Host, world, name)
+}
+
+#[napi(js_name = "og_input_action_pressed")]
+pub fn og_input_action_pressed(env: Env, world: u32, name: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_action_pressed(&Host, world, name)
+}
+
+#[napi(js_name = "og_input_action_released")]
+pub fn og_input_action_released(env: Env, world: u32, name: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_action_released(&Host, world, name)
+}
+
+#[napi(js_name = "og_input_action_held")]
+pub fn og_input_action_held(env: Env, world: u32, name: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_action_held(&Host, world, name)
+}
+
+#[napi(js_name = "og_input_action_value")]
+pub fn og_input_action_value(env: Env, world: u32, name: String) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_action_value(&Host, world, name)
+}
+
+#[napi(js_name = "og_input_action_vector")]
+pub fn og_input_action_vector(env: Env, world: u32, name: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_action_vector(&Host, world, name)
+}
+
+#[napi(js_name = "og_input_set_contexts")]
+pub fn og_input_set_contexts(env: Env, world: u32, contexts: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_set_contexts(&Host, world, contexts)
+}
+
+#[napi(js_name = "og_input_contexts")]
+pub fn og_input_contexts(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_contexts(&Host, world)
+}
+
+#[napi(js_name = "og_input_rebind")]
+pub fn og_input_rebind(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_rebind(&Host, world, desc)
+}
+
+#[napi(js_name = "og_input_conflicts")]
+pub fn og_input_conflicts(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_conflicts(&Host, world, desc)
+}
+
+#[napi(js_name = "og_input_reset_bindings")]
+pub fn og_input_reset_bindings(env: Env, world: u32, action: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_reset_bindings(&Host, world, action)
+}
+
+#[napi(js_name = "og_input_set_toggle")]
+pub fn og_input_set_toggle(env: Env, world: u32, action: String, on: bool) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_set_toggle(&Host, world, action, on)
+}
+
+#[napi(js_name = "og_input_save_bindings")]
+pub fn og_input_save_bindings(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_save_bindings(&Host, world)
+}
+
+#[napi(js_name = "og_input_load_bindings")]
+pub fn og_input_load_bindings(env: Env, world: u32, text: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_load_bindings(&Host, world, text)
+}
+
+#[napi(js_name = "og_input_start_capture")]
+pub fn og_input_start_capture(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_start_capture(&Host, world, desc)
+}
+
+#[napi(js_name = "og_input_capture")]
+pub fn og_input_capture(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_capture(&Host, world)
+}
+
+#[napi(js_name = "og_input_cancel_capture")]
+pub fn og_input_cancel_capture(env: Env, world: u32) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_cancel_capture(&Host, world)
+}
+
+#[napi(js_name = "og_input_apply_capture")]
+pub fn og_input_apply_capture(env: Env, world: u32, policy: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_apply_capture(&Host, world, policy)
+}
+
+#[napi(js_name = "og_input_glyph")]
+pub fn og_input_glyph(env: Env, world: u32, action: String, device: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_glyph(&Host, world, action, device)
+}
+
+#[napi(js_name = "og_input_glyphs")]
+pub fn og_input_glyphs(env: Env, world: u32, action: String, device: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_glyphs(&Host, world, action, device)
+}
+
+#[napi(js_name = "og_input_control_glyph")]
+pub fn og_input_control_glyph(env: Env, control: String, device: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_control_glyph(&Host, control, device)
+}
+
+#[napi(js_name = "og_input_device")]
+pub fn og_input_device(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_device(&Host, world)
+}
+
+#[napi(js_name = "og_input_pad_device")]
+pub fn og_input_pad_device(env: Env, world: u32, pad: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_pad_device(&Host, world, pad)
+}
+
+#[napi(js_name = "og_input_set_deadzones")]
+pub fn og_input_set_deadzones(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_set_deadzones(&Host, world, desc)
+}
+
+#[napi(js_name = "og_input_rumble")]
+pub fn og_input_rumble(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_rumble(&Host, world, desc)
+}
+
 #[napi(js_name = "og_input_down")]
 pub fn og_input_down(env: Env, world: u32, key: String) -> bool {
     let _env = crate::EnvScope::enter(&env);

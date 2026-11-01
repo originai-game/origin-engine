@@ -1,5 +1,5 @@
 {
-  "write": 524,
+  "write": 525,
   "read": 506,
   "slots": 256,
   "bytes": 16392,
@@ -80,7 +80,27 @@
       "triggers": [
         0,
         0.75
-      ]
+      ],
+      "device": "playstation"
+    },
+    {
+      "kind": "gamepad",
+      "pad": 7,
+      "connected": true,
+      "buttons": [
+        "b"
+      ],
+      "axes": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "triggers": [
+        0,
+        0
+      ],
+      "device": "switch"
     },
     {
       "kind": "gamepad",

@@ -3,6 +3,7 @@
 //! per file (docs/ci.md §Test binaries). nextest still runs every test
 //! in a process of its own. A new test file is a `mod` line here.
 
+mod actions;
 mod edges;
 mod mouselook;
 mod pads;

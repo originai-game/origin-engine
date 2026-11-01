@@ -165,7 +165,7 @@ fn every_member_answers_as_protocol_5_says() {
     assert_eq!(t.ok("input", json!({"event": up})), json!(true));
     for refused in [
         // An unknown kind (gamepad is an engine extension now; its pad 9 is
-        // past the four pads and refused by the input layer).
+        // past the eight pads and refused by the input layer).
         json!({"kind": "joystick"}),
         json!({"kind": "gamepad", "pad": 9}),
         json!({"kind": "key", "key": "NotAKey", "action": "down"}),

@@ -280,7 +280,7 @@ impl Probe {
                             .ok()
                             .filter(|p| (*p as usize) < og_input::MAX_GAMEPADS)
                             .ok_or_else(|| {
-                                format!("'@{pad}' is not a pad (0 to 3); write `{usage}`")
+                                format!("'@{pad}' is not a pad (0 to 7); write `{usage}`")
                             })?,
                     ),
                     None => (arg(0, usage)?, 0),

@@ -408,6 +408,7 @@ pub fn og_ui_define_action(world: u32, desc: String) -> String {
         trigger,
         toggle: d["toggle"].as_bool().unwrap_or(false),
         label: d["label"].as_str().unwrap_or_default().to_string(),
+        action: d["action"].as_str().unwrap_or_default().to_string(),
     };
     match on_ui(world, |ui| ui.define_action(desc)) {
         Ok(()) => ok_void(),

@@ -2050,7 +2050,7 @@
             },
             {
               "name": "restore",
-              "doc": "Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.",
+              "doc": "Replace the world with a save that world.snapshot wrote: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the player's action bindings and dead zones (og.input), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources.",
               "params": [
                 {
                   "name": "save",
@@ -2597,10 +2597,27 @@
     },
     {
       "name": "input",
-      "doc": "Input as the game sees it: the Input resource for polling, events for edges.\nThe shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path.\nSeveral pointers at once (multi-touch) are og.Pointers; the first four gamepads, in the W3C standard mapping, are og.Gamepad. Both are world state, as og.Input is, so they replay.\nMouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.",
+      "doc": "Input as the game sees it: the Input resource for polling, events for edges.\nThe shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path.\nSeveral pointers at once (multi-touch) are og.Pointers; up to eight gamepads, mapped to the W3C standard layout, are og.Gamepad. Both are world state, as og.Input is, so they replay.\nGameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in contexts, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is.\nMouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.",
       "place": "namespace",
       "publish": true,
       "types": [
+        "InputDevice",
+        "ActionKind",
+        "TouchZone",
+        "InputBinding",
+        "ActionDesc",
+        "ActionState",
+        "ActionInfo",
+        "BindingConflict",
+        "ConflictPolicy",
+        "RebindDesc",
+        "RebindAnswer",
+        "CaptureAccept",
+        "CaptureDesc",
+        "CaptureState",
+        "InputGlyph",
+        "DeadzoneDesc",
+        "RumbleDesc",
         "GamepadButton",
         "GamepadAxis",
         "KeyAction",
@@ -2639,11 +2656,560 @@
         {
           "name": "MAX_GAMEPADS",
           "type": "u32",
-          "value": 4,
-          "doc": "The most gamepads og.Gamepad reads: pads 0 to 3."
+          "value": 8,
+          "doc": "The most gamepads og.Gamepad reads: pads 0 to 7."
         }
       ],
-      "functions": [],
+      "functions": [
+        {
+          "name": "defineAction",
+          "doc": "Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "ActionDesc",
+              "optional": true,
+              "doc": "The action."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused, naming the fix, for a binding whose control names none or that does not fit the kind (a stick on a button, a key alone on a two-axis action).",
+          "publish": true
+        },
+        {
+          "name": "actions",
+          "doc": "Every action, in definition order, with its bindings now and its defaults: what a controls screen lists.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "List<ActionInfo>",
+          "publish": true
+        },
+        {
+          "name": "action",
+          "doc": "An action this tick: down, the edges, held, its value and vector, and the device that drove it. Null for an unknown action.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            }
+          ],
+          "returns": "Option<ActionState>",
+          "publish": true
+        },
+        {
+          "name": "actionDown",
+          "doc": "Whether an action is down this tick (false for an unknown one).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            }
+          ],
+          "returns": "bool",
+          "publish": true
+        },
+        {
+          "name": "actionPressed",
+          "doc": "Whether an action went down this tick.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            }
+          ],
+          "returns": "bool",
+          "publish": true
+        },
+        {
+          "name": "actionReleased",
+          "doc": "Whether an action went up this tick.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            }
+          ],
+          "returns": "bool",
+          "publish": true
+        },
+        {
+          "name": "actionHeld",
+          "doc": "Whether an action has been down for its holdMs.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            }
+          ],
+          "returns": "bool",
+          "publish": true
+        },
+        {
+          "name": "actionValue",
+          "doc": "An action's value: a button's strength (0 to 1), an axis's value, a two-axis value's length. 0 for an unknown action.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            }
+          ],
+          "returns": "f32",
+          "publish": true
+        },
+        {
+          "name": "actionVector",
+          "doc": "A two-axis action's value (x right, y up; each -1 to 1 but the mouse's movement); (value, 0) for the others.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            }
+          ],
+          "returns": "Vector2",
+          "publish": true
+        },
+        {
+          "name": "setContexts",
+          "doc": "The contexts whose actions are live, first the one whose bindings win a control another context also binds (`[\"vehicle\", \"gameplay\"]`: E exits the car, not interacts). Empty (the default) is every context, none winning. Takes effect from the next tick's actions.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "contexts",
+              "type": "List<String>",
+              "optional": false,
+              "doc": "The live contexts, by priority."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "contexts",
+          "doc": "The live contexts as og.input.setContexts set them (empty: every context).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "List<String>",
+          "publish": true
+        },
+        {
+          "name": "rebind",
+          "doc": "Rebind one slot of an action (or one part of a composite) for the player. With policy refuse (the default) a binding that shares a control with another action of its context changes nothing and answers the conflicts; swap, replace and allow resolve them. The player's bindings stay until reset and are what og.input.saveBindings writes.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "RebindDesc",
+              "optional": true,
+              "doc": "The action, slot, part, binding and policy."
+            }
+          ],
+          "returns": "Result<RebindAnswer>",
+          "returnsDoc": "Refused for an unknown or locked action, a slot past one after the last, a part the kind has not, or a binding that does not fit.",
+          "publish": true
+        },
+        {
+          "name": "conflicts",
+          "doc": "What a rebinding would share a control with, changing nothing.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "RebindDesc",
+              "optional": true,
+              "doc": "The rebinding."
+            }
+          ],
+          "returns": "Result<List<BindingConflict>>",
+          "publish": true
+        },
+        {
+          "name": "resetBindings",
+          "doc": "Back to the defaults: one action's bindings and toggle, or (no action) every action's, and the pads' dead zones.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "action",
+              "type": "String",
+              "optional": true,
+              "doc": "The action; omitted is every action."
+            }
+          ],
+          "returns": "Result<Void>",
+          "publish": true
+        },
+        {
+          "name": "setToggle",
+          "doc": "The player's choice for a button action: a press turns it on and the next off (true), or it is down while held (false).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "action",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            },
+            {
+              "name": "on",
+              "type": "bool",
+              "optional": false,
+              "doc": "Toggle."
+            }
+          ],
+          "returns": "Result<Void>",
+          "publish": true
+        },
+        {
+          "name": "saveBindings",
+          "doc": "The player's settings as text to keep (og.platform.saveSettings, a save): every rebound action's bindings, the toggles and the dead zones that differ from the defaults.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "String",
+          "publish": true
+        },
+        {
+          "name": "loadBindings",
+          "doc": "Take what og.input.saveBindings wrote, in place of the player's settings now. Bindings for an action not defined yet are kept until it is (load at start, before or after defining).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "text",
+              "type": "String",
+              "optional": false,
+              "doc": "The saved text."
+            }
+          ],
+          "returns": "Result<List<String>>",
+          "returnsDoc": "A warning for each entry it could not take (that action keeps its defaults); refused for text that is not saved bindings.",
+          "publish": true
+        },
+        {
+          "name": "startCapture",
+          "doc": "Start capturing the player's next input for a slot of an action (a controls screen's \"press a key\"): read og.input.capture each tick until it is done or cancelled, then og.input.applyCapture.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "CaptureDesc",
+              "optional": true,
+              "doc": "The action, slot, part and the devices it takes."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an unknown or locked action, a slot or part a rebinding would refuse, or a cancel control that names none.",
+          "publish": true
+        },
+        {
+          "name": "capture",
+          "doc": "Where the capture is: active while it waits, done with the control it took, its binding and the conflicts applying it would meet, or cancelled.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "CaptureState",
+          "publish": true
+        },
+        {
+          "name": "cancelCapture",
+          "doc": "Stop a capture without taking anything.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "applyCapture",
+          "doc": "Apply what the capture took: og.input.rebind with its slot and binding.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "policy",
+              "type": "ConflictPolicy",
+              "optional": true,
+              "doc": "What to do with a conflict; omitted is refuse."
+            }
+          ],
+          "returns": "Result<RebindAnswer>",
+          "returnsDoc": "Refused when no capture is done.",
+          "publish": true
+        },
+        {
+          "name": "glyph",
+          "doc": "An action's prompt glyph: its first binding on the device (the device used last when omitted); a composite's in one (`W A S D`, `key.wasd`). Null for an unknown action or one with no binding on that device.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "action",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            },
+            {
+              "name": "device",
+              "type": "InputDevice",
+              "optional": true,
+              "doc": "The device; omitted is the one used last."
+            }
+          ],
+          "returns": "Option<InputGlyph>",
+          "publish": true
+        },
+        {
+          "name": "glyphs",
+          "doc": "An action's first binding on the device, one glyph per control (a composite's parts in prompt order: up, left, down, right; negative, positive). Empty for an unknown action or one with no binding there.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "action",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            },
+            {
+              "name": "device",
+              "type": "InputDevice",
+              "optional": true,
+              "doc": "The device; omitted is the one used last."
+            }
+          ],
+          "returns": "List<InputGlyph>",
+          "publish": true
+        },
+        {
+          "name": "controlGlyph",
+          "doc": "A control's glyph (what a capture took, before it is applied). Null for a name that names no control.",
+          "params": [
+            {
+              "name": "control",
+              "type": "String",
+              "optional": false,
+              "doc": "The control."
+            },
+            {
+              "name": "device",
+              "type": "InputDevice",
+              "optional": true,
+              "doc": "The device it is drawn for (a pad's family); omitted is xbox for a pad control."
+            }
+          ],
+          "returns": "Option<InputGlyph>",
+          "publish": true
+        },
+        {
+          "name": "device",
+          "doc": "The device the player used last: a key or the mouse, a pad (its family as the host told it, else xbox), or a touch. Prompts follow it live.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "InputDevice",
+          "publish": true
+        },
+        {
+          "name": "padDevice",
+          "doc": "A pad's family as the host told it from the pad's id (Xbox, PlayStation, Switch or a generic pad). Null for a pad that is not connected or that the host did not name.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "pad",
+              "type": "u32",
+              "optional": false,
+              "doc": "The pad, 0 to 7."
+            }
+          ],
+          "returns": "Option<InputDevice>",
+          "publish": true
+        },
+        {
+          "name": "setDeadzones",
+          "doc": "A pad's dead zones (or every pad's): the player's setting, kept by og.input.saveBindings.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "DeadzoneDesc",
+              "optional": true,
+              "doc": "The pad and its dead zones."
+            }
+          ],
+          "returns": "Result<Void>",
+          "publish": true
+        },
+        {
+          "name": "rumble",
+          "doc": "Rumble a pad (or every connected pad): the web shell plays it on the pad's vibration actuator. Output only: it never feeds back into the simulation, and a native run records it in the frame answer's `rumble`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "RumbleDesc",
+              "optional": true,
+              "doc": "The pad, the motors and how long."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a pad outside -1 to 7 or a value that is not finite.",
+          "publish": true
+        }
+      ],
       "interfaces": [],
       "callbacks": []
     },
@@ -12592,7 +13158,7 @@
     },
     {
       "name": "net",
-      "doc": "Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it.\nInputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone.\nEvery tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input).",
+      "doc": "Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it.\nInputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone.\nEvery tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the gameplay actions of og.input, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input or og.input's actions).",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -13467,6 +14033,672 @@
       },
       "additionalProperties": false
     },
+    "InputDevice": {
+      "x-og-kind": "enum",
+      "x-og-module": "input",
+      "description": "A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is. og.ui's UiDevice has the same values.",
+      "type": "string",
+      "enum": [
+        "keyboardMouse",
+        "xbox",
+        "playstation",
+        "switch",
+        "gamepad",
+        "touch"
+      ],
+      "x-og-variants": {
+        "keyboardMouse": "Keyboard and mouse.",
+        "xbox": "An Xbox pad (and the family a pad whose kind the host could not tell is drawn as).",
+        "playstation": "A PlayStation pad.",
+        "switch": "A Nintendo Switch pad (its south button is B).",
+        "gamepad": "A generic pad: glyphs name positions (South, East).",
+        "touch": "A touch screen."
+      }
+    },
+    "ActionKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "input",
+      "description": "What an action gives.",
+      "type": "string",
+      "enum": [
+        "button",
+        "axis",
+        "axis2"
+      ],
+      "x-og-variants": {
+        "button": "On or off: down, pressed, released, held. An analog control (a trigger, a half axis) presses it at ActionDesc.threshold and lets go under three quarters of it.",
+        "axis": "One value, -1 to 1: A and D, a stick's x, a trigger (0 to 1), the wheel, the mouse's x movement (CSS px).",
+        "axis2": "Two values, x right and y up: WASD, a stick, the d-pad, a touch stick, the mouse's movement."
+      }
+    },
+    "TouchZone": {
+      "x-og-kind": "desc",
+      "x-og-module": "input",
+      "description": "Where on the play surface a touch binding's touches must start, in fractions of it from the top left; a zone of no size is all of it.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Its left edge.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "y": {
+          "type": "number",
+          "description": "Its top edge.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "width": {
+          "type": "number",
+          "description": "Its width (0: the whole surface).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "height": {
+          "type": "number",
+          "description": "Its height (0: the whole surface).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        }
+      },
+      "additionalProperties": false
+    },
+    "InputBinding": {
+      "x-og-kind": "desc",
+      "x-og-module": "input",
+      "description": "One binding of an action: a control, or a composite of parts (A and D as one axis, WASD as two). Controls are named by strings: a key code (`KeyW`, `Space`), `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy` (the mouse's movement this tick, CSS px), `wheel.x`, `wheel.y` (notches of 100 CSS px), `pad.a` to `pad.home` (GamepadButton's names, any pad), `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY` (a stick), `pad.dpad`, `touch` (a touch held) and `touch.xy` (a touch stick). A one-axis control takes `+` or `-` for its half (`pad.leftX+`: 0 to 1, a direction as a button).\nEvery y is up-positive in actions (W, the stick pushed up, the mouse moved up, the wheel scrolled up, a touch dragged up: +1), whatever the raw og.Gamepad says. A binding with neither a control nor parts is an unbound slot.",
+      "type": "object",
+      "properties": {
+        "control": {
+          "type": "string",
+          "description": "The control; empty for a composite or an unbound slot.",
+          "default": ""
+        },
+        "negative": {
+          "type": "string",
+          "description": "An axis composite's control for -1 (`KeyA`).",
+          "default": ""
+        },
+        "positive": {
+          "type": "string",
+          "description": "An axis composite's control for +1 (`KeyD`).",
+          "default": ""
+        },
+        "up": {
+          "type": "string",
+          "description": "A two-axis composite's control for y = 1 (`KeyW`).",
+          "default": ""
+        },
+        "down": {
+          "type": "string",
+          "description": "A two-axis composite's control for y = -1.",
+          "default": ""
+        },
+        "left": {
+          "type": "string",
+          "description": "A two-axis composite's control for x = -1.",
+          "default": ""
+        },
+        "right": {
+          "type": "string",
+          "description": "A two-axis composite's control for x = 1.",
+          "default": ""
+        },
+        "scale": {
+          "type": "number",
+          "description": "Multiplies the value: the binding's sensitivity (a mouse look's 0.1, a stick's 2); negative inverts it.",
+          "default": 1
+        },
+        "invertY": {
+          "type": "boolean",
+          "description": "A two-axis value's y is turned over (inverted look).",
+          "default": false
+        },
+        "deadzone": {
+          "type": "number",
+          "description": "A pad axis's dead zone for this binding, over the pad's (og.input.setDeadzones) when above 0: values inside it read 0 and the rest is rescaled to reach 1.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 0.95
+        },
+        "zone": {
+          "$ref": "#/$defs/TouchZone",
+          "description": "`touch`, `touch.xy`: where a touch must start to count (empty: anywhere).",
+          "default": {}
+        },
+        "radius": {
+          "type": "number",
+          "description": "`touch.xy`: how far a touch drags for a full deflection (0: 64).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ActionDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "input",
+      "description": "A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. Actions are read once per tick, before the game's systems, from og.Input, og.Pointers and og.Gamepad, so they replay with them; the player rebinds them (og.input.rebind, og.input.startCapture) and a settings screen lists them (og.input.actions).",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Its name.",
+          "default": ""
+        },
+        "kind": {
+          "$ref": "#/$defs/ActionKind",
+          "description": "Button, one axis or two.",
+          "default": "button"
+        },
+        "context": {
+          "type": "string",
+          "description": "Its context (og.input.setContexts): `gameplay`, `menu`, `vehicle`, or the game's own.",
+          "default": "gameplay"
+        },
+        "label": {
+          "type": "string",
+          "description": "What a settings screen and prompts call it (empty: its name).",
+          "default": ""
+        },
+        "bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InputBinding"
+          },
+          "description": "The default bindings, in slot order: the player's rebinding replaces a slot, reset brings these back.",
+          "default": []
+        },
+        "threshold": {
+          "type": "number",
+          "description": "Where an analog value presses it (a button; and an axis's down).",
+          "default": 0.5,
+          "minimum": 0.01,
+          "maximum": 1
+        },
+        "deadzone": {
+          "type": "number",
+          "description": "A dead zone on its combined value (radial for two axes), after each binding's own.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 0.95
+        },
+        "holdMs": {
+          "type": "number",
+          "description": "How long it is down before `held` (0: never), counted in ticks.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "The player cannot rebind it (pause, a debug key).",
+          "default": false
+        },
+        "toggle": {
+          "type": "boolean",
+          "description": "A button whose press turns it on and the next press off (a hold's alternative, XAG 107); the player may change it (og.input.setToggle).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ActionState": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "An action this tick.",
+      "type": "object",
+      "properties": {
+        "down": {
+          "type": "boolean",
+          "description": "Its binding is past the threshold (or its toggle is on)."
+        },
+        "pressed": {
+          "type": "boolean",
+          "description": "It went down this tick (a press and a release between two ticks set both edges)."
+        },
+        "released": {
+          "type": "boolean",
+          "description": "It went up this tick."
+        },
+        "held": {
+          "type": "boolean",
+          "description": "Down for its holdMs."
+        },
+        "value": {
+          "type": "number",
+          "description": "A button's strength (0 to 1: a trigger's travel), an axis's value, a two-axis value's length."
+        },
+        "vector": {
+          "$ref": "#/$defs/Vector2",
+          "description": "A two-axis action's value (x right, y up); value and 0 for the others."
+        },
+        "device": {
+          "$ref": "#/$defs/InputDevice",
+          "description": "The device whose binding drove it last."
+        }
+      },
+      "required": [
+        "down",
+        "pressed",
+        "released",
+        "held",
+        "value",
+        "vector",
+        "device"
+      ],
+      "additionalProperties": false
+    },
+    "ActionInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "An action as a controls screen lists it.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Its name."
+        },
+        "kind": {
+          "$ref": "#/$defs/ActionKind",
+          "description": "Its kind."
+        },
+        "context": {
+          "type": "string",
+          "description": "Its context."
+        },
+        "label": {
+          "type": "string",
+          "description": "Its label (its name when it has none)."
+        },
+        "bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InputBinding"
+          },
+          "description": "Its bindings now: the player's, else the defaults."
+        },
+        "defaults": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InputBinding"
+          },
+          "description": "Its default bindings."
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "The player cannot rebind it."
+        },
+        "toggle": {
+          "type": "boolean",
+          "description": "It toggles (the player's choice, else its desc's)."
+        },
+        "rebound": {
+          "type": "boolean",
+          "description": "The player changed its bindings."
+        }
+      },
+      "required": [
+        "name",
+        "kind",
+        "context",
+        "label",
+        "bindings",
+        "defaults",
+        "locked",
+        "toggle",
+        "rebound"
+      ],
+      "additionalProperties": false
+    },
+    "BindingConflict": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "Another binding a rebinding would share a control with: an action of the same context (or another slot of the same action).",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "The other action."
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its binding's slot."
+        },
+        "control": {
+          "type": "string",
+          "description": "The shared control, as the new binding names it."
+        },
+        "context": {
+          "type": "string",
+          "description": "The context they share."
+        }
+      },
+      "required": [
+        "action",
+        "slot",
+        "control",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "ConflictPolicy": {
+      "x-og-kind": "enum",
+      "x-og-module": "input",
+      "description": "What a rebinding does with a control another action holds.",
+      "type": "string",
+      "enum": [
+        "refuse",
+        "swap",
+        "replace",
+        "allow"
+      ],
+      "x-og-variants": {
+        "refuse": "Change nothing and answer the conflicts (a controls screen asks the player).",
+        "swap": "The other action takes what this slot had.",
+        "replace": "The other action loses the control (its slot is left unbound).",
+        "allow": "Bind it anyway: both actions read it."
+      }
+    },
+    "RebindDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "input",
+      "description": "A player's rebinding of one slot of an action.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "The action.",
+          "default": ""
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Which binding: 0 the first; one past the last adds one.",
+          "default": 0
+        },
+        "part": {
+          "type": "string",
+          "description": "A composite's part to change (`up`, `down`, `left`, `right`, `negative`, `positive`); empty sets the whole binding.",
+          "default": ""
+        },
+        "binding": {
+          "$ref": "#/$defs/InputBinding",
+          "description": "The new binding; for a part, its control is the part's.",
+          "default": {}
+        },
+        "policy": {
+          "$ref": "#/$defs/ConflictPolicy",
+          "description": "What to do with a control another action holds.",
+          "default": "refuse"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RebindAnswer": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "What a rebinding did.",
+      "type": "object",
+      "properties": {
+        "applied": {
+          "type": "boolean",
+          "description": "The binding changed (false: refused over conflicts)."
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BindingConflict"
+          },
+          "description": "The bindings it shared a control with."
+        }
+      },
+      "required": [
+        "applied",
+        "conflicts"
+      ],
+      "additionalProperties": false
+    },
+    "CaptureAccept": {
+      "x-og-kind": "enum",
+      "x-og-module": "input",
+      "description": "Which devices a capture takes.",
+      "type": "string",
+      "enum": [
+        "any",
+        "keyboardMouse",
+        "gamepad"
+      ],
+      "x-og-variants": {
+        "any": "Keyboard, mouse and pads.",
+        "keyboardMouse": "Keyboard and mouse.",
+        "gamepad": "Pads."
+      }
+    },
+    "CaptureDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "input",
+      "description": "A capture of the player's next input for a slot of an action: a controls screen's \"press a key\". From the next tick every action reads nothing until it ends; what was pressed for it moves no action until it is let go.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "The action.",
+          "default": ""
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Which binding: 0 the first; one past the last adds one.",
+          "default": 0
+        },
+        "part": {
+          "type": "string",
+          "description": "A composite's part (`up` of WASD); empty: the whole binding (a two-axis action then takes a stick or the d-pad).",
+          "default": ""
+        },
+        "accept": {
+          "$ref": "#/$defs/CaptureAccept",
+          "description": "The devices it takes.",
+          "default": "any"
+        },
+        "cancel": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Controls that cancel it (empty: `Escape` and `pad.back`).",
+          "default": []
+        },
+        "timeoutMs": {
+          "type": "number",
+          "description": "It cancels itself after this long (0: never), counted in ticks.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CaptureState": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "Where a capture is: waiting, done with the control it took, or cancelled.",
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "boolean",
+          "description": "It waits for input."
+        },
+        "done": {
+          "type": "boolean",
+          "description": "It took a control: apply it with og.input.applyCapture (or show the conflicts first)."
+        },
+        "cancelled": {
+          "type": "boolean",
+          "description": "The player cancelled it, or it timed out."
+        },
+        "action": {
+          "type": "string",
+          "description": "The action."
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The slot."
+        },
+        "part": {
+          "type": "string",
+          "description": "The part."
+        },
+        "control": {
+          "type": "string",
+          "description": "The control it took."
+        },
+        "binding": {
+          "$ref": "#/$defs/InputBinding",
+          "description": "The slot's binding with that control in it."
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BindingConflict"
+          },
+          "description": "What applying it would share a control with."
+        }
+      },
+      "required": [
+        "active",
+        "done",
+        "cancelled",
+        "action",
+        "slot",
+        "part",
+        "control",
+        "binding",
+        "conflicts"
+      ],
+      "additionalProperties": false
+    },
+    "InputGlyph": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "A control's glyph, for prompts and a controls screen.",
+      "type": "object",
+      "properties": {
+        "icon": {
+          "type": "string",
+          "description": "The icon a style's set draws: `key.space`, `mouse.left`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `xbox.stickL`, `key.wasd`, `touch.stick`."
+        },
+        "text": {
+          "type": "string",
+          "description": "The text that names it: `Space`, `LMB`, `A`, `×`, `L Stick`, `W A S D`."
+        },
+        "device": {
+          "$ref": "#/$defs/InputDevice",
+          "description": "The device it is drawn for."
+        },
+        "control": {
+          "type": "string",
+          "description": "The control it names (a composite's: its parts', space-separated)."
+        }
+      },
+      "required": [
+        "icon",
+        "text",
+        "device",
+        "control"
+      ],
+      "additionalProperties": false
+    },
+    "DeadzoneDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "input",
+      "description": "A pad's dead zones: what its sticks and triggers read as rest. The player's to set (a settings slider); og.input.saveBindings keeps them.",
+      "type": "object",
+      "properties": {
+        "pad": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The pad, 0 to 7; -1 every pad.",
+          "default": -1,
+          "minimum": -1,
+          "maximum": 7
+        },
+        "stick": {
+          "type": "number",
+          "description": "The sticks' (radial for a stick's two axes).",
+          "default": 0.15,
+          "minimum": 0,
+          "maximum": 0.95
+        },
+        "trigger": {
+          "type": "number",
+          "description": "The triggers'.",
+          "default": 0.05,
+          "minimum": 0,
+          "maximum": 0.95
+        }
+      },
+      "additionalProperties": false
+    },
+    "RumbleDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "input",
+      "description": "A rumble of a pad's motors: output for the host, never world state (a replay does not repeat it).",
+      "type": "object",
+      "properties": {
+        "pad": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The pad, 0 to 7; -1 every connected pad.",
+          "default": -1,
+          "minimum": -1,
+          "maximum": 7
+        },
+        "low": {
+          "type": "number",
+          "description": "The heavy (low-frequency) motor.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "high": {
+          "type": "number",
+          "description": "The light (high-frequency) motor.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "ms": {
+          "type": "number",
+          "description": "How long; 0 stops the pad's rumble.",
+          "default": 200,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        }
+      },
+      "additionalProperties": false
+    },
     "GamepadButton": {
       "x-og-kind": "enum",
       "x-og-module": "input",
@@ -13729,8 +14961,8 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Which pad, 0 to 3; omitted is 0.",
-          "maximum": 3
+          "description": "Which pad, 0 to 7; omitted is 0.",
+          "maximum": 7
         },
         "connected": {
           "type": "boolean",
@@ -13756,6 +14988,10 @@
             "type": "number"
           },
           "description": "The left and right analog triggers, 0 to 1. Missing values are 0."
+        },
+        "device": {
+          "$ref": "#/$defs/InputDevice",
+          "description": "The pad's family as the host tells it from the pad's id (xbox, playstation, switch, or gamepad for a pad it cannot place); omitted keeps what was said. Glyphs follow it."
         }
       },
       "additionalProperties": false
@@ -14002,8 +15238,8 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 4294967295,
-              "description": "Which pad, 0 to 3; omitted is 0.",
-              "maximum": 3
+              "description": "Which pad, 0 to 7; omitted is 0.",
+              "maximum": 7
             },
             "connected": {
               "type": "boolean",
@@ -14029,6 +15265,10 @@
                 "type": "number"
               },
               "description": "The left and right analog triggers, 0 to 1. Missing values are 0."
+            },
+            "device": {
+              "$ref": "#/$defs/InputDevice",
+              "description": "The pad's family as the host tells it from the pad's id (xbox, playstation, switch, or gamepad for a pad it cannot place); omitted keeps what was said. Glyphs follow it."
             }
           },
           "required": [
@@ -14474,7 +15714,7 @@
     "Gamepad": {
       "x-og-kind": "resource",
       "x-og-module": "input",
-      "description": "The first four gamepads in the W3C standard mapping, at the start of this tick (og-input's og.Gamepad). On the web the shell polls the pads each display frame and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys.\nButton masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods.",
+      "description": "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout: on the web the shell polls the pads each display frame, maps a pad the browser does not map (Firefox, Linux, many third-party pads) through its table, and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys.\nButton masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice).",
       "type": "object",
       "properties": {
         "connectedMask": {
@@ -14482,6 +15722,14 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "Connected pads: bit `pad`.",
+          "default": 0,
+          "readOnly": true
+        },
+        "devices": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 when the host did not say.",
           "default": 0,
           "readOnly": true
         },
@@ -14517,6 +15765,38 @@
           "default": 0,
           "readOnly": true
         },
+        "buttons4": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Held buttons of pad 4.",
+          "default": 0,
+          "readOnly": true
+        },
+        "buttons5": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Held buttons of pad 5.",
+          "default": 0,
+          "readOnly": true
+        },
+        "buttons6": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Held buttons of pad 6.",
+          "default": 0,
+          "readOnly": true
+        },
+        "buttons7": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Held buttons of pad 7.",
+          "default": 0,
+          "readOnly": true
+        },
         "pressed0": {
           "type": "integer",
           "minimum": 0,
@@ -14546,6 +15826,38 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "Buttons of pad 3 that went down this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "pressed4": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 4 that went down this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "pressed5": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 5 that went down this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "pressed6": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 6 that went down this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "pressed7": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 7 that went down this tick.",
           "default": 0,
           "readOnly": true
         },
@@ -14581,6 +15893,38 @@
           "default": 0,
           "readOnly": true
         },
+        "released4": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 4 that went up this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "released5": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 5 that went up this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "released6": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 6 that went up this tick.",
+          "default": 0,
+          "readOnly": true
+        },
+        "released7": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Buttons of pad 7 that went up this tick.",
+          "default": 0,
+          "readOnly": true
+        },
         "leftStick0": {
           "$ref": "#/$defs/Vector2",
           "description": "The left stick of pad 0, -1 to 1, y down.",
@@ -14611,6 +15955,42 @@
         "leftStick3": {
           "$ref": "#/$defs/Vector2",
           "description": "The left stick of pad 3, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "leftStick4": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left stick of pad 4, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "leftStick5": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left stick of pad 5, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "leftStick6": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left stick of pad 6, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "leftStick7": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left stick of pad 7, -1 to 1, y down.",
           "default": {
             "x": 0,
             "y": 0
@@ -14653,6 +16033,42 @@
           },
           "readOnly": true
         },
+        "rightStick4": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The right stick of pad 4, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "rightStick5": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The right stick of pad 5, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "rightStick6": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The right stick of pad 6, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "rightStick7": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The right stick of pad 7, -1 to 1, y down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
         "triggers0": {
           "$ref": "#/$defs/Vector2",
           "description": "The left (x) and right (y) triggers of pad 0, 0 to 1.",
@@ -14683,6 +16099,42 @@
         "triggers3": {
           "$ref": "#/$defs/Vector2",
           "description": "The left (x) and right (y) triggers of pad 3, 0 to 1.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "triggers4": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left (x) and right (y) triggers of pad 4, 0 to 1.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "triggers5": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left (x) and right (y) triggers of pad 5, 0 to 1.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "triggers6": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left (x) and right (y) triggers of pad 6, 0 to 1.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "triggers7": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The left (x) and right (y) triggers of pad 7, 0 to 1.",
           "default": {
             "x": 0,
             "y": 0
@@ -42509,6 +43961,10 @@
         "label": {
           "type": "string",
           "description": "What it says when no document gives it a hint."
+        },
+        "action": {
+          "type": "string",
+          "description": "A gameplay action (og.input.defineAction) it follows instead of keys and buttons: it is down when that action is, and its glyph is that action's binding on the device used last, so the player's rebinding moves the prompt too. Empty: keys and buttons."
         }
       },
       "required": [

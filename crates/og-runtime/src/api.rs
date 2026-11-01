@@ -14,12 +14,14 @@ use og_core::{Rng, Time};
 use og_ecs::{Entity, QueryDesc, World};
 use serde_json::{Value, json};
 
+mod actions;
 mod commands;
 mod controls;
 mod loading;
 mod render;
 
 use super::{engine, environment, extract, feel, fx, look, modules, views};
+pub use actions::*;
 pub use commands::*;
 use controls::vec3;
 pub use controls::*;

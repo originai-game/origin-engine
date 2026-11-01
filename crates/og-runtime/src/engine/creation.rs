@@ -257,7 +257,7 @@ pub(crate) fn assemble(
     // The modules' systems before the game's (physics' collider recording,
     // the UI's begin), then the game's, then the modules' after them.
     let ui = super::modules::new_ui(game.tick, previous.as_ref().map(|p| p.0));
-    let physics = super::modules::mount_front(&mut world, engine_id, profile, &ui)?;
+    let (physics, actions) = super::modules::mount_front(&mut world, engine_id, profile, &ui)?;
     let record_names: Vec<String> = layouts.keys().cloned().collect();
     super::terrain::mount(&mut world, engine_id)?;
     super::e6::mount_front(&mut world, engine_id, profile, &physics, &record_names)?;
@@ -364,8 +364,14 @@ pub(crate) fn assemble(
     let feel_records = super::feel::Records::of(&world, &layouts)?;
     super::feel::install_middle(&mut world, engine_id, &feel, &feel_records)?;
     super::e6::mount_back(&mut world, engine_id, profile, &physics)?;
-    let mounted =
-        super::modules::mount_back(&mut world, engine_id, physics, ui, previous.map(|p| p.1))?;
+    let mounted = super::modules::mount_back(
+        &mut world,
+        engine_id,
+        physics,
+        ui,
+        previous.map(|p| p.1),
+        actions,
+    )?;
     super::feel::install_back(&mut world, &feel, &feel_records)?;
     let names_by_id = world.schemas().into_iter().map(|s| s.name).collect();
     Ok(Assembled {
@@ -477,6 +483,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         profile,
         physics: Some(a.mounted.physics.clone()),
         ui: Some(a.mounted.ui.clone()),
+        actions: Some(a.mounted.actions.clone()),
         physics_meshes: IdMap::new(),
         physics_heightfields: IdMap::new(),
         ui_warned: BTreeSet::new(),

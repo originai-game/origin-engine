@@ -28,7 +28,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 |---|---|---|---|
 | [`game`](game.md) | `og.*` | kept | The game entry: what the bundle's default export declares. |
 | [`transform`](transform.md) | `og.transform.*` | kept | Transforms in the three.js vocabulary: position, quaternion and scale, composed into matrixWorld down the parent chain. |
-| [`input`](input.md) | types and tokens | kept | Input as the game sees it: the Input resource for polling, events for edges. |
+| [`input`](input.md) | `og.input.*` | kept | Input as the game sees it: the Input resource for polling, events for edges. |
 | [`load`](load.md) | `og.load.*` | kept | Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/. |
 | [`stream`](stream.md) | `og.stream.*` | kept | Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] \| volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures, texture arrays, flipbooks (an `array true` sheet brings its array), sounds, environment maps, palettes, looks and colour LUTs (`.cube`) that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads. |
 
@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1454 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1499 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -167,6 +167,10 @@ Field units the docs and Tune use.
 | [`A11yTree`](ui.md#type-A11yTree) | struct | ui | — |
 | [`Ability`](ui.md#type-Ability) | desc struct | ui | — |
 | [`ActionButtonDesc`](ui.md#type-ActionButtonDesc) | desc struct | ui | — |
+| [`ActionDesc`](input.md#type-ActionDesc) | desc struct | input | — |
+| [`ActionInfo`](input.md#type-ActionInfo) | struct | input | — |
+| [`ActionKind`](input.md#type-ActionKind) | enum | input | — |
+| [`ActionState`](input.md#type-ActionState) | struct | input | — |
 | [`AdvanceOperation`](probe.md#type-AdvanceOperation) | struct | probe | — |
 | [`AI_FAILURE`](ai.md#const-AI_FAILURE) | constant | ai | — |
 | [`AI_RUNNING`](ai.md#const-AI_RUNNING) | constant | ai | — |
@@ -221,6 +225,7 @@ Field units the docs and Tune use.
 | [`Behaviour()`](ai.md#column-Behaviour) | column kind | ai | — |
 | [`BehaviourInfo`](ai.md#type-BehaviourInfo) | struct | ai | — |
 | [`BezierKey`](ui.md#type-BezierKey) | struct | ui | — |
+| [`BindingConflict`](input.md#type-BindingConflict) | struct | input | — |
 | [`BlendMode`](ui.md#type-BlendMode) | enum | ui | — |
 | [`BlendshapeSource`](anim.md#type-BlendshapeSource) | enum | anim | — |
 | [`BlendshapeSource()`](anim.md#column-BlendshapeSource) | column kind | anim | — |
@@ -260,6 +265,9 @@ Field units the docs and Tune use.
 | [`Camera.worldToScreen`](camera.md#member-Camera-worldToScreen) | method | camera | `og_camera_world_to_screen` |
 | [`CapsuleGeometryDesc`](render.md#type-CapsuleGeometryDesc) | desc struct | render | — |
 | [`Capture`](probe.md#type-Capture) | struct | probe | — |
+| [`CaptureAccept`](input.md#type-CaptureAccept) | enum | input | — |
+| [`CaptureDesc`](input.md#type-CaptureDesc) | desc struct | input | — |
+| [`CaptureState`](input.md#type-CaptureState) | struct | input | — |
 | [`CHARACTER_AIR_JUMPED`](physics.md#const-CHARACTER_AIR_JUMPED) | constant | physics | — |
 | [`CHARACTER_BUMPED`](physics.md#const-CHARACTER_BUMPED) | constant | physics | — |
 | [`CHARACTER_JUMPED`](physics.md#const-CHARACTER_JUMPED) | constant | physics | — |
@@ -295,6 +303,7 @@ Field units the docs and Tune use.
 | [`ConeGeometryDesc`](render.md#type-ConeGeometryDesc) | desc struct | render | — |
 | [`ConfirmDesc`](ui.md#type-ConfirmDesc) | desc struct | ui | — |
 | [`ConfirmResult`](ui.md#type-ConfirmResult) | struct | ui | — |
+| [`ConflictPolicy`](input.md#type-ConflictPolicy) | enum | input | — |
 | [`Contrast`](ui.md#type-Contrast) | enum | ui | — |
 | [`ControlSize`](ui.md#type-ControlSize) | enum | ui | — |
 | [`ControlSizes`](ui.md#type-ControlSizes) | struct | ui | — |
@@ -310,6 +319,7 @@ Field units the docs and Tune use.
 | [`CutsceneDesc`](ui.md#type-CutsceneDesc) | desc struct | ui | — |
 | [`CutsceneResult`](ui.md#type-CutsceneResult) | struct | ui | — |
 | [`CylinderGeometryDesc`](render.md#type-CylinderGeometryDesc) | desc struct | render | — |
+| [`DeadzoneDesc`](input.md#type-DeadzoneDesc) | desc struct | input | — |
 | [`DebugDrawDesc`](debug.md#type-DebugDrawDesc) | desc struct | debug | — |
 | [`DebugView`](render.md#type-DebugView) | enum | render | — |
 | [`Declutter`](ui.md#type-Declutter) | enum | ui | — |
@@ -471,7 +481,10 @@ Field units the docs and Tune use.
 | [`Input.down`](input.md#member-Input-down) | method | input | `og_input_down` |
 | [`Input.pressed`](input.md#member-Input-pressed) | method | input | `og_input_pressed` |
 | [`Input.released`](input.md#member-Input-released) | method | input | `og_input_released` |
+| [`InputBinding`](input.md#type-InputBinding) | desc struct | input | — |
 | [`InputDesc`](net.md#type-InputDesc) | desc struct | net | — |
+| [`InputDevice`](input.md#type-InputDevice) | enum | input | — |
+| [`InputGlyph`](input.md#type-InputGlyph) | struct | input | — |
 | [`InputOperation`](probe.md#type-InputOperation) | struct | probe | — |
 | [`Insets`](ui.md#type-Insets) | struct | ui | — |
 | [`InstantSpec`](ui.md#type-InstantSpec) | struct | ui | — |
@@ -685,6 +698,34 @@ Field units the docs and Tune use.
 | [`og.IkChain`](anim.md#record-IkChain) | component | anim | — |
 | [`og.IkTarget2D`](anim.md#record-IkTarget2D) | component | anim | — |
 | [`og.Input`](input.md#record-Input) | resource | input | — |
+| [`og.input.action`](input.md#fn-action) | function | input | `og_input_action` |
+| [`og.input.actionDown`](input.md#fn-actionDown) | function | input | `og_input_action_down` |
+| [`og.input.actionHeld`](input.md#fn-actionHeld) | function | input | `og_input_action_held` |
+| [`og.input.actionPressed`](input.md#fn-actionPressed) | function | input | `og_input_action_pressed` |
+| [`og.input.actionReleased`](input.md#fn-actionReleased) | function | input | `og_input_action_released` |
+| [`og.input.actions`](input.md#fn-actions) | function | input | `og_input_actions` |
+| [`og.input.actionValue`](input.md#fn-actionValue) | function | input | `og_input_action_value` |
+| [`og.input.actionVector`](input.md#fn-actionVector) | function | input | `og_input_action_vector` |
+| [`og.input.applyCapture`](input.md#fn-applyCapture) | function | input | `og_input_apply_capture` |
+| [`og.input.cancelCapture`](input.md#fn-cancelCapture) | function | input | `og_input_cancel_capture` |
+| [`og.input.capture`](input.md#fn-capture) | function | input | `og_input_capture` |
+| [`og.input.conflicts`](input.md#fn-conflicts) | function | input | `og_input_conflicts` |
+| [`og.input.contexts`](input.md#fn-contexts) | function | input | `og_input_contexts` |
+| [`og.input.controlGlyph`](input.md#fn-controlGlyph) | function | input | `og_input_control_glyph` |
+| [`og.input.defineAction`](input.md#fn-defineAction) | function | input | `og_input_define_action` |
+| [`og.input.device`](input.md#fn-device) | function | input | `og_input_device` |
+| [`og.input.glyph`](input.md#fn-glyph) | function | input | `og_input_glyph` |
+| [`og.input.glyphs`](input.md#fn-glyphs) | function | input | `og_input_glyphs` |
+| [`og.input.loadBindings`](input.md#fn-loadBindings) | function | input | `og_input_load_bindings` |
+| [`og.input.padDevice`](input.md#fn-padDevice) | function | input | `og_input_pad_device` |
+| [`og.input.rebind`](input.md#fn-rebind) | function | input | `og_input_rebind` |
+| [`og.input.resetBindings`](input.md#fn-resetBindings) | function | input | `og_input_reset_bindings` |
+| [`og.input.rumble`](input.md#fn-rumble) | function | input | `og_input_rumble` |
+| [`og.input.saveBindings`](input.md#fn-saveBindings) | function | input | `og_input_save_bindings` |
+| [`og.input.setContexts`](input.md#fn-setContexts) | function | input | `og_input_set_contexts` |
+| [`og.input.setDeadzones`](input.md#fn-setDeadzones) | function | input | `og_input_set_deadzones` |
+| [`og.input.setToggle`](input.md#fn-setToggle) | function | input | `og_input_set_toggle` |
+| [`og.input.startCapture`](input.md#fn-startCapture) | function | input | `og_input_start_capture` |
 | [`og.Joint`](physics.md#record-Joint) | component | physics | — |
 | [`og.JointLimit`](anim.md#record-JointLimit) | component | anim | — |
 | [`og.KeyDown`](input.md#record-KeyDown) | event | input | — |
@@ -1245,6 +1286,8 @@ Field units the docs and Tune use.
 | [`RayMath.intersectPlane`](math.md#member-RayMath-intersectPlane) | method | math | — |
 | [`RayMath.intersectSphere`](math.md#member-RayMath-intersectSphere) | method | math | — |
 | [`RayMath.intersectTriangle`](math.md#member-RayMath-intersectTriangle) | method | math | — |
+| [`RebindAnswer`](input.md#type-RebindAnswer) | struct | input | — |
+| [`RebindDesc`](input.md#type-RebindDesc) | desc struct | input | — |
 | [`ReducedMotion`](ui.md#type-ReducedMotion) | enum | ui | — |
 | [`ReflectionProbeMode`](render.md#type-ReflectionProbeMode) | enum | render | — |
 | [`ReflectionProbeMode()`](render.md#column-ReflectionProbeMode) | column kind | render | — |
@@ -1293,6 +1336,7 @@ Field units the docs and Tune use.
 | [`RoomPeer`](platform.md#type-RoomPeer) | struct | platform | — |
 | [`RootMotion`](anim.md#type-RootMotion) | enum | anim | — |
 | [`RootMotion()`](anim.md#column-RootMotion) | column kind | anim | — |
+| [`RumbleDesc`](input.md#type-RumbleDesc) | desc struct | input | — |
 | [`RuntimeProbe`](probe.md#type-RuntimeProbe) | interface | probe | — |
 | [`RuntimeProbe.accepted`](probe.md#member-RuntimeProbe-accepted) | method | probe | `og_runtime_probe_accepted` |
 | [`RuntimeProbe.advance`](probe.md#member-RuntimeProbe-advance) | method | probe | `og_runtime_probe_advance` |
@@ -1493,6 +1537,7 @@ Field units the docs and Tune use.
 | [`ToneMapping`](render.md#type-ToneMapping) | enum | render | — |
 | [`ToneMapping()`](render.md#column-ToneMapping) | column kind | render | — |
 | [`TorusGeometryDesc`](render.md#type-TorusGeometryDesc) | desc struct | render | — |
+| [`TouchZone`](input.md#type-TouchZone) | desc struct | input | — |
 | [`Track`](ui.md#type-Track) | union | ui | — |
 | [`TrackAuto`](ui.md#type-TrackAuto) | struct | ui | — |
 | [`TrackFr`](ui.md#type-TrackFr) | struct | ui | — |

@@ -124,6 +124,8 @@ pub(crate) struct Mounted {
     pub physics: PhysicsSystem,
     pub ui: SharedUi,
     pub audio: og_audio::AudioLink,
+    /// The world's gameplay actions (og-input's action map, og.input.*).
+    pub actions: og_input::SharedActions,
 }
 
 /// The modules' systems that run before the game's: physics' collider
@@ -133,7 +135,7 @@ pub(crate) fn mount_front(
     engine_id: u32,
     profile: u32,
     ui: &SharedUi,
-) -> Result<PhysicsSystem, String> {
+) -> Result<(PhysicsSystem, og_input::SharedActions), String> {
     let physics = PhysicsSystem::register(
         world,
         Physics {
@@ -150,6 +152,20 @@ pub(crate) fn mount_front(
     })));
     let (desc, run) = physics.query_system();
     world.add_system(desc, run).map_err(err)?;
+    // Gameplay actions, read from the tick's input before the UI and the
+    // game's systems (og-input's actions.rs); touch zones are fractions of
+    // the play surface the UI lays out in.
+    let actions: og_input::SharedActions = Default::default();
+    og_input::install(world, actions.clone(), move || {
+        let v = viewport_of(engine_id);
+        Some(og_input::Surface {
+            width: v.width,
+            height: v.height,
+            coarse: v.coarse_pointer,
+        })
+    })
+    .map_err(err)?;
+    let feed = actions.clone();
     let shared = ui.clone();
     world
         .add_system(
@@ -170,7 +186,8 @@ pub(crate) fn mount_front(
                     .unwrap_or_default()
                     .with(pad.as_ref(), pointers.as_ref())
                     .with_text(&typed)
-                    .with_a11y(&asked);
+                    .with_a11y(&asked)
+                    .with_actions(og_input::actions::lock(&feed).feed());
                 let viewport = viewport_of(engine_id);
                 shared.lock().begin(input, viewport);
                 BUILDING.with(|b| b.set(Some(engine_id)));
@@ -179,7 +196,7 @@ pub(crate) fn mount_front(
             },
         )
         .map_err(err)?;
-    Ok(physics)
+    Ok((physics, actions))
 }
 
 /// The modules' systems that run after the game's: the UI's end, the
@@ -190,6 +207,7 @@ pub(crate) fn mount_back(
     physics: PhysicsSystem,
     ui: SharedUi,
     link: Option<og_audio::AudioLink>,
+    actions: og_input::SharedActions,
 ) -> Result<Mounted, String> {
     let shared = ui.clone();
     let feed = ui_world::Feed::of(world);
@@ -275,7 +293,12 @@ pub(crate) fn mount_back(
             Box::new(ui_world::WorldState(ui.clone())),
         )
         .map_err(err)?;
-    Ok(Mounted { physics, ui, audio })
+    Ok(Mounted {
+        physics,
+        ui,
+        audio,
+        actions,
+    })
 }
 
 /// A tick that failed between begin and end leaves no frame open.

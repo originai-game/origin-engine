@@ -261,6 +261,90 @@ impl RngApi for NodeHost {
 }
 
 impl InputApi for NodeHost {
+    fn og_input_define_action(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_input_define_action(world, desc)
+    }
+    fn og_input_actions(&self, world: u32) -> String {
+        rt::og_input_actions(world)
+    }
+    fn og_input_action(&self, world: u32, name: String) -> String {
+        rt::og_input_action(world, name)
+    }
+    fn og_input_action_down(&self, world: u32, name: String) -> bool {
+        rt::og_input_action_down(world, name)
+    }
+    fn og_input_action_pressed(&self, world: u32, name: String) -> bool {
+        rt::og_input_action_pressed(world, name)
+    }
+    fn og_input_action_released(&self, world: u32, name: String) -> bool {
+        rt::og_input_action_released(world, name)
+    }
+    fn og_input_action_held(&self, world: u32, name: String) -> bool {
+        rt::og_input_action_held(world, name)
+    }
+    fn og_input_action_value(&self, world: u32, name: String) -> f64 {
+        rt::og_input_action_value(world, name)
+    }
+    fn og_input_action_vector(&self, world: u32, name: String) -> String {
+        rt::og_input_action_vector(world, name)
+    }
+    fn og_input_set_contexts(&self, world: u32, contexts: String) {
+        rt::og_input_set_contexts(world, contexts)
+    }
+    fn og_input_contexts(&self, world: u32) -> String {
+        rt::og_input_contexts(world)
+    }
+    fn og_input_rebind(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_input_rebind(world, desc)
+    }
+    fn og_input_conflicts(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_input_conflicts(world, desc)
+    }
+    fn og_input_reset_bindings(&self, world: u32, action: Option<String>) -> String {
+        rt::og_input_reset_bindings(world, action)
+    }
+    fn og_input_set_toggle(&self, world: u32, action: String, on: bool) -> String {
+        rt::og_input_set_toggle(world, action, on)
+    }
+    fn og_input_save_bindings(&self, world: u32) -> String {
+        rt::og_input_save_bindings(world)
+    }
+    fn og_input_load_bindings(&self, world: u32, text: String) -> String {
+        rt::og_input_load_bindings(world, text)
+    }
+    fn og_input_start_capture(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_input_start_capture(world, desc)
+    }
+    fn og_input_capture(&self, world: u32) -> String {
+        rt::og_input_capture(world)
+    }
+    fn og_input_cancel_capture(&self, world: u32) {
+        rt::og_input_cancel_capture(world)
+    }
+    fn og_input_apply_capture(&self, world: u32, policy: Option<String>) -> String {
+        rt::og_input_apply_capture(world, policy)
+    }
+    fn og_input_glyph(&self, world: u32, action: String, device: Option<String>) -> String {
+        rt::og_input_glyph(world, action, device)
+    }
+    fn og_input_glyphs(&self, world: u32, action: String, device: Option<String>) -> String {
+        rt::og_input_glyphs(world, action, device)
+    }
+    fn og_input_control_glyph(&self, control: String, device: Option<String>) -> String {
+        rt::og_input_control_glyph(control, device)
+    }
+    fn og_input_device(&self, world: u32) -> String {
+        rt::og_input_device(world)
+    }
+    fn og_input_pad_device(&self, world: u32, pad: u32) -> String {
+        rt::og_input_pad_device(world, pad)
+    }
+    fn og_input_set_deadzones(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_input_set_deadzones(world, desc)
+    }
+    fn og_input_rumble(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_input_rumble(world, desc)
+    }
     fn og_input_down(&self, world: u32, key: String) -> bool {
         rt::og_input_down(world, key)
     }

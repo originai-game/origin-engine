@@ -1270,6 +1270,8 @@ export class Engine {
     copy?: string;
     /** The haptic patterns the UI's feedback played since the last frame, at the player's strength: [startMs, ms, low, high] pulses (web/haptics.ts plays them). */
     haptics?: [number, number, number, number][][];
+    /** og.input.rumble's requests since the last frame: [pad (-1 every pad), low, high, ms] (web/gamepad.ts playRumble plays them). */
+    rumble?: [number, number, number, number][];
     /** The UI's accessibility tree, on the frames where it changed, when the engine was created with `a11y` (web/a11y.ts mirrors it). */
     a11y?: Api.A11yTree;
     /** og.PointerLock.wanted: the game asks for the pointer lock (the web shell requests it on the next press on the canvas, and exits it when false). */

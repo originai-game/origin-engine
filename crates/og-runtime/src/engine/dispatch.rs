@@ -153,6 +153,8 @@ pub(crate) struct State {
     /// The engine modules' handles: physics (meshes, queries) and the UI.
     pub physics: Option<og_physics::PhysicsSystem>,
     pub ui: Option<og_ui::SharedUi>,
+    /// The world's gameplay actions (og.input.defineAction and friends).
+    pub actions: Option<og_input::SharedActions>,
     /// Every mesh registered with physics, replayed into a reload's physics.
     pub physics_meshes: IdMap<u64, og_physics::MeshDesc>,
     /// Every terrain's height field registered with physics, likewise.

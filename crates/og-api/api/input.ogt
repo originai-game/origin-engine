@@ -2,11 +2,455 @@ module input {
   skill og-game
   doc "Input as the game sees it: the Input resource for polling, events for edges."
   doc "The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path."
-  doc "Several pointers at once (multi-touch) are og.Pointers; the first four gamepads, in the W3C standard mapping, are og.Gamepad. Both are world state, as og.Input is, so they replay."
+  doc "Several pointers at once (multi-touch) are og.Pointers; up to eight gamepads, mapped to the W3C standard layout, are og.Gamepad. Both are world state, as og.Input is, so they replay."
+  doc "Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in contexts, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is."
   doc "Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick."
 
   const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
-  const MAX_GAMEPADS u32 4 "The most gamepads og.Gamepad reads: pads 0 to 3."
+  const MAX_GAMEPADS u32 8 "The most gamepads og.Gamepad reads: pads 0 to 7."
+  # ── actions (docs/design.md §3; og-input's actions.rs) ──────────────────
+
+  enum InputDevice {
+    doc "A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is. og.ui's UiDevice has the same values."
+    variant keyboardMouse "Keyboard and mouse."
+    variant xbox "An Xbox pad (and the family a pad whose kind the host could not tell is drawn as)."
+    variant playstation "A PlayStation pad."
+    variant switch "A Nintendo Switch pad (its south button is B)."
+    variant gamepad "A generic pad: glyphs name positions (South, East)."
+    variant touch "A touch screen."
+  }
+
+  enum ActionKind {
+    doc "What an action gives."
+    variant button "On or off: down, pressed, released, held. An analog control (a trigger, a half axis) presses it at ActionDesc.threshold and lets go under three quarters of it."
+    variant axis "One value, -1 to 1: A and D, a stick's x, a trigger (0 to 1), the wheel, the mouse's x movement (CSS px)."
+    variant axis2 "Two values, x right and y up: WASD, a stick, the d-pad, a touch stick, the mouse's movement."
+  }
+
+  struct TouchZone {
+    doc "Where on the play surface a touch binding's touches must start, in fractions of it from the top left; a zone of no size is all of it."
+    desc true
+    field x f32 "Its left edge." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field y f32 "Its top edge." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field width f32 "Its width (0: the whole surface)." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field height f32 "Its height (0: the whole surface)." {
+      min 0
+      max 1
+      unit ratio
+    }
+  }
+
+  struct InputBinding {
+    doc "One binding of an action: a control, or a composite of parts (A and D as one axis, WASD as two). Controls are named by strings: a key code (`KeyW`, `Space`), `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy` (the mouse's movement this tick, CSS px), `wheel.x`, `wheel.y` (notches of 100 CSS px), `pad.a` to `pad.home` (GamepadButton's names, any pad), `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY` (a stick), `pad.dpad`, `touch` (a touch held) and `touch.xy` (a touch stick). A one-axis control takes `+` or `-` for its half (`pad.leftX+`: 0 to 1, a direction as a button)."
+    doc "Every y is up-positive in actions (W, the stick pushed up, the mouse moved up, the wheel scrolled up, a touch dragged up: +1), whatever the raw og.Gamepad says. A binding with neither a control nor parts is an unbound slot."
+    desc true
+    field control String "The control; empty for a composite or an unbound slot."
+    field negative String "An axis composite's control for -1 (`KeyA`)."
+    field positive String "An axis composite's control for +1 (`KeyD`)."
+    field up String "A two-axis composite's control for y = 1 (`KeyW`)."
+    field down String "A two-axis composite's control for y = -1."
+    field left String "A two-axis composite's control for x = -1."
+    field right String "A two-axis composite's control for x = 1."
+    field scale f32 "Multiplies the value: the binding's sensitivity (a mouse look's 0.1, a stick's 2); negative inverts it." {
+      default 1
+    }
+    field invertY bool "A two-axis value's y is turned over (inverted look)."
+    field deadzone f32 "A pad axis's dead zone for this binding, over the pad's (og.input.setDeadzones) when above 0: values inside it read 0 and the rest is rescaled to reach 1." {
+      min 0
+      max 0.95
+    }
+    field zone TouchZone "`touch`, `touch.xy`: where a touch must start to count (empty: anywhere)."
+    field radius f32 "`touch.xy`: how far a touch drags for a full deflection (0: 64)." {
+      min 0
+      unit cssPx
+    }
+  }
+
+  struct ActionDesc {
+    doc "A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. Actions are read once per tick, before the game's systems, from og.Input, og.Pointers and og.Gamepad, so they replay with them; the player rebinds them (og.input.rebind, og.input.startCapture) and a settings screen lists them (og.input.actions)."
+    desc true
+    field name String "Its name."
+    field kind ActionKind "Button, one axis or two."
+    field context String "Its context (og.input.setContexts): `gameplay`, `menu`, `vehicle`, or the game's own." {
+      default "gameplay"
+    }
+    field label String "What a settings screen and prompts call it (empty: its name)."
+    field bindings List.InputBinding "The default bindings, in slot order: the player's rebinding replaces a slot, reset brings these back."
+    field threshold f32 "Where an analog value presses it (a button; and an axis's down)." {
+      default 0.5
+      min 0.01
+      max 1
+    }
+    field deadzone f32 "A dead zone on its combined value (radial for two axes), after each binding's own." {
+      min 0
+      max 0.95
+    }
+    field holdMs f32 "How long it is down before `held` (0: never), counted in ticks." {
+      min 0
+      unit ms
+    }
+    field locked bool "The player cannot rebind it (pause, a debug key)."
+    field toggle bool "A button whose press turns it on and the next press off (a hold's alternative, XAG 107); the player may change it (og.input.setToggle)."
+  }
+
+  struct ActionState {
+    doc "An action this tick."
+    field down bool "Its binding is past the threshold (or its toggle is on)."
+    field pressed bool "It went down this tick (a press and a release between two ticks set both edges)."
+    field released bool "It went up this tick."
+    field held bool "Down for its holdMs."
+    field value f32 "A button's strength (0 to 1: a trigger's travel), an axis's value, a two-axis value's length."
+    field vector Vector2 "A two-axis action's value (x right, y up); value and 0 for the others."
+    field device InputDevice "The device whose binding drove it last."
+  }
+
+  struct ActionInfo {
+    doc "An action as a controls screen lists it."
+    field name String "Its name."
+    field kind ActionKind "Its kind."
+    field context String "Its context."
+    field label String "Its label (its name when it has none)."
+    field bindings List.InputBinding "Its bindings now: the player's, else the defaults."
+    field defaults List.InputBinding "Its default bindings."
+    field locked bool "The player cannot rebind it."
+    field toggle bool "It toggles (the player's choice, else its desc's)."
+    field rebound bool "The player changed its bindings."
+  }
+
+  struct BindingConflict {
+    doc "Another binding a rebinding would share a control with: an action of the same context (or another slot of the same action)."
+    field action String "The other action."
+    field slot u32 "Its binding's slot."
+    field control String "The shared control, as the new binding names it."
+    field context String "The context they share."
+  }
+
+  enum ConflictPolicy {
+    doc "What a rebinding does with a control another action holds."
+    variant refuse "Change nothing and answer the conflicts (a controls screen asks the player)."
+    variant swap "The other action takes what this slot had."
+    variant replace "The other action loses the control (its slot is left unbound)."
+    variant allow "Bind it anyway: both actions read it."
+  }
+
+  struct RebindDesc {
+    doc "A player's rebinding of one slot of an action."
+    desc true
+    field action String "The action."
+    field slot u32 "Which binding: 0 the first; one past the last adds one."
+    field part String "A composite's part to change (`up`, `down`, `left`, `right`, `negative`, `positive`); empty sets the whole binding."
+    field binding InputBinding "The new binding; for a part, its control is the part's."
+    field policy ConflictPolicy "What to do with a control another action holds."
+  }
+
+  struct RebindAnswer {
+    doc "What a rebinding did."
+    field applied bool "The binding changed (false: refused over conflicts)."
+    field conflicts List.BindingConflict "The bindings it shared a control with."
+  }
+
+  enum CaptureAccept {
+    doc "Which devices a capture takes."
+    variant any "Keyboard, mouse and pads."
+    variant keyboardMouse "Keyboard and mouse."
+    variant gamepad "Pads."
+  }
+
+  struct CaptureDesc {
+    doc "A capture of the player's next input for a slot of an action: a controls screen's \"press a key\". From the next tick every action reads nothing until it ends; what was pressed for it moves no action until it is let go."
+    desc true
+    field action String "The action."
+    field slot u32 "Which binding: 0 the first; one past the last adds one."
+    field part String "A composite's part (`up` of WASD); empty: the whole binding (a two-axis action then takes a stick or the d-pad)."
+    field accept CaptureAccept "The devices it takes."
+    field cancel List.String "Controls that cancel it (empty: `Escape` and `pad.back`)."
+    field timeoutMs f32 "It cancels itself after this long (0: never), counted in ticks." {
+      min 0
+      unit ms
+    }
+  }
+
+  struct CaptureState {
+    doc "Where a capture is: waiting, done with the control it took, or cancelled."
+    field active bool "It waits for input."
+    field done bool "It took a control: apply it with og.input.applyCapture (or show the conflicts first)."
+    field cancelled bool "The player cancelled it, or it timed out."
+    field action String "The action."
+    field slot u32 "The slot."
+    field part String "The part."
+    field control String "The control it took."
+    field binding InputBinding "The slot's binding with that control in it."
+    field conflicts List.BindingConflict "What applying it would share a control with."
+  }
+
+  struct InputGlyph {
+    doc "A control's glyph, for prompts and a controls screen."
+    field icon String "The icon a style's set draws: `key.space`, `mouse.left`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `xbox.stickL`, `key.wasd`, `touch.stick`."
+    field text String "The text that names it: `Space`, `LMB`, `A`, `×`, `L Stick`, `W A S D`."
+    field device InputDevice "The device it is drawn for."
+    field control String "The control it names (a composite's: its parts', space-separated)."
+  }
+
+  struct DeadzoneDesc {
+    doc "A pad's dead zones: what its sticks and triggers read as rest. The player's to set (a settings slider); og.input.saveBindings keeps them."
+    desc true
+    field pad i32 "The pad, 0 to 7; -1 every pad." {
+      default -1
+      min -1
+      max 7
+    }
+    field stick f32 "The sticks' (radial for a stick's two axes)." {
+      default 0.15
+      min 0
+      max 0.95
+    }
+    field trigger f32 "The triggers'." {
+      default 0.05
+      min 0
+      max 0.95
+    }
+  }
+
+  struct RumbleDesc {
+    doc "A rumble of a pad's motors: output for the host, never world state (a replay does not repeat it)."
+    desc true
+    field pad i32 "The pad, 0 to 7; -1 every connected pad." {
+      default -1
+      min -1
+      max 7
+    }
+    field low f32 "The heavy (low-frequency) motor." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field high f32 "The light (high-frequency) motor." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field ms f32 "How long; 0 stops the pad's rumble." {
+      default 200
+      min 0
+      unit ms
+    }
+  }
+
+  fn defineAction {
+    doc "Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it."
+    param world World "The world."
+    param desc ActionDesc "The action."
+    returns Result.Void "Refused, naming the fix, for a binding whose control names none or that does not fit the kind (a stick on a button, a key alone on a two-axis action)."
+  }
+
+  fn actions {
+    doc "Every action, in definition order, with its bindings now and its defaults: what a controls screen lists."
+    param world World "The world."
+    returns List.ActionInfo
+  }
+
+  fn action {
+    doc "An action this tick: down, the edges, held, its value and vector, and the device that drove it. Null for an unknown action."
+    param world World "The world."
+    param name String "The action."
+    returns Option.ActionState
+  }
+
+  fn actionDown {
+    doc "Whether an action is down this tick (false for an unknown one)."
+    param world World "The world."
+    param name String "The action."
+    returns bool
+  }
+
+  fn actionPressed {
+    doc "Whether an action went down this tick."
+    param world World "The world."
+    param name String "The action."
+    returns bool
+  }
+
+  fn actionReleased {
+    doc "Whether an action went up this tick."
+    param world World "The world."
+    param name String "The action."
+    returns bool
+  }
+
+  fn actionHeld {
+    doc "Whether an action has been down for its holdMs."
+    param world World "The world."
+    param name String "The action."
+    returns bool
+  }
+
+  fn actionValue {
+    doc "An action's value: a button's strength (0 to 1), an axis's value, a two-axis value's length. 0 for an unknown action."
+    param world World "The world."
+    param name String "The action."
+    returns f32
+  }
+
+  fn actionVector {
+    doc "A two-axis action's value (x right, y up; each -1 to 1 but the mouse's movement); (value, 0) for the others."
+    param world World "The world."
+    param name String "The action."
+    returns Vector2
+  }
+
+  fn setContexts {
+    doc "The contexts whose actions are live, first the one whose bindings win a control another context also binds (`[\"vehicle\", \"gameplay\"]`: E exits the car, not interacts). Empty (the default) is every context, none winning. Takes effect from the next tick's actions."
+    param world World "The world."
+    param contexts List.String "The live contexts, by priority."
+    returns Void
+  }
+
+  fn contexts {
+    doc "The live contexts as og.input.setContexts set them (empty: every context)."
+    param world World "The world."
+    returns List.String
+  }
+
+  fn rebind {
+    doc "Rebind one slot of an action (or one part of a composite) for the player. With policy refuse (the default) a binding that shares a control with another action of its context changes nothing and answers the conflicts; swap, replace and allow resolve them. The player's bindings stay until reset and are what og.input.saveBindings writes."
+    param world World "The world."
+    param desc RebindDesc "The action, slot, part, binding and policy."
+    returns Result.RebindAnswer "Refused for an unknown or locked action, a slot past one after the last, a part the kind has not, or a binding that does not fit."
+  }
+
+  fn conflicts {
+    doc "What a rebinding would share a control with, changing nothing."
+    param world World "The world."
+    param desc RebindDesc "The rebinding."
+    returns Result.List.BindingConflict
+  }
+
+  fn resetBindings {
+    doc "Back to the defaults: one action's bindings and toggle, or (no action) every action's, and the pads' dead zones."
+    param world World "The world."
+    param action String "The action; omitted is every action." {
+      optional true
+    }
+    returns Result.Void
+  }
+
+  fn setToggle {
+    doc "The player's choice for a button action: a press turns it on and the next off (true), or it is down while held (false)."
+    param world World "The world."
+    param action String "The action."
+    param on bool "Toggle."
+    returns Result.Void
+  }
+
+  fn saveBindings {
+    doc "The player's settings as text to keep (og.platform.saveSettings, a save): every rebound action's bindings, the toggles and the dead zones that differ from the defaults."
+    param world World "The world."
+    returns String
+  }
+
+  fn loadBindings {
+    doc "Take what og.input.saveBindings wrote, in place of the player's settings now. Bindings for an action not defined yet are kept until it is (load at start, before or after defining)."
+    param world World "The world."
+    param text String "The saved text."
+    returns Result.List.String "A warning for each entry it could not take (that action keeps its defaults); refused for text that is not saved bindings."
+  }
+
+  fn startCapture {
+    doc "Start capturing the player's next input for a slot of an action (a controls screen's \"press a key\"): read og.input.capture each tick until it is done or cancelled, then og.input.applyCapture."
+    param world World "The world."
+    param desc CaptureDesc "The action, slot, part and the devices it takes."
+    returns Result.Void "Refused for an unknown or locked action, a slot or part a rebinding would refuse, or a cancel control that names none."
+  }
+
+  fn capture {
+    doc "Where the capture is: active while it waits, done with the control it took, its binding and the conflicts applying it would meet, or cancelled."
+    param world World "The world."
+    returns CaptureState
+  }
+
+  fn cancelCapture {
+    doc "Stop a capture without taking anything."
+    param world World "The world."
+    returns Void
+  }
+
+  fn applyCapture {
+    doc "Apply what the capture took: og.input.rebind with its slot and binding."
+    param world World "The world."
+    param policy ConflictPolicy "What to do with a conflict; omitted is refuse." {
+      optional true
+    }
+    returns Result.RebindAnswer "Refused when no capture is done."
+  }
+
+  fn glyph {
+    doc "An action's prompt glyph: its first binding on the device (the device used last when omitted); a composite's in one (`W A S D`, `key.wasd`). Null for an unknown action or one with no binding on that device."
+    param world World "The world."
+    param action String "The action."
+    param device InputDevice "The device; omitted is the one used last." {
+      optional true
+    }
+    returns Option.InputGlyph
+  }
+
+  fn glyphs {
+    doc "An action's first binding on the device, one glyph per control (a composite's parts in prompt order: up, left, down, right; negative, positive). Empty for an unknown action or one with no binding there."
+    param world World "The world."
+    param action String "The action."
+    param device InputDevice "The device; omitted is the one used last." {
+      optional true
+    }
+    returns List.InputGlyph
+  }
+
+  fn controlGlyph {
+    doc "A control's glyph (what a capture took, before it is applied). Null for a name that names no control."
+    param control String "The control."
+    param device InputDevice "The device it is drawn for (a pad's family); omitted is xbox for a pad control." {
+      optional true
+    }
+    returns Option.InputGlyph
+  }
+
+  fn device {
+    doc "The device the player used last: a key or the mouse, a pad (its family as the host told it, else xbox), or a touch. Prompts follow it live."
+    param world World "The world."
+    returns InputDevice
+  }
+
+  fn padDevice {
+    doc "A pad's family as the host told it from the pad's id (Xbox, PlayStation, Switch or a generic pad). Null for a pad that is not connected or that the host did not name."
+    param world World "The world."
+    param pad u32 "The pad, 0 to 7."
+    returns Option.InputDevice
+  }
+
+  fn setDeadzones {
+    doc "A pad's dead zones (or every pad's): the player's setting, kept by og.input.saveBindings."
+    param world World "The world."
+    param desc DeadzoneDesc "The pad and its dead zones."
+    returns Result.Void
+  }
+
+  fn rumble {
+    doc "Rumble a pad (or every connected pad): the web shell plays it on the pad's vibration actuator. Output only: it never feeds back into the simulation, and a native run records it in the frame answer's `rumble`."
+    param world World "The world."
+    param desc RumbleDesc "The pad, the motors and how long."
+    returns Result.Void "Refused for a pad outside -1 to 7 or a value that is not finite."
+  }
+
 
   enum GamepadButton {
     doc "A gamepad button in the W3C standard mapping, in its index order (a is button 0)."
@@ -120,8 +564,8 @@ module input {
 
   struct GamepadInput {
     doc "A gamepad's whole state (an engine extension of protocol 5): the shell sends one whenever a pad changes, and a playtest can send its own."
-    field pad u32 "Which pad, 0 to 3; omitted is 0." {
-      max 3
+    field pad u32 "Which pad, 0 to 7; omitted is 0." {
+      max 7
       optional true
     }
     field connected bool "Whether the pad is connected (omitted is true); a disconnected pad holds nothing." {
@@ -134,6 +578,9 @@ module input {
       optional true
     }
     field triggers List.f32 "The left and right analog triggers, 0 to 1. Missing values are 0." {
+      optional true
+    }
+    field device InputDevice "The pad's family as the host tells it from the pad's id (xbox, playstation, switch, or gamepad for a pad it cannot place); omitted keeps what was said. Glyphs follow it." {
       optional true
     }
   }
@@ -408,9 +855,12 @@ module input {
   }
 
   resource Gamepad {
-    doc "The first four gamepads in the W3C standard mapping, at the start of this tick (og-input's og.Gamepad). On the web the shell polls the pads each display frame and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys."
-    doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods."
+    doc "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout: on the web the shell polls the pads each display frame, maps a pad the browser does not map (Firefox, Linux, many third-party pads) through its table, and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys."
+    doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice)."
     field connectedMask u32 "Connected pads: bit `pad`." {
+      readonly true
+    }
+    field devices u32 "Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 when the host did not say." {
       readonly true
     }
     field buttons0 u32 "Held buttons of pad 0." {
@@ -425,6 +875,18 @@ module input {
     field buttons3 u32 "Held buttons of pad 3." {
       readonly true
     }
+    field buttons4 u32 "Held buttons of pad 4." {
+      readonly true
+    }
+    field buttons5 u32 "Held buttons of pad 5." {
+      readonly true
+    }
+    field buttons6 u32 "Held buttons of pad 6." {
+      readonly true
+    }
+    field buttons7 u32 "Held buttons of pad 7." {
+      readonly true
+    }
     field pressed0 u32 "Buttons of pad 0 that went down this tick." {
       readonly true
     }
@@ -435,6 +897,18 @@ module input {
       readonly true
     }
     field pressed3 u32 "Buttons of pad 3 that went down this tick." {
+      readonly true
+    }
+    field pressed4 u32 "Buttons of pad 4 that went down this tick." {
+      readonly true
+    }
+    field pressed5 u32 "Buttons of pad 5 that went down this tick." {
+      readonly true
+    }
+    field pressed6 u32 "Buttons of pad 6 that went down this tick." {
+      readonly true
+    }
+    field pressed7 u32 "Buttons of pad 7 that went down this tick." {
       readonly true
     }
     field released0 u32 "Buttons of pad 0 that went up this tick." {
@@ -449,6 +923,18 @@ module input {
     field released3 u32 "Buttons of pad 3 that went up this tick." {
       readonly true
     }
+    field released4 u32 "Buttons of pad 4 that went up this tick." {
+      readonly true
+    }
+    field released5 u32 "Buttons of pad 5 that went up this tick." {
+      readonly true
+    }
+    field released6 u32 "Buttons of pad 6 that went up this tick." {
+      readonly true
+    }
+    field released7 u32 "Buttons of pad 7 that went up this tick." {
+      readonly true
+    }
     field leftStick0 Vector2 "The left stick of pad 0, -1 to 1, y down." {
       readonly true
     }
@@ -459,6 +945,18 @@ module input {
       readonly true
     }
     field leftStick3 Vector2 "The left stick of pad 3, -1 to 1, y down." {
+      readonly true
+    }
+    field leftStick4 Vector2 "The left stick of pad 4, -1 to 1, y down." {
+      readonly true
+    }
+    field leftStick5 Vector2 "The left stick of pad 5, -1 to 1, y down." {
+      readonly true
+    }
+    field leftStick6 Vector2 "The left stick of pad 6, -1 to 1, y down." {
+      readonly true
+    }
+    field leftStick7 Vector2 "The left stick of pad 7, -1 to 1, y down." {
       readonly true
     }
     field rightStick0 Vector2 "The right stick of pad 0, -1 to 1, y down." {
@@ -473,6 +971,18 @@ module input {
     field rightStick3 Vector2 "The right stick of pad 3, -1 to 1, y down." {
       readonly true
     }
+    field rightStick4 Vector2 "The right stick of pad 4, -1 to 1, y down." {
+      readonly true
+    }
+    field rightStick5 Vector2 "The right stick of pad 5, -1 to 1, y down." {
+      readonly true
+    }
+    field rightStick6 Vector2 "The right stick of pad 6, -1 to 1, y down." {
+      readonly true
+    }
+    field rightStick7 Vector2 "The right stick of pad 7, -1 to 1, y down." {
+      readonly true
+    }
     field triggers0 Vector2 "The left (x) and right (y) triggers of pad 0, 0 to 1." {
       readonly true
     }
@@ -485,9 +995,21 @@ module input {
     field triggers3 Vector2 "The left (x) and right (y) triggers of pad 3, 0 to 1." {
       readonly true
     }
+    field triggers4 Vector2 "The left (x) and right (y) triggers of pad 4, 0 to 1." {
+      readonly true
+    }
+    field triggers5 Vector2 "The left (x) and right (y) triggers of pad 5, 0 to 1." {
+      readonly true
+    }
+    field triggers6 Vector2 "The left (x) and right (y) triggers of pad 6, 0 to 1." {
+      readonly true
+    }
+    field triggers7 Vector2 "The left (x) and right (y) triggers of pad 7, 0 to 1." {
+      readonly true
+    }
     fn connected {
       doc "Whether a pad is connected."
-      param pad u32 "The pad, 0 to 3; omitted is 0." {
+      param pad u32 "The pad, 0 to 7; omitted is 0." {
         optional true
       }
       returns bool
@@ -495,7 +1017,7 @@ module input {
     fn down {
       doc "Whether a button is held."
       param button GamepadButton "The button."
-      param pad u32 "The pad, 0 to 3; omitted is 0." {
+      param pad u32 "The pad, 0 to 7; omitted is 0." {
         optional true
       }
       returns bool
@@ -503,7 +1025,7 @@ module input {
     fn pressed {
       doc "Whether a button went down this tick."
       param button GamepadButton "The button."
-      param pad u32 "The pad, 0 to 3; omitted is 0." {
+      param pad u32 "The pad, 0 to 7; omitted is 0." {
         optional true
       }
       returns bool
@@ -511,15 +1033,15 @@ module input {
     fn released {
       doc "Whether a button went up this tick."
       param button GamepadButton "The button."
-      param pad u32 "The pad, 0 to 3; omitted is 0." {
+      param pad u32 "The pad, 0 to 7; omitted is 0." {
         optional true
       }
       returns bool
     }
     fn axis {
-      doc "An analog input: a stick's x or y (-1 to 1, y down) or a trigger (0 to 1). Dead zones are the game's."
+      doc "An analog input, raw: a stick's x or y (-1 to 1, y down) or a trigger (0 to 1). Actions read sticks past their dead zones and y up (og.input.defineAction)."
       param axis GamepadAxis "Which input."
-      param pad u32 "The pad, 0 to 3; omitted is 0." {
+      param pad u32 "The pad, 0 to 7; omitted is 0." {
         optional true
       }
       returns f32

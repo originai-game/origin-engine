@@ -32,7 +32,7 @@ fn the_decoder_reads_what_the_web_shell_wrote() {
         .iter()
         .map(|e| InjectedInput::from_json(e).unwrap())
         .collect();
-    assert_eq!(expected.len(), 16);
+    assert_eq!(expected.len(), 17);
     let read = json["read"].as_u64().unwrap() as usize;
     assert!(
         read % SLOTS + expected.len() > SLOTS,
@@ -45,7 +45,7 @@ fn the_decoder_reads_what_the_web_shell_wrote() {
     assert_eq!(drained.read as u64, json["write"].as_u64().unwrap());
 
     let mut owned = bin.clone();
-    assert_eq!(ring::drain_mut(&mut owned).events.len(), 16);
+    assert_eq!(ring::drain_mut(&mut owned).events.len(), 17);
     assert!(
         ring::drain(&owned).events.is_empty(),
         "the read index was stored"
@@ -71,6 +71,7 @@ fn the_writer_and_the_decoder_agree_and_a_full_ring_refuses() {
             buttons: 0b1_0000_0000_0001,
             axes: [0.25, -0.5, 1.0, 0.0],
             triggers: [0.5, 1.0],
+            device: Some(og_input::Device::PlayStation),
         }),
         InjectedInput::from_json(
             &serde_json::json!({"kind": "key", "key": "Space", "action": "press"}),
@@ -144,8 +145,8 @@ fn the_input_layer_drains_a_ring_into_the_world() {
     let mut layer = InputLayer::new();
     layer.attach(&mut w).unwrap();
     let report = layer.drain_ring(&mut w, &bin);
-    assert_eq!((report.accepted, report.refused), (16, 0));
-    assert_eq!(layer.accepted(), 16);
+    assert_eq!((report.accepted, report.refused), (17, 0));
+    assert_eq!(layer.accepted(), 17);
     let input = *w.resource::<Input>().unwrap();
     assert!(input.down("KeyW") && input.down("ArrowLeft") && !input.down("NumpadSubtract"));
     assert!(input.button_down(PointerButton::Left) && input.button_down(PointerButton::Right));
@@ -162,6 +163,10 @@ fn the_input_layer_drains_a_ring_into_the_world() {
     let abu = 1 | 1 << 4 | 1 << 12;
     assert_eq!((held, pressed, released), (0, abu, abu));
     assert!(!pad.is_connected(1));
+    // Pad 7 (past the four og.Gamepad once held) stays, with the family the shell read from its id.
+    assert!(pad.is_connected(7) && pad.down(1, 7));
+    assert_eq!(pad.device(7), Some(og_input::Device::Switch));
+    assert_eq!(pad.device(1), None, "a disconnect forgets the family");
     // The text slots, the long one joined again, became og.TextInput events
     // (the long commit split into 255-byte events: here it fits one).
     let typed = w.pending_events::<og_input::TextInput>().unwrap();

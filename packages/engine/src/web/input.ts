@@ -5,7 +5,8 @@
 // engine pointer id (0 the primary, 1 to 4 further touches) in word 8
 // instead. A gamepad slot (kind 3) is a pad's whole state: word 2 the pad,
 // word 3 connected, words 4-7 the axes, word 8 the button mask, words 9-10
-// the triggers. A text slot (kind 4) carries typed or composed text: word 1
+// the triggers, word 11 the pad's family (PAD_DEVICES index: 1 xbox, 2
+// playstation, 3 switch, 4 gamepad; 0 unsaid). A text slot (kind 4) carries typed or composed text: word 1
 // 0 committed or 1 composing, word 2 1 when it continues the slot before it
 // (text past 48 bytes is split between characters over several slots,
 // joined again by drainRing), word 3 the UTF-8 length, the text in words
@@ -60,6 +61,8 @@ export type InjectedInput =
       axes: number[];
       /** Left and right analog triggers, 0..1. */
       triggers: number[];
+      /** The pad's family from its id (gamepad.ts padDevice); omitted keeps what was said. */
+      device?: PadDevice;
     }
   | {
       kind: "text";
@@ -81,6 +84,10 @@ export type A11yActionName = (typeof A11Y_ACTIONS)[number];
 export const A11Y_ACTIONS = ["focus", "activate", "increment", "decrement"] as const;
 
 export type GamepadButtonName = (typeof GAMEPAD_BUTTONS)[number];
+
+/** og-input's Device, by index (IDL InputDevice): a pad's family is one of xbox to gamepad. */
+export const PAD_DEVICES = ["keyboardMouse", "xbox", "playstation", "switch", "gamepad", "touch"] as const;
+export type PadDevice = "xbox" | "playstation" | "switch" | "gamepad";
 
 /** The W3C standard mapping's buttons, by index (og-input's GAMEPAD_BUTTONS). */
 export const GAMEPAD_BUTTONS = [
@@ -156,6 +163,7 @@ export function writeRing(buffer: SharedArrayBuffer, event: InjectedInput): bool
     ints[at + 8] = event.buttons.reduce((m, b) => m | (1 << GAMEPAD_BUTTONS.indexOf(b)), 0);
     floats[at + 9] = event.triggers[0] ?? 0;
     floats[at + 10] = event.triggers[1] ?? 0;
+    ints[at + 11] = event.device ? PAD_DEVICES.indexOf(event.device) : 0;
     Atomics.store(ints, 0, write + 1);
     return true;
   }
@@ -210,6 +218,7 @@ export function drainRing(buffer: SharedArrayBuffer): InjectedInput[] {
     }
     if (kind === "gamepad") {
       const mask = ints[at + 8]!;
+      const device = PAD_DEVICES[ints[at + 11]!];
       out.push({
         kind,
         pad: ints[at + 2]!,
@@ -217,6 +226,7 @@ export function drainRing(buffer: SharedArrayBuffer): InjectedInput[] {
         buttons: GAMEPAD_BUTTONS.filter((_, i) => mask & (1 << i)),
         axes: [floats[at + 4]!, floats[at + 5]!, floats[at + 6]!, floats[at + 7]!],
         triggers: [floats[at + 9]!, floats[at + 10]!],
+        ...(device && device !== "keyboardMouse" && device !== "touch" ? { device } : {}),
       });
       continue;
     }

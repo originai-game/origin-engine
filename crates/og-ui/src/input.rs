@@ -208,6 +208,9 @@ pub struct GamepadFrame {
     pub stick: Vec2,
     /// Buttons held (the same bits): holds and releases of UI actions.
     pub held: u32,
+    /// The pad's family, when the host told it (`og.Gamepad`'s devices):
+    /// its glyphs are shown once it is used.
+    pub device: Option<og_input::Device>,
 }
 
 impl GamepadFrame {
@@ -216,7 +219,7 @@ impl GamepadFrame {
         GamepadFrame::from_pad(pad, 0)
     }
 
-    /// Pad `n` (0 to 3) of the world's `og.Gamepad`.
+    /// Pad `n` (0 to 7) of the world's `og.Gamepad`.
     pub fn from_pad(pad: &og_input::Gamepad, n: u32) -> GamepadFrame {
         GamepadFrame {
             pressed: pad.masks(n).1,
@@ -225,6 +228,7 @@ impl GamepadFrame {
                 pad.axis(og_input::GamepadAxis::LeftX, n),
                 pad.axis(og_input::GamepadAxis::LeftY, n),
             ),
+            device: pad.device(n),
         }
     }
 
@@ -392,6 +396,9 @@ pub struct InputFrame {
     /// (og-input's [`og_input::KEY_CODES`]): what UI actions bind.
     pub keys_held: Vec<&'static str>,
     pub keys_pressed: Vec<&'static str>,
+    /// og-input's gameplay actions this tick (their state and bindings),
+    /// which a UI action may follow ([`crate::ActionDesc::action`]).
+    pub actions: Vec<og_input::ActionFeed>,
 }
 
 impl InputFrame {
@@ -430,7 +437,14 @@ impl InputFrame {
                 .copied()
                 .filter(|c| source.key_pressed(c))
                 .collect(),
+            actions: Vec::new(),
         }
+    }
+
+    /// Adds og-input's actions this tick (what followed UI actions read).
+    pub fn with_actions(mut self, actions: Vec<og_input::ActionFeed>) -> InputFrame {
+        self.actions = actions;
+        self
     }
 
     /// Adds the world's `og.Gamepad` (pad 0, and pads 1 to 3 as

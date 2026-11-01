@@ -1,0 +1,49 @@
+// og.input (IDL `input`): gameplay actions, rebinding, capture, glyphs, dead
+// zones and rumble, as thin calls into the host's binding symbols (og-input's
+// actions.rs owns the behaviour), typed by the generated declarations through
+// index.ts.
+
+import type { HostAbi } from "./generated/abi.ts";
+import { boundHost } from "./runtime.ts";
+
+type W = { readonly id: number };
+
+function abi(): HostAbi<Uint32Array, unknown> {
+  const h = boundHost();
+  if (!h) throw new Error("no engine host is loaded: start the game through @origingame/engine's web or node loader");
+  return h.abi;
+}
+
+const parse = <T>(text: string): T => JSON.parse(text) as T;
+const json = (value: unknown): string | undefined => (value === undefined ? undefined : JSON.stringify(value));
+
+export const input = Object.freeze({
+  defineAction: (world: W, desc?: unknown) => parse(abi().og_input_define_action(world.id, json(desc))),
+  actions: (world: W) => parse(abi().og_input_actions(world.id)),
+  action: (world: W, name: string) => parse(abi().og_input_action(world.id, name)),
+  actionDown: (world: W, name: string) => abi().og_input_action_down(world.id, name),
+  actionPressed: (world: W, name: string) => abi().og_input_action_pressed(world.id, name),
+  actionReleased: (world: W, name: string) => abi().og_input_action_released(world.id, name),
+  actionHeld: (world: W, name: string) => abi().og_input_action_held(world.id, name),
+  actionValue: (world: W, name: string) => abi().og_input_action_value(world.id, name),
+  actionVector: (world: W, name: string) => parse(abi().og_input_action_vector(world.id, name)),
+  setContexts: (world: W, contexts: readonly string[]) => abi().og_input_set_contexts(world.id, JSON.stringify(contexts)),
+  contexts: (world: W) => parse(abi().og_input_contexts(world.id)),
+  rebind: (world: W, desc?: unknown) => parse(abi().og_input_rebind(world.id, json(desc))),
+  conflicts: (world: W, desc?: unknown) => parse(abi().og_input_conflicts(world.id, json(desc))),
+  resetBindings: (world: W, action?: string) => parse(abi().og_input_reset_bindings(world.id, action)),
+  setToggle: (world: W, action: string, on: boolean) => parse(abi().og_input_set_toggle(world.id, action, on)),
+  saveBindings: (world: W) => abi().og_input_save_bindings(world.id),
+  loadBindings: (world: W, text: string) => parse(abi().og_input_load_bindings(world.id, text)),
+  startCapture: (world: W, desc?: unknown) => parse(abi().og_input_start_capture(world.id, json(desc))),
+  capture: (world: W) => parse(abi().og_input_capture(world.id)),
+  cancelCapture: (world: W) => abi().og_input_cancel_capture(world.id),
+  applyCapture: (world: W, policy?: string) => parse(abi().og_input_apply_capture(world.id, policy)),
+  glyph: (world: W, action: string, device?: string) => parse(abi().og_input_glyph(world.id, action, device)),
+  glyphs: (world: W, action: string, device?: string) => parse(abi().og_input_glyphs(world.id, action, device)),
+  controlGlyph: (control: string, device?: string) => parse(abi().og_input_control_glyph(control, device)),
+  device: (world: W) => abi().og_input_device(world.id),
+  padDevice: (world: W, pad: number) => parse(abi().og_input_pad_device(world.id, pad)),
+  setDeadzones: (world: W, desc?: unknown) => parse(abi().og_input_set_deadzones(world.id, json(desc))),
+  rumble: (world: W, desc?: unknown) => parse(abi().og_input_rumble(world.id, json(desc))),
+});

@@ -25,7 +25,7 @@ pub enum PointerAction {
 }
 
 /// A physical pointer button; `None` is a hover move.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PointerButton {
     None,
     Left,
@@ -98,8 +98,8 @@ pub struct Modifiers {
 
 /// The most pointers held at once ([`crate::Pointers`]): ids 0 to 4.
 pub const MAX_POINTERS: usize = 5;
-/// The most gamepads read at once ([`crate::Gamepad`]): pads 0 to 3.
-pub const MAX_GAMEPADS: usize = 4;
+/// The most gamepads read at once ([`crate::Gamepad`]): pads 0 to 7.
+pub const MAX_GAMEPADS: usize = 8;
 /// Standard-mapping buttons (W3C Gamepad `standard` layout), by index.
 pub const GAMEPAD_BUTTONS: [&str; 17] = [
     "a",
@@ -138,6 +138,10 @@ pub struct GamepadState {
     pub axes: [f32; 4],
     /// The analog left and right triggers, 0..1.
     pub triggers: [f32; 2],
+    /// The pad's family as the host told it from the pad's id (Xbox,
+    /// PlayStation, Switch, or a generic pad); `None` when it did not say.
+    /// Glyphs follow it ([`crate::Gamepad::device`]).
+    pub device: Option<crate::Device>,
 }
 
 /// What an assistive technology asks of one UI control (the `a11y` kind):
@@ -346,6 +350,10 @@ impl InjectedInput {
                 };
                 floats("axes", &mut state.axes)?;
                 floats("triggers", &mut state.triggers)?;
+                state.device = match value.get("device") {
+                    None | Some(Value::Null) => None,
+                    Some(v) => Some(crate::Device::from_name(v.as_str()?).filter(|d| d.is_pad())?),
+                };
                 Some(InjectedInput::Gamepad(state))
             }
             "text" => Some(InjectedInput::Text {
@@ -414,14 +422,20 @@ impl InjectedInput {
             InjectedInput::PointerLock { locked } => {
                 json!({"kind": "pointerLock", "locked": locked})
             }
-            InjectedInput::Gamepad(g) => json!({
-                "kind": "gamepad",
-                "pad": g.pad,
-                "connected": g.connected,
-                "buttons": GAMEPAD_BUTTONS.iter().enumerate().filter(|(i, _)| g.buttons & (1 << i) != 0).map(|(_, n)| *n).collect::<Vec<_>>(),
-                "axes": g.axes,
-                "triggers": g.triggers,
-            }),
+            InjectedInput::Gamepad(g) => {
+                let mut v = json!({
+                    "kind": "gamepad",
+                    "pad": g.pad,
+                    "connected": g.connected,
+                    "buttons": GAMEPAD_BUTTONS.iter().enumerate().filter(|(i, _)| g.buttons & (1 << i) != 0).map(|(_, n)| *n).collect::<Vec<_>>(),
+                    "axes": g.axes,
+                    "triggers": g.triggers,
+                });
+                if let Some(d) = g.device {
+                    v["device"] = json!(d.name());
+                }
+                v
+            }
             InjectedInput::Wheel {
                 x,
                 y,

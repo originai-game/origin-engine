@@ -8,10 +8,12 @@ use og_api::host::{RECORDS, RecordDecl};
 use og_core::reflect::{FieldSchema, FieldType, Reflect, Schema};
 use std::path::Path;
 
-fn idl_schema(decl: &RecordDecl) -> Schema {
+/// The IDL's layout of `decl` at `version`: the IDL declares the fields,
+/// the module its record's version (og.Gamepad is at 2, eight pads).
+fn idl_schema(decl: &RecordDecl, version: u32) -> Schema {
     Schema {
         name: decl.schema.to_string(),
-        version: 1,
+        version,
         doc: String::new(),
         fields: decl
             .fields
@@ -58,7 +60,7 @@ fn check<T: Reflect>(failures: &mut Vec<String>) {
         ));
         return;
     };
-    let idl = idl_schema(decl);
+    let idl = idl_schema(decl, module.version);
     if idl.layout_hash() != module.layout_hash() {
         let show = |s: &Schema| {
             s.fields

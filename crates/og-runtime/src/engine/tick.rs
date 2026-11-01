@@ -149,6 +149,12 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     if !haptics.is_empty() {
         answer["haptics"] = json!(haptics);
     }
+    // `rumble`: what og.input.rumble asked for since the last frame, each
+    // [pad, low, high, ms] (pad -1: every connected pad): output only.
+    let rumble = super::api::rumble_played(&eng);
+    if !rumble.is_empty() {
+        answer["rumble"] = json!(rumble);
+    }
     // `a11y`: the UI's accessibility tree (as og.ui.a11y answers it), on
     // the frames where it changed, for a host that mirrors it (create
     // option `a11y`: the web shell's DOM mirror).

@@ -13,8 +13,9 @@
 //! own ([`SESSION_RESOURCES`]: input, the player's audio volumes, the view,
 //! og.Lockstep with its `localPlayer`), the events each host delivers on its
 //! own (input, room, platform answers, asset loads, og.Desync:
-//! [`SESSION_EVENTS`]) and the UI's interaction state ([`SESSION_BLOCKS`]:
-//! focus and hover follow the local pointer). Everything else (every
+//! [`SESSION_EVENTS`]) and the UI's interaction state and the gameplay
+//! actions ([`SESSION_BLOCKS`]: focus and hover follow the local pointer,
+//! actions this peer's input and bindings). Everything else (every
 //! entity and component, the entity allocator, the other resources with
 //! og.Time and og.Rng, the other events, names, and the modules' state:
 //! physics, animation, tweens, AI, navigation) is hashed, in snapshot order.
@@ -59,8 +60,10 @@ pub const SESSION_EVENTS: &[&str] = &[
     "og.WorldRestored",
 ];
 
-/// State blocks that follow the local player: the UI's focus and hover.
-pub const SESSION_BLOCKS: &[&str] = &["og.ui"];
+/// State blocks that follow the local player: the UI's focus and hover,
+/// and the gameplay actions (read from this peer's input, with this
+/// player's bindings).
+pub const SESSION_BLOCKS: &[&str] = &["og.ui", "og.input.actions"];
 
 /// The most differences [`diff`] lists (it says how many more there were).
 pub const MAX_DIFFERENCES: usize = 200;

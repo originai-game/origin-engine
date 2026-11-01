@@ -14,7 +14,10 @@ ring. It depends on `og-core` and `og-ecs` only and reads no clock.
 | `Input` (`og.Input`, version 2) | `down(code)`, `pressed`, `released`, `axis(neg, pos)`, `axis2`, `button_down(PointerButton)`, `button_pressed`, `button_released`, `contains(KeySet, i)`, `word(KeySet, w)`; `apply(&InjectedInput) -> Option<Vec<InputEvent>>`, `end_tick() -> Vec<InputEvent>` |
 | `Pointers` (`og.Pointers`, version 1) | `position(id)`, `start(id)`, `down(id)`, `is_pressed(id)`, `is_released(id)`, `count()`; masks `held`, `pressed`, `released` (bit `id`); `movement` (pointer 0's relative movement this tick); `apply`, `end_tick` |
 | `PointerLock` (`og.PointerLock`, version 1) | `wanted` (the game's), `locked` (the host's, from `InjectedInput::PointerLock`) |
-| `Gamepad` (`og.Gamepad`, version 1) | `masks(pad) -> (held, pressed, released)`, `is_connected(pad)`, `down(button, pad)`, `pressed`, `released`, `axis(GamepadAxis, pad)`; `GAMEPAD_BUTTONS` (17 standard-mapping names, bit order), `gamepad_button(name)`, `MAX_GAMEPADS = 4`, `MAX_POINTERS = 5` |
+| `Gamepad` (`og.Gamepad`, version 2) | `masks(pad) -> (held, pressed, released)`, `is_connected(pad)`, `device(pad) -> Option<Device>`, `down(button, pad)`, `pressed`, `released`, `axis(GamepadAxis, pad)`; `GAMEPAD_BUTTONS` (17 standard-mapping names, bit order), `gamepad_button(name)`, `MAX_GAMEPADS = 8`, `MAX_POINTERS = 5` |
+| `ActionMap` (`og.input.*`) | `define(ActionDesc)`, `state(name) -> ActionState`, `infos`, `bindings`, `set_contexts`, `set_deadzone`, `set_toggle`, `rebind(RebindDesc) -> RebindAnswer`, `conflicts`, `reset`, `save_bindings`/`load_bindings`, `start_capture(CaptureDesc)`/`capture()`/`cancel_capture`/`apply_capture(ConflictPolicy)`, `glyphs(action, device)`, `device()`, `rumble`/`take_rumble`, `sample(input, pointers, pads, tick, dt)`, `feed()`; `install(world, shared, surface)` adds the `og.input.actions` system and state block |
+| controls | `Control::parse("pad.leftXY")`, `name`, `shape`, `class`, `glyph(device)`; `Binding` (a control or a composite: `negative`/`positive`, `up`/`down`/`left`/`right`; `scale`, `invert_y`, `deadzone`, `zone`, `radius`); `PadDeadzone`, `Zone`, `Surface` |
+| glyphs | `Device` (`keyboardMouse xbox playstation switch gamepad touch`), `Glyph { icon, text }`, `key_glyph`, `pad_glyph`, `binding_glyphs`, `combined_glyph`: og-ui's UI actions draw from the same tables |
 | events | `KeyDown { key: Str64, repeat }`, `KeyUp { key }`, `PointerDown { x, y, button, id }`, `PointerUp { x, y, button, id }`, `PointerMove { x, y, id, movementX, movementY }`, `Wheel { deltaX, deltaY }` as `og.KeyDown` ... `og.Wheel`; `InputEvent` (one of them) `.send(world)`; `register(world)` |
 | injected input | `InjectedInput::{Key, Pointer { .., id, movement_x, movement_y }, PointerLock { locked }, Wheel, Gamepad(GamepadState { pad, connected, buttons, axes, triggers })}` with `from_json`/`to_json` (protocol 5), `KeyAction`, `PointerAction`, `PointerButton` (`bit`, `index`, `name`, `from_index`, `from_name`), `Modifiers` |
 | keys | `KEY_CODES` (106 `KeyboardEvent.code` names, the key-set bit order), `KEY_SET_BITS = 128`, `key_index`, `key_for_char` (US layout) |
@@ -48,18 +51,22 @@ events carry its `id`. The web shell gives each new touch the lowest free
 id; the probe's JSON takes an optional `"id"` (0 when absent), and an id
 of 5 or more is refused.
 
-`og.Gamepad` holds up to four pads: connected bits, held/pressed/released
+`og.Gamepad` holds up to eight pads: connected bits, each pad's family (`devices`, four bits a pad), held/pressed/released
 button masks over `GAMEPAD_BUTTONS` (A, B, X, Y, LB, RB, LT, RT, Back,
 Start, LS, RS, d-pad up/down/left/right, Home), both sticks (y down, as the
 Gamepad API reports) and both analog triggers. A pad's whole state arrives
 as one `InjectedInput::Gamepad` whenever the shell sees it change (protocol
 5 JSON `{ "kind": "gamepad", "pad", "connected", "buttons", "axes",
-"triggers" }`, the command channel's `gamepad:` action); edges are
+"triggers", "device" }`, the command channel's `gamepad:` action; ring word
+11 carries the family); edges are
 computed against the previous state, so a press and a release between two
-ticks leave both edges, and a disconnected pad holds nothing. Pad 4 or more
-is refused. Both resources are world state: snapshots carry them and replays
+ticks leave both edges, and a disconnected pad holds nothing and forgets
+its family. Pad 8 or more is refused. Both resources are world state: snapshots carry them and replays
 are exact (`tests/pads.rs`). The web shell also keeps mapping pad buttons
-to keys (`gamepad.ts`), the fallback for games that read only `og.Input`.
+to keys (`gamepad.ts`), the fallback for games that read only `og.Input`,
+and reads a pad the browser does not map to the standard layout (Firefox,
+Linux, third-party pads) through its table (`PAD_MAPPINGS`, by vendor and
+product id, else the standard indices), so no connected pad is dropped.
 
 ## Mouse-look
 
@@ -110,6 +117,61 @@ else. `tests/mouselook.rs` holds both, and the ring and JSON round trips.
 `og.Gamepad` and inserts the resources. The events' `key` is a `str64`, `button` an enum
 (`none left middle right`).
 
+## Actions
+
+`ActionMap` (`src/actions.rs`) is what a game reads instead of keys: named
+actions of kind `button`, `axis` (one value) or `axis2` (two, x right and
+y up), each with default bindings over controls (`src/control.rs`): key
+codes, `mouse.left`/`middle`/`right`, `mouse.x`/`y`/`xy` (the movement,
+CSS px), `wheel.x`/`y` (notches of 100 px), `pad.<button>` (any pad),
+`pad.leftX`… `pad.rightTrigger`, `pad.leftXY`/`rightXY`/`dpad`, `touch` and
+`touch.xy` (a touch stick, its drag over `radius`), a one-axis control's
+half with `+`/`-`. A binding is one control or a composite (`negative` and
+`positive`; `up`, `down`, `left`, `right` for WASD), with its own `scale`
+(sensitivity), `invert_y`, `deadzone` and touch `zone`. Every y is up.
+
+- **Sampling.** `install` adds the `og.input.actions` system, which the
+  runtime puts first among the systems before og.ui.begin and the game's:
+  each tick it reads og.Input, og.Pointers and og.Gamepad (world state) into
+  every action's state (down, pressed, released, held, value, vector, the
+  device that drove it). The binding that reads most wins. A button presses
+  at `threshold` and lets go under three quarters of it; a tap between two
+  ticks sets both edges, as og.Input's do. `hold_ms` and a capture's
+  timeout count ticks (`og.Time.dt`), never a clock.
+- **Dead zones.** Per pad (`set_deadzone`, 0.15 sticks and 0.05 triggers by
+  default), radial for a stick's two axes, rescaled so a full push reads 1;
+  a binding's own `deadzone` overrides, and an action's applies last.
+- **Contexts.** `set_contexts(["vehicle", "gameplay"])`: actions of other
+  contexts read nothing, and a control two live contexts bind goes to the
+  first. Empty is every context, none winning.
+- **Rebinding.** `rebind` replaces a slot (or one part of a composite) for
+  the player; a control another action of the same context (or another slot
+  of the same action) holds is a conflict: `refuse` answers it and changes
+  nothing, `swap` gives the other action what this slot had, `replace`
+  unbinds it there, `allow` keeps both. Locked actions do not move. `reset`
+  brings the defaults back. `save_bindings` writes the player's bindings,
+  toggles and dead zones as versioned JSON; `load_bindings` takes it back,
+  keeping bindings of actions not defined yet until they are, and answers a
+  warning for each entry that no longer fits.
+- **Capture.** `start_capture` waits for the next key, button, wheel step,
+  stick or trigger fit for the slot (a stick held when it starts counts once
+  it returns; Escape and `pad.back` cancel by default); meanwhile every
+  action reads nothing, and after it the control pressed moves no action
+  until let go. `capture()` answers it done with its control, binding and
+  conflicts; `apply_capture(policy)` rebinds. This is what a controls
+  screen's key-binding capture drives.
+- **Glyphs and devices.** `glyphs(action, device)` names the first binding
+  on that device's class (keyboard and mouse, a pad, touch), a composite's
+  parts in prompt order; `combined_glyph` makes one (`key.wasd`). The device
+  used last follows the input, and a pad's family is og.Gamepad's
+  `devices`, which the host fills from the pad's id.
+- **World state.** The map is the `og.input.actions` state block: snapshots
+  carry it, the world hash covers it, a replay reads the same actions. It
+  follows the local player, as og.Input does: og-net leaves it out of the
+  hash peers compare (`SESSION_BLOCKS`), and a game hands its actions on
+  with og.net.submit. `rumble` requests are output for the host, never
+  saved.
+
 ## The input ring
 
 `packages/engine/src/web/input.ts` writes it on the main thread; the Worker
@@ -157,7 +219,7 @@ are unchanged.
   refuses, a bad slot is skipped with a reason; the layer drains a ring into
   the world. Regenerate the fixture with
   `node crates/og-input/tests/fixtures/make-ring.mjs` when `input.ts`
-  changes (it now has 11 events, a second touch and a pad among them).
+  changes (it now has 17 events, a second touch and pads 1 and 7 among them).
 - `tests/mouselook.rs`: movement summed over a tick and gone the next, a
   touch's movement not counted, `PointerMove` at a still position, the lock
   report reaching `locked` and leaving `wanted`; movement and lock reports

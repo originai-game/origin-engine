@@ -19,7 +19,9 @@
 //! 8–15); a pointer slot carries its pointer id (0 to 4) in word 8 instead.
 //! A gamepad slot is the pad's whole state: word 2 the pad, word 3
 //! connected (0 or 1), words 4–7 the axes (left x, y, right x, y), word 8
-//! the button mask, words 9–10 the triggers. A text slot (kind 4, an
+//! the button mask, words 9–10 the triggers, word 11 the pad's family
+//! ([`crate::Device`] index: 1 Xbox, 2 PlayStation, 3 Switch, 4 a generic
+//! pad; 0 when the host did not say). A text slot (kind 4, an
 //! engine extension) carries word 1 0 for committed text or 1 for an input
 //! method's composition, word 2 1 when it continues the text of the slot
 //! before it (a text longer than [`TEXT_BYTES`] is split between characters
@@ -211,6 +213,7 @@ pub fn decode_slot(slot: &[u8]) -> Result<InjectedInput, String> {
                 buttons: w(8),
                 axes: [f(4), f(5), f(6), f(7)],
                 triggers: [f(9), f(10)],
+                device: crate::Device::from_index(w(11)).filter(|d| d.is_pad()),
             };
             if state.pad as usize >= MAX_GAMEPADS {
                 return Err(format!("pad {}", w(2) as i32));
@@ -289,6 +292,7 @@ pub fn encode_slot(event: &InjectedInput) -> [u8; SLOT_WORDS * 4] {
             set_word(&mut slot, 8, g.buttons);
             set_word(&mut slot, 9, g.triggers[0].to_bits());
             set_word(&mut slot, 10, g.triggers[1].to_bits());
+            set_word(&mut slot, 11, g.device.map_or(0, |d| d.index()));
             (3, 0, g.pad, (g.axes[0], g.axes[1]), (g.axes[2], g.axes[3]))
         }
         InjectedInput::PointerLock { locked } => {
