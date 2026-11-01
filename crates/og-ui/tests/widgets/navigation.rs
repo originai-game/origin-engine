@@ -295,6 +295,61 @@ fn a_dialog_takes_a_press_while_it_enters_and_its_backdrop_waits() {
     assert!(!rig.state.open);
 }
 
+/// A dialog opened from another gives the focus back to the control that
+/// opened it when it closes, and the outer one then gives it back to its
+/// own opener: a submenu returns to its row. Ways it could fail: the focus
+/// lands on the outer dialog's first control (one return remembered for
+/// the base only), or the outer dialog's close forgets its opener.
+#[test]
+fn nested_dialogs_give_the_focus_back_to_what_opened_each() {
+    #[derive(Default)]
+    struct Nest {
+        outer: bool,
+        inner: bool,
+    }
+    let mut rig = Rig::new(Nest::default());
+    let b = &mut |ui: &mut Ui, s: &mut Nest| {
+        if ui.button("Open", "Open", ButtonDesc::default()).clicked {
+            s.outer = true;
+        }
+        let m = ui.modal("Outer", s.outer, &ModalDesc::default(), |ui| {
+            ui.button("First", "First", ButtonDesc::default());
+            if ui.button("More", "More", ButtonDesc::default()).clicked {
+                s.inner = true;
+            }
+        });
+        if m.dismissed {
+            s.outer = false;
+        }
+        let m = ui.modal("Inner", s.inner, &ModalDesc::default(), |ui| {
+            ui.button("Deep", "Deep", ButtonDesc::default());
+        });
+        if m.dismissed {
+            s.inner = false;
+        }
+    };
+    rig.idle(1, b);
+    rig.key(UiKey::Tab, b);
+    rig.key(UiKey::Enter, b);
+    rig.idle(20, b);
+    assert_eq!(rig.ui.focus_path(0), "Outer/Panel/First");
+    rig.key(UiKey::Down, b);
+    assert_eq!(rig.ui.focus_path(0), "Outer/Panel/More");
+    rig.key(UiKey::Enter, b);
+    rig.idle(20, b);
+    assert_eq!(rig.ui.focus_path(0), "Inner/Panel/Deep");
+    rig.key(UiKey::Escape, b);
+    rig.idle(20, b);
+    assert_eq!(
+        rig.ui.focus_path(0),
+        "Outer/Panel/More",
+        "back to the row that opened it"
+    );
+    rig.key(UiKey::Escape, b);
+    rig.idle(20, b);
+    assert_eq!(rig.ui.focus_path(0), "Open", "and then to the first opener");
+}
+
 /// A HUD under a pause dialog, as og.ui.racingHud draws: it asks
 /// `Ui::back` before the dialog is built this tick.
 #[derive(Default)]

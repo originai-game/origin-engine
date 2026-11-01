@@ -48,7 +48,11 @@ impl Ui {
             u8::from(s.focus_visible) | u8::from(s.nav_off) << 1 | u8::from(s.scope_locked) << 2,
         );
         u64_(&mut b, s.scope);
-        u64_(&mut b, s.focus_return);
+        u32_(&mut b, s.focus_returns.len() as u32);
+        for &(scope, focus) in &s.focus_returns {
+            u64_(&mut b, scope);
+            u64_(&mut b, focus);
+        }
         b.push(s.stick.0);
         u64_(&mut b, s.stick.1);
         u32_(&mut b, s.pending.len() as u32);
@@ -342,7 +346,9 @@ impl Reader<'_> {
         s.nav_off = flags & 2 != 0;
         s.scope_locked = flags & 4 != 0;
         s.scope = self.u64()?;
-        s.focus_return = self.u64()?;
+        for _ in 0..self.u32()? {
+            s.focus_returns.push((self.u64()?, self.u64()?));
+        }
         s.stick = (self.u8()?, self.u64()?);
         for _ in 0..self.u32()? {
             let i = self.u8()?;
