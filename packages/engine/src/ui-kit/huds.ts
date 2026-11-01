@@ -162,23 +162,43 @@ export function shooterHud(id: string, desc: Api.ShooterHudDesc = {}): Api.HudRe
 }
 
 export function puzzleHud(id: string, desc: Api.PuzzleHudDesc = {}): Api.HudResult {
-  const { t } = frame();
+  const { t, viewport } = frame();
+  // A portrait phone has no room for the 260 px score chip between the
+  // level and the timer (on 390 px it covered the level's last word and
+  // met the timer): the chip takes the row under them, the moves at its
+  // start.
+  const narrow = viewport.breakpoint === "phonePortrait";
   const out = hud();
   const target = Math.max(1, desc.target ?? 1000);
   const score = desc.score ?? 0;
   const marks = desc.stars && desc.stars.length > 0 ? desc.stars : [Math.round(target / 3), Math.round((2 * target) / 3), target];
-  kit.anchor(`${id}.left`, { anchor: "topLeft", direction: "column", gap: t.xs }, () => {
-    if (desc.level) hudBox("LevelBox", () => kit.label("Level", desc.level!, { step: "meta", color: token("inkMuted"), nowrap: true }));
-    if (desc.moves !== null && desc.moves !== undefined) stat("Moves", `${desc.moves}`, desc.movesLabel ?? "moves left", "xl3");
-  });
-  kit.anchor(`${id}.score`, { ...chip(), anchor: "top", direction: "column", cross: "center", gap: t.xs, width: px(260) }, () => {
+  const moves = desc.moves !== null && desc.moves !== undefined;
+  const goal = (): void => {
     kit.label("Score", fmt(score), { step: "displaySm", font: "display", align: "center", width: grow() });
     kit.meter("Progress", score, target, { kind: "primary", width: grow(), segments: 3 });
     kit.row("Stars", { gap: t.sm, cross: "center" }, () => {
       marks.slice(0, 3).forEach((m, i) => iconOr(kit.idi("Star", i), "star", 20, token(score >= m ? "primary" : "controlStrong")));
       kit.label("Target", (desc.targetLabel ?? "Target {target}").replaceAll("{target}", fmt(target)), { step: "meta", color: token("inkMuted"), nowrap: true });
     });
+  };
+  kit.anchor(`${id}.left`, { anchor: "topLeft", direction: "column", gap: t.xs }, () => {
+    if (desc.level) hudBox("LevelBox", () => kit.label("Level", desc.level!, { step: "meta", color: token("inkMuted"), nowrap: true }));
+    if (moves && !narrow) stat("Moves", `${desc.moves}`, desc.movesLabel ?? "moves left", "xl3");
   });
+  if (narrow) {
+    const row = Math.max(t.controlMd, 44) + t.sm;
+    kit.anchor(`${id}.score`, { ...chip(), anchor: "top", offsetY: row, direction: "row", cross: "center", gap: t.md, width: grow() }, () => {
+      if (moves) {
+        kit.column("Moves", { gap: 0, cross: "center" }, () => {
+          kit.label("Value", `${desc.moves}`, { step: "xl3", font: "mono", nowrap: true, align: "center" });
+          kit.label("Caption", desc.movesLabel ?? "moves left", { step: "meta", color: token("inkMuted"), nowrap: true, align: "center" });
+        });
+      }
+      kit.column("Goal", { gap: t.xs, cross: "center", width: grow() }, goal);
+    });
+  } else {
+    kit.anchor(`${id}.score`, { ...chip(), anchor: "top", direction: "column", cross: "center", gap: t.xs, width: px(260) }, goal);
+  }
   kit.anchor(`${id}.right`, { anchor: "topRight", gap: t.sm, cross: "center" }, () => {
     if (desc.timeLeft !== null && desc.timeLeft !== undefined) {
       hudBox("Timer", () => kit.label("Time", clock(desc.timeLeft!), { font: "mono", color: token(desc.timeLeft! <= 10 ? "danger" : "ink"), nowrap: true }));

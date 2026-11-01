@@ -68,3 +68,24 @@ for (const [name, build] of Object.entries(HUDS)) {
     }
   });
 }
+
+// The puzzle HUD's groups meet nowhere on any surface: its score chip sits
+// between the level and the timer (on a 390 px phone the 260 px chip
+// covered the "7" of "Level 7" and ran into the 0:48 timer).
+test("og.ui.puzzleHud's level, score and timer never overlap", () => {
+  const Hud = defineSystem("UcHudPuzzleApart", {}, () =>
+    og.ui.puzzleHud("Hud", { level: "Level 7", score: 680, target: 1000, moves: 12, timeLeft: 48 }),
+  );
+  const r = createEngine(og.game({ systems: [Hud] }) as GameToken);
+  if (!r.ok) throw new Error(r.reason);
+  const engine = r.value;
+  const tablet = { width: 1024, height: 768, dpr: 2, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: true, breakpoint: "tablet" };
+  for (const [surface, viewport] of [...Object.entries(SURFACES).map(([s, v]) => [s, v.viewport] as const), ["tablet", tablet] as const]) {
+    og.ui.previewViewport(engine.world, viewport as never);
+    engine.advance(3);
+    const groups = elements(engine).filter((e) => e.parent === "" && e.width > 0 && e.height > 0);
+    const met: string[] = [];
+    for (let i = 0; i < groups.length; i++) for (let j = i + 1; j < groups.length; j++) if (meet(groups[i]!, groups[j]!) > 0.5) met.push(`${groups[i]!.id} × ${groups[j]!.id}`);
+    expect(`${surface}: ${met.join(", ")}`).toBe(`${surface}: `);
+  }
+});

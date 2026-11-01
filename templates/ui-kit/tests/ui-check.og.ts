@@ -3,7 +3,8 @@
 // and puzzle HUDs laid out on a 390×844 phone (the kit's `viewport:phone`)
 // and finds the two phone bugs the kit shipped with as undeclared overlap:
 // the platformer's timer pill under its coin pill, and the Gallery button
-// over the puzzle's "Target 1,000". The kit is rebuilt in U8; until then
+// over the puzzle's score chip (the framed box the checker names since the
+// HUD's words sit on the hud chip). The kit is rebuilt in U8; until then
 // this playtest records the bugs rather than fixing them, and U8's kit must
 // turn these expectations round (a clean check).
 import { playtest } from "@origingame/engine/playtest";
@@ -23,8 +24,8 @@ export default playtest({
     );
     const puzzle = overlaps("puzzle");
     t.ok(
-      puzzle.some((f) => f.paths.includes("Back/Gallery") && f.paths.includes("Hud.score/Stars/Target")),
-      `the Gallery button over "Target 1,000" is an undeclared overlap (found: ${puzzle.map((f) => f.paths.join(" × ")).join("; ")})`,
+      puzzle.some((f) => f.paths.includes("Back/Gallery") && f.paths.includes("Hud.score")),
+      `the Gallery button over the score chip is an undeclared overlap (found: ${puzzle.map((f) => f.paths.join(" × ")).join("; ")})`,
     );
     for (const f of [...platformer, ...puzzle]) t.ok(f.prop !== "" && f.measured.includes("CSS px"), `${f.paths.join(" × ")} names its measure and the prop to change`);
   },
