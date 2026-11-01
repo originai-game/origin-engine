@@ -627,6 +627,9 @@ export function shortTime(seconds: number, tenths = true): string {
  */
 export function hudBandInset(): number {
   const vp = frame().viewport;
+  // With G1-7's band (Viewport.hud, UiDesc.hudMaxAspect) og-ui already lays
+  // every anchored group out inside it: nothing more to inset.
+  if ((vp as { hud?: Api.UiRect }).hud) return 0;
   const w = vp.width - vp.safeArea.left - vp.safeArea.right;
   const h = vp.height - vp.safeArea.top - vp.safeArea.bottom;
   return Math.max(0, Math.round((w - h * (21 / 9)) / 2));

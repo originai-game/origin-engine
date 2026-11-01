@@ -16,6 +16,8 @@ export * from "../feedback/core.ts";
 export function hudRoom(): number {
   const f = frame();
   const vp = f.viewport;
+  const band = (vp as { hud?: Api.UiRect }).hud;
+  if (band) return band.width - f.t.gutter * 2;
   return vp.width - vp.safeArea.left - vp.safeArea.right - f.t.gutter * 2 - hudBandInset() * 2;
 }
 
