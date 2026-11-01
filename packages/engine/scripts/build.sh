@@ -94,27 +94,34 @@ fi
 mkdir -p "$here/native" "$here/dist/web" "$here/dist/web-publish"
 echo "$profile" > "$here/native/build-profile"
 addon="$here/native/origin-engine.$platform.node"
-# Remove before copying: macOS keeps a signed binary's code signature by
-# inode, and an executable rewritten in place by cp is then killed on start
-# (SIGKILL, exit 137, nothing printed) once its new bytes no longer match.
-rm -f "$addon" "$here/native/og.$platform"
+og_bin="$here/native/og.$platform"
+# Each binary is written beside its place and renamed over it: never
+# rewritten in place, since macOS keeps a signed binary's code signature by
+# inode and an executable rewritten by cp is then killed on start (SIGKILL,
+# exit 137, nothing printed); and never removed first, since a gate step
+# running beside this one (bun-functional beside ui-styles' build) would
+# find no og or addon in between.
 if [ "$host_build" = 0 ]; then
-  :
+  rm -f "$addon" "$og_bin"
 elif [ -f "$bindir/libog_host_node.dylib" ]; then
-  cp "$bindir/libog_host_node.dylib" "$addon"
+  cp "$bindir/libog_host_node.dylib" "$addon.$$"
   # ld-27037 can leave the string table off 8-byte alignment, which dyld refuses.
-  codesign --remove-signature "$addon"
-  bun "$here/scripts/align-macho.ts" "$addon"
-  codesign -s - "$addon"
+  codesign --remove-signature "$addon.$$"
+  bun "$here/scripts/align-macho.ts" "$addon.$$"
+  codesign -s - "$addon.$$"
 elif [ -f "$bindir/libog_host_node.so" ]; then
-  cp "$bindir/libog_host_node.so" "$addon"
+  cp "$bindir/libog_host_node.so" "$addon.$$"
 elif [ -f "$bindir/og_host_node.dll" ]; then
-  cp "$bindir/og_host_node.dll" "$addon"
+  cp "$bindir/og_host_node.dll" "$addon.$$"
 else
   echo "build.sh: no native addon in $bindir" >&2
   exit 1
 fi
-[ "$host_build" = 0 ] || cp "$bindir/og$exe" "$here/native/og.$platform"
+if [ "$host_build" != 0 ]; then
+  mv -f "$addon.$$" "$addon"
+  cp "$bindir/og$exe" "$og_bin.$$"
+  mv -f "$og_bin.$$" "$og_bin"
+fi
 if [ "$linux_x64" = 1 ]; then
   triple=x86_64-unknown-linux-gnu
   cargo zigbuild --release -q -p og-host-node -p og-cli --target "$triple.2.31"
