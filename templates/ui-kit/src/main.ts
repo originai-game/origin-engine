@@ -18,11 +18,13 @@
 
 import { og, defineComponent, defineResource, defineSystem, bool, f32, f64, str, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
+import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, navigationScreen, overlaysScreen } from "./components.ts";
 
 export const SCREENS = [
   "gallery", "widgets", "mainMenu", "pause", "settings", "platformer", "shooter", "puzzle", "idle", "racing",
   "cutscene", "shop", "inventory", "levels", "results", "leaderboard", "tutorial", "loading", "confirm", "alert", "toasts",
   "players", "text", "materials",
+  "containers", "navigation", "overlays", "data", "charts", "graph",
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
@@ -62,6 +64,12 @@ const BLURBS: Record<Screen, string> = {
   players: "Local multiplayer: four pads, four rings",
   text: "Kerning, ellipses, scripts, fields and text areas",
   materials: "Icons, edge light, pictures, two-finger scroll and pinch",
+  containers: "Cards, accordion, scroll area, split view",
+  navigation: "Tabs with bumpers, carousel, breadcrumbs, pagination, action bar",
+  overlays: "Menus, context menu, popover, dialog, confirm, sheets, radial wheel",
+  data: "Table of 10,000 rows, list, tree, grid, stat rows",
+  charts: "Line, area, bar, stacked, radar, donut",
+  graph: "Skill tree graph and calendar",
 };
 
 /** The demo's state: one entity named "demo" (dump_entity:demo reads it). */
@@ -1070,6 +1078,30 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       if (d.iconoir) materialsScreen(d);
       back = og.ui.back();
       break;
+    case "containers":
+      containersScreen();
+      back = og.ui.back();
+      break;
+    case "navigation":
+      navigationScreen();
+      back = og.ui.back();
+      break;
+    case "overlays":
+      // Back closes the open overlay first (its focus scope takes it).
+      overlaysScreen();
+      break;
+    case "data":
+      dataScreen();
+      back = og.ui.back();
+      break;
+    case "charts":
+      chartsScreen();
+      back = og.ui.back();
+      break;
+    case "graph":
+      graphScreen();
+      back = og.ui.back();
+      break;
     case "toasts": {
       const t = og.ui.frameTheme();
       og.ui.anchor("ToastDemo", { anchor: "center", direction: "column", gap: t.space.sm, width: { kind: "fixed", px: 300 }, padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, background: { token: "panel" }, radius: t.radius.panel }, () => {
@@ -1193,6 +1225,7 @@ export default og.game({
     },
     mixed: (world, args) => update(world, { mixed: args[0] !== "off" }),
     offline: (world, args) => update(world, { offline: args[0] !== "off" }),
+    demo: (_world, args) => demoCommand(args),
   },
   commandHelp: {
     show: { usage: `<${SCREENS.join("|")}>`, doc: "Open a screen of the kit (its usage lists them all: og ui check reads it)." },
@@ -1205,6 +1238,7 @@ export default og.game({
     transition: { usage: "<none|fade|wipe|iris|dissolve|slide>", doc: "Send screen changes through og.ui.screenTransition." },
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
     mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },
+    demo: { usage: "<overlay|data|aim|reset>:<value>", doc: "A component preview's state: demo:overlay:menu (menu, submenu, context, popover, dialog, confirm, sheet, sideSheet, radial, none), demo:data:loading (rows, loading, empty, error), demo:aim:0.7,-0.7 (the radial wheel's stick)." },
     offline: { usage: "<on|off>", doc: "The leaderboard's rows fail to load: its error message and Retry (which loads again)." },
   },
   facts: (world) => {
