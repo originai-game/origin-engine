@@ -24612,6 +24612,12 @@ export interface SemanticsDesc {
    */
   readonly busy?: boolean;
   /**
+   * Shown but inert (a disabled menu item, a locked tab): disabled in the tree, and its interaction state group's disabled state.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
    * A range's smallest value.
    *
    * @default null

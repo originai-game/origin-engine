@@ -621,6 +621,7 @@ pub fn og_ui_semantics(desc: Option<String>) -> bool {
         selected: d["selected"].as_bool(),
         expanded: d["expanded"].as_bool(),
         busy: d["busy"].as_bool().unwrap_or(false),
+        disabled: d["disabled"].as_bool().unwrap_or(false),
         value_min: num("valueMin"),
         value_max: num("valueMax"),
         value_now: num("valueNow"),

@@ -307,6 +307,9 @@ pub struct Semantics {
     pub selected: Option<bool>,
     pub expanded: Option<bool>,
     pub busy: bool,
+    /// Shown but inert (a disabled menu item): `disabled` in the tree and
+    /// the `interaction` state group's `disabled` state.
+    pub disabled: bool,
     pub value_min: Option<f32>,
     pub value_max: Option<f32>,
     pub value_now: Option<f32>,
@@ -340,6 +343,7 @@ impl crate::Ui {
                 }
             },
         };
+        self.nodes[i].disabled |= s.disabled;
         let a = &mut self.nodes[i].a11y;
         if role.is_some() {
             a.role = role;

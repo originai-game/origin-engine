@@ -3852,6 +3852,7 @@ module ui {
     field selected Option.bool "Selected (a tab, a row, an option); null is not selectable."
     field expanded Option.bool "Expanded (an accordion header, a tree item, a menu button); null is not expandable."
     field busy bool "Loading."
+    field disabled bool "Shown but inert (a disabled menu item, a locked tab): disabled in the tree, and its interaction state group's disabled state."
     field valueMin Option.f32 "A range's smallest value."
     field valueMax Option.f32 "A range's largest value."
     field valueNow Option.f32 "A range's value as a number (a scroll position, a page); null is no range."
