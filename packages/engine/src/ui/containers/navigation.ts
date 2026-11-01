@@ -6,7 +6,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  chevron, clamp, fit, flags, frame, glyphCap, grow, kit, lastGesture, mark, over, px, rememberPath, role, rtl, spring, still, surface, text, token, xy,
+  chevron, clamp, fit, flags, frame, glyphCap, grow, kit, lastGesture, mark, over, pointerFrom, px, rememberPath, role, rtl, spring, still, surface, text, token, xy,
 } from "./base.ts";
 import { menu } from "./layers.ts";
 
@@ -59,6 +59,7 @@ export function tabBar(id: string, desc: Api.TabBarDesc, build: Api.UiItemBuild)
             part: "Tabs.tab",
             cls: "tab",
             flags: [on ? "selected" : "", style],
+            selected: on,
             fill: null,
             washBy: 0.08,
             disabled: tab.disabled ?? false,
@@ -218,7 +219,7 @@ function dots(id: string, count: number, index: number, go: (k: number) => void)
   kit.row(id, { width: grow(), align: "center", cross: "center", gap: 0 }, () => {
     for (let k = 0; k < count; k++) {
       const on = k === index;
-      const r = surface(kit.idi("Dot", k), { part: "Carousel.dot", cls: "chip", flags: [on ? "current" : ""], fill: null, focusable: false, width: px(on ? 36 : 22), height: px(28), align: "center", cross: "center", semantics: { role: "button", name: `${k + 1}`, selected: on } }, () => {
+      const r = surface(kit.idi("Dot", k), { part: "Carousel.dot", cls: "chip", flags: [on ? "current" : ""], selected: on, fill: null, focusable: false, width: px(on ? 36 : 22), height: px(28), align: "center", cross: "center", semantics: { role: "button", name: `${k + 1}`, selected: on } }, () => {
         const w = kit.animate("~w", on ? 20 : 8, spring("ui"));
         kit.open("Pip", { width: px(w), height: px(8), radius: 4, background: token(on ? "primary" : "lineStrong") });
         kit.close();
@@ -322,7 +323,7 @@ export function pagination(id: string, desc: Api.PaginationDesc): Api.PageResult
           return;
         }
         const on = k === page;
-        const r = surface(kit.idi("Page", k), { part: "Pagination.page", cls: "button", flags: [on ? "current" : ""], fill: on ? role("primary") : null, width: fit(40), height: px(40), padding: xy(t.xs, 0), align: "center", cross: "center", semantics: { role: "button", name: `${k + 1}`, selected: on } }, () => {
+        const r = surface(kit.idi("Page", k), { part: "Pagination.page", cls: "button", flags: [on ? "current" : ""], selected: on, fill: null, selectedFill: role("primary"), width: fit(40), height: px(40), padding: xy(t.xs, 0), align: "center", cross: "center", semantics: { role: "button", name: `${k + 1}`, selected: on } }, () => {
           text("Number", `${k + 1}`, { step: "sm", font: "mono", color: on ? "onPrimary" : "ink", nowrap: true });
         });
         if (r.clicked) page = k;
@@ -414,24 +415,35 @@ export function radialMenu(id: string, open: boolean, desc: Api.RadialDesc): Api
     return ((Math.floor(ang / turn) % n) + n) % n;
   };
   if (aim && Math.hypot(aim.x, aim.y) > (desc.deadZone ?? 0.35)) hovered = pick(aim.x, aim.y);
+  // The pointer picks by angle over the ring (the slices are wedges, not rectangles): when it
+  // moves or presses, so a resting mouse leaves the stick its aim.
+  const key = `${id}~wheel`;
+  const ptr = open ? pointerFrom(key) : null;
+  const moved = ptr !== null && (ptr.down || Math.round(ptr.x) !== kit.memory(`${id}~px`, -1) || Math.round(ptr.y) !== kit.memory(`${id}~py`, -1));
+  const onRing = ptr !== null && ptr.d >= hole * 0.6 && ptr.d <= radius + 12;
+  if (moved && onRing) hovered = pick(ptr.dx, ptr.dy);
+  // A pointer press released off the ring (in the hole: the way to cancel) chooses nothing.
+  const pointerRelease = kit.memory(`${id}~pd`, 0) > 0 && !(ptr?.down ?? false);
+  kit.remember(`${id}~px`, ptr ? Math.round(ptr.x) : -1);
+  kit.remember(`${id}~py`, ptr ? Math.round(ptr.y) : -1);
+  kit.remember(`${id}~pd`, ptr?.down ? 1 : 0);
+  const step = (dir: number): number => {
+    for (let s = 1; s <= n; s++) {
+      const j = (((hovered < 0 ? (dir > 0 ? -1 : 0) : hovered) + dir * s) % n + n) % n;
+      if (!(items[j]?.disabled ?? false)) return j;
+    }
+    return hovered;
+  };
   const was = hovered;
   const f = kit.modal(id, open, { bare: true, backdrop: token("scrim", desc.dim === false ? 0 : 0.55), transition: "scale", width: px(radius * 2) }, () => {
-    kit.open("Wheel", { width: px(radius * 2), height: px(radius * 2), interactive: true, part: "Radial.frame", partClass: "dialog" });
+    // The wheel takes the pointer, keys (Left and Right step round it, Enter chooses) and pads.
+    kit.open("Wheel", { width: px(radius * 2), height: px(radius * 2), interactive: true, focusable: true, adjustable: true, part: "Radial.frame", partClass: "dialog" });
     kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("panel", 0.82) }], effects: [{ kind: "backdrop", blur: 10 }] });
-    const wheel = kit.lastPath();
     items.forEach((it, k) => {
       const on = k === hovered;
       const a0 = -Math.PI / 2 - turn / 2 + k * turn;
-      const r = surface(kit.idi("Slice", k), {
-        part: "Radial.slice",
-        cls: "chip",
-        flags: [on ? "hover" : "", it.disabled ? "disabled" : ""],
-        fill: null,
-        disabled: it.disabled ?? false,
-        width: px(radius * 2),
-        height: px(radius * 2),
-        semantics: { role: "menuitem", name: it.label ?? "", selected: on },
-      }, () => {
+      kit.open(kit.idi("Slice", k), { width: px(radius * 2), height: px(radius * 2), part: `Radial.slice${flags(on && "hover", it.disabled && "disabled")}`, partClass: "chip" });
+      {
         const swell = kit.animate("~swell", on ? 1 : 0, spring("ui"));
         kit.setDraw({
           shape: { kind: "arc", start: rtl() ? Math.PI - a0 - turn + 0.02 : a0 + 0.02, sweep: turn - 0.04, thickness: radius - hole + swell * 6 },
@@ -446,10 +458,10 @@ export function radialMenu(id: string, open: boolean, desc: Api.RadialDesc): Api
           if (it.label && desc.labels !== false) text("Text", it.label, { step: "caption", color: on ? "onPrimary" : "inkMuted", nowrap: true, ellipsis: true, align: "center", width: grow() });
         });
         over({ insets: { start: (rtl() ? radius * 2 - cx : cx) - 40, top: cy - 22 }, inert: true });
-      });
-      kit.props({ position: "absolute", insets: { start: 0, top: 0 }, overlaps: [wheel] });
-      if (r.hovered) hovered = k;
-      if (r.clicked && !it.disabled) chosen = k;
+      }
+      kit.close();
+      over({ insets: { start: 0, top: 0 }, inert: true });
+      kit.semantics({ role: "menuitem", name: it.label ?? "", selected: on, disabled: it.disabled ?? false });
     });
     // The centre: what is chosen.
     kit.column("Centre", { width: px(hole * 2 - 8), height: px(hole * 2 - 8), align: "center", cross: "center", gap: 2, part: "Radial.centre", partClass: "avatar" }, () => {
@@ -459,8 +471,12 @@ export function radialMenu(id: string, open: boolean, desc: Api.RadialDesc): Api
     });
     kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("panelRaised") }], strokes: [{ width: 1, align: "inside", paint: { kind: "solid", color: token("line") } }] });
     over({ insets: { start: radius - hole + 4, top: radius - hole + 4 }, inert: true, z: 2 });
-    kit.close();
+    const w = kit.close() as Api.Response;
+    rememberPath(key, kit.lastPath());
     kit.semantics({ role: "menu", name: desc.title ?? "", value: items[hovered]?.label ?? "" });
+    // Right goes clockwise (counter-clockwise under a right-to-left locale, as the wheel is mirrored).
+    if (w.adjust !== 0) hovered = step(w.adjust * (rtl() ? -1 : 1));
+    if (w.clicked && hovered >= 0 && !(items[hovered]?.disabled ?? false) && (onRing || !pointerRelease)) chosen = hovered;
   }) as Api.ModalResult;
   if (open && desc.release && hovered >= 0 && !(items[hovered]?.disabled ?? false)) chosen = hovered;
   if (hovered !== was || (hovered !== Math.round(kit.memory(`${id}~heard`, -1)) && hovered >= 0)) {

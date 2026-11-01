@@ -57,7 +57,7 @@ export function tree(id: string, desc: Api.TreeDesc): Api.TreeResult {
         kit.row("Line", { width: grow(), height: grow(), padding: { left: t.xs + depth * indent, top: 0, right: t.sm, bottom: 0 }, gap: t.xs, cross: "center", part: `Tree.item${flags(sel && "selected", branch && (isOpen ? "expanded" : "collapsed"))}`, partClass: "slot" }, () => {
           if (branch) {
             const tr = surface("Toggle", { part: "Tree.toggle", cls: "chip", fill: null, focusable: false, width: px(28), height: px(28), align: "center", cross: "center", semantics: { role: "button", name: isOpen ? "Collapse" : "Expand" } }, () => {
-              chevron("Chevron", "forward", 14, role("inkMuted"), kit.animate("~turn", isOpen ? 1 : 0, spring("ui")));
+              chevron("Chevron", "forward", 14, role("inkMuted"), { group: "expansion", current: isOpen ? "expanded" : "collapsed", turns: { collapsed: 0, expanded: 1 } });
             });
             if (tr.clicked) toggled = key;
           } else kit.spacer("Toggle", px(28));
@@ -175,6 +175,7 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
           part: "Graph.node",
           cls: "avatar",
           flags: [state, n.kind ?? "", "round", desc.selected === n.id ? "selected" : ""],
+          selected: desc.selected === n.id,
           fill: role(locked ? "panel" : "panelRaised"),
           disabled: n.disabled ?? false,
           width: px(s),
@@ -183,6 +184,7 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
           cross: "center",
           radius: n.shape === "square" ? frame().t.control : s / 2,
           semantics: { role: "button", name: n.label ?? n.id ?? "", value: state, selected: desc.selected === n.id },
+          layer: { insets: { start: (rtl() ? W - p.x : p.x) - s / 2, top: p.y - s / 2 }, z: 1 },
         }, () => {
           kit.setDraw({
             shape: n.shape === "hex" ? { kind: "polygon", sides: 6, rounding: 4, rotation: Math.PI / 6 } : n.shape === "diamond" ? { kind: "polygon", sides: 4, rounding: 4 } : { kind: n.shape === "square" ? "rect" : "ellipse" },
@@ -200,7 +202,6 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
             over({ insets: { end: -2, bottom: -2 }, inert: true, z: 2 });
           }
         });
-        over({ insets: { start: (rtl() ? W - p.x : p.x) - s / 2, top: p.y - s / 2 }, z: 1 });
         if (n.label && desc.labels !== false) {
           text(kit.idi("Caption", k), n.label, { step: "caption", color: locked ? "inkFaint" : "inkMuted", nowrap: true, ellipsis: true, align: "center", width: px(120) });
           over({ insets: { start: (rtl() ? W - p.x : p.x) - 60, top: p.y + s / 2 + 4 }, inert: true, z: 1 });

@@ -82,6 +82,22 @@ export function recallPath(key: string): string {
   return paths.get(key) ?? "";
 }
 
+/**
+ * The frame's pointer from the centre of a part as it was laid out last
+ * tick (by the key its path was remembered under): for a component that
+ * hit-tests a round shape by angle and radius (a pie, a wheel). Null when
+ * the pointer is off the surface or the part was not there.
+ */
+export function pointerFrom(key: string): { dx: number; dy: number; d: number; x: number; y: number; down: boolean } | null {
+  const p = recallPath(key);
+  const b = p ? kit.bounds(p) : null;
+  const at = kit.framePointer() as Api.UiPointer;
+  if (!b || !at.inside) return null;
+  const dx = at.x - (b.x + b.width / 2);
+  const dy = at.y - (b.y + b.height / 2);
+  return { dx, dy, d: Math.hypot(dx, dy), x: at.x, y: at.y, down: at.down };
+}
+
 /** The gesture on a part last tick, by the key its path was remembered under. */
 export function lastGesture(key: string): Api.GestureInfo | null {
   const p = recallPath(key);
@@ -96,8 +112,13 @@ export function parentOf(path: string): string {
 
 /** Props for the element just built as a layer over its parent's content (a badge, a ring, a fade): absolute, declared to overlap the parent's subtree on purpose (docs/ui.md §6.2). */
 export function over(p: Api.ElementProps): void {
+  kit.props(overProps(p));
+}
+
+/** over()'s props, for an element whose props are set together with others (a surface's `layer`). */
+export function overProps(p: Api.ElementProps): Api.ElementProps {
   const parent = parentOf(kit.lastPath());
-  kit.props({ ...p, position: "absolute", overlaps: [...(p.overlaps ?? []), ...(parent ? [parent] : [])] });
+  return { ...p, position: "absolute", overlaps: [...(p.overlaps ?? []), ...(parent ? [parent] : [])] };
 }
 
 export const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
@@ -147,6 +168,33 @@ export interface SurfaceDesc {
   wrap?: boolean;
   /** Its accessibility: a role other than button, a name, states. */
   semantics?: Api.SemanticsDesc;
+  /** Selectable (a tab, a page, a day, a card): its `selection` state group, off or on. */
+  selected?: boolean;
+  /** Its fill while selected (null: transparent); `fill` is its fill while not. */
+  selectedFill?: Rgba | null;
+  /** Expandable (an accordion header, a submenu's row): its `expansion` state group, collapsed or expanded. */
+  expanded?: boolean;
+  /** With focusable: Left and Right are its own while it has the focus (Response.adjust). */
+  adjustable?: boolean;
+  /** Its other props (a drag, a placement): set with its states, which a later og.ui.props would replace. */
+  props?: Api.ElementProps;
+  /** Placed as a layer over its parent's content (over()), with these props. */
+  layer?: Api.ElementProps;
+}
+
+/** A colour as the four background values of a visual state. */
+function bgValues(c: Rgba): Api.PropValue[] {
+  return [
+    { prop: "backgroundR", value: c.r },
+    { prop: "backgroundG", value: c.g },
+    { prop: "backgroundB", value: c.b },
+    { prop: "backgroundA", value: c.a },
+  ];
+}
+
+/** A visual state: its name and values, no timelines. */
+export function vstate(name: string, values: Api.PropValue[] = []): Api.VisualState {
+  return { name, values, onEnter: "", onExit: "" };
 }
 
 /**
@@ -159,13 +207,15 @@ export interface SurfaceDesc {
 export function surface(id: string, d: SurfaceDesc, build: () => void): Api.Response {
   const was = lastInteraction(id);
   const on = !d.disabled;
-  const target = !on ? 0 : was.pressed ? 1 : was.hovered || was.focused ? 0.5 : 0;
-  const k = kit.animate(`${id}~wash`, target, spring("ui"));
   const wash = d.wash ?? role("ink");
   const by = d.washBy ?? 0.1;
-  let bg: Api.Paint | null = null;
-  if (d.fill) bg = paint(mix(d.fill, { ...wash, a: Math.max(d.fill.a, 1) }, k * by));
-  else if (k > 0.001) bg = paint({ ...wash, a: k * by * 1.4 });
+  const sel = d.selected ?? false;
+  // Its fill at rest, selected or not; transparent is the wash's colour at no alpha (a fade from
+  // nothing passes through no grey).
+  const rest = (s: boolean): Rgba => (s && d.selectedFill !== undefined ? d.selectedFill : d.fill) ?? { ...wash, a: 0 };
+  // Hover and focus move it half-way to the wash, a press all the way.
+  const tint = (base: Rgba, k: number): Rgba => (base.a > 0 ? mix(base, { ...wash, a: Math.max(base.a, 1) }, k * by) : { ...wash, a: k * by * 1.4 });
+  const base = rest(sel);
   const part = `${d.part}${flags(...(d.flags ?? []), !on && "disabled", on && was.pressed && "pressed", on && was.hovered && !was.pressed && "hover", on && was.focused && "focused")}`;
   kit.open(id, {
     direction: d.direction ?? "row",
@@ -178,7 +228,8 @@ export function surface(id: string, d: SurfaceDesc, build: () => void): Api.Resp
     wrap: d.wrap ?? false,
     interactive: on,
     focusable: on && (d.focusable ?? true),
-    background: bg,
+    adjustable: on && (d.adjustable ?? false),
+    background: base.a > 0 ? paint(base) : null,
     radius: d.radius ?? frame().t.control,
     part,
     partClass: d.cls ?? "button",
@@ -190,19 +241,53 @@ export function surface(id: string, d: SurfaceDesc, build: () => void): Api.Resp
     r = kit.close() as Api.Response;
   }
   keep(id, r);
+  // Its states (docs/ui.md §7.3): og-ui derives interaction from input, the game gives selection
+  // and expansion; every change moves on the style's motion (its reduced fallback under reduced
+  // motion). The part's selector flags above stay for a style's dressings.
+  const states: Api.StateGroup[] = [];
+  const state: Api.StateValue[] = [];
+  if (d.selected !== undefined) {
+    states.push({ name: "selection", states: [vstate("off", bgValues(rest(false))), vstate("on", bgValues(rest(true)))], transitions: [] });
+    state.push({ group: "selection", state: sel ? "on" : "off" });
+  }
+  states.push({
+    name: "interaction",
+    states: [
+      vstate("normal", bgValues(base)),
+      vstate("hover", bgValues(tint(base, 0.5))),
+      vstate("pressed", bgValues(tint(base, 1))),
+      vstate("focused", bgValues(tint(base, 0.5))),
+      vstate("disabled", bgValues(base)),
+    ],
+    transitions: [],
+  });
+  if (d.expanded !== undefined) {
+    states.push({ name: "expansion", states: [vstate("collapsed"), vstate("expanded")], transitions: [] });
+    state.push({ group: "expansion", state: d.expanded ? "expanded" : "collapsed" });
+  }
+  const extra = d.layer ? overProps(d.layer) : d.props ?? {};
+  kit.props({ ...extra, states: [...(extra.states ?? []), ...states], state: [...(extra.state ?? []), ...state] });
   if (d.semantics || d.disabled) kit.semantics({ ...(d.semantics ?? {}), disabled: d.disabled ?? false });
-  return on ? r : { ...r, clicked: false, pressed: false };
+  return on ? r : { ...r, clicked: false, pressed: false, adjust: 0 };
 }
 
 /** Which way a chevron points: forward (the reading direction), back, up, down. */
 export type Way = "forward" | "back" | "up" | "down";
 
+/** A part's turn by state: a group whose states each turn it by quarter turns (an accordion's chevron: collapsed 0, expanded 2), moved on the style's motion. */
+export interface Turns {
+  group: string;
+  current: string;
+  turns: Record<string, number>;
+}
+
 /**
  * A chevron drawn as a path (no icon atlas needed), `size` square, in
- * `color`, turned by `turn` (0–1 of a quarter turn on top of its way: an
- * accordion's opening). Forward and back follow the writing direction.
+ * `color`, turned by `turn` quarter turns on top of its way, or by state
+ * (`Turns`: an accordion's opening, a sort's direction). Forward and back
+ * follow the writing direction.
  */
-export function chevron(id: string, way: Way, size: number, color: Rgba, turn = 0, weight = 2): void {
+export function chevron(id: string, way: Way, size: number, color: Rgba, turn: number | Turns = 0, weight = 2): void {
   const flip = rtl();
   const base = way === "down" ? 90 : way === "up" ? -90 : (way === "back") !== flip ? 180 : 0;
   kit.open(id, { width: px(size), height: px(size) });
@@ -210,7 +295,16 @@ export function chevron(id: string, way: Way, size: number, color: Rgba, turn = 
   const pts = [{ x: s * 0.38, y: s * 0.22 }, { x: s * 0.66, y: s * 0.5 }, { x: s * 0.38, y: s * 0.78 }];
   kit.setDraw({ shape: { kind: "path", points: pts, width: weight, cap: "round", join: "round" }, fills: [{ kind: "solid", color: paint(color) }] });
   kit.close();
-  kit.props({ transform: { rotate: ((base + 90 * turn) * Math.PI) / 180 } });
+  const rad = (q: number) => ((base + 90 * q) * Math.PI) / 180;
+  if (typeof turn === "number") {
+    kit.props({ transform: { rotate: rad(turn) } });
+    return;
+  }
+  kit.props({
+    transform: { rotate: rad(turn.turns[turn.current] ?? 0) },
+    states: [{ name: turn.group, states: Object.entries(turn.turns).map(([name, q]) => vstate(name, [{ prop: "rotate", value: rad(q) }])), transitions: [] }],
+    state: [{ group: turn.group, state: turn.current }],
+  });
 }
 
 /** A small mark drawn as a path: a tick, a cross, a plus, a minus, a dot or a ring. */
@@ -332,8 +426,6 @@ export function floating(
         ...extra,
         transform: { ...tr, x: to.x + (tr.x ?? 0), y: to.y + (tr.y ?? 0) },
         opacity: b ? (extra.opacity ?? 1) : 0,
-        // Unmeasured, it is not where it will be: nothing to press yet.
-        ...(b ? {} : { inert: true }),
       });
     }
   } finally {

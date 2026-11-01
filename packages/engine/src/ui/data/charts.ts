@@ -8,7 +8,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  clamp, flags, frame, grow, kit, mix, over, paint, px, role, rtl, series, spring, still, surface, text, token, xy,
+  clamp, flags, frame, grow, kit, mix, over, paint, pointerFrom, px, rememberPath, role, rtl, series, spring, still, surface, text, token, xy,
   type Rgba,
 } from "../containers/base.ts";
 import { dataState } from "./table.ts";
@@ -21,6 +21,8 @@ const ANIMATED_POINTS = 240;
 type Kind = "line" | "area" | "bar" | "radar" | "pie" | "donut";
 
 interface Ctx {
+  /** What its parts' paths are remembered under (`chart:<id>`). */
+  key: string;
   desc: Api.ChartDesc;
   kind: Kind;
   values: number[][];
@@ -77,7 +79,7 @@ export function chart(id: string, desc: Api.ChartDesc): Api.ChartResult {
       const W = kit.memory("~w", 0);
       const reveal = still() ? 1 : kit.animate("~reveal", W > 0 ? 1 : 0, spring("panel"));
       const cx: Ctx = {
-        desc, kind, values, colours, cats, n, hot, reveal,
+        key: `chart:${id}`, desc, kind, values, colours, cats, n, hot, reveal,
         names: list.map((s, k) => s.label || `${k + 1}`),
         fmt: (v) => formatNumber(v, desc.format, desc.digits ?? 0, desc.unit ?? ""),
       };
@@ -315,14 +317,15 @@ function cartesian(cx: Ctx, W: number, H: number): { hovered: number | null; cli
           part: "Chart.category",
           cls: "slot",
           flags: [i === hot ? "hover" : "", desc.selected === i ? "selected" : ""],
+          selected: desc.selected === i,
           fill: null,
           washBy: bar ? 0.06 : 0,
           width: px(Math.max(1, x1 - x0)),
           height: px(H),
           radius: 0,
           semantics: { role: "button", name: `${cx.cats[i] ?? i + 1}: ${values.map((v, k) => `${values.length > 1 ? `${cx.names[k]} ` : ""}${cx.fmt(v[i] ?? 0)}`).join(", ")}`, selected: desc.selected === i },
+          layer: { insets: { start: x0, top: 0 }, z: 30 },
         }, () => {});
-        over({ insets: { start: x0, top: 0 }, z: 30 });
         if (r.hovered || r.focused || r.pressed) hovered = i;
         if (r.clicked) clicked = i;
       }
@@ -479,8 +482,8 @@ function radar(cx: Ctx, W: number, H: number): { hovered: number | null; clicked
         padding: xy(4, 0),
         align: align === "center" ? "center" : align === "end" ? "end" : "start",
         semantics: { role: "button", name: `${cx.cats[k] ?? k + 1}: ${values.map((v, s) => `${values.length > 1 ? `${cx.names[s]} ` : ""}${cx.fmt(v[k] ?? 0)}`).join(", ")}` },
+        layer: { insets: { start: flip ? W - physX - w : physX, top: ly - 14 + (Math.sin(a) > 0.5 ? 6 : Math.sin(a) < -0.5 ? -6 : 0) }, z: 30 },
       }, () => text("Label", cx.cats[k] ?? "", { step: "caption", color: k === hot ? "ink" : "inkMuted", nowrap: true, ellipsis: true, align }));
-      over({ insets: { start: flip ? W - physX - w : physX, top: ly - 14 + (Math.sin(a) > 0.5 ? 6 : Math.sin(a) < -0.5 ? -6 : 0) }, z: 30 });
       if (r.hovered || r.focused || r.pressed) hovered = k;
       if (r.clicked) clicked = k;
     }
@@ -512,17 +515,42 @@ function pie(cx: Ctx, W0: number, H: number): { hovered: number | null; clicked:
   let hovered: number | null = null;
   let clicked: number | null = null;
   const stack = phone;
+  // Every wedge's start and sweep, in the reading direction from 12 o'clock (mirrored under a
+  // right-to-left locale).
+  const sweepAll = Math.PI * 2 * cx.reveal;
+  const first = -Math.PI / 2 - (1 - cx.reveal) * 0.6;
+  const wedges: Array<{ a0: number; sweep: number }> = [];
+  {
+    let a = first;
+    for (const val of v) {
+      const sweep = total > 0 ? (val / total) * sweepAll : 0;
+      wedges.push({ a0: a, sweep });
+      a += sweep;
+    }
+  }
+  const inner = donut ? R * hole : 0;
+  // The pointer picks a wedge by its angle and distance from the centre, so anywhere inside a
+  // wedge is that wedge (rectangles would overlap across its edges).
+  const ptr = pointerFrom(`${cx.key}~plot`);
+  let under = -1;
+  if (ptr && ptr.d >= inner && ptr.d <= R + 6) {
+    const phys = Math.atan2(ptr.dy, ptr.dx);
+    const ang = flip ? Math.PI - phys : phys;
+    const rel = (((ang - first) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    let a = 0;
+    under = wedges.findIndex((w) => {
+      const hit = w.sweep > 0 && rel >= a && rel < a + w.sweep;
+      a += w.sweep;
+      return hit;
+    });
+  }
   kit.open("Body", { direction: stack ? "column" : "row", width: grow(), gap: t.lg, cross: "center" });
-  kit.open("Plot", { width: px(D), height: px(D) });
+  kit.open("Plot", { width: px(D), height: px(D), interactive: true });
   {
     const c = D / 2;
     const gapA = v.filter((x) => x > 0).length > 1 ? Math.min(0.04, 3 / R) : 0;
-    const sweepAll = Math.PI * 2 * cx.reveal;
-    let a = -Math.PI / 2 - (1 - cx.reveal) * 0.6;
-    v.forEach((val, k) => {
-      const sweep = total > 0 ? (val / total) * sweepAll : 0;
-      const a0 = a;
-      a += sweep;
+    v.forEach((_val, k) => {
+      const { a0, sweep } = wedges[k]!;
       if (sweep <= 0) return;
       const mid = a0 + sweep / 2;
       const on = k === hot;
@@ -534,23 +562,7 @@ function pie(cx: Ctx, W0: number, H: number): { hovered: number | null; clicked:
       kit.setDraw({ shape: { kind: "arc", start: start + gapA / 2, sweep: Math.max(0.001, sweep - gapA), thickness: donut ? R * (1 - hole) : R, cap: "butt" }, fills: [{ kind: "solid", color: paint(colour(k)) }] });
       kit.close();
       over({ insets: { start: c - R, top: c - R }, inert: true, z: on ? 2 : 1, opacity: hot >= 0 && !on ? 0.55 : 1, transform: { x: Math.cos(physMid) * pull * (flip ? -1 : 1), y: Math.sin(physMid) * pull }, motion: spring("ui") });
-      // Targets: slender spokes turned along the wedge (a pointer's hit test follows a transform), one for each 12°.
-      const pieces = Math.max(1, Math.ceil(sweep / 0.21));
-      for (let j = 0; j < pieces; j++) {
-        const am = a0 + (sweep * (j + 0.5)) / pieces;
-        const pm = flip ? Math.PI - am : am;
-        const inner = donut ? R * hole : 0;
-        const len = R - inner;
-        const wide = Math.max(8, 2 * R * Math.sin(Math.min(Math.PI / 2, sweep / pieces / 2)) + 2);
-        const mx = c + Math.cos(pm) * (inner + len / 2);
-        const my = c + Math.sin(pm) * (inner + len / 2);
-        kit.open(kit.idi(`Hit${k}.`, j), { width: px(len), height: px(wide), interactive: true });
-        const r = kit.close() as Api.Response;
-        const physX = mx - len / 2;
-        over({ insets: { start: flip ? D - physX - len : physX, top: my - wide / 2 }, z: 5, transform: { rotate: pm, pivotX: 0.5, pivotY: 0.5 } });
-        if (r.hovered || r.pressed) hovered = k;
-        if (r.clicked) clicked = k;
-      }
+      kit.semantics({ role: "image", name: `${cx.cats[k] ?? k + 1}, ${cx.fmt(cx.values[0]![k]!)}, ${pct(v[k]!)}` });
     });
     if (donut) {
       const k = hot >= 0 && hot < v.length ? hot : -1;
@@ -561,7 +573,10 @@ function pie(cx: Ctx, W0: number, H: number): { hovered: number | null; clicked:
       over({ insets: { start: c - R * hole + 6, top: c - R * hole + 6 }, inert: true, z: 3 });
     }
   }
-  kit.close();
+  const plot = kit.close() as Api.Response;
+  rememberPath(`${cx.key}~plot`, kit.lastPath());
+  if (under >= 0 && (plot.hovered || plot.pressed)) hovered = under;
+  if (plot.clicked && under >= 0) clicked = under;
   // The legend: every wedge's swatch, name, value and share; each row a target keys and pads walk.
   kit.column("Legend", { width: stack ? grow() : grow(), gap: 0, cross: "stretch", part: "Chart.legend", partClass: "panel" }, () => {
     v.forEach((val, k) => {
