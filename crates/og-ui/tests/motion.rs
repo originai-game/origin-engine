@@ -824,6 +824,44 @@ fn a_stack_overlays_and_undeclared_overlap_is_reported() {
 }
 
 #[test]
+fn an_element_declared_over_everything_is_never_reported() {
+    let mut ui = Ui::new(UiDesc::default());
+    let frame = |ui: &mut Ui, decl: Vec<String>| {
+        ui.begin(InputFrame::default(), vp());
+        ui.open("P", Element::default());
+        boxed(ui, "Enemy", 100.0, 100.0, Props::default());
+        // An aiming arc drawn across the enemy.
+        boxed(
+            ui,
+            "Arc",
+            200.0,
+            40.0,
+            Props {
+                position: Position::Absolute,
+                insets: Edges {
+                    start: Some(20.0),
+                    top: Some(30.0),
+                    ..Edges::default()
+                },
+                overlaps: decl,
+                ..Props::default()
+            },
+        );
+        ui.close();
+        ui.end();
+        ui.frame()
+            .overlaps
+            .iter()
+            .any(|o| o.path == "P/Arc" || o.other == "P/Arc")
+    };
+    assert!(frame(&mut ui, Vec::new()), "undeclared, it is reported");
+    assert!(
+        !frame(&mut ui, vec!["*".into()]),
+        "`*` declares it over anything"
+    );
+}
+
+#[test]
 fn a_badge_scrolled_out_of_its_list_overlaps_nothing_outside_it() {
     let mut ui = Ui::new(UiDesc::default());
     let frame = |ui: &mut Ui, list_h: f32| {

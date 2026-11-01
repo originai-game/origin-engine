@@ -648,7 +648,8 @@ pub struct Props {
     pub container: bool,
     pub variants: Vec<Variant>,
     /// Paths of elements it overlaps on purpose (an ancestor path covers its
-    /// subtree): undeclared overlap is reported ([`crate::UiFrame::overlaps`]).
+    /// subtree, `*` everything): undeclared overlap is reported
+    /// ([`crate::UiFrame::overlaps`]).
     pub overlaps: Vec<String>,
     /// Its text and its subtree's are a dense HUD's readouts (docs/ui.md
     /// §15.2: strategy, MMO, simulation): `og ui check` holds them to 12 px
@@ -762,7 +763,11 @@ use crate::ui::Ui;
 
 /// Whether `path` is `decl` or inside it (an ancestor path covers its subtree).
 fn covers(decl: &str, path: &str) -> bool {
-    path == decl || (path.starts_with(decl) && path.as_bytes().get(decl.len()) == Some(&b'/'))
+    // `*`: over anything on purpose (a dragged card's targeting arc, a
+    // ghost following the pointer across the screen).
+    decl == "*"
+        || path == decl
+        || (path.starts_with(decl) && path.as_bytes().get(decl.len()) == Some(&b'/'))
 }
 
 /// It draws something of its own.
