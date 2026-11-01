@@ -214,7 +214,7 @@ export function comboCounter(id: string, desc: Api.ComboDesc = {}): void {
   let comboProps: Props = {};
   hudPlace(id, anchorOf(desc, "right"), () => {
     // Room above the count for its pop and its growth with the count, so a scaled count never reaches the piece stacked above.
-    box(id, { direction: "column", gap: 0, cross: "center", padding: { left: 0, right: 0, top: Math.round(stepSize(ts(48, true)).line * 0.25), bottom: 0 } }, undefined, () => {
+    box(id, { direction: "column", gap: 0, cross: "center", padding: { left: 0, right: 0, top: Math.round(stepSize(ts(48, true)).line * 0.12), bottom: 0 } }, undefined, () => {
       const e = edge("count", count);
       // A break: the last count shakes and falls off.
       const brokeAt = kit.memory("brokeAt", -1e9);

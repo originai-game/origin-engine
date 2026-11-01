@@ -7,7 +7,7 @@
 // sweeping the whole group, not each piece on a clock of its own).
 
 import type * as Api from "@origingame/engine";
-import { TAU, a11y, absolute, arc, bp, box, clamp01, edge, frame, groups, inner, kit, leaf, lit, open, close, pct, phase, px, reduced, role, sel, solid, sound, spring, stroke, text, toneRole, token, vgrad, glow, type Rgba, ts, apply } from "./core.ts";
+import { TAU, a11y, absolute, arc, bp, box, clamp01, edge, frame, groups, inner, kit, leaf, lit, open, close, pct, phase, px, reduced, role, sel, solid, sound, spring, stroke, text, toneRole, token, vgrad, glow, type Rgba, ts, apply, tsFit } from "./core.ts";
 
 function toneInk(tone: Api.Tone | undefined): Rgba {
   return role(toneRole(tone, "primary"));
@@ -134,7 +134,7 @@ export function progressRing(id: string, desc: Api.ProgressRingDesc = {}): void 
       fills: [solid(lit(ink))],
     }, absolute({ start: 0, top: 0 }, { opacity }));
     const label = desc.label ?? (spinning ? "" : `${Math.round(target * 100)}%`);
-    if (label && size >= 40) text("Label", label, { step: size >= 72 ? ts(18) : ts(13), font: "mono", nowrap: true, outline: 0.8 });
+    if (label && size >= 40) text("Label", label, { step: tsFit(size >= 72 ? 18 : 13, size * 0.3), font: "mono", nowrap: true, outline: 0.8 });
   }, {
     a11y: a11y("progressbar", name, spinning ? { busy: true } : { value: `${Math.round(target * 100)}%`, valueMin: 0, valueMax: 100, valueNow: Math.round(target * 100) }),
     ...groups({ mode: spinning ? "indeterminate" : "determinate" }, { mode: ["determinate", "indeterminate"] }),

@@ -7020,7 +7020,7 @@ module ui {
     desc true
     field quests List.ObjectiveQuest "The tracked objectives."
     field max u32 "The most shown; 0 is 3 (2 on a phone, 1 on a phone at a large text size)."
-    field maxSteps u32 "The most steps a quest lists, its open ones first, the rest counted on a last line (+2 more); 0 is every step, or 2 on a phone at a large text size."
+    field maxSteps u32 "The most steps a quest lists, its open ones first, the rest counted on a last line (+2 more); 0 is every step, or 2 on a phone at a large text size. When its side's stack outgrows the room the side leaves between its top and bottom pieces it folds itself: one quest, then two open steps, then one."
     field width f32 "Its width; 0 is 300." {
       min 0
       unit cssPx

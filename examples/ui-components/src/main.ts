@@ -102,8 +102,13 @@ function feedbackScreen(): void {
     ],
   });
   const tk = og.ui.frameTheme().space;
-  og.ui.anchor("Left", { anchor: "topLeft", direction: "column", gap: tk.lg ?? 16, width: { kind: "fixed", px: small() ? 320 : 420 } }, () => {
-    og.ui.row("Badges", { gap: 28 }, () => {
+  // A phone at a large text size has room for the badges and bars only (the rings and counters show on every other
+  // surface), and held upright it opens them under the toast stack that shares its top.
+  const crowded = small() && state.textScale >= 1.5;
+  const under = crowded && og.ui.frameViewport().breakpoint === "phonePortrait" ? (og.ui.bounds("Notes")?.height ?? 0) + 8 : 0;
+  og.ui.anchor("Left", { anchor: "topLeft", direction: "column", gap: tk.lg ?? 16, width: { kind: "fixed", px: small() ? 320 : 420 }, offsetY: under }, () => {
+    // Room above for the badges, which sit half over their icons' top corners.
+    og.ui.row("Badges", { gap: 28, padding: { top: 12, bottom: 0, left: 0, right: 0 } }, () => {
       for (const [k, n] of [["Mail", 7], ["Quests", 120], ["Friends", 0]] as const) {
         og.ui.row(k, { width: { kind: "fixed", px: 56 }, height: { kind: "fixed", px: 56 } }, () => {
           og.ui.icon("Icon", k === "Mail" ? "chat-bubble" : k === "Quests" ? "map" : "group", { size: 40 });
@@ -116,8 +121,11 @@ function feedbackScreen(): void {
       });
     });
     og.ui.progressBar("Download", { value: Math.min(1, 0.2 + seconds() * 0.15), buffer: 0.85, label: L("Installing"), showValue: true });
+    // Held sideways the subtitles' band starts halfway down: the bars stop at the first.
+    if (crowded && og.ui.frameViewport().breakpoint === "phoneLandscape") return;
     og.ui.progressBar("Steps", { value: 0.6, style: "steps", steps: 5, label: L("Chapter progress"), showValue: true, tone: "success" });
     og.ui.progressBar("Busy", { style: "indeterminate", label: L("Matchmaking") });
+    if (crowded) return;
     og.ui.row("Rings", { gap: 24, cross: "center" }, () => {
       og.ui.progressRing("Spin", { size: 48 });
       og.ui.progressRing("Ring", { value: 0.72, size: 72 });
@@ -349,6 +357,8 @@ function strategyScreen(): void {
   });
   og.ui.turnOrder("Turns", {
     max: small() ? 4 : 8,
+    // Smaller portraits on a phone held sideways at a large text size, so the combo fits between it and the resources.
+    ...(small() && state.textScale >= 1.5 && og.ui.frameViewport().breakpoint === "phoneLandscape" ? { size: 40 } : {}),
     // On a phone the top is the resources' and the right the tracker's: the order sits at the bottom
     // (held sideways, under the combo at the bottom left).
     ...(og.ui.frameViewport().breakpoint === "phonePortrait" ? { anchor: "bottom" as const } : og.ui.frameViewport().breakpoint === "phoneLandscape" ? { anchor: "bottomLeft" as const } : {}),

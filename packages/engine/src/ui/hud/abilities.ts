@@ -296,7 +296,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
       ...groups({ time }, { time: ["lasting", "running", "expiring"] }),
     });
     if (timers && !lasting) {
-      text("Time", shortTime(remaining, false), { step: tsFit(11, size * 0.36), font: "mono", color: expiring ? lit(role("warn")) : token("ink"), nowrap: true, outline: 1 });
+      text("Time", shortTime(remaining, false), { step: tsFit(11, size * 0.3), font: "mono", color: expiring ? lit(role("warn")) : token("ink"), nowrap: true, outline: 1 });
     }
   });
   return res ?? ({ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 } as Api.Response);

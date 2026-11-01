@@ -111,7 +111,7 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
             shape: { kind: "rect", radii: [3, 3, 3, 3] },
             fills: [solid(over ? lit(role("danger"), 0.4 + 0.6 * pulse(6)) : token("shadow", 0.7))],
             strokes: [stroke(1.5, over ? lit(role("danger")) : token("lineStrong"))],
-          }, () => text("Text", desc.gear ?? "", { step: tsFit(15, size * 0.13, true), font: "display", color: token("ink"), nowrap: true }), fixed({ centerX: true, bottom: size * 0.04 }));
+          }, () => text("Text", desc.gear ?? "", { step: tsFit(15, size * 0.1, true), font: "display", color: token("ink"), nowrap: true }), fixed({ centerX: true, bottom: size * 0.04 }));
         }
         if (over) {
           leaf("Shift", { width: px(size * 0.1), height: px(size * 0.1), part: sel("Speedometer", "shift") }, {

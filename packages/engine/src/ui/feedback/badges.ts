@@ -5,7 +5,7 @@
 // of the ground colour, 99+ past its max, a pop when the count rises.
 
 import type * as Api from "@origingame/engine";
-import { a11y, box, bp, edge, groups, inkOn, kit, lit, pop, role, sel, solid, sound, stroke, text, toneRole, token, xy , ts } from "./core.ts";
+import { a11y, box, bp, edge, groups, inkOn, kit, lit, pop, role, sel, solid, sound, stroke, text, toneRole, token, xy , ts, stepSize } from "./core.ts";
 
 export function countBadge(id: string, desc: Api.CountBadgeDesc = {}): void {
   const kind: Api.BadgeKind = desc.kind ?? "count";
@@ -17,7 +17,8 @@ export function countBadge(id: string, desc: Api.CountBadgeDesc = {}): void {
   const e = edge(`${id}~count`, count);
   if ((kind === "count" && count <= 0) || (kind === "label" && !label)) return;
   const phone = bp().phone;
-  const h = kind === "dot" ? 10 : phone ? 18 : 20;
+  // A badge with text grows with the player's text size, so its number stays inside the pill.
+  const h = kind === "dot" ? 10 : Math.max(phone ? 18 : 20, Math.ceil(stepSize(ts(13)).line));
   const tone: Api.Tone = desc.tone ?? "danger";
   const fill = role(toneRole(tone, "danger"));
   const rose = e.since < 60 && count > e.prev;

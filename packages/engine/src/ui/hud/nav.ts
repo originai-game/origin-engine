@@ -9,7 +9,7 @@
 // tick with a pop, counts, a countdown, the tracked one marked).
 
 import type * as Api from "@origingame/engine";
-import { TAU, textScale, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props, tsFit } from "./core.ts";
+import { TAU, textScale, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props, tsFit, sideSpan } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
 
@@ -233,12 +233,23 @@ export function objectiveTracker(id: string, desc: Api.ObjectiveTrackerDesc = {}
   const tk = f.t;
   const t = now();
   // A phone at a large text size has room for the focused quest only.
-  const max = desc.max || (f.phone ? (textScale() >= 1.5 ? 1 : 2) : 3);
+  // Folded when its side's stack outgrew the room its side leaves last
+  // tick: first one quest, then its steps cut to two open ones, then one.
+  const anchor = anchorOf(desc, "right");
+  const vp0 = f.viewport;
+  const roomH = vp0.height - vp0.safeArea.top - vp0.safeArea.bottom - tk.gutter * 2;
+  const foldKey = `${id}~fold/${Math.round(roomH)}`;
+  let fold = kit.memory(foldKey, 0);
+  // The room is what its side leaves between the pieces at its top and bottom edges.
+  const fits = anchor === "left" || anchor === "right" ? sideSpan(anchor).room : roomH;
+  if (anchor && kit.memory(`~hudStack/${anchor}/total`, 0) > fits + 0.5 && fold < 3) fold += 1;
+  kit.remember(foldKey, fold);
+  const max = fold > 0 ? 1 : desc.max || (f.phone ? (textScale() >= 1.5 ? 1 : 2) : 3);
   const width = Math.min(u(desc.width || 300), hudRoom());
   // Under about 280 design px the head's title and its timer cannot share a line.
   const narrow = width < u(280);
   const quests = (desc.quests ?? []).filter((q) => q.completedAt === null || q.completedAt === undefined || t - q.completedAt < msToTicks(2400)).slice(0, max);
-  hudPlace(id, anchorOf(desc, "right"), () => {
+  hudPlace(id, anchor, () => {
     box(id, { direction: "column", gap: tk.md, width: px(width), padding: { left: tk.md, right: tk.md, top: tk.sm, bottom: tk.sm }, part: sel("ObjectiveTracker", "frame"), partClass: "hud" }, {
       // A soft scrim from the edge it sits on, so steps read over any scene.
       fills: [vgrad([[0, token("shadow", 0)], [0.25, token("shadow", 0.42)], [1, token("shadow", 0.5)]], kit.frameDirection() === "rtl" ? -90 : 90)],
@@ -276,7 +287,7 @@ export function objectiveTracker(id: string, desc: Api.ObjectiveTrackerDesc = {}
           }
           // Open steps first when the list is cut, so what is left to do shows.
           const all = q.steps ?? [];
-          const cap = desc.maxSteps || (f.phone && textScale() >= 1.5 ? 2 : 0);
+          const cap = desc.maxSteps || (fold > 2 ? 1 : fold > 1 || (f.phone && textScale() >= 1.5) ? 2 : 0);
           const shown = cap > 0 && all.length > cap ? [...all.filter((st) => !st.done && !st.failed), ...all.filter((st) => st.done || st.failed)].slice(0, cap) : all;
           for (const st of all) if (shown.includes(st)) step(keyId(st.key ?? st.text ?? ""), st, tk);
           if (shown.length < all.length) text("More", `+${all.length - shown.length} more`, { step: ts(12), color: token("inkMuted"), nowrap: true, outline: 0.8 });

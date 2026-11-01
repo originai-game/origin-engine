@@ -85,11 +85,11 @@ export function hudPlace(id: string, anchor: Api.Anchor | null, build: (inAnchor
 }
 
 /**
- * Where a stack on a side starts, from the safe area's middle: centred on
- * it, but moved clear of the stacks at the top and bottom edges of that
- * side (their extents last tick) when it fits between them.
+ * The span a stack on a side has between the stacks at the top and the
+ * bottom edges of that side (their extents last tick), from the safe
+ * area's middle: where it may start (lo) and how tall it may be (room).
  */
-function sideTop(anchor: Api.Anchor, total: number, t: number, gap: number): number {
+export function sideSpan(anchor: Api.Anchor, t = kit.tick(), gap = frame().t.sm): { half: number; lo: number; room: number } {
   const f = frame();
   const vp = f.viewport;
   const half = (vp.height - vp.safeArea.top - vp.safeArea.bottom) / 2 - f.t.gutter;
@@ -101,7 +101,18 @@ function sideTop(anchor: Api.Anchor, total: number, t: number, gap: number): num
   const above = side ? Math.max(reach("top"), reach(`top${side}`)) : 0;
   const below = side ? Math.max(reach("bottom"), reach(`bottom${side}`)) : 0;
   const lo = -half + (above > 0 ? above + gap : 0);
-  const hi = half - (below > 0 ? below + gap : 0) - total;
+  const room = half - (below > 0 ? below + gap : 0) - lo;
+  return { half, lo, room };
+}
+
+/**
+ * Where a stack on a side starts, from the safe area's middle: centred on
+ * it, but moved clear of the stacks at the top and bottom edges of that
+ * side (their extents last tick) when it fits between them.
+ */
+function sideTop(anchor: Api.Anchor, total: number, t: number, gap: number): number {
+  const { lo, room } = sideSpan(anchor, t, gap);
+  const hi = lo + room - total;
   const centred = -total / 2;
   return lo <= hi ? Math.min(hi, Math.max(lo, centred)) : centred;
 }

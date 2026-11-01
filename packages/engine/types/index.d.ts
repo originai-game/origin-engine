@@ -32430,7 +32430,7 @@ export interface ObjectiveTrackerDesc {
    */
   readonly max?: number;
   /**
-   * The most steps a quest lists, its open ones first, the rest counted on a last line (+2 more); 0 is every step, or 2 on a phone at a large text size.
+   * The most steps a quest lists, its open ones first, the rest counted on a last line (+2 more); 0 is every step, or 2 on a phone at a large text size. When its side's stack outgrows the room the side leaves between its top and bottom pieces it folds itself: one quest, then two open steps, then one.
    *
    * @default 0
    */
