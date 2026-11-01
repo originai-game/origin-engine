@@ -217,15 +217,23 @@ impl Ui {
             n.backdrop = true;
             n.scope = true;
             n.locked = desc.locked;
+            // Its content takes input from the first frame it shows: a menu
+            // or a popover is pressed while it still eases in. Leaving, it
+            // takes none.
             n.fx = Some(crate::motion::Fx {
                 alpha: e,
-                inert: pr.progress < 1.0 || !open,
+                inert: !open,
                 ..Default::default()
             });
         }
         if open && !desc.locked {
             let resp = self.respond(key);
-            if (resp.clicked && !desc.ignore_backdrop) || (self.state.scope == key && self.nav.back)
+            // A press on the backdrop dismisses once it has entered: the
+            // second press of a double click on what opened it does not
+            // close it again.
+            let entered = pr.progress >= 1.0;
+            if (resp.clicked && entered && !desc.ignore_backdrop)
+                || (self.state.scope == key && self.nav.back)
             {
                 if self.state.scope == key {
                     self.nav.back = false;

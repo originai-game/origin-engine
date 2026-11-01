@@ -265,6 +265,36 @@ fn a_dialog_traps_focus_blocks_what_is_under_it_and_closes_on_back() {
     );
 }
 
+/// A dialog takes input from the first frame it shows, while it still
+/// eases in (a menu pressed at once), but a press on its backdrop
+/// dismisses only once it has entered: the second press of a double click
+/// on what opened it does not close it. Ways it could fail: the content is
+/// inert while entering (the press is dropped), or the backdrop dismisses
+/// on the opening double click.
+#[test]
+fn a_dialog_takes_a_press_while_it_enters_and_its_backdrop_waits() {
+    let mut rig = Rig::new(Dialog::default());
+    let b = &mut dialog_screen;
+    rig.idle(1, b);
+    let open = rig.center("Open");
+    rig.click("Open", b);
+    assert!(rig.state.open);
+    // Two ticks in, far from settled: the second press of a double click
+    // lands on the backdrop over Open.
+    rig.step(press(open), b);
+    rig.step(release(open), b);
+    assert_eq!(
+        rig.state.dismissed, 0,
+        "the backdrop waits for the entrance"
+    );
+    assert!(rig.state.open);
+    let ok = rig.center("Ok");
+    rig.step(press(ok), b);
+    rig.step(release(ok), b);
+    assert_eq!(rig.state.ok, 1, "pressed while it eases in");
+    assert!(!rig.state.open);
+}
+
 /// A HUD under a pause dialog, as og.ui.racingHud draws: it asks
 /// `Ui::back` before the dialog is built this tick.
 #[derive(Default)]
