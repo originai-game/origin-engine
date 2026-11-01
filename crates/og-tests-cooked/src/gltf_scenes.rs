@@ -482,7 +482,14 @@ fn with_model(
     scene.environment.intensity = 0.7;
     scene.environment.background = Background::Color(Vec3::new(0.55, 0.68, 0.82));
     scene.camera = camera;
-    let parts = model.add_to(&mut scene, &[]);
+    let bundle = Bundle::open(&cooked().expect("cooked").join("cooked")).expect("the bundle opens");
+    let textures: Vec<_> = model
+        .textures
+        .iter()
+        .map(|t| bundle.load_texture(&t.id).and_then(|t| t.to_texture_data()))
+        .collect::<Result<_, _>>()
+        .expect("the model's textures decode");
+    let parts = model.add_to(&mut scene, &textures);
     for (k, &(mesh, material, at)) in parts.parts.iter().enumerate() {
         let material = variant.map_or(material, |v| parts.variants[v][k]);
         scene.add_instance(mesh, material, at);
