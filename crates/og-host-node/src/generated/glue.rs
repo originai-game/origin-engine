@@ -2607,6 +2607,12 @@ pub fn og_ui_glyph(env: Env, world: u32, action: String) -> String {
     <Host as UiApi>::og_ui_glyph(&Host, world, action)
 }
 
+#[napi(js_name = "og_ui_frame_glyph")]
+pub fn og_ui_frame_glyph(env: Env, action: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_frame_glyph(&Host, action)
+}
+
 #[napi(js_name = "og_ui_device")]
 pub fn og_ui_device(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

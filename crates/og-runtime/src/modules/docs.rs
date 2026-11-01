@@ -434,6 +434,16 @@ pub fn og_ui_glyph(world: u32, action: String) -> String {
     .unwrap_or_else(|_| "null".into())
 }
 
+pub fn og_ui_frame_glyph(action: String) -> String {
+    with_ui("og.ui.frameGlyph", |ui| match ui.glyph(&action) {
+        Some(g) => {
+            json!({ "icon": g.icon, "text": g.text, "device": ui.device().name() }).to_string()
+        }
+        None => "null".into(),
+    })
+    .unwrap_or_else(|| "null".into())
+}
+
 pub fn og_ui_device(world: u32) -> String {
     on_ui(world, |ui| ui.device().name().to_string()).unwrap_or_else(|_| "keyboardMouse".into())
 }

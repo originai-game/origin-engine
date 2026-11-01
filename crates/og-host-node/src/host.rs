@@ -1297,6 +1297,9 @@ impl UiApi for NodeHost {
     fn og_ui_glyph(&self, world: u32, action: String) -> String {
         rt::og_ui_glyph(world, action)
     }
+    fn og_ui_frame_glyph(&self, action: String) -> String {
+        rt::og_ui_frame_glyph(action)
+    }
     fn og_ui_device(&self, world: u32) -> String {
         rt::og_ui_device(world)
     }

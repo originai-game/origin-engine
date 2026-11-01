@@ -979,6 +979,8 @@ pub trait UiApi: Wire {
     fn og_ui_action_held(&self, name: String) -> bool;
     /// `og.ui.glyph`
     fn og_ui_glyph(&self, world: u32, action: String) -> String;
+    /// `og.ui.frameGlyph`
+    fn og_ui_frame_glyph(&self, action: String) -> String;
     /// `og.ui.device`
     fn og_ui_device(&self, world: u32) -> String;
     /// `og.ui.setDevice`
@@ -1577,6 +1579,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_action",
     "og_ui_action_held",
     "og_ui_glyph",
+    "og_ui_frame_glyph",
     "og_ui_device",
     "og_ui_set_device",
     "og_ui_action_bar",

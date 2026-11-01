@@ -873,6 +873,8 @@ export interface HostAbi<A, V> {
   og_ui_action_held(name: string): boolean;
   /** `og.ui.glyph` */
   og_ui_glyph(world: number, action: string): string;
+  /** `og.ui.frameGlyph` */
+  og_ui_frame_glyph(action: string): string;
   /** `og.ui.device` */
   og_ui_device(world: number): string;
   /** `og.ui.setDevice` */
@@ -1434,6 +1436,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_action",
   "og_ui_action_held",
   "og_ui_glyph",
+  "og_ui_frame_glyph",
   "og_ui_device",
   "og_ui_set_device",
   "og_ui_action_bar",

@@ -12618,6 +12618,20 @@
           "publish": true
         },
         {
+          "name": "frameGlyph",
+          "doc": "An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. Null for an unknown action, one with no binding on that device, or outside a frame being built.",
+          "params": [
+            {
+              "name": "action",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            }
+          ],
+          "returns": "Option<UiGlyph>",
+          "publish": true
+        },
+        {
           "name": "device",
           "doc": "The device the player used last (glyphs follow it live): a key or the mouse, a pad of the family set with og.ui.setDevice (Xbox by default), or a touch on a coarse pointer.",
           "params": [
