@@ -8,7 +8,7 @@
 // no movement.
 
 import type * as Api from "@origingame/engine";
-import { a11y, box, bp, clamp01, frame, hudText, kit, leaf, minText, msToTicks, now, px, scale, sel, solid, token, type Paint, apply } from "./core.ts";
+import { a11y, box, bp, clamp01, frame, hudText, kit, leaf, minText, msToTicks, now, px, scale, sel, solid, token, type Paint, apply, claimBand } from "./core.ts";
 
 const SIZE: Record<Api.SubtitleSize, number> = { small: 0.022, medium: 0.03, large: 0.038, huge: 0.048 };
 
@@ -57,6 +57,9 @@ export function subtitles(id: string, desc: Api.SubtitlesDesc = {}): void {
   const speech = all.filter((l) => !l.caption).slice(-2);
   if (captions.length === 0 && speech.length === 0) return;
   const t = now();
+  // Its band (last tick's box) is kept clear of tooltips and other floating cards.
+  const band = kit.bounds([kit.openPath(), id].filter(Boolean).join("/"));
+  if (band && band.height > 0) claimBand("subtitles", band.y);
   kit.anchor(id, { anchor: "bottom", direction: "column", cross: "center", gap: tk.xs, offsetY: -(desc.bottom ?? 0) - tk.md * scale() }, () => {
     for (const l of [...captions, ...speech]) line(l, set, step, em, width, bg, t);
   });

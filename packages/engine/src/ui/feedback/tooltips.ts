@@ -9,7 +9,7 @@
 // clamped inside the safe area, mirrored right to left.
 
 import type * as Api from "@origingame/engine";
-import { a11y, arc, bp, box, clamp, clamp01, close, drop, frame, groups, icon, kit, leaf, lit, msToTicks, open, pct, px, rarityColor, rarityPips, role, sel, shapeOf, solid, sound, stroke, text, token, vgrad, xy, type Rgba, ts, apply } from "./core.ts";
+import { a11y, arc, bp, box, clamp, clamp01, close, drop, frame, groups, icon, kit, leaf, lit, msToTicks, open, pct, px, rarityColor, rarityPips, role, sel, shapeOf, solid, sound, stroke, text, token, vgrad, xy, type Rgba, ts, apply, floatFloor } from "./core.ts";
 
 interface Placed {
   x: number;
@@ -23,7 +23,8 @@ export function place(r: Api.UiRect, w: number, h: number, side: Api.Anchor, gap
   const s = vp.safeArea;
   const m = f.t.sm;
   const lo = { x: s.left + m, y: s.top + m };
-  const hi = { x: vp.width - s.right - m, y: vp.height - s.bottom - m };
+  // Above the subtitles' band, when there is one.
+  const hi = { x: vp.width - s.right - m, y: floatFloor() };
   // Right to left, the end side is the left.
   const rtl = kit.frameDirection() === "rtl";
   const want = rtl && (side === "right" || side === "left") ? (side === "right" ? "left" : "right") : side;
@@ -53,8 +54,8 @@ export function anchorAt(x: number, y: number, w: number, h?: number): Api.Ancho
   const lx = kit.frameDirection() === "rtl" ? vp.width - x - w : x;
   // Held against the bottom of the screen, it hangs from there, so a card
   // that grows (pinned, a longer stat) grows upward and never off the screen.
-  const bottom = vp.height - s.bottom - f.t.sm;
-  if (h !== undefined && y + h >= bottom - 1) return { anchor: "bottomLeft", margin: 0, offsetX: lx - s.left, offsetY: -f.t.sm };
+  const bottom = floatFloor();
+  if (h !== undefined && y + h >= bottom - 1) return { anchor: "bottomLeft", margin: 0, offsetX: lx - s.left, offsetY: bottom - (vp.height - s.bottom) };
   return { anchor: "topLeft", margin: 0, offsetX: lx - s.left, offsetY: y - s.top };
 }
 
@@ -184,7 +185,7 @@ function sheet(id: string, d: Api.TooltipCardDesc, equipped: boolean, width: num
   // rather than run off the screen: once it overflowed at this height it
   // keeps to the room, until the screen's height changes.
   const vp = f.viewport;
-  const room = Math.floor(vp.height - vp.safeArea.top - vp.safeArea.bottom - tk.sm * 2);
+  const room = Math.floor(floatFloor() - vp.safeArea.top - tk.sm);
   const capKey = `${kit.openPath()}/${id}~cap/${room}`;
   const own = kit.bounds([kit.openPath(), id].filter(Boolean).join("/"));
   const capped = kit.memory(capKey, 0) === 1 || (own?.height ?? 0) > room + 0.5;

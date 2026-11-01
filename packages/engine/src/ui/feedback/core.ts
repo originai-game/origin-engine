@@ -635,6 +635,30 @@ export function hudBandInset(): number {
   return Math.max(0, Math.round((w - h * (21 / 9)) / 2));
 }
 
+/**
+ * Strips of the screen a component keeps for itself (the subtitles' band
+ * at the bottom), which floating cards keep clear of. A claim holds for
+ * the tick it is made and the next, on the same surface height.
+ */
+const BANDS = new Map<string, { tick: number; top: number; height: number }>();
+
+/** Claims the strip from `top` (screen px) to the bottom of the screen under `name`. */
+export function claimBand(name: string, top: number): void {
+  BANDS.set(name, { tick: kit.tick(), top, height: frame().viewport.height });
+}
+
+/** The lowest y a floating card may reach: the safe area's bottom, above any claimed band. */
+export function floatFloor(): number {
+  const f = frame();
+  const vp = f.viewport;
+  const t = kit.tick();
+  let floor = vp.height - vp.safeArea.bottom - f.t.sm;
+  for (const b of BANDS.values()) {
+    if (b.height === vp.height && b.tick >= t - 1 && b.tick <= t) floor = Math.min(floor, b.top - f.t.sm);
+  }
+  return floor;
+}
+
 /** The viewport's breakpoint flags. */
 export function bp(): { phone: boolean; portrait: boolean; tablet: boolean; desktop: boolean; touch: boolean; wide: boolean } {
   const f = frame();
