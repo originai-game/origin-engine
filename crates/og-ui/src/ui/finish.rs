@@ -545,7 +545,12 @@ impl Ui {
                 kind: self.kinds.get(i).map_or("", |k| k.0).to_string(),
                 disabled: n.disabled,
                 clipped: visible.width + 0.01 < r.width || visible.height + 0.01 < r.height,
-                text: n.probe_text.clone(),
+                // As read: bidi marks and isolates steer the drawing only.
+                text: n
+                    .probe_text
+                    .chars()
+                    .filter(|&c| !og_i18n::is_bidi_control(c))
+                    .collect(),
                 role: role.to_owned(),
                 name: name.clone(),
                 value: value.clone(),

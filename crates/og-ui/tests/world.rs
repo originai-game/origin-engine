@@ -115,7 +115,7 @@ fn an_anchor_sits_on_its_projected_point_and_scales_with_distance() {
 }
 
 #[test]
-fn a_contained_tag_slides_in_from_the_edge_and_fades_as_its_point_leaves() {
+fn a_contained_tag_slides_in_from_the_edge_and_fades_across_it() {
     let mut ui = ui();
     let at = |x: f32, contain: bool| WorldAnchorDesc {
         target: WorldTarget::Point(Vec3::new(x, 0.0, 0.0)),
@@ -123,10 +123,11 @@ fn a_contained_tag_slides_in_from_the_edge_and_fades_as_its_point_leaves() {
         ..WorldAnchorDesc::default()
     };
     let mut gone = AnchorInfo::default();
+    let mut near = AnchorInfo::default();
     run(&mut ui, 30, |ui| {
         // Its point on the screen, a few px in from the right edge.
         tag(ui, "Cut", at(4.12, false));
-        tag(ui, "In", at(4.12, true));
+        near = tag(ui, "In", at(4.12, true));
         // Its point well off the screen to the right.
         gone = tag(ui, "Gone", at(9.0, true));
     });
@@ -136,9 +137,15 @@ fn a_contained_tag_slides_in_from_the_edge_and_fades_as_its_point_leaves() {
     let (ix, _, iw, _) = rect(&ui, "In");
     // The frame reports an element's box cut to the screen.
     assert!(cw < iw - 10.0, "uncontained it is cut: {cx} + {cw}");
+    let g = ui.theme().space.sm;
     assert!(
-        (ix + iw - W).abs() < 1.0,
-        "contained it ends at the edge, whole: {ix} + {iw}"
+        (ix + iw - (W - g)).abs() < 1.0,
+        "contained it ends a gutter in from the edge, whole: {ix} + {iw}"
+    );
+    // Its point at the edge, it is part way through its fade: seen to fade.
+    assert!(
+        near.alpha > 0.2 && near.alpha < 0.8,
+        "fading at the edge: {near:?}"
     );
     assert!(
         gone.alpha < 0.01,

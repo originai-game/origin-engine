@@ -39,12 +39,27 @@ fn clamp_to_edge(area: Rect, half: Vec2, dir: Vec2) -> Vec2 {
 }
 
 /// The first spot clear of `placed` for `b` (moved by `shift` mode), or
-/// `None`: overlapping; `reach` bounds the move.
-fn declutter(mode: Declutter, b: Rect, placed: &[Rect], gap: f32, reach: f32) -> Option<Vec2> {
+/// `None`: overlapping; `reach` bounds the move, and a moved box stays
+/// inside `inside` (a contained tag's safe area: a crowd stacked off the
+/// top of the screen hides its lowest-ranked instead).
+fn declutter(
+    mode: Declutter,
+    b: Rect,
+    placed: &[Rect],
+    gap: f32,
+    reach: f32,
+    inside: Rect,
+) -> Option<Vec2> {
     let clear = |r: &Rect| !placed.iter().any(|p| p.overlaps(r));
     if clear(&b) {
         return Some(Vec2::ZERO);
     }
+    let within = |r: &Rect| {
+        r.x >= inside.x - 0.5
+            && r.y >= inside.y - 0.5
+            && r.right() <= inside.right() + 0.5
+            && r.bottom() <= inside.bottom() + 0.5
+    };
     let moved = |d: Vec2| Rect::new(b.x + d.x, b.y + d.y, b.width, b.height);
     if mode == Declutter::Shift {
         // The shortest way clear of each box it meets, nearest first.
@@ -58,27 +73,38 @@ fn declutter(mode: Declutter, b: Rect, placed: &[Rect], gap: f32, reach: f32) ->
         og_core::sort::sort_by_key(&mut tries, |d| (d.length() * 16.0) as u32);
         if let Some(d) = tries
             .into_iter()
-            .find(|&d| d.length() <= reach && clear(&moved(d)))
+            .find(|&d| d.length() <= reach && clear(&moved(d)) && within(&moved(d)))
         {
             return Some(d);
         }
     }
     if matches!(mode, Declutter::Shift | Declutter::Stack) {
-        // Up over what it meets, again and again.
-        let mut d = Vec2::ZERO;
-        for _ in 0..16 {
-            let r = moved(d);
-            let Some(top) = placed
-                .iter()
-                .filter(|p| p.overlaps(&r))
-                .map(|p| p.y)
-                .reduce(f32::min)
-            else {
-                return Some(d);
-            };
-            d.y = top - gap - b.bottom();
-            if -d.y > reach {
-                return None;
+        // Up over what it meets, again and again; where that leaves the
+        // area, down under it instead.
+        for up in [true, false] {
+            let mut d = Vec2::ZERO;
+            for _ in 0..16 {
+                let r = moved(d);
+                let hit = placed.iter().filter(|p| p.overlaps(&r));
+                let edge = if up {
+                    hit.map(|p| p.y).reduce(f32::min)
+                } else {
+                    hit.map(|p| p.bottom()).reduce(f32::max)
+                };
+                let Some(edge) = edge else {
+                    if within(&r) {
+                        return Some(d);
+                    }
+                    break;
+                };
+                d.y = if up {
+                    edge - gap - b.bottom()
+                } else {
+                    edge + gap - b.y
+                };
+                if d.y.abs() > reach {
+                    break;
+                }
             }
         }
     }
@@ -193,14 +219,25 @@ impl Ui {
             } else if projected.is_none() {
                 alpha = 0.0;
             } else if d.contain {
-                // Slid inside the safe area, fading as its point leaves it.
+                // Slid inside the safe area less a gutter, so it never
+                // touches the edge, and fading across a band at the edge:
+                // whole while its point is a half width inside, half at
+                // the edge, gone a half width past it.
                 let (x, y) = (at.x - d.screen_offset.x, at.y - d.screen_offset.y);
-                let out = (safe.x - x)
-                    .max(x - safe.right())
-                    .max(safe.y - y)
-                    .max(y - safe.bottom())
-                    .max(0.0);
-                alpha *= (1.0 - out / half.x.max(16.0)).clamp(0.0, 1.0);
+                let inside_by = (x - safe.x)
+                    .min(safe.right() - x)
+                    .min(y - safe.y)
+                    .min(safe.bottom() - y);
+                let band = half.x.max(16.0);
+                let k = ((inside_by + band) / (2.0 * band)).clamp(0.0, 1.0);
+                alpha *= k * k * (3.0 - 2.0 * k);
+                let g = self.theme.space.sm;
+                let safe = Rect::new(
+                    safe.x + g,
+                    safe.y + g,
+                    (safe.width - 2.0 * g).max(0.0),
+                    (safe.height - 2.0 * g).max(0.0),
+                );
                 let b = Rect::new(
                     at.x - pivot.0 * half.x * 2.0,
                     at.y - pivot.1 * half.y * 2.0,
@@ -272,7 +309,13 @@ impl Ui {
                 continue;
             }
             let reach = 3.0 * pl.rect.height.max(pl.rect.width.min(160.0));
-            match declutter(mode, pl.rect, &taken, gap, reach) {
+            let a = &anchors[pl.entry].desc;
+            let inside = if a.contain && a.clamp.is_none() {
+                safe
+            } else {
+                Rect::new(-1e6, -1e6, 2e6, 2e6)
+            };
+            match declutter(mode, pl.rect, &taken, gap, reach, inside) {
                 Some(d) => {
                     let r = pl.rect;
                     taken.push(Rect::new(r.x + d.x, r.y + d.y, r.width, r.height));
@@ -612,27 +655,51 @@ mod tests {
         );
     }
 
+    const ANY: Rect = Rect {
+        x: -1e6,
+        y: -1e6,
+        width: 2e6,
+        height: 2e6,
+    };
+
     #[test]
     fn declutter_shifts_the_short_way_and_stacks_when_boxed_in() {
         let a = Rect::new(0.0, 0.0, 100.0, 20.0);
         // Overlapping a by 4 px at its bottom: down by 4 + gap is shortest.
         let b = Rect::new(0.0, 16.0, 100.0, 20.0);
         assert_eq!(
-            declutter(Declutter::Shift, b, &[a], 2.0, 100.0),
+            declutter(Declutter::Shift, b, &[a], 2.0, 100.0, ANY),
             Some(Vec2::new(0.0, 6.0))
         );
         // Stack: always above.
         assert_eq!(
-            declutter(Declutter::Stack, b, &[a], 2.0, 100.0),
+            declutter(Declutter::Stack, b, &[a], 2.0, 100.0, ANY),
             Some(Vec2::new(0.0, -38.0))
         );
-        assert_eq!(declutter(Declutter::Hide, b, &[a], 2.0, 100.0), None);
+        assert_eq!(declutter(Declutter::Hide, b, &[a], 2.0, 100.0, ANY), None);
         // Clear: no move.
         let c = Rect::new(0.0, 40.0, 100.0, 20.0);
         assert_eq!(
-            declutter(Declutter::Hide, c, &[a], 2.0, 100.0),
+            declutter(Declutter::Hide, c, &[a], 2.0, 100.0, ANY),
             Some(Vec2::ZERO)
         );
+        // Stacking up would leave the area: it stacks down under instead,
+        // and with no room either way it is hidden.
+        let top = Rect::new(0.0, 0.0, 100.0, 40.0);
+        let a = Rect::new(0.0, 4.0, 100.0, 20.0);
+        let b = Rect::new(0.0, 10.0, 100.0, 20.0);
+        assert_eq!(
+            declutter(
+                Declutter::Stack,
+                b,
+                &[a],
+                2.0,
+                100.0,
+                Rect::new(0.0, 0.0, 100.0, 100.0)
+            ),
+            Some(Vec2::new(0.0, 16.0))
+        );
+        assert_eq!(declutter(Declutter::Stack, b, &[a], 2.0, 100.0, top), None);
     }
 
     #[test]
