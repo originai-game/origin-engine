@@ -12,6 +12,7 @@ import { chart } from "./data/charts.ts";
 import { keyValueRows, statCompare } from "./data/rows.ts";
 import { calendar } from "./data/calendar.ts";
 import { foundations } from "./foundations/index.ts";
+import { controls } from "./controls/index.ts";
 
 export const components = Object.freeze({
   card,
@@ -40,4 +41,5 @@ export const components = Object.freeze({
   statCompare,
   calendar,
   ...foundations,
+  ...controls,
 });

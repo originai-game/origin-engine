@@ -23928,6 +23928,870 @@ export interface EffectLayerDesc {
 
 
 /**
+ * A button: its role, size, icons, badge and states.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PushButtonDesc {
+  /**
+   * Its role: primary (one per screen), secondary, ghost, quiet or danger.
+   *
+   * @default "secondary"
+   */
+  readonly variant?: ButtonVariant;
+  /**
+   * Its height (the style's control sizes; at least 44 CSS px of reach on a coarse pointer).
+   *
+   * @default "medium"
+   */
+  readonly size?: ControlSize;
+  /**
+   * An icon before the label (the style's set); empty for none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * An icon after it (a chevron, an external mark); empty for none.
+   *
+   * @default ""
+   */
+  readonly iconEnd?: string;
+  /**
+   * A count or word on its top end corner (`3`, `NEW`); empty for none.
+   *
+   * @default ""
+   */
+  readonly badge?: string;
+  /**
+   * Working: a spinner takes the icon's place, it takes no press and says busy.
+   *
+   * @default false
+   */
+  readonly loading?: boolean;
+  /**
+   * Shown but inert, dimmed.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Why it is disabled, shown as its tooltip and read after its name (`Needs 300 gold`).
+   *
+   * @default ""
+   */
+  readonly disabledReason?: string;
+  /**
+   * Its width; null fits the label.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * On (a toggle button: a filter, a pinned tool): its selection group, filled as pressed.
+   *
+   * @default false
+   */
+  readonly selected?: boolean;
+  /**
+   * Take the focus when it appears and no dialog is open.
+   *
+   * @default false
+   */
+  readonly autofocus?: boolean;
+  /**
+   * A tooltip once the pointer rests on it; empty for none.
+   *
+   * @default ""
+   */
+  readonly tooltip?: string;
+}
+
+
+/**
+ * An icon button: an icon, its name and a badge.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface IconButtonDesc {
+  /**
+   * Its name: read by a screen reader and shown as its tooltip (an icon alone is not a name).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its role; quiet (the default for an icon) draws only the icon until hovered.
+   *
+   * @default "quiet"
+   */
+  readonly variant?: ButtonVariant;
+  /**
+   * Its size: a square of the control height.
+   *
+   * @default "medium"
+   */
+  readonly size?: ControlSize;
+  /**
+   * A count over its corner; empty for none.
+   *
+   * @default ""
+   */
+  readonly badge?: string;
+  /**
+   * A dot over its corner (something new), when there is no badge.
+   *
+   * @default false
+   */
+  readonly dot?: boolean;
+  /**
+   * On (a toggled tool).
+   *
+   * @default false
+   */
+  readonly selected?: boolean;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * A circle rather than the style's control corner.
+   *
+   * @default false
+   */
+  readonly round?: boolean;
+}
+
+
+/**
+ * A hold-to-confirm button.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface HoldButtonDesc {
+  /**
+   * Its role (danger for a destructive confirm).
+   *
+   * @default "danger"
+   */
+  readonly variant?: ButtonVariant;
+  /**
+   * Its height.
+   *
+   * @default "medium"
+   */
+  readonly size?: ControlSize;
+  /**
+   * How long the hold takes.
+   *
+   * @default 1200
+   * @range 100..
+   * @unit ms (milliseconds)
+   */
+  readonly holdMs?: number;
+  /**
+   * An icon before the label.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Its width; null fits the label.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * The hold's toggle alternative for the pointer and touch too (XAG 107): a tap starts the fill, which runs on by itself; a second tap stops it. Keys and pads always work so (Enter, Space or A start it, again stops it, moving the focus away stops it).
+   *
+   * @default false
+   */
+  readonly toggle?: boolean;
+  /**
+   * What it says while it fills (`Keep holding…`); empty keeps its label.
+   *
+   * @default ""
+   */
+  readonly holdingLabel?: string;
+  /**
+   * A line under it, what to do (`Hold to delete`); empty for none.
+   *
+   * @default ""
+   */
+  readonly hint?: string;
+}
+
+/** A hold button's state after this tick. */
+export interface HoldResult {
+  /** What happened to it. */
+  readonly response: Response;
+  /** The hold completed this tick: do the thing. */
+  readonly confirmed: boolean;
+  /** It is filling. */
+  readonly holding: boolean;
+  /**
+   * How full it is, 0 to 1 (it drains back when let go).
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly progress: number;
+}
+
+
+/**
+ * Which side of a switch or a check its label sits.
+ * - `"start"`: Before it, the switch at the row's end (a settings row: the default for a switch).
+ * - `"end"`: After it (the default for a check).
+ */
+export type LabelSide = "start" | "end";
+
+/**
+ * A switch: its label, description and states.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ToggleSwitchDesc {
+  /**
+   * Its label (the whole row takes the press).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * A line under the label; empty for none.
+   *
+   * @default ""
+   */
+  readonly description?: string;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Where the label sits.
+   *
+   * @default "start"
+   */
+  readonly side?: LabelSide;
+  /**
+   * Its size.
+   *
+   * @default "medium"
+   */
+  readonly size?: ControlSize;
+  /**
+   * The row's width; null fits (a settings row grows: pass grow).
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * What a screen reader and the probe say when on (`On`); empty for none.
+   *
+   * @default ""
+   */
+  readonly onLabel?: string;
+  /**
+   * And when off.
+   *
+   * @default ""
+   */
+  readonly offLabel?: string;
+}
+
+/** A switch's or a check's state after this tick. */
+export interface SwitchResult {
+  /** What happened to it. */
+  readonly response: Response;
+  /** Its state, to keep and pass back. */
+  readonly on: boolean;
+  /** It changed this tick. */
+  readonly changed: boolean;
+}
+
+
+/**
+ * A checkbox: its label, description and states.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CheckFieldDesc {
+  /**
+   * Its label (the whole row takes the press).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * A line under the label; empty for none.
+   *
+   * @default ""
+   */
+  readonly description?: string;
+  /**
+   * Neither: some of what it stands for is on (a group's parent). A press turns it on.
+   *
+   * @default false
+   */
+  readonly mixed?: boolean;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * It must be checked (terms to accept): danger outline and the validity group.
+   *
+   * @default false
+   */
+  readonly invalid?: boolean;
+  /**
+   * Where the label sits.
+   *
+   * @default "end"
+   */
+  readonly side?: LabelSide;
+  /**
+   * The row's width; null fits.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+}
+
+
+/**
+ * One choice of a radio group.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RadioOption {
+  /**
+   * Its label.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * A line under it; empty for none.
+   *
+   * @default ""
+   */
+  readonly description?: string;
+  /**
+   * An icon before it (cards); empty for none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Shown but cannot be chosen.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+}
+
+/**
+ * How a radio group draws its choices.
+ * - `"list"`: A ring and a label per choice (the default).
+ * - `"cards"`: A framed card per choice, the chosen one ringed (a difficulty, a class).
+ */
+export type RadioVariant = "list" | "cards";
+
+/**
+ * A radio group: its choices and layout.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RadioGroupDesc {
+  /**
+   * The choices.
+   *
+   * @default []
+   */
+  readonly options?: readonly RadioOption[];
+  /**
+   * The chosen one from game state; -1 is none.
+   *
+   * @default -1
+   */
+  readonly selected?: number;
+  /**
+   * The group's name: shown above it and read by a screen reader; empty for none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * How it draws.
+   *
+   * @default "list"
+   */
+  readonly variant?: RadioVariant;
+  /**
+   * Lay the choices across (they wrap) rather than down.
+   *
+   * @default false
+   */
+  readonly row?: boolean;
+  /**
+   * Every choice inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Its width; null fits.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+}
+
+/** A choice control's state after this tick. */
+export interface ChoiceIndexResult {
+  /** The chosen index, to keep and pass back (-1: none). */
+  readonly selected: number;
+  /** It changed this tick. */
+  readonly changed: boolean;
+  /** The index with the focus (-1: none). */
+  readonly focused: number;
+}
+
+
+/** A labelled point on a slider's track. */
+export interface SliderMark {
+  /** Where it is. */
+  readonly value: number;
+  /** What it says under the track; empty for a tick only. */
+  readonly label: string;
+}
+
+/**
+ * How a control shows a number.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ValueFormat {
+  /**
+   * Decimals; -1 follows the step (1 → 0, 0.5 → 1, 0.05 → 2).
+   *
+   * @default -1
+   */
+  readonly decimals?: number;
+  /**
+   * Written after it (`%`, ` m`, `×`); empty for none.
+   *
+   * @default ""
+   */
+  readonly unit?: string;
+  /**
+   * Show 0–1 as a whole percent.
+   *
+   * @default false
+   */
+  readonly percent?: boolean;
+  /**
+   * Words for whole values from min (`Off`, `Low`, `Medium`, `High`): a setting's levels.
+   *
+   * @default []
+   */
+  readonly labels?: readonly string[];
+}
+
+/**
+ * A slider: range, step, label, readout, ticks and marks.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ValueSliderDesc {
+  /**
+   * The range's low end.
+   *
+   * @default 0
+   */
+  readonly min?: number;
+  /**
+   * Its high end.
+   *
+   * @default 1
+   */
+  readonly max?: number;
+  /**
+   * Snap to multiples of this from min (0: continuous; keys step a twentieth).
+   *
+   * @default 0
+   */
+  readonly step?: number;
+  /**
+   * Its name, shown above it; empty for none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its value at the label row's end.
+   *
+   * @default true
+   */
+  readonly showValue?: boolean;
+  /**
+   * How its value reads.
+   *
+   * @default {}
+   */
+  readonly format?: ValueFormat;
+  /**
+   * A tick at every step (for a stepped slider of at most 20 steps).
+   *
+   * @default false
+   */
+  readonly ticks?: boolean;
+  /**
+   * Labelled points under the track.
+   *
+   * @default []
+   */
+  readonly marks?: readonly SliderMark[];
+  /**
+   * Fill from this value rather than min (a balance, a bias: a bipolar slider).
+   *
+   * @default null
+   */
+  readonly origin?: number | null;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * A bubble over the knob with the value while it is dragged or focused.
+   *
+   * @default true
+   */
+  readonly bubble?: boolean;
+}
+
+/** A slider's value after this tick. */
+export interface ValueSliderResult {
+  /** What happened to it. */
+  readonly response: Response;
+  /** The value, to keep and pass back. */
+  readonly value: number;
+  /** It changed this tick. */
+  readonly changed: boolean;
+  /** A drag ended, or a key or pad step landed: when to save or apply a costly setting. */
+  readonly committed: boolean;
+}
+
+
+/**
+ * A range slider: two knobs on one track.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RangeSliderDesc {
+  /**
+   * The range's low end.
+   *
+   * @default 0
+   */
+  readonly min?: number;
+  /**
+   * Its high end.
+   *
+   * @default 1
+   */
+  readonly max?: number;
+  /**
+   * Snap to multiples of this (0: continuous).
+   *
+   * @default 0
+   */
+  readonly step?: number;
+  /**
+   * The least distance between the knobs.
+   *
+   * @default 0
+   */
+  readonly minGap?: number;
+  /**
+   * Its name; empty for none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Both values at the label row's end.
+   *
+   * @default true
+   */
+  readonly showValue?: boolean;
+  /**
+   * How its values read.
+   *
+   * @default {}
+   */
+  readonly format?: ValueFormat;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * The low knob's accessible name; empty is `Minimum`.
+   *
+   * @default ""
+   */
+  readonly lowLabel?: string;
+  /**
+   * The high knob's; empty is `Maximum`.
+   *
+   * @default ""
+   */
+  readonly highLabel?: string;
+}
+
+/** A range slider's values after this tick. */
+export interface RangeResult {
+  /** The low end, to keep and pass back. */
+  readonly low: number;
+  /** The high end. */
+  readonly high: number;
+  /** Either changed this tick. */
+  readonly changed: boolean;
+  /** A drag ended or a step landed. */
+  readonly committed: boolean;
+}
+
+
+/**
+ * A number stepper: minus, the value and plus.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NumberStepperDesc {
+  /**
+   * The least value; null is unbounded.
+   *
+   * @default null
+   */
+  readonly min?: number | null;
+  /**
+   * The most; null is unbounded.
+   *
+   * @default null
+   */
+  readonly max?: number | null;
+  /**
+   * What each press adds or takes.
+   *
+   * @default 1
+   */
+  readonly step?: number;
+  /**
+   * What a held press's repeats move by after a second; 0 is ten steps.
+   *
+   * @default 0
+   */
+  readonly largeStep?: number;
+  /**
+   * Its name, before it in its row; empty for none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * How its value reads.
+   *
+   * @default {}
+   */
+  readonly format?: ValueFormat;
+  /**
+   * Past max it goes to min and back (needs both).
+   *
+   * @default false
+   */
+  readonly wrap?: boolean;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Its width; null fits.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+}
+
+/** A stepper's value after this tick. */
+export interface NumberResult {
+  /** The value, to keep and pass back. */
+  readonly value: number;
+  /** It changed this tick. */
+  readonly changed: boolean;
+}
+
+
+/**
+ * An option cycler: a setting's levels in one row.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CyclerDesc {
+  /**
+   * Its name, before it; empty for none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Past the last it goes to the first.
+   *
+   * @default true
+   */
+  readonly wrap?: boolean;
+  /**
+   * A pip per option under the value, the current lit.
+   *
+   * @default true
+   */
+  readonly pips?: boolean;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * The value's width; null fits the longest option (so the arrows never move).
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly valueWidth?: number | null;
+}
+
+
+/**
+ * One segment of a segmented control.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SegmentItem {
+  /**
+   * Its label; empty for an icon alone (name it with ariaLabel).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * An icon before it; empty for none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Shown but cannot be chosen.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Its accessible name when it has no label.
+   *
+   * @default ""
+   */
+  readonly ariaLabel?: string;
+}
+
+/**
+ * A segmented control: its segments and layout.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SegmentedDesc {
+  /**
+   * The segments.
+   *
+   * @default []
+   */
+  readonly items?: readonly SegmentItem[];
+  /**
+   * The chosen one from game state.
+   *
+   * @default 0
+   */
+  readonly selected?: number;
+  /**
+   * Its height.
+   *
+   * @default "medium"
+   */
+  readonly size?: ControlSize;
+  /**
+   * Every segment as wide as the widest.
+   *
+   * @default true
+   */
+  readonly equal?: boolean;
+  /**
+   * Its width; null fits.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its accessible name.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Every segment inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -35602,6 +36466,94 @@ export declare namespace og {
      * @param build Builds what it draws.
      */
     function effectLayer(id: string, desc: EffectLayerDesc, build: UiBuild): void;
+    /**
+     * A button (docs/ui.md §11, Controls): primary, secondary, ghost (outlined), quiet (text) or danger, small, medium or large, with icons, a badge, a loading spinner and a disabled reason. It lifts under the pointer and the focus and sinks as it is pressed (its interaction group, on the style's motion), and the style dresses it as `Button.base[<variant>][hover|pressed|focused|disabled][selected]` (a version 1 style's button art included), its label in the ink that reads on its fill. A click is a press and a release inside it, Enter, Space or the pad's A while it has the focus. Role button (pressed while selected, busy while loading). Probe: `<id>`, `<id>/Label`, `<id>/Icon`, `<id>/Badge`.
+     *
+     * @param id Its id.
+     * @param label Its label.
+     * @param desc Its role, size, icons and states.
+     */
+    function pushButton(id: string, label: string, desc?: PushButtonDesc): Response;
+    /**
+     * An icon button: a square (or round) button of the control height around one icon, named by its label (its tooltip, and what a screen reader says), with a badge or a dot. It moves and is dressed as pushButton, `Button.base[icon]`. Probe: `<id>`, `<id>/Icon`, `<id>/Badge`.
+     *
+     * @param id Its id.
+     * @param icon The icon's name (the style's set; a drawn mark where it has none).
+     * @param desc Its name, role, size and badge.
+     */
+    function iconButton(id: string, icon: string, desc?: IconButtonDesc): Response;
+    /**
+     * A hold-to-confirm button: held (a press on it, a touch), it fills from its start edge over holdMs, ticking up in pitch, and confirms with the style's confirm sound and a pop; let go early, it drains back. Keys and pads take its toggle alternative (XAG 107: activate starts it, it runs by itself, activate again or moving the focus stops it), as the pointer does with toggle. Its progress is UI state (in snapshots). Parts: `HoldButton.base[<variant>][holding][hover|pressed|focused|disabled]`, `HoldButton.fill`. Role button, its fill as its value (percent). Probe: `<id>`, `<id>/Button`, `<id>/Button/Label`, `<id>/Button/Fill`.
+     *
+     * @param id Its id.
+     * @param label Its label.
+     * @param desc Its role, time and alternative.
+     */
+    function holdButton(id: string, label: string, desc?: HoldButtonDesc): HoldResult;
+    /**
+     * A switch: a track and a knob that slides from its start to its end as it turns on (its selection group, on the style's motion), the track filling with primary, with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Toggle.track[on|off][hover|pressed|focused|disabled]`, `Toggle.knob[on]`, `Toggle.row[hover|pressed|focused|disabled]` (the whole row, which takes the press). Role switch, checked when on. Probe: `<id>` (its label as name), `<id>/Track`, `<id>/Track/Knob`.
+     *
+     * @param id Its id.
+     * @param on Its state from game state.
+     * @param desc Its label and states.
+     */
+    function toggleSwitch(id: string, on: boolean, desc?: ToggleSwitchDesc): SwitchResult;
+    /**
+     * A checkbox: a box that fills with primary and draws its tick (a dash when mixed) with a pop as it turns on (its selection group), with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Checkbox.box[checked|mixed][invalid][hover|pressed|focused|disabled]`, `Checkbox.mark`, `Checkbox.row[hover|pressed|focused|disabled]` (the whole row). Role checkbox, checked when on (and its value `mixed`). Probe: `<id>`, `<id>/Box`, `<id>/Box/Mark`.
+     *
+     * @param id Its id.
+     * @param checked Its state from game state.
+     * @param desc Its label and states.
+     */
+    function checkField(id: string, checked: boolean, desc?: CheckFieldDesc): SwitchResult;
+    /**
+     * A radio group: one of several choices, as rings with labels or as cards. A press, Enter, Space or A chooses; Left and Right (and a pad's) step the choice while one has the focus, skipping disabled ones, as a native radio group does. The ring's dot grows in with a pop (selection group). Plays select. Parts: `Radio.option[selected][hover|pressed|focused|disabled]`, `Radio.ring[selected]`, `Radio.dot`, `Radio.card[selected]`. Role radiogroup with radio children, checked on the chosen. Probe: `<id>`, `<id>/Options/Option#i`.
+     *
+     * @param id Its id.
+     * @param desc Its choices and layout.
+     */
+    function radioGroup(id: string, desc?: RadioGroupDesc): ChoiceIndexResult;
+    /**
+     * A slider: a track, a fill from min (or from an origin, both ways) and a knob. A press anywhere on the track jumps the knob there and a drag follows (a touch too; the knob grows under a finger), Left and Right step it while it has the focus (a held key or d-pad repeats), with ticks at its steps, labelled marks, a readout and a bubble over the knob while it moves. Plays sliderTick at each step passed (rising in pitch with the value). Parts: `Slider.track[hover|pressed|focused|disabled]`, `Slider.rail`, `Slider.fill`, `Slider.knob[pressed|focused]`, `Slider.core` (the knob's dot while held or focused), `Slider.tick[passed]`, `Slider.bubble`. Role slider with its range. Probe: `<id>`, `<id>/Track`, `<id>/Track/Knob`, `<id>/Head/Value`.
+     *
+     * @param id Its id.
+     * @param value The value from game state.
+     * @param desc Its range, step and look.
+     */
+    function valueSlider(id: string, value: number, desc?: ValueSliderDesc): ValueSliderResult;
+    /**
+     * A range slider: two knobs on one track and the fill between them. A press on the track takes the nearer knob there and a drag moves it (never past the other, kept minGap apart); each knob is its own focus stop, Left and Right step it. Parts: `RangeSlider.track`, `RangeSlider.rail`, `RangeSlider.fill`, `RangeSlider.knob[low|high][pressed|focused]`. Two sliders to a screen reader (lowLabel, highLabel). Probe: `<id>/Track/Low`, `<id>/Track/High`.
+     *
+     * @param id Its id.
+     * @param low The low end from game state.
+     * @param high The high end from game state.
+     * @param desc Its range, step and look.
+     */
+    function rangeSlider(id: string, low: number, high: number, desc?: RangeSliderDesc): RangeResult;
+    /**
+     * A number stepper: minus, the value and plus. A press steps once, a held press repeats after 400 ms and speeds up (large steps after a second); Left and Right step it while the value has the focus. A bound's button goes disabled at the bound. Plays sliderTick per step. Parts: `Stepper.frame[focused|disabled]`, `Stepper.button[dec|inc][hover|pressed|disabled]`, `Stepper.value`. Role spinbutton with its range. Probe: `<id>/Frame/Dec`, `<id>/Frame/Value`, `<id>/Frame/Inc`.
+     *
+     * @param id Its id.
+     * @param value The value from game state.
+     * @param desc Its range, step and look.
+     */
+    function numberStepper(id: string, value: number, desc?: NumberStepperDesc): NumberResult;
+    /**
+     * An option cycler, the console settings row: `‹ High ›` with pips. Left and Right (a pad's d-pad or stick) change it while it has the focus, the arrows take a press, and a press on the value steps forward; the value slides in from the side it came (selection on the style's motion). Arrows follow the writing direction. Plays select. Parts: `Cycler.frame[hover|focused|disabled]`, `Cycler.arrow[prev|next][disabled]`, `Cycler.pip[current]`. Role spinbutton reading the option. Probe: `<id>`, `<id>/Prev`, `<id>/Middle/Clip/Value#i` (the option shown), `<id>/Next`, `<id>/Middle/Pips/Pip#i`.
+     *
+     * @param id Its id.
+     * @param options The options.
+     * @param index The current one from game state.
+     * @param desc Its label and look.
+     */
+    function cycler(id: string, options: readonly string[], index: number, desc?: CyclerDesc): ChoiceIndexResult;
+    /**
+     * A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). A press chooses; Left and Right step the choice while it has the focus, skipping disabled segments, mirrored right to left. Plays tab. Parts: `Segmented.track[focused|disabled]`, `Segmented.thumb`, `Segmented.item[selected][hover|pressed|disabled]`. Role radiogroup of radios. Probe: `<id>`, `<id>/Item#i`, `<id>/Thumb`.
+     *
+     * @param id Its id.
+     * @param desc Its segments.
+     */
+    function segmented(id: string, desc?: SegmentedDesc): ChoiceIndexResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

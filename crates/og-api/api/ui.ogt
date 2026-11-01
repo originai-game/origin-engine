@@ -3359,6 +3359,381 @@ module ui {
     returns Void
   }
 
+  struct PushButtonDesc {
+    doc "A button: its role, size, icons, badge and states."
+    desc true
+    field variant ButtonVariant "Its role: primary (one per screen), secondary, ghost, quiet or danger."
+    field size ControlSize "Its height (the style's control sizes; at least 44 CSS px of reach on a coarse pointer)."
+    field icon String "An icon before the label (the style's set); empty for none."
+    field iconEnd String "An icon after it (a chevron, an external mark); empty for none."
+    field badge String "A count or word on its top end corner (`3`, `NEW`); empty for none."
+    field loading bool "Working: a spinner takes the icon's place, it takes no press and says busy."
+    field disabled bool "Shown but inert, dimmed."
+    field disabledReason String "Why it is disabled, shown as its tooltip and read after its name (`Needs 300 gold`)."
+    field width Option.Size "Its width; null fits the label."
+    field selected bool "On (a toggle button: a filter, a pinned tool): its selection group, filled as pressed."
+    field autofocus bool "Take the focus when it appears and no dialog is open."
+    field tooltip String "A tooltip once the pointer rests on it; empty for none."
+  }
+
+  fn pushButton {
+    doc "A button (docs/ui.md §11, Controls): primary, secondary, ghost (outlined), quiet (text) or danger, small, medium or large, with icons, a badge, a loading spinner and a disabled reason. It lifts under the pointer and the focus and sinks as it is pressed (its interaction group, on the style's motion), and the style dresses it as `Button.base[<variant>][hover|pressed|focused|disabled][selected]` (a version 1 style's button art included), its label in the ink that reads on its fill. A click is a press and a release inside it, Enter, Space or the pad's A while it has the focus. Role button (pressed while selected, busy while loading). Probe: `<id>`, `<id>/Label`, `<id>/Icon`, `<id>/Badge`."
+    host false
+    param id String "Its id."
+    param label String "Its label."
+    param desc PushButtonDesc "Its role, size, icons and states."
+    returns Response
+  }
+
+  struct IconButtonDesc {
+    doc "An icon button: an icon, its name and a badge."
+    desc true
+    field label String "Its name: read by a screen reader and shown as its tooltip (an icon alone is not a name)."
+    field variant ButtonVariant "Its role; quiet (the default for an icon) draws only the icon until hovered." {
+      default quiet
+    }
+    field size ControlSize "Its size: a square of the control height."
+    field badge String "A count over its corner; empty for none."
+    field dot bool "A dot over its corner (something new), when there is no badge."
+    field selected bool "On (a toggled tool)."
+    field disabled bool "Shown but inert."
+    field round bool "A circle rather than the style's control corner."
+  }
+
+  fn iconButton {
+    doc "An icon button: a square (or round) button of the control height around one icon, named by its label (its tooltip, and what a screen reader says), with a badge or a dot. It moves and is dressed as pushButton, `Button.base[icon]`. Probe: `<id>`, `<id>/Icon`, `<id>/Badge`."
+    host false
+    param id String "Its id."
+    param icon String "The icon's name (the style's set; a drawn mark where it has none)."
+    param desc IconButtonDesc "Its name, role, size and badge."
+    returns Response
+  }
+
+  struct HoldButtonDesc {
+    doc "A hold-to-confirm button."
+    desc true
+    field variant ButtonVariant "Its role (danger for a destructive confirm)." {
+      default danger
+    }
+    field size ControlSize "Its height."
+    field holdMs f32 "How long the hold takes." {
+      default 1200
+      unit ms
+      min 100
+    }
+    field icon String "An icon before the label."
+    field disabled bool "Shown but inert."
+    field width Option.Size "Its width; null fits the label."
+    field toggle bool "The hold's toggle alternative for the pointer and touch too (XAG 107): a tap starts the fill, which runs on by itself; a second tap stops it. Keys and pads always work so (Enter, Space or A start it, again stops it, moving the focus away stops it)."
+    field holdingLabel String "What it says while it fills (`Keep holding…`); empty keeps its label."
+    field hint String "A line under it, what to do (`Hold to delete`); empty for none."
+  }
+
+  struct HoldResult {
+    doc "A hold button's state after this tick."
+    field response Response "What happened to it."
+    field confirmed bool "The hold completed this tick: do the thing."
+    field holding bool "It is filling."
+    field progress f32 "How full it is, 0 to 1 (it drains back when let go)." {
+      unit ratio
+    }
+  }
+
+  fn holdButton {
+    doc "A hold-to-confirm button: held (a press on it, a touch), it fills from its start edge over holdMs, ticking up in pitch, and confirms with the style's confirm sound and a pop; let go early, it drains back. Keys and pads take its toggle alternative (XAG 107: activate starts it, it runs by itself, activate again or moving the focus stops it), as the pointer does with toggle. Its progress is UI state (in snapshots). Parts: `HoldButton.base[<variant>][holding][hover|pressed|focused|disabled]`, `HoldButton.fill`. Role button, its fill as its value (percent). Probe: `<id>`, `<id>/Button`, `<id>/Button/Label`, `<id>/Button/Fill`."
+    host false
+    param id String "Its id."
+    param label String "Its label."
+    param desc HoldButtonDesc "Its role, time and alternative."
+    returns HoldResult
+  }
+
+  enum LabelSide {
+    doc "Which side of a switch or a check its label sits."
+    variant start "Before it, the switch at the row's end (a settings row: the default for a switch)."
+    variant end "After it (the default for a check)."
+  }
+
+  struct ToggleSwitchDesc {
+    doc "A switch: its label, description and states."
+    desc true
+    field label String "Its label (the whole row takes the press)."
+    field description String "A line under the label; empty for none."
+    field disabled bool "Shown but inert."
+    field side LabelSide "Where the label sits."
+    field size ControlSize "Its size."
+    field width Option.Size "The row's width; null fits (a settings row grows: pass grow)."
+    field onLabel String "What a screen reader and the probe say when on (`On`); empty for none."
+    field offLabel String "And when off."
+  }
+
+  struct SwitchResult {
+    doc "A switch's or a check's state after this tick."
+    field response Response "What happened to it."
+    field on bool "Its state, to keep and pass back."
+    field changed bool "It changed this tick."
+  }
+
+  fn toggleSwitch {
+    doc "A switch: a track and a knob that slides from its start to its end as it turns on (its selection group, on the style's motion), the track filling with primary, with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Toggle.track[on|off][hover|pressed|focused|disabled]`, `Toggle.knob[on]`, `Toggle.row[hover|pressed|focused|disabled]` (the whole row, which takes the press). Role switch, checked when on. Probe: `<id>` (its label as name), `<id>/Track`, `<id>/Track/Knob`."
+    host false
+    param id String "Its id."
+    param on bool "Its state from game state."
+    param desc ToggleSwitchDesc "Its label and states."
+    returns SwitchResult
+  }
+
+  struct CheckFieldDesc {
+    doc "A checkbox: its label, description and states."
+    desc true
+    field label String "Its label (the whole row takes the press)."
+    field description String "A line under the label; empty for none."
+    field mixed bool "Neither: some of what it stands for is on (a group's parent). A press turns it on."
+    field disabled bool "Shown but inert."
+    field invalid bool "It must be checked (terms to accept): danger outline and the validity group."
+    field side LabelSide "Where the label sits." {
+      default end
+    }
+    field width Option.Size "The row's width; null fits."
+  }
+
+  fn checkField {
+    doc "A checkbox: a box that fills with primary and draws its tick (a dash when mixed) with a pop as it turns on (its selection group), with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Checkbox.box[checked|mixed][invalid][hover|pressed|focused|disabled]`, `Checkbox.mark`, `Checkbox.row[hover|pressed|focused|disabled]` (the whole row). Role checkbox, checked when on (and its value `mixed`). Probe: `<id>`, `<id>/Box`, `<id>/Box/Mark`."
+    host false
+    param id String "Its id."
+    param checked bool "Its state from game state."
+    param desc CheckFieldDesc "Its label and states."
+    returns SwitchResult
+  }
+
+  struct RadioOption {
+    doc "One choice of a radio group."
+    desc true
+    field label String "Its label."
+    field description String "A line under it; empty for none."
+    field icon String "An icon before it (cards); empty for none."
+    field disabled bool "Shown but cannot be chosen."
+  }
+
+  enum RadioVariant {
+    doc "How a radio group draws its choices."
+    variant list "A ring and a label per choice (the default)."
+    variant cards "A framed card per choice, the chosen one ringed (a difficulty, a class)."
+  }
+
+  struct RadioGroupDesc {
+    doc "A radio group: its choices and layout."
+    desc true
+    field options List.RadioOption "The choices."
+    field selected i32 "The chosen one from game state; -1 is none." {
+      default -1
+    }
+    field label String "The group's name: shown above it and read by a screen reader; empty for none."
+    field variant RadioVariant "How it draws."
+    field row bool "Lay the choices across (they wrap) rather than down."
+    field disabled bool "Every choice inert."
+    field width Option.Size "Its width; null fits."
+  }
+
+  struct ChoiceIndexResult {
+    doc "A choice control's state after this tick."
+    field selected i32 "The chosen index, to keep and pass back (-1: none)."
+    field changed bool "It changed this tick."
+    field focused i32 "The index with the focus (-1: none)."
+  }
+
+  fn radioGroup {
+    doc "A radio group: one of several choices, as rings with labels or as cards. A press, Enter, Space or A chooses; Left and Right (and a pad's) step the choice while one has the focus, skipping disabled ones, as a native radio group does. The ring's dot grows in with a pop (selection group). Plays select. Parts: `Radio.option[selected][hover|pressed|focused|disabled]`, `Radio.ring[selected]`, `Radio.dot`, `Radio.card[selected]`. Role radiogroup with radio children, checked on the chosen. Probe: `<id>`, `<id>/Options/Option#i`."
+    host false
+    param id String "Its id."
+    param desc RadioGroupDesc "Its choices and layout."
+    returns ChoiceIndexResult
+  }
+
+  struct SliderMark {
+    doc "A labelled point on a slider's track."
+    field value f32 "Where it is."
+    field label String "What it says under the track; empty for a tick only."
+  }
+
+  struct ValueFormat {
+    doc "How a control shows a number."
+    desc true
+    field decimals i32 "Decimals; -1 follows the step (1 → 0, 0.5 → 1, 0.05 → 2)." {
+      default -1
+    }
+    field unit String "Written after it (`%`, ` m`, `×`); empty for none."
+    field percent bool "Show 0–1 as a whole percent."
+    field labels List.String "Words for whole values from min (`Off`, `Low`, `Medium`, `High`): a setting's levels."
+  }
+
+  struct ValueSliderDesc {
+    doc "A slider: range, step, label, readout, ticks and marks."
+    desc true
+    field min f32 "The range's low end."
+    field max f32 "Its high end." {
+      default 1
+    }
+    field step f32 "Snap to multiples of this from min (0: continuous; keys step a twentieth)."
+    field label String "Its name, shown above it; empty for none."
+    field showValue bool "Its value at the label row's end." {
+      default true
+    }
+    field format ValueFormat "How its value reads."
+    field ticks bool "A tick at every step (for a stepped slider of at most 20 steps)."
+    field marks List.SliderMark "Labelled points under the track."
+    field origin Option.f32 "Fill from this value rather than min (a balance, a bias: a bipolar slider)."
+    field disabled bool "Shown but inert."
+    field width Option.Size "Its width; null grows."
+    field bubble bool "A bubble over the knob with the value while it is dragged or focused." {
+      default true
+    }
+  }
+
+  struct ValueSliderResult {
+    doc "A slider's value after this tick."
+    field response Response "What happened to it."
+    field value f32 "The value, to keep and pass back."
+    field changed bool "It changed this tick."
+    field committed bool "A drag ended, or a key or pad step landed: when to save or apply a costly setting."
+  }
+
+  fn valueSlider {
+    doc "A slider: a track, a fill from min (or from an origin, both ways) and a knob. A press anywhere on the track jumps the knob there and a drag follows (a touch too; the knob grows under a finger), Left and Right step it while it has the focus (a held key or d-pad repeats), with ticks at its steps, labelled marks, a readout and a bubble over the knob while it moves. Plays sliderTick at each step passed (rising in pitch with the value). Parts: `Slider.track[hover|pressed|focused|disabled]`, `Slider.rail`, `Slider.fill`, `Slider.knob[pressed|focused]`, `Slider.core` (the knob's dot while held or focused), `Slider.tick[passed]`, `Slider.bubble`. Role slider with its range. Probe: `<id>`, `<id>/Track`, `<id>/Track/Knob`, `<id>/Head/Value`."
+    host false
+    param id String "Its id."
+    param value f32 "The value from game state."
+    param desc ValueSliderDesc "Its range, step and look."
+    returns ValueSliderResult
+  }
+
+  struct RangeSliderDesc {
+    doc "A range slider: two knobs on one track."
+    desc true
+    field min f32 "The range's low end."
+    field max f32 "Its high end." {
+      default 1
+    }
+    field step f32 "Snap to multiples of this (0: continuous)."
+    field minGap f32 "The least distance between the knobs."
+    field label String "Its name; empty for none."
+    field showValue bool "Both values at the label row's end." {
+      default true
+    }
+    field format ValueFormat "How its values read."
+    field disabled bool "Shown but inert."
+    field width Option.Size "Its width; null grows."
+    field lowLabel String "The low knob's accessible name; empty is `Minimum`."
+    field highLabel String "The high knob's; empty is `Maximum`."
+  }
+
+  struct RangeResult {
+    doc "A range slider's values after this tick."
+    field low f32 "The low end, to keep and pass back."
+    field high f32 "The high end."
+    field changed bool "Either changed this tick."
+    field committed bool "A drag ended or a step landed."
+  }
+
+  fn rangeSlider {
+    doc "A range slider: two knobs on one track and the fill between them. A press on the track takes the nearer knob there and a drag moves it (never past the other, kept minGap apart); each knob is its own focus stop, Left and Right step it. Parts: `RangeSlider.track`, `RangeSlider.rail`, `RangeSlider.fill`, `RangeSlider.knob[low|high][pressed|focused]`. Two sliders to a screen reader (lowLabel, highLabel). Probe: `<id>/Track/Low`, `<id>/Track/High`."
+    host false
+    param id String "Its id."
+    param low f32 "The low end from game state."
+    param high f32 "The high end from game state."
+    param desc RangeSliderDesc "Its range, step and look."
+    returns RangeResult
+  }
+
+  struct NumberStepperDesc {
+    doc "A number stepper: minus, the value and plus."
+    desc true
+    field min Option.f32 "The least value; null is unbounded."
+    field max Option.f32 "The most; null is unbounded."
+    field step f32 "What each press adds or takes." {
+      default 1
+    }
+    field largeStep f32 "What a held press's repeats move by after a second; 0 is ten steps."
+    field label String "Its name, before it in its row; empty for none."
+    field format ValueFormat "How its value reads."
+    field wrap bool "Past max it goes to min and back (needs both)."
+    field disabled bool "Shown but inert."
+    field width Option.Size "Its width; null fits."
+  }
+
+  struct NumberResult {
+    doc "A stepper's value after this tick."
+    field value f32 "The value, to keep and pass back."
+    field changed bool "It changed this tick."
+  }
+
+  fn numberStepper {
+    doc "A number stepper: minus, the value and plus. A press steps once, a held press repeats after 400 ms and speeds up (large steps after a second); Left and Right step it while the value has the focus. A bound's button goes disabled at the bound. Plays sliderTick per step. Parts: `Stepper.frame[focused|disabled]`, `Stepper.button[dec|inc][hover|pressed|disabled]`, `Stepper.value`. Role spinbutton with its range. Probe: `<id>/Frame/Dec`, `<id>/Frame/Value`, `<id>/Frame/Inc`."
+    host false
+    param id String "Its id."
+    param value f32 "The value from game state."
+    param desc NumberStepperDesc "Its range, step and look."
+    returns NumberResult
+  }
+
+  struct CyclerDesc {
+    doc "An option cycler: a setting's levels in one row."
+    desc true
+    field label String "Its name, before it; empty for none."
+    field wrap bool "Past the last it goes to the first." {
+      default true
+    }
+    field pips bool "A pip per option under the value, the current lit." {
+      default true
+    }
+    field disabled bool "Shown but inert."
+    field width Option.Size "Its width; null grows."
+    field valueWidth Option.f32 "The value's width; null fits the longest option (so the arrows never move)." {
+      unit cssPx
+    }
+  }
+
+  fn cycler {
+    doc "An option cycler, the console settings row: `‹ High ›` with pips. Left and Right (a pad's d-pad or stick) change it while it has the focus, the arrows take a press, and a press on the value steps forward; the value slides in from the side it came (selection on the style's motion). Arrows follow the writing direction. Plays select. Parts: `Cycler.frame[hover|focused|disabled]`, `Cycler.arrow[prev|next][disabled]`, `Cycler.pip[current]`. Role spinbutton reading the option. Probe: `<id>`, `<id>/Prev`, `<id>/Middle/Clip/Value#i` (the option shown), `<id>/Next`, `<id>/Middle/Pips/Pip#i`."
+    host false
+    param id String "Its id."
+    param options List.String "The options."
+    param index i32 "The current one from game state."
+    param desc CyclerDesc "Its label and look."
+    returns ChoiceIndexResult
+  }
+
+  struct SegmentItem {
+    doc "One segment of a segmented control."
+    desc true
+    field label String "Its label; empty for an icon alone (name it with ariaLabel)."
+    field icon String "An icon before it; empty for none."
+    field disabled bool "Shown but cannot be chosen."
+    field ariaLabel String "Its accessible name when it has no label."
+  }
+
+  struct SegmentedDesc {
+    doc "A segmented control: its segments and layout."
+    desc true
+    field items List.SegmentItem "The segments."
+    field selected i32 "The chosen one from game state."
+    field size ControlSize "Its height."
+    field equal bool "Every segment as wide as the widest." {
+      default true
+    }
+    field width Option.Size "Its width; null fits."
+    field label String "Its accessible name."
+    field disabled bool "Every segment inert."
+  }
+
+  fn segmented {
+    doc "A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). A press chooses; Left and Right step the choice while it has the focus, skipping disabled segments, mirrored right to left. Plays tab. Parts: `Segmented.track[focused|disabled]`, `Segmented.thumb`, `Segmented.item[selected][hover|pressed|disabled]`. Role radiogroup of radios. Probe: `<id>`, `<id>/Item#i`, `<id>/Thumb`."
+    host false
+    param id String "Its id."
+    param desc SegmentedDesc "Its segments."
+    returns ChoiceIndexResult
+  }
+
   # ── the UI kit: screen templates (TypeScript over the calls above) ──────
 
   callback UiAction {

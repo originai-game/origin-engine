@@ -9016,6 +9016,29 @@
         "EmitterPreset",
         "EmitterDesc",
         "EffectLayerDesc",
+        "PushButtonDesc",
+        "IconButtonDesc",
+        "HoldButtonDesc",
+        "HoldResult",
+        "LabelSide",
+        "ToggleSwitchDesc",
+        "SwitchResult",
+        "CheckFieldDesc",
+        "RadioOption",
+        "RadioVariant",
+        "RadioGroupDesc",
+        "ChoiceIndexResult",
+        "SliderMark",
+        "ValueFormat",
+        "ValueSliderDesc",
+        "ValueSliderResult",
+        "RangeSliderDesc",
+        "RangeResult",
+        "NumberStepperDesc",
+        "NumberResult",
+        "CyclerDesc",
+        "SegmentItem",
+        "SegmentedDesc",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -11862,6 +11885,303 @@
             }
           ],
           "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "pushButton",
+          "doc": "A button (docs/ui.md §11, Controls): primary, secondary, ghost (outlined), quiet (text) or danger, small, medium or large, with icons, a badge, a loading spinner and a disabled reason. It lifts under the pointer and the focus and sinks as it is pressed (its interaction group, on the style's motion), and the style dresses it as `Button.base[<variant>][hover|pressed|focused|disabled][selected]` (a version 1 style's button art included), its label in the ink that reads on its fill. A click is a press and a release inside it, Enter, Space or the pad's A while it has the focus. Role button (pressed while selected, busy while loading). Probe: `<id>`, `<id>/Label`, `<id>/Icon`, `<id>/Badge`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "label",
+              "type": "String",
+              "optional": false,
+              "doc": "Its label."
+            },
+            {
+              "name": "desc",
+              "type": "PushButtonDesc",
+              "optional": true,
+              "doc": "Its role, size, icons and states."
+            }
+          ],
+          "returns": "Response",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "iconButton",
+          "doc": "An icon button: a square (or round) button of the control height around one icon, named by its label (its tooltip, and what a screen reader says), with a badge or a dot. It moves and is dressed as pushButton, `Button.base[icon]`. Probe: `<id>`, `<id>/Icon`, `<id>/Badge`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "icon",
+              "type": "String",
+              "optional": false,
+              "doc": "The icon's name (the style's set; a drawn mark where it has none)."
+            },
+            {
+              "name": "desc",
+              "type": "IconButtonDesc",
+              "optional": true,
+              "doc": "Its name, role, size and badge."
+            }
+          ],
+          "returns": "Response",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "holdButton",
+          "doc": "A hold-to-confirm button: held (a press on it, a touch), it fills from its start edge over holdMs, ticking up in pitch, and confirms with the style's confirm sound and a pop; let go early, it drains back. Keys and pads take its toggle alternative (XAG 107: activate starts it, it runs by itself, activate again or moving the focus stops it), as the pointer does with toggle. Its progress is UI state (in snapshots). Parts: `HoldButton.base[<variant>][holding][hover|pressed|focused|disabled]`, `HoldButton.fill`. Role button, its fill as its value (percent). Probe: `<id>`, `<id>/Button`, `<id>/Button/Label`, `<id>/Button/Fill`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "label",
+              "type": "String",
+              "optional": false,
+              "doc": "Its label."
+            },
+            {
+              "name": "desc",
+              "type": "HoldButtonDesc",
+              "optional": true,
+              "doc": "Its role, time and alternative."
+            }
+          ],
+          "returns": "HoldResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "toggleSwitch",
+          "doc": "A switch: a track and a knob that slides from its start to its end as it turns on (its selection group, on the style's motion), the track filling with primary, with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Toggle.track[on|off][hover|pressed|focused|disabled]`, `Toggle.knob[on]`, `Toggle.row[hover|pressed|focused|disabled]` (the whole row, which takes the press). Role switch, checked when on. Probe: `<id>` (its label as name), `<id>/Track`, `<id>/Track/Knob`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "on",
+              "type": "bool",
+              "optional": false,
+              "doc": "Its state from game state."
+            },
+            {
+              "name": "desc",
+              "type": "ToggleSwitchDesc",
+              "optional": true,
+              "doc": "Its label and states."
+            }
+          ],
+          "returns": "SwitchResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "checkField",
+          "doc": "A checkbox: a box that fills with primary and draws its tick (a dash when mixed) with a pop as it turns on (its selection group), with a label and a description; the whole row takes a press, Enter, Space or A. Plays toggleOn and toggleOff. Parts: `Checkbox.box[checked|mixed][invalid][hover|pressed|focused|disabled]`, `Checkbox.mark`, `Checkbox.row[hover|pressed|focused|disabled]` (the whole row). Role checkbox, checked when on (and its value `mixed`). Probe: `<id>`, `<id>/Box`, `<id>/Box/Mark`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "checked",
+              "type": "bool",
+              "optional": false,
+              "doc": "Its state from game state."
+            },
+            {
+              "name": "desc",
+              "type": "CheckFieldDesc",
+              "optional": true,
+              "doc": "Its label and states."
+            }
+          ],
+          "returns": "SwitchResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "radioGroup",
+          "doc": "A radio group: one of several choices, as rings with labels or as cards. A press, Enter, Space or A chooses; Left and Right (and a pad's) step the choice while one has the focus, skipping disabled ones, as a native radio group does. The ring's dot grows in with a pop (selection group). Plays select. Parts: `Radio.option[selected][hover|pressed|focused|disabled]`, `Radio.ring[selected]`, `Radio.dot`, `Radio.card[selected]`. Role radiogroup with radio children, checked on the chosen. Probe: `<id>`, `<id>/Options/Option#i`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "RadioGroupDesc",
+              "optional": true,
+              "doc": "Its choices and layout."
+            }
+          ],
+          "returns": "ChoiceIndexResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "valueSlider",
+          "doc": "A slider: a track, a fill from min (or from an origin, both ways) and a knob. A press anywhere on the track jumps the knob there and a drag follows (a touch too; the knob grows under a finger), Left and Right step it while it has the focus (a held key or d-pad repeats), with ticks at its steps, labelled marks, a readout and a bubble over the knob while it moves. Plays sliderTick at each step passed (rising in pitch with the value). Parts: `Slider.track[hover|pressed|focused|disabled]`, `Slider.rail`, `Slider.fill`, `Slider.knob[pressed|focused]`, `Slider.core` (the knob's dot while held or focused), `Slider.tick[passed]`, `Slider.bubble`. Role slider with its range. Probe: `<id>`, `<id>/Track`, `<id>/Track/Knob`, `<id>/Head/Value`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "value",
+              "type": "f32",
+              "optional": false,
+              "doc": "The value from game state."
+            },
+            {
+              "name": "desc",
+              "type": "ValueSliderDesc",
+              "optional": true,
+              "doc": "Its range, step and look."
+            }
+          ],
+          "returns": "ValueSliderResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "rangeSlider",
+          "doc": "A range slider: two knobs on one track and the fill between them. A press on the track takes the nearer knob there and a drag moves it (never past the other, kept minGap apart); each knob is its own focus stop, Left and Right step it. Parts: `RangeSlider.track`, `RangeSlider.rail`, `RangeSlider.fill`, `RangeSlider.knob[low|high][pressed|focused]`. Two sliders to a screen reader (lowLabel, highLabel). Probe: `<id>/Track/Low`, `<id>/Track/High`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "low",
+              "type": "f32",
+              "optional": false,
+              "doc": "The low end from game state."
+            },
+            {
+              "name": "high",
+              "type": "f32",
+              "optional": false,
+              "doc": "The high end from game state."
+            },
+            {
+              "name": "desc",
+              "type": "RangeSliderDesc",
+              "optional": true,
+              "doc": "Its range, step and look."
+            }
+          ],
+          "returns": "RangeResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "numberStepper",
+          "doc": "A number stepper: minus, the value and plus. A press steps once, a held press repeats after 400 ms and speeds up (large steps after a second); Left and Right step it while the value has the focus. A bound's button goes disabled at the bound. Plays sliderTick per step. Parts: `Stepper.frame[focused|disabled]`, `Stepper.button[dec|inc][hover|pressed|disabled]`, `Stepper.value`. Role spinbutton with its range. Probe: `<id>/Frame/Dec`, `<id>/Frame/Value`, `<id>/Frame/Inc`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "value",
+              "type": "f32",
+              "optional": false,
+              "doc": "The value from game state."
+            },
+            {
+              "name": "desc",
+              "type": "NumberStepperDesc",
+              "optional": true,
+              "doc": "Its range, step and look."
+            }
+          ],
+          "returns": "NumberResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "cycler",
+          "doc": "An option cycler, the console settings row: `‹ High ›` with pips. Left and Right (a pad's d-pad or stick) change it while it has the focus, the arrows take a press, and a press on the value steps forward; the value slides in from the side it came (selection on the style's motion). Arrows follow the writing direction. Plays select. Parts: `Cycler.frame[hover|focused|disabled]`, `Cycler.arrow[prev|next][disabled]`, `Cycler.pip[current]`. Role spinbutton reading the option. Probe: `<id>`, `<id>/Prev`, `<id>/Middle/Clip/Value#i` (the option shown), `<id>/Next`, `<id>/Middle/Pips/Pip#i`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "options",
+              "type": "List<String>",
+              "optional": false,
+              "doc": "The options."
+            },
+            {
+              "name": "index",
+              "type": "i32",
+              "optional": false,
+              "doc": "The current one from game state."
+            },
+            {
+              "name": "desc",
+              "type": "CyclerDesc",
+              "optional": true,
+              "doc": "Its label and look."
+            }
+          ],
+          "returns": "ChoiceIndexResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "segmented",
+          "doc": "A segmented control (segmented tabs): a track whose raised thumb slides to the chosen segment and takes its width on the style's spring (layout animation; it jumps under reduced motion). A press chooses; Left and Right step the choice while it has the focus, skipping disabled segments, mirrored right to left. Plays tab. Parts: `Segmented.track[focused|disabled]`, `Segmented.thumb`, `Segmented.item[selected][hover|pressed|disabled]`. Role radiogroup of radios. Probe: `<id>`, `<id>/Item#i`, `<id>/Thumb`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SegmentedDesc",
+              "optional": true,
+              "doc": "Its segments."
+            }
+          ],
+          "returns": "ChoiceIndexResult",
           "publish": true,
           "host": false
         },
@@ -42812,6 +43132,1011 @@
           },
           "description": "A custom material's parameters.",
           "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "PushButtonDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A button: its role, size, icons, badge and states.",
+      "type": "object",
+      "properties": {
+        "variant": {
+          "$ref": "#/$defs/ButtonVariant",
+          "description": "Its role: primary (one per screen), secondary, ghost, quiet or danger.",
+          "default": "secondary"
+        },
+        "size": {
+          "$ref": "#/$defs/ControlSize",
+          "description": "Its height (the style's control sizes; at least 44 CSS px of reach on a coarse pointer).",
+          "default": "medium"
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon before the label (the style's set); empty for none.",
+          "default": ""
+        },
+        "iconEnd": {
+          "type": "string",
+          "description": "An icon after it (a chevron, an external mark); empty for none.",
+          "default": ""
+        },
+        "badge": {
+          "type": "string",
+          "description": "A count or word on its top end corner (`3`, `NEW`); empty for none.",
+          "default": ""
+        },
+        "loading": {
+          "type": "boolean",
+          "description": "Working: a spinner takes the icon's place, it takes no press and says busy.",
+          "default": false
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert, dimmed.",
+          "default": false
+        },
+        "disabledReason": {
+          "type": "string",
+          "description": "Why it is disabled, shown as its tooltip and read after its name (`Needs 300 gold`).",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits the label.",
+          "default": null
+        },
+        "selected": {
+          "type": "boolean",
+          "description": "On (a toggle button: a filter, a pinned tool): its selection group, filled as pressed.",
+          "default": false
+        },
+        "autofocus": {
+          "type": "boolean",
+          "description": "Take the focus when it appears and no dialog is open.",
+          "default": false
+        },
+        "tooltip": {
+          "type": "string",
+          "description": "A tooltip once the pointer rests on it; empty for none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "IconButtonDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An icon button: an icon, its name and a badge.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Its name: read by a screen reader and shown as its tooltip (an icon alone is not a name).",
+          "default": ""
+        },
+        "variant": {
+          "$ref": "#/$defs/ButtonVariant",
+          "description": "Its role; quiet (the default for an icon) draws only the icon until hovered.",
+          "default": "quiet"
+        },
+        "size": {
+          "$ref": "#/$defs/ControlSize",
+          "description": "Its size: a square of the control height.",
+          "default": "medium"
+        },
+        "badge": {
+          "type": "string",
+          "description": "A count over its corner; empty for none.",
+          "default": ""
+        },
+        "dot": {
+          "type": "boolean",
+          "description": "A dot over its corner (something new), when there is no badge.",
+          "default": false
+        },
+        "selected": {
+          "type": "boolean",
+          "description": "On (a toggled tool).",
+          "default": false
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "round": {
+          "type": "boolean",
+          "description": "A circle rather than the style's control corner.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "HoldButtonDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A hold-to-confirm button.",
+      "type": "object",
+      "properties": {
+        "variant": {
+          "$ref": "#/$defs/ButtonVariant",
+          "description": "Its role (danger for a destructive confirm).",
+          "default": "danger"
+        },
+        "size": {
+          "$ref": "#/$defs/ControlSize",
+          "description": "Its height.",
+          "default": "medium"
+        },
+        "holdMs": {
+          "type": "number",
+          "description": "How long the hold takes.",
+          "default": 1200,
+          "minimum": 100,
+          "x-og-unit": "ms"
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon before the label.",
+          "default": ""
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits the label.",
+          "default": null
+        },
+        "toggle": {
+          "type": "boolean",
+          "description": "The hold's toggle alternative for the pointer and touch too (XAG 107): a tap starts the fill, which runs on by itself; a second tap stops it. Keys and pads always work so (Enter, Space or A start it, again stops it, moving the focus away stops it).",
+          "default": false
+        },
+        "holdingLabel": {
+          "type": "string",
+          "description": "What it says while it fills (`Keep holding…`); empty keeps its label.",
+          "default": ""
+        },
+        "hint": {
+          "type": "string",
+          "description": "A line under it, what to do (`Hold to delete`); empty for none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "HoldResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A hold button's state after this tick.",
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/$defs/Response",
+          "description": "What happened to it."
+        },
+        "confirmed": {
+          "type": "boolean",
+          "description": "The hold completed this tick: do the thing."
+        },
+        "holding": {
+          "type": "boolean",
+          "description": "It is filling."
+        },
+        "progress": {
+          "type": "number",
+          "description": "How full it is, 0 to 1 (it drains back when let go).",
+          "x-og-unit": "ratio"
+        }
+      },
+      "required": [
+        "response",
+        "confirmed",
+        "holding",
+        "progress"
+      ],
+      "additionalProperties": false
+    },
+    "LabelSide": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "Which side of a switch or a check its label sits.",
+      "type": "string",
+      "enum": [
+        "start",
+        "end"
+      ],
+      "x-og-variants": {
+        "start": "Before it, the switch at the row's end (a settings row: the default for a switch).",
+        "end": "After it (the default for a check)."
+      }
+    },
+    "ToggleSwitchDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A switch: its label, description and states.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Its label (the whole row takes the press).",
+          "default": ""
+        },
+        "description": {
+          "type": "string",
+          "description": "A line under the label; empty for none.",
+          "default": ""
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "side": {
+          "$ref": "#/$defs/LabelSide",
+          "description": "Where the label sits.",
+          "default": "start"
+        },
+        "size": {
+          "$ref": "#/$defs/ControlSize",
+          "description": "Its size.",
+          "default": "medium"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The row's width; null fits (a settings row grows: pass grow).",
+          "default": null
+        },
+        "onLabel": {
+          "type": "string",
+          "description": "What a screen reader and the probe say when on (`On`); empty for none.",
+          "default": ""
+        },
+        "offLabel": {
+          "type": "string",
+          "description": "And when off.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "SwitchResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A switch's or a check's state after this tick.",
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/$defs/Response",
+          "description": "What happened to it."
+        },
+        "on": {
+          "type": "boolean",
+          "description": "Its state, to keep and pass back."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "It changed this tick."
+        }
+      },
+      "required": [
+        "response",
+        "on",
+        "changed"
+      ],
+      "additionalProperties": false
+    },
+    "CheckFieldDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A checkbox: its label, description and states.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Its label (the whole row takes the press).",
+          "default": ""
+        },
+        "description": {
+          "type": "string",
+          "description": "A line under the label; empty for none.",
+          "default": ""
+        },
+        "mixed": {
+          "type": "boolean",
+          "description": "Neither: some of what it stands for is on (a group's parent). A press turns it on.",
+          "default": false
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "invalid": {
+          "type": "boolean",
+          "description": "It must be checked (terms to accept): danger outline and the validity group.",
+          "default": false
+        },
+        "side": {
+          "$ref": "#/$defs/LabelSide",
+          "description": "Where the label sits.",
+          "default": "end"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The row's width; null fits.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "RadioOption": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One choice of a radio group.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Its label.",
+          "default": ""
+        },
+        "description": {
+          "type": "string",
+          "description": "A line under it; empty for none.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon before it (cards); empty for none.",
+          "default": ""
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but cannot be chosen.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "RadioVariant": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How a radio group draws its choices.",
+      "type": "string",
+      "enum": [
+        "list",
+        "cards"
+      ],
+      "x-og-variants": {
+        "list": "A ring and a label per choice (the default).",
+        "cards": "A framed card per choice, the chosen one ringed (a difficulty, a class)."
+      }
+    },
+    "RadioGroupDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A radio group: its choices and layout.",
+      "type": "object",
+      "properties": {
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RadioOption"
+          },
+          "description": "The choices.",
+          "default": []
+        },
+        "selected": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The chosen one from game state; -1 is none.",
+          "default": -1
+        },
+        "label": {
+          "type": "string",
+          "description": "The group's name: shown above it and read by a screen reader; empty for none.",
+          "default": ""
+        },
+        "variant": {
+          "$ref": "#/$defs/RadioVariant",
+          "description": "How it draws.",
+          "default": "list"
+        },
+        "row": {
+          "type": "boolean",
+          "description": "Lay the choices across (they wrap) rather than down.",
+          "default": false
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Every choice inert.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "ChoiceIndexResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A choice control's state after this tick.",
+      "type": "object",
+      "properties": {
+        "selected": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The chosen index, to keep and pass back (-1: none)."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "It changed this tick."
+        },
+        "focused": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The index with the focus (-1: none)."
+        }
+      },
+      "required": [
+        "selected",
+        "changed",
+        "focused"
+      ],
+      "additionalProperties": false
+    },
+    "SliderMark": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A labelled point on a slider's track.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "description": "Where it is."
+        },
+        "label": {
+          "type": "string",
+          "description": "What it says under the track; empty for a tick only."
+        }
+      },
+      "required": [
+        "value",
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "ValueFormat": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "How a control shows a number.",
+      "type": "object",
+      "properties": {
+        "decimals": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Decimals; -1 follows the step (1 → 0, 0.5 → 1, 0.05 → 2).",
+          "default": -1
+        },
+        "unit": {
+          "type": "string",
+          "description": "Written after it (`%`, ` m`, `×`); empty for none.",
+          "default": ""
+        },
+        "percent": {
+          "type": "boolean",
+          "description": "Show 0–1 as a whole percent.",
+          "default": false
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Words for whole values from min (`Off`, `Low`, `Medium`, `High`): a setting's levels.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "ValueSliderDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A slider: range, step, label, readout, ticks and marks.",
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "number",
+          "description": "The range's low end.",
+          "default": 0
+        },
+        "max": {
+          "type": "number",
+          "description": "Its high end.",
+          "default": 1
+        },
+        "step": {
+          "type": "number",
+          "description": "Snap to multiples of this from min (0: continuous; keys step a twentieth).",
+          "default": 0
+        },
+        "label": {
+          "type": "string",
+          "description": "Its name, shown above it; empty for none.",
+          "default": ""
+        },
+        "showValue": {
+          "type": "boolean",
+          "description": "Its value at the label row's end.",
+          "default": true
+        },
+        "format": {
+          "$ref": "#/$defs/ValueFormat",
+          "description": "How its value reads.",
+          "default": {}
+        },
+        "ticks": {
+          "type": "boolean",
+          "description": "A tick at every step (for a stepped slider of at most 20 steps).",
+          "default": false
+        },
+        "marks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SliderMark"
+          },
+          "description": "Labelled points under the track.",
+          "default": []
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Fill from this value rather than min (a balance, a bias: a bipolar slider).",
+          "default": null
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "bubble": {
+          "type": "boolean",
+          "description": "A bubble over the knob with the value while it is dragged or focused.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "ValueSliderResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A slider's value after this tick.",
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/$defs/Response",
+          "description": "What happened to it."
+        },
+        "value": {
+          "type": "number",
+          "description": "The value, to keep and pass back."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "It changed this tick."
+        },
+        "committed": {
+          "type": "boolean",
+          "description": "A drag ended, or a key or pad step landed: when to save or apply a costly setting."
+        }
+      },
+      "required": [
+        "response",
+        "value",
+        "changed",
+        "committed"
+      ],
+      "additionalProperties": false
+    },
+    "RangeSliderDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A range slider: two knobs on one track.",
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "number",
+          "description": "The range's low end.",
+          "default": 0
+        },
+        "max": {
+          "type": "number",
+          "description": "Its high end.",
+          "default": 1
+        },
+        "step": {
+          "type": "number",
+          "description": "Snap to multiples of this (0: continuous).",
+          "default": 0
+        },
+        "minGap": {
+          "type": "number",
+          "description": "The least distance between the knobs.",
+          "default": 0
+        },
+        "label": {
+          "type": "string",
+          "description": "Its name; empty for none.",
+          "default": ""
+        },
+        "showValue": {
+          "type": "boolean",
+          "description": "Both values at the label row's end.",
+          "default": true
+        },
+        "format": {
+          "$ref": "#/$defs/ValueFormat",
+          "description": "How its values read.",
+          "default": {}
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "lowLabel": {
+          "type": "string",
+          "description": "The low knob's accessible name; empty is `Minimum`.",
+          "default": ""
+        },
+        "highLabel": {
+          "type": "string",
+          "description": "The high knob's; empty is `Maximum`.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "RangeResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A range slider's values after this tick.",
+      "type": "object",
+      "properties": {
+        "low": {
+          "type": "number",
+          "description": "The low end, to keep and pass back."
+        },
+        "high": {
+          "type": "number",
+          "description": "The high end."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "Either changed this tick."
+        },
+        "committed": {
+          "type": "boolean",
+          "description": "A drag ended or a step landed."
+        }
+      },
+      "required": [
+        "low",
+        "high",
+        "changed",
+        "committed"
+      ],
+      "additionalProperties": false
+    },
+    "NumberStepperDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A number stepper: minus, the value and plus.",
+      "type": "object",
+      "properties": {
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The least value; null is unbounded.",
+          "default": null
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The most; null is unbounded.",
+          "default": null
+        },
+        "step": {
+          "type": "number",
+          "description": "What each press adds or takes.",
+          "default": 1
+        },
+        "largeStep": {
+          "type": "number",
+          "description": "What a held press's repeats move by after a second; 0 is ten steps.",
+          "default": 0
+        },
+        "label": {
+          "type": "string",
+          "description": "Its name, before it in its row; empty for none.",
+          "default": ""
+        },
+        "format": {
+          "$ref": "#/$defs/ValueFormat",
+          "description": "How its value reads.",
+          "default": {}
+        },
+        "wrap": {
+          "type": "boolean",
+          "description": "Past max it goes to min and back (needs both).",
+          "default": false
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "NumberResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A stepper's value after this tick.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "description": "The value, to keep and pass back."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "It changed this tick."
+        }
+      },
+      "required": [
+        "value",
+        "changed"
+      ],
+      "additionalProperties": false
+    },
+    "CyclerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An option cycler: a setting's levels in one row.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Its name, before it; empty for none.",
+          "default": ""
+        },
+        "wrap": {
+          "type": "boolean",
+          "description": "Past the last it goes to the first.",
+          "default": true
+        },
+        "pips": {
+          "type": "boolean",
+          "description": "A pip per option under the value, the current lit.",
+          "default": true
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "valueWidth": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The value's width; null fits the longest option (so the arrows never move).",
+          "default": null,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SegmentItem": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One segment of a segmented control.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Its label; empty for an icon alone (name it with ariaLabel).",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon before it; empty for none.",
+          "default": ""
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but cannot be chosen.",
+          "default": false
+        },
+        "ariaLabel": {
+          "type": "string",
+          "description": "Its accessible name when it has no label.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "SegmentedDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A segmented control: its segments and layout.",
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SegmentItem"
+          },
+          "description": "The segments.",
+          "default": []
+        },
+        "selected": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The chosen one from game state.",
+          "default": 0
+        },
+        "size": {
+          "$ref": "#/$defs/ControlSize",
+          "description": "Its height.",
+          "default": "medium"
+        },
+        "equal": {
+          "type": "boolean",
+          "description": "Every segment as wide as the widest.",
+          "default": true
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "Its accessible name.",
+          "default": ""
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Every segment inert.",
+          "default": false
         }
       },
       "additionalProperties": false
