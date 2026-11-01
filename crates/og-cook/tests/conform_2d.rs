@@ -538,7 +538,12 @@ fn files(dir: &Path) -> BTreeMap<String, Vec<u8>> {
                 stack.push(p);
             } else if p.file_name().is_some_and(|n| n != ".cook-times.ogt") {
                 out.insert(
-                    p.strip_prefix(dir).unwrap().display().to_string(),
+                    // `/` on every host, so `outputs` can match `looks/`.
+                    p.strip_prefix(dir)
+                        .unwrap()
+                        .display()
+                        .to_string()
+                        .replace('\\', "/"),
                     std::fs::read(&p).unwrap(),
                 );
             }
