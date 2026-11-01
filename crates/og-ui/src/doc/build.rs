@@ -365,6 +365,9 @@ impl Ui {
         if r.has("interactive") {
             el.interactive = r.flag("interactive");
         }
+        if r.has("focusable") {
+            el.focusable = r.flag("focusable");
+        }
         el
     }
 

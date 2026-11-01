@@ -639,3 +639,66 @@ fn a_menu_that_appears_takes_the_focus_and_a_move_from_nothing_lands_on_its_firs
         "from nothing to the first item, then down one"
     );
 }
+
+#[derive(Default)]
+struct Cards {
+    clicks: [u32; 2],
+}
+
+fn cards_screen(ui: &mut Ui, s: &mut Cards) {
+    ui.button("First", "First", ButtonDesc::default());
+    for (k, focusable) in [true, false].into_iter().enumerate() {
+        ui.open(
+            ui_idi("Card", k as u32),
+            Element {
+                interactive: true,
+                focusable,
+                padding: Insets::all(8.0),
+                ..Element::column()
+            },
+        );
+        ui.label(
+            "Name",
+            if focusable { "Reach" } else { "Skip" },
+            LabelDesc::default(),
+        );
+        if ui.close().clicked {
+            s.clicks[k] += 1;
+        }
+    }
+    ui.button("Last", "Last", ButtonDesc::default());
+}
+
+/// An interactive container marked focusable is a stop of Tab and the pad
+/// and Enter presses it; one that is not stays a pointer target only.
+///
+/// Ways it could fail: Tab skips the focusable card (it is not a nav
+/// target), Enter on it does not click, the plain interactive container
+/// becomes a Tab stop, or a pointer click no longer reaches either.
+#[test]
+fn a_focusable_container_takes_keys_and_pads_as_a_button() {
+    let mut rig = Rig::new(Cards::default());
+    let b = &mut cards_screen;
+    rig.idle(2, b);
+    rig.key(UiKey::Tab, b);
+    assert_eq!(rig.ui.focus_path(0), "First");
+    rig.key(UiKey::Tab, b);
+    assert_eq!(
+        rig.ui.focus_path(0),
+        "Card#0",
+        "the focusable card is the next stop"
+    );
+    rig.key(UiKey::Enter, b);
+    rig.idle(1, b);
+    assert_eq!(rig.state.clicks, [1, 0], "Enter presses it");
+    rig.key(UiKey::Tab, b);
+    assert_eq!(
+        rig.ui.focus_path(0),
+        "Last",
+        "the plain container is no stop"
+    );
+    rig.click("Card#1", b);
+    rig.click("Card#0", b);
+    rig.idle(1, b);
+    assert_eq!(rig.state.clicks, [2, 1], "the pointer reaches both");
+}

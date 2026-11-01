@@ -145,6 +145,7 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
         scroll: d["scroll"].as_bool().unwrap_or(false),
         scroll_x: d["scrollX"].as_bool().unwrap_or(false),
         interactive: d["interactive"].as_bool().unwrap_or(false),
+        focusable: d["focusable"].as_bool().unwrap_or(false),
         background: paint(theme, &d["background"]),
         radius: f(d, "radius", 0.0),
         frame: frame_part(&d["frame"]),

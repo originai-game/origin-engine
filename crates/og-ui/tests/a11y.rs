@@ -759,7 +759,11 @@ fn semantics_give_containers_the_roles_components_need() {
     assert!(!open.states.iter().any(|s| s == "expanded"));
     let save = node(&tree, "Menu/Item#1");
     assert_eq!(save.role, "menuitem");
-    assert!(save.states.iter().any(|s| s == "collapsed"), "{:?}", save.states);
+    assert!(
+        save.states.iter().any(|s| s == "collapsed"),
+        "{:?}",
+        save.states
+    );
     assert!(tree.nodes.iter().all(|n| n.path != "Menu/Bad"));
     assert!(
         warnings

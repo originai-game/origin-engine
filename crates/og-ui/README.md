@@ -409,6 +409,7 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `frame` | panel \| card \| button \| buttonHover \| buttonPressed \| buttonDisabled \| field \| slot \| tooltip \| hud \| track \| fill | all | The style frame its background takes. |
 | `aspect` | number | all | Width over height (0: none). |
 | `interactive` | bool | all | It reports clicks (`on click`). |
+| `focusable` | bool | all | With interactive: keys and pads reach it and press it. |
 | `visible` | bool | all | False leaves it (and its subtree) out of the tree. |
 | `name` | text | all | What a screen reader calls it. |
 | `part` | name | all | Its part name a style dresses (`ShopCard.frame`); the document's `parts` lists them. |

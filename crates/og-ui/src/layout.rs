@@ -291,6 +291,10 @@ pub struct Element {
     pub scroll_x: bool,
     /// Reports hover, press and click through `Ui::close`.
     pub interactive: bool,
+    /// An interactive container keys and pads reach (a card, a menu item,
+    /// a tab of a component): it takes the focus ring and Enter, Space or
+    /// the pad's A press it, as a button.
+    pub focusable: bool,
     pub background: Option<Srgba>,
     /// Corner radius in CSS pixels (clamped to half the shorter side).
     pub radius: f32,
