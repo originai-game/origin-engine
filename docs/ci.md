@@ -327,8 +327,9 @@ uploads are `continue-on-error`, so the account's artifact quota never
 fails a lane.
 
 A second workflow, `.github/workflows/release.yml` (`workflow_dispatch`
-only, no secrets, nothing published), is the release pack since 0.6.0
-(docs/release.md §3): a `native` matrix (`macos-14` for darwin-arm64,
+only, no secrets, nothing published), is the fallback release pack when
+the Mac or the Windows host is unavailable; releases pack on those two
+Amp runners (docs/release.md §3, 2026-11-01). The workflow: a `native` matrix (`macos-14` for darwin-arm64,
 `windows-latest` for win32-x64) runs `OG_RELEASE=1 build.sh --native` and
 `pack.sh --native`, the addon and `og` only; a `web` job in the same
 trixie container as the gate, provisioned the same way plus zig 0.17.0 and

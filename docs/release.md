@@ -135,9 +135,9 @@ testing settled on, with every gate.
 
 | Package | Contents | Built by |
 |---|---|---|
-| `@origingame/engine` | the TypeScript API and runtime (`src/`, `types/*.d.ts`, `schema/api.schema.json`, `bindings.json`), the web hosts (`dist/web`, `dist/web-publish`, `dist/web-publish-2d`, each publish directory with its lanes variant), the player shell, the Basis transcoder, `bin/og.mjs` (runs the platform package's `og` with this package as `OG_ENGINE_PACKAGE`), and `knowledge/`: `skills/og-*` (ten), `wiki/` (generated from `api.ogt`), `looks/catalogue.json`, `scaffold/` (`origin-engine.json`, `distribution.json`, the template's text), `knowledge.json`, `scripts/mount.ts` and `validate.ts` (copied from `packages/knowledge` at pack); no native code | `packages/engine/scripts/pack.sh` (`OG_RELEASE=1 build.sh --linux-x64` first): the release workflow's `web` job (§3), or a machine's `scripts/release.sh pack` |
-| `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` | `origin-engine.node` (napi addon, `crates/og-host-node`) and `og` (`crates/og-cli`), release profile, `os`/`cpu`/`libc` so only the matching one installs, as `optionalDependencies` of the main package | linux-x64: the same (cargo zigbuild, glibc 2.31); darwin-arm64: the workflow's `macos-14` job, `pack.sh --native` |
-| `@origingame/engine-win32-x64` | `origin-engine.node` (MSVC napi addon) and `og.exe`, release profile, `os: win32`, `cpu: x64`; the same API, DX12 renderer, tsgo checker fallback | the workflow's `windows-latest` job, `pack.sh --native` in Git Bash (0.3.0 to 0.6.0: by hand on the `studio-win` runner) |
+| `@origingame/engine` | the TypeScript API and runtime (`src/`, `types/*.d.ts`, `schema/api.schema.json`, `bindings.json`), the web hosts (`dist/web`, `dist/web-publish`, `dist/web-publish-2d`, each publish directory with its lanes variant), the player shell, the Basis transcoder, `bin/og.mjs` (runs the platform package's `og` with this package as `OG_ENGINE_PACKAGE`), and `knowledge/`: `skills/og-*` (ten), `wiki/` (generated from `api.ogt`), `looks/catalogue.json`, `scaffold/` (`origin-engine.json`, `distribution.json`, the template's text), `knowledge.json`, `scripts/mount.ts` and `validate.ts` (copied from `packages/knowledge` at pack); no native code | `packages/engine/scripts/pack.sh` (`OG_RELEASE=1 build.sh --linux-x64` first): `scripts/release.sh pack` on the `macrunner` Amp runner (§3) |
+| `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` | `origin-engine.node` (napi addon, `crates/og-host-node`) and `og` (`crates/og-cli`), release profile, `os`/`cpu`/`libc` so only the matching one installs, as `optionalDependencies` of the main package | both in the Mac's `scripts/release.sh pack`: linux-x64 by cargo zigbuild (glibc 2.31), darwin-arm64 natively |
+| `@origingame/engine-win32-x64` | `origin-engine.node` (MSVC napi addon) and `og.exe`, release profile, `os: win32`, `cpu: x64`; the same API, DX12 renderer, tsgo checker fallback | `build.sh --native` then `pack.sh --native` in Git Bash on the `studio-win` Amp runner (§3) |
 | `@origingame/create-game` | `bin/create.ts` (`npm create @origingame/game` runs it: npm and bun map `create @scope/name` to `@scope/create-name`, which is why the package is `create-game`, not `create`), `template/` (`templates/game`, the 3D template), `template-2d/` (`templates/game-2d`, the 2D starter `--profile 2d` writes), `archetypes/` (the eight), `looks/` (the catalogue) | `packages/create` `prepack` |
 
 Not shipped yet: linux-arm64 (design §12 item 5); `og.mjs` says so when the
@@ -414,34 +414,36 @@ re-records the goldens, so the published entry says it.
 
 ```sh
 scripts/release.sh bump <version>     # every occurrence of the version, CHANGELOG.md's heading
-gh workflow run release.yml --ref main  # the pack, on Actions (below): five tarballs + manifest.json as the run's release-<version> artifact
-scripts/release.sh fetch <run-id>     # that artifact into dist/release/<version>/
+scripts/release.sh pack               # on the Mac: OG_RELEASE=1 pack.sh --linux-x64 (the wasm once, the engine with knowledge/, the darwin-arm64 and linux-x64 platform packages), then create-game, into dist/release/<version>/ with manifest.json
+# on studio-win, Git Bash, the same commit: OG_RELEASE=1 sh packages/engine/scripts/build.sh --native && sh packages/engine/scripts/pack.sh --native
+scripts/release.sh manifest <dir>     # on the Mac, after copying the win32-x64 tarball into dist/release/<version>/: one manifest over the five
 scripts/release.sh verify [--registry] [--instabox]  # the install test (below) from the tarballs, or from the registry after publishing; --instabox once more inside an InstaBox machine
 scripts/release.sh publish            # npm publish, the three platform packages first, then engine, create-game; git tag v<version>; prints the install line
-scripts/release.sh pack               # by hand instead of the workflow: OG_RELEASE=1 pack.sh --linux-x64 (the engine with knowledge/, this machine's and the linux-x64 platform packages), then create-game, into dist/release/<version>/ with manifest.json
-scripts/release.sh manifest <dir>     # the manifest over a directory of tarballs (what pack and the workflow's assemble job end with)
+gh workflow run release.yml --ref main  # a fallback when a machine is unavailable: the same pack on GitHub-hosted runners (below)
+scripts/release.sh fetch <run-id>     # that run's release-<version> artifact into dist/release/<version>/
 ```
 
-**The pack runs on Actions since 0.6.0** (the owner's instruction,
-2026-10-26, after 0.6.0's packs took 31 min on the Windows host and as
-long on the Mac, each compiling the same wasm five times over): the wasm
-is the same bytes on every platform, so `.github/workflows/release.yml`
-(`workflow_dispatch`, no secrets, nothing published) builds it once in the
-gate's Debian container together with the linux-x64 addon (cargo
-zigbuild, as `pack --linux-x64` did on the Mac), the engine package and
-create-game, while a `native` matrix (`macos-14` for darwin-arm64,
-`windows-latest` for win32-x64) compiles only its addon and `og`
-(`OG_RELEASE=1 packages/engine/scripts/build.sh --native`, then `pack.sh
---native`). An `assemble` job writes one manifest over the five tarballs
-(`scripts/release.sh manifest`), runs the install test's host half from
-them on the Linux runner (a smoke: no renderer there, frames unchecked)
-and uploads `release-<version>`. `scripts/release.sh fetch <run-id>` puts
-that artifact in `dist/release/<version>/` with its `verified` cleared,
-and `verify` and `publish` go on from there as before: the manifest
-names the commit the runners checked out, and `publish` holds HEAD to it
-as to a local pack's. The Mac and Windows machines no longer pack; 0.5.0
-and 0.6.0 were packed by hand on each (the receipts), and `pack` stays
-for a machine without the workflow.
+**The pack runs on the Amp runners, not on Actions (the owner,
+2026-11-01).** CI is never a precondition of a release and nothing runs
+on GitHub by itself (`docs/ci.md` §CI). The Mac (`macrunner`,
+`/Volumes/app/origin-engine`) runs `scripts/release.sh pack`, which
+builds the wasm once with the darwin-arm64 and linux-x64 platform
+packages (cargo zigbuild), the engine package and create-game. The Windows
+host (`studio-win`, Git Bash; Rust 1.99.1 MSVC, VS 2022 Build Tools,
+bun 1.4.4) builds only its addon and `og` at the same commit
+(`OG_RELEASE=1 build.sh --native`, then `pack.sh --native`). It never
+compiles the wasm, which is what made 0.6.0's two full packs take 31
+minutes each and moved the pack to Actions on 2026-10-26. The Windows
+thread hands `packages/engine/dist/pack/*win32-x64*.tgz` to the Mac
+thread through Amp's thread file transfer. The Mac copies it into
+`dist/release/<version>/`, then runs `scripts/release.sh manifest` over
+the five tarballs and `verify` and `publish` as before: the manifest
+names the commit both machines built, and `publish` holds HEAD to it.
+`.github/workflows/release.yml` (`workflow_dispatch`, GitHub-hosted
+`macos-14`, `windows-latest` and a Linux job in the gate's Debian
+container, then `assemble`) does the same pack when a machine is
+unavailable; `scripts/release.sh fetch <run-id>` brings its artifact in
+with `verified` cleared.
 
 `pack` (local or the workflow's) holds the gate lock (a release build
 compiles beside nothing) and refuses a `native/` that is not release;

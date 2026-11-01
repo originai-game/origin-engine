@@ -7,9 +7,8 @@
 #   scripts/release.sh pack                     OG_RELEASE=1 packages/engine/scripts/pack.sh --linux-x64 (the engine with its knowledge/,
 #                                               this machine's platform package and linux-x64's), then @origingame/create-game:
 #                                               dist/release/<version>/*.tgz and manifest.json (sizes, sha256, the commit built from).
-#                                               Since 0.6.0 this is the release workflow's job (.github/workflows/release.yml: the wasm
-#                                               and the linux-x64 addon on one Linux runner, the darwin-arm64 and win32-x64 addons on
-#                                               their runners, `pack.sh --native`), not a machine's; by hand it still packs here
+#                                               Run on the Mac (docs/release.md §3); the Windows host adds win32-x64 with
+#                                               `build.sh --native` and `pack.sh --native`. .github/workflows/release.yml is the fallback
 #   scripts/release.sh manifest <dir>           write <dir>/manifest.json over the tarballs in <dir> (what pack ends with; the workflow's
 #                                               assemble job runs it over every job's tarballs)
 #   scripts/release.sh fetch <run-id>           download the release workflow run's `release-<version>` artifact (gh run download) into
