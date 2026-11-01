@@ -320,6 +320,59 @@ test("menu: the forward arrow opens a submenu into its first entry, the back arr
   }
 });
 
+test("menu: on a phone a submenu drills in, its rows replacing the menu's under a back row; back and Back go up a level", () => {
+  // Wrong: a submenu that opens beside its row on a 390 px screen (covering the parent), a back row
+  // that does nothing, or Back that closes the whole menu from inside the submenu.
+  let open = true;
+  let chosen: string | null = null;
+  const engine = run(() => {
+    og.ui.button("Opener", "Options", {});
+    const r = og.ui.menu("Menu", open, {
+      anchor: og.ui.lastPath(),
+      entries: [
+        { id: "copy", label: "Copy" },
+        { id: "sort", label: "Sort by" },
+        { id: "byName", label: "Name", parent: "sort" },
+        { id: "byLevel", label: "Level", parent: "sort" },
+        { id: "destroy", label: "Destroy", danger: true },
+      ],
+    });
+    if (r.chosen !== null) chosen = r.chosen;
+    if (r.dismissed) open = false;
+  }, 358);
+  og.ui.previewViewport(engine.world, { width: 390, height: 844, dpr: 3, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" } as never);
+  engine.advance(12);
+  const names = () => elements(engine).filter((e) => e.role.startsWith("menuitem")).map((e) => e.name);
+  expect(names()).toEqual(["Copy", "Sort by", "Destroy"]);
+  tap(engine, "Content/Item#1");
+  engine.advance(12);
+  // Drilled in: one menu, its rows the submenu's under the back row naming where it came from.
+  expect(names()).toEqual(["Sort by", "Name", "Level"]);
+  expect(find(engine, (e) => e.path.includes("Menu.sub")) === undefined).toBeTrue();
+  // The back row goes up.
+  tap(engine, "Content/Up");
+  engine.advance(12);
+  expect(names()).toEqual(["Copy", "Sort by", "Destroy"]);
+  // In again; Back (Escape) goes up a level, not out; a second Back closes the menu.
+  tap(engine, "Content/Item#1");
+  engine.advance(12);
+  key(engine, "Escape");
+  engine.advance(6);
+  expect(open).toBeTrue();
+  expect(names()).toEqual(["Copy", "Sort by", "Destroy"]);
+  key(engine, "Escape");
+  expect(open).toBeFalse();
+  expect(chosen).toBeNull();
+  // A choice from a drilled-in submenu is that entry's.
+  open = true;
+  engine.advance(12);
+  tap(engine, "Content/Item#1");
+  engine.advance(12);
+  const level = find(engine, (e) => e.role === "menuitem" && e.name === "Level")!;
+  tapAt(engine, level);
+  expect(chosen).toBe("byLevel");
+});
+
 test("menu: a press while it still eases in chooses (nothing waits for the open motion)", () => {
   // Wrong: the surface inert for its 140 ms entrance, so a quick player's press is dropped.
   let open = false;
@@ -624,6 +677,29 @@ test("nodeGraph: zoom in scales it, a node tap chooses it, a locked node says so
   expect(chosen).toBe("cleave");
 });
 
+test("nodeGraph: at 200 % text no node or caption overlaps another, and the fit keeps every node clear of the zoom controls", () => {
+  // Wrong: a fit that packs rows by the graph's units alone (two-line captions at 200 % run into
+  // the next row's nodes), or one that lets the bottom row sit under the zoom controls.
+  const nodes = [
+    { id: "root", x: 200, y: 0, label: "Warrior" }, { id: "cleave", x: 60, y: 110, label: "Cleave" }, { id: "guard", x: 200, y: 110, label: "Guard" },
+    { id: "rage", x: 340, y: 110, label: "Rage" }, { id: "whirl", x: 60, y: 220, label: "Whirlwind" }, { id: "wall", x: 200, y: 220, label: "Iron wall" }, { id: "berserk", x: 340, y: 220, label: "Berserk" },
+  ];
+  for (const scale of [1, 2]) {
+    const engine = run(() => og.ui.nodeGraph("Skills", { nodes, height: { kind: "fixed", px: 640 } } as never), 1100);
+    og.ui.configure(engine.world, { textScale: scale });
+    engine.advance(12);
+    const boxes = elements(engine).filter((e) => /\/(Node|Caption)#\d+$/.test(e.path));
+    expect(boxes.length).toBe(nodes.length * 2);
+    const hit = (a: Element, b: Element) => a.x < b.x + b.width - 0.5 && b.x < a.x + a.width - 0.5 && a.y < b.y + b.height - 0.5 && b.y < a.y + a.height - 0.5;
+    const overlaps: string[] = [];
+    boxes.forEach((a, i) => boxes.slice(i + 1).forEach((b) => hit(a, b) && overlaps.push(`${scale}: ${a.path.split("/").pop()} × ${b.path.split("/").pop()}`)));
+    expect(overlaps).toEqual([]);
+    const zoom = find(engine, (e) => /\/Zoom$/.test(e.path))!;
+    expect(boxes.filter((b) => hit(b, zoom)).map((b) => b.path)).toEqual([]);
+    engine.destroy();
+  }
+});
+
 test("chart: a figure described from its data; each category a target that answers its press", () => {
   // Wrong: an unnamed picture, categories only reachable by pointer.
   let clicked: number | null = null;
@@ -781,6 +857,12 @@ test("200 % text: the containers, navigation and data components grow with the t
     og.ui.tree("Codex", { items: [{ id: "beasts", label: "Beasts" }, { id: "wolf", parent: "beasts", label: "Wolf" }, { id: "moon", parent: "wolf", label: "Moonblade", badge: "New" }, { id: "places", label: "Places" }], expanded: ["beasts", "wolf"], width: { kind: "fixed", px: 300 }, height: { kind: "fixed", px: 360 } } as never);
     og.ui.dataList("Mail", { count: 3, height: { kind: "fixed", px: 320 }, width: { kind: "fixed", px: 300 } } as never, (i) => og.ui.label("Subject", `Letter ${i + 1}: a gift for you`, { width: { kind: "grow" }, maxLines: 2, ellipsis: true } as never));
     og.ui.chart("Gold", { kind: "bar", title: "Gold per day", categories: ["Mon", "Tue", "Wed", "Thu"], series: [{ label: "Gold", values: [120, 340, 260, 410] }] });
+    // A state in a list or grid of a set height grows it, never spills (Retry inside the panel).
+    og.ui.dataList("Down", { count: 0, error: "Could not reach the leaderboard", height: { kind: "fixed", px: 200 }, width: { kind: "fixed", px: 276 } } as never, () => {});
+    og.ui.dataGrid("Bag", { count: 0, emptyLabel: "No matches played yet", emptyHint: "Play a ranked match to appear here.", cellWidth: 56, height: { kind: "fixed", px: 190 }, width: { kind: "fixed", px: 276 } } as never, () => {});
+    // A week's axis thins its labels whole, never "M…"; a radar's axis names keep whole outside the ring.
+    og.ui.chart("Week", { kind: "line", categories: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], series: [{ label: "Runs", values: [3, 5, 2, 6, 4, 8, 7] }], width: { kind: "fixed", px: 300 } } as never);
+    og.ui.chart("Build", { kind: "radar", categories: ["Damage", "Speed", "Range", "Defense", "Magic"], series: [{ label: "Hero", values: [8, 6, 4, 7, 5] }], width: { kind: "fixed", px: 340 } } as never);
   };
   // Tall surfaces: everything is laid out on screen, nothing scrolled away.
   for (const [bp, w, h, coarse, build, probe] of [["desktop", 1280, 2400, false, nav, "Equipment"], ["desktop", 1280, 3000, false, data, "Attack"], ["phonePortrait", 390, 2400, true, nav, "Equipment"], ["phonePortrait", 390, 3000, true, data, "Attack"]] as const) {
