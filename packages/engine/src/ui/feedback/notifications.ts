@@ -9,7 +9,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  a11y, absolute, box, bp, clamp01, close, drop, frame, groups, glow, hudBandInset, textScale, u, icon, inner, keyId, kit, leaf, lit, msToTicks, now, open,
+  a11y, absolute, box, bp, clamp01, close, drop, frame, groups, glow, textScale, u, icon, inner, keyId, kit, leaf, lit, msToTicks, now, open,
   pct, pop, px, radial, rarityColor, role, sel, shapeOf, solid, sound, stroke, text, toneRole, token, vgrad, xy, ts,
 } from "./core.ts";
 
@@ -43,9 +43,8 @@ export function notifications(id: string, desc: Api.NotificationsDesc = {}): Api
   const t = now();
   const cross: Api.Cross = anchor.endsWith("Right") || anchor === "right" ? "end" : anchor.endsWith("Left") || anchor === "left" ? "start" : "center";
 
-  // Inside the HUD's band on an ultrawide, as every HUD corner is.
-  const band = hudBandInset();
-  kit.anchor(id, { anchor, direction: "column", gap: tk.sm, cross, over: true, width: px(width), offsetX: cross === "start" ? band : cross === "end" ? -band : 0 }, () => {
+  // An anchored group: og-ui lays it out inside the HUD band (UiDesc.hudMaxAspect) on an ultrawide, with the HUD corners.
+  kit.anchor(id, { anchor, direction: "column", gap: tk.sm, cross, over: true, width: px(width) }, () => {
     // A key posted again (a higher count, a later tick) is one card: the
     // last post wins. A post is done once it expired or was dismissed,
     // kept in the UI's memory while the game still lists it, so it never

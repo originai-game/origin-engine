@@ -649,23 +649,6 @@ export function shortTime(seconds: number, tenths = true): string {
 }
 
 /**
- * How far in from each side of the safe area the HUD's band starts: on a
- * display wider than 21:9 (an ultrawide) the HUD keeps to a centred 21:9
- * band, so the corners stay in the eye's reach. G1-7's
- * UiDesc.hudMaxAspect narrows the safe area itself; once it does, the safe
- * area is never wider than the band and this answers 0.
- */
-export function hudBandInset(): number {
-  const vp = frame().viewport;
-  // With G1-7's band (Viewport.hud, UiDesc.hudMaxAspect) og-ui already lays
-  // every anchored group out inside it: nothing more to inset.
-  if ((vp as { hud?: Api.UiRect }).hud) return 0;
-  const w = vp.width - vp.safeArea.left - vp.safeArea.right;
-  const h = vp.height - vp.safeArea.top - vp.safeArea.bottom;
-  return Math.max(0, Math.round((w - h * (21 / 9)) / 2));
-}
-
-/**
  * Strips of the screen a component keeps for itself (the subtitles' band
  * at the bottom), which floating cards keep clear of. A claim holds for
  * the tick it is made and the next, on the same surface height.

@@ -10,7 +10,7 @@
 // the sweep running out.
 
 import type * as Api from "@origingame/engine";
-import { stepSize, a11y, arc, inner, type Paint, absolute, anchorOf, box, bp, chip, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, radial, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, teamColor, text, token, ts, u, vgrad, type Rgba, apply, textScale, tsFit } from "./core.ts";
+import { stepSize, hudRoom, a11y, arc, inner, type Paint, absolute, anchorOf, box, bp, chip, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, radial, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, teamColor, text, token, ts, u, vgrad, type Rgba, apply, textScale, tsFit } from "./core.ts";
 
 const DEBUFF_TYPES: Record<string, string> = {
   magic: "#3d8bff", curse: "#a64dff", poison: "#3ccf4e", disease: "#c89a2c", bleed: "#e03030",
@@ -333,9 +333,8 @@ export function abilityBar(id: string, desc: Api.AbilityBarDesc = {}): Api.Abili
   const gap = desc.gap || Math.max(tk.sm, Math.round(size * 0.18));
   const row = (desc.direction ?? "row") === "row";
   const slots = desc.slots ?? [];
-  // More slots than the safe area holds wrap into even rows (a phone's bar), never off the screen; each row's columns line up with the first's.
-  const vp = frame().viewport;
-  const room = vp.width - vp.safeArea.left - vp.safeArea.right - tk.gutter * 2 - tk.sm * 2;
+  // More slots than the HUD band holds wrap into even rows (a phone's bar), never off the screen; each row's columns line up with the first's.
+  const room = hudRoom() - tk.sm * 2;
   // An ultimate is 1.15 times a slot: a wrapped row holds its extra width.
   const extra = slots.some((x) => x.ultimate != null) ? Math.round(size * 0.15) : 0;
   const perRow = Math.max(1, Math.floor((room - extra + gap) / (size + gap)));
