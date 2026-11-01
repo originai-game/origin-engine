@@ -139,6 +139,7 @@ After R, as the plan's final stage:
 | og-cook cook/mod.rs, look.rs split | — | — | after G1-3 |
 | G1-3 | [T-01a1980c](https://ampcode.com/threads/T-01a1980c-a132-73a9-96bf-c2ebfbde9c2e) | `g1-gltf-formats` | merged 2026-11-01 (main 1c1451ea, five gltf references) |
 | G1-4 | [T-532b590f](https://ampcode.com/threads/T-532b590f-cff8-4ccc-89da-b4c97a97180a) | `g1-frame-quality` | reviewed at 6a6c8474; rebasing, re-transcode after device loss |
-| U6a, G1-7, U6d | — | — | as slots free (U6a next, on G1-2's API) |
-| png-references | [T-858f4e1e](https://ampcode.com/threads/T-858f4e1e-a6d7-464a-aaef-a8e3b74d89c0) | `png-references` | started 2026-11-01: record paths write Best + adaptive PNG (fast encoders since 10-17/10-25 made 309 references 167 MB), existing ones recompressed pixel-exact |
+| U6a | [T-820be2e3](https://ampcode.com/threads/T-820be2e3-deeb-441a-b49f-aa37ad4dc058) | `u6a-controls` | started 2026-11-01 |
+| G1-7, U6d | — | — | as slots free |
+| png-references | [T-858f4e1e](https://ampcode.com/threads/T-858f4e1e-a6d7-464a-aaef-a8e3b74d89c0) | `png-references` | reviewed at 8ea9e259, merging (223.5 → 126.8 MB): record paths write Best + adaptive PNG (fast encoders since 10-17/10-25 made 309 references 167 MB), existing ones recompressed pixel-exact |
 | web-tests | — | — | owed: tests/web/player.ts and export.ts wait on fixed sleeps, so a fresh headless profile's warm-up on D3D12 fails them; "behind the gate the game took its first tick" reads 2 for 1 on both machines (older than G1-6) |
