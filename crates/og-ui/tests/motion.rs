@@ -1233,3 +1233,79 @@ fn a_cascade_starts_each_step_at_the_callback_of_the_one_before() {
         "{sounds:?}"
     );
 }
+
+/// A list's rows are options with §7.3 groups: `selection` from the game,
+/// `interaction` from input, so a hover fades in on the style's spring
+/// instead of jumping (and the checker sees their visual states).
+#[test]
+fn a_list_rows_hover_and_selection_move_through_state_groups() {
+    let mut ui = Ui::new(UiDesc::default());
+    let frame = |ui: &mut Ui, input: InputFrame| {
+        ui.begin(input, vp());
+        ui.list(
+            "L",
+            ListDesc {
+                count: 3,
+                row_height: 40.0,
+                height: Some(Size::Fixed(200.0)),
+                ..ListDesc::default()
+            },
+            Some(1),
+            |ui, k| {
+                ui.label(ui_idi("Text", k), "Row", LabelDesc::default());
+            },
+        );
+        ui.end();
+    };
+    frame(&mut ui, InputFrame::default());
+    frame(&mut ui, InputFrame::default());
+    assert_eq!(
+        ui.visual_state("L/Row#1", "selection").as_deref(),
+        Some("on")
+    );
+    assert_eq!(
+        ui.visual_state("L/Row#0", "selection").as_deref(),
+        Some("off")
+    );
+    let r = rect(&ui, "L/Row#0");
+    let at = (r[0] + r[2] / 2.0, r[1] + r[3] / 2.0);
+    let fill = |ui: &Ui| {
+        ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| it.cmd.filled())
+            .filter(|(q, _)| {
+                (q.x - r[0]).abs() < 0.5
+                    && (q.width - r[2]).abs() < 0.5
+                    && at.1 >= q.y
+                    && at.1 <= q.y + q.height
+            })
+            .map(|(_, c)| c[3])
+            .next_back()
+            .unwrap_or(0.0)
+    };
+    assert_eq!(fill(&ui), 0.0, "clear at rest");
+    let hover = InputFrame {
+        pointer: Vec2::new(at.0, at.1),
+        pointer_inside: true,
+        ..InputFrame::default()
+    };
+    let alphas: Vec<f32> = (0..30)
+        .map(|_| {
+            frame(&mut ui, hover.clone());
+            fill(&ui)
+        })
+        .collect();
+    assert_eq!(
+        ui.visual_state("L/Row#0", "interaction").as_deref(),
+        Some("hover")
+    );
+    // Hovered, it reaches the palette's `control` wash, through values between.
+    let want = Theme::default().palette.control.alpha;
+    let last = *alphas.last().unwrap();
+    assert!((last - want).abs() < 0.005, "{alphas:?}");
+    assert!(
+        alphas.iter().any(|a| *a > 0.2 * want && *a < 0.8 * want),
+        "it moves, not jumps: {alphas:?}"
+    );
+}

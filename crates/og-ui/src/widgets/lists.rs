@@ -112,14 +112,74 @@ impl Ui {
         let mut r = self.nav_target(i, false);
         r.dropped = self.drag_and_drop(list, i, index);
         let p = &t.palette;
-        self.nodes[i].el.background = if selected {
-            Some(p.control_strong)
-        } else if r.hovered || r.pressed {
-            Some(p.control)
-        } else {
-            None
-        };
+        // Clear at rest (the control's hue at no alpha, so a fade passes no
+        // grey), `control` under hover and focus, `controlStrong` selected and
+        // pressed, a step past it pressed while selected.
+        let clear = p.control.fade(0.0);
+        let strong = crate::ui::mix_srgba(p.control_strong, p.ink, 0.12);
+        self.option_states(
+            i,
+            selected,
+            [clear, p.control_strong],
+            [p.control, p.control_strong],
+            [p.control_strong, strong],
+        );
         r
+    }
+
+    /// An option's (a list row's, a grid cell's) background through §7.3
+    /// state groups, so the style's motion moves it: `selection` (`off`,
+    /// `on`, from `selected`) and `interaction` (`normal`, `hover`,
+    /// `pressed`, `focused` from input, focus drawn as hover). Each pair is
+    /// (unselected, selected): at rest, under hover or focus, pressed.
+    fn option_states(
+        &mut self,
+        i: usize,
+        selected: bool,
+        rest: [Srgba; 2],
+        hover: [Srgba; 2],
+        pressed: [Srgba; 2],
+    ) {
+        use crate::motion::{StateGroup, VisualState};
+        let bg = |c: Srgba| -> crate::element::Values {
+            let f = |v: u8| f32::from(v) / 255.0;
+            vec![
+                (crate::element::Prop::BackgroundR, f(c.rgb[0])),
+                (crate::element::Prop::BackgroundG, f(c.rgb[1])),
+                (crate::element::Prop::BackgroundB, f(c.rgb[2])),
+                (crate::element::Prop::BackgroundA, c.alpha),
+            ]
+        };
+        let state = |name: &str, c: Srgba| VisualState {
+            name: name.to_owned(),
+            values: bg(c),
+            ..VisualState::default()
+        };
+        let k = usize::from(selected);
+        let n = &mut self.nodes[i];
+        n.el.background = Some(rest[k]);
+        n.props.states = vec![
+            StateGroup {
+                name: "selection".into(),
+                states: vec![state("off", rest[0]), state("on", rest[1])],
+                transitions: Vec::new(),
+            },
+            StateGroup {
+                name: "interaction".into(),
+                states: vec![
+                    state("normal", rest[k]),
+                    state("hover", hover[k]),
+                    state("pressed", pressed[k]),
+                    state("focused", hover[k]),
+                    state("disabled", rest[k]),
+                ],
+                transitions: Vec::new(),
+            },
+        ];
+        n.props.state = vec![(
+            "selection".into(),
+            if selected { "on" } else { "off" }.into(),
+        )];
     }
 
     /// Drag and drop between the items of one list or grid: a press on an
@@ -305,18 +365,15 @@ impl Ui {
         r.dropped = self.drag_and_drop(grid, i, index);
         let p = &t.palette;
         let amounts = self.state_amounts(i, &r);
-        let rest = if selected {
-            p.control_strong
-        } else {
-            p.control
-        };
         let hover = p.panel_hover.fade(0.6).over(p.control.over(p.panel));
-        self.nodes[i].el.background = Some(Ui::state_color(
-            rest,
-            if selected { rest } else { hover },
-            p.control_strong,
-            amounts,
-        ));
+        let strong = crate::ui::mix_srgba(p.control_strong, p.ink, 0.12);
+        self.option_states(
+            i,
+            selected,
+            [p.control, p.control_strong],
+            [hover, p.control_strong],
+            [p.control_strong, strong],
+        );
         if let Some(part) = self.nodes[i].el.part.as_mut() {
             *part = part
                 .flag_if(r.pressed, "pressed")
