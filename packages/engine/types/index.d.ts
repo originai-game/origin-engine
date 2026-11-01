@@ -34288,7 +34288,7 @@ export declare namespace og {
      */
     function popover(id: string, open: boolean, desc: PopoverDesc, build: UiBuild): PopoverResult;
     /**
-     * A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point.
+     * A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point. A submenu opens beside its row; where none fits beside the menu (a phone) it drills in, its rows replacing the menu's under a back row, and Back goes up a level.
      *
      * @param id Its id.
      * @param open Whether it is open.

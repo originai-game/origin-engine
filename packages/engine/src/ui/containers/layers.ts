@@ -169,14 +169,16 @@ const ROW = 40;
  * and danger items; checkable and radio items; submenus (entries whose
  * `parent` names another's id) that open beside their row on hover or
  * activation, or on the forward arrow (Right; Left in a right-to-left
- * locale) and a pad's forward direction from its row. It hangs from an
+ * locale) and a pad's forward direction from its row; where none fits
+ * beside the menu (a phone) a submenu drills in, its rows replacing the
+ * menu's under a back row, and Back goes up a level. It hangs from an
  * element (`anchor`) or at a point (`at`: a context menu). Keys and pads
  * walk its rows; the back arrow and Back close a submenu (the focus
  * returns to its row), then Back the menu. Answers the entry chosen this
  * tick.
  */
 export function menu(id: string, open: boolean, desc: Api.MenuDesc): Api.MenuChoice {
-  const { viewport } = frame();
+  const { viewport, phone } = frame();
   const entries = desc.entries ?? [];
   const at = desc.at ?? null;
   const anchor = at ? { x: at.x, y: at.y, width: 0, height: 0 } : kit.bounds(desc.anchor ?? "") ?? { x: viewport.width / 2, y: viewport.height / 2, width: 0, height: 0 };
@@ -186,19 +188,37 @@ export function menu(id: string, open: boolean, desc: Api.MenuDesc): Api.MenuCho
   const sub = kit.memory(`${id}~sub`, 0);
   let nextSub = sub;
   const side: Side = at ? "below" : desc.side ?? "below";
+  const parent = sub > 0 ? entries[sub - 1] : undefined;
+  // Where no submenu fits beside the menu (a phone; a menu with no room at either side, as
+  // measured last tick), a submenu drills in: its rows replace the menu's under a back row, so
+  // the parent is never covered.
+  const drill = kit.memory(`${id}~drill`, phone ? 1 : 0) > 0;
   const f = floating(id, open, {}, (size) => beside(anchor, size, side, at ? 2 : 4, at ? "start" : desc.align ?? "start"), () => {
+    if (drill && parent) {
+      const r = menuRows(entries, parent.id ?? "", desc, () => {}, -1, () => (nextSub = 0), parent.label ?? "");
+      if (r.chosen !== null) chosen = r.chosen;
+      return;
+    }
     const r = menuRows(entries, "", desc, (i, why) => {
       if (why === "open") nextSub = i + 1;
-      else if (why === "hover" && nextSub !== i + 1) nextSub = i + 1;
-    }, sub - 1, () => {});
+      // Hover opens a submenu beside its row; drilling in waits for a press or the forward arrow.
+      else if (why === "hover" && !drill && nextSub !== i + 1) nextSub = i + 1;
+    }, drill ? -1 : sub - 1, () => {});
     if (r.chosen !== null) chosen = r.chosen;
-    if (r.hoveredPlain) nextSub = 0;
+    if (r.hoveredPlain && !drill) nextSub = 0;
   }, (place) => rise(place, side));
-  if (f.dismissed) dismissed = true;
+  // Back inside a drilled-in submenu goes up a level; an outside press still closes the menu.
+  if (f.dismissed && drill && parent && kit.action("back")) nextSub = 0;
+  else if (f.dismissed) dismissed = true;
+  const mb = kit.bounds(f.path);
+  if (mb && !(drill && parent)) {
+    const sa = viewport.safeArea;
+    const room = Math.max(viewport.width - sa.right - (mb.x + mb.width), mb.x - sa.left) - 2;
+    kit.remember(`${id}~drill`, phone || room < mb.width ? 1 : 0);
+  }
   // The submenu, beside its row.
-  const parent = sub > 0 ? entries[sub - 1] : undefined;
-  const subOpen = open && parent !== undefined && nextSub === sub;
-  if (parent && (subOpen || kit.memory(`${id}~subVisible`, 0) > 0)) {
+  const subOpen = open && parent !== undefined && nextSub === sub && !drill;
+  if (parent && !drill && (subOpen || kit.memory(`${id}~subVisible`, 0) > 0)) {
     const row = kit.bounds(`${f.path}/${kit.idi("Item", sub - 1)}`) ?? anchor;
     const s = floating(`${id}.sub`, subOpen, {}, (size) => beside(row, size, "end", 2, "start"), () => {
       const r = menuRows(entries, parent.id ?? "", desc, () => {}, -1, () => (nextSub = 0));
@@ -221,7 +241,7 @@ export function contextMenu(id: string, open: boolean, at: Api.Vector2, desc: Ap
   return menu(id, open, { ...desc, at });
 }
 
-function menuRows(entries: readonly Api.MenuEntry[], parent: string, desc: Api.MenuDesc, onSub: (index: number, why: "open" | "hover") => void, openSub: number, onBack: () => void): { chosen: string | null; hoveredPlain: boolean } {
+function menuRows(entries: readonly Api.MenuEntry[], parent: string, desc: Api.MenuDesc, onSub: (index: number, why: "open" | "hover") => void, openSub: number, onBack: () => void, backLabel: string | null = null): { chosen: string | null; hoveredPlain: boolean } {
   const { t, viewport } = frame();
   // The arrow that goes deeper: Right, Left under a right-to-left locale (Response.adjust is physical).
   const forward = rtl() ? -1 : 1;
@@ -231,6 +251,28 @@ function menuRows(entries: readonly Api.MenuEntry[], parent: string, desc: Api.M
   const anyIcon = entries.some((e) => (e.parent ?? "") === parent && e.icon);
   const minW = desc.minWidth || 200;
   floatingContent({ direction: "column", width: fit(Math.min(minW, viewport.width - 2 * t.gutter), Math.min(desc.maxWidth || byText(360), viewport.width - 2 * t.gutter)), padding: xy(t.xs, t.xs), gap: 0, cross: "stretch", background: token("panelRaised"), part: "Menu.frame", partClass: "tooltip" }, () => {
+    // A drilled-in submenu: a back row naming where it came from, then its rows.
+    if (backLabel !== null) {
+      const b = surface("Up", {
+        part: "Menu.back",
+        cls: "chip",
+        fill: null,
+        washBy: 0.14,
+        adjustable: true,
+        width: grow(),
+        height: fit(Math.max(ROW, t.controlMd)),
+        padding: xy(t.sm, 0),
+        gap: t.sm,
+        semantics: { role: "menuitem", name: backLabel, description: "Back" },
+      }, () => {
+        chevron("Back", "back", 16, role("inkMuted"));
+        text("Label", backLabel, { color: "inkMuted", heading: true, width: grow() });
+      });
+      if (b.clicked || b.adjust === -forward) onBack();
+      kit.open("Rule", { width: grow(), padding: xy(0, t.xs) });
+      kit.divider("Line", false);
+      kit.close();
+    }
     entries.forEach((e, i) => {
       if ((e.parent ?? "") !== parent) return;
       const kind = e.kind ?? "item";
