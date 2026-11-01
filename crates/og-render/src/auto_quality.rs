@@ -18,7 +18,16 @@
 //!   it steps down when the smoothed time passes [`DOWN_AT`] of the budget
 //!   for [`DOWN_FRAMES`] frames in a row, and up only when the time the
 //!   rung above would take (the scale's pixels, or [`PRESET_COST`] more for
-//!   a preset step) stays under [`UP_AT`] for [`UP_FRAMES`] frames.
+//!   a preset step), padded by [`SPREAD_SIGMAS`] of the measured spread of
+//!   the frame times, stays under [`UP_AT`] for [`UP_FRAMES`] frames. A
+//!   noisy scene whose rung above is predicted just under the up line is
+//!   left where it is: the prediction is a mean, and the frames around it
+//!   would cross the down line. A step up that steps back down within
+//!   [`VERIFY_FRAMES`] fails as a trial does below: that rung waits twice
+//!   as long before it is tried again, and is given up after
+//!   [`MAX_FAILURES`] (studio-win, G1-4: a rung predicted at 13.0 to 13.5
+//!   ms against an up line of 13.4 measured 14 to 15 ms, and content
+//!   spikes took it back down, one cycle every 30 s).
 //! - Without it (WebGPU without timestamp queries: Safari, every publish
 //!   build), the interval between frames is all there is: a frame that
 //!   missed its vsync shows as an interval past [`LATE_AT`] of the budget
@@ -39,6 +48,9 @@ pub const DOWN_AT: f64 = 0.9;
 pub const UP_AT: f64 = 0.75;
 /// A frame's interval past this fraction of the budget is late (no GPU time).
 pub const LATE_AT: f64 = 1.2;
+/// Standard deviations of the measured GPU time a step up's prediction is
+/// padded by (GPU time): room is room for the frames around the mean too.
+pub const SPREAD_SIGMAS: f64 = 2.0;
 /// The cost a preset step adds back, as a fraction, when the GPU time
 /// predicts a step up.
 pub const PRESET_COST: f64 = 0.3;
@@ -46,7 +58,8 @@ pub const PRESET_COST: f64 = 0.3;
 pub const DOWN_FRAMES: u32 = 20;
 /// Frames in a row with room before a step up (GPU time).
 pub const UP_FRAMES: u32 = 120;
-/// Calm frames before a trial step up (no GPU time), doubled per failure.
+/// Calm frames before a trial step up (no GPU time), doubled per failure;
+/// with GPU time the wait is [`UP_FRAMES`], doubled per failure the same way.
 pub const TRIAL_FRAMES: u32 = 300;
 /// Frames after a trial step up in which running late fails it.
 pub const VERIFY_FRAMES: u32 = 180;
@@ -104,6 +117,8 @@ pub struct AutoQuality {
     /// The smoothed cost (GPU ms, or the interval) and CPU time; `None`
     /// until the first sample after a change.
     cost: Option<f64>,
+    /// The smoothed squared deviation of the cost from its smoothed value.
+    spread: f64,
     cpu: f64,
     over: u32,
     calm: u32,
@@ -121,6 +136,7 @@ impl AutoQuality {
             scales: Vec::new(),
             rung: 0,
             cost: None,
+            spread: 0.0,
             cpu: 0.0,
             over: 0,
             calm: 0,
@@ -187,6 +203,7 @@ impl AutoQuality {
 
     fn restart(&mut self) {
         self.cost = None;
+        self.spread = 0.0;
         self.over = 0;
         self.calm = 0;
         self.settle = SETTLE_FRAMES;
@@ -210,7 +227,11 @@ impl AutoQuality {
         let gpu = s.gpu_ms.filter(|g| g.is_finite() && *g >= 0.0);
         let cost = gpu.unwrap_or(s.interval_ms);
         let smoothed = match self.cost {
-            Some(c) => c * 0.9 + cost * 0.1,
+            Some(c) => {
+                let d = cost - c;
+                self.spread = self.spread * 0.9 + d * d * 0.1;
+                c * 0.9 + cost * 0.1
+            }
             None => {
                 self.cpu = s.cpu_ms;
                 cost
@@ -258,20 +279,21 @@ impl AutoQuality {
             return false;
         }
         self.calm += 1;
+        // A rung that failed its trials is given up; each failure doubles
+        // the wait before the next, on both paths.
+        if self.failures[up] >= MAX_FAILURES {
+            return false;
+        }
         let wait = match gpu {
             Some(_) => UP_FRAMES,
-            None => {
-                if self.failures[up] >= MAX_FAILURES {
-                    return false;
-                }
-                TRIAL_FRAMES << self.failures[up]
-            }
-        };
+            None => TRIAL_FRAMES,
+        } << self.failures[up];
         if self.calm < wait {
             return false;
         }
         self.rung = up;
-        self.trial = gpu.is_none().then_some(Trial {
+        // Every step up is a trial: back down within VERIFY_FRAMES fails it.
+        self.trial = Some(Trial {
             rung: up,
             frames_left: VERIFY_FRAMES + SETTLE_FRAMES,
         });
@@ -279,9 +301,10 @@ impl AutoQuality {
         true
     }
 
-    /// What the smoothed cost would be on rung `to`, one above this one.
+    /// What the smoothed cost would be on rung `to`, one above this one,
+    /// padded by [`SPREAD_SIGMAS`] of the measured spread (GPU time).
     fn predicted(&self, to: usize) -> f64 {
-        let cost = self.cost_ms();
+        let cost = self.cost_ms() + SPREAD_SIGMAS * self.spread.max(0.0).sqrt();
         if to + 1 >= self.scales.len() {
             // A preset step back (or the step from the least scale's
             // first preset step back to the scale alone).
@@ -455,6 +478,91 @@ mod tests {
                 interval_ms: interval,
                 cpu_ms: 3.0,
                 gpu_ms: None,
+            }) {
+                moves.push(q.scale());
+            }
+        }
+        let ups = moves.iter().filter(|s| **s == 1.0).count();
+        assert_eq!(ups, MAX_FAILURES as usize, "{moves:?}");
+        assert_eq!(moves.len(), 1 + 2 * MAX_FAILURES as usize, "{moves:?}");
+        assert_eq!(q.scale(), 0.9);
+    }
+
+    /// A deterministic noise source in -1..1 (an LCG): the frames' jitter.
+    struct Noise(u64);
+
+    impl Noise {
+        fn next(&mut self) -> f64 {
+            self.0 = self
+                .0
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            (self.0 >> 11) as f64 / (1u64 << 53) as f64 * 2.0 - 1.0
+        }
+    }
+
+    /// studio-win's cycle (G1-4 on Chrome and Edge, D3D12, meridian-loop at
+    /// 2560×1600, DPR 2, the high preset, renderScale 2, a ~56 Hz panel):
+    /// at 1.6 the rung above, 1.7, was predicted just under the up line
+    /// (0.75 × 17.9 = 13.4 ms) but measured near 14.6 ms, and a content spike
+    /// every ~25 s took it over the down line (16.1 ms) and back to 1.6,
+    /// which then stepped up again two seconds later: one reversal per
+    /// spike for as long as the game ran. Scripted here: the GPU's time per
+    /// rung with ±0.6 ms of jitter and a 4 ms spike of 40 frames every
+    /// 1500. Before the fix it went 1.6 → 1.7 → 1.6 every spike; now the
+    /// spread keeps 1.7 from being tried at all, and nothing moves.
+    #[test]
+    fn a_noisy_rung_predicted_at_the_up_line_is_not_cycled() {
+        let budget = 17.9;
+        let mut q = AutoQuality::new(AutoQualityBounds {
+            max_scale: 2.0,
+            min_scale: 0.5,
+            preset_steps: 1,
+            budget_ms: budget,
+        });
+        // Measured, not quadratic: 1.6's 11.7 predicts 13.2 for 1.7, which measures 14.6.
+        let base = |s: f32| match (s * 10.0).round() as i32 {
+            20 => 24.0,
+            19 => 21.0,
+            18 => 18.0,
+            17 => 14.6,
+            16 => 11.7,
+            k => 11.7 * f64::from(k) * f64::from(k) / 256.0,
+        };
+        let mut noise = Noise(7);
+        let mut moves = Vec::new();
+        for i in 0..36_000u32 {
+            let spike = if i % 1500 < 40 && i > 3000 { 4.0 } else { 0.0 };
+            let g = base(q.scale()) + 0.6 * noise.next() + spike;
+            if q.sample(FrameSample {
+                interval_ms: (g / budget).ceil().max(1.0) * budget,
+                cpu_ms: 3.0,
+                gpu_ms: Some(g),
+            }) {
+                moves.push(q.scale());
+            }
+        }
+        // Down from 2.0 to 1.6 at the start, then held: no reversals.
+        assert_eq!(moves, vec![1.9, 1.8, 1.7, 1.6], "{moves:?}");
+        assert_eq!(q.scale(), 1.6);
+    }
+
+    /// With GPU time, a rung that measures over the down line as soon as
+    /// it is tried (predicted well under, noise-free, so the spread adds
+    /// nothing) fails its trial: the next try waits twice as long, and
+    /// after MAX_FAILURES it is not tried again. Before the fix it went up
+    /// and down every UP_FRAMES + DOWN_FRAMES for as long as the game ran.
+    #[test]
+    fn a_step_up_that_falls_back_with_gpu_time_backs_off_and_stops() {
+        let mut q = AutoQuality::new(bounds(0));
+        let mut moves = Vec::new();
+        for _ in 0..36_000 {
+            // 0.9 costs 8 ms (predicting 9.9 for 1.0), 1.0 costs 17.
+            let g = if q.scale() >= 1.0 { 17.0 } else { 8.0 };
+            if q.sample(FrameSample {
+                interval_ms: (g / BUDGET).ceil().max(1.0) * BUDGET,
+                cpu_ms: 3.0,
+                gpu_ms: Some(g),
             }) {
                 moves.push(q.scale());
             }
