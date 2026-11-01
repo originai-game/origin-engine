@@ -299,6 +299,7 @@ async function defaultScreens(help: () => string, show: string, playtests: reado
       continue;
     } finally {
       rmSync(bundled, { force: true });
+      rmSync(`${bundled}.map`, { force: true });
     }
   }
   if (out.length > 0) return { screens: out, from: `the screenshots of ${playtests.length} playtest(s)` };
