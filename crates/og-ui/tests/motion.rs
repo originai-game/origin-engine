@@ -824,6 +824,106 @@ fn a_stack_overlays_and_undeclared_overlap_is_reported() {
 }
 
 #[test]
+fn a_badge_scrolled_out_of_its_list_overlaps_nothing_outside_it() {
+    let mut ui = Ui::new(UiDesc::default());
+    let frame = |ui: &mut Ui, list_h: f32| {
+        ui.begin(InputFrame::default(), vp());
+        ui.open(
+            "P",
+            Element {
+                direction: Direction::Column,
+                ..Element::default()
+            },
+        );
+        ui.open(
+            "List",
+            Element {
+                scroll: true,
+                ..fixed(200.0, list_h)
+            },
+        );
+        ui.open("Item", fixed(200.0, 300.0));
+        // A count badge low on a tall item: below the list's view when the
+        // list is short, over the bar that follows the list.
+        boxed(
+            ui,
+            "Count",
+            30.0,
+            20.0,
+            Props {
+                position: Position::Absolute,
+                insets: Edges {
+                    start: Some(10.0),
+                    top: Some(110.0),
+                    ..Edges::default()
+                },
+                ..Props::default()
+            },
+        );
+        ui.close();
+        ui.close();
+        boxed(ui, "Bar", 200.0, 50.0, Props::default());
+        ui.close();
+        ui.end();
+        ui.frame()
+            .overlaps
+            .iter()
+            .map(|o| (o.path.clone(), o.other.clone()))
+            .collect::<Vec<_>>()
+    };
+    // The list shows 0..100 and the bar sits at 100..150: the badge at
+    // 110..130 is scrolled out of view, so it is over nothing on screen.
+    let hidden = frame(&mut ui, 100.0);
+    assert!(
+        !hidden
+            .iter()
+            .any(|(a, b)| a == "P/List/Item/Count" || b == "P/List/Item/Count"),
+        "{hidden:?}"
+    );
+    // Without a scroll around it the same badge over the bar is reported.
+    ui.begin(InputFrame::default(), vp());
+    ui.open(
+        "Q",
+        Element {
+            direction: Direction::Column,
+            ..Element::default()
+        },
+    );
+    ui.open("Item", fixed(200.0, 100.0));
+    boxed(
+        &mut ui,
+        "Count",
+        30.0,
+        20.0,
+        Props {
+            position: Position::Absolute,
+            insets: Edges {
+                start: Some(10.0),
+                top: Some(90.0),
+                ..Edges::default()
+            },
+            ..Props::default()
+        },
+    );
+    ui.close();
+    boxed(&mut ui, "Bar", 200.0, 50.0, Props::default());
+    ui.close();
+    ui.end();
+    let shown: Vec<_> = ui
+        .frame()
+        .overlaps
+        .iter()
+        .map(|o| (o.path.clone(), o.other.clone()))
+        .collect();
+    assert!(
+        shown
+            .iter()
+            .any(|(a, b)| a == "Q/Item/Count" && b == "Q/Bar"),
+        "{shown:?}"
+    );
+}
+
+#[test]
 fn an_unchanged_frame_keeps_its_layout_and_commands() {
     let mut ui = Ui::new(UiDesc::default());
     let frame = |ui: &mut Ui, n: usize| {
