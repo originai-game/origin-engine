@@ -15,33 +15,15 @@
 // - a progress bar tells a screen reader nothing of its value;
 // - subtitles show three speech lines, or captions the player turned off.
 import { beforeAll, expect, test } from "bun:test";
-import { og, defineSystem } from "@origingame/engine";
-import type { NotificationItem, World } from "@origingame/engine";
+import { og } from "@origingame/engine";
+import type { NotificationItem } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
-import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
+import { at, dump, engineFor } from "./support/ui.ts";
 
 beforeAll(() => {
   loadNativeHost();
 });
 
-export type El = {
-  id: string; parent: string; path: string; text: string; role: string; name: string; value: string;
-  x: number; y: number; width: number; height: number; visualStates?: Record<string, string>;
-};
-
-const DESKTOP = { width: 1280, height: 720, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" };
-
-/** An engine whose one system calls `build` every tick, with the UI's viewport pinned. */
-export function engineFor(name: string, build: (world: World) => void, viewport: object = DESKTOP): Engine {
-  const sys = defineSystem(name, {}, (_q, _t, world: World) => build(world));
-  const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken);
-  if (!r.ok) throw new Error(r.reason);
-  og.ui.previewViewport(r.value.world, viewport as never);
-  return r.value;
-}
-
-export const dump = (e: Engine): El[] => (e.probe.dump({ what: "ui" }) as unknown as { elements: El[] }).elements;
-export const at = (els: El[], path: string): El | undefined => els.find((x) => x.path === path);
 
 test("og.ui.formatNumber: every notation, rounding into the next group, letters, past 1e308", () => {
   const f = og.ui.formatNumber;

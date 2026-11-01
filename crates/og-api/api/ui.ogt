@@ -6276,6 +6276,1234 @@ module ui {
     returns Void
   }
 
+  # ── components: HUD (docs/ui.md §11, Appendix C) ───────────────────────
+  # Every HUD component builds in place (inside the game's own anchor or
+  # row), or opens its own anchored group in the safe area when its desc
+  # names an anchor: that group's id is the component's with Hud after it,
+  # so an anchored component's path is <id>Hud/<id>. Sizes are a 1280×720 design scaled with the surface
+  # (a 1080p HUD keeps its proportion; an ultrawide's extra width stays
+  # margin), and text never drops under the checks' minimum.
+
+  enum StatBarStyle {
+    doc "A stat bar's shape."
+    variant flat "A rounded track (the default)."
+    variant slanted "Ends cut on a slant (sci-fi, fighting games)."
+    variant pill "Fully round ends."
+  }
+
+  struct StatBarDesc {
+    doc "A health or resource bar."
+    desc true
+    field value f32 "The value."
+    field max f32 "Its maximum." {
+      default 100
+    }
+    field kind MeterKind "What it measures (its colour): health turns warn and danger as it falls."
+    field color Option.Paint "A colour of its own instead of the kind's."
+    field segment f32 "Value per segment: the bar is blocks of this much (Overwatch's 25-point blocks); 0 is one bar." {
+      min 0
+    }
+    field shield f32 "Shield or armour on top of the value, drawn as a row of cells over the bar (Apex's armour)." {
+      min 0
+    }
+    field shieldMax f32 "The most shield; 0 hides the row." {
+      min 0
+    }
+    field shieldCell f32 "Shield per cell; 0 is one continuous strip." {
+      min 0
+    }
+    field shieldTier Rarity "The shield's tier colour (white, blue, purple, gold, red as Apex's); none is the info colour."
+    field heal f32 "Healing on its way, a pale preview past the fill." {
+      min 0
+    }
+    field recoverable f32 "Damage that can still come back (a fighting game's grey health): drawn between the value and this." {
+      min 0
+    }
+    field ghost bool "A drop leaves a pale chunk that holds, then drains to the new value (the default)." {
+      default true
+    }
+    field label String "A short name at its start (HP); empty is none."
+    field showValue bool "The value as text at its end (72 / 100)."
+    field valueText String "The value as text instead (72%); empty formats value / max."
+    field icon String "An icon of the atlas before it."
+    field width Option.Size "Its width; null is 240 (grows with the surface)."
+    field thickness f32 "Its height; 0 is 14." {
+      min 0
+      unit cssPx
+    }
+    field low f32 "Below this fraction a health bar is low (warn)." {
+      default 0.3
+      unit ratio
+    }
+    field critical f32 "Below this fraction it is critical: danger, and it pulses." {
+      default 0.15
+      unit ratio
+    }
+    field reverse bool "Fills from the end (the right player's bar in a fighting game)."
+    field style StatBarStyle "Its shape."
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place."
+    field name String "What a screen reader calls it; empty is the label, else Health."
+  }
+
+  fn statBar {
+    doc "A health or resource bar to the bar of action games: blocks (segment), a ghost chunk that holds after a hit and then drains (Dark Souls, fighting games), a heal preview, grey recoverable damage, a row of shield cells in their tier's colour over it (Apex Legends), low and critical states (warn, then danger pulsing), a mirrored fill for the right player, flat, slanted or pill ends. A drop is instant, a rise moves on the ui spring."
+    doc "Parts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Value."
+    host false
+    param id String "Its id."
+    param desc StatBarDesc "The value and the look."
+    returns Void
+  }
+
+  struct OrbMeterDesc {
+    doc "An orb of health or mana."
+    desc true
+    field value f32 "The value."
+    field max f32 "Its maximum." {
+      default 100
+    }
+    field kind MeterKind "Its liquid's colour: health (red) or mana (blue)." {
+      default health
+    }
+    field color Option.Paint "A colour of its own."
+    field size f32 "Its diameter; 0 is 112." {
+      min 0
+      unit cssPx
+    }
+    field showValue bool "The value in the middle (the default)." {
+      default true
+    }
+    field label String "A caption under it; empty is none."
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place."
+    field name String "What a screen reader calls it; empty is the label, else Health."
+  }
+
+  fn orbMeter {
+    doc "An orb (Diablo's health and mana globes): a glass sphere filled from the bottom with a liquid whose surface sways, a highlight on the glass, a frame ring, the value in the middle; the level moves on the ui spring and a drop flashes it. Critical (under 15 %) pulses."
+    doc "Parts: OrbMeter.frame, OrbMeter.glass, OrbMeter.liquid[<kind>], OrbMeter.surface, OrbMeter.value, OrbMeter.label. States: group level (normal, low, critical). Accessibility: meter. Probe ids: <id>, <id>/Orb/Liquid, <id>/Value."
+    host false
+    param id String "Its id."
+    param desc OrbMeterDesc "The value and the look."
+    returns Void
+  }
+
+  struct RadialMeterDesc {
+    doc "A radial stamina wheel."
+    desc true
+    field value f32 "The value, in wheels: 1 is one full wheel."
+    field wheels u32 "Wheels (an extended stamina's second and third ring); 0 is 1."
+    field exhausted bool "Ran out: red, refilling slowly, until full (Breath of the Wild)."
+    field size f32 "Its diameter; 0 is 56." {
+      min 0
+      unit cssPx
+    }
+    field hideWhenFull bool "Fades out a second after it is full (the default)." {
+      default true
+    }
+    field color Option.Paint "Its fill; null is success."
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place."
+    field name String "What a screen reader calls it." {
+      default "Stamina"
+    }
+  }
+
+  fn radialMeter {
+    doc "A radial stamina wheel (Breath of the Wild, Elden Ring's spirit gauge): a ring that drains clockwise, outer rings for extra wheels, warn under a third, red and pulsing when exhausted until it refills, fading out once full."
+    doc "Parts: RadialMeter.track, RadialMeter.fill[normal|low|exhausted], RadialMeter.wheel#i. States: group level (full, normal, low, exhausted). Accessibility: meter. Probe ids: <id>, <id>/Wheel#i."
+    host false
+    param id String "Its id."
+    param desc RadialMeterDesc "The value and the look."
+    returns Void
+  }
+
+  struct AbilitySlotDesc {
+    doc "An ability, item or spell on a bar."
+    desc true
+    field key String "Its key in an ability bar (and its probe id there)."
+    field icon String "An icon of the atlas."
+    field image Option.Texture "Its art (art kind ability, 1:1) instead of the icon."
+    field name String "What a screen reader calls it (Fireball)."
+    field hotkey String "The key or button glyph's label (Q, LB, 1); empty is none."
+    field cooldown f32 "Seconds of cooldown left; 0 is ready." {
+      min 0
+      unit s
+    }
+    field cooldownMax f32 "The cooldown's length; the sweep shows cooldown over it." {
+      min 0
+      unit s
+    }
+    field charges u32 "Charges ready (a count at its corner when maxCharges is over 1)."
+    field maxCharges u32 "Charges it holds; 0 or 1 is none."
+    field chargeProgress f32 "How far the next charge has come, 0 to 1." {
+      unit ratio
+    }
+    field cost String "Its cost shown at the bottom (40); empty is none."
+    field unaffordable bool "Not enough resource: tinted with the resource's colour."
+    field outOfRange bool "The target is out of range: the hotkey turns danger."
+    field active bool "Toggled on or channelling: a glowing border that breathes."
+    field locked bool "Not learnt yet: dimmed with a lock."
+    field ultimate Option.f32 "An ultimate's charge 0 to 1: a ring fills round it and the percent shows until it is ready." {
+      unit ratio
+    }
+    field level u32 "Ranks learnt (pips under it)."
+    field maxLevel u32 "Ranks it has; 0 draws no pips."
+    field size f32 "Its side; 0 is 56 (48 on a phone)." {
+      min 0
+      unit cssPx
+    }
+  }
+
+  fn abilitySlot {
+    doc "An ability slot to the bar of MOBAs and MMOs: the icon in a frame cornered as the style's slots, a dark sweep shrinking clockwise as the cooldown runs with the seconds left in the middle (tenths under ten), a flash and a pop the tick it comes ready, charges at the corner with the next one's recharge along the bottom, the hotkey on a key cap, cost, unaffordable and out-of-range tints, a breathing border while active, an ultimate's ring and percent, rank pips, a lock. A press answers on touch and with the pointer."
+    doc "Parts: AbilitySlot.frame[ready|cooling|locked|active], AbilitySlot.icon, AbilitySlot.sweep, AbilitySlot.time, AbilitySlot.flash, AbilitySlot.charges, AbilitySlot.recharge, AbilitySlot.hotkey[outOfRange], AbilitySlot.cost, AbilitySlot.ultimate, AbilitySlot.pip[filled], AbilitySlot.lock. Slots: image (art kind ability). States: group ready (ready, cooling, locked), group use (idle, active, unaffordable). Sounds: focus (the style's ready chime) the tick it comes ready. Accessibility: button named by name, value its seconds left or Ready. Probe ids: <id>, <id>/Time, <id>/Hotkey, <id>/Charges."
+    host false
+    param id String "Its id."
+    param desc AbilitySlotDesc "The ability's state."
+    returns Response
+  }
+
+  struct AbilityBarDesc {
+    doc "A bar of ability slots."
+    desc true
+    field slots List.AbilitySlotDesc "The slots, in order; each one's key is its id."
+    field size f32 "Each slot's side; 0 is 56 (48 on a phone)." {
+      min 0
+      unit cssPx
+    }
+    field gap f32 "Between slots; 0 is the style's sm space." {
+      min 0
+      unit cssPx
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default bottom
+    }
+    field direction Direction "Which way the slots run."
+  }
+
+  struct AbilityBarResult {
+    doc "What an ability bar answered."
+    field clicked Option.String "The slot pressed and released this tick (its key)."
+    field pressed List.String "The slots held."
+  }
+
+  fn abilityBar {
+    doc "An ability bar: abilitySlot for each slot, in a row (or a column) on the HUD frame."
+    doc "Parts: AbilityBar.frame and each slot's. Accessibility: a group named by its slots. Probe ids: <id>/<key>."
+    host false
+    param id String "Its id."
+    param desc AbilityBarDesc "The slots."
+    returns AbilityBarResult
+  }
+
+  struct StatusEffect {
+    doc "A buff or debuff on a unit."
+    desc true
+    field key String "Its key (its probe id)."
+    field icon String "An icon of the atlas."
+    field image Option.Texture "Its art (art kind buff, 1:1)."
+    field name String "What it is (Haste); what a screen reader says."
+    field stacks u32 "Stacks (a count at its corner from 2 on)."
+    field remaining f32 "Seconds left; 0 lasts until removed." {
+      min 0
+      unit s
+    }
+    field duration f32 "Its whole length, for the sweep." {
+      min 0
+      unit s
+    }
+    field debuff bool "Harmful: in the debuff row, with a red border and a notch."
+    field type String "A debuff's type for its border colour (magic, curse, poison, disease, bleed); empty is plain."
+    field mine bool "Cast by the player (drawn larger in a target's grid)."
+  }
+
+  struct StatusGridDesc {
+    doc "A grid of buffs and debuffs."
+    desc true
+    field effects List.StatusEffect "The effects, in the game's order."
+    field columns u32 "Per row; 0 is 8."
+    field size f32 "An icon's side; 0 is 32." {
+      min 0
+      unit cssPx
+    }
+    field max u32 "The most shown; more fold into a +n tile; 0 is no limit."
+    field timers bool "The time left under each icon (the default)." {
+      default true
+    }
+    field split bool "Debuffs in a row of their own under the buffs (the default)." {
+      default true
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place."
+  }
+
+  struct StatusGridResult {
+    doc "What a status grid answered."
+    field hovered Option.String "The effect under the pointer or focus (show its tooltip)."
+    field clicked Option.String "The effect pressed (cancel a buff)."
+  }
+
+  fn statusGrid {
+    doc "Buffs and debuffs to the bar of MMOs: icons in rows, a sweep darkening each as it runs out, the time left under it (12m, 45, 4.2), blinking in its last five seconds, stacks at its corner, debuffs in their own row bordered by their type's colour and notched so their kind is not told by colour alone, more than max folding into a +n tile."
+    doc "Parts: StatusGrid.tile[buff|debuff][type=<type>][expiring], StatusGrid.icon, StatusGrid.sweep, StatusGrid.time, StatusGrid.stacks, StatusGrid.more. States: on each tile, group time (lasting, running, expiring). Accessibility: list named Buffs and Debuffs; each tile an image named name, stacks and seconds. Probe ids: <id>/Buffs/<key>, <id>/Debuffs/<key>, their Time and Stacks."
+    host false
+    param id String "Its id."
+    param desc StatusGridDesc "The effects."
+    returns StatusGridResult
+  }
+
+  enum UnitClass {
+    doc "A unit's standing, which dresses its frame."
+    variant normal "A plain unit."
+    variant elite "An elite: a gold dragon on its portrait's ring."
+    variant rare "A rare: a silver one."
+    variant boss "A boss: a skull and a heavier frame."
+  }
+
+  enum UnitFrameSize {
+    doc "A unit frame's size."
+    variant large "The player's or the target's frame (the default)."
+    variant medium "A party member's."
+    variant small "A target-of-target's or a pet's."
+  }
+
+  struct UnitFrameDesc {
+    doc "A unit's frame: portrait, name, bars."
+    desc true
+    field key String "Its key in party frames (and its probe id there)."
+    field name String "Its name."
+    field level String "Its level (60, ??); empty is none."
+    field title String "A line under the name (a guild, a class)."
+    field portrait Option.Texture "Its portrait (art kind portrait, 1:1)."
+    field icon String "A class or role icon of the atlas."
+    field health f32 "Health."
+    field healthMax f32 "Its maximum." {
+      default 100
+    }
+    field shield f32 "An absorb shield over the health." {
+      min 0
+    }
+    field resource Option.f32 "A resource bar's value (mana, rage, energy); null draws none."
+    field resourceMax f32 "Its maximum." {
+      default 100
+    }
+    field resourceKind MeterKind "Its colour." {
+      default mana
+    }
+    field castName String "What it is casting; empty is nothing."
+    field castProgress f32 "How far the cast is, 0 to 1." {
+      unit ratio
+    }
+    field effects List.StatusEffect "Buffs and debuffs, small under the bars."
+    field hostile bool "An enemy: its name and bar in danger."
+    field unitClass UnitClass "Elite, rare or boss."
+    field targeted bool "The player's target: a highlight ring."
+    field dead bool "Dead: grey, a skull."
+    field offline bool "Disconnected: dimmed."
+    field combat bool "In combat: crossed swords by the level."
+    field leader bool "A party's leader: a crown."
+    field size UnitFrameSize "How large."
+    field reverse bool "Mirrored: the portrait at the end (a target frame)."
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place."
+  }
+
+  fn unitFrame {
+    doc "A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else the initials on the class colour) ringed by the style, the level on a badge, an elite or boss dressing, the name over a health bar with its shield and ghost and a resource bar, the cast under them, small buffs, and states for the target, dead (grey, a skull), offline (dim), in combat and the leader's crown. A press selects it."
+    doc "Parts: UnitFrame.frame[<size>][hostile][targeted][dead], UnitFrame.portrait[<class>], UnitFrame.level, UnitFrame.name, UnitFrame.title, UnitFrame.health (a StatBar), UnitFrame.resource, UnitFrame.cast, UnitFrame.crown, UnitFrame.combat. Slots: portrait (art kind portrait). States: group life (alive, dead, offline), group selection (none, targeted). Accessibility: button named name, level and health. Probe ids: <id>, <id>/Name, <id>/Health, <id>/Resource, <id>/Cast."
+    host false
+    param id String "Its id."
+    param desc UnitFrameDesc "The unit."
+    returns Response
+  }
+
+  struct PartyFramesDesc {
+    doc "The party's frames."
+    desc true
+    field members List.UnitFrameDesc "The members, each with its key."
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default left
+    }
+    field gap f32 "Between frames; 0 is the style's sm space." {
+      min 0
+      unit cssPx
+    }
+  }
+
+  struct FramesResult {
+    doc "What a set of frames answered."
+    field clicked Option.String "The member pressed this tick (its key)."
+  }
+
+  fn partyFrames {
+    doc "Party frames: a column of medium unit frames, the leader crowned, each pressable to target."
+    doc "Parts: PartyFrames.frame, and each member's unit frame. Accessibility: list named Party. Probe ids: <id>/<key>."
+    host false
+    param id String "Its id."
+    param desc PartyFramesDesc "The members."
+    returns FramesResult
+  }
+
+  enum RaidRole {
+    doc "A raid member's role."
+    variant none "No role shown."
+    variant tank "Tank: a shield mark."
+    variant healer "Healer: a cross."
+    variant damage "Damage: a sword."
+  }
+
+  struct RaidMember {
+    doc "One cell of raid frames."
+    desc true
+    field key String "Its key (its probe id)."
+    field name String "Its name."
+    field health f32 "Health."
+    field healthMax f32 "Its maximum." {
+      default 100
+    }
+    field absorb f32 "An absorb shield." {
+      min 0
+    }
+    field incomingHeal f32 "Healing on its way." {
+      min 0
+    }
+    field role RaidRole "Its role."
+    field classColor Option.Paint "Its class colour for the bar (a WoW raid's), null is the health colour."
+    field dead bool "Dead."
+    field offline bool "Disconnected."
+    field outOfRange bool "Out of range: faded."
+    field aggro bool "It has the enemy's attention: a danger border."
+    field dispel String "A debuff a healer can dispel: its type (magic, curse, poison, disease) glows on the cell's border."
+    field selected bool "The player's target."
+  }
+
+  struct RaidFramesDesc {
+    doc "Raid frames: a grid of compact cells."
+    desc true
+    field members List.RaidMember "Up to 40 members."
+    field columns u32 "Members per column (groups of five, as raids are); 0 is 5."
+    field cellWidth f32 "A cell's width; 0 is 96." {
+      min 0
+      unit cssPx
+    }
+    field cellHeight f32 "A cell's height; 0 is 36." {
+      min 0
+      unit cssPx
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default left
+    }
+  }
+
+  fn raidFrames {
+    doc "Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a health fill in the class colour with its absorb and incoming heal, the name cut to fit, a role mark, dead and offline states, faded out of range, a danger border on aggro, a dispellable debuff glowing in its type's colour, the target outlined. A press targets."
+    doc "Parts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.fill, RaidFrames.absorb, RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name."
+    host false
+    param id String "Its id."
+    param desc RaidFramesDesc "The members."
+    returns FramesResult
+  }
+
+  enum CastState {
+    doc "Where a cast is."
+    variant casting "Under way."
+    variant success "Finished: the bar flashes and fades."
+    variant interrupted "Interrupted: it turns danger, says so, and fades."
+    variant failed "Failed (out of range, moved): the same as interrupted, with its own word."
+  }
+
+  struct CastBarDesc {
+    doc "A cast or channel bar."
+    desc true
+    field name String "What is cast."
+    field icon String "Its icon."
+    field progress f32 "How far: a cast fills, a channel drains." {
+      unit ratio
+    }
+    field remaining f32 "Seconds left (shown at its end)." {
+      unit s
+    }
+    field channel bool "A channel: the bar drains, with tick marks at ticks."
+    field ticks u32 "A channel's ticks (marks along it)."
+    field uninterruptible bool "A shield on its icon and a grey border: it cannot be interrupted."
+    field state CastState "Where it is."
+    field stateAt u32 "og.ui.tick() when it ended (success, interrupted, failed): it fades out after."
+    field latency f32 "The latency zone at its end, a fraction of the bar (a cast can be queued in it)." {
+      unit ratio
+    }
+    field interruptedLabel String "The interrupted word." {
+      default "Interrupted"
+    }
+    field failedLabel String "The failed word." {
+      default "Failed"
+    }
+    field width Option.Size "Its width; null is 280."
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place."
+  }
+
+  fn castBar {
+    doc "A cast bar to the bar of MMOs: the icon, the spell's name, a fill with a bright leading edge, the seconds left, a channel draining with its tick marks, the latency zone, an uninterruptible shield, a success flash and an interrupted state in danger that fade out."
+    doc "Parts: CastBar.frame[<state>][channel][uninterruptible], CastBar.icon, CastBar.track, CastBar.fill, CastBar.spark, CastBar.latency, CastBar.tick, CastBar.name, CastBar.time, CastBar.shield. States: group cast (casting, success, interrupted, failed, gone). Sounds: error on interrupted. Accessibility: progressbar named by the name. Probe ids: <id>, <id>/Name, <id>/Time, <id>/Track/Fill."
+    host false
+    param id String "Its id."
+    param desc CastBarDesc "The cast."
+    returns Void
+  }
+
+  enum CrosshairStyle {
+    doc "A crosshair's shape."
+    variant cross "Four lines round a gap (the default)."
+    variant dot "A dot."
+    variant circle "A ring with a dot."
+    variant chevron "A chevron under the aim point."
+    variant tShape "Three lines, none above (Valorant's T)."
+  }
+
+  enum HitKind {
+    doc "What a hit marker shows."
+    variant hit "A hit: four white ticks."
+    variant headshot "A critical or headshot: larger, in gold."
+    variant kill "A kill: larger, in danger, held longer."
+  }
+
+  struct CrosshairDesc {
+    doc "A crosshair and its hit markers."
+    desc true
+    field style CrosshairStyle "Its shape."
+    field spread f32 "How far the lines stand off for the weapon's spread (moves on a fast spring)." {
+      min 0
+      unit cssPx
+    }
+    field length f32 "A line's length; 0 is 8." {
+      min 0
+      unit cssPx
+    }
+    field thickness f32 "A line's width; 0 is 2." {
+      min 0
+      unit cssPx
+    }
+    field gap f32 "The gap at rest; 0 is 6." {
+      min 0
+      unit cssPx
+    }
+    field color Option.Paint "Its ink; null is white."
+    field outline bool "A dark outline round each line (the default)." {
+      default true
+    }
+    field dot bool "A centre dot with the lines."
+    field hitAt Option.u32 "og.ui.tick() of the last hit: a marker flashes for it."
+    field hit HitKind "What the last hit was."
+    field onTarget bool "The aim is on an enemy: the ink turns danger."
+    field anchor Anchor "Where it sits; the default is the centre." {
+      default center
+    }
+  }
+
+  fn crosshair {
+    doc "A crosshair to the bar of shooters' crosshair editors: cross, dot, circle, chevron or T, its gap opening with the weapon's spread on a fast spring, outlined so it reads over any scene, turning danger on an enemy; a hit marker's four diagonal ticks flash and spring out on a hit, larger in gold for a headshot, in danger and held for a kill."
+    doc "Parts: Crosshair.line, Crosshair.dot, Crosshair.ring, Crosshair.marker[<hit>]. States: group aim (idle, onTarget), group hit (none, hit, headshot, kill). Accessibility: none (decoration; hits are the game's to announce). Probe ids: <id>, <id>/N, <id>/Marker."
+    host false
+    param id String "Its id."
+    param desc CrosshairDesc "The look and the last hit."
+    returns Void
+  }
+
+  struct AmmoDesc {
+    doc "A weapon's ammunition."
+    desc true
+    field magazine u32 "Rounds in the magazine."
+    field magazineMax u32 "Rounds a magazine holds."
+    field reserve Option.u32 "Rounds in reserve; null is infinite (∞)."
+    field weapon String "The weapon's name; empty is none."
+    field icon String "The weapon's icon."
+    field fireMode String "Its fire mode (AUTO, BURST); empty is none."
+    field reloading Option.f32 "A reload's progress 0 to 1; null is not reloading." {
+      unit ratio
+    }
+    field reloadLabel String "The reload word." {
+      default "Reloading"
+    }
+    field low f32 "At or under this fraction of a magazine it is low: warn, and the reload hint shows." {
+      default 0.25
+      unit ratio
+    }
+    field reloadHint String "Under low: the hint (R Reload); empty is none."
+    field pips bool "The magazine as a row of rounds when it holds 40 or fewer (the default)." {
+      default true
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default bottomRight
+    }
+  }
+
+  fn ammoCounter {
+    doc "An ammunition counter to the bar of shooters: the magazine in large digits over its reserve, a row of rounds that empties as it fires (a round leaving springs off), low in warn with the reload hint, empty in danger, a reload ring with its word, the weapon's name, icon and fire mode."
+    doc "Parts: Ammo.frame[low|empty|reloading], Ammo.magazine, Ammo.reserve, Ammo.round[spent], Ammo.weapon, Ammo.mode, Ammo.reload, Ammo.hint. States: group ammo (full, low, empty, reloading). Sounds: warning when it runs empty. Accessibility: status named the magazine and reserve. Probe ids: <id>, <id>/Magazine, <id>/Reserve, <id>/Rounds/Round#i, <id>/Hint."
+    host false
+    param id String "Its id."
+    param desc AmmoDesc "The ammunition."
+    returns Void
+  }
+
+  enum MarkerKind {
+    doc "What a map marker is."
+    variant player "The player: an arrow by heading."
+    variant ally "An ally: a teammate's arrow in their colour."
+    variant enemy "An enemy: a danger diamond."
+    variant objective "An objective: a gold star, kept on the edge when out of range."
+    variant ping "A ping: a pulsing ring, kept on the edge."
+    variant loot "Loot: a small square in its rarity."
+    variant poi "A point of interest: its icon."
+  }
+
+  struct MapMarkerItem {
+    doc "A marker on a minimap."
+    desc true
+    field key String "Its key (its probe id)."
+    field kind MarkerKind "What it is."
+    field x f32 "Where across the map, 0 to 1." {
+      unit ratio
+    }
+    field y f32 "Where down the map, 0 to 1." {
+      unit ratio
+    }
+    field heading f32 "Its facing, clockwise from north (players and allies)." {
+      unit rad
+    }
+    field icon String "An icon of the atlas (a poi's)."
+    field color Option.Paint "Its colour; null is the kind's."
+    field rarity Rarity "Loot's tier."
+    field label String "What a screen reader says of it."
+  }
+
+  enum MapShape {
+    doc "A minimap's outline."
+    variant circle "Round (the default)."
+    variant square "Square, cornered by the style."
+  }
+
+  struct MinimapViewDesc {
+    doc "A minimap."
+    desc true
+    field texture Option.Texture "The map; null draws the style's well with a grid."
+    field centerX f32 "The map point at its centre (the player's), 0 to 1." {
+      default 0.5
+      unit ratio
+    }
+    field centerY f32 "The map point at its centre." {
+      default 0.5
+      unit ratio
+    }
+    field zoom f32 "How much of the map it shows across, 0 to 1." {
+      default 0.3
+      unit ratio
+    }
+    field rotate bool "The map turns with heading so up is ahead; else north is up and the player's arrow turns."
+    field heading f32 "The player's heading, clockwise from north." {
+      unit rad
+    }
+    field shape MapShape "Its outline."
+    field size f32 "Its side; 0 is 200 (144 on a phone)." {
+      min 0
+      unit cssPx
+    }
+    field markers List.MapMarkerItem "Its markers."
+    field zone String "A label under it (the zone's name); empty is none."
+    field north String "The north letter." {
+      default "N"
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default topRight
+    }
+  }
+
+  struct MinimapResult {
+    doc "What a minimap answered."
+    field clicked bool "It was pressed this tick: the map point is the press's position (og.Pointers) inside og.ui.bounds of <id>/Map, at the zoom and centre the game gave."
+  }
+
+  fn minimapView {
+    doc "A minimap to the bar of MOBAs, shooters and open worlds: the map in a round or square frame, centred on the player and zoomed, fixed with north up and the player's arrow turning or turning with the player; markers for allies (their arrows), enemies, loot by rarity, points of interest, objectives and pings, which stay on the frame's edge pointing out when out of range; pings pulse; a north mark on the rim, the zone under it; a press answers clicked (click to move reads the press's position against the map's bounds)."
+    doc "Parts: Minimap.frame[<shape>], Minimap.map, Minimap.marker[<kind>][clamped], Minimap.north, Minimap.zone, Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Map/<key>, <id>/Zone."
+    host false
+    param id String "Its id."
+    param desc MinimapViewDesc "The map and its markers."
+    returns MinimapResult
+  }
+
+  struct CompassPoi {
+    doc "A point on a compass strip."
+    desc true
+    field key String "Its key (its probe id)."
+    field bearing f32 "Its bearing from the player, clockwise from north." {
+      unit rad
+    }
+    field distance Option.f32 "How far (shown under it); null shows none." {
+      unit m
+    }
+    field icon String "Its icon."
+    field kind MarkerKind "What it is (its colour, and objectives and pings stay on the strip's ends when behind)."
+    field color Option.Paint "Its colour; null is the kind's."
+    field label String "What a screen reader says of it."
+  }
+
+  struct CompassDesc {
+    doc "A compass strip."
+    desc true
+    field heading f32 "The player's heading, clockwise from north." {
+      unit rad
+    }
+    field fov f32 "How much of the circle the strip spans; 0 is 180°." {
+      min 0
+      unit rad
+    }
+    field width f32 "Its width; 0 is 560 (a third of the surface on a phone)." {
+      min 0
+      unit cssPx
+    }
+    field pois List.CompassPoi "Its points."
+    field points List.String "The eight point names from north clockwise (N, NE, E …); empty is English." 
+    field units String "The distance's unit." {
+      default "m"
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default top
+    }
+  }
+
+  fn compass {
+    doc "A compass strip to the bar of Skyrim and Apex: degree ticks every 15° and the bearing under a centre notch, the cardinal and intercardinal letters, points of interest at their bearings with their distance under them, objectives and pings held at the strip's ends pointing round when behind; the ends fade."
+    doc "Parts: Compass.strip, Compass.tick[major], Compass.point[cardinal], Compass.notch, Compass.bearing, Compass.poi[<kind>][clamped], Compass.distance. Accessibility: status named the heading in degrees and its point. Probe ids: <id>, <id>/Bearing, <id>/Strip/<key>."
+    host false
+    param id String "Its id."
+    param desc CompassDesc "The heading and its points."
+    returns Void
+  }
+
+  struct ObjectiveStep {
+    doc "A step of an objective."
+    desc true
+    field key String "Its key."
+    field text String "What to do."
+    field done bool "Done: ticked and dimmed."
+    field failed bool "Failed: crossed in danger."
+    field count u32 "How many so far (3 of 5)."
+    field target u32 "How many it needs; 0 shows no count."
+    field progress Option.f32 "A bar under it, 0 to 1." {
+      unit ratio
+    }
+    field optional bool "Optional: in the muted ink with (Optional)."
+  }
+
+  struct ObjectiveQuest {
+    doc "An objective in the tracker."
+    desc true
+    field key String "Its key (its probe id)."
+    field title String "Its title."
+    field steps List.ObjectiveStep "Its steps."
+    field timer Option.f32 "Seconds left, counting down in its header." {
+      unit s
+    }
+    field distance Option.f32 "How far its marker is." {
+      unit m
+    }
+    field icon String "Its icon (a main quest's, a side quest's)."
+    field focused bool "The tracked one: its bar in highlight."
+    field completedAt Option.u32 "og.ui.tick() when it was completed: it flashes Complete and leaves."
+    field completeLabel String "The completed word." {
+      default "Complete"
+    }
+  }
+
+  struct ObjectiveTrackerDesc {
+    doc "The objective tracker."
+    desc true
+    field quests List.ObjectiveQuest "The tracked objectives."
+    field max u32 "The most shown; 0 is 3 (2 on a phone)."
+    field width f32 "Its width; 0 is 300." {
+      min 0
+      unit cssPx
+    }
+    field units String "The distance's unit." {
+      default "m"
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default right
+    }
+  }
+
+  fn objectiveTracker {
+    doc "An objective tracker to the bar of open worlds and MMOs: each objective's title by its icon with its distance and a countdown, its steps as boxes that tick with a pop when done (dimmed after), counts that pop as they rise, progress bars, optional steps muted, failed steps crossed in danger, the focused one marked, a completed one flashing Complete and leaving; over a soft scrim so it reads over any scene."
+    doc "Parts: ObjectiveTracker.quest[focused][complete], ObjectiveTracker.title, ObjectiveTracker.step[done|failed|optional], ObjectiveTracker.check[done], ObjectiveTracker.count, ObjectiveTracker.progress, ObjectiveTracker.timer, ObjectiveTracker.distance. States: on each step, group step (open, done, failed). Sounds: success when a step is done, reward when a quest completes. Accessibility: list named Objectives; each quest a group named its title; each step a checkbox. Probe ids: <id>/<key>, <id>/<key>/<step>."
+    host false
+    param id String "Its id."
+    param desc ObjectiveTrackerDesc "The objectives."
+    returns Void
+  }
+
+  struct KillfeedEntry {
+    doc "A line of a killfeed."
+    desc true
+    field key String "Its key (its probe id)."
+    field killer String "Who got the kill; empty for a fall or the zone."
+    field killerTeam u32 "The killer's team (its colour)."
+    field victim String "Who fell."
+    field victimTeam u32 "The victim's team."
+    field weapon String "The weapon's icon."
+    field weaponText String "The weapon in words, when it has no icon."
+    field headshot bool "A headshot mark."
+    field assist String "An assister, after the killer (+ name)."
+    field local bool "The player is in it: the line is highlighted."
+    field at u32 "og.ui.tick() when it happened."
+  }
+
+  struct KillfeedDesc {
+    doc "A killfeed."
+    desc true
+    field entries List.KillfeedEntry "The latest entries, oldest first."
+    field max u32 "The most lines; 0 is 5 (3 on a phone)."
+    field durationMs f32 "How long a line stays; 0 is 6000." {
+      min 0
+      unit ms
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default topRight
+    }
+  }
+
+  fn killfeed {
+    doc "A killfeed to the bar of shooters and battle royales: killer, weapon and victim on a dark chip each line, names in their teams' colours, a headshot mark, an assister, the player's lines highlighted, the newest sliding in at the top, each fading after its time."
+    doc "Parts: Killfeed.line[local], Killfeed.killer, Killfeed.weapon, Killfeed.victim, Killfeed.headshot. Accessibility: log named Killfeed, each line text killer weapon victim. Probe ids: <id>/<key>, its Killer, Weapon, Victim."
+    host false
+    param id String "Its id."
+    param desc KillfeedDesc "The entries."
+    returns Void
+  }
+
+  struct ScoreColumn {
+    doc "A scoreboard column."
+    desc true
+    field key String "Its key."
+    field label String "Its heading (K, D, A, Score)."
+    field width f32 "Its width; 0 is 56." {
+      min 0
+      unit cssPx
+    }
+  }
+
+  struct ScoreRow {
+    doc "A player's row on a scoreboard."
+    desc true
+    field key String "Its key (its probe id)."
+    field name String "The player's name."
+    field values List.String "The values, one per column."
+    field local bool "The player: highlighted."
+    field dead bool "Dead: dimmed with a skull."
+    field ping u32 "Latency in ms: bars, warn past 100, danger past 200; 0 hides it."
+    field avatar Option.Texture "A portrait (art kind portrait)."
+    field icon String "A rank, class or agent icon."
+    field mvp bool "The best of the match: a star."
+  }
+
+  struct ScoreTeam {
+    doc "A team on a scoreboard."
+    desc true
+    field team u32 "Its team colour."
+    field name String "Its name."
+    field score String "Its score."
+    field rows List.ScoreRow "Its players."
+  }
+
+  struct ScoreboardDesc {
+    doc "A scoreboard."
+    desc true
+    field title String "The title (the mode, the map)."
+    field subtitle String "A line under it (the round, the time)."
+    field columns List.ScoreColumn "The columns after the name."
+    field teams List.ScoreTeam "The teams, each with its rows."
+    field width f32 "Its width; 0 is 760 (the safe area less its gutters on a phone)." {
+      min 0
+      unit cssPx
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default center
+    }
+  }
+
+  fn scoreboard {
+    doc "A scoreboard to the bar of shooters and MOBAs: a team header in its colour with its score, rows of players with their portrait or icon, name, values in tabular digits and ping bars, the player's row highlighted, the dead dimmed with a skull, an MVP star, over a glass panel."
+    doc "Parts: Scoreboard.panel, Scoreboard.team[team=<n>], Scoreboard.header, Scoreboard.row[local][dead], Scoreboard.cell, Scoreboard.ping[good|fair|poor], Scoreboard.mvp. Accessibility: table named title; rows named by name and values. Probe ids: <id>/Team#t, <id>/Team#t/<key>, its Name and Value#i."
+    host false
+    param id String "Its id."
+    param desc ScoreboardDesc "The teams and their players."
+    returns Void
+  }
+
+  enum TimerMode {
+    doc "Which way a timer runs."
+    variant countdown "Counts down (the default)."
+    variant stopwatch "Counts up."
+  }
+
+  struct HudTimerDesc {
+    doc "A round, match or turn timer."
+    desc true
+    field seconds f32 "The time shown." {
+      unit s
+    }
+    field total f32 "A countdown's whole length (for its ring); 0 draws no ring." {
+      min 0
+      unit s
+    }
+    field mode TimerMode "Which way it runs."
+    field label String "A label over it (Round 2); empty is none."
+    field warnAt f32 "A countdown under this many seconds warns, then pulses in danger under a third of it." {
+      default 10
+      unit s
+    }
+    field tenths bool "Tenths under ten seconds (the default)." {
+      default true
+    }
+    field paused bool "Paused: it dims and blinks."
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default top
+    }
+  }
+
+  fn hudTimer {
+    doc "A timer to the bar of fighting and battle royale HUDs: the time in tabular digits on the HUD chip, a ring for a countdown's share left, warn and then danger with a pulse and a tick sound each second of the last ones, tenths in the last ten seconds, dimmed and blinking while paused."
+    doc "Parts: HudTimer.frame[normal|warn|critical|paused], HudTimer.ring, HudTimer.time, HudTimer.label. States: group time (normal, warn, critical, paused, done). Sounds: counterTick each of the last seconds, pitched up. Accessibility: timer named label, value the time. Probe ids: <id>, <id>/Time, <id>/Label."
+    host false
+    param id String "Its id."
+    param desc HudTimerDesc "The time."
+    returns Void
+  }
+
+  struct ComboDesc {
+    doc "A combo counter."
+    desc true
+    field count u32 "Hits in the combo; under 2 it hides (a break shakes it off)."
+    field multiplier f32 "A score multiplier shown beside it (×4); 0 or 1 hides it."
+    field decay Option.f32 "The combo's time left to the next hit, 0 to 1, as a draining bar."
+    field label String "The word under it." {
+      default "Combo"
+    }
+    field milestones List.u32 "Counts that celebrate (a burst and a bigger pop); empty is 10, 25, 50, 100, then every 100."
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default right
+    }
+  }
+
+  fn comboCounter {
+    doc "A combo counter to the bar of character action and rhythm games (Devil May Cry, Hi-Fi Rush, osu!): the count in a big display face that pops with each hit, scaling a little as it climbs, a multiplier chip, a decay bar draining to the next hit, a burst and a bigger pop at milestones, and a shake and fall when it breaks."
+    doc "Parts: Combo.count, Combo.label, Combo.multiplier, Combo.decay, Combo.burst. States: group combo (idle, live, milestone, broken). Sounds: reward at a milestone. Accessibility: status named the count and label. Probe ids: <id>, <id>/Count, <id>/Multiplier, <id>/Decay."
+    host false
+    param id String "Its id."
+    param desc ComboDesc "The combo."
+    returns Void
+  }
+
+  struct JudgementEvent {
+    doc "A judgement of a hit."
+    desc true
+    field text String "Its word (PERFECT, GREAT, MISS)."
+    field tier u32 "0 the best, then down: 0 gold, 1 success, 2 info, 3 warn, 4 and on danger (a miss)."
+    field offsetMs f32 "How early (negative) or late (positive) it was; 0 shows nothing." {
+      unit ms
+    }
+    field at u32 "og.ui.tick() when it happened."
+  }
+
+  struct JudgementDesc {
+    doc "Judgement pops."
+    desc true
+    field last Option.JudgementEvent "The latest judgement; a later at pops again."
+    field earlyLabel String "The early word." {
+      default "Early"
+    }
+    field lateLabel String "The late word." {
+      default "Late"
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default center
+    }
+    field offsetY f32 "Moves it down from its anchor (above the hit line: negative)." {
+      unit cssPx
+    }
+  }
+
+  fn judgement {
+    doc "Judgement pops to the bar of rhythm games (Project Sekai, osu!, Beat Saber): the word pops from large on its tier's colour (gold with a gradient for the best), with Early or Late and the milliseconds under it, rises a little and fades; a miss drops and greys."
+    doc "Parts: Judgement.word[tier=<n>], Judgement.timing[early|late]. States: group judge (none, best, good, miss). Accessibility: status named the word. Probe ids: <id>, <id>/Word, <id>/Timing."
+    host false
+    param id String "Its id."
+    param desc JudgementDesc "The latest judgement."
+    returns Void
+  }
+
+  struct ResourceItem {
+    doc "A resource on a resource bar."
+    desc true
+    field key String "Its key (its probe id)."
+    field icon String "Its icon."
+    field name String "What it is (what a screen reader says)."
+    field amount f64 "How much."
+    field rate f64 "Its rate (per second or per turn): + in success, − in danger with a mark."
+    field rateSuffix String "After the rate." {
+      default "/s"
+    }
+    field capacity Option.f64 "A cap: shown as amount / capacity, warn near it, danger at it (supply)."
+    field format NumberFormatDesc "How its numbers are written; the default is compact."
+  }
+
+  struct ResourceBarDesc {
+    doc "A resource bar."
+    desc true
+    field items List.ResourceItem "The resources."
+    field rates bool "Show rates (the default)." {
+      default true
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default top
+    }
+  }
+
+  fn resourceBar {
+    doc "A resource bar to the bar of strategy and management games (StarCraft II, Civilization, Factorio): each resource's icon and amount counting to its value, its rate in success or danger with an up or down mark, a capacity shown as amount / cap that warns near it and flashes at it."
+    doc "Parts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down]. Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount and Rate."
+    host false
+    param id String "Its id."
+    param desc ResourceBarDesc "The resources."
+    returns Void
+  }
+
+  struct TurnUnit {
+    doc "A unit in the turn order."
+    desc true
+    field key String "Its key (its probe id)."
+    field name String "Its name."
+    field portrait Option.Texture "Its portrait (art kind portrait, 1:1)."
+    field team u32 "0 the player's side (primary), else enemies (danger) by number."
+    field atb Option.f32 "An active time gauge 0 to 1 under it (Final Fantasy's ATB)." {
+      unit ratio
+    }
+    field current bool "Its turn now: larger, ringed, first."
+    field delayed bool "Pushed back: a down mark."
+    field dead bool "Out of the order: greyed and crossed."
+  }
+
+  struct TurnOrderDesc {
+    doc "A turn order."
+    desc true
+    field units List.TurnUnit "The units in turn order, the current first."
+    field direction Direction "Which way it runs." {
+      default row
+    }
+    field size f32 "A portrait's side; 0 is 52 (the current one larger)." {
+      min 0
+      unit cssPx
+    }
+    field max u32 "The most shown; 0 is 8."
+    field nowLabel String "The current one's word." {
+      default "Now"
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default top
+    }
+  }
+
+  fn turnOrder {
+    doc "A turn order to the bar of tactics and JRPGs (Final Fantasy X, Baldur's Gate 3, Darkest Dungeon): portraits in the order they act, the current one larger and ringed with its word, the player's side and enemies told by colour and by the frame's notch, active time gauges filling under each, a delayed mark, the dead greyed; the order slides on layout motion as it changes."
+    doc "Parts: TurnOrder.unit[current][team=<n>][dead], TurnOrder.portrait, TurnOrder.atb, TurnOrder.now, TurnOrder.delay. Accessibility: list named Turn order; each unit an image named by name and its place. Probe ids: <id>/<key>, its Atb."
+    host false
+    param id String "Its id."
+    param desc TurnOrderDesc "The order."
+    returns Void
+  }
+
+  enum SpeedoStyle {
+    doc "A speedometer's look."
+    variant dial "A dial with a needle and the tach round it (the default)."
+    variant digital "The speed in large digits over a tach bar."
+  }
+
+  struct SpeedometerDesc {
+    doc "A speedometer and tachometer."
+    desc true
+    field speed f32 "The speed."
+    field maxSpeed f32 "The dial's top." {
+      default 300
+    }
+    field unit String "The speed's unit." {
+      default "km/h"
+    }
+    field rpm f32 "Engine speed, 0 to 1 of the tach." {
+      unit ratio
+    }
+    field redline f32 "Where the red zone starts." {
+      default 0.85
+      unit ratio
+    }
+    field gear String "The gear (N, R, 1 …); empty is none."
+    field boost Option.f32 "A boost or nitro gauge 0 to 1." {
+      unit ratio
+    }
+    field style SpeedoStyle "Its look."
+    field size f32 "Its diameter; 0 is 180 (132 on a phone)." {
+      min 0
+      unit cssPx
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default bottomRight
+    }
+  }
+
+  fn speedometer {
+    doc "A speedometer to the bar of racing games (Forza Horizon, Gran Turismo): a dial of ticks with numbers, a needle on a spring, the tach's arc filling to its red zone, the speed in large tabular digits with its unit, the gear in a badge, a shift light that flashes past the redline, a boost gauge; or digital, the speed over a segmented tach bar."
+    doc "Parts: Speedometer.dial, Speedometer.tick[major], Speedometer.needle, Speedometer.tach[red], Speedometer.speed, Speedometer.unit, Speedometer.gear, Speedometer.shift, Speedometer.boost. States: group rev (normal, redline). Accessibility: meter named Speed, its value with the unit. Probe ids: <id>, <id>/Speed, <id>/Gear."
+    host false
+    param id String "Its id."
+    param desc SpeedometerDesc "Speed, revs and gear."
+    returns Void
+  }
+
+  struct ScorebugTeam {
+    doc "A team on a scorebug."
+    desc true
+    field abbr String "Its short name (LAL)."
+    field score u32 "Its score."
+    field color Option.Paint "Its colour; null is a team colour by side."
+    field logo Option.Texture "Its crest (art kind emblem, 1:1)."
+    field timeouts u32 "Time-outs left (pips)."
+    field timeoutsMax u32 "Time-outs it had; 0 draws no pips."
+    field possession bool "It has the ball: a mark by its score."
+  }
+
+  struct ScorebugDesc {
+    doc "A broadcast scorebug."
+    desc true
+    field home ScorebugTeam "The home side."
+    field away ScorebugTeam "The away side."
+    field clock String "The game clock (12:34)."
+    field period String "The period (Q2, 2nd, ET)."
+    field shotClock String "A shot or play clock; empty is none."
+    field situation String "A line under it (2nd & 7, Power play); empty is none."
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default topLeft
+    }
+  }
+
+  fn scorebug {
+    doc "A broadcast scorebug to the bar of sports games (EA FC, NBA 2K, Rocket League): each side's colour block with its crest and short name, the scores in tabular digits that flip and flash when they change, possession and time-out pips, the clock and period, a shot clock, a situation line sliding out under it."
+    doc "Parts: Scorebug.frame, Scorebug.team[home|away], Scorebug.score, Scorebug.clock, Scorebug.period, Scorebug.shot, Scorebug.situation, Scorebug.timeout[used], Scorebug.possession. Sounds: success when a score changes. Accessibility: status named home score, away score, clock and period. Probe ids: <id>, <id>/Home/Score, <id>/Away/Score, <id>/Clock."
+    host false
+    param id String "Its id."
+    param desc ScorebugDesc "The score and the clock."
+    returns Void
+  }
+
+  struct FlightHudDesc {
+    doc "A flight HUD."
+    desc true
+    field pitch f32 "Pitch, nose up positive." {
+      unit rad
+    }
+    field roll f32 "Roll, right wing down positive." {
+      unit rad
+    }
+    field heading f32 "Heading, clockwise from north." {
+      unit rad
+    }
+    field speed f32 "Airspeed."
+    field altitude f32 "Altitude."
+    field speedUnit String "The speed's unit." {
+      default "kt"
+    }
+    field altitudeUnit String "The altitude's unit." {
+      default "ft"
+    }
+    field verticalSpeed f32 "Climb rate (shown by the altitude)."
+    field pathX f32 "The flight path marker's offset from the boresight, across." {
+      unit rad
+    }
+    field pathY f32 "Its offset, down." {
+      unit rad
+    }
+    field color Option.Paint "The HUD's ink; null is a bright phosphor green."
+    field fov f32 "The vertical field of view the ladder spans (degrees of pitch per screen); 0 is 40°." {
+      min 0
+      unit rad
+    }
+    field anchor Anchor "Where it sits; the default is the centre." {
+      default center
+    }
+  }
+
+  fn flightHud {
+    doc "A flight HUD to the bar of Ace Combat and DCS: a pitch ladder of rungs every 5° (dashed below the horizon, numbered at both ends) turning with roll about the boresight, the horizon line, the waterline mark, a flight path marker, a heading tape across the top, speed and altitude tapes with their boxes on either side and the climb rate, all in one phosphor ink with a dark outline."
+    doc "Parts: FlightHud.ladder, FlightHud.rung[up|down|horizon], FlightHud.waterline, FlightHud.path, FlightHud.heading, FlightHud.speed, FlightHud.altitude, FlightHud.box. Accessibility: group named Flight; the speed, altitude and heading boxes text. Probe ids: <id>, <id>/SpeedBox, <id>/AltitudeBox, <id>/HeadingBox (each a text whose value is the reading)."
+    host false
+    param id String "Its id."
+    param desc FlightHudDesc "The aircraft's state."
+    returns Void
+  }
+
+  struct DamageHit {
+    doc "A hit from a direction."
+    desc true
+    field angle f32 "Where it came from, clockwise from straight ahead." {
+      unit rad
+    }
+    field at u32 "og.ui.tick() when it landed."
+    field strength f32 "How hard, 0 to 1 (its width and opacity)." {
+      default 1
+      unit ratio
+    }
+  }
+
+  struct DamageDirectionDesc {
+    doc "Damage direction indicators."
+    desc true
+    field hits List.DamageHit "Recent hits."
+    field durationMs f32 "How long an indicator shows; 0 is 1400." {
+      min 0
+      unit ms
+    }
+    field radius f32 "Its distance from the centre; 0 is a fifth of the surface's shorter side." {
+      min 0
+      unit cssPx
+    }
+    field color Option.Paint "Its ink; null is danger."
+  }
+
+  fn damageDirection {
+    doc "Damage direction to the bar of Call of Duty and Apex: a curved wedge round the centre toward each hit's source, wider and brighter for a harder hit, flaring in and fading over its time; the newest hits over the older."
+    doc "Parts: DamageDirection.wedge. Accessibility: none (the game announces damage). Probe ids: <id>, <id>/Hit#i."
+    host false
+    param id String "Its id."
+    param desc DamageDirectionDesc "The hits."
+    returns Void
+  }
+
+  struct LowHealthDesc {
+    doc "A low-health and hit vignette."
+    desc true
+    field health f32 "Health as a fraction, 0 to 1." {
+      unit ratio
+    }
+    field threshold f32 "Under this the vignette shows, deepening to 0." {
+      default 0.35
+      unit ratio
+    }
+    field hitAt Option.u32 "og.ui.tick() of the last hit: a quick red flash at the edges."
+    field color Option.Paint "Its ink; null is a deep red."
+  }
+
+  fn lowHealthVignette {
+    doc "The low-health vignette of action games (a meta layer over the scene, under the HUD): red at the screen's edges deepening as health falls under the threshold, pulsing like a heartbeat faster near death, and a short flash on each hit. Under reduced motion it holds still at its depth."
+    doc "Parts: none (a meta layer). Accessibility: none. Probe ids: its meta layer <id>."
+    host false
+    param id String "Its id."
+    param desc LowHealthDesc "Health and the last hit."
+    returns Void
+  }
+
   # ── element draws (docs/ui.md §5): shapes, paints, effects, masks, layers ──
 
   handle VectorArt "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill."

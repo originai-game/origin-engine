@@ -9493,6 +9493,63 @@
         "SubtitleSettings",
         "SubtitleLine",
         "SubtitlesDesc",
+        "StatBarStyle",
+        "StatBarDesc",
+        "OrbMeterDesc",
+        "RadialMeterDesc",
+        "AbilitySlotDesc",
+        "AbilityBarDesc",
+        "AbilityBarResult",
+        "StatusEffect",
+        "StatusGridDesc",
+        "StatusGridResult",
+        "UnitClass",
+        "UnitFrameSize",
+        "UnitFrameDesc",
+        "PartyFramesDesc",
+        "FramesResult",
+        "RaidRole",
+        "RaidMember",
+        "RaidFramesDesc",
+        "CastState",
+        "CastBarDesc",
+        "CrosshairStyle",
+        "HitKind",
+        "CrosshairDesc",
+        "AmmoDesc",
+        "MarkerKind",
+        "MapMarkerItem",
+        "MapShape",
+        "MinimapViewDesc",
+        "MinimapResult",
+        "CompassPoi",
+        "CompassDesc",
+        "ObjectiveStep",
+        "ObjectiveQuest",
+        "ObjectiveTrackerDesc",
+        "KillfeedEntry",
+        "KillfeedDesc",
+        "ScoreColumn",
+        "ScoreRow",
+        "ScoreTeam",
+        "ScoreboardDesc",
+        "TimerMode",
+        "HudTimerDesc",
+        "ComboDesc",
+        "JudgementEvent",
+        "JudgementDesc",
+        "ResourceItem",
+        "ResourceBarDesc",
+        "TurnUnit",
+        "TurnOrderDesc",
+        "SpeedoStyle",
+        "SpeedometerDesc",
+        "ScorebugTeam",
+        "ScorebugDesc",
+        "FlightHudDesc",
+        "DamageHit",
+        "DamageDirectionDesc",
+        "LowHealthDesc",
         "VectorArt",
         "UiMaterial",
         "VectorArt",
@@ -13652,6 +13709,573 @@
               "type": "SubtitlesDesc",
               "optional": true,
               "doc": "The lines and the settings."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "statBar",
+          "doc": "A health or resource bar to the bar of action games: blocks (segment), a ghost chunk that holds after a hit and then drains (Dark Souls, fighting games), a heal preview, grey recoverable damage, a row of shield cells in their tier's colour over it (Apex Legends), low and critical states (warn, then danger pulsing), a mirrored fill for the right player, flat, slanted or pill ends. A drop is instant, a rise moves on the ui spring.\nParts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Value.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "StatBarDesc",
+              "optional": true,
+              "doc": "The value and the look."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "orbMeter",
+          "doc": "An orb (Diablo's health and mana globes): a glass sphere filled from the bottom with a liquid whose surface sways, a highlight on the glass, a frame ring, the value in the middle; the level moves on the ui spring and a drop flashes it. Critical (under 15 %) pulses.\nParts: OrbMeter.frame, OrbMeter.glass, OrbMeter.liquid[<kind>], OrbMeter.surface, OrbMeter.value, OrbMeter.label. States: group level (normal, low, critical). Accessibility: meter. Probe ids: <id>, <id>/Orb/Liquid, <id>/Value.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "OrbMeterDesc",
+              "optional": true,
+              "doc": "The value and the look."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "radialMeter",
+          "doc": "A radial stamina wheel (Breath of the Wild, Elden Ring's spirit gauge): a ring that drains clockwise, outer rings for extra wheels, warn under a third, red and pulsing when exhausted until it refills, fading out once full.\nParts: RadialMeter.track, RadialMeter.fill[normal|low|exhausted], RadialMeter.wheel#i. States: group level (full, normal, low, exhausted). Accessibility: meter. Probe ids: <id>, <id>/Wheel#i.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "RadialMeterDesc",
+              "optional": true,
+              "doc": "The value and the look."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "abilitySlot",
+          "doc": "An ability slot to the bar of MOBAs and MMOs: the icon in a frame cornered as the style's slots, a dark sweep shrinking clockwise as the cooldown runs with the seconds left in the middle (tenths under ten), a flash and a pop the tick it comes ready, charges at the corner with the next one's recharge along the bottom, the hotkey on a key cap, cost, unaffordable and out-of-range tints, a breathing border while active, an ultimate's ring and percent, rank pips, a lock. A press answers on touch and with the pointer.\nParts: AbilitySlot.frame[ready|cooling|locked|active], AbilitySlot.icon, AbilitySlot.sweep, AbilitySlot.time, AbilitySlot.flash, AbilitySlot.charges, AbilitySlot.recharge, AbilitySlot.hotkey[outOfRange], AbilitySlot.cost, AbilitySlot.ultimate, AbilitySlot.pip[filled], AbilitySlot.lock. Slots: image (art kind ability). States: group ready (ready, cooling, locked), group use (idle, active, unaffordable). Sounds: focus (the style's ready chime) the tick it comes ready. Accessibility: button named by name, value its seconds left or Ready. Probe ids: <id>, <id>/Time, <id>/Hotkey, <id>/Charges.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "AbilitySlotDesc",
+              "optional": true,
+              "doc": "The ability's state."
+            }
+          ],
+          "returns": "Response",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "abilityBar",
+          "doc": "An ability bar: abilitySlot for each slot, in a row (or a column) on the HUD frame.\nParts: AbilityBar.frame and each slot's. Accessibility: a group named by its slots. Probe ids: <id>/<key>.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "AbilityBarDesc",
+              "optional": true,
+              "doc": "The slots."
+            }
+          ],
+          "returns": "AbilityBarResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "statusGrid",
+          "doc": "Buffs and debuffs to the bar of MMOs: icons in rows, a sweep darkening each as it runs out, the time left under it (12m, 45, 4.2), blinking in its last five seconds, stacks at its corner, debuffs in their own row bordered by their type's colour and notched so their kind is not told by colour alone, more than max folding into a +n tile.\nParts: StatusGrid.tile[buff|debuff][type=<type>][expiring], StatusGrid.icon, StatusGrid.sweep, StatusGrid.time, StatusGrid.stacks, StatusGrid.more. States: on each tile, group time (lasting, running, expiring). Accessibility: list named Buffs and Debuffs; each tile an image named name, stacks and seconds. Probe ids: <id>/Buffs/<key>, <id>/Debuffs/<key>, their Time and Stacks.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "StatusGridDesc",
+              "optional": true,
+              "doc": "The effects."
+            }
+          ],
+          "returns": "StatusGridResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "unitFrame",
+          "doc": "A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else the initials on the class colour) ringed by the style, the level on a badge, an elite or boss dressing, the name over a health bar with its shield and ghost and a resource bar, the cast under them, small buffs, and states for the target, dead (grey, a skull), offline (dim), in combat and the leader's crown. A press selects it.\nParts: UnitFrame.frame[<size>][hostile][targeted][dead], UnitFrame.portrait[<class>], UnitFrame.level, UnitFrame.name, UnitFrame.title, UnitFrame.health (a StatBar), UnitFrame.resource, UnitFrame.cast, UnitFrame.crown, UnitFrame.combat. Slots: portrait (art kind portrait). States: group life (alive, dead, offline), group selection (none, targeted). Accessibility: button named name, level and health. Probe ids: <id>, <id>/Name, <id>/Health, <id>/Resource, <id>/Cast.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "UnitFrameDesc",
+              "optional": true,
+              "doc": "The unit."
+            }
+          ],
+          "returns": "Response",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "partyFrames",
+          "doc": "Party frames: a column of medium unit frames, the leader crowned, each pressable to target.\nParts: PartyFrames.frame, and each member's unit frame. Accessibility: list named Party. Probe ids: <id>/<key>.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "PartyFramesDesc",
+              "optional": true,
+              "doc": "The members."
+            }
+          ],
+          "returns": "FramesResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "raidFrames",
+          "doc": "Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a health fill in the class colour with its absorb and incoming heal, the name cut to fit, a role mark, dead and offline states, faded out of range, a danger border on aggro, a dispellable debuff glowing in its type's colour, the target outlined. A press targets.\nParts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.fill, RaidFrames.absorb, RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "RaidFramesDesc",
+              "optional": true,
+              "doc": "The members."
+            }
+          ],
+          "returns": "FramesResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "castBar",
+          "doc": "A cast bar to the bar of MMOs: the icon, the spell's name, a fill with a bright leading edge, the seconds left, a channel draining with its tick marks, the latency zone, an uninterruptible shield, a success flash and an interrupted state in danger that fade out.\nParts: CastBar.frame[<state>][channel][uninterruptible], CastBar.icon, CastBar.track, CastBar.fill, CastBar.spark, CastBar.latency, CastBar.tick, CastBar.name, CastBar.time, CastBar.shield. States: group cast (casting, success, interrupted, failed, gone). Sounds: error on interrupted. Accessibility: progressbar named by the name. Probe ids: <id>, <id>/Name, <id>/Time, <id>/Track/Fill.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "CastBarDesc",
+              "optional": true,
+              "doc": "The cast."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "crosshair",
+          "doc": "A crosshair to the bar of shooters' crosshair editors: cross, dot, circle, chevron or T, its gap opening with the weapon's spread on a fast spring, outlined so it reads over any scene, turning danger on an enemy; a hit marker's four diagonal ticks flash and spring out on a hit, larger in gold for a headshot, in danger and held for a kill.\nParts: Crosshair.line, Crosshair.dot, Crosshair.ring, Crosshair.marker[<hit>]. States: group aim (idle, onTarget), group hit (none, hit, headshot, kill). Accessibility: none (decoration; hits are the game's to announce). Probe ids: <id>, <id>/N, <id>/Marker.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "CrosshairDesc",
+              "optional": true,
+              "doc": "The look and the last hit."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "ammoCounter",
+          "doc": "An ammunition counter to the bar of shooters: the magazine in large digits over its reserve, a row of rounds that empties as it fires (a round leaving springs off), low in warn with the reload hint, empty in danger, a reload ring with its word, the weapon's name, icon and fire mode.\nParts: Ammo.frame[low|empty|reloading], Ammo.magazine, Ammo.reserve, Ammo.round[spent], Ammo.weapon, Ammo.mode, Ammo.reload, Ammo.hint. States: group ammo (full, low, empty, reloading). Sounds: warning when it runs empty. Accessibility: status named the magazine and reserve. Probe ids: <id>, <id>/Magazine, <id>/Reserve, <id>/Rounds/Round#i, <id>/Hint.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "AmmoDesc",
+              "optional": true,
+              "doc": "The ammunition."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "minimapView",
+          "doc": "A minimap to the bar of MOBAs, shooters and open worlds: the map in a round or square frame, centred on the player and zoomed, fixed with north up and the player's arrow turning or turning with the player; markers for allies (their arrows), enemies, loot by rarity, points of interest, objectives and pings, which stay on the frame's edge pointing out when out of range; pings pulse; a north mark on the rim, the zone under it; a press answers clicked (click to move reads the press's position against the map's bounds).\nParts: Minimap.frame[<shape>], Minimap.map, Minimap.marker[<kind>][clamped], Minimap.north, Minimap.zone, Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Map/<key>, <id>/Zone.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "MinimapViewDesc",
+              "optional": true,
+              "doc": "The map and its markers."
+            }
+          ],
+          "returns": "MinimapResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "compass",
+          "doc": "A compass strip to the bar of Skyrim and Apex: degree ticks every 15° and the bearing under a centre notch, the cardinal and intercardinal letters, points of interest at their bearings with their distance under them, objectives and pings held at the strip's ends pointing round when behind; the ends fade.\nParts: Compass.strip, Compass.tick[major], Compass.point[cardinal], Compass.notch, Compass.bearing, Compass.poi[<kind>][clamped], Compass.distance. Accessibility: status named the heading in degrees and its point. Probe ids: <id>, <id>/Bearing, <id>/Strip/<key>.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "CompassDesc",
+              "optional": true,
+              "doc": "The heading and its points."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "objectiveTracker",
+          "doc": "An objective tracker to the bar of open worlds and MMOs: each objective's title by its icon with its distance and a countdown, its steps as boxes that tick with a pop when done (dimmed after), counts that pop as they rise, progress bars, optional steps muted, failed steps crossed in danger, the focused one marked, a completed one flashing Complete and leaving; over a soft scrim so it reads over any scene.\nParts: ObjectiveTracker.quest[focused][complete], ObjectiveTracker.title, ObjectiveTracker.step[done|failed|optional], ObjectiveTracker.check[done], ObjectiveTracker.count, ObjectiveTracker.progress, ObjectiveTracker.timer, ObjectiveTracker.distance. States: on each step, group step (open, done, failed). Sounds: success when a step is done, reward when a quest completes. Accessibility: list named Objectives; each quest a group named its title; each step a checkbox. Probe ids: <id>/<key>, <id>/<key>/<step>.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ObjectiveTrackerDesc",
+              "optional": true,
+              "doc": "The objectives."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "killfeed",
+          "doc": "A killfeed to the bar of shooters and battle royales: killer, weapon and victim on a dark chip each line, names in their teams' colours, a headshot mark, an assister, the player's lines highlighted, the newest sliding in at the top, each fading after its time.\nParts: Killfeed.line[local], Killfeed.killer, Killfeed.weapon, Killfeed.victim, Killfeed.headshot. Accessibility: log named Killfeed, each line text killer weapon victim. Probe ids: <id>/<key>, its Killer, Weapon, Victim.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "KillfeedDesc",
+              "optional": true,
+              "doc": "The entries."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "scoreboard",
+          "doc": "A scoreboard to the bar of shooters and MOBAs: a team header in its colour with its score, rows of players with their portrait or icon, name, values in tabular digits and ping bars, the player's row highlighted, the dead dimmed with a skull, an MVP star, over a glass panel.\nParts: Scoreboard.panel, Scoreboard.team[team=<n>], Scoreboard.header, Scoreboard.row[local][dead], Scoreboard.cell, Scoreboard.ping[good|fair|poor], Scoreboard.mvp. Accessibility: table named title; rows named by name and values. Probe ids: <id>/Team#t, <id>/Team#t/<key>, its Name and Value#i.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ScoreboardDesc",
+              "optional": true,
+              "doc": "The teams and their players."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "hudTimer",
+          "doc": "A timer to the bar of fighting and battle royale HUDs: the time in tabular digits on the HUD chip, a ring for a countdown's share left, warn and then danger with a pulse and a tick sound each second of the last ones, tenths in the last ten seconds, dimmed and blinking while paused.\nParts: HudTimer.frame[normal|warn|critical|paused], HudTimer.ring, HudTimer.time, HudTimer.label. States: group time (normal, warn, critical, paused, done). Sounds: counterTick each of the last seconds, pitched up. Accessibility: timer named label, value the time. Probe ids: <id>, <id>/Time, <id>/Label.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "HudTimerDesc",
+              "optional": true,
+              "doc": "The time."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "comboCounter",
+          "doc": "A combo counter to the bar of character action and rhythm games (Devil May Cry, Hi-Fi Rush, osu!): the count in a big display face that pops with each hit, scaling a little as it climbs, a multiplier chip, a decay bar draining to the next hit, a burst and a bigger pop at milestones, and a shake and fall when it breaks.\nParts: Combo.count, Combo.label, Combo.multiplier, Combo.decay, Combo.burst. States: group combo (idle, live, milestone, broken). Sounds: reward at a milestone. Accessibility: status named the count and label. Probe ids: <id>, <id>/Count, <id>/Multiplier, <id>/Decay.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ComboDesc",
+              "optional": true,
+              "doc": "The combo."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "judgement",
+          "doc": "Judgement pops to the bar of rhythm games (Project Sekai, osu!, Beat Saber): the word pops from large on its tier's colour (gold with a gradient for the best), with Early or Late and the milliseconds under it, rises a little and fades; a miss drops and greys.\nParts: Judgement.word[tier=<n>], Judgement.timing[early|late]. States: group judge (none, best, good, miss). Accessibility: status named the word. Probe ids: <id>, <id>/Word, <id>/Timing.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "JudgementDesc",
+              "optional": true,
+              "doc": "The latest judgement."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "resourceBar",
+          "doc": "A resource bar to the bar of strategy and management games (StarCraft II, Civilization, Factorio): each resource's icon and amount counting to its value, its rate in success or danger with an up or down mark, a capacity shown as amount / cap that warns near it and flashes at it.\nParts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down]. Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount and Rate.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ResourceBarDesc",
+              "optional": true,
+              "doc": "The resources."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "turnOrder",
+          "doc": "A turn order to the bar of tactics and JRPGs (Final Fantasy X, Baldur's Gate 3, Darkest Dungeon): portraits in the order they act, the current one larger and ringed with its word, the player's side and enemies told by colour and by the frame's notch, active time gauges filling under each, a delayed mark, the dead greyed; the order slides on layout motion as it changes.\nParts: TurnOrder.unit[current][team=<n>][dead], TurnOrder.portrait, TurnOrder.atb, TurnOrder.now, TurnOrder.delay. Accessibility: list named Turn order; each unit an image named by name and its place. Probe ids: <id>/<key>, its Atb.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "TurnOrderDesc",
+              "optional": true,
+              "doc": "The order."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "speedometer",
+          "doc": "A speedometer to the bar of racing games (Forza Horizon, Gran Turismo): a dial of ticks with numbers, a needle on a spring, the tach's arc filling to its red zone, the speed in large tabular digits with its unit, the gear in a badge, a shift light that flashes past the redline, a boost gauge; or digital, the speed over a segmented tach bar.\nParts: Speedometer.dial, Speedometer.tick[major], Speedometer.needle, Speedometer.tach[red], Speedometer.speed, Speedometer.unit, Speedometer.gear, Speedometer.shift, Speedometer.boost. States: group rev (normal, redline). Accessibility: meter named Speed, its value with the unit. Probe ids: <id>, <id>/Speed, <id>/Gear.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SpeedometerDesc",
+              "optional": true,
+              "doc": "Speed, revs and gear."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "scorebug",
+          "doc": "A broadcast scorebug to the bar of sports games (EA FC, NBA 2K, Rocket League): each side's colour block with its crest and short name, the scores in tabular digits that flip and flash when they change, possession and time-out pips, the clock and period, a shot clock, a situation line sliding out under it.\nParts: Scorebug.frame, Scorebug.team[home|away], Scorebug.score, Scorebug.clock, Scorebug.period, Scorebug.shot, Scorebug.situation, Scorebug.timeout[used], Scorebug.possession. Sounds: success when a score changes. Accessibility: status named home score, away score, clock and period. Probe ids: <id>, <id>/Home/Score, <id>/Away/Score, <id>/Clock.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ScorebugDesc",
+              "optional": true,
+              "doc": "The score and the clock."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "flightHud",
+          "doc": "A flight HUD to the bar of Ace Combat and DCS: a pitch ladder of rungs every 5° (dashed below the horizon, numbered at both ends) turning with roll about the boresight, the horizon line, the waterline mark, a flight path marker, a heading tape across the top, speed and altitude tapes with their boxes on either side and the climb rate, all in one phosphor ink with a dark outline.\nParts: FlightHud.ladder, FlightHud.rung[up|down|horizon], FlightHud.waterline, FlightHud.path, FlightHud.heading, FlightHud.speed, FlightHud.altitude, FlightHud.box. Accessibility: group named Flight; the speed, altitude and heading boxes text. Probe ids: <id>, <id>/SpeedBox, <id>/AltitudeBox, <id>/HeadingBox (each a text whose value is the reading).",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "FlightHudDesc",
+              "optional": true,
+              "doc": "The aircraft's state."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "damageDirection",
+          "doc": "Damage direction to the bar of Call of Duty and Apex: a curved wedge round the centre toward each hit's source, wider and brighter for a harder hit, flaring in and fading over its time; the newest hits over the older.\nParts: DamageDirection.wedge. Accessibility: none (the game announces damage). Probe ids: <id>, <id>/Hit#i.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "DamageDirectionDesc",
+              "optional": true,
+              "doc": "The hits."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "lowHealthVignette",
+          "doc": "The low-health vignette of action games (a meta layer over the scene, under the HUD): red at the screen's edges deepening as health falls under the threshold, pulsing like a heartbeat faster near death, and a short flash on each hit. Under reduced motion it holds still at its depth.\nParts: none (a meta layer). Accessibility: none. Probe ids: its meta layer <id>.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "LowHealthDesc",
+              "optional": true,
+              "doc": "Health and the last hit."
             }
           ],
           "returns": "Void",
@@ -52811,6 +53435,3108 @@
           "default": 0,
           "minimum": 0,
           "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "StatBarStyle": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A stat bar's shape.",
+      "type": "string",
+      "enum": [
+        "flat",
+        "slanted",
+        "pill"
+      ],
+      "x-og-variants": {
+        "flat": "A rounded track (the default).",
+        "slanted": "Ends cut on a slant (sci-fi, fighting games).",
+        "pill": "Fully round ends."
+      }
+    },
+    "StatBarDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A health or resource bar.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "description": "The value.",
+          "default": 0
+        },
+        "max": {
+          "type": "number",
+          "description": "Its maximum.",
+          "default": 100
+        },
+        "kind": {
+          "$ref": "#/$defs/MeterKind",
+          "description": "What it measures (its colour): health turns warn and danger as it falls.",
+          "default": "health"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A colour of its own instead of the kind's.",
+          "default": null
+        },
+        "segment": {
+          "type": "number",
+          "description": "Value per segment: the bar is blocks of this much (Overwatch's 25-point blocks); 0 is one bar.",
+          "default": 0,
+          "minimum": 0
+        },
+        "shield": {
+          "type": "number",
+          "description": "Shield or armour on top of the value, drawn as a row of cells over the bar (Apex's armour).",
+          "default": 0,
+          "minimum": 0
+        },
+        "shieldMax": {
+          "type": "number",
+          "description": "The most shield; 0 hides the row.",
+          "default": 0,
+          "minimum": 0
+        },
+        "shieldCell": {
+          "type": "number",
+          "description": "Shield per cell; 0 is one continuous strip.",
+          "default": 0,
+          "minimum": 0
+        },
+        "shieldTier": {
+          "$ref": "#/$defs/Rarity",
+          "description": "The shield's tier colour (white, blue, purple, gold, red as Apex's); none is the info colour.",
+          "default": "none"
+        },
+        "heal": {
+          "type": "number",
+          "description": "Healing on its way, a pale preview past the fill.",
+          "default": 0,
+          "minimum": 0
+        },
+        "recoverable": {
+          "type": "number",
+          "description": "Damage that can still come back (a fighting game's grey health): drawn between the value and this.",
+          "default": 0,
+          "minimum": 0
+        },
+        "ghost": {
+          "type": "boolean",
+          "description": "A drop leaves a pale chunk that holds, then drains to the new value (the default).",
+          "default": true
+        },
+        "label": {
+          "type": "string",
+          "description": "A short name at its start (HP); empty is none.",
+          "default": ""
+        },
+        "showValue": {
+          "type": "boolean",
+          "description": "The value as text at its end (72 / 100).",
+          "default": false
+        },
+        "valueText": {
+          "type": "string",
+          "description": "The value as text instead (72%); empty formats value / max.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas before it.",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null is 240 (grows with the surface).",
+          "default": null
+        },
+        "thickness": {
+          "type": "number",
+          "description": "Its height; 0 is 14.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "low": {
+          "type": "number",
+          "description": "Below this fraction a health bar is low (warn).",
+          "default": 0.3,
+          "x-og-unit": "ratio"
+        },
+        "critical": {
+          "type": "number",
+          "description": "Below this fraction it is critical: danger, and it pulses.",
+          "default": 0.15,
+          "x-og-unit": "ratio"
+        },
+        "reverse": {
+          "type": "boolean",
+          "description": "Fills from the end (the right player's bar in a fighting game).",
+          "default": false
+        },
+        "style": {
+          "$ref": "#/$defs/StatBarStyle",
+          "description": "Its shape.",
+          "default": "flat"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": null
+        },
+        "name": {
+          "type": "string",
+          "description": "What a screen reader calls it; empty is the label, else Health.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "OrbMeterDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An orb of health or mana.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "description": "The value.",
+          "default": 0
+        },
+        "max": {
+          "type": "number",
+          "description": "Its maximum.",
+          "default": 100
+        },
+        "kind": {
+          "$ref": "#/$defs/MeterKind",
+          "description": "Its liquid's colour: health (red) or mana (blue).",
+          "default": "health"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A colour of its own.",
+          "default": null
+        },
+        "size": {
+          "type": "number",
+          "description": "Its diameter; 0 is 112.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "showValue": {
+          "type": "boolean",
+          "description": "The value in the middle (the default).",
+          "default": true
+        },
+        "label": {
+          "type": "string",
+          "description": "A caption under it; empty is none.",
+          "default": ""
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": null
+        },
+        "name": {
+          "type": "string",
+          "description": "What a screen reader calls it; empty is the label, else Health.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "RadialMeterDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A radial stamina wheel.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "description": "The value, in wheels: 1 is one full wheel.",
+          "default": 0
+        },
+        "wheels": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Wheels (an extended stamina's second and third ring); 0 is 1.",
+          "default": 0
+        },
+        "exhausted": {
+          "type": "boolean",
+          "description": "Ran out: red, refilling slowly, until full (Breath of the Wild).",
+          "default": false
+        },
+        "size": {
+          "type": "number",
+          "description": "Its diameter; 0 is 56.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "hideWhenFull": {
+          "type": "boolean",
+          "description": "Fades out a second after it is full (the default).",
+          "default": true
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its fill; null is success.",
+          "default": null
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": null
+        },
+        "name": {
+          "type": "string",
+          "description": "What a screen reader calls it.",
+          "default": "Stamina"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AbilitySlotDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An ability, item or spell on a bar.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key in an ability bar (and its probe id there).",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (art kind ability, 1:1) instead of the icon.",
+          "default": null
+        },
+        "name": {
+          "type": "string",
+          "description": "What a screen reader calls it (Fireball).",
+          "default": ""
+        },
+        "hotkey": {
+          "type": "string",
+          "description": "The key or button glyph's label (Q, LB, 1); empty is none.",
+          "default": ""
+        },
+        "cooldown": {
+          "type": "number",
+          "description": "Seconds of cooldown left; 0 is ready.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "cooldownMax": {
+          "type": "number",
+          "description": "The cooldown's length; the sweep shows cooldown over it.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "charges": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Charges ready (a count at its corner when maxCharges is over 1).",
+          "default": 0
+        },
+        "maxCharges": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Charges it holds; 0 or 1 is none.",
+          "default": 0
+        },
+        "chargeProgress": {
+          "type": "number",
+          "description": "How far the next charge has come, 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "cost": {
+          "type": "string",
+          "description": "Its cost shown at the bottom (40); empty is none.",
+          "default": ""
+        },
+        "unaffordable": {
+          "type": "boolean",
+          "description": "Not enough resource: tinted with the resource's colour.",
+          "default": false
+        },
+        "outOfRange": {
+          "type": "boolean",
+          "description": "The target is out of range: the hotkey turns danger.",
+          "default": false
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Toggled on or channelling: a glowing border that breathes.",
+          "default": false
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Not learnt yet: dimmed with a lock.",
+          "default": false
+        },
+        "ultimate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An ultimate's charge 0 to 1: a ring fills round it and the percent shows until it is ready.",
+          "default": null,
+          "x-og-unit": "ratio"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ranks learnt (pips under it).",
+          "default": 0
+        },
+        "maxLevel": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ranks it has; 0 draws no pips.",
+          "default": 0
+        },
+        "size": {
+          "type": "number",
+          "description": "Its side; 0 is 56 (48 on a phone).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AbilityBarDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A bar of ability slots.",
+      "type": "object",
+      "properties": {
+        "slots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AbilitySlotDesc"
+          },
+          "description": "The slots, in order; each one's key is its id.",
+          "default": []
+        },
+        "size": {
+          "type": "number",
+          "description": "Each slot's side; 0 is 56 (48 on a phone).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "gap": {
+          "type": "number",
+          "description": "Between slots; 0 is the style's sm space.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "bottom"
+        },
+        "direction": {
+          "$ref": "#/$defs/Direction",
+          "description": "Which way the slots run.",
+          "default": "row"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AbilityBarResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What an ability bar answered.",
+      "type": "object",
+      "properties": {
+        "clicked": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The slot pressed and released this tick (its key)."
+        },
+        "pressed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The slots held."
+        }
+      },
+      "required": [
+        "clicked",
+        "pressed"
+      ],
+      "additionalProperties": false
+    },
+    "StatusEffect": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A buff or debuff on a unit.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (art kind buff, 1:1).",
+          "default": null
+        },
+        "name": {
+          "type": "string",
+          "description": "What it is (Haste); what a screen reader says.",
+          "default": ""
+        },
+        "stacks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Stacks (a count at its corner from 2 on).",
+          "default": 0
+        },
+        "remaining": {
+          "type": "number",
+          "description": "Seconds left; 0 lasts until removed.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "duration": {
+          "type": "number",
+          "description": "Its whole length, for the sweep.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "debuff": {
+          "type": "boolean",
+          "description": "Harmful: in the debuff row, with a red border and a notch.",
+          "default": false
+        },
+        "type": {
+          "type": "string",
+          "description": "A debuff's type for its border colour (magic, curse, poison, disease, bleed); empty is plain.",
+          "default": ""
+        },
+        "mine": {
+          "type": "boolean",
+          "description": "Cast by the player (drawn larger in a target's grid).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "StatusGridDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A grid of buffs and debuffs.",
+      "type": "object",
+      "properties": {
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StatusEffect"
+          },
+          "description": "The effects, in the game's order.",
+          "default": []
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Per row; 0 is 8.",
+          "default": 0
+        },
+        "size": {
+          "type": "number",
+          "description": "An icon's side; 0 is 32.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most shown; more fold into a +n tile; 0 is no limit.",
+          "default": 0
+        },
+        "timers": {
+          "type": "boolean",
+          "description": "The time left under each icon (the default).",
+          "default": true
+        },
+        "split": {
+          "type": "boolean",
+          "description": "Debuffs in a row of their own under the buffs (the default).",
+          "default": true
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "StatusGridResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a status grid answered.",
+      "type": "object",
+      "properties": {
+        "hovered": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The effect under the pointer or focus (show its tooltip)."
+        },
+        "clicked": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The effect pressed (cancel a buff)."
+        }
+      },
+      "required": [
+        "hovered",
+        "clicked"
+      ],
+      "additionalProperties": false
+    },
+    "UnitClass": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A unit's standing, which dresses its frame.",
+      "type": "string",
+      "enum": [
+        "normal",
+        "elite",
+        "rare",
+        "boss"
+      ],
+      "x-og-variants": {
+        "normal": "A plain unit.",
+        "elite": "An elite: a gold dragon on its portrait's ring.",
+        "rare": "A rare: a silver one.",
+        "boss": "A boss: a skull and a heavier frame."
+      }
+    },
+    "UnitFrameSize": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A unit frame's size.",
+      "type": "string",
+      "enum": [
+        "large",
+        "medium",
+        "small"
+      ],
+      "x-og-variants": {
+        "large": "The player's or the target's frame (the default).",
+        "medium": "A party member's.",
+        "small": "A target-of-target's or a pet's."
+      }
+    },
+    "UnitFrameDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A unit's frame: portrait, name, bars.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key in party frames (and its probe id there).",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name.",
+          "default": ""
+        },
+        "level": {
+          "type": "string",
+          "description": "Its level (60, ??); empty is none.",
+          "default": ""
+        },
+        "title": {
+          "type": "string",
+          "description": "A line under the name (a guild, a class).",
+          "default": ""
+        },
+        "portrait": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its portrait (art kind portrait, 1:1).",
+          "default": null
+        },
+        "icon": {
+          "type": "string",
+          "description": "A class or role icon of the atlas.",
+          "default": ""
+        },
+        "health": {
+          "type": "number",
+          "description": "Health.",
+          "default": 0
+        },
+        "healthMax": {
+          "type": "number",
+          "description": "Its maximum.",
+          "default": 100
+        },
+        "shield": {
+          "type": "number",
+          "description": "An absorb shield over the health.",
+          "default": 0,
+          "minimum": 0
+        },
+        "resource": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A resource bar's value (mana, rage, energy); null draws none.",
+          "default": null
+        },
+        "resourceMax": {
+          "type": "number",
+          "description": "Its maximum.",
+          "default": 100
+        },
+        "resourceKind": {
+          "$ref": "#/$defs/MeterKind",
+          "description": "Its colour.",
+          "default": "mana"
+        },
+        "castName": {
+          "type": "string",
+          "description": "What it is casting; empty is nothing.",
+          "default": ""
+        },
+        "castProgress": {
+          "type": "number",
+          "description": "How far the cast is, 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StatusEffect"
+          },
+          "description": "Buffs and debuffs, small under the bars.",
+          "default": []
+        },
+        "hostile": {
+          "type": "boolean",
+          "description": "An enemy: its name and bar in danger.",
+          "default": false
+        },
+        "unitClass": {
+          "$ref": "#/$defs/UnitClass",
+          "description": "Elite, rare or boss.",
+          "default": "normal"
+        },
+        "targeted": {
+          "type": "boolean",
+          "description": "The player's target: a highlight ring.",
+          "default": false
+        },
+        "dead": {
+          "type": "boolean",
+          "description": "Dead: grey, a skull.",
+          "default": false
+        },
+        "offline": {
+          "type": "boolean",
+          "description": "Disconnected: dimmed.",
+          "default": false
+        },
+        "combat": {
+          "type": "boolean",
+          "description": "In combat: crossed swords by the level.",
+          "default": false
+        },
+        "leader": {
+          "type": "boolean",
+          "description": "A party's leader: a crown.",
+          "default": false
+        },
+        "size": {
+          "$ref": "#/$defs/UnitFrameSize",
+          "description": "How large.",
+          "default": "large"
+        },
+        "reverse": {
+          "type": "boolean",
+          "description": "Mirrored: the portrait at the end (a target frame).",
+          "default": false
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "PartyFramesDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The party's frames.",
+      "type": "object",
+      "properties": {
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UnitFrameDesc"
+          },
+          "description": "The members, each with its key.",
+          "default": []
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "left"
+        },
+        "gap": {
+          "type": "number",
+          "description": "Between frames; 0 is the style's sm space.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FramesResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a set of frames answered.",
+      "type": "object",
+      "properties": {
+        "clicked": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The member pressed this tick (its key)."
+        }
+      },
+      "required": [
+        "clicked"
+      ],
+      "additionalProperties": false
+    },
+    "RaidRole": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A raid member's role.",
+      "type": "string",
+      "enum": [
+        "none",
+        "tank",
+        "healer",
+        "damage"
+      ],
+      "x-og-variants": {
+        "none": "No role shown.",
+        "tank": "Tank: a shield mark.",
+        "healer": "Healer: a cross.",
+        "damage": "Damage: a sword."
+      }
+    },
+    "RaidMember": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One cell of raid frames.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name.",
+          "default": ""
+        },
+        "health": {
+          "type": "number",
+          "description": "Health.",
+          "default": 0
+        },
+        "healthMax": {
+          "type": "number",
+          "description": "Its maximum.",
+          "default": 100
+        },
+        "absorb": {
+          "type": "number",
+          "description": "An absorb shield.",
+          "default": 0,
+          "minimum": 0
+        },
+        "incomingHeal": {
+          "type": "number",
+          "description": "Healing on its way.",
+          "default": 0,
+          "minimum": 0
+        },
+        "role": {
+          "$ref": "#/$defs/RaidRole",
+          "description": "Its role.",
+          "default": "none"
+        },
+        "classColor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its class colour for the bar (a WoW raid's), null is the health colour.",
+          "default": null
+        },
+        "dead": {
+          "type": "boolean",
+          "description": "Dead.",
+          "default": false
+        },
+        "offline": {
+          "type": "boolean",
+          "description": "Disconnected.",
+          "default": false
+        },
+        "outOfRange": {
+          "type": "boolean",
+          "description": "Out of range: faded.",
+          "default": false
+        },
+        "aggro": {
+          "type": "boolean",
+          "description": "It has the enemy's attention: a danger border.",
+          "default": false
+        },
+        "dispel": {
+          "type": "string",
+          "description": "A debuff a healer can dispel: its type (magic, curse, poison, disease) glows on the cell's border.",
+          "default": ""
+        },
+        "selected": {
+          "type": "boolean",
+          "description": "The player's target.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "RaidFramesDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Raid frames: a grid of compact cells.",
+      "type": "object",
+      "properties": {
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RaidMember"
+          },
+          "description": "Up to 40 members.",
+          "default": []
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Members per column (groups of five, as raids are); 0 is 5.",
+          "default": 0
+        },
+        "cellWidth": {
+          "type": "number",
+          "description": "A cell's width; 0 is 96.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "cellHeight": {
+          "type": "number",
+          "description": "A cell's height; 0 is 36.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "left"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CastState": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "Where a cast is.",
+      "type": "string",
+      "enum": [
+        "casting",
+        "success",
+        "interrupted",
+        "failed"
+      ],
+      "x-og-variants": {
+        "casting": "Under way.",
+        "success": "Finished: the bar flashes and fades.",
+        "interrupted": "Interrupted: it turns danger, says so, and fades.",
+        "failed": "Failed (out of range, moved): the same as interrupted, with its own word."
+      }
+    },
+    "CastBarDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A cast or channel bar.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "What is cast.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "Its icon.",
+          "default": ""
+        },
+        "progress": {
+          "type": "number",
+          "description": "How far: a cast fills, a channel drains.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "remaining": {
+          "type": "number",
+          "description": "Seconds left (shown at its end).",
+          "default": 0,
+          "x-og-unit": "s"
+        },
+        "channel": {
+          "type": "boolean",
+          "description": "A channel: the bar drains, with tick marks at ticks.",
+          "default": false
+        },
+        "ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A channel's ticks (marks along it).",
+          "default": 0
+        },
+        "uninterruptible": {
+          "type": "boolean",
+          "description": "A shield on its icon and a grey border: it cannot be interrupted.",
+          "default": false
+        },
+        "state": {
+          "$ref": "#/$defs/CastState",
+          "description": "Where it is.",
+          "default": "casting"
+        },
+        "stateAt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.ui.tick() when it ended (success, interrupted, failed): it fades out after.",
+          "default": 0
+        },
+        "latency": {
+          "type": "number",
+          "description": "The latency zone at its end, a fraction of the bar (a cast can be queued in it).",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "interruptedLabel": {
+          "type": "string",
+          "description": "The interrupted word.",
+          "default": "Interrupted"
+        },
+        "failedLabel": {
+          "type": "string",
+          "description": "The failed word.",
+          "default": "Failed"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null is 280.",
+          "default": null
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "CrosshairStyle": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A crosshair's shape.",
+      "type": "string",
+      "enum": [
+        "cross",
+        "dot",
+        "circle",
+        "chevron",
+        "tShape"
+      ],
+      "x-og-variants": {
+        "cross": "Four lines round a gap (the default).",
+        "dot": "A dot.",
+        "circle": "A ring with a dot.",
+        "chevron": "A chevron under the aim point.",
+        "tShape": "Three lines, none above (Valorant's T)."
+      }
+    },
+    "HitKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a hit marker shows.",
+      "type": "string",
+      "enum": [
+        "hit",
+        "headshot",
+        "kill"
+      ],
+      "x-og-variants": {
+        "hit": "A hit: four white ticks.",
+        "headshot": "A critical or headshot: larger, in gold.",
+        "kill": "A kill: larger, in danger, held longer."
+      }
+    },
+    "CrosshairDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A crosshair and its hit markers.",
+      "type": "object",
+      "properties": {
+        "style": {
+          "$ref": "#/$defs/CrosshairStyle",
+          "description": "Its shape.",
+          "default": "cross"
+        },
+        "spread": {
+          "type": "number",
+          "description": "How far the lines stand off for the weapon's spread (moves on a fast spring).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "length": {
+          "type": "number",
+          "description": "A line's length; 0 is 8.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "thickness": {
+          "type": "number",
+          "description": "A line's width; 0 is 2.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "gap": {
+          "type": "number",
+          "description": "The gap at rest; 0 is 6.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its ink; null is white.",
+          "default": null
+        },
+        "outline": {
+          "type": "boolean",
+          "description": "A dark outline round each line (the default).",
+          "default": true
+        },
+        "dot": {
+          "type": "boolean",
+          "description": "A centre dot with the lines.",
+          "default": false
+        },
+        "hitAt": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "og.ui.tick() of the last hit: a marker flashes for it.",
+          "default": null
+        },
+        "hit": {
+          "$ref": "#/$defs/HitKind",
+          "description": "What the last hit was.",
+          "default": "hit"
+        },
+        "onTarget": {
+          "type": "boolean",
+          "description": "The aim is on an enemy: the ink turns danger.",
+          "default": false
+        },
+        "anchor": {
+          "$ref": "#/$defs/Anchor",
+          "description": "Where it sits; the default is the centre.",
+          "default": "center"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AmmoDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A weapon's ammunition.",
+      "type": "object",
+      "properties": {
+        "magazine": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rounds in the magazine.",
+          "default": 0
+        },
+        "magazineMax": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rounds a magazine holds.",
+          "default": 0
+        },
+        "reserve": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Rounds in reserve; null is infinite (∞).",
+          "default": null
+        },
+        "weapon": {
+          "type": "string",
+          "description": "The weapon's name; empty is none.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "The weapon's icon.",
+          "default": ""
+        },
+        "fireMode": {
+          "type": "string",
+          "description": "Its fire mode (AUTO, BURST); empty is none.",
+          "default": ""
+        },
+        "reloading": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A reload's progress 0 to 1; null is not reloading.",
+          "default": null,
+          "x-og-unit": "ratio"
+        },
+        "reloadLabel": {
+          "type": "string",
+          "description": "The reload word.",
+          "default": "Reloading"
+        },
+        "low": {
+          "type": "number",
+          "description": "At or under this fraction of a magazine it is low: warn, and the reload hint shows.",
+          "default": 0.25,
+          "x-og-unit": "ratio"
+        },
+        "reloadHint": {
+          "type": "string",
+          "description": "Under low: the hint (R Reload); empty is none.",
+          "default": ""
+        },
+        "pips": {
+          "type": "boolean",
+          "description": "The magazine as a row of rounds when it holds 40 or fewer (the default).",
+          "default": true
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "bottomRight"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MarkerKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a map marker is.",
+      "type": "string",
+      "enum": [
+        "player",
+        "ally",
+        "enemy",
+        "objective",
+        "ping",
+        "loot",
+        "poi"
+      ],
+      "x-og-variants": {
+        "player": "The player: an arrow by heading.",
+        "ally": "An ally: a teammate's arrow in their colour.",
+        "enemy": "An enemy: a danger diamond.",
+        "objective": "An objective: a gold star, kept on the edge when out of range.",
+        "ping": "A ping: a pulsing ring, kept on the edge.",
+        "loot": "Loot: a small square in its rarity.",
+        "poi": "A point of interest: its icon."
+      }
+    },
+    "MapMarkerItem": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A marker on a minimap.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "kind": {
+          "$ref": "#/$defs/MarkerKind",
+          "description": "What it is.",
+          "default": "player"
+        },
+        "x": {
+          "type": "number",
+          "description": "Where across the map, 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "y": {
+          "type": "number",
+          "description": "Where down the map, 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "heading": {
+          "type": "number",
+          "description": "Its facing, clockwise from north (players and allies).",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas (a poi's).",
+          "default": ""
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its colour; null is the kind's.",
+          "default": null
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "Loot's tier.",
+          "default": "none"
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader says of it.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "MapShape": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A minimap's outline.",
+      "type": "string",
+      "enum": [
+        "circle",
+        "square"
+      ],
+      "x-og-variants": {
+        "circle": "Round (the default).",
+        "square": "Square, cornered by the style."
+      }
+    },
+    "MinimapViewDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A minimap.",
+      "type": "object",
+      "properties": {
+        "texture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The map; null draws the style's well with a grid.",
+          "default": null
+        },
+        "centerX": {
+          "type": "number",
+          "description": "The map point at its centre (the player's), 0 to 1.",
+          "default": 0.5,
+          "x-og-unit": "ratio"
+        },
+        "centerY": {
+          "type": "number",
+          "description": "The map point at its centre.",
+          "default": 0.5,
+          "x-og-unit": "ratio"
+        },
+        "zoom": {
+          "type": "number",
+          "description": "How much of the map it shows across, 0 to 1.",
+          "default": 0.3,
+          "x-og-unit": "ratio"
+        },
+        "rotate": {
+          "type": "boolean",
+          "description": "The map turns with heading so up is ahead; else north is up and the player's arrow turns.",
+          "default": false
+        },
+        "heading": {
+          "type": "number",
+          "description": "The player's heading, clockwise from north.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "shape": {
+          "$ref": "#/$defs/MapShape",
+          "description": "Its outline.",
+          "default": "circle"
+        },
+        "size": {
+          "type": "number",
+          "description": "Its side; 0 is 200 (144 on a phone).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "markers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MapMarkerItem"
+          },
+          "description": "Its markers.",
+          "default": []
+        },
+        "zone": {
+          "type": "string",
+          "description": "A label under it (the zone's name); empty is none.",
+          "default": ""
+        },
+        "north": {
+          "type": "string",
+          "description": "The north letter.",
+          "default": "N"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "topRight"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MinimapResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a minimap answered.",
+      "type": "object",
+      "properties": {
+        "clicked": {
+          "type": "boolean",
+          "description": "It was pressed this tick: the map point is the press's position (og.Pointers) inside og.ui.bounds of <id>/Map, at the zoom and centre the game gave."
+        }
+      },
+      "required": [
+        "clicked"
+      ],
+      "additionalProperties": false
+    },
+    "CompassPoi": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A point on a compass strip.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "bearing": {
+          "type": "number",
+          "description": "Its bearing from the player, clockwise from north.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "distance": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How far (shown under it); null shows none.",
+          "default": null,
+          "x-og-unit": "m"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Its icon.",
+          "default": ""
+        },
+        "kind": {
+          "$ref": "#/$defs/MarkerKind",
+          "description": "What it is (its colour, and objectives and pings stay on the strip's ends when behind).",
+          "default": "player"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its colour; null is the kind's.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader says of it.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "CompassDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A compass strip.",
+      "type": "object",
+      "properties": {
+        "heading": {
+          "type": "number",
+          "description": "The player's heading, clockwise from north.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "fov": {
+          "type": "number",
+          "description": "How much of the circle the strip spans; 0 is 180°.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "rad"
+        },
+        "width": {
+          "type": "number",
+          "description": "Its width; 0 is 560 (a third of the surface on a phone).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "pois": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CompassPoi"
+          },
+          "description": "Its points.",
+          "default": []
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The eight point names from north clockwise (N, NE, E …); empty is English.",
+          "default": []
+        },
+        "units": {
+          "type": "string",
+          "description": "The distance's unit.",
+          "default": "m"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "top"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ObjectiveStep": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A step of an objective.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key.",
+          "default": ""
+        },
+        "text": {
+          "type": "string",
+          "description": "What to do.",
+          "default": ""
+        },
+        "done": {
+          "type": "boolean",
+          "description": "Done: ticked and dimmed.",
+          "default": false
+        },
+        "failed": {
+          "type": "boolean",
+          "description": "Failed: crossed in danger.",
+          "default": false
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many so far (3 of 5).",
+          "default": 0
+        },
+        "target": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many it needs; 0 shows no count.",
+          "default": 0
+        },
+        "progress": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A bar under it, 0 to 1.",
+          "default": null,
+          "x-og-unit": "ratio"
+        },
+        "optional": {
+          "type": "boolean",
+          "description": "Optional: in the muted ink with (Optional).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ObjectiveQuest": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An objective in the tracker.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "title": {
+          "type": "string",
+          "description": "Its title.",
+          "default": ""
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ObjectiveStep"
+          },
+          "description": "Its steps.",
+          "default": []
+        },
+        "timer": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Seconds left, counting down in its header.",
+          "default": null,
+          "x-og-unit": "s"
+        },
+        "distance": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How far its marker is.",
+          "default": null,
+          "x-og-unit": "m"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Its icon (a main quest's, a side quest's).",
+          "default": ""
+        },
+        "focused": {
+          "type": "boolean",
+          "description": "The tracked one: its bar in highlight.",
+          "default": false
+        },
+        "completedAt": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "og.ui.tick() when it was completed: it flashes Complete and leaves.",
+          "default": null
+        },
+        "completeLabel": {
+          "type": "string",
+          "description": "The completed word.",
+          "default": "Complete"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ObjectiveTrackerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The objective tracker.",
+      "type": "object",
+      "properties": {
+        "quests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ObjectiveQuest"
+          },
+          "description": "The tracked objectives.",
+          "default": []
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most shown; 0 is 3 (2 on a phone).",
+          "default": 0
+        },
+        "width": {
+          "type": "number",
+          "description": "Its width; 0 is 300.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "units": {
+          "type": "string",
+          "description": "The distance's unit.",
+          "default": "m"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "right"
+        }
+      },
+      "additionalProperties": false
+    },
+    "KillfeedEntry": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A line of a killfeed.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "killer": {
+          "type": "string",
+          "description": "Who got the kill; empty for a fall or the zone.",
+          "default": ""
+        },
+        "killerTeam": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The killer's team (its colour).",
+          "default": 0
+        },
+        "victim": {
+          "type": "string",
+          "description": "Who fell.",
+          "default": ""
+        },
+        "victimTeam": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The victim's team.",
+          "default": 0
+        },
+        "weapon": {
+          "type": "string",
+          "description": "The weapon's icon.",
+          "default": ""
+        },
+        "weaponText": {
+          "type": "string",
+          "description": "The weapon in words, when it has no icon.",
+          "default": ""
+        },
+        "headshot": {
+          "type": "boolean",
+          "description": "A headshot mark.",
+          "default": false
+        },
+        "assist": {
+          "type": "string",
+          "description": "An assister, after the killer (+ name).",
+          "default": ""
+        },
+        "local": {
+          "type": "boolean",
+          "description": "The player is in it: the line is highlighted.",
+          "default": false
+        },
+        "at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.ui.tick() when it happened.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "KillfeedDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A killfeed.",
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/KillfeedEntry"
+          },
+          "description": "The latest entries, oldest first.",
+          "default": []
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most lines; 0 is 5 (3 on a phone).",
+          "default": 0
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "How long a line stays; 0 is 6000.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "topRight"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScoreColumn": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A scoreboard column.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "Its heading (K, D, A, Score).",
+          "default": ""
+        },
+        "width": {
+          "type": "number",
+          "description": "Its width; 0 is 56.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScoreRow": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A player's row on a scoreboard.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "The player's name.",
+          "default": ""
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The values, one per column.",
+          "default": []
+        },
+        "local": {
+          "type": "boolean",
+          "description": "The player: highlighted.",
+          "default": false
+        },
+        "dead": {
+          "type": "boolean",
+          "description": "Dead: dimmed with a skull.",
+          "default": false
+        },
+        "ping": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Latency in ms: bars, warn past 100, danger past 200; 0 hides it.",
+          "default": 0
+        },
+        "avatar": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A portrait (art kind portrait).",
+          "default": null
+        },
+        "icon": {
+          "type": "string",
+          "description": "A rank, class or agent icon.",
+          "default": ""
+        },
+        "mvp": {
+          "type": "boolean",
+          "description": "The best of the match: a star.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScoreTeam": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A team on a scoreboard.",
+      "type": "object",
+      "properties": {
+        "team": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its team colour.",
+          "default": 0
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name.",
+          "default": ""
+        },
+        "score": {
+          "type": "string",
+          "description": "Its score.",
+          "default": ""
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScoreRow"
+          },
+          "description": "Its players.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScoreboardDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A scoreboard.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title (the mode, the map).",
+          "default": ""
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "A line under it (the round, the time).",
+          "default": ""
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScoreColumn"
+          },
+          "description": "The columns after the name.",
+          "default": []
+        },
+        "teams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScoreTeam"
+          },
+          "description": "The teams, each with its rows.",
+          "default": []
+        },
+        "width": {
+          "type": "number",
+          "description": "Its width; 0 is 760 (the safe area less its gutters on a phone).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "center"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TimerMode": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "Which way a timer runs.",
+      "type": "string",
+      "enum": [
+        "countdown",
+        "stopwatch"
+      ],
+      "x-og-variants": {
+        "countdown": "Counts down (the default).",
+        "stopwatch": "Counts up."
+      }
+    },
+    "HudTimerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A round, match or turn timer.",
+      "type": "object",
+      "properties": {
+        "seconds": {
+          "type": "number",
+          "description": "The time shown.",
+          "default": 0,
+          "x-og-unit": "s"
+        },
+        "total": {
+          "type": "number",
+          "description": "A countdown's whole length (for its ring); 0 draws no ring.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "mode": {
+          "$ref": "#/$defs/TimerMode",
+          "description": "Which way it runs.",
+          "default": "countdown"
+        },
+        "label": {
+          "type": "string",
+          "description": "A label over it (Round 2); empty is none.",
+          "default": ""
+        },
+        "warnAt": {
+          "type": "number",
+          "description": "A countdown under this many seconds warns, then pulses in danger under a third of it.",
+          "default": 10,
+          "x-og-unit": "s"
+        },
+        "tenths": {
+          "type": "boolean",
+          "description": "Tenths under ten seconds (the default).",
+          "default": true
+        },
+        "paused": {
+          "type": "boolean",
+          "description": "Paused: it dims and blinks.",
+          "default": false
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "top"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ComboDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A combo counter.",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Hits in the combo; under 2 it hides (a break shakes it off).",
+          "default": 0
+        },
+        "multiplier": {
+          "type": "number",
+          "description": "A score multiplier shown beside it (×4); 0 or 1 hides it.",
+          "default": 0
+        },
+        "decay": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The combo's time left to the next hit, 0 to 1, as a draining bar.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "The word under it.",
+          "default": "Combo"
+        },
+        "milestones": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "Counts that celebrate (a burst and a bigger pop); empty is 10, 25, 50, 100, then every 100.",
+          "default": []
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "right"
+        }
+      },
+      "additionalProperties": false
+    },
+    "JudgementEvent": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A judgement of a hit.",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Its word (PERFECT, GREAT, MISS).",
+          "default": ""
+        },
+        "tier": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "0 the best, then down: 0 gold, 1 success, 2 info, 3 warn, 4 and on danger (a miss).",
+          "default": 0
+        },
+        "offsetMs": {
+          "type": "number",
+          "description": "How early (negative) or late (positive) it was; 0 shows nothing.",
+          "default": 0,
+          "x-og-unit": "ms"
+        },
+        "at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.ui.tick() when it happened.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "JudgementDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Judgement pops.",
+      "type": "object",
+      "properties": {
+        "last": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JudgementEvent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The latest judgement; a later at pops again.",
+          "default": null
+        },
+        "earlyLabel": {
+          "type": "string",
+          "description": "The early word.",
+          "default": "Early"
+        },
+        "lateLabel": {
+          "type": "string",
+          "description": "The late word.",
+          "default": "Late"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "center"
+        },
+        "offsetY": {
+          "type": "number",
+          "description": "Moves it down from its anchor (above the hit line: negative).",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ResourceItem": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A resource on a resource bar.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "Its icon.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "What it is (what a screen reader says).",
+          "default": ""
+        },
+        "amount": {
+          "type": "number",
+          "description": "How much.",
+          "default": 0
+        },
+        "rate": {
+          "type": "number",
+          "description": "Its rate (per second or per turn): + in success, − in danger with a mark.",
+          "default": 0
+        },
+        "rateSuffix": {
+          "type": "string",
+          "description": "After the rate.",
+          "default": "/s"
+        },
+        "capacity": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A cap: shown as amount / capacity, warn near it, danger at it (supply).",
+          "default": null
+        },
+        "format": {
+          "$ref": "#/$defs/NumberFormatDesc",
+          "description": "How its numbers are written; the default is compact.",
+          "default": {}
+        }
+      },
+      "additionalProperties": false
+    },
+    "ResourceBarDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A resource bar.",
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourceItem"
+          },
+          "description": "The resources.",
+          "default": []
+        },
+        "rates": {
+          "type": "boolean",
+          "description": "Show rates (the default).",
+          "default": true
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "top"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TurnUnit": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A unit in the turn order.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name.",
+          "default": ""
+        },
+        "portrait": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its portrait (art kind portrait, 1:1).",
+          "default": null
+        },
+        "team": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "0 the player's side (primary), else enemies (danger) by number.",
+          "default": 0
+        },
+        "atb": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An active time gauge 0 to 1 under it (Final Fantasy's ATB).",
+          "default": null,
+          "x-og-unit": "ratio"
+        },
+        "current": {
+          "type": "boolean",
+          "description": "Its turn now: larger, ringed, first.",
+          "default": false
+        },
+        "delayed": {
+          "type": "boolean",
+          "description": "Pushed back: a down mark.",
+          "default": false
+        },
+        "dead": {
+          "type": "boolean",
+          "description": "Out of the order: greyed and crossed.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "TurnOrderDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A turn order.",
+      "type": "object",
+      "properties": {
+        "units": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TurnUnit"
+          },
+          "description": "The units in turn order, the current first.",
+          "default": []
+        },
+        "direction": {
+          "$ref": "#/$defs/Direction",
+          "description": "Which way it runs.",
+          "default": "row"
+        },
+        "size": {
+          "type": "number",
+          "description": "A portrait's side; 0 is 52 (the current one larger).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most shown; 0 is 8.",
+          "default": 0
+        },
+        "nowLabel": {
+          "type": "string",
+          "description": "The current one's word.",
+          "default": "Now"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "top"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SpeedoStyle": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A speedometer's look.",
+      "type": "string",
+      "enum": [
+        "dial",
+        "digital"
+      ],
+      "x-og-variants": {
+        "dial": "A dial with a needle and the tach round it (the default).",
+        "digital": "The speed in large digits over a tach bar."
+      }
+    },
+    "SpeedometerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A speedometer and tachometer.",
+      "type": "object",
+      "properties": {
+        "speed": {
+          "type": "number",
+          "description": "The speed.",
+          "default": 0
+        },
+        "maxSpeed": {
+          "type": "number",
+          "description": "The dial's top.",
+          "default": 300
+        },
+        "unit": {
+          "type": "string",
+          "description": "The speed's unit.",
+          "default": "km/h"
+        },
+        "rpm": {
+          "type": "number",
+          "description": "Engine speed, 0 to 1 of the tach.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "redline": {
+          "type": "number",
+          "description": "Where the red zone starts.",
+          "default": 0.85,
+          "x-og-unit": "ratio"
+        },
+        "gear": {
+          "type": "string",
+          "description": "The gear (N, R, 1 …); empty is none.",
+          "default": ""
+        },
+        "boost": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A boost or nitro gauge 0 to 1.",
+          "default": null,
+          "x-og-unit": "ratio"
+        },
+        "style": {
+          "$ref": "#/$defs/SpeedoStyle",
+          "description": "Its look.",
+          "default": "dial"
+        },
+        "size": {
+          "type": "number",
+          "description": "Its diameter; 0 is 180 (132 on a phone).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "bottomRight"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScorebugTeam": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A team on a scorebug.",
+      "type": "object",
+      "properties": {
+        "abbr": {
+          "type": "string",
+          "description": "Its short name (LAL).",
+          "default": ""
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its score.",
+          "default": 0
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its colour; null is a team colour by side.",
+          "default": null
+        },
+        "logo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its crest (art kind emblem, 1:1).",
+          "default": null
+        },
+        "timeouts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Time-outs left (pips).",
+          "default": 0
+        },
+        "timeoutsMax": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Time-outs it had; 0 draws no pips.",
+          "default": 0
+        },
+        "possession": {
+          "type": "boolean",
+          "description": "It has the ball: a mark by its score.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScorebugDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A broadcast scorebug.",
+      "type": "object",
+      "properties": {
+        "home": {
+          "$ref": "#/$defs/ScorebugTeam",
+          "description": "The home side.",
+          "default": {}
+        },
+        "away": {
+          "$ref": "#/$defs/ScorebugTeam",
+          "description": "The away side.",
+          "default": {}
+        },
+        "clock": {
+          "type": "string",
+          "description": "The game clock (12:34).",
+          "default": ""
+        },
+        "period": {
+          "type": "string",
+          "description": "The period (Q2, 2nd, ET).",
+          "default": ""
+        },
+        "shotClock": {
+          "type": "string",
+          "description": "A shot or play clock; empty is none.",
+          "default": ""
+        },
+        "situation": {
+          "type": "string",
+          "description": "A line under it (2nd & 7, Power play); empty is none.",
+          "default": ""
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "topLeft"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FlightHudDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A flight HUD.",
+      "type": "object",
+      "properties": {
+        "pitch": {
+          "type": "number",
+          "description": "Pitch, nose up positive.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "roll": {
+          "type": "number",
+          "description": "Roll, right wing down positive.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "heading": {
+          "type": "number",
+          "description": "Heading, clockwise from north.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "speed": {
+          "type": "number",
+          "description": "Airspeed.",
+          "default": 0
+        },
+        "altitude": {
+          "type": "number",
+          "description": "Altitude.",
+          "default": 0
+        },
+        "speedUnit": {
+          "type": "string",
+          "description": "The speed's unit.",
+          "default": "kt"
+        },
+        "altitudeUnit": {
+          "type": "string",
+          "description": "The altitude's unit.",
+          "default": "ft"
+        },
+        "verticalSpeed": {
+          "type": "number",
+          "description": "Climb rate (shown by the altitude).",
+          "default": 0
+        },
+        "pathX": {
+          "type": "number",
+          "description": "The flight path marker's offset from the boresight, across.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "pathY": {
+          "type": "number",
+          "description": "Its offset, down.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The HUD's ink; null is a bright phosphor green.",
+          "default": null
+        },
+        "fov": {
+          "type": "number",
+          "description": "The vertical field of view the ladder spans (degrees of pitch per screen); 0 is 40°.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "rad"
+        },
+        "anchor": {
+          "$ref": "#/$defs/Anchor",
+          "description": "Where it sits; the default is the centre.",
+          "default": "center"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DamageHit": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A hit from a direction.",
+      "type": "object",
+      "properties": {
+        "angle": {
+          "type": "number",
+          "description": "Where it came from, clockwise from straight ahead.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.ui.tick() when it landed.",
+          "default": 0
+        },
+        "strength": {
+          "type": "number",
+          "description": "How hard, 0 to 1 (its width and opacity).",
+          "default": 1,
+          "x-og-unit": "ratio"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DamageDirectionDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Damage direction indicators.",
+      "type": "object",
+      "properties": {
+        "hits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DamageHit"
+          },
+          "description": "Recent hits.",
+          "default": []
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "How long an indicator shows; 0 is 1400.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "radius": {
+          "type": "number",
+          "description": "Its distance from the centre; 0 is a fifth of the surface's shorter side.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its ink; null is danger.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "LowHealthDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A low-health and hit vignette.",
+      "type": "object",
+      "properties": {
+        "health": {
+          "type": "number",
+          "description": "Health as a fraction, 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "threshold": {
+          "type": "number",
+          "description": "Under this the vignette shows, deepening to 0.",
+          "default": 0.35,
+          "x-og-unit": "ratio"
+        },
+        "hitAt": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "og.ui.tick() of the last hit: a quick red flash at the edges.",
+          "default": null
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its ink; null is a deep red.",
+          "default": null
         }
       },
       "additionalProperties": false

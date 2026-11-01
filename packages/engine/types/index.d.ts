@@ -30734,6 +30734,2746 @@ export interface SubtitlesDesc {
 
 
 /**
+ * A stat bar's shape.
+ * - `"flat"`: A rounded track (the default).
+ * - `"slanted"`: Ends cut on a slant (sci-fi, fighting games).
+ * - `"pill"`: Fully round ends.
+ */
+export type StatBarStyle = "flat" | "slanted" | "pill";
+
+/**
+ * A health or resource bar.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface StatBarDesc {
+  /**
+   * The value.
+   *
+   * @default 0
+   */
+  readonly value?: number;
+  /**
+   * Its maximum.
+   *
+   * @default 100
+   */
+  readonly max?: number;
+  /**
+   * What it measures (its colour): health turns warn and danger as it falls.
+   *
+   * @default "health"
+   */
+  readonly kind?: MeterKind;
+  /**
+   * A colour of its own instead of the kind's.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Value per segment: the bar is blocks of this much (Overwatch's 25-point blocks); 0 is one bar.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly segment?: number;
+  /**
+   * Shield or armour on top of the value, drawn as a row of cells over the bar (Apex's armour).
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly shield?: number;
+  /**
+   * The most shield; 0 hides the row.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly shieldMax?: number;
+  /**
+   * Shield per cell; 0 is one continuous strip.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly shieldCell?: number;
+  /**
+   * The shield's tier colour (white, blue, purple, gold, red as Apex's); none is the info colour.
+   *
+   * @default "none"
+   */
+  readonly shieldTier?: Rarity;
+  /**
+   * Healing on its way, a pale preview past the fill.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly heal?: number;
+  /**
+   * Damage that can still come back (a fighting game's grey health): drawn between the value and this.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly recoverable?: number;
+  /**
+   * A drop leaves a pale chunk that holds, then drains to the new value (the default).
+   *
+   * @default true
+   */
+  readonly ghost?: boolean;
+  /**
+   * A short name at its start (HP); empty is none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * The value as text at its end (72 / 100).
+   *
+   * @default false
+   */
+  readonly showValue?: boolean;
+  /**
+   * The value as text instead (72%); empty formats value / max.
+   *
+   * @default ""
+   */
+  readonly valueText?: string;
+  /**
+   * An icon of the atlas before it.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Its width; null is 240 (grows with the surface).
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; 0 is 14.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly thickness?: number;
+  /**
+   * Below this fraction a health bar is low (warn).
+   *
+   * @default 0.3
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly low?: number;
+  /**
+   * Below this fraction it is critical: danger, and it pulses.
+   *
+   * @default 0.15
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly critical?: number;
+  /**
+   * Fills from the end (the right player's bar in a fighting game).
+   *
+   * @default false
+   */
+  readonly reverse?: boolean;
+  /**
+   * Its shape.
+   *
+   * @default "flat"
+   */
+  readonly style?: StatBarStyle;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default null
+   */
+  readonly anchor?: Anchor | null;
+  /**
+   * What a screen reader calls it; empty is the label, else Health.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+}
+
+
+/**
+ * An orb of health or mana.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface OrbMeterDesc {
+  /**
+   * The value.
+   *
+   * @default 0
+   */
+  readonly value?: number;
+  /**
+   * Its maximum.
+   *
+   * @default 100
+   */
+  readonly max?: number;
+  /**
+   * Its liquid's colour: health (red) or mana (blue).
+   *
+   * @default "health"
+   */
+  readonly kind?: MeterKind;
+  /**
+   * A colour of its own.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Its diameter; 0 is 112.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * The value in the middle (the default).
+   *
+   * @default true
+   */
+  readonly showValue?: boolean;
+  /**
+   * A caption under it; empty is none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default null
+   */
+  readonly anchor?: Anchor | null;
+  /**
+   * What a screen reader calls it; empty is the label, else Health.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+}
+
+
+/**
+ * A radial stamina wheel.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RadialMeterDesc {
+  /**
+   * The value, in wheels: 1 is one full wheel.
+   *
+   * @default 0
+   */
+  readonly value?: number;
+  /**
+   * Wheels (an extended stamina's second and third ring); 0 is 1.
+   *
+   * @default 0
+   */
+  readonly wheels?: number;
+  /**
+   * Ran out: red, refilling slowly, until full (Breath of the Wild).
+   *
+   * @default false
+   */
+  readonly exhausted?: boolean;
+  /**
+   * Its diameter; 0 is 56.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * Fades out a second after it is full (the default).
+   *
+   * @default true
+   */
+  readonly hideWhenFull?: boolean;
+  /**
+   * Its fill; null is success.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default null
+   */
+  readonly anchor?: Anchor | null;
+  /**
+   * What a screen reader calls it.
+   *
+   * @default "Stamina"
+   */
+  readonly name?: string;
+}
+
+
+/**
+ * An ability, item or spell on a bar.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface AbilitySlotDesc {
+  /**
+   * Its key in an ability bar (and its probe id there).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * An icon of the atlas.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Its art (art kind ability, 1:1) instead of the icon.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * What a screen reader calls it (Fireball).
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * The key or button glyph's label (Q, LB, 1); empty is none.
+   *
+   * @default ""
+   */
+  readonly hotkey?: string;
+  /**
+   * Seconds of cooldown left; 0 is ready.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly cooldown?: number;
+  /**
+   * The cooldown's length; the sweep shows cooldown over it.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly cooldownMax?: number;
+  /**
+   * Charges ready (a count at its corner when maxCharges is over 1).
+   *
+   * @default 0
+   */
+  readonly charges?: number;
+  /**
+   * Charges it holds; 0 or 1 is none.
+   *
+   * @default 0
+   */
+  readonly maxCharges?: number;
+  /**
+   * How far the next charge has come, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly chargeProgress?: number;
+  /**
+   * Its cost shown at the bottom (40); empty is none.
+   *
+   * @default ""
+   */
+  readonly cost?: string;
+  /**
+   * Not enough resource: tinted with the resource's colour.
+   *
+   * @default false
+   */
+  readonly unaffordable?: boolean;
+  /**
+   * The target is out of range: the hotkey turns danger.
+   *
+   * @default false
+   */
+  readonly outOfRange?: boolean;
+  /**
+   * Toggled on or channelling: a glowing border that breathes.
+   *
+   * @default false
+   */
+  readonly active?: boolean;
+  /**
+   * Not learnt yet: dimmed with a lock.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * An ultimate's charge 0 to 1: a ring fills round it and the percent shows until it is ready.
+   *
+   * @default null
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly ultimate?: number | null;
+  /**
+   * Ranks learnt (pips under it).
+   *
+   * @default 0
+   */
+  readonly level?: number;
+  /**
+   * Ranks it has; 0 draws no pips.
+   *
+   * @default 0
+   */
+  readonly maxLevel?: number;
+  /**
+   * Its side; 0 is 56 (48 on a phone).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+}
+
+
+/**
+ * A bar of ability slots.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface AbilityBarDesc {
+  /**
+   * The slots, in order; each one's key is its id.
+   *
+   * @default []
+   */
+  readonly slots?: readonly AbilitySlotDesc[];
+  /**
+   * Each slot's side; 0 is 56 (48 on a phone).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * Between slots; 0 is the style's sm space.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "bottom"
+   */
+  readonly anchor?: Anchor | null;
+  /**
+   * Which way the slots run.
+   *
+   * @default "row"
+   */
+  readonly direction?: Direction;
+}
+
+/** What an ability bar answered. */
+export interface AbilityBarResult {
+  /** The slot pressed and released this tick (its key). */
+  readonly clicked: string | null;
+  /** The slots held. */
+  readonly pressed: readonly string[];
+}
+
+
+/**
+ * A buff or debuff on a unit.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface StatusEffect {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * An icon of the atlas.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Its art (art kind buff, 1:1).
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * What it is (Haste); what a screen reader says.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Stacks (a count at its corner from 2 on).
+   *
+   * @default 0
+   */
+  readonly stacks?: number;
+  /**
+   * Seconds left; 0 lasts until removed.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly remaining?: number;
+  /**
+   * Its whole length, for the sweep.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number;
+  /**
+   * Harmful: in the debuff row, with a red border and a notch.
+   *
+   * @default false
+   */
+  readonly debuff?: boolean;
+  /**
+   * A debuff's type for its border colour (magic, curse, poison, disease, bleed); empty is plain.
+   *
+   * @default ""
+   */
+  readonly type?: string;
+  /**
+   * Cast by the player (drawn larger in a target's grid).
+   *
+   * @default false
+   */
+  readonly mine?: boolean;
+}
+
+/**
+ * A grid of buffs and debuffs.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface StatusGridDesc {
+  /**
+   * The effects, in the game's order.
+   *
+   * @default []
+   */
+  readonly effects?: readonly StatusEffect[];
+  /**
+   * Per row; 0 is 8.
+   *
+   * @default 0
+   */
+  readonly columns?: number;
+  /**
+   * An icon's side; 0 is 32.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * The most shown; more fold into a +n tile; 0 is no limit.
+   *
+   * @default 0
+   */
+  readonly max?: number;
+  /**
+   * The time left under each icon (the default).
+   *
+   * @default true
+   */
+  readonly timers?: boolean;
+  /**
+   * Debuffs in a row of their own under the buffs (the default).
+   *
+   * @default true
+   */
+  readonly split?: boolean;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default null
+   */
+  readonly anchor?: Anchor | null;
+}
+
+/** What a status grid answered. */
+export interface StatusGridResult {
+  /** The effect under the pointer or focus (show its tooltip). */
+  readonly hovered: string | null;
+  /** The effect pressed (cancel a buff). */
+  readonly clicked: string | null;
+}
+
+
+/**
+ * A unit's standing, which dresses its frame.
+ * - `"normal"`: A plain unit.
+ * - `"elite"`: An elite: a gold dragon on its portrait's ring.
+ * - `"rare"`: A rare: a silver one.
+ * - `"boss"`: A boss: a skull and a heavier frame.
+ */
+export type UnitClass = "normal" | "elite" | "rare" | "boss";
+
+/**
+ * A unit frame's size.
+ * - `"large"`: The player's or the target's frame (the default).
+ * - `"medium"`: A party member's.
+ * - `"small"`: A target-of-target's or a pet's.
+ */
+export type UnitFrameSize = "large" | "medium" | "small";
+
+/**
+ * A unit's frame: portrait, name, bars.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface UnitFrameDesc {
+  /**
+   * Its key in party frames (and its probe id there).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its level (60, ??); empty is none.
+   *
+   * @default ""
+   */
+  readonly level?: string;
+  /**
+   * A line under the name (a guild, a class).
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * Its portrait (art kind portrait, 1:1).
+   *
+   * @default null
+   */
+  readonly portrait?: Texture | null;
+  /**
+   * A class or role icon of the atlas.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Health.
+   *
+   * @default 0
+   */
+  readonly health?: number;
+  /**
+   * Its maximum.
+   *
+   * @default 100
+   */
+  readonly healthMax?: number;
+  /**
+   * An absorb shield over the health.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly shield?: number;
+  /**
+   * A resource bar's value (mana, rage, energy); null draws none.
+   *
+   * @default null
+   */
+  readonly resource?: number | null;
+  /**
+   * Its maximum.
+   *
+   * @default 100
+   */
+  readonly resourceMax?: number;
+  /**
+   * Its colour.
+   *
+   * @default "mana"
+   */
+  readonly resourceKind?: MeterKind;
+  /**
+   * What it is casting; empty is nothing.
+   *
+   * @default ""
+   */
+  readonly castName?: string;
+  /**
+   * How far the cast is, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly castProgress?: number;
+  /**
+   * Buffs and debuffs, small under the bars.
+   *
+   * @default []
+   */
+  readonly effects?: readonly StatusEffect[];
+  /**
+   * An enemy: its name and bar in danger.
+   *
+   * @default false
+   */
+  readonly hostile?: boolean;
+  /**
+   * Elite, rare or boss.
+   *
+   * @default "normal"
+   */
+  readonly unitClass?: UnitClass;
+  /**
+   * The player's target: a highlight ring.
+   *
+   * @default false
+   */
+  readonly targeted?: boolean;
+  /**
+   * Dead: grey, a skull.
+   *
+   * @default false
+   */
+  readonly dead?: boolean;
+  /**
+   * Disconnected: dimmed.
+   *
+   * @default false
+   */
+  readonly offline?: boolean;
+  /**
+   * In combat: crossed swords by the level.
+   *
+   * @default false
+   */
+  readonly combat?: boolean;
+  /**
+   * A party's leader: a crown.
+   *
+   * @default false
+   */
+  readonly leader?: boolean;
+  /**
+   * How large.
+   *
+   * @default "large"
+   */
+  readonly size?: UnitFrameSize;
+  /**
+   * Mirrored: the portrait at the end (a target frame).
+   *
+   * @default false
+   */
+  readonly reverse?: boolean;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default null
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * The party's frames.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PartyFramesDesc {
+  /**
+   * The members, each with its key.
+   *
+   * @default []
+   */
+  readonly members?: readonly UnitFrameDesc[];
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "left"
+   */
+  readonly anchor?: Anchor | null;
+  /**
+   * Between frames; 0 is the style's sm space.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number;
+}
+
+/** What a set of frames answered. */
+export interface FramesResult {
+  /** The member pressed this tick (its key). */
+  readonly clicked: string | null;
+}
+
+
+/**
+ * A raid member's role.
+ * - `"none"`: No role shown.
+ * - `"tank"`: Tank: a shield mark.
+ * - `"healer"`: Healer: a cross.
+ * - `"damage"`: Damage: a sword.
+ */
+export type RaidRole = "none" | "tank" | "healer" | "damage";
+
+/**
+ * One cell of raid frames.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RaidMember {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Health.
+   *
+   * @default 0
+   */
+  readonly health?: number;
+  /**
+   * Its maximum.
+   *
+   * @default 100
+   */
+  readonly healthMax?: number;
+  /**
+   * An absorb shield.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly absorb?: number;
+  /**
+   * Healing on its way.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly incomingHeal?: number;
+  /**
+   * Its role.
+   *
+   * @default "none"
+   */
+  readonly role?: RaidRole;
+  /**
+   * Its class colour for the bar (a WoW raid's), null is the health colour.
+   *
+   * @default null
+   */
+  readonly classColor?: Paint | null;
+  /**
+   * Dead.
+   *
+   * @default false
+   */
+  readonly dead?: boolean;
+  /**
+   * Disconnected.
+   *
+   * @default false
+   */
+  readonly offline?: boolean;
+  /**
+   * Out of range: faded.
+   *
+   * @default false
+   */
+  readonly outOfRange?: boolean;
+  /**
+   * It has the enemy's attention: a danger border.
+   *
+   * @default false
+   */
+  readonly aggro?: boolean;
+  /**
+   * A debuff a healer can dispel: its type (magic, curse, poison, disease) glows on the cell's border.
+   *
+   * @default ""
+   */
+  readonly dispel?: string;
+  /**
+   * The player's target.
+   *
+   * @default false
+   */
+  readonly selected?: boolean;
+}
+
+/**
+ * Raid frames: a grid of compact cells.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RaidFramesDesc {
+  /**
+   * Up to 40 members.
+   *
+   * @default []
+   */
+  readonly members?: readonly RaidMember[];
+  /**
+   * Members per column (groups of five, as raids are); 0 is 5.
+   *
+   * @default 0
+   */
+  readonly columns?: number;
+  /**
+   * A cell's width; 0 is 96.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly cellWidth?: number;
+  /**
+   * A cell's height; 0 is 36.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly cellHeight?: number;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "left"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * Where a cast is.
+ * - `"casting"`: Under way.
+ * - `"success"`: Finished: the bar flashes and fades.
+ * - `"interrupted"`: Interrupted: it turns danger, says so, and fades.
+ * - `"failed"`: Failed (out of range, moved): the same as interrupted, with its own word.
+ */
+export type CastState = "casting" | "success" | "interrupted" | "failed";
+
+/**
+ * A cast or channel bar.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CastBarDesc {
+  /**
+   * What is cast.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its icon.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * How far: a cast fills, a channel drains.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly progress?: number;
+  /**
+   * Seconds left (shown at its end).
+   *
+   * @default 0
+   * @unit s (seconds of simulation time)
+   */
+  readonly remaining?: number;
+  /**
+   * A channel: the bar drains, with tick marks at ticks.
+   *
+   * @default false
+   */
+  readonly channel?: boolean;
+  /**
+   * A channel's ticks (marks along it).
+   *
+   * @default 0
+   */
+  readonly ticks?: number;
+  /**
+   * A shield on its icon and a grey border: it cannot be interrupted.
+   *
+   * @default false
+   */
+  readonly uninterruptible?: boolean;
+  /**
+   * Where it is.
+   *
+   * @default "casting"
+   */
+  readonly state?: CastState;
+  /**
+   * og.ui.tick() when it ended (success, interrupted, failed): it fades out after.
+   *
+   * @default 0
+   */
+  readonly stateAt?: number;
+  /**
+   * The latency zone at its end, a fraction of the bar (a cast can be queued in it).
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly latency?: number;
+  /**
+   * The interrupted word.
+   *
+   * @default "Interrupted"
+   */
+  readonly interruptedLabel?: string;
+  /**
+   * The failed word.
+   *
+   * @default "Failed"
+   */
+  readonly failedLabel?: string;
+  /**
+   * Its width; null is 280.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default null
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * A crosshair's shape.
+ * - `"cross"`: Four lines round a gap (the default).
+ * - `"dot"`: A dot.
+ * - `"circle"`: A ring with a dot.
+ * - `"chevron"`: A chevron under the aim point.
+ * - `"tShape"`: Three lines, none above (Valorant's T).
+ */
+export type CrosshairStyle = "cross" | "dot" | "circle" | "chevron" | "tShape";
+
+/**
+ * What a hit marker shows.
+ * - `"hit"`: A hit: four white ticks.
+ * - `"headshot"`: A critical or headshot: larger, in gold.
+ * - `"kill"`: A kill: larger, in danger, held longer.
+ */
+export type HitKind = "hit" | "headshot" | "kill";
+
+/**
+ * A crosshair and its hit markers.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CrosshairDesc {
+  /**
+   * Its shape.
+   *
+   * @default "cross"
+   */
+  readonly style?: CrosshairStyle;
+  /**
+   * How far the lines stand off for the weapon's spread (moves on a fast spring).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly spread?: number;
+  /**
+   * A line's length; 0 is 8.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly length?: number;
+  /**
+   * A line's width; 0 is 2.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly thickness?: number;
+  /**
+   * The gap at rest; 0 is 6.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number;
+  /**
+   * Its ink; null is white.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * A dark outline round each line (the default).
+   *
+   * @default true
+   */
+  readonly outline?: boolean;
+  /**
+   * A centre dot with the lines.
+   *
+   * @default false
+   */
+  readonly dot?: boolean;
+  /**
+   * og.ui.tick() of the last hit: a marker flashes for it.
+   *
+   * @default null
+   */
+  readonly hitAt?: number | null;
+  /**
+   * What the last hit was.
+   *
+   * @default "hit"
+   */
+  readonly hit?: HitKind;
+  /**
+   * The aim is on an enemy: the ink turns danger.
+   *
+   * @default false
+   */
+  readonly onTarget?: boolean;
+  /**
+   * Where it sits; the default is the centre.
+   *
+   * @default "center"
+   */
+  readonly anchor?: Anchor;
+}
+
+
+/**
+ * A weapon's ammunition.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface AmmoDesc {
+  /**
+   * Rounds in the magazine.
+   *
+   * @default 0
+   */
+  readonly magazine?: number;
+  /**
+   * Rounds a magazine holds.
+   *
+   * @default 0
+   */
+  readonly magazineMax?: number;
+  /**
+   * Rounds in reserve; null is infinite (∞).
+   *
+   * @default null
+   */
+  readonly reserve?: number | null;
+  /**
+   * The weapon's name; empty is none.
+   *
+   * @default ""
+   */
+  readonly weapon?: string;
+  /**
+   * The weapon's icon.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Its fire mode (AUTO, BURST); empty is none.
+   *
+   * @default ""
+   */
+  readonly fireMode?: string;
+  /**
+   * A reload's progress 0 to 1; null is not reloading.
+   *
+   * @default null
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly reloading?: number | null;
+  /**
+   * The reload word.
+   *
+   * @default "Reloading"
+   */
+  readonly reloadLabel?: string;
+  /**
+   * At or under this fraction of a magazine it is low: warn, and the reload hint shows.
+   *
+   * @default 0.25
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly low?: number;
+  /**
+   * Under low: the hint (R Reload); empty is none.
+   *
+   * @default ""
+   */
+  readonly reloadHint?: string;
+  /**
+   * The magazine as a row of rounds when it holds 40 or fewer (the default).
+   *
+   * @default true
+   */
+  readonly pips?: boolean;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "bottomRight"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * What a map marker is.
+ * - `"player"`: The player: an arrow by heading.
+ * - `"ally"`: An ally: a teammate's arrow in their colour.
+ * - `"enemy"`: An enemy: a danger diamond.
+ * - `"objective"`: An objective: a gold star, kept on the edge when out of range.
+ * - `"ping"`: A ping: a pulsing ring, kept on the edge.
+ * - `"loot"`: Loot: a small square in its rarity.
+ * - `"poi"`: A point of interest: its icon.
+ */
+export type MarkerKind = "player" | "ally" | "enemy" | "objective" | "ping" | "loot" | "poi";
+
+/**
+ * A marker on a minimap.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MapMarkerItem {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * What it is.
+   *
+   * @default "player"
+   */
+  readonly kind?: MarkerKind;
+  /**
+   * Where across the map, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly x?: number;
+  /**
+   * Where down the map, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly y?: number;
+  /**
+   * Its facing, clockwise from north (players and allies).
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly heading?: number;
+  /**
+   * An icon of the atlas (a poi's).
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Its colour; null is the kind's.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Loot's tier.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * What a screen reader says of it.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/**
+ * A minimap's outline.
+ * - `"circle"`: Round (the default).
+ * - `"square"`: Square, cornered by the style.
+ */
+export type MapShape = "circle" | "square";
+
+/**
+ * A minimap.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MinimapViewDesc {
+  /**
+   * The map; null draws the style's well with a grid.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * The map point at its centre (the player's), 0 to 1.
+   *
+   * @default 0.5
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly centerX?: number;
+  /**
+   * The map point at its centre.
+   *
+   * @default 0.5
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly centerY?: number;
+  /**
+   * How much of the map it shows across, 0 to 1.
+   *
+   * @default 0.3
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly zoom?: number;
+  /**
+   * The map turns with heading so up is ahead; else north is up and the player's arrow turns.
+   *
+   * @default false
+   */
+  readonly rotate?: boolean;
+  /**
+   * The player's heading, clockwise from north.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly heading?: number;
+  /**
+   * Its outline.
+   *
+   * @default "circle"
+   */
+  readonly shape?: MapShape;
+  /**
+   * Its side; 0 is 200 (144 on a phone).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * Its markers.
+   *
+   * @default []
+   */
+  readonly markers?: readonly MapMarkerItem[];
+  /**
+   * A label under it (the zone's name); empty is none.
+   *
+   * @default ""
+   */
+  readonly zone?: string;
+  /**
+   * The north letter.
+   *
+   * @default "N"
+   */
+  readonly north?: string;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "topRight"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+/** What a minimap answered. */
+export interface MinimapResult {
+  /**
+   * It was pressed this tick: the map point is the press's position (og.Pointers) inside og.ui.bounds of <id>/Map, at the zoom and centre the game gave.
+   */
+  readonly clicked: boolean;
+}
+
+
+/**
+ * A point on a compass strip.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CompassPoi {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its bearing from the player, clockwise from north.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly bearing?: number;
+  /**
+   * How far (shown under it); null shows none.
+   *
+   * @default null
+   * @unit m (metres)
+   */
+  readonly distance?: number | null;
+  /**
+   * Its icon.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * What it is (its colour, and objectives and pings stay on the strip's ends when behind).
+   *
+   * @default "player"
+   */
+  readonly kind?: MarkerKind;
+  /**
+   * Its colour; null is the kind's.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * What a screen reader says of it.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/**
+ * A compass strip.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CompassDesc {
+  /**
+   * The player's heading, clockwise from north.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly heading?: number;
+  /**
+   * How much of the circle the strip spans; 0 is 180°.
+   *
+   * @default 0
+   * @range 0..
+   * @unit rad (radians)
+   */
+  readonly fov?: number;
+  /**
+   * Its width; 0 is 560 (a third of the surface on a phone).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+  /**
+   * Its points.
+   *
+   * @default []
+   */
+  readonly pois?: readonly CompassPoi[];
+  /**
+   * The eight point names from north clockwise (N, NE, E …); empty is English.
+   *
+   * @default []
+   */
+  readonly points?: readonly string[];
+  /**
+   * The distance's unit.
+   *
+   * @default "m"
+   */
+  readonly units?: string;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "top"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * A step of an objective.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ObjectiveStep {
+  /**
+   * Its key.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * What to do.
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * Done: ticked and dimmed.
+   *
+   * @default false
+   */
+  readonly done?: boolean;
+  /**
+   * Failed: crossed in danger.
+   *
+   * @default false
+   */
+  readonly failed?: boolean;
+  /**
+   * How many so far (3 of 5).
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * How many it needs; 0 shows no count.
+   *
+   * @default 0
+   */
+  readonly target?: number;
+  /**
+   * A bar under it, 0 to 1.
+   *
+   * @default null
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly progress?: number | null;
+  /**
+   * Optional: in the muted ink with (Optional).
+   *
+   * @default false
+   */
+  readonly optional?: boolean;
+}
+
+/**
+ * An objective in the tracker.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ObjectiveQuest {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its title.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * Its steps.
+   *
+   * @default []
+   */
+  readonly steps?: readonly ObjectiveStep[];
+  /**
+   * Seconds left, counting down in its header.
+   *
+   * @default null
+   * @unit s (seconds of simulation time)
+   */
+  readonly timer?: number | null;
+  /**
+   * How far its marker is.
+   *
+   * @default null
+   * @unit m (metres)
+   */
+  readonly distance?: number | null;
+  /**
+   * Its icon (a main quest's, a side quest's).
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * The tracked one: its bar in highlight.
+   *
+   * @default false
+   */
+  readonly focused?: boolean;
+  /**
+   * og.ui.tick() when it was completed: it flashes Complete and leaves.
+   *
+   * @default null
+   */
+  readonly completedAt?: number | null;
+  /**
+   * The completed word.
+   *
+   * @default "Complete"
+   */
+  readonly completeLabel?: string;
+}
+
+/**
+ * The objective tracker.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ObjectiveTrackerDesc {
+  /**
+   * The tracked objectives.
+   *
+   * @default []
+   */
+  readonly quests?: readonly ObjectiveQuest[];
+  /**
+   * The most shown; 0 is 3 (2 on a phone).
+   *
+   * @default 0
+   */
+  readonly max?: number;
+  /**
+   * Its width; 0 is 300.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+  /**
+   * The distance's unit.
+   *
+   * @default "m"
+   */
+  readonly units?: string;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "right"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * A line of a killfeed.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface KillfeedEntry {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Who got the kill; empty for a fall or the zone.
+   *
+   * @default ""
+   */
+  readonly killer?: string;
+  /**
+   * The killer's team (its colour).
+   *
+   * @default 0
+   */
+  readonly killerTeam?: number;
+  /**
+   * Who fell.
+   *
+   * @default ""
+   */
+  readonly victim?: string;
+  /**
+   * The victim's team.
+   *
+   * @default 0
+   */
+  readonly victimTeam?: number;
+  /**
+   * The weapon's icon.
+   *
+   * @default ""
+   */
+  readonly weapon?: string;
+  /**
+   * The weapon in words, when it has no icon.
+   *
+   * @default ""
+   */
+  readonly weaponText?: string;
+  /**
+   * A headshot mark.
+   *
+   * @default false
+   */
+  readonly headshot?: boolean;
+  /**
+   * An assister, after the killer (+ name).
+   *
+   * @default ""
+   */
+  readonly assist?: string;
+  /**
+   * The player is in it: the line is highlighted.
+   *
+   * @default false
+   */
+  readonly local?: boolean;
+  /**
+   * og.ui.tick() when it happened.
+   *
+   * @default 0
+   */
+  readonly at?: number;
+}
+
+/**
+ * A killfeed.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface KillfeedDesc {
+  /**
+   * The latest entries, oldest first.
+   *
+   * @default []
+   */
+  readonly entries?: readonly KillfeedEntry[];
+  /**
+   * The most lines; 0 is 5 (3 on a phone).
+   *
+   * @default 0
+   */
+  readonly max?: number;
+  /**
+   * How long a line stays; 0 is 6000.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "topRight"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * A scoreboard column.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ScoreColumn {
+  /**
+   * Its key.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its heading (K, D, A, Score).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its width; 0 is 56.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+}
+
+/**
+ * A player's row on a scoreboard.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ScoreRow {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * The player's name.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * The values, one per column.
+   *
+   * @default []
+   */
+  readonly values?: readonly string[];
+  /**
+   * The player: highlighted.
+   *
+   * @default false
+   */
+  readonly local?: boolean;
+  /**
+   * Dead: dimmed with a skull.
+   *
+   * @default false
+   */
+  readonly dead?: boolean;
+  /**
+   * Latency in ms: bars, warn past 100, danger past 200; 0 hides it.
+   *
+   * @default 0
+   */
+  readonly ping?: number;
+  /**
+   * A portrait (art kind portrait).
+   *
+   * @default null
+   */
+  readonly avatar?: Texture | null;
+  /**
+   * A rank, class or agent icon.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * The best of the match: a star.
+   *
+   * @default false
+   */
+  readonly mvp?: boolean;
+}
+
+/**
+ * A team on a scoreboard.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ScoreTeam {
+  /**
+   * Its team colour.
+   *
+   * @default 0
+   */
+  readonly team?: number;
+  /**
+   * Its name.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its score.
+   *
+   * @default ""
+   */
+  readonly score?: string;
+  /**
+   * Its players.
+   *
+   * @default []
+   */
+  readonly rows?: readonly ScoreRow[];
+}
+
+/**
+ * A scoreboard.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ScoreboardDesc {
+  /**
+   * The title (the mode, the map).
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * A line under it (the round, the time).
+   *
+   * @default ""
+   */
+  readonly subtitle?: string;
+  /**
+   * The columns after the name.
+   *
+   * @default []
+   */
+  readonly columns?: readonly ScoreColumn[];
+  /**
+   * The teams, each with its rows.
+   *
+   * @default []
+   */
+  readonly teams?: readonly ScoreTeam[];
+  /**
+   * Its width; 0 is 760 (the safe area less its gutters on a phone).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "center"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * Which way a timer runs.
+ * - `"countdown"`: Counts down (the default).
+ * - `"stopwatch"`: Counts up.
+ */
+export type TimerMode = "countdown" | "stopwatch";
+
+/**
+ * A round, match or turn timer.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface HudTimerDesc {
+  /**
+   * The time shown.
+   *
+   * @default 0
+   * @unit s (seconds of simulation time)
+   */
+  readonly seconds?: number;
+  /**
+   * A countdown's whole length (for its ring); 0 draws no ring.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly total?: number;
+  /**
+   * Which way it runs.
+   *
+   * @default "countdown"
+   */
+  readonly mode?: TimerMode;
+  /**
+   * A label over it (Round 2); empty is none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * A countdown under this many seconds warns, then pulses in danger under a third of it.
+   *
+   * @default 10
+   * @unit s (seconds of simulation time)
+   */
+  readonly warnAt?: number;
+  /**
+   * Tenths under ten seconds (the default).
+   *
+   * @default true
+   */
+  readonly tenths?: boolean;
+  /**
+   * Paused: it dims and blinks.
+   *
+   * @default false
+   */
+  readonly paused?: boolean;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "top"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * A combo counter.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ComboDesc {
+  /**
+   * Hits in the combo; under 2 it hides (a break shakes it off).
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * A score multiplier shown beside it (×4); 0 or 1 hides it.
+   *
+   * @default 0
+   */
+  readonly multiplier?: number;
+  /**
+   * The combo's time left to the next hit, 0 to 1, as a draining bar.
+   *
+   * @default null
+   */
+  readonly decay?: number | null;
+  /**
+   * The word under it.
+   *
+   * @default "Combo"
+   */
+  readonly label?: string;
+  /**
+   * Counts that celebrate (a burst and a bigger pop); empty is 10, 25, 50, 100, then every 100.
+   *
+   * @default []
+   */
+  readonly milestones?: readonly number[];
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "right"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * A judgement of a hit.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface JudgementEvent {
+  /**
+   * Its word (PERFECT, GREAT, MISS).
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * 0 the best, then down: 0 gold, 1 success, 2 info, 3 warn, 4 and on danger (a miss).
+   *
+   * @default 0
+   */
+  readonly tier?: number;
+  /**
+   * How early (negative) or late (positive) it was; 0 shows nothing.
+   *
+   * @default 0
+   * @unit ms (milliseconds)
+   */
+  readonly offsetMs?: number;
+  /**
+   * og.ui.tick() when it happened.
+   *
+   * @default 0
+   */
+  readonly at?: number;
+}
+
+/**
+ * Judgement pops.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface JudgementDesc {
+  /**
+   * The latest judgement; a later at pops again.
+   *
+   * @default null
+   */
+  readonly last?: JudgementEvent | null;
+  /**
+   * The early word.
+   *
+   * @default "Early"
+   */
+  readonly earlyLabel?: string;
+  /**
+   * The late word.
+   *
+   * @default "Late"
+   */
+  readonly lateLabel?: string;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "center"
+   */
+  readonly anchor?: Anchor | null;
+  /**
+   * Moves it down from its anchor (above the hit line: negative).
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly offsetY?: number;
+}
+
+
+/**
+ * A resource on a resource bar.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ResourceItem {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its icon.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * What it is (what a screen reader says).
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * How much.
+   *
+   * @default 0
+   */
+  readonly amount?: number;
+  /**
+   * Its rate (per second or per turn): + in success, − in danger with a mark.
+   *
+   * @default 0
+   */
+  readonly rate?: number;
+  /**
+   * After the rate.
+   *
+   * @default "/s"
+   */
+  readonly rateSuffix?: string;
+  /**
+   * A cap: shown as amount / capacity, warn near it, danger at it (supply).
+   *
+   * @default null
+   */
+  readonly capacity?: number | null;
+  /**
+   * How its numbers are written; the default is compact.
+   *
+   * @default {}
+   */
+  readonly format?: NumberFormatDesc;
+}
+
+/**
+ * A resource bar.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ResourceBarDesc {
+  /**
+   * The resources.
+   *
+   * @default []
+   */
+  readonly items?: readonly ResourceItem[];
+  /**
+   * Show rates (the default).
+   *
+   * @default true
+   */
+  readonly rates?: boolean;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "top"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * A unit in the turn order.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TurnUnit {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its portrait (art kind portrait, 1:1).
+   *
+   * @default null
+   */
+  readonly portrait?: Texture | null;
+  /**
+   * 0 the player's side (primary), else enemies (danger) by number.
+   *
+   * @default 0
+   */
+  readonly team?: number;
+  /**
+   * An active time gauge 0 to 1 under it (Final Fantasy's ATB).
+   *
+   * @default null
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly atb?: number | null;
+  /**
+   * Its turn now: larger, ringed, first.
+   *
+   * @default false
+   */
+  readonly current?: boolean;
+  /**
+   * Pushed back: a down mark.
+   *
+   * @default false
+   */
+  readonly delayed?: boolean;
+  /**
+   * Out of the order: greyed and crossed.
+   *
+   * @default false
+   */
+  readonly dead?: boolean;
+}
+
+/**
+ * A turn order.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TurnOrderDesc {
+  /**
+   * The units in turn order, the current first.
+   *
+   * @default []
+   */
+  readonly units?: readonly TurnUnit[];
+  /**
+   * Which way it runs.
+   *
+   * @default "row"
+   */
+  readonly direction?: Direction;
+  /**
+   * A portrait's side; 0 is 52 (the current one larger).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * The most shown; 0 is 8.
+   *
+   * @default 0
+   */
+  readonly max?: number;
+  /**
+   * The current one's word.
+   *
+   * @default "Now"
+   */
+  readonly nowLabel?: string;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "top"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * A speedometer's look.
+ * - `"dial"`: A dial with a needle and the tach round it (the default).
+ * - `"digital"`: The speed in large digits over a tach bar.
+ */
+export type SpeedoStyle = "dial" | "digital";
+
+/**
+ * A speedometer and tachometer.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SpeedometerDesc {
+  /**
+   * The speed.
+   *
+   * @default 0
+   */
+  readonly speed?: number;
+  /**
+   * The dial's top.
+   *
+   * @default 300
+   */
+  readonly maxSpeed?: number;
+  /**
+   * The speed's unit.
+   *
+   * @default "km/h"
+   */
+  readonly unit?: string;
+  /**
+   * Engine speed, 0 to 1 of the tach.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly rpm?: number;
+  /**
+   * Where the red zone starts.
+   *
+   * @default 0.85
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly redline?: number;
+  /**
+   * The gear (N, R, 1 …); empty is none.
+   *
+   * @default ""
+   */
+  readonly gear?: string;
+  /**
+   * A boost or nitro gauge 0 to 1.
+   *
+   * @default null
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly boost?: number | null;
+  /**
+   * Its look.
+   *
+   * @default "dial"
+   */
+  readonly style?: SpeedoStyle;
+  /**
+   * Its diameter; 0 is 180 (132 on a phone).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "bottomRight"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * A team on a scorebug.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ScorebugTeam {
+  /**
+   * Its short name (LAL).
+   *
+   * @default ""
+   */
+  readonly abbr?: string;
+  /**
+   * Its score.
+   *
+   * @default 0
+   */
+  readonly score?: number;
+  /**
+   * Its colour; null is a team colour by side.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Its crest (art kind emblem, 1:1).
+   *
+   * @default null
+   */
+  readonly logo?: Texture | null;
+  /**
+   * Time-outs left (pips).
+   *
+   * @default 0
+   */
+  readonly timeouts?: number;
+  /**
+   * Time-outs it had; 0 draws no pips.
+   *
+   * @default 0
+   */
+  readonly timeoutsMax?: number;
+  /**
+   * It has the ball: a mark by its score.
+   *
+   * @default false
+   */
+  readonly possession?: boolean;
+}
+
+/**
+ * A broadcast scorebug.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ScorebugDesc {
+  /**
+   * The home side.
+   *
+   * @default {}
+   */
+  readonly home?: ScorebugTeam;
+  /**
+   * The away side.
+   *
+   * @default {}
+   */
+  readonly away?: ScorebugTeam;
+  /**
+   * The game clock (12:34).
+   *
+   * @default ""
+   */
+  readonly clock?: string;
+  /**
+   * The period (Q2, 2nd, ET).
+   *
+   * @default ""
+   */
+  readonly period?: string;
+  /**
+   * A shot or play clock; empty is none.
+   *
+   * @default ""
+   */
+  readonly shotClock?: string;
+  /**
+   * A line under it (2nd & 7, Power play); empty is none.
+   *
+   * @default ""
+   */
+  readonly situation?: string;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "topLeft"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * A flight HUD.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FlightHudDesc {
+  /**
+   * Pitch, nose up positive.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly pitch?: number;
+  /**
+   * Roll, right wing down positive.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly roll?: number;
+  /**
+   * Heading, clockwise from north.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly heading?: number;
+  /**
+   * Airspeed.
+   *
+   * @default 0
+   */
+  readonly speed?: number;
+  /**
+   * Altitude.
+   *
+   * @default 0
+   */
+  readonly altitude?: number;
+  /**
+   * The speed's unit.
+   *
+   * @default "kt"
+   */
+  readonly speedUnit?: string;
+  /**
+   * The altitude's unit.
+   *
+   * @default "ft"
+   */
+  readonly altitudeUnit?: string;
+  /**
+   * Climb rate (shown by the altitude).
+   *
+   * @default 0
+   */
+  readonly verticalSpeed?: number;
+  /**
+   * The flight path marker's offset from the boresight, across.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly pathX?: number;
+  /**
+   * Its offset, down.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly pathY?: number;
+  /**
+   * The HUD's ink; null is a bright phosphor green.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * The vertical field of view the ladder spans (degrees of pitch per screen); 0 is 40°.
+   *
+   * @default 0
+   * @range 0..
+   * @unit rad (radians)
+   */
+  readonly fov?: number;
+  /**
+   * Where it sits; the default is the centre.
+   *
+   * @default "center"
+   */
+  readonly anchor?: Anchor;
+}
+
+
+/**
+ * A hit from a direction.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DamageHit {
+  /**
+   * Where it came from, clockwise from straight ahead.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly angle?: number;
+  /**
+   * og.ui.tick() when it landed.
+   *
+   * @default 0
+   */
+  readonly at?: number;
+  /**
+   * How hard, 0 to 1 (its width and opacity).
+   *
+   * @default 1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly strength?: number;
+}
+
+/**
+ * Damage direction indicators.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DamageDirectionDesc {
+  /**
+   * Recent hits.
+   *
+   * @default []
+   */
+  readonly hits?: readonly DamageHit[];
+  /**
+   * How long an indicator shows; 0 is 1400.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly durationMs?: number;
+  /**
+   * Its distance from the centre; 0 is a fifth of the surface's shorter side.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly radius?: number;
+  /**
+   * Its ink; null is danger.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+}
+
+
+/**
+ * A low-health and hit vignette.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LowHealthDesc {
+  /**
+   * Health as a fraction, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly health?: number;
+  /**
+   * Under this the vignette shows, deepening to 0.
+   *
+   * @default 0.35
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly threshold?: number;
+  /**
+   * og.ui.tick() of the last hit: a quick red flash at the edges.
+   *
+   * @default null
+   */
+  readonly hitAt?: number | null;
+  /**
+   * Its ink; null is a deep red.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+}
+
+
+/**
  * A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
@@ -39519,6 +42259,222 @@ export declare namespace og {
      * @param desc The lines and the settings.
      */
     function subtitles(id: string, desc?: SubtitlesDesc): void;
+    /**
+     * A health or resource bar to the bar of action games: blocks (segment), a ghost chunk that holds after a hit and then drains (Dark Souls, fighting games), a heal preview, grey recoverable damage, a row of shield cells in their tier's colour over it (Apex Legends), low and critical states (warn, then danger pulsing), a mirrored fill for the right player, flat, slanted or pill ends. A drop is instant, a rise moves on the ui spring.
+     * Parts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Value.
+     *
+     * @param id Its id.
+     * @param desc The value and the look.
+     */
+    function statBar(id: string, desc?: StatBarDesc): void;
+    /**
+     * An orb (Diablo's health and mana globes): a glass sphere filled from the bottom with a liquid whose surface sways, a highlight on the glass, a frame ring, the value in the middle; the level moves on the ui spring and a drop flashes it. Critical (under 15 %) pulses.
+     * Parts: OrbMeter.frame, OrbMeter.glass, OrbMeter.liquid[<kind>], OrbMeter.surface, OrbMeter.value, OrbMeter.label. States: group level (normal, low, critical). Accessibility: meter. Probe ids: <id>, <id>/Orb/Liquid, <id>/Value.
+     *
+     * @param id Its id.
+     * @param desc The value and the look.
+     */
+    function orbMeter(id: string, desc?: OrbMeterDesc): void;
+    /**
+     * A radial stamina wheel (Breath of the Wild, Elden Ring's spirit gauge): a ring that drains clockwise, outer rings for extra wheels, warn under a third, red and pulsing when exhausted until it refills, fading out once full.
+     * Parts: RadialMeter.track, RadialMeter.fill[normal|low|exhausted], RadialMeter.wheel#i. States: group level (full, normal, low, exhausted). Accessibility: meter. Probe ids: <id>, <id>/Wheel#i.
+     *
+     * @param id Its id.
+     * @param desc The value and the look.
+     */
+    function radialMeter(id: string, desc?: RadialMeterDesc): void;
+    /**
+     * An ability slot to the bar of MOBAs and MMOs: the icon in a frame cornered as the style's slots, a dark sweep shrinking clockwise as the cooldown runs with the seconds left in the middle (tenths under ten), a flash and a pop the tick it comes ready, charges at the corner with the next one's recharge along the bottom, the hotkey on a key cap, cost, unaffordable and out-of-range tints, a breathing border while active, an ultimate's ring and percent, rank pips, a lock. A press answers on touch and with the pointer.
+     * Parts: AbilitySlot.frame[ready|cooling|locked|active], AbilitySlot.icon, AbilitySlot.sweep, AbilitySlot.time, AbilitySlot.flash, AbilitySlot.charges, AbilitySlot.recharge, AbilitySlot.hotkey[outOfRange], AbilitySlot.cost, AbilitySlot.ultimate, AbilitySlot.pip[filled], AbilitySlot.lock. Slots: image (art kind ability). States: group ready (ready, cooling, locked), group use (idle, active, unaffordable). Sounds: focus (the style's ready chime) the tick it comes ready. Accessibility: button named by name, value its seconds left or Ready. Probe ids: <id>, <id>/Time, <id>/Hotkey, <id>/Charges.
+     *
+     * @param id Its id.
+     * @param desc The ability's state.
+     */
+    function abilitySlot(id: string, desc?: AbilitySlotDesc): Response;
+    /**
+     * An ability bar: abilitySlot for each slot, in a row (or a column) on the HUD frame.
+     * Parts: AbilityBar.frame and each slot's. Accessibility: a group named by its slots. Probe ids: <id>/<key>.
+     *
+     * @param id Its id.
+     * @param desc The slots.
+     */
+    function abilityBar(id: string, desc?: AbilityBarDesc): AbilityBarResult;
+    /**
+     * Buffs and debuffs to the bar of MMOs: icons in rows, a sweep darkening each as it runs out, the time left under it (12m, 45, 4.2), blinking in its last five seconds, stacks at its corner, debuffs in their own row bordered by their type's colour and notched so their kind is not told by colour alone, more than max folding into a +n tile.
+     * Parts: StatusGrid.tile[buff|debuff][type=<type>][expiring], StatusGrid.icon, StatusGrid.sweep, StatusGrid.time, StatusGrid.stacks, StatusGrid.more. States: on each tile, group time (lasting, running, expiring). Accessibility: list named Buffs and Debuffs; each tile an image named name, stacks and seconds. Probe ids: <id>/Buffs/<key>, <id>/Debuffs/<key>, their Time and Stacks.
+     *
+     * @param id Its id.
+     * @param desc The effects.
+     */
+    function statusGrid(id: string, desc?: StatusGridDesc): StatusGridResult;
+    /**
+     * A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else the initials on the class colour) ringed by the style, the level on a badge, an elite or boss dressing, the name over a health bar with its shield and ghost and a resource bar, the cast under them, small buffs, and states for the target, dead (grey, a skull), offline (dim), in combat and the leader's crown. A press selects it.
+     * Parts: UnitFrame.frame[<size>][hostile][targeted][dead], UnitFrame.portrait[<class>], UnitFrame.level, UnitFrame.name, UnitFrame.title, UnitFrame.health (a StatBar), UnitFrame.resource, UnitFrame.cast, UnitFrame.crown, UnitFrame.combat. Slots: portrait (art kind portrait). States: group life (alive, dead, offline), group selection (none, targeted). Accessibility: button named name, level and health. Probe ids: <id>, <id>/Name, <id>/Health, <id>/Resource, <id>/Cast.
+     *
+     * @param id Its id.
+     * @param desc The unit.
+     */
+    function unitFrame(id: string, desc?: UnitFrameDesc): Response;
+    /**
+     * Party frames: a column of medium unit frames, the leader crowned, each pressable to target.
+     * Parts: PartyFrames.frame, and each member's unit frame. Accessibility: list named Party. Probe ids: <id>/<key>.
+     *
+     * @param id Its id.
+     * @param desc The members.
+     */
+    function partyFrames(id: string, desc?: PartyFramesDesc): FramesResult;
+    /**
+     * Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a health fill in the class colour with its absorb and incoming heal, the name cut to fit, a role mark, dead and offline states, faded out of range, a danger border on aggro, a dispellable debuff glowing in its type's colour, the target outlined. A press targets.
+     * Parts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.fill, RaidFrames.absorb, RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name.
+     *
+     * @param id Its id.
+     * @param desc The members.
+     */
+    function raidFrames(id: string, desc?: RaidFramesDesc): FramesResult;
+    /**
+     * A cast bar to the bar of MMOs: the icon, the spell's name, a fill with a bright leading edge, the seconds left, a channel draining with its tick marks, the latency zone, an uninterruptible shield, a success flash and an interrupted state in danger that fade out.
+     * Parts: CastBar.frame[<state>][channel][uninterruptible], CastBar.icon, CastBar.track, CastBar.fill, CastBar.spark, CastBar.latency, CastBar.tick, CastBar.name, CastBar.time, CastBar.shield. States: group cast (casting, success, interrupted, failed, gone). Sounds: error on interrupted. Accessibility: progressbar named by the name. Probe ids: <id>, <id>/Name, <id>/Time, <id>/Track/Fill.
+     *
+     * @param id Its id.
+     * @param desc The cast.
+     */
+    function castBar(id: string, desc?: CastBarDesc): void;
+    /**
+     * A crosshair to the bar of shooters' crosshair editors: cross, dot, circle, chevron or T, its gap opening with the weapon's spread on a fast spring, outlined so it reads over any scene, turning danger on an enemy; a hit marker's four diagonal ticks flash and spring out on a hit, larger in gold for a headshot, in danger and held for a kill.
+     * Parts: Crosshair.line, Crosshair.dot, Crosshair.ring, Crosshair.marker[<hit>]. States: group aim (idle, onTarget), group hit (none, hit, headshot, kill). Accessibility: none (decoration; hits are the game's to announce). Probe ids: <id>, <id>/N, <id>/Marker.
+     *
+     * @param id Its id.
+     * @param desc The look and the last hit.
+     */
+    function crosshair(id: string, desc?: CrosshairDesc): void;
+    /**
+     * An ammunition counter to the bar of shooters: the magazine in large digits over its reserve, a row of rounds that empties as it fires (a round leaving springs off), low in warn with the reload hint, empty in danger, a reload ring with its word, the weapon's name, icon and fire mode.
+     * Parts: Ammo.frame[low|empty|reloading], Ammo.magazine, Ammo.reserve, Ammo.round[spent], Ammo.weapon, Ammo.mode, Ammo.reload, Ammo.hint. States: group ammo (full, low, empty, reloading). Sounds: warning when it runs empty. Accessibility: status named the magazine and reserve. Probe ids: <id>, <id>/Magazine, <id>/Reserve, <id>/Rounds/Round#i, <id>/Hint.
+     *
+     * @param id Its id.
+     * @param desc The ammunition.
+     */
+    function ammoCounter(id: string, desc?: AmmoDesc): void;
+    /**
+     * A minimap to the bar of MOBAs, shooters and open worlds: the map in a round or square frame, centred on the player and zoomed, fixed with north up and the player's arrow turning or turning with the player; markers for allies (their arrows), enemies, loot by rarity, points of interest, objectives and pings, which stay on the frame's edge pointing out when out of range; pings pulse; a north mark on the rim, the zone under it; a press answers clicked (click to move reads the press's position against the map's bounds).
+     * Parts: Minimap.frame[<shape>], Minimap.map, Minimap.marker[<kind>][clamped], Minimap.north, Minimap.zone, Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Map/<key>, <id>/Zone.
+     *
+     * @param id Its id.
+     * @param desc The map and its markers.
+     */
+    function minimapView(id: string, desc?: MinimapViewDesc): MinimapResult;
+    /**
+     * A compass strip to the bar of Skyrim and Apex: degree ticks every 15° and the bearing under a centre notch, the cardinal and intercardinal letters, points of interest at their bearings with their distance under them, objectives and pings held at the strip's ends pointing round when behind; the ends fade.
+     * Parts: Compass.strip, Compass.tick[major], Compass.point[cardinal], Compass.notch, Compass.bearing, Compass.poi[<kind>][clamped], Compass.distance. Accessibility: status named the heading in degrees and its point. Probe ids: <id>, <id>/Bearing, <id>/Strip/<key>.
+     *
+     * @param id Its id.
+     * @param desc The heading and its points.
+     */
+    function compass(id: string, desc?: CompassDesc): void;
+    /**
+     * An objective tracker to the bar of open worlds and MMOs: each objective's title by its icon with its distance and a countdown, its steps as boxes that tick with a pop when done (dimmed after), counts that pop as they rise, progress bars, optional steps muted, failed steps crossed in danger, the focused one marked, a completed one flashing Complete and leaving; over a soft scrim so it reads over any scene.
+     * Parts: ObjectiveTracker.quest[focused][complete], ObjectiveTracker.title, ObjectiveTracker.step[done|failed|optional], ObjectiveTracker.check[done], ObjectiveTracker.count, ObjectiveTracker.progress, ObjectiveTracker.timer, ObjectiveTracker.distance. States: on each step, group step (open, done, failed). Sounds: success when a step is done, reward when a quest completes. Accessibility: list named Objectives; each quest a group named its title; each step a checkbox. Probe ids: <id>/<key>, <id>/<key>/<step>.
+     *
+     * @param id Its id.
+     * @param desc The objectives.
+     */
+    function objectiveTracker(id: string, desc?: ObjectiveTrackerDesc): void;
+    /**
+     * A killfeed to the bar of shooters and battle royales: killer, weapon and victim on a dark chip each line, names in their teams' colours, a headshot mark, an assister, the player's lines highlighted, the newest sliding in at the top, each fading after its time.
+     * Parts: Killfeed.line[local], Killfeed.killer, Killfeed.weapon, Killfeed.victim, Killfeed.headshot. Accessibility: log named Killfeed, each line text killer weapon victim. Probe ids: <id>/<key>, its Killer, Weapon, Victim.
+     *
+     * @param id Its id.
+     * @param desc The entries.
+     */
+    function killfeed(id: string, desc?: KillfeedDesc): void;
+    /**
+     * A scoreboard to the bar of shooters and MOBAs: a team header in its colour with its score, rows of players with their portrait or icon, name, values in tabular digits and ping bars, the player's row highlighted, the dead dimmed with a skull, an MVP star, over a glass panel.
+     * Parts: Scoreboard.panel, Scoreboard.team[team=<n>], Scoreboard.header, Scoreboard.row[local][dead], Scoreboard.cell, Scoreboard.ping[good|fair|poor], Scoreboard.mvp. Accessibility: table named title; rows named by name and values. Probe ids: <id>/Team#t, <id>/Team#t/<key>, its Name and Value#i.
+     *
+     * @param id Its id.
+     * @param desc The teams and their players.
+     */
+    function scoreboard(id: string, desc?: ScoreboardDesc): void;
+    /**
+     * A timer to the bar of fighting and battle royale HUDs: the time in tabular digits on the HUD chip, a ring for a countdown's share left, warn and then danger with a pulse and a tick sound each second of the last ones, tenths in the last ten seconds, dimmed and blinking while paused.
+     * Parts: HudTimer.frame[normal|warn|critical|paused], HudTimer.ring, HudTimer.time, HudTimer.label. States: group time (normal, warn, critical, paused, done). Sounds: counterTick each of the last seconds, pitched up. Accessibility: timer named label, value the time. Probe ids: <id>, <id>/Time, <id>/Label.
+     *
+     * @param id Its id.
+     * @param desc The time.
+     */
+    function hudTimer(id: string, desc?: HudTimerDesc): void;
+    /**
+     * A combo counter to the bar of character action and rhythm games (Devil May Cry, Hi-Fi Rush, osu!): the count in a big display face that pops with each hit, scaling a little as it climbs, a multiplier chip, a decay bar draining to the next hit, a burst and a bigger pop at milestones, and a shake and fall when it breaks.
+     * Parts: Combo.count, Combo.label, Combo.multiplier, Combo.decay, Combo.burst. States: group combo (idle, live, milestone, broken). Sounds: reward at a milestone. Accessibility: status named the count and label. Probe ids: <id>, <id>/Count, <id>/Multiplier, <id>/Decay.
+     *
+     * @param id Its id.
+     * @param desc The combo.
+     */
+    function comboCounter(id: string, desc?: ComboDesc): void;
+    /**
+     * Judgement pops to the bar of rhythm games (Project Sekai, osu!, Beat Saber): the word pops from large on its tier's colour (gold with a gradient for the best), with Early or Late and the milliseconds under it, rises a little and fades; a miss drops and greys.
+     * Parts: Judgement.word[tier=<n>], Judgement.timing[early|late]. States: group judge (none, best, good, miss). Accessibility: status named the word. Probe ids: <id>, <id>/Word, <id>/Timing.
+     *
+     * @param id Its id.
+     * @param desc The latest judgement.
+     */
+    function judgement(id: string, desc?: JudgementDesc): void;
+    /**
+     * A resource bar to the bar of strategy and management games (StarCraft II, Civilization, Factorio): each resource's icon and amount counting to its value, its rate in success or danger with an up or down mark, a capacity shown as amount / cap that warns near it and flashes at it.
+     * Parts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down]. Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount and Rate.
+     *
+     * @param id Its id.
+     * @param desc The resources.
+     */
+    function resourceBar(id: string, desc?: ResourceBarDesc): void;
+    /**
+     * A turn order to the bar of tactics and JRPGs (Final Fantasy X, Baldur's Gate 3, Darkest Dungeon): portraits in the order they act, the current one larger and ringed with its word, the player's side and enemies told by colour and by the frame's notch, active time gauges filling under each, a delayed mark, the dead greyed; the order slides on layout motion as it changes.
+     * Parts: TurnOrder.unit[current][team=<n>][dead], TurnOrder.portrait, TurnOrder.atb, TurnOrder.now, TurnOrder.delay. Accessibility: list named Turn order; each unit an image named by name and its place. Probe ids: <id>/<key>, its Atb.
+     *
+     * @param id Its id.
+     * @param desc The order.
+     */
+    function turnOrder(id: string, desc?: TurnOrderDesc): void;
+    /**
+     * A speedometer to the bar of racing games (Forza Horizon, Gran Turismo): a dial of ticks with numbers, a needle on a spring, the tach's arc filling to its red zone, the speed in large tabular digits with its unit, the gear in a badge, a shift light that flashes past the redline, a boost gauge; or digital, the speed over a segmented tach bar.
+     * Parts: Speedometer.dial, Speedometer.tick[major], Speedometer.needle, Speedometer.tach[red], Speedometer.speed, Speedometer.unit, Speedometer.gear, Speedometer.shift, Speedometer.boost. States: group rev (normal, redline). Accessibility: meter named Speed, its value with the unit. Probe ids: <id>, <id>/Speed, <id>/Gear.
+     *
+     * @param id Its id.
+     * @param desc Speed, revs and gear.
+     */
+    function speedometer(id: string, desc?: SpeedometerDesc): void;
+    /**
+     * A broadcast scorebug to the bar of sports games (EA FC, NBA 2K, Rocket League): each side's colour block with its crest and short name, the scores in tabular digits that flip and flash when they change, possession and time-out pips, the clock and period, a shot clock, a situation line sliding out under it.
+     * Parts: Scorebug.frame, Scorebug.team[home|away], Scorebug.score, Scorebug.clock, Scorebug.period, Scorebug.shot, Scorebug.situation, Scorebug.timeout[used], Scorebug.possession. Sounds: success when a score changes. Accessibility: status named home score, away score, clock and period. Probe ids: <id>, <id>/Home/Score, <id>/Away/Score, <id>/Clock.
+     *
+     * @param id Its id.
+     * @param desc The score and the clock.
+     */
+    function scorebug(id: string, desc?: ScorebugDesc): void;
+    /**
+     * A flight HUD to the bar of Ace Combat and DCS: a pitch ladder of rungs every 5° (dashed below the horizon, numbered at both ends) turning with roll about the boresight, the horizon line, the waterline mark, a flight path marker, a heading tape across the top, speed and altitude tapes with their boxes on either side and the climb rate, all in one phosphor ink with a dark outline.
+     * Parts: FlightHud.ladder, FlightHud.rung[up|down|horizon], FlightHud.waterline, FlightHud.path, FlightHud.heading, FlightHud.speed, FlightHud.altitude, FlightHud.box. Accessibility: group named Flight; the speed, altitude and heading boxes text. Probe ids: <id>, <id>/SpeedBox, <id>/AltitudeBox, <id>/HeadingBox (each a text whose value is the reading).
+     *
+     * @param id Its id.
+     * @param desc The aircraft's state.
+     */
+    function flightHud(id: string, desc?: FlightHudDesc): void;
+    /**
+     * Damage direction to the bar of Call of Duty and Apex: a curved wedge round the centre toward each hit's source, wider and brighter for a harder hit, flaring in and fading over its time; the newest hits over the older.
+     * Parts: DamageDirection.wedge. Accessibility: none (the game announces damage). Probe ids: <id>, <id>/Hit#i.
+     *
+     * @param id Its id.
+     * @param desc The hits.
+     */
+    function damageDirection(id: string, desc?: DamageDirectionDesc): void;
+    /**
+     * The low-health vignette of action games (a meta layer over the scene, under the HUD): red at the screen's edges deepening as health falls under the threshold, pulsing like a heartbeat faster near death, and a short flash on each hit. Under reduced motion it holds still at its depth.
+     * Parts: none (a meta layer). Accessibility: none. Probe ids: its meta layer <id>.
+     *
+     * @param id Its id.
+     * @param desc Health and the last hit.
+     */
+    function lowHealthVignette(id: string, desc?: LowHealthDesc): void;
     /**
      * Give the element built just before (a container just closed, or a widget) a role, a name, a value and states for the accessibility tree and the probe's dump (dump_ui's role, name, value, states). Components built from containers call it so a screen reader meets a menu, a tree or a table, not rows of buttons. Answers false, with a frame warning, when no element was built before it or the role is unknown.
      *
