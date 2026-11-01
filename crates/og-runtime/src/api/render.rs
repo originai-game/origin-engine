@@ -132,6 +132,34 @@ pub(crate) fn material(
     set!(anisotropy, num("anisotropy"));
     set!(anisotropyRotation, num("anisotropyRotation"));
     set!(anisotropyMap, tex("anisotropyMap")?);
+    // Each slot's uv transform (KHR_texture_transform, three.js Texture.offset/repeat/rotation).
+    set!(mapOffset, vec2("mapOffset", glam::Vec2::ZERO));
+    set!(mapRepeat, vec2("mapRepeat", glam::Vec2::ONE));
+    set!(mapRotation, num("mapRotation"));
+    set!(
+        metalnessMapOffset,
+        vec2("metalnessMapOffset", glam::Vec2::ZERO)
+    );
+    set!(
+        metalnessMapRepeat,
+        vec2("metalnessMapRepeat", glam::Vec2::ONE)
+    );
+    set!(metalnessMapRotation, num("metalnessMapRotation"));
+    set!(normalMapOffset, vec2("normalMapOffset", glam::Vec2::ZERO));
+    set!(normalMapRepeat, vec2("normalMapRepeat", glam::Vec2::ONE));
+    set!(normalMapRotation, num("normalMapRotation"));
+    set!(
+        emissiveMapOffset,
+        vec2("emissiveMapOffset", glam::Vec2::ZERO)
+    );
+    set!(
+        emissiveMapRepeat,
+        vec2("emissiveMapRepeat", glam::Vec2::ONE)
+    );
+    set!(emissiveMapRotation, num("emissiveMapRotation"));
+    set!(aoMapOffset, vec2("aoMapOffset", glam::Vec2::ZERO));
+    set!(aoMapRepeat, vec2("aoMapRepeat", glam::Vec2::ONE));
+    set!(aoMapRotation, num("aoMapRotation"));
     let array = |k: &str| -> Result<Option<u32>, String> {
         match desc.get(k) {
             None => Ok(None),

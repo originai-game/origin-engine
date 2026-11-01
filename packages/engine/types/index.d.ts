@@ -4637,6 +4637,101 @@ export interface StandardMaterialDesc {
    */
   readonly normalMapLayer?: number;
   /**
+   * The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs.
+   *
+   * @default { x: 0, y: 0 }
+   */
+  readonly mapOffset?: Vector2;
+  /**
+   * How many times map repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly mapRepeat?: Vector2;
+  /**
+   * The uv rotation of map, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly mapRotation?: number;
+  /**
+   * The uv offset metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too) is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs.
+   *
+   * @default { x: 0, y: 0 }
+   */
+  readonly metalnessMapOffset?: Vector2;
+  /**
+   * How many times metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too) repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly metalnessMapRepeat?: Vector2;
+  /**
+   * The uv rotation of metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too), counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly metalnessMapRotation?: number;
+  /**
+   * The uv offset normalMap is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs.
+   *
+   * @default { x: 0, y: 0 }
+   */
+  readonly normalMapOffset?: Vector2;
+  /**
+   * How many times normalMap repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly normalMapRepeat?: Vector2;
+  /**
+   * The uv rotation of normalMap, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly normalMapRotation?: number;
+  /**
+   * The uv offset emissiveMap is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs.
+   *
+   * @default { x: 0, y: 0 }
+   */
+  readonly emissiveMapOffset?: Vector2;
+  /**
+   * How many times emissiveMap repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly emissiveMapRepeat?: Vector2;
+  /**
+   * The uv rotation of emissiveMap, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly emissiveMapRotation?: number;
+  /**
+   * The uv offset aoMap is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs.
+   *
+   * @default { x: 0, y: 0 }
+   */
+  readonly aoMapOffset?: Vector2;
+  /**
+   * How many times aoMap repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells.
+   *
+   * @default { x: 1, y: 1 }
+   */
+  readonly aoMapRepeat?: Vector2;
+  /**
+   * The uv rotation of aoMap, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly aoMapRotation?: number;
+  /**
    * Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in color plus the emissive light, unlit, depth tested; drawn as lines, not a polygon mode (WebGPU has none). Its meshes cast no shadow.
    *
    * @default false
@@ -9731,6 +9826,14 @@ export interface GltfInfo {
   /** Its materials, in glTF order, then the default material. */
   readonly materials: readonly Material[];
   /**
+   * Its material variants' names (KHR_materials_variants), in glTF order: og.Model.variant draws an instance with one, by its index here. Empty for a model without variants.
+   */
+  readonly variants: readonly string[];
+  /**
+   * How many punctual lights it has (KHR_lights_punctual) in its default scene: world.instantiate and a scene's `model` line spawn each as a child entity of the model's, with an og.PointLight, og.SpotLight or og.DirectionalLight at its node's place (glTF's candela as the radiance at one metre, its range as distance, a light of infinite range ending where its radiance falls to 0.01, a spot's outer cone as angle and 1 - inner / outer as penumbra).
+   */
+  readonly lights: number;
+  /**
    * Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name.
    */
   readonly animations: readonly string[];
@@ -9878,6 +9981,14 @@ export interface Model {
    * Part of its scene's baked lighting: og bake lightmaps gives a static model lightmap UVs (xatlas, over its world-space triangles) and traces the light arriving at its surfaces from the scene into the scene's lightmap (`<scene>.lightmap.ogt` and `.ktx2` beside the scene). Once baked, the model draws with it (its ambient light from the lightmap instead of the sky; its lights' direct light, shadows and highlights still drawn every frame) for as long as the bake matches the scene. A scene entity says `static true` beside its `model` line; an unbaked static model draws as any model, and og doctor --project names the scene.
    */
   static: boolean;
+  /**
+   * The glTF material variant this instance draws (KHR_materials_variants), an index into GltfInfo.variants: every mesh the variant maps takes its material, the others keep theirs, on this instance only (a car's paint, a chair's fabric picked at run time, one draw per material as before). -1 draws the glTF's own materials; an index past the model's variants does too.
+   *
+   * @default -1
+   * @range -1..
+   * @tunable
+   */
+  variant: number;
 }
 
 
@@ -28707,7 +28818,7 @@ export declare namespace og {
    * Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. Scene entities with a `model` line get one; world.instantiate of a glTF asset spawns one.
    * The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.
    */
-  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly lodBias: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly static: FieldSpec<"bool"> }, Model>;
+  const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly lodBias: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly static: FieldSpec<"bool">; readonly variant: FieldSpec<"i32"> }, Model>;
   /** A load completed. */
   const AssetReady: EventType<AssetReady>;
   /** A load failed. */

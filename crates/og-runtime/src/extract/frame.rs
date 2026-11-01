@@ -198,6 +198,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             let (flash, flash_color, tint) = (slot("flash"), slot("flashColor"), slot("tint"));
             let (cast, receive) = (slot("castShadow"), slot("receiveShadow"));
             let is_static = slot("static");
+            let variant = slot("variant");
+            let fx_models = &rs.fx.models;
             let rows = world
                 .id_by_name(&layout.schema)
                 .map(|id| super::feel::byte_rows(world, id, layout))
@@ -229,9 +231,21 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                     let lightmapped = (baked && on(&is_static, false))
                         .then(|| rs.baked.overrides.get(&e))
                         .flatten();
-                    lightmapped
-                        .or_else(|| models.get(&asset))
-                        .map(|p| (e, asset, p.clone(), look, bias))
+                    let mut parts = lightmapped.or_else(|| models.get(&asset))?.clone();
+                    // KHR_materials_variants: the variant's material on every
+                    // part (the parts the model's own; -1 keeps the glTF's).
+                    let v = v.num(&variant).unwrap_or(-1.0);
+                    if v >= 0.0
+                        && let Some(mats) = fx_models
+                            .get(&asset)
+                            .and_then(|i| i.part_variants.get(v as usize))
+                            .filter(|m| m.len() == parts.len())
+                    {
+                        for (p, &m) in parts.iter_mut().zip(mats) {
+                            p.1 = m;
+                        }
+                    }
+                    Some((e, asset, parts, look, bias))
                 })
                 .collect()
         }

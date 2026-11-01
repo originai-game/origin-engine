@@ -48,6 +48,10 @@ pub(crate) enum Payload {
         scenes: u32,
         geometries: Vec<u64>,
         materials: Vec<u64>,
+        /// `KHR_materials_variants`' names (og.Model.variant indexes them).
+        variants: Vec<String>,
+        /// `KHR_lights_punctual`: what each instance spawns ([`spawn_lights`]).
+        lights: Vec<ModelLight>,
     },
     None,
 }
@@ -321,6 +325,107 @@ pub(crate) mod og_blob_bytes {
 
 // ── loads ───────────────────────────────────────────────────────────────────
 
+/// A glTF's `KHR_lights_punctual` light as the entity each instance of the
+/// model spawns under it: the light component and its fields, at the
+/// light's node's transform in the model.
+#[derive(Clone, Debug)]
+pub(crate) struct ModelLight {
+    pub component: &'static str,
+    pub fields: Value,
+    pub transform: Value,
+}
+
+/// Where a light of glTF's infinite range (no `range`) reaches zero: the
+/// distance its inverse-square radiance falls to 0.01 (the engine's lights
+/// always end; 10 m for intensity 1, 100 m for 100).
+fn light_reach(intensity: f32) -> f32 {
+    (intensity.max(0.0) / 0.01).sqrt().max(0.01)
+}
+
+/// The model's lights in the default scene, as [`ModelLight`]s: glTF's
+/// point and spot lights as og.PointLight and og.SpotLight (intensity in
+/// candela as the radiance at one metre, `range` as distance, the spot's
+/// outer cone as its angle and `1 - inner / outer` as its penumbra, as
+/// three.js GLTFLoader), a directional one as og.DirectionalLight.
+fn model_lights(model: &og_bundle::runtime::CookedModel) -> Vec<ModelLight> {
+    use og_bundle::format::light;
+    let world = model.node_world();
+    let in_scene: std::collections::BTreeSet<usize> = model
+        .default_scene
+        .map(|s| model.scene_nodes(s).into_iter().collect())
+        .unwrap_or_default();
+    model
+        .lights
+        .iter()
+        .filter(|l| in_scene.contains(&l.node))
+        .map(|l| {
+            let color = json!({ "r": l.color[0], "g": l.color[1], "b": l.color[2] });
+            let distance = if l.range > 0.0 {
+                l.range
+            } else {
+                light_reach(l.intensity)
+            };
+            let (component, fields) = match l.kind {
+                light::DIRECTIONAL => (
+                    "og.DirectionalLight",
+                    json!({ "color": color, "intensity": l.intensity }),
+                ),
+                light::SPOT => {
+                    let [inner, outer] = l.cone;
+                    let penumbra = if outer > 0.0 {
+                        (1.0 - inner / outer).clamp(0.0, 1.0)
+                    } else {
+                        0.0
+                    };
+                    (
+                        "og.SpotLight",
+                        json!({ "color": color, "intensity": l.intensity, "distance": distance,
+                                "angle": outer, "penumbra": penumbra }),
+                    )
+                }
+                _ => (
+                    "og.PointLight",
+                    json!({ "color": color, "intensity": l.intensity, "distance": distance }),
+                ),
+            };
+            let (s, r, t) = world[l.node].to_scale_rotation_translation();
+            ModelLight {
+                component,
+                fields,
+                transform: json!({
+                    "position": { "x": t.x, "y": t.y, "z": t.z },
+                    "quaternion": { "x": r.x, "y": r.y, "z": r.z, "w": r.w },
+                    "scale": { "x": s.x, "y": s.y, "z": s.z },
+                }),
+            }
+        })
+        .collect()
+}
+
+/// Spawns the lights of glTF asset `index` (its `KHR_lights_punctual`)
+/// as children of `root`, the entity drawing the model: each an entity
+/// with og.Transform at its node's place in the model, og.Parent and its
+/// light component, so the lights move, hide and despawn with the model.
+pub(crate) fn spawn_lights(eng: &Engine, index: usize, root: Entity) -> Result<(), String> {
+    let lights = match eng.assets.borrow().entries.get(index).map(|e| &e.payload) {
+        Some(Payload::Gltf { lights, .. }) => lights.clone(),
+        _ => return Ok(()),
+    };
+    for l in lights {
+        let mut desc = l.transform.clone();
+        desc["parent"] = json!(root.to_bits() as f64);
+        let e = super::api::spawn_entity(eng, "a glTF's light", &desc)?;
+        let world = eng.world()?;
+        let (layout, id) = super::api::component(eng, l.component)?;
+        let bytes = layout.encode(None, Some(&l.fields))?;
+        before_structural(eng);
+        world
+            .insert_bytes(e, id, &bytes)
+            .map_err(|e| e.reason().to_string())?;
+    }
+    Ok(())
+}
+
 /// `og.load.gltf`: the model's meshes, materials and textures join the
 /// renderer once per asset id; the answer is the asset index.
 pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
@@ -462,6 +567,8 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
         scenes: model.scenes.len() as u32,
         geometries: geometries.clone(),
         materials,
+        variants: model.variants.clone(),
+        lights: model_lights(&model),
     };
     let index = match into {
         Some(i) => {
@@ -484,6 +591,7 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
             prim_mesh,
             part_nodes: parts.nodes,
             part_shown: parts.shown,
+            part_variants: parts.variants,
         },
     );
     assets.by_path.insert(format!("gltf:{id}"), index);
@@ -1185,6 +1293,11 @@ pub(crate) fn spawn_scene(
             super::api::set_name(eng, entity, &e.name);
         }
         spawned.push(entity);
+        if let Some(model) = &e.instance {
+            let index = load_gltf(eng, model)?;
+            spawn_lights(eng, index, entity)
+                .map_err(|r| format!("{}: entity '{}': {r}", scene.id, e.name))?;
+        }
     }
     apply_resources(eng, scene, &layouts, &mut dropped)?;
     if !dropped.is_empty() {

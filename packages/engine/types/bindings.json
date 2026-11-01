@@ -2149,6 +2149,12 @@
           "name": "static",
           "column": "bool",
           "default": false
+        },
+        {
+          "name": "variant",
+          "column": "i32",
+          "default": -1,
+          "tunable": true
         }
       ]
     },

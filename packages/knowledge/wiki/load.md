@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 6237</sub>
+<sub>`api.ogt` line 6272</sub>
 
 ## Contents
 
@@ -109,7 +109,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 6390</sub>
+<sub>`api.ogt` line 6432</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -139,7 +139,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 6397</sub>
+<sub>`api.ogt` line 6439</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -167,7 +167,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 6404</sub>
+<sub>`api.ogt` line 6446</sub>
 
 <a id="fn-gltf"></a>
 
@@ -202,7 +202,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 6410</sub>
+<sub>`api.ogt` line 6452</sub>
 
 <a id="fn-scene"></a>
 
@@ -232,7 +232,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 6419</sub>
+<sub>`api.ogt` line 6461</sub>
 
 <a id="fn-font"></a>
 
@@ -262,7 +262,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 6426</sub>
+<sub>`api.ogt` line 6468</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -292,7 +292,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 6433</sub>
+<sub>`api.ogt` line 6475</sub>
 
 <a id="fn-sound"></a>
 
@@ -325,7 +325,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 6440</sub>
+<sub>`api.ogt` line 6482</sub>
 
 <a id="fn-lut"></a>
 
@@ -355,7 +355,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 6448</sub>
+<sub>`api.ogt` line 6490</sub>
 
 <a id="fn-environment"></a>
 
@@ -385,7 +385,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 6455</sub>
+<sub>`api.ogt` line 6497</sub>
 
 <a id="fn-emitter"></a>
 
@@ -415,7 +415,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 6462</sub>
+<sub>`api.ogt` line 6504</sub>
 
 <a id="fn-shader"></a>
 
@@ -445,7 +445,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 6469</sub>
+<sub>`api.ogt` line 6511</sub>
 
 <a id="fn-post"></a>
 
@@ -475,7 +475,7 @@ fn post {
 }
 ```
 
-<sub>`api.ogt` line 6476</sub>
+<sub>`api.ogt` line 6518</sub>
 
 <a id="fn-vector"></a>
 
@@ -505,7 +505,7 @@ fn vector {
 }
 ```
 
-<sub>`api.ogt` line 6483</sub>
+<sub>`api.ogt` line 6525</sub>
 
 <a id="fn-uiMaterial"></a>
 
@@ -535,7 +535,7 @@ fn uiMaterial {
 }
 ```
 
-<sub>`api.ogt` line 6490</sub>
+<sub>`api.ogt` line 6532</sub>
 
 <a id="fn-texture"></a>
 
@@ -568,7 +568,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 6497</sub>
+<sub>`api.ogt` line 6539</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -601,7 +601,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 6505</sub>
+<sub>`api.ogt` line 6547</sub>
 
 <a id="fn-style"></a>
 
@@ -631,7 +631,7 @@ fn style {
 }
 ```
 
-<sub>`api.ogt` line 6513</sub>
+<sub>`api.ogt` line 6555</sub>
 
 <a id="fn-document"></a>
 
@@ -661,7 +661,7 @@ fn document {
 }
 ```
 
-<sub>`api.ogt` line 6520</sub>
+<sub>`api.ogt` line 6562</sub>
 
 <a id="fn-look"></a>
 
@@ -691,7 +691,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 6527</sub>
+<sub>`api.ogt` line 6569</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -721,7 +721,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 6534</sub>
+<sub>`api.ogt` line 6576</sub>
 
 <a id="fn-palette"></a>
 
@@ -751,7 +751,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 6541</sub>
+<sub>`api.ogt` line 6583</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -781,7 +781,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 6548</sub>
+<sub>`api.ogt` line 6590</sub>
 
 <a id="fn-status"></a>
 
@@ -811,7 +811,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 6555</sub>
+<sub>`api.ogt` line 6597</sub>
 
 <a id="fn-error"></a>
 
@@ -841,7 +841,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 6562</sub>
+<sub>`api.ogt` line 6604</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -871,7 +871,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 6569</sub>
+<sub>`api.ogt` line 6611</sub>
 
 <a id="fn-animation"></a>
 
@@ -904,7 +904,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 6576</sub>
+<sub>`api.ogt` line 6618</sub>
 
 <a id="fn-rig"></a>
 
@@ -934,7 +934,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 6584</sub>
+<sub>`api.ogt` line 6626</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -964,7 +964,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 6591</sub>
+<sub>`api.ogt` line 6633</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -994,7 +994,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 6598</sub>
+<sub>`api.ogt` line 6640</sub>
 
 <a id="fn-video"></a>
 
@@ -1024,7 +1024,7 @@ fn video {
 }
 ```
 
-<sub>`api.ogt` line 6605</sub>
+<sub>`api.ogt` line 6647</sub>
 
 <a id="fn-videoInfo"></a>
 
@@ -1054,7 +1054,7 @@ fn videoInfo {
 }
 ```
 
-<sub>`api.ogt` line 6612</sub>
+<sub>`api.ogt` line 6654</sub>
 
 <a id="fn-timeline"></a>
 
@@ -1084,7 +1084,7 @@ fn timeline {
 }
 ```
 
-<sub>`api.ogt` line 6619</sub>
+<sub>`api.ogt` line 6661</sub>
 
 <a id="fn-rig2d"></a>
 
@@ -1114,7 +1114,7 @@ fn rig2d {
 }
 ```
 
-<sub>`api.ogt` line 6626</sub>
+<sub>`api.ogt` line 6668</sub>
 
 ## Components, resources and events
 
@@ -1140,6 +1140,7 @@ Token `og.Model`, registered under the schema name `og.Model`; its value type is
 | `lodBias` | `number` | `1` | 0 … 16 | — | tunable | This instance's level of detail bias, multiplied with RenderSettings.lodBias: the cook simplifies every mesh into levels (a model's import settings, `model { lods 1 0.5 0.25 }` by default, the triangle fraction of each level; a glTF with MSFT_lod keeps its own levels) and measures each level's error against the full mesh, and the renderer draws the coarsest level whose error covers less than a pixel at the model's distance, with hysteresis so it does not flicker at the boundary. Above 1 keeps detail farther (a hero), below 1 drops it sooner (a crowd); 0 always draws the full mesh. dump_entity shows the level drawn. |
 | `layers` | `number` | `1` | — | — | — | Three.js layers of every mesh of the model, as Mesh.layers. |
 | `static` | `boolean` | `false` | — | — | — | Part of its scene's baked lighting: og bake lightmaps gives a static model lightmap UVs (xatlas, over its world-space triangles) and traces the light arriving at its surfaces from the scene into the scene's lightmap (`<scene>.lightmap.ogt` and `.ktx2` beside the scene). Once baked, the model draws with it (its ambient light from the lightmap instead of the sky; its lights' direct light, shadows and highlights still drawn every frame) for as long as the bake matches the scene. A scene entity says `static true` beside its `model` line; an unbaked static model draws as any model, and og doctor --project names the scene. |
+| `variant` | `number` | `-1` | ≥ -1 | — | tunable | The glTF material variant this instance draws (KHR_materials_variants), an index into GltfInfo.variants: every mesh the variant maps takes its material, the others keep theirs, on this instance only (a car's paint, a chair's fabric picked at run time, one draw per material as before). -1 draws the glTF's own materials; an index past the model's variants does too. |
 
 ```ogt
 component Model {
@@ -1176,10 +1177,15 @@ component Model {
     default 1
   }
   field static bool "Part of its scene's baked lighting: og bake lightmaps gives a static model lightmap UVs (xatlas, over its world-space triangles) and traces the light arriving at its surfaces from the scene into the scene's lightmap (`<scene>.lightmap.ogt` and `.ktx2` beside the scene). Once baked, the model draws with it (its ambient light from the lightmap instead of the sky; its lights' direct light, shadows and highlights still drawn every frame) for as long as the bake matches the scene. A scene entity says `static true` beside its `model` line; an unbaked static model draws as any model, and og doctor --project names the scene."
+  field variant i32 "The glTF material variant this instance draws (KHR_materials_variants), an index into GltfInfo.variants: every mesh the variant maps takes its material, the others keep theirs, on this instance only (a car's paint, a chair's fabric picked at run time, one draw per material as before). -1 draws the glTF's own materials; an index past the model's variants does too." {
+    default -1
+    min -1
+    tunable true
+  }
 }
 ```
 
-<sub>`api.ogt` line 6354</sub>
+<sub>`api.ogt` line 6391</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -1202,7 +1208,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 6633</sub>
+<sub>`api.ogt` line 6675</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1227,7 +1233,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 6639</sub>
+<sub>`api.ogt` line 6681</sub>
 
 ## Types
 
@@ -1243,7 +1249,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 6243</sub>
+<sub>`api.ogt` line 6278</sub>
 
 <a id="type-Font"></a>
 
@@ -1257,7 +1263,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 6244</sub>
+<sub>`api.ogt` line 6279</sub>
 
 <a id="type-Sound"></a>
 
@@ -1271,7 +1277,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 6245</sub>
+<sub>`api.ogt` line 6280</sub>
 
 <a id="type-Style"></a>
 
@@ -1285,7 +1291,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Style "A cooked UI style: its values, atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 6246</sub>
+<sub>`api.ogt` line 6281</sub>
 
 <a id="type-TextureArray"></a>
 
@@ -1299,7 +1305,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
 ```
 
-<sub>`api.ogt` line 6247</sub>
+<sub>`api.ogt` line 6282</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -1324,7 +1330,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 6284</sub>
+<sub>`api.ogt` line 6319</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -1354,7 +1360,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 6291</sub>
+<sub>`api.ogt` line 6326</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -1367,6 +1373,8 @@ What a loaded glTF holds.
 | `scenes` | `number` | `0` | — | — | — | How many scenes it has. |
 | `geometries` | `readonly Geometry[]` | `[]` | — | — | — | Its geometries, in glTF mesh-primitive order. |
 | `materials` | `readonly Material[]` | `[]` | — | — | — | Its materials, in glTF order, then the default material. |
+| `variants` | `readonly string[]` | `[]` | — | — | — | Its material variants' names (KHR_materials_variants), in glTF order: og.Model.variant draws an instance with one, by its index here. Empty for a model without variants. |
+| `lights` | `number` | `0` | — | — | — | How many punctual lights it has (KHR_lights_punctual) in its default scene: world.instantiate and a scene's `model` line spawn each as a child entity of the model's, with an og.PointLight, og.SpotLight or og.DirectionalLight at its node's place (glTF's candela as the radiance at one metre, its range as distance, a light of infinite range ending where its radiance falls to 0.01, a spot's outer cone as angle and 1 - inner / outer as penumbra). |
 | `animations` | `readonly string[]` | `[]` | — | — | — | Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name. |
 
 ```ogt
@@ -1375,11 +1383,13 @@ struct GltfInfo {
   field scenes u32 "How many scenes it has."
   field geometries List.Geometry "Its geometries, in glTF mesh-primitive order."
   field materials List.Material "Its materials, in glTF order, then the default material."
+  field variants List.String "Its material variants' names (KHR_materials_variants), in glTF order: og.Model.variant draws an instance with one, by its index here. Empty for a model without variants."
+  field lights u32 "How many punctual lights it has (KHR_lights_punctual) in its default scene: world.instantiate and a scene's `model` line spawn each as a child entity of the model's, with an og.PointLight, og.SpotLight or og.DirectionalLight at its node's place (glTF's candela as the radiance at one metre, its range as distance, a light of infinite range ending where its radiance falls to 0.01, a spot's outer cone as angle and 1 - inner / outer as penumbra)."
   field animations List.String "Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name."
 }
 ```
 
-<sub>`api.ogt` line 6303</sub>
+<sub>`api.ogt` line 6338</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -1402,7 +1412,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 6311</sub>
+<sub>`api.ogt` line 6348</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -1435,7 +1445,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 6318</sub>
+<sub>`api.ogt` line 6355</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1466,7 +1476,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 6330</sub>
+<sub>`api.ogt` line 6367</sub>
 
 <a id="type-TextureArrayInfo"></a>
 
@@ -1497,7 +1507,7 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 6343</sub>
+<sub>`api.ogt` line 6380</sub>
 
 ## Column kinds
 
@@ -1520,7 +1530,7 @@ column TextureArray {
 }
 ```
 
-<sub>`api.ogt` line 6249</sub>
+<sub>`api.ogt` line 6284</sub>
 
 ```ogt
 column Asset {
@@ -1531,7 +1541,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 6256</sub>
+<sub>`api.ogt` line 6291</sub>
 
 ```ogt
 column Sound {
@@ -1542,7 +1552,7 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 6263</sub>
+<sub>`api.ogt` line 6298</sub>
 
 ```ogt
 column Font {
@@ -1553,7 +1563,7 @@ column Font {
 }
 ```
 
-<sub>`api.ogt` line 6270</sub>
+<sub>`api.ogt` line 6305</sub>
 
 ```ogt
 column Style {
@@ -1564,4 +1574,4 @@ column Style {
 }
 ```
 
-<sub>`api.ogt` line 6277</sub>
+<sub>`api.ogt` line 6312</sub>

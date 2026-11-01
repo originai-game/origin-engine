@@ -276,6 +276,41 @@ module render {
     field mapLayer u32 "The layer of mapArray drawn where the Mesh does not pick one (past the array's last layer: the last)."
     field normalMapArray Option.TextureArray "A tangent-space normal map from layer normalMapLayer of a texture array (linear: cook it with `kind normal`), the counterpart of mapArray."
     field normalMapLayer u32 "The layer of normalMapArray read where the Mesh does not pick one."
+    field mapOffset Vector2 "The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs."
+    field mapRepeat Vector2 "How many times map repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells." {
+      default 1 1
+    }
+    field mapRotation f32 "The uv rotation of map, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation." {
+      unit rad
+    }
+    field metalnessMapOffset Vector2 "The uv offset metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too) is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs."
+    field metalnessMapRepeat Vector2 "How many times metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too) repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells." {
+      default 1 1
+    }
+    field metalnessMapRotation f32 "The uv rotation of metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too), counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation." {
+      unit rad
+    }
+    field normalMapOffset Vector2 "The uv offset normalMap is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs."
+    field normalMapRepeat Vector2 "How many times normalMap repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells." {
+      default 1 1
+    }
+    field normalMapRotation f32 "The uv rotation of normalMap, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation." {
+      unit rad
+    }
+    field emissiveMapOffset Vector2 "The uv offset emissiveMap is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs."
+    field emissiveMapRepeat Vector2 "How many times emissiveMap repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells." {
+      default 1 1
+    }
+    field emissiveMapRotation f32 "The uv rotation of emissiveMap, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation." {
+      unit rad
+    }
+    field aoMapOffset Vector2 "The uv offset aoMap is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs."
+    field aoMapRepeat Vector2 "How many times aoMap repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells." {
+      default 1 1
+    }
+    field aoMapRotation f32 "The uv rotation of aoMap, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation." {
+      unit rad
+    }
     field wireframe bool "Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in color plus the emissive light, unlit, depth tested; drawn as lines, not a polygon mode (WebGPU has none). Its meshes cast no shadow."
   }
 

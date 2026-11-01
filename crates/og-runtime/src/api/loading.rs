@@ -238,7 +238,11 @@ pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
                 scenes,
                 geometries,
                 materials,
+                variants,
+                lights,
             } => Ok(json!({
+                "variants": variants,
+                "lights": lights.len(),
                 "scenes": scenes,
                 "geometries": geometries.iter().map(|g| *g as f64).collect::<Vec<_>>(),
                 "materials": materials.iter().map(|m| *m as f64).collect::<Vec<_>>(),

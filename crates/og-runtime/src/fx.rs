@@ -112,6 +112,9 @@ pub(crate) struct ModelInfo {
     pub prim_mesh: Vec<u32>,
     pub part_nodes: Vec<usize>,
     pub part_shown: Vec<bool>,
+    /// Per `KHR_materials_variants` variant, each part's material
+    /// (`ModelParts::variants`): og.Model.variant draws with these.
+    pub part_variants: Vec<Vec<og_render::MaterialHandle>>,
 }
 
 /// A model's skin and morph data from its `#anim` blob, and the skinned

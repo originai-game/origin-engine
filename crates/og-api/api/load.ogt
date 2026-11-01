@@ -69,6 +69,8 @@ module load {
     field scenes u32 "How many scenes it has."
     field geometries List.Geometry "Its geometries, in glTF mesh-primitive order."
     field materials List.Material "Its materials, in glTF order, then the default material."
+    field variants List.String "Its material variants' names (KHR_materials_variants), in glTF order: og.Model.variant draws an instance with one, by its index here. Empty for a model without variants."
+    field lights u32 "How many punctual lights it has (KHR_lights_punctual) in its default scene: world.instantiate and a scene's `model` line spawn each as a child entity of the model's, with an og.PointLight, og.SpotLight or og.DirectionalLight at its node's place (glTF's candela as the radiance at one metre, its range as distance, a light of infinite range ending where its radiance falls to 0.01, a spot's outer cone as angle and 1 - inner / outer as penumbra)."
     field animations List.String "Its clip names, in glTF order, from the model's `#anim` blob (empty for a model without clips): a skinned glTF's animations, an animated `.vox`'s `frames` or `voxClip` names. og.load.animation answers the same clips with their ClipAsset handles and durations, and og.anim.clip finds one by name."
   }
 
@@ -149,6 +151,11 @@ module load {
       default 1
     }
     field static bool "Part of its scene's baked lighting: og bake lightmaps gives a static model lightmap UVs (xatlas, over its world-space triangles) and traces the light arriving at its surfaces from the scene into the scene's lightmap (`<scene>.lightmap.ogt` and `.ktx2` beside the scene). Once baked, the model draws with it (its ambient light from the lightmap instead of the sky; its lights' direct light, shadows and highlights still drawn every frame) for as long as the bake matches the scene. A scene entity says `static true` beside its `model` line; an unbaked static model draws as any model, and og doctor --project names the scene."
+    field variant i32 "The glTF material variant this instance draws (KHR_materials_variants), an index into GltfInfo.variants: every mesh the variant maps takes its material, the others keep theirs, on this instance only (a car's paint, a chair's fabric picked at run time, one draw per material as before). -1 draws the glTF's own materials; an index past the model's variants does too." {
+      default -1
+      min -1
+      tunable true
+    }
   }
 
   fn bundle {

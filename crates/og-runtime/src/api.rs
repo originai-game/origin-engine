@@ -102,7 +102,7 @@ fn entity_number(e: Entity) -> Value {
 }
 
 /// A component layout by schema name, or why the token is not usable.
-fn component(eng: &Engine, name: &str) -> Result<(Layout, og_ecs::SchemaId), String> {
+pub(crate) fn component(eng: &Engine, name: &str) -> Result<(Layout, og_ecs::SchemaId), String> {
     let st = eng.state.borrow();
     let layout = st.layouts.get(name).cloned();
     let warning = st
@@ -266,6 +266,11 @@ fn spawn_parent(call: &str, desc: &Value) -> Result<Option<f64>, String> {
         Some(_) => format!("an object, not an entity ({pass})"),
     };
     Err(format!("{call}: parent is {what}"))
+}
+
+/// [`spawn`] for the engine's own entities (a glTF's lights).
+pub(crate) fn spawn_entity(eng: &Engine, call: &str, desc: &Value) -> Result<Entity, String> {
+    spawn(eng, call, desc)
 }
 
 fn spawn(eng: &Engine, call: &str, desc: &Value) -> Result<Entity, String> {
@@ -833,6 +838,10 @@ pub fn og_world_instantiate(world: u32, asset: f64, desc: Option<String>) -> Str
                 let bytes = layout.encode(None, Some(&fields))?;
                 before_structural(&eng);
                 eng.world()?.insert_bytes(root, id, &bytes).map_err(err)?;
+                if let Err(e) = assets::spawn_lights(&eng, i, root) {
+                    let _ = og_world_despawn(world, root.to_bits() as f64);
+                    return Err(e);
+                }
             }
         }
         Ok(entity_number(root))
