@@ -9,11 +9,11 @@
   },
   "look": "casual cartoon",
   "palette": {
-    "backdrop": "#ffe7b0",
-    "highlight": "#944710",
+    "backdrop": "#ffd36e",
+    "highlight": "#86400e",
     "ink": "#08162e",
-    "line": "#cfcec9",
-    "panel": "#fbf6eb",
+    "line": "#cfcabd",
+    "panel": "#fbf2dc",
     "primary": "#7aabff"
   },
   "premise": "a bright match-and-collect puzzle game for everyone",

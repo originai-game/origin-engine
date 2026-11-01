@@ -9,11 +9,11 @@
   },
   "look": "paper and craft",
   "palette": {
-    "backdrop": "#e9dcc2",
-    "highlight": "#813a23",
+    "backdrop": "#d9bf94",
+    "highlight": "#682e1c",
     "ink": "#081714",
-    "line": "#cbccc6",
-    "panel": "#f6f4ed",
+    "line": "#c8c6bd",
+    "panel": "#f2ede2",
     "primary": "#225a4e"
   },
   "premise": "a cosy crafting sim of cut paper, stickers and tape",

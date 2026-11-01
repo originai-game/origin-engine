@@ -1031,6 +1031,144 @@ fn dressings(c: &StyleChoices, p: &crate::theme::Palette) -> String {
             }
             dress("Tabs.tab[selected]", vec!["stroke 2 primary inside".into()]);
         }
+        Finish::Gradient if rich => {
+            // Gilt: gold-leaf edges lit from above, a warm glow in the
+            // panels, corner ornaments on every framed surface.
+            let gold = lit(p.focus);
+            let gilt = |w: f32| {
+                format!(
+                    "stroke {} linear 180 {gold} primary primaryActive inside",
+                    num(w)
+                )
+            };
+            let mut panel = vec![
+                "fill linear 180 panelRaised panel well".into(),
+                format!(
+                    "fill radial {} {}",
+                    alpha(p.focus, 0.1),
+                    alpha(p.focus, 0.0)
+                ),
+                gilt(3.0),
+                format!("stroke 1 {} outside", alpha(p.focus, 0.35)),
+                format!(
+                    "effect dropShadow 0 6 0 0 {}",
+                    alpha(p.shadow, (p.shadow.alpha * 1.4).min(1.0))
+                ),
+                format!("effect innerGlow 16 {}", alpha(p.focus, 0.14)),
+            ];
+            ornaments(&mut panel);
+            dress("Panel.frame", panel);
+            let mut card = vec![
+                "fill linear 180 panelRaised panel".into(),
+                gilt(2.0),
+                format!(
+                    "effect dropShadow 0 4 0 0 {}",
+                    alpha(p.shadow, p.shadow.alpha)
+                ),
+                format!("effect innerGlow 10 {}", alpha(p.focus, 0.1)),
+            ];
+            ornaments(&mut card);
+            dress("Card.frame", card);
+            dress(
+                "Button.base",
+                vec![
+                    "fill linear 180 controlStrong control".into(),
+                    gilt(2.5),
+                    format!(
+                        "effect dropShadow 0 4 0 0 {}",
+                        alpha(p.shadow, (p.shadow.alpha * 1.4).min(1.0))
+                    ),
+                    format!("effect innerShadow 0 -3 0 0 {}", alpha(k, 0.16)),
+                ],
+            );
+            dress(
+                "Button.base[hover]",
+                vec![format!("effect outerGlow 8 {}", alpha(p.focus, 0.3))],
+            );
+            dress(
+                "Button.base[pressed]",
+                vec![format!("effect innerShadow 0 3 0 0 {}", alpha(k, 0.22))],
+            );
+            dress("Field.frame", vec![gilt(1.5)]);
+            dress(
+                "Slot.frame",
+                vec![
+                    gilt(2.0),
+                    format!("effect innerShadow 0 3 0 0 {}", alpha(k, 0.18)),
+                ],
+            );
+            dress("Tooltip.frame", vec![gilt(1.5)]);
+            dress(
+                "Meter.track",
+                vec![format!("stroke 1.5 {} inside", alpha(p.focus, 0.55))],
+            );
+            dress(
+                "Meter.fill",
+                vec![
+                    format!("effect innerShadow 0 -3 0 0 {}", alpha(k, 0.18)),
+                    format!("effect innerShadow 0 2 0 0 {}", alpha(w, 0.35)),
+                ],
+            );
+            dress("Chip.base", vec![gilt(1.5)]);
+            dress("Tabs.tab[selected]", vec![gilt(2.0)]);
+        }
+        Finish::Gradient if c.scheme == Scheme::Light => {
+            // Toy: thick ink outlines, hard ink shadows under every
+            // surface, a glossy top on the buttons and the bars.
+            let line = |w: f32| format!("stroke {} {} inside", num(w), alpha(p.ink, 0.88));
+            let hard =
+                |y: f32, a: f32| format!("effect dropShadow 0 {} 0 0 {}", num(y), alpha(p.ink, a));
+            let gloss =
+                |y: f32, a: f32| format!("effect innerShadow 0 {} 0 0 {}", num(y), alpha(w, a));
+            dress(
+                "Panel.frame",
+                vec![
+                    "fill linear 180 panelRaised panel".into(),
+                    line(3.5),
+                    hard(6.0, 0.3),
+                    gloss(4.0, 0.7),
+                ],
+            );
+            dress(
+                "Card.frame",
+                vec![
+                    "fill linear 180 panelRaised panel".into(),
+                    line(3.0),
+                    hard(4.0, 0.3),
+                    gloss(3.0, 0.7),
+                ],
+            );
+            dress(
+                "Button.base",
+                vec![
+                    "fill linear 180 panelRaised control".into(),
+                    line(3.0),
+                    hard(4.0, 0.88),
+                    gloss(3.0, 0.55),
+                    format!("effect innerShadow 0 -4 0 0 {}", alpha(k, 0.12)),
+                ],
+            );
+            dress(
+                "Button.base[pressed]",
+                vec![
+                    hard(1.0, 0.88),
+                    format!("effect innerShadow 0 3 0 0 {}", alpha(k, 0.18)),
+                ],
+            );
+            dress("Field.frame", vec![line(2.5)]);
+            dress("Slot.frame", vec![line(2.5), hard(3.0, 0.25)]);
+            dress("Tooltip.frame", vec![line(2.5), hard(3.0, 0.3)]);
+            dress("Meter.track", vec![line(2.5)]);
+            dress(
+                "Meter.fill",
+                vec![
+                    gloss(3.0, 0.5),
+                    format!("effect innerShadow 0 -3 0 0 {}", alpha(k, 0.16)),
+                ],
+            );
+            dress("Chip.base", vec![line(2.5), hard(2.0, 0.6)]);
+            dress("Tabs.tab[selected]", vec![line(2.5)]);
+        }
         Finish::Gradient => {
             let mut panel = vec![
                 "fill linear 180 panelRaised panel".into(),
@@ -1182,6 +1320,72 @@ fn dressings(c: &StyleChoices, p: &crate::theme::Palette) -> String {
                 );
             }
         }
+        Finish::Paper if !rich => {
+            // Cut paper: sheets with a fibre grain, stitched edges and hard
+            // offset shadows; tape across the selected tab.
+            let hard = |x: f32, y: f32, a: f32| {
+                format!(
+                    "effect dropShadow {} {} 0 0 {}",
+                    num(x),
+                    num(y),
+                    alpha(p.ink, a)
+                )
+            };
+            let grain = "fill linear 174 panelRaised panel 0.2 panelRaised 0.38 panel 0.55 panelRaised 0.8 panel";
+            dress(
+                "Panel.frame",
+                vec![
+                    grain.into(),
+                    "stroke 2 lineStrong inside dash 7 4 round".into(),
+                    hard(4.0, 5.0, 0.2),
+                ],
+            );
+            dress(
+                "Card.frame",
+                vec![
+                    grain.into(),
+                    "stroke 1.5 lineStrong inside dash 6 4 round".into(),
+                    hard(3.0, 4.0, 0.18),
+                ],
+            );
+            dress(
+                "Button.base",
+                vec!["stroke 2 lineStrong inside".into(), hard(2.0, 3.0, 0.3)],
+            );
+            dress(
+                "Button.base[pressed]",
+                vec![
+                    hard(0.0, 1.0, 0.3),
+                    format!(
+                        "effect innerShadow 1 2 0 0 {}",
+                        alpha(p.shadow, p.shadow.alpha)
+                    ),
+                ],
+            );
+            dress(
+                "Field.frame",
+                vec!["stroke 1.5 lineStrong inside dash 5 3".into()],
+            );
+            dress(
+                "Slot.frame",
+                vec![
+                    "stroke 1.5 lineStrong inside dash 4 3 round".into(),
+                    hard(2.0, 2.0, 0.14),
+                ],
+            );
+            dress("Tooltip.frame", vec![hard(2.0, 3.0, 0.22)]);
+            dress(
+                "Chip.base",
+                vec!["stroke 1.5 lineStrong inside dash 4 3".into()],
+            );
+            dress(
+                "Tabs.tab[selected]",
+                vec![
+                    format!("fill {}", alpha(p.focus, 0.22)),
+                    "stroke 1.5 lineStrong inside".into(),
+                ],
+            );
+        }
         Finish::Paper => {
             let mut panel = vec![
                 "stroke 1.5 lineStrong inside".into(),
@@ -1253,21 +1457,61 @@ fn dressings(c: &StyleChoices, p: &crate::theme::Palette) -> String {
             dress("Meter.track", vec!["stroke 2 lineStrong inside".into()]);
         }
         Finish::Brush => {
+            // Ink on paper: a wash that pools towards the edges, the
+            // brush's fibre streaks across it, dry-brush edges broken where
+            // the brush lifted.
+            let i = |a: f32| alpha(p.ink, a);
+            // The streaks darken the sheet on either scheme: a light ink's
+            // streaks on a dark sheet would lift it under the status inks.
+            let fibre = if c.scheme == Scheme::Light { p.ink } else { k };
+            let f = |a: f32| alpha(fibre, a);
+            let wash = "fill radial panelRaised panelRaised panel well".to_string();
+            let streaks = format!(
+                "fill linear 176 {} {} 0.14 {} 0.27 {} 0.41 {} 0.58 {} 0.72 {} 0.86 {}",
+                f(0.0),
+                f(0.05),
+                f(0.0),
+                f(0.035),
+                f(0.0),
+                f(0.05),
+                f(0.0),
+                f(0.03)
+            );
+            let dry = |w: f32, a: f32, dash: f32, gap: f32, off: f32| {
+                format!(
+                    "stroke {} {} inside dash {} {} offset {} round",
+                    num(w),
+                    i(a),
+                    num(dash),
+                    num(gap),
+                    num(off)
+                )
+            };
             let mut panel = vec![
-                "fill radial panelRaised panel".into(),
-                format!("stroke 2 {} inside", alpha(p.ink, 0.75)),
-                format!("effect innerShadow 0 0 18 0 {}", alpha(p.ink, 0.08)),
+                wash.clone(),
+                streaks.clone(),
+                dry(2.5, 0.8, 46.0, 5.0, 9.0),
+                format!("stroke 1 {} outside dash 13 7 offset 3 round", i(0.4)),
+                format!("effect innerShadow 0 0 18 0 {}", i(0.1)),
             ];
             ornaments(&mut panel);
             dress("Panel.frame", panel);
             dress(
-                "Button.base",
-                vec![format!("stroke 1.5 {} inside", alpha(p.ink, 0.6))],
+                "Card.frame",
+                vec![
+                    wash,
+                    streaks,
+                    dry(1.5, 0.65, 30.0, 4.0, 5.0),
+                    format!("effect innerShadow 0 0 12 0 {}", i(0.08)),
+                ],
             );
+            dress("Button.base", vec![dry(1.75, 0.65, 28.0, 4.0, 6.0)]);
             dress(
                 "Button.base[primary]",
                 vec![format!("effect innerShadow 0 0 10 0 {}", alpha(k, 0.18))],
             );
+            dress("Field.frame", vec![dry(1.5, 0.55, 22.0, 3.0, 4.0)]);
+            dress("Slot.frame", vec![dry(1.5, 0.5, 18.0, 4.0, 2.0)]);
             dress("Tabs.tab[selected]", vec!["stroke 2 primary inside".into()]);
             dress(
                 "Meter.fill",
@@ -1785,7 +2029,7 @@ pub fn seeds() -> Vec<StyleChoices> {
             "casual cartoon",
             "a bright match-and-collect puzzle game for everyone",
             Light,
-            (0x2f7bff, 0xffe7b0, Some(0xff7a1a)),
+            (0x2f7bff, 0xffd36e, Some(0xff7a1a)),
             S::Round,
             O::Light,
             M::Bouncy,
@@ -1881,7 +2125,7 @@ pub fn seeds() -> Vec<StyleChoices> {
             "paper and craft",
             "a cosy crafting sim of cut paper, stickers and tape",
             Light,
-            (0x2f7d6d, 0xe9dcc2, Some(0xd9623b)),
+            (0x2f7d6d, 0xd9bf94, Some(0xd9623b)),
             S::Round,
             O::Light,
             M::Snappy,

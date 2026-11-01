@@ -235,37 +235,54 @@ dress "Button.base" {
   press 1 0.96 2
   hover 0 1
   fill linear 180 controlStrong control
-  stroke 2.5 lineStrong inside
+  stroke 2.5 linear 180 "#e8c46a" primary primaryActive inside
   effect dropShadow 0 4 0 0 "#0000006c"
-  effect innerShadow 0 -3 0 0 "#0000001f"
+  effect innerShadow 0 -3 0 0 "#00000029"
 }
 dress "Panel.frame" {
-  fill linear 180 panelRaised panel
-  stroke 3 lineStrong inside
-  effect dropShadow 0 5 0 0 "#0000006c"
+  fill linear 180 panelRaised panel well
+  fill radial "#e8c46a1a" "#e8c46a00"
+  stroke 3 linear 180 "#e8c46a" primary primaryActive inside
+  stroke 1 "#e8c46a59" outside
+  effect dropShadow 0 6 0 0 "#0000006c"
+  effect innerGlow 16 "#e8c46a24"
   ornament corner
 }
 dress "Card.frame" {
   fill linear 180 panelRaised panel
-  stroke 2.5 lineStrong inside
+  stroke 2 linear 180 "#e8c46a" primary primaryActive inside
   effect dropShadow 0 4 0 0 "#0000004d"
+  effect innerGlow 10 "#e8c46a1a"
+  ornament corner
+}
+dress "Button.base[hover]" {
+  effect outerGlow 8 "#e8c46a4d"
 }
 dress "Button.base[pressed]" {
-  effect innerShadow 0 3 0 0 "#0000002e"
+  effect innerShadow 0 3 0 0 "#00000038"
 }
 dress "Field.frame" {
-  stroke 2 lineStrong inside
+  stroke 1.5 linear 180 "#e8c46a" primary primaryActive inside
 }
 dress "Slot.frame" {
-  stroke 2 lineStrong inside
-  effect innerShadow 0 3 0 0 "#0000001f"
+  stroke 2 linear 180 "#e8c46a" primary primaryActive inside
+  effect innerShadow 0 3 0 0 "#0000002e"
+}
+dress "Tooltip.frame" {
+  stroke 1.5 linear 180 "#e8c46a" primary primaryActive inside
+}
+dress "Meter.track" {
+  stroke 1.5 "#e8c46a8c" inside
 }
 dress "Meter.fill" {
   effect innerShadow 0 -3 0 0 "#0000002e"
   effect innerShadow 0 2 0 0 "#ffffff59"
 }
 dress "Chip.base" {
-  stroke 2 lineStrong inside
+  stroke 1.5 linear 180 "#e8c46a" primary primaryActive inside
+}
+dress "Tabs.tab[selected]" {
+  stroke 2 linear 180 "#e8c46a" primary primaryActive inside
 }
 dress "Button.base[primary]" {
   fill linear 180 primary primaryActive primaryActive primaryActive

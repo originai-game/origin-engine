@@ -6,75 +6,75 @@ version 2
 name "bubbly"
 scheme light
 palette {
-  backdrop "#ffe7b0"
-  well "#f0d9a5"
-  panel "#fbf6eb"
-  panelHover "#f2ede3"
-  panelRaised "#fdfaf3"
-  line "#cfcec9"
-  lineStrong "#82868d"
+  backdrop "#ffd36e"
+  well "#f0c667"
+  panel "#fbf2dc"
+  panelHover "#f2ead4"
+  panelRaised "#fdf7ea"
+  line "#cfcabd"
+  lineStrong "#828485"
   ink "#08162e"
-  inkMuted "#444c5b"
-  inkFaint "#595d63"
-  inkInverse "#fefdf9"
-  control "#eae6de"
-  controlStrong "#d9d7d1"
+  inkMuted "#424956"
+  inkFaint "#595a5d"
+  inkInverse "#fefbf5"
+  control "#eae3d0"
+  controlStrong "#d9d3c4"
   primary "#7aabff"
   primaryHover "#85b2ff"
   primaryActive "#8fb8ff"
   onPrimary "#0a1b38"
   primarySoft "#7aabff38"
-  highlight "#944710"
-  focus "#ce6215"
-  knob "#fefdfa"
-  hud "#fbf6ebf0"
-  scrim "#807458b3"
+  highlight "#86400e"
+  focus "#bc5a13"
+  knob "#fefcf7"
+  hud "#fbf2dcf0"
+  scrim "#806a37b3"
   shadow "#0c1f403d"
   sheen "#ffffff80"
-  success "#1a5932"
-  warn "#6f4509"
-  danger "#8b1c18"
-  info "#174b87"
-  health "#175a22"
-  mana "#0c4796"
+  success "#174e2c"
+  warn "#633d08"
+  danger "#7e1916"
+  info "#144275"
+  health "#154f1e"
+  mana "#0a3e83"
   xp "#5b2183"
-  gold "#654b08"
+  gold "#5a4307"
 }
 colors {
   success icon "check"
   warn icon "bolt"
   danger icon "close"
   info pattern waves
-  common "#919191" pips 1
-  uncommon "#37a645" pips 2
+  common "#8f8f8f" pips 1
+  uncommon "#36a444" pips 2
   rare "#2f7fef" pips 3
   epic "#a335ee" pips 4
-  legendary "#e47200" pips 5
+  legendary "#e07100" pips 5
   mythic "#e8364f" pips 6
   team1 "#3d7eff"
   team2 "#ff4747"
-  team3 "#37a552"
-  team4 "#b48c12"
+  team3 "#36a351"
+  team4 "#b28a12"
   team5 "#a347ff"
-  team6 "#dc771b"
-  team7 "#19a1a1"
-  team8 "#f257a7"
-  physical "#979184"
-  fire "#f36529"
-  ice "#499abe"
-  lightning "#a99027"
-  poison "#5ea141"
-  holy "#9f9164"
+  team6 "#d9751a"
+  team7 "#199f9f"
+  team8 "#ef56a5"
+  physical "#968f82"
+  fire "#ef6428"
+  ice "#4898bc"
+  lightning "#a78e26"
+  poison "#5d9f40"
+  holy "#9d8f63"
   shadow "#8a5cf6"
-  arcane "#f34bce"
+  arcane "#f04acb"
   series1 "#4e79a7"
-  series2 "#d47c26"
+  series2 "#d17a25"
   series3 "#e15759"
-  series4 "#649b97"
-  series5 "#59a14f"
-  series6 "#a98f33"
+  series4 "#639995"
+  series5 "#58a04f"
+  series6 "#a78d33"
   series7 "#b07aa1"
-  series8 "#c97c84"
+  series8 "#c77a82"
 }
 typography {
   display 51 57 -0.01 700 display {
@@ -234,43 +234,58 @@ sounds {
 dress "Button.base" {
   press 1.06 0.9 3
   hover -3 1.04
-  fill linear 180 controlStrong control
-  stroke 2.5 lineStrong inside
-  effect dropShadow 0 4 0 0 "#0c1f4015"
-  effect innerShadow 0 -3 0 0 "#0000001f"
+  fill linear 180 panelRaised control
+  stroke 3 "#08162ee0" inside
+  effect dropShadow 0 4 0 0 "#08162ee0"
+  effect innerShadow 0 3 0 0 "#ffffff8c"
+  effect innerShadow 0 -4 0 0 "#0000001f"
 }
 dress "Panel.frame" {
   fill linear 180 panelRaised panel
-  stroke 3 lineStrong inside
-  effect dropShadow 0 5 0 0 "#0c1f4015"
+  stroke 3.5 "#08162ee0" inside
+  effect dropShadow 0 6 0 0 "#08162e4d"
+  effect innerShadow 0 4 0 0 "#ffffffb3"
 }
 dress "Card.frame" {
   fill linear 180 panelRaised panel
-  stroke 2.5 lineStrong inside
-  effect dropShadow 0 4 0 0 "#0c1f400f"
+  stroke 3 "#08162ee0" inside
+  effect dropShadow 0 4 0 0 "#08162e4d"
+  effect innerShadow 0 3 0 0 "#ffffffb3"
 }
 dress "Button.base[pressed]" {
+  effect dropShadow 0 1 0 0 "#08162ee0"
   effect innerShadow 0 3 0 0 "#0000002e"
 }
 dress "Field.frame" {
-  stroke 2 lineStrong inside
+  stroke 2.5 "#08162ee0" inside
 }
 dress "Slot.frame" {
-  stroke 2 lineStrong inside
-  effect innerShadow 0 3 0 0 "#0000001f"
+  stroke 2.5 "#08162ee0" inside
+  effect dropShadow 0 3 0 0 "#08162e40"
+}
+dress "Tooltip.frame" {
+  stroke 2.5 "#08162ee0" inside
+  effect dropShadow 0 3 0 0 "#08162e4d"
+}
+dress "Meter.track" {
+  stroke 2.5 "#08162ee0" inside
 }
 dress "Meter.fill" {
-  effect innerShadow 0 -3 0 0 "#0000002e"
-  effect innerShadow 0 2 0 0 "#ffffff59"
+  effect innerShadow 0 3 0 0 "#ffffff80"
+  effect innerShadow 0 -3 0 0 "#00000029"
 }
 dress "Chip.base" {
-  stroke 2 lineStrong inside
+  stroke 2.5 "#08162ee0" inside
+  effect dropShadow 0 2 0 0 "#08162e99"
+}
+dress "Tabs.tab[selected]" {
+  stroke 2.5 "#08162ee0" inside
 }
 dress "Button.base[primary]" {
   fill linear 180 primary primaryActive primaryActive primaryActive
 }
 dress "Slot.frame[selected]" {
-  stroke 2 "#ce6215" inside
+  stroke 2 "#bc5a13" inside
 }
 dress "Slot.frame[rarity=rare]" {
   stroke 2 "#3d8bfd" inside

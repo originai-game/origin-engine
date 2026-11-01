@@ -237,16 +237,30 @@ sounds {
 dress "Button.base" {
   press 1 0.96 2
   hover 0 1
-  stroke 1.5 "#f9f2f299" inside
+  stroke 1.75 "#f9f2f2a6" inside dash 28 4 offset 6 round
 }
 dress "Panel.frame" {
-  fill radial panelRaised panel
-  stroke 2 "#f9f2f2bf" inside
-  effect innerShadow 0 0 18 0 "#f9f2f214"
+  fill radial panelRaised panelRaised panel well
+  fill linear 176 "#00000000" "#0000000d" 0.14 "#00000000" 0.27 "#00000009" 0.41 "#00000000" 0.58 "#0000000d" 0.72 "#00000000" 0.86 "#00000008"
+  stroke 2.5 "#f9f2f2cc" inside dash 46 5 offset 9 round
+  stroke 1 "#f9f2f266" outside dash 13 7 offset 3 round
+  effect innerShadow 0 0 18 0 "#f9f2f21a"
+}
+dress "Card.frame" {
+  fill radial panelRaised panelRaised panel well
+  fill linear 176 "#00000000" "#0000000d" 0.14 "#00000000" 0.27 "#00000009" 0.41 "#00000000" 0.58 "#0000000d" 0.72 "#00000000" 0.86 "#00000008"
+  stroke 1.5 "#f9f2f2a6" inside dash 30 4 offset 5 round
+  effect innerShadow 0 0 12 0 "#f9f2f214"
 }
 dress "Button.base[primary]" {
   effect innerShadow 0 0 10 0 "#0000002e"
   fill linear 180 primary primaryActive primaryActive primaryActive
+}
+dress "Field.frame" {
+  stroke 1.5 "#f9f2f28c" inside dash 22 3 offset 4 round
+}
+dress "Slot.frame" {
+  stroke 1.5 "#f9f2f280" inside dash 18 4 offset 2 round
 }
 dress "Tabs.tab[selected]" {
   stroke 2 primary inside
