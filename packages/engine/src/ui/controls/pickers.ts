@@ -7,7 +7,7 @@
 import type * as Api from "@origingame/engine";
 import { beside, floating, floatingContent, elevation } from "../containers/base.ts";
 import {
-  byText, chevron, clamp, control, drawn, fieldChrome, frame, glyphIcon, grow, kit, mix, over, paint, px, recallPath, rememberPath, role, rtl, still, text, TOUCH, xy,
+  byText, chevron, clamp, control, drawn, fieldChrome, frame, glyphIcon, grow, kit, mix, over, keepPath, ownPath, paint, px, role, rtl, still, text, TOUCH, xy,
 } from "./base.ts";
 import { fold, inputField } from "./fields.ts";
 
@@ -32,7 +32,7 @@ export function dropdown(id: string, desc: Api.DropdownDesc = {}): Api.DropdownR
   const chosen = selected >= 0 ? options[selected] : undefined;
   const searchable = desc.searchable ?? options.length > 10;
   let filter = "";
-  const key = `Dropdown~${id}`;
+  let trigPath = "";
   fieldChrome(`${id}`, {
     ...(desc.label ? { label: desc.label } : {}),
     ...(desc.helper ? { helper: desc.helper } : {}),
@@ -60,13 +60,13 @@ export function dropdown(id: string, desc: Api.DropdownDesc = {}): Api.DropdownR
       text("Value", chosen?.label ?? (desc.placeholder || "Select…"), { step: "body", color: chosen ? (disabled ? "inkFaint" : "ink") : "inkFaint", nowrap: true, ellipsis: true, width: grow() });
       chevron("Chevron", "down", byText(18), disabled ? role("inkFaint") : role("inkMuted"), { group: "expansion", current: open ? "expanded" : "collapsed", turns: { collapsed: 0, expanded: 2 } }, 2.2);
     });
-    rememberPath(key, trig.path);
+    trigPath = trig.path;
     if (trig.r.clicked && !disabled) {
       open = !open;
       kit.feedback(open ? "open" : "close", -1);
     }
   });
-  const anchor = kit.bounds(recallPath(key)) ?? null;
+  const anchor = trigPath ? kit.bounds(trigPath) : null;
   const listId = `${id}.list`;
   const rowH = byText(Math.max(40, frame().touch ? TOUCH : 0));
   let dismissed = false;
@@ -83,8 +83,10 @@ export function dropdown(id: string, desc: Api.DropdownDesc = {}): Api.DropdownR
       }, () => {
         kit.setDraw({ strokes: [{ width: 1, align: "inside", paint: { kind: "solid", color: { token: "line" } } }], effects: elevation("floating") });
         if (searchable) {
+          // The filter's text is kept beside the list (read and written in the same scope as its flag).
+          const typed = kit.memory(`${id}~f`, 0) ? (filterText.get(id) ?? "") : "";
           kit.open("Filter", { direction: "column", width: grow(), padding: xy(t.sm, t.xxs) });
-          filter = inputField("Search", kit.memory(`${id}~f`, 0) ? (filterText.get(id) ?? "") : "", { placeholder: desc.searchPlaceholder || "Filter", icon: "search", clearable: true }).value;
+          filter = inputField("Search", typed, { placeholder: desc.searchPlaceholder || "Filter", icon: "search", clearable: true }).value;
           kit.close();
           filterText.set(id, filter);
           kit.remember(`${id}~f`, filter ? 1 : 0);
@@ -235,7 +237,9 @@ export function colorPicker(id: string, color: Api.PickedColor, desc: Api.ColorP
   const width = desc.width ?? px(280);
   // Which part a held press drags (1 square, 2 hue, 3 alpha) and their boxes last tick.
   const drag = kit.memory(`${id}~drag`, 0);
-  const box = (part: string) => kit.bounds(recallPath(`ColorPicker~${id}~${part}`));
+  const self = ownPath(`ColorPicker~${id}`);
+  const PART: Record<string, string> = { square: "Square", hue: "Hue", alpha: "Alpha" };
+  const box = (part: string) => (self ? kit.bounds(`${self}/${PART[part]}`) : null);
   const across = (b: Api.UiRect | null) => (b ? clamp((ptr.x - b.x) / Math.max(1, b.width), 0, 1) : 0);
   const down = (b: Api.UiRect | null) => (b ? clamp((ptr.y - b.y) / Math.max(1, b.height), 0, 1) : 0);
   const apply = (which: number): void => {
@@ -252,6 +256,7 @@ export function colorPicker(id: string, color: Api.PickedColor, desc: Api.ColorP
   let swatchHit: Api.PickedColor | null = null;
   const thumb = byText(frame().touch ? 26 : 20);
   const stripH = byText(frame().touch ? 28 : 20);
+  const stripReach = Math.max(stripH, frame().touch ? TOUCH : 0);
   kit.open(id, { direction: "column", width, gap: t.sm, cross: "stretch" });
   try {
     if (desc.label) text("Label", desc.label, { step: "sm", color: "inkMuted", nowrap: true });
@@ -286,7 +291,6 @@ export function colorPicker(id: string, color: Api.PickedColor, desc: Api.ColorP
       const hgt = b ? b.height : 0;
       ringAt("Ring", s * w - thumb / 2, (1 - v) * hgt - thumb / 2, thumb, hsvToRgb(h, s, v), ix === "focused" || drag === 1, w);
     });
-    rememberPath(`ColorPicker~${id}~square`, sq.path);
     if (sq.r.pressed && drag === 0) pressed = 1;
     if (sq.r.adjust) {
       s = clamp(s + 0.05 * sq.r.adjust * (rtl() ? -1 : 1), 0, 1);
@@ -299,7 +303,8 @@ export function colorPicker(id: string, color: Api.PickedColor, desc: Api.ColorP
         disabled,
         adjustable: true,
         width: grow(),
-        height: px(stripH),
+        // A finger's target is 44 tall; the strip drawn in its middle keeps its own height.
+        height: px(stripReach),
         fill: null,
         wash: null,
         lift: 0,
@@ -307,11 +312,12 @@ export function colorPicker(id: string, color: Api.PickedColor, desc: Api.ColorP
         radius: stripH / 2,
         semantics: { role: "slider", name, value, valueMin: 0, valueMax: which === 2 ? 360 : 100, valueNow: Math.round(which === 2 ? h : a * 100) },
       }, (ix) => {
-        kit.setDraw({ shape: { kind: "rect", radii: [stripH / 2, stripH / 2, stripH / 2, stripH / 2] }, clip: "shape", fills, strokes: [{ width: 1, align: "inside", paint: { kind: "solid", color: { token: "line" } } }] } as Api.DrawDesc);
+        kit.open("Bar", { width: grow(), height: px(stripH), part: `ColorPicker.${part}Bar`, partClass: "bar" });
+        kit.setDraw({ shape: { kind: "rect", radii: [stripH / 2, stripH / 2, stripH / 2, stripH / 2] }, clip: "shape", fills, strokes: [{ width: ix === "focused" ? 2 : 1, align: "inside", paint: { kind: "solid", color: { token: ix === "focused" ? "focus" : "line" } } }] } as Api.DrawDesc);
+        kit.close();
         const bb = box(part);
-        ringAt("Thumb", f * (bb ? bb.width : 0) - thumb / 2, (stripH - thumb) / 2, thumb, which === 2 ? hue : hsvToRgb(h, s, v), ix === "focused" || drag === which, bb ? bb.width : 0);
+        ringAt("Thumb", f * (bb ? bb.width : 0) - thumb / 2, (stripReach - thumb) / 2, thumb, which === 2 ? hue : hsvToRgb(h, s, v), ix === "focused" || drag === which, bb ? bb.width : 0);
       });
-      rememberPath(`ColorPicker~${id}~${part}`, b.path);
       if (b.r.pressed && drag === 0) pressed = which;
       if (b.r.adjust) {
         // Physical strips: Right raises them in every locale (adjust is the reading direction's).
@@ -367,7 +373,7 @@ export function colorPicker(id: string, color: Api.PickedColor, desc: Api.ColorP
         const p = parseHex(hx);
         if (!p) return;
         const on = toHex({ ...p, a: 1 }).toLowerCase() === cur;
-        const size = byText(frame().touch ? 36 : 28);
+        const size = byText(frame().touch ? TOUCH : 28);
         const b = control(kit.idi("Swatch", i), {
           part: "ColorPicker.swatch",
           cls: "chip",
@@ -392,6 +398,7 @@ export function colorPicker(id: string, color: Api.PickedColor, desc: Api.ColorP
   } finally {
     kit.close();
   }
+  keepPath(`ColorPicker~${id}`, kit.lastPath());
   if (!disabled) {
     if (pressed) apply(pressed);
     if (swatchHit) {

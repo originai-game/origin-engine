@@ -6,8 +6,9 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  bgValues, byText, control, drawn, fieldChrome, flags, frame, glyphIcon, grow, kit, paint, px, role, still, text, TOUCH, validity, vstate, xy, defineTimelines,
+  bgValues, byText, control, drawn, fieldChrome, flags, frame, glyphIcon, grow, kit, paint, parentOf, pct, px, role, still, text, TOUCH, validity, vstate, xy, defineTimelines,
 } from "./base.ts";
+import { elevation, overProps } from "../containers/base.ts";
 
 /** Accents and case dropped: "Épée" matches "epee". */
 export function fold(s: string): string {
@@ -48,34 +49,46 @@ function framed(
     gap: t.xs,
     cross: d.area ? "start" : "center",
     radius: t.control,
-    background: paint(focusedLast ? lit : rest),
+    // Disabled: the well at half strength, so it reads as a value shown, not one to edit.
+    background: paint(disabled ? { ...rest, a: rest.a * 0.5 } : focusedLast ? lit : rest),
     part: `${d.part ?? "Input.frame"}${flags(d.area && "area", focusedLast && "focused", invalid && "invalid", disabled && "disabled")}`,
     partClass: "field",
   });
   try {
     // Its edge: the focus ink while edited, danger when wrong, the line otherwise.
-    const edge = invalid ? "danger" : focusedLast ? "focus" : "lineStrong";
+    const edge = invalid ? "danger" : focusedLast ? "focus" : disabled ? "line" : "lineStrong";
     kit.setDraw({ strokes: [{ width: focusedLast || invalid ? 2 : 1, align: "inside", paint: { kind: "solid", color: { token: edge } } }] });
     if (d.icon) glyphIcon("Icon", d.icon, byText(18), focusedLast ? role("ink") : role("inkMuted"));
     const desc = { placeholder: d.placeholder ?? "", width: grow(), maxChars: d.maxChars ?? 0, invalid, bare: true };
-    r = (d.area
-      ? kit.textArea("Area", value, { ...desc, rows: d.rows ?? 4 })
-      : kit.textField("Field", value, desc)) as Api.FieldResult;
-    if (d.name) kit.semantics({ name: d.name, ...(invalid ? { description: "invalid" } : {}) });
+    if (disabled) {
+      // Shown but inert: its text in muted ink where the field would be, out of the focus order, a textbox the tree calls disabled.
+      text(d.area ? "Area" : "Field", value || (d.placeholder ?? ""), { step: "body", color: "inkMuted", width: grow(), nowrap: !d.area, ellipsis: !d.area });
+      kit.semantics({ role: "textbox", ...(d.name ? { name: d.name } : {}), value, disabled: true });
+    } else {
+      r = (d.area
+        ? kit.textArea("Area", value, { ...desc, rows: d.rows ?? 4 })
+        : kit.textField("Field", value, desc)) as Api.FieldResult;
+      if (d.name) kit.semantics({ name: d.name, ...(invalid ? { description: "invalid" } : {}) });
+    }
     if (d.suffix) text("Suffix", d.suffix, { step: "body", color: "inkMuted", nowrap: true });
     if ((d.clearable ?? true) && value.length > 0 && !disabled) {
+      const clear = frame().touch ? TOUCH : byText(28);
       const c = control("Clear", {
         part: "Input.clear",
         cls: "button",
-        focusable: false,
-        width: px(byText(28)),
-        height: px(byText(28)),
-        radius: byText(14),
+        // A button under a finger is a stop keys and pads reach too; a fine pointer's named image is not.
+        focusable: frame().touch,
+        // A finger's whole target; a pointer's small round one.
+        width: px(clear),
+        height: px(clear),
+        radius: clear / 2,
         fill: null,
         washBy: 0.14,
         lift: 0,
         press: 0.9,
-        semantics: { role: "button", name: "Clear" },
+        // The pointer's shortcut for what keys and pads do on the focused control (Left and Right; a
+        // field's own editing): a button under a finger, a named image to the pad graph.
+        semantics: { role: frame().touch ? "button" : "image", name: "Clear" },
       }, () => drawn("Glyph", "cross", byText(16), role("inkMuted")));
       cleared = c.r.clicked;
     }
@@ -172,9 +185,13 @@ export function searchBox(id: string, query: string, desc: Api.SearchBoxDesc = {
   const showing = query.trim() ? list : (desc.recent ?? []).slice(0, max);
   // Open while the field or a suggestion had the focus last tick (UI memory), with something to show.
   const wasFocused = kit.memory(`${id}~open`, 0) > 0;
+  // Back closes the list and leaves the field focused; typing or a press on the field opens it again.
+  const shut = kit.memory(`${id}~shut`, 0) > 0;
+  let closing = false;
   let chosen: string | null = null;
   let focusedAny = false;
   let res: Api.InputResult | null = null;
+  let listed = false;
   kit.open(id, { direction: "column", width: desc.width ?? grow(), gap: t.xxs, cross: "stretch" });
   try {
     res = framed("Frame", query, {
@@ -187,16 +204,19 @@ export function searchBox(id: string, query: string, desc: Api.SearchBoxDesc = {
     });
     // Down from the field reaches the list by spatial navigation (a one-line field keeps no Up or Down).
     focusedAny = res.response.focused;
-    if (wasFocused && showing.length > 0 && !(desc.disabled ?? false)) {
+    if (wasFocused && !shut && showing.length > 0 && !(desc.disabled ?? false)) {
+      closing = kit.back();
+      listed = true;
       kit.open("List", {
         direction: "column",
-        width: grow(),
+        width: pct(1),
         padding: xy(0, t.xxs),
         radius: t.control,
         background: paint(role("panelRaised")),
         part: "Search.list",
         partClass: "tooltip",
       });
+      kit.setDraw({ strokes: [{ width: 1, align: "inside", paint: { kind: "solid", color: { token: "line" } } }], effects: elevation("floating") });
       if (!query.trim()) text("Recent", "Recent", { step: "caption", color: "inkMuted", nowrap: true });
       showing.forEach((s, i) => {
         const o = control(kit.idi("Option", i), {
@@ -222,17 +242,42 @@ export function searchBox(id: string, query: string, desc: Api.SearchBoxDesc = {
       });
       kit.close();
       kit.semantics({ role: "listbox", name: desc.label || "Suggestions" });
-      kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "y", value: still() ? 0 : -4 }], transition: { kind: "tween", durationMs: 120, ease: "out" } }, reduced: "fade" });
+      // Over what follows the field (never pushing it down, so a press beside it lands where it was aimed),
+      // above it in the stacking; it overlaps the field's neighbours by design.
+      const self = kit.lastPath();
+      const fb = kit.bounds(`${parentOf(self)}/Frame`);
+      const fieldH = fb?.height ?? byText(Math.max(t.controlMd, frame().touch ? TOUCH : 0));
+      // Above the field when below it the list would run past the screen's bottom (a field low on a phone)
+      // and above it there is room, as a select's list flips (last tick's sizes).
+      const { viewport: vp } = frame();
+      // Its height from its rows (its bounds are what the page's clip leaves of it).
+      const listH = showing.length * byText(Math.max(36, frame().touch ? TOUCH : 0)) + 2 * t.xxs
+        + (query.trim() ? 0 : frame().theme.typeRamp.caption?.lineHeight ?? 16);
+      const up = fb !== null
+        && fb.y + fb.height + t.xxs + listH > vp.height - vp.safeArea.bottom
+        && fb.y - t.xxs - listH >= vp.safeArea.top;
+      kit.props(overProps({
+        insets: { start: 0, top: up ? -(listH + t.xxs) : fieldH + t.xxs },
+        z: 20,
+        overlaps: [parentOf(parentOf(self))].filter((x) => x),
+        enter: { values: [{ prop: "opacity", value: 0 }, { prop: "y", value: still() ? 0 : up ? 4 : -4 }], transition: { kind: "tween", durationMs: 120, ease: "out" } },
+        reduced: "fade",
+      }));
     }
   } finally {
     kit.close();
   }
-  if (chosen !== null) {
-    kit.feedback("select", -1);
-    // Back in the field with the chosen text, the list closed.
+  // A z orders only siblings: the list's lifts it over the field, the search's own over the fields after it.
+  if (listed) kit.props({ z: 20 });
+  if (chosen !== null || closing) {
+    kit.feedback(closing ? "close" : "select", -1);
+    // Back in the field (with the chosen text), the list closed.
     kit.setFocus(`${kit.lastPath()}/Frame/Field`);
   }
   kit.remember(`${id}~open`, focusedAny && chosen === null ? 1 : 0);
+  // Shut until the player types, presses the field or leaves it.
+  const reopen = !focusedAny || (res?.changed ?? false) || (res?.response.clicked ?? false);
+  kit.remember(`${id}~shut`, closing || (shut && !reopen) ? 1 : 0);
   const q = chosen ?? res?.value ?? query;
   return {
     query: q,
