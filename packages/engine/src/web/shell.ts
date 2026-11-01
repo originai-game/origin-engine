@@ -23,6 +23,14 @@
 // Mac's browser sends no keyup for a key released while Command is held,
 // so the shell releases those keys itself when Command goes up.
 //
+// Focus: a key held when the window loses focus (Alt+Tab, a click into
+// the browser's own UI, the tab hidden) never sends its keyup to the page,
+// so on `blur` and on the page going hidden the shell sends an up for every
+// key it sent down (releaseHeld) and the engine holds nothing.
+//
+// Rumble: a frame's `rumble` (og.input.rumble) plays on the pads'
+// vibration actuators (gamepad.ts playRumble).
+//
 // Pointer lock (mouse-look): a pointer move carries the mouse's movementX/Y
 // (og.Pointers.movement sums them per tick). When a frame's answer says the
 // game wants the lock (og.PointerLock.wanted, the Worker's `pointer-lock`
@@ -37,6 +45,7 @@ import { createRing, writeRing, type InjectedInput } from "./input.ts";
 import { TextEntry, type TextTarget } from "./text-input.ts";
 import { A11yMirror, type A11yTree } from "./a11y.ts";
 import { playHaptics, type HapticPulse } from "./haptics.ts";
+import { playRumble, type RumbleRequest } from "./gamepad.ts";
 import { laneChoice } from "./lanes.ts";
 import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import { localPlatform, storagePersistence, type PlatformCall, type PlatformHost } from "../platform-local.ts";
@@ -140,6 +149,13 @@ const MODIFIER_KEYS = new Set(["ShiftLeft", "ShiftRight", "ControlLeft", "Contro
 const KEPT_KEYS = new Set(["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab", "PageUp", "PageDown", "Home", "End", "Backspace"]);
 
 export { LANES_MAX_THREADS, laneChoice } from "./lanes.ts";
+
+/** The key ups that release every key in `held` (the codes sent down and not yet up), which it empties: what the shell sends when the window loses focus. */
+export function releaseHeld(held: Set<string>, time?: number): InjectedInput[] {
+  const out: InjectedInput[] = [...held].map((key) => ({ kind: "key", key, action: "up", ...(time !== undefined ? { time } : {}) }));
+  held.clear();
+  return out;
+}
 
 /**
  * Why the engine stopped, as the Worker or the shell's frame deadline
@@ -300,6 +316,10 @@ export class Shell {
       }
       if (m.type === "haptics") {
         playHaptics((m as unknown as { patterns: HapticPulse[][] }).patterns);
+        return;
+      }
+      if (m.type === "rumble") {
+        playRumble((m as unknown as { rumble: RumbleRequest[] }).rumble);
         return;
       }
       if (m.type === "copy") {
@@ -670,20 +690,37 @@ export class Shell {
     // Keys that went down while Command was held: a Mac's browser sends no
     // keyup for them, so they are released when Command is.
     const underCommand = new Set<string>();
+    // Every key sent down and not yet up: released when the window loses focus.
+    const heldKeys = new Set<string>();
     listen(globalThis as unknown as EventTarget, "keydown", (e) => {
       if (typing(e) || !e.code) return;
       // In the text target Space types and shortcuts copy, cut and paste.
       const shortcut = text.owns(e.target) && (e.ctrlKey || e.metaKey || e.code === "Space");
       if (KEPT_KEYS.has(e.code) && !shortcut) e.preventDefault();
       if (e.metaKey && !MODIFIER_KEYS.has(e.code)) underCommand.add(e.code);
+      heldKeys.add(e.code);
       if (!e.repeat) this.#send(ring, { kind: "key", key: e.code, action: "down", time: stamp(e) });
     });
+    const releaseAll = () => {
+      underCommand.clear();
+      for (const e of releaseHeld(heldKeys, performance.timeOrigin + performance.now())) this.#send(ring, e);
+    };
+    listen(globalThis as unknown as EventTarget, "blur", releaseAll);
+    if (globalThis.document) {
+      listen(globalThis.document as unknown as EventTarget, "visibilitychange" as keyof HTMLElementEventMap, () => {
+        if (globalThis.document?.visibilityState === "hidden") releaseAll();
+      });
+    }
     listen(globalThis as unknown as EventTarget, "keyup", (e) => {
       if (typing(e) || !e.code) return;
       underCommand.delete(e.code);
+      heldKeys.delete(e.code);
       this.#send(ring, { kind: "key", key: e.code, action: "up", time: stamp(e) });
       if ((e.code === "MetaLeft" || e.code === "MetaRight") && !e.metaKey) {
-        for (const key of underCommand) this.#send(ring, { kind: "key", key, action: "up", time: stamp(e) });
+        for (const key of underCommand) {
+          heldKeys.delete(key);
+          this.#send(ring, { kind: "key", key, action: "up", time: stamp(e) });
+        }
         underCommand.clear();
       }
     });
