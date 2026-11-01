@@ -70,7 +70,9 @@ function line(l: Api.SubtitleLine, set: Api.SubtitleSettings, step: Api.TypeStep
   const fade = clamp01((t - born) / msToTicks(120));
   const speaker = set.speakerNames !== false && l.speaker ? l.speaker : "";
   const color = set.speakerColors !== false ? markupColor(l.color ?? undefined) : "#ffffff";
-  const body = l.caption ? `[${escape(l.text ?? "")}]` : escape(l.text ?? "");
+  // A caption is bracketed (once: a text that brings its own brackets keeps them), its bracket escaped as the text's are.
+  const bare = l.caption ? (l.text ?? "").replace(/^\[(.*)\]$/s, "$1") : (l.text ?? "");
+  const body = l.caption ? `[[${escape(bare)}]` : escape(bare);
   const markup = speaker ? `[color=${color}][b]${escape(speaker)}:[/b][/color] ${body}` : body;
   box(key, {
     direction: "row",

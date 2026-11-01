@@ -258,7 +258,7 @@ function statRow(id: string, s: Api.TooltipStat, deltas: boolean): void {
           shape: { kind: "polygon", sides: 3, rotation: d > 0 ? 0 : Math.PI },
           fills: [solid(lit(ink))],
         });
-        text("Text", s.deltaText || `${d > 0 ? "+" : "−"}${Math.abs(d)}`, { step: ts(13), font: "mono", nowrap: true, color: lit(ink) });
+        text("Text", s.deltaText || String(Math.abs(d)), { step: ts(13), font: "mono", nowrap: true, color: lit(ink) });
       });
     }
   });

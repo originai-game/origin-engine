@@ -10,7 +10,7 @@
 // a grey shield on what cannot be interrupted, interrupted in red).
 
 import type * as Api from "@origingame/engine";
-import { a11y, absolute, anchorOf, box, chip, clamp01, close, drop, easeOut, edge, fillDraw, frame, glow, groups, hudPlace, icon, inkOn, keyId, kit, leaf, lit, mix, msToTicks, now, open, paintRgba, pct, px, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, ellipseShape, type Rgba, apply } from "./core.ts";
+import { a11y, absolute, anchorOf, box, chip, innerGlow, reduced, clamp01, close, drop, easeOut, edge, fillDraw, frame, glow, groups, hudPlace, icon, inkOn, keyId, kit, leaf, lit, mix, msToTicks, now, open, paintRgba, pct, px, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, ellipseShape, type Rgba, apply } from "./core.ts";
 import { statBar } from "./meters.ts";
 import { statusGrid } from "./abilities.ts";
 
@@ -58,6 +58,14 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
   const anchor = anchorOf(desc, null);
   let res: Api.Response = NO_RESPONSE;
   hudPlace(id, anchor, () => {
+    // A hit: the health fell this tick. For 450 ms the frame's edge flashes
+    // danger and the portrait shakes, read at a glance in the corner of the eye.
+    const hp = edge(`${id}:hp`, dead ? 0 : health);
+    if (hp.changed && health < hp.prev && !dead) kit.remember(`${id}:hurtAt`, now());
+    const hurtAge = now() - kit.memory(`${id}:hurtAt`, -1e9);
+    const hurt = hurtAge < msToTicks(450) ? 1 - hurtAge / msToTicks(450) : 0;
+    const baseStrokes = desc.targeted ? [stroke(2, lit(role("highlight"))), stroke(1, token("shadow", 0.8), "outside")] : chip().strokes ?? [];
+    const baseEffects = desc.targeted ? [drop(2, 8, token("shadow", 0.45)), glow(8, lit(role("highlight"), 0.45))] : chip().effects ?? [];
     open(id, {
       direction: "row",
       gap: tk.sm,
@@ -69,10 +77,9 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
       partClass: "hud",
     }, {
       ...chip(),
-      strokes: desc.targeted ? [stroke(2, lit(role("highlight"))), stroke(1, token("shadow", 0.8), "outside")] : chip().strokes ?? [],
-      effects: desc.targeted ? [drop(2, 8, token("shadow", 0.45)), glow(8, lit(role("highlight"), 0.45))] : chip().effects ?? [],
+      strokes: hurt > 0 ? [stroke(2.5, lit(role("danger"), 0.4 + 0.6 * hurt)), ...baseStrokes.slice(1)] : baseStrokes,
+      effects: hurt > 0 ? [...baseEffects, glow(10 * hurt, lit(role("danger"), 0.7 * hurt)), innerGlow(14, lit(role("danger"), 0.45 * hurt))] : baseEffects,
     });
-    apply({ opacity: offline ? 0.5 : 1 });
     const portrait = () => {
     // The portrait: round, ringed by its class, the level on a badge at its foot.
     box("Portrait", { width: px(pd), height: px(pd), align: "center", cross: "center", part: sel("UnitFrame", "portrait", cls), partClass: "avatar" }, {
@@ -87,12 +94,16 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
         apply(absolute({ start: 0, top: 0 }, { opacity: dead ? 0.45 : 1 }));
       } else if (desc.icon && kit.hasIcon(desc.icon)) icon("Art", desc.icon, Math.round(pd * 0.56), token("ink"));
       else text("Initials", initials(name), { step: ts(Math.round(m.portrait * 0.34), true), font: "display", color: lit(inkOn(nameHue(name))), nowrap: true });
+      if (hurt > 0 && !reduced()) {
+        leaf("Hurt", { width: pct(1), height: pct(1) }, { fills: [solid(lit(role("danger"), 0.5 * hurt))] }, absolute({ start: 0, top: 0 }));
+      }
       if (dead) {
         box("Dead", { width: pct(1), height: pct(1), align: "center", cross: "center" }, { fills: [solid(token("shadow", 0.55))] }, () => {
           icon("Skull", "skull", Math.round(pd * 0.5), token("inkMuted"));
         }, absolute({ start: 0, top: 0 }));
       }
     });
+    if (hurt > 0 && !reduced()) apply({ transform: { x: Math.sin(hurtAge * 1.9) * u(3) * hurt } });
     const portraitPath = `${kit.openPath()}/Portrait`;
     if (desc.level) {
       box("Level", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, height: px(Math.max(14, Math.round(pd * 0.3))), align: "center", cross: "center", part: sel("UnitFrame", "level"), partClass: "badge" }, {
@@ -140,8 +151,9 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
     });
     if (desc.reverse) portrait();
     res = close({
+      opacity: offline ? 0.5 : 1,
       a11y: a11y("button", name, { value: dead ? "Dead" : offline ? "Offline" : `${desc.level ? `Level ${desc.level}, ` : ""}${Math.round((health / Math.max(1, healthMax)) * 100)}% health`, selected: !!desc.targeted }),
-      ...groups({ life, selection: desc.targeted ? "targeted" : "none" }, { life: ["alive", "dead", "offline"], selection: ["none", "targeted"] }),
+      ...groups({ life, selection: desc.targeted ? "targeted" : "none", hurt: hurt > 0 ? "hit" : "none" }, { life: ["alive", "dead", "offline"], selection: ["none", "targeted"], hurt: ["none", "hit"] }),
     });
   });
   return res;
@@ -202,7 +214,6 @@ function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response
     strokes: border ? [stroke(m.selected ? 2 : 1.5, lit(border, dispel && !m.selected && !m.aggro ? 0.6 + 0.4 * (0.5 + 0.5 * Math.cos(kit.seconds() * 6)) : 1))] : [stroke(1, token("shadow", 0.9), "outside")],
     effects: dispel ? [glow(4, lit(dispel, 0.6))] : [],
   });
-  apply({ opacity: m.outOfRange ? 0.42 : 1 });
   if (hp > 0) leaf("Fill", { width: pct(hp), height: pct(1), part: sel("RaidFrames", "fill", low ? "low" : null) }, fillDraw(cls, 2), absolute({ start: 0, top: 0 }));
   if (heal > 0 && hp < 1) leaf("Heal", { width: pct(Math.min(heal, 1 - hp)), height: pct(1), part: sel("RaidFrames", "heal") }, { fills: [solid(lit(role("success"), 0.42))] }, absolute({ start: hp * w, top: 0 }));
   if (absorb > 0) {
@@ -221,6 +232,7 @@ function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response
   });
   apply(absolute({ start: 0, top: 0, bottom: 0 }));
   return close({
+    opacity: m.outOfRange ? 0.42 : 1,
     a11y: a11y("button", m.name ?? "", { value: m.dead ? "Dead" : m.offline ? "Offline" : `${Math.round(hp * 100)}%`, selected: !!m.selected }),
   });
 }

@@ -318,8 +318,13 @@ export function resourceBar(id: string, desc: Api.ResourceBarDesc = {}): void {
           }, { transform: { scaleX: s, scaleY: s }, ...(capped ? { opacity: 0.6 + 0.4 * pulse(1.5) } : {}) });
           const rate = r.rate ?? 0;
           if (desc.rates !== false && rate !== 0) {
-            text("Rate", `${rate > 0 ? "▲" : "▼"}${formatNumber(Math.abs(rate), { ...fmt, decimals: Math.abs(rate) < 100 && !Number.isInteger(rate) ? 1 : 0 })}${r.rateSuffix ?? "/s"}`, {
-              step: ts(11), font: "mono", color: lit(rate > 0 ? role("success") : role("danger")), nowrap: true, outline: 0.8,
+            // The direction as a drawn mark (no font need carry ▲▼), then the amount a second.
+            const rateInk = lit(rate > 0 ? role("success") : role("danger"));
+            kit.row("Rate", { gap: u(2), cross: "center", part: sel("ResourceBar", "rate", rate > 0 ? "up" : "down") }, () => {
+              leaf("Mark", { width: px(u(7)), height: px(u(6)) }, { shape: { kind: "polygon", sides: 3, rotation: rate > 0 ? 0 : Math.PI }, fills: [solid(rateInk)] });
+              text("Text", `${formatNumber(Math.abs(rate), { ...fmt, decimals: Math.abs(rate) < 100 && !Number.isInteger(rate) ? 1 : 0 })}${r.rateSuffix ?? "/s"}`, {
+                step: ts(11), font: "mono", color: rateInk, nowrap: true, outline: 0.8,
+              });
             });
           }
         }, { a11y: a11y("text", r.name ?? r.key ?? "", { value: `${formatNumber(amount, fmt)}${cap !== null ? ` of ${formatNumber(cap, fmt)}` : ""}${rate(r)}` }) });

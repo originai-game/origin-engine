@@ -16,7 +16,9 @@
 // - a compass point east of the heading sits west of the notch, and
 //   under a right-to-left locale the strip mirrors so east reads west;
 // - a timer's last ten seconds lose their tenths;
-// - a killfeed shows the oldest first, past max or past its time;
+// - a killfeed shows the oldest first, past max or past its time, or lays
+//   out a line stamped late in a run off screen or not at all;
+// - a unit frame shows no hit when its health falls;
 // - a resource at its cap reads as fine;
 // - an anchored HUD piece leaves the safe area on a phone with a notch.
 import { expect, test } from "bun:test";
@@ -24,7 +26,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineSystem, og } from "@origingame/engine";
-import type { World } from "@origingame/engine";
+import type { KillfeedEntry, World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { ogBin } from "./support/og-bin.ts";
@@ -33,6 +35,8 @@ import { at, dump, engineFor, type El } from "./support/ui.ts";
 declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
 
 const kit = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "templates", "ui-kit");
+/** A desktop surface with a 40 px top and 30 px right safe inset (a TV's overscan). */
+const DESKTOP_SAFE = { width: 1280, height: 720, dpr: 1, safeArea: { left: 0, top: 40, right: 30, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" };
 
 {
   loadNativeHost();
@@ -140,15 +144,23 @@ test("og.ui.statusGrid: buffs and debuffs in their rows, stacks and time, more t
 test("og.ui.unitFrame, raidFrames and castBar: health and states read, raids in columns of five, an interrupted cast leaves", () => {
   let state: "casting" | "interrupted" = "casting";
   let endedAt = 0;
+  let health = 30;
   const e = engineFor("HudFrames", () => {
-    og.ui.unitFrame("Target", { name: "Grull the Ogre", level: "62", health: 30, hostile: true, unitClass: "elite", reverse: true, targeted: true, anchor: "top" });
+    og.ui.unitFrame("Target", { name: "Grull the Ogre", level: "62", health, hostile: true, unitClass: "elite", reverse: true, targeted: true, anchor: "top" });
     og.ui.raidFrames("Raid", { members: Array.from({ length: 12 }, (_, i) => ({ key: `m${i}`, name: `Member ${i}`, health: 10 * i, dead: i === 0, role: i % 3 === 0 ? "tank" as const : "damage" as const })) });
     og.ui.castBar("Cast", { name: "Pyroblast", progress: 0.4, remaining: 2.1, state, stateAt: endedAt, anchor: "bottom" });
   });
   e.advance(3);
   let els = dump(e);
   const target = at(els, "TargetHud/Target");
-  expect([target?.role, target?.value, states(target).selection]).toEqual(["button", "Level 62, 30% health", "targeted"]);
+  expect([target?.role, target?.value, states(target).selection, states(target).hurt]).toEqual(["button", "Level 62, 30% health", "targeted", "none"]);
+  // A hit: the health falls, the frame shows it for a moment.
+  health = 18;
+  e.advance(2);
+  expect(states(at(dump(e), "TargetHud/Target")).hurt).toBe("hit");
+  expect(at(dump(e), "TargetHud/Target/Portrait/Hurt")).toBeDefined();
+  e.advance(30);
+  expect(states(at(dump(e), "TargetHud/Target")).hurt).toBe("none");
   // The portrait at the end when reversed.
   const portrait = at(els, "TargetHud/Target/Portrait");
   const bars = at(els, "TargetHud/Target/Bars");
@@ -315,7 +327,8 @@ test("og.ui.killfeed, resourceBar and scoreboard: newest first within max and ti
   expect(lines.map((x) => x.id)).toEqual(["k6", "k5", "k4", "k3"]);
   expect(at(els, "FeedHud/Feed")?.role).toBe("log");
   expect(at(els, "ResHud/Res/sup/Amount")?.text).toBe("190/200");
-  expect(at(els, "ResHud/Res/min/Rate")?.text).toBe("▲12.5/s");
+  expect(at(els, "ResHud/Res/min/Rate/Text")?.text).toBe("12.5/s");
+  expect(at(els, "ResHud/Res/min/Rate/Mark")).toBeDefined();
   expect(at(els, "BoardHud/Board/Team#0/a/Value#0")?.text).toBe("12");
   expect(at(els, "BoardHud/Board/Team#0/b")?.value).toBe("3, 9");
   e.advance(70);
@@ -417,4 +430,31 @@ test("every corner HUD piece stays inside the safe area at every breakpoint", ()
       expect(inside, `${name} ${root} at ${r.x},${r.y} ${r.width}×${r.height}`).toBe(true);
     }
   }
+});
+
+test("og.ui.killfeed: lines stamped late in a run are laid out on screen, inside the safe area, newest on top", () => {
+  const entries: KillfeedEntry[] = [];
+  let push: string[] = [];
+  const e = engineFor("HudFeedLate", () => {
+    for (const k of push) entries.push({ key: k, killer: "Wraith", killerTeam: 0, victim: "Octane", victimTeam: 1, weaponText: "R-99", at: og.ui.tick() });
+    push = [];
+    og.ui.killfeed("Feed", { entries });
+  }, { ...DESKTOP_SAFE });
+  e.advance(500);
+  push = ["a"];
+  e.advance(20);
+  push = ["b"];
+  e.advance(20);
+  const els = dump(e);
+  const a = at(els, "FeedHud/Feed/a")!;
+  const b = at(els, "FeedHud/Feed/b")!;
+  for (const line of [a, b]) {
+    expect(line.width).toBeGreaterThan(80);
+    expect(line.height).toBeGreaterThan(10);
+    expect(line.x).toBeGreaterThanOrEqual(0);
+    expect(line.y).toBeGreaterThanOrEqual(40);
+    expect(line.x + line.width).toBeLessThanOrEqual(1280 - 30);
+  }
+  expect(b.y).toBeLessThan(a.y);
+  expect(at(els, "FeedHud/Feed/b/Killer")?.text).toBe("Wraith");
 });

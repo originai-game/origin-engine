@@ -75,22 +75,26 @@ function counter(id: string, value: number, desc: Api.NumberCounterDesc, hud: bo
   if (desc.icon) icon("Icon", desc.icon, Math.round(stepSize(step).size * 0.8), desc.icon === "coin" ? token("gold") : token("ink"));
   kit.column("Body", { gap: 0, cross: desc.align === "end" ? "end" : desc.align === "center" ? "center" : "start" }, () => {
     const roll = desc.roll !== false && counting && (format.notation ?? "grouped") === "grouped" && (format.exponent ?? 0) === 0 && Math.abs(value) < 1e15 && Math.abs(from) < 1e15;
+    // The box is as wide as the wider end of the count (an invisible copy
+    // sizes it), so a count that grows a digit never outgrows its place.
+    const ends = [formatNumber(value, format), formatNumber(counting ? from : value, format)];
+    const widest = ends[0]!.length >= ends[1]!.length ? ends[0]! : ends[1]!;
+    text("Sizer", widest, { step, font: desc.font ?? "mono", nowrap: true, outline: hud ? 1 : false }, { opacity: 0, inert: true });
+    const at = desc.align === "end" ? { end: 0, top: 0 } : desc.align === "center" ? { centerX: true, top: 0 } : { start: 0, top: 0 };
     if (roll) digits("Value", shown, format, step, desc.font ?? "mono", inkNow, hud);
     else text("Value", formatNumber(shown, format), { step, font: desc.font ?? "mono", color: inkNow, nowrap: true, outline: hud ? 1 : false });
-    apply({ transform: { scaleX: scale, scaleY: scale, pivotX: desc.align === "end" ? 1 : desc.align === "center" ? 0.5 : 0 } });
+    apply(absolute(at, { transform: { scaleX: scale, scaleY: scale, pivotX: desc.align === "end" ? 1 : desc.align === "center" ? 0.5 : 0 } }));
     if (desc.label) text("Label", desc.label, { step: ts(13), color: token("inkMuted"), nowrap: true, outline: hud ? 0.7 : false });
   });
-  // The +n of a rise flies up off the number and fades.
+  // The +n of a rise, in its own place beside the number: it rises a little and fades.
   const dAt = kit.memory("deltaAt", -1e9);
   const dx = (t - dAt) / msToTicks(900);
   if (dx >= 0 && dx < 1) {
     const d = kit.memory("delta", 0);
-    text("Delta", formatNumber(d, { ...format, sign: true }), { step: ts(18), font: "mono", nowrap: true, color: token("success"), outline: 1 }, absolute({ end: 0, top: -8 }, {
-      transform: { y: reduced() ? 0 : -28 * easeOut(dx) },
+    text("Delta", formatNumber(d, { ...format, sign: true }), { step: ts(18), font: "mono", nowrap: true, color: token("success"), outline: 1 }, {
+      transform: { y: reduced() ? 0 : -10 * easeOut(dx) },
       opacity: 1 - dx * dx,
-      z: 2,
-      overlaps: [path],
-    }));
+    });
   }
   close({
     a11y: a11y("text", desc.label || "", { value: formatNumber(value, format) }),

@@ -68,7 +68,6 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
       effects: [drop(2, 6, token("shadow", 0.55)), ...(desc.active || ultReady ? [glow(6 + 6 * breath, lit(ringInk, 0.55))] : [])],
       clip: "shape",
     });
-    apply({ transform: { scaleX: s, scaleY: s } });
     // The art, inset by the frame's ring.
     const inset = Math.max(2, Math.round(size / 18));
     if (desc.image) {
@@ -129,6 +128,7 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
         absolute(charged ? { start: inset + 1, bottom: inset } : { centerX: true, bottom: inset }));
     }
     r0 = close({
+      transform: { scaleX: s, scaleY: s },
       a11y: a11y("button", desc.name ?? "", { value: locked ? "Locked" : cooling ? `${Math.ceil(cooldown)}s` : "Ready" }),
       ...groups({ ready: readyState, use }, { ready: ["ready", "cooling", "locked"], use: ["idle", "active", "unaffordable"] }),
     });
@@ -273,7 +273,6 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
       effects: [drop(1, 3, token("shadow", 0.5))],
       clip: "shape",
     });
-    apply({ opacity: blink });
     if (fx.image) {
       kit.image("Icon", { texture: fx.image, width: px(size - 4), height: px(size - 4), label: "" });
       apply(absolute({ start: 2, top: 2 }));
@@ -292,6 +291,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
       text("Stacks", String(fx.stacks), { step: ts(12, true), font: "display", color: token("ink"), nowrap: true, outline: 1.2 }, absolute({ end: 1, bottom: 0 }));
     }
     res = close({
+      opacity: blink,
       a11y: a11y("image", [fx.name ?? "", (fx.stacks ?? 0) >= 2 ? `${fx.stacks} stacks` : "", lasting ? "" : `${Math.ceil(remaining)} seconds`].filter(Boolean).join(", ")),
       ...groups({ time }, { time: ["lasting", "running", "expiring"] }),
     });

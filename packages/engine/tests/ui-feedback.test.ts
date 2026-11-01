@@ -106,7 +106,7 @@ test("og.ui.countBadge: 99+ past max, nothing at 0, read as a status", () => {
   expect(at(dump(e), "Bar/Mail/Unread")).toBe(undefined);
 });
 
-test("og.ui.numberCounter: counts through the values between, lands on the value, throws its rise", () => {
+test("og.ui.numberCounter: counts through the values between, lands on the value, shows its rise beside it, keeps the final width", () => {
   let value = 100;
   const shown: number[] = [];
   const e = engineFor("FbCounter", () => {
@@ -119,11 +119,18 @@ test("og.ui.numberCounter: counts through the values between, lands on the value
   const mid = shown.at(-1)!;
   expect(mid).toBeGreaterThan(100);
   expect(mid).toBeLessThan(1100);
-  expect(at(dump(e), "Gold/Delta")!.text).toBe("+1,000");
+  let els = dump(e);
+  expect(at(els, "Gold/Delta")!.text).toBe("+1,000");
+  // The rise has its own place beside the number, and the number's box is already the final value's width.
+  const body = at(els, "Gold/Body")!;
+  expect(at(els, "Gold/Delta")!.x).toBeGreaterThanOrEqual(body.x + body.width);
+  const midWidth = body.width;
   e.advance(40);
   expect(shown.at(-1)).toBe(1100);
-  const els = dump(e);
+  els = dump(e);
   expect(at(els, "Gold/Body/Value")!.text).toBe("1,100");
+  expect(at(els, "Gold/Body")!.width).toBe(midWidth);
+  expect(at(els, "Gold/Body/Value")!.width).toBeLessThanOrEqual(midWidth + 0.5);
   expect(at(els, "Gold")!.value).toBe("1,100");
 });
 
@@ -154,7 +161,8 @@ test("og.ui.tooltipCard: shows after its delay beside its trigger, pins after re
   // The trigger is at the right edge: the card flips to its left, inside the surface.
   expect(tip.x + tip.width).toBeLessThanOrEqual(sword.x + 1);
   expect(tip.x).toBeGreaterThanOrEqual(0);
-  expect(at(els, "Tip/Card/Stats/Stat#0/Delta/Text")!.text).toBe("+12");
+  expect(at(els, "Tip/Card/Stats/Stat#0/Delta/Text")!.text).toBe("12");
+  expect(at(els, "Tip/Card/Stats/Stat#0/Delta/Mark")).toBeDefined();
   // Resting past pinMs pins it; let go, a pinned card stays only while held, then leaves.
   e.advance(30);
   expect(r!.pinned).toBe(true);
