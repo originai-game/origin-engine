@@ -1689,6 +1689,11 @@ pub fn og_ui_last_path() -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_set_focus(path: String) {
+    <Host as UiApi>::og_ui_set_focus(&Host, path)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_frame_direction() -> String {
     <Host as UiApi>::og_ui_frame_direction(&Host)
 }

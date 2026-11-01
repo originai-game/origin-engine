@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1649 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1650 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1194,6 +1194,7 @@ Field units the docs and Tune use.
 | [`og.ui.semantics`](ui.md#fn-semantics) | function | ui | `og_ui_semantics` |
 | [`og.ui.setDevice`](ui.md#fn-setDevice) | function | ui | `og_ui_set_device` |
 | [`og.ui.setDraw`](ui.md#fn-setDraw) | function | ui | `og_ui_set_draw` |
+| [`og.ui.setFocus`](ui.md#fn-setFocus) | function | ui | `og_ui_set_focus` |
 | [`og.ui.setHaptics`](ui.md#fn-setHaptics) | function | ui | `og_ui_set_haptics` |
 | [`og.ui.setNavigation`](ui.md#fn-setNavigation) | function | ui | `og_ui_set_navigation` |
 | [`og.ui.setPlayers`](ui.md#fn-setPlayers) | function | ui | `og_ui_set_players` |

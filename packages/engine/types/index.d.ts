@@ -19994,6 +19994,7 @@ export interface UiPointer {
 
 
 
+
 /**
  * One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out).
  */
@@ -34193,6 +34194,12 @@ export declare namespace og {
      * The full path of the element built just before (a container just closed, or a widget), as og.ui.bounds, og.ui.gesture, og.ui.forceState and the probe name it: a component reads its own parts' rectangles and gestures by it. Empty when nothing was built before it.
      */
     function lastPath(): string;
+    /**
+     * Move the focus (the pointer's, the keys' and pad 0's) to the element at a full path when this frame ends, if a focusable control is there then: a component moving the focus with its choice (a radio group's arrow keys, a list opening at its chosen option, a keyboard's first key). The ring shows as navigation's does. The last call in a frame wins; a path with no focusable control leaves the focus where it is.
+     *
+     * @param path The element's full path (og.ui.lastPath, og.ui.focus).
+     */
+    function setFocus(path: string): void;
     /**
      * The writing direction of the frame being built, `ltr` or `rtl` (og.i18n's locale sets it): code that draws its own arrows, chevrons or progress along a line mirrors them by it; layout mirrors rows and insets itself.
      */

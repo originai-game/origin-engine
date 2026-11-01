@@ -246,6 +246,15 @@ impl Ui {
         self.state.focus
     }
 
+    /// Moves the shared focus (the pointer's, the keys' and pad 0's) to the
+    /// element at `path` (a full path, as [`Ui::focus_path`] names it) when
+    /// this frame ends, if a focusable control is there then: a radio
+    /// group's arrow keys moving the focus with the choice, a list opening
+    /// at its chosen option. Called again in the frame, the last one wins.
+    pub fn set_focus(&mut self, path: &str) {
+        self.request_focus = crate::id::key_of_path(path);
+    }
+
     /// Escape or gamepad B this tick, not taken by a dialog or menu: true
     /// once, then taken. A pause screen closes on it. While a dialog or menu
     /// Back closes is open (the topmost of the last frame), it answers false

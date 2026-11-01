@@ -90,6 +90,38 @@ fn arrows_move_to_the_aligned_neighbour_and_wrap_at_the_edges() {
 }
 
 #[test]
+fn set_focus_moves_the_focus_to_a_path_and_a_wrong_path_leaves_it() {
+    // Wrong: a path keyed otherwise than the frame keys it (the focus lands
+    // nowhere), a request kept past its frame, or one that clears the focus
+    // when nothing focusable is there.
+    let mut rig = Rig::new(Grid::default());
+    let want = std::cell::Cell::new(None::<&str>);
+    let mut b = |ui: &mut Ui, s: &mut Grid| {
+        grid(ui, s);
+        if let Some(p) = want.take() {
+            ui.set_focus(p);
+        }
+    };
+    rig.idle(1, &mut b);
+    want.set(Some("Grid/R#2/B21"));
+    rig.idle(2, &mut b);
+    assert_eq!(rig.state.focus.as_deref(), Some("B21"));
+    rig.key(UiKey::Enter, &mut b);
+    assert_eq!(
+        rig.state.clicks,
+        vec!["B21".to_string()],
+        "Enter presses it"
+    );
+    want.set(Some("Grid/R#9/Nothing"));
+    rig.idle(2, &mut b);
+    assert_eq!(
+        rig.state.focus.as_deref(),
+        Some("B21"),
+        "no control there: it stays"
+    );
+}
+
+#[test]
 fn tab_walks_reading_order_and_shift_tab_walks_back() {
     let mut rig = Rig::new(Grid::default());
     let b = &mut grid;

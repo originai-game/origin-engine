@@ -579,6 +579,9 @@ past half-way once, then after `motion.duration.slow` every
   scoring distance along it plus three times the gap across it; with none,
   focus wraps to the far end of the same row or column. Next/Prev walk
   reading (draw) order and wrap.
+- `set_focus(path)` (`og.ui.setFocus`) moves the focus to the control at
+  a full path when the frame ends, if one is there: a component moving it
+  with its choice (a radio group's arrows, a list opening at its option).
 - Activate presses the focused control (`Response::clicked`); Left/Right
   adjust a focused slider or stepper; while a text field is edited, Left,
   Right, Enter, Space and Escape belong to it.

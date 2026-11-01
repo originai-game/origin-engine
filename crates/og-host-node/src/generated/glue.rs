@@ -2025,6 +2025,12 @@ pub fn og_ui_last_path(env: Env) -> String {
     <Host as UiApi>::og_ui_last_path(&Host)
 }
 
+#[napi(js_name = "og_ui_set_focus")]
+pub fn og_ui_set_focus(env: Env, path: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_set_focus(&Host, path)
+}
+
 #[napi(js_name = "og_ui_frame_direction")]
 pub fn og_ui_frame_direction(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);
