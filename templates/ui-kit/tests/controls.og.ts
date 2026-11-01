@@ -26,6 +26,7 @@ export default playtest({
     t.ok(controls.some((e) => e.role === "radio" && e.name === "Map" && e.states.includes("checked")), "the tapped segment is chosen");
     const ranges = ui(run, "ranges.json");
     t.ok(ranges.some((e) => e.role === "slider" && e.name === "Look sensitivity" && e.value === "6"), "two Right presses stepped the sensitivity from 4 to 6");
+    t.ok(ranges.some((e) => e.role === "slider" && e.name === "Minimum" && e.value === "500 g"), "the range's low knob dragged to the middle");
     const fields = ui(run, "fields.json");
     t.ok(fields.some((e) => e.role === "combobox" && e.name === "Language" && e.value === "日本語"), "the tapped option is the language");
     const conflict = ui(run, "bindings-conflict.json");

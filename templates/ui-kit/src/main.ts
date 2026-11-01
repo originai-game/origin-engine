@@ -1123,7 +1123,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       back = og.ui.back();
       break;
     case "foundations":
-      foundationsScreen();
+      foundationsScreen(d.backdrop ? (d.backdrop as never) : null);
       back = og.ui.back();
       break;
     case "controls":

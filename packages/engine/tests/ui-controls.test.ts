@@ -416,12 +416,14 @@ test("numberStepper: the buttons step to the bounds and disable there; typed tex
   const engine = run(() => {
     v = og.ui.numberStepper("Players", v, { label: "Players", min: 1, max: 10, step: 1 }).value;
   });
-  const plus = find(engine, (e) => e.role === "button" && e.name.startsWith("Increase"))!;
+  // On a fine pointer + is the pointer's shortcut for Right on the focused stepper: a named image to the pad graph.
+  const plus = find(engine, (e) => e.name.startsWith("Increase"))!;
+  expect(plus.role).toBe("image");
   tap(engine, plus.path);
   tap(engine, plus.path);
   tap(engine, plus.path);
   expect(v).toBe(10);
-  expect(find(engine, (e) => e.role === "button" && e.name.startsWith("Increase"))!.disabled).toBeTrue();
+  expect(find(engine, (e) => e.name.startsWith("Increase"))!.disabled).toBeTrue();
 });
 
 // ── fields and pickers ──────────────────────────────────────────────────
@@ -435,7 +437,7 @@ test("inputField: an error marks it invalid with its message described, the clea
     if (r.cleared) cleared = true;
   });
   expect(find(engine, (e) => e.text === "At most 4 letters")).toBeDefined();
-  const clear = find(engine, (e) => e.role === "button" && e.name.toLowerCase().includes("clear"))!;
+  const clear = find(engine, (e) => e.name.toLowerCase().includes("clear"))!;
   tap(engine, clear.path);
   expect(cleared).toBeTrue();
   expect(value).toBe("");
@@ -511,7 +513,7 @@ test("keyBindingRow: a press waits for a key, a free key lands at once, a used o
     og.input.defineAction(world, { name: "jump", label: "Jump", bindings: [{ control: "Space" }, { control: "pad.a" }] });
     og.input.defineAction(world, { name: "crouch", label: "Crouch", bindings: [{ control: "KeyC" }] });
   });
-  const slot = byPath(engine, "Jump/Main/Slots/Slot#0")!;
+  const slot = byPath(engine, "Jump/Main/Bound/Slots/Slot#0")!;
   expect(slot.name).toContain("Jump");
   tap(engine, slot.path);
   expect(out.r!.capturing).toBeTrue();
@@ -523,7 +525,7 @@ test("keyBindingRow: a press waits for a key, a free key lands at once, a used o
   expect(jump().bindings[0]!.control).toBe("KeyJ");
   expect(out.r!.capturing).toBeFalse();
   // Crouch's key asks.
-  tap(engine, byPath(engine, "Jump/Main/Slots/Slot#0")!.path);
+  tap(engine, byPath(engine, "Jump/Main/Bound/Slots/Slot#0")!.path);
   key(engine, "KeyC");
   engine.advance(4);
   expect(out.r!.conflict).toBeTrue();
@@ -533,7 +535,7 @@ test("keyBindingRow: a press waits for a key, a free key lands at once, a used o
   expect(jump().bindings[0]!.control).toBe("KeyC");
   expect(og.input.actions(engine.world).find((a) => a.name === "crouch")!.bindings[0]!.control).toBe("KeyJ");
   // Rebound, it offers a reset.
-  tap(engine, byPath(engine, "Jump/Main/Reset")!.path);
+  tap(engine, byPath(engine, "Jump/Main/Bound/Reset")!.path);
   expect(jump().bindings[0]!.control).toBe("Space");
 });
 
@@ -648,7 +650,7 @@ test("right to left and the pseudo-locale: rows run from the right, slider fills
   // A switch row: the label at the start (right), the track at the end (left).
   expect(x("Music/Track")).toBeLessThan(x("Music/Text/Label"));
   expect(x("Diff/Options/Option#0")).toBeGreaterThan(x("Diff/Options/Option#1"));
-  expect(x("View/Item#0")).toBeGreaterThan(x("View/Item#1"));
+  expect(x("View/Strip/Track/Item#0")).toBeGreaterThan(x("View/Strip/Track/Item#1"));
   // The volume's fill (60 %) runs from the rail's right end, half a knob in from the track's edge.
   const track = byPath(engine, "Volume/Track")!;
   const fill = find(engine, (e) => e.path.startsWith(track.path + "/") && /Fill$/.test(e.path))!;

@@ -13,9 +13,14 @@ import { key, tap, tapText } from "./lib.ts";
 export function controlsScript(phone: boolean): Script {
   const b = builder(0.3);
   if (phone) b.cmd("viewport:phone");
+  // A screen opens with the pointer parked on empty ground, so its idle frame shows no hover left by the last screen.
+  const show = (screen: string) => {
+    if (!phone) b.cmd("touch_move:1270,712");
+    b.cmd(`show:${screen}`);
+  };
 
   // Foundations: idle (the art slots' sheen, the shine sweeping), the viewport turned.
-  b.cmd("show:foundations");
+  show("foundations");
   b.shot("foundations-idle", 1.0);
   if (phone) b.scroll("Foundations", 600);
   if (phone) {
@@ -34,7 +39,7 @@ export function controlsScript(phone: boolean): Script {
 
   // Buttons and choices: every part at rest, then each state of the primary button, the disabled one's reason,
   // a hold filling, a switch flipped, a radio stepped, a segment and the cycler moved.
-  b.cmd("show:controls");
+  show("controls");
   b.shot("controls-idle", 0.8);
   if (!phone) {
     b.cmd("touch_move_to:Variants/Primary", 0.1);
@@ -55,8 +60,9 @@ export function controlsScript(phone: boolean): Script {
   b.cmd("touch_move_to:Hold/Button", 0.05);
   b.cmd("touch_start", 0.45);
   b.shot("controls-holding", 0.0);
-  b.cmd("touch_end", 0.1);
-  b.shot("controls-hold-draining", 0.1);
+  // Let go: the fill drains (a full one in a third of the hold), caught a moment after the release.
+  b.cmd("touch_end", 0.02);
+  b.shot("controls-hold-draining", 0.05);
   b.seq((at) => tap(at, "Toggles/Music"), 0.2);
   if (phone) b.scroll("Controls", 300);
   b.seq((at) => tap(at, "Terms"), 0.2);
@@ -65,7 +71,7 @@ export function controlsScript(phone: boolean): Script {
   b.seq((at) => tap(at, "Difficulty/Options/Option#2"), 0.2);
   b.seq((at) => tap(at, "Mode/Options/Option#1"), 0.2);
   if (phone) b.scroll("Controls", 300);
-  b.seq((at) => tap(at, "View/Item#2"), 0.2);
+  b.seq((at) => tap(at, "View/Strip/Track/Item#2"), 0.2);
   b.seq((at) => tap(at, "Quality/Next"), 0.2);
   b.shot("controls-chosen", 0.6);
   if (!phone) {
@@ -77,7 +83,7 @@ export function controlsScript(phone: boolean): Script {
   b.dump("controls");
 
   // Ranges: idle, the volume dragged (its bubble), the sensitivity stepped by keys, the range's low knob moved.
-  b.cmd("show:ranges");
+  show("ranges");
   b.shot("ranges-idle", 0.8);
   // Held on the volume and dragged to the track's middle (where the balance's knob sits, under it).
   b.cmd("touch_move_to:Volume/Track", 0.05);
@@ -92,12 +98,17 @@ export function controlsScript(phone: boolean): Script {
     b.seq((at) => key(at, "ArrowRight"), 0.1);
     b.shot("ranges-keys", 0.3);
   }
+  // The range's low knob dragged to the track's middle (500 g, still a minimum gap below the high one).
+  b.cmd("touch_move_to:Price/Track/Low", 0.05);
+  b.cmd("touch_start", 0.1);
+  b.cmd("touch_move_to:Price/Track", 0.1);
+  b.cmd("touch_end", 0.2);
   b.seq((at) => tap(at, "Players/Frame/Inc"), 0.2);
   b.shot("ranges-stepped", 0.5);
   b.dump("ranges");
 
   // Fields: idle (an error, a counter), typing, the search's suggestions, a select open, a swatch picked.
-  b.cmd("show:fields");
+  show("fields");
   b.shot("fields-idle", 0.8);
   b.seq((at) => tap(at, "Name/Frame/Field"), 0.2);
   b.cmd("type: the Brave", 0.6);
@@ -113,6 +124,9 @@ export function controlsScript(phone: boolean): Script {
   if (phone) b.scroll("Fields", 300);
   b.seq((at) => tap(at, "Language/Trigger"), 0.2);
   b.shot("fields-dropdown", 0.5);
+  // A long list filters as the player types (its filter has the focus): 日本 leaves 日本語.
+  b.cmd("type:日本", 0.4);
+  b.shot("fields-dropdown-filtered", 0.3);
   b.seq((at) => tapText(at, "=日本語"), 0.2);
   b.seq((at) => tap(at, "Region/Trigger"), 0.2);
   b.shot("fields-dropdown-groups", 0.5);
@@ -124,20 +138,23 @@ export function controlsScript(phone: boolean): Script {
 
   // Key bindings: idle, a slot waiting, a free key landing, a used one asking, swapped; a pad's rows; then the
   // on-screen keyboard typing letters, and composing kana with its candidates.
-  b.cmd("show:bindings");
+  show("bindings");
   b.cmd("demo:controls:reset");
   b.shot("bindings-idle", 0.8);
-  b.seq((at) => tap(at, "Row#3/Main/Slots/Slot#0"), 0.1);
+  b.seq((at) => tap(at, "Row#3/Main/Bound/Slots/Slot#0"), 0.1);
   b.shot("bindings-waiting", 0.4);
   b.seq((at) => key(at, "KeyF"), 0.3);
   b.shot("bindings-landed", 0.4);
-  b.seq((at) => tap(at, "Row#3/Main/Slots/Slot#0"), 0.1);
+  b.seq((at) => tap(at, "Row#3/Main/Bound/Slots/Slot#0"), 0.4);
   b.seq((at) => key(at, "KeyC"), 0.3);
   b.shot("bindings-conflict", 0.4);
   b.dump("bindings-conflict");
   b.seq((at) => tap(at, "Row#3/Conflict/Swap"), 0.3);
   b.shot("bindings-swapped", 0.4);
+  // On a phone the keyboard's openers are below the rows: scrolled into view so the dump measures them whole.
+  if (phone) b.scroll("Bindings", 600);
   b.dump("bindings");
+  if (phone) b.scroll("Bindings", -600);
   for (const d of ["xbox", "playstation", "switch"]) {
     b.cmd(`demo:device:${d}`);
     b.shot(`bindings-${d}`, 0.4);
@@ -161,14 +178,18 @@ export function controlsScript(phone: boolean): Script {
   b.seq((at) => tap(at, "Keys/Row#5/Key#2"), 0.2);
   b.shot("bindings-kana-composing", 0.3);
   b.dump("bindings-kana");
-  b.cmd("demo:keyboard:numeric");
-  b.shot("bindings-numeric", 0.8);
+  // Another field's keyboard: the name's closes, the PIN's opens on its own empty text.
+  b.cmd("demo:keyboard:none", 0.4);
+  b.cmd("demo:keyboard:numeric", 0.8);
+  // Two digits in: masked as dots.
+  for (const k of ["=4", "=2"]) b.seq((at) => tapText(at, k), 0.15);
+  b.shot("bindings-numeric", 0.3);
   b.cmd("demo:keyboard:none", 0.4);
 
   // Right to left: the rows run from the right, the sliders fill from the right, the switches' knobs start right.
   b.cmd("locale:ar");
   for (const s of ["controls", "ranges", "fields", "bindings"]) {
-    b.cmd(`show:${s}`);
+    show(s);
     b.shot(`rtl-${s}`, 0.8);
   }
   b.cmd("locale:en");
@@ -176,7 +197,7 @@ export function controlsScript(phone: boolean): Script {
   // At the player's largest text size (200 %): every control grows with its text and cuts none of it.
   b.cmd("demo:text:200");
   for (const s of ["foundations", "controls", "ranges", "fields", "bindings"]) {
-    b.cmd(`show:${s}`);
+    show(s);
     b.shot(`text200-${s}`, 0.8);
     if (s === "controls") b.dump("controls-200");
   }

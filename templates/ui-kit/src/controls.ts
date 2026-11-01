@@ -11,7 +11,8 @@
 // gallery, never saved.
 
 import { og } from "@origingame/engine";
-import type { InputDevice, KeyboardLayout, PickedColor, Size, World } from "@origingame/engine";
+import { page, panel, phone } from "./components.ts";
+import type { InputDevice, KeyboardLayout, PickedColor, Size, Texture, World } from "@origingame/engine";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -40,6 +41,7 @@ const initial = () => ({
   region: -1,
   color: { r: 0.9, g: 0.35, b: 0.2, a: 1 } as PickedColor,
   typed: "",
+  pin: "",
   comp: "",
   keyboard: "none" as KeyboardLayout | "none",
   device: "keyboardMouse" as InputDevice,
@@ -65,45 +67,18 @@ export function controlsDemo(_world: World, args: readonly string[]): boolean {
   return true;
 }
 
-function panel(id: string, title: string, width: Size, build: () => void): void {
-  const t = og.ui.frameTheme();
-  og.ui.panel(id, { width, gap: t.space.sm, padding: { left: t.space.md, top: t.space.md, right: t.space.md, bottom: t.space.md } }, () => {
-    og.ui.text("Heading", title, { role: "caption", tone: "muted", nowrap: true });
-    build();
-  });
-}
-
-function phone(): boolean {
-  const b = og.ui.frameViewport().breakpoint;
-  return b === "phonePortrait" || b === "phoneLandscape";
-}
-
-/** A page of the previews: a scrolling column on a phone, a wrapping row of panels elsewhere. */
-function page(id: string, build: () => void): void {
-  const t = og.ui.frameTheme();
-  const vp = og.ui.frameViewport();
-  const top = phone() ? 96 : t.space.md;
-  // The scroll ends where the screen does: above the home indicator, below the notch, so its last row can be reached.
-  const height = phone() ? vp.height - vp.safeArea.top - vp.safeArea.bottom - top - t.space.md * 2 : vp.height - 96;
-  og.ui.anchor(id, { anchor: phone() ? "top" : "center", width: phone() ? grow : px(Math.min(1200, vp.width - 48)), direction: "column", padding: { left: t.space.md, top, right: t.space.md, bottom: t.space.md } }, () => {
-    og.ui.scroll("Body", { width: grow, height: px(height), gap: t.space.md }, () => {
-      if (phone()) og.ui.column("Panels", { width: grow, gap: t.space.md, cross: "stretch" }, build);
-      else og.ui.row("Panels", { width: grow, gap: t.space.md, wrap: true, cross: "start" }, build);
-    });
-  });
-}
-
 const w = (desktop: number): Size => (phone() ? grow : px(desktop));
 
 // ── foundations ─────────────────────────────────────────────────────────
 
-export function foundationsScreen(): void {
+/** `picture`: a 16:9 texture for the art slot and the viewport (null shows their placeholders). */
+export function foundationsScreen(picture: Texture | null): void {
   const t = og.ui.frameTheme();
   page("Foundations", () => {
     panel("Type", "Text: roles and tones", w(360), () => {
       og.ui.text("Display", "Ember Saga", { role: "display" });
       og.ui.text("Title", "Chapter II", { role: "title" });
-      og.ui.text("Heading", "The Ash Road", { role: "heading" });
+      og.ui.text("Section", "The Ash Road", { role: "heading" });
       og.ui.text("Body", "The caravan leaves at dawn. Pack light and keep to the ridge.", { width: grow });
       og.ui.row("Tones", { gap: t.space.md, wrap: true }, () => {
         og.ui.text("Muted", "Muted", { tone: "muted" });
@@ -112,21 +87,22 @@ export function foundationsScreen(): void {
         og.ui.text("Caption", "Updated 2 min ago", { role: "caption", tone: "faint" });
       });
       og.ui.separator("Rule", { label: "Prose" });
-      og.ui.prose("Lore", "The **Ember Blade** was forged in the *deep* mines of Kharak.\n\nIt burns whoever holds it without a [link:codex]pact[/link].", {});
+      og.ui.prose("Lore", "The [b]Ember Blade[/b] was forged in the [color=warn]deep[/color] mines of Kharak.\n\nIt burns whoever holds it without a [link=codex]pact[/link].", {});
     });
     panel("Media", "Icons, art slots and shapes", w(400), () => {
       og.ui.row("Icons", { gap: t.space.md, cross: "center", wrap: true }, () => {
-        og.ui.iconMark("Mail", "mail", { badge: "3", label: "Mail" });
+        og.ui.iconMark("Mail", "chat-bubble", { badge: "3", label: "Messages" });
         og.ui.iconMark("Bell", "bell", { dot: true, label: "Alerts" });
         og.ui.iconMark("Gem", "gem", { plate: "circle", tone: "primary", label: "Gems" });
         og.ui.iconMark("Shield", "shield", { plate: "square", tone: "success", badge: "120", label: "Defence" });
-        og.ui.iconMark("Warn", "warning", { tone: "warn", size: 32, label: "Warning" });
+        og.ui.iconMark("Warn", "warning-triangle", { tone: "warn", size: 32, label: "Warning" });
       });
       og.ui.row("Art", { gap: t.space.sm, wrap: true }, () => {
         og.ui.artSlot("Portrait", { kind: "portrait", aspect: 0.75, width: px(96), label: "Hero portrait", frame: "primary" });
         og.ui.artSlot("Item", { kind: "itemIcon", width: px(72), mask: "round", label: "Sword" });
         og.ui.artSlot("Avatar", { kind: "avatar", width: px(72), mask: "circle", loading: true, label: "Loading avatar" });
-        og.ui.artSlot("Key", { kind: "keyArt", aspect: 16 / 9, width: px(128), loading: true, label: "Key art" });
+        og.ui.artSlot("Key", { kind: "keyArt", aspect: 16 / 9, width: px(128), texture: picture, loading: !picture, label: "Key art" });
+        og.ui.artSlot("Crop", { kind: "portrait", aspect: 0.75, width: px(72), texture: picture, focal: { x: 0.7, y: 0.5 }, label: "Cropped to a portrait" });
       });
       og.ui.row("Shapes", { gap: t.space.md, cross: "center", wrap: true }, () => {
         og.ui.shapeBox("Pill", { kind: "capsule", width: px(56), height: px(24), fill: "primary" });
@@ -137,14 +113,14 @@ export function foundationsScreen(): void {
       });
     });
     panel("Layers", "Viewport, emitter and effect layer", w(360), () => {
-      s.yaw = og.ui.viewFrame("Preview", { yaw: s.yaw, aspect: 4 / 3, label: "Character preview", hint: "Drag to turn" }).yaw;
-      og.ui.row("Fx", { gap: t.space.md, width: grow }, () => {
+      s.yaw = og.ui.viewFrame("Preview", { yaw: s.yaw, aspect: 4 / 3, texture: picture, label: "Character preview", hint: "Drag to turn" }).yaw;
+      og.ui.row("Fx", { gap: t.space.md, width: grow, wrap: true }, () => {
         og.ui.effectLayer("Shine", { material: "shine", sweep: true, color: "warn" }, () => {
           og.ui.card("Legend", { title: "Legendary", eyebrow: "Drop", width: px(150) }, () => {});
         });
-        og.ui.column("Burst", { width: grow, height: px(96), align: "center", cross: "center" }, () => {
+        og.ui.column("Burst", { width: { kind: "grow", min: 120 }, height: px(96), align: "center", cross: "center" }, () => {
           og.ui.emitter("Sparks", { preset: "sparkle" });
-          og.ui.text("Label", "Level up!", { role: "heading", tone: "primary" });
+          og.ui.text("Label", "Level up!", { role: "heading", tone: "primary", width: grow, align: "center" });
         });
       });
       og.ui.space("Gap", { step: "sm" });
@@ -171,15 +147,15 @@ export function controlsScreen(): void {
         og.ui.pushButton("Large", "Claim reward", { size: "large", variant: "primary", badge: "3" });
         og.ui.pushButton("Loading", "Saving", { loading: true });
         og.ui.pushButton("Disabled", "Shop", { disabled: true, disabledReason: "Reach level 5 to open the shop" });
-        og.ui.pushButton("Pinned", "Pinned", { selected: true, icon: "pin" });
+        og.ui.pushButton("Pinned", "Pinned", { selected: true, icon: "map-pin" });
       });
       og.ui.row("Icons", { gap: t.space.sm, wrap: true, cross: "center" }, () => {
         og.ui.iconButton("Close", "cross", { label: "Close" });
-        og.ui.iconButton("Mail", "mail", { label: "Mail", badge: "12" });
+        og.ui.iconButton("Mail", "chat-bubble", { label: "Messages", badge: "12" });
         og.ui.iconButton("Bell", "bell", { label: "Alerts", dot: true, variant: "secondary" });
         og.ui.iconButton("Fav", "star", { label: "Favourite", selected: true, round: true });
         og.ui.iconButton("Gear", "settings", { label: "Settings", variant: "ghost", size: "large" });
-        og.ui.iconButton("Off", "share", { label: "Share", disabled: true });
+        og.ui.iconButton("Off", "share-android", { label: "Share", disabled: true });
       });
       const r = og.ui.holdButton("Hold", "Delete save", { variant: "danger", holdMs: 900, holdingLabel: "Keep holding…", hint: "Hold to delete. This cannot be undone." });
       if (r.confirmed) s.saved++;
@@ -206,9 +182,9 @@ export function controlsScreen(): void {
         variant: "cards",
         row: true,
         selected: s.mode,
-        options: [{ label: "Solo", icon: "user" }, { label: "Duo", icon: "users" }, { label: "Squad", icon: "flag" }],
+        options: [{ label: "Solo", icon: "user" }, { label: "Duo", icon: "group" }, { label: "Squad", icon: "flag" }],
       }).selected;
-      s.view = og.ui.segmented("View", { label: "View", selected: s.view, items: [{ label: "Grid", icon: "grid" }, { label: "List", icon: "list" }, { label: "Map" }] }).selected;
+      s.view = og.ui.segmented("View", { label: "View", selected: s.view, items: [{ label: "Grid", icon: "cube" }, { label: "List", icon: "menu" }, { label: "Map", icon: "map" }] }).selected;
       s.quality = og.ui.cycler("Quality", ["Low", "Medium", "High", "Ultra"], s.quality, { label: "Graphics quality" }).selected;
     });
   });
@@ -250,8 +226,8 @@ const ITEMS = ["Iron sword", "Iron shield", "Iron helm", "Oak bow", "Oak staff",
 export function fieldsScreen(): void {
   page("Fields", () => {
     panel("Inputs", "Text fields: label, helper, error, counter, suffix, disabled", w(400), () => {
-      s.name = og.ui.inputField("Name", s.name, { label: "Hero name", required: true, helper: "Shown to other players", maxChars: 16, counter: true }).value;
-      s.email = og.ui.inputField("Email", s.email, { label: "Email", icon: "mail", error: s.email.includes(".") ? "" : "Enter a whole address, like name@example.com" }).value;
+      s.name = og.ui.inputField("Name", s.name, { label: "Hero name", icon: "user", required: true, helper: "Shown to other players", maxChars: 16, counter: true }).value;
+      s.email = og.ui.inputField("Email", s.email, { label: "Email", error: s.email.includes(".") ? "" : "Enter a whole address, like name@example.com" }).value;
       og.ui.inputField("Gold", "250", { label: "Offer", suffix: "gold" });
       og.ui.inputField("Off", "Guest-4821", { label: "Account", disabled: true });
       s.bio = og.ui.inputArea("Bio", s.bio, { label: "About you", placeholder: "A line or two for your profile", rows: 3, maxChars: 140, counter: true }).value;
@@ -313,7 +289,7 @@ export function bindingsScreen(world: World): void {
     panel("Typing", "On-screen keyboard: pads and touch", w(380), () => {
       og.ui.text("Typed", s.typed ? `Name: ${s.typed}` : "No name yet", { tone: s.typed ? "normal" : "muted" });
       og.ui.row("Open", { gap: t.space.sm, wrap: true }, () => {
-        if (og.ui.pushButton("Letters", "Name your hero", { variant: "primary", icon: "edit" }).clicked) s.keyboard = "letters";
+        if (og.ui.pushButton("Letters", "Name your hero", { variant: "primary", icon: "edit-pencil" }).clicked) s.keyboard = "letters";
         if (og.ui.pushButton("Kana", "かな", {}).clicked) s.keyboard = "kana";
         if (og.ui.pushButton("Numbers", "PIN", {}).clicked) s.keyboard = "numeric";
       });
@@ -321,7 +297,8 @@ export function bindingsScreen(world: World): void {
   });
   const open = s.keyboard !== "none";
   const k = og.ui.onScreenKeyboard("Keyboard", open, {
-    value: s.typed,
+    // The PIN is a field of its own: the name's keyboard and the PIN's each edit their own text.
+    value: s.keyboard === "numeric" ? s.pin : s.typed,
     layout: open ? (s.keyboard as KeyboardLayout) : "letters",
     kana: true,
     title: s.keyboard === "numeric" ? "Enter your PIN" : "Name your hero",
@@ -332,6 +309,7 @@ export function bindingsScreen(world: World): void {
     candidates: s.comp === "ゆうしゃ" ? ["勇者"] : s.comp === "ひかり" ? ["光"] : [],
   });
   s.comp = k.composition;
-  if (open) s.typed = k.value;
+  if (open && s.keyboard === "numeric") s.pin = k.value;
+  else if (open) s.typed = k.value;
   if (k.submitted || k.closed) s.keyboard = "none";
 }

@@ -64,7 +64,7 @@ export function demoCommand(world: World, args: readonly string[]): void {
   } else if (key === "reset") Object.assign(s, { overlay: "none", data: "rows", tab: 0, page: 4, slide: 0, detent: 0, zoom: 1, radialAim: null });
 }
 
-function panel(id: string, title: string, width: Size, build: () => void): void {
+export function panel(id: string, title: string, width: Size, build: () => void): void {
   const t = og.ui.frameTheme();
   og.ui.panel(id, { width, gap: t.space.sm, padding: { left: t.space.md, top: t.space.md, right: t.space.md, bottom: t.space.md } }, () => {
     og.ui.label("Heading", title, { step: "caption", color: { token: "inkMuted" }, width: grow });
@@ -72,7 +72,7 @@ function panel(id: string, title: string, width: Size, build: () => void): void 
   });
 }
 
-function phone(): boolean {
+export function phone(): boolean {
   const b = og.ui.frameViewport().breakpoint;
   return b === "phonePortrait" || b === "phoneLandscape";
 }
@@ -82,7 +82,7 @@ function phone(): boolean {
  * fading at an edge where more lies, and ending above the safe area and the action bar (`bar`:
  * its room at the bottom), so nothing hides under either.
  */
-function page(id: string, build: () => void, bar = 0): void {
+export function page(id: string, build: () => void, bar = 0): void {
   const t = og.ui.frameTheme();
   const vp = og.ui.frameViewport();
   // The Gallery button (last tick's place, at any text size): over the page on a phone, at its
