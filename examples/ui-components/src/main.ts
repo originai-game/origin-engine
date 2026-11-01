@@ -43,15 +43,24 @@ const state = {
   hits: 0,
   kills: [] as KillfeedEntry[],
   fonts: { body: 0, icons: 0 },
+  /**
+   * What commands asked for since the last frame. A command runs between
+   * ticks, where og.ui.tick() answers 0 (it reads the frame being built),
+   * so the stage applies them at the start of its next frame, stamped
+   * with that frame's tick.
+   */
+  queue: [] as Array<() => void>,
 };
 
 /** The pseudo-locale: 40 % longer, accented and bracketed (the checks' own), numbers as they are. */
 function L(s: string): string {
   if (state.locale !== "pseudo" || !s) return s;
   const map: Record<string, string> = { a: "á", e: "é", i: "í", o: "ö", u: "ü", c: "ç", n: "ñ", A: "Å", E: "É", I: "Î", O: "Ø", U: "Û", C: "Ç", N: "Ñ", y: "ý", s: "š", z: "ž" };
-  const body = [...s].map((ch) => map[ch] ?? ch).join("");
+  // Rich text (a string with tags): the tags stay as written and the pseudo-locale's own bracket is escaped, so neither forms a tag.
+  const rich = s.includes("[");
+  const body = s.split(/(\[[^\]]*\])/).map((part, i) => (rich && i % 2 === 1 ? part : [...part].map((ch) => map[ch] ?? ch).join(""))).join("");
   const pad = "·".repeat(Math.ceil(s.length * 0.4));
-  return `[${body}${pad}]`;
+  return `${rich ? "[[" : "["}${body}${pad}]`;
 }
 
 /** Ticks since an act, or a large number before it ever happened. */
@@ -60,6 +69,11 @@ function since(name: string): number {
   return at === undefined ? 1e9 : og.ui.tick() - at;
 }
 const did = (name: string): boolean => state.acts[name] !== undefined;
+/** The tick of the latest hit or crit, null before either. */
+const lastHit = (): number | null => {
+  const t = Math.max(state.acts.hit ?? -1, state.acts.crit ?? -1);
+  return t < 0 ? null : t;
+};
 const seconds = (): number => (og.ui.tick() - state.t0) / 60;
 /** A phone in either orientation: the screens show what a mobile HUD would, not everything at once. */
 const small = (): boolean => {
@@ -134,7 +148,7 @@ function feedbackScreen(): void {
   if (!small() || !did("complete")) og.ui.subtitles("Subs", {
     lines: [
       { key: "a", speaker: L("Captain Reyes"), text: L("Hold this position until the convoy is through."), color: { token: "info" } },
-      { key: "b", text: L("[distant explosion]"), caption: true, direction: -0.8 },
+      { key: "b", text: L("distant explosion"), caption: true, direction: -0.8 },
     ],
     settings: { enabled: true, captions: true, speakerNames: true, speakerColors: true, directions: true },
   });
@@ -258,10 +272,10 @@ function framesScreen(): void {
 function shooterScreen(world: World): void {
   const s = seconds();
   const mag = did("empty") ? 0 : Math.max(0, 30 - state.hits * 4 - Math.floor(s * 2));
-  og.ui.crosshair("Aim", { style: "cross", spread: did("hit") && since("hit") < 20 ? 10 : 2, hitAt: state.acts.hit ?? state.acts.crit ?? null, hit: did("crit") && (state.acts.crit ?? 0) >= (state.acts.hit ?? 0) ? "headshot" : "hit", dot: true, onTarget: s % 2 < 1 });
+  og.ui.crosshair("Aim", { style: "cross", spread: did("hit") && since("hit") < 20 ? 10 : 2, hitAt: lastHit(), hit: did("crit") && (state.acts.crit ?? 0) >= (state.acts.hit ?? 0) ? "headshot" : "hit", dot: true, onTarget: s % 2 < 1 });
   og.ui.ammoCounter("Ammo", { magazine: mag, magazineMax: 30, reserve: 186, weapon: L("R-301 Carbine"), icon: "bolt", fireMode: "AUTO", reloading: did("reload") && since("reload") < 120 ? since("reload") / 120 : null, reloadHint: L("R  Reload") });
   og.ui.damageDirection("Dir", { hits: Object.entries(state.acts).filter(([k]) => k === "hit" || k === "crit").map(([, at], i) => ({ angle: [2.2, -0.9][i % 2]!, at, strength: 0.8 })) });
-  og.ui.lowHealthVignette("Low", { health: hp() / 100, hitAt: state.acts.hit ?? null });
+  og.ui.lowHealthVignette("Low", { health: hp() / 100, hitAt: lastHit() });
   og.ui.compass("Compass", {
     heading: s * 0.25,
     pois: [
@@ -446,6 +460,7 @@ function applyStyle(world: World): void {
 }
 
 const Stage = defineSystem("Stage", { reads: [og.Camera] }, (_q, _t, world) => {
+  for (const run of state.queue.splice(0)) run();
   switch (state.screen) {
     case "feedback": feedbackScreen(); break;
     case "meters": metersScreen(); break;
@@ -459,6 +474,15 @@ const Stage = defineSystem("Stage", { reads: [og.Camera] }, (_q, _t, world) => {
   }
 });
 
+/** Every act forgotten, the screen's clock started on this frame. */
+function restart(): void {
+  state.acts = {};
+  state.hits = 0;
+  state.kills = [];
+  state.t0 = og.ui.tick();
+}
+
+/** Something happens, on this frame (called from the stage, never from a command). */
 function act(name: string): void {
   const t = og.ui.tick();
   state.acts[name] = t;
@@ -521,11 +545,10 @@ export default og.game({
   },
   commands: {
     show: (_world, args) => {
-      state.screen = (SCREENS as readonly string[]).includes(args[0] ?? "") ? (args[0] as Screen) : "meters";
-      state.acts = {};
-      state.hits = 0;
-      state.kills = [];
-      state.t0 = og.ui.tick();
+      state.queue.push(() => {
+        state.screen = (SCREENS as readonly string[]).includes(args[0] ?? "") ? (args[0] as Screen) : "meters";
+        restart();
+      });
     },
     viewport: (world, args) => og.ui.previewViewport(world, VIEWPORTS[args[0] ?? "desktop"] ?? null),
     lang: (world, args) => {
@@ -536,12 +559,11 @@ export default og.game({
       state.style = (STYLES as readonly string[]).includes(args[0] ?? "") ? (args[0] as (typeof STYLES)[number]) : "prototype";
       applyStyle(world);
     },
-    act: (_world, args) => act(args[0] ?? "hit"),
+    act: (_world, args) => {
+      state.queue.push(() => act(args[0] ?? "hit"));
+    },
     reset: () => {
-      state.acts = {};
-      state.hits = 0;
-      state.kills = [];
-      state.t0 = og.ui.tick();
+      state.queue.push(restart);
     },
   },
   commandHelp: {
