@@ -33942,6 +33942,77 @@ export interface WaypointDesc {
 
 
 /**
+ * What a ground shape (a selection ring, a telegraph, a path line, a placement ghost) lies on: its outline is cut into vertices `spacing` apart and each is lifted to the surface under it, so it follows a slope or terrain instead of floating over or cutting into it. With neither a terrain nor colliders it lies flat at its points' own y.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GroundDesc {
+  /**
+   * A terrain sampled under each vertex (og.terrain.sample); 0 is none.
+   *
+   * @default 0
+   */
+  readonly terrain?: TerrainData;
+  /**
+   * Where the terrain stands: its og.Terrain entity's world position.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly origin?: Vector3;
+  /**
+   * How the terrain is turned (the zero value: along world x and z).
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly quaternion?: Quaternion;
+  /**
+   * How the terrain is scaled.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   */
+  readonly scale?: Vector3;
+  /**
+   * Also cast straight down against colliders (og.physics.raycast, as the tick began); the highest surface of the two wins. Exclude the unit itself (exclude) or keep units off mask's layers, or the ring climbs onto it.
+   *
+   * @default false
+   */
+  readonly colliders?: boolean;
+  /**
+   * The layers the downward cast considers; 0 every layer.
+   *
+   * @default 0
+   */
+  readonly mask?: number;
+  /**
+   * An entity the cast ignores (the selected unit).
+   *
+   * @default null
+   */
+  readonly exclude?: Entity | null;
+  /**
+   * How far above and below a vertex's own y the cast looks.
+   *
+   * @default 50
+   * @range 0.1..
+   */
+  readonly reach?: number;
+  /**
+   * Lifted this far above the surface, so the shape never z-fights or sinks between samples.
+   *
+   * @default 0.04
+   * @range 0..
+   */
+  readonly bias?: number;
+  /**
+   * The longest edge between sampled vertices; a shape's outline keeps to 512 vertices, spacing them wider when it would need more.
+   *
+   * @default 0.5
+   * @range 0.05..
+   */
+  readonly spacing?: number;
+}
+
+/**
  * A selection ring on the ground.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -33991,6 +34062,12 @@ export interface SelectionRingDesc {
    * @default 0
    */
   readonly segments?: number;
+  /**
+   * What it lies on; null lies flat at its points' y.
+   *
+   * @default null
+   */
+  readonly ground?: GroundDesc | null;
 }
 
 
@@ -34078,6 +34155,12 @@ export interface TelegraphDesc {
    * @default null
    */
   readonly color?: Paint | null;
+  /**
+   * What it lies on; null lies flat at its points' y.
+   *
+   * @default null
+   */
+  readonly ground?: GroundDesc | null;
 }
 
 
@@ -34133,6 +34216,12 @@ export interface PathLineDesc {
    * @default true
    */
   readonly arrow?: boolean;
+  /**
+   * What it lies on; null lies flat at its points' y.
+   *
+   * @default null
+   */
+  readonly ground?: GroundDesc | null;
 }
 
 
@@ -34198,6 +34287,12 @@ export interface PlacementGhostDesc {
    * @unit m (metres)
    */
   readonly range?: number | null;
+  /**
+   * What it lies on; null lies flat at its points' y.
+   *
+   * @default null
+   */
+  readonly ground?: GroundDesc | null;
 }
 
 
@@ -43396,8 +43491,8 @@ export declare namespace og {
      */
     function waypoint(id: string, desc?: WaypointDesc): AnchorInfo;
     /**
-     * A selection ring to the bar of StarCraft II and Baldur's Gate 3: an ellipse on the ground under the unit (the ground circle projected), a bright edge and a soft inner glow in its reaction's colour, springing in from larger when selected, thin and dim on hover, or broken into arcs turning slowly.
-     * Parts: SelectionRing.ring[<reaction>][hover], SelectionRing.glow. Accessibility: none (the unit's frame is selected). Probe ids: <id>.
+     * A selection ring to the bar of StarCraft II and Baldur's Gate 3: an ellipse on the ground under the unit (the ground circle projected, lying on the terrain or colliders under it with desc.ground), a bright edge and a soft inner glow in its reaction's colour, springing in from larger when selected, thin and dim on hover, or broken into arcs turning slowly.
+     * Parts: SelectionRing.ring[<reaction>][hover], SelectionRing.glow. Accessibility: none (the unit's frame is selected). Probe ids: <id>, its shapes <id>/Box/Ring (or Arc#i) and Glow, each bounded by its points.
      *
      * @param world The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads.
      * @param id Its id.
@@ -43405,8 +43500,8 @@ export declare namespace og {
      */
     function selectionRing(world: World, id: string, desc?: SelectionRingDesc): void;
     /**
-     * An attack telegraph to the bar of Final Fantasy XIV and WildStar: the area on the ground (disc, ring, cone or line) tinted in danger with a bright edge, a fill growing from its origin to the edge as the wind-up runs so the moment of impact reads without a number, and a flash as it lands.
-     * Parts: Telegraph.area[<shape>][hostile|friendly], Telegraph.edge, Telegraph.fill, Telegraph.flash. States: group windup (charging, impact). Accessibility: none (the game announces what is dangerous). Probe ids: <id>.
+     * An attack telegraph to the bar of Final Fantasy XIV and WildStar: the area on the ground (disc, ring, cone or line; with desc.ground over slopes and hills, every vertex on the surface) tinted in danger with a bright edge, a fill growing from its origin to the edge as the wind-up runs so the moment of impact reads without a number, and a flash as it lands.
+     * Parts: Telegraph.area[<shape>][hostile|friendly], Telegraph.edge, Telegraph.fill, Telegraph.flash. States: group windup (charging, impact). Accessibility: none (the game announces what is dangerous). Probe ids: <id>, <id>/Box/Area, Fill, Edge#i.
      *
      * @param world The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads.
      * @param id Its id.
@@ -43414,7 +43509,7 @@ export declare namespace og {
      */
     function telegraph(world: World, id: string, desc?: TelegraphDesc): void;
     /**
-     * A path line to the bar of Baldur's Gate 3, XCOM 2 and RTS move orders: the route on the ground as a line with chevrons marching toward its end, the part past this turn's reach in danger, an arrow head or a destination ring at its end with a label (the distance, the cost), a cross when it cannot be taken.
+     * A path line to the bar of Baldur's Gate 3, XCOM 2 and RTS move orders: the route on the ground (draped on the surface with desc.ground) as a line with chevrons marching toward its end, the part past this turn's reach in danger, an arrow head or a destination ring at its end with a label (the distance, the cost), a cross when it cannot be taken.
      * Parts: PathLine.line[reach|beyond][invalid], PathLine.chevron, PathLine.end, PathLine.label. Accessibility: text named the label. Probe ids: <id>, <id>/Label.
      *
      * @param world The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads.
@@ -43423,7 +43518,7 @@ export declare namespace og {
      */
     function pathLine(world: World, id: string, desc?: PathLineDesc): void;
     /**
-     * A placement ghost to the bar of Age of Empires IV, Anno and Cities: Skylines: the footprint on the ground in success or danger (hatched when invalid, so it is not told by colour alone), its grid cells, a range ring for a tower's reach, and its cost or the reason it cannot go there; it breathes while held.
+     * A placement ghost to the bar of Age of Empires IV, Anno and Cities: Skylines: the footprint on the ground (draped on the surface with desc.ground) in success or danger (hatched when invalid, so it is not told by colour alone), its grid cells, a range ring for a tower's reach, and its cost or the reason it cannot go there; it breathes while held.
      * Parts: PlacementGhost.footprint[valid|invalid], PlacementGhost.cells, PlacementGhost.range, PlacementGhost.label. States: group place (valid, invalid). Accessibility: status named the label. Probe ids: <id>, <id>/Label.
      *
      * @param world The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads.

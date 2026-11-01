@@ -12,12 +12,20 @@
 // - a loot label beams over a common item;
 // - a ground shape is drawn off its centre's projection, or drawn when its
 //   centre is behind the camera;
+// - a ground shape on a slope floats at its given height instead of lying on
+//   the terrain (sampled or cast down against its collider) under each vertex;
 // - damage numbers spawn nothing, or a miss spawns a number.
 import { expect, test } from "bun:test";
-import { og } from "@origingame/engine";
-import type { DamageHitDesc, World } from "@origingame/engine";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { og, defineSystem, SHAPE_HEIGHTFIELD } from "@origingame/engine";
+import type { DamageHitDesc, GroundDesc, World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
+import { createEngine, type GameToken } from "../src/runtime.ts";
+import { ogBin } from "./support/og-bin.ts";
 import { at, dump, engineFor, type El } from "./support/ui.ts";
+
+declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
 
 loadNativeHost();
 
@@ -131,10 +139,12 @@ test("ground shapes sit on their centre's projection, and are not drawn behind t
   expect(ring.y + ring.height / 2).toBeGreaterThan(360);
   expect(ring.width).toBeGreaterThan(ring.height * 2);
   expect(at(els, "Gone")).toBe(undefined);
-  expect(at(els, "Cone/Box/Fill#0")).toBeDefined();
+  expect(at(els, "Cone/Box/Fill")).toBeDefined();
   expect(states(at(els, "Cone")).windup).toBe("charging");
   expect(states(at(els, "Donut")).windup).toBe("impact");
-  expect(els.filter((x) => /^Donut\/Box\/Area#\d+$/.test(x.path)).length).toBe(32);
+  // A ring is one area, its hole cut out even-odd.
+  expect(at(els, "Donut/Box/Area")).toBeDefined();
+  expect([at(els, "Donut/Box/Edge#0"), at(els, "Donut/Box/Edge#1")].every(Boolean)).toBe(true);
   expect(at(els, "Path/Box/Beyond")).toBeDefined();
   expect(at(els, "Path/Box/Label/Text")?.text).toBe("12 m · 2 AP");
   expect(states(at(els, "Ghost")).place).toBe("invalid");
@@ -162,4 +172,87 @@ test("og.ui.damageNumbers and overheadBars: hits spawn mass elements that live o
   expect(counts).toEqual([2, 1]);
   e.advance(120);
   expect(counts).toEqual([0, 0]);
+});
+
+test("ground shapes lie on a sloped terrain: sampled, or cast down against its collider, under each vertex", () => {
+  // tests/fixtures/terrain: a 6 m hill (14 m wide) on a 0.05 slope, 2 m up, over 64 m.
+  const fixture = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "terrain");
+  const cooked = Bun.spawnSync([ogBin(), "cook", fixture]);
+  if (cooked.exitCode !== 0) throw new Error(new TextDecoder().decode(cooked.stderr));
+  const eye = { x: 7, y: 14, z: 22 };
+  const centre = { x: 7, y: 0, z: 3 };
+  let data = 0;
+  let hill = null as unknown;
+  const Ui = defineSystem("GroundUi", { reads: [og.Camera] } as never, (_q, _t, w: World) => {
+    const terrain: GroundDesc = { terrain: data as never };
+    const colliders: GroundDesc = { colliders: true };
+    og.ui.selectionRing(w, "Sampled", { center: centre, radius: 2, ground: terrain });
+    og.ui.selectionRing(w, "Cast", { center: centre, radius: 2, ground: colliders });
+    og.ui.selectionRing(w, "Flat", { center: centre, radius: 2 });
+    og.ui.telegraph(w, "Slam", { center: { x: 0, y: 0, z: 0 }, shape: "circle", radius: 5, ground: terrain });
+  });
+  const game = og.game({
+    systems: [Ui],
+    start(world: World) {
+      const info = og.terrain.load(world, "terrain/hill.ogt");
+      if (!info.ok) throw new Error(info.reason);
+      data = info.value.data as unknown as number;
+      const e = world.spawn({ name: "hill" });
+      if (!e.ok) throw new Error(e.reason);
+      hill = e.value;
+      world.insert(e.value, og.Terrain, { data: info.value.data });
+      world.insert(e.value, og.Collider, { shape: SHAPE_HEIGHTFIELD, mesh: info.value.geometry as never });
+      const cam = world.resource(og.Camera);
+      if (cam.ok) {
+        cam.value.position = eye;
+        cam.value.quaternion = og.transform.lookAt(eye, centre);
+        cam.value.fov = 50;
+      }
+    },
+  });
+  const r = createEngine(game as unknown as GameToken, { root: fixture });
+  if (!r.ok) throw new Error(r.reason);
+  const e = r.value;
+  og.ui.previewViewport(e.world, DESKTOP as never);
+  e.advance(3);
+  expect(hill).not.toBe(null);
+  const cam = e.world.resource(og.Camera);
+  if (!cam.ok) throw new Error(cam.reason);
+  // The ring's vertices (56 round the centre, clockwise from +z), each on the surface 4 cm up, projected: what its line must span.
+  const expected = (lift: (x: number, z: number) => number) => {
+    let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+    for (let k = 0; k < 56; k++) {
+      const a = (Math.PI * 2 * k) / 56;
+      const x = centre.x + Math.sin(a) * 2;
+      const z = centre.z + Math.cos(a) * 2;
+      const s = cam.value.worldToScreen({ x, y: lift(x, z), z })!;
+      [x0, y0, x1, y1] = [Math.min(x0, s.x), Math.min(y0, s.y), Math.max(x1, s.x), Math.max(y1, s.y)];
+    }
+    return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+  };
+  const surface = (x: number, z: number) => {
+    const s = og.terrain.sample(e.world, { data: data as never, x, z });
+    if (!s.ok) throw new Error(s.reason);
+    return s.value.height + 0.04;
+  };
+  const onHill = expected(surface);
+  const els = dump(e);
+  // The line's element is its points' box grown by half its 2.5 px width and 2 px.
+  const pad = 2.5 / 2 + 2;
+  for (const name of ["Sampled", "Cast"]) {
+    const line = at(els, `${name}/Box/Ring`)!;
+    expect(line).toBeDefined();
+    expect(Math.abs(line.x + pad - onHill.x)).toBeLessThan(1.5);
+    expect(Math.abs(line.y + pad - onHill.y)).toBeLessThan(1.5);
+    expect(Math.abs(line.width - 2 * pad - onHill.width)).toBeLessThan(2);
+    expect(Math.abs(line.height - 2 * pad - onHill.height)).toBeLessThan(2);
+  }
+  // Without a ground the ring lies flat at y 0, metres under the flank: far below on the screen.
+  const flat = at(els, "Flat/Box/Ring")!;
+  const below = expected(() => 0);
+  expect(Math.abs(flat.y + pad - below.y)).toBeLessThan(1.5);
+  expect(flat.y - at(els, "Sampled/Box/Ring")!.y).toBeGreaterThan(40);
+  // A telegraph over the hilltop is drawn, its edge on the summit's ground.
+  expect(at(els, "Slam/Box/Area")).toBeDefined();
+  expect(at(els, "Slam/Box/Edge#0")).toBeDefined();
 });

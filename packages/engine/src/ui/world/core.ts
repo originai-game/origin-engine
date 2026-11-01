@@ -4,7 +4,8 @@
 // shapes in screen pixels round a ground point.
 
 import type * as Api from "@origingame/engine";
-import { BUILTINS, type Token } from "../../runtime.ts";
+import { BUILTINS, physics, type Token } from "../../runtime.ts";
+import { terrain } from "../../p2.ts";
 import { kit, rarityColor, role, teamColor, type Rgba } from "../hud/core.ts";
 
 export * from "../hud/core.ts";
@@ -145,40 +146,79 @@ export function onGround(world: Api.World, id: string, center: Api.Vector3, exte
   return true;
 }
 
+/** Lifts world points to the surface a ground shape lies on (GroundDesc). */
+export interface Surface {
+  /** The point on the surface under p (lifted by the bias); p itself when flat. */
+  at(p: Api.Vector3): Api.Vector3;
+  /** The longest edge between sampled vertices; Infinity when flat. */
+  spacing: number;
+}
+
+const FLAT: Surface = { at: (p) => p, spacing: Infinity };
+
+type Res<T> = { ok: true; value: T } | { ok: false; reason: string };
+
 /**
- * The points of a convex polygon's inside as one zig-zag line of `step`
- * rows: a path drawn `step` wide over them covers the polygon with no
- * seams (a path is one shape), and its outline hides the half-row it
- * reaches past the edges.
+ * The surface `ground` names: a terrain's height (og.terrain.sample) and
+ * a downward cast against colliders (og.physics.raycast), the higher of
+ * the two, each vertex sampled once a call.
  */
-export function convexFill(poly: Api.Vector2[], step: number): Api.Vector2[] {
-  if (poly.length < 3) return [];
-  let y0 = Infinity;
-  let y1 = -Infinity;
-  for (const p of poly) {
-    y0 = Math.min(y0, p.y);
-    y1 = Math.max(y1, p.y);
-  }
-  const rows = Math.max(1, Math.ceil((y1 - y0) / step));
-  const s = (y1 - y0) / rows;
-  const out: Api.Vector2[] = [];
-  for (let i = 0; i <= rows; i++) {
-    const y = Math.min(y1 - 0.01, Math.max(y0 + 0.01, y0 + i * s));
-    let lo = Infinity;
-    let hi = -Infinity;
-    for (let k = 0; k < poly.length; k++) {
-      const a = poly[k]!;
-      const b = poly[(k + 1) % poly.length]!;
-      if ((a.y <= y && b.y >= y) || (b.y <= y && a.y >= y)) {
-        const t = b.y === a.y ? 0 : (y - a.y) / (b.y - a.y);
-        const x = a.x + (b.x - a.x) * t;
-        lo = Math.min(lo, x);
-        hi = Math.max(hi, x);
-      }
+export function surface(world: Api.World, ground: Api.GroundDesc | null | undefined): Surface {
+  if (!ground || (!ground.terrain && !ground.colliders)) return FLAT;
+  const w = world as unknown as { readonly id: number };
+  const reach = ground.reach || 50;
+  const bias = ground.bias ?? 0.04;
+  const seen = new Map<string, number>();
+  const height = (p: Api.Vector3): number => {
+    const key = `${p.x.toFixed(3)},${p.z.toFixed(3)},${p.y.toFixed(1)}`;
+    const known = seen.get(key);
+    if (known !== undefined) return known;
+    let y = -Infinity;
+    if (ground.terrain) {
+      const r = terrain.sample(w, { data: ground.terrain, origin: ground.origin, quaternion: ground.quaternion, scale: ground.scale, x: p.x, z: p.z }) as Res<{ height: number; inside: boolean }>;
+      if (r.ok && r.value.inside) y = r.value.height;
     }
-    if (lo > hi) continue;
-    if (i % 2 === 0) out.push({ x: lo, y }, { x: hi, y });
-    else out.push({ x: hi, y }, { x: lo, y });
+    if (ground.colliders) {
+      const r = physics.raycast(w as never, {
+        origin: { x: p.x, y: p.y + reach, z: p.z },
+        direction: { x: 0, y: -1, z: 0 },
+        maxDistance: reach * 2,
+        filter: { mask: ground.mask ?? 0, exclude: ground.exclude ?? null },
+      }) as Res<{ point: Api.Vector3 } | null>;
+      if (r.ok && r.value) y = Math.max(y, r.value.point.y);
+    }
+    const out = Number.isFinite(y) ? y + bias : p.y;
+    seen.set(key, out);
+    return out;
+  };
+  return { at: (p) => ({ x: p.x, y: height(p), z: p.z }), spacing: Math.max(0.05, ground.spacing || 0.5) };
+}
+
+/**
+ * A ground outline lifted onto the surface: each edge cut into pieces no
+ * longer than its spacing (wider when the whole would pass `cap`
+ * vertices), each vertex on the surface under it.
+ */
+export function drape(s: Surface, pts: readonly Api.Vector3[], closed: boolean, cap = 512): Api.Vector3[] {
+  if (s.spacing === Infinity || pts.length === 0) return pts.slice();
+  const edges = closed ? pts.length : pts.length - 1;
+  let total = 0;
+  for (let i = 0; i < edges; i++) {
+    const a = pts[i]!;
+    const b = pts[(i + 1) % pts.length]!;
+    total += Math.hypot(b.x - a.x, b.z - a.z);
   }
+  const spacing = Math.max(s.spacing, total / Math.max(1, cap - pts.length));
+  const out: Api.Vector3[] = [];
+  for (let i = 0; i < edges; i++) {
+    const a = pts[i]!;
+    const b = pts[(i + 1) % pts.length]!;
+    const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / spacing));
+    for (let k = 0; k < n; k++) {
+      const t = k / n;
+      out.push(s.at({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t }));
+    }
+  }
+  if (!closed) out.push(s.at(pts[pts.length - 1]!));
   return out;
 }

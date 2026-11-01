@@ -7738,6 +7738,32 @@ module ui {
     returns AnchorInfo
   }
 
+  struct GroundDesc {
+    doc "What a ground shape (a selection ring, a telegraph, a path line, a placement ghost) lies on: its outline is cut into vertices `spacing` apart and each is lifted to the surface under it, so it follows a slope or terrain instead of floating over or cutting into it. With neither a terrain nor colliders it lies flat at its points' own y."
+    desc true
+    field terrain TerrainData "A terrain sampled under each vertex (og.terrain.sample); 0 is none."
+    field origin Vector3 "Where the terrain stands: its og.Terrain entity's world position."
+    field quaternion Quaternion "How the terrain is turned (the zero value: along world x and z)."
+    field scale Vector3 "How the terrain is scaled." {
+      default 1 1 1
+    }
+    field colliders bool "Also cast straight down against colliders (og.physics.raycast, as the tick began); the highest surface of the two wins. Exclude the unit itself (exclude) or keep units off mask's layers, or the ring climbs onto it."
+    field mask u32 "The layers the downward cast considers; 0 every layer."
+    field exclude Option.Entity "An entity the cast ignores (the selected unit)."
+    field reach f32 "How far above and below a vertex's own y the cast looks." {
+      default 50
+      min 0.1
+    }
+    field bias f32 "Lifted this far above the surface, so the shape never z-fights or sinks between samples." {
+      default 0.04
+      min 0
+    }
+    field spacing f32 "The longest edge between sampled vertices; a shape's outline keeps to 512 vertices, spacing them wider when it would need more." {
+      default 0.5
+      min 0.05
+    }
+  }
+
   struct SelectionRingDesc {
     doc "A selection ring on the ground."
     desc true
@@ -7754,11 +7780,12 @@ module ui {
     field hover bool "Hovered, not selected: thin and dim."
     field selectedAt u32 "og.ui.tick() when it was selected: it springs in from larger."
     field segments u32 "Broken into this many arcs turning slowly (a target ring); 0 is a whole ring."
+    field ground Option.GroundDesc "What it lies on; null lies flat at its points' y."
   }
 
   fn selectionRing {
-    doc "A selection ring to the bar of StarCraft II and Baldur's Gate 3: an ellipse on the ground under the unit (the ground circle projected), a bright edge and a soft inner glow in its reaction's colour, springing in from larger when selected, thin and dim on hover, or broken into arcs turning slowly."
-    doc "Parts: SelectionRing.ring[<reaction>][hover], SelectionRing.glow. Accessibility: none (the unit's frame is selected). Probe ids: <id>."
+    doc "A selection ring to the bar of StarCraft II and Baldur's Gate 3: an ellipse on the ground under the unit (the ground circle projected, lying on the terrain or colliders under it with desc.ground), a bright edge and a soft inner glow in its reaction's colour, springing in from larger when selected, thin and dim on hover, or broken into arcs turning slowly."
+    doc "Parts: SelectionRing.ring[<reaction>][hover], SelectionRing.glow. Accessibility: none (the unit's frame is selected). Probe ids: <id>, its shapes <id>/Box/Ring (or Arc#i) and Glow, each bounded by its points."
     host false
     param world World "The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads."
     param id String "Its id."
@@ -7807,11 +7834,12 @@ module ui {
       default true
     }
     field color Option.Paint "A colour of its own."
+    field ground Option.GroundDesc "What it lies on; null lies flat at its points' y."
   }
 
   fn telegraph {
-    doc "An attack telegraph to the bar of Final Fantasy XIV and WildStar: the area on the ground (disc, ring, cone or line) tinted in danger with a bright edge, a fill growing from its origin to the edge as the wind-up runs so the moment of impact reads without a number, and a flash as it lands."
-    doc "Parts: Telegraph.area[<shape>][hostile|friendly], Telegraph.edge, Telegraph.fill, Telegraph.flash. States: group windup (charging, impact). Accessibility: none (the game announces what is dangerous). Probe ids: <id>."
+    doc "An attack telegraph to the bar of Final Fantasy XIV and WildStar: the area on the ground (disc, ring, cone or line; with desc.ground over slopes and hills, every vertex on the surface) tinted in danger with a bright edge, a fill growing from its origin to the edge as the wind-up runs so the moment of impact reads without a number, and a flash as it lands."
+    doc "Parts: Telegraph.area[<shape>][hostile|friendly], Telegraph.edge, Telegraph.fill, Telegraph.flash. States: group windup (charging, impact). Accessibility: none (the game announces what is dangerous). Probe ids: <id>, <id>/Box/Area, Fill, Edge#i."
     host false
     param world World "The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads."
     param id String "Its id."
@@ -7837,10 +7865,11 @@ module ui {
     field arrow bool "An arrow head at its end (the default)." {
       default true
     }
+    field ground Option.GroundDesc "What it lies on; null lies flat at its points' y."
   }
 
   fn pathLine {
-    doc "A path line to the bar of Baldur's Gate 3, XCOM 2 and RTS move orders: the route on the ground as a line with chevrons marching toward its end, the part past this turn's reach in danger, an arrow head or a destination ring at its end with a label (the distance, the cost), a cross when it cannot be taken."
+    doc "A path line to the bar of Baldur's Gate 3, XCOM 2 and RTS move orders: the route on the ground (draped on the surface with desc.ground) as a line with chevrons marching toward its end, the part past this turn's reach in danger, an arrow head or a destination ring at its end with a label (the distance, the cost), a cross when it cannot be taken."
     doc "Parts: PathLine.line[reach|beyond][invalid], PathLine.chevron, PathLine.end, PathLine.label. Accessibility: text named the label. Probe ids: <id>, <id>/Label."
     host false
     param world World "The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads."
@@ -7877,10 +7906,11 @@ module ui {
     field range Option.f32 "A range ring round it (a tower's reach)." {
       unit m
     }
+    field ground Option.GroundDesc "What it lies on; null lies flat at its points' y."
   }
 
   fn placementGhost {
-    doc "A placement ghost to the bar of Age of Empires IV, Anno and Cities: Skylines: the footprint on the ground in success or danger (hatched when invalid, so it is not told by colour alone), its grid cells, a range ring for a tower's reach, and its cost or the reason it cannot go there; it breathes while held."
+    doc "A placement ghost to the bar of Age of Empires IV, Anno and Cities: Skylines: the footprint on the ground (draped on the surface with desc.ground) in success or danger (hatched when invalid, so it is not told by colour alone), its grid cells, a range ring for a tower's reach, and its cost or the reason it cannot go there; it breathes while held."
     doc "Parts: PlacementGhost.footprint[valid|invalid], PlacementGhost.cells, PlacementGhost.range, PlacementGhost.label. States: group place (valid, invalid). Accessibility: status named the label. Probe ids: <id>, <id>/Label."
     host false
     param world World "The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads."

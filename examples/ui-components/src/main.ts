@@ -18,7 +18,7 @@
 // film-landscape.txt (2532×1170) take every screen through its acts; the
 // desktop film also runs each screen in Arabic and under the pseudo-locale.
 
-import { og, defineSystem } from "@origingame/engine";
+import { og, defineSystem, SHAPE_BOX } from "@origingame/engine";
 import type { DamageHitDesc, KillfeedEntry, UnitFrameDesc, Viewport, World } from "@origingame/engine";
 
 const SCREENS = ["feedback", "meters", "abilities", "frames", "shooter", "strategy", "racing", "flight", "world"] as const;
@@ -413,6 +413,7 @@ function worldScreen(world: World): void {
   og.ui.selectionRing(world, "Hover", { center: { x: 3.6, y: 0.02, z: 0.8 }, radius: 0.7, reaction: "neutral", hover: true });
   og.ui.telegraph(world, "Cone", { center: { x: -1.6, y: 0.03, z: -2.2 }, shape: "cone", radius: 5, angle: 1.1, direction: Math.PI * 0.85, progress: Math.min(1, (s % 3) / 2.6) });
   og.ui.telegraph(world, "Donut", { center: { x: 2.1, y: 0.03, z: -3.2 }, shape: "ring", inner: 1.4, radius: 3, progress: 0.4 });
+  og.ui.telegraph(world, "Quake", { center: { x: -6.5, y: 0, z: -5 }, shape: "circle", radius: 2, progress: Math.min(1, (s % 2.4) / 2), ground: { colliders: true } });
   og.ui.telegraph(world, "Charge", { center: { x: 5, y: 0.03, z: -6 }, shape: "line", radius: 6, width: 1.6, direction: -2.4, progress: 0.7 });
   og.ui.pathLine(world, "Path", { points: [{ x: -3.4, y: 0.05, z: 0.6 }, { x: -2, y: 0.05, z: 2.6 }, { x: 0.5, y: 0.05, z: 3 }, { x: 3, y: 0.05, z: 2 }], reach: 5.5, label: L("9 m · 2 AP") });
   og.ui.placementGhost(world, "Ghost", { center: { x: 5.5, y: 0.02, z: 2.5 }, width: 3, depth: 2, rotation: 0.3, cell: 1, valid: !did("place"), label: did("place") ? L("Blocked") : "150", range: did("place") ? null : 4 });
@@ -497,6 +498,14 @@ export default og.game({
       const mat = og.render.standardMaterial(world, { color: tint, roughness: 0.6 });
       const e = world.spawn({ name: u.key, position: { x: u.x, y: 0.8, z: u.z } });
       if (box.ok && mat.ok && e.ok) world.insert(e.value, og.Mesh, { geometry: box.value, material: mat.value, castShadow: true });
+    }
+    // A ramp, solid: the quake telegraph lies on it (GroundDesc.colliders), not under or over it.
+    const rampGeo = og.render.boxGeometry(world, { width: 5, height: 0.6, depth: 5 });
+    const stone = og.render.standardMaterial(world, { color: { r: 0.42, g: 0.4, b: 0.36 }, roughness: 0.9 });
+    const ramp = world.spawn({ name: "ramp", position: { x: -6.5, y: 0.5, z: -5 }, quaternion: og.transform.fromAxisAngle({ x: 1, y: 0, z: 0 }, 0.32) });
+    if (rampGeo.ok && stone.ok && ramp.ok) {
+      world.insert(ramp.value, og.Mesh, { geometry: rampGeo.value, material: stone.value, castShadow: true, receiveShadow: true });
+      world.insert(ramp.value, og.Collider, { shape: SHAPE_BOX, size: { x: 5, y: 0.6, z: 5 } });
     }
     const sun = world.spawn({ name: "sun", quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: 0.4, y: -0.7, z: -0.5 }) });
     if (sun.ok) world.insert(sun.value, og.DirectionalLight, { intensity: 3, castShadow: true });
