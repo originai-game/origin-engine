@@ -332,6 +332,8 @@ export function floating(
         ...extra,
         transform: { ...tr, x: to.x + (tr.x ?? 0), y: to.y + (tr.y ?? 0) },
         opacity: b ? (extra.opacity ?? 1) : 0,
+        // Unmeasured, it is not where it will be: nothing to press yet.
+        ...(b ? {} : { inert: true }),
       });
     }
   } finally {
