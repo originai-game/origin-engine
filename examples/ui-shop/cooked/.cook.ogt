@@ -1,0 +1,45 @@
+type cook
+version 1
+---
+cooker "og-cook 0.7.7 r6"
+options {
+  font "charset latin chars \"\" em 32 range 4 page 1024 mtsdf ec kern"
+  mesh "lods 3 ratio 0.5 error 0.05 overdraw 1.05 tangents true (bitangent up the image) quantize 16/oct16/uv16/rgba8 codec meshopt-v1 flat levels by position (S6)"
+  texture "etc1s 128 uastc 1 rdo 1 zstd true mips true normal y in alpha encoder basisu 1.16 (basis-universal crate)"
+}
+asset "fonts/ui.ttf" {
+  kind font
+  source "1dd5202d7caf6983"
+  bytes 27183
+  output "fonts/ui.ttf" {
+    type og.Font
+    file "fonts/ui.ttf.ogb"
+    stamp "44e24e968f4d85ed"
+    hash "1b1efaebf66eb9dd"
+    bytes 363017
+  }
+}
+asset "ui/hud.ogt" {
+  kind document
+  source "4f1af656bf7b485f"
+  bytes 666
+  output "ui/hud.ogt" {
+    type og.UiDocument
+    file "ui/hud.ogt.ogb"
+    stamp "e02ecbd0d61a9095"
+    hash "ddcd84505f1c1ffe"
+    bytes 858
+  }
+}
+asset "ui/shop.ogt" {
+  kind document
+  source "d103cb59e322588e"
+  bytes 3100
+  output "ui/shop.ogt" {
+    type og.UiDocument
+    file "ui/shop.ogt.ogb"
+    stamp "99ae416a901fc26a"
+    hash "ee4f36f89c47cd4b"
+    bytes 3292
+  }
+}

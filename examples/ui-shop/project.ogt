@@ -1,0 +1,16 @@
+type project
+version 1
+---
+# og-ui's documents, bindings and layer stack (docs/ui.md §8, §9, §10) in
+# one sample: a HUD screen bound to the Wallet resource, and a shop screen
+# document bound to a viewmodel, pushed over it as a menu layer that dims
+# and pauses what is under it; its preview slot filled by code, its Buy
+# event answered by code, and its props adjusted live through the probe's
+# ui:set and written back into assets/ui/shop.ogt by ui:save.
+name "UI shop"
+id "ui-shop"
+engine "0.7.7"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
