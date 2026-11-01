@@ -29,5 +29,6 @@ mod stylise_space;
 mod taa_look;
 mod targets;
 mod terrain;
+mod ui;
 mod upload;
 mod wasm;

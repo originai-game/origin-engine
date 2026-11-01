@@ -138,6 +138,11 @@ pub const SCENES: &[&str] = &[
     "post-lens",
     "terrain-grass-wind",
     "post-blur",
+    "ui-shapes",
+    "ui-paints",
+    "ui-effects",
+    "ui-layers",
+    "ui-text-effects",
 ];
 
 /// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
@@ -155,6 +160,7 @@ pub const NATIVE_SCENES: &[&str] = &[
     "probe-outdoor",
     "baked-batches",
     "terrain-generated",
+    "ui-vector",
 ];
 
 /// A per-frame change (frame index from 0): moving sprites, an orbiting camera.
@@ -1090,6 +1096,33 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 center: Vec2::new(0.42, 0.4),
                 ..Default::default()
             });
+            Ok(())
+        },
+        // The UI pass (docs/ui.md U1, src/ui_scenes.rs): its shapes, paints,
+        // effects, layers and materials, text effects, and a cooked vector.
+        "ui-shapes" => |g, _| {
+            g.scene = crate::ui_scenes::shapes();
+            Ok(())
+        },
+        "ui-paints" => |g, _| {
+            g.scene = crate::ui_scenes::paints();
+            Ok(())
+        },
+        "ui-effects" => |g, _| {
+            g.scene = crate::ui_scenes::effects();
+            Ok(())
+        },
+        "ui-layers" => |g, _| {
+            g.scene = crate::ui_scenes::layers();
+            Ok(())
+        },
+        "ui-text-effects" => |g, _| {
+            g.scene = crate::ui_scenes::text_effects(load_font)?;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "ui-vector" => |g, _| {
+            g.scene = crate::ui_scenes::vector()?;
             Ok(())
         },
         other => {
