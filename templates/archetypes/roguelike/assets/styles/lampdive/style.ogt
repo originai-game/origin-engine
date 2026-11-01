@@ -1,8 +1,7 @@
 type style
-version 1
+version 2
 ---
-# Lamp Dive's style: the engine's pixel style pack (templates/ui-kit/tools/make-styles.py; CC0 art, OFL
-# fonts; LICENSES.md) in tomb colours: plum stone panels, the lamp's amber as the one accent.
+# Upgraded to version 2 by og style upgrade: its version 1 values kept, the new tokens derived from its palette and scheme (docs/ui.md §12).
 name "lampdive"
 scheme dark
 atlas "styles/lampdive/atlas.png" 384 256
@@ -42,11 +41,119 @@ palette {
   xp "#bf5af2"
   gold "#ffb347"
 }
+colors {
+  success icon "check"
+  warn icon "bolt"
+  danger icon "close"
+  info pattern waves
+  common "#9e9e9e" pips 1
+  uncommon "#3fbf4f" pips 2
+  rare "#2f7fef" pips 3
+  epic "#a335ee" pips 4
+  legendary "#ff8000" pips 5
+  mythic "#e8364f" pips 6
+  team1 "#3d7eff"
+  team2 "#ff4747"
+  team3 "#3fbf5f"
+  team4 "#ffc61a"
+  team5 "#a347ff"
+  team6 "#ff8a1f"
+  team7 "#1fc7c7"
+  team8 "#ff5cb0"
+  physical "#b8b0a0"
+  fire "#ff6a2b"
+  ice "#62cfff"
+  lightning "#ffd83a"
+  poison "#7ed957"
+  holy "#ffe9a0"
+  shadow "#8a5cf6"
+  arcane "#ff4fd8"
+  series1 "#4e79a7"
+  series2 "#f28e2b"
+  series3 "#e15759"
+  series4 "#76b7b2"
+  series5 "#59a14f"
+  series6 "#edc948"
+  series7 "#b07aa1"
+  series8 "#ff9da7"
+}
+typography {
+  display 44 48 0 700 display {
+    phonePortrait 35 38
+    phoneLandscape 40 43
+  }
+  title 32 36 0 700 display {
+    phonePortrait 28 32
+    phoneLandscape 30 34
+  }
+  heading 22 28 0 600 display
+  body 16 20 0 400 body
+  label 13 18 0 600 body
+  caption 13 18 0 400 body
+  numeric 18 24 0 600 numeric
+}
+space {
+  xxs 2
+  xs 4
+  sm 8
+  md 12
+  lg 16
+  xl 24
+  xxl 32
+  xl3 48
+}
+size {
+  xs 16
+  sm 24
+  md 32
+  lg 48
+  xl 64
+  xxl 96
+  touch 44
+}
 radius {
-  small 0
-  control 0
-  bar 0
-  panel 0
+  xs 0
+  sm 0
+  md 0
+  lg 0
+  xl 0
+  pill 9999
+}
+stroke {
+  hairline 1
+  thin 1.5
+  regular 2
+  thick 3
+  focus 2
+}
+elevation {
+  raised {
+    shadow 4 4 0 0 "#00000080"
+  }
+  floating {
+    shadow 3 3 0 0 "#00000080"
+  }
+  overlay {
+    shadow 6 6 0 0 "#000000b0"
+  }
+  top {
+    shadow 6 9 0 0 "#000000b0"
+  }
+}
+shape {
+  panel square 0
+  dialog square 0
+  card square 0
+  tooltip square 0
+  button square 0
+  field square 0
+  chip square 0
+  badge square 0
+  tab square 0
+  slot square 0
+  bar square 0
+  hud square 0
+  avatar square 0
 }
 ramp {
   xs 12 16
@@ -64,12 +171,6 @@ ramp {
   displayMd 36 40
   displayLg 44 48
 }
-durations {
-  instant 80
-  fast 120
-  base 160
-  slow 320
-}
 fonts {
   body "styles/lampdive/DotGothic16-Regular.ttf"
   display "styles/lampdive/DotGothic16-Regular.ttf"
@@ -80,37 +181,107 @@ fonts {
 icons "styles/lampdive/icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
 }
-slice panel 4 4 96 96 8 tint
-slice card 104 4 64 64 4 tint
-slice button 172 4 48 48 6 tint
-slice buttonHover 224 4 48 48 6 tint
-slice buttonPressed 276 4 48 48 6 tint
-slice buttonDisabled 328 4 48 48 6 tint
-slice field 4 104 48 48 4 tint
-slice slot 56 104 48 48 4 tint
-slice tooltip 108 104 32 32 4 tint
-slice hud 144 104 32 32 4 tint
-slice track 180 104 32 16 4 tint
-slice fill 216 104 32 16 4 tint
 soft 252 104 64 64 24
 divider 4 172 128 24 128 24 line
 flourish 136 172 64 24 32 12 primary 0
-tile 204 172 64 64 16 16 0.06 6 panel
-shadow panel 6 6 0 0 "#000000b0"
-shadow card 4 4 0 0 "#00000080"
-shadow button 0 4 0 0 "#000000a0"
-shadow hud 3 3 0 0 "#00000080"
-shadow tooltip 3 3 0 0 "#00000080"
+tile 204 172 64 64 16 16 0.06 6
 textShadow display 3 3 0 "#000000c0"
 textShadow body 1 0 0 "#14111f"
 textWeight body 0.5
-press 1.0 1.0 3
-hover -1 1.0
 motion {
   enter slideDown
-  stagger 0
   toast slideUp
   progress 240
   shake 4
   pop 0.0
+  spring ui 120 0
+  spring panel 160 0
+  spring emphasis 320 0.15
+  spring playful 520 0.3
+  ease standard 0.2 0 0 1
+  ease enter 0.23 1 0.32 1
+  ease exit 0.4 0 1 1
+  ease emphasis 0.34 1.4 0.64 1
+  duration instant 80
+  duration fast 120
+  duration base 160
+  duration slow 320
+  duration spring 520
+  duration bounce 640
+  stagger 0
+  staggerCap 300
+  overshoot 0.05
+}
+sounds {
+  hover none haptic none
+  press none haptic tick
+  focus none haptic none
+  select none haptic tick
+  confirm none haptic tap
+  cancel none haptic tick
+  back none haptic tick
+  open none haptic none
+  close none haptic none
+  tab none haptic tick
+  toggleOn none haptic tick
+  toggleOff none haptic tick
+  sliderTick none haptic tick
+  scrollTick none haptic none
+  typewriter none haptic none
+  counterTick none haptic none
+  notification none haptic tap
+  warning none haptic warning
+  error none haptic error
+  success none haptic success
+  reward none haptic double
+  revealCommon none haptic none
+  revealUncommon none haptic tick
+  revealRare none haptic tap
+  revealEpic none haptic double
+  revealLegendary none haptic thud
+  revealMythic none haptic buzz
+}
+dress "Panel.frame" {
+  slice 4 4 96 96 8 tint
+  shadow 6 6 0 0 "#000000b0"
+  tile
+}
+dress "Card.frame" {
+  slice 104 4 64 64 4 tint
+  shadow 4 4 0 0 "#00000080"
+}
+dress "Button.base" {
+  slice 172 4 48 48 6 tint
+  shadow 0 4 0 0 "#000000a0"
+  press 1.0 1.0 3
+  hover -1 1.0
+}
+dress "Button.base[hover]" {
+  slice 224 4 48 48 6 tint
+}
+dress "Button.base[pressed]" {
+  slice 276 4 48 48 6 tint
+}
+dress "Button.base[disabled]" {
+  slice 328 4 48 48 6 tint
+}
+dress "Field.frame" {
+  slice 4 104 48 48 4 tint
+}
+dress "Slot.frame" {
+  slice 56 104 48 48 4 tint
+}
+dress "Tooltip.frame" {
+  slice 108 104 32 32 4 tint
+  shadow 3 3 0 0 "#00000080"
+}
+dress "Hud.frame" {
+  slice 144 104 32 32 4 tint
+  shadow 3 3 0 0 "#00000080"
+}
+dress "Meter.track" {
+  slice 180 104 32 16 4 tint
+}
+dress "Meter.fill" {
+  slice 216 104 32 16 4 tint
 }

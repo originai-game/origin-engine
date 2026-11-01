@@ -1,8 +1,7 @@
 type style
-version 1
+version 2
 ---
-# Path Guard's style: the engine's cartoon style pack (templates/ui-kit/tools/make-styles.py; CC0 art, OFL fonts;
-# LICENSES.md) in a night-garden palette: cream panels on the dark lawn, the lantern's orange as the one accent.
+# Upgraded to version 2 by og style upgrade: its version 1 values kept, the new tokens derived from its palette and scheme (docs/ui.md §12).
 name "pathguard"
 scheme light
 atlas "styles/pathguard/atlas.png" 384 256
@@ -42,11 +41,119 @@ palette {
   xp "#af52de"
   gold "#b44c0d"
 }
+colors {
+  success icon "check"
+  warn icon "bolt"
+  danger icon "close"
+  info pattern waves
+  common "#8d8d8d" pips 1
+  uncommon "#36a243" pips 2
+  rare "#2f7fef" pips 3
+  epic "#a335ee" pips 4
+  legendary "#de6f00" pips 5
+  mythic "#e8364f" pips 6
+  team1 "#3d7eff"
+  team2 "#ff4747"
+  team3 "#35a150"
+  team4 "#b08812"
+  team5 "#a347ff"
+  team6 "#d7741a"
+  team7 "#199d9d"
+  team8 "#ec55a3"
+  physical "#948d81"
+  fire "#ed6228"
+  ice "#4797ba"
+  lightning "#a68c26"
+  poison "#5b9e3f"
+  holy "#9b8d61"
+  shadow "#8a5cf6"
+  arcane "#ed49c9"
+  series1 "#4e79a7"
+  series2 "#ce7925"
+  series3 "#e15759"
+  series4 "#629793"
+  series5 "#579e4e"
+  series6 "#a58c32"
+  series7 "#b07aa1"
+  series8 "#c47981"
+}
+typography {
+  display 52 56 0 700 display {
+    phonePortrait 42 45
+    phoneLandscape 47 50
+  }
+  title 32 36 0 700 display {
+    phonePortrait 28 32
+    phoneLandscape 30 34
+  }
+  heading 22 28 0 600 display
+  body 15 20 0 400 body
+  label 13 18 0 600 body
+  caption 13 18 0 400 body
+  numeric 19 26 0 600 numeric
+}
+space {
+  xxs 2
+  xs 4
+  sm 8
+  md 12
+  lg 16
+  xl 24
+  xxl 32
+  xl3 48
+}
+size {
+  xs 16
+  sm 24
+  md 32
+  lg 48
+  xl 64
+  xxl 96
+  touch 44
+}
 radius {
-  small 6
-  control 6
-  bar 6
-  panel 10
+  xs 6
+  sm 6
+  md 10
+  lg 15
+  xl 20
+  pill 9999
+}
+stroke {
+  hairline 1
+  thin 1.5
+  regular 2
+  thick 3
+  focus 2
+}
+elevation {
+  raised {
+    shadow 0 5 0 0 "#0b1a1299"
+  }
+  floating {
+    shadow 0 4 0 0 "#0b1a1299"
+  }
+  overlay {
+    shadow 0 8 0 0 "#0b1a12cc"
+  }
+  top {
+    shadow 0 12 0 0 "#0b1a12cc"
+  }
+}
+shape {
+  panel round 10
+  dialog round 10
+  card round 10
+  tooltip round 10
+  button round 6
+  field round 6
+  chip round 6
+  badge round 6
+  tab round 6
+  slot round 6
+  bar round 6
+  hud round 6
+  avatar round 6
 }
 ramp {
   body 15 20
@@ -60,12 +167,6 @@ ramp {
   displayMd 40 44
   displayLg 52 56
 }
-durations {
-  instant 110
-  fast 160
-  base 280
-  slow 420
-}
 fonts {
   body "styles/pathguard/Fredoka-SemiBold.ttf"
   display "styles/pathguard/LilitaOne-Regular.ttf"
@@ -76,37 +177,104 @@ fonts {
 icons "styles/pathguard/icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
 }
-slice panel 4 4 96 96 16 tint
-slice card 104 4 64 64 14 tint
-slice button 172 4 48 48 12 tint
-slice buttonHover 224 4 48 48 12 tint
-slice buttonPressed 276 4 48 48 12 tint
-slice buttonDisabled 328 4 48 48 12 tint
-slice field 4 104 48 48 10 tint
-slice slot 56 104 48 48 10 tint
-slice tooltip 108 104 32 32 10 tint
-slice hud 144 104 32 32 10 tint
-slice track 180 104 32 16 7 tint
-slice fill 216 104 32 16 7 tint
 soft 252 104 64 64 24
 divider 4 172 128 24 48 16 primary
 flourish 136 172 64 24 22 10 primary 2
-shadow panel 0 8 0 0 "#0b1a12cc"
-shadow card 0 5 0 0 "#0b1a1299"
-shadow button 0 5 0 0 "#0b1a12cc"
-shadow hud 0 4 0 0 "#0b1a1299"
-shadow slot 0 3 0 0 "#0b1a1266"
 textShadow display 0 4 0 "#0b1a12"
-# Body text gets a hairline of its own ink to the right, in Latin and in the
-# Chinese companion alike.
 textShadow body 1 0 0 "#20302a"
-press 1.08 0.88 3
-hover -3 1.04
 motion {
   enter pop
-  stagger 50
   toast pop
   progress 360
   shake 8
   pop 0.22
+  spring ui 160 0
+  spring panel 280 0
+  spring emphasis 420 0.15
+  spring playful 520 0.3
+  ease standard 0.2 0 0 1
+  ease enter 0.23 1 0.32 1
+  ease exit 0.4 0 1 1
+  ease emphasis 0.34 1.4 0.64 1
+  duration instant 110
+  duration fast 160
+  duration base 280
+  duration slow 420
+  duration spring 520
+  duration bounce 640
+  stagger 50
+  staggerCap 300
+  overshoot 0.05
+}
+sounds {
+  hover none haptic none
+  press none haptic tick
+  focus none haptic none
+  select none haptic tick
+  confirm none haptic tap
+  cancel none haptic tick
+  back none haptic tick
+  open none haptic none
+  close none haptic none
+  tab none haptic tick
+  toggleOn none haptic tick
+  toggleOff none haptic tick
+  sliderTick none haptic tick
+  scrollTick none haptic none
+  typewriter none haptic none
+  counterTick none haptic none
+  notification none haptic tap
+  warning none haptic warning
+  error none haptic error
+  success none haptic success
+  reward none haptic double
+  revealCommon none haptic none
+  revealUncommon none haptic tick
+  revealRare none haptic tap
+  revealEpic none haptic double
+  revealLegendary none haptic thud
+  revealMythic none haptic buzz
+}
+dress "Panel.frame" {
+  slice 4 4 96 96 16 tint
+  shadow 0 8 0 0 "#0b1a12cc"
+}
+dress "Card.frame" {
+  slice 104 4 64 64 14 tint
+  shadow 0 5 0 0 "#0b1a1299"
+}
+dress "Button.base" {
+  slice 172 4 48 48 12 tint
+  shadow 0 5 0 0 "#0b1a12cc"
+  press 1.08 0.88 3
+  hover -3 1.04
+}
+dress "Button.base[hover]" {
+  slice 224 4 48 48 12 tint
+}
+dress "Button.base[pressed]" {
+  slice 276 4 48 48 12 tint
+}
+dress "Button.base[disabled]" {
+  slice 328 4 48 48 12 tint
+}
+dress "Field.frame" {
+  slice 4 104 48 48 10 tint
+}
+dress "Slot.frame" {
+  slice 56 104 48 48 10 tint
+  shadow 0 3 0 0 "#0b1a1266"
+}
+dress "Tooltip.frame" {
+  slice 108 104 32 32 10 tint
+}
+dress "Hud.frame" {
+  slice 144 104 32 32 10 tint
+  shadow 0 4 0 0 "#0b1a1299"
+}
+dress "Meter.track" {
+  slice 180 104 32 16 7 tint
+}
+dress "Meter.fill" {
+  slice 216 104 32 16 7 tint
 }
