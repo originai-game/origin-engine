@@ -242,7 +242,8 @@ function abilitiesScreen(): void {
   og.ui.castBar("Cast", { name: L("Pyroblast"), icon: "fire", progress: Math.min(0.97, (s % 3.5) / 3.5), remaining: 3.5 - (s % 3.5), latency: 0.08, state: interrupted ? "interrupted" : "casting", stateAt: state.acts.interrupt ?? 0, anchor: "bottom", width: { kind: "fixed", px: 340 } });
   // A phone held sideways has room over its ability bar for two bars, not three.
   if (og.ui.frameViewport().breakpoint !== "phoneLandscape") og.ui.castBar("Channel", { name: L("Arcane Missiles"), icon: "sparks", channel: true, ticks: 5, progress: Math.min(1, (s % 2.5) / 2.5), remaining: 2.5 - (s % 2.5), anchor: "bottom", width: { kind: "fixed", px: 340 } });
-  og.ui.castBar("Boss", { name: L("Cataclysm"), icon: "skull", uninterruptible: true, progress: 0.42, remaining: 4.2, anchor: "bottom", width: { kind: "fixed", px: 340 } });
+  // At 200 % text the sideways phone's bars reach the aura grid: it keeps the player's own cast.
+  if (og.ui.frameViewport().breakpoint !== "phoneLandscape" || state.textScale < 1.5) og.ui.castBar("Boss", { name: L("Cataclysm"), icon: "skull", uninterruptible: true, progress: 0.42, remaining: 4.2, anchor: "bottom", width: { kind: "fixed", px: 340 } });
 }
 
 // ── unit, party and raid frames ───────────────────────────────────────────
