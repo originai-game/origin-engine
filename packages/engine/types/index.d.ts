@@ -20254,6 +20254,861 @@ export interface ScreenTransitionResult {
 
 
 /**
+ * How a card stands off what it sits on.
+ * - `"raised"`: A raised panel with the card class's elevation (the default).
+ * - `"flat"`: A flat panel, no shadow.
+ * - `"outlined"`: A panel with an outline and no shadow.
+ * - `"inset"`: A well sunk into the surface.
+ */
+export type CardVariant = "raised" | "flat" | "outlined" | "inset";
+
+/**
+ * A card's media slot: art the game fills, or a placeholder drawn from the style when it has none.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CardMedia {
+  /**
+   * The art (og.load.texture), covering the slot; 0 draws the placeholder.
+   *
+   * @default 0
+   */
+  readonly texture?: Texture;
+  /**
+   * Width over height; 0 is 16:9.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly aspect?: number;
+  /**
+   * The art's point kept in view when cover crops it, fractions of the free space.
+   *
+   * @default { x: 0.5, y: 0.5 }
+   */
+  readonly focal?: Vector2;
+  /**
+   * The placeholder's icon (og.ui.icon's name); empty is `image`.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * What the art shows, for a screen reader; empty is decorative.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/**
+ * A card: media, an eyebrow, a title, a subtitle and a corner badge over a body the game builds.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CardDesc {
+  /**
+   * How it stands off what it sits on.
+   *
+   * @default "raised"
+   */
+  readonly variant?: CardVariant;
+  /**
+   * The media slot over the body; null is none.
+   *
+   * @default null
+   */
+  readonly media?: CardMedia | null;
+  /**
+   * A small line over the title (a category, a rarity); empty is none.
+   *
+   * @default ""
+   */
+  readonly eyebrow?: string;
+  /**
+   * The title; empty is none.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * A line under the title; empty is none.
+   *
+   * @default ""
+   */
+  readonly subtitle?: string;
+  /**
+   * A badge in the top end corner; empty is none.
+   *
+   * @default ""
+   */
+  readonly badge?: string;
+  /**
+   * The badge's tone.
+   *
+   * @default "neutral"
+   */
+  readonly badgeTone?: Tone;
+  /**
+   * The whole card is a button: it lifts under the pointer and the focus, sinks when pressed, and answers clicked.
+   *
+   * @default false
+   */
+  readonly interactive?: boolean;
+  /**
+   * Ringed in the focus ink (Card.frame[selected]).
+   *
+   * @default false
+   */
+  readonly selected?: boolean;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Its width; null fits.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; null fits.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * Space around the body; null is space.lg.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly padding?: number | null;
+}
+
+/**
+ * A scroll area: og.ui's scroll container whose content fades out at an edge where more lies beyond.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ScrollAreaDesc {
+  /**
+   * Which ways it scrolls.
+   *
+   * @default "vertical"
+   */
+  readonly axes?: ScrollAxes;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height (it scrolls inside); null fits the content.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * Space around the content.
+   *
+   * @default { left: 0, top: 0, right: 0, bottom: 0 }
+   */
+  readonly padding?: Insets;
+  /**
+   * Space between children; null is space.sm.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number | null;
+  /**
+   * How far the edge fades reach; 0 is 24.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly fade?: number;
+  /**
+   * The surface the content fades into; null is panel.
+   *
+   * @default null
+   */
+  readonly fadeInto?: ThemeColor | null;
+  /**
+   * What a screen reader calls the region.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/**
+ * A section of an accordion: its header's title, subtitle and badge.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface AccordionSection {
+  /**
+   * The header's title.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * A line under it; empty is none.
+   *
+   * @default ""
+   */
+  readonly subtitle?: string;
+  /**
+   * A badge at the header's end; empty is none.
+   *
+   * @default ""
+   */
+  readonly badge?: string;
+  /**
+   * The badge's tone.
+   *
+   * @default "neutral"
+   */
+  readonly badgeTone?: Tone;
+  /**
+   * The header is shown but does not open.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+}
+
+/**
+ * An accordion: sections whose headers open and close their bodies.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface AccordionDesc {
+  /**
+   * The sections, in order.
+   *
+   * @default []
+   */
+  readonly sections?: readonly AccordionSection[];
+  /**
+   * The open sections' indices (keep AccordionResult.expanded).
+   *
+   * @default []
+   */
+  readonly expanded?: readonly number[];
+  /**
+   * Opening one closes the others.
+   *
+   * @default false
+   */
+  readonly single?: boolean;
+  /**
+   * Hairlines between sections.
+   *
+   * @default true
+   */
+  readonly dividers?: boolean;
+  /**
+   * Space between sections.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+}
+
+/** What an accordion answered this tick. */
+export interface AccordionResult {
+  /** The section whose header was pressed. */
+  readonly toggled: number | null;
+  /** The open sections after this tick: keep them and pass them back. */
+  readonly expanded: readonly number[];
+}
+
+/**
+ * Two panes with a divider between them that a drag moves.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SplitViewDesc {
+  /**
+   * Side by side (row) or one over the other (column).
+   *
+   * @default "row"
+   */
+  readonly direction?: Direction;
+  /**
+   * The start pane's share of the room (keep SplitResult.ratio).
+   *
+   * @default 0.5
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly ratio?: number;
+  /**
+   * The start pane's least size; 0 is 120.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly minStart?: number;
+  /**
+   * The end pane's least size; 0 is 120.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly minEnd?: number;
+  /**
+   * The ratios a press of the focused divider steps through; empty is a third, a half, two thirds.
+   *
+   * @default []
+   */
+  readonly snaps?: readonly number[];
+  /**
+   * Stay side by side on a phone in portrait (it stacks by default).
+   *
+   * @default false
+   */
+  readonly keepOnPhone?: boolean;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; null grows.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * What a screen reader calls the divider.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/** What a split view answered this tick. */
+export interface SplitResult {
+  /** The start pane's share after this tick: keep it and pass it back. */
+  readonly ratio: number;
+  /** The divider was moved or stepped this tick. */
+  readonly changed: boolean;
+  /** It is stacked (a phone in portrait). */
+  readonly stacked: boolean;
+}
+
+/**
+ * A dialog's tone, shown by a mark as well as its colour.
+ * - `"neutral"`: No mark (the default).
+ * - `"info"`: Information: an i.
+ * - `"success"`: Success: a tick.
+ * - `"warn"`: A warning: an exclamation.
+ * - `"danger"`: Danger: a cross.
+ */
+export type DialogTone = "neutral" | "info" | "success" | "warn" | "danger";
+
+/**
+ * A button of a dialog.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DialogAction {
+  /**
+   * The id answered when it is pressed; also its probe id.
+   *
+   * @default ""
+   */
+  readonly id?: string;
+  /**
+   * What it says; empty is its id.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its weight: the primary sits last in a row and first in a phone's stack.
+   *
+   * @default "secondary"
+   */
+  readonly variant?: ButtonVariant;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * It takes the focus when the dialog opens.
+   *
+   * @default false
+   */
+  readonly autofocus?: boolean;
+}
+
+/**
+ * A dialog: a title, a tone mark, a message, a body the game builds and a row of actions.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DialogDesc {
+  /**
+   * Its title.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The message, as rich text markup (og.ui.richText).
+   *
+   * @default ""
+   */
+  readonly message?: string;
+  /**
+   * Its tone.
+   *
+   * @default "neutral"
+   */
+  readonly tone?: DialogTone;
+  /**
+   * The buttons; ordered by weight on each breakpoint.
+   *
+   * @default []
+   */
+  readonly actions?: readonly DialogAction[];
+  /**
+   * The action that cancels (its sound is cancel's); empty is `cancel`.
+   *
+   * @default ""
+   */
+  readonly cancelId?: string;
+  /**
+   * Back and the backdrop do not dismiss it.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * 640 CSS px wide instead of 460.
+   *
+   * @default false
+   */
+  readonly wide?: boolean;
+  /**
+   * Its width; null is 460 (wide 640), at most the surface less its gutters.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * How it enters and leaves; null is the style's.
+   *
+   * @default null
+   */
+  readonly transition?: TransitionKind | null;
+}
+
+/** What a dialog answered this tick. */
+export interface DialogResult {
+  /** The id of the action pressed. */
+  readonly action: string | null;
+  /** Back or the backdrop asked to close it. */
+  readonly dismissed: boolean;
+  /** It is on screen (open, or leaving). */
+  readonly visible: boolean;
+}
+
+/**
+ * A confirmation: a message, Cancel and the action.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ConfirmationDesc {
+  /**
+   * Its title.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * What will happen, as rich text markup.
+   *
+   * @default ""
+   */
+  readonly message?: string;
+  /**
+   * The action's label; empty is Confirm.
+   *
+   * @default ""
+   */
+  readonly confirmLabel?: string;
+  /**
+   * Cancel's label; empty is Cancel.
+   *
+   * @default ""
+   */
+  readonly cancelLabel?: string;
+  /**
+   * The action cannot be undone: the danger variant, and Cancel takes the focus.
+   *
+   * @default false
+   */
+  readonly danger?: boolean;
+  /**
+   * Its tone when it is not danger.
+   *
+   * @default "neutral"
+   */
+  readonly tone?: DialogTone;
+  /**
+   * Back and the backdrop do not cancel.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+}
+
+/**
+ * Where a floating surface hangs off what it belongs to; start and end follow the writing direction.
+ * - `"below"`: Below it (the default).
+ * - `"above"`: Above it.
+ * - `"start"`: At its start.
+ * - `"end"`: At its end.
+ */
+export type FloatSide = "below" | "above" | "start" | "end";
+
+/**
+ * How a floating surface lines up with what it belongs to.
+ * - `"start"`: Their start edges.
+ * - `"center"`: Centred on it.
+ * - `"end"`: Their end edges.
+ */
+export type FloatAlign = "start" | "center" | "end";
+
+/**
+ * A popover beside an element, flipped where there is no room and kept on screen, with an arrow at the element.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PopoverDesc {
+  /**
+   * The path of the element it belongs to (og.ui.lastPath right after building it); empty centres it.
+   *
+   * @default ""
+   */
+  readonly anchor?: string;
+  /**
+   * The side it prefers.
+   *
+   * @default "below"
+   */
+  readonly side?: FloatSide;
+  /**
+   * How it lines up with the element.
+   *
+   * @default "center"
+   */
+  readonly align?: FloatAlign;
+  /**
+   * Draw an arrow at the element.
+   *
+   * @default true
+   */
+  readonly arrow?: boolean;
+  /**
+   * Extra distance from the element.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly offset?: number;
+  /**
+   * A title over the content; empty is none.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * Its width; null fits, at most 360.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Space inside; null is space.md.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly padding?: number | null;
+}
+
+/** What a popover answered this tick. */
+export interface PopoverResult {
+  /** Back or a press outside asked to close it. */
+  readonly dismissed: boolean;
+  /** It is on screen (open, or leaving). */
+  readonly visible: boolean;
+}
+
+/**
+ * What a menu's entry is.
+ * - `"item"`: A command (the default).
+ * - `"check"`: A command with a check mark (menuitemcheckbox).
+ * - `"radio"`: One of a group (menuitemradio).
+ * - `"separator"`: A hairline between groups.
+ * - `"header"`: A group's caption.
+ */
+export type MenuEntryKind = "item" | "check" | "radio" | "separator" | "header";
+
+/**
+ * An entry of a menu. An entry whose `parent` names another's id sits in that entry's submenu.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MenuEntry {
+  /**
+   * The id answered when it is chosen; also its probe id.
+   *
+   * @default ""
+   */
+  readonly id?: string;
+  /**
+   * What it says.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * What it is.
+   *
+   * @default "item"
+   */
+  readonly kind?: MenuEntryKind;
+  /**
+   * An icon before the label; empty is none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * A shortcut shown at the end (`Ctrl+S`).
+   *
+   * @default ""
+   */
+  readonly shortcut?: string;
+  /**
+   * A check or radio entry is on.
+   *
+   * @default false
+   */
+  readonly checked?: boolean;
+  /**
+   * A destructive command: the danger ink.
+   *
+   * @default false
+   */
+  readonly danger?: boolean;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * The id of the entry whose submenu it is in; empty is the top level.
+   *
+   * @default ""
+   */
+  readonly parent?: string;
+}
+
+/**
+ * A menu hanging from an element, or at a point (a context menu).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MenuDesc {
+  /**
+   * Its entries, submenus' too.
+   *
+   * @default []
+   */
+  readonly entries?: readonly MenuEntry[];
+  /**
+   * The path of the element it hangs from.
+   *
+   * @default ""
+   */
+  readonly anchor?: string;
+  /**
+   * A point it opens at instead (CSS px): where a right press or a long press happened.
+   *
+   * @default null
+   */
+  readonly at?: Vector2 | null;
+  /**
+   * The side of the element it prefers.
+   *
+   * @default "below"
+   */
+  readonly side?: FloatSide;
+  /**
+   * How it lines up with the element.
+   *
+   * @default "start"
+   */
+  readonly align?: FloatAlign;
+  /**
+   * Its least width; 0 is 200.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly minWidth?: number;
+  /**
+   * Its greatest width; 0 is 360.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly maxWidth?: number;
+  /**
+   * What a screen reader calls it.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/** What a menu answered this tick. */
+export interface MenuChoice {
+  /** The id of the entry chosen: close it. */
+  readonly chosen: string | null;
+  /** It asked to close (a choice, Back, a press outside). */
+  readonly dismissed: boolean;
+}
+
+/**
+ * The edge a sheet slides in from; start and end follow the writing direction.
+ * - `"bottom"`: The bottom (the default).
+ * - `"end"`: The end side.
+ * - `"start"`: The start side.
+ */
+export type SheetEdge = "bottom" | "end" | "start";
+
+/**
+ * A sheet: a surface that slides in from an edge over a scrim; a bottom sheet rests at detents and a drag moves it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SheetDesc {
+  /**
+   * The edge it comes from.
+   *
+   * @default "bottom"
+   */
+  readonly edge?: SheetEdge;
+  /**
+   * A bottom sheet's rest heights, fractions of the room; empty is 0.5 and 0.92.
+   *
+   * @default []
+   */
+  readonly detents?: readonly number[];
+  /**
+   * The detent it rests at (keep SheetResult.detent).
+   *
+   * @default 0
+   */
+  readonly detent?: number;
+  /**
+   * A side sheet's width; 0 is 400.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * A title at its top; empty is none.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * A drag past the lowest detent, a swipe outwards, Back or the scrim close it.
+   *
+   * @default true
+   */
+  readonly dismissible?: boolean;
+  /**
+   * Dim what is behind it.
+   *
+   * @default true
+   */
+  readonly scrim?: boolean;
+  /**
+   * A bottom sheet's grab handle.
+   *
+   * @default true
+   */
+  readonly handle?: boolean;
+  /**
+   * A close button by the title; null is a side sheet's only.
+   *
+   * @default null
+   */
+  readonly closeButton?: boolean | null;
+  /**
+   * The close button's accessible name; empty is Close.
+   *
+   * @default ""
+   */
+  readonly closeLabel?: string;
+}
+
+/** What a sheet answered this tick. */
+export interface SheetResult {
+  /** The detent it rests at after this tick: keep it. */
+  readonly detent: number;
+  /** It asked to close: set open false. */
+  readonly dismissed: boolean;
+  /** It is on screen (open, or leaving). */
+  readonly visible: boolean;
+}
+
+
+
+
+
+
+
+
+
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -31634,6 +32489,91 @@ export declare namespace og {
      * @param viewport The surface to lay out for; null returns to the host's.
      */
     function previewViewport(world: World, viewport: Viewport | null): void;
+    /**
+     * A card over a body the game builds. Answers its response (clicked when interactive).
+     *
+     * @param id Its id.
+     * @param desc Variant, media, titles and state.
+     * @param build Builds its body.
+     */
+    function card(id: string, desc: CardDesc, build: UiBuild): Response;
+    /**
+     * A scroll container whose content fades out at an edge where more lies beyond.
+     *
+     * @param id Its id.
+     * @param desc Axes, size and fades.
+     * @param build Builds its content.
+     */
+    function scrollArea(id: string, desc: ScrollAreaDesc, build: UiBuild): void;
+    /**
+     * Sections whose headers open and close their bodies; the sections under one move on the panel spring.
+     *
+     * @param id Its id.
+     * @param desc Sections and the open ones.
+     * @param build Builds an open section's body by its index.
+     */
+    function accordion(id: string, desc: AccordionDesc, build: UiItemBuild): AccordionResult;
+    /**
+     * Two panes with a divider a drag moves and a press of the focused divider steps.
+     *
+     * @param id Its id.
+     * @param desc Direction, ratio and limits.
+     * @param start Builds the start pane.
+     * @param end Builds the end pane.
+     */
+    function splitView(id: string, desc: SplitViewDesc, start: UiBuild, end: UiBuild): SplitResult;
+    /**
+     * A dialog on the modal layer: tone mark, message, body and actions.
+     *
+     * @param id Its id.
+     * @param open Whether it is open.
+     * @param desc Title, message, tone and actions.
+     * @param build Builds its body under the message.
+     */
+    function dialog(id: string, open: boolean, desc: DialogDesc, build: UiBuild): DialogResult;
+    /**
+     * A confirmation dialog: the message, Cancel and the action (danger when it cannot be undone).
+     *
+     * @param id Its id.
+     * @param open Whether it is open.
+     * @param desc Message and labels.
+     */
+    function confirm(id: string, open: boolean, desc?: ConfirmationDesc): ConfirmResult;
+    /**
+     * A popover beside an element with an arrow at it; Back or a press outside dismisses it.
+     *
+     * @param id Its id.
+     * @param open Whether it is open.
+     * @param desc The element, the side and the size.
+     * @param build Builds its content.
+     */
+    function popover(id: string, open: boolean, desc: PopoverDesc, build: UiBuild): PopoverResult;
+    /**
+     * A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point.
+     *
+     * @param id Its id.
+     * @param open Whether it is open.
+     * @param desc Entries and where it hangs.
+     */
+    function menu(id: string, open: boolean, desc?: MenuDesc): MenuChoice;
+    /**
+     * A menu at a point: where a right press or a long press happened.
+     *
+     * @param id Its id.
+     * @param open Whether it is open.
+     * @param at The point, CSS px.
+     * @param desc Entries.
+     */
+    function contextMenu(id: string, open: boolean, at: Vector2, desc?: MenuDesc): MenuChoice;
+    /**
+     * A sheet sliding in from the bottom (resting at detents, dragged) or a side.
+     *
+     * @param id Its id.
+     * @param open Whether it is open.
+     * @param desc Edge, detents and title.
+     * @param build Builds its body.
+     */
+    function sheet(id: string, open: boolean, desc: SheetDesc, build: UiBuild): SheetResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *
