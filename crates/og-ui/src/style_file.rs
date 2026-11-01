@@ -16,12 +16,22 @@
 //! moves nothing: every draw path checks for a slice, an ornament or a
 //! motion value first, so a style without art draws flat.
 //!
+//! Version 2 (docs/ui.md §12) adds the tokens of [`crate::tokens`] (carried
+//! in [`Theme::tokens`], not yet drawn from) and dresses parts by selector
+//! (`crate::dress`): its dressings of the twelve parts above fill the same
+//! [`Art`], so a style upgraded by [`upgrade_style`] draws as before.
+//!
 //! The grammar is [`parse_style`]'s; the runtime loads a style's atlas,
 //! fonts, icons and sounds through the bundle and hands the handles to
 //! [`StyleFile::theme`].
 
+use crate::dress::{DEFERRED, DressFrame, Dressing, Selector};
 use crate::motion::TransitionKind;
 use crate::style::{Durations, Palette, Radius, Scheme, Srgba, Theme, TypeRamp, TypeStep};
+use crate::tokens::{
+    self, ElementClass, Level, RadiusStep, ShapeToken, SizeStep, SoundEvent, SpaceStep,
+    StrokeWidth, StyleTokens, names_of,
+};
 use og_core::ogt::{Document, Entry, Value};
 use og_render::TextureHandle;
 
@@ -108,6 +118,35 @@ impl StylePart {
 
     fn bit(self) -> u32 {
         1 << self.class().index()
+    }
+
+    /// The part dressing (docs/ui.md §12.3) this version 1 class is:
+    /// `Panel.frame`, `Card.frame`, `Button.base` and its states
+    /// `[hover]`, `[pressed]`, `[disabled]`, `Field.frame`, `Slot.frame`,
+    /// `Tooltip.frame`, `Hud.frame`, `Meter.track`, `Meter.fill`.
+    pub fn selector(self) -> Selector {
+        let (component, part, state) = match self {
+            StylePart::Panel => ("Panel", "frame", None),
+            StylePart::Card => ("Card", "frame", None),
+            StylePart::Button => ("Button", "base", None),
+            StylePart::ButtonHover => ("Button", "base", Some("hover")),
+            StylePart::ButtonPressed => ("Button", "base", Some("pressed")),
+            StylePart::ButtonDisabled => ("Button", "base", Some("disabled")),
+            StylePart::Field => ("Field", "frame", None),
+            StylePart::Slot => ("Slot", "frame", None),
+            StylePart::Tooltip => ("Tooltip", "frame", None),
+            StylePart::Hud => ("Hud", "frame", None),
+            StylePart::Track => ("Meter", "track", None),
+            StylePart::Fill => ("Meter", "fill", None),
+        };
+        let mut s = Selector::of(component, part);
+        s.flags.extend(state.map(str::to_string));
+        s
+    }
+
+    /// The version 1 class a selector is exactly, if any.
+    pub fn from_selector(s: &Selector) -> Option<StylePart> {
+        StylePart::ALL.into_iter().find(|p| p.selector() == *s)
     }
 }
 
@@ -347,6 +386,18 @@ impl UiSound {
     pub fn from_name(name: &str) -> Option<UiSound> {
         UiSound::ALL.into_iter().find(|s| s.name() == name)
     }
+
+    /// The version 2 event it is.
+    pub fn event(self) -> SoundEvent {
+        match self {
+            UiSound::Hover => SoundEvent::Hover,
+            UiSound::Press => SoundEvent::Press,
+            UiSound::Open => SoundEvent::Open,
+            UiSound::Close => SoundEvent::Close,
+            UiSound::Success => SoundEvent::Success,
+            UiSound::Error => SoundEvent::Error,
+        }
+    }
 }
 
 /// A style's art (see the module docs). Copy: the theme
@@ -431,6 +482,8 @@ impl Art {
 #[derive(Clone, Debug, PartialEq)]
 pub struct StyleFile {
     pub name: String,
+    /// The file's `version`: 1 or 2.
+    pub version: u32,
     /// The theme with the style's palette, radii, ramp and durations; its
     /// art has no atlas or sounds yet (the loader adds the handles).
     pub theme: Theme,
@@ -443,8 +496,14 @@ pub struct StyleFile {
     pub fonts: [Option<String>; 6],
     /// The icon texture's asset id, its grid and names.
     pub icons: Option<(String, u32, u32, Vec<String>)>,
-    /// Sound asset ids by [`UiSound`].
+    /// Sound asset ids by [`UiSound`] (in version 2 the first of the
+    /// event's set).
     pub sounds: [Option<String>; 6],
+    /// Each [`SoundEvent`]'s sound set, asset ids (empty: silent).
+    pub feedback_sounds: [Vec<String>; SoundEvent::COUNT],
+    /// The part dressings (`crate::dress`), in file order; a version 1
+    /// style's are its twelve parts' ([`StylePart::selector`]).
+    pub dressings: Vec<Dressing>,
 }
 
 impl StyleFile {
@@ -455,7 +514,23 @@ impl StyleFile {
         out.extend(self.fonts.iter().flatten().cloned());
         out.extend(self.icons.as_ref().map(|i| i.0.clone()));
         out.extend(self.sounds.iter().flatten().cloned());
+        for s in self.feedback_sounds.iter().flatten() {
+            if !out.contains(s) {
+                out.push(s.clone());
+            }
+        }
         out
+    }
+
+    /// The line that sets `part`'s tone (`og cook` appends what it
+    /// measured): `tone <part> …` in version 1, a `dress` block in version 2.
+    pub fn tone_text(&self, part: StylePart, t: [f32; 4]) -> String {
+        let v = format!("{:.3} {:.3} {:.3} {:.2}", t[0], t[1], t[2], t[3]);
+        if self.version >= 2 {
+            format!("dress \"{}\" {{\n  tone {v}\n}}", part.selector())
+        } else {
+            format!("tone {} {v}", part.name())
+        }
     }
 
     /// Resolves the asset ids the file names against the style file's own
@@ -479,6 +554,9 @@ impl StyleFile {
         for s in self.sounds.iter_mut().flatten() {
             at(s);
         }
+        for s in self.feedback_sounds.iter_mut().flatten() {
+            at(s);
+        }
     }
 
     /// The theme with the loaded atlas and sound handles.
@@ -486,6 +564,9 @@ impl StyleFile {
         let mut t = self.theme;
         t.art.atlas = atlas;
         t.art.sounds = sounds;
+        for u in UiSound::ALL {
+            t.tokens.feedback[u.event().index()].sounds[0] = sounds[u as usize];
+        }
         t
     }
 }
@@ -600,15 +681,15 @@ pub fn parse_color(s: &str) -> Option<Srgba> {
     })
 }
 
-struct P<'a> {
-    e: &'a Entry,
+pub(crate) struct P<'a> {
+    pub(crate) e: &'a Entry,
 }
 
 impl<'a> P<'a> {
-    fn err(&self, what: &str) -> String {
+    pub(crate) fn err(&self, what: &str) -> String {
         format!("line {}: `{}` {what}", self.e.line, self.e.key)
     }
-    fn num(&self, i: usize) -> Result<f32, String> {
+    pub(crate) fn num(&self, i: usize) -> Result<f32, String> {
         self.e
             .values
             .get(i)
@@ -617,33 +698,33 @@ impl<'a> P<'a> {
             .filter(|v| v.is_finite())
             .ok_or_else(|| self.err(&format!("takes a number at position {}", i + 1)))
     }
-    fn num_or(&self, i: usize, d: f32) -> Result<f32, String> {
+    pub(crate) fn num_or(&self, i: usize, d: f32) -> Result<f32, String> {
         if self.e.values.len() > i {
             self.num(i)
         } else {
             Ok(d)
         }
     }
-    fn word(&self, i: usize) -> Result<&'a str, String> {
+    pub(crate) fn word(&self, i: usize) -> Result<&'a str, String> {
         self.e
             .values
             .get(i)
             .and_then(Value::as_word)
             .ok_or_else(|| self.err(&format!("takes a word at position {}", i + 1)))
     }
-    fn string(&self, i: usize) -> Result<&'a str, String> {
+    pub(crate) fn string(&self, i: usize) -> Result<&'a str, String> {
         self.e
             .values
             .get(i)
             .and_then(Value::as_str)
             .ok_or_else(|| self.err(&format!("takes a quoted string at position {}", i + 1)))
     }
-    fn color(&self, i: usize) -> Result<Srgba, String> {
+    pub(crate) fn color(&self, i: usize) -> Result<Srgba, String> {
         let s = self.string(i)?;
         parse_color(s)
             .ok_or_else(|| self.err(&format!("takes \"#rrggbb\" or \"#rrggbbaa\", not \"{s}\"")))
     }
-    fn block(&self) -> Result<&'a og_core::ogt::Block, String> {
+    pub(crate) fn block(&self) -> Result<&'a og_core::ogt::Block, String> {
         self.e
             .block
             .as_ref()
@@ -686,73 +767,240 @@ fn role_index(p: &P, w: &str) -> Result<usize, String> {
     }
 }
 
-/// Parses a UI style:
+/// A nine-slice at `values[at..]`: the region `x y w h` in texels, one
+/// corner inset or four, then `tint` or `authored` and `stretch`, `repeat`
+/// or `round`.
+fn slice_at(p: &P, at: usize, size: (f32, f32), scale: f32) -> Result<Slice, String> {
+    let e = p.e;
+    let (uv, px) = region(p, at, size)?;
+    let numbers = e.values[(at + 4).min(e.values.len())..]
+        .iter()
+        .take_while(|v| v.as_number().is_some())
+        .count();
+    let b = match numbers {
+        1 => {
+            let v = p.num(at + 4)?;
+            [v; 4]
+        }
+        4 => [
+            p.num(at + 4)?,
+            p.num(at + 5)?,
+            p.num(at + 6)?,
+            p.num(at + 7)?,
+        ],
+        _ => {
+            return Err(p.err("takes one corner inset or four (left top right bottom), in texels"));
+        }
+    };
+    if b[0] + b[2] > px[2] || b[1] + b[3] > px[3] || b.iter().any(|v| *v < 0.0) {
+        return Err(p.err("has corner insets larger than its region"));
+    }
+    let (mut tint, mut fill) = (true, SliceFill::Stretch);
+    for v in &e.values[at + 4 + numbers..] {
+        match v.as_word() {
+            Some("tint") => tint = true,
+            Some("authored") => tint = false,
+            Some("stretch") => fill = SliceFill::Stretch,
+            Some("repeat") => fill = SliceFill::Repeat,
+            Some("round") => fill = SliceFill::Round,
+            _ => {
+                return Err(p.err(&format!(
+                    "ends with tint or authored and stretch, repeat or round, not '{}'",
+                    v.as_word().unwrap_or("a number")
+                )));
+            }
+        }
+    }
+    let middle = [(px[2] - b[0] - b[2]) * scale, (px[3] - b[1] - b[3]) * scale];
+    if fill != SliceFill::Stretch && (middle[0] < 1.0 || middle[1] < 1.0) {
+        return Err(p.err("tiles its edges but leaves no middle between the corners to tile"));
+    }
+    Ok(Slice {
+        uv,
+        border_uv: [b[0] / size.0, b[1] / size.1, b[2] / size.0, b[3] / size.1],
+        border: [b[0] * scale, b[1] * scale, b[2] * scale, b[3] * scale],
+        tint,
+        fill,
+        middle,
+        tone: Slice::WHITE,
+    })
+}
+
+/// A slice's tone at `values[at..]`: a grey and an alpha, or r g b a (linear).
+fn tone_at(p: &P, at: usize) -> Result<[f32; 4], String> {
+    let tone = match p.e.values.len().saturating_sub(at) {
+        1 | 2 => {
+            let v = p.num(at)?;
+            [v, v, v, p.num_or(at + 1, 1.0)?]
+        }
+        4 => [p.num(at)?, p.num(at + 1)?, p.num(at + 2)?, p.num(at + 3)?],
+        _ => return Err(p.err("takes a grey and an alpha, or r g b and an alpha")),
+    };
+    if tone.iter().any(|v| !(0.0..=1.0).contains(v)) {
+        return Err(p.err("takes values from 0 to 1 (linear light)"));
+    }
+    Ok(tone)
+}
+
+fn ink_at(p: &P, i: usize) -> Result<Ink, String> {
+    let iw = p.word(i)?;
+    Ink::parse(iw).ok_or_else(|| {
+        p.err(&format!(
+            "ink '{iw}' is authored, primary, ink, muted, line or focus"
+        ))
+    })
+}
+
+fn glow_at(p: &P, at: usize) -> Result<Glow, String> {
+    Ok(Glow {
+        size: p.num(at)?.max(0.0),
+        ink: ink_at(p, at + 1)?,
+        alpha: p.num(at + 2)?.clamp(0.0, 1.0),
+    })
+}
+
+fn glass_at(p: &P, at: usize) -> Result<Glass, String> {
+    Ok(Glass {
+        blur: p.num(at)?.max(0.0),
+        fill: p.num(at + 1)?.clamp(0.0, 1.0),
+        tint: p.num_or(at + 2, 0.25)?.clamp(0.0, 1.0),
+    })
+}
+
+fn press_at(p: &P) -> Result<Press, String> {
+    Ok(Press {
+        sx: p.num(0)?,
+        sy: p.num(1)?,
+        dy: p.num_or(2, 0.0)?,
+    })
+}
+
+fn hover_at(p: &P) -> Result<Hover, String> {
+    Ok(Hover {
+        dy: p.num(0)?,
+        scale: p.num_or(1, 1.0)?,
+    })
+}
+
+fn part_at(p: &P, i: usize) -> Result<StylePart, String> {
+    let w = p.word(i)?;
+    StylePart::from_name(w).ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))
+}
+
+/// The dressings a version 1 style's art makes: each of the twelve parts
+/// at its [`StylePart::selector`], its class's shadow, glow, glass, corners
+/// and tile on the class, the press and hover on `Button.base`.
+fn v1_dressings(art: &Art) -> Vec<Dressing> {
+    let mut out = Vec::new();
+    for part in StylePart::ALL {
+        let mut f = DressFrame {
+            slice: art.slices[part.index()],
+            ..DressFrame::default()
+        };
+        if part.class() == part {
+            let i = part.index();
+            f.shadow = art.shadows[i];
+            f.glow = art.glows[i];
+            f.glass = art.glass[i];
+            f.corners = art.corner_parts & part.bit() != 0;
+            f.tile = art.tile.is_some_and(|t| t.parts & part.bit() != 0);
+        }
+        if part == StylePart::Button {
+            f.press = art.press;
+            f.hover = art.hover;
+        }
+        if f != DressFrame::default() {
+            out.push(Dressing {
+                selector: part.selector(),
+                frame: f,
+                deferred: Vec::new(),
+            });
+        }
+    }
+    out
+}
+
+/// What a version 2 file's blocks give, before they are checked complete.
+#[derive(Default)]
+struct V2 {
+    colors: Option<tokens::ColorTokens>,
+    typography: Option<tokens::TypeScale>,
+    space: Option<[f32; SpaceStep::COUNT]>,
+    size: Option<[f32; SizeStep::COUNT]>,
+    radius: Option<[f32; RadiusStep::COUNT]>,
+    stroke: Option<[f32; StrokeWidth::COUNT]>,
+    elevation: Option<[tokens::Elevation; Level::COUNT]>,
+    shape: Option<[ShapeToken; ElementClass::COUNT]>,
+    motion: Option<tokens::MotionParse>,
+    springs: Vec<(&'static str, tokens::SpringToken)>,
+    feedback: Option<[tokens::Feedback; SoundEvent::COUNT]>,
+}
+
+fn once<T>(p: &P, slot: &mut Option<T>, v: T) -> Result<(), String> {
+    if slot.is_some() {
+        return Err(p.err("is set twice"));
+    }
+    *slot = Some(v);
+    Ok(())
+}
+
+/// Parses a UI style. Version 2 (docs/ui.md §12):
 ///
 /// ```text
 /// type style
-/// version 1
+/// version 2
 /// ---
 /// name "fantasy"
 /// scheme dark                                # dark (the default) or light: what the game reads as UiTheme.scheme
-/// atlas "atlas.png" 256 256                  # its asset id and size in texels
-/// palette {                                  # every ThemeColor role, one per line (all required)
-///   backdrop "#1a120b"
-///   panel "#f2e4c4"
-///   ink "#2b1d12"
-///   …
+/// atlas "atlas.png" 384 256                  # its asset id and size in texels
+/// scale 1                                    # CSS px per atlas texel for slice corners
+/// palette { backdrop "#1a120b" … }           # every ThemeColor role (all required)
+/// colors {                                   # every token required
+///   success icon "check"                     # a status: the palette's colour, its cue (icon "<name>", pattern <word>, pips <n>)
+///   epic "#a335ee" pips 4                    # common … mythic: a colour and its cue, a different cue per tier
+///   team1 "#3d7eff"                          # team1 … team8, then physical fire ice lightning poison holy shadow arcane: a colour [and a cue]
+///   series1 "#4e79a7"                        # series1 … series8
 /// }
-/// radius {                                   # all four required
-///   small 4
-///   control 4
-///   bar 4
-///   panel 6
+/// typography {                               # display title heading body label caption numeric (all required)
+///   display 42 48 0.02 700 display {         # size, line height, tracking em, weight, font role (body, display, numeric, rounded)
+///     phonePortrait 34 40                    # per breakpoint: size, line height
+///   }
 /// }
-/// ramp {
-///   displayLg 44 48                          # TypeStepName: size, line height [, CJK line height, tracking em, CJK tracking em]
-/// }
-/// durations {
-///   base 260
-/// }
-/// fonts {
-///   display "styles/fantasy/Cinzel-Bold.ttf"
-///   body "styles/fantasy/Newsreader.ttf"
-///   numeric "styles/fantasy/Newsreader.ttf"   # the mono role
-///   fallback "fonts/NotoSansSC-Regular-subset.ttf"
-///   cjk "@styles/cjk/NotoSerifSC-SemiBold.ttf"         # Chinese in body text, beside the body face
-///   cjkDisplay "@styles/cjk/NotoSerifSC-SemiBold.ttf"  # Chinese in titles (display and rounded roles)
-/// }
-/// icons "styles/fantasy/icons.png" 8 4 {
-///   names "heart" "star"
-/// }
-/// slice panel 0 0 64 64 20 [20 20 20] [tint|authored] [stretch|repeat|round]
-///                                             # region, corner insets in texels; how edges fill
-/// tone button 0.04 0.9                       # the slice centre's mean, linear: grey and alpha, or r g b a
-/// soft 192 0 32 32 12                         # a blurred white rect: soft shadows and glows
-/// scale 1                                     # CSS px per atlas texel for slice corners
-/// corner 64 0 24 24 24 24 primary [offset]   # region, size on screen, ink (authored, primary, ink, muted, line, focus)
-/// corners panel card
-/// divider 64 32 96 12 96 12 primary
-/// flourish 64 48 48 16 48 16 primary [gap]
-/// tile 128 64 64 64 64 64 0.25 [inset] panel card
-/// shadow panel 0 6 14 0 "#00000080"           # part dx dy blur spread colour
-/// glow button 6 primary 0.5                   # part size ink alpha
-/// textShadow display 0 2 0 "#000000a0"        # role dx dy blur colour
-/// textGlow display 3 primary 0.6
-/// textWeight body 0.5                         # role, thickening in device px (a pixel font's thin strokes)
-/// press 1.04 0.92 2                           # sx sy dy
-/// hover -2 1.02                               # dy scale (both move on springs: motion below)
+/// space { xxs 2 xs 4 sm 8 md 12 lg 16 xl 24 xxl 32 xl3 48 }  # one per line, every name
+/// size { xs 16 sm 24 md 32 lg 48 xl 64 xxl 96 touch 44 }
+/// radius { xs 2 sm 4 md 6 lg 9 xl 12 pill 9999 }
+/// stroke { hairline 1 thin 1.5 regular 2 thick 3 focus 2 }
+/// elevation { raised { shadow 0 4 8 0 "#00000066" } floating … overlay … top … }   # or `<level> none`
+/// shape { panel round 4 button squircle md slot notch 6 … }  # every element class: corner and radius (px or a radius name)
+/// ramp { displayLg 44 48 }                   # the v1 TypeStepName ramp the widgets draw with
+/// fonts { … }  icons "icons.png" 8 4 { names … }
+/// soft 252 104 64 64 24  corner …  divider …  flourish …  tile 204 172 64 64 64 64 0.5 6
+/// textShadow display 0 2 0 "#000000a0"  textGlow …  textWeight …
 /// motion {
-///   enter pop                                 # dialogs and screen panels
-///   stagger 40                                # ms between their controls
-///   toast slideLeft
-///   progress 400                              # ms progress bars ease over
-///   shake 6                                   # CSS px a refused press shakes
-///   pop 0.12                                  # a landing count-up's bump
-///   hoverSpring 1 350                         # the hover lift's spring: damping ratio, response ms
-///   pressSpring 0.55 120                      # the press squash's
+///   enter scale  toast slideDown  progress 420  shake 5  pop 0.1  hoverSpring 350 0
+///   spring ui 180 0                          # ui panel emphasis playful: duration ms, bounce -0.75 … 0.95
+///   ease enter 0.23 1 0.32 1                 # standard enter exit emphasis: control points, linear or steps <n>
+///   duration base 300                        # instant fast base slow spring bounce
+///   stagger 35  staggerCap 300  overshoot 0.15
 /// }
-/// sound press "audio/ui/press.wav"
+/// sounds {                                   # every event of §7.8
+///   press "audio/press.wav" volume 0.8 1 pitch 0.95 1.05 haptic tick
+///   hover none haptic none                   # several ids: a set played without repeats
+/// }
+/// dress "Button.base[pressed]" {             # a part dressing (crate::dress)
+///   slice 276 4 48 48 10 tint
+///   tone 0.69 1
+///   shadow 0 1 2 0 "#00000080"
+///   fill linear 90 "#ffd34a" "#e08a1e"        # paints, strokes, effects… kept for the UI pass
+/// }
 /// ```
+///
+/// Version 1 (read until `og style upgrade` has run everywhere) has
+/// `radius { small control bar panel }`, `durations`, and the per-part lines
+/// `slice <part> …`, `tone <part> …`, `shadow <part> …`, `glow <part> …`,
+/// `glass <part> …`, `corners <parts>`, `tile … <parts>`, `press`, `hover`,
+/// `sound <event> "<id>"`, with `hoverSpring` and `pressSpring` as damping
+/// ratio and response ms; its tokens are [`StyleTokens::derive`]d.
 pub fn parse_style(text: &str) -> Result<StyleFile, String> {
     let doc = Document::parse(text).map_err(|e| e.to_string())?;
     if doc.ty == "skin" {
@@ -766,12 +1014,11 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
             doc.ty
         ));
     }
-    if doc.version != 1 {
-        return Err(format!(
-            "style version {} (this engine reads 1)",
-            doc.version
-        ));
-    }
+    let v2 = match doc.version {
+        1 => false,
+        2 => true,
+        v => return Err(format!("style version {v} (this engine reads 1 and 2)")),
+    };
     let body = &doc.body;
     if let Some(e) = body.get("base") {
         return Err(P { e }.err(
@@ -786,11 +1033,14 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
     let mut theme = Theme::new(scheme);
     let mut file = StyleFile {
         name: String::new(),
+        version: doc.version,
         theme,
         atlas: None,
         fonts: Default::default(),
         icons: None,
         sounds: Default::default(),
+        feedback_sounds: Default::default(),
+        dressings: Vec::new(),
     };
     let mut size = (0.0f32, 0.0f32);
     if let Some(e) = body.get("atlas") {
@@ -806,6 +1056,38 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
     if let Some(e) = body.get("scale") {
         scale = P { e }.num(0)?;
     }
+    // The icons first: a colour's cue names one.
+    if let Some(e) = body.get("icons") {
+        let p = P { e };
+        let names = match &e.block {
+            Some(b) => b
+                .get_all("names")
+                .flat_map(|n| n.values.iter())
+                .map(|v| {
+                    v.as_str()
+                        .map(str::to_string)
+                        .ok_or_else(|| p.err("names takes quoted strings"))
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+            None => Vec::new(),
+        };
+        let (cols, rows) = (p.num(1)?, p.num(2)?);
+        if cols < 1.0 || rows < 1.0 {
+            return Err(p.err("takes the grid's columns and rows (at least 1)"));
+        }
+        file.icons = Some((p.string(0)?.to_string(), cols as u32, rows as u32, names));
+    }
+    let icon_names: Vec<String> = file.icons.as_ref().map(|i| i.3.clone()).unwrap_or_default();
+    let mut v = V2::default();
+    // The radius scale first: a shape names its steps.
+    if v2 && let Some(e) = body.get("radius") {
+        v.radius = Some(tokens::parse_lengths(
+            &P { e },
+            &names_of(RadiusStep::ALL, RadiusStep::name),
+            "radius",
+        )?);
+    }
+    let mut dressings: Vec<Dressing> = Vec::new();
     for e in &body.entries {
         let p = P { e };
         let needs_atlas = || {
@@ -815,8 +1097,44 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 Ok(())
             }
         };
-        match e.key.as_str() {
-            "scheme" | "atlas" | "scale" => {}
+        let key = e.key.as_str();
+        const V1_ONLY: [&str; 10] = [
+            "slice",
+            "tone",
+            "shadow",
+            "glow",
+            "glass",
+            "corners",
+            "press",
+            "hover",
+            "sound",
+            "durations",
+        ];
+        const V2_ONLY: [&str; 9] = [
+            "colors",
+            "typography",
+            "space",
+            "size",
+            "stroke",
+            "elevation",
+            "shape",
+            "sounds",
+            "dress",
+        ];
+        if v2 && V1_ONLY.contains(&key) {
+            return Err(p.err(match key {
+                "durations" => "is a version 1 block: in version 2 the durations are `duration <name> <ms>` lines of the motion block",
+                "sound" => "is a version 1 line: in version 2 every event is a line of the `sounds { }` block",
+                _ => "is a version 1 part line: in version 2 a part is dressed in a `dress \"<Component.part>\" { … }` block (og style upgrade converts a version 1 style)",
+            }));
+        }
+        if !v2 && V2_ONLY.contains(&key) {
+            return Err(p.err(
+                "is a version 2 block: write `version 2` and the rest of the version 2 tokens (og style upgrade converts a version 1 style)",
+            ));
+        }
+        match key {
+            "scheme" | "atlas" | "scale" | "icons" => {}
             "name" => file.name = p.string(0)?.to_string(),
             "palette" => {
                 let block = p.block()?;
@@ -839,6 +1157,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 }
                 has_palette = true;
             }
+            "radius" if v2 => {}
             "radius" => {
                 let block = p.block()?;
                 for c in &block.entries {
@@ -898,131 +1217,31 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                     file.fonts[i] = Some(q.string(0)?.to_string());
                 }
             }
-            "icons" => {
-                let names = match &e.block {
-                    Some(b) => b
-                        .get_all("names")
-                        .flat_map(|n| n.values.iter())
-                        .map(|v| {
-                            v.as_str()
-                                .map(str::to_string)
-                                .ok_or_else(|| p.err("names takes quoted strings"))
-                        })
-                        .collect::<Result<Vec<_>, _>>()?,
-                    None => Vec::new(),
-                };
-                let (cols, rows) = (p.num(1)?, p.num(2)?);
-                if cols < 1.0 || rows < 1.0 {
-                    return Err(p.err("takes the grid's columns and rows (at least 1)"));
-                }
-                file.icons = Some((p.string(0)?.to_string(), cols as u32, rows as u32, names));
-            }
-            "slice" | "soft" => {
+            "slice" => {
                 needs_atlas()?;
-                let (part, at) = if e.key == "soft" {
-                    (None, 0)
-                } else {
-                    let w = p.word(0)?;
-                    (
-                        Some(
-                            StylePart::from_name(w)
-                                .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?,
-                        ),
-                        1,
-                    )
-                };
-                let (uv, px) = region(&p, at, size)?;
-                let numbers = e.values[at + 4..]
-                    .iter()
-                    .take_while(|v| v.as_number().is_some())
-                    .count();
-                let b = match numbers {
-                    1 => {
-                        let v = p.num(at + 4)?;
-                        [v; 4]
-                    }
-                    4 => [
-                        p.num(at + 4)?,
-                        p.num(at + 5)?,
-                        p.num(at + 6)?,
-                        p.num(at + 7)?,
-                    ],
-                    _ => {
-                        return Err(p.err(
-                            "takes one corner inset or four (left top right bottom), in texels",
-                        ));
-                    }
-                };
-                if b[0] + b[2] > px[2] || b[1] + b[3] > px[3] || b.iter().any(|v| *v < 0.0) {
-                    return Err(p.err("has corner insets larger than its region"));
-                }
-                let (mut tint, mut fill) = (true, SliceFill::Stretch);
-                for v in &e.values[at + 4 + numbers..] {
-                    match v.as_word() {
-                        Some("tint") => tint = true,
-                        Some("authored") => tint = false,
-                        Some("stretch") => fill = SliceFill::Stretch,
-                        Some("repeat") => fill = SliceFill::Repeat,
-                        Some("round") => fill = SliceFill::Round,
-                        _ => {
-                            return Err(p.err(&format!(
-                                "ends with tint or authored and stretch, repeat or round, not '{}'",
-                                v.as_word().unwrap_or("a number")
-                            )));
-                        }
-                    }
-                }
-                let middle = [(px[2] - b[0] - b[2]) * scale, (px[3] - b[1] - b[3]) * scale];
-                if fill != SliceFill::Stretch && (middle[0] < 1.0 || middle[1] < 1.0) {
-                    return Err(
-                        p.err("tiles its edges but leaves no middle between the corners to tile")
-                    );
-                }
-                let s = Slice {
-                    uv,
-                    border_uv: [b[0] / size.0, b[1] / size.1, b[2] / size.0, b[3] / size.1],
-                    border: [b[0] * scale, b[1] * scale, b[2] * scale, b[3] * scale],
-                    tint,
-                    fill,
-                    middle,
-                    tone: Slice::WHITE,
-                };
-                match part {
-                    Some(part) => theme.art.slices[part.index()] = Some(s),
-                    None => theme.art.soft = Some(s),
-                }
+                let part = part_at(&p, 0)?;
+                theme.art.slices[part.index()] = Some(slice_at(&p, 1, size, scale)?);
+            }
+            "soft" => {
+                needs_atlas()?;
+                theme.art.soft = Some(slice_at(&p, 0, size, scale)?);
             }
             "tone" => {
-                let w = p.word(0)?;
-                let part = StylePart::from_name(w)
-                    .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?;
+                let part = part_at(&p, 0)?;
                 let slice = theme.art.slices[part.index()].as_mut().ok_or_else(|| {
-                    p.err(&format!("names '{w}', which has no slice line before it"))
+                    p.err(&format!(
+                        "names '{}', which has no slice line before it",
+                        part.name()
+                    ))
                 })?;
-                let n = e.values.len() - 1;
-                let tone = match n {
-                    1 | 2 => {
-                        let v = p.num(1)?;
-                        [v, v, v, p.num_or(2, 1.0)?]
-                    }
-                    4 => [p.num(1)?, p.num(2)?, p.num(3)?, p.num(4)?],
-                    _ => return Err(p.err("takes a grey and an alpha, or r g b and an alpha")),
-                };
-                if tone.iter().any(|v| !(0.0..=1.0).contains(v)) {
-                    return Err(p.err("takes values from 0 to 1 (linear light)"));
-                }
-                slice.tone = tone;
+                slice.tone = tone_at(&p, 1)?;
             }
             "corner" | "divider" | "flourish" => {
                 needs_atlas()?;
                 let (uv, _) = region(&p, 0, size)?;
-                let ink = match e.values.get(6).and_then(Value::as_word) {
+                let ink = match e.values.get(6) {
                     None => Ink::Authored,
-                    Some(w) => Ink::parse(w).ok_or_else(|| {
-                        p.err(&format!(
-                            "ink '{w}' is authored, accent, fg, muted, border or focus"
-                        ))
-                    })?,
+                    Some(_) => ink_at(&p, 6)?,
                 };
                 let o = Ornament {
                     uv,
@@ -1031,7 +1250,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                     ink,
                     offset: p.num_or(7, 0.0)?,
                 };
-                match e.key.as_str() {
+                match key {
                     "corner" => theme.art.corner = Some(o),
                     "divider" => theme.art.divider = Some(o),
                     _ => theme.art.flourish = Some(o),
@@ -1041,10 +1260,15 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
             "tile" => {
                 needs_atlas()?;
                 let (uv, _) = region(&p, 0, size)?;
-                let numbers = e.values[4..]
+                let numbers = e.values[4.min(e.values.len())..]
                     .iter()
                     .take_while(|v| v.as_number().is_some())
                     .count();
+                if v2 && e.values.len() > 4 + numbers {
+                    return Err(p.err(
+                        "names its parts, as version 1 did: in version 2 each part's dressing says `tile`",
+                    ));
+                }
                 theme.art.tile = Some(Tile {
                     uv,
                     w: p.num(4)?,
@@ -1055,40 +1279,16 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 });
             }
             "shadow" => {
-                let w = p.word(0)?;
-                let part = StylePart::from_name(w)
-                    .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?;
-                let s = Shadow {
-                    dx: p.num(1)?,
-                    dy: p.num(2)?,
-                    blur: p.num(3)?.max(0.0),
-                    spread: p.num(4)?,
-                    color: p.color(5)?,
-                };
-                theme.art.shadows[part.class().index()] = Some(s);
+                let part = part_at(&p, 0)?;
+                theme.art.shadows[part.class().index()] = Some(tokens::shadow_at(&p, 1)?);
             }
             "glow" => {
-                let w = p.word(0)?;
-                let part = StylePart::from_name(w)
-                    .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?;
-                let iw = p.word(2)?;
-                theme.art.glows[part.class().index()] = Some(Glow {
-                    size: p.num(1)?.max(0.0),
-                    ink: Ink::parse(iw).ok_or_else(|| {
-                        p.err(&format!("ink '{iw}' is accent, fg, muted, border or focus"))
-                    })?,
-                    alpha: p.num(3)?.clamp(0.0, 1.0),
-                });
+                let part = part_at(&p, 0)?;
+                theme.art.glows[part.class().index()] = Some(glow_at(&p, 1)?);
             }
             "glass" => {
-                let w = p.word(0)?;
-                let part = StylePart::from_name(w)
-                    .ok_or_else(|| p.err(&format!("names an unknown part '{w}'")))?;
-                theme.art.glass[part.class().index()] = Some(Glass {
-                    blur: p.num(1)?.max(0.0),
-                    fill: p.num(2)?.clamp(0.0, 1.0),
-                    tint: p.num_or(3, 0.25)?.clamp(0.0, 1.0),
-                });
+                let part = part_at(&p, 0)?;
+                theme.art.glass[part.class().index()] = Some(glass_at(&p, 1)?);
             }
             "textShadow" => {
                 let i = role_index(&p, p.word(0)?)?;
@@ -1102,14 +1302,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
             }
             "textGlow" => {
                 let i = role_index(&p, p.word(0)?)?;
-                let iw = p.word(2)?;
-                theme.art.text_glows[i] = Some(Glow {
-                    size: p.num(1)?.max(0.0),
-                    ink: Ink::parse(iw).ok_or_else(|| {
-                        p.err(&format!("ink '{iw}' is accent, fg, muted, border or focus"))
-                    })?,
-                    alpha: p.num(3)?.clamp(0.0, 1.0),
-                });
+                theme.art.text_glows[i] = Some(glow_at(&p, 1)?);
             }
             "textWeight" => {
                 let i = role_index(&p, p.word(0)?)?;
@@ -1119,20 +1312,13 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 }
                 theme.art.text_weights[i] = w;
             }
-            "press" => {
-                theme.art.press = Some(Press {
-                    sx: p.num(0)?,
-                    sy: p.num(1)?,
-                    dy: p.num_or(2, 0.0)?,
-                })
-            }
-            "hover" => {
-                theme.art.hover = Some(Hover {
-                    dy: p.num(0)?,
-                    scale: p.num_or(1, 1.0)?,
-                })
-            }
+            "press" => theme.art.press = Some(press_at(&p)?),
+            "hover" => theme.art.hover = Some(hover_at(&p)?),
             "motion" => {
+                let mut tokens_motion = v2.then(tokens::MotionParse::new);
+                if v2 && v.motion.is_some() {
+                    return Err(p.err("is set twice"));
+                }
                 let m = &mut theme.art.motion;
                 for c in &p.block()?.entries {
                     let q = P { e: c };
@@ -1146,26 +1332,50 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                                 m.toast = Some(k);
                             }
                         }
-                        "stagger" => m.stagger_ms = q.num(0)?.max(0.0),
+                        "stagger" if !v2 => m.stagger_ms = q.num(0)?.max(0.0),
                         "progress" => m.progress_ms = q.num(0)?.max(0.0),
                         "shake" => m.shake = q.num(0)?.max(0.0),
                         "pop" => m.pop = q.num(0)?.clamp(0.0, 1.0),
                         "hoverSpring" | "pressSpring" => {
-                            let spring = Some(crate::theme::Spring {
-                                damping: q.num(0)?.clamp(0.05, 4.0),
-                                response_ms: q.num(1)?.clamp(16.0, 4000.0),
-                            });
-                            if c.key == "hoverSpring" {
-                                m.hover_spring = spring;
+                            let spring = if v2 {
+                                // Version 2: duration and bounce, as every spring.
+                                let s = tokens::spring_at(&q, 0)?;
+                                v.springs.push((
+                                    if c.key == "hoverSpring" {
+                                        "hoverSpring"
+                                    } else {
+                                        "pressSpring"
+                                    },
+                                    s,
+                                ));
+                                s.to_spring()
                             } else {
-                                m.press_spring = spring;
+                                crate::theme::Spring {
+                                    damping: q.num(0)?.clamp(0.05, 4.0),
+                                    response_ms: q.num(1)?.clamp(16.0, 4000.0),
+                                }
+                            };
+                            if c.key == "hoverSpring" {
+                                m.hover_spring = Some(spring);
+                            } else {
+                                m.press_spring = Some(spring);
                             }
                         }
-                        _ => return Err(q.err(
-                            "is a motion setting: enter, stagger, toast, progress, shake, pop, hoverSpring or pressSpring",
-                        )),
+                        _ => {
+                            if let Some(t) = tokens_motion.as_mut()
+                                && t.line(&q)?
+                            {
+                                continue;
+                            }
+                            return Err(q.err(if v2 {
+                                "is a motion setting: enter, toast, progress, shake, pop, hoverSpring, pressSpring, spring, ease, duration, stagger, staggerCap or overshoot"
+                            } else {
+                                "is a motion setting: enter, stagger, toast, progress, shake, pop, hoverSpring or pressSpring"
+                            }));
+                        }
                     }
                 }
+                v.motion = tokens_motion;
             }
             "sound" => {
                 let w = p.word(0)?;
@@ -1176,11 +1386,225 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 })?;
                 file.sounds[s as usize] = Some(p.string(1)?.to_string());
             }
+            "colors" => once(&p, &mut v.colors, tokens::parse_colors(&p, &icon_names)?)?,
+            "typography" => once(&p, &mut v.typography, tokens::parse_typography(&p)?)?,
+            "space" => once(
+                &p,
+                &mut v.space,
+                tokens::parse_lengths(&p, &names_of(SpaceStep::ALL, SpaceStep::name), "space")?,
+            )?,
+            "size" => once(
+                &p,
+                &mut v.size,
+                tokens::parse_lengths(&p, &names_of(SizeStep::ALL, SizeStep::name), "size")?,
+            )?,
+            "stroke" => once(
+                &p,
+                &mut v.stroke,
+                tokens::parse_lengths(
+                    &p,
+                    &names_of(StrokeWidth::ALL, StrokeWidth::name),
+                    "stroke width",
+                )?,
+            )?,
+            "elevation" => once(&p, &mut v.elevation, tokens::parse_elevation(&p)?)?,
+            "shape" => {
+                let radius = v.radius.as_ref().ok_or_else(|| {
+                    p.err("needs the `radius { xs sm md lg xl pill }` scale its corners name")
+                })?;
+                let s = tokens::parse_shape(&p, radius)?;
+                once(&p, &mut v.shape, s)?
+            }
+            "sounds" => {
+                let (f, ids) = tokens::parse_sounds(&p)?;
+                once(&p, &mut v.feedback, f)?;
+                file.feedback_sounds = ids;
+            }
+            "dress" => {
+                let sel = Selector::parse(p.string(0)?).map_err(|m| p.err(&m))?;
+                if e.values.len() != 1 {
+                    return Err(p.err("takes one quoted selector, then a { } block"));
+                }
+                let block = p.block()?;
+                let i = match dressings.iter().position(|d| d.selector == sel) {
+                    Some(i) => i,
+                    None => {
+                        dressings.push(Dressing {
+                            selector: sel,
+                            frame: DressFrame::default(),
+                            deferred: Vec::new(),
+                        });
+                        dressings.len() - 1
+                    }
+                };
+                let d = &mut dressings[i];
+                for c in &block.entries {
+                    let q = P { e: c };
+                    let bare = || {
+                        if c.values.is_empty() {
+                            Ok(true)
+                        } else {
+                            Err(q.err("takes no values"))
+                        }
+                    };
+                    match c.key.as_str() {
+                        "slice" => {
+                            needs_atlas()?;
+                            d.frame.slice = Some(slice_at(&q, 0, size, scale)?);
+                        }
+                        "tone" => {
+                            let t = tone_at(&q, 0)?;
+                            d.frame
+                                .slice
+                                .as_mut()
+                                .ok_or_else(|| {
+                                    q.err("sets a tone, but the dressing has no slice before it")
+                                })?
+                                .tone = t;
+                        }
+                        "shadow" => d.frame.shadow = Some(tokens::shadow_at(&q, 0)?),
+                        "glow" => d.frame.glow = Some(glow_at(&q, 0)?),
+                        "glass" => d.frame.glass = Some(glass_at(&q, 0)?),
+                        "corners" => d.frame.corners = bare()?,
+                        "tile" => d.frame.tile = bare()?,
+                        "shape" => {
+                            let radius = v.radius.as_ref().ok_or_else(|| {
+                                q.err("needs the `radius { … }` scale its corner names")
+                            })?;
+                            d.frame.shape = Some(tokens::shape_at(&q, 0, radius)?);
+                        }
+                        "press" => d.frame.press = Some(press_at(&q)?),
+                        "hover" => d.frame.hover = Some(hover_at(&q)?),
+                        k if DEFERRED.contains(&k) => d.deferred.push(c.clone()),
+                        _ => {
+                            return Err(q.err(&format!(
+                                "is not a dressing setting: slice, tone, shadow, glow, glass, corners, tile, shape, press, hover, or (for the UI pass) {}",
+                                DEFERRED.join(", ")
+                            )));
+                        }
+                    }
+                }
+            }
             k => return Err(format!("line {}: unknown style setting '{k}'", e.line)),
         }
     }
+    if v2 {
+        // The dressings of the twelve version 1 parts are what the widgets draw.
+        let tile_parts =
+            dressings
+                .iter()
+                .fold(0u32, |m, d| match StylePart::from_selector(&d.selector) {
+                    Some(p) if d.frame.tile && p.class() == p => m | p.bit(),
+                    _ => m,
+                });
+        if tile_parts != 0 && theme.art.tile.is_none() {
+            return Err("a dressing says `tile`, but the style has no `tile` line".into());
+        }
+        if let Some(t) = theme.art.tile.as_mut() {
+            t.parts = tile_parts;
+        }
+        for d in &dressings {
+            let Some(part) = StylePart::from_selector(&d.selector) else {
+                continue;
+            };
+            let a = &mut theme.art;
+            let f = &d.frame;
+            if f.slice.is_some() {
+                a.slices[part.index()] = f.slice;
+            }
+            if part.class() == part {
+                let i = part.index();
+                a.shadows[i] = f.shadow.or(a.shadows[i]);
+                a.glows[i] = f.glow.or(a.glows[i]);
+                a.glass[i] = f.glass.or(a.glass[i]);
+                if f.corners {
+                    a.corner_parts |= part.bit();
+                }
+            }
+            if part == StylePart::Button {
+                a.press = f.press.or(a.press);
+                a.hover = f.hover.or(a.hover);
+            }
+        }
+        let need = |what: &str| {
+            format!(
+                "a version 2 style needs a `{what}` block (og style upgrade writes one from a version 1 style)"
+            )
+        };
+        let radius = v
+            .radius
+            .ok_or_else(|| need("radius { xs sm md lg xl pill }"))?;
+        let shape = v
+            .shape
+            .ok_or_else(|| need("shape { <element class> <corner> <radius> }"))?;
+        let space = v
+            .space
+            .ok_or_else(|| need("space { xxs xs sm md lg xl xxl xl3 }"))?;
+        let motion = v
+            .motion
+            .ok_or_else(|| need("motion { spring … ease … duration … }"))?;
+        let mblock = P {
+            e: body.get("motion").expect("a motion block"),
+        };
+        let motion = motion.finish(&mblock, &v.springs)?;
+        let feedback = v
+            .feedback
+            .ok_or_else(|| need("sounds { <event> … haptic … }"))?;
+        theme.tokens = StyleTokens {
+            colors: v.colors.ok_or_else(|| need("colors { … }"))?,
+            typography: v.typography.ok_or_else(|| need("typography { … }"))?,
+            space,
+            size: v
+                .size
+                .ok_or_else(|| need("size { xs sm md lg xl xxl touch }"))?,
+            radius,
+            stroke: v
+                .stroke
+                .ok_or_else(|| need("stroke { hairline thin regular thick focus }"))?,
+            elevation: v
+                .elevation
+                .ok_or_else(|| need("elevation { raised floating overlay top }"))?,
+            shape,
+            motion,
+            feedback,
+        };
+        // What the widgets read today, from the tokens.
+        let t = &theme.tokens;
+        theme.radius = Radius {
+            small: t.shape(ElementClass::Slot).radius,
+            control: t.shape(ElementClass::Button).radius,
+            bar: t.shape(ElementClass::Bar).radius,
+            panel: t.shape(ElementClass::Panel).radius,
+        };
+        let s = &t.space;
+        theme.space = crate::Space {
+            xxs: s[0],
+            xs: s[1],
+            sm: s[2],
+            md: s[3],
+            lg: s[4],
+            xl: s[5],
+            xxl: s[6],
+            xl3: s[7],
+        };
+        theme.durations_ms = t.motion.durations;
+        theme.art.motion.stagger_ms = t.motion.stagger_ms;
+        for u in UiSound::ALL {
+            file.sounds[u as usize] = file.feedback_sounds[u.event().index()].first().cloned();
+        }
+        has_radius = true;
+    } else {
+        for u in UiSound::ALL {
+            file.feedback_sounds[u.event().index()] =
+                file.sounds[u as usize].iter().cloned().collect();
+        }
+    }
     if file.atlas.is_some() && theme.art.slices.iter().all(Option::is_none) {
-        return Err("the style has an atlas but no `slice` lines".into());
+        return Err(if v2 {
+            "the style has an atlas but dresses no part with a `slice`".into()
+        } else {
+            "the style has an atlas but no `slice` lines".into()
+        });
     }
     let needs_soft = theme.art.shadows.iter().flatten().any(|s| s.blur > 0.0)
         || theme.art.glows.iter().any(Option::is_some);
@@ -1196,6 +1620,183 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
     if !has_radius {
         return Err("a style needs a `radius { small control bar panel }` block".into());
     }
+    if v2 {
+        file.dressings = dressings;
+    } else {
+        theme.tokens = StyleTokens::derive(&theme, &icon_names);
+        // A version 1 style's sounds are the one-sound sets of its events.
+        for u in UiSound::ALL {
+            if file.sounds[u as usize].is_some() {
+                let f = &mut theme.tokens.feedback[u.event().index()];
+                f.count = 1;
+            }
+        }
+        file.dressings = v1_dressings(&theme.art);
+    }
     file.theme = theme;
     Ok(file)
+}
+
+/// `og style upgrade`: a version 1 style written as version 2. Every
+/// value version 1 set keeps its value (the palette, the ramp, the fonts,
+/// the art and its motion, so the style draws the same); the radii become
+/// the shape language's corners, the durations motion tokens, the per-part
+/// lines dressings of [`StylePart::selector`], the sounds one-sound sets;
+/// the new tokens are [`StyleTokens::derive`]d from the palette and scheme.
+pub fn upgrade_style(text: &str) -> Result<String, String> {
+    let old = parse_style(text)?;
+    if old.version != 1 {
+        return Err(format!(
+            "the style is version {} already: nothing to upgrade",
+            old.version
+        ));
+    }
+    let mut doc = Document::parse(text).map_err(|e| e.to_string())?;
+    let body = std::mem::take(&mut doc.body);
+    let icons: Vec<String> = old.icons.as_ref().map(|i| i.3.clone()).unwrap_or_default();
+    let mut sounds: [Vec<String>; SoundEvent::COUNT] = Default::default();
+    for e in body.get_all("sound") {
+        let p = P { e };
+        if let Some(u) = UiSound::from_name(p.word(0)?) {
+            sounds[u.event().index()] = vec![p.string(1)?.to_string()];
+        }
+    }
+    let (token_blocks, motion_tokens, sounds_block) = old.theme.tokens.entries(&icons, &sounds);
+    let mut out = og_core::ogt::Block::new();
+    let copy = |out: &mut og_core::ogt::Block, key: &str| {
+        for e in body.get_all(key) {
+            out.push(e.clone());
+        }
+    };
+    for k in ["name", "scheme", "atlas", "scale", "palette"] {
+        copy(&mut out, k);
+    }
+    out.entries.extend(token_blocks);
+    for k in [
+        "ramp", "fonts", "icons", "soft", "corner", "divider", "flourish",
+    ] {
+        copy(&mut out, k);
+    }
+    for e in body.get_all("tile") {
+        let mut e = e.clone();
+        let numbers = e.values[4.min(e.values.len())..]
+            .iter()
+            .take_while(|v| v.as_number().is_some())
+            .count();
+        e.values.truncate(4 + numbers);
+        out.push(e);
+    }
+    for k in ["textShadow", "textGlow", "textWeight"] {
+        copy(&mut out, k);
+    }
+    let mut motion: Vec<Entry> = Vec::new();
+    if let Some(e) = body.get("motion")
+        && let Some(b) = &e.block
+    {
+        for c in &b.entries {
+            match c.key.as_str() {
+                "stagger" => {}
+                "hoverSpring" | "pressSpring" => {
+                    let q = P { e: c };
+                    let s = tokens::SpringToken::from_spring(crate::theme::Spring {
+                        damping: q.num(0)?.clamp(0.05, 4.0),
+                        response_ms: q.num(1)?.clamp(16.0, 4000.0),
+                    });
+                    let mut n = Entry::new(c.key.clone());
+                    n.values = vec![
+                        tokens::num_value(s.duration_ms),
+                        tokens::num_value(s.bounce),
+                    ];
+                    motion.push(n);
+                }
+                _ => motion.push(c.clone()),
+            }
+        }
+    }
+    motion.extend(motion_tokens);
+    out.push(Entry::new("motion").with_block(og_core::ogt::Block { entries: motion }));
+    out.push(sounds_block);
+    for d in &old.dressings {
+        let part = StylePart::from_selector(&d.selector).expect("a version 1 part");
+        let mut entries: Vec<Entry> = Vec::new();
+        let rest = |e: &Entry| {
+            let mut n = e.clone();
+            n.values.remove(0);
+            n.line = 0;
+            n
+        };
+        let of = |e: &Entry, class: bool| {
+            e.values
+                .first()
+                .and_then(Value::as_word)
+                .and_then(StylePart::from_name)
+                .is_some_and(|p| if class { p.class() == part } else { p == part })
+        };
+        for k in ["slice", "tone"] {
+            entries.extend(body.get_all(k).filter(|e| of(e, false)).map(rest));
+        }
+        if part.class() == part {
+            for k in ["shadow", "glow", "glass"] {
+                entries.extend(body.get_all(k).filter(|e| of(e, true)).map(rest));
+            }
+            if d.frame.corners {
+                entries.push(Entry::new("corners"));
+            }
+            if d.frame.tile {
+                entries.push(Entry::new("tile"));
+            }
+        }
+        if part == StylePart::Button {
+            copy_into(&mut entries, &body, "press");
+            copy_into(&mut entries, &body, "hover");
+        }
+        if !entries.is_empty() {
+            out.push(
+                Entry::new("dress")
+                    .with(Value::String(d.selector.to_string()))
+                    .with_block(og_core::ogt::Block { entries }),
+            );
+        }
+    }
+    doc.version = 2;
+    doc.body = out;
+    let text2 = doc.to_text().map_err(|e| e.to_string())?.replacen(
+        "---\n",
+        "---\n# Upgraded to version 2 by og style upgrade: its version 1 values kept, the new tokens derived from its palette and scheme (docs/ui.md §12).\n",
+        1,
+    );
+    let new =
+        parse_style(&text2).map_err(|e| format!("the upgraded style does not read back: {e}"))?;
+    let (a, b) = (&old.theme, &new.theme);
+    if (
+        a.palette,
+        a.space,
+        a.radius,
+        a.type_ramp,
+        a.durations_ms,
+        a.art,
+    ) != (
+        b.palette,
+        b.space,
+        b.radius,
+        b.type_ramp,
+        b.durations_ms,
+        b.art,
+    ) || old.sounds != new.sounds
+        || old.fonts != new.fonts
+    {
+        return Err(
+            "the upgrade would change how the style draws; this is a bug in og style upgrade"
+                .into(),
+        );
+    }
+    Ok(text2)
+}
+
+fn copy_into(out: &mut Vec<Entry>, body: &og_core::ogt::Block, key: &str) {
+    for e in body.get_all(key) {
+        let mut n = e.clone();
+        n.line = 0;
+        out.push(n);
+    }
 }

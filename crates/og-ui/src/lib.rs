@@ -23,6 +23,7 @@
 
 mod a11y;
 mod draw;
+pub mod dress;
 pub(crate) mod edit;
 pub mod glyphs;
 mod id;
@@ -36,9 +37,11 @@ mod probe;
 mod rich;
 mod scroll;
 pub mod shape;
+pub mod slot;
 mod style;
 pub mod style_file;
 mod text;
+pub mod tokens;
 #[rustfmt::skip]
 pub mod theme;
 mod ui;
@@ -46,6 +49,7 @@ mod widgets;
 
 pub use a11y::{A11yNode, A11yTree};
 pub use draw::{DrawCmd, DrawItem, EmitDesc, atlas_texture};
+pub use dress::{DressFrame, Dressing, Selector};
 pub use id::{Id, ui_id, ui_idi};
 pub use input::{GamepadFrame, InputFrame, InputSource, Nav, OgInput, UiKey};
 pub use juice::{
@@ -58,12 +62,16 @@ pub use layout::{
 pub use motion::{TransitionKind, cubic_bezier, ease_exit, ease_out};
 pub use probe::{SharedUi, UiProbe};
 pub use rich::{RichTextDesc, RichTextResponse};
+pub use slot::{Aspect, SlotKind, SlotSpec};
 pub use style::{
     Breakpoint, Contrast, Density, DensityMode, Durations, Palette, READABLE, Radius, Scheme,
     Space, Spring, Srgba, Theme, TypeRamp, TypeStep,
 };
-pub use style_file::{Art, Slice, SliceFill, StyleFile, StylePart, UiSound, parse_style};
+pub use style_file::{
+    Art, Slice, SliceFill, StyleFile, StylePart, UiSound, parse_style, upgrade_style,
+};
 pub use text::{FontMetrics, Piece, UiFont, VisualGlyph, bidi_runs, needs_visual, pieces};
+pub use tokens::StyleTokens;
 pub use ui::{
     ButtonDesc, ButtonVariant, ControlSize, FieldDesc, Fonts, IconAtlas, ImageDesc, LabelDesc,
     PanelDesc, ProgressDesc, Response, ScrollAxes, ScrollDesc, SliderDesc, TextAreaDesc,

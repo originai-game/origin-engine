@@ -250,6 +250,18 @@ pub enum Breakpoint {
 }
 
 impl Breakpoint {
+    /// Every size class, in this order (the index of a per-breakpoint array).
+    pub const ALL: [Breakpoint; 4] = [
+        Breakpoint::PhonePortrait,
+        Breakpoint::PhoneLandscape,
+        Breakpoint::Tablet,
+        Breakpoint::Desktop,
+    ];
+
+    pub fn from_name(name: &str) -> Option<Breakpoint> {
+        Breakpoint::ALL.into_iter().find(|b| b.name() == name)
+    }
+
     pub fn of(width: f32, height: f32) -> Breakpoint {
         let short = width.min(height);
         if short < 600.0 {
@@ -307,6 +319,10 @@ pub struct Theme {
     /// The style's art (`crate::style_file`: frames, ornaments, fonts, motion,
     /// sounds); the default dresses nothing.
     pub art: crate::style_file::Art,
+    /// The style's version 2 tokens (`crate::tokens`): carried, not yet
+    /// drawn from. A version 1 style and the prototype style have the set
+    /// [`crate::tokens::StyleTokens::derive`] makes of their values.
+    pub tokens: crate::tokens::StyleTokens,
 }
 
 impl Default for Theme {
@@ -327,12 +343,25 @@ impl Theme {
     }
 
     pub fn new(scheme: Scheme) -> Theme {
+        let palette = match scheme {
+            Scheme::Light => tokens::LIGHT,
+            Scheme::Dark => tokens::DARK,
+        };
+        let art = crate::style_file::Art::default();
+        let derived = crate::tokens::StyleTokens::derive_from(
+            crate::tokens::V1 {
+                palette: &palette,
+                space: &tokens::SPACE,
+                radius: &tokens::RADIUS,
+                type_ramp: &tokens::TYPE_RAMP,
+                durations_ms: tokens::DURATIONS_MS,
+                art: &art,
+            },
+            &[],
+        );
         Theme {
             scheme,
-            palette: match scheme {
-                Scheme::Light => tokens::LIGHT,
-                Scheme::Dark => tokens::DARK,
-            },
+            palette,
             space: tokens::SPACE,
             radius: tokens::RADIUS,
             type_ramp: tokens::TYPE_RAMP,
@@ -343,7 +372,8 @@ impl Theme {
             outline: false,
             reduced_motion: false,
             reduced_transparency: false,
-            art: crate::style_file::Art::default(),
+            art,
+            tokens: derived,
         }
     }
 

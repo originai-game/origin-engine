@@ -19,6 +19,7 @@ mod rich;
 mod rtl;
 mod runs;
 mod screen_layers;
+mod slots;
 mod style;
 mod support;
 mod text;

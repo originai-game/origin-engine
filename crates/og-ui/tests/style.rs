@@ -1278,3 +1278,202 @@ fn a_changed_cjk_tracking_remeasures_the_text() {
     println!("one Ui: {before} then {after}; a fresh Ui {fresh}");
     assert_eq!(after, fresh, "the measurement follows the CJK tracking");
 }
+
+/// The test style with what `og style upgrade` must carry over besides:
+/// a button state's own frame and shadow (version 1 shares a state's
+/// shadow with its class), a tile over the panel, a measured tone, a
+/// sound and a press spring.
+fn v1_style() -> String {
+    STYLE.replace(
+        "soft 96 0 32 32 12\n",
+        "soft 96 0 32 32 12\nslice buttonHover 32 0 32 32 6 tint\ntone buttonHover 0.5 1\nshadow buttonHover 0 2 0 0 \"#00000080\"\ntile 0 32 16 16 16 16 0.3 2 panel\nsound press \"audio/press.wav\"\n",
+    )
+    .replace("  pop 0.12\n", "  pop 0.12\n  pressSpring 0.55 120\n")
+}
+
+#[test]
+fn og_style_upgrade_writes_version_2_that_draws_as_version_1() {
+    let v1 = v1_style();
+    let old = parse_style(&v1).expect("the version 1 style parses");
+    let text = upgrade_style(&v1).expect("it upgrades");
+    let new = parse_style(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
+    assert_eq!(new.version, 2);
+    // Every value version 1 set, and the tokens derived from them, read back the same.
+    assert_eq!(new.theme, old.theme);
+    assert_eq!(new.dressings, old.dressings);
+    assert_eq!(new.sounds, old.sounds);
+    assert_eq!(
+        new.feedback_sounds[og_ui::tokens::SoundEvent::Press.index()],
+        vec!["audio/press.wav".to_string()]
+    );
+    // The part lines are dressings of the parts' selectors, nothing at the top level.
+    assert!(
+        text.contains("dress \"Button.base[hover]\" {\n  slice 32 0 32 32 6 tint\n  tone 0.5 1\n}"),
+        "{text}"
+    );
+    assert!(
+        text.contains("dress \"Panel.frame\" {\n  slice 0 0 32 32 8\n  corners\n  tile\n}"),
+        "{text}"
+    );
+    assert!(!text.lines().any(|l| l.starts_with("slice ")) && !text.contains("\n  small "));
+    let hover = new
+        .dressings
+        .iter()
+        .find(|d| d.selector == Selector::parse("Button.base[hover]").unwrap())
+        .expect("the hover dressing");
+    assert_eq!(
+        hover.frame.slice.map(|s| s.tone),
+        Some([0.5, 0.5, 0.5, 1.0])
+    );
+    // So the styled panel draws the same pieces of the atlas.
+    let tex = atlas();
+    let draw = |file: &StyleFile| {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_theme(file.theme(Some(tex), [0; 6]));
+        step(&mut ui, InputFrame::default(), false);
+        images(&ui, tex)
+    };
+    assert!(!draw(&old).is_empty());
+    assert_eq!(draw(&new), draw(&old));
+    let again = upgrade_style(&text).unwrap_err();
+    assert!(again.contains("version 2 already"), "{again}");
+}
+
+/// The upgraded test style with `from` replaced by `to` (which must be there).
+fn v2_with(from: &str, to: &str) -> Result<StyleFile, String> {
+    let text = upgrade_style(&v1_style()).expect("it upgrades");
+    let line = text
+        .lines()
+        .find(|l| l.trim_start().starts_with(from))
+        .unwrap_or_else(|| panic!("no line starting {from}"));
+    parse_style(&text.replacen(line, to, 1))
+}
+
+#[test]
+fn a_version_2_style_is_complete_or_refused_with_its_fix() {
+    let refused = |from: &str, to: &str, says: &str| {
+        let e = v2_with(from, to).expect_err(&format!("{from} -> {to} is refused"));
+        assert!(e.contains(says), "{from} -> {to}: {e}");
+    };
+    // Every token is set.
+    refused("revealMythic ", "", "leaves out revealMythic");
+    refused("label ", "", "leaves out label");
+    refused("team8 ", "", "leaves out team8");
+    refused("avatar ", "", "every element class");
+    refused("overshoot ", "", "leaves out overshoot");
+    // No status or rarity is told by colour alone, and each tier has its own cue.
+    refused("epic ", "  epic \"#a335ee\"", "pips 4");
+    refused(
+        "epic ",
+        "  epic \"#a335ee\" pips 3",
+        "gives rare and epic the same cue",
+    );
+    refused(
+        "success pattern",
+        "  success pattern waves",
+        "gives success and info the same cue",
+    );
+    refused(
+        "epic ",
+        "  epic \"#a335ee\" icon \"unicorn\"",
+        "names the icon \"unicorn\"",
+    );
+    // Values in range, springs within the overshoot the style allows.
+    refused("spring playful", "  spring playful 520 0.9", "overshoot");
+    refused("panel round", "  panel square 4", "square with a radius");
+    refused(
+        "heading ",
+        "  heading 40 20 0 600 display",
+        "lines would overlap",
+    );
+    refused(
+        "confirm none",
+        "  confirm none haptic 0 10 2 0",
+        "strengths 0 to 1",
+    );
+    // Version 1 lines say where they went.
+    refused("scheme ", "slice panel 0 0 32 32 8", "in a `dress");
+    refused(
+        "scheme ",
+        "durations {\n  base 300\n}",
+        "duration <name> <ms>",
+    );
+    // A selector is Component.part[qualifier]…; a dressing names what it sets.
+    refused(
+        "dress \"Card.frame\"",
+        "dress \"card.frame\" {",
+        "PascalCase",
+    );
+    refused(
+        "dress \"Card.frame\"",
+        "dress \"Card.frame[rarity=]\" {",
+        "not a word or key=value",
+    );
+    refused("corners", "  glitter 1", "not a dressing setting");
+    // A tone needs the slice it measures.
+    refused(
+        "dress \"Card.frame\"",
+        "dress \"Slot.frame\" {\n  tone 0.5 1",
+        "no slice before it",
+    );
+}
+
+#[test]
+fn a_dressing_matches_by_selector_and_keeps_what_the_ui_pass_will_draw() {
+    let s = Selector::parse("Slot.frame[locked][rarity=epic]").unwrap();
+    assert_eq!(s.to_string(), "Slot.frame[locked][rarity=epic]");
+    assert_eq!(
+        s,
+        Selector::parse("Slot.frame[rarity=epic][locked]").unwrap()
+    );
+    assert_eq!(s.specificity(), 2);
+    assert!(s.matches("Slot", "frame", &["locked", "hover"], &[("rarity", "epic")]));
+    assert!(!s.matches("Slot", "frame", &["locked"], &[("rarity", "rare")]));
+    assert!(!s.matches("Slot", "icon", &["locked"], &[("rarity", "epic")]));
+    assert!(Selector::parse("Slot.frame[locked][locked]").is_err());
+    assert_eq!(
+        StylePart::ButtonPressed.selector().to_string(),
+        "Button.base[pressed]"
+    );
+    assert_eq!(
+        StylePart::from_selector(&Selector::parse("Meter.fill").unwrap()),
+        Some(StylePart::Fill)
+    );
+
+    let extra = "dress \"Slot.frame[rarity=epic]\" {\n  glow 6 primary 0.5\n  shape notch md\n  fill linear 90 \"#ffd34a\" \"#e08a1e\"\n  effect innerShadow 0 2 4 \"#00000066\"\n}\ndress \"Card.frame\" {\n  slice 0 0 32 32 6\n}\ndress \"Card.frame\" {\n  tone 0.25 1\n}\n";
+    let text = upgrade_style(&v1_style()).unwrap() + extra;
+    let file = parse_style(&text).unwrap_or_else(|e| panic!("{e}"));
+    let epic = file
+        .dressings
+        .iter()
+        .find(|d| d.selector.attrs == [("rarity".to_string(), "epic".to_string())])
+        .expect("the epic slot's dressing");
+    assert_eq!(epic.frame.glow.map(|g| g.size), Some(6.0));
+    let radius_md = file.theme.tokens.radius(og_ui::tokens::RadiusStep::Md);
+    assert_eq!(
+        epic.frame.shape.map(|s| (s.corner, s.radius)),
+        Some((og_ui::tokens::CornerShape::Notch, radius_md))
+    );
+    // Paints and effects wait for the UI pass's types, kept as written.
+    let kept: Vec<&str> = epic.deferred.iter().map(|e| e.key.as_str()).collect();
+    assert_eq!(kept, ["fill", "effect"]);
+    assert_eq!(epic.deferred[0].values.len(), 4);
+    // An epic slot's dressing is not the plain slot's: version 1's art is untouched.
+    assert_eq!(file.theme.art.glows[StylePart::Slot.index()], None);
+    // Two blocks of one selector merge: the cook's measured tone lands on the slice before it.
+    let card = file.theme.art.slices[StylePart::Card.index()].expect("the card's slice");
+    assert_eq!((card.border[0], card.tone), (6.0, [0.25, 0.25, 0.25, 1.0]));
+    // What og cook appends for a version 2 style it measured is that block.
+    let measured = format!(
+        "{text}{}\n",
+        file.tone_text(StylePart::Field, [0.5, 0.25, 0.125, 0.75])
+    );
+    let refused = parse_style(&measured).unwrap_err();
+    assert!(refused.contains("no slice before it"), "{refused}");
+    let measured = format!(
+        "{text}{}\n",
+        file.tone_text(StylePart::Card, [0.5, 0.25, 0.125, 0.75])
+    );
+    let card = parse_style(&measured).unwrap().theme.art.slices[StylePart::Card.index()];
+    assert_eq!(card.map(|s| s.tone), Some([0.5, 0.25, 0.125, 0.75]));
+}
