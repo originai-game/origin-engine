@@ -214,6 +214,10 @@ pub struct UiElement {
     pub id: String,
     /// Its parent's id; empty at the root.
     pub parent: String,
+    /// Its full path (`Shop/Items/Card#2/Buy`): its id after every
+    /// ancestor's. Empty when the UI module does not say; `find_by_id` then
+    /// falls back to the ids and parents alone.
+    pub path: String,
     /// What made it (`label`, `button`, `icon`, `image`, ...); empty when
     /// the UI module does not say.
     pub kind: String,
@@ -253,7 +257,7 @@ impl UiElement {
 
     pub fn to_json(&self) -> Value {
         json!({
-            "id": self.id, "parent": self.parent, "kind": self.kind, "disabled": self.disabled, "clipped": self.clipped, "text": self.text,
+            "id": self.id, "parent": self.parent, "path": self.path, "kind": self.kind, "disabled": self.disabled, "clipped": self.clipped, "text": self.text,
             "role": self.role, "name": self.name, "value": self.value, "states": self.states,
             "opaque": self.opaque, "x": self.x, "y": self.y, "width": self.width, "height": self.height,
         })
@@ -293,12 +297,24 @@ impl UiTree for StaticUi {
 /// The element `touch_move_to` names: an exact id, or a `Parent/Child`
 /// path of ids whose last segment is the element and whose earlier segments
 /// are its nearest ancestors. Topmost (last drawn) first.
+///
+/// An element with its full [`UiElement::path`] matches when the path ends
+/// with the asked one at a segment boundary, so `A/Row/Buy` never resolves
+/// to the `Buy` under `B/Row` however the ids repeat. One without a path
+/// (a module that does not say) is matched by walking its parents' ids.
 pub fn find_by_id<'a>(elements: &'a [UiElement], path: &str) -> Option<&'a UiElement> {
     let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
     let (last, ancestors) = segments.split_last()?;
+    let asked = segments.join("/");
     elements.iter().rev().find(|e| {
         if e.id != *last {
             return false;
+        }
+        if !e.path.is_empty() {
+            return e.path == asked
+                || e.path
+                    .strip_suffix(asked.as_str())
+                    .is_some_and(|head| head.ends_with('/'));
         }
         let mut parent = e.parent.as_str();
         for want in ancestors.iter().rev() {
@@ -363,4 +379,41 @@ pub trait Reloader {
     /// Load the changed bundle into a new world. `Err` names why it failed to
     /// load; the old bundle and world keep running.
     fn rebuild(&mut self, current: &World) -> Result<Rebuilt, String>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn el(id: &str, parent: &str, path: &str, x: f32) -> UiElement {
+        UiElement {
+            id: id.into(),
+            parent: parent.into(),
+            path: path.into(),
+            x,
+            ..UiElement::default()
+        }
+    }
+
+    /// Same-named siblings under different parents: `A/Row/Buy` is A's
+    /// button even though B's `Row` and `Buy` are drawn later (on top) and
+    /// the first `Row` by id is A's (U2's finding: the ancestors were
+    /// resolved by bare id).
+    #[test]
+    fn a_path_resolves_through_its_own_ancestors() {
+        let elements = vec![
+            el("A", "", "A", 0.0),
+            el("Row", "A", "A/Row", 0.0),
+            el("Buy", "Row", "A/Row/Buy", 1.0),
+            el("B", "", "B", 0.0),
+            el("Row", "B", "B/Row", 0.0),
+            el("Buy", "Row", "B/Row/Buy", 2.0),
+        ];
+        assert_eq!(find_by_id(&elements, "A/Row/Buy").map(|e| e.x), Some(1.0));
+        assert_eq!(find_by_id(&elements, "B/Row/Buy").map(|e| e.x), Some(2.0));
+        // Nearest ancestors only: a suffix at a segment boundary.
+        assert_eq!(find_by_id(&elements, "Row/Buy").map(|e| e.x), Some(2.0));
+        assert_eq!(find_by_id(&elements, "w/Buy").map(|e| e.x), None);
+        assert_eq!(find_by_id(&elements, "C/Row/Buy").map(|e| e.x), None);
+    }
 }

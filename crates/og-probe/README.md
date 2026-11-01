@@ -78,7 +78,7 @@ and when it runs still unknown, warns and the script continues. `type` and
 | Action | Does | Without its hook |
 |---|---|---|
 | `screenshot[:path][:full\|:N]` | capture this tick: the render target's size (`full` the same), `N` a long edge of N px | writes nothing and logs (not a warning) `<t>s screenshot: no renderer, frame unchecked (<file>)` (`FRAME_UNCHECKED`): a host without a renderer runs the script exactly as one with |
-| `touch_move_to:<ui id>` | pointer to the centre of an element: an id (topmost first) or a `Parent/Child` path | warns "target not found" |
+| `touch_move_to:<ui id>` | pointer to the centre of an element: an id (topmost first) or a `Parent/Child` path, matched against each element's full `path` at a segment boundary (so `A/Row/Buy` is never B's `Row/Buy`) | warns "target not found" |
 | `move_to_text:[=]text[@N]` | pointer to the element showing the text: substring, `=` exact, Nth match (0-based, negative from the end), topmost first | warns |
 | `touch_move:x,y` / `touch_start` / `touch_end` / `scroll:dx,dy` | pointer move, left press and release where the pointer is, wheel at the pointer | — |
 | `key_down:[Mod+]<Key>` / `key_up:[Mod+]<Key>` / `type:<text>` | `KeyboardEvent.code` keys; a chord names its modifiers first (`Meta+ArrowLeft` for Command, `Ctrl+Shift+KeyZ`; Shift, Ctrl/Control, Alt/Option, Meta/Cmd/Command), held before the key goes down and released after it goes up; `type` presses one key per character, two ticks apart, Shift for capitals and symbols (US layout) | — |

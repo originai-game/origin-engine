@@ -1415,6 +1415,17 @@ impl Ui {
         parts.join("/")
     }
 
+    /// The path the probe lists an element by: [`Ui::path_of`], and for a
+    /// layer placed against another element (a tooltip) that element's path
+    /// before its own id, as its `parent` is that element's id.
+    pub(crate) fn probe_path(&self, i: usize) -> String {
+        let n = &self.nodes[i];
+        if n.parent == NONE && n.anchor != NONE && n.anchor < self.nodes.len() {
+            return format!("{}/{}", self.probe_path(n.anchor), n.id);
+        }
+        self.path_of(i)
+    }
+
     pub(crate) fn respond(&self, key: u64) -> Response {
         let s = &self.state;
         let hovered = s.hot == key && (s.active == 0 || s.active == key);
@@ -2909,6 +2920,7 @@ impl Ui {
             elements.push(UiElement {
                 id: n.id.clone(),
                 parent,
+                path: self.probe_path(i),
                 kind: self.kinds.get(i).map_or("", |k| k.0).to_string(),
                 disabled: n.disabled,
                 clipped: visible.width + 0.01 < r.width || visible.height + 0.01 < r.height,
@@ -2975,6 +2987,7 @@ impl Ui {
                     ));
                     element_keys.push(child_key(n.key, &l));
                     elements.push(UiElement {
+                        path: format!("{}/{l}", self.probe_path(i)),
                         id: l,
                         parent: n.id.clone(),
                         kind: "link".into(),

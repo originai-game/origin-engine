@@ -342,3 +342,32 @@ fn restoring_the_world_and_the_ui_state_replays_the_same_frames() {
             .is_err()
     );
 }
+
+/// Two `Row/Buy` under different parents: a path names the one under its
+/// own ancestors, not the one whose ancestors share ids with the first
+/// match (og-probe resolved a path's ancestors by bare id).
+#[test]
+fn a_path_names_the_element_under_its_own_ancestors() {
+    let mut ui = Ui::default();
+    let cell = Element {
+        width: Size::Fixed(80.0),
+        height: Size::Fixed(40.0),
+        interactive: true,
+        ..Element::default()
+    };
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    for side in ["A", "B"] {
+        ui.open(side, Element::column());
+        ui.open("Row", Element::row());
+        ui.open("Buy", cell);
+        ui.close();
+        ui.close();
+        ui.close();
+    }
+    let frame = ui.end();
+    let a = frame.element("A/Row/Buy").expect("A's Buy");
+    let b = frame.element("B/Row/Buy").expect("B's Buy");
+    assert_eq!(a.path, "A/Row/Buy");
+    assert_eq!(b.path, "B/Row/Buy");
+    assert!(a.y < b.y, "A's Buy ({}) is above B's ({})", a.y, b.y);
+}
