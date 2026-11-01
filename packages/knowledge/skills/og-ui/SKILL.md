@@ -537,6 +537,12 @@ hud=show:play`, steps `t:action;...` from the cell's start); a bare
 `--screen <name>` runs `show:<name>` (change it with `--show
 "open:{screen}"`). `--styles pixel,neon --style-cmd "style:{style}"`
 adds a style axis, `--breakpoints` and `--locales` narrow the others.
+Without `--screen`, both commands cover every screen the project
+declares: project.ogt's `ui { screen "<name>" "<commands>" }` lines (and
+its `screens { title ... play ... results ... }` block), else every value
+the game's show command lists in its usage (`commandHelp: { show: { usage:
+"<title|play|shop>" } }`), else each screen the playtests take a
+screenshot of. Declare them, so a bare `og ui check .` sees everything.
 Each cell is a fresh engine laid out through og.ui.previewViewport, so a
 game needs no viewport command of its own. Outputs land in
 `og-out/ui-check/` (check.json, check.txt; exit 3 on an error) and

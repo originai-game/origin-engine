@@ -3,7 +3,7 @@
 // names its rule, paths, measured value and the prop to change. The rules
 // that wait for later phases are listed as such, never dropped.
 import { expect, test } from "bun:test";
-import { checkFrame, checkLocales, elementPaths, formatText, mergeFindings, padFindings, pseudo, RULES, type UiCell, type UiElementDump, type UiFrameSnapshot } from "../src/node/ui-check.ts";
+import { checkFrame, checkLocales, elementPaths, formatText, mergeFindings, padFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiElementDump, type UiFrameSnapshot } from "../src/node/ui-check.ts";
 
 const cell: UiCell = { screen: "s", breakpoint: "phonePortrait", locale: "", style: "", scale: 100, highContrast: false };
 
@@ -220,4 +220,20 @@ test("paths come from the accessibility tree, else the parent chain; findings me
   const merged = mergeFindings([...a, ...b]);
   expect(merged.length).toBe(1);
   expect(merged[0]!.cells).toEqual(["s phonePortrait game locale", "s phonePortrait pseudo"]);
+});
+
+test("the default screens: the values a show command's usage lists, else each playtest screenshot reached by the steps before it", () => {
+  const help = "screenshot[:name.png]\n    Capture a frame.\nshow:<title|play|shop> (registered)\n    Open a screen.\nviewport:<desktop|phone> (registered)\n    Lay out.\n";
+  expect(screensFromHelp(help, "show:{screen}")).toEqual([
+    { name: "title", commands: "show:title" },
+    { name: "play", commands: "show:play" },
+    { name: "shop", commands: "show:shop" },
+  ]);
+  // A usage that names no list (`<screen>`), or no such action: none.
+  expect(screensFromHelp("show:<screen> (registered)\n", "show:{screen}")).toEqual([]);
+  expect(screensFromHelp(help, "open:{screen}")).toEqual([]);
+  expect(screensFromPlaytest("menu", "0:key_down:Enter;0.1:dump_ui:a.json;0.5:screenshot:title.png;0.6:key_up:Enter;1.0:expect:ui:text:Play;1.5:screenshot;2:quit")).toEqual([
+    { name: "menu-title", commands: "0:key_down:Enter", at: 0.5 },
+    { name: "menu-shot-5", commands: "0:key_down:Enter;0.6:key_up:Enter", at: 1.5 },
+  ]);
 });

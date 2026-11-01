@@ -7,6 +7,13 @@
 //! exits 3 on an error finding; `preview` writes a contact sheet per screen
 //! and style and index.json (default `<project>/og-out/ui-preview`), or with
 //! `--film` a filmstrip of a motion at chosen times.
+//!
+//! Without `--screen`, every screen the project declares: project.ogt's
+//! `ui { screen "<name>" "<commands>" ... }` entries and its `screens { title
+//! "<commands>" play ... results ... }` block (og style check's); without
+//! those, ui-run.ts takes the values the game's show command enumerates in
+//! its usage (`<a|b|c>`, the kit's `show:`), else the screens the
+//! playtests take screenshots of, else the start screen.
 
 use crate::project::{self, Project};
 use std::path::Path;
@@ -106,6 +113,22 @@ pub fn run(args: &[&str]) -> ExitCode {
             }
         },
     );
+    let given = forward.contains(&"--screen");
+    let declared = if given {
+        Vec::new()
+    } else {
+        match declared_screens(&p.root) {
+            Ok(d) => d,
+            Err(e) => {
+                eprintln!("og ui {mode}: {e}");
+                return ExitCode::FAILURE;
+            }
+        }
+    };
+    let mut playtests = Vec::new();
+    if !given && declared.is_empty() {
+        crate::test::files(&p.root.join("tests"), ".og.ts", &mut playtests);
+    }
     let mut cmd: Command = project::bun(&package, "src/node/ui-run.ts");
     cmd.arg(mode)
         .arg("--entry")
@@ -115,6 +138,12 @@ pub fn run(args: &[&str]) -> ExitCode {
         .arg("--out")
         .arg(&out)
         .args(&forward);
+    for (name, commands) in &declared {
+        cmd.arg("--screen").arg(format!("{name}={commands}"));
+    }
+    for t in &playtests {
+        cmd.arg("--playtest").arg(t);
+    }
     match cmd.status() {
         Ok(s) if s.success() => ExitCode::SUCCESS,
         // 3: findings (check), as og style check's off-contract exit.
@@ -124,5 +153,61 @@ pub fn run(args: &[&str]) -> ExitCode {
             eprintln!("og ui {mode}: {} ({e})", project::NO_BUN);
             ExitCode::FAILURE
         }
+    }
+}
+
+/// The screens project.ogt declares, in order: `ui { screen "<name>"
+/// "<commands>" }` entries, then `screens { title|play|results "<commands>" }`.
+fn declared_screens(root: &Path) -> Result<Vec<(String, String)>, String> {
+    let path = root.join("project.ogt");
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return Ok(Vec::new());
+    };
+    let body = og_core::ogt::parse(&text)
+        .map_err(|e| format!("{}: {}", path.display(), e.reason()))?
+        .body;
+    let mut out: Vec<(String, String)> = Vec::new();
+    if let Some(ui) = body.get("ui").and_then(|e| e.block.as_ref()) {
+        for e in ui.entries.iter().filter(|e| e.key == "screen") {
+            let name = e.string(0).map_err(|_| {
+                format!(
+                    "project.ogt:{}: ui's screen takes a name and its commands: screen \"hud\" \"0:show:play\"",
+                    e.line
+                )
+            })?;
+            let commands = e.values.get(1).and_then(|v| v.as_str()).unwrap_or("");
+            out.push((name.to_string(), commands.to_string()));
+        }
+    }
+    if let Some(screens) = body.get("screens").and_then(|e| e.block.as_ref()) {
+        for e in &screens.entries {
+            if let Ok(commands) = e.string(0)
+                && !out.iter().any(|(n, _)| n == &e.key)
+            {
+                out.push((e.key.clone(), commands.to_string()));
+            }
+        }
+    }
+    Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::declared_screens;
+
+    #[test]
+    fn a_project_declares_its_screens_in_ui_and_in_screens() {
+        let dir = std::env::temp_dir().join(format!("og-ui-screens-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("project.ogt"),
+            "type project\nversion 1\n---\nname \"G\"\nui {\n  screen \"hud\" \"0:key:Enter\"\n  screen \"shop\" \"0:shop\"\n}\nscreens {\n  title \"0:wait\"\n  play \"0:key:Enter\"\n}\n",
+        )
+        .unwrap();
+        let got = declared_screens(&dir).unwrap();
+        std::fs::remove_dir_all(&dir).unwrap();
+        let names: Vec<&str> = got.iter().map(|(n, _)| n.as_str()).collect();
+        assert_eq!(names, ["hud", "shop", "title", "play"]);
+        assert_eq!(got[0].1, "0:key:Enter");
     }
 }

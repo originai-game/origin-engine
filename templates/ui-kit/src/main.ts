@@ -1172,7 +1172,7 @@ export default og.game({
     offline: (world, args) => update(world, { offline: args[0] !== "off" }),
   },
   commandHelp: {
-    show: { usage: "<screen>", doc: "Open a screen of the kit (gallery, widgets, mainMenu, pause, settings, ...)." },
+    show: { usage: `<${SCREENS.join("|")}>`, doc: "Open a screen of the kit (its usage lists them all: og ui check reads it)." },
     viewport: { usage: "<desktop|tablet|phone|landscape>", doc: "Lay the UI out for that surface (og.ui.previewViewport)." },
     pad: { usage: "<up|down|left|right|next|prev|activate|back>", doc: "A gamepad intent through og.ui.navigate." },
     toast: { usage: "<text>", doc: "Queue a toast." },

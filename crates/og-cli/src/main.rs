@@ -144,7 +144,10 @@ commands:
       [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet]
       [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,200] [--high-contrast] [--settle S]
       [--out DIR] [--json]
-                      lay each screen (its commands, or show:<name>) out per style, breakpoint and
+                      lay each screen (its commands, or show:<name>; without --screen every screen
+                      project.ogt's ui { screen \"<name>\" \"<commands>\" } and screens blocks declare,
+                      else the values the game's show usage lists, else the playtests' screenshots)
+                      out per style, breakpoint and
                       locale (the game's, a pseudo-locale 40 % longer, CJK, RTL) and check what a
                       designer checks by eye: undeclared overlap, cut text, the safe area and the
                       shell's corner, 44 px touch targets, contrast on pixels, text size, pad reach,

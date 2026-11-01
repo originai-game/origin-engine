@@ -839,6 +839,40 @@ export function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set(
   return out;
 }
 
+// ── the default screen set ─────────────────────────────────────────────────
+
+/**
+ * The screens a game's show action lists in its usage, as the probe's
+ * `help` prints it (`show:<title|play|shop>`): each with the show template
+ * (`show:{screen}`) filled in. None when the usage names no list.
+ */
+export function screensFromHelp(help: string, show: string): Array<{ name: string; commands: string }> {
+  const action = show.split(":")[0]!;
+  const line = help.split("\n").find((l) => l.startsWith(`${action}:<`));
+  const values = /^[^:]+:<([^>]*)>/.exec(line ?? "")?.[1]?.split("|").map((v) => v.trim()).filter(Boolean) ?? [];
+  return values.length > 1 ? values.map((v) => ({ name: v, commands: show.replaceAll("{screen}", v) })) : [];
+}
+
+/** Actions that only observe or end a run: not part of reaching a screen. */
+const OBSERVE = /^(screenshot|dump_[a-z_]+|expect|quit|help|listen|wait)$/;
+
+/**
+ * The screens a playtest visits: one per screenshot, reached by the steps
+ * before it that act (input, the game's commands; not dumps, checks or
+ * other screenshots), captured at the screenshot's time.
+ */
+export function screensFromPlaytest(playtest: string, commands: string): Array<{ name: string; commands: string; at: number }> {
+  const steps = commands.split(";").map((x) => x.trim()).filter(Boolean);
+  const out: Array<{ name: string; commands: string; at: number }> = [];
+  for (const [k, st] of steps.entries()) {
+    const [t, act = "", arg = ""] = st.split(":");
+    if (act !== "screenshot") continue;
+    const shot = arg && !/^(full|\d+)$/.test(arg) ? arg.replace(/\.png$/, "") : `shot-${k}`;
+    out.push({ name: `${playtest}-${shot}`, commands: steps.slice(0, k).filter((x) => !OBSERVE.test(x.split(":")[1] ?? "")).join(";"), at: Number(t) || 0 });
+  }
+  return out;
+}
+
 // ── the pseudo-locale ──────────────────────────────────────────────────────
 
 const ACCENTS: Record<string, string> = {

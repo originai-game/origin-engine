@@ -20,15 +20,17 @@
 // pseudo-locale by lengthening text in process (og.i18n.t and the text of
 // og.ui's widgets), the other locales by the engine's locale.
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadNativeHost, native } from "./index.ts";
 import { nativePlatform } from "./platform.ts";
+import { bundleGame } from "./build.ts";
 import { decodePng, encodePng, type Image } from "./png.ts";
+import type { PlaytestDesc } from "../playtest.ts";
 import { boundHost, createEngine, type Engine, type GameToken } from "../runtime.ts";
 import { og } from "../index.ts";
-import { cellName, checkFrame, checkLocales, formatText, mergeFindings, pseudo, RULES, type UiCell, type UiFinding, type UiFrameSnapshot } from "./ui-check.ts";
+import { cellName, checkFrame, checkLocales, formatText, mergeFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot } from "./ui-check.ts";
 import { sheet, type SheetCell } from "./ui-sheet.ts";
 
 /** The surfaces of the matrix: CSS size, DPR 1 (the sheet's), safe area, pointer. Phone and tablet as the kit's `viewport:` command lays them out. */
@@ -93,11 +95,11 @@ async function main(): Promise<void> {
   const project = existsSync(projectFile) ? readFileSync(projectFile, "utf8") : undefined;
   const profile = project ? (/^\s*profile\s+"(2d|3d)"/m.exec(project)?.[1] as "2d" | "3d" | undefined) : undefined;
   const show = opt("--show") ?? "show:{screen}";
-  const screens = opts("--screen").map((s) => {
+  /** A screen of the matrix: its name, the commands that reach it, and when it is captured (default the settle time). */
+  const screens: Array<{ name: string; commands: string; at?: number }> = opts("--screen").map((s) => {
     const eq = s.indexOf("=");
     return eq < 0 ? { name: s, commands: show.replaceAll("{screen}", s) } : { name: s.slice(0, eq), commands: s.slice(eq + 1) };
   });
-  if (screens.length === 0) screens.push({ name: "start", commands: "" });
   const styles = list("--styles", "");
   const styleCmd = opt("--style-cmd") ?? "style:{style}";
   const bps = list("--breakpoints", mode === "check" ? "desktop,phonePortrait,phoneLandscape,tablet" : "desktop,phonePortrait,phoneLandscape,tablet");
@@ -156,6 +158,35 @@ async function main(): Promise<void> {
     }
   };
 
+  /** The probe's `help` text (every action with its usage), from a fresh engine. */
+  const runHelp = (): string => {
+    const created = createEngine(game!, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}) });
+    if (!created.ok) fail(created.reason);
+    const engine = created.value;
+    try {
+      engine.attachPlatform(nativePlatform());
+      engine.advance(0);
+      engine.probe.commands("0:help:help.txt");
+      for (let n = 0; n < 4; n++) {
+        engine.frame(1000 / engine.rate);
+        const help = engine.takeOutputs().find((o) => o.action === "help");
+        if (help) return help.data;
+      }
+      return "";
+    } finally {
+      engine.destroy();
+    }
+  };
+
+  // No screen given or declared (og-cli reads project.ogt's): the game's
+  // show command's enumerated values, else the playtests' screenshots, else
+  // the start screen. A bare check sees every screen the project has.
+  if (screens.length === 0) {
+    const found = await defaultScreens(runHelp, show, opts("--playtest"));
+    screens.push(...found.screens);
+    process.stderr.write(`og ui ${mode}: ${screens.length} screen(s) from ${found.from}\n`);
+  }
+
   // --film: one run, a frame at each time, as a strip.
   const film = opt("--film");
   if (film !== undefined) {
@@ -195,7 +226,7 @@ async function main(): Promise<void> {
         continue;
       }
       const steps = [...(style ? timed(styleCmd.replaceAll("{style}", style)) : []), ...timed(screen.commands)];
-      const r = runCell(bp, locale, steps, [{ at: settle, name: "cell" }]);
+      const r = runCell(bp, locale, steps, [{ at: screen.at ?? settle, name: "cell" }]);
       const img = r.images.get("cell") ?? null;
       let frame: string | null = null;
       if (img) {
@@ -240,6 +271,38 @@ async function main(): Promise<void> {
   if (argv.includes("--json")) process.stdout.write(JSON.stringify({ cells: cells.length, errors, warnings: findings.length - errors, findings }) + "\n");
   else process.stdout.write(formatText(findings, `og ui check: ${project_}, ${cells.length} cell(s) in ${((performance.now() - t0) / 1000).toFixed(1)} s (${join(outDir, "check.json")})`));
   process.exit(errors > 0 ? 3 : 0);
+}
+
+/**
+ * The screens a bare `og ui check` covers when none are given or declared:
+ * the values the game's show action enumerates in its usage (`show:<a|b|c>`,
+ * from the probe's help), else each screenshot the playtests take (reached
+ * by the steps before it, captured at its time), else the start screen.
+ */
+async function defaultScreens(help: () => string, show: string, playtests: readonly string[]): Promise<{ screens: Array<{ name: string; commands: string; at?: number }>; from: string }> {
+  const listed = screensFromHelp(help(), show);
+  if (listed.length > 0) return { screens: listed, from: `the game's ${show.split(":")[0]} command's usage` };
+  const out: Array<{ name: string; commands: string; at: number }> = [];
+  const seen = new Set<string>();
+  for (const file of playtests) {
+    const bundled = join(dirname(resolve(file)), `.ui-check-${basename(file)}.js`);
+    try {
+      const b = await bundleGame(file, bundled, "native");
+      if (!b.ok) continue;
+      const desc = ((await import(pathToFileURL(bundled).href)) as { default?: PlaytestDesc }).default;
+      for (const sc of screensFromPlaytest(basename(file).replace(/\.og\.ts$/, ""), desc?.commands ?? "")) {
+        if (seen.has(sc.commands)) continue;
+        seen.add(sc.commands);
+        out.push(sc);
+      }
+    } catch {
+      continue;
+    } finally {
+      rmSync(bundled, { force: true });
+    }
+  }
+  if (out.length > 0) return { screens: out, from: `the screenshots of ${playtests.length} playtest(s)` };
+  return { screens: [{ name: "start", commands: "" }], from: "the start screen (no screen declared: project.ogt's ui { screen \"<name>\" \"<commands>\" }, or a show command whose usage lists its screens)" };
 }
 
 declare function atob(data: string): string;
