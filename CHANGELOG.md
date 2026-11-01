@@ -15,6 +15,38 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Gameplay actions, rebinding and gamepads (G1-2).** Added to the
+  IDL: `og.input.defineAction`, `actions`, `action`, `actionDown`,
+  `actionPressed`, `actionReleased`, `actionHeld`, `actionValue`,
+  `actionVector`, `setContexts`, `contexts`, `rebind`, `conflicts`,
+  `resetBindings`, `setToggle`, `saveBindings`, `loadBindings`,
+  `startCapture`, `capture`, `cancelCapture`, `applyCapture`, `glyph`,
+  `glyphs`, `controlGlyph`, `device`, `padDevice`, `setDeadzones` and
+  `rumble`, with `ActionDesc`, `InputBinding`, `ActionState`,
+  `ActionInfo`, `RebindDesc`, `RebindAnswer`, `BindingConflict`,
+  `ConflictPolicy`, `CaptureDesc`, `CaptureAccept`, `CaptureState`,
+  `InputGlyph`, `InputDevice`, `ActionKind`, `TouchZone`,
+  `DeadzoneDesc`, `RumbleDesc`, `UiActionDesc.action` and
+  `GamepadInput.device`. Actions bind keys, the mouse, pad buttons,
+  sticks, triggers and touch (WASD as one 2D axis), in contexts, with
+  sensitivity and dead zones; the player rebinds them with conflicts
+  reported and keeps them as text; a capture serves a controls screen;
+  prompts read the binding's glyph on the device used last. They are read
+  before the game's systems and are world state, so they replay.
+- **og.Gamepad is version 2: eight pads** (`MAX_GAMEPADS` 8, was 4) and
+  each pad's family (`devices`). The web shell maps pads whose mapping is
+  not "standard" through a table instead of dropping them, and
+  `og.input.rumble` shakes a pad. A save from a four-pad build restores
+  without `migrate`: the input a restore keeps from the host (og.Input,
+  og.Pointers, og.Gamepad, og.PointerLock, og.Audio) is mapped field by
+  field when its layout changed.
+- Simulation: every world carries the action map's state block
+  (`og.input.actions`) and og.Gamepad's new layout, so world hashes move
+  (a game's own recorded hashes need recording again); what a game
+  computes does not change.
+- Fixed: keys held when the window loses focus or the page is hidden are
+  released, and pads come to rest with the keys they map to.
+
 - Field factories `VectorArt()` and `UiMaterial()` for the two handle
   types U1 added without one (og.load.vector, og.load.uiMaterial): every
   handle type of the API has its factory again, as

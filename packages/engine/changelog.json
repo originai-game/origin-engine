@@ -2,7 +2,7 @@
   "schema": 1,
   "about": "Machine-readable changelog of @origingame/engine (docs/release.md §3). kind: patch (0.x.y, compatible) or minor (0.x.0, has breaks). simulation: changed when a game's world can step differently (the golden replays' hashes moved, scripts/replay-gate.ts), else unchanged; versions before 0.6.1 were not measured and say changed. breaking: what a game may have to edit, each with the fix; find lists the identifiers og upgrade searches the game's sources for, codemod a mechanical rewrite it applies. CHANGELOG.md has the prose.",
   "unreleased": {
-    "simulation": "unchanged",
+    "simulation": "changed",
     "breaking": [],
     "added": [
       {
@@ -16,6 +16,14 @@
       {
         "member": "og.ui.setDraw, DrawDesc, og.load.vector, og.load.uiMaterial",
         "summary": "The UI draws with analytic shapes (docs/ui.md U1): og.ui.setDraw gives the element added last a shape (rect with four radii and round, squircle, bevel or notch corners; ellipse; polygon and star; arc and ring; a path of lines or Béziers), layered fills (colour, linear/radial/conic/diamond gradients mixed in OKLab and dithered, images with cover/contain/none, a focal point, nine-slice and scrolling patterns, cooked vectors), strokes with their own paint, alignment and dashes, drop and inner shadows, glows, layer blur and backdrop glass, opacity and blend modes, a clip to its shape or a mask, an offscreen layer composited through a built-in UI material (dissolve, shine, hologram, glitch, ripple, pixelate, colour adjust, outline, blur) or a custom `type ui-material`, and text outline, gradient fill and shadows. Colours given as theme tokens follow the style. og.load.vector loads a cooked `type vector` (an SVG subset), og.load.uiMaterial a `type ui-material` (WGSL compiled at cook for every back end). Existing UI draws as before; circles and rings are now exact rather than atlas-sampled, so their antialiased edges move by a few levels."
+      },
+      {
+        "member": "og.input (defineAction, actions, action, actionDown, actionPressed, actionReleased, actionHeld, actionValue, actionVector, setContexts, contexts, rebind, conflicts, resetBindings, setToggle, saveBindings, loadBindings, startCapture, capture, cancelCapture, applyCapture, glyph, glyphs, controlGlyph, device, padDevice, setDeadzones, rumble), ActionDesc, InputBinding, ActionState, ActionInfo, RebindDesc, RebindAnswer, BindingConflict, ConflictPolicy, CaptureDesc, CaptureAccept, CaptureState, InputGlyph, InputDevice, ActionKind, TouchZone, DeadzoneDesc, RumbleDesc, UiActionDesc.action, GamepadInput.device",
+        "summary": "Gameplay actions: buttons and one- or two-axis actions bound to keys, the mouse, pad buttons, sticks, triggers and touch, with composites (WASD as a 2D axis), contexts, sensitivity, inversion and dead zones (per binding and per pad), holds and toggles counted in ticks. The player rebinds them with conflicts reported (refuse, swap, replace, allow), resets them, and keeps them as versioned text; a capture takes the next input for a controls screen without firing anything. Prompts read each action's glyph on the device used last (keyboardMouse, xbox, playstation, switch, gamepad, touch), and an og.ui action follows a gameplay action through UiActionDesc.action. og.input.rumble shakes a pad (output only, the frame answer's rumble). Actions are read once per tick before the game's systems and are world state, so they replay; a game load keeps the player's bindings. Off until a game defines one."
+      },
+      {
+        "member": "og.Gamepad (version 2), MAX_GAMEPADS, og.Gamepad.devices",
+        "summary": "og.Gamepad holds eight pads (MAX_GAMEPADS 8, was 4) and each pad's family in devices. The web shell no longer drops pads whose mapping is not \"standard\" (Firefox, Linux, third-party pads): it maps them through a table by vendor and product with a generic fallback and tells each pad's family. A save from a four-pad build restores without migrate: og.Gamepad is the host's after a restore, so World.restore maps a save whose only differences are in the input it keeps (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio)."
       }
     ],
     "fixed": [
@@ -26,6 +34,10 @@
       {
         "member": "knowledge: skills",
         "summary": "og-game (166 KB, 27 chapters) is an entry point of 40 KB; rendering, physics, 2D, animation and lockstep are the new skills og-render, og-physics, og-2d, og-anim and og-net, performance and video out are og-build, generators and type model og-model, looks og-taste. The API wiki is no longer mounted under og-game: every skill names og api show <module> for its modules, and api.ogt names the skill that teaches each module."
+      },
+      {
+        "member": "web shell: focus",
+        "summary": "Keys held when the window loses focus or the page is hidden are released, and the pads come to rest with the keys they map to (the next poll sends a pad still held); nothing released them before, so a key could stay down in the game after an alt-tab."
       }
     ]
   },
