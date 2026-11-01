@@ -2,6 +2,9 @@
 
 use super::*;
 
+mod pass_view;
+use pass_view::ViewPassInputs;
+
 mod pass_prepass;
 use pass_prepass::PrepassPassInputs;
 
@@ -3909,226 +3912,39 @@ impl Renderer {
                     sky_group,
                     reflection_blended: &reflection_blended,
                 }),
-                FramePass::View(i) => {
-                    // A secondary camera (views.rs): the main pass's draws
-                    // on its layers from its eye, then its resolve.
-                    let (i, clear) = (i as usize, background_clear(&scene.environment.background));
-                    let p = &view_plans[i];
-                    let frustum = Frustum::from_view_proj(p.frame.view_proj);
-                    // Its 2D light map, as its camera sees the lights.
-                    if let (Some(l), Some((_, map))) = (
-                        scene.lighting_2d,
-                        self.views.slots[p.index]
-                            .as_ref()
-                            .and_then(|s| s.light_map.as_ref()),
-                    ) {
-                        self.lights_2d.encode_view(&mut encoder, map, l.ambient, i);
-                        stats.draw_calls += (lights_2d > 0) as u32;
-                    }
-                    // Its 2D fluids' fields, the kernels through its camera.
-                    if let Some(slot) = self.views.slots[p.index].as_ref()
-                        && !slot.fields.is_empty()
-                    {
-                        let fields: Vec<&wgpu::TextureView> = slot.fields.iter().collect();
-                        self.metaballs
-                            .encode_field(&mut encoder, &fields, &view_groups[i].0);
-                        stats.draw_calls += fields.len() as u32;
-                    }
-                    // Its linear depth, for a target's depth texture (the
-                    // resolve normalises it) and for its soft particles:
-                    // the view's opaque meshes through the prepass
-                    // pipelines (views.rs), before its pass reads it.
-                    if let Some(pre) = self.views.slots[p.index]
-                        .as_ref()
-                        .and_then(|s| s.prepass.as_ref())
-                    {
-                        stats.draw_calls += depth_prepass(
-                            &mut encoder,
-                            "view depth",
-                            pre,
-                            (&view_groups[i].0, &view_groups[i].1),
-                            &view_lists[i],
-                            &view_skinned[i],
-                            &frustum,
-                            None,
-                        );
-                    }
-                    {
-                        let mut pass = self.views.begin(&mut encoder, p, clear);
-                        pass.set_bind_group(0, &view_groups[i].0, &[]);
-                        pass.set_bind_group(2, &view_groups[i].1, &[]);
-                        draw_list(
-                            &mut pass,
-                            &view_lists[i],
-                            true,
-                            &mut None,
-                            None,
-                            None,
-                            Some(&view_groups[i].1),
-                        );
-                        stats.draw_calls += view_lists[i].ranges.len() as u32;
-                        let pipelines: Vec<&wgpu::RenderPipeline> = view_skinned[i]
-                            .iter()
-                            .map(|b| self.lit_pipeline_of(b, true, false))
-                            .collect();
-                        stats.draw_calls += draw_skinned(
-                            &mut pass,
-                            &view_skinned[i],
-                            false,
-                            1,
-                            3,
-                            &pipelines,
-                            None,
-                            None,
-                        );
-                        if let Some(indices) = terrain_indices {
-                            stats.draw_calls += terrain::draw_levels(
-                                &mut pass,
-                                &terrain_draws,
-                                indices,
-                                terrain::TerrainPass::Lit,
-                                |c, rad| frustum.intersects_sphere(c, rad),
-                                None,
-                            )
-                            .0;
-                        }
-                        let sky = match scene.environment.background {
-                            Background::Sky => Some(&self.sky_pipeline),
-                            Background::Procedural { .. } => Some(&self.sky_look_pipeline),
-                            Background::Color(_) => None,
-                        };
-                        if let (Some(sky), None) = (sky, p.clear) {
-                            pass.set_pipeline(sky);
-                            pass.set_bind_group(1, sky_group, &[]);
-                            pass.draw(0..3, 0..1);
-                            stats.draw_calls += 1;
-                        }
-                        // What the main pass draws over its opaque scene, on
-                        // the view's layers from the view's eye: the
-                        // transparent meshes back to front, the particles,
-                        // the scene lines and points, the world sprites and
-                        // text.
-                        pass.set_bind_group(2, &view_groups[i].1, &[]);
-                        stats.draw_calls += draw_blended(
-                            &mut pass,
-                            &view_blended[i],
-                            (&view_boards[i].0, &view_boards[i].1),
-                            (&view_groups[i].1, &view_sprite_fx[i]),
-                            None,
-                            None,
-                            true,
-                        );
-                        stats.draw_calls += draw_skinned(
-                            &mut pass,
-                            &view_skinned[i],
-                            true,
-                            1,
-                            3,
-                            &pipelines,
-                            None,
-                            None,
-                        );
-                        if let Some(group) = &view_particle_groups[i] {
-                            let groups = &self.cache.sprite_groups;
-                            let white = &self.white_sprite_group;
-                            stats.draw_calls += self.particles.draw(
-                                &mut pass,
-                                &particle_frame,
-                                self.samples,
-                                group,
-                                p.layers,
-                                |t: Option<TextureHandle>| match t {
-                                    None => white,
-                                    Some(t) => {
-                                        groups[t.index()].as_ref().expect("made before the pass")
-                                    }
-                                },
-                            );
-                        }
-                        // Trails, ribbons and beams facing the view's eye.
-                        stats.draw_calls += draw_strips(&mut pass, &view_ribbons[i]);
-                        let n = self.lines.draw_scene_with(
-                            &mut pass,
-                            &line_frame,
-                            &view_line_groups[i],
-                            p.layers,
-                        );
-                        if n > 0 {
-                            stats.draw_calls += n;
-                            pass.set_bind_group(0, &view_groups[i].0, &[]);
-                        }
-                        // Lit by the view's 2D light map.
-                        stats.draw_calls += draw_sprites(
-                            &mut pass,
-                            &view_sprites[i],
-                            &view_sprite_fx[i],
-                            &view_fields[i],
-                            true,
-                        );
-                    }
-                    // Its glowing sprites into its glow buffer, the chain
-                    // added onto its image (views.rs).
-                    if let Some(g) = self.views.slots[p.index]
-                        .as_ref()
-                        .and_then(|s| s.glow.as_ref())
-                    {
-                        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                            label: Some("view glow sprites"),
-                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                                view: &g.levels[0],
-                                depth_slice: None,
-                                resolve_target: None,
-                                ops: wgpu::Operations {
-                                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                                    store: wgpu::StoreOp::Store,
-                                },
-                            })],
-                            depth_stencil_attachment: None,
-                            timestamp_writes: None,
-                            occlusion_query_set: None,
-                            multiview_mask: None,
-                        });
-                        pass.set_bind_group(0, &view_groups[i].0, &[]);
-                        stats.draw_calls += draw_glow(&mut pass, &view_glow_runs[i]);
-                        drop(pass);
-                        stats.draw_calls += self.views.add_glow(&mut encoder, p);
-                    }
-                    if let views::Dest::Texture {
-                        color,
-                        format,
-                        depth,
-                    } = p.dest
-                    {
-                        let tonemap = post_fx.tonemap;
-                        let (device, queue) = (&self.device, &self.queue);
-                        let view = &self.cache.textures[color].view;
-                        self.views.resolve(
-                            device,
-                            queue,
-                            &mut encoder,
-                            p,
-                            tonemap,
-                            view,
-                            format.wgpu(),
-                            false,
-                        );
-                        if let Some(d) = depth {
-                            let view = &self.cache.textures[d].view;
-                            let f = wgpu::TextureFormat::Rgba16Float;
-                            self.views.resolve(
-                                device,
-                                queue,
-                                &mut encoder,
-                                p,
-                                tonemap,
-                                view,
-                                f,
-                                true,
-                            );
-                        }
-                        stats.draw_calls += 1 + depth.is_some() as u32;
-                    }
-                }
+                FramePass::View(i) => self.encode_view(ViewPassInputs {
+                    i,
+                    scene,
+                    view_plans: &view_plans,
+                    encoder: &mut encoder,
+                    stats: &mut stats,
+                    lights_2d,
+                    view_groups: &view_groups,
+                    depth_prepass: &depth_prepass,
+                    view_lists: &view_lists,
+                    view_skinned: &view_skinned,
+                    draw_list: &draw_list,
+                    draw_skinned: &draw_skinned,
+                    terrain_indices,
+                    terrain_draws: &terrain_draws,
+                    sky_group,
+                    draw_blended: &draw_blended,
+                    view_blended: &view_blended,
+                    view_boards: &view_boards,
+                    view_sprite_fx: &view_sprite_fx,
+                    view_particle_groups: &view_particle_groups,
+                    particle_frame: &particle_frame,
+                    draw_strips: &draw_strips,
+                    view_ribbons: &view_ribbons,
+                    line_frame: &line_frame,
+                    view_line_groups: &view_line_groups,
+                    draw_sprites: &draw_sprites,
+                    view_sprites: &view_sprites,
+                    view_fields: &view_fields,
+                    draw_glow: &draw_glow,
+                    view_glow_runs: &view_glow_runs,
+                    post_fx,
+                }),
                 FramePass::Volumetric => self.volumetric.encode_froxels(
                     &self.device,
                     &mut encoder,
