@@ -21,13 +21,15 @@ impl Ui {
     ) -> Response {
         let t = self.theme;
         let sizes = self.sizes();
+        // A bare field sits in a component's own frame, beside its icon.
+        let pad = if desc.bare { t.space.xs } else { t.space.md };
         let i = self.leaf(
             "field",
             id.into(),
             Element {
                 width: desc.width.unwrap_or(Size::grow()),
                 height: Size::Fixed(sizes.control_md),
-                padding: Insets::xy(t.space.md, 0.0),
+                padding: Insets::xy(pad, 0.0),
                 interactive: true,
                 radius: t.radius.control,
                 ..Element::default()
@@ -39,9 +41,7 @@ impl Ui {
         let mut r = self.respond(key);
         let step = t.type_ramp.body;
         if r.focused {
-            let inner = self
-                .hit(key)
-                .map(|h| h.full.inset(&Insets::xy(t.space.md, 0.0)));
+            let inner = self.hit(key).map(|h| h.full.inset(&Insets::xy(pad, 0.0)));
             let e = self.edit(
                 key,
                 value,
@@ -75,7 +75,7 @@ impl Ui {
         let mut content = self.text_content(&shown, step, color);
         content.wrap = false;
         let edit = self.edit_view(key, focused, value, composition, false);
-        self.field_part(i, focused);
+        self.field_part(i, focused, desc.invalid, desc.bare);
         let n = &mut self.nodes[i];
         n.content = Content::Text(content);
         n.widget = Widget::Field(edit);
@@ -92,9 +92,17 @@ impl Ui {
         r
     }
 
-    /// A field's frame as a part (`Field.frame[focused]`): its ground moves
+    /// A field's frame as a part (`Field.frame[focused][invalid]`): its ground moves
     /// from `control` to `panel` on the `ui` spring as it takes the focus.
-    fn field_part(&mut self, i: usize, focused: bool) {
+    /// A bare field draws no frame and no ring: its component frames it
+    /// and shows its focus.
+    fn field_part(&mut self, i: usize, focused: bool, invalid: bool, bare: bool) {
+        if bare {
+            let n = &mut self.nodes[i];
+            n.el.background = None;
+            n.el.part = None;
+            return;
+        }
         let p = self.theme.palette;
         let key = self.nodes[i].key;
         let f = self.spring_to(child_key(key, "focus"), if focused { 1.0 } else { 0.0 });
@@ -102,6 +110,7 @@ impl Ui {
         n.el.background = Some(mix_srgba(p.control, p.panel, f.clamp(0.0, 1.0)));
         let part = crate::dress::PartRef::new("Field", "frame", crate::tokens::ElementClass::Field)
             .flag_if(focused, "focused")
+            .flag_if(invalid, "invalid")
             .flag_if(n.disabled, "disabled");
         n.el.part = Some(part);
     }
@@ -166,7 +175,7 @@ impl Ui {
         let focused = r.focused;
         let (shown, composition) = self.shown_text(value, focused);
         let edit = self.edit_view(key, focused, value, composition, true);
-        self.field_part(i, focused);
+        self.field_part(i, focused, desc.invalid, desc.bare);
         let n = &mut self.nodes[i];
         n.widget = Widget::TextArea {
             edit,

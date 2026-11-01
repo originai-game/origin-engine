@@ -364,6 +364,8 @@ impl Ui {
                         placeholder: r.str("placeholder").unwrap_or_default().to_string(),
                         width: r.size("width"),
                         max_chars: r.num("maxChars").unwrap_or(0.0) as u32,
+                        invalid: r.flag("invalid"),
+                        bare: false,
                     },
                 );
                 if resp.changed {

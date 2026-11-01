@@ -33,8 +33,11 @@ impl Ui {
                 cmds.push(quad(rect.outset(at), n.el.radius + at, behind));
             }
         }
+        // A bare field (no frame of its own) leaves the ring to its frame.
         let field_ring = match &n.widget {
-            Widget::Field(e) | Widget::TextArea { edit: e, .. } => e.focused,
+            Widget::Field(e) | Widget::TextArea { edit: e, .. } => {
+                e.focused && n.el.background.is_some()
+            }
             _ => false,
         };
         let outline = t.outline && (n.nav || n.focusable) && n.el.background.is_some();

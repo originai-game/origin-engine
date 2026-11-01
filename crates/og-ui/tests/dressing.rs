@@ -230,6 +230,62 @@ fn a_ghost_button_shows_its_edge_at_rest_and_a_square_one_is_square() {
     );
 }
 
+#[test]
+fn an_invalid_field_draws_the_danger_outline_from_the_tokens() {
+    let danger = |invalid: bool| {
+        let mut ui = ui_with_font(test_font_metrics());
+        let mut text = String::from("x");
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.text_field(
+            "Name",
+            &mut text,
+            &FieldDesc {
+                invalid,
+                ..FieldDesc::default()
+            },
+        );
+        ui.end();
+        let d = Theme::default().palette.danger.linear();
+        ui.frame().items.iter().any(|i| match &i.cmd {
+            DrawCmd::Shape { shape, .. } => {
+                matches!(shape.mode, og_render::UiMode::Stroke(_))
+                    && matches!(shape.paint, og_render::UiPaint::Solid(c) if (0..3).all(|k| (c[k] - d[k]).abs() < 0.02))
+            }
+            _ => false,
+        })
+    };
+    assert!(!danger(false), "a valid field's outline is its line");
+    assert!(danger(true), "an invalid one's is danger");
+}
+
+#[test]
+fn a_bare_field_draws_no_frame_of_its_own() {
+    // Wrong: a bare field still filling its box or drawing its outline (a
+    // frame in the component's frame).
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut text = String::from("x");
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.text_field(
+        "Name",
+        &mut text,
+        &FieldDesc {
+            bare: true,
+            ..FieldDesc::default()
+        },
+    );
+    ui.end();
+    let e = ui.frame().element("Name").unwrap().clone();
+    let rect = Rect::new(e.x, e.y, e.width, e.height);
+    assert!(fills_in(&ui, rect).is_empty(), "no fill");
+    assert!(
+        !ui.frame()
+            .items
+            .iter()
+            .any(|i| matches!(&i.cmd, DrawCmd::Shape { shape, .. } if matches!(shape.mode, og_render::UiMode::Stroke(_)))),
+        "no outline"
+    );
+}
+
 fn theme_with_set() -> Theme {
     let mut t = Theme::default();
     t.tokens.feedback[SoundEvent::Select.index()] = Feedback {

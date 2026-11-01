@@ -588,6 +588,12 @@ pub struct FieldDesc {
     pub width: Option<Size>,
     /// The most characters it takes (0: no limit).
     pub max_chars: u32,
+    /// Its text is wrong (a form's error): `Field.frame[invalid]`, the
+    /// danger outline an undressed frame takes.
+    pub invalid: bool,
+    /// No frame and no focus ring of its own, a small inset: a component
+    /// frames it (an input with an icon and a clear button).
+    pub bare: bool,
 }
 
 /// How a multi-line text area looks ([`Ui::text_area`]).
@@ -601,4 +607,8 @@ pub struct TextAreaDesc {
     pub rows: u32,
     /// The most characters it takes (0: no limit).
     pub max_chars: u32,
+    /// Its text is wrong: `Field.frame[invalid]`.
+    pub invalid: bool,
+    /// No frame and no focus ring of its own: a component frames it.
+    pub bare: bool,
 }

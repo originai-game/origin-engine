@@ -512,6 +512,12 @@ pub const PROPS: &[PropSpec] = &[
         "The most characters it takes."
     ),
     p!(
+        "invalid",
+        Ty::Bool,
+        ["field"],
+        "Its text is wrong: the danger frame."
+    ),
+    p!(
         "tone",
         Ty::Word(&["neutral", "info", "success", "warn", "danger", "accent"]),
         ["badge"],

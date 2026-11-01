@@ -226,6 +226,8 @@ pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> Stri
             placeholder: d["placeholder"].as_str().unwrap_or_default().to_string(),
             width: size(&d["width"]),
             max_chars: d["maxChars"].as_u64().unwrap_or(0) as u32,
+            invalid: d["invalid"].as_bool().unwrap_or(false),
+            bare: d["bare"].as_bool().unwrap_or(false),
         };
         ui.text_field(id.as_str(), &mut text, &fd)
     });
@@ -241,6 +243,8 @@ pub fn og_ui_text_area(id: String, value: String, desc: Option<String>) -> Strin
             width: size(&d["width"]),
             rows: d["rows"].as_u64().unwrap_or(0) as u32,
             max_chars: d["maxChars"].as_u64().unwrap_or(0) as u32,
+            invalid: d["invalid"].as_bool().unwrap_or(false),
+            bare: d["bare"].as_bool().unwrap_or(false),
         };
         ui.text_area(id.as_str(), &mut text, &ad)
     });

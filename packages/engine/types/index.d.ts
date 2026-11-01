@@ -18355,6 +18355,18 @@ export interface FieldDesc {
    * @default 0
    */
   readonly maxChars?: number;
+  /**
+   * Its text is wrong (a form's error): its frame is dressed `Field.frame[invalid]` and, undressed, takes the danger outline.
+   *
+   * @default false
+   */
+  readonly invalid?: boolean;
+  /**
+   * No frame and no focus ring of its own, a small inset: a component frames it (an input with an icon and a clear button) and shows its focus.
+   *
+   * @default false
+   */
+  readonly bare?: boolean;
 }
 
 /**
@@ -18387,6 +18399,18 @@ export interface TextAreaDesc {
    * @default 0
    */
   readonly maxChars?: number;
+  /**
+   * Its text is wrong: its frame is dressed `Field.frame[invalid]`.
+   *
+   * @default false
+   */
+  readonly invalid?: boolean;
+  /**
+   * No frame and no focus ring of its own: a component frames it.
+   *
+   * @default false
+   */
+  readonly bare?: boolean;
 }
 
 /**
