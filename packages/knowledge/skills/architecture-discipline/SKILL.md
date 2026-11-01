@@ -55,9 +55,9 @@ only split available, the real problem is upstream.
 
 ## 3. The first playable precedes later systems
 
-Order the work as milestones and build the first one as a greybox: real
-input, a visible player or piece, a route from boot to play and simple play
-geometry. Keep the whole game in the plan, but register only the systems
+Order the work as milestones and build the first one small but in the
+game's look: real input, the player or piece as its own asset, a route from
+boot to play and the first level's ground. Keep the whole game in the plan, but register only the systems
 this slice needs in the game entry; input is always present, because people
 and the probe both play through it. Later systems stay unwritten and
 unregistered until their milestone; write and register each together, then
@@ -66,9 +66,11 @@ blocks the first movement build.
 
 Run it as soon as this slice builds: prove that scripted input moves the
 player and the tick advances (`og run . --headless --commands`, og-build
-§1), and let someone play it before the art and the progression are
-built. Plain shapes are temporary visuals, not silent system stubs and not
-a replacement for the final assets.
+§1), and let someone play it before the rest of the content and the progression
+are built. Never stand a visible subject in for later with primitive shapes
+placed from game code: the first playable is the first impression, and a
+subject is an asset (a `type model`, a glTF, sprites) the cook conforms to
+the look.
 
 ## 4. Loud failure
 
