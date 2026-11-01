@@ -100,7 +100,9 @@ test("tabBar and actionHints: the bumpers and hints show the device's glyphs, fo
   const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, {});
   if (!r.ok) throw new Error(r.reason);
   const engine = r.value;
-  const caps = () => ["Prev/Glyph/Text", "Next/Glyph/Text", "Hint#0/Glyph/Text", "Hint#1/Glyph/Text", "Hint#2/Glyph/Text"].map((p) => byPath(engine, p)?.text);
+  // A cap's text, or for a drawn symbol (PlayStation's face buttons) the name the cap gives it.
+  const cap = (p: string) => byPath(engine, `${p}/Glyph/Text`)?.text ?? (byPath(engine, `${p}/Glyph/Symbol`) ? byPath(engine, `${p}/Glyph`)?.name : undefined);
+  const caps = () => ["Prev", "Next", "Hint#0", "Hint#1", "Hint#2"].map(cap);
   const expected: Array<[Api.UiDevice, Array<string | undefined>]> = [
     ["keyboardMouse", ["Q", "E", "Enter", "Esc", "F"]],
     ["xbox", ["LB", "RB", "A", "B", "F"]],
@@ -112,6 +114,9 @@ test("tabBar and actionHints: the bumpers and hints show the device's glyphs, fo
     device = d;
     engine.advance(4);
     expect([d, ...caps()]).toEqual([d, ...want]);
+    // Wrong: × ○ set as text, which a style's font may not have (tofu); they are drawn, never text.
+    const drawn = d === "playstation";
+    expect([d, !!byPath(engine, "Hint#0/Glyph/Symbol"), !!byPath(engine, "Hint#0/Glyph/Text")]).toEqual([d, drawn, !drawn]);
   }
 });
 
