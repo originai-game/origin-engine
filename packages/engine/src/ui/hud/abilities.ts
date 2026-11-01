@@ -139,8 +139,11 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
         fills: [solid(lit(role("gold"), ultReady ? 0.7 + 0.3 * pulse(0.9) : 0.95))],
       }, absolute({ start: -u(4), top: -u(4) }, { overlaps: [path] }));
     }
-    // The hotkey's cap, over the slot's top left corner.
-    if (desc.hotkey) {
+    // The hotkey's cap, over the slot's top left corner: the label, else the action's glyph on the device used last.
+    const glyph = !desc.hotkey && desc.action ? kit.frameGlyph(desc.action) : null;
+    const keyText = desc.hotkey || glyph?.text || "";
+    const keyIcon = glyph && glyph.device !== "keyboardMouse" && kit.hasIcon(glyph.icon) ? glyph.icon : "";
+    if (keyText || keyIcon) {
       const capInk = desc.outOfRange ? role("danger") : role("ink");
       box("Hotkey", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, height: px(Math.max(14, Math.round(size * 0.3))), cross: "center", align: "center", part: sel("AbilitySlot", "hotkey", desc.outOfRange ? "outOfRange" : null), partClass: "chip" }, {
         shape: { kind: "rect", radii: [3, 3, 3, 3] },
@@ -148,7 +151,8 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
         strokes: [stroke(1, desc.outOfRange ? lit(role("danger")) : token("lineStrong"))],
         effects: [drop(1, 2, token("shadow", 0.6))],
       }, () => {
-        text("Key", desc.hotkey ?? "", { step: ts(11), font: "mono", color: lit(capInk), nowrap: true });
+        if (keyIcon) icon("Glyph", keyIcon, Math.max(12, Math.round(size * 0.26)), lit(capInk));
+        else text("Key", keyText, { step: ts(11), font: "mono", color: lit(capInk), nowrap: true });
       }, absolute({ start: -u(3), top: -u(4) }, { z: 2, overlaps: [path] }));
     }
     const maxLevel = desc.maxLevel ?? 0;

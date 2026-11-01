@@ -31059,7 +31059,13 @@ export interface AbilitySlotDesc {
    */
   readonly name?: string;
   /**
-   * The key or button glyph's label (Q, LB, 1): a rebindable one's og.input.glyph(world, action).text, so it follows the device used last; empty is none.
+   * The action whose glyph the hotkey cap shows on the device used last (og.ui.frameGlyph: a gameplay action's binding, else a UI action's), so it follows a rebinding and the pad the player picks up; a pad's button draws as its icon where the style has one. Empty is none.
+   *
+   * @default ""
+   */
+  readonly action?: string;
+  /**
+   * A label for the cap instead of the action's glyph (Q, LB, 1); empty shows the action's.
    *
    * @default ""
    */

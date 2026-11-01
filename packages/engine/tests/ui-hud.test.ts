@@ -70,21 +70,24 @@ test("og.ui.statBar: a hit leaves a ghost that holds, then drains; blocks, shiel
   expect(at(dump(e), "HPHud/HP/Main/Track/Ghost")).toBe(undefined);
 });
 
-test("og.ui.abilityBar: the sweep's seconds, a charge left is ready, the ultimate's percent, a click answers its key", () => {
+test("og.ui.abilityBar: the sweep's seconds, a charge left is ready, the ultimate's percent, the action's glyph on the device used last, a click answers its key", () => {
   let cd = 3.24;
   const e = engineFor("HudAbilities", () => {
     og.ui.abilityBar("Bar", {
       slots: [
         { key: "q", name: "Fireball", hotkey: "Q", cooldown: cd, cooldownMax: 8 },
         { key: "w", name: "Blink", hotkey: "W", maxCharges: 3, charges: 1, cooldown: 4, cooldownMax: 10, chargeProgress: 0.6 },
-        { key: "e", name: "Ward", maxCharges: 2, charges: 0, cooldown: 2, cooldownMax: 6 },
+        { key: "e", name: "Ward", action: "ward", maxCharges: 2, charges: 0, cooldown: 2, cooldownMax: 6 },
         { key: "r", name: "Meteor", hotkey: "R", ultimate: 0.62 },
         { key: "t", name: "Locked", locked: true },
       ],
     });
   });
+  // Ward's cap shows its action's binding, not a label.
+  og.input.defineAction(e.world, { name: "ward", bindings: [{ control: "KeyF" }, { control: "pad.y" }] });
   e.advance(3);
   let els = dump(e);
+  expect(at(els, "BarHud/Bar/e/Hotkey/Key")?.text).toBe("F");
   expect(at(els, "BarHud/Bar/q/Slot/Time")?.text).toBe("3.2");
   expect(states(at(els, "BarHud/Bar/q/Slot")).ready).toBe("cooling");
   expect(at(els, "BarHud/Bar/q/Slot")?.value).toBe("4s");
@@ -94,9 +97,12 @@ test("og.ui.abilityBar: the sweep's seconds, a charge left is ready, the ultimat
   expect(at(els, "BarHud/Bar/r/Slot/Ultimate")?.text).toBe("62%");
   expect(states(at(els, "BarHud/Bar/t/Slot")).ready).toBe("locked");
   expect(at(els, "BarHud/Bar/q/Hotkey/Key")?.text).toBe("Q");
+  // A PlayStation pad's press: the cap follows it to the pad's triangle.
+  e.probe.input({ kind: "gamepad", pad: 0, buttons: ["a"], device: "playstation" } as never);
   cd = 0;
   e.advance(2);
   els = dump(e);
+  expect(at(els, "BarHud/Bar/e/Hotkey/Key")?.text).toBe("△");
   expect(at(els, "BarHud/Bar/q/Slot/Time")).toBe(undefined);
   expect([states(at(els, "BarHud/Bar/q/Slot")).ready, at(els, "BarHud/Bar/q/Slot")?.value]).toEqual(["ready", "Ready"]);
   // The tick it comes ready, it flashes.

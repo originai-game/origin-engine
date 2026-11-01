@@ -6425,7 +6425,8 @@ module ui {
     field icon String "An icon of the atlas."
     field image Option.Texture "Its art (art kind ability, 1:1) instead of the icon."
     field name String "What a screen reader calls it (Fireball)."
-    field hotkey String "The key or button glyph's label (Q, LB, 1): a rebindable one's og.input.glyph(world, action).text, so it follows the device used last; empty is none."
+    field action String "The action whose glyph the hotkey cap shows on the device used last (og.ui.frameGlyph: a gameplay action's binding, else a UI action's), so it follows a rebinding and the pad the player picks up; a pad's button draws as its icon where the style has one. Empty is none."
+    field hotkey String "A label for the cap instead of the action's glyph (Q, LB, 1); empty shows the action's."
     field cooldown f32 "Seconds of cooldown left; 0 is ready." {
       min 0
       unit s
