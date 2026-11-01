@@ -738,13 +738,15 @@ fn mode_coverage(s: UiInstance, p: vec2<f32>, px: f32) -> f32 {
     var d = band - hw;
     if (s.mode.z > 0.0) {
       let a = outline_along(p, kind, cap, s.center_half.zw, s.geo, s.geo);
-      d = dashed(d, band, hw, a.x, s.mode.z, s.mode.w, s.mode2.x, u32(s.mode2.y));
+      // Every outline is closed but a partial arc's.
+      let open = kind == GEO_ARC && abs(s.geo.y) < TAU;
+      d = dashed(d, band, hw, a.x, s.mode.z, s.mode.w, s.mode2.x, u32(s.mode2.y), select(a.y, 0.0, open));
     }
     return clamp(0.5 - d / px, 0.0, 1.0);
   }
   if (kind == GEO_POLYLINE && s.mode.z > 0.0) {
     let hw = 0.5 * s.geo2.y;
-    let d = dashed(sd.x, sd.x + hw, hw, sd.y, s.mode.z, s.mode.w, s.mode2.x, u32(s.mode2.y));
+    let d = dashed(sd.x, sd.x + hw, hw, sd.y, s.mode.z, s.mode.w, s.mode2.x, u32(s.mode2.y), 0.0);
     return clamp(0.5 - d / px, 0.0, 1.0);
   }
   return clamp(0.5 - sd.x / px, 0.0, 1.0);
@@ -752,21 +754,47 @@ fn mode_coverage(s: UiInstance, p: vec2<f32>, px: f32) -> f32 {
 
 // A stroke's distance `d` (`band` the distance from its centre line, `hw`
 // half its width) cut into dashes along the outline at `along`.
-fn dashed(d: f32, band: f32, hw: f32, along: f32, dash: f32, gap: f32, offset: f32, cap: u32) -> f32 {
+// On a closed outline of length `len` (0: open) the dashes are cut to
+// [0, len], as SVG's are, and the last dash and the first are also measured
+// across the outline's start, so a cap that crosses it draws whole on both
+// sides when the length is no whole number of periods.
+fn dashed(d: f32, band: f32, hw: f32, along: f32, dash: f32, gap: f32, offset: f32, cap: u32, len: f32) -> f32 {
   let period = max(dash + max(gap, 0.0), 1e-3);
-  // Along the outline from the middle of the nearest dash (either side, so
-  // a cap before a dash's start is not lost to the wrap).
+  // Along the outline from the nearest dash (either side, so a cap before a
+  // dash's start is not lost to the wrap); negative inside it.
   var m = along + offset - 0.5 * dash;
   m = m - period * floor(m / period + 0.5);
+  var ad = abs(m) - 0.5 * dash;
+  if (len > 0.0) {
+    // The nearest dash cut to the outline, then the last dash (starting
+    // before len) and the first (ending after 0), here and one lap away.
+    let s = along - m - 0.5 * dash;
+    ad = dash_span(along, s, s + dash, len);
+    let sl = (ceil((len + offset) / period) - 1.0) * period - offset;
+    let sf = (floor((offset - dash) / period) + 1.0) * period - offset;
+    ad = min(ad, min(dash_span(along, sl, sl + dash, len), dash_span(along + len, sl, sl + dash, len)));
+    ad = min(ad, min(dash_span(along, sf, sf + dash, len), dash_span(along - len, sf, sf + dash, len)));
+  }
   // Caps reach half the width past the dash's ends, as SVG's do.
   if (cap == CAP_ROUND) {
-    let dd = abs(m) - 0.5 * dash;
+    let dd = ad;
     let b = max(band, 0.0);
     return length(max(vec2<f32>(dd, b), vec2<f32>(0.0))) + min(max(dd, b), 0.0) - hw;
   }
   let ext = select(0.0, hw, cap == CAP_SQUARE);
-  let dd = abs(m) - 0.5 * dash - ext;
+  let dd = ad - ext;
   return max(d, dd);
+}
+
+// The distance along an outline of length `len` from `x` to the dash
+// [s, e] cut to [0, len] (negative inside it; far when nothing is left).
+fn dash_span(x: f32, s: f32, e: f32, len: f32) -> f32 {
+  let a = max(s, 0.0);
+  let b = min(e, len);
+  if (a > b) {
+    return 1e9;
+  }
+  return max(a - x, x - b);
 }
 
 // The box fraction of a local position.

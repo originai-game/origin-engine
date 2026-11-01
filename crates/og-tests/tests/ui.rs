@@ -167,6 +167,16 @@ fn ui_shapes_cut_their_corners_rings_and_arcs() {
         "the arc"
     );
     assert!(near(px(&r, cx - 52, cy), back, 2.0), "past the arc's sweep");
+    // The dotted ring (cell 2, row 3; r 65 about (530, 625), dots every
+    // 16.1 px from 12 o'clock): its outline is no whole number of periods,
+    // so the first dot (x 526..534) overlaps the last (x 520..528). The
+    // first dot is round on both sides of the outline's start: x 529 is in
+    // it, not cut off at the seam.
+    assert!(
+        near(px(&r, 529, 560), ink([186, 104, 200]), 2.0),
+        "the dot at the dotted ring's start is cut at the seam: {:?}",
+        px(&r, 529, 560)
+    );
     println!(
         "sprite draws {} sprites {}",
         r.stats.sprite_draws, r.stats.sprites
