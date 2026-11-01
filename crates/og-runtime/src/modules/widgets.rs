@@ -1,0 +1,410 @@
+use super::*;
+
+pub(super) fn desc_of(desc: Option<String>) -> Value {
+    parse(desc.as_deref()).unwrap_or(Value::Null)
+}
+
+pub fn og_ui_open(id: String, desc: Option<String>) {
+    let d = desc_of(desc);
+    with_ui("og.ui.open", |ui| {
+        let el = element(ui.theme(), &d);
+        ui.open(id.as_str(), el)
+    });
+}
+
+pub fn og_ui_open_panel(id: String, desc: Option<String>) {
+    let d = desc_of(desc);
+    with_ui("og.ui.openPanel", |ui| {
+        let t = *ui.theme();
+        let p = PanelDesc {
+            row: d["row"].as_bool().unwrap_or(false),
+            width: size_or(&d["width"], Size::fit()),
+            height: size_or(&d["height"], Size::fit()),
+            padding: d["padding"].is_object().then(|| insets(&d["padding"])),
+            gap: d["gap"].as_f64().map(|g| g as f32),
+            align: align(&d["align"]),
+            cross: cross(&d["cross"]),
+            background: paint(&t, &d["background"]),
+        };
+        ui.open_panel(id.as_str(), p)
+    });
+}
+
+pub fn og_ui_open_scroll(id: String, desc: Option<String>) {
+    let d = desc_of(desc);
+    with_ui("og.ui.openScroll", |ui| {
+        let s = ScrollDesc {
+            width: size_or(&d["width"], Size::fit()),
+            height: size_or(&d["height"], Size::fit()),
+            padding: insets(&d["padding"]),
+            gap: f(&d, "gap", 0.0),
+            axes: match d["axes"].as_str() {
+                Some("horizontal") => og_ui::ScrollAxes::Horizontal,
+                Some("both") => og_ui::ScrollAxes::Both,
+                _ => og_ui::ScrollAxes::Vertical,
+            },
+        };
+        ui.open_scroll(id.as_str(), s)
+    });
+}
+
+pub fn og_ui_close() -> String {
+    response(with_ui("og.ui.close", |ui| ui.close()).unwrap_or_default()).to_string()
+}
+
+pub fn og_ui_label(id: String, text: String, desc: Option<String>) {
+    let d = desc_of(desc);
+    with_ui("og.ui.label", |ui| {
+        let t = *ui.theme();
+        let l = LabelDesc {
+            step: d["step"].as_str().and_then(|s| step(&t, s)),
+            color: paint(&t, &d["color"]),
+            align: match d["align"].as_str() {
+                Some("center") => TextAlign::Center,
+                Some("end") => TextAlign::End,
+                _ => TextAlign::Start,
+            },
+            nowrap: d["nowrap"].as_bool().unwrap_or(false),
+            width: size_or(&d["width"], Size::fit()),
+            font: d["font"]
+                .as_str()
+                .and_then(FontRole::from_name)
+                .unwrap_or(FontRole::Body),
+            heading: d["heading"].as_bool().unwrap_or(false),
+            ellipsis: d["ellipsis"].as_bool().unwrap_or(false),
+            max_lines: d["maxLines"].as_u64().unwrap_or(0) as u32,
+        };
+        ui.label(id.as_str(), &text, l)
+    });
+}
+
+pub fn og_ui_rich_text(id: String, markup: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let r = with_ui("og.ui.richText", |ui| {
+        let t = *ui.theme();
+        let desc = og_ui::RichTextDesc {
+            step: d["step"].as_str().and_then(|s| step(&t, s)),
+            color: paint(&t, &d["color"]),
+            align: match d["align"].as_str() {
+                Some("center") => TextAlign::Center,
+                Some("end") => TextAlign::End,
+                _ => TextAlign::Start,
+            },
+            nowrap: d["nowrap"].as_bool().unwrap_or(false),
+            width: size_or(&d["width"], Size::fit()),
+            font: d["font"]
+                .as_str()
+                .and_then(FontRole::from_name)
+                .unwrap_or(FontRole::Body),
+        };
+        ui.rich_text(id.as_str(), &markup, desc)
+    })
+    .unwrap_or_default();
+    json!({ "response": response(r.response), "link": r.link, "hovered": r.hovered }).to_string()
+}
+
+pub fn og_ui_button(id: String, text: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let r = with_ui("og.ui.button", |ui| {
+        let b = ButtonDesc {
+            variant: match d["variant"].as_str() {
+                Some("primary") => ButtonVariant::Primary,
+                Some("quiet") => ButtonVariant::Quiet,
+                Some("danger") => ButtonVariant::Danger,
+                _ => ButtonVariant::Secondary,
+            },
+            size: match d["size"].as_str() {
+                Some("small") => ControlSize::Small,
+                Some("large") => ControlSize::Large,
+                _ => ControlSize::Medium,
+            },
+            disabled: d["disabled"].as_bool().unwrap_or(false),
+            width: size(&d["width"]),
+            autofocus: d["autofocus"].as_bool().unwrap_or(false),
+        };
+        ui.button(id.as_str(), &text, b)
+    });
+    response(r.unwrap_or_default()).to_string()
+}
+
+pub fn og_ui_image(id: String, desc: Option<String>) {
+    let d = desc_of(desc);
+    let texture = d["texture"].as_f64().and_then(|t| {
+        let eng = engine(BUILDING.with(Cell::get)?).ok()?;
+        let rs = eng.render.borrow();
+        super::assets::index_of(t).and_then(|i| rs.textures.get(i).copied())
+    });
+    with_ui("og.ui.image", |ui| {
+        let t = *ui.theme();
+        let uv = d["uv"].as_array().filter(|a| a.len() == 4).map(|a| {
+            let n = |i: usize| a[i].as_f64().unwrap_or(0.0) as f32;
+            [n(0), n(1), n(2), n(3)]
+        });
+        let i = ImageDesc {
+            // A texture-less image is a solid rectangle.
+            texture,
+            uv,
+            tint: paint(&t, &d["tint"]),
+            width: size_or(&d["width"], Size::fit()),
+            height: size_or(&d["height"], Size::fit()),
+            aspect: f(&d, "aspect", 0.0).max(0.0),
+            label: d["label"].as_str().unwrap_or_default().to_string(),
+        };
+        ui.image(id.as_str(), i)
+    });
+}
+
+pub fn og_ui_zoom_view(id: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let texture = texture_of(&d["texture"]);
+    let r = with_ui("og.ui.zoomView", |ui| {
+        let t = *ui.theme();
+        ui.zoom_view(
+            id.as_str(),
+            &og_ui::ZoomViewDesc {
+                texture,
+                uv: uv_of(&d["uv"]),
+                tint: paint(&t, &d["tint"]),
+                width: size_or(&d["width"], Size::fit()),
+                height: size_or(&d["height"], Size::fit()),
+                aspect: f(&d, "aspect", 0.0).max(0.0),
+                min_zoom: f(&d, "minZoom", 0.0),
+                max_zoom: f(&d, "maxZoom", 0.0),
+            },
+        )
+    });
+    let (zoom, x, y) = r.map_or((1.0, 0.5, 0.5), |r| (r.zoom, r.center.x, r.center.y));
+    json!({ "zoom": zoom, "centerX": x, "centerY": y }).to_string()
+}
+
+pub fn og_ui_progress(id: String, value: f64, desc: Option<String>) {
+    let d = desc_of(desc);
+    with_ui("og.ui.progress", |ui| {
+        ui.progress(
+            id.as_str(),
+            value as f32,
+            ProgressDesc {
+                width: size(&d["width"]),
+            },
+        )
+    });
+}
+
+pub fn og_ui_slider(id: String, value: f64, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let mut v = value as f32;
+    let r = with_ui("og.ui.slider", |ui| {
+        ui.slider(
+            id.as_str(),
+            &mut v,
+            SliderDesc {
+                min: f(&d, "min", 0.0),
+                max: f(&d, "max", 0.0),
+                step: f(&d, "step", 0.0),
+                width: size(&d["width"]),
+            },
+        )
+    });
+    json!({ "response": response(r.unwrap_or_default()), "value": v }).to_string()
+}
+
+pub fn og_ui_toggle(id: String, on: bool, label: String) -> String {
+    let mut state = on;
+    let r = with_ui("og.ui.toggle", |ui| {
+        ui.toggle(id.as_str(), &mut state, &label)
+    });
+    json!({ "response": response(r.unwrap_or_default()), "on": state }).to_string()
+}
+
+pub fn og_ui_text_field(id: String, value: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let mut text = value;
+    let r = with_ui("og.ui.textField", |ui| {
+        let fd = FieldDesc {
+            placeholder: d["placeholder"].as_str().unwrap_or_default().to_string(),
+            width: size(&d["width"]),
+            max_chars: d["maxChars"].as_u64().unwrap_or(0) as u32,
+        };
+        ui.text_field(id.as_str(), &mut text, &fd)
+    });
+    json!({ "response": response(r.unwrap_or_default()), "value": text }).to_string()
+}
+
+pub fn og_ui_text_area(id: String, value: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let mut text = value;
+    let r = with_ui("og.ui.textArea", |ui| {
+        let ad = og_ui::TextAreaDesc {
+            placeholder: d["placeholder"].as_str().unwrap_or_default().to_string(),
+            width: size(&d["width"]),
+            rows: d["rows"].as_u64().unwrap_or(0) as u32,
+            max_chars: d["maxChars"].as_u64().unwrap_or(0) as u32,
+        };
+        ui.text_area(id.as_str(), &mut text, &ad)
+    });
+    json!({ "response": response(r.unwrap_or_default()), "value": text }).to_string()
+}
+
+pub fn og_ui_counter(id: String, value: f64, desc: Option<String>) -> f64 {
+    let d = desc_of(desc);
+    with_ui("og.ui.counter", |ui| {
+        let t = *ui.theme();
+        let c = og_ui::CounterDesc {
+            step: d["step"].as_str().and_then(|s| step(&t, s)),
+            font: d["font"]
+                .as_str()
+                .and_then(FontRole::from_name)
+                .unwrap_or(FontRole::Body),
+            color: paint(&t, &d["color"]),
+            align: match d["align"].as_str() {
+                Some("center") => TextAlign::Center,
+                Some("end") => TextAlign::End,
+                _ => TextAlign::Start,
+            },
+            width: size_or(&d["width"], Size::fit()),
+            duration_ms: f(&d, "durationMs", 0.0),
+            from: d["from"].as_f64(),
+            decimals: d["decimals"].as_u64().unwrap_or(0).min(9) as u32,
+            prefix: d["prefix"].as_str().unwrap_or_default().to_string(),
+            suffix: d["suffix"].as_str().unwrap_or_default().to_string(),
+        };
+        ui.counter(id.as_str(), value, &c)
+    })
+    .unwrap_or(value)
+}
+
+pub fn og_ui_burst(desc: Option<String>) {
+    let d = desc_of(desc);
+    with_ui("og.ui.burst", |ui| {
+        let t = *ui.theme();
+        ui.burst(og_ui::BurstDesc {
+            count: d["count"].as_u64().unwrap_or(0).min(64) as u32,
+            color: paint(&t, &d["color"]),
+            radius: f(&d, "radius", 0.0),
+            duration_ms: f(&d, "durationMs", 0.0),
+            delay_ms: f(&d, "delayMs", 0.0),
+        })
+    });
+}
+
+pub fn og_ui_shake(desc: Option<String>) {
+    let d = desc_of(desc);
+    with_ui("og.ui.shake", |ui| {
+        ui.shake(og_ui::ShakeDesc {
+            amount: f(&d, "amount", 0.0),
+            duration_ms: f(&d, "durationMs", 0.0),
+            sound: d["sound"].as_bool().unwrap_or(false),
+        })
+    });
+}
+
+pub fn og_ui_screen_transition(id: String, screen: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let texture = d["texture"].as_f64().and_then(|h| {
+        let i = super::assets::index_of(h)?;
+        let target = BUILDING.with(Cell::get)?;
+        let eng = engine(target).ok()?;
+
+        eng.render.borrow().textures.get(i).copied()
+    });
+    let r = with_ui("og.ui.screenTransition", |ui| {
+        let t = *ui.theme();
+        let desc = og_ui::ScreenTransitionDesc {
+            kind: match d["kind"].as_str() {
+                Some("wipe") => og_ui::ScreenWipe::Wipe,
+                Some("iris") => og_ui::ScreenWipe::Iris,
+                Some("dissolve") => og_ui::ScreenWipe::Dissolve,
+                Some("slide") => og_ui::ScreenWipe::Slide,
+                _ => og_ui::ScreenWipe::Fade,
+            },
+            duration_ms: f(&d, "durationMs", 0.0),
+            color: paint(&t, &d["color"]),
+            texture: texture.map(|t| (t, [0.0, 0.0, 1.0, 1.0])),
+            from: match d["from"].as_str() {
+                Some("right") => og_ui::Side::Right,
+                Some("top") => og_ui::Side::Top,
+                Some("bottom") => og_ui::Side::Bottom,
+                _ => og_ui::Side::Left,
+            },
+        };
+        ui.screen_transition(id.as_str(), &screen, &desc)
+    })
+    .unwrap_or(og_ui::ScreenTransition {
+        shown: screen.clone(),
+        ..Default::default()
+    });
+    json!({ "shown": r.shown, "covering": r.covering, "revealing": r.revealing, "cover": r.cover })
+        .to_string()
+}
+
+pub fn og_ui_tooltip(text: String) {
+    with_ui("og.ui.tooltip", |ui| ui.tooltip(&text));
+}
+
+// ── ui: drawing over the frame ──────────────────────────────────────────────
+
+/// Hands the UI's last frame to the render scene's overlay: screen-space
+/// sprites and text in CSS pixels over the finished frame (after every post
+/// effect, never tone mapped or blurred), at any camera.
+pub(crate) fn emit(rs: &mut super::extract::RenderState) {
+    let Some(ui) = rs.ui.clone() else {
+        return;
+    };
+    let ui = ui.lock();
+    let frame = ui.frame();
+    let world_frame = ui.world_frame();
+    if frame.items.is_empty() && world_frame.batches.is_empty() {
+        return;
+    }
+    let vp = frame.viewport;
+    // Scale 0 fits the viewport's height to the target (as a capture at
+    // another size needs).
+    let overlay = rs
+        .scene
+        .overlay
+        .get_or_insert_with(|| og_render::Overlay::new(vp.width.max(1.0), vp.height.max(1.0), 0.0));
+    let first_text = overlay.texts.len();
+    let first_sprite = overlay.sprites.len();
+    let first_shape = overlay.ui.shapes.len();
+    frame.emit(
+        &og_ui::EmitDesc {
+            // Over the game's screen layers up to og_render::UI_LAYER, under
+            // those above it (og_render::screen_layer).
+            layer: og_render::UI_OVERLAY_LAYER,
+            time: ui.seconds() as f32,
+        },
+        overlay,
+    );
+    // Mass elements no element owns (docs/ui.md §14), under the UI.
+    world_frame.emit(og_render::UI_OVERLAY_LAYER, overlay);
+    // A multi-page font draws once per page with one layout.
+    let mut more = Vec::new();
+    for t in &overlay.texts[first_text..] {
+        let pages = rs.ui_pages.get(&t.font).cloned().unwrap_or_default();
+        for page in pages.iter().skip(1) {
+            more.push(og_render::Text {
+                font: *page,
+                ..t.clone()
+            });
+        }
+    }
+    overlay.texts.extend(more);
+    // Icons on a strict art palette (super::art): the icon atlas is a
+    // distance field the cook leaves as it is, so its tint is moved to
+    // the palette here.
+    let icons = ui.icons();
+    let icon_fonts: Vec<og_render::FontHandle> = icons
+        .font
+        .as_ref()
+        .and_then(|f| f.handle)
+        .map(|h| rs.ui_pages.get(&h).cloned().unwrap_or_else(|| vec![h]))
+        .unwrap_or_default();
+    if let Some(overlay) = rs.scene.overlay.as_mut() {
+        super::art::palette_icons(
+            &rs.art.frame,
+            overlay,
+            (first_sprite, first_text, first_shape),
+            (icons.texture, &icon_fonts),
+        );
+    }
+}
