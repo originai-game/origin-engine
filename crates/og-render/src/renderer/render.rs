@@ -2,6 +2,8 @@
 
 use super::*;
 
+mod view_culling;
+
 mod camera;
 
 mod setup;
@@ -44,35 +46,10 @@ impl Renderer {
             &aspect,
         );
         let reflection = reflections.first();
-        // Secondary cameras (views.rs): the views due this frame, each
-        // with its skinned instances in view on its layers.
-        let view_plans = views::plan(scene, &camera, (self.out_width, self.out_height), |i| {
-            self.views.stale || self.views.slots.get(i).is_none_or(|s| s.is_none())
-        });
-        self.views.stale = false;
-        self.views.retain(scene.views.len());
-        let mut view_skinned: Vec<Vec<Batch>> = view_plans
-            .iter()
-            .map(|p| {
-                let f = Frustum::from_view_proj(p.frame.view_proj);
-                Self::cull_skinned(&mut skinned, &f, p.layers).0
-            })
-            .collect();
-        // Reflection probes: the captures due this frame, each face's
-        // skinned instances in view in their pose (probes.rs).
-        let probe_faces: Vec<[frame::CameraFrame; 6]> = probe_frame
-            .due
-            .iter()
-            .map(|&(_, i)| probes::face_frames(&camera, active_probes[i].position, camera.far))
-            .collect();
-        let mut probe_skinned: Vec<Vec<Batch>> = probe_faces
-            .iter()
-            .flatten()
-            .map(|f| {
-                let frustum = Frustum::from_view_proj(f.view_proj);
-                Self::cull_skinned(&mut skinned, &frustum, u32::MAX).0
-            })
-            .collect();
+        let (view_plans, mut view_skinned) =
+            self.prepare_view_culling(scene, &camera, &mut skinned);
+        let (probe_faces, mut probe_skinned) =
+            self.prepare_probe_culling(&probe_frame, &active_probes, &camera, &mut skinned);
         let (mut skinned_visible, skinned_culled) =
             Self::cull_skinned(&mut skinned, &view_frustum, scene.camera_layers);
         let mut skinned_batches = std::mem::take(&mut skinned.batches);
