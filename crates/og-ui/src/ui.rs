@@ -864,6 +864,9 @@ pub struct Ui {
     pub(crate) docs: crate::doc::build::DocHost,
     /// Named UI actions and the last device (docs/ui.md §8.2).
     pub(crate) actions: crate::actions::Actions,
+    /// World-space UI (`crate::world`): anchors, panels, mass elements,
+    /// particles, meta layers.
+    pub(crate) world: crate::world::WorldUi,
 }
 
 impl Default for Ui {
@@ -949,6 +952,7 @@ impl Ui {
             draws: Default::default(),
             docs: Default::default(),
             actions: Default::default(),
+            world: Default::default(),
         }
     }
 
@@ -1250,6 +1254,8 @@ impl Ui {
         self.nav_on = true;
         self.players = 1;
         self.cover = None;
+        // A pointer on a world panel is moved onto the panel's layout.
+        self.world_begin(&mut input);
         self.docs_begin();
         self.actions_begin(&input);
 
@@ -2562,6 +2568,22 @@ impl Ui {
                 continue;
             }
             let float = self.nodes[f].float;
+            if float == Float::World {
+                // At its own size: an anchor where it is projected later, a
+                // panel in its slot off the screen.
+                let (area, clip) = self.world.area(f, screen);
+                layout(
+                    &mut self.nodes,
+                    f,
+                    area,
+                    &mut measure,
+                    &offset,
+                    dpr,
+                    clip,
+                    &mut self.kept,
+                );
+                continue;
+            }
             if float == Float::Modal {
                 // The backdrop covers the surface; the safe area pads its content.
                 self.nodes[f].el.width = Size::Fixed(vp.width);
@@ -2678,12 +2700,15 @@ impl Ui {
         self.apply_stagger(&order);
         self.run_motion(&order);
         self.apply_bursts(&order);
+        self.world_place();
         // Drawn and hit in z order among siblings.
         let mut order = crate::layout::draw_order(&self.nodes, 0);
         for &f in &self.floating {
             order.extend(crate::layout::draw_order(&self.nodes, f));
         }
+        self.world_order(&mut order);
         self.apply_world(&order);
+        self.world_finish();
         self.note_drag_and_drop(&order);
 
         // Interaction state for the next tick.
@@ -2813,7 +2838,12 @@ impl Ui {
             // A control laid out past the screen's edge with no scroller to
             // bring it back (a menu taller than a landscape phone): the
             // player cannot reach it, so the frame says which and by how much.
-            if n.el.interactive && scroller_of[i] == 0 && !r.is_empty() && !n.inert {
+            if n.el.interactive
+                && scroller_of[i] == 0
+                && !r.is_empty()
+                && !n.inert
+                && !crate::world::off_screen(&n.rect)
+            {
                 // Where layout put it: a transform's move (a card thrown
                 // off by a swipe) is not a layout that does not fit.
                 let r = &n.rect;
@@ -3325,6 +3355,9 @@ impl Ui {
             let world = n.world;
             let start = cmds.len();
             let draw = self.draws.get(&i).cloned();
+            if let Some(m) = self.world_marks(n.key) {
+                cmds.extend(m.enter.iter().map(|c| (c.clone(), Affine::IDENTITY)));
+            }
             if let Some(d) = &draw {
                 cmds.extend(d.enter(&theme, &placed(n)).into_iter().map(|c| (c, world)));
             }
@@ -3390,6 +3423,9 @@ impl Ui {
                     let at = placed(&self.nodes[j]);
                     cmds.extend(d.leave(&theme, &at).into_iter().map(|c| (c, w)));
                 }
+                if let Some(m) = self.world_marks(key) {
+                    cmds.extend(m.leave.iter().map(|c| (c.clone(), Affine::IDENTITY)));
+                }
                 let nj = &self.nodes[j];
                 if nj.props.exit.is_some() || !nj.props.match_key.is_empty() {
                     let inv = nj.world.invert().unwrap_or(Affine::IDENTITY);
@@ -3403,6 +3439,7 @@ impl Ui {
                         crate::motion::state::Frozen {
                             cmds: cmds[first..]
                                 .iter()
+                                .filter(|(c, _)| !matches!(c, DrawCmd::World(_)))
                                 .map(|(c, m)| (c.clone(), inv.mul(m)))
                                 .collect(),
                             rect: nj.rect,
@@ -5085,6 +5122,13 @@ fn fade_cmd(c: &mut DrawCmd, k: f32) {
         DrawCmd::Shape { shape, .. } => shape.opacity *= k,
         DrawCmd::Vector { tint, .. } => tint[3] *= k,
         DrawCmd::EndLayer { opacity, .. } => *opacity *= k,
+        DrawCmd::World(w) => {
+            if let crate::world::WorldCmd::Mass { batch, .. } = &mut **w {
+                for i in &mut batch.instances {
+                    i.color[3] *= k;
+                }
+            }
+        }
         DrawCmd::PushClip { .. } | DrawCmd::PopClip | DrawCmd::BeginLayer { .. } => {}
     }
 }

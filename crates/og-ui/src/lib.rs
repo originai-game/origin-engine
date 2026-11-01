@@ -52,8 +52,11 @@ mod text;
 pub mod tokens;
 #[rustfmt::skip]
 pub mod theme;
+pub mod particles;
 mod ui;
+pub mod viewport;
 mod widgets;
+pub mod world;
 
 pub use a11y::{A11yNode, A11yTree};
 pub use actions::{ActionDesc, ActionHint, ActionTrigger, Device, Glyph};
@@ -82,6 +85,7 @@ pub use motion::{
     StateTransition, Timeline, TimelineEvent, TimelineTrack, Transition, TransitionKind, UiEvent,
     VisualState, cubic_bezier, ease_exit, ease_out,
 };
+pub use particles::{EmitFrom, ParticlesDesc};
 pub use probe::{SharedUi, UiProbe};
 pub use rich::{RichTextDesc, RichTextResponse};
 pub use slot::{Aspect, SlotKind, SlotSpec};
@@ -99,12 +103,17 @@ pub use ui::{
     PanelDesc, ProgressDesc, Response, ScrollAxes, ScrollDesc, SliderDesc, TextAreaDesc,
     TextTarget, Ui, UiDesc, UiFrame, Viewport,
 };
+pub use viewport::{ViewportDesc, ViewportResponse};
 pub use widgets::{
     ActionButtonDesc, AnchorDesc, ChipDesc, CooldownDesc, DialogueDesc, DialogueResponse, DpadDesc,
     DpadResponse, GridDesc, IconDesc, JoystickDesc, JoystickResponse, ListDesc, ListRange,
     MapMarker, MeterDesc, MeterKind, MinimapDesc, ModalDesc, ModalResponse, Presence, RadioDesc,
     SelectDesc, SkeletonDesc, SpotlightDesc, StepperDesc, TabsDesc, ToastDesc, Tone,
     TransitionDesc, ZoomResponse, ZoomViewDesc,
+};
+pub use world::{
+    AnchorInfo, AnchorScale, Declutter, EdgeClamp, MassHandle, MetaDesc, MetaKind, PanelInfo,
+    WorldAnchorDesc, WorldCmd, WorldFrame, WorldOcclusion, WorldPanelDesc, WorldTarget, WorldView,
 };
 
 /// The probe's element type: what `dump_ui` lists and the id and text lookups search.

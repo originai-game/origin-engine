@@ -28,6 +28,7 @@
 
 use crate::element::Affine;
 use crate::layout::Rect;
+use crate::world::WorldCmd;
 use og_core::glam::Vec2;
 use og_render::{
     FontHandle, Overlay, Text, TextureHandle, UiBlend, UiGeometry, UiMaterial, UiMode, UiPaint,
@@ -151,6 +152,9 @@ pub enum DrawCmd {
         blend: UiBlend,
         clip: Rect,
     },
+    /// World-space UI's commands (`crate::world`): occlusion brackets,
+    /// mass elements and particles, a world panel's target.
+    World(Box<crate::world::WorldCmd>),
 }
 
 /// A command and the painter level it draws on (in its layer's levels,
@@ -176,6 +180,8 @@ enum Batch {
     Vector(UiVectorHandle),
     /// A layer's composite (each its own).
     Composite(u32),
+    /// Mass elements (particles), each batch its own draw.
+    Mass,
 }
 
 fn pipe_of(blend: UiBlend) -> u8 {
@@ -324,6 +330,10 @@ impl DrawCmd {
             | DrawCmd::Vector { clip, .. }
             | DrawCmd::EndLayer { clip, .. } => clip,
             DrawCmd::StyledText { text, .. } => text.clip(),
+            DrawCmd::World(w) => match &**w {
+                WorldCmd::Mass { clip, .. } => clip,
+                _ => &ALL,
+            },
             DrawCmd::PushClip { .. } | DrawCmd::PopClip | DrawCmd::BeginLayer { .. } => &ALL,
         }
     }
@@ -341,6 +351,10 @@ impl DrawCmd {
             | DrawCmd::Vector { clip, .. }
             | DrawCmd::EndLayer { clip, .. } => Some(clip),
             DrawCmd::StyledText { text, .. } => text.clip_mut(),
+            DrawCmd::World(w) => match &mut **w {
+                WorldCmd::Mass { clip, .. } => Some(clip),
+                _ => None,
+            },
             DrawCmd::PushClip { .. } | DrawCmd::PopClip | DrawCmd::BeginLayer { .. } => None,
         }
     }
@@ -377,6 +391,7 @@ impl DrawCmd {
                 Batch::Ui(pipe_of(shape.blend), texture)
             }
             DrawCmd::Vector { vector, .. } => Batch::Vector(*vector),
+            DrawCmd::World(_) => Batch::Mass,
             // Brackets: never levelled (empty bounds).
             DrawCmd::PushClip { .. }
             | DrawCmd::PopClip
@@ -407,6 +422,10 @@ impl DrawCmd {
                 b.intersect(clip)
             }
             DrawCmd::Shape { shape, clip } => shape_bounds(shape).intersect(clip),
+            DrawCmd::World(w) => match &**w {
+                WorldCmd::Mass { bounds, clip, .. } => bounds.intersect(clip),
+                _ => Rect::default(),
+            },
             DrawCmd::Bar {
                 center, w, h, clip, ..
             } => {
@@ -445,6 +464,12 @@ enum Entry {
         end: Box<(DrawCmd, Affine)>,
         bounds: Rect,
     },
+    /// A world panel: its items drawn into its target.
+    Panel {
+        begin: Box<(DrawCmd, Affine)>,
+        items: Vec<DrawItem>,
+        end: Box<(DrawCmd, Affine)>,
+    },
 }
 
 /// Collects one space's entries from `cmds` until its `EndLayer` (`None`:
@@ -457,6 +482,27 @@ fn collect(
     while let Some((cmd, m)) = cmds.next() {
         match cmd {
             DrawCmd::PushClip { .. } | DrawCmd::PopClip => entries.push(Entry::Bracket(cmd, m)),
+            DrawCmd::World(ref w) if matches!(**w, WorldCmd::BeginPanel { .. }) => {
+                // A world panel: its own space of levels, off the screen
+                // (it levels nothing there).
+                let (inner, end) = collect(cmds, layers);
+                let items = levelled(inner, layers, None);
+                let end = end.unwrap_or((
+                    DrawCmd::World(Box::new(WorldCmd::EndPanel)),
+                    Affine::IDENTITY,
+                ));
+                entries.push(Entry::Panel {
+                    begin: Box::new((cmd, m)),
+                    items,
+                    end: Box::new(end),
+                });
+            }
+            DrawCmd::World(ref w) if matches!(**w, WorldCmd::EndPanel) => {
+                return (entries, Some((cmd, m)));
+            }
+            DrawCmd::World(ref w) if !matches!(**w, WorldCmd::Mass { .. }) => {
+                entries.push(Entry::Bracket(cmd, m))
+            }
             DrawCmd::BeginLayer { .. } => {
                 let (inner, end) = collect(cmds, layers);
                 let mut bounds = Rect::default();
@@ -503,7 +549,7 @@ fn levelled(entries: Vec<Entry>, layers: &mut u32, drawn: Option<&mut Rect>) -> 
         .iter()
         .map(|e| match e {
             Entry::Cmd(c, m) => (mapped_bounds(c, m), c.batch()),
-            Entry::Bracket(..) => (Rect::default(), Batch::Ui(0, None)),
+            Entry::Bracket(..) | Entry::Panel { .. } => (Rect::default(), Batch::Ui(0, None)),
             Entry::Layer { bounds, .. } => {
                 *layers += 1;
                 (*bounds, Batch::Composite(*layers))
@@ -528,6 +574,19 @@ fn levelled(entries: Vec<Entry>, layers: &mut u32, drawn: Option<&mut Rect>) -> 
                 cmd,
                 transform,
             }),
+            (Entry::Panel { begin, items, end }, _) => {
+                out.push(DrawItem {
+                    level: 0,
+                    cmd: begin.0,
+                    transform: begin.1,
+                });
+                out.extend(items);
+                out.push(DrawItem {
+                    level: 0,
+                    cmd: end.0,
+                    transform: end.1,
+                });
+            }
             (Entry::Cmd(cmd, transform), Some(level)) => out.push(DrawItem {
                 level,
                 cmd,
@@ -734,10 +793,15 @@ struct Cut {
     transform: [f32; 4],
 }
 
+/// A clip rectangle's key: its bits, the cut and the depth test in force.
+type ClipKey = ([u32; 4], Option<u32>, Option<u32>);
+
 struct Clips {
-    known: std::collections::HashMap<([u32; 4], Option<u32>), u32>,
+    known: std::collections::HashMap<ClipKey, u32>,
     cuts: Vec<Cut>,
     next_cut: u32,
+    /// Depth tests in force (`WorldCmd::Occlude`): id, point, depth, alpha.
+    occluders: Vec<(u32, Vec2, f32, f32)>,
 }
 
 impl Clips {
@@ -745,11 +809,22 @@ impl Clips {
     /// adding it (and its cut's shape) the first time.
     fn index(&mut self, overlay: &mut Overlay, clip: &Rect) -> u32 {
         let top = self.cuts.last();
-        let k = (key(clip), top.map(|c| c.id));
+        let occ = self.occluders.last().copied();
+        let k = (key(clip), top.map(|c| c.id), occ.map(|o| o.0));
         if let Some(i) = self.known.get(&k) {
             return *i;
         }
         let i = overlay.add_clip([clip.x, clip.y, clip.width, clip.height]);
+        if let Some((_, at, depth, alpha)) = occ {
+            overlay.ui.occluders.push(og_render::UiOccluder {
+                rect: i,
+                at,
+                depth,
+                alpha,
+                bias: 0.25,
+                soft: 0.5,
+            });
+        }
         if let Some(c) = top {
             overlay.ui.clips.push(og_render::UiClip {
                 rect: i,
@@ -822,6 +897,7 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
         known: std::collections::HashMap::new(),
         cuts: Vec::new(),
         next_cut: 0,
+        occluders: Vec::new(),
     };
     overlay.ui.time = desc.time;
     let mut spaces = vec![Space {
@@ -851,6 +927,54 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
             DrawCmd::PopClip => {
                 clips.cuts.pop();
             }
+            DrawCmd::World(w) => match &**w {
+                WorldCmd::Occlude { at, depth, alpha } => {
+                    clips.next_cut += 1;
+                    let id = clips.next_cut;
+                    clips
+                        .occluders
+                        .push((id, Vec2::new(at.0, at.1), *depth, *alpha));
+                }
+                WorldCmd::EndOcclude => {
+                    clips.occluders.pop();
+                }
+                WorldCmd::Mass { batch, clip, .. } => {
+                    let c = clips.index(overlay, clip);
+                    overlay.ui.mass.push(og_render::UiMassBatch {
+                        layer,
+                        clip: Some(c),
+                        ..(**batch).clone()
+                    });
+                }
+                WorldCmd::BeginPanel { target, rect } => {
+                    let k = overlay.ui.layers.len() as u32;
+                    if k >= MAX_LAYERS {
+                        // No room: its items draw nowhere visible (off the screen).
+                        spaces.push(Space {
+                            base: layer,
+                            layer: None,
+                        });
+                        continue;
+                    }
+                    let base = desc.layer + LAYER_BASE + k as i32 * LAYER_SPAN;
+                    overlay.ui.layers.push(og_render::UiLayer {
+                        capture: [base, base + LAYER_SPAN - 1],
+                        rect: [rect.x, rect.y, rect.width, rect.height],
+                        material: UiMaterial::Plain,
+                        params: [[0.0; 4]; og_render::UI_MATERIAL_PARAMS],
+                        mask: None,
+                        target: Some(*target),
+                    });
+                    spaces.push(Space {
+                        base,
+                        layer: Some(k),
+                    });
+                }
+                WorldCmd::EndPanel => {
+                    // Composited nowhere: the mesh shows its target.
+                    spaces.pop();
+                }
+            },
             DrawCmd::BeginLayer {
                 material,
                 params,

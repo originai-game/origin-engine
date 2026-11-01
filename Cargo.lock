@@ -2054,6 +2054,7 @@ dependencies = [
 name = "og-ui"
 version = "0.7.7"
 dependencies = [
+ "bytemuck",
  "image",
  "og-cook",
  "og-core",

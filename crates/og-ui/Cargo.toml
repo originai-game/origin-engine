@@ -23,6 +23,8 @@ og-render = { path = "../og-render" }
 og-probe = { path = "../og-probe", default-features = false }
 # The damped spring the skin's hover and press move on.
 og-tween = { path = "../og-tween" }
+# World-space UI's state: mass instances as bytes (src/world.rs).
+bytemuck = { workspace = true }
 # Localization: text direction and shaped scripts (og-i18n), shaping (rustybuzz).
 og-i18n = { path = "../og-i18n" }
 rustybuzz = { version = "0.20.1", optional = true }

@@ -353,6 +353,9 @@ pub(crate) enum Float {
     Toasts { anchor: Anchor, margin: f32 },
     /// Under (or over) its anchor node.
     Tooltip,
+    /// Placed by [`crate::world`]: an element anchored in the world, a
+    /// world panel or a meta layer, laid out at its own size.
+    World,
 }
 
 impl Float {
@@ -366,6 +369,7 @@ impl Float {
             Float::Popover => 3,
             Float::Toasts { .. } => 4,
             Float::Tooltip => 5,
+            Float::World => 0,
         }
     }
 }
