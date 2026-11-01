@@ -11,8 +11,8 @@
 //!
 //! | blob | root | sections |
 //! |---|---|---|
-//! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false` |
-//! | texture (`og.Texture`; a PNG, JPEG or KTX2 source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
+//! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false`; `lights` [`LightRow`] (`KHR_lights_punctual`), `instances` [`InstanceRow`] (`EXT_mesh_gpu_instancing`), `variants` [`VariantRow`] and `variant_mappings` [`VariantMappingRow`] (`KHR_materials_variants`) |
+//! | texture (`og.Texture`; a PNG, JPEG, KTX2, WebP, TGA, PSD or DDS source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
 //! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: its frames are the texture array `<id>#frames`, its sound `<id>#audio` |
 //! | sound (`og.Sound`; a `.wav`, `.mp3`, `.ogg` (Vorbis) or `.flac`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) |
@@ -45,7 +45,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r6");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r7");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
@@ -266,7 +266,7 @@ row!(
     /// (og-render's `PhysicalExtensions`). Texture fields index the model's
     /// `textures` table ([`NONE`] when absent). The last material of every
     /// model is the default one primitives without a material use.
-    MaterialRow, "og.ModelMaterial", 2 {
+    MaterialRow, "og.ModelMaterial", 3 {
         base_r: f32, base_g: f32, base_b: f32, base_a: f32,
         emissive_r: f32, emissive_g: f32, emissive_b: f32,
         metallic: f32,
@@ -314,6 +314,19 @@ row!(
         iridescence_texture: u32,
         iridescence_thickness_texture: u32,
         anisotropy_texture: u32,
+        /// 1: `KHR_materials_unlit` (drawn unlit, three.js MeshBasicMaterial).
+        unlit: u32,
+        /// `KHR_texture_transform` of each slot that keeps its own
+        /// (og-render's `UvTransform`, offset, scale and rotation in
+        /// radians; identity where the cook baked the transform into its
+        /// primitives' uvs): the base colour, the metallic-roughness map
+        /// (with a physical material's packed maps), the normal map, the
+        /// emissive map and the occlusion map.
+        map_offset_x: f32, map_offset_y: f32, map_scale_x: f32, map_scale_y: f32, map_rotation: f32,
+        mr_offset_x: f32, mr_offset_y: f32, mr_scale_x: f32, mr_scale_y: f32, mr_rotation: f32,
+        normal_offset_x: f32, normal_offset_y: f32, normal_scale_x: f32, normal_scale_y: f32, normal_rotation: f32,
+        emissive_offset_x: f32, emissive_offset_y: f32, emissive_scale_x: f32, emissive_scale_y: f32, emissive_rotation: f32,
+        occlusion_offset_x: f32, occlusion_offset_y: f32, occlusion_scale_x: f32, occlusion_scale_y: f32, occlusion_rotation: f32,
     }
 );
 
@@ -354,6 +367,63 @@ row!(
     }
 );
 
+/// [`LightRow::kind`] values (`KHR_lights_punctual`'s types).
+pub mod light {
+    pub const DIRECTIONAL: u32 = 0;
+    pub const POINT: u32 = 1;
+    pub const SPOT: u32 = 2;
+}
+
+row!(
+    /// A `KHR_lights_punctual` light on a node (in cooked node order),
+    /// shining along the node's local -Z. glTF's units: candela for point
+    /// and spot lights, lux for directional ones.
+    LightRow, "og.ModelLight", 1 {
+        node: u32,
+        /// [`light`].
+        kind: u32,
+        r: f32, g: f32, b: f32,
+        intensity: f32,
+        /// Where it reaches zero; 0: glTF's infinite range.
+        range: f32,
+        /// Spot cone half-angles in radians (0 and pi / 4 otherwise).
+        inner_cone: f32,
+        outer_cone: f32,
+        name_offset: u32,
+        name_len: u32,
+    }
+);
+
+row!(
+    /// One `EXT_mesh_gpu_instancing` instance of a node's mesh, in the
+    /// node's space: the node draws its mesh once per row, never at its own
+    /// transform alone. Rows of one node are consecutive, in its order.
+    InstanceRow, "og.ModelInstance", 1 {
+        node: u32,
+        tx: f32, ty: f32, tz: f32,
+        rx: f32, ry: f32, rz: f32, rw: f32,
+        sx: f32, sy: f32, sz: f32,
+    }
+);
+
+row!(
+    /// A `KHR_materials_variants` variant: its name.
+    VariantRow, "og.ModelVariant", 1 {
+        name_offset: u32,
+        name_len: u32,
+    }
+);
+
+row!(
+    /// A primitive's material under a variant (`KHR_materials_variants`
+    /// mappings): a primitive without a row for a variant keeps its own.
+    VariantMappingRow, "og.ModelVariantMapping", 1 {
+        primitive: u32,
+        variant: u32,
+        material: u32,
+    }
+);
+
 /// The model blob.
 pub struct Model;
 impl BlobKind for Model {
@@ -369,6 +439,10 @@ impl BlobKind for Model {
             NodeRow::schema(),
             SceneRow::schema(),
             BvhNodeRow::schema(),
+            LightRow::schema(),
+            InstanceRow::schema(),
+            VariantRow::schema(),
+            VariantMappingRow::schema(),
         ]
     }
 }

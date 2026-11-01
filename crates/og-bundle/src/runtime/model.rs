@@ -103,6 +103,39 @@ pub struct CookedMaterial {
     pub occlusion_texture: Option<usize>,
     /// The `KHR_materials_*` physical extensions (`present` 0 without any).
     pub physical: PhysicalExtensions<usize>,
+    /// `KHR_materials_unlit`: drawn unlit (three.js MeshBasicMaterial).
+    pub unlit: bool,
+    /// Each texture slot's `KHR_texture_transform` (og-render's slot
+    /// order, [`og_render::StandardMaterial::uv_transforms`]): identity
+    /// where none, or where the cook baked it into the primitives' uvs.
+    pub uv_transforms: [og_render::UvTransform; 5],
+}
+
+impl CookedMaterial {
+    /// Whether it draws as a standard material rather than in its glTF
+    /// shape: physical extensions, unlit, or a texture transform to carry.
+    pub fn needs_standard(&self) -> bool {
+        self.physical.present != 0
+            || self.unlit
+            || self.uv_transforms.iter().any(|t| !t.is_identity())
+    }
+}
+
+/// A `KHR_lights_punctual` light on a node of the model.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedLight {
+    pub name: String,
+    /// Its node in [`CookedModel::nodes`]; it shines along the node's -Z.
+    pub node: usize,
+    /// [`crate::format::light`].
+    pub kind: u32,
+    pub color: [f32; 3],
+    /// glTF's: candela (point, spot) or lux (directional).
+    pub intensity: f32,
+    /// Where it reaches zero; 0: glTF's infinite range.
+    pub range: f32,
+    /// Spot cone half-angles (radians): inner, outer.
+    pub cone: [f32; 2],
 }
 
 /// A texture a model uses.
@@ -158,6 +191,16 @@ pub struct CookedModel {
     pub max: Vec3,
     pub skipped_animations: u32,
     pub skipped_skins: u32,
+    /// `KHR_lights_punctual`: spawned with the model (og-runtime).
+    pub lights: Vec<CookedLight>,
+    /// `EXT_mesh_gpu_instancing`: per node with instances, their
+    /// transforms in the node's space (the node draws only these).
+    pub instances: BTreeMap<usize, Vec<Mat4>>,
+    /// `KHR_materials_variants`: the variants' names.
+    pub variants: Vec<String>,
+    /// Per variant, the primitives whose material it changes: (primitive,
+    /// material).
+    pub variant_materials: Vec<Vec<(usize, usize)>>,
 }
 
 /// What [`CookedModel::add_to`] added: per part the mesh, the material and
@@ -173,6 +216,9 @@ pub struct ModelParts {
     /// ancestor is hidden ([`CookedNode::visible`]). A model drawn without
     /// a pose skips the others.
     pub shown: Vec<bool>,
+    /// Per `KHR_materials_variants` variant, every part's material under
+    /// it (the part's own where the variant does not map its primitive).
+    pub variants: Vec<Vec<MaterialHandle>>,
 }
 
 impl ModelParts {
@@ -195,6 +241,10 @@ impl CookedModel {
         let nodes = table::<NodeRow>(blob, "nodes")?;
         let scenes = table::<SceneRow>(blob, "scenes")?;
         let roots = blob.table::<u32>("roots", 0)?;
+        let light_rows = table::<LightRow>(blob, "lights")?;
+        let instance_rows = table::<InstanceRow>(blob, "instances")?;
+        let variant_rows = table::<VariantRow>(blob, "variants")?;
+        let mapping_rows = table::<VariantMappingRow>(blob, "variant_mappings")?;
         let strings = blob.raw("strings")?;
         let vertices = blob.raw("vertices")?;
         let indices = blob.raw("indices")?;
@@ -372,6 +422,41 @@ impl CookedModel {
                     anisotropy_rotation: m.anisotropy_rotation,
                     anisotropy_texture: tex(m.anisotropy_texture)?,
                 },
+                unlit: m.unlit != 0,
+                uv_transforms: {
+                    let t = |o: [f32; 2], sc: [f32; 2], r: f32| og_render::UvTransform {
+                        offset: glam::Vec2::from(o),
+                        scale: glam::Vec2::from(sc),
+                        rotation: r,
+                    };
+                    [
+                        t(
+                            [m.map_offset_x, m.map_offset_y],
+                            [m.map_scale_x, m.map_scale_y],
+                            m.map_rotation,
+                        ),
+                        t(
+                            [m.mr_offset_x, m.mr_offset_y],
+                            [m.mr_scale_x, m.mr_scale_y],
+                            m.mr_rotation,
+                        ),
+                        t(
+                            [m.normal_offset_x, m.normal_offset_y],
+                            [m.normal_scale_x, m.normal_scale_y],
+                            m.normal_rotation,
+                        ),
+                        t(
+                            [m.emissive_offset_x, m.emissive_offset_y],
+                            [m.emissive_scale_x, m.emissive_scale_y],
+                            m.emissive_rotation,
+                        ),
+                        t(
+                            [m.occlusion_offset_x, m.occlusion_offset_y],
+                            [m.occlusion_scale_x, m.occlusion_scale_y],
+                            m.occlusion_rotation,
+                        ),
+                    ]
+                },
             });
         }
         let mut model_nodes = Vec::with_capacity(nodes.len());
@@ -426,7 +511,55 @@ impl CookedModel {
                 kind: t.kind,
             });
         }
+        let mut lights = Vec::with_capacity(light_rows.len());
+        for l in &light_rows {
+            if l.node as usize >= model_nodes.len() {
+                return Err(bad("light node out of range".into()));
+            }
+            lights.push(CookedLight {
+                name: s(l.name_offset, l.name_len)?,
+                node: l.node as usize,
+                kind: l.kind,
+                color: [l.r, l.g, l.b],
+                intensity: l.intensity,
+                range: l.range,
+                cone: [l.inner_cone, l.outer_cone],
+            });
+        }
+        let mut instances: BTreeMap<usize, Vec<Mat4>> = BTreeMap::new();
+        for i in &instance_rows {
+            if i.node as usize >= model_nodes.len() {
+                return Err(bad("instance node out of range".into()));
+            }
+            instances.entry(i.node as usize).or_default().push(
+                Mat4::from_scale_rotation_translation(
+                    Vec3::new(i.sx, i.sy, i.sz),
+                    Quat::from_xyzw(i.rx, i.ry, i.rz, i.rw),
+                    Vec3::new(i.tx, i.ty, i.tz),
+                ),
+            );
+        }
+        let mut variants = Vec::with_capacity(variant_rows.len());
+        for v in &variant_rows {
+            variants.push(s(v.name_offset, v.name_len)?);
+        }
+        let mut variant_materials = vec![Vec::new(); variants.len()];
+        for m in &mapping_rows {
+            let (p, v, mat) = (
+                m.primitive as usize,
+                m.variant as usize,
+                m.material as usize,
+            );
+            if p >= primitives.len() || v >= variants.len() || mat >= mats.len() {
+                return Err(bad("variant mapping out of range".into()));
+            }
+            variant_materials[v].push((p, mat));
+        }
         Ok(CookedModel {
+            lights,
+            instances,
+            variants,
+            variant_materials,
             id: id.to_string(),
             primitives,
             meshes: model_meshes,
@@ -440,6 +573,29 @@ impl CookedModel {
             skipped_animations: meta.skipped_animations,
             skipped_skins: meta.skipped_skins,
         })
+    }
+
+    /// Where node `n` draws its mesh, in model space (`world` from
+    /// [`CookedModel::node_world`]): at each of its `EXT_mesh_gpu_instancing`
+    /// instances, or once at its own transform.
+    pub fn node_draws(&self, world: &[Mat4], n: usize) -> Vec<Mat4> {
+        match self.instances.get(&n) {
+            Some(i) => i.iter().map(|m| world[n] * *m).collect(),
+            None => vec![world[n]],
+        }
+    }
+
+    /// The index of the variant named `name`.
+    pub fn variant(&self, name: &str) -> Option<usize> {
+        self.variants.iter().position(|v| v == name)
+    }
+
+    /// Primitive `p`'s material under `variant` (`None`: its own).
+    pub fn primitive_material(&self, p: usize, variant: Option<usize>) -> usize {
+        variant
+            .and_then(|v| self.variant_materials.get(v))
+            .and_then(|m| m.iter().find(|(q, _)| *q == p))
+            .map_or(self.primitives[p].material, |&(_, m)| m)
     }
 
     /// Every node's model-space transform.
@@ -514,10 +670,10 @@ impl CookedModel {
     /// any (and the same as [`CookedModel::material`] for one without).
     pub fn standard_material(&self, index: usize, textures: &[TextureHandle]) -> StandardMaterial {
         let mut m = StandardMaterial::from(&self.material(index, textures));
-        self.materials[index]
-            .physical
-            .map(|i| textures.get(i).copied())
-            .apply(&mut m);
+        let c = &self.materials[index];
+        c.physical.map(|i| textures.get(i).copied()).apply(&mut m);
+        m.unlit = c.unlit as u32;
+        m.set_uv_transforms(c.uv_transforms);
         m
     }
 
@@ -559,12 +715,13 @@ impl CookedModel {
                 scene.set_texture_filter(*h, og_render::TextureFilter::Nearest);
             }
         }
-        // A material with physical extensions is added as the standard
-        // material it draws as, the others in their glTF shape.
+        // A material with physical extensions, unlit or a texture
+        // transform is added as the standard material it draws as, the
+        // others in their glTF shape.
         let materials: Vec<MaterialHandle> = (0..self.materials.len())
-            .map(|i| match self.materials[i].physical.present {
-                0 => scene.add_material(self.material(i, &handles)),
-                _ => scene.add_standard_material(self.standard_material(i, &handles)),
+            .map(|i| match self.materials[i].needs_standard() {
+                false => scene.add_material(self.material(i, &handles)),
+                true => scene.add_standard_material(self.standard_material(i, &handles)),
             })
             .collect();
         let meshes: Vec<MeshHandle> = self
@@ -577,13 +734,21 @@ impl CookedModel {
         let mut parts = Vec::new();
         let mut nodes = Vec::new();
         let mut shown = Vec::new();
+        let mut variants = vec![Vec::new(); self.variants.len()];
         if let Some(s) = self.default_scene {
             for n in self.scene_nodes(s) {
                 if let Some(m) = self.nodes[n].mesh {
-                    for p in self.meshes[m].primitives.clone() {
-                        parts.push((meshes[p], materials[self.primitives[p].material], world[n]));
-                        nodes.push(n);
-                        shown.push(node_shown[n]);
+                    // An instanced node: one part per instance, all of one
+                    // mesh and material (the renderer draws them instanced).
+                    for at in self.node_draws(&world, n) {
+                        for p in self.meshes[m].primitives.clone() {
+                            parts.push((meshes[p], materials[self.primitives[p].material], at));
+                            nodes.push(n);
+                            shown.push(node_shown[n]);
+                            for (v, out) in variants.iter_mut().enumerate() {
+                                out.push(materials[self.primitive_material(p, Some(v))]);
+                            }
+                        }
                     }
                 }
             }
@@ -592,6 +757,7 @@ impl CookedModel {
             parts,
             nodes,
             shown,
+            variants,
         }
     }
 }

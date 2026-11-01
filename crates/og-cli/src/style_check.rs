@@ -1357,6 +1357,10 @@ mod tests {
         let count = tris * 3;
         CookedModel {
             id: "m.glb".into(),
+            lights: Vec::new(),
+            instances: Default::default(),
+            variants: Vec::new(),
+            variant_materials: Vec::new(),
             primitives: vec![CookedPrimitive {
                 material: 0,
                 vertices,
