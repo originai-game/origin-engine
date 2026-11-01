@@ -11,6 +11,7 @@ import { nodeGraph, tree } from "./data/tree.ts";
 import { chart } from "./data/charts.ts";
 import { keyValueRows, statCompare } from "./data/rows.ts";
 import { calendar } from "./data/calendar.ts";
+import { foundations } from "./foundations/index.ts";
 
 export const components = Object.freeze({
   card,
@@ -38,4 +39,5 @@ export const components = Object.freeze({
   keyValueRows,
   statCompare,
   calendar,
+  ...foundations,
 });

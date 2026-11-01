@@ -2969,6 +2969,396 @@ module ui {
     returns CalendarResult
   }
 
+  # ── the component library: foundations and controls ─────────────────────
+  # (docs/ui.md §11; TypeScript over the calls above, in
+  # packages/engine/src/ui/foundations and ui/controls). Each control is an
+  # interactive part a style dresses by its state (`Button.base[primary][hover]`,
+  # `Toggle.track[on]`, `Slider.knob[focused]`), moving between its §7.3 state
+  # groups on the style's motion (interaction from input; selection, validity
+  # and load from its values: the probe's ui:state forces each); it takes the
+  # pointer, a touch (44 CSS px at least on a coarse pointer), keys and a pad,
+  # mirrors under a right-to-left locale, grows with the player's text size,
+  # says its role to the accessibility tree and plays the style's sounds.
+
+  enum TextRole {
+    doc "A text's role in the hierarchy (docs/ui.md §12.2): its type step, font and weight come from the style's type tokens for the role."
+    variant body "Running text (the default)."
+    variant display "The largest: a title screen's name, a victory banner. A heading."
+    variant title "A screen's or a dialog's title. A heading."
+    variant heading "A section's heading. A heading."
+    variant label "A control's or a field's name: one line, medium size."
+    variant caption "Secondary detail under something: a timestamp, a hint."
+    variant numeric "A number that changes (a score, a price, a timer): monospaced figures, so it never jiggles."
+  }
+
+  enum TextTone {
+    doc "A text's ink by meaning."
+    variant normal "The style's ink (the default)."
+    variant muted "Secondary: inkMuted (4.5:1 on its panel in every built-in style)."
+    variant faint "Tertiary, never for what must be read: inkFaint."
+    variant primary "The style's primary as ink (a link, a highlight)."
+    variant success "Success ink."
+    variant warn "Warning ink."
+    variant danger "Danger ink."
+    variant info "Information ink."
+    variant inverse "inkInverse, for text on an ink-coloured fill."
+  }
+
+  struct TextBlockDesc {
+    doc "How a text block reads: its role, tone and how it fits."
+    desc true
+    field role TextRole "Its role: the type step, font and whether it is a heading."
+    field tone TextTone "Its ink by meaning."
+    field align TextAlign "How its lines align (start and end follow the writing direction)."
+    field maxLines u32 "The most lines it shows, cut with an ellipsis after (0: all)."
+    field nowrap bool "One line; with ellipsis it shrinks in a row and cuts."
+    field width Option.Size "Its width; null fits the text (a centred or end-aligned text in a column takes the column)."
+    field step Option.TypeStepName "A type step over the role's (a role's size, not its kind, changed)."
+  }
+
+  fn text {
+    doc "Text in a role (docs/ui.md §11, Foundations): the style's type step, font and weight for display, title, heading, body, label, caption or numeric (monospaced figures), in a tone, cut after maxLines with an ellipsis (the probe and a screen reader still read it whole). Display, title and heading are headings to a screen reader (a style's flourish frames them). It grows with the player's text size and wraps between CJK characters by kinsoku. Probe: the element `<id>`, kind label, its whole text."
+    host false
+    param id String "Its id."
+    param value String "The text (a string-table message, og.i18n.t)."
+    param desc TextBlockDesc "Its role, tone and fit."
+    returns Void
+  }
+
+  struct ProseDesc {
+    doc "A passage of rich text: paragraphs at a readable measure."
+    desc true
+    field role TextRole "Each paragraph's role (body by default; caption for fine print)."
+    field tone TextTone "Its ink."
+    field width Option.Size "Its width; null grows, kept to a readable measure (about 66 characters) when measure is set."
+    field measure bool "Keep lines to about 66 characters, as long reading wants." {
+      default true
+    }
+    field gap Option.f32 "Space between paragraphs; null is the style's md." {
+      unit cssPx
+    }
+    field align TextAlign "How its lines align."
+  }
+
+  fn prose {
+    doc "A passage of rich text (og.ui.richText's markup: `[b]`, `[color=…]`, `[icon=…]`, `[link=…]`, `[wave]`…), split into paragraphs at blank lines, at a readable measure, each a text element `<id>/P#i` whose links are focusable children (`<id>/P#i/<link>`). Answers the link clicked this tick (keys and pads press links too). Its region reads as one group to a screen reader."
+    host false
+    param id String "Its id."
+    param markup String "The markup; a blank line starts a paragraph."
+    param desc ProseDesc "Its role, tone and measure."
+    returns RichTextResult
+  }
+
+  enum IconPlate {
+    doc "What an icon sits on."
+    variant none "Nothing (the default)."
+    variant circle "A disc of its tone's soft fill."
+    variant square "A rounded square in the style's control radius."
+  }
+
+  struct IconMarkDesc {
+    doc "An icon's size, tone, plate and badge."
+    desc true
+    field size f32 "Its size; 0 is 24." {
+      unit cssPx
+      min 0
+    }
+    field tone TextTone "Its ink by meaning."
+    field plate IconPlate "What it sits on."
+    field badge String "A count or word over its top end corner (`3`, `NEW`); empty for none. Past 99 it says 99+."
+    field dot bool "A small dot over its top end corner (something new), when there is no badge."
+    field label Option.String "What a screen reader calls it: null is the icon's name (an English word), empty is decoration."
+  }
+
+  fn iconMark {
+    doc "An icon of the style's set (og.ui.icon) in a tone, on a plate, with a badge or a dot: the foundation every icon in a control is. An icon the set lacks is drawn as a mark of the same name where the controls know one (tick, cross, plus, minus, search, chevrons, lock, star, warning, info, eye, reset, globe), else a dot: never a missing glyph. Parts: `Icon.plate[circle]`, `Icon.badge`, `Icon.dot`. Probe: `<id>/Glyph`, `<id>/Badge` (its text)."
+    host false
+    param id String "Its id."
+    param name String "The icon's name in the style's set."
+    param desc IconMarkDesc "Its size, tone, plate, badge and name."
+    returns Void
+  }
+
+  enum ArtFit {
+    doc "How art fills its slot."
+    variant cover "Fills it, cropped around the focal point (the default)."
+    variant contain "Fits inside it whole, the rest the slot's ground."
+    variant fill "Stretched to it."
+  }
+
+  enum ArtMask {
+    doc "What art is cut to."
+    variant round "The slot's rectangle with its radius (the default: the style's slot radius)."
+    variant circle "A circle (a portrait, an avatar)."
+    variant squircle "A continuous-corner square (an app-style icon)."
+    variant none "Square corners."
+  }
+
+  struct ArtSlotDesc {
+    doc "An art slot (docs/ui.md §13): where a generated or authored image goes, and what it shows until it is there."
+    desc true
+    field texture Option.Texture "The art; null shows the placeholder."
+    field kind String "Its kind (Appendix F: keyArt, portrait, itemIcon, cardArt, banner…): the placeholder's silhouette icon is the kind's (an icon of that name in the style's set, else `image`)."
+    field aspect f32 "Width over height; 0 is 1 (a square)." {
+      min 0
+    }
+    field fit ArtFit "How the art fills it."
+    field focal Vector2 "The point cropping keeps, fractions of the art." {
+      default 0.5 0.5
+    }
+    field mask ArtMask "What it is cut to."
+    field radius Option.f32 "The corner radius for mask round; null is the style's slot radius." {
+      unit cssPx
+    }
+    field loading bool "The art is on its way: the placeholder's sheen runs (still under reduced motion)."
+    field frame Option.ThemeColor "A frame around it in this ink (a rarity's, a team's); null is the style's line."
+    field width Option.Size "Its width; null grows."
+    field height Option.Size "Its height; null follows the aspect."
+    field label String "What a screen reader calls it; empty is decoration."
+  }
+
+  fn artSlot {
+    doc "An image or art slot: the texture fitted and cut as its desc says, fading in when it arrives (the style's enter motion; at once under reduced motion); until then a placeholder drawn from the style (a gradient of its soft fills and the kind's silhouette, a passing sheen while loading), never a grey box. Parts: `Art.frame[placeholder][loading]` (a style dresses the frame by state), `Art.placeholder` (the kind's silhouette and sheen), `Art.image`. Role image when labelled. Probe: `<id>`, `<id>/Image` once loaded, `<id>/Placeholder` before."
+    host false
+    param id String "Its id."
+    param desc ArtSlotDesc "The art, its slot and its placeholder."
+    returns Void
+  }
+
+  enum ShapePreset {
+    doc "A decorative shape."
+    variant rect "A rectangle with the radius given (the default)."
+    variant capsule "A rectangle rounded to half its height."
+    variant ellipse "An ellipse (a circle when square)."
+    variant polygon "A regular polygon of `sides`."
+    variant star "A star of `sides` points."
+    variant ring "A ring of `thickness`."
+    variant diamond "A square on its point."
+    variant line "A line across its box (vertical when taller than wide), `thickness` thick."
+  }
+
+  struct ShapeBoxDesc {
+    doc "A decorative shape: its outline, fill, stroke and glow, in the style's colours."
+    desc true
+    field kind ShapePreset "Its outline."
+    field width Option.Size "Its width; null is 24." 
+    field height Option.Size "Its height; null is its width's."
+    field fill Option.ThemeColor "Its fill's colour; null is primary."
+    field fillTo Option.ThemeColor "A second colour: a linear gradient from fill to it at angle."
+    field angle f32 "The gradient's direction, clockwise from the top (0 runs down)." {
+      unit deg
+    }
+    field opacity f32 "Its opacity." {
+      default 1
+      min 0
+      max 1
+    }
+    field stroke Option.ThemeColor "Its outline's colour; null for none."
+    field strokeWidth f32 "Its outline's width; 0 is the style's hairline." {
+      unit cssPx
+      min 0
+    }
+    field glow Option.ThemeColor "An outer glow of this colour; null for none."
+    field radius f32 "A rect's corner radius." {
+      unit cssPx
+      min 0
+    }
+    field sides u32 "A polygon's or a star's corners." {
+      default 5
+      min 3
+    }
+    field thickness f32 "A ring's or a line's thickness." {
+      default 2
+      unit cssPx
+      min 0
+    }
+    field rotation f32 "Its turn, clockwise." {
+      unit deg
+    }
+  }
+
+  fn shapeBox {
+    doc "A decorative shape drawn by the UI pass (docs/ui.md §5.1) in the style's colours: a pip, a gem, a star, a ring, a backdrop blob. It takes no input and is decoration to a screen reader. Part: `Shape.<kind>` (a style dresses `Shape.star` with art). Probe: `<id>`."
+    host false
+    param id String "Its id."
+    param desc ShapeBoxDesc "Its outline and paints."
+    returns Void
+  }
+
+  struct SeparatorDesc {
+    doc "A separator: a hairline, upright or across, with an optional word in its middle."
+    desc true
+    field vertical bool "Upright (between items of a row)."
+    field label String "A word in its middle (`OR`, a date); empty for a plain line."
+    field inset f32 "Space kept at each end." {
+      unit cssPx
+      min 0
+    }
+    field strong bool "The style's strong line (between sections) rather than its hairline."
+  }
+
+  fn separator {
+    doc "A separator between groups: the style's line (its divider ornament where the style has one and no label is given), across or upright, with a label in its middle between two lines. Role separator. Parts: `Separator.line[strong]`. Probe: `<id>`, `<id>/Label`."
+    host false
+    param id String "Its id."
+    param desc SeparatorDesc "Its direction, label and weight."
+    returns Void
+  }
+
+  enum SpaceStep {
+    doc "A step of the style's spacing scale."
+    variant md "The middle step (the default)."
+    variant xxs "The smallest."
+    variant xs "Extra small."
+    variant sm "Small."
+    variant lg "Large."
+    variant xl "Extra large."
+    variant xxl "Twice extra large."
+    variant xl3 "The largest."
+  }
+
+  struct SpaceDesc {
+    doc "Empty space by the style's scale."
+    desc true
+    field step SpaceStep "How much."
+    field grow bool "Take all the space left in its row or column instead (pushes what follows to the end)."
+  }
+
+  fn space {
+    doc "Empty space of a step of the style's spacing scale (so a style's density moves every gap at once), or all the room left. Probe: `<id>`, kind spacer."
+    host false
+    param id String "Its id."
+    param desc SpaceDesc "How much."
+    returns Void
+  }
+
+  struct ViewFrameDesc {
+    doc "A framed 3D view (docs/ui.md §5.5): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad."
+    desc true
+    field texture Option.Texture "The render target's colour; null shows the placeholder (loading)."
+    field width Option.Size "Its width; null grows."
+    field height Option.Size "Its height; null follows the aspect."
+    field aspect f32 "Width over height; 0 is 1." {
+      min 0
+    }
+    field yaw f32 "The turn shown, from game state (keep ViewFrameResult.yaw)." {
+      unit deg
+    }
+    field pitch f32 "The tilt shown." {
+      unit deg
+    }
+    field zoom f32 "The zoom shown." {
+      default 1
+    }
+    field minZoom f32 "The least zoom." {
+      default 0.6
+    }
+    field maxZoom f32 "The most zoom." {
+      default 2.5
+    }
+    field minPitch f32 "The least tilt." {
+      default -30
+      unit deg
+    }
+    field maxPitch f32 "The most tilt." {
+      default 60
+      unit deg
+    }
+    field orbit bool "A drag turns and tilts it, the wheel zooms, Left and Right turn it while it has the focus." {
+      default true
+    }
+    field cameraPosition Vector3 "Its camera's position, for the pointer ray."
+    field cameraTarget Vector3 "What its camera looks at."
+    field fov f32 "Its camera's vertical field of view; 0 gives no ray." {
+      default 50
+      unit deg
+    }
+    field label String "What a screen reader calls it (`Character preview`)."
+    field hint String "A line over its bottom while it has not been turned (`Drag to rotate`); empty for none."
+  }
+
+  struct ViewFrameResult {
+    doc "A view frame's turn, tilt and zoom after this tick's input, and its viewport's answer."
+    field yaw f32 "The turn, to keep and pass back." {
+      unit deg
+    }
+    field pitch f32 "The tilt." {
+      unit deg
+    }
+    field zoom f32 "The zoom."
+    field view SceneViewportInfo "The viewport's answer: its pixel size for the target, the ray, the pointer."
+  }
+
+  fn viewFrame {
+    doc "A viewport in a frame (docs/ui.md §5.5, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with the wheel or a pinch, and turns by 15° per Left or Right while it has the focus (Tab, a pad). Until the target has a texture it shows a placeholder with a spinner. Draw the scene into a target of view.pixelWidth × view.pixelHeight with the yaw, pitch and zoom it answers. Parts: `ViewFrame.frame[focused]`, `ViewFrame.hint`. Role image (its label), its turn as its value. Probe: `<id>`, `<id>/Box/View`, `<id>/Box/HintRow/Hint`."
+    host false
+    param id String "Its id."
+    param desc ViewFrameDesc "The target, its camera and its turn."
+    returns ViewFrameResult
+  }
+
+  enum EmitterPreset {
+    doc "A particle look."
+    variant sparkle "Twinkling stars rising a little (the default): something rare, a reward."
+    variant confetti "Paper squares falling and turning."
+    variant embers "Sparks rising and fading: fire, heat, a forge."
+    variant snow "Flakes drifting down."
+    variant bubbles "Discs rising and swelling."
+    variant dust "Motes drifting slowly every way: ambience behind a menu."
+  }
+
+  struct EmitterDesc {
+    doc "An ambient particle emitter over the area of its parent."
+    desc true
+    field preset EmitterPreset "What it throws."
+    field rate f32 "Particles a second; 0 is the preset's." {
+      min 0
+    }
+    field colors List.ThemeColor "Its colours; empty is the preset's (the style's primary, highlight and gold)."
+    field active bool "It throws (particles already thrown live out their lives when it stops)." {
+      default true
+    }
+    field size f32 "Its particles' size, times the preset's." {
+      default 1
+      min 0
+    }
+  }
+
+  fn emitter {
+    doc "An ambient particle emitter (docs/ui.md §5.5) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. It takes no input, is decoration to a screen reader, and stops under reduced motion. Built on og.ui.particles; every particle is the engine's, seeded and in the snapshot. Probe: `<id>`."
+    host false
+    param id String "Its id."
+    param desc EmitterDesc "Its look and rate."
+    returns Void
+  }
+
+  struct EffectLayerDesc {
+    doc "A subtree drawn offscreen and composited through a material, with the material's one number that matters as `amount`."
+    desc true
+    field material MaterialName "The material."
+    field amount f32 "How far in it is, 0 to 1: dissolve's threshold, shine's sweep, hologram's flicker, glitch's strength, pixelate's cell, blur's radius, colorAdjust's grey." {
+      min 0
+      max 1
+    }
+    field color Option.ThemeColor "The material's colour (a dissolve's edge, a shine, a hologram's tint, an outline); null is the style's highlight."
+    field sweep bool "Run amount from 0 to 1 and back by the clock (a shine passing, a hologram flickering); still under reduced motion."
+    field periodMs f32 "One sweep's length." {
+      default 2400
+      unit ms
+    }
+    field custom Option.UiMaterial "A custom material (material custom)."
+    field params List.f32 "A custom material's parameters."
+  }
+
+  fn effectLayer {
+    doc "A layer (docs/ui.md §5.4): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children."
+    host false
+    param id String "Its id."
+    param desc EffectLayerDesc "The material and its amount."
+    param build UiBuild "Builds what it draws."
+    returns Void
+  }
+
   # ── the UI kit: screen templates (TypeScript over the calls above) ──────
 
   callback UiAction {

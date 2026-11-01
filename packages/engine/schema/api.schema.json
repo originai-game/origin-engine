@@ -8997,6 +8997,25 @@
         "CalendarMark",
         "CalendarDesc",
         "CalendarResult",
+        "TextRole",
+        "TextTone",
+        "TextBlockDesc",
+        "ProseDesc",
+        "IconPlate",
+        "IconMarkDesc",
+        "ArtFit",
+        "ArtMask",
+        "ArtSlotDesc",
+        "ShapePreset",
+        "ShapeBoxDesc",
+        "SeparatorDesc",
+        "SpaceStep",
+        "SpaceDesc",
+        "ViewFrameDesc",
+        "ViewFrameResult",
+        "EmitterPreset",
+        "EmitterDesc",
+        "EffectLayerDesc",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -11609,6 +11628,240 @@
             }
           ],
           "returns": "CalendarResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "text",
+          "doc": "Text in a role (docs/ui.md §11, Foundations): the style's type step, font and weight for display, title, heading, body, label, caption or numeric (monospaced figures), in a tone, cut after maxLines with an ellipsis (the probe and a screen reader still read it whole). Display, title and heading are headings to a screen reader (a style's flourish frames them). It grows with the player's text size and wraps between CJK characters by kinsoku. Probe: the element `<id>`, kind label, its whole text.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "value",
+              "type": "String",
+              "optional": false,
+              "doc": "The text (a string-table message, og.i18n.t)."
+            },
+            {
+              "name": "desc",
+              "type": "TextBlockDesc",
+              "optional": true,
+              "doc": "Its role, tone and fit."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "prose",
+          "doc": "A passage of rich text (og.ui.richText's markup: `[b]`, `[color=…]`, `[icon=…]`, `[link=…]`, `[wave]`…), split into paragraphs at blank lines, at a readable measure, each a text element `<id>/P#i` whose links are focusable children (`<id>/P#i/<link>`). Answers the link clicked this tick (keys and pads press links too). Its region reads as one group to a screen reader.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "markup",
+              "type": "String",
+              "optional": false,
+              "doc": "The markup; a blank line starts a paragraph."
+            },
+            {
+              "name": "desc",
+              "type": "ProseDesc",
+              "optional": true,
+              "doc": "Its role, tone and measure."
+            }
+          ],
+          "returns": "RichTextResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "iconMark",
+          "doc": "An icon of the style's set (og.ui.icon) in a tone, on a plate, with a badge or a dot: the foundation every icon in a control is. An icon the set lacks is drawn as a mark of the same name where the controls know one (tick, cross, plus, minus, search, chevrons, lock, star, warning, info, eye, reset, globe), else a dot: never a missing glyph. Parts: `Icon.plate[circle]`, `Icon.badge`, `Icon.dot`. Probe: `<id>/Glyph`, `<id>/Badge` (its text).",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The icon's name in the style's set."
+            },
+            {
+              "name": "desc",
+              "type": "IconMarkDesc",
+              "optional": true,
+              "doc": "Its size, tone, plate, badge and name."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "artSlot",
+          "doc": "An image or art slot: the texture fitted and cut as its desc says, fading in when it arrives (the style's enter motion; at once under reduced motion); until then a placeholder drawn from the style (a gradient of its soft fills and the kind's silhouette, a passing sheen while loading), never a grey box. Parts: `Art.frame[placeholder][loading]` (a style dresses the frame by state), `Art.placeholder` (the kind's silhouette and sheen), `Art.image`. Role image when labelled. Probe: `<id>`, `<id>/Image` once loaded, `<id>/Placeholder` before.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ArtSlotDesc",
+              "optional": true,
+              "doc": "The art, its slot and its placeholder."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "shapeBox",
+          "doc": "A decorative shape drawn by the UI pass (docs/ui.md §5.1) in the style's colours: a pip, a gem, a star, a ring, a backdrop blob. It takes no input and is decoration to a screen reader. Part: `Shape.<kind>` (a style dresses `Shape.star` with art). Probe: `<id>`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ShapeBoxDesc",
+              "optional": true,
+              "doc": "Its outline and paints."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "separator",
+          "doc": "A separator between groups: the style's line (its divider ornament where the style has one and no label is given), across or upright, with a label in its middle between two lines. Role separator. Parts: `Separator.line[strong]`. Probe: `<id>`, `<id>/Label`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SeparatorDesc",
+              "optional": true,
+              "doc": "Its direction, label and weight."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "space",
+          "doc": "Empty space of a step of the style's spacing scale (so a style's density moves every gap at once), or all the room left. Probe: `<id>`, kind spacer.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SpaceDesc",
+              "optional": true,
+              "doc": "How much."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "viewFrame",
+          "doc": "A viewport in a frame (docs/ui.md §5.5, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with the wheel or a pinch, and turns by 15° per Left or Right while it has the focus (Tab, a pad). Until the target has a texture it shows a placeholder with a spinner. Draw the scene into a target of view.pixelWidth × view.pixelHeight with the yaw, pitch and zoom it answers. Parts: `ViewFrame.frame[focused]`, `ViewFrame.hint`. Role image (its label), its turn as its value. Probe: `<id>`, `<id>/Box/View`, `<id>/Box/HintRow/Hint`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ViewFrameDesc",
+              "optional": true,
+              "doc": "The target, its camera and its turn."
+            }
+          ],
+          "returns": "ViewFrameResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "emitter",
+          "doc": "An ambient particle emitter (docs/ui.md §5.5) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. It takes no input, is decoration to a screen reader, and stops under reduced motion. Built on og.ui.particles; every particle is the engine's, seeded and in the snapshot. Probe: `<id>`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "EmitterDesc",
+              "optional": true,
+              "doc": "Its look and rate."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "effectLayer",
+          "doc": "A layer (docs/ui.md §5.4): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "EffectLayerDesc",
+              "optional": false,
+              "doc": "The material and its amount."
+            },
+            {
+              "name": "build",
+              "type": "UiBuild",
+              "optional": false,
+              "doc": "Builds what it draws."
+            }
+          ],
+          "returns": "Void",
           "publish": true,
           "host": false
         },
@@ -41665,6 +41918,902 @@
         "month",
         "changed"
       ],
+      "additionalProperties": false
+    },
+    "TextRole": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A text's role in the hierarchy (docs/ui.md §12.2): its type step, font and weight come from the style's type tokens for the role.",
+      "type": "string",
+      "enum": [
+        "body",
+        "display",
+        "title",
+        "heading",
+        "label",
+        "caption",
+        "numeric"
+      ],
+      "x-og-variants": {
+        "body": "Running text (the default).",
+        "display": "The largest: a title screen's name, a victory banner. A heading.",
+        "title": "A screen's or a dialog's title. A heading.",
+        "heading": "A section's heading. A heading.",
+        "label": "A control's or a field's name: one line, medium size.",
+        "caption": "Secondary detail under something: a timestamp, a hint.",
+        "numeric": "A number that changes (a score, a price, a timer): monospaced figures, so it never jiggles."
+      }
+    },
+    "TextTone": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A text's ink by meaning.",
+      "type": "string",
+      "enum": [
+        "normal",
+        "muted",
+        "faint",
+        "primary",
+        "success",
+        "warn",
+        "danger",
+        "info",
+        "inverse"
+      ],
+      "x-og-variants": {
+        "normal": "The style's ink (the default).",
+        "muted": "Secondary: inkMuted (4.5:1 on its panel in every built-in style).",
+        "faint": "Tertiary, never for what must be read: inkFaint.",
+        "primary": "The style's primary as ink (a link, a highlight).",
+        "success": "Success ink.",
+        "warn": "Warning ink.",
+        "danger": "Danger ink.",
+        "info": "Information ink.",
+        "inverse": "inkInverse, for text on an ink-coloured fill."
+      }
+    },
+    "TextBlockDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "How a text block reads: its role, tone and how it fits.",
+      "type": "object",
+      "properties": {
+        "role": {
+          "$ref": "#/$defs/TextRole",
+          "description": "Its role: the type step, font and whether it is a heading.",
+          "default": "body"
+        },
+        "tone": {
+          "$ref": "#/$defs/TextTone",
+          "description": "Its ink by meaning.",
+          "default": "normal"
+        },
+        "align": {
+          "$ref": "#/$defs/TextAlign",
+          "description": "How its lines align (start and end follow the writing direction).",
+          "default": "start"
+        },
+        "maxLines": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most lines it shows, cut with an ellipsis after (0: all).",
+          "default": 0
+        },
+        "nowrap": {
+          "type": "boolean",
+          "description": "One line; with ellipsis it shrinks in a row and cuts.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits the text (a centred or end-aligned text in a column takes the column).",
+          "default": null
+        },
+        "step": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TypeStepName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A type step over the role's (a role's size, not its kind, changed).",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProseDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A passage of rich text: paragraphs at a readable measure.",
+      "type": "object",
+      "properties": {
+        "role": {
+          "$ref": "#/$defs/TextRole",
+          "description": "Each paragraph's role (body by default; caption for fine print).",
+          "default": "body"
+        },
+        "tone": {
+          "$ref": "#/$defs/TextTone",
+          "description": "Its ink.",
+          "default": "normal"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows, kept to a readable measure (about 66 characters) when measure is set.",
+          "default": null
+        },
+        "measure": {
+          "type": "boolean",
+          "description": "Keep lines to about 66 characters, as long reading wants.",
+          "default": true
+        },
+        "gap": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Space between paragraphs; null is the style's md.",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "align": {
+          "$ref": "#/$defs/TextAlign",
+          "description": "How its lines align.",
+          "default": "start"
+        }
+      },
+      "additionalProperties": false
+    },
+    "IconPlate": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What an icon sits on.",
+      "type": "string",
+      "enum": [
+        "none",
+        "circle",
+        "square"
+      ],
+      "x-og-variants": {
+        "none": "Nothing (the default).",
+        "circle": "A disc of its tone's soft fill.",
+        "square": "A rounded square in the style's control radius."
+      }
+    },
+    "IconMarkDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An icon's size, tone, plate and badge.",
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "number",
+          "description": "Its size; 0 is 24.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "tone": {
+          "$ref": "#/$defs/TextTone",
+          "description": "Its ink by meaning.",
+          "default": "normal"
+        },
+        "plate": {
+          "$ref": "#/$defs/IconPlate",
+          "description": "What it sits on.",
+          "default": "none"
+        },
+        "badge": {
+          "type": "string",
+          "description": "A count or word over its top end corner (`3`, `NEW`); empty for none. Past 99 it says 99+.",
+          "default": ""
+        },
+        "dot": {
+          "type": "boolean",
+          "description": "A small dot over its top end corner (something new), when there is no badge.",
+          "default": false
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What a screen reader calls it: null is the icon's name (an English word), empty is decoration.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArtFit": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How art fills its slot.",
+      "type": "string",
+      "enum": [
+        "cover",
+        "contain",
+        "fill"
+      ],
+      "x-og-variants": {
+        "cover": "Fills it, cropped around the focal point (the default).",
+        "contain": "Fits inside it whole, the rest the slot's ground.",
+        "fill": "Stretched to it."
+      }
+    },
+    "ArtMask": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What art is cut to.",
+      "type": "string",
+      "enum": [
+        "round",
+        "circle",
+        "squircle",
+        "none"
+      ],
+      "x-og-variants": {
+        "round": "The slot's rectangle with its radius (the default: the style's slot radius).",
+        "circle": "A circle (a portrait, an avatar).",
+        "squircle": "A continuous-corner square (an app-style icon).",
+        "none": "Square corners."
+      }
+    },
+    "ArtSlotDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An art slot (docs/ui.md §13): where a generated or authored image goes, and what it shows until it is there.",
+      "type": "object",
+      "properties": {
+        "texture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The art; null shows the placeholder.",
+          "default": null
+        },
+        "kind": {
+          "type": "string",
+          "description": "Its kind (Appendix F: keyArt, portrait, itemIcon, cardArt, banner…): the placeholder's silhouette icon is the kind's (an icon of that name in the style's set, else `image`).",
+          "default": ""
+        },
+        "aspect": {
+          "type": "number",
+          "description": "Width over height; 0 is 1 (a square).",
+          "default": 0,
+          "minimum": 0
+        },
+        "fit": {
+          "$ref": "#/$defs/ArtFit",
+          "description": "How the art fills it.",
+          "default": "cover"
+        },
+        "focal": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The point cropping keeps, fractions of the art.",
+          "default": {
+            "x": 0.5,
+            "y": 0.5
+          }
+        },
+        "mask": {
+          "$ref": "#/$defs/ArtMask",
+          "description": "What it is cut to.",
+          "default": "round"
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The corner radius for mask round; null is the style's slot radius.",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "loading": {
+          "type": "boolean",
+          "description": "The art is on its way: the placeholder's sheen runs (still under reduced motion).",
+          "default": false
+        },
+        "frame": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ThemeColor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A frame around it in this ink (a rarity's, a team's); null is the style's line.",
+          "default": null
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height; null follows the aspect.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls it; empty is decoration.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShapePreset": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A decorative shape.",
+      "type": "string",
+      "enum": [
+        "rect",
+        "capsule",
+        "ellipse",
+        "polygon",
+        "star",
+        "ring",
+        "diamond",
+        "line"
+      ],
+      "x-og-variants": {
+        "rect": "A rectangle with the radius given (the default).",
+        "capsule": "A rectangle rounded to half its height.",
+        "ellipse": "An ellipse (a circle when square).",
+        "polygon": "A regular polygon of `sides`.",
+        "star": "A star of `sides` points.",
+        "ring": "A ring of `thickness`.",
+        "diamond": "A square on its point.",
+        "line": "A line across its box (vertical when taller than wide), `thickness` thick."
+      }
+    },
+    "ShapeBoxDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A decorative shape: its outline, fill, stroke and glow, in the style's colours.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ShapePreset",
+          "description": "Its outline.",
+          "default": "rect"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null is 24.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height; null is its width's.",
+          "default": null
+        },
+        "fill": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ThemeColor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its fill's colour; null is primary.",
+          "default": null
+        },
+        "fillTo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ThemeColor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A second colour: a linear gradient from fill to it at angle.",
+          "default": null
+        },
+        "angle": {
+          "type": "number",
+          "description": "The gradient's direction, clockwise from the top (0 runs down).",
+          "default": 0,
+          "x-og-unit": "deg"
+        },
+        "opacity": {
+          "type": "number",
+          "description": "Its opacity.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "stroke": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ThemeColor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its outline's colour; null for none.",
+          "default": null
+        },
+        "strokeWidth": {
+          "type": "number",
+          "description": "Its outline's width; 0 is the style's hairline.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "glow": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ThemeColor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An outer glow of this colour; null for none.",
+          "default": null
+        },
+        "radius": {
+          "type": "number",
+          "description": "A rect's corner radius.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "sides": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A polygon's or a star's corners.",
+          "default": 5,
+          "minimum": 3
+        },
+        "thickness": {
+          "type": "number",
+          "description": "A ring's or a line's thickness.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "rotation": {
+          "type": "number",
+          "description": "Its turn, clockwise.",
+          "default": 0,
+          "x-og-unit": "deg"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SeparatorDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A separator: a hairline, upright or across, with an optional word in its middle.",
+      "type": "object",
+      "properties": {
+        "vertical": {
+          "type": "boolean",
+          "description": "Upright (between items of a row).",
+          "default": false
+        },
+        "label": {
+          "type": "string",
+          "description": "A word in its middle (`OR`, a date); empty for a plain line.",
+          "default": ""
+        },
+        "inset": {
+          "type": "number",
+          "description": "Space kept at each end.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "strong": {
+          "type": "boolean",
+          "description": "The style's strong line (between sections) rather than its hairline.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "SpaceStep": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A step of the style's spacing scale.",
+      "type": "string",
+      "enum": [
+        "md",
+        "xxs",
+        "xs",
+        "sm",
+        "lg",
+        "xl",
+        "xxl",
+        "xl3"
+      ],
+      "x-og-variants": {
+        "md": "The middle step (the default).",
+        "xxs": "The smallest.",
+        "xs": "Extra small.",
+        "sm": "Small.",
+        "lg": "Large.",
+        "xl": "Extra large.",
+        "xxl": "Twice extra large.",
+        "xl3": "The largest."
+      }
+    },
+    "SpaceDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Empty space by the style's scale.",
+      "type": "object",
+      "properties": {
+        "step": {
+          "$ref": "#/$defs/SpaceStep",
+          "description": "How much.",
+          "default": "md"
+        },
+        "grow": {
+          "type": "boolean",
+          "description": "Take all the space left in its row or column instead (pushes what follows to the end).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ViewFrameDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A framed 3D view (docs/ui.md §5.5): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad.",
+      "type": "object",
+      "properties": {
+        "texture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The render target's colour; null shows the placeholder (loading).",
+          "default": null
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height; null follows the aspect.",
+          "default": null
+        },
+        "aspect": {
+          "type": "number",
+          "description": "Width over height; 0 is 1.",
+          "default": 0,
+          "minimum": 0
+        },
+        "yaw": {
+          "type": "number",
+          "description": "The turn shown, from game state (keep ViewFrameResult.yaw).",
+          "default": 0,
+          "x-og-unit": "deg"
+        },
+        "pitch": {
+          "type": "number",
+          "description": "The tilt shown.",
+          "default": 0,
+          "x-og-unit": "deg"
+        },
+        "zoom": {
+          "type": "number",
+          "description": "The zoom shown.",
+          "default": 1
+        },
+        "minZoom": {
+          "type": "number",
+          "description": "The least zoom.",
+          "default": 0.6
+        },
+        "maxZoom": {
+          "type": "number",
+          "description": "The most zoom.",
+          "default": 2.5
+        },
+        "minPitch": {
+          "type": "number",
+          "description": "The least tilt.",
+          "default": -30,
+          "x-og-unit": "deg"
+        },
+        "maxPitch": {
+          "type": "number",
+          "description": "The most tilt.",
+          "default": 60,
+          "x-og-unit": "deg"
+        },
+        "orbit": {
+          "type": "boolean",
+          "description": "A drag turns and tilts it, the wheel zooms, Left and Right turn it while it has the focus.",
+          "default": true
+        },
+        "cameraPosition": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its camera's position, for the pointer ray.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "cameraTarget": {
+          "$ref": "#/$defs/Vector3",
+          "description": "What its camera looks at.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "fov": {
+          "type": "number",
+          "description": "Its camera's vertical field of view; 0 gives no ray.",
+          "default": 50,
+          "x-og-unit": "deg"
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls it (`Character preview`).",
+          "default": ""
+        },
+        "hint": {
+          "type": "string",
+          "description": "A line over its bottom while it has not been turned (`Drag to rotate`); empty for none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "ViewFrameResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A view frame's turn, tilt and zoom after this tick's input, and its viewport's answer.",
+      "type": "object",
+      "properties": {
+        "yaw": {
+          "type": "number",
+          "description": "The turn, to keep and pass back.",
+          "x-og-unit": "deg"
+        },
+        "pitch": {
+          "type": "number",
+          "description": "The tilt.",
+          "x-og-unit": "deg"
+        },
+        "zoom": {
+          "type": "number",
+          "description": "The zoom."
+        },
+        "view": {
+          "$ref": "#/$defs/SceneViewportInfo",
+          "description": "The viewport's answer: its pixel size for the target, the ray, the pointer."
+        }
+      },
+      "required": [
+        "yaw",
+        "pitch",
+        "zoom",
+        "view"
+      ],
+      "additionalProperties": false
+    },
+    "EmitterPreset": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A particle look.",
+      "type": "string",
+      "enum": [
+        "sparkle",
+        "confetti",
+        "embers",
+        "snow",
+        "bubbles",
+        "dust"
+      ],
+      "x-og-variants": {
+        "sparkle": "Twinkling stars rising a little (the default): something rare, a reward.",
+        "confetti": "Paper squares falling and turning.",
+        "embers": "Sparks rising and fading: fire, heat, a forge.",
+        "snow": "Flakes drifting down.",
+        "bubbles": "Discs rising and swelling.",
+        "dust": "Motes drifting slowly every way: ambience behind a menu."
+      }
+    },
+    "EmitterDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An ambient particle emitter over the area of its parent.",
+      "type": "object",
+      "properties": {
+        "preset": {
+          "$ref": "#/$defs/EmitterPreset",
+          "description": "What it throws.",
+          "default": "sparkle"
+        },
+        "rate": {
+          "type": "number",
+          "description": "Particles a second; 0 is the preset's.",
+          "default": 0,
+          "minimum": 0
+        },
+        "colors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ThemeColor"
+          },
+          "description": "Its colours; empty is the preset's (the style's primary, highlight and gold).",
+          "default": []
+        },
+        "active": {
+          "type": "boolean",
+          "description": "It throws (particles already thrown live out their lives when it stops).",
+          "default": true
+        },
+        "size": {
+          "type": "number",
+          "description": "Its particles' size, times the preset's.",
+          "default": 1,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "EffectLayerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A subtree drawn offscreen and composited through a material, with the material's one number that matters as `amount`.",
+      "type": "object",
+      "properties": {
+        "material": {
+          "$ref": "#/$defs/MaterialName",
+          "description": "The material.",
+          "default": "plain"
+        },
+        "amount": {
+          "type": "number",
+          "description": "How far in it is, 0 to 1: dissolve's threshold, shine's sweep, hologram's flicker, glitch's strength, pixelate's cell, blur's radius, colorAdjust's grey.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ThemeColor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The material's colour (a dissolve's edge, a shine, a hologram's tint, an outline); null is the style's highlight.",
+          "default": null
+        },
+        "sweep": {
+          "type": "boolean",
+          "description": "Run amount from 0 to 1 and back by the clock (a shine passing, a hologram flickering); still under reduced motion.",
+          "default": false
+        },
+        "periodMs": {
+          "type": "number",
+          "description": "One sweep's length.",
+          "default": 2400,
+          "x-og-unit": "ms"
+        },
+        "custom": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UiMaterial"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A custom material (material custom).",
+          "default": null
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "A custom material's parameters.",
+          "default": []
+        }
+      },
       "additionalProperties": false
     },
     "MenuItem": {

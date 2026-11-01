@@ -23223,6 +23223,711 @@ export interface CalendarResult {
 
 
 /**
+ * A text's role in the hierarchy (docs/ui.md §12.2): its type step, font and weight come from the style's type tokens for the role.
+ * - `"body"`: Running text (the default).
+ * - `"display"`: The largest: a title screen's name, a victory banner. A heading.
+ * - `"title"`: A screen's or a dialog's title. A heading.
+ * - `"heading"`: A section's heading. A heading.
+ * - `"label"`: A control's or a field's name: one line, medium size.
+ * - `"caption"`: Secondary detail under something: a timestamp, a hint.
+ * - `"numeric"`: A number that changes (a score, a price, a timer): monospaced figures, so it never jiggles.
+ */
+export type TextRole = "body" | "display" | "title" | "heading" | "label" | "caption" | "numeric";
+
+/**
+ * A text's ink by meaning.
+ * - `"normal"`: The style's ink (the default).
+ * - `"muted"`: Secondary: inkMuted (4.5:1 on its panel in every built-in style).
+ * - `"faint"`: Tertiary, never for what must be read: inkFaint.
+ * - `"primary"`: The style's primary as ink (a link, a highlight).
+ * - `"success"`: Success ink.
+ * - `"warn"`: Warning ink.
+ * - `"danger"`: Danger ink.
+ * - `"info"`: Information ink.
+ * - `"inverse"`: inkInverse, for text on an ink-coloured fill.
+ */
+export type TextTone = "normal" | "muted" | "faint" | "primary" | "success" | "warn" | "danger" | "info" | "inverse";
+
+/**
+ * How a text block reads: its role, tone and how it fits.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TextBlockDesc {
+  /**
+   * Its role: the type step, font and whether it is a heading.
+   *
+   * @default "body"
+   */
+  readonly role?: TextRole;
+  /**
+   * Its ink by meaning.
+   *
+   * @default "normal"
+   */
+  readonly tone?: TextTone;
+  /**
+   * How its lines align (start and end follow the writing direction).
+   *
+   * @default "start"
+   */
+  readonly align?: TextAlign;
+  /**
+   * The most lines it shows, cut with an ellipsis after (0: all).
+   *
+   * @default 0
+   */
+  readonly maxLines?: number;
+  /**
+   * One line; with ellipsis it shrinks in a row and cuts.
+   *
+   * @default false
+   */
+  readonly nowrap?: boolean;
+  /**
+   * Its width; null fits the text (a centred or end-aligned text in a column takes the column).
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * A type step over the role's (a role's size, not its kind, changed).
+   *
+   * @default null
+   */
+  readonly step?: TypeStepName | null;
+}
+
+
+/**
+ * A passage of rich text: paragraphs at a readable measure.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ProseDesc {
+  /**
+   * Each paragraph's role (body by default; caption for fine print).
+   *
+   * @default "body"
+   */
+  readonly role?: TextRole;
+  /**
+   * Its ink.
+   *
+   * @default "normal"
+   */
+  readonly tone?: TextTone;
+  /**
+   * Its width; null grows, kept to a readable measure (about 66 characters) when measure is set.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Keep lines to about 66 characters, as long reading wants.
+   *
+   * @default true
+   */
+  readonly measure?: boolean;
+  /**
+   * Space between paragraphs; null is the style's md.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number | null;
+  /**
+   * How its lines align.
+   *
+   * @default "start"
+   */
+  readonly align?: TextAlign;
+}
+
+
+/**
+ * What an icon sits on.
+ * - `"none"`: Nothing (the default).
+ * - `"circle"`: A disc of its tone's soft fill.
+ * - `"square"`: A rounded square in the style's control radius.
+ */
+export type IconPlate = "none" | "circle" | "square";
+
+/**
+ * An icon's size, tone, plate and badge.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface IconMarkDesc {
+  /**
+   * Its size; 0 is 24.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * Its ink by meaning.
+   *
+   * @default "normal"
+   */
+  readonly tone?: TextTone;
+  /**
+   * What it sits on.
+   *
+   * @default "none"
+   */
+  readonly plate?: IconPlate;
+  /**
+   * A count or word over its top end corner (`3`, `NEW`); empty for none. Past 99 it says 99+.
+   *
+   * @default ""
+   */
+  readonly badge?: string;
+  /**
+   * A small dot over its top end corner (something new), when there is no badge.
+   *
+   * @default false
+   */
+  readonly dot?: boolean;
+  /**
+   * What a screen reader calls it: null is the icon's name (an English word), empty is decoration.
+   *
+   * @default null
+   */
+  readonly label?: string | null;
+}
+
+
+/**
+ * How art fills its slot.
+ * - `"cover"`: Fills it, cropped around the focal point (the default).
+ * - `"contain"`: Fits inside it whole, the rest the slot's ground.
+ * - `"fill"`: Stretched to it.
+ */
+export type ArtFit = "cover" | "contain" | "fill";
+
+/**
+ * What art is cut to.
+ * - `"round"`: The slot's rectangle with its radius (the default: the style's slot radius).
+ * - `"circle"`: A circle (a portrait, an avatar).
+ * - `"squircle"`: A continuous-corner square (an app-style icon).
+ * - `"none"`: Square corners.
+ */
+export type ArtMask = "round" | "circle" | "squircle" | "none";
+
+/**
+ * An art slot (docs/ui.md §13): where a generated or authored image goes, and what it shows until it is there.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ArtSlotDesc {
+  /**
+   * The art; null shows the placeholder.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * Its kind (Appendix F: keyArt, portrait, itemIcon, cardArt, banner…): the placeholder's silhouette icon is the kind's (an icon of that name in the style's set, else `image`).
+   *
+   * @default ""
+   */
+  readonly kind?: string;
+  /**
+   * Width over height; 0 is 1 (a square).
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly aspect?: number;
+  /**
+   * How the art fills it.
+   *
+   * @default "cover"
+   */
+  readonly fit?: ArtFit;
+  /**
+   * The point cropping keeps, fractions of the art.
+   *
+   * @default { x: 0.5, y: 0.5 }
+   */
+  readonly focal?: Vector2;
+  /**
+   * What it is cut to.
+   *
+   * @default "round"
+   */
+  readonly mask?: ArtMask;
+  /**
+   * The corner radius for mask round; null is the style's slot radius.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly radius?: number | null;
+  /**
+   * The art is on its way: the placeholder's sheen runs (still under reduced motion).
+   *
+   * @default false
+   */
+  readonly loading?: boolean;
+  /**
+   * A frame around it in this ink (a rarity's, a team's); null is the style's line.
+   *
+   * @default null
+   */
+  readonly frame?: ThemeColor | null;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; null follows the aspect.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * What a screen reader calls it; empty is decoration.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+
+/**
+ * A decorative shape.
+ * - `"rect"`: A rectangle with the radius given (the default).
+ * - `"capsule"`: A rectangle rounded to half its height.
+ * - `"ellipse"`: An ellipse (a circle when square).
+ * - `"polygon"`: A regular polygon of `sides`.
+ * - `"star"`: A star of `sides` points.
+ * - `"ring"`: A ring of `thickness`.
+ * - `"diamond"`: A square on its point.
+ * - `"line"`: A line across its box (vertical when taller than wide), `thickness` thick.
+ */
+export type ShapePreset = "rect" | "capsule" | "ellipse" | "polygon" | "star" | "ring" | "diamond" | "line";
+
+/**
+ * A decorative shape: its outline, fill, stroke and glow, in the style's colours.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ShapeBoxDesc {
+  /**
+   * Its outline.
+   *
+   * @default "rect"
+   */
+  readonly kind?: ShapePreset;
+  /**
+   * Its width; null is 24.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; null is its width's.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * Its fill's colour; null is primary.
+   *
+   * @default null
+   */
+  readonly fill?: ThemeColor | null;
+  /**
+   * A second colour: a linear gradient from fill to it at angle.
+   *
+   * @default null
+   */
+  readonly fillTo?: ThemeColor | null;
+  /**
+   * The gradient's direction, clockwise from the top (0 runs down).
+   *
+   * @default 0
+   * @unit deg (degrees)
+   */
+  readonly angle?: number;
+  /**
+   * Its opacity.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  readonly opacity?: number;
+  /**
+   * Its outline's colour; null for none.
+   *
+   * @default null
+   */
+  readonly stroke?: ThemeColor | null;
+  /**
+   * Its outline's width; 0 is the style's hairline.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly strokeWidth?: number;
+  /**
+   * An outer glow of this colour; null for none.
+   *
+   * @default null
+   */
+  readonly glow?: ThemeColor | null;
+  /**
+   * A rect's corner radius.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly radius?: number;
+  /**
+   * A polygon's or a star's corners.
+   *
+   * @default 5
+   * @range 3..
+   */
+  readonly sides?: number;
+  /**
+   * A ring's or a line's thickness.
+   *
+   * @default 2
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly thickness?: number;
+  /**
+   * Its turn, clockwise.
+   *
+   * @default 0
+   * @unit deg (degrees)
+   */
+  readonly rotation?: number;
+}
+
+
+/**
+ * A separator: a hairline, upright or across, with an optional word in its middle.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SeparatorDesc {
+  /**
+   * Upright (between items of a row).
+   *
+   * @default false
+   */
+  readonly vertical?: boolean;
+  /**
+   * A word in its middle (`OR`, a date); empty for a plain line.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Space kept at each end.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly inset?: number;
+  /**
+   * The style's strong line (between sections) rather than its hairline.
+   *
+   * @default false
+   */
+  readonly strong?: boolean;
+}
+
+
+/**
+ * A step of the style's spacing scale.
+ * - `"md"`: The middle step (the default).
+ * - `"xxs"`: The smallest.
+ * - `"xs"`: Extra small.
+ * - `"sm"`: Small.
+ * - `"lg"`: Large.
+ * - `"xl"`: Extra large.
+ * - `"xxl"`: Twice extra large.
+ * - `"xl3"`: The largest.
+ */
+export type SpaceStep = "md" | "xxs" | "xs" | "sm" | "lg" | "xl" | "xxl" | "xl3";
+
+/**
+ * Empty space by the style's scale.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SpaceDesc {
+  /**
+   * How much.
+   *
+   * @default "md"
+   */
+  readonly step?: SpaceStep;
+  /**
+   * Take all the space left in its row or column instead (pushes what follows to the end).
+   *
+   * @default false
+   */
+  readonly grow?: boolean;
+}
+
+
+/**
+ * A framed 3D view (docs/ui.md §5.5): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ViewFrameDesc {
+  /**
+   * The render target's colour; null shows the placeholder (loading).
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; null follows the aspect.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * Width over height; 0 is 1.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly aspect?: number;
+  /**
+   * The turn shown, from game state (keep ViewFrameResult.yaw).
+   *
+   * @default 0
+   * @unit deg (degrees)
+   */
+  readonly yaw?: number;
+  /**
+   * The tilt shown.
+   *
+   * @default 0
+   * @unit deg (degrees)
+   */
+  readonly pitch?: number;
+  /**
+   * The zoom shown.
+   *
+   * @default 1
+   */
+  readonly zoom?: number;
+  /**
+   * The least zoom.
+   *
+   * @default 0.6
+   */
+  readonly minZoom?: number;
+  /**
+   * The most zoom.
+   *
+   * @default 2.5
+   */
+  readonly maxZoom?: number;
+  /**
+   * The least tilt.
+   *
+   * @default -30
+   * @unit deg (degrees)
+   */
+  readonly minPitch?: number;
+  /**
+   * The most tilt.
+   *
+   * @default 60
+   * @unit deg (degrees)
+   */
+  readonly maxPitch?: number;
+  /**
+   * A drag turns and tilts it, the wheel zooms, Left and Right turn it while it has the focus.
+   *
+   * @default true
+   */
+  readonly orbit?: boolean;
+  /**
+   * Its camera's position, for the pointer ray.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly cameraPosition?: Vector3;
+  /**
+   * What its camera looks at.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly cameraTarget?: Vector3;
+  /**
+   * Its camera's vertical field of view; 0 gives no ray.
+   *
+   * @default 50
+   * @unit deg (degrees)
+   */
+  readonly fov?: number;
+  /**
+   * What a screen reader calls it (`Character preview`).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * A line over its bottom while it has not been turned (`Drag to rotate`); empty for none.
+   *
+   * @default ""
+   */
+  readonly hint?: string;
+}
+
+/** A view frame's turn, tilt and zoom after this tick's input, and its viewport's answer. */
+export interface ViewFrameResult {
+  /**
+   * The turn, to keep and pass back.
+   *
+   * @unit deg (degrees)
+   */
+  readonly yaw: number;
+  /**
+   * The tilt.
+   *
+   * @unit deg (degrees)
+   */
+  readonly pitch: number;
+  /** The zoom. */
+  readonly zoom: number;
+  /** The viewport's answer: its pixel size for the target, the ray, the pointer. */
+  readonly view: SceneViewportInfo;
+}
+
+
+/**
+ * A particle look.
+ * - `"sparkle"`: Twinkling stars rising a little (the default): something rare, a reward.
+ * - `"confetti"`: Paper squares falling and turning.
+ * - `"embers"`: Sparks rising and fading: fire, heat, a forge.
+ * - `"snow"`: Flakes drifting down.
+ * - `"bubbles"`: Discs rising and swelling.
+ * - `"dust"`: Motes drifting slowly every way: ambience behind a menu.
+ */
+export type EmitterPreset = "sparkle" | "confetti" | "embers" | "snow" | "bubbles" | "dust";
+
+/**
+ * An ambient particle emitter over the area of its parent.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface EmitterDesc {
+  /**
+   * What it throws.
+   *
+   * @default "sparkle"
+   */
+  readonly preset?: EmitterPreset;
+  /**
+   * Particles a second; 0 is the preset's.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly rate?: number;
+  /**
+   * Its colours; empty is the preset's (the style's primary, highlight and gold).
+   *
+   * @default []
+   */
+  readonly colors?: readonly ThemeColor[];
+  /**
+   * It throws (particles already thrown live out their lives when it stops).
+   *
+   * @default true
+   */
+  readonly active?: boolean;
+  /**
+   * Its particles' size, times the preset's.
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly size?: number;
+}
+
+
+/**
+ * A subtree drawn offscreen and composited through a material, with the material's one number that matters as `amount`.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface EffectLayerDesc {
+  /**
+   * The material.
+   *
+   * @default "plain"
+   */
+  readonly material?: MaterialName;
+  /**
+   * How far in it is, 0 to 1: dissolve's threshold, shine's sweep, hologram's flicker, glitch's strength, pixelate's cell, blur's radius, colorAdjust's grey.
+   *
+   * @default 0
+   * @range 0..1
+   */
+  readonly amount?: number;
+  /**
+   * The material's colour (a dissolve's edge, a shine, a hologram's tint, an outline); null is the style's highlight.
+   *
+   * @default null
+   */
+  readonly color?: ThemeColor | null;
+  /**
+   * Run amount from 0 to 1 and back by the clock (a shine passing, a hologram flickering); still under reduced motion.
+   *
+   * @default false
+   */
+  readonly sweep?: boolean;
+  /**
+   * One sweep's length.
+   *
+   * @default 2400
+   * @unit ms (milliseconds)
+   */
+  readonly periodMs?: number;
+  /**
+   * A custom material (material custom).
+   *
+   * @default null
+   */
+  readonly custom?: UiMaterial | null;
+  /**
+   * A custom material's parameters.
+   *
+   * @default []
+   */
+  readonly params?: readonly number[];
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -34823,6 +35528,80 @@ export declare namespace og {
      * @param desc The month, today, the selection and marks.
      */
     function calendar(id: string, desc?: CalendarDesc): CalendarResult;
+    /**
+     * Text in a role (docs/ui.md §11, Foundations): the style's type step, font and weight for display, title, heading, body, label, caption or numeric (monospaced figures), in a tone, cut after maxLines with an ellipsis (the probe and a screen reader still read it whole). Display, title and heading are headings to a screen reader (a style's flourish frames them). It grows with the player's text size and wraps between CJK characters by kinsoku. Probe: the element `<id>`, kind label, its whole text.
+     *
+     * @param id Its id.
+     * @param value The text (a string-table message, og.i18n.t).
+     * @param desc Its role, tone and fit.
+     */
+    function text(id: string, value: string, desc?: TextBlockDesc): void;
+    /**
+     * A passage of rich text (og.ui.richText's markup: `[b]`, `[color=…]`, `[icon=…]`, `[link=…]`, `[wave]`…), split into paragraphs at blank lines, at a readable measure, each a text element `<id>/P#i` whose links are focusable children (`<id>/P#i/<link>`). Answers the link clicked this tick (keys and pads press links too). Its region reads as one group to a screen reader.
+     *
+     * @param id Its id.
+     * @param markup The markup; a blank line starts a paragraph.
+     * @param desc Its role, tone and measure.
+     */
+    function prose(id: string, markup: string, desc?: ProseDesc): RichTextResult;
+    /**
+     * An icon of the style's set (og.ui.icon) in a tone, on a plate, with a badge or a dot: the foundation every icon in a control is. An icon the set lacks is drawn as a mark of the same name where the controls know one (tick, cross, plus, minus, search, chevrons, lock, star, warning, info, eye, reset, globe), else a dot: never a missing glyph. Parts: `Icon.plate[circle]`, `Icon.badge`, `Icon.dot`. Probe: `<id>/Glyph`, `<id>/Badge` (its text).
+     *
+     * @param id Its id.
+     * @param name The icon's name in the style's set.
+     * @param desc Its size, tone, plate, badge and name.
+     */
+    function iconMark(id: string, name: string, desc?: IconMarkDesc): void;
+    /**
+     * An image or art slot: the texture fitted and cut as its desc says, fading in when it arrives (the style's enter motion; at once under reduced motion); until then a placeholder drawn from the style (a gradient of its soft fills and the kind's silhouette, a passing sheen while loading), never a grey box. Parts: `Art.frame[placeholder][loading]` (a style dresses the frame by state), `Art.placeholder` (the kind's silhouette and sheen), `Art.image`. Role image when labelled. Probe: `<id>`, `<id>/Image` once loaded, `<id>/Placeholder` before.
+     *
+     * @param id Its id.
+     * @param desc The art, its slot and its placeholder.
+     */
+    function artSlot(id: string, desc?: ArtSlotDesc): void;
+    /**
+     * A decorative shape drawn by the UI pass (docs/ui.md §5.1) in the style's colours: a pip, a gem, a star, a ring, a backdrop blob. It takes no input and is decoration to a screen reader. Part: `Shape.<kind>` (a style dresses `Shape.star` with art). Probe: `<id>`.
+     *
+     * @param id Its id.
+     * @param desc Its outline and paints.
+     */
+    function shapeBox(id: string, desc?: ShapeBoxDesc): void;
+    /**
+     * A separator between groups: the style's line (its divider ornament where the style has one and no label is given), across or upright, with a label in its middle between two lines. Role separator. Parts: `Separator.line[strong]`. Probe: `<id>`, `<id>/Label`.
+     *
+     * @param id Its id.
+     * @param desc Its direction, label and weight.
+     */
+    function separator(id: string, desc?: SeparatorDesc): void;
+    /**
+     * Empty space of a step of the style's spacing scale (so a style's density moves every gap at once), or all the room left. Probe: `<id>`, kind spacer.
+     *
+     * @param id Its id.
+     * @param desc How much.
+     */
+    function space(id: string, desc?: SpaceDesc): void;
+    /**
+     * A viewport in a frame (docs/ui.md §5.5, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with the wheel or a pinch, and turns by 15° per Left or Right while it has the focus (Tab, a pad). Until the target has a texture it shows a placeholder with a spinner. Draw the scene into a target of view.pixelWidth × view.pixelHeight with the yaw, pitch and zoom it answers. Parts: `ViewFrame.frame[focused]`, `ViewFrame.hint`. Role image (its label), its turn as its value. Probe: `<id>`, `<id>/Box/View`, `<id>/Box/HintRow/Hint`.
+     *
+     * @param id Its id.
+     * @param desc The target, its camera and its turn.
+     */
+    function viewFrame(id: string, desc?: ViewFrameDesc): ViewFrameResult;
+    /**
+     * An ambient particle emitter (docs/ui.md §5.5) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. It takes no input, is decoration to a screen reader, and stops under reduced motion. Built on og.ui.particles; every particle is the engine's, seeded and in the snapshot. Probe: `<id>`.
+     *
+     * @param id Its id.
+     * @param desc Its look and rate.
+     */
+    function emitter(id: string, desc?: EmitterDesc): void;
+    /**
+     * A layer (docs/ui.md §5.4): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children.
+     *
+     * @param id Its id.
+     * @param desc The material and its amount.
+     * @param build Builds what it draws.
+     */
+    function effectLayer(id: string, desc: EffectLayerDesc, build: UiBuild): void;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

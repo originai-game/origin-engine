@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1650 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1679 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -209,8 +209,10 @@ Field units the docs and Tune use.
 | [`ArtBrush()`](art.md#column-ArtBrush) | column kind | art | — |
 | [`ArtFilter`](art.md#type-ArtFilter) | enum | art | — |
 | [`ArtFilter()`](art.md#column-ArtFilter) | column kind | art | — |
+| [`ArtFit`](ui.md#type-ArtFit) | enum | ui | — |
 | [`ArtLinePlace`](art.md#type-ArtLinePlace) | enum | art | — |
 | [`ArtLinePlace()`](art.md#column-ArtLinePlace) | column kind | art | — |
+| [`ArtMask`](ui.md#type-ArtMask) | enum | ui | — |
 | [`ArtMips`](art.md#type-ArtMips) | enum | art | — |
 | [`ArtMips()`](art.md#column-ArtMips) | column kind | art | — |
 | [`ArtNormals`](art.md#type-ArtNormals) | enum | art | — |
@@ -219,6 +221,7 @@ Field units the docs and Tune use.
 | [`ArtProjection()`](art.md#column-ArtProjection) | column kind | art | — |
 | [`ArtRotation`](art.md#type-ArtRotation) | enum | art | — |
 | [`ArtRotation()`](art.md#column-ArtRotation) | column kind | art | — |
+| [`ArtSlotDesc`](ui.md#type-ArtSlotDesc) | desc struct | ui | — |
 | [`Asset`](load.md#type-Asset) | handle | load | — |
 | [`Asset()`](load.md#column-Asset) | column kind | load | — |
 | [`AudioBus`](audio.md#type-AudioBus) | enum | audio | — |
@@ -393,10 +396,13 @@ Field units the docs and Tune use.
 | [`EdgeClampDesc`](ui.md#type-EdgeClampDesc) | desc struct | ui | — |
 | [`Edges`](ui.md#type-Edges) | desc struct | ui | — |
 | [`Effect`](ui.md#type-Effect) | union | ui | — |
+| [`EffectLayerDesc`](ui.md#type-EffectLayerDesc) | desc struct | ui | — |
 | [`ElementDesc`](ui.md#type-ElementDesc) | desc struct | ui | — |
 | [`ElementProps`](ui.md#type-ElementProps) | desc struct | ui | — |
 | [`Elevation`](ui.md#type-Elevation) | enum | ui | — |
 | [`EmitFrom`](ui.md#type-EmitFrom) | enum | ui | — |
+| [`EmitterDesc`](ui.md#type-EmitterDesc) | desc struct | ui | — |
+| [`EmitterPreset`](ui.md#type-EmitterPreset) | enum | ui | — |
 | [`EngineProbe`](probe.md#type-EngineProbe) | interface | probe | — |
 | [`EngineProbe.capture`](probe.md#member-EngineProbe-capture) | method | probe | `og_engine_probe_capture` |
 | [`EngineProbe.commands`](probe.md#member-EngineProbe-commands) | method | probe | `og_engine_probe_commands` |
@@ -506,6 +512,8 @@ Field units the docs and Tune use.
 | [`i32()`](reflect.md#column-i32) | column kind | reflect | — |
 | [`IconAtlasDesc`](ui.md#type-IconAtlasDesc) | desc struct | ui | — |
 | [`IconDesc`](ui.md#type-IconDesc) | desc struct | ui | — |
+| [`IconMarkDesc`](ui.md#type-IconMarkDesc) | desc struct | ui | — |
+| [`IconPlate`](ui.md#type-IconPlate) | enum | ui | — |
 | [`IdleHudDesc`](ui.md#type-IdleHudDesc) | desc struct | ui | — |
 | [`IkSolver`](anim.md#type-IkSolver) | enum | anim | — |
 | [`IkSolver()`](anim.md#column-IkSolver) | column kind | anim | — |
@@ -1058,6 +1066,7 @@ Field units the docs and Tune use.
 | [`og.ui.alertDialog`](ui.md#fn-alertDialog) | function | ui | — |
 | [`og.ui.anchor`](ui.md#fn-anchor) | function | ui | — |
 | [`og.ui.animate`](ui.md#fn-animate) | function | ui | `og_ui_animate` |
+| [`og.ui.artSlot`](ui.md#fn-artSlot) | function | ui | — |
 | [`og.ui.back`](ui.md#fn-back) | function | ui | `og_ui_back` |
 | [`og.ui.badge`](ui.md#fn-badge) | function | ui | `og_ui_badge` |
 | [`og.ui.bounds`](ui.md#fn-bounds) | function | ui | `og_ui_bounds` |
@@ -1099,6 +1108,8 @@ Field units the docs and Tune use.
 | [`og.ui.documentSchema`](ui.md#fn-documentSchema) | function | ui | `og_ui_document_schema` |
 | [`og.ui.dpad`](ui.md#fn-dpad) | function | ui | `og_ui_dpad` |
 | [`og.ui.dragging`](ui.md#fn-dragging) | function | ui | `og_ui_dragging` |
+| [`og.ui.effectLayer`](ui.md#fn-effectLayer) | function | ui | — |
+| [`og.ui.emitter`](ui.md#fn-emitter) | function | ui | — |
 | [`og.ui.feedback`](ui.md#fn-feedback) | function | ui | `og_ui_feedback` |
 | [`og.ui.focus`](ui.md#fn-focus) | function | ui | `og_ui_focus` |
 | [`og.ui.forceState`](ui.md#fn-forceState) | function | ui | `og_ui_force_state` |
@@ -1114,6 +1125,7 @@ Field units the docs and Tune use.
 | [`og.ui.gridItem`](ui.md#fn-gridItem) | function | ui | `og_ui_grid_item` |
 | [`og.ui.hasIcon`](ui.md#fn-hasIcon) | function | ui | `og_ui_has_icon` |
 | [`og.ui.icon`](ui.md#fn-icon) | function | ui | `og_ui_icon` |
+| [`og.ui.iconMark`](ui.md#fn-iconMark) | function | ui | — |
 | [`og.ui.idi`](ui.md#fn-idi) | function | ui | — |
 | [`og.ui.idleHud`](ui.md#fn-idleHud) | function | ui | — |
 | [`og.ui.image`](ui.md#fn-image) | function | ui | `og_ui_image` |
@@ -1168,6 +1180,7 @@ Field units the docs and Tune use.
 | [`og.ui.previewViewport`](ui.md#fn-previewViewport) | function | ui | `og_ui_preview_viewport` |
 | [`og.ui.progress`](ui.md#fn-progress) | function | ui | `og_ui_progress` |
 | [`og.ui.props`](ui.md#fn-props) | function | ui | `og_ui_props` |
+| [`og.ui.prose`](ui.md#fn-prose) | function | ui | — |
 | [`og.ui.push`](ui.md#fn-push) | function | ui | `og_ui_push` |
 | [`og.ui.pushMass`](ui.md#fn-pushMass) | function | ui | `og_ui_push_mass` |
 | [`og.ui.puzzleHud`](ui.md#fn-puzzleHud) | function | ui | — |
@@ -1192,6 +1205,7 @@ Field units the docs and Tune use.
 | [`og.ui.seek`](ui.md#fn-seek) | function | ui | `og_ui_seek` |
 | [`og.ui.select`](ui.md#fn-select) | function | ui | `og_ui_select` |
 | [`og.ui.semantics`](ui.md#fn-semantics) | function | ui | `og_ui_semantics` |
+| [`og.ui.separator`](ui.md#fn-separator) | function | ui | — |
 | [`og.ui.setDevice`](ui.md#fn-setDevice) | function | ui | `og_ui_set_device` |
 | [`og.ui.setDraw`](ui.md#fn-setDraw) | function | ui | `og_ui_set_draw` |
 | [`og.ui.setFocus`](ui.md#fn-setFocus) | function | ui | `og_ui_set_focus` |
@@ -1201,11 +1215,13 @@ Field units the docs and Tune use.
 | [`og.ui.setProp`](ui.md#fn-setProp) | function | ui | `og_ui_set_prop` |
 | [`og.ui.settingsScreen`](ui.md#fn-settingsScreen) | function | ui | — |
 | [`og.ui.shake`](ui.md#fn-shake) | function | ui | `og_ui_shake` |
+| [`og.ui.shapeBox`](ui.md#fn-shapeBox) | function | ui | — |
 | [`og.ui.sheet`](ui.md#fn-sheet) | function | ui | — |
 | [`og.ui.shooterHud`](ui.md#fn-shooterHud) | function | ui | — |
 | [`og.ui.shopScreen`](ui.md#fn-shopScreen) | function | ui | — |
 | [`og.ui.skeleton`](ui.md#fn-skeleton) | function | ui | `og_ui_skeleton` |
 | [`og.ui.slider`](ui.md#fn-slider) | function | ui | `og_ui_slider` |
+| [`og.ui.space`](ui.md#fn-space) | function | ui | — |
 | [`og.ui.spacer`](ui.md#fn-spacer) | function | ui | `og_ui_spacer` |
 | [`og.ui.spawnMass`](ui.md#fn-spawnMass) | function | ui | `og_ui_spawn_mass` |
 | [`og.ui.spinner`](ui.md#fn-spinner) | function | ui | `og_ui_spinner` |
@@ -1217,6 +1233,7 @@ Field units the docs and Tune use.
 | [`og.ui.tabBar`](ui.md#fn-tabBar) | function | ui | — |
 | [`og.ui.table`](ui.md#fn-table) | function | ui | — |
 | [`og.ui.tabs`](ui.md#fn-tabs) | function | ui | `og_ui_tabs` |
+| [`og.ui.text`](ui.md#fn-text) | function | ui | — |
 | [`og.ui.textArea`](ui.md#fn-textArea) | function | ui | `og_ui_text_area` |
 | [`og.ui.textField`](ui.md#fn-textField) | function | ui | `og_ui_text_field` |
 | [`og.ui.theme`](ui.md#fn-theme) | function | ui | `og_ui_theme` |
@@ -1227,6 +1244,7 @@ Field units the docs and Tune use.
 | [`og.ui.transition`](ui.md#fn-transition) | function | ui | — |
 | [`og.ui.tree`](ui.md#fn-tree) | function | ui | — |
 | [`og.ui.tutorialOverlay`](ui.md#fn-tutorialOverlay) | function | ui | — |
+| [`og.ui.viewFrame`](ui.md#fn-viewFrame) | function | ui | — |
 | [`og.ui.viewport`](ui.md#fn-viewport) | function | ui | `og_ui_viewport` |
 | [`og.ui.visualState`](ui.md#fn-visualState) | function | ui | `og_ui_visual_state` |
 | [`og.ui.zoomView`](ui.md#fn-zoomView) | function | ui | `og_ui_zoom_view` |
@@ -1355,6 +1373,7 @@ Field units the docs and Tune use.
 | [`PROFILE_3D`](physics.md#const-PROFILE_3D) | constant | physics | — |
 | [`ProgressDesc`](ui.md#type-ProgressDesc) | desc struct | ui | — |
 | [`PropValue`](ui.md#type-PropValue) | struct | ui | — |
+| [`ProseDesc`](ui.md#type-ProseDesc) | desc struct | ui | — |
 | [`PuzzleHudDesc`](ui.md#type-PuzzleHudDesc) | desc struct | ui | — |
 | [`QualityPreset`](render.md#type-QualityPreset) | enum | render | — |
 | [`QualityPreset()`](render.md#column-QualityPreset) | column kind | render | — |
@@ -1496,6 +1515,7 @@ Field units the docs and Tune use.
 | [`SelectDesc`](ui.md#type-SelectDesc) | desc struct | ui | — |
 | [`SemanticsDesc`](ui.md#type-SemanticsDesc) | desc struct | ui | — |
 | [`SensitivityDesc`](input.md#type-SensitivityDesc) | desc struct | input | — |
+| [`SeparatorDesc`](ui.md#type-SeparatorDesc) | desc struct | ui | — |
 | [`SetRecordsDesc`](world.md#type-SetRecordsDesc) | desc struct | world | — |
 | [`SetTileDesc`](tilemap.md#type-SetTileDesc) | desc struct | tilemap | — |
 | [`SettingsChanged`](ui.md#type-SettingsChanged) | callback | ui | — |
@@ -1515,6 +1535,7 @@ Field units the docs and Tune use.
 | [`SHAPE_HEIGHTFIELD`](physics.md#const-SHAPE_HEIGHTFIELD) | constant | physics | — |
 | [`SHAPE_SPHERE`](physics.md#const-SHAPE_SPHERE) | constant | physics | — |
 | [`SHAPE_TRIMESH`](physics.md#const-SHAPE_TRIMESH) | constant | physics | — |
+| [`ShapeBoxDesc`](ui.md#type-ShapeBoxDesc) | desc struct | ui | — |
 | [`ShapeCastDesc`](physics.md#type-ShapeCastDesc) | desc struct | physics | — |
 | [`ShapeCastHit`](physics.md#type-ShapeCastHit) | struct | physics | — |
 | [`ShapeClass`](shapes.md#type-ShapeClass) | interface | shapes | — |
@@ -1522,6 +1543,7 @@ Field units the docs and Tune use.
 | [`ShapeDesc`](physics.md#type-ShapeDesc) | desc struct | physics | — |
 | [`ShapeGeometryDesc`](render.md#type-ShapeGeometryDesc) | desc struct | render | — |
 | [`ShapePoints`](render.md#type-ShapePoints) | struct | render | — |
+| [`ShapePreset`](ui.md#type-ShapePreset) | enum | ui | — |
 | [`ShapeType`](ui.md#type-ShapeType) | enum | ui | — |
 | [`SheetDesc`](ui.md#type-SheetDesc) | desc struct | ui | — |
 | [`SheetEdge`](ui.md#type-SheetEdge) | enum | ui | — |
@@ -1556,6 +1578,8 @@ Field units the docs and Tune use.
 | [`SOUND_STOPPED`](audio.md#const-SOUND_STOPPED) | constant | audio | — |
 | [`SoundEvent`](ui.md#type-SoundEvent) | struct | ui | — |
 | [`SoundInfo`](load.md#type-SoundInfo) | struct | load | — |
+| [`SpaceDesc`](ui.md#type-SpaceDesc) | desc struct | ui | — |
+| [`SpaceStep`](ui.md#type-SpaceStep) | enum | ui | — |
 | [`SpawnDesc`](world.md#type-SpawnDesc) | desc struct | world | — |
 | [`Sphere`](math.md#type-Sphere) | struct | math | — |
 | [`sphere`](math.md#value-sphere) | value | math | — |
@@ -1646,13 +1670,16 @@ Field units the docs and Tune use.
 | [`TerrainSampleDesc`](terrain.md#type-TerrainSampleDesc) | desc struct | terrain | — |
 | [`TextAlign`](ui.md#type-TextAlign) | enum | ui | — |
 | [`TextAreaDesc`](ui.md#type-TextAreaDesc) | desc struct | ui | — |
+| [`TextBlockDesc`](ui.md#type-TextBlockDesc) | desc struct | ui | — |
 | [`TextDesc`](render.md#type-TextDesc) | desc struct | render | — |
 | [`TextEffectsDesc`](ui.md#type-TextEffectsDesc) | desc struct | ui | — |
 | [`TextEntry`](input.md#type-TextEntry) | struct | input | — |
 | [`TextMeasureDesc`](render.md#type-TextMeasureDesc) | desc struct | render | — |
 | [`TextMetrics`](render.md#type-TextMetrics) | struct | render | — |
 | [`TextOutlineDesc`](ui.md#type-TextOutlineDesc) | desc struct | ui | — |
+| [`TextRole`](ui.md#type-TextRole) | enum | ui | — |
 | [`TextShadowDesc`](ui.md#type-TextShadowDesc) | desc struct | ui | — |
+| [`TextTone`](ui.md#type-TextTone) | enum | ui | — |
 | [`Texture`](render.md#type-Texture) | handle | render | — |
 | [`Texture()`](render.md#column-Texture) | column kind | render | — |
 | [`TextureArray`](load.md#type-TextureArray) | handle | load | — |
@@ -1773,6 +1800,8 @@ Field units the docs and Tune use.
 | [`Video`](video.md#type-Video) | handle | video | — |
 | [`Video()`](video.md#column-Video) | column kind | video | — |
 | [`VideoInfo`](video.md#type-VideoInfo) | struct | video | — |
+| [`ViewFrameDesc`](ui.md#type-ViewFrameDesc) | desc struct | ui | — |
+| [`ViewFrameResult`](ui.md#type-ViewFrameResult) | struct | ui | — |
 | [`Viewport`](ui.md#type-Viewport) | struct | ui | — |
 | [`VisualState`](ui.md#type-VisualState) | struct | ui | — |
 | [`VolumetricFog`](render.md#type-VolumetricFog) | enum | render | — |
