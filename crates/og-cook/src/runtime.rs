@@ -724,6 +724,19 @@ impl Bundle {
             .map_err(|_| invalid(&blob, "the style text is not UTF-8"))
     }
 
+    /// The validated text of a UI document blob (parse it with og-ui's
+    /// `UiDocument::parse`).
+    pub fn document_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+        let blob = self.blob::<format::Document>(id, bytes)?;
+        let meta = one::<format::DocumentMeta>(&blob)?;
+        let text = blob.raw("text")?;
+        if text.len() < meta.text_bytes as usize {
+            return Err(invalid(&blob, "the document text is cut short"));
+        }
+        String::from_utf8(text[..meta.text_bytes as usize].to_vec())
+            .map_err(|_| invalid(&blob, "the document text is not UTF-8"))
+    }
+
     /// Decodes a sound blob (the QOA stays encoded until [`CookedSound::decode`]).
     pub fn sound(&self, id: &str, bytes: &[u8]) -> Result<CookedSound, LoadError> {
         let blob = self.blob::<format::Sound>(id, bytes)?;

@@ -10,6 +10,7 @@ mod compressed;
 mod conform_2d;
 mod conform_mesh;
 mod cook_report;
+mod documents;
 mod environment;
 mod flipbook;
 mod fx;

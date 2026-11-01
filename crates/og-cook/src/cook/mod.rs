@@ -656,6 +656,7 @@ enum Kind {
     Lut,
     Emitter,
     Style,
+    Document,
     Tileset,
     Tilemap,
     Flipbook,
@@ -690,6 +691,7 @@ impl Kind {
             Kind::Lut => "lut",
             Kind::Emitter => "emitter",
             Kind::Style => "style",
+            Kind::Document => "document",
             Kind::Tileset => "tileset",
             Kind::Tilemap => "tilemap",
             Kind::Flipbook => "flipbook",
@@ -760,6 +762,7 @@ enum Work<'a> {
     Lut(&'a Source),
     Emitter(&'a Source),
     Style(&'a Source),
+    Document(&'a Source),
     Tileset(&'a Source),
     Tilemap(&'a Source, tilemap::MapSettings),
     Flipbook(&'a Source),
@@ -1214,6 +1217,12 @@ fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
                     Ok(doc) if doc.ty == "scene" => Kind::Scene,
                     Ok(doc) if doc.ty == crate::fx::EMITTER_TYPE => Kind::Emitter,
                     Ok(doc) if doc.ty == og_ui::style_file::STYLE_TYPE => Kind::Style,
+                    Ok(doc)
+                        if doc.ty == og_ui::doc::SCREEN_TYPE
+                            || doc.ty == og_ui::doc::COMPONENT_TYPE =>
+                    {
+                        Kind::Document
+                    }
                     Ok(doc) if doc.ty == "tileset" => Kind::Tileset,
                     Ok(doc) if doc.ty == "tilemap" => Kind::Tilemap,
                     Ok(doc) if doc.ty == "flipbook" => Kind::Flipbook,
@@ -1889,6 +1898,10 @@ pub fn cook_project_with_texture_cache(
                     .unwrap_or_default();
                 let st = stamp(&[b"style", &hash, refs.join("\n").as_bytes(), &atlas]);
                 outs.push((s.rel.clone(), format::Style::NAME, st, Work::Style(s)));
+            }
+            Kind::Document => {
+                let st = stamp(&[b"document", &hash]);
+                outs.push((s.rel.clone(), format::Document::NAME, st, Work::Document(s)));
             }
             Kind::Tileset => {
                 let st = stamp(&[
@@ -2869,6 +2882,43 @@ fn run(
                     "{} parameter(s); compiled for {}",
                     post.params.len(),
                     compiled.join(", ")
+                )],
+            ))
+        }
+        Work::Document(s) => {
+            let text = std::str::from_utf8(&s.bytes)
+                .map_err(|_| CookError("a document is text (UTF-8)".into()))?;
+            let doc =
+                og_ui::UiDocument::parse(&s.rel, text).map_err(|e| CookError(e.join("\n")))?;
+            let mut w = og_blob::BlobWriter::new(
+                format::Document::type_hash(),
+                format::Document::schema_version(),
+                p.stamp,
+            );
+            w.table(
+                "meta",
+                &[format::DocumentMeta {
+                    text_bytes: text.len() as u32,
+                }],
+                format::row_hash::<format::DocumentMeta>(),
+            )
+            .raw("text", text.as_bytes().to_vec(), 16);
+            let slots = doc
+                .nodes
+                .iter()
+                .filter(|n| matches!(n.kind, og_ui::doc::NodeKind::Element("slot" | "art")))
+                .count();
+            Ok((
+                w.finish(),
+                vec![format!(
+                    "{} '{}', {} element(s), {} timeline(s), {slots} slot(s)",
+                    match doc.kind {
+                        og_ui::doc::DocKind::Screen => "screen",
+                        og_ui::doc::DocKind::Component => "component",
+                    },
+                    doc.name,
+                    doc.nodes.len(),
+                    doc.timelines.len()
                 )],
             ))
         }

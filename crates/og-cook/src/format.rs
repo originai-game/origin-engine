@@ -22,6 +22,7 @@
 //! | colour LUT (`og.Lut`, a `.cube`) | [`LutMeta`] | `rgba` (size³ RGBA8, red fastest) |
 //! | particle emitter (`og.ParticleEmitter`, an `.ogt` of `type particles`) | [`EmitterMeta`] | `text` (the validated emitter file) |
 //! | UI style (`og.UiStyle`, an `.ogt` of `type style`) | [`StyleMeta`] | `text` (the validated style file) |
+//! | UI document (`og.UiDocument`, an `.ogt` of `type screen` or `type component`) | [`DocumentMeta`] | `text` (the validated document) |
 //! | material shader (`og.MaterialShader`, an `.ogt` of `type shader`) | [`ShaderMeta`] | `text` (the canonical shader file, code inlined) |
 //! | custom post pass (`og.PostPass`, an `.ogt` of `type post`) | [`PostMeta`] | `text` (the canonical post file, code inlined) |
 //! | 2D rig (`og.Skeleton2D`, an `.ogt` of `type rig2d`) | [`Rig2DMeta`] | `text` (the canonical rig: a DragonBones export converted, the texture's id and size) |
@@ -103,6 +104,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         Animation,
         Lut,
         Style,
+        Document,
         Shader,
         Post,
         UiMaterial,
@@ -923,6 +925,26 @@ impl BlobKind for Style {
     const NAME: &'static str = "og.UiStyle";
     fn schemas() -> Vec<Schema> {
         vec![StyleMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a UI document blob (an `.ogt` of `type screen` or
+    /// `type component`).
+    DocumentMeta, "og.UiDocument", 1 {
+        /// Bytes of the validated document text in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The UI document blob: `text` holds the document the cook validated
+/// against og-ui's reflected props (`og_ui::UiDocument::parse`), parsed
+/// again at load (docs/ui.md §10.1).
+pub struct Document;
+impl BlobKind for Document {
+    const NAME: &'static str = "og.UiDocument";
+    fn schemas() -> Vec<Schema> {
+        vec![DocumentMeta::schema()]
     }
 }
 
