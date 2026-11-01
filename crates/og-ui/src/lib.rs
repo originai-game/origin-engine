@@ -105,10 +105,10 @@ pub use ui::{
 };
 pub use viewport::{ViewportDesc, ViewportResponse};
 pub use widgets::{
-    ActionButtonDesc, AnchorDesc, ChipDesc, CooldownDesc, DialogueDesc, DialogueResponse, DpadDesc,
-    DpadResponse, GridDesc, IconDesc, JoystickDesc, JoystickResponse, ListDesc, ListRange,
-    MapMarker, MeterDesc, MeterKind, MinimapDesc, ModalDesc, ModalResponse, Presence, RadioDesc,
-    SelectDesc, SkeletonDesc, SpotlightDesc, StepperDesc, TabsDesc, ToastDesc, Tone,
+    ActionButtonDesc, AnchorDesc, ArtDesc, ChipDesc, CooldownDesc, DialogueDesc, DialogueResponse,
+    DpadDesc, DpadResponse, GridDesc, IconDesc, JoystickDesc, JoystickResponse, ListDesc,
+    ListRange, MapMarker, MeterDesc, MeterKind, MinimapDesc, ModalDesc, ModalResponse, Presence,
+    RadioDesc, SelectDesc, SkeletonDesc, SpotlightDesc, StepperDesc, TabsDesc, ToastDesc, Tone,
     TransitionDesc, ZoomResponse, ZoomViewDesc,
 };
 pub use world::{

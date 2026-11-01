@@ -284,6 +284,21 @@ pub struct IconDesc {
     pub label: Option<String>,
 }
 
+/// An art slot ([`Ui::art`], docs/ui.md §13).
+#[derive(Clone, Debug, PartialEq)]
+pub struct ArtDesc {
+    pub spec: crate::slot::SlotSpec,
+    /// The art once it is there (`None`: the style's placeholder).
+    pub texture: Option<TextureHandle>,
+    /// The texture's size in pixels, for cover and contain (`None`: the
+    /// slot's aspect).
+    pub size: Option<[f32; 2]>,
+    pub width: Size,
+    pub height: Size,
+    /// What a screen reader calls it; empty is the slot's name.
+    pub label: String,
+}
+
 /// A marker on a mini-map, in the map's 0–1 coordinates.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct MapMarker {
@@ -2413,6 +2428,212 @@ impl Ui {
             _ => {}
         }
         self.nodes[i].probe_text = desc.label.unwrap_or_else(|| name.to_owned());
+    }
+
+    /// An art slot (docs/ui.md §13): its texture fitted as its spec says
+    /// (cover around the focal point, contain, a nine-slice…), cut to its
+    /// mask, with the style's treatments (a vignette, a frame, a rarity
+    /// glow); until the art is there, a placeholder drawn from the style
+    /// and the kind ([`crate::slot::SlotKind::placeholder`]: a gradient of
+    /// the palette, the kind's silhouette from the icon set, the slot's
+    /// name in the prototype style only), never an empty grey box. With a
+    /// height left to fit it takes the slot's aspect.
+    pub fn art(&mut self, id: impl Into<Id>, desc: &ArtDesc) {
+        use crate::paint::{ColorRef, Effect, ElementDraw, Gradient, Paint, ShapeKind, Stop};
+        use crate::slot::{Mask, SlotAspect, Treatment};
+        let t = self.theme;
+        let spec = &desc.spec;
+        let aspect = match &spec.aspect {
+            SlotAspect::One(a) => a.ratio(),
+            SlotAspect::AnyOf(v) => v.first().map_or(0.0, |a| a.ratio()),
+            SlotAspect::Range(lo, _) => lo.ratio(),
+            SlotAspect::Free => 0.0,
+        };
+        let i = self.leaf(
+            "art",
+            id.into(),
+            Element {
+                width: desc.width,
+                height: desc.height,
+                aspect,
+                ..Element::default()
+            },
+        );
+        let token = |n: &str, a: f32| ColorRef::Token {
+            name: n.to_string(),
+            alpha: a,
+        };
+        let shape = match spec.mask {
+            Mask::Circle => ShapeKind::Ellipse,
+            Mask::Hexagon => ShapeKind::Polygon {
+                sides: 6,
+                inner: 1.0,
+                rounding: 0.0,
+                rotation: 0.0,
+            },
+            Mask::Round(r) => ShapeKind::Rect {
+                radii: Some([r; 4]),
+                corner: crate::paint::Corner::Round,
+            },
+            Mask::Squircle => ShapeKind::Rect {
+                radii: None,
+                corner: crate::paint::Corner::Squircle(4.0),
+            },
+            Mask::Shape(c) => {
+                let (corner, r) = crate::dress::corner_of(t.tokens.shape(c));
+                ShapeKind::Rect {
+                    radii: Some([r; 4]),
+                    corner,
+                }
+            }
+            Mask::None | Mask::Alpha => ShapeKind::Rect {
+                radii: Some(
+                    [t.tokens
+                        .shape(crate::tokens::ElementClass::Slot)
+                        .radius
+                        .min(8.0); 4],
+                ),
+                corner: crate::paint::Corner::Round,
+            },
+        };
+        let mut d = ElementDraw {
+            shape,
+            clip: crate::paint::Clip::Shape,
+            ..Default::default()
+        };
+        let ph = spec.kind.placeholder();
+        match desc.texture {
+            Some(texture) => {
+                let size = desc.size.unwrap_or(match &spec.aspect {
+                    SlotAspect::One(a) => [f32::from(a.w), f32::from(a.h)],
+                    _ => [1.0, 1.0],
+                });
+                d.fills.push(Paint::Image(crate::paint::ImagePaint {
+                    texture,
+                    uv: [0.0, 0.0, 1.0, 1.0],
+                    size,
+                    tint: ColorRef::Literal(Srgba::WHITE),
+                    fit: match spec.fit {
+                        crate::slot::Fit::Cover => crate::paint::Fit::Cover,
+                        crate::slot::Fit::Contain => crate::paint::Fit::Contain,
+                        _ => crate::paint::Fit::Fill,
+                    },
+                    focal: spec.focal,
+                }));
+            }
+            None => {
+                d.fills.push(Paint::Gradient(Gradient {
+                    stops: vec![
+                        Stop {
+                            offset: 0.0,
+                            color: token(ph.from, 1.0),
+                        },
+                        Stop {
+                            offset: 1.0,
+                            color: token(ph.to, 1.0),
+                        },
+                    ],
+                    ..Gradient::default()
+                }));
+                d.strokes.push(crate::paint::Stroke {
+                    width: t.tokens.stroke(crate::tokens::StrokeWidth::Hairline),
+                    align: crate::paint::StrokeAlign::Inside,
+                    dash: [4.0, 3.0],
+                    dash_offset: 0.0,
+                    dash_cap: crate::paint::Cap::Butt,
+                    paint: Paint::Solid(token("line", 1.0)),
+                });
+            }
+        }
+        for tr in &spec.treatments {
+            match tr {
+                Treatment::Vignette => d.effects.push(Effect::InnerShadow {
+                    offset: [0.0, 0.0],
+                    blur: 24.0,
+                    spread: 0.0,
+                    color: token("shadow", 1.0),
+                }),
+                Treatment::Frame => d.strokes.push(crate::paint::Stroke {
+                    width: t.tokens.stroke(crate::tokens::StrokeWidth::Regular),
+                    align: crate::paint::StrokeAlign::Inside,
+                    dash: [0.0; 2],
+                    dash_offset: 0.0,
+                    dash_cap: crate::paint::Cap::Butt,
+                    paint: Paint::Solid(token("lineStrong", 1.0)),
+                }),
+                Treatment::RarityGlow => d.effects.push(Effect::OuterGlow {
+                    blur: 10.0,
+                    spread: 0.0,
+                    color: token("primary", 0.6),
+                }),
+                Treatment::Duotone => {}
+            }
+        }
+        self.draws.insert(i, d);
+        if desc.texture.is_none() {
+            // The kind's silhouette, a third of the shorter side, centred
+            // (a little high when the slot's name sits under it).
+            let named = self.style_name.is_empty();
+            let k = 0.36;
+            let frame = Frame {
+                fx: 0.5 - k / 2.0,
+                fy: if named { 0.4 - k / 2.0 } else { 0.5 - k / 2.0 },
+                fw: k,
+                fh: k,
+                ..Frame::default()
+            };
+            let ink = t.palette.ink_faint;
+            match self
+                .icons
+                .index_of(ph.icon)
+                .map(|k| (k, self.icons.glyph(k)))
+            {
+                Some((_, Some((font, ch)))) => self.nodes[i].shapes.push(Shape::Glyph {
+                    frame,
+                    font,
+                    ch,
+                    color: ink,
+                }),
+                Some((k, None)) if self.icons.texture.is_some() => {
+                    let uv = self.icons.uv(k);
+                    self.nodes[i].shapes.push(Shape::Image {
+                        frame,
+                        texture: self.icons.texture.expect("checked"),
+                        uv,
+                        color: ink,
+                    })
+                }
+                // No icon set: a disc, the shape of a subject.
+                _ => self.nodes[i].shapes.push(Shape::Rect {
+                    frame,
+                    radius: 9999.0,
+                    color: ink.fade(0.5),
+                }),
+            }
+            if named {
+                let step = self.type_step(crate::tokens::TypeRole::Caption);
+                self.nodes[i].shapes.push(Shape::Text {
+                    frame: Frame {
+                        fy: 0.72,
+                        fh: 0.2,
+                        ..Frame::FULL
+                    },
+                    text: spec.name.clone(),
+                    step,
+                    color: ink,
+                    font: FontRole::Mono,
+                    clip: Frame::FULL,
+                });
+            }
+        }
+        let n = &mut self.nodes[i];
+        n.probe_text = if desc.label.is_empty() {
+            spec.name.clone()
+        } else {
+            desc.label.clone()
+        };
+        n.a11y.role = Some("image");
+        n.a11y.name = Some(n.probe_text.clone());
     }
 
     /// Whether the icon atlas has an icon of this name.

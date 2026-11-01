@@ -1196,13 +1196,32 @@ impl Ui {
                     },
                 );
             }
-            "image" | "art" => {
+            "art" => {
+                // An art slot: its art fitted by its spec, or the style's
+                // placeholder for its kind (docs/ui.md §13.1).
+                self.art_spec(&path, &r);
+                let spec = self
+                    .docs
+                    .arts
+                    .last()
+                    .map(|(_, s)| s.clone())
+                    .expect("pushed");
                 let texture = r.num("texture").and_then(|h| b.env.texture(f64::from(h)));
-                let tint = r.color("tint").or(if kind == "art" && texture.is_none() {
-                    Some(t.palette.well)
-                } else {
-                    None
-                });
+                self.art(
+                    id.as_str(),
+                    &crate::widgets::ArtDesc {
+                        spec,
+                        texture,
+                        size: None,
+                        width: r.size("width").unwrap_or_default(),
+                        height: r.size("height").unwrap_or_default(),
+                        label: r.str("name").unwrap_or_default().to_string(),
+                    },
+                );
+            }
+            "image" => {
+                let texture = r.num("texture").and_then(|h| b.env.texture(f64::from(h)));
+                let tint = r.color("tint");
                 self.image(
                     id.as_str(),
                     crate::ui::ImageDesc {
@@ -1218,9 +1237,6 @@ impl Ui {
                         ..Default::default()
                     },
                 );
-                if kind == "art" {
-                    self.art_spec(&path, &r);
-                }
             }
             "icon" => {
                 let name = r.str("icon").unwrap_or_default().to_string();

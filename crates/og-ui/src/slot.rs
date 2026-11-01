@@ -14,8 +14,12 @@
 //! Steamworks' asset sizes as of 2024 (header 920×430, small 462×174, main
 //! 1232×706, vertical 748×896, library 600×900, hero 3840×1240).
 //!
-//! Placeholders drawn from the style per kind wait for the UI pass's
-//! paints (thread U1).
+//! Until its art lands a slot draws a placeholder from the style and the
+//! kind ([`SlotKind::placeholder`]): a gradient of two of the palette's
+//! roles, the kind's silhouette from the style's icon set, and the slot's
+//! name in the `prototype` style only; never an empty grey box
+//! ([`crate::Ui::art`]). [`document_slots`] reads every `art` element of a
+//! document with its spec, what `og ui slots` lists.
 
 use crate::tokens::{ElementClass, names};
 
@@ -616,4 +620,132 @@ impl SlotSpec {
         }
         out
     }
+}
+
+/// How a kind's placeholder is drawn ([`SlotKind::placeholder`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Placeholder {
+    /// The gradient's two palette roles, top to bottom.
+    pub from: &'static str,
+    pub to: &'static str,
+    /// The silhouette: an icon of the style's set (the standard names).
+    pub icon: &'static str,
+}
+
+impl SlotKind {
+    /// Its placeholder: a scene kind (key art, backgrounds, banners) a
+    /// deep wash under a star, a character kind its accent wash under a
+    /// person, an item kind the well under its object.
+    pub fn placeholder(self) -> Placeholder {
+        use SlotKind as K;
+        let (from, to, icon) = match self {
+            K::KeyArt | K::MenuBackground | K::EventCg | K::Capsule => {
+                ("primarySoft", "well", "star")
+            }
+            K::Banner | K::PlayerBanner => ("primarySoft", "panel", "flag"),
+            K::MenuPattern => ("well", "panel", "leaf"),
+            K::Logo => ("panel", "well", "crown"),
+            K::AppIcon => ("primarySoft", "panelRaised", "star"),
+            K::CharacterSplash | K::FullBody | K::Bust | K::VnSprite | K::UnitPortrait => {
+                ("primarySoft", "well", "person")
+            }
+            K::ItemIcon => ("well", "panelRaised", "gem"),
+            K::AbilityIcon | K::TalentIcon => ("primarySoft", "well", "bolt"),
+            K::CardArt => ("primarySoft", "well", "sword"),
+            K::CardFrame | K::StyleFrame | K::StyleButton | K::Ornament => {
+                ("panelRaised", "well", "shield")
+            }
+            K::LevelThumb | K::MapGlyph => ("well", "panel", "map"),
+            K::SongJacket => ("primarySoft", "well", "music"),
+            K::SaveThumb => ("well", "panel", "clock"),
+            K::Emblem => ("panelRaised", "well", "shield"),
+            K::Achievement => ("primarySoft", "panelRaised", "trophy"),
+            K::Emote => ("primarySoft", "panelRaised", "heart"),
+            K::Currency => ("well", "panelRaised", "coin"),
+            K::Tutorial => ("well", "panel", "key"),
+            K::CosmeticPreview => ("well", "panelRaised", "person"),
+            K::IconSet => ("well", "panelRaised", "gear"),
+        };
+        Placeholder { from, to, icon }
+    }
+}
+
+/// An `art` element a document declares: where, its spec as written
+/// (a bound prop is taken at the kind's default) and whether its texture
+/// is set (bound or given) or it still draws its placeholder.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DocumentSlot {
+    /// `<document>/<ids…>`, as the probe names the element.
+    pub path: String,
+    pub line: usize,
+    pub spec: SlotSpec,
+    pub textured: bool,
+}
+
+/// Every `art` element of `doc`, in document order, with its spec read
+/// from its literal props (`kind`, `ratio`, `focal`, `safe`, `fit`).
+pub fn document_slots(doc: &crate::doc::UiDocument) -> Vec<DocumentSlot> {
+    use crate::doc::{NodeKind, PropValue};
+    let mut out = Vec::new();
+    for (i, n) in doc.nodes.iter().enumerate() {
+        if n.kind != NodeKind::Element("art") {
+            continue;
+        }
+        let mut ids = Vec::new();
+        let mut j = i;
+        while j < doc.nodes.len() {
+            let m = &doc.nodes[j];
+            if !m.id.is_empty() {
+                ids.push(m.id.clone());
+            }
+            j = m.parent;
+        }
+        ids.push(doc.name.clone());
+        ids.reverse();
+        let path = ids.join("/");
+        let lit = |name: &str| -> Option<Vec<String>> {
+            let p = n.props.iter().rev().find(|p| p.name() == name)?;
+            match p.value {
+                PropValue::Lit(_) => Some(
+                    p.source
+                        .split_whitespace()
+                        .map(|w| w.trim_matches('"').to_string())
+                        .collect(),
+                ),
+                _ => None,
+            }
+        };
+        let nums = |name: &str| -> Option<Vec<f32>> {
+            lit(name)?.iter().map(|w| w.parse().ok()).collect()
+        };
+        let kind = lit("kind")
+            .and_then(|w| w.first().and_then(|k| SlotKind::from_name(k)))
+            .unwrap_or(SlotKind::ALL[0]);
+        let mut spec = SlotSpec::new(&path, kind);
+        if let Some(r) = nums("ratio").filter(|r| r.len() == 2) {
+            spec.aspect = SlotAspect::One(Aspect::new(r[0] as u16, r[1] as u16));
+        }
+        if let Some(f) = nums("focal").filter(|f| f.len() == 2) {
+            spec.focal = [f[0], f[1]];
+        }
+        if let Some(r) = nums("safe").filter(|r| r.len() == 4) {
+            spec.safe = Some([r[0], r[1], r[2], r[3]]);
+        }
+        if let Some(f) = lit("fit").and_then(|w| w.first().cloned()) {
+            spec.fit = match f.as_str() {
+                "contain" => Fit::Contain,
+                "fill" => Fit::Fill,
+                "nineSlice" => Fit::NineSlice,
+                "tile" => Fit::Tile,
+                _ => Fit::Cover,
+            };
+        }
+        out.push(DocumentSlot {
+            path,
+            line: n.line,
+            spec,
+            textured: n.props.iter().any(|p| p.name() == "texture"),
+        });
+    }
+    out
 }

@@ -8,6 +8,13 @@
 //! and style and index.json (default `<project>/og-out/ui-preview`), or with
 //! `--film` a filmstrip of a motion at chosen times.
 //!
+//! `og ui slots [project] [--json]` (docs/ui.md §13.3) lists every art
+//! slot of the game, read from its documents without running it: each
+//! `art` element's path, kind, aspect, focal point, safe rectangle and fit,
+//! whether its art is set or it still draws the style's placeholder, and
+//! what its spec gets wrong with the fix (exit 3 on one). `--json` prints
+//! them as one array, what the art pipeline reads.
+//!
 //! Without `--screen`, every screen the project declares: project.ogt's
 //! `ui { screen "<name>" "<commands>" ... }` entries and its `screens { title
 //! "<commands>" play ... results ... }` block (og style check's); without
@@ -19,7 +26,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::{Command, ExitCode, ExitStatus};
 
-const USAGE: &str = "usage: og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,200] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
+const USAGE: &str = "usage: og ui slots [project] [--json]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,200] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
 
 /// Options forwarded to ui-run.ts with their value.
 const VALUED: [&str; 10] = [
@@ -36,6 +43,9 @@ const VALUED: [&str; 10] = [
 ];
 
 pub fn run(args: &[&str]) -> ExitCode {
+    if let ["slots", rest @ ..] = args {
+        return slots(rest);
+    }
     let (mode, rest) = match args {
         [m @ ("check" | "preview"), rest @ ..] => (*m, rest),
         _ => {
@@ -190,6 +200,135 @@ fn declared_screens(root: &Path) -> Result<Vec<(String, String)>, String> {
         }
     }
     Ok(out)
+}
+
+/// `og ui slots [project] [--json]`.
+fn slots(args: &[&str]) -> ExitCode {
+    let mut project = ".";
+    let mut json = false;
+    for a in args {
+        match *a {
+            "--json" => json = true,
+            a if a.starts_with('-') => {
+                eprintln!("og ui slots: unknown option `{a}`. {USAGE}");
+                return ExitCode::from(2);
+            }
+            a => project = a,
+        }
+    }
+    let p = match Project::open(Path::new(project)) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("og ui slots: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let assets = p.root.join("assets");
+    let mut files = Vec::new();
+    collect_ogt(&assets, &mut files);
+    files.sort();
+    let mut rows = Vec::new();
+    let mut wrong = 0;
+    for f in &files {
+        let Ok(text) = std::fs::read_to_string(f) else {
+            continue;
+        };
+        let ty = text.lines().next().unwrap_or("");
+        if ty != "type screen" && ty != "type component" {
+            continue;
+        }
+        let id = f
+            .strip_prefix(&assets)
+            .unwrap_or(f)
+            .to_string_lossy()
+            .replace('\\', "/");
+        let doc = match og_ui::UiDocument::parse(&id, &text) {
+            Ok(d) => d,
+            Err(e) => {
+                eprintln!("og ui slots: {}", e.join("\n"));
+                continue;
+            }
+        };
+        for s in og_ui::slot::document_slots(&doc) {
+            let problems = s.spec.validate();
+            wrong += usize::from(!problems.is_empty());
+            rows.push((id.clone(), s, problems));
+        }
+    }
+    if json {
+        let out: Vec<serde_json::Value> = rows
+            .iter()
+            .map(|(id, s, problems)| {
+                let mut v = og_ui::doc::build::slot_json(&s.spec);
+                if let Some(o) = v.as_object_mut() {
+                    o.insert("path".into(), serde_json::json!(s.path));
+                    o.insert(
+                        "source".into(),
+                        serde_json::json!(format!("{id}:{}", s.line)),
+                    );
+                    o.insert(
+                        "art".into(),
+                        serde_json::json!(if s.textured { "set" } else { "placeholder" }),
+                    );
+                    o.insert("problems".into(), serde_json::json!(problems));
+                }
+                v
+            })
+            .collect();
+        println!("{}", serde_json::Value::Array(out));
+    } else if rows.is_empty() {
+        println!("og ui slots: no art slots in {}", assets.display());
+    } else {
+        for (id, s, problems) in &rows {
+            let aspect = match &s.spec.aspect {
+                og_ui::slot::SlotAspect::One(a) => a.to_string(),
+                og_ui::slot::SlotAspect::AnyOf(v) => v
+                    .iter()
+                    .map(|a| a.to_string())
+                    .collect::<Vec<_>>()
+                    .join("|"),
+                og_ui::slot::SlotAspect::Range(lo, hi) => format!("{lo}..{hi}"),
+                og_ui::slot::SlotAspect::Free => "free".into(),
+            };
+            let safe = s.spec.safe.map_or("-".to_string(), |r| {
+                format!("{} {} {} {}", r[0], r[1], r[2], r[3])
+            });
+            println!(
+                "{:<32} {:<16} {:<6} focal {} {}  safe {:<15} {:<9} {:<11} {id}:{}",
+                s.path,
+                s.spec.kind.name(),
+                aspect,
+                s.spec.focal[0],
+                s.spec.focal[1],
+                safe,
+                format!("{:?}", s.spec.fit).to_lowercase(),
+                if s.textured { "art" } else { "placeholder" },
+                s.line
+            );
+            for e in problems {
+                println!("    {e}");
+            }
+        }
+    }
+    if wrong > 0 {
+        ExitCode::from(3)
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+fn collect_ogt(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for e in entries.flatten() {
+        let p = e.path();
+        if p.is_dir() {
+            collect_ogt(&p, out);
+        } else if p.extension().is_some_and(|x| x == "ogt") {
+            out.push(p);
+        }
+    }
 }
 
 #[cfg(test)]
