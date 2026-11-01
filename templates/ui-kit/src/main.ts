@@ -1238,7 +1238,7 @@ export default og.game({
     transition: { usage: "<none|fade|wipe|iris|dissolve|slide>", doc: "Send screen changes through og.ui.screenTransition." },
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
     mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },
-    demo: { usage: "<overlay|data|aim|text|reset>:<value>", doc: "A component preview's state: demo:overlay:menu (menu, submenu, context, popover, dialog, confirm, sheet, sideSheet, radial, none), demo:data:loading (rows, loading, empty, error), demo:aim:0.7,-0.7 (the radial wheel's stick), demo:text:200 (the player's text size, 100 to 200 %)." },
+    demo: { usage: "<overlay|data|aim|text|device|reset>:<value>", doc: "A component preview's state: demo:overlay:menu (menu, submenu, context, popover, dialog, confirm, sheet, sideSheet, radial, none), demo:data:loading (rows, loading, empty, error), demo:aim:0.7,-0.7 (the radial wheel's stick), demo:text:200 (the player's text size, 100 to 200 %), demo:device:playstation (the device prompts are drawn for: keyboardMouse, xbox, playstation, switch)." },
     offline: { usage: "<on|off>", doc: "The leaderboard's rows fail to load: its error message and Retry (which loads again)." },
   },
   facts: (world) => {
