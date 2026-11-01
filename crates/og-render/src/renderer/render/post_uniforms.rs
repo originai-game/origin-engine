@@ -1,0 +1,192 @@
+//! Post uniforms stage.
+
+use super::*;
+
+pub(super) struct WriteFramePostUniformsInputs<'a> {
+    pub(super) cam: &'a frame::CameraFrame,
+    pub(super) camera: &'a Camera,
+    pub(super) post_fx: &'a PostEffects,
+    pub(super) scene: &'a RenderScene,
+    pub(super) ao: Option<AmbientOcclusion>,
+    pub(super) dof: Option<DepthOfField>,
+    pub(super) motion_blur: Option<MotionBlur>,
+    pub(super) god_rays: Option<GodRays>,
+    pub(super) sun_ndc: Vec2,
+    pub(super) god_visible: bool,
+    pub(super) sun_fade: f32,
+    pub(super) depth_bands: Option<DepthBands>,
+    pub(super) ssr: Option<ScreenSpaceReflections>,
+    pub(super) screen_blur: Option<ScreenBlur>,
+}
+
+impl Renderer {
+    pub(super) fn write_frame_post_uniforms(
+        &self,
+        WriteFramePostUniformsInputs {
+            cam,
+            camera,
+            post_fx,
+            scene,
+            ao,
+            dof,
+            motion_blur,
+            god_rays,
+            sun_ndc,
+            god_visible,
+            sun_fade,
+            depth_bands,
+            ssr,
+            screen_blur,
+        }: WriteFramePostUniformsInputs<'_>,
+    ) {
+        let proj = cam.view_proj * cam.view.inverse();
+        let global_outline = post_fx.outline;
+        let fxp = post::FxPostUniform {
+            proj: proj.to_cols_array_2d(),
+            inv_proj: proj.inverse().to_cols_array_2d(),
+            view: cam.view.to_cols_array_2d(),
+            screen: [
+                self.width as f32,
+                self.height as f32,
+                1.0 / self.width as f32,
+                1.0 / self.height as f32,
+            ],
+            // w: the AO debug views (DebugView::ao_code): 1 the AO target holds
+            // the view depth's fraction, 2 the term unblurred.
+            cam: [
+                camera.far,
+                cam.orthographic as u32 as f32,
+                camera.near,
+                scene.debug.ao_code(),
+            ],
+            // z: the AO targets' divisor of the screen (2 at half resolution).
+            ao: ao.map_or([0.0; 4], |a| {
+                let divisor = match a.resolution {
+                    AoResolution::Full => 1.0,
+                    AoResolution::Half => 2.0,
+                };
+                [a.radius, a.intensity, divisor, 0.0]
+            }),
+            // x: radius per metre of depth (0: fixed), y: 1 for the screen method.
+            ao2: ao.map_or([0.0; 4], |a| {
+                [
+                    a.radius_scale,
+                    if a.method == AoMethod::Screen {
+                        1.0
+                    } else {
+                        0.0
+                    },
+                    0.0,
+                    0.0,
+                ]
+            }),
+            outline_color: global_outline.map_or([0.0; 4], |o| o.color),
+            outline: match global_outline {
+                Some(o) => [o.width.max(0.0), o.depth_threshold, o.normal_threshold, 1.0],
+                None => [0.0, 0.04, 0.4, 0.0],
+            },
+            dof: dof.map_or([0.0; 4], |d| {
+                [
+                    d.focus_distance,
+                    d.focus_range.max(1e-3),
+                    (d.max_blur * self.height as f32).max(0.0),
+                    d.falloff.max(1e-3),
+                ]
+            }),
+            dof2: [
+                match dof.map(|d| d.quality) {
+                    Some(DofQuality::High) => 48.0,
+                    _ => 16.0,
+                },
+                0.0,
+                0.0,
+                0.0,
+            ],
+            mb: motion_blur.map_or([0.0; 4], |m| {
+                [
+                    m.shutter.max(0.0),
+                    m.samples.clamp(4, 32) as f32,
+                    m.max_pixels.max(1.0),
+                    0.0,
+                ]
+            }),
+            god: [
+                sun_ndc.x * 0.5 + 0.5,
+                0.5 - sun_ndc.y * 0.5,
+                god_rays.map_or(0.96, |g| g.decay),
+                god_rays.map_or(0.8, |g| g.density),
+            ],
+            god2: [
+                god_rays.map_or(48.0, |g| g.samples.clamp(8, 128) as f32),
+                god_visible as u32 as f32,
+                god_rays.map_or(0.0, |g| g.intensity * sun_fade),
+                god_rays.map_or(2.0, |g| g.threshold.max(0.0)),
+            ],
+            god_tint: god_rays
+                .map_or(Vec3::ONE, |g| g.tint)
+                .extend(1.0)
+                .to_array(),
+            bands: depth_bands.map_or([0.0; 4], |b| {
+                [
+                    b.count.clamp(2, 8) as f32,
+                    b.near.max(0.0),
+                    b.far.max(b.near + 0.01),
+                    b.flatten.clamp(0.0, 1.0),
+                ]
+            }),
+            bands_near: depth_bands.map_or([0.0; 4], |b| {
+                [b.near_color[0], b.near_color[1], b.near_color[2], 1.0]
+            }),
+            bands_far: depth_bands.map_or([0.0; 4], |b| {
+                [b.far_color[0], b.far_color[1], b.far_color[2], 1.0]
+            }),
+            ssr: ssr::ScreenSpaceReflections::rows(ssr.as_ref()),
+            blur: screen_blur.map_or([[0.0; 4]; 2], |b| {
+                b.rows(self.width as f32, self.height as f32)
+            }),
+        };
+        self.queue
+            .write_buffer(&self.post.fx_buffer, 0, bytemuck::bytes_of(&fxp));
+        let view_t = cam.view.transpose();
+        let pview = particles_gpu::ParticleViewGpu {
+            view_proj: cam.view_proj.to_cols_array_2d(),
+            cam_pos: camera
+                .position
+                .extend(cam.orthographic as u32 as f32)
+                .to_array(),
+            cam_forward: cam.forward.extend(0.0).to_array(),
+            cam_right: view_t.x_axis.truncate().extend(0.0).to_array(),
+            cam_up: view_t.y_axis.truncate().extend(0.0).to_array(),
+            screen: fxp.screen,
+        };
+        self.queue
+            .write_buffer(&self.particles.view_buffer, 0, bytemuck::bytes_of(&pview));
+        self.queue
+            .write_buffer(&self.sprite_fx_buffer, 0, bytemuck::bytes_of(&fxp.screen));
+    }
+
+    pub(super) fn write_frame_taa_uniform(&self, taa: bool, cam: &frame::CameraFrame) {
+        if taa {
+            let prev = self.taa_history.unwrap_or(cam.view_proj);
+            let taa_uniform = post::TaaUniform {
+                inv_view_proj: cam.jittered_view_proj.inverse().to_cols_array_2d(),
+                cur_view_proj: cam.view_proj.to_cols_array_2d(),
+                prev_view_proj: prev.to_cols_array_2d(),
+                params: [
+                    post::taa_weight(self.taa_history.is_some()),
+                    self.width as f32,
+                    self.height as f32,
+                    self.post.taa_sharpen,
+                ],
+                still: [
+                    still_camera(&prev, &cam.view_proj) as u32 as f32,
+                    0.0,
+                    0.0,
+                    0.0,
+                ],
+            };
+            self.queue
+                .write_buffer(&self.post.taa_buffer, 0, bytemuck::bytes_of(&taa_uniform));
+        }
+    }
+}
