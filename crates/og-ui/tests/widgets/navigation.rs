@@ -929,6 +929,46 @@ fn a_container_claims_single_arrows_while_focused() {
     assert_eq!(rig.state.y, 2);
 }
 
+/// A press on a control that takes no focus of its own (an inventory's
+/// item, a pointer-only surface) focuses the focusable element around it,
+/// so the keys go on from where the mouse was; a press on nothing clears it.
+#[test]
+fn a_press_inside_a_focusable_container_focuses_it() {
+    let mut rig = Rig::new(());
+    let b = &mut |ui: &mut Ui, _: &mut ()| {
+        ui.button("Above", "Above", ButtonDesc::default());
+        ui.open(
+            "Grid",
+            Element {
+                interactive: true,
+                focusable: true,
+                padding: Insets::all(8.0),
+                ..Element::row()
+            },
+        );
+        ui.open(
+            "Item",
+            Element {
+                interactive: true,
+                width: Size::Fixed(40.0),
+                height: Size::Fixed(40.0),
+                ..Element::default()
+            },
+        );
+        ui.close();
+        ui.close();
+    };
+    rig.idle(2, b);
+    rig.click("Grid/Item", b);
+    assert_eq!(rig.ui.focus_path(0), "Grid");
+    rig.click("Above", b);
+    assert_eq!(
+        rig.ui.focus_path(0),
+        "Above",
+        "a focusable control keeps its own"
+    );
+}
+
 /// `last_path` names the element just built by its full path (what
 /// `bounds` and `gesture` take), inside nested containers and after a
 /// container closes; empty before anything is built.

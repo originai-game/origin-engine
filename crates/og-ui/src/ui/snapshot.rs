@@ -37,6 +37,7 @@ impl Ui {
             b.extend_from_slice(&h.flags.to_le_bytes());
             u64_(&mut b, h.scope);
             u64_(&mut b, h.scroller);
+            u64_(&mut b, h.owner);
             for v in [h.inv.a, h.inv.b, h.inv.c, h.inv.d, h.inv.e, h.inv.f] {
                 f32_(&mut b, v);
             }
@@ -338,6 +339,9 @@ impl Reader<'_> {
                 u16::from_le_bytes(self.take()?)
             };
             let (scope, scroller) = (self.u64()?, self.u64()?);
+            // Each hit's focusable owner came in at version 13; before it, unset
+            // (the next frame's hit test fills it).
+            let owner = if version >= 13 { self.u64()? } else { 0 };
             let (inv, local, clip) = if v9 {
                 (Affine::IDENTITY, full, rect)
             } else {
@@ -361,6 +365,7 @@ impl Reader<'_> {
                 flags,
                 scope,
                 scroller,
+                owner,
                 inv,
                 local,
                 clip,

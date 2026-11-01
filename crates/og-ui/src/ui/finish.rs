@@ -361,6 +361,7 @@ impl Ui {
         // Scopes: the nearest scope around each node, by walking the order.
         let mut scope_of = vec![0u64; self.nodes.len()];
         let mut scroller_of = vec![0u64; self.nodes.len()];
+        let mut owner_of = vec![0u64; self.nodes.len()];
         for &i in &order {
             let n = &self.nodes[i];
             let up = if n.parent == NONE { NONE } else { n.parent };
@@ -368,6 +369,11 @@ impl Ui {
                 (0, 0)
             } else {
                 (scope_of[up], scroller_of[up])
+            };
+            owner_of[i] = match up {
+                NONE => 0,
+                u if self.nodes[u].nav && !self.nodes[u].inert => self.nodes[u].key,
+                u => owner_of[u],
             };
             scope_of[i] = if n.scope { n.key } else { ps };
             scroller_of[i] = if up != NONE && self.nodes[up].scrolls() {
@@ -494,6 +500,7 @@ impl Ui {
                     flags,
                     scope: scope_of[i],
                     scroller: scroller_of[i],
+                    owner: owner_of[i],
                     inv,
                     local: n.rect.outset(slop),
                     clip: n.clip,
@@ -589,6 +596,7 @@ impl Ui {
                             flags: HIT_POINTER | HIT_NAV,
                             scope: scope_of[i],
                             scroller: scroller_of[i],
+                            owner: owner_of[i],
                             inv: Affine::IDENTITY,
                             local: shown,
                             clip: n.clip,

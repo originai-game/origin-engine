@@ -112,6 +112,11 @@ pub(crate) struct Hit {
     pub scope: u64,
     /// The scroll container it sits in (0: none).
     pub scroller: u64,
+    /// The nearest focusable element around it (0: none): a press on a
+    /// control that takes no focus of its own (an item in an inventory's
+    /// grid) focuses that one, as a click inside a focusable box does on
+    /// the web.
+    pub owner: u64,
     /// A transformed element: the map from the screen to its layout box,
     /// and that box (with its hit slop), tested after the clip.
     pub inv: Affine,
@@ -408,7 +413,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 12;
+const STATE_VERSION: u32 = 13;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,

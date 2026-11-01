@@ -522,7 +522,9 @@ impl Ui {
                 // A pressed control takes focus without the ring (as :focus-visible).
                 self.state.focus = hot;
             } else {
-                self.state.focus = 0;
+                // A control that takes no focus gives it to the focusable one
+                // around it (a grid's item, its grid), as a click does on the web.
+                self.state.focus = self.hit(hot).map_or(0, |h| h.owner);
             }
             self.state.focus_visible = false;
         }
