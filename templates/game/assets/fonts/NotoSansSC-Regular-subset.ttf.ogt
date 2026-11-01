@@ -6,7 +6,7 @@ version 1
 # crates/og-cook/README.md for its size and time.
 font {
   charset latin cjk-punct
-  chars "开始游戏设置退出暂停继续分数最高关卡生命时间胜利失败加载中"
+  chars "开始游戏设置退出暂停继续分数最高关卡生命时间胜利失败加载中−…←→"
   em_px 32
   px_range 4
 }

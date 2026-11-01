@@ -6,6 +6,7 @@ version 1
 # a font that holds them (og-i18n §2).
 font {
   charset latin
+  chars "−…←→"
   em_px 48
   px_range 6
 }

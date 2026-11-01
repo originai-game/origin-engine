@@ -25,8 +25,9 @@ fn repo() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-/// A project with the kit's neon display face (`charset latin punct`),
-/// cooked once per test process.
+/// A project with the kit's neon display face cooked with `charset latin
+/// punct` alone (no `chars`: the minus and arrows stay out of its atlas),
+/// once per test process.
 fn project() -> &'static Path {
     static ROOT: OnceLock<PathBuf> = OnceLock::new();
     ROOT.get_or_init(|| {
@@ -36,12 +37,16 @@ fn project() -> &'static Path {
         let dir = root.join("assets/fonts");
         std::fs::create_dir_all(&dir).unwrap();
         let style = repo().join("templates/styles/neon");
-        for f in [
-            "ChakraPetch-BoldItalic.ttf",
-            "ChakraPetch-BoldItalic.ttf.ogt",
-        ] {
-            std::fs::copy(style.join(f), dir.join(f)).unwrap();
-        }
+        std::fs::copy(
+            style.join("ChakraPetch-BoldItalic.ttf"),
+            dir.join("ChakraPetch-BoldItalic.ttf"),
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("ChakraPetch-BoldItalic.ttf.ogt"),
+            "type import\nversion 1\n---\nfont {\n  charset latin punct\n  em_px 48\n  px_range 4\n}\n",
+        )
+        .unwrap();
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root

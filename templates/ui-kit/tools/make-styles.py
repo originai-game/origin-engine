@@ -1249,8 +1249,13 @@ def style_text(s, d, parts=None):
     return "\n".join(L) + "\n"
 
 
-def font_import(display, glows=False, weighted=False):
+def font_import(path, display, glows=False, weighted=False):
     em = 48 if display else 32
+    # The marks the kit draws beyond Latin-1 and punct (minus, arrows), as
+    # far as the font maps them (fontTools reads its cmap).
+    from fontTools.ttLib import TTFont
+    cmap = TTFont(path).getBestCmap()
+    marks = "".join(c for c in "\u2212\u2190\u2192" if ord(c) in cmap)
     # A role with a textGlow reads its glow from the distance field, which
     # reaches half px_range atlas pixels: 12 lets it spread 6 (4 lets 2). A
     # textWeight thickens inside that reach less 0.75 px (og-render's
@@ -1261,7 +1266,8 @@ def font_import(display, glows=False, weighted=False):
         "type import\nversion 1\n---\n"
         f"# Latin-1 and the typographic punctuation the kit shows; {em} px per em in the atlas{why}.\n"
         "font {\n  charset latin punct\n"
-        f"  em_px {em}\n  px_range {rng}\n}}\n"
+        + (f'  chars "{marks}"\n' if marks else "")
+        + f"  em_px {em}\n  px_range {rng}\n}}\n"
     )
 
 
@@ -1325,7 +1331,7 @@ def main():
         weighted = {roles[role] for role, _ in s["text"].get("textWeight", [])}
         for name, display in imports.items():
             with open(os.path.join(d, name + ".ogt"), "w") as f:
-                f.write(font_import(display, name in glowing, name in weighted))
+                f.write(font_import(os.path.join(d, name), display, name in glowing, name in weighted))
         print("wrote", d)
 
 
