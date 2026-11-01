@@ -32,6 +32,42 @@
       {
         "member": "og.Gamepad (version 2), MAX_GAMEPADS, og.Gamepad.devices",
         "summary": "og.Gamepad holds eight pads (MAX_GAMEPADS 8, was 4) and each pad's family in devices. The web shell no longer drops pads whose mapping is not \"standard\" (Firefox, Linux, third-party pads): it maps them through a table by vendor and product with a generic fallback and tells each pad's family. A save from a four-pad build restores without migrate: og.Gamepad is the host's after a restore, so World.restore maps a save whose only differences are in the input it keeps (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio)."
+      },
+      {
+        "member": "og.render.setDisplay, og.render.resetDisplay, og.render.display, DisplaySettings (quality, fullscreen, powerPreference), FrameCap fps120/fps144, PowerPreference, DisplayInfo (vsync, fullscreen, powerPreference, restartNeeded)",
+        "summary": "The player's graphics settings, saved with the player's settings and never in the world: the quality preset (drawn in place of the game's RenderSettings without writing them; null is the game's own), 120 and 144 frame caps, fullscreen (the web shell enters it on the next gesture and follows the player's Escape) and the GPU power preference (highPerformance or lowPower), which applies on the next load, so display().restartNeeded is true until then. display() reports vsync (always on in a browser), fullscreen and the adapter's power preference. setDisplay merges a call over the current settings: only the fields it names change, so a settings page sets the one the player moved. This differs from setDisplay as first merged (G1-4, unreleased), where omitted fields went back to their defaults; og.render.resetDisplay is now the explicit way back to them."
+      },
+      {
+        "member": "og.input.setSensitivity, og.input.sensitivity, SensitivityDesc",
+        "summary": "The player's sensitivity and inversion of an axis action per device class (keyboardMouse, the pads, touch): scale multiplies the action's analog bindings (mouse movement, wheel, stick, touch stick), invertX and invertY turn the value over (keys are inverted, never scaled). Kept in og.input.saveBindings text; a world with none set hashes as before."
+      },
+      {
+        "member": "og.input.setKeyboardLayout, og.input.keyboardLayout, KeyLabel",
+        "summary": "Glyphs show what the player's keyboard layout prints while bindings stay on physical keys (KeyboardEvent.code): og.input.glyph reads Z Q S D for KeyW KeyA KeyS KeyD on AZERTY. The web shell sets it from navigator.keyboard.getLayoutMap (Chrome, Edge) and elsewhere learns each key from its first unmodified press."
+      },
+      {
+        "member": "og.input.setMouse, og.input.mouse, MouseDesc, MouseInfo",
+        "summary": "Raw mouse input while the pointer is locked (pointer lock's unadjustedMovement, on by default) where the browser grants it; mouse().rawUnsupported where it refuses (Firefox, Safari, Linux), whose lock is the plain one. The web shell's pointer lock re-arms on Escape, focus loss or a refused request and locks again on the next click. Host state, never in the world."
+      },
+      {
+        "member": "UiDesc.hudMaxAspect, Viewport.hud",
+        "summary": "On an ultrawide surface anchored groups (og.ui.anchor, the HUD templates) and toasts lay out in a centred band at most hudMaxAspect times its height wide (21/9 by default; 0 is the whole safe area); og.ui.viewport().hud is the band for a HUD placed by hand. Dialogs, scrims and world-space markers keep the whole surface. A HUD on a screen wider than 21:9 moves inward."
+      },
+      {
+        "member": "SettingsDesc (lookAction, graphics labels), GameSettings.display, GameSettings.rawMouse",
+        "summary": "The ui-kit settings screen's Graphics tab is the PC graphics page when GameSettings.display holds og.render.display's settings: preset, render scale, frame-rate limit, a fixed V-Sync row, adaptive quality, battery saver, fullscreen and the GPU with \"Applies after a restart\". The Controls tab sets the mouse's sensitivity and inverted look on SettingsDesc.lookAction and raw mouse input."
+      },
+      {
+        "member": "project.ogt publish aspect_min, aspect_max; og-build.json display.aspectMin, display.aspectMax",
+        "summary": "A fill game bounds the shapes it fills: the page fills every aspect between aspect_min and aspect_max and letterboxes at the bound it passes (pillarbox bars on 32:9, letterbox bars on 4:3). og build checks them (narrowest first, fill only)."
+      },
+      {
+        "member": "ProbeMemory.deviceLosses, telemetry memory.deviceLosses",
+        "summary": "The probe's memory report and the web shell's field telemetry carry the GPU devices lost and recovered, beside the GPU memory."
+      },
+      {
+        "member": "web shell: device pixel ratio",
+        "summary": "A window moved to a monitor of another scale (or a page zoom) resizes the canvas and og-ui before the next frame, through a (resolution: <dpr>dppx) query re-armed at each ratio, so no frame is drawn blurry."
       }
     ],
     "fixed": [
@@ -66,6 +102,10 @@
       {
         "member": "World.restore",
         "summary": "A type whose layout changed since the save is compared only when the save holds data of it (a component row, a resource value or an event): a type it holds none of takes this build's layout, since nothing of it can be misread, so adding a field to a type a save never used (Model.variant) no longer refuses that save without migrate. Types the save holds data of are checked as before."
+      },
+      {
+        "member": "og.render.setDisplay autoQuality",
+        "summary": "Automatic quality no longer cycles between two rungs on the GPU-time path: a rung that falls back within VERIFY_FRAMES waits twice as long before it is tried again and is given up after MAX_FAILURES, and the rung above is predicted with the measured spread added (meridian-loop at 2560x1600 stepped 1.6 to 1.7 and back every 30 s in Chrome and Edge)."
       }
     ]
   },
