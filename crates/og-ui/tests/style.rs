@@ -1477,3 +1477,32 @@ fn a_dressing_matches_by_selector_and_keeps_what_the_ui_pass_will_draw() {
     let card = parse_style(&measured).unwrap().theme.art.slices[StylePart::Card.index()];
     assert_eq!(card.map(|s| s.tone), Some([0.5, 0.25, 0.125, 0.75]));
 }
+
+/// A style's motion tokens reach the motion code: each built-in style's
+/// named springs keep their damping ratio and response in `Theme::motion`.
+#[test]
+fn a_styles_motion_tokens_drive_the_motion_code() {
+    for slug in ["cartoon", "pixel", "scifi"] {
+        let path = format!(
+            "{}/../../templates/styles/{slug}/style.ogt",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let text = std::fs::read_to_string(&path).expect("a built-in style");
+        let theme = parse_style(&text).expect("it parses").theme;
+        let tokens = &theme.tokens;
+        for (name, got) in [
+            (og_ui::tokens::SpringName::Ui, theme.motion.ui),
+            (og_ui::tokens::SpringName::Playful, theme.motion.playful),
+        ] {
+            let want = tokens.spring(name);
+            assert_eq!(got.duration_ms, want.duration_ms, "{slug} {name:?}");
+            let damping = want.to_spring().damping;
+            assert!(
+                (1.0 - got.bounce - damping).abs() < 1e-4 || got.bounce == -0.95,
+                "{slug} {name:?}: bounce {} for damping {damping}",
+                got.bounce
+            );
+        }
+        assert_eq!(theme.motion.stagger_ms, tokens.motion.stagger_ms, "{slug}");
+    }
+}

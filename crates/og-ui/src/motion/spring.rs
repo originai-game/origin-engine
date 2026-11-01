@@ -232,6 +232,50 @@ impl Default for MotionTokens {
 }
 
 impl MotionTokens {
+    /// The motion a style's tokens give (docs/ui.md §7.7): its four named
+    /// springs at the same damping ratio and response, its enter and exit
+    /// eases over its `base` and `fast` durations, its stagger, and its
+    /// overshoot (a fraction of the move) as the most bounce a spring may
+    /// take. A held ease (`steps`) moves linearly here.
+    pub fn from_style(t: &crate::tokens::StyleTokens) -> MotionTokens {
+        use crate::tokens::{Ease as StyleEase, EaseName, SpringName};
+        let spring = |n: SpringName| {
+            let s = t.spring(n);
+            SpringSpec::new(
+                s.duration_ms,
+                (1.0 - s.to_spring().damping).clamp(-0.95, 1.0),
+            )
+        };
+        let ease = |n: EaseName| match t.ease(n) {
+            StyleEase::Bezier(b) => Ease::Bezier(b),
+            StyleEase::Steps(_) => Ease::Linear,
+        };
+        let m = &t.motion;
+        // The damping ratio whose overshoot is `o`, as a bounce.
+        let overshoot = if m.overshoot <= 0.0 {
+            0.0
+        } else if m.overshoot >= 1.0 {
+            1.0
+        } else {
+            let l = m.overshoot.ln();
+            1.0 - (-l / (std::f32::consts::PI * std::f32::consts::PI + l * l).sqrt())
+        };
+        MotionTokens {
+            ui: spring(SpringName::Ui),
+            panel: spring(SpringName::Panel),
+            emphasis: spring(SpringName::Emphasis),
+            playful: spring(SpringName::Playful),
+            enter_ease: ease(EaseName::Enter),
+            enter_ms: m.durations.base,
+            exit_ease: ease(EaseName::Exit),
+            exit_ms: m.durations.fast,
+            stagger_ms: m.stagger_ms,
+            stagger_cap_ms: m.stagger_cap_ms,
+            overshoot,
+            ..MotionTokens::default()
+        }
+    }
+
     pub fn get(&self, t: MotionToken) -> Transition {
         let cap = |s: SpringSpec| SpringSpec {
             bounce: s.bounce.min(self.overshoot),

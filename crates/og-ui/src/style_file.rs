@@ -1633,6 +1633,8 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         }
         file.dressings = v1_dressings(&theme.art);
     }
+    // The motion code reads the style's motion tokens (docs/ui.md §7.7).
+    theme.motion = crate::motion::MotionTokens::from_style(&theme.tokens);
     file.theme = theme;
     Ok(file)
 }
