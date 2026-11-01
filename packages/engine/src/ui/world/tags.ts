@@ -53,6 +53,7 @@ export function nameplate(id: string, desc: Api.NameplateDesc = {}): Api.AnchorI
     cross: "center",
     gap: u(2),
     declutter: "stack",
+    contain: true,
     priority: (desc.priority ?? 0) + (targeted ? 1000 : 0),
     occlusion: desc.occlusion ?? "fade",
     lod: lods,
@@ -124,6 +125,7 @@ export function interactionPrompt(world: Api.World, id: string, desc: Api.Intera
     maxDistance: desc.maxDistance || 6,
     occlusion: "none",
     declutter: "shift",
+    contain: true,
     priority: 500,
   }, () => {
     // Springs in the first tick it shows (again after it was gone a while).
@@ -249,6 +251,7 @@ export function lootLabel(id: string, desc: Api.LootLabelDesc = {}): Api.LootLab
     cross: "center",
     gap: 0,
     declutter: "stack",
+    contain: true,
     priority: pips * 10,
     occlusion: "fade",
     maxDistance: desc.maxDistance || 40,
@@ -311,7 +314,8 @@ export function speechBubble(id: string, desc: Api.SpeechBubbleDesc = {}): Api.A
     declutter: "shift",
     priority: 200,
     occlusion: "none",
-    ...(desc.clamp ? { clamp: { margin: 24, arrow: token("panelRaised"), arrowSize: u(10) } } : {}),
+    // Clamped with an arrow when asked, else kept whole inside the safe area.
+    ...(desc.clamp ? { clamp: { margin: 24, arrow: token("panelRaised"), arrowSize: u(10) } } : { contain: true }),
   }, () => {
     const enter = reduced() ? 1 : easeBack(clamp01(age / msToTicks(240)));
     const out = leaving ? 1 - clamp01((age - leaveAt) / msToTicks(300)) : 1;
