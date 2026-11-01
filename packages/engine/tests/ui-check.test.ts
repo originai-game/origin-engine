@@ -176,6 +176,15 @@ test("pad reach: a control stacked on another is unreachable from the default fo
   expect(rules(unfocusable)).toContain("focus-reach");
 });
 
+test("pad reach: options inside a focusable listbox are reached through it; outside one they are not", () => {
+  // Wrong: a card hand's options (walked by the listbox's own cursor) reported unreachable, or any option let off.
+  const opt = (path: string, parent: string) => ({ path, parent, role: "option", name: path, states: [], rect: [40, 100, 80, 44] as [number, number, number, number] });
+  const inside = frame({ a11y: { focused: "Hand", focusOrder: ["Hand"], nodes: [{ path: "Hand", parent: "", role: "listbox", name: "Hand", states: ["focusable"], rect: [0, 80, 400, 120] }, opt("Hand/Strike", "Hand")] } });
+  expect(rules(inside)).not.toContain("focus-reach");
+  const loose = frame({ a11y: { focused: "Hand", focusOrder: ["Hand"], nodes: [{ path: "Hand", parent: "", role: "group", name: "Hand", states: ["focusable"], rect: [0, 80, 400, 120] }, opt("Hand/Strike", "Hand")] } });
+  expect(rules(loose)).toContain("focus-reach");
+});
+
 test("a pad trap: a control the graph reaches but cannot leave back to the default focus", () => {
   // 0 → 1 → 2, and 2 leads only to itself's neighbour 1, never back to 0.
   expect(padFindings([[1], [2], [1]], 0)).toEqual([{ rule: "focus-trap", index: 1 }, { rule: "focus-trap", index: 2 }]);
