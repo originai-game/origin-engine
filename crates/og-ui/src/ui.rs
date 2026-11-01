@@ -467,8 +467,15 @@ pub(crate) struct State {
     pub next_toast: u32,
     /// Screen transitions by key.
     pub screens: IdMap<u64, crate::juice::ScreenState>,
-    /// The host's voice entity for each UI sound (bits; 0: none).
-    pub voices: [u64; 6],
+    /// The host's voice entity for each UI event's sound (bits; 0: none),
+    /// by [`crate::tokens::SoundEvent`] index.
+    pub voices: [u64; crate::tokens::SoundEvent::COUNT],
+    /// The feedback sets' random stream (a xorshift): which sound of a set,
+    /// and where in its volume and pitch ranges, a play takes.
+    pub feedback_rng: u64,
+    /// Per event, the sound of its set it played last, so a set of more
+    /// than one never plays the same sound twice in a row.
+    pub feedback_last: [u8; crate::tokens::SoundEvent::COUNT],
     /// Players the last frame allowed (`set_players`): pads 1 to players - 1
     /// each move a focus of their own.
     pub players: u8,
@@ -821,8 +828,22 @@ pub struct Ui {
     pub(crate) scopes: Vec<usize>,
     pub(crate) icons: IconAtlas,
     pub(crate) toast_anchor: Anchor,
-    /// UI events with a style sound, not yet taken by the host.
-    pub(crate) sounds: Vec<crate::style_file::UiSound>,
+    /// UI events the style gives a sound or a haptic, not yet taken by the
+    /// host ([`Ui::take_feedback`]), each with where it is in a rising
+    /// cascade (0–1; NaN: a random pitch in the event's range).
+    pub(crate) feedback: Vec<(crate::tokens::SoundEvent, f32)>,
+    /// The player's haptic strength (0: off, 1: as the style sets it).
+    pub(crate) haptics: f32,
+    /// The haptic patterns played since the host last took them
+    /// ([`Ui::take_haptics`]).
+    pub(crate) haptic_out: Vec<crate::tokens::Haptic>,
+    /// The style's part dressings ([`Ui::set_dressings`]); without them, the
+    /// ones its theme's version 1 art makes.
+    pub(crate) dress: std::sync::Arc<crate::dress::DressSet>,
+    pub(crate) dress_set: bool,
+    /// What each part of this frame draws through the UI pass, by node
+    /// (made at `end` from its dressing, or the tokens).
+    pub(crate) part_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
     /// Text a copy or cut took, for the host's clipboard ([`Ui::take_clipboard`]).
     pub(crate) clipboard: Option<String>,
     /// The focused text control this frame (into [`UiFrame::text_input`]).
@@ -867,6 +888,21 @@ pub struct Ui {
     /// World-space UI (`crate::world`): anchors, panels, mass elements,
     /// particles, meta layers.
     pub(crate) world: crate::world::WorldUi,
+}
+
+/// One UI event's feedback as the host plays it ([`Ui::take_feedback`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FeedbackPlay {
+    pub event: crate::tokens::SoundEvent,
+    /// The sound handle (0: the event has a haptic only, or its sound is
+    /// not loaded).
+    pub sound: u64,
+    /// Linear gain, from the set's volume range.
+    pub volume: f32,
+    /// Playback rate, from the set's pitch range.
+    pub pitch: f32,
+    /// The pattern at the player's strength (no pulses: none).
+    pub haptic: crate::tokens::Haptic,
 }
 
 impl Default for Ui {
@@ -932,7 +968,14 @@ impl Ui {
             scopes: Vec::new(),
             icons: IconAtlas::default(),
             toast_anchor: Anchor::Bottom,
-            sounds: Vec::new(),
+            feedback: Vec::new(),
+            haptics: 1.0,
+            haptic_out: Vec::new(),
+            dress: std::sync::Arc::new(crate::dress::DressSet::new(
+                crate::style_file::v1_dressings(&desc.theme.art),
+            )),
+            dress_set: false,
+            part_draws: Default::default(),
             clipboard: None,
             text_target: None,
             cover: None,
@@ -1152,6 +1195,63 @@ impl Ui {
     pub fn set_theme(&mut self, theme: Theme) {
         self.configured = theme;
         self.theme = effective_theme(theme, &self.viewport);
+        if !self.dress_set {
+            self.dress = std::sync::Arc::new(crate::dress::DressSet::new(
+                crate::style_file::v1_dressings(&theme.art),
+            ));
+        }
+    }
+
+    /// The style's part dressings (its [`crate::StyleFile::dressings`],
+    /// bound to its loaded assets): what every part of the UI is drawn
+    /// with where a dressing's selector matches it (docs/ui.md §12.3).
+    /// Until a game sets them the theme's version 1 art makes them.
+    pub fn set_dressings(&mut self, dressings: Vec<crate::dress::Dressing>) {
+        self.dress = std::sync::Arc::new(crate::dress::DressSet::new(dressings));
+        self.dress_set = true;
+        self.kept.epoch += 1;
+    }
+
+    /// The dressings in effect.
+    pub fn dressings(&self) -> &crate::dress::DressSet {
+        &self.dress
+    }
+
+    /// Every dressing that matches `part`, merged.
+    pub fn resolve_part(&self, part: &crate::dress::PartRef) -> crate::dress::Resolved {
+        self.dress.resolve(part)
+    }
+
+    /// Gives the element open now (a grid's cell, a panel, a card) a
+    /// selector attribute its style dresses by: `ui.part_attr("rarity",
+    /// "epic")` in a bag's cell makes it `Slot.frame[rarity=epic]`. An
+    /// element without a part takes its version 1 frame's (a plain one, an
+    /// `Element.base`).
+    pub fn part_attr(&mut self, key: &str, value: &str) {
+        let Some(&i) = self.stack.last() else {
+            return;
+        };
+        let el = &mut self.nodes[i].el;
+        let part = el
+            .part
+            .or_else(|| el.frame.map(StylePart::part_ref))
+            .unwrap_or_default();
+        el.part = Some(part.attr(crate::dress::intern(key), crate::dress::intern(value)));
+        el.frame = None;
+    }
+
+    /// The player's haptic strength: 0 turns haptics off, 1 plays the
+    /// style's patterns as set (docs/ui.md §7.8).
+    pub fn set_haptics(&mut self, intensity: f32) {
+        self.haptics = if intensity.is_finite() {
+            intensity.clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
+    }
+
+    pub fn haptics(&self) -> f32 {
+        self.haptics
     }
 
     /// The configured style's name, for the theme the host reports (empty: `prototype`).
@@ -1719,59 +1819,72 @@ impl Ui {
             self.request_focus = key;
         }
         let p = &t.palette;
+        let amounts = if desc.disabled {
+            (0.0, 0.0)
+        } else {
+            self.state_amounts(i, &r)
+        };
+        // Each variant's colour at rest, hovered and pressed, mixed by how
+        // far into each the button is (the style's `ui` spring).
+        let mix = |rest, hover, pressed| Ui::state_color(rest, hover, pressed, amounts);
         let (bg, fg) = if desc.disabled {
             (Some(p.control), p.ink_faint)
         } else {
             match desc.variant {
                 ButtonVariant::Primary => (
-                    Some(if r.pressed {
-                        p.primary_active
-                    } else if r.hovered {
-                        p.primary_hover
-                    } else {
-                        p.primary
-                    }),
+                    Some(mix(p.primary, p.primary_hover, p.primary_active)),
                     p.on_primary,
                 ),
                 ButtonVariant::Secondary => (
-                    Some(if r.hovered || r.pressed {
-                        p.control_strong
-                    } else {
-                        p.control
-                    }),
+                    Some(mix(p.control, p.control_strong, p.control_strong)),
                     p.ink,
                 ),
-                ButtonVariant::Quiet => ((r.hovered || r.pressed).then_some(p.control), p.ink),
+                ButtonVariant::Quiet => {
+                    let clear = p.control.fade(0.0);
+                    let c = mix(clear, p.control, p.control);
+                    ((c.alpha > 0.0).then_some(c), p.ink)
+                }
                 // Danger ink on the danger tint (10 % at rest, 15 %
                 // hovered), composited in sRGB over what is behind it, so its label
                 // reads at 4.5:1 on every ground.
-                ButtonVariant::Danger => (
-                    Some(
-                        p.danger
-                            .fade(if r.hovered || r.pressed { 0.15 } else { 0.10 })
-                            .over(self.behind(i)),
-                    ),
-                    p.danger,
-                ),
+                ButtonVariant::Danger => {
+                    let behind = self.behind(i);
+                    let rest = p.danger.fade(0.10).over(behind);
+                    let lit = p.danger.fade(0.15).over(behind);
+                    (Some(mix(rest, lit, lit)), p.danger)
+                }
             }
         };
-        let part = if desc.disabled {
-            StylePart::ButtonDisabled
-        } else if r.pressed {
-            StylePart::ButtonPressed
-        } else if r.hovered {
-            StylePart::ButtonHover
-        } else {
-            StylePart::Button
+        let variant = match desc.variant {
+            ButtonVariant::Primary => "primary",
+            ButtonVariant::Secondary => "secondary",
+            ButtonVariant::Quiet => "quiet",
+            ButtonVariant::Danger => "danger",
         };
+        let mut part =
+            crate::dress::PartRef::new("Button", "base", crate::tokens::ElementClass::Button)
+                .flag(variant)
+                .flag_if(desc.disabled, "disabled")
+                .flag_if(!desc.disabled && r.pressed, "pressed")
+                .flag_if(!desc.disabled && r.hovered && !r.pressed, "hover")
+                .flag_if(r.focused, "focused")
+                .flag_if(desc.size == ControlSize::Small, "small")
+                .flag_if(desc.size == ControlSize::Large, "large");
+        part.hover = amounts.0;
+        part.press = amounts.1;
+        let resolved = self.dress.resolve(&part);
+        let slice = resolved.frame.slice.filter(|_| t.art.atlas.is_some());
         // A style's tinted button art darkens (or fades) the fill: the label
         // reads at 7:1 on the fill as drawn (the packs' bar, which keeps 4.5:1
         // in the frame once MSDF strokes thin it), so a game's own primary colour over a
         // dark neon body keeps a light label instead of the flat token's ink.
         // A fill in the middle of the scale (a game's crimson) that neither
         // end of the scale reads 7:1 on moves away from the better ink, as
-        // little as it takes, so the colour stays the game's.
-        let (bg, fg) = match (bg, t.art.slice(part)) {
+        // little as it takes, so the colour stays the game's. A dressing
+        // that paints its own fills (a gradient) is read the same way, by
+        // the mean of its paints.
+        let painted = slice.is_none() && !resolved.draw.fills.is_empty();
+        let (bg, fg) = match (bg, slice) {
             // Only art whose centre the style measured (`tone`): untoned
             // art is the style's to judge.
             (Some(fill), Some(s))
@@ -1804,15 +1917,34 @@ impl Ui {
                     }
                 }
             }
+            (fill, None) if painted && !desc.disabled => {
+                let behind = self.behind(i);
+                let d = resolved.element_draw(&part, &t, fill);
+                let ground = crate::dress::ground_of(&d, &t, behind);
+                let bar = crate::style::BUTTON_READABLE;
+                let ink = fg
+                    .readable_on(ground, bar)
+                    .or_else(|| {
+                        let other = if fg == p.ink { p.ink_inverse } else { p.ink };
+                        other.readable_on(ground, bar)
+                    })
+                    .unwrap_or(fg);
+                (fill, ink)
+            }
             _ => (bg, fg),
         };
-        let mut content = self.text_content(text, t.type_ramp.body, fg);
+        let mut content = self.role_text(text, crate::tokens::TypeRole::Label, fg);
         content.align = TextAlign::Center;
-        content.wrap = false;
         let press = self.button_motion(i, r, refused);
+        if r.clicked && desc.variant == ButtonVariant::Primary {
+            self.feedback(crate::tokens::SoundEvent::Confirm);
+        }
+        let radius = crate::dress::corner_of(resolved.shape(&part, &t)).1;
         let n = &mut self.nodes[i];
         n.el.background = bg;
-        n.el.frame = Some(part);
+        n.el.radius = radius.min(h / 2.0);
+        n.el.part = Some(part);
+        n.el.frame = None;
         n.content = Content::Text(content);
         n.widget = Widget::Button {
             pressed: r.pressed,
@@ -1960,10 +2092,34 @@ impl Ui {
         press
     }
 
-    /// Queues a UI event's sound when the art has one for it.
+    /// Queues a version 1 event (its version 2 event, [`UiSound::event`]).
+    ///
+    /// [`UiSound::event`]: crate::style_file::UiSound::event
     pub(crate) fn sound(&mut self, event: crate::style_file::UiSound) {
-        if self.theme.art.sound(event) != 0 {
-            self.sounds.push(event);
+        self.feedback(event.event());
+    }
+
+    /// Plays a UI event's feedback (docs/ui.md §7.8): the sound of the
+    /// style's set for it and its haptic, in the tick of the input that
+    /// caused it. Widgets queue their own events (press, focus, toggles,
+    /// tabs, slider steps, dialogs, toasts); game code queues the rest
+    /// (rewards, rarity reveals, notifications). An event the style gives
+    /// neither a sound nor a haptic queues nothing.
+    pub fn feedback(&mut self, event: crate::tokens::SoundEvent) {
+        self.queue_feedback(event, f32::NAN);
+    }
+
+    /// A step of a rising cascade (a counter's ticks): `rise` 0 at its
+    /// start to 1 at its end walks the event's pitch range upwards.
+    pub fn feedback_rising(&mut self, event: crate::tokens::SoundEvent, rise: f32) {
+        self.queue_feedback(event, rise.clamp(0.0, 1.0));
+    }
+
+    fn queue_feedback(&mut self, event: crate::tokens::SoundEvent, rise: f32) {
+        let f = self.theme.tokens.feedback(event);
+        let heard = f.sounds[..usize::from(f.count)].iter().any(|s| *s != 0);
+        if heard || f.haptic.count > 0 {
+            self.feedback.push((event, rise));
         }
     }
 
@@ -1974,14 +2130,166 @@ impl Ui {
         self.clipboard.take()
     }
 
-    /// The UI events of the last frames that have a sound in the art,
-    /// oldest first; taking them empties the queue (the host plays them).
+    /// The feedback of the events queued since the last call, oldest first;
+    /// taking it empties the queue (the host plays it). Each play is one
+    /// sound of the event's set, chosen at random and never the one it
+    /// played last, at a volume and pitch from the set's ranges (a rising
+    /// cascade's pitch climbs its range instead), and the set's haptic at
+    /// the player's strength ([`Ui::set_haptics`]; none when off). The
+    /// choices come from the UI state's own random stream, so a replay of
+    /// the same input plays the same sounds.
+    pub fn take_feedback(&mut self) -> Vec<FeedbackPlay> {
+        let queued = std::mem::take(&mut self.feedback);
+        let mut out = Vec::with_capacity(queued.len());
+        for (event, rise) in queued {
+            let f = *self.theme.tokens.feedback(event);
+            let n = usize::from(f.count);
+            let mut next = || {
+                // xorshift64*, seeded on first use.
+                let mut x = self.state.feedback_rng;
+                if x == 0 {
+                    x = 0x9e37_79b9_7f4a_7c15;
+                }
+                x ^= x >> 12;
+                x ^= x << 25;
+                x ^= x >> 27;
+                self.state.feedback_rng = x;
+                (x.wrapping_mul(0x2545_f491_4f6c_dd1d) >> 40) as f32 / (1u64 << 24) as f32
+            };
+            let mut sound = 0;
+            if n > 0 {
+                let last = usize::from(self.state.feedback_last[event.index()]);
+                let mut k = ((next() * n as f32) as usize).min(n - 1);
+                if n > 1 && k == last {
+                    k = (k + 1 + ((next() * (n - 1) as f32) as usize).min(n - 2)) % n;
+                }
+                self.state.feedback_last[event.index()] = k as u8;
+                sound = f.sounds[k];
+            }
+            let range = |r: [f32; 2], t: f32| r[0] + (r[1] - r[0]) * t;
+            let volume = range(f.volume, next());
+            let pitch = if rise.is_nan() {
+                range(f.pitch, next())
+            } else {
+                range(f.pitch, rise)
+            };
+            let mut haptic = f.haptic;
+            if self.haptics <= 0.0 {
+                haptic = crate::tokens::Haptic::NONE;
+            }
+            for p in haptic.pulses.iter_mut() {
+                p.low *= self.haptics;
+                p.high *= self.haptics;
+            }
+            if haptic.count > 0 && self.haptic_out.len() < 16 {
+                self.haptic_out.push(haptic);
+            }
+            out.push(FeedbackPlay {
+                event,
+                sound,
+                volume,
+                pitch,
+                haptic,
+            });
+        }
+        out
+    }
+
+    /// The haptic patterns the feedback played since the last call, at the
+    /// player's strength, for the host to run (pad rumble; a phone's
+    /// vibration): the frame answer's `haptics`.
+    pub fn take_haptics(&mut self) -> Vec<crate::tokens::Haptic> {
+        std::mem::take(&mut self.haptic_out)
+    }
+
+    /// The version 1 events of the last frames that have a sound, oldest
+    /// first, with the sound each plays; taking them empties the feedback
+    /// queue ([`Ui::take_feedback`] is the whole of it).
     pub fn take_sounds(&mut self) -> Vec<(crate::style_file::UiSound, u64)> {
-        let art = self.theme.art;
-        std::mem::take(&mut self.sounds)
+        self.take_feedback()
             .into_iter()
-            .map(|e| (e, art.sound(e)))
+            .filter(|f| f.sound != 0)
+            .filter_map(|f| {
+                crate::style_file::UiSound::ALL
+                    .into_iter()
+                    .find(|u| u.event() == f.event)
+                    .map(|u| (u, f.sound))
+            })
             .collect()
+    }
+
+    /// `key`'s value moved towards `target` on the style's `ui` spring (a
+    /// widget's state amount: a hover, a press, a knob's place); it
+    /// starts at its first target, and under reduced motion it is there.
+    pub(crate) fn spring_to(&mut self, key: u64, target: f32) -> f32 {
+        self.animate_key(
+            key,
+            target,
+            crate::motion::Transition::Token(crate::motion::MotionToken::Ui),
+            None,
+        )
+    }
+
+    /// How far into hover and press node `i` is for its response `r`, on
+    /// the style's `ui` spring: what its part's states mix by.
+    pub(crate) fn state_amounts(&mut self, i: usize, r: &Response) -> (f32, f32) {
+        let key = self.nodes[i].key;
+        let h = self.spring_to(
+            child_key(key, "state.hover"),
+            if r.hovered { 1.0 } else { 0.0 },
+        );
+        let p = self.spring_to(
+            child_key(key, "state.press"),
+            if r.pressed { 1.0 } else { 0.0 },
+        );
+        (h.clamp(0.0, 1.5), p.clamp(0.0, 1.5))
+    }
+
+    /// The colour of a control in its state: `rest` mixed towards `hover`
+    /// and `pressed` by how far into each it is.
+    pub(crate) fn state_color(
+        rest: Srgba,
+        hover: Srgba,
+        pressed: Srgba,
+        (h, p): (f32, f32),
+    ) -> Srgba {
+        mix_srgba(mix_srgba(rest, hover, h), pressed, p)
+    }
+
+    /// The style's type step for `role` at this frame's breakpoint
+    /// (docs/ui.md §12.2): its size, line height and tracking; Chinese,
+    /// Japanese and Korean text a line height half again its size.
+    pub fn type_step(&self, role: crate::tokens::TypeRole) -> TypeStep {
+        let tok = self.theme.tokens.typography.get(role, self.breakpoint());
+        TypeStep {
+            size: tok.size,
+            line_height: tok.line_height,
+            tracking_em: tok.tracking_em,
+            cjk_line_height: tok.line_height.max((tok.size * 1.45).round()),
+            cjk_tracking_em: 0.0,
+        }
+    }
+
+    /// The font role the style sets `role` in.
+    pub fn type_font(&self, role: crate::tokens::TypeRole) -> FontRole {
+        self.theme
+            .tokens
+            .typography
+            .get(role, self.breakpoint())
+            .font
+    }
+
+    /// One line of a widget's text in a type role (its step and font).
+    pub(crate) fn role_text(
+        &self,
+        text: &str,
+        role: crate::tokens::TypeRole,
+        color: Srgba,
+    ) -> TextContent {
+        let mut c = self.text_content(text, self.type_step(role), color);
+        c.font = self.type_font(role);
+        c.wrap = false;
+        c
     }
 
     /// A horizontal slider over `value`; dragging anywhere on it sets the value.
@@ -2090,12 +2398,18 @@ impl Ui {
         if r.clicked {
             *on = !*on;
             r.changed = true;
+            self.feedback(if *on {
+                crate::tokens::SoundEvent::ToggleOn
+            } else {
+                crate::tokens::SoundEvent::ToggleOff
+            });
         }
-        let mut content = self.text_content(label, t.type_ramp.body, t.palette.ink);
-        content.wrap = false;
+        let key = self.nodes[i].key;
+        let slide = self.spring_to(child_key(key, "slide"), if *on { 1.0 } else { 0.0 });
+        let content = self.role_text(label, crate::tokens::TypeRole::Body, t.palette.ink);
         let n = &mut self.nodes[i];
         n.content = Content::Text(content);
-        n.widget = Widget::Toggle { on: *on };
+        n.widget = Widget::Toggle { on: *on, slide };
         n.probe_text = label.to_owned();
         r
     }
@@ -2129,7 +2443,6 @@ impl Ui {
                 padding: Insets::xy(t.space.md, 0.0),
                 interactive: true,
                 radius: t.radius.control,
-                frame: Some(StylePart::Field),
                 ..Element::default()
             },
         );
@@ -2175,12 +2488,8 @@ impl Ui {
         let mut content = self.text_content(&shown, step, color);
         content.wrap = false;
         let edit = self.edit_view(key, focused, value, composition, false);
+        self.field_part(i, focused);
         let n = &mut self.nodes[i];
-        n.el.background = Some(if focused {
-            t.palette.panel
-        } else {
-            t.palette.control
-        });
         n.content = Content::Text(content);
         n.widget = Widget::Field(edit);
         n.probe_text = if value.is_empty() {
@@ -2194,6 +2503,20 @@ impl Ui {
         n.a11y.description = Some(desc.placeholder.clone());
         n.a11y.value = Some(value.clone());
         r
+    }
+
+    /// A field's frame as a part (`Field.frame[focused]`): its ground moves
+    /// from `control` to `panel` on the `ui` spring as it takes the focus.
+    fn field_part(&mut self, i: usize, focused: bool) {
+        let p = self.theme.palette;
+        let key = self.nodes[i].key;
+        let f = self.spring_to(child_key(key, "focus"), if focused { 1.0 } else { 0.0 });
+        let n = &mut self.nodes[i];
+        n.el.background = Some(mix_srgba(p.control, p.panel, f.clamp(0.0, 1.0)));
+        let part = crate::dress::PartRef::new("Field", "frame", crate::tokens::ElementClass::Field)
+            .flag_if(focused, "focused")
+            .flag_if(n.disabled, "disabled");
+        n.el.part = Some(part);
     }
 
     /// A multi-line text area: [`Ui::text_field`]'s editing, with Enter
@@ -2226,7 +2549,6 @@ impl Ui {
                 padding: pad,
                 interactive: true,
                 radius: t.radius.control,
-                frame: Some(StylePart::Field),
                 ..Element::default()
             },
         );
@@ -2257,12 +2579,8 @@ impl Ui {
         let focused = r.focused;
         let (shown, composition) = self.shown_text(value, focused);
         let edit = self.edit_view(key, focused, value, composition, true);
+        self.field_part(i, focused);
         let n = &mut self.nodes[i];
-        n.el.background = Some(if focused {
-            t.palette.panel
-        } else {
-            t.palette.control
-        });
         n.widget = Widget::TextArea {
             edit,
             text: shown,
@@ -3149,6 +3467,7 @@ impl Ui {
         };
         self.state.hits = hits;
 
+        self.build_part_draws(&order);
         let mut cmds = self.commands(&order);
         self.record_matches(&order);
         if let Some(c) = self.cover {
@@ -3344,8 +3663,9 @@ impl Ui {
         let theme = self.theme;
         // An element's draw (crate::paint) in its layout box, at its
         // opacity; its clip is the screen's (bake leaves draw commands be).
+        let press_scale = theme.press_scale;
         let placed = |n: &crate::layout::Node| crate::paint::Placed {
-            rect: n.rect,
+            rect: part_rect(n, press_scale),
             radius: n.el.radius,
             clip: n.clip,
             alpha: n.alpha,
@@ -3354,7 +3674,12 @@ impl Ui {
             let n = &self.nodes[i];
             let world = n.world;
             let start = cmds.len();
-            let draw = self.draws.get(&i).cloned();
+            let game_draw = self.draws.contains_key(&i);
+            let draw = self
+                .draws
+                .get(&i)
+                .or_else(|| self.part_draws.get(&i))
+                .cloned();
             if let Some(m) = self.world_marks(n.key) {
                 cmds.extend(m.enter.iter().map(|c| (c.clone(), Affine::IDENTITY)));
             }
@@ -3370,7 +3695,7 @@ impl Ui {
                     crate::layout::draw_eq(n, b) && self.kinds[i] == prev_kinds[twin]
                 })
                 && (n.parent == NONE || same[n.parent])
-                && draw.is_none();
+                && !game_draw;
             if i != 0 || n.el.background.is_some() {
                 let mut local = Vec::new();
                 if same[i]
@@ -3418,7 +3743,7 @@ impl Ui {
                     let w = self.nodes[j].world;
                     cmds.extend(bars.into_iter().map(|c| (c, w)));
                 }
-                if let Some(d) = self.draws.get(&j) {
+                if let Some(d) = self.draws.get(&j).or_else(|| self.part_draws.get(&j)) {
                     let w = self.nodes[j].world;
                     let at = placed(&self.nodes[j]);
                     cmds.extend(d.leave(&theme, &at).into_iter().map(|c| (c, w)));
@@ -3622,18 +3947,25 @@ impl Ui {
             // focused placeholder read 3.5:1 on primary-tinted navy).
             cmds.push(quad(rect.outset(gap), n.el.radius + gap, behind));
         }
-        if let Some(bg) = n.el.background {
+        // A part the UI pass draws (`part_draws`) has its background there.
+        let part = n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref));
+        let atlas_dressed = part.and_then(|p| {
+            t.art.atlas?;
+            let r = self.dress.resolve(&p);
+            let s = r.frame.slice?;
+            Some((p, r.frame, s))
+        });
+        if let Some(bg) =
+            n.el.background
+                .filter(|_| !self.part_draws.contains_key(&i) || atlas_dressed.is_some())
+        {
             let (pressed, press) = match n.widget {
                 Widget::Button { pressed, press } => (pressed, press),
                 _ => (false, 0.0),
             };
-            match n
-                .el
-                .frame
-                .and_then(|part| t.art.slice(part).map(|s| (part, s)))
-            {
-                Some((part, slice)) => {
-                    let r = match (t.art.press, pressed) {
+            match atlas_dressed {
+                Some((_, frame, slice)) => {
+                    let r = match (frame.press.or(t.art.press), pressed) {
                         // The squash follows the spring, in and back out.
                         (Some(pr), _) if press != 0.0 => scaled_xy(
                             rect,
@@ -3643,7 +3975,7 @@ impl Ui {
                         (None, true) => rect.scaled(t.press_scale),
                         _ => rect,
                     };
-                    self.dress(part, slice, r, n.el.radius, bg, alpha, clip, cmds);
+                    self.dress(&frame, slice, r, n.el.radius, bg, alpha, clip, cmds);
                 }
                 None => {
                     let r = if pressed {
@@ -3669,47 +4001,27 @@ impl Ui {
                 cmds,
             );
         }
-        let track = t.art.slice(StylePart::Track);
+        use crate::dress::PartRef;
+        use crate::tokens::ElementClass as C;
+        let bar = |rect: Rect, value: f32, part: PartRef| {
+            let min = self
+                .dress
+                .resolve(&part)
+                .frame
+                .slice
+                .filter(|_| t.art.atlas.is_some())
+                .map_or(rect.height, |s| s.border[0] + s.border[2]);
+            let w = (rect.width * value).max(min.min(rect.width));
+            Rect::new(rect.x, rect.y, w, rect.height).snapped(dpr)
+        };
         match n.widget {
-            Widget::Progress { value } if track.is_some() => {
-                let fill = t.art.slice(StylePart::Fill);
-                if let Some(s) = track {
-                    self.dress(
-                        StylePart::Track,
-                        s,
-                        rect,
-                        t.radius.bar,
-                        p.control_strong,
-                        alpha,
-                        clip,
-                        cmds,
-                    );
-                }
-                if let (Some(s), true) = (fill, value > 0.0) {
-                    let min = s.border[0] + s.border[2];
-                    let w = (rect.width * value).max(min.min(rect.width));
-                    let r = Rect::new(rect.x, rect.y, w, rect.height).snapped(dpr);
-                    self.dress(
-                        StylePart::Fill,
-                        s,
-                        r,
-                        t.radius.bar,
-                        p.primary,
-                        alpha,
-                        clip,
-                        cmds,
-                    );
-                }
-            }
             Widget::Progress { value } => {
-                cmds.push(quad(rect, t.radius.bar, p.control_strong));
+                let track = PartRef::new("Meter", "track", C::Bar);
+                self.part_commands(&track, rect, Some(p.control_strong), alpha, clip, cmds);
                 if value > 0.0 {
-                    let w = (rect.width * value).max(t.radius.bar * 2.0);
-                    cmds.push(quad(
-                        Rect::new(rect.x, rect.y, w, rect.height).snapped(dpr),
-                        t.radius.bar,
-                        p.primary,
-                    ));
+                    let fill = PartRef::new("Meter", "fill", C::Bar).attr("kind", "primary");
+                    let r = bar(rect, value, fill);
+                    self.part_commands(&fill, r, Some(p.primary), alpha, clip, cmds);
                 }
             }
             Widget::Slider { t: v, active } => {
@@ -3717,40 +4029,41 @@ impl Ui {
                 let track_h = t.space.xs;
                 let cy = rect.y + rect.height / 2.0;
                 let track = Rect::new(rect.x, cy - track_h / 2.0, rect.width, track_h).snapped(dpr);
-                cmds.push(quad(track, t.radius.bar, p.control_strong));
+                let tp = PartRef::new("Slider", "track", C::Bar);
+                self.part_commands(&tp, track, Some(p.control_strong), alpha, clip, cmds);
                 let tx = rect.x + v * (rect.width - thumb).max(0.0);
-                cmds.push(quad(
-                    Rect::new(rect.x, track.y, tx + thumb / 2.0 - rect.x, track_h).snapped(dpr),
-                    t.radius.bar,
-                    p.primary,
-                ));
+                let fp = PartRef::new("Slider", "fill", C::Bar);
+                let filled =
+                    Rect::new(rect.x, track.y, tx + thumb / 2.0 - rect.x, track_h).snapped(dpr);
+                self.part_commands(&fp, filled, Some(p.primary), alpha, clip, cmds);
                 let mut knob = Rect::new(tx, cy - thumb / 2.0, thumb, thumb);
                 if active {
                     knob = knob.scaled(t.press_scale);
                 }
-                cmds.push(quad(knob.snapped(dpr), t.radius.control, p.knob));
+                let kp = PartRef::new("Slider", "knob", C::Chip).flag_if(active, "pressed");
+                self.part_commands(&kp, knob.snapped(dpr), Some(p.knob), alpha, clip, cmds);
             }
-            Widget::Toggle { on } => {
+            Widget::Toggle { on, slide } => {
                 let (sw, sh) = self.switch_size();
                 let track =
                     Rect::new(rect.x, rect.y + (rect.height - sh) / 2.0, sw, sh).snapped(dpr);
-                cmds.push(quad(
-                    track,
-                    t.radius.control,
-                    if on { p.primary } else { p.control_strong },
-                ));
+                let tp =
+                    PartRef::new("Toggle", "track", C::Chip).flag(if on { "on" } else { "off" });
+                let color = mix_srgba(p.control_strong, p.primary, slide);
+                self.part_commands(&tp, track, Some(color), alpha, clip, cmds);
                 let inset = t.space.xxs;
                 let k = sh - 2.0 * inset;
-                let kx = if on {
-                    track.right() - inset - k
-                } else {
-                    track.x + inset
-                };
-                cmds.push(quad(
+                let kx = track.x + inset + (track.width - 2.0 * inset - k) * slide;
+                let kp =
+                    PartRef::new("Toggle", "knob", C::Chip).flag(if on { "on" } else { "off" });
+                self.part_commands(
+                    &kp,
                     Rect::new(kx, track.y + inset, k, k).snapped(dpr),
-                    (t.radius.control - inset).max(0.0),
-                    p.knob,
-                ));
+                    Some(p.knob),
+                    alpha,
+                    clip,
+                    cmds,
+                );
             }
             _ => {}
         }
@@ -4160,11 +4473,12 @@ impl Ui {
     }
 
     /// A styled background: the part's shadow and glow, its nine-slice
-    /// frame (tinted by `backdrop`), the tiled texture and the corner ornaments.
+    /// frame (tinted by `bg`), the tiled texture and the corner ornaments,
+    /// as its dressing (`frame`, resolved by selector) sets them.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn dress(
         &self,
-        part: StylePart,
+        frame: &crate::dress::DressFrame,
         slice: Slice,
         rect: Rect,
         radius: f32,
@@ -4177,7 +4491,7 @@ impl Ui {
         let Some(atlas) = art.atlas else { return };
         let p = &self.theme.palette;
         let fade = alpha * if slice.tint { 1.0 } else { bg.alpha };
-        if let Some(sh) = art.shadow(part) {
+        if let Some(sh) = frame.shadow {
             let r = rect.outset(sh.spread);
             let r = Rect::new(r.x + sh.dx, r.y + sh.dy, r.width, r.height);
             match art.soft.filter(|_| sh.blur > 0.0) {
@@ -4197,15 +4511,15 @@ impl Ui {
                 }),
             }
         }
-        if let (Some(g), Some(soft)) = (art.glow(part), art.soft) {
+        if let (Some(g), Some(soft)) = (frame.glow, art.soft) {
             let c = g.ink.color(p).fade(g.alpha * fade);
             self.nine(atlas, soft, rect.outset(g.size), c, clip, cmds);
         }
         // Glass: the blurred frame under the part, then its own frame
         // thinned to the glass's fill; under reduced transparency an opaque
         // surface instead, its frame whole.
-        let solid = self.theme.reduced_transparency && art.glass(part).is_some();
-        let glass = art.glass(part).filter(|_| !solid);
+        let solid = self.theme.reduced_transparency && frame.glass.is_some();
+        let glass = frame.glass.filter(|_| !solid);
         let (bg, fade) = if solid {
             (Srgba { alpha: 1.0, ..bg }, alpha)
         } else {
@@ -4230,7 +4544,7 @@ impl Ui {
             Srgba::WHITE.fade(fade * thin)
         };
         self.nine(atlas, slice, rect, tint, clip, cmds);
-        if let Some(tile) = art.tile(part) {
+        if let Some(tile) = art.tile.filter(|_| frame.tile) {
             let inner = Rect::new(
                 rect.x + tile.inset,
                 rect.y + tile.inset,
@@ -4255,7 +4569,7 @@ impl Ui {
                 y += th;
             }
         }
-        if let Some(o) = art.corners(part) {
+        if let Some(o) = art.corner.filter(|_| frame.corners) {
             let (w, h) = (o.w, o.h);
             let d = o.offset;
             let (l, t, r, b) = (
@@ -4306,18 +4620,207 @@ impl Ui {
         });
     }
 
+    /// What part `part` draws for a widget whose own colour for its state
+    /// is `fill`: its dressing, else the tokens (docs/ui.md §12.3), moved
+    /// between its states by how far into hover and press it is.
+    pub(crate) fn part_draw(
+        &self,
+        part: &crate::dress::PartRef,
+        fill: Option<Srgba>,
+    ) -> crate::paint::ElementDraw {
+        let t = &self.theme;
+        let draw = |p: crate::dress::PartRef| self.dress.resolve(&p).element_draw(&p, t, fill);
+        if part.hover <= 0.0 && part.press <= 0.0 {
+            return draw(*part);
+        }
+        let mut d = draw(part.in_state(false, false));
+        if part.hover > 0.0 {
+            let h = draw(part.in_state(true, false));
+            d = crate::dress::mix_draw(t, &d, &h, part.hover.min(1.0));
+        }
+        if part.press > 0.0 {
+            let pr = draw(part.in_state(part.hover >= 0.5, true));
+            d = crate::dress::mix_draw(t, &d, &pr, part.press.min(1.0));
+        }
+        d
+    }
+
+    /// What part `part` draws at its centre for `fill` (straight alpha):
+    /// its atlas art's tone, its dressing's paints (their mean), or the
+    /// fill itself; what a label on it must read against.
+    pub(crate) fn part_ground(&self, part: &crate::dress::PartRef, fill: Srgba) -> Srgba {
+        let r = self.dress.resolve(part);
+        if let (Some(s), Some(_)) = (r.frame.slice, self.theme.art.atlas) {
+            return s.drawn(fill).unwrap_or(fill);
+        }
+        if !r.draw.fills.is_empty() {
+            let d = r.element_draw(part, &self.theme, Some(fill));
+            return crate::dress::ground_of(&d, &self.theme, Srgba::TRANSPARENT);
+        }
+        fill
+    }
+
+    /// Part `part` drawn in `rect` (a widget's piece: a meter's fill, a
+    /// toggle's knob): its atlas art when its dressing has a slice and the
+    /// style an atlas, else through the UI pass ([`Ui::part_draw`]).
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn part_commands(
+        &self,
+        part: &crate::dress::PartRef,
+        rect: Rect,
+        fill: Option<Srgba>,
+        alpha: f32,
+        clip: Rect,
+        cmds: &mut Vec<DrawCmd>,
+    ) {
+        let t = &self.theme;
+        let r = self.dress.resolve(part);
+        let radius = crate::dress::corner_of(r.shape(part, t)).1;
+        if let (Some(slice), Some(_)) = (r.frame.slice, t.art.atlas) {
+            if let Some(bg) = fill {
+                self.dress(&r.frame, slice, rect, radius, bg, alpha, clip, cmds);
+            }
+            return;
+        }
+        let d = self.part_draw(part, fill);
+        let at = crate::paint::Placed {
+            rect,
+            radius,
+            clip,
+            alpha,
+        };
+        cmds.extend(d.enter(t, &at));
+        cmds.extend(d.children(&at));
+        cmds.extend(d.leave(t, &at));
+        self.procedural_ornaments(&r, part, rect, alpha, clip, cmds);
+    }
+
+    /// The parts of this frame drawn through the UI pass: every element
+    /// with a part (or a version 1 frame) whose dressing has no atlas art,
+    /// its draw made from its dressing or the tokens.
+    fn build_part_draws(&mut self, order: &[usize]) {
+        self.part_draws.clear();
+        for &i in order {
+            if self.draws.contains_key(&i) {
+                continue;
+            }
+            let n = &self.nodes[i];
+            let Some(part) = n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref)) else {
+                continue;
+            };
+            let r = self.dress.resolve(&part);
+            if r.frame.slice.is_some() && self.theme.art.atlas.is_some() {
+                continue;
+            }
+            let d = self.part_draw(&part, n.el.background);
+            if d.fills.is_empty()
+                && d.strokes.is_empty()
+                && d.effects.is_empty()
+                && d.layer.is_none()
+            {
+                continue;
+            }
+            self.part_draws.insert(i, d);
+        }
+    }
+
+    /// The ornaments an atlas-free style draws for a part's `ornament`
+    /// lines: corner brackets in `lineStrong`, drawn as paths at the
+    /// part's corners (an atlas style's ornaments are its art).
+    fn procedural_ornaments(
+        &self,
+        r: &crate::dress::Resolved,
+        part: &crate::dress::PartRef,
+        rect: Rect,
+        alpha: f32,
+        clip: Rect,
+        cmds: &mut Vec<DrawCmd>,
+    ) {
+        if self.theme.art.atlas.is_some()
+            || !r
+                .draw
+                .ornaments
+                .contains(&crate::dress::OrnamentKind::Corner)
+        {
+            return;
+        }
+        let t = &self.theme;
+        let len = (t.tokens.space(crate::tokens::SpaceStep::Md))
+            .min(rect.width / 4.0)
+            .min(rect.height / 4.0);
+        if len < 3.0 {
+            return;
+        }
+        let w = t.tokens.stroke(crate::tokens::StrokeWidth::Regular);
+        let o = w / 2.0 + t.tokens.space(crate::tokens::SpaceStep::Xxs);
+        let ink = if part.has("selected") || part.has("focused") {
+            "primary"
+        } else {
+            "lineStrong"
+        };
+        for (cx, cy, sx, sy) in [
+            (rect.x - o, rect.y - o, 1.0, 1.0),
+            (rect.right() + o, rect.y - o, -1.0, 1.0),
+            (rect.x - o, rect.bottom() + o, 1.0, -1.0),
+            (rect.right() + o, rect.bottom() + o, -1.0, -1.0),
+        ] {
+            let box_ = Rect::new(cx.min(cx + sx * len), cy.min(cy + sy * len), len, len);
+            let pt = |x: f32, y: f32| [x - box_.x, y - box_.y];
+            let d = crate::paint::ElementDraw {
+                shape: crate::paint::ShapeKind::Path {
+                    points: vec![pt(cx, cy + sy * len), pt(cx, cy), pt(cx + sx * len, cy)],
+                    closed: false,
+                    curves: false,
+                    width: w,
+                    cap: crate::paint::Cap::Square,
+                    join: crate::paint::Join::Miter(4.0),
+                },
+                fills: vec![crate::paint::Paint::Solid(crate::paint::ColorRef::token(
+                    ink,
+                ))],
+                ..Default::default()
+            };
+            let at = crate::paint::Placed {
+                rect: box_,
+                radius: 0.0,
+                clip,
+                alpha,
+            };
+            cmds.extend(d.enter(t, &at));
+        }
+    }
+
     /// What is behind node `i`: its nearest ancestor's fill over the theme's
     /// ground, opaque (a focus ring's gap).
     pub(crate) fn behind(&self, i: usize) -> Srgba {
         let mut fills = Vec::new();
         let mut j = self.nodes[i].parent;
         while j != NONE {
+            let nj = &self.nodes[j];
+            let part = nj.el.part.or_else(|| nj.el.frame.map(StylePart::part_ref));
+            // A dressing whose paints are its own (a gradient panel) is what
+            // is behind, as the frame draws it.
+            if let Some(p) = part {
+                let r = self.dress.resolve(&p);
+                let atlas = r.frame.slice.is_some() && self.theme.art.atlas.is_some();
+                if !atlas && !r.draw.fills.is_empty() {
+                    let d = r.element_draw(&p, &self.theme, nj.el.background);
+                    let c = crate::dress::ground_of(&d, &self.theme, Srgba::TRANSPARENT);
+                    fills.push(c);
+                    if c.alpha >= 1.0 {
+                        break;
+                    }
+                    j = nj.parent;
+                    continue;
+                }
+            }
             if let Some(mut bg) = self.nodes[j].el.background {
                 // A styled frame draws its art's centre (`tone`), not the flat fill.
-                if let Some(d) = self.nodes[j]
-                    .el
-                    .frame
-                    .and_then(|f| self.theme.art.slice(f))
+                if let Some(d) = part
+                    .and_then(|p| {
+                        self.theme.art.atlas?;
+                        self.dress.resolve(&p).frame.slice
+                    })
                     .and_then(|s| s.drawn(bg))
                 {
                     bg = d;
@@ -4342,6 +4845,12 @@ impl Ui {
         let dpr = self.viewport.dpr();
         for shape in &n.shapes {
             match shape {
+                Shape::Part { frame, part, fill } => {
+                    let r = frame.resolve(&n.rect);
+                    if !r.is_empty() {
+                        self.part_commands(part, r.snapped(dpr), *fill, alpha, clip, cmds);
+                    }
+                }
                 Shape::Rect {
                     frame,
                     radius,
@@ -4562,6 +5071,8 @@ impl Ui {
             }
             u64_(&mut b, sc.since);
         }
+        u64_(&mut b, s.feedback_rng);
+        b.extend_from_slice(&s.feedback_last);
         for v in s.voices {
             u64_(&mut b, v);
         }
@@ -4645,9 +5156,10 @@ impl Ui {
         b
     }
 
-    /// The host's voice entity for each UI sound (by `UiSound` index), kept
-    /// in the UI state so snapshots carry it.
-    pub fn voices_mut(&mut self) -> &mut [u64; 6] {
+    /// The host's voice entity for each UI event's sound (by
+    /// [`crate::tokens::SoundEvent`] index), kept in the UI state so
+    /// snapshots carry it.
+    pub fn voices_mut(&mut self) -> &mut [u64; crate::tokens::SoundEvent::COUNT] {
         &mut self.state.voices
     }
 
@@ -4678,6 +5190,45 @@ impl Ui {
         self.state = s;
         self.restore_docs_state(&docs);
         Ok(())
+    }
+}
+
+/// Where an element's part draws: its rectangle, a pressed control's
+/// shrunk by the theme's press scale as far into the press as it is.
+fn part_rect(n: &crate::layout::Node, press_scale: f32) -> Rect {
+    match (n.el.part, &n.widget) {
+        (Some(p), Widget::Button { .. }) if p.press > 0.0 => {
+            n.rect.scaled(1.0 - (1.0 - press_scale) * p.press.min(1.0))
+        }
+        (None, Widget::Button { pressed: true, .. }) => n.rect.scaled(press_scale),
+        _ => n.rect,
+    }
+}
+
+/// `a` moved `t` of the way to `b` in sRGB, alpha included.
+/// `a` towards `b` by `t`, premultiplied (a translucent white mixing into an
+/// opaque dark passes through greys, not a bright half-opaque white), in
+/// sRGB bytes as a CSS transition mixes.
+pub(crate) fn mix_srgba(a: Srgba, b: Srgba, t: f32) -> Srgba {
+    let t = t.clamp(0.0, 1.0);
+    if t <= 0.0 {
+        return a;
+    }
+    if t >= 1.0 {
+        return b;
+    }
+    let alpha = a.alpha + (b.alpha - a.alpha) * t;
+    if alpha <= 0.0 {
+        return Srgba { alpha: 0.0, ..a };
+    }
+    let ch = |k: usize| {
+        let pa = f32::from(a.rgb[k]) * a.alpha;
+        let pb = f32::from(b.rgb[k]) * b.alpha;
+        ((pa + (pb - pa) * t) / alpha).round().clamp(0.0, 255.0) as u8
+    };
+    Srgba {
+        rgb: [ch(0), ch(1), ch(2)],
+        alpha,
     }
 }
 
@@ -4947,6 +5498,8 @@ impl Reader<'_> {
                 },
             );
         }
+        s.feedback_rng = self.u64()?;
+        s.feedback_last = self.take()?;
         for v in s.voices.iter_mut() {
             *v = self.u64()?;
         }

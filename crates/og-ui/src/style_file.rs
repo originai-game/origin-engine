@@ -144,6 +144,53 @@ impl StylePart {
         s
     }
 
+    /// The part a widget drawing this version 1 class is ([`Self::selector`]
+    /// as a [`crate::dress::PartRef`], with its element class and level).
+    pub fn part_ref(self) -> crate::dress::PartRef {
+        use crate::dress::PartRef;
+        use crate::tokens::{ElementClass as C, Level};
+        let p = match self {
+            StylePart::Panel => PartRef::new("Panel", "frame", C::Panel),
+            StylePart::Card => PartRef::new("Card", "frame", C::Card).at_level(Level::Raised),
+            StylePart::Button => PartRef::new("Button", "base", C::Button),
+            StylePart::ButtonHover => PartRef::new("Button", "base", C::Button).flag("hover"),
+            StylePart::ButtonPressed => PartRef::new("Button", "base", C::Button).flag("pressed"),
+            StylePart::ButtonDisabled => PartRef::new("Button", "base", C::Button).flag("disabled"),
+            StylePart::Field => PartRef::new("Field", "frame", C::Field),
+            StylePart::Slot => PartRef::new("Slot", "frame", C::Slot),
+            StylePart::Tooltip => {
+                PartRef::new("Tooltip", "frame", C::Tooltip).at_level(Level::Floating)
+            }
+            StylePart::Hud => PartRef::new("Hud", "frame", C::Hud),
+            StylePart::Track => PartRef::new("Meter", "track", C::Bar),
+            StylePart::Fill => PartRef::new("Meter", "fill", C::Bar),
+        };
+        debug_assert_eq!(StylePart::from_part(&p), Some(self));
+        p
+    }
+
+    /// The version 1 class a part draws its atlas art with: a part of one
+    /// of the twelve selectors (its variants and states beyond a button's
+    /// own taken off), else none.
+    pub fn from_part(p: &crate::dress::PartRef) -> Option<StylePart> {
+        let state = |s| p.has(s);
+        Some(match (p.component, p.part) {
+            ("Panel", "frame") => StylePart::Panel,
+            ("Card", "frame") => StylePart::Card,
+            ("Button", "base") if state("disabled") => StylePart::ButtonDisabled,
+            ("Button", "base") if state("pressed") => StylePart::ButtonPressed,
+            ("Button", "base") if state("hover") => StylePart::ButtonHover,
+            ("Button", "base") => StylePart::Button,
+            ("Field", "frame") => StylePart::Field,
+            ("Slot", "frame") => StylePart::Slot,
+            ("Tooltip", "frame") => StylePart::Tooltip,
+            ("Hud", "frame") => StylePart::Hud,
+            ("Meter", "track") => StylePart::Track,
+            ("Meter", "fill") => StylePart::Fill,
+            _ => return None,
+        })
+    }
+
     /// The version 1 class a selector is exactly, if any.
     pub fn from_selector(s: &Selector) -> Option<StylePart> {
         StylePart::ALL.into_iter().find(|p| p.selector() == *s)
@@ -519,7 +566,67 @@ impl StyleFile {
                 out.push(s.clone());
             }
         }
+        for v in self.vector_assets() {
+            if !out.contains(&v) {
+                out.push(v);
+            }
+        }
         out
+    }
+
+    /// The vector assets its dressings fill with (`fill vector "<asset>"`),
+    /// each once, in file order.
+    pub fn vector_assets(&self) -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        for d in &self.dressings {
+            for (_, v) in &d.draw.vectors {
+                if !out.contains(v) {
+                    out.push(v.clone());
+                }
+            }
+        }
+        out
+    }
+
+    /// Binds its dressings' vector fills to the loaded vectors (`handle`
+    /// of an asset id; `None` leaves that fill unbound, drawing nothing):
+    /// the style's asset binding of docs/ui.md §13.
+    pub fn bind_vectors(&mut self, handle: impl Fn(&str) -> Option<crate::paint::UiVectorHandle>) {
+        for d in &mut self.dressings {
+            for (at, asset) in &d.draw.vectors {
+                if let (Some(h), Some(crate::paint::Paint::Vector { vector, .. })) =
+                    (handle(asset), d.draw.fills.get_mut(*at))
+                {
+                    *vector = h;
+                }
+            }
+        }
+    }
+
+    /// The theme with the loaded atlas and sounds: `sounds` the version 1
+    /// events' handles, `feedback` the handle of each asset id of the
+    /// [`StyleFile::feedback_sounds`] sets (0: not loaded), so every
+    /// event plays its whole set.
+    pub fn theme_with_feedback(
+        &self,
+        atlas: Option<TextureHandle>,
+        sounds: [u64; 6],
+        feedback: impl Fn(&str) -> u64,
+    ) -> Theme {
+        let mut t = self.theme(atlas, sounds);
+        for e in SoundEvent::ALL {
+            let set = &self.feedback_sounds[e.index()];
+            if set.is_empty() {
+                continue;
+            }
+            let f = &mut t.tokens.feedback[e.index()];
+            let n = set.len().min(crate::tokens::SET_SOUNDS);
+            for (k, id) in set.iter().take(n).enumerate() {
+                f.sounds[k] = feedback(id);
+            }
+            f.count = n as u8;
+        }
+        t
     }
 
     /// The line that sets `part`'s tone (`og cook` appends what it
@@ -557,6 +664,11 @@ impl StyleFile {
         for s in self.feedback_sounds.iter_mut().flatten() {
             at(s);
         }
+        for d in &mut self.dressings {
+            for (_, v) in &mut d.draw.vectors {
+                at(v);
+            }
+        }
     }
 
     /// The theme with the loaded atlas and sound handles.
@@ -565,7 +677,11 @@ impl StyleFile {
         t.art.atlas = atlas;
         t.art.sounds = sounds;
         for u in UiSound::ALL {
-            t.tokens.feedback[u.event().index()].sounds[0] = sounds[u as usize];
+            let f = &mut t.tokens.feedback[u.event().index()];
+            f.sounds[0] = sounds[u as usize];
+            if sounds[u as usize] != 0 {
+                f.count = f.count.max(1);
+            }
         }
         t
     }
@@ -890,7 +1006,7 @@ fn part_at(p: &P, i: usize) -> Result<StylePart, String> {
 /// The dressings a version 1 style's art makes: each of the twelve parts
 /// at its [`StylePart::selector`], its class's shadow, glow, glass, corners
 /// and tile on the class, the press and hover on `Button.base`.
-fn v1_dressings(art: &Art) -> Vec<Dressing> {
+pub(crate) fn v1_dressings(art: &Art) -> Vec<Dressing> {
     let mut out = Vec::new();
     for part in StylePart::ALL {
         let mut f = DressFrame {

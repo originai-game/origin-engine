@@ -12,7 +12,7 @@ use crate::layout::{
 };
 use crate::motion::{TransitionKind, ease_exit, ease_out, fx};
 use crate::style::{READABLE, Srgba};
-use crate::ui::{Anim, Response, Toast, Ui};
+use crate::ui::{Anim, Response, Toast, Ui, mix_srgba};
 use og_core::hash::StableHasher;
 use og_render::TextureHandle;
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI};
@@ -197,6 +197,13 @@ pub enum Tone {
 impl Tone {
     pub fn index(self) -> u8 {
         self as u8
+    }
+
+    /// Its name as a selector attribute (`Badge.base[tone=danger]`).
+    pub fn name(self) -> &'static str {
+        [
+            "neutral", "success", "warn", "danger", "info", "primary", "inverse",
+        ][self as usize]
     }
 
     pub fn from_index(i: u8) -> Tone {
@@ -1354,7 +1361,10 @@ impl Ui {
                 padding: Insets::all(t.space.xs),
                 interactive: true,
                 radius: t.radius.small,
-                frame: Some(crate::style_file::StylePart::Slot),
+                part: Some(
+                    crate::dress::PartRef::new("Slot", "frame", crate::tokens::ElementClass::Slot)
+                        .flag_if(selected, "selected"),
+                ),
                 ..Element::default()
             },
         );
@@ -1364,13 +1374,30 @@ impl Ui {
         let mut r = self.nav_target(i, false);
         r.dropped = self.drag_and_drop(grid, i, index);
         let p = &t.palette;
-        self.nodes[i].el.background = Some(if selected || r.pressed {
+        let amounts = self.state_amounts(i, &r);
+        let rest = if selected {
             p.control_strong
-        } else if r.hovered {
-            p.panel_hover.fade(0.6).over(p.control.over(p.panel))
         } else {
             p.control
-        });
+        };
+        let hover = p.panel_hover.fade(0.6).over(p.control.over(p.panel));
+        self.nodes[i].el.background = Some(Ui::state_color(
+            rest,
+            if selected { rest } else { hover },
+            p.control_strong,
+            amounts,
+        ));
+        if let Some(part) = self.nodes[i].el.part.as_mut() {
+            *part = part
+                .flag_if(r.pressed, "pressed")
+                .flag_if(r.hovered && !r.pressed, "hover")
+                .flag_if(r.focused, "focused");
+            part.hover = amounts.0;
+            part.press = amounts.1;
+        }
+        if r.clicked {
+            self.feedback(crate::tokens::SoundEvent::Select);
+        }
         if self.drop_target(grid, i) {
             self.nodes[i].ring = true;
         }
@@ -1440,6 +1467,11 @@ impl Ui {
                 gap: t.space.xxs,
                 background: Some(t.palette.control),
                 radius: t.radius.control,
+                part: Some(crate::dress::PartRef::new(
+                    "Tabs",
+                    "track",
+                    crate::tokens::ElementClass::Tab,
+                )),
                 ..Element::default()
             },
         );
@@ -1467,27 +1499,42 @@ impl Ui {
             if r.clicked && !on {
                 *selected = k;
                 out.changed = true;
+                self.feedback(crate::tokens::SoundEvent::Tab);
             }
+            let amounts = self.state_amounts(i, &r);
             out.hovered |= r.hovered;
             out.focused |= r.focused;
             out.clicked |= r.clicked;
             let on = *selected == k;
             let p = &t.palette;
-            let mut c = self.text_content(
+            let mut c = self.role_text(
                 label,
-                t.type_ramp.body,
+                crate::tokens::TypeRole::Label,
                 if on { p.ink } else { p.ink_muted },
             );
             c.align = TextAlign::Center;
-            c.wrap = false;
+            // The selected tab's ground slides in on the `ui` spring.
+            let sel = self.spring_to(
+                crate::id::child_key(self.nodes[i].key, "on"),
+                if on { 1.0 } else { 0.0 },
+            );
+            let clear = p.control.fade(0.0);
+            let bg = mix_srgba(
+                Ui::state_color(clear, p.control, p.control, amounts),
+                p.knob,
+                sel,
+            );
+            let mut part =
+                crate::dress::PartRef::new("Tabs", "tab", crate::tokens::ElementClass::Tab)
+                    .flag_if(on, "selected")
+                    .flag_if(r.hovered && !r.pressed, "hover")
+                    .flag_if(r.pressed, "pressed")
+                    .flag_if(r.focused, "focused");
+            part.hover = amounts.0;
+            part.press = amounts.1;
             let n = &mut self.nodes[i];
-            n.el.background = if on {
-                Some(p.knob)
-            } else if r.hovered {
-                Some(p.control)
-            } else {
-                None
-            };
+            n.el.background = (bg.alpha > 0.004).then_some(bg);
+            n.el.part = Some(part);
             n.content = Content::Text(c);
             n.probe_text = (*label).to_owned();
             n.a11y.selected = Some(on);
@@ -1921,7 +1968,21 @@ impl Ui {
             },
         );
         let r = self.nav_target(i, false);
-        let mut c = self.text_content(label, t.type_ramp.body, p.ink);
+        if r.clicked {
+            self.feedback(if round || !on {
+                crate::tokens::SoundEvent::ToggleOn
+            } else {
+                crate::tokens::SoundEvent::ToggleOff
+            });
+        }
+        let amounts = self.state_amounts(i, &r);
+        // The mark fills on the `ui` spring as it turns on (and empties as
+        // it turns off), so a click is a transition, not a jump.
+        let fill_t = self.spring_to(
+            crate::id::child_key(self.nodes[i].key, "on"),
+            if on { 1.0 } else { 0.0 },
+        );
+        let mut c = self.role_text(label, crate::tokens::TypeRole::Body, p.ink);
         c.wrap = false;
         let n = &mut self.nodes[i];
         n.content = Content::Text(c);
@@ -1934,19 +1995,32 @@ impl Ui {
             h: box_,
             ..Frame::default()
         };
-        let radius = if round { box_ } else { t.radius.control - 2.0 };
-        if on {
-            n.shapes.push(Shape::Rect {
-                frame,
-                radius,
-                color: if r.pressed {
-                    p.primary_active
-                } else {
-                    p.primary
-                },
-            });
+        // The box is a part of its own (`Checkbox.box[on]`, `Radio.box`):
+        // a style dresses it; undressed it is the field's well, filling
+        // with `primary` as it turns on.
+        let rest = Ui::state_color(p.panel_raised, p.panel_hover, p.panel_hover, amounts);
+        let lit = Ui::state_color(p.primary, p.primary_hover, p.primary_active, amounts);
+        let mut part = if round {
+            crate::dress::PartRef::new("Radio", "box", crate::tokens::ElementClass::Avatar)
+                .flag("round")
+        } else {
+            crate::dress::PartRef::new("Checkbox", "box", crate::tokens::ElementClass::Field)
+        }
+        .flag_if(on, "on")
+        .flag_if(r.hovered && !r.pressed, "hover")
+        .flag_if(r.pressed, "pressed")
+        .flag_if(r.focused, "focused");
+        part.hover = amounts.0;
+        part.press = amounts.1;
+        n.shapes.push(Shape::Part {
+            frame,
+            part,
+            fill: Some(mix_srgba(rest, lit, fill_t.clamp(0.0, 1.0))),
+        });
+        if fill_t > 0.01 {
+            let ink = p.on_primary.fade(fill_t.clamp(0.0, 1.0));
             if round {
-                let dot = box_ * 0.4;
+                let dot = box_ * 0.4 * fill_t.clamp(0.0, 1.2);
                 n.shapes.push(Shape::Rect {
                     frame: Frame {
                         fy: 0.5,
@@ -1957,7 +2031,7 @@ impl Ui {
                         ..Frame::default()
                     },
                     radius: dot,
-                    color: p.on_primary,
+                    color: ink,
                 });
             } else {
                 // The check: a short and a long stroke.
@@ -1973,7 +2047,7 @@ impl Ui {
                         ..Frame::default()
                     },
                     angle: FRAC_PI_4,
-                    color: p.on_primary,
+                    color: ink,
                 });
                 n.shapes.push(Shape::Bar {
                     frame: Frame {
@@ -1985,32 +2059,9 @@ impl Ui {
                         ..Frame::default()
                     },
                     angle: -FRAC_PI_4,
-                    color: p.on_primary,
+                    color: ink,
                 });
             }
-        } else {
-            n.shapes.push(Shape::Rect {
-                frame,
-                radius,
-                color: p.line_strong,
-            });
-            let inset = 1.5;
-            n.shapes.push(Shape::Rect {
-                frame: Frame {
-                    fy: 0.5,
-                    x: inset,
-                    y: -box_ / 2.0 + inset,
-                    w: box_ - 2.0 * inset,
-                    h: box_ - 2.0 * inset,
-                    ..Frame::default()
-                },
-                radius: (radius - inset).max(0.0),
-                color: if r.hovered {
-                    p.panel_hover
-                } else {
-                    p.panel_raised
-                },
-            });
         }
         r
     }
@@ -2037,20 +2088,38 @@ impl Ui {
         } else {
             self.nav_target(i, false)
         };
+        let amounts = if desc.disabled {
+            (0.0, 0.0)
+        } else {
+            self.state_amounts(i, &r)
+        };
+        if r.clicked {
+            self.feedback(crate::tokens::SoundEvent::Select);
+        }
         let (bg, fg) = if desc.disabled {
             (p.control, p.ink_faint)
         } else if desc.selected {
             (p.ink, p.ink_inverse)
-        } else if r.hovered || r.pressed {
-            (p.control_strong, p.ink)
         } else {
-            (p.control, p.ink)
+            (
+                Ui::state_color(p.control, p.control_strong, p.control_strong, amounts),
+                p.ink,
+            )
         };
-        let mut c = self.text_content(text, t.type_ramp.meta, fg);
-        c.wrap = false;
+        let mut c = self.role_text(text, crate::tokens::TypeRole::Caption, fg);
         c.align = TextAlign::Center;
+        let mut part =
+            crate::dress::PartRef::new("Chip", "base", crate::tokens::ElementClass::Chip)
+                .flag_if(desc.selected, "selected")
+                .flag_if(desc.disabled, "disabled")
+                .flag_if(r.hovered && !r.pressed, "hover")
+                .flag_if(r.pressed, "pressed")
+                .flag_if(r.focused, "focused");
+        part.hover = amounts.0;
+        part.press = amounts.1;
         let n = &mut self.nodes[i];
         n.el.background = Some(bg);
+        n.el.part = Some(part);
         n.content = Content::Text(c);
         n.probe_text = text.to_owned();
         n.a11y.selected = Some(desc.selected);
@@ -2092,6 +2161,10 @@ impl Ui {
                 padding: Insets::xy(t.space.sm, 0.0),
                 background: Some(bg),
                 radius: t.radius.control,
+                part: Some(
+                    crate::dress::PartRef::new("Badge", "base", crate::tokens::ElementClass::Badge)
+                        .attr("tone", tone.name()),
+                ),
                 ..Element::default()
             },
         );
@@ -2393,6 +2466,11 @@ impl Ui {
                 height: Size::Fixed(h),
                 background: Some(p.control_strong),
                 radius: t.radius.bar,
+                part: Some(crate::dress::PartRef::new(
+                    "Meter",
+                    "track",
+                    crate::tokens::ElementClass::Bar,
+                )),
                 ..Element::default()
             },
         );
@@ -2454,11 +2532,48 @@ impl Ui {
             } else {
                 (p.ink, p.ink_inverse)
             };
-            ink.readable_on(under, READABLE)
-                .or_else(|| other.readable_on(under, READABLE))
+            // A little over the bar: the ground is the part's estimate (its
+            // paints' mean, its art's tone), not the pixels.
+            let aim = READABLE + 0.05;
+            ink.readable_on(under, aim)
+                .or_else(|| other.readable_on(under, aim))
                 .unwrap_or(ink)
         };
-        let (fill_ink, track_ink) = (ink(color), ink(p.control_strong));
+        let kind = match desc.kind {
+            MeterKind::Health => "health",
+            MeterKind::Mana => "mana",
+            MeterKind::Xp => "xp",
+            MeterKind::Primary => "primary",
+            MeterKind::Custom(_) => "custom",
+        };
+        let fill_part =
+            crate::dress::PartRef::new("Meter", "fill", crate::tokens::ElementClass::Bar)
+                .attr("kind", kind)
+                .flag_if(matches!(desc.kind, MeterKind::Health) && frac < 0.3, "low");
+        let track_part =
+            crate::dress::PartRef::new("Meter", "track", crate::tokens::ElementClass::Bar);
+        // A style's bar art whose centre it never measured (`tone`) cannot
+        // be read for the label's ink: such a meter draws flat, as it did
+        // before it had parts.
+        let unmeasured = |ui: &Ui, part: &crate::dress::PartRef| {
+            t.art.atlas.is_some()
+                && ui
+                    .dress
+                    .resolve(part)
+                    .frame
+                    .slice
+                    .is_some_and(|s| s.tone == crate::style_file::Slice::WHITE)
+        };
+        let flat_track = unmeasured(self, &track_part);
+        let flat_fill = unmeasured(self, &fill_part);
+        if flat_track {
+            self.nodes[i].el.part = None;
+        }
+        // Each ink against what its part draws (a style's art or paints).
+        let (fill_ink, track_ink) = (
+            ink(self.part_ground(&fill_part, color)),
+            ink(self.part_ground(&track_part, p.control_strong)),
+        );
         let n = &mut self.nodes[i];
         let seg = |from: f32, to: f32, c: Srgba| Shape::Rect {
             frame: Frame::left(from, to),
@@ -2473,8 +2588,16 @@ impl Ui {
             };
             n.shapes.push(seg(0.0, ghost, trail));
         }
-        if main > 0.0 {
+        if main > 0.0 && flat_fill {
             n.shapes.push(seg(0.0, main, color));
+        } else if main > 0.0 {
+            // The fill is a part of its own (`Meter.fill[kind=health]`), so a
+            // style dresses each kind; undressed it draws from the tokens.
+            n.shapes.push(Shape::Part {
+                frame: Frame::left(0.0, main),
+                part: fill_part,
+                fill: Some(color),
+            });
         }
         if desc.segments > 1 {
             for k in 1..desc.segments {

@@ -221,13 +221,6 @@ fn measured(
     let mut under = ground;
     for it in &items[..k] {
         let piece = match &it.cmd {
-            DrawCmd::Quad { rect, color, .. } => Some((rect, *color)),
-            DrawCmd::Image {
-                rect,
-                texture: None,
-                color,
-                ..
-            } => Some((rect, *color)),
             DrawCmd::Image {
                 rect,
                 texture: Some(t),
@@ -237,7 +230,7 @@ fn measured(
             } if *t == tex => {
                 let m = texels(atlas, *uv);
                 Some((
-                    rect,
+                    *rect,
                     [
                         m[0] * color[0],
                         m[1] * color[1],
@@ -246,10 +239,10 @@ fn measured(
                     ],
                 ))
             }
-            _ => None,
+            cmd => cmd.filled(),
         };
         if let Some((rect, c)) = piece
-            && contains(rect, centre)
+            && contains(&rect, centre)
         {
             under = over(c, under);
         }

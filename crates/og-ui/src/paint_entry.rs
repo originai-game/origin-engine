@@ -16,7 +16,7 @@
 //! blend normal|multiply|screen|add|overlay|softLight|colorDodge
 //! mask <gradient> | mask image <x> <y> <w> <h>
 //! ornament corner|divider|flourish…
-//! sound hover|press|open|close|success|error "<asset>"
+//! sound <event> "<asset>"                               (an event of docs/ui.md §7.8: press, confirm, toggleOn…)
 //! ```
 //!
 //! where a paint is
@@ -29,6 +29,7 @@
 //! diamond <stops> [repeat|reflect]
 //! image <x> <y> <w> <h> [fill|cover|contain|none] [focal <fx> <fy>] [tint <colour>]
 //! pattern <x> <y> <w> <h> <tile w> <tile h> [rotate <deg>] [scroll <sx> <sy>] [tint <colour>]
+//! vector "<asset>" [tint <colour>]             (a `type vector` the style loads, contained; fills only)
 //! ```
 //!
 //! and stops are two to eight colours, each followed by its offset (0 to
@@ -40,7 +41,8 @@ use crate::paint::{
     Paint, Spread, Stop, Stroke, StrokeAlign,
 };
 use crate::style::Palette;
-use crate::style_file::{P, UiSound, parse_color};
+use crate::style_file::{P, parse_color};
+use crate::tokens::SoundEvent;
 use og_core::ogt::{Entry, Value};
 
 /// What a dressing's atlas regions are cut from: the atlas's size in
@@ -388,6 +390,25 @@ impl<'a> Cursor<'a> {
     }
 }
 
+/// `fill vector "<asset>" [tint <colour>]`: a `type vector` asset the
+/// style's assets bind ([`crate::StyleFile::vectors`]), contained in the
+/// part and tinted (white: its own colours); `None` for any other fill.
+pub fn vector_fill_from_entry(e: &Entry) -> Result<Option<(String, ColorRef)>, String> {
+    let mut c = Cursor::new(e, 0);
+    if !c.eat("vector") {
+        return Ok(None);
+    }
+    let path = c.p.string(c.at)?.to_string();
+    c.at += 1;
+    let tint = if c.eat("tint") {
+        c.color()?
+    } else {
+        ColorRef::Literal(crate::style::Srgba::WHITE)
+    };
+    c.end()?;
+    Ok(Some((path, tint)))
+}
+
 impl Paint {
     /// `fill <paint>` (see the module documentation).
     pub fn from_entry(e: &Entry, atlas: &AtlasContext) -> Result<Paint, String> {
@@ -644,12 +665,13 @@ pub fn ornaments_from_entry(e: &Entry) -> Result<Vec<OrnamentKind>, String> {
 }
 
 /// `sound <event> "<asset>"`.
-pub fn sound_from_entry(e: &Entry) -> Result<(UiSound, String), String> {
+pub fn sound_from_entry(e: &Entry) -> Result<(SoundEvent, String), String> {
     let mut c = Cursor::new(e, 0);
     let w = c.word()?;
-    let s = UiSound::from_name(w).ok_or_else(|| {
+    let s = SoundEvent::from_name(w).ok_or_else(|| {
         c.err(&format!(
-            "names '{w}', not a UI event (hover, press, open, close, success or error)"
+            "names '{w}', not a UI event ({})",
+            SoundEvent::names()
         ))
     })?;
     let path = c.p.string(c.at)?.to_string();

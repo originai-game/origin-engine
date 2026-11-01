@@ -213,7 +213,7 @@ pub(crate) fn states_of(n: &Node) -> Vec<String> {
         s.push("disabled".to_owned());
     }
     let checked = n.a11y.checked.or(match n.widget {
-        Widget::Toggle { on } => Some(on),
+        Widget::Toggle { on, .. } => Some(on),
         _ => None,
     });
     if checked == Some(true) {

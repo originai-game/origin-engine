@@ -279,6 +279,12 @@ pub struct Element {
     /// The frame its background takes (`None`: a plain fill). Without
     /// a style, or a style without that part, the background is the fill.
     pub frame: Option<crate::style_file::StylePart>,
+    /// What it is to the style (docs/ui.md §12.3): the component, part,
+    /// variant and state a dressing's selector matches, the element class
+    /// whose corner and the level whose shadows it takes. With one, its
+    /// background is drawn as the style dresses the part, or from the
+    /// tokens where no dressing does; `frame` names a version 1 part.
+    pub part: Option<crate::dress::PartRef>,
     /// Width over height (0: none). With the height left to fit, the
     /// element is as tall as its laid-out width over this; with a fixed
     /// height and the width left to fit, as wide as the height times it
@@ -482,6 +488,14 @@ pub(crate) enum Shape {
         ch: char,
         color: Srgba,
     },
+    /// A piece of the widget that is a part of its own (a meter's fill, a
+    /// checkbox's box), drawn as the style dresses it, or from the tokens,
+    /// with the widget's colour for it.
+    Part {
+        frame: Frame,
+        part: crate::dress::PartRef,
+        fill: Option<Srgba>,
+    },
 }
 
 /// Which font a text uses.
@@ -631,6 +645,8 @@ pub(crate) enum Widget {
     },
     Toggle {
         on: bool,
+        /// Where the knob is on the style's `ui` spring (0 off, 1 on).
+        slide: f32,
     },
     Field(EditView),
     /// A multi-line text area: its text (the value with any composition),

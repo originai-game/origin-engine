@@ -311,6 +311,43 @@ fn mapped_bounds(c: &DrawCmd, m: &Affine) -> Rect {
 }
 
 impl DrawCmd {
+    /// What it fills, when it is a flat area of colour: a quad, an untextured
+    /// image, or a UI shape's fill (a gradient as the mean of its stops), as
+    /// its rectangle and linear colour with its opacity. Shadows, strokes,
+    /// glows and textures answer `None`. How a test reads what a label is
+    /// drawn over.
+    pub fn filled(&self) -> Option<(Rect, [f32; 4])> {
+        match self {
+            DrawCmd::Quad { rect, color, .. }
+            | DrawCmd::Image {
+                rect,
+                texture: None,
+                color,
+                ..
+            } => Some((*rect, *color)),
+            DrawCmd::Shape { shape, .. } if shape.mode == og_render::UiMode::Fill => {
+                let mut c = match &shape.paint {
+                    og_render::UiPaint::Solid(c) => *c,
+                    og_render::UiPaint::Gradient(g) if !g.stops.is_empty() => {
+                        let n = g.stops.len() as f32;
+                        let mut m = [0.0; 4];
+                        for s in &g.stops {
+                            for (a, b) in m.iter_mut().zip(s.color) {
+                                *a += b / n;
+                            }
+                        }
+                        m
+                    }
+                    _ => return None,
+                };
+                c[3] *= shape.opacity;
+                let (cx, cy, hx, hy) = (shape.center.x, shape.center.y, shape.half.x, shape.half.y);
+                Some((Rect::new(cx - hx, cy - hy, 2.0 * hx, 2.0 * hy), c))
+            }
+            _ => None,
+        }
+    }
+
     /// Its clip rectangle (a bracket's: everything).
     pub(crate) fn clip(&self) -> &Rect {
         const ALL: Rect = Rect {

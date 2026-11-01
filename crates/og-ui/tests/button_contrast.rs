@@ -101,20 +101,10 @@ fn measured(ui: &Ui, label: &str, ground: [f32; 3]) -> ([f32; 3], [f32; 3]) {
     // (or, for a quiet button at rest, the ground's own quad, or nothing).
     let mut under = ground;
     for it in &items[..k] {
-        let quad = match &it.cmd {
-            DrawCmd::Quad { rect, color, .. } => Some((rect, color)),
-            DrawCmd::Image {
-                rect,
-                texture: None,
-                color,
-                ..
-            } => Some((rect, color)),
-            _ => None,
-        };
-        if let Some((rect, c)) = quad
-            && contains(rect, centre)
+        if let Some((rect, c)) = it.cmd.filled()
+            && contains(&rect, centre)
         {
-            under = over(*c, under);
+            under = over(c, under);
         }
     }
     (over(color, under), under)
