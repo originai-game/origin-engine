@@ -353,11 +353,14 @@ export function pagination(id: string, desc: Api.PaginationDesc): Api.PageResult
  * progress ring filling.
  */
 export function actionHints(id: string, desc: Api.ActionHintsDesc): Api.ActionHintsResult {
-  const { t, touch } = frame();
+  const { t, touch, viewport } = frame();
   const hints = desc.hints ?? [];
   let pressed: string | null = null;
   const where: Api.Anchor = desc.anchor ?? "bottomRight";
-  kit.anchor(id, { anchor: where, direction: "row", gap: touch ? t.sm : t.lg, cross: "center", padding: xy(t.md, t.xs), background: desc.background === false ? null : token("hud"), radius: t.control, frame: "hud" }, () => {
+  const right = where.endsWith("Right");
+  // Within the screen: hints that do not fit on one line (a phone, a large text size) wrap.
+  const maxW = Math.max(120, viewport.width - viewport.safeArea.left - viewport.safeArea.right - 2 * t.gutter);
+  kit.anchor(id, { anchor: where, direction: "column", width: fit(0, maxW), padding: xy(t.md, t.xs), background: desc.background === false ? null : token("hud"), radius: t.control, frame: "hud" }, () => kit.row("Row", { width: grow(), gap: touch ? t.sm : t.lg, cross: "center", align: right ? "end" : where.endsWith("Left") ? "start" : "center", wrap: true }, () => {
     hints.forEach((h, k) => {
       const glyph = { text: h.text ?? "", icon: h.icon ?? "" };
       const r = surface(kit.idi("Hint", k), {
@@ -387,7 +390,7 @@ export function actionHints(id: string, desc: Api.ActionHintsDesc): Api.ActionHi
       });
       if (r.clicked) pressed = h.action ?? null;
     });
-  });
+  }));
   kit.semantics({ role: "toolbar", name: desc.label || "Actions" });
   return { pressed };
 }
