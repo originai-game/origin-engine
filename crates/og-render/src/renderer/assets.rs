@@ -302,7 +302,9 @@ impl Renderer {
             // Every texture is checked before any is recorded: an error
             // never drops an encoder holding earlier textures' mip passes.
             for index in self.cache.textures.len()..scene.textures().len() {
-                self.check_texture(index, &scene.textures()[index])?;
+                if scene.texture_live(index) {
+                    self.check_texture(index, &scene.textures()[index])?;
+                }
             }
             let mut encoder = Encoder::untimed(self.device.create_command_encoder(
                 &wgpu::CommandEncoderDescriptor {
@@ -310,7 +312,7 @@ impl Renderer {
                 },
             ));
             for index in self.cache.textures.len()..scene.textures().len() {
-                let gpu = self.upload_source(&scene.textures()[index], &mut encoder);
+                let gpu = self.texture_for(scene, index, &mut encoder);
                 self.cache.textures.push(gpu);
                 self.cache
                     .texture_revisions
@@ -328,7 +330,9 @@ impl Renderer {
             .collect();
         if !replaced.is_empty() {
             for &index in &replaced {
-                self.check_texture(index, &scene.textures()[index])?;
+                if scene.texture_live(index) {
+                    self.check_texture(index, &scene.textures()[index])?;
+                }
             }
             let mut encoder = Encoder::untimed(self.device.create_command_encoder(
                 &wgpu::CommandEncoderDescriptor {
@@ -336,7 +340,7 @@ impl Renderer {
                 },
             ));
             for &index in &replaced {
-                let gpu = self.upload_source(&scene.textures()[index], &mut encoder);
+                let gpu = self.texture_for(scene, index, &mut encoder);
                 self.cache.textures[index] = gpu;
                 self.cache.texture_revisions[index] = scene.texture_revisions()[index];
                 self.cache.sprite_groups[index] = None;

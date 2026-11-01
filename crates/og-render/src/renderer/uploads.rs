@@ -193,6 +193,27 @@ impl Renderer {
     }
 
     /// Uploads a texture [`Renderer::check_texture`] accepted.
+    /// Texture slot `index` on the GPU: its source uploaded, or for a
+    /// removed slot the shared fallback (`default_white`, allocated once
+    /// for the renderer): the slot's own texture is dropped and freed, and
+    /// a stale material or a draw in flight still has something to sample.
+    pub(crate) fn texture_for(
+        &mut self,
+        scene: &crate::RenderScene,
+        index: usize,
+        encoder: &mut crate::Encoder,
+    ) -> GpuTexture {
+        if scene.texture_live(index) {
+            return self.upload_source(&scene.textures()[index], encoder);
+        }
+        GpuTexture {
+            view: self.default_white.clone(),
+            format: TextureFormat::Rgba8,
+            bytes: 0,
+            target: false,
+        }
+    }
+
     pub(crate) fn upload_source(
         &mut self,
         source: &TextureSource,

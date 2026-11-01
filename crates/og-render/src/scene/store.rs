@@ -459,6 +459,13 @@ impl RenderScene {
     }
 
     /// Whether slot `index` holds a live LUT.
+    /// Whether texture slot `index` holds a live texture (not removed): the
+    /// renderer frees a removed slot's GPU texture instead of uploading.
+    pub(crate) fn texture_live(&self, index: usize) -> bool {
+        let g = self.texture_slots.generation(index);
+        self.texture_slots.live(index, g)
+    }
+
     pub(crate) fn lut_live(&self, index: usize) -> bool {
         let g = self.lut_slots.generation(index);
         self.lut_slots.live(index, g)
@@ -893,8 +900,10 @@ impl RenderScene {
         TextureHandle::from_parts(i, generation)
     }
 
-    /// Removes a texture: the renderer frees it before the next frame and a
-    /// later add reuses the slot under a new generation. Every material
+    /// Removes a texture: the renderer frees it before the next frame (a
+    /// stale reference samples its one shared fallback, nothing is
+    /// uploaded for the slot) and a later add reuses the slot under a new
+    /// generation. Every material
     /// slot that sampled it is cleared (those materials draw without it from
     /// the next frame), and so is the decal atlas; a sprite or a font
     /// atlas still naming it is refused at the next frame
