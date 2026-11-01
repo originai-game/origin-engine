@@ -8,6 +8,31 @@ import { absolute, type Props, frame, kit, role, type Rgba, solid, token, drop, 
 
 export * from "../feedback/core.ts";
 
+/**
+ * The width a HUD piece may take across the safe area, inside the style's
+ * gutters: what a bar measures itself against before it compacts or
+ * wraps rather than run off the screen.
+ */
+export function hudRoom(): number {
+  const f = frame();
+  const vp = f.viewport;
+  return vp.width - vp.safeArea.left - vp.safeArea.right - f.t.gutter * 2;
+}
+
+/**
+ * How far a piece must fold to fit `room`: 0 as designed, then one step
+ * more each tick its laid-out width (last tick's) overflows, up to `most`.
+ * Kept per viewport width, so a resize starts over from 0.
+ */
+export function fitLevel(path: string, room: number, most: number): number {
+  const key = `${path}~fit/${Math.round(room)}`;
+  let level = kit.memory(key, 0);
+  const w = kit.bounds(path)?.width ?? 0;
+  if (w > room + 0.5 && level < most) level += 1;
+  kit.remember(key, level);
+  return level;
+}
+
 /** A desc's anchor: its own when it names one (null too), else the component's default. */
 export function anchorOf(desc: { anchor?: Api.Anchor | null }, fallback: Api.Anchor | null): Api.Anchor | null {
   return "anchor" in desc && desc.anchor !== undefined ? desc.anchor : fallback;
@@ -36,17 +61,21 @@ export function hudPlace(id: string, anchor: Api.Anchor | null, build: (inAnchor
   const h = kit.bounds(path)?.height ?? 0;
   const gap = frame().t.sm;
   const middle = !anchor.startsWith("top") && !anchor.startsWith("bottom");
+  // Where this one starts from the anchor's line, and where the next will.
+  const start = first ? 0 : reach + gap;
+  const next = start + h;
   let dy: number;
-  let next: number;
   if (middle) {
-    dy = first ? 0 : reach + gap + h / 2;
-    next = dy + h / 2;
+    // A stack on a side is centred as a whole on the side's middle (by its
+    // extent last tick), so a tracker and a combo under it both stay on screen.
+    if (first) kit.remember(`${key}/top`, -kit.memory(`${key}/total`, 0) / 2);
+    dy = kit.memory(`${key}/top`, 0) + start + h / 2;
   } else {
-    dy = first ? 0 : reach + gap;
-    next = dy + h;
+    dy = start;
   }
   kit.remember(`${key}/tick`, t);
   kit.remember(`${key}/reach`, next);
+  kit.remember(`${key}/total`, next);
   if (anchor.startsWith("bottom")) dy = -dy;
   kit.anchor(path, { anchor, direction: "column", cross: crossOf(anchor), ...more, offsetY: dy + (more.offsetY ?? 0) }, () => build(true));
 }

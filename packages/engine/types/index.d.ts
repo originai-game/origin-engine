@@ -32829,6 +32829,12 @@ export interface ComboDesc {
    */
   readonly label?: string;
   /**
+   * The word under it as a break shakes the count off.
+   *
+   * @default "Break"
+   */
+  readonly breakLabel?: string;
+  /**
    * Counts that celebrate (a burst and a bigger pop); empty is 10, 25, 50, 100, then every 100.
    *
    * @default []

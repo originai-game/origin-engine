@@ -9,7 +9,7 @@
 // tick with a pop, counts, a countdown, the tracked one marked).
 
 import type * as Api from "@origingame/engine";
-import { TAU, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props } from "./core.ts";
+import { TAU, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
 
@@ -233,7 +233,9 @@ export function objectiveTracker(id: string, desc: Api.ObjectiveTrackerDesc = {}
   const tk = f.t;
   const t = now();
   const max = desc.max || (f.phone ? 2 : 3);
-  const width = u(desc.width || 300);
+  const width = Math.min(u(desc.width || 300), hudRoom());
+  // Under about 280 design px the head's title and its timer cannot share a line.
+  const narrow = width < u(280);
   const quests = (desc.quests ?? []).filter((q) => q.completedAt === null || q.completedAt === undefined || t - q.completedAt < msToTicks(2400)).slice(0, max);
   hudPlace(id, anchorOf(desc, "right"), () => {
     box(id, { direction: "column", gap: tk.md, width: px(width), padding: { left: tk.md, right: tk.md, top: tk.sm, bottom: tk.sm }, part: sel("ObjectiveTracker", "frame"), partClass: "hud" }, {
@@ -250,17 +252,23 @@ export function objectiveTracker(id: string, desc: Api.ObjectiveTrackerDesc = {}
           direction: "column", gap: u(4), width: pct(1),
           part: sel("ObjectiveTracker", "quest", q.focused ? "focused" : null, done ? "complete" : null),
         }, undefined, () => {
-          kit.row("Head", { gap: tk.sm, cross: "center", width: pct(1) }, () => {
-            if (q.focused) leaf("Mark", { width: px(u(3)), height: px(u(18)), part: sel("ObjectiveTracker", "focus") }, { fills: [solid(token("highlight"))] });
-            if (q.icon) icon("Icon", q.icon, u(18), q.focused ? token("highlight") : lit(role("gold")));
-            text("Title", q.title ?? "", { step: ts(15), font: "display", color: q.focused ? token("highlight") : token("ink"), width: { kind: "grow" }, maxLines: 2, outline: 1 });
+          const meta = (): void => {
             if (q.timer !== null && q.timer !== undefined) {
               text("Timer", countdown(q.timer, false), { step: ts(13), font: "mono", color: q.timer < 10 ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1 });
             }
             if (q.distance !== null && q.distance !== undefined) {
               text("Distance", `${Math.round(q.distance)}${desc.units ?? "m"}`, { step: ts(12), font: "mono", color: token("inkMuted"), nowrap: true, outline: 1 });
             }
+          };
+          kit.row("Head", { gap: tk.sm, cross: "center", width: pct(1) }, () => {
+            if (q.focused) leaf("Mark", { width: px(u(3)), height: px(u(18)), part: sel("ObjectiveTracker", "focus") }, { fills: [solid(token("highlight"))] });
+            if (q.icon) icon("Icon", q.icon, u(18), q.focused ? token("highlight") : lit(role("gold")));
+            text("Title", q.title ?? "", { step: ts(15), font: "display", color: q.focused ? token("highlight") : token("ink"), width: { kind: "grow" }, maxLines: 2, ellipsis: true, outline: 1 });
+            if (!narrow) meta();
           });
+          // A narrow tracker (a phone's) gives the title the whole line and
+          // the timer and distance their own line under it.
+          if (narrow && (q.timer != null || q.distance != null)) kit.row("Meta", { gap: tk.md, cross: "center" }, meta);
           if (done) {
             const s = pop(since, 0.2, 400);
             text("Complete", q.completeLabel ?? "Complete", { step: ts(14), font: "display", color: lit(role("success")), nowrap: true, outline: 1 }, { transform: { scaleX: s, scaleY: s, pivotX: 0 } });
@@ -300,7 +308,7 @@ function step(id: string, st: Api.ObjectiveStep, tk: ReturnType<typeof frame>["t
           }, absolute({ start: 0, top: 0 }));
         }
       }, { transform: { scaleX: s, scaleY: s } });
-      text("Text", `${st.text ?? ""}${st.optional ? " (Optional)" : ""}`, { step: ts(13), color: ink, width: { kind: "grow" }, maxLines: 2, outline: 0.8 });
+      text("Text", `${st.text ?? ""}${st.optional ? " (Optional)" : ""}`, { step: ts(13), color: ink, width: { kind: "grow" }, maxLines: 2, ellipsis: true, outline: 0.8 });
       if ((st.target ?? 0) > 0) {
         text("Count", `${Math.min(st.count ?? 0, st.target ?? 0)}/${st.target}`, { step: ts(13), font: "mono", color: st.done ? token("inkFaint") : token("ink"), nowrap: true, outline: 0.8 },
           { transform: { scaleX: cs, scaleY: cs, pivotX: 1 } });

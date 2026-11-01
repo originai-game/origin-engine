@@ -11,7 +11,7 @@
 // Gate 3 (portraits in the order they act, the current one larger).
 
 import type * as Api from "@origingame/engine";
-import { a11y, absolute, anchorOf, box, chip, clamp01, countdown, easeBack, easeOut, edge, ellipseShape, fillDraw, formatNumber, frame, glow, groups, hudPlace, icon, inkOn, keyId, kit, leaf, lit, mix, msToTicks, now, paintRgba, pct, pop, pulse, px, reduced, role, sel, shapeOf, solid, sound, spring, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, type Rgba, apply, type Props } from "./core.ts";
+import { a11y, absolute, anchorOf, box, chip, close, fitLevel, hudRoom, open, clamp01, countdown, easeBack, easeOut, edge, ellipseShape, fillDraw, formatNumber, frame, glow, groups, hudPlace, icon, inkOn, keyId, kit, leaf, lit, mix, msToTicks, now, paintRgba, pct, pop, pulse, px, reduced, role, sel, shapeOf, solid, sound, spring, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, type Rgba, apply, type Props } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
 
@@ -22,11 +22,29 @@ function pingLevel(ms: number): "good" | "fair" | "poor" {
 export function scoreboard(id: string, desc: Api.ScoreboardDesc = {}): void {
   const f = frame();
   const tk = f.t;
-  const width = desc.width || (f.phone ? f.viewport.width - f.viewport.safeArea.left - f.viewport.safeArea.right - tk.gutter * 2 : u(760));
+  const vp = f.viewport;
+  const width = Math.min(desc.width || (f.phone ? hudRoom() : u(760)), hudRoom());
   const cols = desc.columns ?? [];
-  const rowH = u(f.phone ? 30 : 34);
+  // Rows shrink to fit the safe area's height (a phone held sideways), to
+  // no less than a touch row; past that the panel scrolls.
+  const teams = desc.teams ?? [];
+  const lines = teams.reduce((n, tm) => n + 1 + (tm.rows ?? []).length, 0);
+  const roomH = vp.height - vp.safeArea.top - vp.safeArea.bottom - tk.gutter * 2;
+  const chrome = (desc.title || desc.subtitle ? u(30) + tk.sm : 0) + tk.md * 2 + teams.length * tk.sm + lines * u(2);
+  const rowH = Math.max(u(22), Math.min(u(f.phone ? 30 : 34), Math.floor((roomH - chrome) / Math.max(1, lines))));
+  const scrolls = chrome + lines * rowH > roomH;
+  // Columns narrow to leave the name its share of a narrow panel.
+  const fixedW = width - tk.md * 2 - tk.sm * 2 - u(3) - tk.sm * (cols.length + 2);
+  const nameMin = f.phone ? u(84) : u(140);
+  const want = cols.reduce((n, c) => n + u(c.width || 56), 0) + u(56);
+  const squeeze = want > 0 ? Math.min(1, Math.max(0.5, (fixedW - nameMin) / want)) : 1;
+  const colW = (c: Api.ScoreColumn | undefined) => Math.round(u(c?.width || 56) * squeeze);
+  const pingW = Math.round(u(56) * squeeze);
   hudPlace(id, anchorOf(desc, "center"), () => {
-    box(id, { direction: "column", gap: tk.sm, width: px(width), padding: { left: tk.md, right: tk.md, top: tk.md, bottom: tk.md }, part: sel("Scoreboard", "panel"), partClass: "panel" }, {
+    box(id, {
+      direction: "column", gap: tk.sm, width: px(width), padding: { left: tk.md, right: tk.md, top: tk.md, bottom: tk.md }, part: sel("Scoreboard", "panel"), partClass: "panel",
+      ...(scrolls ? { height: px(roomH), scroll: true } : {}),
+    }, {
       ...chip(shapeOf("panel").radius, true),
     }, () => {
       if (desc.title || desc.subtitle) {
@@ -44,8 +62,8 @@ export function scoreboard(id: string, desc: Api.ScoreboardDesc = {}): void {
             fills: [vgrad([[0, lit(tc, 0.85)], [1, lit(tc, 0.35)]], -90)],
           }, () => {
             text("Name", team.name ?? "", { step: ts(14), font: "display", color: lit(inkOn(tc)), width: { kind: "grow" }, nowrap: true, ellipsis: true });
-            for (const c of cols) text(keyId(c.key ?? c.label ?? ""), c.label ?? "", { step: ts(11), font: "mono", color: lit(inkOn(tc), 0.85), nowrap: true, width: px(u(c.width || 56)), align: "end" });
-            text("Score", team.score ?? "", { step: ts(20, true), font: "display", color: lit(inkOn(tc)), nowrap: true, width: px(u(56)), align: "end" });
+            for (const c of cols) text(keyId(c.key ?? c.label ?? ""), c.label ?? "", { step: ts(11), font: "mono", color: lit(inkOn(tc), 0.85), nowrap: true, ellipsis: true, width: px(colW(c)), align: "end" });
+            text("Score", team.score ?? "", { step: rowH < u(30) ? ts(16) : ts(20, true), font: "display", color: lit(inkOn(tc)), nowrap: true, width: px(pingW), align: "end" });
           });
           (team.rows ?? []).forEach((row, ri) => {
             const lvl = pingLevel(row.ping ?? 0);
@@ -65,15 +83,15 @@ export function scoreboard(id: string, desc: Api.ScoreboardDesc = {}): void {
               if (row.mvp) icon("Mvp", "star", u(14), lit(role("gold")), "MVP");
               if (row.dead) icon("Dead", "skull", u(14), token("inkFaint"), "Dead");
               (row.values ?? []).forEach((v, i) => {
-                text(kit.idi("Value", i), v, { step: ts(13), font: "mono", color: row.dead ? token("inkMuted") : token("ink"), nowrap: true, width: px(u(cols[i]?.width || 56)), align: "end" });
+                text(kit.idi("Value", i), v, { step: ts(13), font: "mono", color: row.dead ? token("inkMuted") : token("ink"), nowrap: true, ellipsis: true, width: px(colW(cols[i])), align: "end" });
               });
               if ((row.ping ?? 0) > 0) {
                 const ink = lvl === "poor" ? role("danger") : lvl === "fair" ? role("warn") : role("success");
                 const bars = lvl === "poor" ? 1 : lvl === "fair" ? 2 : 3;
-                box("Ping", { direction: "row", gap: 1, cross: "end", width: px(u(56)), align: "end", part: sel("Scoreboard", "ping", lvl) }, undefined, () => {
+                box("Ping", { direction: "row", gap: 1, cross: "end", width: px(pingW), align: "end", part: sel("Scoreboard", "ping", lvl) }, undefined, () => {
                   for (let b = 0; b < 3; b++) leaf(kit.idi("Bar", b), { width: px(u(3)), height: px(u(4 + b * 3)) }, { fills: [solid(b < bars ? lit(ink) : token("inkFaint", 0.4))] });
                 });
-              } else leaf("PingSpace", { width: px(u(56)), height: px(1) });
+              } else leaf("PingSpace", { width: px(pingW), height: px(1) });
             }, {
               opacity: row.dead ? 0.7 : 1,
               a11y: a11y("row", row.name ?? "", { value: (row.values ?? []).join(", "), selected: !!row.local }),
@@ -216,20 +234,24 @@ export function comboCounter(id: string, desc: Api.ComboDesc = {}): void {
         const grow = 1 + Math.min(0.35, Math.log10(Math.max(1, shown)) * 0.15);
         const s = broken ? 1 : (mile ? pop(t - mileAt, 0.45, 520) : pop(e.since, 0.22, 260)) * grow;
         const bx = broken ? (t - brokeAt) / msToTicks(600) : 0;
-        const ink = mile ? role("gold") : shown >= 50 ? role("danger") : shown >= 25 ? role("warn") : WHITE;
+        // Broken, the count goes red and the word says so: the break reads in
+        // a still frame, not only in the shake.
+        const ink = broken ? role("danger") : mile ? role("gold") : shown >= 50 ? role("danger") : shown >= 25 ? role("warn") : WHITE;
+        // Late in the fall the whole group drops and fades together.
+        const fall = broken ? { transform: { y: reduced() ? 0 : Math.max(0, bx - 0.5) * 2 * u(24) }, opacity: Math.min(1, 2 - 2 * bx) } : {};
         text("Count", String(shown), { step: ts(48, true), font: "display", color: lit(ink), nowrap: true, outline: 1.6 }, {
           transform: broken ? { x: reduced() ? 0 : Math.sin(bx * 40) * u(6) * (1 - bx), y: reduced() ? 0 : bx * bx * u(40), rotate: reduced() ? 0 : bx * 0.3 } : { scaleX: s, scaleY: s, rotate: reduced() ? 0 : -0.06 },
-          opacity: broken ? 1 - bx : 1,
+          opacity: broken ? 1 - bx * bx : 1,
         });
-        kit.row("Under", { gap: u(6), cross: "center" }, () => {
-          text("Label", desc.label ?? "Combo", { step: ts(14), font: "display", color: token("ink"), nowrap: true, outline: 1 });
-          if ((desc.multiplier ?? 0) > 1) {
+        box("Under", { direction: "row", gap: u(6), cross: "center" }, undefined, () => {
+          text("Label", broken ? desc.breakLabel || "Break" : desc.label ?? "Combo", { step: ts(14), font: "display", color: broken ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1 });
+          if ((desc.multiplier ?? 0) > 1 && !broken) {
             box("Multiplier", { padding: { left: u(6), right: u(6), top: 0, bottom: 0 }, part: sel("Combo", "multiplier") }, {
               shape: { kind: "rect", radii: [999, 999, 999, 999] },
               fills: [solid(lit(role("gold")))],
             }, () => text("Text", `×${formatNumber(desc.multiplier ?? 1, { decimals: Number.isInteger(desc.multiplier) ? 0 : 1 })}`, { step: ts(13), font: "display", color: lit(inkOn(role("gold"))), nowrap: true }));
           }
-        });
+        }, fall);
         if (desc.decay !== null && desc.decay !== undefined && !broken) {
           box("Decay", { width: px(u(96)), height: px(u(4)), part: sel("Combo", "decay") }, trackDraw(2), () => {
             leaf("Fill", { width: pct(clamp01(desc.decay ?? 0)), height: pct(1) }, fillDraw(clamp01(desc.decay ?? 0) < 0.25 ? role("danger") : ink, 2));
@@ -298,8 +320,18 @@ export function judgement(id: string, desc: Api.JudgementDesc = {}): void {
 
 export function resourceBar(id: string, desc: Api.ResourceBarDesc = {}): void {
   const tk = frame().t;
-  hudPlace(id, anchorOf(desc, "top"), () => {
-    box(id, { direction: "row", gap: tk.lg, cross: "center", padding: { left: tk.md, right: tk.md, top: u(5), bottom: u(5) }, part: sel("ResourceBar", "frame"), partClass: "hud" }, chip(), () => {
+  const anchor = anchorOf(desc, "top");
+  const room = hudRoom();
+  hudPlace(id, anchor, (inAnchor) => {
+    // Too wide for the screen (a phone), it folds: first each rate under
+    // its amount, then the items wrap onto a second line.
+    const fit = fitLevel(inAnchor ? `${id}Hud/${id}` : [kit.openPath(), id].filter(Boolean).join("/"), room, 2);
+    const pad = fit > 0 ? tk.sm : tk.md;
+    box(id, {
+      direction: "row", gap: fit > 0 ? tk.md : tk.lg, cross: "center", wrap: fit > 1,
+      ...(fit > 1 ? { width: px(room), align: "center" } : {}),
+      padding: { left: pad, right: pad, top: u(5), bottom: u(5) }, part: sel("ResourceBar", "frame", fit > 0 ? "compact" : null), partClass: "hud",
+    }, chip(), () => {
       for (const r of desc.items ?? []) {
         const cap = r.capacity ?? null;
         const amount = r.amount ?? 0;
@@ -308,6 +340,8 @@ export function resourceBar(id: string, desc: Api.ResourceBarDesc = {}): void {
         const fmt: Api.NumberFormatDesc = r.format ?? { notation: "compact" };
         box(keyId(r.key ?? r.name ?? ""), { direction: "row", gap: u(6), cross: "center", part: sel("ResourceBar", "item", capped ? "capped" : near ? "near" : null) }, undefined, () => {
           if (r.icon) icon("Icon", r.icon, u(20), r.icon === "coin" || r.icon === "gold" ? lit(role("gold")) : token("ink"));
+          // Folded, the amount and its rate stack.
+          if (fit > 0) open("Values", { direction: "column", gap: 0, cross: "start" });
           // The amount counts to its value on the ui spring.
           const shown = spring("amount", amount);
           const e = edge("amount", amount);
@@ -327,6 +361,7 @@ export function resourceBar(id: string, desc: Api.ResourceBarDesc = {}): void {
               });
             });
           }
+          if (fit > 0) close();
         }, { a11y: a11y("text", r.name ?? r.key ?? "", { value: `${formatNumber(amount, fmt)}${cap !== null ? ` of ${formatNumber(cap, fmt)}` : ""}${rate(r)}` }) });
       }
     }, { a11y: a11y("list", "Resources") });

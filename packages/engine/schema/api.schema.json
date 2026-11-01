@@ -56096,6 +56096,11 @@
           "description": "The word under it.",
           "default": "Combo"
         },
+        "breakLabel": {
+          "type": "string",
+          "description": "The word under it as a break shakes the count off.",
+          "default": "Break"
+        },
         "milestones": {
           "type": "array",
           "items": {

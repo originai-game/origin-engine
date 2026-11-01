@@ -91,7 +91,6 @@ function track(parent: string, desc: Api.StatBarDesc, frac: number, level: Level
     partClass: "bar",
   }, trackDraw(radius));
   // A slanted bar leans its whole track; its text sits outside it, upright.
-  if (style === "slanted") apply({ transform: { skewX: desc.reverse ? 0.36 : -0.36 } });
   const w = kit.bounds(path)?.width ?? kit.bounds(`${parent}/Main`)?.width ?? u(240);
   const side = (start: number, width: number, more: Props = {}): Props =>
     absolute(desc.reverse ? { end: start * w, top: 0 } : { start: start * w, top: 0 }, { ...more, ...(width <= 0 ? { opacity: 0 } : {}) });
@@ -139,7 +138,8 @@ function track(parent: string, desc: Api.StatBarDesc, frac: number, level: Level
   leaf("Gloss", { width: pct(1), height: pct(0.42) }, {
     fills: [vgrad([[0, token("sheen", 0.22)], [1, token("sheen", 0)]])],
   }, absolute({ start: 0, top: 0 }));
-  close();
+  // A slanted bar leans its whole track; its text sits outside it, upright.
+  close(style === "slanted" ? { transform: { skewX: desc.reverse ? 0.36 : -0.36 } } : undefined);
 }
 
 function shieldRow(desc: Api.StatBarDesc, h: number, radius: number, style: Api.StatBarStyle): void {
@@ -149,8 +149,7 @@ function shieldRow(desc: Api.StatBarDesc, h: number, radius: number, style: Api.
   const cellH = Math.max(4, Math.round(h * 0.5));
   const per = desc.shieldCell ?? 0;
   const cells = per > 0 ? Math.max(1, Math.ceil(smax / per - 1e-6)) : 1;
-  kit.row("Shield", { gap: per > 0 ? u(2) : 0, width: { kind: "grow" } }, () => {
-    if (style === "slanted") apply({ transform: { skewX: desc.reverse ? 0.36 : -0.36 } });
+  box("Shield", { direction: "row", gap: per > 0 ? u(2) : 0, width: { kind: "grow" } }, undefined, () => {
     for (let i = 0; i < cells; i++) {
       const lo = per > 0 ? i * per : 0;
       const hi = per > 0 ? Math.min(smax, lo + per) : smax;
@@ -161,7 +160,7 @@ function shieldRow(desc: Api.StatBarDesc, h: number, radius: number, style: Api.
           if (part > 0) leaf("Fill", { width: pct(part), height: pct(1) }, fillDraw(tier, r), absolute(desc.reverse ? { end: 0, top: 0 } : { start: 0, top: 0 }));
         });
     }
-  });
+  }, style === "slanted" ? { transform: { skewX: desc.reverse ? 0.36 : -0.36 } } : undefined);
 }
 
 export function orbMeter(id: string, desc: Api.OrbMeterDesc = {}): void {

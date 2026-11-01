@@ -353,7 +353,9 @@ function strategyScreen(): void {
       { key: "dead", name: "Wakka", dead: true },
     ],
   });
-  og.ui.comboCounter("Combo", { count: state.hits >= 2 ? state.hits * 5 : did("break") ? 0 : 47, multiplier: 4, decay: 1 - (s % 2) / 2 });
+  // A phone held sideways has no height to stack the combo under the tracker: it takes the left side.
+  const sideways = og.ui.frameViewport().breakpoint === "phoneLandscape";
+  og.ui.comboCounter("Combo", { count: state.hits >= 2 ? state.hits * 5 : did("break") ? 0 : 47, multiplier: 4, decay: 1 - (s % 2) / 2, ...(sideways ? { anchor: "left" as const } : {}) });
   og.ui.judgement("Judge", { last: did("hit") ? { text: "PERFECT", tier: 0, offsetMs: -12, at: state.acts.hit! } : did("break") ? { text: "MISS", tier: 4, at: state.acts.break! } : null, offsetY: 160 });
   if (did("score")) {
     og.ui.scoreboard("Board", {

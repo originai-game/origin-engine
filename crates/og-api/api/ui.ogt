@@ -7188,6 +7188,9 @@ module ui {
     field label String "The word under it." {
       default "Combo"
     }
+    field breakLabel String "The word under it as a break shakes the count off." {
+      default "Break"
+    }
     field milestones List.u32 "Counts that celebrate (a burst and a bigger pop); empty is 10, 25, 50, 100, then every 100."
     field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
       default right
