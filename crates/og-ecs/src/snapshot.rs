@@ -1114,6 +1114,22 @@ impl World {
     /// would take `bytes`, without changing anything: the same refusals,
     /// a type of another layout naming the fields that differ.
     pub fn check_snapshot(&self, bytes: &[u8], migrate: bool) -> Result<()> {
+        self.check_snapshot_replacing(bytes, migrate, &[])
+            .map(|_| ())
+    }
+
+    /// [`Self::check_snapshot`] for a caller that overwrites the types
+    /// `replaced` names after the restore (a save's host session: the
+    /// input it keeps): those may have another layout without a refusal.
+    /// Answers whether one did, so the restore must be
+    /// [`Self::restore_migrating`] (which, for every other type, then
+    /// equals [`Self::restore`]).
+    pub fn check_snapshot_replacing(
+        &self,
+        bytes: &[u8],
+        migrate: bool,
+        replaced: &[&str],
+    ) -> Result<bool> {
         let parsed = parse(&self.registry, bytes)?;
         if migrate {
             let mut report = MigrationReport::default();
@@ -1123,16 +1139,28 @@ impl World {
                 }
             }
             decode_blocks(&self.blocks, &parsed.blocks, Some(&mut report))?;
-            return Ok(());
+            return Ok(!report.is_exact());
         }
         resume_at(self, parsed.resume, None)?;
+        let mut differs = false;
         for t in &parsed.types {
             let id = self
                 .registry
                 .id_by_name(&t.name)
                 .map_err(|_| not_registered(&t.name))?;
             let info = self.registry.info(id);
-            if info.layout_hash != t.hash {
+            if info.layout_hash != t.hash && replaced.contains(&t.name.as_str()) {
+                if t.schema.is_none() {
+                    return Err(Error::new(
+                        ErrorKind::Schema,
+                        format!(
+                            "snapshot: type '{}' has a different layout in this world, and a format 1 snapshot carries no field names to migrate it by",
+                            t.name
+                        ),
+                    ));
+                }
+                differs = true;
+            } else if info.layout_hash != t.hash {
                 let detail = t
                     .schema
                     .as_ref()
@@ -1148,7 +1176,7 @@ impl World {
             }
         }
         decode_blocks(&self.blocks, &parsed.blocks, None)?;
-        Ok(())
+        Ok(differs)
     }
 
     /// The stable hash of the world: FNV-1a of its state stream (the module

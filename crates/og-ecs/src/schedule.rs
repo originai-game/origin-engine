@@ -247,6 +247,17 @@ impl<'w> SystemContext<'w> {
         self.world.check_snapshot(bytes, migrate)
     }
 
+    /// [`World::check_snapshot_replacing`] for a restore this system asks for.
+    pub fn check_snapshot_replacing(
+        &self,
+        bytes: &[u8],
+        migrate: bool,
+        replaced: &[&str],
+    ) -> Result<bool> {
+        self.world
+            .check_snapshot_replacing(bytes, migrate, replaced)
+    }
+
     pub fn name(&self) -> &str {
         &self.system.name
     }

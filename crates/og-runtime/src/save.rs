@@ -5,7 +5,9 @@
 //! a `u32` version (1), the `u64` tick it was taken at and the `u64` FNV-1a
 //! of the snapshot (a damaged save is refused), then the world snapshot (og-ecs's format, which carries every type's name,
 //! layout hash and field table, so a save from a build whose types changed
-//! is refused naming them, or mapped field by field with `migrate`).
+//! is refused naming them, or mapped field by field with `migrate`; the
+//! session's types below may differ without either, as the host's replace
+//! them).
 //!
 //! A save is the world; the session is not in it. Restoring keeps the
 //! host's input (`og.Input`, `og.Pointers`, `og.Gamepad`, `og.PointerLock`) and the player's
@@ -178,11 +180,16 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
         Ok(s) => s,
         Err(e) => return refuse(e),
     };
+    // The session's types (SESSION) are the host's after a restore, so a
+    // save whose only differences are theirs (og.Gamepad's eight pads in a
+    // build after a four-pad save) is taken, mapped field by field.
     if let Some(f) = running(world) {
         // SAFETY: the frame is published while its system runs.
-        if let Err(e) = unsafe { f.ctx() }.check_snapshot(&snapshot, migrate) {
-            return refuse(refusal(e, migrate));
-        }
+        let migrate = match unsafe { f.ctx() }.check_snapshot_replacing(&snapshot, migrate, SESSION)
+        {
+            Ok(session_differs) => migrate || session_differs,
+            Err(e) => return refuse(refusal(e, migrate)),
+        };
         eng.state.borrow_mut().pending_restore = Some(Pending { snapshot, migrate });
         return ok(Value::Null);
     }
@@ -190,9 +197,10 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
         Ok(w) => w,
         Err(e) => return refuse(e),
     };
-    if let Err(e) = w.check_snapshot(&snapshot, migrate) {
-        return refuse(refusal(e, migrate));
-    }
+    let migrate = match w.check_snapshot_replacing(&snapshot, migrate, SESSION) {
+        Ok(session_differs) => migrate || session_differs,
+        Err(e) => return refuse(refusal(e, migrate)),
+    };
     // A command runs inside the probe's tick: the restore waits for its end.
     let Ok(mut probe) = eng.probe.try_borrow_mut() else {
         eng.state.borrow_mut().pending_restore = Some(Pending { snapshot, migrate });

@@ -1238,7 +1238,7 @@ export interface SpawnDesc {
  */
 export interface RestoreDesc {
   /**
-   * Map a type whose layout changed since the save field by field, by name, as a hot reload does: a field added since takes its default, a removed one is dropped, an enum value is mapped by its variant's name, a field of another type starts at its default, and a type this build no longer registers is dropped. Off, such a save is refused naming the type and its fields.
+   * Map a type whose layout changed since the save field by field, by name, as a hot reload does: a field added since takes its default, a removed one is dropped, an enum value is mapped by its variant's name, a field of another type starts at its default, and a type this build no longer registers is dropped. Off, such a save is refused naming the type and its fields, except for the host's input the restore keeps (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio), which is mapped either way: a save from before og.Gamepad's eight pads restores without it.
    *
    * @default false
    */
