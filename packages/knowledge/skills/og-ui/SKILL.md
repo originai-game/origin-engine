@@ -82,6 +82,44 @@ Honest data: `loadingScreen` shows a spinner when progress is unknown, never a
 bar that runs ahead; `leaderboardScreen` shows skeletons while loading, the
 error with Retry, and its empty text; never invent scores or counts.
 
+### Components: containers, navigation and data
+
+Between the templates and the raw widgets sit the components (one call
+per tick, data in, what happened out; keep what they answer and pass it
+back). Each takes pointer, touch, keys and pads, mirrors under a
+right-to-left locale, says its role to a screen reader and plays the
+style's sounds; a style dresses its parts (`Menu.item[hover]`,
+`Tabs.indicator`, `Card.frame[selected]`, `Chart.tooltip`).
+
+| The game needs | Call | It answers |
+|---|---|---|
+| A card (an item, a quest, a mode) | `og.ui.card(id, { title, subtitle, eyebrow, media, badge, interactive, selected }, build)` | its response (`clicked`) |
+| Content that scrolls | `og.ui.scrollArea(id, { height, axes }, build)` (edges fade where more lies) | nothing |
+| FAQ or grouped settings | `og.ui.accordion(id, { sections, expanded, single }, build(i))` | `expanded`, `toggled` |
+| A list beside its detail | `og.ui.splitView(id, { ratio, direction }, start, end)` (stacks on a phone) | `ratio` |
+| A dialog with actions | `og.ui.dialog(id, open, { title, message, tone, actions }, build)` | `action`, `dismissed` |
+| A yes/no in a component | `og.ui.confirm(id, open, { title, message, confirmLabel, danger })` | `confirmed`, `cancelled` |
+| Details beside an element | `og.ui.popover(id, open, { anchor: og.ui.lastPath(), side }, build)` | `dismissed` |
+| Commands, a context menu | `og.ui.menu(id, open, { anchor or at, entries })`, `og.ui.contextMenu(id, open, at, { entries })` (check, radio, separator, header, danger, submenus by `parent`) | `chosen`, `dismissed` |
+| A bottom or side sheet | `og.ui.sheet(id, open, { edge, detents, detent, title }, build)` | `detent`, `dismissed` |
+| Tabs | `og.ui.tabBar(id, { tabs, selected, variant, bumpers }, build(i))` (Q/E, LB/RB step) | `selected` |
+| A banner strip | `og.ui.carousel(id, { count, index, autoplayMs }, build(i))` | `index` |
+| Where the player is | `og.ui.breadcrumbs(id, { items })` | `chosen` |
+| Pages of results | `og.ui.pagination(id, { pages, page })` | `page` |
+| The action bar | `og.ui.actionHints(id, { hints: og.ui.actionBar(world) })` | `pressed` (a touch on a hint) |
+| A weapon or emote wheel | `og.ui.radialMenu(id, open, { items, aim, release })` | `chosen`, `hovered` |
+| Long lists and grids with states | `og.ui.dataList(id, { count, loading, error, emptyLabel }, build(i))`, `og.ui.dataGrid(...)` | `clicked`, `retry` |
+| A leaderboard or stats table | `og.ui.table(id, { rows, columns, sortBy, descending, filter })` (10,000 rows and more: only the rows in view are built) | `sortBy`, `descending`, `filter`, `clicked` |
+| A codex | `og.ui.tree(id, { items, expanded, selected })` | `chosen`, `expanded` |
+| A skill tree, a run map | `og.ui.nodeGraph(id, { nodes, links, zoom })` | `chosen`, `zoom` |
+| A chart | `og.ui.chart(id, { kind: "line" \| "area" \| "bar" \| "radar" \| "pie" \| "donut", categories, series })` | `hovered`, `clicked` |
+| A stat sheet, an equip comparison | `og.ui.keyValueRows(id, { rows })`, `og.ui.statCompare(id, { rows: [{ label, current, next, max }] })` | nothing |
+| Daily rewards, events | `og.ui.calendar(id, { year, month, today, selected, marks })` (pass today in: no clock in the tick) | `selected`, `month`, `year` |
+
+`templates/ui-kit` shows each on its `containers`, `navigation`,
+`overlays`, `data`, `charts` and `graph` screens (`demo:overlay:<name>`,
+`demo:data:<loading|empty|error>` pick a state).
+
 ## 3. Below the templates: the widget set
 
 Layout (`row`, `column`, `panel`, `scroll`, `anchor`), text and controls
