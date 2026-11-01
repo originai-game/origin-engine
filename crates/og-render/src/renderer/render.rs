@@ -2,6 +2,9 @@
 
 use super::*;
 
+mod pass_main;
+use pass_main::MainPassInputs;
+
 mod view_culling;
 
 mod camera;
@@ -4461,262 +4464,44 @@ impl Renderer {
                         &self.light_buffers[2],
                     ],
                 ),
-                FramePass::Main => {
-                    let clear = match scene.environment.background {
-                        Background::Color(c) => wgpu::Color {
-                            r: c.x as f64,
-                            g: c.y as f64,
-                            b: c.z as f64,
-                            a: 1.0,
-                        },
-                        Background::Sky | Background::Procedural { .. } => wgpu::Color::BLACK,
-                    };
-                    let hdr = self.graph.view("hdr");
-                    let msaa = self.samples > 1;
-                    // With water or a 3D fluid the pass is split after the
-                    // sky: the scene so far is copied for them to refract
-                    // and reflect, then the pass goes on over it.
-                    // So is it for transmissive materials, which refract the
-                    // copy's mip chain (`physical.rs`).
-                    let split = !water_draws.is_empty()
-                        || fluid_frame.is_some()
-                        || transmission_view.is_some();
-                    let begin = |encoder: &mut crate::Encoder, first: bool| {
-                        let (view, resolve_target, store) = if msaa {
-                            (
-                                self.graph.view("hdr-msaa"),
-                                Some(hdr),
-                                if first && split {
-                                    wgpu::StoreOp::Store
-                                } else {
-                                    wgpu::StoreOp::Discard
-                                },
-                            )
-                        } else {
-                            (hdr, None, wgpu::StoreOp::Store)
-                        };
-                        encoder
-                            .begin_render_pass(&wgpu::RenderPassDescriptor {
-                                label: Some(if first { "main" } else { "main (after water)" }),
-                                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                                    view,
-                                    depth_slice: None,
-                                    resolve_target,
-                                    ops: wgpu::Operations {
-                                        load: if first {
-                                            wgpu::LoadOp::Clear(clear)
-                                        } else {
-                                            wgpu::LoadOp::Load
-                                        },
-                                        store,
-                                    },
-                                })],
-                                depth_stencil_attachment: Some(
-                                    wgpu::RenderPassDepthStencilAttachment {
-                                        view: self.graph.view("depth"),
-                                        depth_ops: Some(wgpu::Operations {
-                                            load: if first {
-                                                wgpu::LoadOp::Clear(1.0)
-                                            } else {
-                                                wgpu::LoadOp::Load
-                                            },
-                                            // TAA reads the depth to reproject the history.
-                                            store: if taa || (first && split) {
-                                                wgpu::StoreOp::Store
-                                            } else {
-                                                wgpu::StoreOp::Discard
-                                            },
-                                        }),
-                                        stencil_ops: None,
-                                    },
-                                ),
-                                timestamp_writes: None,
-                                occlusion_query_set: None,
-                                multiview_mask: None,
-                            })
-                            .forget_lifetime()
-                    };
-                    let mut pass = begin(&mut encoder, true);
-                    pass.set_pipeline(&self.pbr_pipelines[&(Side::Front, false, false, false)]);
-                    pass.set_bind_group(0, frame_bind_group, &[]);
-                    pass.set_bind_group(2, fx_group, &[]);
-                    draw_list(
-                        &mut pass,
-                        &main_list,
-                        true,
-                        &mut Some((
-                            Side::Front,
-                            false,
-                            false,
-                            None,
-                            false,
-                            false,
-                            false,
-                            false,
-                            false,
-                        )),
-                        physical_fx,
-                        probe_binding,
-                        Some(fx_group),
-                    );
-                    stats.draw_calls += main_list.ranges.len() as u32;
-                    stats.draw_calls += draw_skinned(
-                        &mut pass,
-                        &skinned_visible,
-                        false,
-                        1,
-                        3,
-                        &lit_skinned,
-                        physical_fx,
-                        probe_binding,
-                    );
-                    if let Some(indices) = terrain_indices {
-                        let (n, tris) = terrain::draw_levels(
-                            &mut pass,
-                            &terrain_draws,
-                            indices,
-                            terrain::TerrainPass::Lit,
-                            |c, r| view_frustum.intersects_sphere(c, r),
-                            Some(&mut probe_select::Binder::new(probe_binding)),
-                        );
-                        stats.draw_calls += n;
-                        stats.terrain_draws += n;
-                        stats.terrain_triangles += tris;
-                        stats.triangles += tris;
-                    }
-                    let (n, copies) = self.scatter.draw(
-                        &mut pass,
-                        scatter::ScatterPass::Lit,
-                        &scatter_batches,
-                        scatter_material,
-                        scatter_mesh,
-                        |c, r| view_frustum.intersects_sphere(c, r),
-                        Some(&mut probe_select::Binder::new(probe_binding)),
-                        Some(fx_group),
-                    );
-                    if n > 0 {
-                        // The copies' group 2 is theirs: the effects' back for what follows.
-                        pass.set_bind_group(2, fx_group, &[]);
-                    }
-                    stats.draw_calls += n;
-                    stats.scatter_draws += n;
-                    stats.scatter_copies += copies;
-                    let sky = match scene.environment.background {
-                        Background::Sky => Some(&self.sky_pipeline),
-                        Background::Procedural { .. } => Some(&self.sky_look_pipeline),
-                        Background::Color(_) => None,
-                    };
-                    if let Some(sky) = sky {
-                        pass.set_pipeline(sky);
-                        pass.set_bind_group(1, sky_group, &[]);
-                        pass.draw(0..3, 0..1);
-                        stats.draw_calls += 1;
-                    }
-                    if split {
-                        drop(pass);
-                        let size = wgpu::Extent3d {
-                            width: self.width,
-                            height: self.height,
-                            depth_or_array_layers: 1,
-                        };
-                        if let Some(copy) = self.graph.try_view("scene-copy") {
-                            encoder.copy_texture_to_texture(
-                                hdr.texture().as_image_copy(),
-                                copy.texture().as_image_copy(),
-                                size,
-                            );
-                        }
-                        if let Some((view, chain)) = transmission_view {
-                            encoder.copy_texture_to_texture(
-                                hdr.texture().as_image_copy(),
-                                view.texture().as_image_copy(),
-                                size,
-                            );
-                            self.mips.record_chain(&mut encoder, chain);
-                        }
-                        pass = begin(&mut encoder, false);
-                        pass.set_bind_group(0, frame_bind_group, &[]);
-                        // Each surface and the fluids with their reflection probe (probe_select.rs).
-                        let mut binder = probe_select::Binder::new(probe_binding);
-                        stats.draw_calls += self.water.draw(&mut pass, &water_draws, &mut binder);
-                        if let Some(f) = &fluid_frame {
-                            if let Some((c, r)) = fluid_bounds {
-                                binder.at(&mut pass, c, r);
-                            }
-                            stats.draw_calls += self.fluid3d.draw(&mut pass, f);
-                            binder.reset(&mut pass);
-                        }
-                    }
-                    // Transparent meshes and the billboards among them, back
-                    // to front over the opaque scene.
-                    pass.set_bind_group(2, fx_group, &[]);
-                    stats.draw_calls += draw_blended(
-                        &mut pass,
-                        &blended_list,
-                        (&sprite_frame.billboards, &sprite_frame.billboard_shadows),
-                        (fx_group, sprite_fx_group),
-                        physical_fx,
-                        probe_binding,
-                        false,
-                    );
-                    stats.draw_calls += draw_skinned(
-                        &mut pass,
-                        &skinned_visible,
-                        true,
-                        1,
-                        3,
-                        &lit_skinned,
-                        physical_fx,
-                        probe_binding,
-                    );
-                    // Particles, far systems first.
-                    if let Some(group) = &particle_group {
-                        let groups = &self.cache.sprite_groups;
-                        let white = &self.white_sprite_group;
-                        stats.draw_calls += self.particles.draw(
-                            &mut pass,
-                            &particle_frame,
-                            self.samples,
-                            group,
-                            scene.camera_layers,
-                            |t| match t {
-                                None => white,
-                                Some(t) => {
-                                    groups[t.index()].as_ref().expect("made before the pass")
-                                }
-                            },
-                        );
-                    }
-                    // Trails, ribbons and beams (layered 2D trails go with the sprites).
-                    stats.draw_calls += draw_strips(&mut pass, &ribbon_frame.runs);
-                    // Lines, points and wireframes (lines.rs), with their own group 0.
-                    let n = self
-                        .lines
-                        .draw_scene(&mut pass, &line_frame, scene.camera_layers);
-                    if n > 0 {
-                        stats.draw_calls += n;
-                        pass.set_bind_group(0, frame_bind_group, &[]);
-                    }
-                    // Sprites and text, blended over the scene in sorted order.
-                    stats.draw_calls += draw_sprites(
-                        &mut pass,
-                        &sprite_frame.runs,
-                        sprite_fx_group,
-                        &metaball_groups,
-                        false,
-                    );
-                    drop(pass);
-                    // Volumetric fog over everything drawn (volumetric.rs).
-                    if volumetric_fog.is_some() {
-                        self.volumetric.encode_apply(
-                            &self.device,
-                            &mut encoder,
-                            frame_bind_group,
-                            self.graph.view("hdr"),
-                            self.graph.view("lindepth"),
-                        );
-                    }
-                }
+                FramePass::Main => self.encode_main(MainPassInputs {
+                    scene,
+                    water_draws: &water_draws,
+                    fluid_frame: &fluid_frame,
+                    transmission_view,
+                    taa,
+                    encoder: &mut encoder,
+                    frame_bind_group,
+                    fx_group,
+                    draw_list: &draw_list,
+                    main_list: &main_list,
+                    physical_fx,
+                    probe_binding,
+                    stats: &mut stats,
+                    draw_skinned: &draw_skinned,
+                    skinned_visible: &skinned_visible,
+                    lit_skinned: &lit_skinned,
+                    terrain_indices,
+                    terrain_draws: &terrain_draws,
+                    view_frustum: &view_frustum,
+                    scatter_batches: &scatter_batches,
+                    scatter_material: &scatter_material,
+                    scatter_mesh: &scatter_mesh,
+                    sky_group,
+                    fluid_bounds,
+                    draw_blended: &draw_blended,
+                    blended_list: &blended_list,
+                    sprite_frame: &sprite_frame,
+                    sprite_fx_group,
+                    particle_group: &particle_group,
+                    particle_frame: &particle_frame,
+                    draw_strips: &draw_strips,
+                    ribbon_frame: &ribbon_frame,
+                    line_frame: &line_frame,
+                    draw_sprites: &draw_sprites,
+                    metaball_groups: &metaball_groups,
+                    volumetric_fog,
+                }),
                 FramePass::Glow => {
                     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some("glow"),
