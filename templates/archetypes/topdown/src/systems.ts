@@ -516,22 +516,29 @@ export const Hud = defineSystem("Hud", { reads: [Game], writes: [Report], after:
     }
   }
   const font = fontOf(g);
-  const caps = og.render.capabilities(world);
-  const w = caps.width > 0 ? caps.width : 1280;
-  const h = caps.height > 0 ? caps.height : 720;
+  // Screen text is placed and sized in CSS pixels: the UI's viewport, not
+  // og.render.capabilities' render target, which is device pixels (twice as
+  // wide at DPR 2: the room and the prompt fell off the screen, the text
+  // doubled). The corners keep to the HUD band, centred on an ultrawide.
+  const vp = og.ui.viewport(world);
+  const w = vp.width > 0 ? vp.width : 1280;
+  const h = vp.height > 0 ? vp.height : 720;
+  const band = vp.hud && vp.hud.width > 0 ? vp.hud : { x: 0, y: 0, width: w, height: h };
   const size = Math.max(16, Math.round(h * 0.034));
   const pad = Math.round(size * 0.9);
+  const left = band.x + pad;
+  const right = band.x + band.width - pad;
   const line = (text: string, x: number, y: number, color: { r: number; g: number; b: number }, align: "start" | "center" | "end" = "start", s = size) =>
     must(og.render.text(world, { font, text, position: { x, y, z: 0 }, size: s, color, align, screen: true, outline: 0.5, outlineColor: { r: 0.008, g: 0.008, b: 0.011 } }));
-  line(`HP ${g.hp}/${g.hpMax}`, pad, pad + size, g.hp > 1 ? WHITE : RED);
-  line(`COINS ${g.coins}/${g.coinsTotal}`, pad, pad + size * 2.3, GOLD);
-  if (g.hasKey) line("KEY", pad, pad + size * 3.6, GOLD);
-  line(`ROOM ${g.room}`, w - pad, pad + size, WHITE, "end");
+  line(`HP ${g.hp}/${g.hpMax}`, left, band.y + pad + size, g.hp > 1 ? WHITE : RED);
+  line(`COINS ${g.coins}/${g.coinsTotal}`, left, band.y + pad + size * 2.3, GOLD);
+  if (g.hasKey) line("KEY", left, band.y + pad + size * 3.6, GOLD);
+  line(`ROOM ${g.room}`, right, band.y + pad + size, WHITE, "end");
   if (world.tick < 300 && g.room === 1) {
     // The prompt names each action's binding on the device used last, so a
     // pad or a rebinding changes it: "W A S D move  ·  Space attack  ·  Shift dash".
     const named = (action: string, verb: string) => `${og.input.glyph(world, action)?.text ?? "?"} ${verb}`;
-    line([named(MOVE, "move"), named(ATTACK, "attack"), named(DASH, "dash")].join("  ·  "), w / 2, h - pad, MINT, "center", Math.round(size * 0.75));
+    line([named(MOVE, "move"), named(ATTACK, "attack"), named(DASH, "dash")].join("  ·  "), band.x + band.width / 2, band.y + band.height - pad, MINT, "center", Math.round(size * 0.75));
   }
   if (g.hp === 0) line("You fell. Back to the start...", w / 2, h / 2, RED, "center", Math.round(size * 1.2));
 });
