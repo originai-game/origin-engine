@@ -37,7 +37,7 @@ struct MassTemplate {
   // alpha behind the scene, bias, softness, gravity.
   occl: vec4<f32>,
   outline: vec4<f32>,
-  // x: outline width (CSS px), y: bar radius.
+  // x: outline width (CSS px), y: bar radius, z: particle shape.
   misc: vec4<f32>,
   back: vec4<f32>,
   ghost: vec4<f32>,
@@ -93,12 +93,14 @@ struct MassInstance {
   @location(3) scale: f32,
   @location(4) batch: u32,
   @location(5) aux: vec4<f32>,
+  @location(6) velocity: vec4<f32>,
 };
 
 const KIND_NUMBER: u32 = 0u;
 const KIND_TEXT: u32 = 1u;
 const KIND_BAR: u32 = 2u;
 const KIND_ICON: u32 = 3u;
+const KIND_PARTICLE: u32 = 4u;
 const FLAG_WORLD: u32 = 1u;
 const FLAG_OCCLUDE: u32 = 2u;
 const FLAG_HIDE: u32 = 4u;
@@ -106,6 +108,7 @@ const FLAG_OUTLINE: u32 = 8u;
 const FLAG_PLUS: u32 = 16u;
 const FLAG_COMPACT: u32 = 32u;
 const FLAG_DISTANCE: u32 = 64u;
+const FLAG_DRAG: u32 = 128u;
 
 // Number symbols: 0-9, then these.
 const SYM_PLUS: u32 = 10u;
@@ -266,11 +269,17 @@ fn vs_mass(@builtin(vertex_index) vi: u32, m: MassInstance) -> MassOut {
     }
   }
   let key = sample_keys(tp, t);
-  var offset = key.xy + m.aux.xy;
-  offset.x += (hash01(m.start_seed.y) * 2.0 - 1.0) * tp.dist.w * t;
+  var travel = t;
+  if ((flags & FLAG_DRAG) != 0u) {
+    travel = 1.0 - (1.0 - t) * (1.0 - t);
+  }
+  var offset = key.xy + m.aux.xy + m.velocity.xy * travel;
+  offset.x += ((hash01(m.start_seed.y) * 2.0 - 1.0) * tp.dist.w + m.aux.w) * t;
   offset.y += tp.occl.w * t * t;
   var scale = key.z * m.scale;
   var alpha = key.w * m.color.a;
+  // A world element's offsets and size follow its distance scale.
+  var dscale = 1.0;
   // Its point on the overlay.
   var at = m.position_value.xy;
   if ((flags & FLAG_WORLD) != 0u) {
@@ -285,7 +294,8 @@ fn vs_mass(@builtin(vertex_index) vi: u32, m: MassInstance) -> MassOut {
     at = vec2<f32>((ndc.x + 1.0) * 0.5 * camera.css.x, (1.0 - ndc.y) * 0.5 * camera.css.y);
     let depth = dot(m.position_value.xyz - camera.eye.xyz, camera.forward.xyz);
     if ((flags & FLAG_DISTANCE) != 0u && tp.dist.x > 0.0) {
-      scale *= clamp(tp.dist.x / max(depth, 1e-4), tp.dist.y, tp.dist.z);
+      dscale = clamp(tp.dist.x / max(depth, 1e-4), tp.dist.y, tp.dist.z);
+      scale *= dscale;
     }
     if ((flags & (FLAG_OCCLUDE | FLAG_HIDE)) != 0u) {
       let v = scene_visibility(at, camera.css.xy, depth, tp.occl.y, tp.occl.z);
@@ -298,7 +308,7 @@ fn vs_mass(@builtin(vertex_index) vi: u32, m: MassInstance) -> MassOut {
   if (alpha <= 0.002 || scale <= 0.0) {
     return hidden();
   }
-  at += offset;
+  at += offset * dscale;
   let em = tp.size.x * scale;
   var o: MassOut;
   o.batch = m.batch;
@@ -372,15 +382,26 @@ fn vs_mass(@builtin(vertex_index) vi: u32, m: MassInstance) -> MassOut {
     // The position from the whole bar's centre (every quad shares its ends).
     o.local = (vec2<f32>(mix(rect.x, rect.z, c.x), mix(rect.y, rect.w, c.y)) - vec2<f32>(x0, y0)) - o.half;
   } else {
+    // An icon or a particle: one quad about its pivot, turned.
     let i = u32(max(m.position_value.w, 0.0));
-    if (q >= 1u || i >= tp.head2.w) {
+    if (q >= 1u || (kind == KIND_ICON && i >= tp.head2.w)) {
       return hidden();
     }
-    uv = table(base + i);
+    if (kind == KIND_ICON) {
+      uv = table(base + i);
+    }
     let size = tp.size.xy * scale;
-    let x0 = at.x - tp.size.z * size.x;
-    let y0 = at.y - tp.size.w * size.y;
-    rect = vec4<f32>(x0, y0, x0 + size.x, y0 + size.y);
+    let pivot = tp.size.zw;
+    let local = (c - pivot) * size;
+    let turn = m.velocity.w + m.velocity.z * TAU * t;
+    let cs = cos(turn);
+    let sn = sin(turn);
+    let css = at + vec2<f32>(local.x * cs - local.y * sn, local.x * sn + local.y * cs);
+    o.half = 0.5 * size;
+    o.local = (c - vec2<f32>(0.5)) * size;
+    o.position = device_position(css);
+    o.uv = vec2<f32>(mix(uv.x, uv.z, c.x), mix(uv.y, uv.w, c.y));
+    return o;
   }
   let css = vec2<f32>(mix(rect.x, rect.z, c.x), mix(rect.y, rect.w, c.y));
   o.position = device_position(css);
@@ -432,6 +453,20 @@ fn fs_mass(in: MassOut) -> @location(0) vec4<f32> {
     let r = min(tp.misc.y, min(in.half.x, in.half.y));
     let qd = abs(in.local) - (in.half - vec2<f32>(r));
     let sd = length(max(qd, vec2<f32>(0.0))) + min(max(qd.x, qd.y), 0.0) - r;
+    a *= clamp(0.5 - sd * frame.output.z, 0.0, 1.0);
+  } else if (kind == KIND_PARTICLE) {
+    let shape = u32(tp.misc.z + 0.5);
+    var sd = 0.0;
+    if (shape == 1u) {
+      sd = length(in.local / max(in.half, vec2<f32>(1e-3))) - 1.0;
+      sd *= min(in.half.x, in.half.y);
+    } else if (shape == 2u) {
+      let p = abs(in.local) / max(in.half, vec2<f32>(1e-3));
+      sd = (p.x + p.y - 1.0) * min(in.half.x, in.half.y) * 0.7071;
+    } else {
+      let qd = abs(in.local) - in.half;
+      sd = length(max(qd, vec2<f32>(0.0))) + min(max(qd.x, qd.y), 0.0);
+    }
     a *= clamp(0.5 - sd * frame.output.z, 0.0, 1.0);
   } else {
     rgb *= sample.rgb;

@@ -107,10 +107,10 @@ pub use ui::{
     UiBuiltin, UiCap, UiClip, UiCorner, UiEdge, UiFit, UiGeometry, UiGradient, UiGradientKind,
     UiImage, UiJoin, UiLayer, UiList, UiMask, UiMassBatch, UiMassEase, UiMassInstance, UiMassKey,
     UiMassKind, UiMassSpace, UiMassTemplate, UiMaterial, UiMaterialHandle, UiMaterialShader,
-    UiMode, UiOccluder, UiOcclusion, UiPaint, UiShape, UiSpread, UiStop, UiStroke, UiTextEffects,
-    UiTextOutline, UiTextShadow, UiVectorData, UiVectorDraw, UiVectorHandle, UiVectorPaint,
-    UiVectorStroke, UiVectorVertex, example_ui_material, flatten_cubic, flatten_quad,
-    format_number, oklab, oklab_to_linear, ui_material_module_source,
+    UiMode, UiOccluder, UiOcclusion, UiPaint, UiParticleShape, UiShape, UiSpread, UiStop, UiStroke,
+    UiTextEffects, UiTextOutline, UiTextShadow, UiVectorData, UiVectorDraw, UiVectorHandle,
+    UiVectorPaint, UiVectorStroke, UiVectorVertex, example_ui_material, flatten_cubic,
+    flatten_quad, format_number, oklab, oklab_to_linear, ui_material_module_source,
 };
 mod particles_gpu;
 mod pipeline_cache;

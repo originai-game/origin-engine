@@ -389,4 +389,21 @@ fn ui_world_occludes_and_draws_mass_elements() {
         })
         .count();
     assert!(red > 500, "{red} red pixels of damage numbers");
+    // Confetti: cyan particles flung around (300, 200), none at its
+    // centre any more and none past the farthest travel (about 180 px).
+    let cyan = |x0: u32, x1: u32, y0: u32, y1: u32| {
+        (y0..y1)
+            .flat_map(|y| (x0..x1).map(move |x| (x, y)))
+            .filter(|&(x, y)| {
+                let p = px(&r, x, y);
+                p[0] < 150.0 && p[1] > 220.0 && p[2] > 230.0
+            })
+            .count()
+    };
+    let ring = cyan(150, 450, 60, 360);
+    assert!(ring > 1500, "{ring} cyan confetti pixels");
+    assert!(
+        cyan(290, 310, 190, 210) < 20,
+        "confetti still at the centre"
+    );
 }

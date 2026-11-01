@@ -37,7 +37,8 @@ pub(crate) mod pass;
 
 pub use mass::{
     UI_MASS_BATCHES, UI_MASS_KEYS, UI_MASS_QUADS, UiMassBatch, UiMassEase, UiMassInstance,
-    UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiOccluder, UiOcclusion, format_number,
+    UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiOccluder, UiOcclusion, UiParticleShape,
+    format_number,
 };
 
 use crate::TextureHandle;

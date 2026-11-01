@@ -43,8 +43,22 @@ pub enum UiMassKind {
         radius: f32,
     },
     /// Region `value` (an index) of `frames` (uv rectangles) of the
-    /// template's texture, `size` across.
+    /// template's texture, `size` across, turned by the instance's
+    /// rotation.
     Icon { frames: Vec<[f32; 4]> },
+    /// A particle: an analytic shape `size` across in the instance's
+    /// colour, turned by its rotation (UI particles, §5.5).
+    Particle { shape: UiParticleShape },
+}
+
+/// A [`UiMassKind::Particle`]'s shape.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum UiParticleShape {
+    /// A rectangle `size` (confetti; a long thin one is a streak).
+    #[default]
+    Square,
+    Circle,
+    Diamond,
 }
 
 /// How an element's timeline moves between keys.
@@ -171,6 +185,9 @@ pub struct UiMassTemplate {
     pub drift: f32,
     /// Added to the offset's y, times the life fraction squared (CSS px).
     pub gravity: f32,
+    /// The instances' velocity slows to rest over the life (an ease-out
+    /// of the distance travelled) instead of keeping its speed.
+    pub drag: bool,
     /// World space: the scale at `distance.x` world units is 1, nearer
     /// grows and farther shrinks, clamped to `distance.y`..`distance.z`.
     /// `distance.x` 0: a constant screen size.
@@ -196,6 +213,7 @@ impl Default for UiMassTemplate {
             keys: Vec::new(),
             drift: 0.0,
             gravity: 0.0,
+            drag: false,
             distance: glam::Vec3::new(0.0, 0.25, 4.0),
             occlusion: UiOcclusion::None,
             outline: None,
@@ -232,7 +250,7 @@ impl UiMassTemplate {
                 .unwrap_or(1)
                 .clamp(1, UI_MASS_QUADS),
             UiMassKind::Bar { .. } => 3,
-            UiMassKind::Icon { .. } => 1,
+            UiMassKind::Icon { .. } | UiMassKind::Particle { .. } => 1,
         }
     }
 }
@@ -312,8 +330,13 @@ pub struct UiMassInstance {
     pub scale: f32,
     /// Its batch in the frame; set when the frame is built.
     pub batch: u32,
-    /// x, y: moved by this many CSS px; z: a bar's ghost; w: unused.
+    /// x, y: moved by this many CSS px; z: a bar's ghost; w: moved
+    /// sideways by this many CSS px over its life (its own drift).
     pub aux: [f32; 4],
+    /// x, y: CSS px travelled over its life (eased by the template's
+    /// drag); z: turns over its life; w: its starting rotation, radians
+    /// clockwise (icons and particles).
+    pub velocity: [f32; 4],
 }
 
 /// [`UiMassInstance`] as the mass pipeline's instance vertex buffer.
@@ -321,7 +344,8 @@ pub(crate) const MASS_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBu
     array_stride: std::mem::size_of::<UiMassInstance>() as u64,
     step_mode: wgpu::VertexStepMode::Instance,
     attributes: &wgpu::vertex_attr_array![
-        0 => Float32x4, 1 => Float32x4, 2 => Uint32x2, 3 => Float32, 4 => Uint32, 5 => Float32x4
+        0 => Float32x4, 1 => Float32x4, 2 => Uint32x2, 3 => Float32, 4 => Uint32, 5 => Float32x4,
+        6 => Float32x4
     ],
 };
 
@@ -426,6 +450,7 @@ const FLAG_OUTLINE: u32 = 8;
 const FLAG_PLUS: u32 = 16;
 const FLAG_COMPACT: u32 = 32;
 const FLAG_DISTANCE: u32 = 64;
+const FLAG_DRAG: u32 = 128;
 
 /// A glyph's three table entries: its uv, its plane bounds moved by `pen`
 /// (em), its advance.
@@ -471,6 +496,9 @@ pub(crate) fn template_gpu(
     }
     if t.distance.x > 0.0 {
         flags |= FLAG_DISTANCE;
+    }
+    if t.drag {
+        flags |= FLAG_DRAG;
     }
     let (kind, entries, decimals) = match &t.kind {
         UiMassKind::Number {
@@ -526,6 +554,7 @@ pub(crate) fn template_gpu(
             table.extend(frames.iter().copied());
             (3, frames.len() as u32, 0)
         }
+        UiMassKind::Particle { .. } => (4, 0, 0),
     };
     let keys = t.keys_drawn();
     let mut g = TemplateGpu {
@@ -559,6 +588,13 @@ pub(crate) fn template_gpu(
         g.back = *back;
         g.ghost = *ghost;
         g.misc[1] = *radius;
+    }
+    if let UiMassKind::Particle { shape } = &t.kind {
+        g.misc[2] = match shape {
+            UiParticleShape::Square => 0.0,
+            UiParticleShape::Circle => 1.0,
+            UiParticleShape::Diamond => 2.0,
+        };
     }
     for (i, k) in keys.iter().enumerate() {
         g.keys[i] = [k.t, k.scale, k.alpha, k.ease.code()];

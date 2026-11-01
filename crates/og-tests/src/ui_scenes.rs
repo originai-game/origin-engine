@@ -1234,6 +1234,8 @@ pub fn vector() -> Result<RenderScene, String> {
 ///   right (centred at 640, 360) at 20 m behind the wall (12 m), hidden;
 ///   both over the numbers.
 /// - A score `+12.3k` in screen space, compact, top centre.
+/// - Confetti: 120 cyan particles from (300, 200), 20 ticks into a 40-tick
+///   life, flung 60 to 180 px with drag, gravity and spin.
 pub fn world(
     font: impl FnOnce(&mut RenderScene) -> Result<FontHandle, String>,
     atlas: impl FnOnce(&mut RenderScene) -> TextureHandle,
@@ -1460,6 +1462,51 @@ pub fn world(
             scale: 1.0,
             ..Default::default()
         }],
+        layer: 12,
+        clip: None,
+    });
+    // A confetti burst in screen space, half way through its life.
+    let confetti = Arc::new(UiMassTemplate {
+        kind: UiMassKind::Particle {
+            shape: og_render::UiParticleShape::Square,
+        },
+        size: Vec2::new(10.0, 6.0),
+        pivot: Vec2::new(0.5, 0.5),
+        lifetime: 40,
+        gravity: 60.0,
+        drag: true,
+        keys: vec![
+            UiMassKey {
+                t: 0.0,
+                ..Default::default()
+            },
+            UiMassKey {
+                t: 1.0,
+                alpha: 0.0,
+                ease: UiMassEase::In,
+                ..Default::default()
+            },
+        ],
+        ..Default::default()
+    });
+    o.ui.mass.push(UiMassBatch {
+        template: confetti,
+        space: UiMassSpace::Screen,
+        instances: (0..120u32)
+            .map(|i| {
+                let a = i as f32 * 2.399_963;
+                let r = 60.0 + (i % 5) as f32 * 30.0;
+                UiMassInstance {
+                    position: [300.0, 200.0, 0.0],
+                    color: [0.1, 0.9, 1.0, 1.0],
+                    start: 80,
+                    seed: i,
+                    scale: 1.0,
+                    velocity: [a.cos() * r, a.sin() * r, 1.0 + (i % 3) as f32, a],
+                    ..Default::default()
+                }
+            })
+            .collect(),
         layer: 12,
         clip: None,
     });
