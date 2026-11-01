@@ -9,7 +9,7 @@ use og_core::reflect::{FieldSchema, FieldType, Reflect, Schema};
 use std::path::Path;
 
 /// The IDL's layout of `decl` at `version`: the IDL declares the fields,
-/// the module its record's version (og.Gamepad is at 2, eight pads).
+/// [`VERSIONS`] the version they are at.
 fn idl_schema(decl: &RecordDecl, version: u32) -> Schema {
     Schema {
         name: decl.schema.to_string(),
@@ -51,6 +51,53 @@ fn idl_schema(decl: &RecordDecl, version: u32) -> Schema {
     }
 }
 
+/// Each record's version and the hash of its IDL fields at that version
+/// (`idl_schema(decl, 0).layout_hash()`), written down here rather than read
+/// from the module, so a module whose version is not the IDL's fails, and a
+/// layout change (a field added, removed, renamed or retyped) without a
+/// version bump fails too: a save restores a record by its version, so
+/// changing one's fields means a new version (og.Gamepad 2: eight pads).
+const VERSIONS: &[(&str, u32, u64)] = &[
+    ("og.AnimationEvent", 1, 0x28aaa9078ce00980),
+    ("og.AnimationGraph", 1, 0x14f7a654994eb4b2),
+    ("og.AnimationPlayer", 1, 0x2bec5d121d54fe87),
+    ("og.Audio", 1, 0xc68086afae021f9b),
+    ("og.AudioListener", 1, 0x51f48da421d73dc2),
+    ("og.AudioSource", 1, 0xdc2f317c2877fa94),
+    ("og.Blendshapes", 1, 0xbc3663f9e80b3bc0),
+    ("og.Collider", 1, 0xe83c74a0520778bc),
+    ("og.CollisionEnded", 1, 0x4e62d2a73639aeb5),
+    ("og.CollisionStarted", 1, 0x6c9e735a7abf1f6a),
+    ("og.Contact", 1, 0xe9a7082085c77412),
+    ("og.Flipbook", 1, 0xbbede7fc327207f1),
+    ("og.FlipbookEvent", 1, 0x7d1245df738a14b1),
+    ("og.Fluid3D", 1, 0xf7ae93e48ea458df),
+    ("og.FootLock", 1, 0x335fb3e07795add3),
+    ("og.Gamepad", 2, 0xc97a34bf75360270),
+    ("og.IkChain", 1, 0xbbe02154306d4e60),
+    ("og.IkTarget2D", 1, 0x4e454eb44cd38470),
+    ("og.JointLimit", 1, 0x4b0c9cec8d17a70f),
+    ("og.LookAt", 1, 0x219ef1857429f798),
+    ("og.Physics", 1, 0x1b49ec8691b7148e),
+    ("og.PointerDown", 1, 0xa0091884ee01db37),
+    ("og.PointerMove", 1, 0x9328be6142683eea),
+    ("og.PointerUp", 1, 0x2f71597da11eef1a),
+    ("og.Pointers", 1, 0xe0a9491012ab78ea),
+    ("og.RigidBody", 1, 0xee825e5cf1291264),
+    ("og.SensorEntered", 1, 0xa33b45062725b7f1),
+    ("og.SensorExited", 1, 0xcaa743ce70b55c7a),
+    ("og.Skeleton", 1, 0xdf1d8ad824fb1c2a),
+    ("og.Skeleton2D", 1, 0x0987b2b676dc1ad4),
+    ("og.Skeleton2DEvent", 1, 0x4ade934299b37c48),
+    ("og.SoundEnded", 1, 0x90355457f6c84261),
+    ("og.SoundStarted", 1, 0xb828d371c76e923c),
+    ("og.SpringBone", 1, 0xeb6a65842c7e9d8b),
+    ("og.SpringCollider", 1, 0x4078f34f3ce7d3b3),
+    ("og.Transform", 1, 0x1f6309afb81c85f3),
+    ("og.TweenCompleted", 1, 0xe394841eee68bb0a),
+    ("og.Velocity", 1, 0x70aff545497a9c4d),
+];
+
 fn check<T: Reflect>(failures: &mut Vec<String>) {
     let module = T::schema();
     let Some(decl) = RECORDS.iter().find(|r| r.schema == module.name) else {
@@ -60,7 +107,21 @@ fn check<T: Reflect>(failures: &mut Vec<String>) {
         ));
         return;
     };
-    let idl = idl_schema(decl, module.version);
+    let fields = idl_schema(decl, 0).layout_hash();
+    let Some(&(_, version, pinned)) = VERSIONS.iter().find(|(n, _, _)| *n == module.name) else {
+        failures.push(format!(
+            "{} has no entry in VERSIONS: add (\"{}\", {}, {fields:#018x})",
+            module.name, module.name, module.version
+        ));
+        return;
+    };
+    if fields != pinned {
+        failures.push(format!(
+            "{}'s fields changed since version {version}: bump its version (the module's #[reflect(version)] and VERSIONS) and pin {fields:#018x}",
+            module.name
+        ));
+    }
+    let idl = idl_schema(decl, version);
     if idl.layout_hash() != module.layout_hash() {
         let show = |s: &Schema| {
             s.fields
@@ -70,9 +131,10 @@ fn check<T: Reflect>(failures: &mut Vec<String>) {
                 .join(", ")
         };
         failures.push(format!(
-            "{}: api/<module>.ogt has [{}], the module registers [{}]",
+            "{}: api/<module>.ogt has version {version} [{}], the module registers version {} [{}]",
             module.name,
             show(&idl),
+            module.version,
             show(&module)
         ));
     }
