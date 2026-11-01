@@ -71,6 +71,24 @@ export function byText(h: number): number {
   return Math.round(h * Math.max(1, frame().theme.textScale ?? 1));
 }
 
+/**
+ * A virtual row's height that holds two lines of small text once the
+ * player's text size grows (a label that wraps rather than cuts), and `h`
+ * scaled with the text before that.
+ */
+export function wrapRow(h: number): number {
+  const k = Math.max(1, frame().theme.textScale ?? 1);
+  return k > 1 ? Math.max(byText(h), Math.round(2 * 20 * k + 12)) : h;
+}
+
+/**
+ * A pointer target's side: at least 44 CSS px under a finger (a coarse
+ * pointer) whatever its visual (a dot, a crumb), `fine` under a mouse.
+ */
+export function target(fine: number): number {
+  return frame().touch ? Math.max(44, fine) : fine;
+}
+
 /** Reduced motion is asked for: movement jumps. */
 export function still(): boolean {
   return frame().theme.reducedMotion;
@@ -185,6 +203,10 @@ export interface SurfaceDesc {
   expanded?: boolean;
   /** With focusable: Left and Right are its own while it has the focus (Response.adjust). */
   adjustable?: boolean;
+  /** How far it rises (negative y, CSS px) under the pointer and the focus: a card's lift. */
+  lift?: number;
+  /** Its scale while pressed (a card, a hint, a round button sinks to 0.96): 1 is none. */
+  pressScale?: number;
   /** Its other props (a drag, a placement): set with its states, which a later og.ui.props would replace. */
   props?: Api.ElementProps;
   /** Placed as a layer over its parent's content (over()), with these props. */
@@ -222,8 +244,13 @@ export function surface(id: string, d: SurfaceDesc, build: () => void): Api.Resp
   // Its fill at rest, selected or not; transparent is the wash's colour at no alpha (a fade from
   // nothing passes through no grey).
   const rest = (s: boolean): Rgba => (s && d.selectedFill !== undefined ? d.selectedFill : d.fill) ?? { ...wash, a: 0 };
-  // Hover and focus move it half-way to the wash, a press all the way.
+  // Hover and focus move it half-way to the wash, a press twice as far as hover again: a press
+  // reads at a glance, not only beside the idle one.
   const tint = (base: Rgba, k: number): Rgba => (base.a > 0 ? mix(base, { ...wash, a: Math.max(base.a, 1) }, k * by) : { ...wash, a: k * by * 1.4 });
+  // The motion values of each interaction state: the lift and the press's sink.
+  const lift = still() ? 0 : d.lift ?? 0;
+  const sink = still() ? 1 : d.pressScale ?? 1;
+  const moved = (y: number, k: number): Api.PropValue[] => (lift !== 0 || sink !== 1 ? [{ prop: "y", value: y }, { prop: "scale", value: k }] : []);
   const base = rest(sel);
   const part = `${d.part}${flags(...(d.flags ?? []), !on && "disabled", on && was.pressed && "pressed", on && was.hovered && !was.pressed && "hover", on && was.focused && "focused")}`;
   kit.open(id, {
@@ -262,11 +289,11 @@ export function surface(id: string, d: SurfaceDesc, build: () => void): Api.Resp
   states.push({
     name: "interaction",
     states: [
-      vstate("normal", bgValues(base)),
-      vstate("hover", bgValues(tint(base, 0.5))),
-      vstate("pressed", bgValues(tint(base, 1))),
-      vstate("focused", bgValues(tint(base, 0.5))),
-      vstate("disabled", bgValues(base)),
+      vstate("normal", [...bgValues(base), ...moved(0, 1)]),
+      vstate("hover", [...bgValues(tint(base, 0.5)), ...moved(lift, 1)]),
+      vstate("pressed", [...bgValues(tint(base, 1.6)), ...moved(0, sink)]),
+      vstate("focused", [...bgValues(tint(base, 0.5)), ...moved(lift, 1)]),
+      vstate("disabled", [...bgValues(base), ...moved(0, 1)]),
     ],
     transitions: [],
   });
@@ -356,7 +383,7 @@ export function text(id: string, value: string, d: { step?: Api.TypeStepName; co
  * drawn from the glyph's text: a keyboard key as a rounded cap, a pad face
  * button as a disc, a bumper or trigger as a pill.
  */
-export function glyphCap(id: string, glyph: { text: string; icon: string }, size0: number): void {
+export function glyphCap(id: string, glyph: { text: string; icon: string }, size0: number, progress = 0): void {
   const t = frame().t;
   // A cap's name is text: it grows with the player's text size.
   const size = byText(size0);
@@ -376,8 +403,25 @@ export function glyphCap(id: string, glyph: { text: string; icon: string }, size
     partClass: "chip",
   });
   const symbol = PS_FACE[glyph.icon];
-  if (symbol) faceSymbol("Symbol", symbol, Math.round(size * 0.46), ink);
+  if (symbol) faceSymbol("Symbol", symbol, Math.round(size * 0.5), ink);
   else text("Text", glyph.text, { step: "caption", nowrap: true, font: "mono" });
+  // A hold's progress: a ring around the cap, centred on it and scaled with it (the cap's width
+  // as laid out last tick, so a key cap wider than tall is ringed round its middle).
+  if (progress > 0) {
+    const cap = kit.bounds(parentOf(kit.lastPath()));
+    const gap = Math.max(2, Math.round(size * 0.1));
+    const w = Math.max(2, Math.round(size * 0.1));
+    const d = size + 2 * gap;
+    const cw = cap?.width ?? size;
+    kit.open("Ring", { width: px(d), height: px(d) });
+    kit.setDraw({ shape: { kind: "arc", thickness: w }, fills: [{ kind: "solid", color: token("lineStrong", 0.6) }] });
+    kit.close();
+    over({ insets: { start: (cw - d) / 2, top: -gap }, inert: true, z: 1 });
+    kit.open("Progress", { width: px(d), height: px(d) });
+    kit.setDraw({ shape: { kind: "arc", start: -Math.PI / 2, sweep: Math.PI * 2 * clamp(progress, 0, 1), thickness: w, cap: "round" }, fills: [{ kind: "solid", color: token("primary") }] });
+    kit.close();
+    over({ insets: { start: (cw - d) / 2, top: -gap }, inert: true, z: 2 });
+  }
   kit.close();
   // A drawn symbol has no text: the cap says what it is.
   if (symbol) kit.semantics({ role: "image", name: glyph.text });
@@ -386,20 +430,29 @@ export function glyphCap(id: string, glyph: { text: string; icon: string }, size
 /** PlayStation's face buttons: drawn, never set as text, so no style's font can show tofu for × ○ □ △. */
 const PS_FACE: Record<string, "cross" | "circle" | "square" | "triangle"> = { "ps.cross": "cross", "ps.circle": "circle", "ps.square": "square", "ps.triangle": "triangle" };
 
-/** A PlayStation face symbol, `size` square, stroked in `color` at the weight of the cap's text. */
+/**
+ * A PlayStation face symbol in a `size` box, stroked in `color`. The four
+ * are matched optically, as the pad prints them: the same stroke, the ring
+ * a little inside the box, the square smaller again (its corners carry
+ * more ink), the cross's arms reaching the ring's edge, the triangle as
+ * wide as the ring.
+ */
 function faceSymbol(id: string, kind: "cross" | "circle" | "square" | "triangle", size: number, color: Rgba): void {
-  const w = Math.max(1.5, size * 0.13);
-  if (kind === "cross") return mark(id, "cross", size, color, w);
-  kit.open(id, { width: px(size), height: px(size) });
+  const w = Math.max(1.5, size * 0.12);
+  kit.open(id, { width: px(size), height: px(size), align: "center", cross: "center" });
   const fill: Api.Fill[] = [{ kind: "solid", color: paint(color) }];
-  if (kind === "circle") kit.setDraw({ shape: { kind: "arc", thickness: w }, fills: fill });
-  else {
-    // Inset by half the stroke so the outline sits inside the box; a closed outline repeats its first point.
-    const i = w / 2;
-    const p = (x: number, y: number) => ({ x: i + x * (size - 2 * i), y: i + y * (size - 2 * i) });
-    const pts = kind === "square" ? [p(0.08, 0.08), p(0.92, 0.08), p(0.92, 0.92), p(0.08, 0.92), p(0.08, 0.08), p(0.92, 0.08)]
-      : [p(0.5, 0.06), p(1, 0.92), p(0, 0.92), p(0.5, 0.06), p(1, 0.92)];
-    kit.setDraw({ shape: { kind: "path", points: pts, width: w, cap: "round", join: "round" }, fills: fill });
+  const p = (x: number, y: number) => ({ x: x * size, y: y * size });
+  if (kind === "circle") {
+    const d = Math.round(size * 0.9);
+    kit.open("Shape", { width: px(d), height: px(d) });
+    kit.setDraw({ shape: { kind: "arc", thickness: w }, fills: fill });
+    kit.close();
+  } else {
+    // A closed outline repeats its first two points, so its first corner joins too.
+    const pts = kind === "cross" ? [p(0.16, 0.16), p(0.84, 0.84), p(0.5, 0.5), p(0.84, 0.16), p(0.16, 0.84)]
+      : kind === "square" ? [p(0.14, 0.14), p(0.86, 0.14), p(0.86, 0.86), p(0.14, 0.86), p(0.14, 0.14), p(0.86, 0.14)]
+      : [p(0.5, 0.1), p(0.97, 0.9), p(0.03, 0.9), p(0.5, 0.1), p(0.97, 0.9)];
+    kit.setDraw({ shape: { kind: "path", points: pts, width: kind === "cross" ? w * 1.1 : w, cap: "round", join: "round" }, fills: fill });
   }
   kit.close();
 }

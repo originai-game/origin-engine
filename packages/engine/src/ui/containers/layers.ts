@@ -7,7 +7,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  all, beside, chevron, clamp, fit, flags, floating, floatingContent, frame, grow, kit, mark, over, paint, px, role, rtl, spring, still,
+  all, beside, byText, chevron, clamp, fit, flags, floating, floatingContent, frame, grow, kit, mark, over, paint, px, role, rtl, spring, still,
   surface, text, token, xy,
   type Placed, type Rgba, type Side,
 } from "./base.ts";
@@ -229,8 +229,8 @@ function menuRows(entries: readonly Api.MenuEntry[], parent: string, desc: Api.M
   let hoveredPlain = false;
   const anyCheck = entries.some((e) => (e.parent ?? "") === parent && (e.kind === "check" || e.kind === "radio"));
   const anyIcon = entries.some((e) => (e.parent ?? "") === parent && e.icon);
-  const minW = desc.minWidth ?? 200;
-  floatingContent({ direction: "column", width: fit(Math.min(minW, viewport.width - 2 * t.gutter), Math.min(desc.maxWidth ?? 360, viewport.width - 2 * t.gutter)), padding: xy(t.xs, t.xs), gap: 0, cross: "stretch", background: token("panelRaised"), part: "Menu.frame", partClass: "tooltip" }, () => {
+  const minW = desc.minWidth || 200;
+  floatingContent({ direction: "column", width: fit(Math.min(minW, viewport.width - 2 * t.gutter), Math.min(desc.maxWidth || byText(360), viewport.width - 2 * t.gutter)), padding: xy(t.xs, t.xs), gap: 0, cross: "stretch", background: token("panelRaised"), part: "Menu.frame", partClass: "tooltip" }, () => {
     entries.forEach((e, i) => {
       if ((e.parent ?? "") !== parent) return;
       const kind = e.kind ?? "item";
@@ -242,7 +242,7 @@ function menuRows(entries: readonly Api.MenuEntry[], parent: string, desc: Api.M
       }
       if (kind === "header") {
         kit.row(kit.idi("Head", i), { width: grow(), padding: { left: t.sm, top: t.sm, right: t.sm, bottom: t.xxs } }, () => {
-          text("Text", e.label ?? "", { step: "caption", color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
+          text("Text", e.label ?? "", { step: "caption", color: "inkMuted", width: grow() });
         });
         return;
       }
@@ -285,7 +285,10 @@ function menuRows(entries: readonly Api.MenuEntry[], parent: string, desc: Api.M
           if (e.icon) kit.icon("Icon", e.icon, { size: 18, tint: token(ink), label: "" });
           else kit.spacer("Icon", px(18));
         }
-        text("Label", e.label ?? "", { color: ink, nowrap: true, ellipsis: true, width: grow() });
+        // The label sizes the menu (it widens with its longest label up to the screen, then the
+        // label wraps); never cut. A spring pushes the shortcut and the chevron to the end.
+        text("Label", e.label ?? "", { color: ink });
+        kit.spacer("Push", grow());
         if (e.shortcut) text("Shortcut", e.shortcut, { step: "caption", color: e.disabled ? "inkFaint" : "inkMuted", nowrap: true, font: "mono" });
         if (hasSub) chevron("More", "forward", 16, role(ink));
       });
@@ -365,7 +368,9 @@ export function sheet(id: string, open: boolean, desc: Api.SheetDesc, build: Api
       direction: "column",
       width: px(W),
       height: px(vertical ? H + sa.bottom : availH),
-      padding: { left: t.lg, top: vertical ? t.sm : t.lg, right: t.lg, bottom: t.lg + (vertical ? sa.bottom : 0) },
+      // A bottom sheet below its top detent hangs past the screen's edge: its content keeps to the
+      // part in view (the detent's height), so nothing it holds is ever off the screen.
+      padding: { left: t.lg, top: vertical ? t.sm : t.lg, right: t.lg, bottom: t.lg + (vertical ? sa.bottom + (open ? offsetOf(detent) : 0) : 0) },
       gap: t.md,
       cross: "stretch",
       background: token("panelRaised"),
@@ -380,7 +385,7 @@ export function sheet(id: string, open: boolean, desc: Api.SheetDesc, build: Api
       }
       if (desc.title) {
         kit.row("Header", { width: grow(), gap: t.sm, cross: "center" }, () => {
-          text("Title", desc.title ?? "", { step: "xl", heading: true, width: grow(), nowrap: true, ellipsis: true });
+          text("Title", desc.title ?? "", { step: "xl", heading: true, width: grow() });
           if (dismissible && (desc.closeButton ?? !vertical)) {
             const r = surface("Close", { part: "Sheet.close", cls: "button", flags: ["quiet", "round"], fill: null, width: px(44), height: px(44), align: "center", cross: "center", semantics: { role: "button", name: desc.closeLabel || "Close" } }, () => mark("X", "cross", 16, role("inkMuted")));
             if (r.clicked) dismissed = true;
