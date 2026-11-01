@@ -486,8 +486,9 @@ transition selection on        spring token(emphasis) { stroke 3 token(focus) }
 timeline unlock { 0 state availability available; 0 burst sparks; 0 sound reward }
 ```
 
-The grammar above is a sketch for review; its exact form is settled in
-phase U3 (§18).
+The grammar above was the sketch for review; phase U3 settled it in
+crates/og-ui/README.md §Documents (one construct per `.ogt` line, props
+from og-ui's reflected element schema, `og.ui.documentSchema()`).
 
 ### 10.2 Documents and code
 

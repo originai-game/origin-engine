@@ -61,6 +61,20 @@ is one line here, written at the merge that changes
   og-render, og-physics, og-2d, og-anim and og-net (new) and og-build,
   og-model, og-taste. Skills point at `og api show <module>`; the API wiki
   is no longer mounted under og-game.
+- Added (docs/ui.md U3): UI documents, `type screen` and `type component`
+  `.ogt` cooked to `og.UiDocument` (grammar in crates/og-ui/README.md);
+  `og.load.document`; module ui's `screen`, `component`, `openSlot`,
+  `push`, `pop`, `replace`, `clear`, `layers`, `screenVm`, `docEvents`,
+  `gameInput`, `paused`, `defineAction`, `action`, `actionHeld`, `glyph`,
+  `device`, `setDevice`, `actionBar`, `documentSchema`, `setProp`,
+  `saveEdits`, with the types `UiDocEvent`, `UiDocResponse`, `UiLayer`,
+  `UiActionDesc`, `UiActionTrigger`, `UiGlyph`, `UiDevice`,
+  `UiActionHint`. The probe (protocol 5, optional fields only): elements
+  gain `path`, `layer`, `source`, `bindings`, `visualStates`, `edits`,
+  `motion` and `slot`; `dump_ui` gains `layers`, `motion`, `actions`,
+  `documents` and `edits`; new actions `dump_ui:layers` and `ui:<verb>`
+  (set, state, play, seek, push, pop, save, clear, action). A UI snapshot
+  is version 11 (it carries the layer stack).
 
 ## 0.7.7 — 2026-10-31
 
