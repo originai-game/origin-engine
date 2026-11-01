@@ -375,7 +375,32 @@ export function glyphCap(id: string, glyph: { text: string; icon: string }, size
     part: `ActionBar.glyph${flags(face ? "face" : shoulder ? "shoulder" : "key", (face || shoulder) && "round")}`,
     partClass: "chip",
   });
-  text("Text", glyph.text, { step: "caption", nowrap: true, font: "mono" });
+  const symbol = PS_FACE[glyph.icon];
+  if (symbol) faceSymbol("Symbol", symbol, Math.round(size * 0.46), ink);
+  else text("Text", glyph.text, { step: "caption", nowrap: true, font: "mono" });
+  kit.close();
+  // A drawn symbol has no text: the cap says what it is.
+  if (symbol) kit.semantics({ role: "image", name: glyph.text });
+}
+
+/** PlayStation's face buttons: drawn, never set as text, so no style's font can show tofu for × ○ □ △. */
+const PS_FACE: Record<string, "cross" | "circle" | "square" | "triangle"> = { "ps.cross": "cross", "ps.circle": "circle", "ps.square": "square", "ps.triangle": "triangle" };
+
+/** A PlayStation face symbol, `size` square, stroked in `color` at the weight of the cap's text. */
+function faceSymbol(id: string, kind: "cross" | "circle" | "square" | "triangle", size: number, color: Rgba): void {
+  const w = Math.max(1.5, size * 0.13);
+  if (kind === "cross") return mark(id, "cross", size, color, w);
+  kit.open(id, { width: px(size), height: px(size) });
+  const fill: Api.Fill[] = [{ kind: "solid", color: paint(color) }];
+  if (kind === "circle") kit.setDraw({ shape: { kind: "arc", thickness: w }, fills: fill });
+  else {
+    // Inset by half the stroke so the outline sits inside the box; a closed outline repeats its first point.
+    const i = w / 2;
+    const p = (x: number, y: number) => ({ x: i + x * (size - 2 * i), y: i + y * (size - 2 * i) });
+    const pts = kind === "square" ? [p(0.08, 0.08), p(0.92, 0.08), p(0.92, 0.92), p(0.08, 0.92), p(0.08, 0.08), p(0.92, 0.08)]
+      : [p(0.5, 0.06), p(1, 0.92), p(0, 0.92), p(0.5, 0.06), p(1, 0.92)];
+    kit.setDraw({ shape: { kind: "path", points: pts, width: w, cap: "round", join: "round" }, fills: fill });
+  }
   kit.close();
 }
 
