@@ -68,20 +68,29 @@ pub(crate) struct Blend {
 }
 
 impl Blend {
+    /// Whether `e` is held at the tick (itself or an ancestor).
+    fn holds(&self, parent: &IdMap<u64, u64>, e: u64) -> bool {
+        if self.held.is_empty() {
+            return false;
+        }
+        let mut cur = e;
+        for _ in 0..=256 {
+            if self.held.contains_key(&cur) {
+                return true;
+            }
+            match parent.get(&cur) {
+                Some(&p) => cur = p,
+                None => return false,
+            }
+        }
+        false
+    }
+
     /// The drawn world matrix of `e`, whose tick world matrix is `m`
     /// (`parent`: the tick's og.Parent links).
     fn of(&mut self, parent: &IdMap<u64, u64>, e: u64, m: Mat4) -> Mat4 {
-        if !self.held.is_empty() {
-            let mut cur = e;
-            for _ in 0..=256 {
-                if self.held.contains_key(&cur) {
-                    return m;
-                }
-                match parent.get(&cur) {
-                    Some(&p) => cur = p,
-                    None => break,
-                }
-            }
+        if self.holds(parent, e) {
+            return m;
         }
         // Spawned during the tick: nothing to come from.
         if !self.prev.knows(e) {
@@ -95,7 +104,7 @@ impl Blend {
 /// og-core's math (`og_core::math::quat_slerp`, no host `libm`); `b` when
 /// the translation moved more than `snap_sq`'s root, and either end exactly
 /// at 0 and 1.
-fn blend(a: Mat4, b: Mat4, t: f32, snap_sq: f32) -> Mat4 {
+pub(crate) fn blend(a: Mat4, b: Mat4, t: f32, snap_sq: f32) -> Mat4 {
     if a == b || t >= 1.0 {
         return b;
     }
@@ -478,6 +487,14 @@ impl Hierarchy {
         self.blend.take().map(|b| b.prev)
     }
 
+    /// The alpha what is drawn on `e` (its pose, its anchored UI) blends
+    /// at: `None` on a frame at the tick, or when `e` is held there
+    /// (og.Interpolation.off, og.render.snap) or was spawned in the tick.
+    pub(crate) fn blend_alpha(&mut self, e: u64) -> Option<f32> {
+        let b = self.blend.as_mut()?;
+        (!b.holds(&self.parent, e) && b.prev.knows(e)).then_some(b.alpha)
+    }
+
     /// Whether `e` has og.Transform here.
     fn knows(&mut self, e: u64) -> bool {
         if self.pending.is_some() {
@@ -498,7 +515,7 @@ impl Hierarchy {
     }
 
     /// The world matrix of an entity at the tick: its local transform after its parents'.
-    fn tick_world_of(&mut self, e: u64) -> Mat4 {
+    pub(crate) fn tick_world_of(&mut self, e: u64) -> Mat4 {
         // Checked in place: the raycast record asks once per target.
         if self.pending.is_some() {
             self.apply();

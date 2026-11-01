@@ -428,7 +428,11 @@ impl Probe {
                     return Err(format!("Transform.position takes {lanes} numbers"));
                 }
                 let parameter = format!("{}.position", schema.name);
-                self.write_field(world, e, &parameter, &json!(xyz), false)
+                self.write_field(world, e, &parameter, &json!(xyz), false)?;
+                if let Some(c) = self.capture.as_mut() {
+                    c.teleported(world, e);
+                }
+                Ok(())
             }
             "frame_entity" => {
                 let id = arg(0, "frame_entity:<entity>")?;

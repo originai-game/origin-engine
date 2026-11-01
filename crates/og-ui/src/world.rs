@@ -415,6 +415,26 @@ pub enum WorldCmd {
         rect: Rect,
     },
     EndPanel,
+    /// What follows, until [`WorldCmd::EndAnchor`], is the anchored element
+    /// `key`: [`crate::UiFrame::emit_shifted`] moves it with its point.
+    Anchor {
+        key: u64,
+    },
+    EndAnchor,
+}
+
+/// Where an anchored element was placed at the end of the tick
+/// ([`Ui::world_anchor_points`]): what a host that draws between ticks
+/// projects again to move it with its point.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AnchorPoint {
+    /// The element's key ([`WorldCmd::Anchor`]).
+    pub key: u64,
+    pub target: WorldTarget,
+    /// Added to the target's point, world units.
+    pub offset: Vec3,
+    /// Held on the screen's edge (it stays there).
+    pub clamped: bool,
 }
 
 /// Mass elements of a frame that no element owns: the templates' pools and
@@ -505,6 +525,8 @@ pub(crate) struct WorldUi {
     immediate: BTreeMap<u32, Vec<UiMassInstance>>,
     pub marks: BTreeMap<u64, Marks>,
     last: BTreeMap<u64, AnchorInfo>,
+    /// This tick's anchored elements as placed.
+    pub placed: Vec<AnchorPoint>,
     pub frame: WorldFrame,
     pub state: WorldState,
     /// The pointer last tick (a viewport's drag).

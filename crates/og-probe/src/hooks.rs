@@ -81,6 +81,11 @@ pub trait Capture {
     fn frame(&mut self) -> Option<RawFrame> {
         None
     }
+    /// `teleport` moved `entity`: a renderer that draws between ticks
+    /// draws it where it landed rather than gliding there.
+    fn teleported(&mut self, world: &World, entity: Entity) {
+        let _ = (world, entity);
+    }
 }
 
 /// A frame as RGBA8 rows, top row first ([`Capture::frame`]).

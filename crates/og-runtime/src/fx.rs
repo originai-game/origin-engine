@@ -160,6 +160,9 @@ pub(crate) struct FxState {
     /// `previous` by key, made when a frame with object motion blur first
     /// asks for it in its tick (most frames never do).
     pub previous_by_key: Option<BTreeMap<(u64, u32), Mat4>>,
+    /// The last display frame's instance transforms by key, as drawn (blended
+    /// between ticks): what a display frame between ticks moves from.
+    pub drawn: Vec<((u64, u32), Mat4)>,
 }
 
 pub(crate) fn f(v: &Value, key: &str, default: f32) -> f32 {
@@ -1010,25 +1013,33 @@ pub(crate) struct ModelLook {
 /// a hidden ancestor: `AnimOutput::drawn`) is not drawn at all: a `.vox`
 /// frame folded away costs no draw. `false`
 /// when it cannot (no palette yet, no skin data): the caller draws it at
-/// its bind pose.
+/// its bind pose. On a frame between ticks the pose is blended with the
+/// tick before's at `alpha` (`super::interpolate::pose`).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn posed_model(
     rs: &mut RenderState,
     entity: u64,
     asset: u64,
     world_matrix: Mat4,
+    alpha: Option<f32>,
     parts: &[(MeshHandle, og_render::MaterialHandle, Mat4)],
     look: ModelLook,
     keys: &mut Vec<(u64, u32)>,
 ) -> bool {
     let RenderState {
-        scene, fx, atmo, ..
+        scene,
+        fx,
+        atmo,
+        interp,
+        ..
     } = rs;
     let Some(anim) = fx.anim.as_ref() else {
         return false;
     };
-    let Some(out) = anim.output(Entity::from_bits(entity)) else {
+    let Some(mut out) = anim.output(Entity::from_bits(entity)) else {
         return false;
     };
+    let matrices = super::interpolate::pose(interp, entity, alpha, &out.palette, &mut out.weights);
     let Some(info) = fx.models.get(&asset).cloned() else {
         return false;
     };
@@ -1038,9 +1049,7 @@ pub(crate) fn posed_model(
     let meshes = skinned_meshes(scene, &info, skin, info.prim_mesh.len());
     let palette = scene.joint_palettes.len() as u32;
     atmo.palettes.insert(entity, palette);
-    scene.joint_palettes.push(JointPalette {
-        matrices: out.palette.clone(),
-    });
+    scene.joint_palettes.push(JointPalette { matrices });
     // Parts and nodes line up unless the parts are not the model's own
     // (a bake's lightmapped parts): then every part is drawn.
     let nodes = (info.part_nodes.len() == parts.len()).then_some(&info.part_nodes);
@@ -1079,9 +1088,14 @@ pub(crate) fn posed_model(
 }
 
 /// Per-object motion: this tick's instance transforms, keyed, and last
-/// tick's for `previous_transforms` (same order as the instances).
+/// tick's for `previous_transforms` (same order as the instances); a
+/// display frame drawn between ticks (`super::interpolate`) moves from the
+/// display frame before it instead, as drawn, since the shutter is a
+/// fraction of the frame.
 pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64) {
-    let RenderState { scene, fx, .. } = rs;
+    let RenderState {
+        scene, fx, interp, ..
+    } = rs;
     if fx.tick != tick {
         std::mem::swap(&mut fx.previous, &mut fx.current);
         fx.previous_by_key = None;
@@ -1104,6 +1118,29 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64) {
             .map(|(k, i)| previous.get(k).copied().unwrap_or(i.transform))
             .collect();
     }
+    // Kept only while motion blur is on (a copy of every instance's
+    // transform a frame otherwise).
+    if scene.post.motion_blur.is_none() {
+        fx.drawn.clear();
+        return;
+    }
+    if !interp.display {
+        return;
+    }
+    if interp.drawn.is_some() && !scene.previous_transforms.is_empty() {
+        let last: BTreeMap<(u64, u32), Mat4> = fx.drawn.iter().copied().collect();
+        scene.previous_transforms = keys
+            .iter()
+            .zip(&scene.instances)
+            .map(|(k, i)| last.get(k).copied().unwrap_or(i.transform))
+            .collect();
+    }
+    fx.drawn.clear();
+    fx.drawn.extend(
+        keys.iter()
+            .zip(&scene.instances)
+            .map(|(k, i)| (*k, i.transform)),
+    );
 }
 
 /// The overlay's size in CSS pixels: the host's viewport, else the target.

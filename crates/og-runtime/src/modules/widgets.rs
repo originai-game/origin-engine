@@ -346,7 +346,9 @@ pub fn og_ui_tooltip(text: String) {
 /// Hands the UI's last frame to the render scene's overlay: screen-space
 /// sprites and text in CSS pixels over the finished frame (after every post
 /// effect, never tone mapped or blurred), at any camera.
-pub(crate) fn emit(rs: &mut super::extract::RenderState) {
+/// `shifts`: how far each anchored element moves on a frame drawn between
+/// ticks, by key (`crate::interpolate::ui_shifts`).
+pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap<u64, glam::Vec2>) {
     let Some(ui) = rs.ui.clone() else {
         return;
     };
@@ -366,7 +368,7 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState) {
     let first_text = overlay.texts.len();
     let first_sprite = overlay.sprites.len();
     let first_shape = overlay.ui.shapes.len();
-    frame.emit(
+    frame.emit_shifted(
         &og_ui::EmitDesc {
             // Over the game's screen layers up to og_render::UI_LAYER, under
             // those above it (og_render::screen_layer).
@@ -374,6 +376,7 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState) {
             time: ui.seconds() as f32,
         },
         overlay,
+        &|key| shifts.get(&key).copied(),
     );
     // Mass elements no element owns (docs/ui.md §14), under the UI.
     world_frame.emit(og_render::UI_OVERLAY_LAYER, overlay);

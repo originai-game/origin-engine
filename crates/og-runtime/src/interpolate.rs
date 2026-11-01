@@ -21,7 +21,7 @@
 //! reference frames are the ticks'.
 
 use super::extract::{Blend, Hierarchy, RenderState, f, on, rows};
-use glam::{Quat, Vec3};
+use glam::{Mat4, Quat, Vec2, Vec3};
 use og_core::IdMap;
 use og_ecs::World;
 use serde_json::Value;
@@ -51,6 +51,48 @@ pub(crate) struct InterpState {
     /// The world was replaced since the last tick started (a restore, a
     /// reload): until the next tick, nothing to blend from.
     stale: bool,
+    /// og-anim's output as the last tick started, by entity bits: each
+    /// skeleton's joint palette and blendshape weights.
+    poses: IdMap<u64, Pose>,
+    /// Set while `engine::tick`'s render extracts a display frame (with
+    /// or without an alpha): what per-object motion blur moves from.
+    pub display: bool,
+}
+
+/// A skeleton's pose as a tick left it.
+#[derive(Default)]
+struct Pose {
+    palette: Vec<Mat4>,
+    weights: Vec<f32>,
+}
+
+/// Collects og-anim's outputs into `new`, reusing `old`'s allocations.
+struct Poses<'a> {
+    old: &'a mut IdMap<u64, Pose>,
+    new: &'a mut IdMap<u64, Pose>,
+}
+
+impl og_anim::PaletteSink for Poses<'_> {
+    fn joint_palette(&mut self, entity: og_ecs::Entity, _skin: u32, joints: &[Mat4]) {
+        let bits = entity.to_bits();
+        let mut p = self.old.remove(&bits).unwrap_or_default();
+        p.palette.clear();
+        p.palette.extend_from_slice(joints);
+        p.weights.clear();
+        self.new.insert(bits, p);
+    }
+
+    fn morph_weights(
+        &mut self,
+        entity: og_ecs::Entity,
+        _mesh: u32,
+        weights: &[f32; og_anim::BLENDSHAPES],
+    ) {
+        if let Some(p) = self.new.get_mut(&entity.to_bits()) {
+            p.weights.clear();
+            p.weights.extend_from_slice(weights);
+        }
+    }
 }
 
 impl InterpState {
@@ -98,6 +140,41 @@ pub(crate) fn before_tick(rs: &mut RenderState, world: &World) {
     s.snaps.retain(|_, t| *t >= tick);
     s.camera_snap = s.camera_snap.filter(|t| *t >= tick);
     s.stale = false;
+    let mut old = std::mem::take(&mut s.poses);
+    if let Some(anim) = rs.fx.anim.as_ref() {
+        anim.write_outputs(&mut Poses {
+            old: &mut old,
+            new: &mut rs.interp.poses,
+        });
+    }
+}
+
+/// The joint palette and blendshape weights a skinned model is drawn with
+/// (og-anim's `palette` and `weights` of the last tick): per joint blended
+/// with the tick before's at `alpha` (translation and scale lerped, rotation
+/// slerped, weights lerped) when the entity is blended
+/// ([`Hierarchy::blend_alpha`]) and its skeleton had the same joints then.
+/// Presentation only: og-anim's output, root motion and everything the
+/// simulation reads stay at the tick.
+pub(crate) fn pose(
+    s: &InterpState,
+    entity: u64,
+    alpha: Option<f32>,
+    palette: &[Mat4],
+    weights: &mut [f32],
+) -> Vec<Mat4> {
+    let prev = alpha.zip(s.poses.get(&entity));
+    let Some((a, p)) = prev.filter(|(_, p)| p.palette.len() == palette.len()) else {
+        return palette.to_vec();
+    };
+    for (w, &w0) in weights.iter_mut().zip(&p.weights) {
+        *w = w0 + (*w - w0) * a;
+    }
+    p.palette
+        .iter()
+        .zip(palette)
+        .map(|(&m0, &m1)| super::extract::blend(m0, m1, a, f32::INFINITY))
+        .collect()
 }
 
 /// Starts the frame's blend on `h` (the tick's hierarchy, just read) when
@@ -194,4 +271,62 @@ pub(crate) fn frame_alpha(before: f64, after: f64, tick_ms: f64, held: bool) -> 
         return None;
     }
     Some((after / tick_ms).clamp(0.0, 1.0) as f32)
+}
+
+/// How far each anchored UI element (og.ui.openWorldAnchor) moves on a
+/// frame between ticks, CSS px: its point projected with the drawn camera
+/// at its entity's drawn place, less where the tick's camera put it at the
+/// tick, so a nameplate stays on the entity it names
+/// (`og_ui::UiFrame::emit_shifted`). Empty on a frame at the tick; an
+/// element clamped to the screen's edge stays.
+pub(crate) fn ui_shifts(
+    rs: &RenderState,
+    h: &mut Hierarchy,
+    camera: Option<&Value>,
+) -> IdMap<u64, Vec2> {
+    let mut out = IdMap::new();
+    if rs.interp.active.is_none() {
+        return out;
+    }
+    let Some(ui) = rs.ui.clone() else {
+        return out;
+    };
+    let ui = ui.lock();
+    let points = ui.world_anchor_points();
+    let Some(tick_view) = ui.world_view().filter(|_| !points.is_empty()) else {
+        return out;
+    };
+    let vp = ui.viewport();
+    let (w, ht) = (vp.width.max(1.0), vp.height.max(1.0));
+    let drawn_view = match camera {
+        Some(c) => {
+            let (p, q) = camera_pose(c);
+            let (p, q) = self::camera(&rs.interp, p, q);
+            let mut c = c.clone();
+            c["position"] = serde_json::json!({ "x": p.x, "y": p.y, "z": p.z });
+            c["quaternion"] = serde_json::json!({ "x": q.x, "y": q.y, "z": q.z, "w": q.w });
+            super::api::camera_view(&c, w, ht)
+        }
+        None => tick_view,
+    };
+    for a in points.iter().filter(|a| !a.clamped) {
+        let (at_tick, drawn) = match a.target {
+            og_ui::WorldTarget::Point(p) => (p, p),
+            og_ui::WorldTarget::Entity(e) => (
+                h.tick_world_of(e).w_axis.truncate(),
+                h.world_of(e).w_axis.truncate(),
+            ),
+        };
+        let (Some(t), Some(d)) = (
+            tick_view.project(at_tick + a.offset, w, ht),
+            drawn_view.project(drawn + a.offset, w, ht),
+        ) else {
+            continue;
+        };
+        let shift = Vec2::new(d.0 - t.0, d.1 - t.1);
+        if shift != Vec2::ZERO && shift.is_finite() {
+            out.insert(a.key, shift);
+        }
+    }
+    out
 }

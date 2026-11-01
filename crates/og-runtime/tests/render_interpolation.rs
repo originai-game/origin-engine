@@ -25,10 +25,10 @@ use og_core::glam::{Mat4, Vec3};
 use og_render::RenderScene;
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame,
-    og_engine_probe_capture, og_engine_probe_dump, og_game_game, og_host_begin_bundle,
-    og_render_box_geometry, og_render_snap, og_render_standard_material, og_system_define_system,
-    og_world_get_tick, og_world_insert, og_world_set, og_world_spawn, set_hooks,
-    set_render_backend, write_resource,
+    og_engine_probe_capture, og_engine_probe_commands, og_engine_probe_dump, og_game_game,
+    og_host_begin_bundle, og_render_box_geometry, og_render_snap, og_render_standard_material,
+    og_system_define_system, og_world_get_tick, og_world_insert, og_world_set, og_world_spawn,
+    set_hooks, set_render_backend, write_resource,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -100,6 +100,7 @@ impl Hooks for Mover {
 #[derive(Default)]
 struct Seen {
     drawn: Vec<Mat4>,
+    previous: Vec<Mat4>,
     camera: Vec3,
     captured: Vec<Mat4>,
 }
@@ -116,6 +117,7 @@ impl RenderBackend for Recorder {
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         let mut s = self.0.borrow_mut();
         s.drawn = scene.instances.iter().map(|i| i.transform).collect();
+        s.previous = scene.previous_transforms.clone();
         s.camera = scene.camera.position;
         Ok(())
     }
@@ -297,5 +299,350 @@ fn render_settings_interpolate_false_draws_the_tick() {
             let x = at(&seen.borrow().drawn, 0.0).w_axis.x;
             assert_eq!(x, (w - 1) as f32);
         }
+    }
+}
+
+/// Object motion blur moves each instance from where the display frame
+/// before drew it, not from the last tick: between ticks the blur covers
+/// one display frame's motion (the old code used the tick before's
+/// transform, a blur up to a whole tick long on every frame).
+#[test]
+fn motion_blur_moves_from_the_frame_drawn_before() {
+    let entities = Entities::default();
+    let (e, seen) = engine(&entities);
+    value(write_resource(
+        e,
+        "og.PostEffects",
+        r#"{"motionBlur":true}"#,
+    ));
+    let mut last: Option<Mat4> = None;
+    let mut checked = 0;
+    for _ in 0..40 {
+        let (w, behind) = frame(e, 1000.0 / 144.0);
+        let s = seen.borrow();
+        if w < 3 {
+            last = None;
+            continue;
+        }
+        let i = s
+            .drawn
+            .iter()
+            .position(|m| m.w_axis.z.abs() < 0.5)
+            .expect("A is drawn");
+        assert_eq!(s.previous.len(), s.drawn.len(), "one previous per instance");
+        if let Some(l) = last
+            && behind > 0.0
+        {
+            let (got, want) = (s.previous[i].w_axis.x, l.w_axis.x);
+            assert!(
+                (got - want).abs() < 1e-4,
+                "tick {w} alpha {:.3}: blur starts at x {got}, the frame before drew {want}",
+                behind / TICK_MS
+            );
+            checked += 1;
+        }
+        last = Some(s.drawn[i]);
+    }
+    assert!(checked > 20, "only {checked} frames were checked");
+}
+
+/// The probe's `teleport` is a teleport: the entity is drawn where it
+/// landed on every frame after, never gliding there from where it stood
+/// (a move well under RenderSettings.snapDistance, which the old code
+/// blended).
+#[test]
+fn the_probes_teleport_snaps() {
+    let entities = Entities::default();
+    let (e, seen) = engine(&entities);
+    let geometry = value(og_render_box_geometry(e, Some("{}".into())));
+    let material = value(og_render_standard_material(e, Some("{}".into())));
+    let mesh = json!({ "geometry": geometry, "material": material }).to_string();
+    let place = json!({ "position": { "x": 0, "y": 0, "z": 40 } }).to_string();
+    let g = value(og_world_spawn(e, Some(place))).as_f64().unwrap();
+    value(og_world_insert(e, g, "og.Mesh".into(), Some(mesh)));
+    // The probe names an entity #<index>.<generation> (its bits, high
+    // half the generation).
+    let g = format!("#{}.{}", g as u64 & 0xffff_ffff, g as u64 >> 32);
+    let mut sent = false;
+    let mut between = 0;
+    for _ in 0..40 {
+        let (w, behind) = frame(e, 1000.0 / 144.0);
+        let x = at(&seen.borrow().drawn, 40.0).w_axis.x;
+        if !sent && w >= 3 {
+            let script = format!("0:teleport:{g}:1,0,40");
+            let answer: Value = serde_json::from_str(&og_engine_probe_commands(e, script)).unwrap();
+            assert_eq!(answer["scheduled"], json!(1), "{answer}");
+            sent = true;
+        } else if sent {
+            assert!(
+                x == 0.0 || x == 1.0,
+                "tick {w}: drawn at x {x}, between 0 and where it landed"
+            );
+            if x == 1.0 && behind > 0.0 {
+                between += 1;
+            }
+        }
+    }
+    assert!(
+        between > 10,
+        "only {between} frames drew the landed entity between ticks"
+    );
+}
+
+// ── skinned poses ───────────────────────────────────────────────────────────
+
+/// A project with the template's walker, cooked once per test process.
+fn walker_project() -> &'static std::path::Path {
+    static ROOT: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
+    ROOT.get_or_init(|| {
+        let root = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+            .join(format!("og-runtime-interp-walker-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let repo = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let to = root.join("assets/models/walker.glb");
+        std::fs::create_dir_all(to.parent().unwrap()).unwrap();
+        std::fs::copy(repo.join("templates/game/assets/models/walker.glb"), &to).unwrap();
+        let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        root
+    })
+}
+
+struct Disk;
+
+impl Hooks for Disk {
+    fn dispatch(&self, _call: &Dispatch) -> Result<String, String> {
+        Ok(String::new())
+    }
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        match std::fs::read(path) {
+            Ok(bytes) => Fetch::Ready(bytes),
+            Err(e) => Fetch::Failed(format!("{path}: {e}")),
+        }
+    }
+}
+
+/// The last frame's first joint palette.
+struct Palettes(Rc<RefCell<Vec<Mat4>>>);
+
+impl RenderBackend for Palettes {
+    fn tier(&self) -> String {
+        "none".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (64, 36)
+    }
+    fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+        *self.0.borrow_mut() = scene
+            .joint_palettes
+            .first()
+            .map(|p| p.matrices.clone())
+            .unwrap_or_default();
+        Ok(())
+    }
+    fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
+        None
+    }
+}
+
+/// An engine with the walker walking, and what its renderer was handed.
+fn walker() -> (u32, Rc<RefCell<Vec<Mat4>>>) {
+    let root = walker_project();
+    set_hooks(Rc::new(Disk));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let options = json!({ "root": root.to_str().unwrap() }).to_string();
+    let e = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let seen = Rc::new(RefCell::new(Vec::new()));
+    set_render_backend(e, Some(Box::new(Palettes(seen.clone())))).unwrap();
+    let anim = value(og_runtime::og_load_animation(e, "models/walker.glb".into()));
+    let walk = anim["clips"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == "walk")
+        .expect("the walker walks")
+        .clone();
+    let asset = value(og_runtime::og_load_gltf(
+        e,
+        "models/walker.glb".into(),
+        None,
+    ));
+    let id = value(og_runtime::og_world_instantiate(
+        e,
+        asset.as_f64().unwrap(),
+        None,
+    ))
+    .as_f64()
+    .unwrap();
+    let skeleton = json!({ "asset": anim["skeleton"] }).to_string();
+    value(og_world_insert(e, id, "og.Skeleton".into(), Some(skeleton)));
+    let player = json!({ "clip": walk["clip"], "loop": true }).to_string();
+    value(og_world_insert(
+        e,
+        id,
+        "og.AnimationPlayer".into(),
+        Some(player),
+    ));
+    (e, seen)
+}
+
+/// The angle between two rotations, radians.
+fn angle(a: og_core::glam::Quat, b: og_core::glam::Quat) -> f64 {
+    2.0 * f64::from(a.dot(b).abs()).min(1.0).acos()
+}
+
+/// A skinned character's joints, not only its root, are drawn between the
+/// ticks: each joint's drawn rotation is the fraction alpha of the way from
+/// the tick before's to the last tick's (the old code drew the last tick's
+/// palette whole, so its limbs stepped at 60 Hz while the body glided).
+#[test]
+fn a_skinned_characters_joints_are_drawn_between_the_ticks() {
+    // The palettes of every tick, from whole-tick frames.
+    let (ticks, at_tick) = walker();
+    let mut by_tick: HashMap<u32, Vec<Mat4>> = HashMap::new();
+    for _ in 0..40 {
+        let (t, _) = frame(ticks, TICK_MS);
+        by_tick.insert(t, at_tick.borrow().clone());
+    }
+    let (e, seen) = walker();
+    let mut checked = 0;
+    for _ in 0..80 {
+        let (w, behind) = frame(e, 1000.0 / 144.0);
+        if w < 3 {
+            continue;
+        }
+        let (Some(prev), Some(cur)) = (by_tick.get(&(w - 1)), by_tick.get(&w)) else {
+            continue;
+        };
+        let alpha = behind / TICK_MS;
+        let drawn = seen.borrow().clone();
+        assert_eq!(drawn.len(), cur.len());
+        for j in 0..cur.len() {
+            let r0 = prev[j].to_scale_rotation_translation().1;
+            let r1 = cur[j].to_scale_rotation_translation().1;
+            let d = drawn[j].to_scale_rotation_translation().1;
+            let whole = angle(r0, r1);
+            if whole < 0.01 {
+                continue;
+            }
+            let (from, to) = (angle(r0, d), angle(d, r1));
+            assert!(
+                (from - alpha * whole).abs() < 2e-3 && (to - (1.0 - alpha) * whole).abs() < 2e-3,
+                "tick {w} joint {j}: drawn {from:.4} rad from the tick before and {to:.4} from the last, of {whole:.4}, at alpha {alpha:.3}"
+            );
+            checked += 1;
+        }
+    }
+    assert!(checked > 50, "only {checked} turning joints were checked");
+}
+
+// ── world-anchored UI ───────────────────────────────────────────────────────
+
+const TAG: u32 = 2;
+
+/// Tag: moves the entity 0.1 m a tick along x and anchors a box to it.
+struct Tagger(Rc<std::cell::Cell<f64>>);
+
+impl Hooks for Tagger {
+    fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
+        if call.kind == 0 && call.id == TAG {
+            let w = call.engine;
+            let e = self.0.get();
+            let t = f64::from(og_world_get_tick(w));
+            let at = json!({ "position": { "x": 0.1 * t, "y": 0, "z": 0 } }).to_string();
+            value(og_world_set(w, e, "og.Transform".into(), at));
+            let desc = json!({ "target": { "entity": e }, "pivot": "center" });
+            og_runtime::og_ui_open_world_anchor("Tag".into(), Some(desc.to_string()));
+            let block = json!({ "width": { "kind": "fixed", "px": 40 }, "height": { "kind": "fixed", "px": 20 }, "background": { "color": { "r": 1, "g": 0, "b": 0 } } });
+            og_runtime::og_ui_open("Block".into(), Some(block.to_string()));
+            og_runtime::og_ui_close();
+            og_runtime::og_ui_close();
+        }
+        Ok(String::new())
+    }
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        Fetch::Failed(format!("{path}: no assets in this test"))
+    }
+}
+
+/// The centre of the last frame's first overlay UI shape, CSS px.
+struct Shapes(Rc<RefCell<Option<(f32, f32)>>>);
+
+impl RenderBackend for Shapes {
+    fn tier(&self) -> String {
+        "none".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (1280, 720)
+    }
+    fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+        *self.0.borrow_mut() = scene
+            .overlay
+            .as_ref()
+            .and_then(|o| o.ui.shapes.first())
+            .map(|s| (s.center.x, s.center.y));
+        Ok(())
+    }
+    fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
+        None
+    }
+}
+
+/// An element anchored to a moving entity is drawn on the entity's drawn
+/// place between ticks: its offset from the projection of the entity's
+/// blended position is the same on every frame (the old code drew it where
+/// the last tick placed it, up to a tick ahead of its entity).
+#[test]
+fn an_anchored_element_stays_on_its_entity_between_ticks() {
+    let entity = Rc::new(std::cell::Cell::new(0.0));
+    set_hooks(Rc::new(Tagger(entity.clone())));
+    og_host_begin_bundle();
+    let transform = json!({ "kind": "component", "name": "og.Transform" });
+    let tag = og_system_define_system(
+        "Tag".into(),
+        json!({ "reads": [], "writes": [transform] }).to_string(),
+        TAG,
+    );
+    let game = og_game_game(Some(json!({ "seed": 1, "systems": [tag] }).to_string()));
+    let e = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
+    let seen = Rc::new(RefCell::new(None));
+    set_render_backend(e, Some(Box::new(Shapes(seen.clone())))).unwrap();
+    entity.set(
+        value(og_world_spawn(e, Some("{}".into())))
+            .as_f64()
+            .unwrap(),
+    );
+    let camera = json!({ "position": { "x": 0, "y": 0, "z": 5 }, "fov": 50.0 }).to_string();
+    value(write_resource(e, "og.Camera", &camera));
+    let mut offsets = Vec::new();
+    let mut between = 0;
+    for _ in 0..60 {
+        let (w, behind) = frame(e, 1000.0 / 144.0);
+        if w < 4 {
+            continue;
+        }
+        let alpha = behind / TICK_MS;
+        // The entity's x was 0.1 T on tick T: drawn at the blend of the
+        // last two ticks', W - 2 and W - 1.
+        let x = 0.1 * (f64::from(w - 2) + alpha);
+        let s: Value = serde_json::from_str(&og_runtime::og_camera_world_to_screen(
+            e,
+            json!({ "x": x, "y": 0, "z": 0 }).to_string(),
+        ))
+        .unwrap();
+        let (cx, _) = seen.borrow().expect("the anchored box is drawn");
+        offsets.push(f64::from(cx) - s["x"].as_f64().unwrap());
+        if alpha > 0.2 && alpha < 0.8 {
+            between += 1;
+        }
+    }
+    assert!(between > 10, "only {between} frames fell between ticks");
+    let first = offsets[0];
+    for (i, o) in offsets.iter().enumerate() {
+        assert!(
+            (o - first).abs() < 1.0,
+            "frame {i}: the box sits {o:.2} px from its entity's drawn place, {first:.2} on the first: {offsets:?}"
+        );
     }
 }

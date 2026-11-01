@@ -242,8 +242,10 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
         let mut rs = eng.render.borrow_mut();
         rs.art.contract = super::art::contract(eng);
         rs.interp.alpha = alpha;
+        rs.interp.display = true;
         super::extract::extract(world, &mut rs);
         rs.interp.alpha = None;
+        rs.interp.display = false;
         super::probes::load_bakes(eng, &mut rs);
         let rs = &mut *rs;
         if let Some(b) = rs.backend.as_mut() {

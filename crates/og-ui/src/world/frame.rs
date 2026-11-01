@@ -20,6 +20,11 @@ impl Ui {
         self.world.poses = poses.iter().copied().collect();
     }
 
+    /// The anchored elements the last tick placed, with what they are on.
+    pub fn world_anchor_points(&self) -> &[AnchorPoint] {
+        &self.world.placed
+    }
+
     /// The entities this frame's anchors and panels are on, for the host to
     /// hand their poses in before [`Ui::end`].
     pub fn world_entities(&self) -> Vec<u64> {

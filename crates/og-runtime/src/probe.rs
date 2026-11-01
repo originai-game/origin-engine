@@ -80,6 +80,12 @@ impl Capture for RuntimeCapture {
             rgba: image.pixels,
         })
     }
+    fn teleported(&mut self, world: &World, entity: Entity) {
+        if let Ok(mut rs) = self.render.try_borrow_mut() {
+            rs.interp.snap(entity.to_bits(), world.time().tick);
+        }
+    }
+
     fn entity_render(&self, _world: &World, entity: Entity) -> Option<Value> {
         let rs = self.render.try_borrow().ok()?;
         let level = rs.lod_drawn.get(&entity.to_bits())?;

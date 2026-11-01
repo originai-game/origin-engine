@@ -929,7 +929,31 @@ fn rect_shape(rect: Rect, radius: f32, color: [f32; 4]) -> UiShape {
     UiShape::rect([rect.x, rect.y, rect.width, rect.height], radius, color)
 }
 
-pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
+/// `item` moved by `d` CSS px: its map translated, its clip and depth
+/// test point with it.
+fn shifted(item: &DrawItem, d: Vec2) -> DrawItem {
+    let mut out = item.clone();
+    out.transform = Affine::translate(d.x, d.y).mul(&item.transform);
+    if let Some(c) = out.cmd.clip_mut() {
+        c.x += d.x;
+        c.y += d.y;
+    }
+    if let DrawCmd::World(w) = &mut out.cmd
+        && let WorldCmd::Occlude { at, .. } = &mut **w
+    {
+        *at = (at.0 + d.x, at.1 + d.y);
+    }
+    out
+}
+
+pub(crate) fn emit(
+    items: &[DrawItem],
+    desc: &EmitDesc,
+    overlay: &mut Overlay,
+    shift: &dyn Fn(u64) -> Option<Vec2>,
+) {
+    // The anchored elements open (`WorldCmd::Anchor`): each one's shift.
+    let mut anchors: Vec<Vec2> = Vec::new();
     let mut clips = Clips {
         known: std::collections::HashMap::new(),
         cuts: Vec::new(),
@@ -942,6 +966,28 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
         layer: None,
     }];
     for item in items {
+        if let DrawCmd::World(w) = &item.cmd {
+            match **w {
+                WorldCmd::Anchor { key } => {
+                    let outer = anchors.last().copied().unwrap_or(Vec2::ZERO);
+                    anchors.push(outer + shift(key).unwrap_or(Vec2::ZERO));
+                    continue;
+                }
+                WorldCmd::EndAnchor => {
+                    anchors.pop();
+                    continue;
+                }
+                _ => {}
+            }
+        }
+        let moved;
+        let item = match anchors.last() {
+            Some(&d) if d != Vec2::ZERO => {
+                moved = shifted(item, d);
+                &moved
+            }
+            _ => item,
+        };
         let space = spaces.last().expect("the frame's space");
         let layer = space.base + item.level;
         let m = &item.transform;
@@ -1011,6 +1057,8 @@ pub(crate) fn emit(items: &[DrawItem], desc: &EmitDesc, overlay: &mut Overlay) {
                     // Composited nowhere: the mesh shows its target.
                     spaces.pop();
                 }
+                // Read above.
+                WorldCmd::Anchor { .. } | WorldCmd::EndAnchor => {}
             },
             DrawCmd::BeginLayer {
                 material,
@@ -1503,6 +1551,7 @@ mod levels {
                 time: 2.5,
             },
             &mut overlay,
+            &|_| None,
         );
         let ui = &overlay.ui;
         assert_eq!(ui.time, 2.5);

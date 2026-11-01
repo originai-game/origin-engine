@@ -294,7 +294,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             look.fx.flash = 0.8;
             look.fx.flash_color = og_render::lod::debug_color(level);
         }
-        if posed.contains(&e) && super::fx::posed_model(rs, e, asset, m, &parts, look, &mut keys) {
+        if posed.contains(&e)
+            && super::fx::posed_model(rs, e, asset, m, h.blend_alpha(e), &parts, look, &mut keys)
+        {
             continue;
         }
         let levels = model_lods.get(&asset).map(|l| &l.parts);
@@ -584,7 +586,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // Each video's texture shows its player's frame.
     super::video::extract(world, rs);
     // The UI, over everything else, in the overlay.
-    super::modules::emit(rs);
+    // Anchored UI moved with its entity's drawn place (`super::interpolate`).
+    let shifts = super::interpolate::ui_shifts(rs, &mut h, camera.as_deref());
+    super::modules::emit(rs, &shifts);
     super::interpolate::end(rs, &mut h);
     rs.hierarchy = h;
 }

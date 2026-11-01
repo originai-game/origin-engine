@@ -394,7 +394,20 @@ impl UiFrame {
     /// (`RenderScene::overlay`), in CSS pixels: make it with the viewport's
     /// size and `dpr` (`og_render::Overlay::new(vp.width, vp.height, vp.dpr)`).
     pub fn emit(&self, desc: &EmitDesc, overlay: &mut Overlay) {
-        emit(&self.items, desc, overlay);
+        emit(&self.items, desc, overlay, &|_| None);
+    }
+
+    /// [`UiFrame::emit`] with each anchored element ([`crate::WorldCmd::Anchor`])
+    /// moved by `shift` of its key, CSS px: a host drawing between ticks
+    /// moves a nameplate by how far its point's projection moved since the
+    /// tick placed it, so it stays on its entity. `None` leaves it.
+    pub fn emit_shifted(
+        &self,
+        desc: &EmitDesc,
+        overlay: &mut Overlay,
+        shift: &dyn Fn(u64) -> Option<og_core::glam::Vec2>,
+    ) {
+        emit(&self.items, desc, overlay, shift);
     }
 }
 

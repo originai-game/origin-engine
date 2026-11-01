@@ -113,8 +113,9 @@ pub use widgets::{
     TransitionDesc, ZoomResponse, ZoomViewDesc,
 };
 pub use world::{
-    AnchorInfo, AnchorScale, Declutter, EdgeClamp, MassHandle, MetaDesc, MetaKind, PanelInfo,
-    WorldAnchorDesc, WorldCmd, WorldFrame, WorldOcclusion, WorldPanelDesc, WorldTarget, WorldView,
+    AnchorInfo, AnchorPoint, AnchorScale, Declutter, EdgeClamp, MassHandle, MetaDesc, MetaKind,
+    PanelInfo, WorldAnchorDesc, WorldCmd, WorldFrame, WorldOcclusion, WorldPanelDesc, WorldTarget,
+    WorldView,
 };
 
 /// The probe's element type: what `dump_ui` lists and the id and text lookups search.

@@ -96,6 +96,7 @@ impl Ui {
             vp.height - vp.safe_area.vertical(),
         );
         let anchors = std::mem::take(&mut self.world.anchors);
+        self.world.placed.clear();
         // Where each lands before decluttering.
         struct Placed {
             entry: usize,
@@ -314,7 +315,18 @@ impl Ui {
             info.y = at.y;
             info.alpha = s.alpha;
             self.world.last.insert(pl.key, info);
+            // Bracketed by its key, so a frame drawn between ticks moves it
+            // with its point (`UiFrame::emit_shifted`).
             let mut marks = Marks::default();
+            marks
+                .enter
+                .push(DrawCmd::World(Box::new(WorldCmd::Anchor { key: pl.key })));
+            self.world.placed.push(super::AnchorPoint {
+                key: pl.key,
+                target: d.target,
+                offset: d.offset,
+                clamped: pl.info.clamped,
+            });
             if let Some(view) = self.world.view
                 && d.occlusion != WorldOcclusion::None
                 && !pl.info.clamped
@@ -368,9 +380,10 @@ impl Ui {
                     clip: screen,
                 });
             }
-            if !marks.enter.is_empty() || !marks.leave.is_empty() {
-                self.world.marks.insert(pl.key, marks);
-            }
+            marks
+                .leave
+                .push(DrawCmd::World(Box::new(WorldCmd::EndAnchor)));
+            self.world.marks.insert(pl.key, marks);
         }
         self.world.state.smooth.retain(|k, _| seen.contains(k));
         self.world.last.retain(|k, _| seen.contains(k));

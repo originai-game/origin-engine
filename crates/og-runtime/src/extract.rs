@@ -24,8 +24,8 @@ use super::{
     probes, review, skeleton2d, terrain, video, views,
 };
 pub(crate) use frame::extract;
-pub(crate) use hierarchy::Blend;
 pub use hierarchy::Hierarchy;
+pub(crate) use hierarchy::{Blend, blend};
 
 use super::codec::{Layout, Rec, Row, Slot as FieldSlot};
 use glam::{Mat4, Quat, Vec3};
