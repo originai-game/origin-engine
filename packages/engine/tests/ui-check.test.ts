@@ -64,6 +64,23 @@ test("text cut by its clip without an ellipsis is a finding; text that fits is n
   expect(rules(fits)).not.toContain("text-cut");
 });
 
+test("a row a scroll container cuts at its bottom edge is scrolling, not cut text; a line cut top or bottom says by how much", () => {
+  // The kit's gallery on a phone: only the top 5 px of row 9's 20 px line show (its visible box is
+  // 5 px, so the line's centre lies outside it), and the probe marks the element clipped.
+  const line = { text: "inventory", size: 14, bounds: [52, 771, 62.5, 20] as [number, number, number, number], clip: [40, 192, 310, 584] as [number, number, number, number], color: [1, 1, 1, 1] };
+  const scrolled = frame({ elements: [el("Row#9", "", "row", "", [40, 660, 310, 52]), el("Name", "Row#9", "label", "text", [52, 771, 62, 5], { text: "inventory", clipped: true })], texts: [line] });
+  expect(rules(scrolled)).not.toContain("text-cut");
+  // The same cut on a box that is not a scroller's: a finding, measured on the axis it cut.
+  const cut = frame({ elements: [el("Name", "", "label", "text", [52, 771, 62, 5], { text: "inventory" })], texts: [line] });
+  const got = checkFrame(cut, cell).find((x) => x.rule === "text-cut");
+  expect(got?.paths).toEqual(["Name"]);
+  expect(got?.measured).toContain("15 of its 20 CSS px height");
+  expect(got?.measured).not.toContain(" 0 CSS px");
+  // A line cut across (a right-to-left line past its box's start) in a clipped element is still reported.
+  const across = frame({ elements: [el("Blurb", "", "label", "text", [40, 219, 298, 18], { text: "Every widget", clipped: true })], texts: [{ ...line, text: "Every widget", bounds: [-83, 219, 421, 18] }] });
+  expect(checkFrame(across, cell).find((x) => x.rule === "text-cut")?.severity).toBe("warning");
+});
+
 test("text drawn wider than its own box (sized to English) is a finding", () => {
   const f = frame({ elements: [el("Go", "", "label", "text", [10, 100, 40, 20], { text: "[Gó fórwárd ñów]" })], texts: [{ text: "[Gó fórwárd ñów]", size: 14, bounds: [10, 100, 110, 20], clip: [0, 0, 390, 844], color: [1, 1, 1, 1] }] });
   expect(rules(f, { ...cell, locale: "pseudo" })).toContain("text-cut");

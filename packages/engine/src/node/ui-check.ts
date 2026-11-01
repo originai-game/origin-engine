@@ -209,16 +209,29 @@ export function elementPaths(f: Pick<UiFrameSnapshot, "elements" | "a11y">): str
   return out;
 }
 
-/** The smallest element (with text when `withText`) whose box holds the point. */
-function owner(f: UiFrameSnapshot, x: number, y: number, withText: boolean): number {
-  let best = -1, bestArea = Infinity;
+/** The text without a trailing ellipsis, for matching a cut line to its element. */
+const stem = (t: string) => t.trim().replace(/(…|\.\.\.)$/, "");
+
+/**
+ * The element that drew a line of text: among the elements with text whose
+ * box touches the line's box, the one showing the same text (or the text
+ * the line is a piece of: a wrapped line, an ellipsis), else the smallest.
+ * An element's box is its visible part (a scroll container cuts it), so a
+ * point of the line (its centre) may lie outside it while the line is its.
+ */
+function owner(f: UiFrameSnapshot, line: { text: string; bounds: Rect4 }): number {
+  const [x, y, w, h] = line.bounds;
+  const want = stem(line.text);
+  let best = -1, bestScore = Infinity;
   for (const [i, e] of f.elements.entries()) {
-    if (withText && !e.text) continue;
-    if (x < e.x - 0.5 || y < e.y - 0.5 || x > e.x + e.width + 0.5 || y > e.y + e.height + 0.5) continue;
-    const a = e.width * e.height;
-    if (a < bestArea) {
+    if (!e.text) continue;
+    if (e.x > x + w + 0.5 || e.y > y + h + 0.5 || e.x + e.width < x - 0.5 || e.y + e.height < y - 0.5) continue;
+    const same = e.text === line.text || (want !== "" && e.text.includes(want));
+    // A matching text first, then the smallest box.
+    const score = (same ? 0 : 1e12) + e.width * e.height;
+    if (score < bestScore) {
       best = i;
-      bestArea = a;
+      bestScore = score;
     }
   }
   return best;
@@ -345,19 +358,27 @@ export function checkFrame(f: UiFrameSnapshot, cell: UiCell, opts: CheckOptions 
   const minSize = minTextSize(v);
   for (const t of f.texts) {
     if (!/[\p{L}\p{N}]/u.test(t.text)) continue;
-    const [x, y, w, h] = t.bounds;
-    const i = owner(f, x + Math.min(w, 4), y + h / 2, true);
+    const [, , w, h] = t.bounds;
+    const i = owner(f, t);
     const path = i >= 0 ? paths[i]! : `text "${t.text.slice(0, 24)}"`;
     const e = i >= 0 ? f.elements[i]! : undefined;
-    if (e?.clipped) continue; // a scroll container's edge: the rest scrolls into view
     const shown = intersect(t.bounds, t.clip);
     const cutX = w - Math.max(0, shown[2]);
     const cutY = h - Math.max(0, shown[3]);
+    // A scroll container's edge (the probe marks the element clipped) cuts a
+    // row at its top or bottom: the rest scrolls into view. A cut across the
+    // line is not scrolling in a list (a right-to-left line past its box's
+    // start, the kit's gallery in Arabic), so it stays, as a warning: the
+    // frame does not say whether that scroller runs sideways.
+    if (e?.clipped && cutX <= 1) continue;
+    // What the cut took, along the axis it cut: never "0 px" for a line cut top or bottom.
+    const cut = [cutX > 1 ? `${r1(cutX)} CSS px of its width` : "", cutY > h * 0.3 ? `${r1(cutY)} of its ${r1(h)} CSS px height` : ""].filter(Boolean).join(" and ");
     const ellipsis = /(…|\.\.\.)$/.test(t.text.trim());
     if (cutX > 1 || cutY > h * 0.3) {
       add("text-cut", {
+        ...(e?.clipped ? { severity: "warning" as const } : {}),
         paths: [path],
-        measured: `${r1(Math.max(cutX, 0))} CSS px of "${t.text.slice(0, 32)}" cut by its clip${pseudo}`,
+        measured: `"${t.text.slice(0, 32)}" cut by its clip: ${cut}${pseudo}`,
         limit: "text shows whole, or ends in an ellipsis with a tooltip",
         prop: `${path}: ellipsis and maxLines (og.ui.label), or its box's width`,
         fix: "let the box grow with its text, wrap it, or cut it with an ellipsis and give it a tooltip",
