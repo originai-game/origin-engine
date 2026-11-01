@@ -19799,6 +19799,12 @@ export interface AnchorDesc {
    */
   readonly over?: boolean;
   /**
+   * Draw in the tooltip layer, over every other layer including the toast stack and over groups: a card the player opened (og.ui.tooltipCard).
+   *
+   * @default false
+   */
+  readonly tooltip?: boolean;
+  /**
    * The style frame its background takes; null is the panel's.
    *
    * @default null

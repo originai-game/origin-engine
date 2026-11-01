@@ -377,6 +377,8 @@ pub(crate) enum Float {
         dy: f32,
         /// Over dialogs and spotlights (a tutorial callout, a dragged item).
         over: bool,
+        /// In the tooltip layer, over every other (a card the player opened).
+        tooltip: bool,
     },
     /// A full-surface backdrop over the tree; its child is the dialog.
     Modal,
@@ -396,6 +398,7 @@ impl Float {
     pub fn rank(&self) -> u8 {
         match self {
             Float::None => 0,
+            Float::Anchored { tooltip: true, .. } => 5,
             Float::Anchored { over: false, .. } => 1,
             Float::Anchored { over: true, .. } => 3,
             Float::Modal => 2,

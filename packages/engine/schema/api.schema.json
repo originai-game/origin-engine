@@ -39436,6 +39436,11 @@
           "description": "Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them.",
           "default": false
         },
+        "tooltip": {
+          "type": "boolean",
+          "description": "Draw in the tooltip layer, over every other layer including the toast stack and over groups: a card the player opened (og.ui.tooltipCard).",
+          "default": false
+        },
         "frame": {
           "anyOf": [
             {

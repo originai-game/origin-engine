@@ -46,6 +46,9 @@ pub struct AnchorDesc {
     pub height: Size,
     /// Draws over dialogs and spotlights (a tutorial callout, a dragged item).
     pub over: bool,
+    /// Draws in the tooltip layer, over every other layer including the
+    /// toast stack (a card the player opened).
+    pub tooltip: bool,
     /// The frame its background takes (`None`: the panel's).
     pub frame: Option<crate::style_file::StylePart>,
     /// Shown settled the first time it is built: no style entrance or

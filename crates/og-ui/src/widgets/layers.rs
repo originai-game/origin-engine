@@ -29,6 +29,7 @@ impl Ui {
                 dx: desc.offset.0,
                 dy: desc.offset.1,
                 over: desc.over,
+                tooltip: desc.tooltip,
             },
             NONE,
         );

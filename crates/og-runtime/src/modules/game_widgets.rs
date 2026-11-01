@@ -26,6 +26,7 @@ pub fn og_ui_open_anchor(id: String, desc: Option<String>) {
             width: size_or(&d["width"], Size::fit()),
             height: size_or(&d["height"], Size::fit()),
             over: d["over"].as_bool().unwrap_or(false),
+            tooltip: d["tooltip"].as_bool().unwrap_or(false),
             frame: frame_part(&d["frame"]),
             instant: d["instant"].as_bool().unwrap_or(false),
         };
