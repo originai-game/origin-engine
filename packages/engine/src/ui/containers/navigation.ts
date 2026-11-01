@@ -201,7 +201,7 @@ function indicator(id: string, x0: number, w0: number, top0: number, tabH: numbe
  */
 function bumper(id: string, action: "tabPrev" | "tabNext", onPress: () => void): void {
   const g = deviceGlyph(action) ?? (action === "tabPrev" ? { text: "Q", icon: "key.q" } : { text: "E", icon: "key.e" });
-  const r = surface(id, { part: "Tabs.bumper", cls: "chip", fill: null, focusable: false, width: fit(44), padding: xy(4, 4), align: "center", cross: "center", height: fit(44), semantics: { role: "button", name: action === "tabPrev" ? "Previous tab" : "Next tab", description: g.text } }, () => {
+  const r = surface(id, { part: "Tabs.bumper", cls: "chip", fill: null, focusable: false, width: fit(44), padding: xy(4, 4), align: "center", cross: "center", height: fit(44), semantics: { role: frame().touch ? "button" : "image", name: action === "tabPrev" ? "Previous tab" : "Next tab", description: g.text } }, () => {
     glyphCap("Glyph", g, 24);
   });
   if (r.clicked) onPress();
@@ -315,7 +315,7 @@ function dots(id: string, count: number, index: number, go: (k: number) => void)
   kit.row(id, { width: grow(), align: "center", cross: "center", gap: 0 }, () => {
     for (let k = 0; k < count; k++) {
       const on = k === index;
-      const r = surface(kit.idi("Dot", k), { part: "Carousel.dot", cls: "chip", flags: [on ? "current" : ""], selected: on, fill: null, focusable: false, width: px(target(on ? 36 : 22)), height: px(target(28)), align: "center", cross: "center", semantics: { role: "button", name: `${k + 1}`, selected: on } }, () => {
+      const r = surface(kit.idi("Dot", k), { part: "Carousel.dot", cls: "chip", flags: [on ? "current" : ""], selected: on, fill: null, width: px(target(on ? 36 : 22)), height: px(target(28)), align: "center", cross: "center", semantics: { role: "button", name: `${k + 1}`, selected: on } }, () => {
         const w = kit.animate("~w", on ? 20 : 8, spring("ui"));
         kit.open("Pip", { width: px(w), height: px(8), radius: 4, background: token(on ? "primary" : "lineStrong") });
         kit.close();
@@ -359,7 +359,8 @@ export function breadcrumbs(id: string, desc: Api.BreadcrumbsDesc): Api.Breadcru
       if (last) {
         // The current page: a target as tall as the links (a screen reader and a finger find it whole).
         kit.row(kit.idi("Crumb", k), { height: fit(tall), cross: "center", padding: xy(t.xs, 0) }, () => text("Label", it.label ?? "", { step: "sm", nowrap: true, font: "display" }));
-        kit.semantics({ role: "link", name: it.label ?? "", selected: true, value: "current page" });
+        // Where the player is: text, not a link (it goes nowhere).
+        kit.semantics({ role: "text", name: it.label ?? "", selected: true, value: "current page" });
       } else {
         const r = surface(kit.idi("Crumb", k), { part: "Breadcrumbs.crumb", cls: "chip", fill: null, width: fit(tall), height: fit(tall), align: "center", padding: xy(t.xs, 0), gap: t.xs, semantics: { role: "link", name: it.label ?? "" } }, () => {
           if (it.icon) kit.icon("Icon", it.icon, { size: 16, tint: token("inkMuted"), label: "" });
@@ -480,7 +481,8 @@ export function actionHints(id: string, desc: Api.ActionHintsDesc): Api.ActionHi
         fill: touch ? role("control") : null,
         washBy: touch ? 0.14 : 0.1,
         pressScale: 0.96,
-        focusable: touch,
+        // Keys and pads reach it too (a hint is a button wherever it shows).
+        focusable: true,
         // As tall as its cap and the ring a hold draws round it: the cap never spills out.
         height: fit(touch ? 44 : 36),
         padding: xy(touch ? t.md : t.xs, touch ? t.xxs : ringRoom / 2),
@@ -488,7 +490,8 @@ export function actionHints(id: string, desc: Api.ActionHintsDesc): Api.ActionHi
         semantics: { role: "button", name: h.hint ?? h.action ?? "", ...(glyph.text && !touch ? { description: glyph.text } : {}) },
       }, () => {
         if (!touch && glyph.text) glyphCap("Glyph", glyph, cap, h.hold ? clamp(h.progress ?? 0, 0, 1) : 0);
-        text("Hint", h.hint ?? h.action ?? "", { step: "sm", nowrap: !touch });
+        // The body's 16 px at 1080p, never smaller: a hint is read in play.
+        text("Hint", h.hint ?? h.action ?? "", { step: "base", nowrap: !touch });
       });
       if (r.clicked) pressed = h.action ?? null;
     });
@@ -531,14 +534,15 @@ export function radialMenu(id: string, open: boolean, desc: Api.RadialDesc): Api
   // moves or presses, so a resting mouse leaves the stick its aim.
   const key = `${id}~wheel`;
   const ptr = open ? pointerFrom(key) : null;
-  // A pointer resting where the wheel opens aims at nothing until it moves (no position last tick: just opened).
-  const had = kit.memory(`${id}~px`, -1) >= 0;
-  const moved = ptr !== null && (ptr.down || (had && (Math.round(ptr.x) !== kit.memory(`${id}~px`, -1) || Math.round(ptr.y) !== kit.memory(`${id}~py`, -1))));
+  // A pointer resting where the wheel opens aims at nothing until it moves: -1 is closed last tick
+  // (just opened), -2 open with the pointer away (its coming in is a move).
+  const prev = kit.memory(`${id}~px`, -1);
+  const moved = ptr !== null && (ptr.down || (prev !== -1 && (prev === -2 || Math.round(ptr.x) !== prev || Math.round(ptr.y) !== kit.memory(`${id}~py`, -1))));
   const onRing = ptr !== null && ptr.d >= hole * 0.6 && ptr.d <= radius + 12;
   if (moved && onRing) hovered = pick(ptr.dx, ptr.dy);
   // A pointer press released off the ring (in the hole: the way to cancel) chooses nothing.
   const pointerRelease = kit.memory(`${id}~pd`, 0) > 0 && !(ptr?.down ?? false);
-  kit.remember(`${id}~px`, ptr ? Math.round(ptr.x) : -1);
+  kit.remember(`${id}~px`, ptr ? Math.round(ptr.x) : open ? -2 : -1);
   kit.remember(`${id}~py`, ptr ? Math.round(ptr.y) : -1);
   kit.remember(`${id}~pd`, ptr?.down ? 1 : 0);
   const step = (dir: number): number => {

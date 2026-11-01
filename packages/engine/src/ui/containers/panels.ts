@@ -59,7 +59,7 @@ export function card(id: string, desc: Api.CardDesc, build: Api.UiBuild): Api.Re
       washBy: 0.07,
       // Lifts under the pointer and the focus, sinks while pressed: the style's ui spring.
       lift: -4,
-      pressScale: 0.97,
+      pressScale: 0.95,
       disabled,
       direction: "column",
       width,
