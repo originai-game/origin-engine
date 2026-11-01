@@ -258,3 +258,67 @@ fn every_built_in_style_is_version_2_with_colour_tokens_that_read_on_its_panels(
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+/// The seed styles of templates/styles (docs/ui.md §12.5) are what
+/// `og style new --seeds` writes from their recorded choices
+/// (`style_gen::seeds`): a seed changed by hand, or a generator change
+/// whose seeds were not rewritten, fails here. Each is a complete
+/// version 2 style with no atlas, every part dressed procedurally, a
+/// sound for every event that names one, and its own shape language,
+/// motion personality and sounds: no two seeds share all three.
+#[test]
+fn every_seed_style_is_what_og_style_new_writes_from_its_choices() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
+    let seeds = og_ui::style_gen::seeds();
+    assert!(seeds.len() >= 12, "{} seeds", seeds.len());
+    let mut signatures = Vec::new();
+    for c in &seeds {
+        let dir = root.join(&c.name);
+        let g = og_ui::style_gen::generate(c).unwrap_or_else(|e| panic!("{}: {e}", c.name));
+        let on_disk = std::fs::read_to_string(dir.join("style.ogt"))
+            .unwrap_or_else(|e| panic!("{}: {e} (run og style new --seeds)", c.name));
+        assert!(
+            on_disk == g.text,
+            "{}: style.ogt is not what og style new --seeds writes",
+            c.name
+        );
+        for (f, text) in &g.sounds {
+            let disk = std::fs::read_to_string(dir.join(f)).unwrap_or_default();
+            assert!(
+                &disk == text,
+                "{}: {f} is not what og style new writes",
+                c.name
+            );
+        }
+        let file = parse_style(&on_disk).unwrap_or_else(|e| panic!("{}: {e}", c.name));
+        assert_eq!(file.version, 2, "{}", c.name);
+        assert!(
+            file.atlas.is_none(),
+            "{}: a seed draws without an atlas",
+            c.name
+        );
+        for e in og_ui::tokens::SoundEvent::ALL {
+            let f = &file.feedback_sounds[e.index()];
+            for s in f.iter() {
+                assert!(
+                    dir.join(s).is_file(),
+                    "{}: {} names {s}, which is missing",
+                    c.name,
+                    e.name()
+                );
+            }
+        }
+        assert!(
+            file.feedback_sounds.iter().any(|s| !s.is_empty()),
+            "{}: no sounds",
+            c.name
+        );
+        let sig = (c.shape, c.motion, c.sound.tap);
+        assert!(
+            !signatures.contains(&sig),
+            "{}: the same shape, motion and press sound as another seed",
+            c.name
+        );
+        signatures.push(sig);
+    }
+}

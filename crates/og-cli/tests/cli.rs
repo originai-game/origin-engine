@@ -757,6 +757,85 @@ fn look_project(ui: &str, chinese: bool) -> PathBuf {
     dir
 }
 
+/// `og style new arena --look "sports broadcast" ...` writes a generated
+/// version 2 style into the game (its tokens, procedural dressings, sound
+/// sets with their `type sfx` presets, and the art slots it asks for),
+/// with the flags over the nearest seed's choices; the game cooks with it,
+/// the packs' fonts and icons it shares bundled; a bad choice is refused
+/// with the names it takes.
+///
+/// Ways it could fail: a flag ignored, a sound the style names left
+/// unwritten, or a shared font the cook leaves out of the bundle.
+#[test]
+fn style_new_generates_a_style_the_game_cooks() {
+    let dir = look_project("styles/arena/style.ogt", false);
+    let out = og()
+        .args([
+            "style",
+            "new",
+            "arena",
+            "--look",
+            "sports broadcast",
+            "--premise",
+            "a five-a-side game",
+            "--shape",
+            "pill",
+            "--motion",
+            "bouncy",
+            "--project",
+        ])
+        .arg(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let style_dir = dir.join("assets/styles/arena");
+    let style = std::fs::read_to_string(style_dir.join("style.ogt")).unwrap();
+    let file = og_ui::parse_style(&style).unwrap_or_else(|e| panic!("{e}\n{style}"));
+    assert_eq!((file.version, file.name.as_str()), (2, "arena"));
+    // The pill shape language and the bouncy press over broadcast's seed.
+    assert!(style.contains("  button round pill\n"), "{style}");
+    assert!(style.contains("  press 1.06 0.9 3\n"), "{style}");
+    assert!(
+        style.contains("@styles/neon/ChakraPetch-BoldItalic.ttf"),
+        "{style}"
+    );
+    for sounds in &file.feedback_sounds {
+        for s in sounds {
+            assert!(style_dir.join(s).is_file(), "{s}");
+        }
+    }
+    let requests: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(style_dir.join("art-requests.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(requests["choices"]["shape"], "pill");
+    assert!(
+        requests["slots"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|s| s["name"] == "arena/button-primary" && s["kind"] == "styleButton"),
+        "{requests}"
+    );
+    let cooked = og().arg("cook").arg(&dir).output().unwrap();
+    assert_eq!(cooked.status.code(), Some(0), "{}", text(&cooked));
+    let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
+    assert!(
+        bundle
+            .output("@styles/neon/ChakraPetch-BoldItalic.ttf")
+            .is_ok()
+    );
+
+    let bad = og()
+        .args(["style", "new", "other", "--shape", "blob", "--project"])
+        .arg(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(bad.status.code(), Some(1), "{}", text(&bad));
+    assert!(text(&bad).contains("squircle"), "{}", text(&bad));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// `og style eject scifi keeper` writes the built-in style's whole pack
 /// (templates/styles/scifi, byte for byte) into the game's
 /// assets/styles/keeper/, refuses to overwrite it without --force, and the

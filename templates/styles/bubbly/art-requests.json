@@ -1,0 +1,158 @@
+{
+  "choices": {
+    "finish": "gradient",
+    "motion": "bouncy",
+    "ornament": "light",
+    "scheme": "light",
+    "seed": "#2f7bff",
+    "shape": "round"
+  },
+  "look": "casual cartoon",
+  "palette": {
+    "backdrop": "#ffe7b0",
+    "highlight": "#944710",
+    "ink": "#08162e",
+    "line": "#cfcec9",
+    "panel": "#fbf6eb",
+    "primary": "#7aabff"
+  },
+  "premise": "a bright match-and-collect puzzle game for everyone",
+  "slots": [
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "bubbly/panel",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "bubbly/card",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "bubbly/field",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "bubbly/slot",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "bubbly/tooltip",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "bubbly/hud",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleButton",
+      "name": "bubbly/button",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleButton",
+      "name": "bubbly/button-primary",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "ornament",
+      "name": "bubbly/corner",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "ornament",
+      "name": "bubbly/divider",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "ornament",
+      "name": "bubbly/flourish",
+      "safe": null
+    },
+    {
+      "aspect": [
+        1,
+        1
+      ],
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "iconSet",
+      "name": "bubbly/icons",
+      "safe": null
+    }
+  ],
+  "style": "bubbly"
+}

@@ -1,0 +1,158 @@
+{
+  "choices": {
+    "finish": "glass",
+    "motion": "bouncy",
+    "ornament": "light",
+    "scheme": "light",
+    "seed": "#ff4f9a",
+    "shape": "pill"
+  },
+  "look": "kawaii anime gacha",
+  "palette": {
+    "backdrop": "#fff0f6",
+    "highlight": "#694cc5",
+    "ink": "#2e0e1c",
+    "line": "#d9ced3",
+    "panel": "#fff8fb",
+    "primary": "#ff87ba"
+  },
+  "premise": "an idol-collecting gacha game of pastel banners and star pulls",
+  "slots": [
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "kawaii/panel",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "kawaii/card",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "kawaii/field",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "kawaii/slot",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "kawaii/tooltip",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "kawaii/hud",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleButton",
+      "name": "kawaii/button",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleButton",
+      "name": "kawaii/button-primary",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "ornament",
+      "name": "kawaii/corner",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "ornament",
+      "name": "kawaii/divider",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "ornament",
+      "name": "kawaii/flourish",
+      "safe": null
+    },
+    {
+      "aspect": [
+        1,
+        1
+      ],
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "iconSet",
+      "name": "kawaii/icons",
+      "safe": null
+    }
+  ],
+  "style": "kawaii"
+}

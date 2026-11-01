@@ -1,0 +1,125 @@
+{
+  "choices": {
+    "finish": "flat",
+    "motion": "calm",
+    "ornament": "none",
+    "scheme": "light",
+    "seed": "#3452ff",
+    "shape": "squircle"
+  },
+  "look": "minimal modern",
+  "palette": {
+    "backdrop": "#f3f4f6",
+    "highlight": "#0a685d",
+    "ink": "#090f2e",
+    "line": "#cdcfd8",
+    "panel": "#f8f9fd",
+    "primary": "#2940c7"
+  },
+  "premise": "a clean, quiet strategy game where the numbers speak",
+  "slots": [
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "minimal/panel",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "minimal/card",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "minimal/field",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "minimal/slot",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "minimal/tooltip",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "minimal/hud",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleButton",
+      "name": "minimal/button",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleButton",
+      "name": "minimal/button-primary",
+      "safe": null
+    },
+    {
+      "aspect": [
+        1,
+        1
+      ],
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "iconSet",
+      "name": "minimal/icons",
+      "safe": null
+    }
+  ],
+  "style": "minimal"
+}

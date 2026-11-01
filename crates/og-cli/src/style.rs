@@ -30,6 +30,19 @@
 //! shared built-in `@styles/cjk/` fonts, which the cook bundles for a game
 //! that shows Chinese.
 //!
+//! `og style new <name> [--look <family>] [--premise <text>] [choices]`
+//! generates a style (og-ui's `style_gen`, docs/ui.md §12.5): it starts from
+//! the seed style nearest the look family, takes the flags over it (the
+//! palette seed, scheme, shape language, ornament level, motion personality
+//! and finish), and writes `assets/styles/<name>/` of the game (or
+//! `--out <dir>`): its `style.ogt` (palette, tokens, procedural dressings,
+//! sound sets, haptics), the `type sfx` presets its sounds name, and
+//! `art-requests.json`, the art slots it asks for (frames, buttons,
+//! ornaments, icons) which the art brief's `styleArtBriefs` turns into
+//! prompts. Its fonts and icons are the built-in packs' (`@styles/...`),
+//! which the cook bundles. `og style new --seeds [--out <dir>]` rewrites the
+//! seed styles of `templates/styles` from their recorded choices.
+//!
 //! `og style upgrade <style.ogt> [--out <file>] [--check]` writes a
 //! version 1 style as version 2 (og-ui's `upgrade_style`, docs/ui.md
 //! §12): every version 1 value kept, so it draws the same; its part lines
@@ -41,7 +54,7 @@ use image::{Rgba, RgbaImage};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og style list\n       og style upgrade <style.ogt> [--out <file>] [--check]\n       og style eject <slug> [<name>] [--project <dir>] [--force]\n       og style pack <dir> [--out <dir>]\n       og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]";
+const USAGE: &str = "usage: og style list\n       og style new <name> [--look <family>] [--premise <text>] [--seed <#rrggbb>] [--scheme dark|light] [--shape <s>] [--ornament <o>] [--motion <m>] [--finish <f>] [--project <dir> | --out <dir>] [--force]\n       og style new --seeds [--out <dir>]\n       og style upgrade <style.ogt> [--out <file>] [--check]\n       og style eject <slug> [<name>] [--project <dir>] [--force]\n       og style pack <dir> [--out <dir>]\n       og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]";
 
 /// The parts a nine-patch can dress (og-ui's `StylePart` names) and `soft`.
 const SLICES: [&str; 13] = [
@@ -81,10 +94,17 @@ pub fn run(args: &[&str]) -> ExitCode {
                     .iter()
                     .find(|(s, _)| *s == slug)
                     .map_or("", |(_, a)| a);
-                println!("{slug:<8} {about}");
+                println!("{slug:<10} {about}");
             }
             ExitCode::SUCCESS
         }
+        ["new", rest @ ..] => match new(rest) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("og style new: {e}");
+                ExitCode::from(1)
+            }
+        },
         ["eject", rest @ ..] => match eject(rest) {
             Ok(()) => ExitCode::SUCCESS,
             Err(e) => {
@@ -139,7 +159,253 @@ const ABOUT: &[(&str, &str)] = &[
         "scifi",
         "hairlines, cut corners, brackets, scanlines, mono numerals (space, tactics, hacking, mech)",
     ),
+    // The seed styles og style new generated (no atlas: tokens and
+    // procedural dressings), by look family.
+    (
+        "gilded",
+        "ornate fantasy: notched gold-lit frames, corner ornaments, heavy motion",
+    ),
+    (
+        "storybook",
+        "storybook: soft paper sheets, ink lines, ornaments, floaty motion",
+    ),
+    (
+        "tactical",
+        "tactical military: cut corners, flat olive, tracked capitals, mechanical motion",
+    ),
+    (
+        "holo",
+        "sci-fi holographic: cut glowing frames, inner glow, snappy motion",
+    ),
+    (
+        "cyber",
+        "cyberpunk neon: notched neon tubes on black, snappy motion",
+    ),
+    (
+        "bubbly",
+        "casual cartoon: chunky round buttons, lit gradients, hard shadows, bouncy motion",
+    ),
+    (
+        "kawaii",
+        "kawaii gacha: pastel capsules, frosted glass, bouncy motion",
+    ),
+    (
+        "arcade",
+        "pixel retro: square bevels, 2 px lines, mechanical motion",
+    ),
+    (
+        "craft",
+        "paper and craft: round cut paper, dashed fields, snappy motion",
+    ),
+    (
+        "minimal",
+        "minimal modern: squircles, hairlines, no ornament, calm motion",
+    ),
+    (
+        "dread",
+        "diegetic horror: sharp ink-stained sheets, heavy motion, low sounds",
+    ),
+    (
+        "broadcast",
+        "sports broadcast: sharp lit bars, tracked capitals, snappy motion",
+    ),
+    (
+        "inkwash",
+        "ink and eastern brush: soft washes, brush lines, calm motion",
+    ),
 ];
+
+fn style_name_ok(name: &str) -> Result<(), String> {
+    if name.is_empty()
+        || name.starts_with(['@', '.', '-'])
+        || name.contains(['/', '\\', '"'])
+        || name.chars().any(char::is_whitespace)
+    {
+        return Err(format!(
+            "'{name}' is not a style name: one directory name under assets/styles/ (letters, digits, - and _)"
+        ));
+    }
+    Ok(())
+}
+
+/// The licence note of a generated style: what it borrows and from where.
+fn generated_licences(c: &og_ui::style_gen::StyleChoices) -> String {
+    let mut s = format!(
+        "# {}\n\nGenerated by `og style new` (docs/ui.md §12.5) for the {} look: its\n`style.ogt` and `sfx-*.ogt` are the engine's own work, under the\nengine's licence. Its sounds are synthesised by the cook from `type sfx`\npresets; no recording is bundled.\n\nIt draws with built-in fonts and icons, which stay where they are and\nkeep their licences (each pack's `LICENSES.md` and `OFL.txt`):\n\n",
+        c.name, c.look
+    );
+    let mut refs: Vec<&str> = c.fonts.iter().map(String::as_str).collect();
+    if let Some(i) = &c.icons {
+        refs.push(i);
+    }
+    refs.sort();
+    refs.dedup();
+    for r in refs {
+        s.push_str(&format!("- `{r}`\n"));
+    }
+    s
+}
+
+/// Writes a generated style's files into `dir`.
+fn write_generated(
+    dir: &Path,
+    c: &og_ui::style_gen::StyleChoices,
+    force: bool,
+) -> Result<Vec<String>, String> {
+    let g = og_ui::style_gen::generate(c)?;
+    let requests = serde_json::to_string_pretty(&og_ui::style_gen::art_requests_json(c))
+        .map_err(|e| e.to_string())?;
+    let mut files: Vec<(String, String)> = vec![("style.ogt".into(), g.text)];
+    files.extend(g.sounds);
+    files.push(("LICENSES.md".into(), generated_licences(c)));
+    files.push(("art-requests.json".into(), format!("{requests}\n")));
+    let existing: Vec<&str> = files
+        .iter()
+        .filter(|(f, _)| dir.join(f).exists())
+        .map(|(f, _)| f.as_str())
+        .collect();
+    if !existing.is_empty() && !force {
+        return Err(format!(
+            "{}/ already has {}; nothing written (--force overwrites)",
+            dir.display(),
+            existing.join(", ")
+        ));
+    }
+    std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    for (f, text) in &files {
+        let path = dir.join(f);
+        std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
+    }
+    Ok(files.into_iter().map(|(f, _)| f).collect())
+}
+
+/// `og style new`.
+fn new(args: &[&str]) -> Result<(), String> {
+    use og_ui::style_gen::{Finish, Motion, Ornament, ShapeLanguage, StyleChoices, seeds};
+    let usage = USAGE
+        .lines()
+        .filter(|l| l.contains(" new "))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let mut it = args.iter();
+    let (mut name, mut look, mut premise) = (None, None, None);
+    let (mut project, mut out, mut force, mut all) = (PathBuf::from("."), None, false, false);
+    let mut flags: Vec<(&str, &str)> = Vec::new();
+    while let Some(a) = it.next() {
+        match *a {
+            "--force" => force = true,
+            "--seeds" => all = true,
+            "--project" => project = PathBuf::from(it.next().ok_or(usage.clone())?),
+            "--out" => out = Some(PathBuf::from(it.next().ok_or(usage.clone())?)),
+            "--look" => look = Some(*it.next().ok_or(usage.clone())?),
+            "--premise" => premise = Some(*it.next().ok_or(usage.clone())?),
+            f @ ("--seed" | "--scheme" | "--shape" | "--ornament" | "--motion" | "--finish") => {
+                flags.push((f, it.next().ok_or(usage.clone())?));
+            }
+            a if a.starts_with('-') => return Err(usage),
+            a if name.is_none() => name = Some(a),
+            _ => return Err(usage),
+        }
+    }
+    if all {
+        if name.is_some() || look.is_some() || !flags.is_empty() {
+            return Err(usage);
+        }
+        let root = out.unwrap_or_else(|| PathBuf::from("templates/styles"));
+        for c in seeds() {
+            let dir = root.join(&c.name);
+            let files = write_generated(&dir, &c, true)?;
+            println!(
+                "og style new: {} ({}) -> {}/ ({} files)",
+                c.name,
+                c.look,
+                dir.display(),
+                files.len()
+            );
+        }
+        return Ok(());
+    }
+    let name = name.ok_or(usage.clone())?;
+    style_name_ok(name)?;
+    let look = look.unwrap_or("minimal modern");
+    let mut c = StyleChoices::for_look(name, look, premise.unwrap_or("a game"));
+    for (flag, v) in flags {
+        let bad = |what: &str, names: String| format!("{flag} {v}: not a {what} ({names})");
+        match flag {
+            "--seed" => {
+                c.seed = og_ui::style_file::parse_color(v)
+                    .ok_or_else(|| format!("--seed {v}: a colour, #rrggbb"))?;
+                // A new seed recolours everything round it.
+                c.ground = None;
+                c.accent = None;
+            }
+            "--scheme" => {
+                let dark = match v {
+                    "dark" => true,
+                    "light" => false,
+                    _ => return Err(bad("scheme", "dark, light".into())),
+                };
+                if dark != (c.scheme == og_ui::Scheme::Dark) {
+                    c.ground = None;
+                }
+                c.scheme = if dark {
+                    og_ui::Scheme::Dark
+                } else {
+                    og_ui::Scheme::Light
+                };
+            }
+            "--shape" => {
+                c.shape = ShapeLanguage::from_name(v)
+                    .ok_or_else(|| bad("shape language", ShapeLanguage::names()))?
+            }
+            "--ornament" => {
+                c.ornament = Ornament::from_name(v)
+                    .ok_or_else(|| bad("ornament level", Ornament::names()))?
+            }
+            "--motion" => {
+                c.motion = Motion::from_name(v)
+                    .ok_or_else(|| bad("motion personality", Motion::names()))?
+            }
+            _ => c.finish = Finish::from_name(v).ok_or_else(|| bad("finish", Finish::names()))?,
+        }
+    }
+    let (dir, shown) = match out {
+        Some(d) => (d.clone(), d.display().to_string()),
+        None => {
+            if !project.join("project.ogt").is_file() {
+                return Err(format!(
+                    "{}: no project.ogt; run it in a game's directory, pass --project <dir> or --out <dir>",
+                    project.display()
+                ));
+            }
+            let rel = format!("assets/styles/{name}");
+            (project.join(&rel), rel)
+        }
+    };
+    let files = write_generated(&dir, &c, force)?;
+    println!(
+        "og style new: '{name}', a {} style (shape {}, ornament {}, motion {}, finish {}, seed {}), into {shown}/",
+        c.look,
+        c.shape.name(),
+        c.ornament.name(),
+        c.motion.name(),
+        c.finish.name(),
+        og_ui::tokens::hex(c.seed)
+    );
+    for f in &files {
+        println!("  {shown}/{f}");
+    }
+    let requests = og_ui::style_gen::art_requests(&c);
+    println!(
+        "its art slots ({}), drawn procedurally until their art lands (art-requests.json, the art brief's styleArtBriefs):",
+        requests.len()
+    );
+    for r in &requests {
+        println!("  {} ({})", r.name, r.kind.name());
+    }
+    println!("name it in the game's look: ui \"styles/{name}/style.ogt\"");
+    Ok(())
+}
 
 /// `og style eject <slug> [<name>] [--project <dir>] [--force]`.
 fn eject(args: &[&str]) -> Result<(), String> {

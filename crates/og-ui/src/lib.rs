@@ -48,6 +48,7 @@ pub mod shape;
 pub mod slot;
 mod style;
 pub mod style_file;
+pub mod style_gen;
 mod text;
 pub mod tokens;
 #[rustfmt::skip]

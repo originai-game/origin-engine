@@ -507,9 +507,426 @@ pub static STYLES: &[(&str, &[u8])] = &[
         "@styles/scifi/style.ogt",
         include_bytes!("../../../../templates/styles/scifi/style.ogt"),
     ),
+    (
+        "@styles/arcade/sfx-back.ogt",
+        include_bytes!("../../../../templates/styles/arcade/sfx-back.ogt"),
+    ),
+    (
+        "@styles/arcade/sfx-confirm.ogt",
+        include_bytes!("../../../../templates/styles/arcade/sfx-confirm.ogt"),
+    ),
+    (
+        "@styles/arcade/sfx-error.ogt",
+        include_bytes!("../../../../templates/styles/arcade/sfx-error.ogt"),
+    ),
+    (
+        "@styles/arcade/sfx-open.ogt",
+        include_bytes!("../../../../templates/styles/arcade/sfx-open.ogt"),
+    ),
+    (
+        "@styles/arcade/sfx-reward.ogt",
+        include_bytes!("../../../../templates/styles/arcade/sfx-reward.ogt"),
+    ),
+    (
+        "@styles/arcade/sfx-tap.ogt",
+        include_bytes!("../../../../templates/styles/arcade/sfx-tap.ogt"),
+    ),
+    (
+        "@styles/arcade/sfx-tap2.ogt",
+        include_bytes!("../../../../templates/styles/arcade/sfx-tap2.ogt"),
+    ),
+    (
+        "@styles/arcade/style.ogt",
+        include_bytes!("../../../../templates/styles/arcade/style.ogt"),
+    ),
+    (
+        "@styles/broadcast/sfx-back.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/sfx-back.ogt"),
+    ),
+    (
+        "@styles/broadcast/sfx-confirm.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/sfx-confirm.ogt"),
+    ),
+    (
+        "@styles/broadcast/sfx-error.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/sfx-error.ogt"),
+    ),
+    (
+        "@styles/broadcast/sfx-open.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/sfx-open.ogt"),
+    ),
+    (
+        "@styles/broadcast/sfx-reward.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/sfx-reward.ogt"),
+    ),
+    (
+        "@styles/broadcast/sfx-tap.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/sfx-tap.ogt"),
+    ),
+    (
+        "@styles/broadcast/sfx-tap2.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/sfx-tap2.ogt"),
+    ),
+    (
+        "@styles/broadcast/style.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/style.ogt"),
+    ),
+    (
+        "@styles/bubbly/sfx-back.ogt",
+        include_bytes!("../../../../templates/styles/bubbly/sfx-back.ogt"),
+    ),
+    (
+        "@styles/bubbly/sfx-confirm.ogt",
+        include_bytes!("../../../../templates/styles/bubbly/sfx-confirm.ogt"),
+    ),
+    (
+        "@styles/bubbly/sfx-error.ogt",
+        include_bytes!("../../../../templates/styles/bubbly/sfx-error.ogt"),
+    ),
+    (
+        "@styles/bubbly/sfx-open.ogt",
+        include_bytes!("../../../../templates/styles/bubbly/sfx-open.ogt"),
+    ),
+    (
+        "@styles/bubbly/sfx-reward.ogt",
+        include_bytes!("../../../../templates/styles/bubbly/sfx-reward.ogt"),
+    ),
+    (
+        "@styles/bubbly/sfx-tap.ogt",
+        include_bytes!("../../../../templates/styles/bubbly/sfx-tap.ogt"),
+    ),
+    (
+        "@styles/bubbly/sfx-tap2.ogt",
+        include_bytes!("../../../../templates/styles/bubbly/sfx-tap2.ogt"),
+    ),
+    (
+        "@styles/bubbly/style.ogt",
+        include_bytes!("../../../../templates/styles/bubbly/style.ogt"),
+    ),
+    (
+        "@styles/craft/sfx-back.ogt",
+        include_bytes!("../../../../templates/styles/craft/sfx-back.ogt"),
+    ),
+    (
+        "@styles/craft/sfx-confirm.ogt",
+        include_bytes!("../../../../templates/styles/craft/sfx-confirm.ogt"),
+    ),
+    (
+        "@styles/craft/sfx-error.ogt",
+        include_bytes!("../../../../templates/styles/craft/sfx-error.ogt"),
+    ),
+    (
+        "@styles/craft/sfx-open.ogt",
+        include_bytes!("../../../../templates/styles/craft/sfx-open.ogt"),
+    ),
+    (
+        "@styles/craft/sfx-reward.ogt",
+        include_bytes!("../../../../templates/styles/craft/sfx-reward.ogt"),
+    ),
+    (
+        "@styles/craft/sfx-tap.ogt",
+        include_bytes!("../../../../templates/styles/craft/sfx-tap.ogt"),
+    ),
+    (
+        "@styles/craft/sfx-tap2.ogt",
+        include_bytes!("../../../../templates/styles/craft/sfx-tap2.ogt"),
+    ),
+    (
+        "@styles/craft/style.ogt",
+        include_bytes!("../../../../templates/styles/craft/style.ogt"),
+    ),
+    (
+        "@styles/cyber/sfx-back.ogt",
+        include_bytes!("../../../../templates/styles/cyber/sfx-back.ogt"),
+    ),
+    (
+        "@styles/cyber/sfx-confirm.ogt",
+        include_bytes!("../../../../templates/styles/cyber/sfx-confirm.ogt"),
+    ),
+    (
+        "@styles/cyber/sfx-error.ogt",
+        include_bytes!("../../../../templates/styles/cyber/sfx-error.ogt"),
+    ),
+    (
+        "@styles/cyber/sfx-open.ogt",
+        include_bytes!("../../../../templates/styles/cyber/sfx-open.ogt"),
+    ),
+    (
+        "@styles/cyber/sfx-reward.ogt",
+        include_bytes!("../../../../templates/styles/cyber/sfx-reward.ogt"),
+    ),
+    (
+        "@styles/cyber/sfx-tap.ogt",
+        include_bytes!("../../../../templates/styles/cyber/sfx-tap.ogt"),
+    ),
+    (
+        "@styles/cyber/sfx-tap2.ogt",
+        include_bytes!("../../../../templates/styles/cyber/sfx-tap2.ogt"),
+    ),
+    (
+        "@styles/cyber/style.ogt",
+        include_bytes!("../../../../templates/styles/cyber/style.ogt"),
+    ),
+    (
+        "@styles/dread/sfx-back.ogt",
+        include_bytes!("../../../../templates/styles/dread/sfx-back.ogt"),
+    ),
+    (
+        "@styles/dread/sfx-confirm.ogt",
+        include_bytes!("../../../../templates/styles/dread/sfx-confirm.ogt"),
+    ),
+    (
+        "@styles/dread/sfx-error.ogt",
+        include_bytes!("../../../../templates/styles/dread/sfx-error.ogt"),
+    ),
+    (
+        "@styles/dread/sfx-open.ogt",
+        include_bytes!("../../../../templates/styles/dread/sfx-open.ogt"),
+    ),
+    (
+        "@styles/dread/sfx-reward.ogt",
+        include_bytes!("../../../../templates/styles/dread/sfx-reward.ogt"),
+    ),
+    (
+        "@styles/dread/sfx-tap.ogt",
+        include_bytes!("../../../../templates/styles/dread/sfx-tap.ogt"),
+    ),
+    (
+        "@styles/dread/sfx-tap2.ogt",
+        include_bytes!("../../../../templates/styles/dread/sfx-tap2.ogt"),
+    ),
+    (
+        "@styles/dread/style.ogt",
+        include_bytes!("../../../../templates/styles/dread/style.ogt"),
+    ),
+    (
+        "@styles/gilded/sfx-back.ogt",
+        include_bytes!("../../../../templates/styles/gilded/sfx-back.ogt"),
+    ),
+    (
+        "@styles/gilded/sfx-confirm.ogt",
+        include_bytes!("../../../../templates/styles/gilded/sfx-confirm.ogt"),
+    ),
+    (
+        "@styles/gilded/sfx-error.ogt",
+        include_bytes!("../../../../templates/styles/gilded/sfx-error.ogt"),
+    ),
+    (
+        "@styles/gilded/sfx-open.ogt",
+        include_bytes!("../../../../templates/styles/gilded/sfx-open.ogt"),
+    ),
+    (
+        "@styles/gilded/sfx-reward.ogt",
+        include_bytes!("../../../../templates/styles/gilded/sfx-reward.ogt"),
+    ),
+    (
+        "@styles/gilded/sfx-tap.ogt",
+        include_bytes!("../../../../templates/styles/gilded/sfx-tap.ogt"),
+    ),
+    (
+        "@styles/gilded/sfx-tap2.ogt",
+        include_bytes!("../../../../templates/styles/gilded/sfx-tap2.ogt"),
+    ),
+    (
+        "@styles/gilded/style.ogt",
+        include_bytes!("../../../../templates/styles/gilded/style.ogt"),
+    ),
+    (
+        "@styles/holo/sfx-back.ogt",
+        include_bytes!("../../../../templates/styles/holo/sfx-back.ogt"),
+    ),
+    (
+        "@styles/holo/sfx-confirm.ogt",
+        include_bytes!("../../../../templates/styles/holo/sfx-confirm.ogt"),
+    ),
+    (
+        "@styles/holo/sfx-error.ogt",
+        include_bytes!("../../../../templates/styles/holo/sfx-error.ogt"),
+    ),
+    (
+        "@styles/holo/sfx-open.ogt",
+        include_bytes!("../../../../templates/styles/holo/sfx-open.ogt"),
+    ),
+    (
+        "@styles/holo/sfx-reward.ogt",
+        include_bytes!("../../../../templates/styles/holo/sfx-reward.ogt"),
+    ),
+    (
+        "@styles/holo/sfx-tap.ogt",
+        include_bytes!("../../../../templates/styles/holo/sfx-tap.ogt"),
+    ),
+    (
+        "@styles/holo/sfx-tap2.ogt",
+        include_bytes!("../../../../templates/styles/holo/sfx-tap2.ogt"),
+    ),
+    (
+        "@styles/holo/style.ogt",
+        include_bytes!("../../../../templates/styles/holo/style.ogt"),
+    ),
+    (
+        "@styles/inkwash/sfx-back.ogt",
+        include_bytes!("../../../../templates/styles/inkwash/sfx-back.ogt"),
+    ),
+    (
+        "@styles/inkwash/sfx-confirm.ogt",
+        include_bytes!("../../../../templates/styles/inkwash/sfx-confirm.ogt"),
+    ),
+    (
+        "@styles/inkwash/sfx-error.ogt",
+        include_bytes!("../../../../templates/styles/inkwash/sfx-error.ogt"),
+    ),
+    (
+        "@styles/inkwash/sfx-open.ogt",
+        include_bytes!("../../../../templates/styles/inkwash/sfx-open.ogt"),
+    ),
+    (
+        "@styles/inkwash/sfx-reward.ogt",
+        include_bytes!("../../../../templates/styles/inkwash/sfx-reward.ogt"),
+    ),
+    (
+        "@styles/inkwash/sfx-tap.ogt",
+        include_bytes!("../../../../templates/styles/inkwash/sfx-tap.ogt"),
+    ),
+    (
+        "@styles/inkwash/sfx-tap2.ogt",
+        include_bytes!("../../../../templates/styles/inkwash/sfx-tap2.ogt"),
+    ),
+    (
+        "@styles/inkwash/style.ogt",
+        include_bytes!("../../../../templates/styles/inkwash/style.ogt"),
+    ),
+    (
+        "@styles/kawaii/sfx-back.ogt",
+        include_bytes!("../../../../templates/styles/kawaii/sfx-back.ogt"),
+    ),
+    (
+        "@styles/kawaii/sfx-confirm.ogt",
+        include_bytes!("../../../../templates/styles/kawaii/sfx-confirm.ogt"),
+    ),
+    (
+        "@styles/kawaii/sfx-error.ogt",
+        include_bytes!("../../../../templates/styles/kawaii/sfx-error.ogt"),
+    ),
+    (
+        "@styles/kawaii/sfx-open.ogt",
+        include_bytes!("../../../../templates/styles/kawaii/sfx-open.ogt"),
+    ),
+    (
+        "@styles/kawaii/sfx-reward.ogt",
+        include_bytes!("../../../../templates/styles/kawaii/sfx-reward.ogt"),
+    ),
+    (
+        "@styles/kawaii/sfx-tap.ogt",
+        include_bytes!("../../../../templates/styles/kawaii/sfx-tap.ogt"),
+    ),
+    (
+        "@styles/kawaii/sfx-tap2.ogt",
+        include_bytes!("../../../../templates/styles/kawaii/sfx-tap2.ogt"),
+    ),
+    (
+        "@styles/kawaii/style.ogt",
+        include_bytes!("../../../../templates/styles/kawaii/style.ogt"),
+    ),
+    (
+        "@styles/minimal/sfx-back.ogt",
+        include_bytes!("../../../../templates/styles/minimal/sfx-back.ogt"),
+    ),
+    (
+        "@styles/minimal/sfx-confirm.ogt",
+        include_bytes!("../../../../templates/styles/minimal/sfx-confirm.ogt"),
+    ),
+    (
+        "@styles/minimal/sfx-error.ogt",
+        include_bytes!("../../../../templates/styles/minimal/sfx-error.ogt"),
+    ),
+    (
+        "@styles/minimal/sfx-open.ogt",
+        include_bytes!("../../../../templates/styles/minimal/sfx-open.ogt"),
+    ),
+    (
+        "@styles/minimal/sfx-reward.ogt",
+        include_bytes!("../../../../templates/styles/minimal/sfx-reward.ogt"),
+    ),
+    (
+        "@styles/minimal/sfx-tap.ogt",
+        include_bytes!("../../../../templates/styles/minimal/sfx-tap.ogt"),
+    ),
+    (
+        "@styles/minimal/sfx-tap2.ogt",
+        include_bytes!("../../../../templates/styles/minimal/sfx-tap2.ogt"),
+    ),
+    (
+        "@styles/minimal/style.ogt",
+        include_bytes!("../../../../templates/styles/minimal/style.ogt"),
+    ),
+    (
+        "@styles/storybook/sfx-back.ogt",
+        include_bytes!("../../../../templates/styles/storybook/sfx-back.ogt"),
+    ),
+    (
+        "@styles/storybook/sfx-confirm.ogt",
+        include_bytes!("../../../../templates/styles/storybook/sfx-confirm.ogt"),
+    ),
+    (
+        "@styles/storybook/sfx-error.ogt",
+        include_bytes!("../../../../templates/styles/storybook/sfx-error.ogt"),
+    ),
+    (
+        "@styles/storybook/sfx-open.ogt",
+        include_bytes!("../../../../templates/styles/storybook/sfx-open.ogt"),
+    ),
+    (
+        "@styles/storybook/sfx-reward.ogt",
+        include_bytes!("../../../../templates/styles/storybook/sfx-reward.ogt"),
+    ),
+    (
+        "@styles/storybook/sfx-tap.ogt",
+        include_bytes!("../../../../templates/styles/storybook/sfx-tap.ogt"),
+    ),
+    (
+        "@styles/storybook/sfx-tap2.ogt",
+        include_bytes!("../../../../templates/styles/storybook/sfx-tap2.ogt"),
+    ),
+    (
+        "@styles/storybook/style.ogt",
+        include_bytes!("../../../../templates/styles/storybook/style.ogt"),
+    ),
+    (
+        "@styles/tactical/sfx-back.ogt",
+        include_bytes!("../../../../templates/styles/tactical/sfx-back.ogt"),
+    ),
+    (
+        "@styles/tactical/sfx-confirm.ogt",
+        include_bytes!("../../../../templates/styles/tactical/sfx-confirm.ogt"),
+    ),
+    (
+        "@styles/tactical/sfx-error.ogt",
+        include_bytes!("../../../../templates/styles/tactical/sfx-error.ogt"),
+    ),
+    (
+        "@styles/tactical/sfx-open.ogt",
+        include_bytes!("../../../../templates/styles/tactical/sfx-open.ogt"),
+    ),
+    (
+        "@styles/tactical/sfx-reward.ogt",
+        include_bytes!("../../../../templates/styles/tactical/sfx-reward.ogt"),
+    ),
+    (
+        "@styles/tactical/sfx-tap.ogt",
+        include_bytes!("../../../../templates/styles/tactical/sfx-tap.ogt"),
+    ),
+    (
+        "@styles/tactical/sfx-tap2.ogt",
+        include_bytes!("../../../../templates/styles/tactical/sfx-tap2.ogt"),
+    ),
+    (
+        "@styles/tactical/style.ogt",
+        include_bytes!("../../../../templates/styles/tactical/style.ogt"),
+    ),
 ];
 
-/// The built-in styles' licence files (`LICENSES.md`, the fonts' `OFL.txt`),
+/// The built-in styles' licence files (`LICENSES.md`, the fonts' `OFL.txt`)
+/// and a generated style's `art-requests.json` (the art it asks for),
 /// by the bundle id they would have: never cooked into a game's bundle,
 /// only written beside the rest by `og style eject`, since a copied font
 /// travels with its licence.
@@ -561,6 +978,110 @@ pub static STYLE_LICENCES: &[(&str, &[u8])] = &[
     (
         "@styles/scifi/OFL.txt",
         include_bytes!("../../../../templates/styles/scifi/OFL.txt"),
+    ),
+    (
+        "@styles/arcade/LICENSES.md",
+        include_bytes!("../../../../templates/styles/arcade/LICENSES.md"),
+    ),
+    (
+        "@styles/arcade/art-requests.json",
+        include_bytes!("../../../../templates/styles/arcade/art-requests.json"),
+    ),
+    (
+        "@styles/broadcast/LICENSES.md",
+        include_bytes!("../../../../templates/styles/broadcast/LICENSES.md"),
+    ),
+    (
+        "@styles/broadcast/art-requests.json",
+        include_bytes!("../../../../templates/styles/broadcast/art-requests.json"),
+    ),
+    (
+        "@styles/bubbly/LICENSES.md",
+        include_bytes!("../../../../templates/styles/bubbly/LICENSES.md"),
+    ),
+    (
+        "@styles/bubbly/art-requests.json",
+        include_bytes!("../../../../templates/styles/bubbly/art-requests.json"),
+    ),
+    (
+        "@styles/craft/LICENSES.md",
+        include_bytes!("../../../../templates/styles/craft/LICENSES.md"),
+    ),
+    (
+        "@styles/craft/art-requests.json",
+        include_bytes!("../../../../templates/styles/craft/art-requests.json"),
+    ),
+    (
+        "@styles/cyber/LICENSES.md",
+        include_bytes!("../../../../templates/styles/cyber/LICENSES.md"),
+    ),
+    (
+        "@styles/cyber/art-requests.json",
+        include_bytes!("../../../../templates/styles/cyber/art-requests.json"),
+    ),
+    (
+        "@styles/dread/LICENSES.md",
+        include_bytes!("../../../../templates/styles/dread/LICENSES.md"),
+    ),
+    (
+        "@styles/dread/art-requests.json",
+        include_bytes!("../../../../templates/styles/dread/art-requests.json"),
+    ),
+    (
+        "@styles/gilded/LICENSES.md",
+        include_bytes!("../../../../templates/styles/gilded/LICENSES.md"),
+    ),
+    (
+        "@styles/gilded/art-requests.json",
+        include_bytes!("../../../../templates/styles/gilded/art-requests.json"),
+    ),
+    (
+        "@styles/holo/LICENSES.md",
+        include_bytes!("../../../../templates/styles/holo/LICENSES.md"),
+    ),
+    (
+        "@styles/holo/art-requests.json",
+        include_bytes!("../../../../templates/styles/holo/art-requests.json"),
+    ),
+    (
+        "@styles/inkwash/LICENSES.md",
+        include_bytes!("../../../../templates/styles/inkwash/LICENSES.md"),
+    ),
+    (
+        "@styles/inkwash/art-requests.json",
+        include_bytes!("../../../../templates/styles/inkwash/art-requests.json"),
+    ),
+    (
+        "@styles/kawaii/LICENSES.md",
+        include_bytes!("../../../../templates/styles/kawaii/LICENSES.md"),
+    ),
+    (
+        "@styles/kawaii/art-requests.json",
+        include_bytes!("../../../../templates/styles/kawaii/art-requests.json"),
+    ),
+    (
+        "@styles/minimal/LICENSES.md",
+        include_bytes!("../../../../templates/styles/minimal/LICENSES.md"),
+    ),
+    (
+        "@styles/minimal/art-requests.json",
+        include_bytes!("../../../../templates/styles/minimal/art-requests.json"),
+    ),
+    (
+        "@styles/storybook/LICENSES.md",
+        include_bytes!("../../../../templates/styles/storybook/LICENSES.md"),
+    ),
+    (
+        "@styles/storybook/art-requests.json",
+        include_bytes!("../../../../templates/styles/storybook/art-requests.json"),
+    ),
+    (
+        "@styles/tactical/LICENSES.md",
+        include_bytes!("../../../../templates/styles/tactical/LICENSES.md"),
+    ),
+    (
+        "@styles/tactical/art-requests.json",
+        include_bytes!("../../../../templates/styles/tactical/art-requests.json"),
     ),
 ];
 
@@ -626,6 +1147,28 @@ pub fn companion_files(style_text: &str) -> Vec<(&'static str, &'static [u8])> {
     };
     let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
     for r in file.fonts[4..].iter().flatten() {
+        let settings = format!("{r}.ogt");
+        for f in STYLES.iter().filter(|(f, _)| *f == r || *f == settings) {
+            if !out.contains(f) {
+                out.push(*f);
+            }
+        }
+    }
+    out
+}
+
+/// The built-in files of other packs a style's text draws with: its body,
+/// display, numeric and fallback fonts and its icon sheet where they name a
+/// built-in `@styles/` file (each with its import settings). A generated
+/// style (`og style new`) shares the packs' fonts and icons this way; they
+/// join the bundle whatever the game's languages.
+pub fn shared_files(style_text: &str) -> Vec<(&'static str, &'static [u8])> {
+    let Ok(file) = og_ui::parse_style(style_text) else {
+        return Vec::new();
+    };
+    let icons = file.icons.as_ref().map(|i| &i.0);
+    let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
+    for r in file.fonts[..4].iter().flatten().chain(icons) {
         let settings = format!("{r}.ogt");
         for f in STYLES.iter().filter(|(f, _)| *f == r || *f == settings) {
             if !out.contains(f) {
@@ -704,10 +1247,15 @@ pub(super) fn builtin_files(
             .find(|(f, _)| *f == id)
             .map(|(_, b)| String::from_utf8_lossy(b).to_string());
         out.extend(files);
-        if let Some(text) = style
-            && shows_chinese(root)
-        {
-            out.extend(companion_files(&text));
+        if let Some(text) = style {
+            for f in shared_files(&text) {
+                if !out.contains(&f) {
+                    out.push(f);
+                }
+            }
+            if shows_chinese(root) {
+                out.extend(companion_files(&text));
+            }
         }
     }
     out
@@ -1658,6 +2206,32 @@ mod tests {
                 "@styles/cjk/NotoSerifSC-SemiBold.ttf.ogt",
             ]
         );
+    }
+
+    /// A generated seed style draws with the packs' fonts and icons
+    /// (`@styles/fantasy/Cinzel-Bold.ttf`): a game that names it gets
+    /// them in its bundle, whatever its languages, with their settings.
+    #[test]
+    fn a_seed_styles_shared_fonts_and_icons_ride_with_the_game() {
+        let look = ("looks/x.ogt", "type look\nversion 1\n---\nui \"gilded\"\n");
+        let root = project(&[look]);
+        let ids: Vec<&str> = builtin_files(look.0, look.1, &root)
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
+        for id in [
+            "@styles/gilded/style.ogt",
+            "@styles/gilded/sfx-tap.ogt",
+            "@styles/fantasy/Cinzel-Bold.ttf",
+            "@styles/fantasy/Cinzel-Bold.ttf.ogt",
+            "@styles/fantasy/Newsreader-Medium.ttf",
+            "@styles/fantasy/icons.png",
+            "@styles/fantasy/icons.png.ogt",
+        ] {
+            assert!(ids.contains(&id), "{id}: {ids:?}");
+        }
+        assert!(!ids.iter().any(|id| id.starts_with("@styles/cjk/")), "{ids:?}");
+        assert!(!ids.contains(&"@styles/fantasy/atlas.png"), "{ids:?}");
     }
 
     #[test]

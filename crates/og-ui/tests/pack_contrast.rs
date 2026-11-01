@@ -14,7 +14,12 @@
 //! 3.42:1, lampdive's placeholder 3.57:1, pathguard's primary 3.30:1 and
 //! its danger button 2.96:1, Hollowbell's danger badge 4.26:1, Lantern
 //! Vale's success, warn and info badges 3.15, 2.72 and 4.07:1, before
-//! their palettes moved).
+//! their palettes moved); the seed styles `og style new` generated
+//! (templates/styles/gilded … inkwash) and a generated style for every
+//! shape language and finish, drawn with their procedural dressings and no
+//! atlas (docs/ui.md §12.5: a generated style passes what a built-in one
+//! does). Every style is drawn with its dressings set, as the runtime sets
+//! them.
 //!
 //! A third test draws every style's primary and secondary buttons through
 //! og-render with the style's own cooked fonts and reads each label, in
@@ -115,6 +120,66 @@ fn game_styles() -> Vec<(String, PathBuf)> {
     .iter()
     .map(|(name, dir)| (name.to_string(), root.join(dir)))
     .collect()
+}
+
+/// The seed styles of templates/styles that `og style new` generated
+/// (og-ui's `style_gen::seeds`): drawn with no atlas, every part from
+/// their tokens and procedural dressings.
+fn seeds() -> Vec<(String, PathBuf)> {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
+    og_ui::style_gen::seeds()
+        .into_iter()
+        .map(|c| (c.name.clone(), root.join(&c.name)))
+        .collect()
+}
+
+/// Each style's name, text and atlas (a white texel for a style with none),
+/// with `matrix`, a generated style for every shape language and finish
+/// besides, each with another motion, ornament level, scheme and seed: a
+/// generated style is held to the bars a built-in one is (docs/ui.md
+/// §12.5).
+fn sources(
+    dirs: impl Iterator<Item = (String, PathBuf)>,
+    matrix: bool,
+) -> Vec<(String, String, image::RgbaImage)> {
+    use og_ui::style_gen::{Finish, Motion, Ornament, ShapeLanguage, StyleChoices, generate};
+    let white = || image::RgbaImage::from_pixel(1, 1, image::Rgba([255; 4]));
+    let mut out: Vec<(String, String, image::RgbaImage)> = dirs
+        .map(|(name, dir)| {
+            let text = std::fs::read_to_string(dir.join("style.ogt"))
+                .unwrap_or_else(|e| panic!("{name}: style.ogt: {e}"));
+            let atlas =
+                image::open(dir.join("atlas.png")).map_or_else(|_| white(), |i| i.to_rgba8());
+            (name, text, atlas)
+        })
+        .collect();
+    if matrix {
+        let seeds = [
+            0x1f6feb, 0xffb000, 0x0f9d58, 0xd81b60, 0x7c4dff, 0x00bcd4, 0x8d6e63, 0xfafafa,
+        ];
+        for (i, &shape) in ShapeLanguage::ALL.iter().enumerate() {
+            for (j, &finish) in Finish::ALL.iter().enumerate() {
+                let mut c = StyleChoices::for_look("matrix", "minimal modern", "a test");
+                c.name = format!("gen-{}-{}", shape.name(), finish.name());
+                let v = seeds[(i + j) % seeds.len()];
+                c.seed = Srgba::rgb((v >> 16) as u8, (v >> 8) as u8, v as u8);
+                c.ground = None;
+                c.accent = None;
+                c.shape = shape;
+                c.finish = finish;
+                c.motion = Motion::ALL[(i + j) % Motion::ALL.len()];
+                c.ornament = Ornament::ALL[j % 3];
+                c.scheme = if (i + j) % 2 == 0 {
+                    Scheme::Dark
+                } else {
+                    Scheme::Light
+                };
+                let g = generate(&c).unwrap_or_else(|e| panic!("{}: {e}", c.name));
+                out.push((c.name, g.text, white()));
+            }
+        }
+    }
+    out
 }
 
 /// The packs and the games' styles.
@@ -264,13 +329,8 @@ fn atlas_handle() -> TextureHandle {
 fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
     let mut rows = Vec::new();
     let mut failing = Vec::new();
-    for (name, dir) in styles() {
-        let text = std::fs::read_to_string(dir.join("style.ogt"))
-            .unwrap_or_else(|e| panic!("{name}: style.ogt: {e}"));
+    for (name, text, atlas) in sources(styles().into_iter().chain(seeds()), true) {
         let file = parse_style(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
-        let atlas = image::open(dir.join("atlas.png"))
-            .expect("atlas.png")
-            .to_rgba8();
         let tex = atlas_handle();
         let theme = file.theme(Some(tex), [0; 6]);
         let p = theme.palette;
@@ -283,6 +343,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                     let mut scene = RenderScene::new();
                     let mut ui = ui_with_font(add_test_font(&mut scene));
                     ui.set_theme(theme);
+                    ui.set_dressings(file.dressings.clone());
                     let vp = Viewport::new(800.0, 600.0);
                     let build = |ui: &mut Ui| {
                         let buttons = |ui: &mut Ui| {
@@ -396,6 +457,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                 let mut scene = RenderScene::new();
                 let mut ui = ui_with_font(add_test_font(&mut scene));
                 ui.set_theme(theme);
+                ui.set_dressings(file.dressings.clone());
                 let vp = Viewport::new(800.0, 600.0);
                 for _ in 0..40 {
                     ui.begin(InputFrame::default(), vp);
@@ -448,6 +510,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                     let mut scene = RenderScene::new();
                     let mut ui = ui_with_font(add_test_font(&mut scene));
                     ui.set_theme(theme);
+                    ui.set_dressings(file.dressings.clone());
                     let vp = Viewport::new(800.0, 600.0);
                     let mut v = value.to_string();
                     let step = |ui: &mut Ui, v: &mut String, input: InputFrame| {
@@ -530,6 +593,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
             let mut scene = RenderScene::new();
             let mut ui = ui_with_font(add_test_font(&mut scene));
             ui.set_theme(theme);
+            ui.set_dressings(file.dressings.clone());
             let vp = Viewport::new(800.0, 600.0);
             for _ in 0..40 {
                 ui.begin(InputFrame::default(), vp);
@@ -595,6 +659,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
             let mut scene = RenderScene::new();
             let mut ui = ui_with_font(add_test_font(&mut scene));
             ui.set_theme(theme);
+            ui.set_dressings(file.dressings.clone());
             let vp = Viewport::new(800.0, 600.0);
             for _ in 0..40 {
                 ui.begin(InputFrame::default(), vp);
@@ -669,18 +734,15 @@ fn a_games_primary_colour_keeps_its_button_label_readable_on_every_pack() {
         ("crimson", Srgba::rgb(190, 30, 50)),
     ];
     let mut failing = Vec::new();
-    for (name, dir) in packs() {
-        let file = parse_style(&std::fs::read_to_string(dir.join("style.ogt")).expect("style.ogt"))
-            .expect("parses");
-        let atlas = image::open(dir.join("atlas.png"))
-            .expect("atlas.png")
-            .to_rgba8();
+    for (name, text, atlas) in sources(packs().into_iter().chain(seeds()), false) {
+        let file = parse_style(&text).expect("parses");
         let tex = atlas_handle();
         for (cname, c) in primaries {
             let theme = file.theme(Some(tex), [0; 6]).with_primary(c);
             let mut scene = RenderScene::new();
             let mut ui = ui_with_font(add_test_font(&mut scene));
             ui.set_theme(theme);
+            ui.set_dressings(file.dressings.clone());
             let panel = theme.palette.panel;
             for _ in 0..40 {
                 ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
@@ -729,13 +791,8 @@ fn a_games_primary_colour_keeps_its_button_label_readable_on_every_pack() {
 fn every_style_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
     let mut rows = Vec::new();
     let mut failing = Vec::new();
-    for (name, dir) in styles() {
-        let text = std::fs::read_to_string(dir.join("style.ogt"))
-            .unwrap_or_else(|e| panic!("{name}: style.ogt: {e}"));
+    for (name, text, atlas) in sources(styles().into_iter().chain(seeds()), true) {
         let file = parse_style(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
-        let atlas = image::open(dir.join("atlas.png"))
-            .expect("atlas.png")
-            .to_rgba8();
         let tex = atlas_handle();
         let theme = file.theme(Some(tex), [0; 6]);
         let p = theme.palette;
@@ -756,6 +813,7 @@ fn every_style_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
                 let mut scene = RenderScene::new();
                 let mut ui = ui_with_font(add_test_font(&mut scene));
                 ui.set_theme(theme);
+                ui.set_dressings(file.dressings.clone());
                 let vp = Viewport::new(800.0, 600.0);
                 for _ in 0..40 {
                     ui.begin(InputFrame::default(), vp);

@@ -1,0 +1,158 @@
+{
+  "choices": {
+    "finish": "neon",
+    "motion": "snappy",
+    "ornament": "light",
+    "scheme": "dark",
+    "seed": "#ff2bd6",
+    "shape": "notch"
+  },
+  "look": "cyberpunk neon",
+  "palette": {
+    "backdrop": "#0b0613",
+    "highlight": "#49f2ff",
+    "ink": "#fff2fd",
+    "line": "#4b3f4f",
+    "panel": "#231829",
+    "primary": "#ff7ce6"
+  },
+  "premise": "a neon-soaked heist game in a rain-slick megacity",
+  "slots": [
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "cyber/panel",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "cyber/card",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "cyber/field",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "cyber/slot",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "cyber/tooltip",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "cyber/hud",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleButton",
+      "name": "cyber/button",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleButton",
+      "name": "cyber/button-primary",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "ornament",
+      "name": "cyber/corner",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "ornament",
+      "name": "cyber/divider",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "ornament",
+      "name": "cyber/flourish",
+      "safe": null
+    },
+    {
+      "aspect": [
+        1,
+        1
+      ],
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "iconSet",
+      "name": "cyber/icons",
+      "safe": null
+    }
+  ],
+  "style": "cyber"
+}

@@ -1154,14 +1154,19 @@ fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
                 builtins.insert(id.to_string(), bytes);
             }
         }
-        // A game's own style may name the shared Chinese companions too.
+        // A game's own style may name the built-in packs' fonts and icons
+        // (a generated one does) and the shared Chinese companions too.
         if ext(rel) == "ogt"
             && let Ok(text) = std::fs::read_to_string(path)
             && Document::parse(&text).is_ok_and(|d| d.ty == og_ui::style_file::STYLE_TYPE)
-            && look::shows_chinese(assets_dir)
         {
-            for (id, bytes) in look::companion_files(&text) {
+            for (id, bytes) in look::shared_files(&text) {
                 builtins.insert(id.to_string(), bytes);
+            }
+            if look::shows_chinese(assets_dir) {
+                for (id, bytes) in look::companion_files(&text) {
+                    builtins.insert(id.to_string(), bytes);
+                }
             }
         }
     }
