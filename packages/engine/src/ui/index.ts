@@ -13,6 +13,7 @@ import { keyValueRows, statCompare } from "./data/rows.ts";
 import { calendar } from "./data/calendar.ts";
 import { foundations } from "./foundations/index.ts";
 import { controls } from "./controls/index.ts";
+import { patterns } from "./patterns/index.ts";
 
 export const components = Object.freeze({
   card,
@@ -42,4 +43,5 @@ export const components = Object.freeze({
   calendar,
   ...foundations,
   ...controls,
+  ...patterns,
 });

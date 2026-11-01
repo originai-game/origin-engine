@@ -160,7 +160,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2003 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2016 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -548,6 +548,7 @@ Field units the docs and Tune use.
 | [`GraphNodeState`](ui.md#type-GraphNodeState) | enum | ui | — |
 | [`GridDesc`](ui.md#type-GridDesc) | desc struct | ui | — |
 | [`GridFlow`](ui.md#type-GridFlow) | enum | ui | — |
+| [`GridItem`](ui.md#type-GridItem) | desc struct | ui | — |
 | [`GridPlace`](ui.md#type-GridPlace) | desc struct | ui | — |
 | [`GridSpec`](ui.md#type-GridSpec) | desc struct | ui | — |
 | [`GroundDesc`](ui.md#type-GroundDesc) | desc struct | ui | — |
@@ -602,8 +603,13 @@ Field units the docs and Tune use.
 | [`Insets`](ui.md#type-Insets) | struct | ui | — |
 | [`InstantSpec`](ui.md#type-InstantSpec) | struct | ui | — |
 | [`InteractionPromptDesc`](ui.md#type-InteractionPromptDesc) | desc struct | ui | — |
+| [`InventoryCarry`](ui.md#type-InventoryCarry) | struct | ui | — |
 | [`InventoryDesc`](ui.md#type-InventoryDesc) | desc struct | ui | — |
+| [`InventoryGridDesc`](ui.md#type-InventoryGridDesc) | desc struct | ui | — |
+| [`InventoryGridResult`](ui.md#type-InventoryGridResult) | struct | ui | — |
 | [`InventoryItem`](ui.md#type-InventoryItem) | desc struct | ui | — |
+| [`InventoryMove`](ui.md#type-InventoryMove) | struct | ui | — |
+| [`InventoryPick`](ui.md#type-InventoryPick) | desc struct | ui | — |
 | [`InventoryResult`](ui.md#type-InventoryResult) | struct | ui | — |
 | [`JOINT_BALL`](physics.md#const-JOINT_BALL) | constant | physics | — |
 | [`JOINT_FIXED`](physics.md#const-JOINT_FIXED) | constant | physics | — |
@@ -1299,6 +1305,7 @@ Field units the docs and Tune use.
 | [`og.ui.inputArea`](ui.md#fn-inputArea) | function | ui | — |
 | [`og.ui.inputField`](ui.md#fn-inputField) | function | ui | — |
 | [`og.ui.interactionPrompt`](ui.md#fn-interactionPrompt) | function | ui | — |
+| [`og.ui.inventoryGrid`](ui.md#fn-inventoryGrid) | function | ui | — |
 | [`og.ui.inventoryScreen`](ui.md#fn-inventoryScreen) | function | ui | — |
 | [`og.ui.joystick`](ui.md#fn-joystick) | function | ui | `og_ui_joystick` |
 | [`og.ui.judgement`](ui.md#fn-judgement) | function | ui | — |
@@ -1352,6 +1359,7 @@ Field units the docs and Tune use.
 | [`og.ui.overlaps`](ui.md#fn-overlaps) | function | ui | `og_ui_overlaps` |
 | [`og.ui.pagination`](ui.md#fn-pagination) | function | ui | — |
 | [`og.ui.panel`](ui.md#fn-panel) | function | ui | — |
+| [`og.ui.paperdoll`](ui.md#fn-paperdoll) | function | ui | — |
 | [`og.ui.particles`](ui.md#fn-particles) | function | ui | `og_ui_particles` |
 | [`og.ui.partyFrames`](ui.md#fn-partyFrames) | function | ui | — |
 | [`og.ui.pathLine`](ui.md#fn-pathLine) | function | ui | — |
@@ -1490,6 +1498,11 @@ Field units the docs and Tune use.
 | [`PanelInfo`](ui.md#type-PanelInfo) | struct | ui | — |
 | [`PanningModel`](audio.md#type-PanningModel) | enum | audio | — |
 | [`PanningModel()`](audio.md#column-PanningModel) | column kind | audio | — |
+| [`PaperdollDesc`](ui.md#type-PaperdollDesc) | desc struct | ui | — |
+| [`PaperdollEquip`](ui.md#type-PaperdollEquip) | struct | ui | — |
+| [`PaperdollResult`](ui.md#type-PaperdollResult) | struct | ui | — |
+| [`PaperdollSlot`](ui.md#type-PaperdollSlot) | desc struct | ui | — |
+| [`PaperdollStat`](ui.md#type-PaperdollStat) | desc struct | ui | — |
 | [`ParticleEmitter`](render.md#type-ParticleEmitter) | handle | render | — |
 | [`ParticleEmitter()`](render.md#column-ParticleEmitter) | column kind | render | — |
 | [`PARTICLES_ARMED`](render.md#const-PARTICLES_ARMED) | constant | render | — |

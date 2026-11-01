@@ -4030,6 +4030,244 @@ module ui {
     returns KeyboardResult
   }
 
+  # ── the component library: genre patterns ──────────────────────────────
+  # (docs/ui.md §11 and Appendix D; TypeScript over the calls above, in
+  # packages/engine/src/ui/patterns). Each pattern draws named parts a
+  # style dresses (`Inventory.item[rarity=epic][lifted]`), takes its
+  # viewmodel as a desc and answers what the player did for the game to
+  # apply, works with the pointer, a finger, keys and a pad, declares its
+  # state groups (§7.3, forced with `ui:state:<path>.<group>=<state>`), moves
+  # on the style's springs, plays its sounds and names its role. Every word
+  # it shows is the game's (its labels are desc fields).
+
+  struct GridItem {
+    doc "An item of an inventory grid or a paperdoll slot, as the game's viewmodel holds it."
+    desc true
+    field key String "Its key, stable while it lives: its element id (letters, digits, - and _), so its probe path is <id>/Cells/<key>."
+    field name String "What it is called: a screen reader's name and the tooltip's title."
+    field icon String "An icon of the style's set drawn on it; empty draws its art, else its kind's silhouette."
+    field image Option.Texture "Its art (art kind item: 1×1, 1×2, 2×3, 2×4 cells), covering its cells and turning with it."
+    field x u32 "Its column from the start edge, 0 first."
+    field y u32 "Its row from the top, 0 first."
+    field w u32 "Columns it covers lying unturned." {
+      default 1
+      min 1
+    }
+    field h u32 "Rows it covers lying unturned." {
+      default 1
+      min 1
+    }
+    field rotated bool "It lies turned a quarter: it covers h columns and w rows, and its art turns with it."
+    field count u32 "How many are in its stack: shown from 2, or from 1 when it stacks."
+    field maxStack u32 "The most its stack holds; 0 and 1 do not stack."
+    field rarity Rarity "Its tier: the tile's wash, its edge and its pips."
+    field tag String "What kind of thing it is (helmet, ring, potion): a paperdoll slot takes the tags it lists, and InventoryGridDesc.highlight lights every item of one."
+    field locked bool "It cannot be moved (a quest item, a bound one): a lock in its corner, and a drag or a pick-up of it shakes and is refused."
+    field fresh bool "Picked up since the player last looked: a dot in its corner (the game clears it on InventoryGridResult.hovered)."
+    field equipped bool "Worn or slotted elsewhere: a tick in its corner."
+    field unusable bool "The player cannot use it (a class it does not fit, a level too high): a danger wash, and said so to a screen reader."
+    field charge Option.f32 "Durability or charge, 0 to 1: a thin bar along its foot, danger under a quarter." {
+      unit ratio
+    }
+  }
+
+  struct InventoryCarry {
+    doc "An item in the player's hand: dragged by the pointer or a finger, or picked up with confirm and moved with keys or a pad. A grid or paperdoll reports the one it holds; pass it to the others on the screen (their desc's carry) so the places that take it light up and a release over them lands it."
+    field key String "The item."
+    field source String "The id of the grid or paperdoll it was picked up from."
+    field slot String "The paperdoll slot it was picked up from; empty when from a grid."
+    field tag String "Its tag."
+    field w u32 "Columns it covers as carried (turned when rotated)."
+    field h u32 "Rows it covers as carried."
+    field rotated bool "It is carried turned."
+    field count u32 "How many are carried: its whole stack, or the part split from it."
+    field x f32 "The pointer's x (for keys and pads, the centre of the place the focus is on)." {
+      unit cssPx
+    }
+    field y f32 "The pointer's y." {
+      unit cssPx
+    }
+    field byFocus bool "Keys or a pad carry it: it lands where confirm is pressed, not where the pointer lets go."
+    field released bool "The pointer let it go this tick at x and y, outside the place that holds it: the grid or paperdoll under that point takes it (it is in no one's hand from the next tick)."
+  }
+
+  struct InventoryPick {
+    doc "The game puts an item (or part of a stack) in the player's hand: after its own menu's Split 10, Take one, or a transfer it wants carried."
+    desc true
+    field key String "The item."
+    field count u32 "How many to carry; 0 is the whole stack."
+  }
+
+  struct InventoryMove {
+    doc "A move the player made: apply it to the viewmodel (the item is drawn where the viewmodel says, so it stays where it was until you do)."
+    field key String "The item moved."
+    field from String "The id of the grid or paperdoll it came from (this grid's own id for a move inside it)."
+    field fromSlot String "The paperdoll slot it came from; empty when from a grid."
+    field x u32 "Its new column."
+    field y u32 "Its new row."
+    field rotated bool "It now lies turned."
+    field count u32 "How many moved: the whole stack, or the part split from it (leave the rest where it was, and give the moved part a new key)."
+    field split bool "Part of a stack moved."
+    field mergeInto Option.String "It was dropped on a stack of the same tag with room: add count to that stack (up to its maxStack) instead of placing it; what does not fit stays where it came from."
+    field swapWith Option.String "It was dropped on one item it trades places with: that item goes where this one came from."
+  }
+
+  struct InventoryGridDesc {
+    doc "A grid inventory (a backpack, a stash, a chest): items of several cells, rotation, stacks and splitting, quick transfer between containers."
+    desc true
+    field columns u32 "Its columns." {
+      default 10
+      min 1
+    }
+    field rows u32 "Its rows." {
+      default 6
+      min 1
+    }
+    field items List.GridItem "The items, each at its cell."
+    field cellSize f32 "A cell's side; 0 is 52 on a desktop and 48 on touch. Cells never go below 44 on a coarse pointer: a grid wider than its room scrolls." {
+      unit cssPx
+      min 0
+    }
+    field capacity u32 "Cells past this many, in reading order, are locked (a bag not yet bought): drawn with a lock, taking nothing; 0 is every cell."
+    field selected String "The selected item's key: ringed in the focus ink (a details panel beside shows it)."
+    field highlight String "A tag whose items are lit and the others dimmed (what a slot or a recipe takes); empty lights none."
+    field carry Option.InventoryCarry "An item carried from another grid or a paperdoll: its footprint shows where it would land under the pointer (or the focus), and a release or confirm there answers move with its from."
+    field pick Option.InventoryPick "Put an item, or part of a stack, in the player's hand this tick (pass it once)."
+    field label String "What a screen reader calls the grid (Backpack); it is also said with the cells used."
+    field emptyLabel String "What a screen reader calls an empty cell." {
+      default "Empty"
+    }
+    field lockedLabel String "What it calls a locked cell, and a locked item's state." {
+      default "Locked"
+    }
+    field unusableLabel String "What it says of an item the player cannot use." {
+      default "Cannot use"
+    }
+    field rotateLabel String "The touch button that turns the carried item." {
+      default "Rotate"
+    }
+  }
+
+  struct InventoryGridResult {
+    doc "What an inventory grid answered this tick."
+    field selected Option.String "The item pressed (a tap, a click, confirm on it while nothing is carried and it cannot be picked up): select it."
+    field used Option.String "The item used: a double press or a double tap (drink the potion, equip the sword)."
+    field menu Option.String "The item whose actions were asked for: a long press, or the details action (X, a pad's Y) on the focused item. Open its menu at menuAt (og.ui.contextMenu): split, drop, use."
+    field menuAt Vector2 "Where that menu opens: the long press's point, or the focused item's corner." {
+      unit cssPx
+    }
+    field quick Option.String "The item to send to the other container at once (quick transfer): a press with Shift held, or the details action held."
+    field move Option.InventoryMove "A move to apply: an item placed, turned, merged, swapped or split, or one carried in from elsewhere."
+    field carried Option.InventoryCarry "The item in the player's hand from this grid while it is carried (and on the tick it is let go outside the grid, with released): pass it to the paperdoll and the other grids on the screen."
+    field hovered Option.String "The item under the pointer or the focus: show its tooltip beside hoveredRect (og.ui.tooltipCard, og.ui.popover)."
+    field hoveredRect Option.UiRect "Where that item is on screen."
+    field refused bool "A drop or a pick-up was refused this tick (no room, a locked cell or item): the place shook red and the error sound played."
+  }
+
+  fn inventoryGrid {
+    doc "A grid inventory (Diablo, Path of Exile, Escape from Tarkov, Resident Evil): items covering several cells, drawn on wells in their tier's colour with pips, a count on stacks, a lock, a fresh dot, an equipped tick and a charge bar. The pointer or a finger drags an item (Shift splits half a stack off), its footprint lit success where it fits, primary where it merges or swaps, danger where it cannot; R (a pad's X, a touch button) turns it a quarter while carried; a release outside lands it on the paperdoll or grid under the pointer. Keys and a pad move the focus cell by cell; confirm picks the focused item up, the footprint follows the focus, confirm places it and Back puts it back. A long press or the details action asks for the item's menu; a double press uses it; Shift and a press, or the details action held, sends it to the other container."
+    doc "Parts: Inventory.grid, Inventory.cell[empty|locked|target], Inventory.item[rarity=<tier>][selected][lifted][locked][unusable][dim], Inventory.art, Inventory.count, Inventory.charge, Inventory.footprint[valid|merge|swap|invalid], Inventory.ghost, Inventory.rotate. Slots: each item's image (art kind item, its cells' aspect). States: on each item, group selection (off, on), carry (resting, lifted) and highlight (normal, lit, dim); on the footprint, group drop (valid, merge, swap, invalid). Motion: the carried item lifts on the ui spring, items that move without a drag slide to their new cells (layout motion), a refused drop shakes. Sounds: select on a pick-up, confirm on a placing, error on a refusal, cancel when Back puts it back. Accessibility: a grid named by label and the cells used; items are gridcells named by their name, count, tier and states; empty cells too. Probe ids: <id>/Cells/<key>, <id>/Cells/Cell#<index>, <id>/Cells/Footprint, <id>/Ghost."
+    host false
+    param id String "Its id."
+    param desc InventoryGridDesc "The grid, its items and what is carried in."
+    returns InventoryGridResult
+  }
+
+  struct PaperdollSlot {
+    doc "An equipment slot around the paperdoll's figure."
+    desc true
+    field key String "The slot's id (head, chest, mainHand): its element id."
+    field label String "Its name (Head): said by a screen reader, and shown under an empty slot on a desktop."
+    field accept List.String "The item tags it takes; empty takes any."
+    field item Option.GridItem "What is worn there; null is empty (its w and h are not read: the item fills the slot)."
+    field x f32 "Where its centre sits across the doll's box, 0 its start edge to 1 its end." {
+      default 0.5
+      unit ratio
+    }
+    field y f32 "Where its centre sits down the box, 0 the top to 1 the foot." {
+      default 0.5
+      unit ratio
+    }
+    field size f32 "Its side; 0 is 64 on a desktop, 56 on a phone." {
+      unit cssPx
+      min 0
+    }
+    field aspect f32 "Its width over its height (a two-handed weapon's tall slot is 0.5); 0 is square." {
+      min 0
+    }
+    field icon String "The empty slot's silhouette, an icon of the style's set; empty draws the slot's initial."
+    field locked bool "Not open yet: a lock, taking nothing."
+    field lockedHint String "Why it is locked (Unlocks at level 20)."
+  }
+
+  struct PaperdollStat {
+    doc "A line of the paperdoll's stats, with the change the carried or hovered item would make."
+    desc true
+    field label String "What it is (Armor)."
+    field value String "Its value as shown (1,240)."
+    field delta f32 "The change the compared item makes: positive is better, drawn with an up mark in success; negative with a down mark in danger; 0 shows none."
+    field deltaText String "The change as shown (+48); empty writes delta."
+    field lowerIsBetter bool "A smaller value is better (a cooldown): flips the marks' meaning."
+  }
+
+  struct PaperdollEquip {
+    doc "An item the player put in a slot."
+    field slot String "The slot."
+    field key String "The item."
+    field from String "The id of the grid (or this paperdoll) it came from."
+    field fromSlot String "The slot it came from when moved between slots."
+    field swapped Option.String "The item that was in the slot: it goes where the new one came from."
+  }
+
+  struct PaperdollDesc {
+    doc "A paperdoll: equipment slots around the character's figure, and its stats."
+    desc true
+    field slots List.PaperdollSlot "The slots, each placed around the figure."
+    field title String "The character's name over the figure; empty is none."
+    field subtitle String "A line under it (Level 42 Paladin); empty is none."
+    field rating String "A headline number (812); empty is none."
+    field ratingLabel String "What it is (Item power)."
+    field stats List.PaperdollStat "The stats beside the figure (under it on a phone in portrait)."
+    field statsTitle String "The stats' heading (Attributes); empty is none."
+    field stack bool "The stats go under the figure, not beside it (a screen that puts the grids beside the doll); a phone in portrait always stacks them."
+    field carry Option.InventoryCarry "An item carried from a grid: the slots that take its tag light up and the others dim; a release or confirm over one answers equip."
+    field compare bool "The stats' deltas are shown (the game sets them from the carried or hovered item)."
+    field selected String "The selected slot's key: ringed in the focus ink."
+    field figureAspect f32 "The figure's box, width over height; 0 is 0.62 (a standing character)." {
+      min 0
+    }
+    field emptyLabel String "What a screen reader adds for an empty slot." {
+      default "Empty"
+    }
+    field lockedLabel String "What it adds for a locked slot." {
+      default "Locked"
+    }
+    field width Option.Size "Its width; null grows."
+  }
+
+  struct PaperdollResult {
+    doc "What a paperdoll answered this tick."
+    field equip Option.PaperdollEquip "An item placed in a slot: apply it."
+    field selected Option.String "The slot pressed while nothing is carried."
+    field used Option.String "The slot double pressed (take the item off at once)."
+    field carried Option.InventoryCarry "The item dragged out of a slot (or picked up with confirm) while it is carried, and on the tick it is let go outside with released: pass it to the grids."
+    field hovered Option.String "The slot under the pointer or the focus: show its item's tooltip beside hoveredRect."
+    field hoveredRect Option.UiRect "Where that slot is on screen."
+    field refused bool "The carried item was refused this tick (a slot that does not take its tag, a locked slot): the slot shook and the error sound played."
+  }
+
+  fn paperdoll {
+    doc "A paperdoll (Diablo, Baldur's Gate 3, World of Warcraft, Genshin's artifacts): the figure the game builds, framed in a well, with equipment slots placed around it by fractions of its box, each an item tile or an empty slot's silhouette and name; the character's name, a headline rating and the stats with the deltas of the item being compared beside it (under it on a phone in portrait). A carried item lights the slots that take its tag and dims the rest; dropping it there, or confirm on the slot with keys or a pad, equips it. An item is dragged out of its slot as from a grid."
+    doc "Parts: Paperdoll.frame, Paperdoll.figure, Paperdoll.slot[empty|filled][accepts|rejects][locked][selected], Paperdoll.slotLabel, Paperdoll.rating, Paperdoll.stats, Paperdoll.stat, Paperdoll.delta[up|down]. Slots: the figure (built by the game: art kind character, a sceneViewport turntable); each worn item's image (art kind item). States: on each slot, group fill (empty, filled), target (none, accepts, rejects) and selection (off, on). Sounds: confirm on equip, error on a refusal. Accessibility: a group named by title; each slot a button named by its label and its item (or empty, locked); stats are text with their changes said. Probe ids: <id>/Doll/Slots/<slot key>, <id>/Doll/Figure, <id>/Stats/Stat#<i>."
+    host false
+    param id String "Its id."
+    param desc PaperdollDesc "The slots, the stats and what is carried."
+    param figure UiBuild "Builds the figure in its box (an art slot, a viewport)."
+    returns PaperdollResult
+  }
+
+  # ── end of the genre patterns ────────────────────────────────────────
+
   # ── the UI kit: screen templates (TypeScript over the calls above) ──────
 
   callback UiAction {

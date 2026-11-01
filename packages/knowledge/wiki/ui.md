@@ -390,6 +390,19 @@ module ui {
 | [`KeyboardDesc`](#type-KeyboardDesc) | desc struct | An on-screen keyboard: what it edits and how it types. |
 | [`KeyboardResult`](#type-KeyboardResult) | struct | What an on-screen keyboard did this tick. |
 | [`og.ui.onScreenKeyboard`](#fn-onScreenKeyboard) | function | An on-screen keyboard for pads and touch (docs/ui.md §11, Appendix D: search and names with a pad): a panel at the screen's bottom with the text being typed and its caret, a candidate bar while composing, and keys a pad walks with focus wrapping by rows (Y erases, LB and RB move the caret, Back closes) and a finger presses (a key pops its letter above the finger on a press). Letters (shift for one, double tap for caps), symbols, a number pad and the Japanese kana table, with composition for an IME: typed kana (or letters with compose) stay underlined in KeyboardResult.composition until a candidate (the game's, plus the katakana) or Enter commits them. Plays press, select and back sounds. Parts: `Keyboard.panel`, `Keyboard.key[wide][action][active][primary][hover\|pressed\|focused\|disabled]` (primary: the enter key; disabled: a gap in the kana table), `Keyboard.preview`, `Keyboard.candidates`, `Keyboard.candidate[hover\|pressed\|focused]`, `Keyboard.popup`. A dialog named by its title; keys are buttons named by what they type. Probe: `<id>/Panel/Content/Keys/Row#r/Key#k`, `<id>/Panel/Content/Preview`, `<id>/Panel/Content/Candidates/Candidate#i`. |
+| [`GridItem`](#type-GridItem) | desc struct | An item of an inventory grid or a paperdoll slot, as the game's viewmodel holds it. |
+| [`InventoryCarry`](#type-InventoryCarry) | struct | An item in the player's hand: dragged by the pointer or a finger, or picked up with confirm and moved with keys or a pad. A grid or paperdoll reports the one it holds; pass it to the others on the screen (their desc's carry) so the places that take it light up and a release over them lands it. |
+| [`InventoryPick`](#type-InventoryPick) | desc struct | The game puts an item (or part of a stack) in the player's hand: after its own menu's Split 10, Take one, or a transfer it wants carried. |
+| [`InventoryMove`](#type-InventoryMove) | struct | A move the player made: apply it to the viewmodel (the item is drawn where the viewmodel says, so it stays where it was until you do). |
+| [`InventoryGridDesc`](#type-InventoryGridDesc) | desc struct | A grid inventory (a backpack, a stash, a chest): items of several cells, rotation, stacks and splitting, quick transfer between containers. |
+| [`InventoryGridResult`](#type-InventoryGridResult) | struct | What an inventory grid answered this tick. |
+| [`og.ui.inventoryGrid`](#fn-inventoryGrid) | function | A grid inventory (Diablo, Path of Exile, Escape from Tarkov, Resident Evil): items covering several cells, drawn on wells in their tier's colour with pips, a count on stacks, a lock, a fresh dot, an equipped tick and a charge bar. The pointer or a finger drags an item (Shift splits half a stack off), its footprint lit success where it fits, primary where it merges or swaps, danger where it cannot; R (a pad's X, a touch button) turns it a quarter while carried; a release outside lands it on the paperdoll or grid under the pointer. Keys and a pad move the focus cell by cell; confirm picks the focused item up, the footprint follows the focus, confirm places it and Back puts it back. A long press or the details action asks for the item's menu; a double press uses it; Shift and a press, or the details action held, sends it to the other container. |
+| [`PaperdollSlot`](#type-PaperdollSlot) | desc struct | An equipment slot around the paperdoll's figure. |
+| [`PaperdollStat`](#type-PaperdollStat) | desc struct | A line of the paperdoll's stats, with the change the carried or hovered item would make. |
+| [`PaperdollEquip`](#type-PaperdollEquip) | struct | An item the player put in a slot. |
+| [`PaperdollDesc`](#type-PaperdollDesc) | desc struct | A paperdoll: equipment slots around the character's figure, and its stats. |
+| [`PaperdollResult`](#type-PaperdollResult) | struct | What a paperdoll answered this tick. |
+| [`og.ui.paperdoll`](#fn-paperdoll) | function | A paperdoll (Diablo, Baldur's Gate 3, World of Warcraft, Genshin's artifacts): the figure the game builds, framed in a well, with equipment slots placed around it by fractions of its box, each an item tile or an empty slot's silhouette and name; the character's name, a headline rating and the stats with the deltas of the item being compared beside it (under it on a phone in portrait). A carried item lights the slots that take its tag and dims the rest; dropping it there, or confirm on the slot with keys or a pad, equips it. An item is dragged out of its slot as from a grid. |
 | [`UiAction`](#type-UiAction) | callback | A template's action, by its id (a menu item, `buy:<item>`, `share`). |
 | [`SettingsChanged`](#type-SettingsChanged) | callback | The settings after a change: persist them (cloud save, local storage through the shell) and apply them. |
 | [`MenuItem`](#type-MenuItem) | desc struct | An item of a menu: an id the game acts on and the label a player reads. |
@@ -5146,6 +5159,76 @@ fn onScreenKeyboard {
 
 <sub>`api.ogt` line 17190</sub>
 
+<a id="fn-inventoryGrid"></a>
+
+### `og.ui.inventoryGrid`
+
+A grid inventory (Diablo, Path of Exile, Escape from Tarkov, Resident Evil): items covering several cells, drawn on wells in their tier's colour with pips, a count on stacks, a lock, a fresh dot, an equipped tick and a charge bar. The pointer or a finger drags an item (Shift splits half a stack off), its footprint lit success where it fits, primary where it merges or swaps, danger where it cannot; R (a pad's X, a touch button) turns it a quarter while carried; a release outside lands it on the paperdoll or grid under the pointer. Keys and a pad move the focus cell by cell; confirm picks the focused item up, the footprint follows the focus, confirm places it and Back puts it back. A long press or the details action asks for the item's menu; a double press uses it; Shift and a press, or the details action held, sends it to the other container.
+
+Parts: Inventory.grid, Inventory.cell[empty|locked|target], Inventory.item[rarity=<tier>][selected][lifted][locked][unusable][dim], Inventory.art, Inventory.count, Inventory.charge, Inventory.footprint[valid|merge|swap|invalid], Inventory.ghost, Inventory.rotate. Slots: each item's image (art kind item, its cells' aspect). States: on each item, group selection (off, on), carry (resting, lifted) and highlight (normal, lit, dim); on the footprint, group drop (valid, merge, swap, invalid). Motion: the carried item lifts on the ui spring, items that move without a drag slide to their new cells (layout motion), a refused drop shakes. Sounds: select on a pick-up, confirm on a placing, error on a refusal, cancel when Back puts it back. Accessibility: a grid named by label and the cells used; items are gridcells named by their name, count, tier and states; empty cells too. Probe ids: <id>/Cells/<key>, <id>/Cells/Cell#<index>, <id>/Cells/Footprint, <id>/Ghost.
+
+```ts
+og.ui.inventoryGrid(id: string, desc?: InventoryGridDesc): InventoryGridResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `InventoryGridDesc` | yes | The grid, its items and what is carried in. |
+
+**Returns** `InventoryGridResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn inventoryGrid {
+  doc "A grid inventory (Diablo, Path of Exile, Escape from Tarkov, Resident Evil): items covering several cells, drawn on wells in their tier's colour with pips, a count on stacks, a lock, a fresh dot, an equipped tick and a charge bar. The pointer or a finger drags an item (Shift splits half a stack off), its footprint lit success where it fits, primary where it merges or swaps, danger where it cannot; R (a pad's X, a touch button) turns it a quarter while carried; a release outside lands it on the paperdoll or grid under the pointer. Keys and a pad move the focus cell by cell; confirm picks the focused item up, the footprint follows the focus, confirm places it and Back puts it back. A long press or the details action asks for the item's menu; a double press uses it; Shift and a press, or the details action held, sends it to the other container."
+  doc "Parts: Inventory.grid, Inventory.cell[empty|locked|target], Inventory.item[rarity=<tier>][selected][lifted][locked][unusable][dim], Inventory.art, Inventory.count, Inventory.charge, Inventory.footprint[valid|merge|swap|invalid], Inventory.ghost, Inventory.rotate. Slots: each item's image (art kind item, its cells' aspect). States: on each item, group selection (off, on), carry (resting, lifted) and highlight (normal, lit, dim); on the footprint, group drop (valid, merge, swap, invalid). Motion: the carried item lifts on the ui spring, items that move without a drag slide to their new cells (layout motion), a refused drop shakes. Sounds: select on a pick-up, confirm on a placing, error on a refusal, cancel when Back puts it back. Accessibility: a grid named by label and the cells used; items are gridcells named by their name, count, tier and states; empty cells too. Probe ids: <id>/Cells/<key>, <id>/Cells/Cell#<index>, <id>/Cells/Footprint, <id>/Ghost."
+  host false
+  param id String "Its id."
+  param desc InventoryGridDesc "The grid, its items and what is carried in."
+  returns InventoryGridResult
+}
+```
+
+<sub>`api.ogt` line 17333</sub>
+
+<a id="fn-paperdoll"></a>
+
+### `og.ui.paperdoll`
+
+A paperdoll (Diablo, Baldur's Gate 3, World of Warcraft, Genshin's artifacts): the figure the game builds, framed in a well, with equipment slots placed around it by fractions of its box, each an item tile or an empty slot's silhouette and name; the character's name, a headline rating and the stats with the deltas of the item being compared beside it (under it on a phone in portrait). A carried item lights the slots that take its tag and dims the rest; dropping it there, or confirm on the slot with keys or a pad, equips it. An item is dragged out of its slot as from a grid.
+
+Parts: Paperdoll.frame, Paperdoll.figure, Paperdoll.slot[empty|filled][accepts|rejects][locked][selected], Paperdoll.slotLabel, Paperdoll.rating, Paperdoll.stats, Paperdoll.stat, Paperdoll.delta[up|down]. Slots: the figure (built by the game: art kind character, a sceneViewport turntable); each worn item's image (art kind item). States: on each slot, group fill (empty, filled), target (none, accepts, rejects) and selection (off, on). Sounds: confirm on equip, error on a refusal. Accessibility: a group named by title; each slot a button named by its label and its item (or empty, locked); stats are text with their changes said. Probe ids: <id>/Doll/Slots/<slot key>, <id>/Doll/Figure, <id>/Stats/Stat#<i>.
+
+```ts
+og.ui.paperdoll(id: string, desc: PaperdollDesc, figure: UiBuild): PaperdollResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `PaperdollDesc` | no | The slots, the stats and what is carried. |
+| `figure` | `UiBuild` | no | Builds the figure in its box (an art slot, a viewport). |
+
+**Returns** `PaperdollResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn paperdoll {
+  doc "A paperdoll (Diablo, Baldur's Gate 3, World of Warcraft, Genshin's artifacts): the figure the game builds, framed in a well, with equipment slots placed around it by fractions of its box, each an item tile or an empty slot's silhouette and name; the character's name, a headline rating and the stats with the deltas of the item being compared beside it (under it on a phone in portrait). A carried item lights the slots that take its tag and dims the rest; dropping it there, or confirm on the slot with keys or a pad, equips it. An item is dragged out of its slot as from a grid."
+  doc "Parts: Paperdoll.frame, Paperdoll.figure, Paperdoll.slot[empty|filled][accepts|rejects][locked][selected], Paperdoll.slotLabel, Paperdoll.rating, Paperdoll.stats, Paperdoll.stat, Paperdoll.delta[up|down]. Slots: the figure (built by the game: art kind character, a sceneViewport turntable); each worn item's image (art kind item). States: on each slot, group fill (empty, filled), target (none, accepts, rejects) and selection (off, on). Sounds: confirm on equip, error on a refusal. Accessibility: a group named by title; each slot a button named by its label and its item (or empty, locked); stats are text with their changes said. Probe ids: <id>/Doll/Slots/<slot key>, <id>/Doll/Figure, <id>/Stats/Stat#<i>."
+  host false
+  param id String "Its id."
+  param desc PaperdollDesc "The slots, the stats and what is carried."
+  param figure UiBuild "Builds the figure in its box (an art slot, a viewport)."
+  returns PaperdollResult
+}
+```
+
+<sub>`api.ogt` line 17425</sub>
+
 <a id="fn-mainMenu"></a>
 
 ### `og.ui.mainMenu`
@@ -5175,7 +5258,7 @@ fn mainMenu {
 }
 ```
 
-<sub>`api.ogt` line 17972</sub>
+<sub>`api.ogt` line 18210</sub>
 
 <a id="fn-pauseMenu"></a>
 
@@ -5206,7 +5289,7 @@ fn pauseMenu {
 }
 ```
 
-<sub>`api.ogt` line 17980</sub>
+<sub>`api.ogt` line 18218</sub>
 
 <a id="fn-settingsScreen"></a>
 
@@ -5237,7 +5320,7 @@ fn settingsScreen {
 }
 ```
 
-<sub>`api.ogt` line 17988</sub>
+<sub>`api.ogt` line 18226</sub>
 
 <a id="fn-platformerHud"></a>
 
@@ -5268,7 +5351,7 @@ fn platformerHud {
 }
 ```
 
-<sub>`api.ogt` line 17996</sub>
+<sub>`api.ogt` line 18234</sub>
 
 <a id="fn-shooterHud"></a>
 
@@ -5299,7 +5382,7 @@ fn shooterHud {
 }
 ```
 
-<sub>`api.ogt` line 18004</sub>
+<sub>`api.ogt` line 18242</sub>
 
 <a id="fn-puzzleHud"></a>
 
@@ -5330,7 +5413,7 @@ fn puzzleHud {
 }
 ```
 
-<sub>`api.ogt` line 18012</sub>
+<sub>`api.ogt` line 18250</sub>
 
 <a id="fn-idleHud"></a>
 
@@ -5361,7 +5444,7 @@ fn idleHud {
 }
 ```
 
-<sub>`api.ogt` line 18020</sub>
+<sub>`api.ogt` line 18258</sub>
 
 <a id="fn-racingHud"></a>
 
@@ -5392,7 +5475,7 @@ fn racingHud {
 }
 ```
 
-<sub>`api.ogt` line 18028</sub>
+<sub>`api.ogt` line 18266</sub>
 
 <a id="fn-cutscene"></a>
 
@@ -5423,7 +5506,7 @@ fn cutscene {
 }
 ```
 
-<sub>`api.ogt` line 18036</sub>
+<sub>`api.ogt` line 18274</sub>
 
 <a id="fn-shopScreen"></a>
 
@@ -5454,7 +5537,7 @@ fn shopScreen {
 }
 ```
 
-<sub>`api.ogt` line 18044</sub>
+<sub>`api.ogt` line 18282</sub>
 
 <a id="fn-inventoryScreen"></a>
 
@@ -5485,7 +5568,7 @@ fn inventoryScreen {
 }
 ```
 
-<sub>`api.ogt` line 18052</sub>
+<sub>`api.ogt` line 18290</sub>
 
 <a id="fn-levelSelect"></a>
 
@@ -5516,7 +5599,7 @@ fn levelSelect {
 }
 ```
 
-<sub>`api.ogt` line 18060</sub>
+<sub>`api.ogt` line 18298</sub>
 
 <a id="fn-resultsScreen"></a>
 
@@ -5547,7 +5630,7 @@ fn resultsScreen {
 }
 ```
 
-<sub>`api.ogt` line 18068</sub>
+<sub>`api.ogt` line 18306</sub>
 
 <a id="fn-leaderboardScreen"></a>
 
@@ -5578,7 +5661,7 @@ fn leaderboardScreen {
 }
 ```
 
-<sub>`api.ogt` line 18076</sub>
+<sub>`api.ogt` line 18314</sub>
 
 <a id="fn-tutorialOverlay"></a>
 
@@ -5609,7 +5692,7 @@ fn tutorialOverlay {
 }
 ```
 
-<sub>`api.ogt` line 18084</sub>
+<sub>`api.ogt` line 18322</sub>
 
 <a id="fn-loadingScreen"></a>
 
@@ -5640,7 +5723,7 @@ fn loadingScreen {
 }
 ```
 
-<sub>`api.ogt` line 18092</sub>
+<sub>`api.ogt` line 18330</sub>
 
 <a id="fn-confirmDialog"></a>
 
@@ -5671,7 +5754,7 @@ fn confirmDialog {
 }
 ```
 
-<sub>`api.ogt` line 18100</sub>
+<sub>`api.ogt` line 18338</sub>
 
 <a id="fn-alertDialog"></a>
 
@@ -5702,7 +5785,7 @@ fn alertDialog {
 }
 ```
 
-<sub>`api.ogt` line 18108</sub>
+<sub>`api.ogt` line 18346</sub>
 
 <a id="fn-props"></a>
 
@@ -5730,7 +5813,7 @@ fn props {
 }
 ```
 
-<sub>`api.ogt` line 18778</sub>
+<sub>`api.ogt` line 19016</sub>
 
 <a id="fn-defineTimeline"></a>
 
@@ -5760,7 +5843,7 @@ fn defineTimeline {
 }
 ```
 
-<sub>`api.ogt` line 18784</sub>
+<sub>`api.ogt` line 19022</sub>
 
 <a id="fn-play"></a>
 
@@ -5792,7 +5875,7 @@ fn play {
 }
 ```
 
-<sub>`api.ogt` line 18791</sub>
+<sub>`api.ogt` line 19029</sub>
 
 <a id="fn-playTimeline"></a>
 
@@ -5824,7 +5907,7 @@ fn playTimeline {
 }
 ```
 
-<sub>`api.ogt` line 18799</sub>
+<sub>`api.ogt` line 19037</sub>
 
 <a id="fn-seek"></a>
 
@@ -5854,7 +5937,7 @@ fn seek {
 }
 ```
 
-<sub>`api.ogt` line 18807</sub>
+<sub>`api.ogt` line 19045</sub>
 
 <a id="fn-pause"></a>
 
@@ -5882,7 +5965,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 18814</sub>
+<sub>`api.ogt` line 19052</sub>
 
 <a id="fn-resume"></a>
 
@@ -5910,7 +5993,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 18820</sub>
+<sub>`api.ogt` line 19058</sub>
 
 <a id="fn-reverse"></a>
 
@@ -5938,7 +6021,7 @@ fn reverse {
 }
 ```
 
-<sub>`api.ogt` line 18826</sub>
+<sub>`api.ogt` line 19064</sub>
 
 <a id="fn-stop"></a>
 
@@ -5966,7 +6049,7 @@ fn stop {
 }
 ```
 
-<sub>`api.ogt` line 18832</sub>
+<sub>`api.ogt` line 19070</sub>
 
 <a id="fn-playInfo"></a>
 
@@ -5994,7 +6077,7 @@ fn playInfo {
 }
 ```
 
-<sub>`api.ogt` line 18838</sub>
+<sub>`api.ogt` line 19076</sub>
 
 <a id="fn-forceState"></a>
 
@@ -6026,7 +6109,7 @@ fn forceState {
 }
 ```
 
-<sub>`api.ogt` line 18844</sub>
+<sub>`api.ogt` line 19082</sub>
 
 <a id="fn-openPath"></a>
 
@@ -6049,7 +6132,7 @@ fn openPath {
 }
 ```
 
-<sub>`api.ogt` line 18852</sub>
+<sub>`api.ogt` line 19090</sub>
 
 <a id="fn-visualState"></a>
 
@@ -6079,7 +6162,7 @@ fn visualState {
 }
 ```
 
-<sub>`api.ogt` line 18857</sub>
+<sub>`api.ogt` line 19095</sub>
 
 <a id="fn-animate"></a>
 
@@ -6111,7 +6194,7 @@ fn animate {
 }
 ```
 
-<sub>`api.ogt` line 18864</sub>
+<sub>`api.ogt` line 19102</sub>
 
 <a id="fn-gesture"></a>
 
@@ -6139,7 +6222,7 @@ fn gesture {
 }
 ```
 
-<sub>`api.ogt` line 18872</sub>
+<sub>`api.ogt` line 19110</sub>
 
 <a id="fn-motionEvents"></a>
 
@@ -6162,7 +6245,7 @@ fn motionEvents {
 }
 ```
 
-<sub>`api.ogt` line 18878</sub>
+<sub>`api.ogt` line 19116</sub>
 
 <a id="fn-overlaps"></a>
 
@@ -6185,7 +6268,7 @@ fn overlaps {
 }
 ```
 
-<sub>`api.ogt` line 18883</sub>
+<sub>`api.ogt` line 19121</sub>
 
 <a id="fn-layoutStats"></a>
 
@@ -6208,7 +6291,7 @@ fn layoutStats {
 }
 ```
 
-<sub>`api.ogt` line 18888</sub>
+<sub>`api.ogt` line 19126</sub>
 
 <a id="fn-notifications"></a>
 
@@ -6245,7 +6328,7 @@ fn notifications {
 }
 ```
 
-<sub>`api.ogt` line 18973</sub>
+<sub>`api.ogt` line 19211</sub>
 
 <a id="fn-countBadge"></a>
 
@@ -6279,7 +6362,7 @@ fn countBadge {
 }
 ```
 
-<sub>`api.ogt` line 19009</sub>
+<sub>`api.ogt` line 19247</sub>
 
 <a id="fn-tooltipCard"></a>
 
@@ -6313,7 +6396,7 @@ fn tooltipCard {
 }
 ```
 
-<sub>`api.ogt` line 19084</sub>
+<sub>`api.ogt` line 19322</sub>
 
 <a id="fn-progressBar"></a>
 
@@ -6347,7 +6430,7 @@ fn progressBar {
 }
 ```
 
-<sub>`api.ogt` line 19129</sub>
+<sub>`api.ogt` line 19367</sub>
 
 <a id="fn-progressRing"></a>
 
@@ -6381,7 +6464,7 @@ fn progressRing {
 }
 ```
 
-<sub>`api.ogt` line 19157</sub>
+<sub>`api.ogt` line 19395</sub>
 
 <a id="fn-skeletonGroup"></a>
 
@@ -6415,7 +6498,7 @@ fn skeletonGroup {
 }
 ```
 
-<sub>`api.ogt` line 19191</sub>
+<sub>`api.ogt` line 19429</sub>
 
 <a id="fn-formatNumber"></a>
 
@@ -6446,7 +6529,7 @@ fn formatNumber {
 }
 ```
 
-<sub>`api.ogt` line 19226</sub>
+<sub>`api.ogt` line 19464</sub>
 
 <a id="fn-numberCounter"></a>
 
@@ -6482,7 +6565,7 @@ fn numberCounter {
 }
 ```
 
-<sub>`api.ogt` line 19260</sub>
+<sub>`api.ogt` line 19498</sub>
 
 <a id="fn-banner"></a>
 
@@ -6516,7 +6599,7 @@ fn banner {
 }
 ```
 
-<sub>`api.ogt` line 19306</sub>
+<sub>`api.ogt` line 19544</sub>
 
 <a id="fn-ribbon"></a>
 
@@ -6550,7 +6633,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 19329</sub>
+<sub>`api.ogt` line 19567</sub>
 
 <a id="fn-celebration"></a>
 
@@ -6584,7 +6667,7 @@ fn celebration {
 }
 ```
 
-<sub>`api.ogt` line 19367</sub>
+<sub>`api.ogt` line 19605</sub>
 
 <a id="fn-starRating"></a>
 
@@ -6618,7 +6701,7 @@ fn starRating {
 }
 ```
 
-<sub>`api.ogt` line 19395</sub>
+<sub>`api.ogt` line 19633</sub>
 
 <a id="fn-subtitles"></a>
 
@@ -6652,7 +6735,7 @@ fn subtitles {
 }
 ```
 
-<sub>`api.ogt` line 19463</sub>
+<sub>`api.ogt` line 19701</sub>
 
 <a id="fn-statBar"></a>
 
@@ -6686,7 +6769,7 @@ fn statBar {
 }
 ```
 
-<sub>`api.ogt` line 19548</sub>
+<sub>`api.ogt` line 19786</sub>
 
 <a id="fn-orbMeter"></a>
 
@@ -6720,7 +6803,7 @@ fn orbMeter {
 }
 ```
 
-<sub>`api.ogt` line 19580</sub>
+<sub>`api.ogt` line 19818</sub>
 
 <a id="fn-radialMeter"></a>
 
@@ -6754,7 +6837,7 @@ fn radialMeter {
 }
 ```
 
-<sub>`api.ogt` line 19609</sub>
+<sub>`api.ogt` line 19847</sub>
 
 <a id="fn-abilitySlot"></a>
 
@@ -6788,7 +6871,7 @@ fn abilitySlot {
 }
 ```
 
-<sub>`api.ogt` line 19657</sub>
+<sub>`api.ogt` line 19895</sub>
 
 <a id="fn-abilityBar"></a>
 
@@ -6822,7 +6905,7 @@ fn abilityBar {
 }
 ```
 
-<sub>`api.ogt` line 19690</sub>
+<sub>`api.ogt` line 19928</sub>
 
 <a id="fn-statusGrid"></a>
 
@@ -6856,7 +6939,7 @@ fn statusGrid {
 }
 ```
 
-<sub>`api.ogt` line 19745</sub>
+<sub>`api.ogt` line 19983</sub>
 
 <a id="fn-unitFrame"></a>
 
@@ -6890,7 +6973,7 @@ fn unitFrame {
 }
 ```
 
-<sub>`api.ogt` line 19811</sub>
+<sub>`api.ogt` line 20049</sub>
 
 <a id="fn-partyFrames"></a>
 
@@ -6924,7 +7007,7 @@ fn partyFrames {
 }
 ```
 
-<sub>`api.ogt` line 19838</sub>
+<sub>`api.ogt` line 20076</sub>
 
 <a id="fn-raidFrames"></a>
 
@@ -6958,7 +7041,7 @@ fn raidFrames {
 }
 ```
 
-<sub>`api.ogt` line 19898</sub>
+<sub>`api.ogt` line 20136</sub>
 
 <a id="fn-castBar"></a>
 
@@ -6992,7 +7075,7 @@ fn castBar {
 }
 ```
 
-<sub>`api.ogt` line 19945</sub>
+<sub>`api.ogt` line 20183</sub>
 
 <a id="fn-crosshair"></a>
 
@@ -7026,7 +7109,7 @@ fn crosshair {
 }
 ```
 
-<sub>`api.ogt` line 20003</sub>
+<sub>`api.ogt` line 20241</sub>
 
 <a id="fn-ammoCounter"></a>
 
@@ -7060,7 +7143,7 @@ fn ammoCounter {
 }
 ```
 
-<sub>`api.ogt` line 20040</sub>
+<sub>`api.ogt` line 20278</sub>
 
 <a id="fn-minimapView"></a>
 
@@ -7094,7 +7177,7 @@ fn minimapView {
 }
 ```
 
-<sub>`api.ogt` line 20126</sub>
+<sub>`api.ogt` line 20364</sub>
 
 <a id="fn-compass"></a>
 
@@ -7128,7 +7211,7 @@ fn compass {
 }
 ```
 
-<sub>`api.ogt` line 20175</sub>
+<sub>`api.ogt` line 20413</sub>
 
 <a id="fn-objectiveTracker"></a>
 
@@ -7162,7 +7245,7 @@ fn objectiveTracker {
 }
 ```
 
-<sub>`api.ogt` line 20237</sub>
+<sub>`api.ogt` line 20475</sub>
 
 <a id="fn-killfeed"></a>
 
@@ -7196,7 +7279,7 @@ fn killfeed {
 }
 ```
 
-<sub>`api.ogt` line 20276</sub>
+<sub>`api.ogt` line 20514</sub>
 
 <a id="fn-scoreboard"></a>
 
@@ -7230,7 +7313,7 @@ fn scoreboard {
 }
 ```
 
-<sub>`api.ogt` line 20335</sub>
+<sub>`api.ogt` line 20573</sub>
 
 <a id="fn-hudTimer"></a>
 
@@ -7264,7 +7347,7 @@ fn hudTimer {
 }
 ```
 
-<sub>`api.ogt` line 20375</sub>
+<sub>`api.ogt` line 20613</sub>
 
 <a id="fn-comboCounter"></a>
 
@@ -7298,7 +7381,7 @@ fn comboCounter {
 }
 ```
 
-<sub>`api.ogt` line 20402</sub>
+<sub>`api.ogt` line 20640</sub>
 
 <a id="fn-judgement"></a>
 
@@ -7332,7 +7415,7 @@ fn judgement {
 }
 ```
 
-<sub>`api.ogt` line 20440</sub>
+<sub>`api.ogt` line 20678</sub>
 
 <a id="fn-resourceBar"></a>
 
@@ -7366,7 +7449,7 @@ fn resourceBar {
 }
 ```
 
-<sub>`api.ogt` line 20476</sub>
+<sub>`api.ogt` line 20714</sub>
 
 <a id="fn-turnOrder"></a>
 
@@ -7400,7 +7483,7 @@ fn turnOrder {
 }
 ```
 
-<sub>`api.ogt` line 20520</sub>
+<sub>`api.ogt` line 20758</sub>
 
 <a id="fn-speedometer"></a>
 
@@ -7434,7 +7517,7 @@ fn speedometer {
 }
 ```
 
-<sub>`api.ogt` line 20566</sub>
+<sub>`api.ogt` line 20804</sub>
 
 <a id="fn-scorebug"></a>
 
@@ -7468,7 +7551,7 @@ fn scorebug {
 }
 ```
 
-<sub>`api.ogt` line 20601</sub>
+<sub>`api.ogt` line 20839</sub>
 
 <a id="fn-flightHud"></a>
 
@@ -7502,7 +7585,7 @@ fn flightHud {
 }
 ```
 
-<sub>`api.ogt` line 20647</sub>
+<sub>`api.ogt` line 20885</sub>
 
 <a id="fn-damageDirection"></a>
 
@@ -7536,7 +7619,7 @@ fn damageDirection {
 }
 ```
 
-<sub>`api.ogt` line 20684</sub>
+<sub>`api.ogt` line 20922</sub>
 
 <a id="fn-lowHealthVignette"></a>
 
@@ -7570,7 +7653,7 @@ fn lowHealthVignette {
 }
 ```
 
-<sub>`api.ogt` line 20707</sub>
+<sub>`api.ogt` line 20945</sub>
 
 <a id="fn-nameplate"></a>
 
@@ -7604,7 +7687,7 @@ fn nameplate {
 }
 ```
 
-<sub>`api.ogt` line 20769</sub>
+<sub>`api.ogt` line 21007</sub>
 
 <a id="fn-overheadBars"></a>
 
@@ -7638,7 +7721,7 @@ fn overheadBars {
 }
 ```
 
-<sub>`api.ogt` line 20810</sub>
+<sub>`api.ogt` line 21048</sub>
 
 <a id="fn-damageNumbers"></a>
 
@@ -7672,7 +7755,7 @@ fn damageNumbers {
 }
 ```
 
-<sub>`api.ogt` line 20859</sub>
+<sub>`api.ogt` line 21097</sub>
 
 <a id="fn-interactionPrompt"></a>
 
@@ -7708,7 +7791,7 @@ fn interactionPrompt {
 }
 ```
 
-<sub>`api.ogt` line 20890</sub>
+<sub>`api.ogt` line 21128</sub>
 
 <a id="fn-waypoint"></a>
 
@@ -7742,7 +7825,7 @@ fn waypoint {
 }
 ```
 
-<sub>`api.ogt` line 20938</sub>
+<sub>`api.ogt` line 21176</sub>
 
 <a id="fn-selectionRing"></a>
 
@@ -7778,7 +7861,7 @@ fn selectionRing {
 }
 ```
 
-<sub>`api.ogt` line 20992</sub>
+<sub>`api.ogt` line 21230</sub>
 
 <a id="fn-telegraph"></a>
 
@@ -7814,7 +7897,7 @@ fn telegraph {
 }
 ```
 
-<sub>`api.ogt` line 21046</sub>
+<sub>`api.ogt` line 21284</sub>
 
 <a id="fn-pathLine"></a>
 
@@ -7850,7 +7933,7 @@ fn pathLine {
 }
 ```
 
-<sub>`api.ogt` line 21077</sub>
+<sub>`api.ogt` line 21315</sub>
 
 <a id="fn-placementGhost"></a>
 
@@ -7886,7 +7969,7 @@ fn placementGhost {
 }
 ```
 
-<sub>`api.ogt` line 21118</sub>
+<sub>`api.ogt` line 21356</sub>
 
 <a id="fn-lootLabel"></a>
 
@@ -7920,7 +8003,7 @@ fn lootLabel {
 }
 ```
 
-<sub>`api.ogt` line 21156</sub>
+<sub>`api.ogt` line 21394</sub>
 
 <a id="fn-speechBubble"></a>
 
@@ -7954,7 +8037,7 @@ fn speechBubble {
 }
 ```
 
-<sub>`api.ogt` line 21193</sub>
+<sub>`api.ogt` line 21431</sub>
 
 <a id="fn-semantics"></a>
 
@@ -7982,7 +8065,7 @@ fn semantics {
 }
 ```
 
-<sub>`api.ogt` line 21669</sub>
+<sub>`api.ogt` line 21907</sub>
 
 <a id="fn-setDraw"></a>
 
@@ -8010,7 +8093,7 @@ fn setDraw {
 }
 ```
 
-<sub>`api.ogt` line 21675</sub>
+<sub>`api.ogt` line 21913</sub>
 
 <a id="fn-openWorldAnchor"></a>
 
@@ -8040,7 +8123,7 @@ fn openWorldAnchor {
 }
 ```
 
-<sub>`api.ogt` line 21806</sub>
+<sub>`api.ogt` line 22044</sub>
 
 <a id="fn-openWorldPanel"></a>
 
@@ -8070,7 +8153,7 @@ fn openWorldPanel {
 }
 ```
 
-<sub>`api.ogt` line 21861</sub>
+<sub>`api.ogt` line 22099</sub>
 
 <a id="fn-defineMass"></a>
 
@@ -8100,7 +8183,7 @@ fn defineMass {
 }
 ```
 
-<sub>`api.ogt` line 22006</sub>
+<sub>`api.ogt` line 22244</sub>
 
 <a id="fn-spawnMass"></a>
 
@@ -8130,7 +8213,7 @@ fn spawnMass {
 }
 ```
 
-<sub>`api.ogt` line 22013</sub>
+<sub>`api.ogt` line 22251</sub>
 
 <a id="fn-pushMass"></a>
 
@@ -8160,7 +8243,7 @@ fn pushMass {
 }
 ```
 
-<sub>`api.ogt` line 22020</sub>
+<sub>`api.ogt` line 22258</sub>
 
 <a id="fn-massCount"></a>
 
@@ -8188,7 +8271,7 @@ fn massCount {
 }
 ```
 
-<sub>`api.ogt` line 22027</sub>
+<sub>`api.ogt` line 22265</sub>
 
 <a id="fn-particles"></a>
 
@@ -8216,7 +8299,7 @@ fn particles {
 }
 ```
 
-<sub>`api.ogt` line 22100</sub>
+<sub>`api.ogt` line 22338</sub>
 
 <a id="fn-meta"></a>
 
@@ -8246,7 +8329,7 @@ fn meta {
 }
 ```
 
-<sub>`api.ogt` line 22150</sub>
+<sub>`api.ogt` line 22388</sub>
 
 <a id="fn-sceneViewport"></a>
 
@@ -8276,7 +8359,7 @@ fn sceneViewport {
 }
 ```
 
-<sub>`api.ogt` line 22201</sub>
+<sub>`api.ogt` line 22439</sub>
 
 <a id="fn-screen"></a>
 
@@ -8308,7 +8391,7 @@ fn screen {
 }
 ```
 
-<sub>`api.ogt` line 22291</sub>
+<sub>`api.ogt` line 22529</sub>
 
 <a id="fn-component"></a>
 
@@ -8342,7 +8425,7 @@ fn component {
 }
 ```
 
-<sub>`api.ogt` line 22300</sub>
+<sub>`api.ogt` line 22538</sub>
 
 <a id="fn-openSlot"></a>
 
@@ -8370,7 +8453,7 @@ fn openSlot {
 }
 ```
 
-<sub>`api.ogt` line 22310</sub>
+<sub>`api.ogt` line 22548</sub>
 
 <a id="fn-push"></a>
 
@@ -8404,7 +8487,7 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 22316</sub>
+<sub>`api.ogt` line 22554</sub>
 
 <a id="fn-pop"></a>
 
@@ -8432,7 +8515,7 @@ fn pop {
 }
 ```
 
-<sub>`api.ogt` line 22326</sub>
+<sub>`api.ogt` line 22564</sub>
 
 <a id="fn-replace"></a>
 
@@ -8466,7 +8549,7 @@ fn replace {
 }
 ```
 
-<sub>`api.ogt` line 22332</sub>
+<sub>`api.ogt` line 22570</sub>
 
 <a id="fn-clear"></a>
 
@@ -8494,7 +8577,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 22342</sub>
+<sub>`api.ogt` line 22580</sub>
 
 <a id="fn-layers"></a>
 
@@ -8522,7 +8605,7 @@ fn layers {
 }
 ```
 
-<sub>`api.ogt` line 22348</sub>
+<sub>`api.ogt` line 22586</sub>
 
 <a id="fn-screenVm"></a>
 
@@ -8552,7 +8635,7 @@ fn screenVm {
 }
 ```
 
-<sub>`api.ogt` line 22354</sub>
+<sub>`api.ogt` line 22592</sub>
 
 <a id="fn-docEvents"></a>
 
@@ -8580,7 +8663,7 @@ fn docEvents {
 }
 ```
 
-<sub>`api.ogt` line 22361</sub>
+<sub>`api.ogt` line 22599</sub>
 
 <a id="fn-gameInput"></a>
 
@@ -8608,7 +8691,7 @@ fn gameInput {
 }
 ```
 
-<sub>`api.ogt` line 22367</sub>
+<sub>`api.ogt` line 22605</sub>
 
 <a id="fn-paused"></a>
 
@@ -8636,7 +8719,7 @@ fn paused {
 }
 ```
 
-<sub>`api.ogt` line 22373</sub>
+<sub>`api.ogt` line 22611</sub>
 
 <a id="fn-defineAction"></a>
 
@@ -8666,7 +8749,7 @@ fn defineAction {
 }
 ```
 
-<sub>`api.ogt` line 22379</sub>
+<sub>`api.ogt` line 22617</sub>
 
 <a id="fn-action"></a>
 
@@ -8694,7 +8777,7 @@ fn action {
 }
 ```
 
-<sub>`api.ogt` line 22386</sub>
+<sub>`api.ogt` line 22624</sub>
 
 <a id="fn-actionHeld"></a>
 
@@ -8722,7 +8805,7 @@ fn actionHeld {
 }
 ```
 
-<sub>`api.ogt` line 22392</sub>
+<sub>`api.ogt` line 22630</sub>
 
 <a id="fn-glyph"></a>
 
@@ -8752,7 +8835,7 @@ fn glyph {
 }
 ```
 
-<sub>`api.ogt` line 22398</sub>
+<sub>`api.ogt` line 22636</sub>
 
 <a id="fn-frameGlyph"></a>
 
@@ -8780,7 +8863,7 @@ fn frameGlyph {
 }
 ```
 
-<sub>`api.ogt` line 22405</sub>
+<sub>`api.ogt` line 22643</sub>
 
 <a id="fn-device"></a>
 
@@ -8808,7 +8891,7 @@ fn device {
 }
 ```
 
-<sub>`api.ogt` line 22411</sub>
+<sub>`api.ogt` line 22649</sub>
 
 <a id="fn-setDevice"></a>
 
@@ -8838,7 +8921,7 @@ fn setDevice {
 }
 ```
 
-<sub>`api.ogt` line 22417</sub>
+<sub>`api.ogt` line 22655</sub>
 
 <a id="fn-actionBar"></a>
 
@@ -8866,7 +8949,7 @@ fn actionBar {
 }
 ```
 
-<sub>`api.ogt` line 22424</sub>
+<sub>`api.ogt` line 22662</sub>
 
 <a id="fn-documentSchema"></a>
 
@@ -8889,7 +8972,7 @@ fn documentSchema {
 }
 ```
 
-<sub>`api.ogt` line 22430</sub>
+<sub>`api.ogt` line 22668</sub>
 
 <a id="fn-setProp"></a>
 
@@ -8923,7 +9006,7 @@ fn setProp {
 }
 ```
 
-<sub>`api.ogt` line 22435</sub>
+<sub>`api.ogt` line 22673</sub>
 
 <a id="fn-saveEdits"></a>
 
@@ -8951,7 +9034,7 @@ fn saveEdits {
 }
 ```
 
-<sub>`api.ogt` line 22444</sub>
+<sub>`api.ogt` line 22682</sub>
 
 ## Types
 
@@ -16489,6 +16572,477 @@ struct KeyboardResult {
 
 <sub>`api.ogt` line 17180</sub>
 
+<a id="type-GridItem"></a>
+
+### `GridItem` (desc struct)
+
+An item of an inventory grid or a paperdoll slot, as the game's viewmodel holds it.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `key` | `string` | `""` | — | — | — | Its key, stable while it lives: its element id (letters, digits, - and _), so its probe path is <id>/Cells/<key>. |
+| `name` | `string` | `""` | — | — | — | What it is called: a screen reader's name and the tooltip's title. |
+| `icon` | `string` | `""` | — | — | — | An icon of the style's set drawn on it; empty draws its art, else its kind's silhouette. |
+| `image` | `Texture \| null` | `null` | — | — | — | Its art (art kind item: 1×1, 1×2, 2×3, 2×4 cells), covering its cells and turning with it. |
+| `x` | `number` | `0` | — | — | — | Its column from the start edge, 0 first. |
+| `y` | `number` | `0` | — | — | — | Its row from the top, 0 first. |
+| `w` | `number` | `1` | ≥ 1 | — | — | Columns it covers lying unturned. |
+| `h` | `number` | `1` | ≥ 1 | — | — | Rows it covers lying unturned. |
+| `rotated` | `boolean` | `false` | — | — | — | It lies turned a quarter: it covers h columns and w rows, and its art turns with it. |
+| `count` | `number` | `0` | — | — | — | How many are in its stack: shown from 2, or from 1 when it stacks. |
+| `maxStack` | `number` | `0` | — | — | — | The most its stack holds; 0 and 1 do not stack. |
+| `rarity` | `Rarity` | `"none"` | — | — | — | Its tier: the tile's wash, its edge and its pips. |
+| `tag` | `string` | `""` | — | — | — | What kind of thing it is (helmet, ring, potion): a paperdoll slot takes the tags it lists, and InventoryGridDesc.highlight lights every item of one. |
+| `locked` | `boolean` | `false` | — | — | — | It cannot be moved (a quest item, a bound one): a lock in its corner, and a drag or a pick-up of it shakes and is refused. |
+| `fresh` | `boolean` | `false` | — | — | — | Picked up since the player last looked: a dot in its corner (the game clears it on InventoryGridResult.hovered). |
+| `equipped` | `boolean` | `false` | — | — | — | Worn or slotted elsewhere: a tick in its corner. |
+| `unusable` | `boolean` | `false` | — | — | — | The player cannot use it (a class it does not fit, a level too high): a danger wash, and said so to a screen reader. |
+| `charge` | `number \| null` | `null` | — | `ratio` | — | Durability or charge, 0 to 1: a thin bar along its foot, danger under a quarter. |
+
+```ogt
+struct GridItem {
+  doc "An item of an inventory grid or a paperdoll slot, as the game's viewmodel holds it."
+  desc true
+  field key String "Its key, stable while it lives: its element id (letters, digits, - and _), so its probe path is <id>/Cells/<key>."
+  field name String "What it is called: a screen reader's name and the tooltip's title."
+  field icon String "An icon of the style's set drawn on it; empty draws its art, else its kind's silhouette."
+  field image Option.Texture "Its art (art kind item: 1×1, 1×2, 2×3, 2×4 cells), covering its cells and turning with it."
+  field x u32 "Its column from the start edge, 0 first."
+  field y u32 "Its row from the top, 0 first."
+  field w u32 "Columns it covers lying unturned." {
+    default 1
+    min 1
+  }
+  field h u32 "Rows it covers lying unturned." {
+    default 1
+    min 1
+  }
+  field rotated bool "It lies turned a quarter: it covers h columns and w rows, and its art turns with it."
+  field count u32 "How many are in its stack: shown from 2, or from 1 when it stacks."
+  field maxStack u32 "The most its stack holds; 0 and 1 do not stack."
+  field rarity Rarity "Its tier: the tile's wash, its edge and its pips."
+  field tag String "What kind of thing it is (helmet, ring, potion): a paperdoll slot takes the tags it lists, and InventoryGridDesc.highlight lights every item of one."
+  field locked bool "It cannot be moved (a quest item, a bound one): a lock in its corner, and a drag or a pick-up of it shakes and is refused."
+  field fresh bool "Picked up since the player last looked: a dot in its corner (the game clears it on InventoryGridResult.hovered)."
+  field equipped bool "Worn or slotted elsewhere: a tick in its corner."
+  field unusable bool "The player cannot use it (a class it does not fit, a level too high): a danger wash, and said so to a screen reader."
+  field charge Option.f32 "Durability or charge, 0 to 1: a thin bar along its foot, danger under a quarter." {
+    unit ratio
+  }
+}
+```
+
+<sub>`api.ogt` line 17209</sub>
+
+<a id="type-InventoryCarry"></a>
+
+### `InventoryCarry` (struct)
+
+An item in the player's hand: dragged by the pointer or a finger, or picked up with confirm and moved with keys or a pad. A grid or paperdoll reports the one it holds; pass it to the others on the screen (their desc's carry) so the places that take it light up and a release over them lands it.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `key` | `string` | `""` | — | — | — | The item. |
+| `source` | `string` | `""` | — | — | — | The id of the grid or paperdoll it was picked up from. |
+| `slot` | `string` | `""` | — | — | — | The paperdoll slot it was picked up from; empty when from a grid. |
+| `tag` | `string` | `""` | — | — | — | Its tag. |
+| `w` | `number` | `0` | — | — | — | Columns it covers as carried (turned when rotated). |
+| `h` | `number` | `0` | — | — | — | Rows it covers as carried. |
+| `rotated` | `boolean` | `false` | — | — | — | It is carried turned. |
+| `count` | `number` | `0` | — | — | — | How many are carried: its whole stack, or the part split from it. |
+| `x` | `number` | `0` | — | `cssPx` | — | The pointer's x (for keys and pads, the centre of the place the focus is on). |
+| `y` | `number` | `0` | — | `cssPx` | — | The pointer's y. |
+| `byFocus` | `boolean` | `false` | — | — | — | Keys or a pad carry it: it lands where confirm is pressed, not where the pointer lets go. |
+| `released` | `boolean` | `false` | — | — | — | The pointer let it go this tick at x and y, outside the place that holds it: the grid or paperdoll under that point takes it (it is in no one's hand from the next tick). |
+
+```ogt
+struct InventoryCarry {
+  doc "An item in the player's hand: dragged by the pointer or a finger, or picked up with confirm and moved with keys or a pad. A grid or paperdoll reports the one it holds; pass it to the others on the screen (their desc's carry) so the places that take it light up and a release over them lands it."
+  field key String "The item."
+  field source String "The id of the grid or paperdoll it was picked up from."
+  field slot String "The paperdoll slot it was picked up from; empty when from a grid."
+  field tag String "Its tag."
+  field w u32 "Columns it covers as carried (turned when rotated)."
+  field h u32 "Rows it covers as carried."
+  field rotated bool "It is carried turned."
+  field count u32 "How many are carried: its whole stack, or the part split from it."
+  field x f32 "The pointer's x (for keys and pads, the centre of the place the focus is on)." {
+    unit cssPx
+  }
+  field y f32 "The pointer's y." {
+    unit cssPx
+  }
+  field byFocus bool "Keys or a pad carry it: it lands where confirm is pressed, not where the pointer lets go."
+  field released bool "The pointer let it go this tick at x and y, outside the place that holds it: the grid or paperdoll under that point takes it (it is in no one's hand from the next tick)."
+}
+```
+
+<sub>`api.ogt` line 17240</sub>
+
+<a id="type-InventoryPick"></a>
+
+### `InventoryPick` (desc struct)
+
+The game puts an item (or part of a stack) in the player's hand: after its own menu's Split 10, Take one, or a transfer it wants carried.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `key` | `string` | `""` | — | — | — | The item. |
+| `count` | `number` | `0` | — | — | — | How many to carry; 0 is the whole stack. |
+
+```ogt
+struct InventoryPick {
+  doc "The game puts an item (or part of a stack) in the player's hand: after its own menu's Split 10, Take one, or a transfer it wants carried."
+  desc true
+  field key String "The item."
+  field count u32 "How many to carry; 0 is the whole stack."
+}
+```
+
+<sub>`api.ogt` line 17260</sub>
+
+<a id="type-InventoryMove"></a>
+
+### `InventoryMove` (struct)
+
+A move the player made: apply it to the viewmodel (the item is drawn where the viewmodel says, so it stays where it was until you do).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `key` | `string` | `""` | — | — | — | The item moved. |
+| `from` | `string` | `""` | — | — | — | The id of the grid or paperdoll it came from (this grid's own id for a move inside it). |
+| `fromSlot` | `string` | `""` | — | — | — | The paperdoll slot it came from; empty when from a grid. |
+| `x` | `number` | `0` | — | — | — | Its new column. |
+| `y` | `number` | `0` | — | — | — | Its new row. |
+| `rotated` | `boolean` | `false` | — | — | — | It now lies turned. |
+| `count` | `number` | `0` | — | — | — | How many moved: the whole stack, or the part split from it (leave the rest where it was, and give the moved part a new key). |
+| `split` | `boolean` | `false` | — | — | — | Part of a stack moved. |
+| `mergeInto` | `string \| null` | `null` | — | — | — | It was dropped on a stack of the same tag with room: add count to that stack (up to its maxStack) instead of placing it; what does not fit stays where it came from. |
+| `swapWith` | `string \| null` | `null` | — | — | — | It was dropped on one item it trades places with: that item goes where this one came from. |
+
+```ogt
+struct InventoryMove {
+  doc "A move the player made: apply it to the viewmodel (the item is drawn where the viewmodel says, so it stays where it was until you do)."
+  field key String "The item moved."
+  field from String "The id of the grid or paperdoll it came from (this grid's own id for a move inside it)."
+  field fromSlot String "The paperdoll slot it came from; empty when from a grid."
+  field x u32 "Its new column."
+  field y u32 "Its new row."
+  field rotated bool "It now lies turned."
+  field count u32 "How many moved: the whole stack, or the part split from it (leave the rest where it was, and give the moved part a new key)."
+  field split bool "Part of a stack moved."
+  field mergeInto Option.String "It was dropped on a stack of the same tag with room: add count to that stack (up to its maxStack) instead of placing it; what does not fit stays where it came from."
+  field swapWith Option.String "It was dropped on one item it trades places with: that item goes where this one came from."
+}
+```
+
+<sub>`api.ogt` line 17267</sub>
+
+<a id="type-InventoryGridDesc"></a>
+
+### `InventoryGridDesc` (desc struct)
+
+A grid inventory (a backpack, a stash, a chest): items of several cells, rotation, stacks and splitting, quick transfer between containers.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `columns` | `number` | `10` | ≥ 1 | — | — | Its columns. |
+| `rows` | `number` | `6` | ≥ 1 | — | — | Its rows. |
+| `items` | `readonly GridItem[]` | `[]` | — | — | — | The items, each at its cell. |
+| `cellSize` | `number` | `0` | ≥ 0 | `cssPx` | — | A cell's side; 0 is 52 on a desktop and 48 on touch. Cells never go below 44 on a coarse pointer: a grid wider than its room scrolls. |
+| `capacity` | `number` | `0` | — | — | — | Cells past this many, in reading order, are locked (a bag not yet bought): drawn with a lock, taking nothing; 0 is every cell. |
+| `selected` | `string` | `""` | — | — | — | The selected item's key: ringed in the focus ink (a details panel beside shows it). |
+| `highlight` | `string` | `""` | — | — | — | A tag whose items are lit and the others dimmed (what a slot or a recipe takes); empty lights none. |
+| `carry` | `InventoryCarry \| null` | `null` | — | — | — | An item carried from another grid or a paperdoll: its footprint shows where it would land under the pointer (or the focus), and a release or confirm there answers move with its from. |
+| `pick` | `InventoryPick \| null` | `null` | — | — | — | Put an item, or part of a stack, in the player's hand this tick (pass it once). |
+| `label` | `string` | `""` | — | — | — | What a screen reader calls the grid (Backpack); it is also said with the cells used. |
+| `emptyLabel` | `string` | `"Empty"` | — | — | — | What a screen reader calls an empty cell. |
+| `lockedLabel` | `string` | `"Locked"` | — | — | — | What it calls a locked cell, and a locked item's state. |
+| `unusableLabel` | `string` | `"Cannot use"` | — | — | — | What it says of an item the player cannot use. |
+| `rotateLabel` | `string` | `"Rotate"` | — | — | — | The touch button that turns the carried item. |
+
+```ogt
+struct InventoryGridDesc {
+  doc "A grid inventory (a backpack, a stash, a chest): items of several cells, rotation, stacks and splitting, quick transfer between containers."
+  desc true
+  field columns u32 "Its columns." {
+    default 10
+    min 1
+  }
+  field rows u32 "Its rows." {
+    default 6
+    min 1
+  }
+  field items List.GridItem "The items, each at its cell."
+  field cellSize f32 "A cell's side; 0 is 52 on a desktop and 48 on touch. Cells never go below 44 on a coarse pointer: a grid wider than its room scrolls." {
+    unit cssPx
+    min 0
+  }
+  field capacity u32 "Cells past this many, in reading order, are locked (a bag not yet bought): drawn with a lock, taking nothing; 0 is every cell."
+  field selected String "The selected item's key: ringed in the focus ink (a details panel beside shows it)."
+  field highlight String "A tag whose items are lit and the others dimmed (what a slot or a recipe takes); empty lights none."
+  field carry Option.InventoryCarry "An item carried from another grid or a paperdoll: its footprint shows where it would land under the pointer (or the focus), and a release or confirm there answers move with its from."
+  field pick Option.InventoryPick "Put an item, or part of a stack, in the player's hand this tick (pass it once)."
+  field label String "What a screen reader calls the grid (Backpack); it is also said with the cells used."
+  field emptyLabel String "What a screen reader calls an empty cell." {
+    default "Empty"
+  }
+  field lockedLabel String "What it calls a locked cell, and a locked item's state." {
+    default "Locked"
+  }
+  field unusableLabel String "What it says of an item the player cannot use." {
+    default "Cannot use"
+  }
+  field rotateLabel String "The touch button that turns the carried item." {
+    default "Rotate"
+  }
+}
+```
+
+<sub>`api.ogt` line 17281</sub>
+
+<a id="type-InventoryGridResult"></a>
+
+### `InventoryGridResult` (struct)
+
+What an inventory grid answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `selected` | `string \| null` | `null` | — | — | — | The item pressed (a tap, a click, confirm on it while nothing is carried and it cannot be picked up): select it. |
+| `used` | `string \| null` | `null` | — | — | — | The item used: a double press or a double tap (drink the potion, equip the sword). |
+| `menu` | `string \| null` | `null` | — | — | — | The item whose actions were asked for: a long press, or the details action (X, a pad's Y) on the focused item. Open its menu at menuAt (og.ui.contextMenu): split, drop, use. |
+| `menuAt` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | — | Where that menu opens: the long press's point, or the focused item's corner. |
+| `quick` | `string \| null` | `null` | — | — | — | The item to send to the other container at once (quick transfer): a press with Shift held, or the details action held. |
+| `move` | `InventoryMove \| null` | `null` | — | — | — | A move to apply: an item placed, turned, merged, swapped or split, or one carried in from elsewhere. |
+| `carried` | `InventoryCarry \| null` | `null` | — | — | — | The item in the player's hand from this grid while it is carried (and on the tick it is let go outside the grid, with released): pass it to the paperdoll and the other grids on the screen. |
+| `hovered` | `string \| null` | `null` | — | — | — | The item under the pointer or the focus: show its tooltip beside hoveredRect (og.ui.tooltipCard, og.ui.popover). |
+| `hoveredRect` | `UiRect \| null` | `null` | — | — | — | Where that item is on screen. |
+| `refused` | `boolean` | `false` | — | — | — | A drop or a pick-up was refused this tick (no room, a locked cell or item): the place shook red and the error sound played. |
+
+```ogt
+struct InventoryGridResult {
+  doc "What an inventory grid answered this tick."
+  field selected Option.String "The item pressed (a tap, a click, confirm on it while nothing is carried and it cannot be picked up): select it."
+  field used Option.String "The item used: a double press or a double tap (drink the potion, equip the sword)."
+  field menu Option.String "The item whose actions were asked for: a long press, or the details action (X, a pad's Y) on the focused item. Open its menu at menuAt (og.ui.contextMenu): split, drop, use."
+  field menuAt Vector2 "Where that menu opens: the long press's point, or the focused item's corner." {
+    unit cssPx
+  }
+  field quick Option.String "The item to send to the other container at once (quick transfer): a press with Shift held, or the details action held."
+  field move Option.InventoryMove "A move to apply: an item placed, turned, merged, swapped or split, or one carried in from elsewhere."
+  field carried Option.InventoryCarry "The item in the player's hand from this grid while it is carried (and on the tick it is let go outside the grid, with released): pass it to the paperdoll and the other grids on the screen."
+  field hovered Option.String "The item under the pointer or the focus: show its tooltip beside hoveredRect (og.ui.tooltipCard, og.ui.popover)."
+  field hoveredRect Option.UiRect "Where that item is on screen."
+  field refused bool "A drop or a pick-up was refused this tick (no room, a locked cell or item): the place shook red and the error sound played."
+}
+```
+
+<sub>`api.ogt` line 17317</sub>
+
+<a id="type-PaperdollSlot"></a>
+
+### `PaperdollSlot` (desc struct)
+
+An equipment slot around the paperdoll's figure.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `key` | `string` | `""` | — | — | — | The slot's id (head, chest, mainHand): its element id. |
+| `label` | `string` | `""` | — | — | — | Its name (Head): said by a screen reader, and shown under an empty slot on a desktop. |
+| `accept` | `readonly string[]` | `[]` | — | — | — | The item tags it takes; empty takes any. |
+| `item` | `GridItem \| null` | `null` | — | — | — | What is worn there; null is empty (its w and h are not read: the item fills the slot). |
+| `x` | `number` | `0.5` | — | `ratio` | — | Where its centre sits across the doll's box, 0 its start edge to 1 its end. |
+| `y` | `number` | `0.5` | — | `ratio` | — | Where its centre sits down the box, 0 the top to 1 the foot. |
+| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | Its side; 0 is 64 on a desktop, 56 on a phone. |
+| `aspect` | `number` | `0` | ≥ 0 | — | — | Its width over its height (a two-handed weapon's tall slot is 0.5); 0 is square. |
+| `icon` | `string` | `""` | — | — | — | The empty slot's silhouette, an icon of the style's set; empty draws the slot's initial. |
+| `locked` | `boolean` | `false` | — | — | — | Not open yet: a lock, taking nothing. |
+| `lockedHint` | `string` | `""` | — | — | — | Why it is locked (Unlocks at level 20). |
+
+```ogt
+struct PaperdollSlot {
+  doc "An equipment slot around the paperdoll's figure."
+  desc true
+  field key String "The slot's id (head, chest, mainHand): its element id."
+  field label String "Its name (Head): said by a screen reader, and shown under an empty slot on a desktop."
+  field accept List.String "The item tags it takes; empty takes any."
+  field item Option.GridItem "What is worn there; null is empty (its w and h are not read: the item fills the slot)."
+  field x f32 "Where its centre sits across the doll's box, 0 its start edge to 1 its end." {
+    default 0.5
+    unit ratio
+  }
+  field y f32 "Where its centre sits down the box, 0 the top to 1 the foot." {
+    default 0.5
+    unit ratio
+  }
+  field size f32 "Its side; 0 is 64 on a desktop, 56 on a phone." {
+    unit cssPx
+    min 0
+  }
+  field aspect f32 "Its width over its height (a two-handed weapon's tall slot is 0.5); 0 is square." {
+    min 0
+  }
+  field icon String "The empty slot's silhouette, an icon of the style's set; empty draws the slot's initial."
+  field locked bool "Not open yet: a lock, taking nothing."
+  field lockedHint String "Why it is locked (Unlocks at level 20)."
+}
+```
+
+<sub>`api.ogt` line 17342</sub>
+
+<a id="type-PaperdollStat"></a>
+
+### `PaperdollStat` (desc struct)
+
+A line of the paperdoll's stats, with the change the carried or hovered item would make.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `label` | `string` | `""` | — | — | — | What it is (Armor). |
+| `value` | `string` | `""` | — | — | — | Its value as shown (1,240). |
+| `delta` | `number` | `0` | — | — | — | The change the compared item makes: positive is better, drawn with an up mark in success; negative with a down mark in danger; 0 shows none. |
+| `deltaText` | `string` | `""` | — | — | — | The change as shown (+48); empty writes delta. |
+| `lowerIsBetter` | `boolean` | `false` | — | — | — | A smaller value is better (a cooldown): flips the marks' meaning. |
+
+```ogt
+struct PaperdollStat {
+  doc "A line of the paperdoll's stats, with the change the carried or hovered item would make."
+  desc true
+  field label String "What it is (Armor)."
+  field value String "Its value as shown (1,240)."
+  field delta f32 "The change the compared item makes: positive is better, drawn with an up mark in success; negative with a down mark in danger; 0 shows none."
+  field deltaText String "The change as shown (+48); empty writes delta."
+  field lowerIsBetter bool "A smaller value is better (a cooldown): flips the marks' meaning."
+}
+```
+
+<sub>`api.ogt` line 17369</sub>
+
+<a id="type-PaperdollEquip"></a>
+
+### `PaperdollEquip` (struct)
+
+An item the player put in a slot.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `slot` | `string` | `""` | — | — | — | The slot. |
+| `key` | `string` | `""` | — | — | — | The item. |
+| `from` | `string` | `""` | — | — | — | The id of the grid (or this paperdoll) it came from. |
+| `fromSlot` | `string` | `""` | — | — | — | The slot it came from when moved between slots. |
+| `swapped` | `string \| null` | `null` | — | — | — | The item that was in the slot: it goes where the new one came from. |
+
+```ogt
+struct PaperdollEquip {
+  doc "An item the player put in a slot."
+  field slot String "The slot."
+  field key String "The item."
+  field from String "The id of the grid (or this paperdoll) it came from."
+  field fromSlot String "The slot it came from when moved between slots."
+  field swapped Option.String "The item that was in the slot: it goes where the new one came from."
+}
+```
+
+<sub>`api.ogt` line 17379</sub>
+
+<a id="type-PaperdollDesc"></a>
+
+### `PaperdollDesc` (desc struct)
+
+A paperdoll: equipment slots around the character's figure, and its stats.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `slots` | `readonly PaperdollSlot[]` | `[]` | — | — | — | The slots, each placed around the figure. |
+| `title` | `string` | `""` | — | — | — | The character's name over the figure; empty is none. |
+| `subtitle` | `string` | `""` | — | — | — | A line under it (Level 42 Paladin); empty is none. |
+| `rating` | `string` | `""` | — | — | — | A headline number (812); empty is none. |
+| `ratingLabel` | `string` | `""` | — | — | — | What it is (Item power). |
+| `stats` | `readonly PaperdollStat[]` | `[]` | — | — | — | The stats beside the figure (under it on a phone in portrait). |
+| `statsTitle` | `string` | `""` | — | — | — | The stats' heading (Attributes); empty is none. |
+| `stack` | `boolean` | `false` | — | — | — | The stats go under the figure, not beside it (a screen that puts the grids beside the doll); a phone in portrait always stacks them. |
+| `carry` | `InventoryCarry \| null` | `null` | — | — | — | An item carried from a grid: the slots that take its tag light up and the others dim; a release or confirm over one answers equip. |
+| `compare` | `boolean` | `false` | — | — | — | The stats' deltas are shown (the game sets them from the carried or hovered item). |
+| `selected` | `string` | `""` | — | — | — | The selected slot's key: ringed in the focus ink. |
+| `figureAspect` | `number` | `0` | ≥ 0 | — | — | The figure's box, width over height; 0 is 0.62 (a standing character). |
+| `emptyLabel` | `string` | `"Empty"` | — | — | — | What a screen reader adds for an empty slot. |
+| `lockedLabel` | `string` | `"Locked"` | — | — | — | What it adds for a locked slot. |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
+
+```ogt
+struct PaperdollDesc {
+  doc "A paperdoll: equipment slots around the character's figure, and its stats."
+  desc true
+  field slots List.PaperdollSlot "The slots, each placed around the figure."
+  field title String "The character's name over the figure; empty is none."
+  field subtitle String "A line under it (Level 42 Paladin); empty is none."
+  field rating String "A headline number (812); empty is none."
+  field ratingLabel String "What it is (Item power)."
+  field stats List.PaperdollStat "The stats beside the figure (under it on a phone in portrait)."
+  field statsTitle String "The stats' heading (Attributes); empty is none."
+  field stack bool "The stats go under the figure, not beside it (a screen that puts the grids beside the doll); a phone in portrait always stacks them."
+  field carry Option.InventoryCarry "An item carried from a grid: the slots that take its tag light up and the others dim; a release or confirm over one answers equip."
+  field compare bool "The stats' deltas are shown (the game sets them from the carried or hovered item)."
+  field selected String "The selected slot's key: ringed in the focus ink."
+  field figureAspect f32 "The figure's box, width over height; 0 is 0.62 (a standing character)." {
+    min 0
+  }
+  field emptyLabel String "What a screen reader adds for an empty slot." {
+    default "Empty"
+  }
+  field lockedLabel String "What it adds for a locked slot." {
+    default "Locked"
+  }
+  field width Option.Size "Its width; null grows."
+}
+```
+
+<sub>`api.ogt` line 17388</sub>
+
+<a id="type-PaperdollResult"></a>
+
+### `PaperdollResult` (struct)
+
+What a paperdoll answered this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `equip` | `PaperdollEquip \| null` | `null` | — | — | — | An item placed in a slot: apply it. |
+| `selected` | `string \| null` | `null` | — | — | — | The slot pressed while nothing is carried. |
+| `used` | `string \| null` | `null` | — | — | — | The slot double pressed (take the item off at once). |
+| `carried` | `InventoryCarry \| null` | `null` | — | — | — | The item dragged out of a slot (or picked up with confirm) while it is carried, and on the tick it is let go outside with released: pass it to the grids. |
+| `hovered` | `string \| null` | `null` | — | — | — | The slot under the pointer or the focus: show its item's tooltip beside hoveredRect. |
+| `hoveredRect` | `UiRect \| null` | `null` | — | — | — | Where that slot is on screen. |
+| `refused` | `boolean` | `false` | — | — | — | The carried item was refused this tick (a slot that does not take its tag, a locked slot): the slot shook and the error sound played. |
+
+```ogt
+struct PaperdollResult {
+  doc "What a paperdoll answered this tick."
+  field equip Option.PaperdollEquip "An item placed in a slot: apply it."
+  field selected Option.String "The slot pressed while nothing is carried."
+  field used Option.String "The slot double pressed (take the item off at once)."
+  field carried Option.InventoryCarry "The item dragged out of a slot (or picked up with confirm) while it is carried, and on the tick it is let go outside with released: pass it to the grids."
+  field hovered Option.String "The slot under the pointer or the focus: show its item's tooltip beside hoveredRect."
+  field hoveredRect Option.UiRect "Where that slot is on screen."
+  field refused bool "The carried item was refused this tick (a slot that does not take its tag, a locked slot): the slot shook and the error sound played."
+}
+```
+
+<sub>`api.ogt` line 17414</sub>
+
 <a id="type-UiAction"></a>
 
 ### `UiAction` (callback)
@@ -16512,7 +17066,7 @@ callback UiAction {
 }
 ```
 
-<sub>`api.ogt` line 17201</sub>
+<sub>`api.ogt` line 17439</sub>
 
 <a id="type-SettingsChanged"></a>
 
@@ -16537,7 +17091,7 @@ callback SettingsChanged {
 }
 ```
 
-<sub>`api.ogt` line 17206</sub>
+<sub>`api.ogt` line 17444</sub>
 
 <a id="type-MenuItem"></a>
 
@@ -16565,7 +17119,7 @@ struct MenuItem {
 }
 ```
 
-<sub>`api.ogt` line 17211</sub>
+<sub>`api.ogt` line 17449</sub>
 
 <a id="type-MenuResult"></a>
 
@@ -16584,7 +17138,7 @@ struct MenuResult {
 }
 ```
 
-<sub>`api.ogt` line 17220</sub>
+<sub>`api.ogt` line 17458</sub>
 
 <a id="type-MainMenuDesc"></a>
 
@@ -16616,7 +17170,7 @@ struct MainMenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 17225</sub>
+<sub>`api.ogt` line 17463</sub>
 
 <a id="type-PauseMenuDesc"></a>
 
@@ -16646,7 +17200,7 @@ struct PauseMenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 17236</sub>
+<sub>`api.ogt` line 17474</sub>
 
 <a id="type-KeyBinding"></a>
 
@@ -16672,7 +17226,7 @@ struct KeyBinding {
 }
 ```
 
-<sub>`api.ogt` line 17247</sub>
+<sub>`api.ogt` line 17485</sub>
 
 <a id="type-LanguageOption"></a>
 
@@ -16696,7 +17250,7 @@ struct LanguageOption {
 }
 ```
 
-<sub>`api.ogt` line 17255</sub>
+<sub>`api.ogt` line 17493</sub>
 
 <a id="type-GameSettings"></a>
 
@@ -16778,7 +17332,7 @@ struct GameSettings {
 }
 ```
 
-<sub>`api.ogt` line 17262</sub>
+<sub>`api.ogt` line 17500</sub>
 
 <a id="type-SettingsDesc"></a>
 
@@ -16964,7 +17518,7 @@ struct SettingsDesc {
 }
 ```
 
-<sub>`api.ogt` line 17313</sub>
+<sub>`api.ogt` line 17551</sub>
 
 <a id="type-SettingsResult"></a>
 
@@ -16987,7 +17541,7 @@ struct SettingsResult {
 }
 ```
 
-<sub>`api.ogt` line 17439</sub>
+<sub>`api.ogt` line 17677</sub>
 
 <a id="type-Ability"></a>
 
@@ -17017,7 +17571,7 @@ struct Ability {
 }
 ```
 
-<sub>`api.ogt` line 17446</sub>
+<sub>`api.ogt` line 17684</sub>
 
 <a id="type-PlatformerHudDesc"></a>
 
@@ -17063,7 +17617,7 @@ struct PlatformerHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 17457</sub>
+<sub>`api.ogt` line 17695</sub>
 
 <a id="type-HudResult"></a>
 
@@ -17090,7 +17644,7 @@ struct HudResult {
 }
 ```
 
-<sub>`api.ogt` line 17478</sub>
+<sub>`api.ogt` line 17716</sub>
 
 <a id="type-ShooterHudDesc"></a>
 
@@ -17152,7 +17706,7 @@ struct ShooterHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 17487</sub>
+<sub>`api.ogt` line 17725</sub>
 
 <a id="type-PuzzleHudDesc"></a>
 
@@ -17198,7 +17752,7 @@ struct PuzzleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 17518</sub>
+<sub>`api.ogt` line 17756</sub>
 
 <a id="type-Currency"></a>
 
@@ -17228,7 +17782,7 @@ struct Currency {
 }
 ```
 
-<sub>`api.ogt` line 17540</sub>
+<sub>`api.ogt` line 17778</sub>
 
 <a id="type-Generator"></a>
 
@@ -17264,7 +17818,7 @@ struct Generator {
 }
 ```
 
-<sub>`api.ogt` line 17550</sub>
+<sub>`api.ogt` line 17788</sub>
 
 <a id="type-IdleHudDesc"></a>
 
@@ -17304,7 +17858,7 @@ struct IdleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 17564</sub>
+<sub>`api.ogt` line 17802</sub>
 
 <a id="type-RaceSplit"></a>
 
@@ -17330,7 +17884,7 @@ struct RaceSplit {
 }
 ```
 
-<sub>`api.ogt` line 17583</sub>
+<sub>`api.ogt` line 17821</sub>
 
 <a id="type-RacingHudDesc"></a>
 
@@ -17426,7 +17980,7 @@ struct RacingHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 17591</sub>
+<sub>`api.ogt` line 17829</sub>
 
 <a id="type-DialogueLine"></a>
 
@@ -17452,7 +18006,7 @@ struct DialogueLine {
 }
 ```
 
-<sub>`api.ogt` line 17649</sub>
+<sub>`api.ogt` line 17887</sub>
 
 <a id="type-CutsceneDesc"></a>
 
@@ -17490,7 +18044,7 @@ struct CutsceneDesc {
 }
 ```
 
-<sub>`api.ogt` line 17657</sub>
+<sub>`api.ogt` line 17895</sub>
 
 <a id="type-CutsceneResult"></a>
 
@@ -17513,7 +18067,7 @@ struct CutsceneResult {
 }
 ```
 
-<sub>`api.ogt` line 17674</sub>
+<sub>`api.ogt` line 17912</sub>
 
 <a id="type-ShopItem"></a>
 
@@ -17547,7 +18101,7 @@ struct ShopItem {
 }
 ```
 
-<sub>`api.ogt` line 17681</sub>
+<sub>`api.ogt` line 17919</sub>
 
 <a id="type-ShopDesc"></a>
 
@@ -17605,7 +18159,7 @@ struct ShopDesc {
 }
 ```
 
-<sub>`api.ogt` line 17693</sub>
+<sub>`api.ogt` line 17931</sub>
 
 <a id="type-ShopResult"></a>
 
@@ -17628,7 +18182,7 @@ struct ShopResult {
 }
 ```
 
-<sub>`api.ogt` line 17724</sub>
+<sub>`api.ogt` line 17962</sub>
 
 <a id="type-InventoryItem"></a>
 
@@ -17660,7 +18214,7 @@ struct InventoryItem {
 }
 ```
 
-<sub>`api.ogt` line 17731</sub>
+<sub>`api.ogt` line 17969</sub>
 
 <a id="type-InventoryDesc"></a>
 
@@ -17704,7 +18258,7 @@ struct InventoryDesc {
 }
 ```
 
-<sub>`api.ogt` line 17742</sub>
+<sub>`api.ogt` line 17980</sub>
 
 <a id="type-SlotMove"></a>
 
@@ -17725,7 +18279,7 @@ struct SlotMove {
 }
 ```
 
-<sub>`api.ogt` line 17764</sub>
+<sub>`api.ogt` line 18002</sub>
 
 <a id="type-InventoryResult"></a>
 
@@ -17750,7 +18304,7 @@ struct InventoryResult {
 }
 ```
 
-<sub>`api.ogt` line 17770</sub>
+<sub>`api.ogt` line 18008</sub>
 
 <a id="type-LevelInfo"></a>
 
@@ -17778,7 +18332,7 @@ struct LevelInfo {
 }
 ```
 
-<sub>`api.ogt` line 17778</sub>
+<sub>`api.ogt` line 18016</sub>
 
 <a id="type-LevelSelectDesc"></a>
 
@@ -17818,7 +18372,7 @@ struct LevelSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 17787</sub>
+<sub>`api.ogt` line 18025</sub>
 
 <a id="type-LevelSelectResult"></a>
 
@@ -17839,7 +18393,7 @@ struct LevelSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 17806</sub>
+<sub>`api.ogt` line 18044</sub>
 
 <a id="type-StatRow"></a>
 
@@ -17863,7 +18417,7 @@ struct StatRow {
 }
 ```
 
-<sub>`api.ogt` line 17812</sub>
+<sub>`api.ogt` line 18050</sub>
 
 <a id="type-ScoreFormat"></a>
 
@@ -17886,7 +18440,7 @@ enum ScoreFormat {
 }
 ```
 
-<sub>`api.ogt` line 17819</sub>
+<sub>`api.ogt` line 18057</sub>
 
 <a id="type-ResultsDesc"></a>
 
@@ -17948,7 +18502,7 @@ struct ResultsDesc {
 }
 ```
 
-<sub>`api.ogt` line 17825</sub>
+<sub>`api.ogt` line 18063</sub>
 
 <a id="type-LeaderboardEntry"></a>
 
@@ -17976,7 +18530,7 @@ struct LeaderboardEntry {
 }
 ```
 
-<sub>`api.ogt` line 17856</sub>
+<sub>`api.ogt` line 18094</sub>
 
 <a id="type-LeaderboardDesc"></a>
 
@@ -18016,7 +18570,7 @@ struct LeaderboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 17865</sub>
+<sub>`api.ogt` line 18103</sub>
 
 <a id="type-LeaderboardResult"></a>
 
@@ -18041,7 +18595,7 @@ struct LeaderboardResult {
 }
 ```
 
-<sub>`api.ogt` line 17883</sub>
+<sub>`api.ogt` line 18121</sub>
 
 <a id="type-TutorialStep"></a>
 
@@ -18067,7 +18621,7 @@ struct TutorialStep {
 }
 ```
 
-<sub>`api.ogt` line 17891</sub>
+<sub>`api.ogt` line 18129</sub>
 
 <a id="type-TutorialDesc"></a>
 
@@ -18109,7 +18663,7 @@ struct TutorialDesc {
 }
 ```
 
-<sub>`api.ogt` line 17899</sub>
+<sub>`api.ogt` line 18137</sub>
 
 <a id="type-TutorialResult"></a>
 
@@ -18132,7 +18686,7 @@ struct TutorialResult {
 }
 ```
 
-<sub>`api.ogt` line 17919</sub>
+<sub>`api.ogt` line 18157</sub>
 
 <a id="type-LoadingDesc"></a>
 
@@ -18165,7 +18719,7 @@ struct LoadingDesc {
 }
 ```
 
-<sub>`api.ogt` line 17926</sub>
+<sub>`api.ogt` line 18164</sub>
 
 <a id="type-ConfirmDesc"></a>
 
@@ -18201,7 +18755,7 @@ struct ConfirmDesc {
 }
 ```
 
-<sub>`api.ogt` line 17940</sub>
+<sub>`api.ogt` line 18178</sub>
 
 <a id="type-ConfirmResult"></a>
 
@@ -18222,7 +18776,7 @@ struct ConfirmResult {
 }
 ```
 
-<sub>`api.ogt` line 17955</sub>
+<sub>`api.ogt` line 18193</sub>
 
 <a id="type-AlertDesc"></a>
 
@@ -18252,7 +18806,7 @@ struct AlertDesc {
 }
 ```
 
-<sub>`api.ogt` line 17961</sub>
+<sub>`api.ogt` line 18199</sub>
 
 <a id="type-UiProp"></a>
 
@@ -18311,7 +18865,7 @@ enum UiProp {
 }
 ```
 
-<sub>`api.ogt` line 18116</sub>
+<sub>`api.ogt` line 18354</sub>
 
 <a id="type-LayoutMode"></a>
 
@@ -18336,7 +18890,7 @@ enum LayoutMode {
 }
 ```
 
-<sub>`api.ogt` line 18140</sub>
+<sub>`api.ogt` line 18378</sub>
 
 <a id="type-Position"></a>
 
@@ -18361,7 +18915,7 @@ enum Position {
 }
 ```
 
-<sub>`api.ogt` line 18147</sub>
+<sub>`api.ogt` line 18385</sub>
 
 <a id="type-GridFlow"></a>
 
@@ -18384,7 +18938,7 @@ enum GridFlow {
 }
 ```
 
-<sub>`api.ogt` line 18154</sub>
+<sub>`api.ogt` line 18392</sub>
 
 <a id="type-DragAxis"></a>
 
@@ -18411,7 +18965,7 @@ enum DragAxis {
 }
 ```
 
-<sub>`api.ogt` line 18160</sub>
+<sub>`api.ogt` line 18398</sub>
 
 <a id="type-EaseName"></a>
 
@@ -18438,7 +18992,7 @@ enum EaseName {
 }
 ```
 
-<sub>`api.ogt` line 18168</sub>
+<sub>`api.ogt` line 18406</sub>
 
 <a id="type-MotionToken"></a>
 
@@ -18469,7 +19023,7 @@ enum MotionToken {
 }
 ```
 
-<sub>`api.ogt` line 18176</sub>
+<sub>`api.ogt` line 18414</sub>
 
 <a id="type-ReducedMotion"></a>
 
@@ -18494,7 +19048,7 @@ enum ReducedMotion {
 }
 ```
 
-<sub>`api.ogt` line 18186</sub>
+<sub>`api.ogt` line 18424</sub>
 
 <a id="type-Orientation"></a>
 
@@ -18517,7 +19071,7 @@ enum Orientation {
 }
 ```
 
-<sub>`api.ogt` line 18193</sub>
+<sub>`api.ogt` line 18431</sub>
 
 <a id="type-Repeat"></a>
 
@@ -18542,7 +19096,7 @@ enum Repeat {
 }
 ```
 
-<sub>`api.ogt` line 18199</sub>
+<sub>`api.ogt` line 18437</sub>
 
 <a id="type-UiTransform"></a>
 
@@ -18594,7 +19148,7 @@ struct UiTransform {
 }
 ```
 
-<sub>`api.ogt` line 18206</sub>
+<sub>`api.ogt` line 18444</sub>
 
 <a id="type-Edges"></a>
 
@@ -18634,7 +19188,7 @@ struct Edges {
 }
 ```
 
-<sub>`api.ogt` line 18234</sub>
+<sub>`api.ogt` line 18472</sub>
 
 <a id="type-TrackPx"></a>
 
@@ -18655,7 +19209,7 @@ struct TrackPx {
 }
 ```
 
-<sub>`api.ogt` line 18253</sub>
+<sub>`api.ogt` line 18491</sub>
 
 <a id="type-TrackFr"></a>
 
@@ -18676,7 +19230,7 @@ struct TrackFr {
 }
 ```
 
-<sub>`api.ogt` line 18260</sub>
+<sub>`api.ogt` line 18498</sub>
 
 <a id="type-TrackRange"></a>
 
@@ -18701,7 +19255,7 @@ struct TrackRange {
 }
 ```
 
-<sub>`api.ogt` line 18267</sub>
+<sub>`api.ogt` line 18505</sub>
 
 <a id="type-TrackPercent"></a>
 
@@ -18722,7 +19276,7 @@ struct TrackPercent {
 }
 ```
 
-<sub>`api.ogt` line 18277</sub>
+<sub>`api.ogt` line 18515</sub>
 
 <a id="type-TrackAuto"></a>
 
@@ -18736,7 +19290,7 @@ struct TrackAuto {
 }
 ```
 
-<sub>`api.ogt` line 18284</sub>
+<sub>`api.ogt` line 18522</sub>
 
 <a id="type-Track"></a>
 
@@ -18766,7 +19320,7 @@ union Track {
 }
 ```
 
-<sub>`api.ogt` line 18288</sub>
+<sub>`api.ogt` line 18526</sub>
 
 <a id="type-GridSpec"></a>
 
@@ -18806,7 +19360,7 @@ struct GridSpec {
 }
 ```
 
-<sub>`api.ogt` line 18298</sub>
+<sub>`api.ogt` line 18536</sub>
 
 <a id="type-GridPlace"></a>
 
@@ -18836,7 +19390,7 @@ struct GridPlace {
 }
 ```
 
-<sub>`api.ogt` line 18315</sub>
+<sub>`api.ogt` line 18553</sub>
 
 <a id="type-PropValue"></a>
 
@@ -18857,7 +19411,7 @@ struct PropValue {
 }
 ```
 
-<sub>`api.ogt` line 18325</sub>
+<sub>`api.ogt` line 18563</sub>
 
 <a id="type-UiQuery"></a>
 
@@ -18891,7 +19445,7 @@ struct UiQuery {
 }
 ```
 
-<sub>`api.ogt` line 18331</sub>
+<sub>`api.ogt` line 18569</sub>
 
 <a id="type-UiPatch"></a>
 
@@ -18937,7 +19491,7 @@ struct UiPatch {
 }
 ```
 
-<sub>`api.ogt` line 18345</sub>
+<sub>`api.ogt` line 18583</sub>
 
 <a id="type-UiVariant"></a>
 
@@ -18958,7 +19512,7 @@ struct UiVariant {
 }
 ```
 
-<sub>`api.ogt` line 18364</sub>
+<sub>`api.ogt` line 18602</sub>
 
 <a id="type-SpringSpec"></a>
 
@@ -18988,7 +19542,7 @@ struct SpringSpec {
 }
 ```
 
-<sub>`api.ogt` line 18370</sub>
+<sub>`api.ogt` line 18608</sub>
 
 <a id="type-TweenSpec"></a>
 
@@ -19017,7 +19571,7 @@ struct TweenSpec {
 }
 ```
 
-<sub>`api.ogt` line 18383</sub>
+<sub>`api.ogt` line 18621</sub>
 
 <a id="type-TokenRef"></a>
 
@@ -19036,7 +19590,7 @@ struct TokenRef {
 }
 ```
 
-<sub>`api.ogt` line 18394</sub>
+<sub>`api.ogt` line 18632</sub>
 
 <a id="type-InstantSpec"></a>
 
@@ -19050,7 +19604,7 @@ struct InstantSpec {
 }
 ```
 
-<sub>`api.ogt` line 18399</sub>
+<sub>`api.ogt` line 18637</sub>
 
 <a id="type-Transition"></a>
 
@@ -19078,7 +19632,7 @@ union Transition {
 }
 ```
 
-<sub>`api.ogt` line 18403</sub>
+<sub>`api.ogt` line 18641</sub>
 
 <a id="type-DismissSpec"></a>
 
@@ -19104,7 +19658,7 @@ struct DismissSpec {
 }
 ```
 
-<sub>`api.ogt` line 18412</sub>
+<sub>`api.ogt` line 18650</sub>
 
 <a id="type-SnapPoint"></a>
 
@@ -19129,7 +19683,7 @@ struct SnapPoint {
 }
 ```
 
-<sub>`api.ogt` line 18421</sub>
+<sub>`api.ogt` line 18659</sub>
 
 <a id="type-DragSpec"></a>
 
@@ -19171,7 +19725,7 @@ struct DragSpec {
 }
 ```
 
-<sub>`api.ogt` line 18431</sub>
+<sub>`api.ogt` line 18669</sub>
 
 <a id="type-PinchSpec"></a>
 
@@ -19197,7 +19751,7 @@ struct PinchSpec {
 }
 ```
 
-<sub>`api.ogt` line 18448</sub>
+<sub>`api.ogt` line 18686</sub>
 
 <a id="type-DropSpec"></a>
 
@@ -19219,7 +19773,7 @@ struct DropSpec {
 }
 ```
 
-<sub>`api.ogt` line 18456</sub>
+<sub>`api.ogt` line 18694</sub>
 
 <a id="type-PresenceSpec"></a>
 
@@ -19253,7 +19807,7 @@ struct PresenceSpec {
 }
 ```
 
-<sub>`api.ogt` line 18462</sub>
+<sub>`api.ogt` line 18700</sub>
 
 <a id="type-VisualState"></a>
 
@@ -19278,7 +19832,7 @@ struct VisualState {
 }
 ```
 
-<sub>`api.ogt` line 18476</sub>
+<sub>`api.ogt` line 18714</sub>
 
 <a id="type-StateTransition"></a>
 
@@ -19301,7 +19855,7 @@ struct StateTransition {
 }
 ```
 
-<sub>`api.ogt` line 18484</sub>
+<sub>`api.ogt` line 18722</sub>
 
 <a id="type-StateGroup"></a>
 
@@ -19324,7 +19878,7 @@ struct StateGroup {
 }
 ```
 
-<sub>`api.ogt` line 18491</sub>
+<sub>`api.ogt` line 18729</sub>
 
 <a id="type-StateValue"></a>
 
@@ -19345,7 +19899,7 @@ struct StateValue {
 }
 ```
 
-<sub>`api.ogt` line 18498</sub>
+<sub>`api.ogt` line 18736</sub>
 
 <a id="type-ElementProps"></a>
 
@@ -19427,7 +19981,7 @@ struct ElementProps {
 }
 ```
 
-<sub>`api.ogt` line 18504</sub>
+<sub>`api.ogt` line 18742</sub>
 
 <a id="type-EaseKey"></a>
 
@@ -19446,7 +20000,7 @@ struct EaseKey {
 }
 ```
 
-<sub>`api.ogt` line 18543</sub>
+<sub>`api.ogt` line 18781</sub>
 
 <a id="type-HoldKey"></a>
 
@@ -19460,7 +20014,7 @@ struct HoldKey {
 }
 ```
 
-<sub>`api.ogt` line 18548</sub>
+<sub>`api.ogt` line 18786</sub>
 
 <a id="type-LinearKey"></a>
 
@@ -19474,7 +20028,7 @@ struct LinearKey {
 }
 ```
 
-<sub>`api.ogt` line 18552</sub>
+<sub>`api.ogt` line 18790</sub>
 
 <a id="type-BezierKey"></a>
 
@@ -19493,7 +20047,7 @@ struct BezierKey {
 }
 ```
 
-<sub>`api.ogt` line 18556</sub>
+<sub>`api.ogt` line 18794</sub>
 
 <a id="type-KeyEase"></a>
 
@@ -19523,7 +20077,7 @@ union KeyEase {
 }
 ```
 
-<sub>`api.ogt` line 18561</sub>
+<sub>`api.ogt` line 18799</sub>
 
 <a id="type-TimelineKey"></a>
 
@@ -19548,7 +20102,7 @@ struct TimelineKey {
 }
 ```
 
-<sub>`api.ogt` line 18571</sub>
+<sub>`api.ogt` line 18809</sub>
 
 <a id="type-TimelineTrack"></a>
 
@@ -19571,7 +20125,7 @@ struct TimelineTrack {
 }
 ```
 
-<sub>`api.ogt` line 18580</sub>
+<sub>`api.ogt` line 18818</sub>
 
 <a id="type-SoundEvent"></a>
 
@@ -19594,7 +20148,7 @@ struct SoundEvent {
 }
 ```
 
-<sub>`api.ogt` line 18587</sub>
+<sub>`api.ogt` line 18825</sub>
 
 <a id="type-HapticEvent"></a>
 
@@ -19613,7 +20167,7 @@ struct HapticEvent {
 }
 ```
 
-<sub>`api.ogt` line 18595</sub>
+<sub>`api.ogt` line 18833</sub>
 
 <a id="type-BurstEvent"></a>
 
@@ -19638,7 +20192,7 @@ struct BurstEvent {
 }
 ```
 
-<sub>`api.ogt` line 18600</sub>
+<sub>`api.ogt` line 18838</sub>
 
 <a id="type-StateEvent"></a>
 
@@ -19659,7 +20213,7 @@ struct StateEvent {
 }
 ```
 
-<sub>`api.ogt` line 18609</sub>
+<sub>`api.ogt` line 18847</sub>
 
 <a id="type-CallbackEvent"></a>
 
@@ -19678,7 +20232,7 @@ struct CallbackEvent {
 }
 ```
 
-<sub>`api.ogt` line 18615</sub>
+<sub>`api.ogt` line 18853</sub>
 
 <a id="type-TimelineAction"></a>
 
@@ -19708,7 +20262,7 @@ union TimelineAction {
 }
 ```
 
-<sub>`api.ogt` line 18620</sub>
+<sub>`api.ogt` line 18858</sub>
 
 <a id="type-TimelineEvent"></a>
 
@@ -19733,7 +20287,7 @@ struct TimelineEvent {
 }
 ```
 
-<sub>`api.ogt` line 18630</sub>
+<sub>`api.ogt` line 18868</sub>
 
 <a id="type-TimelineLabel"></a>
 
@@ -19756,7 +20310,7 @@ struct TimelineLabel {
 }
 ```
 
-<sub>`api.ogt` line 18639</sub>
+<sub>`api.ogt` line 18877</sub>
 
 <a id="type-UiTimeline"></a>
 
@@ -19786,7 +20340,7 @@ struct UiTimeline {
 }
 ```
 
-<sub>`api.ogt` line 18647</sub>
+<sub>`api.ogt` line 18885</sub>
 
 <a id="type-ChoreoPlay"></a>
 
@@ -19811,7 +20365,7 @@ struct ChoreoPlay {
 }
 ```
 
-<sub>`api.ogt` line 18658</sub>
+<sub>`api.ogt` line 18896</sub>
 
 <a id="type-ChoreoSteps"></a>
 
@@ -19830,7 +20384,7 @@ struct ChoreoSteps {
 }
 ```
 
-<sub>`api.ogt` line 18667</sub>
+<sub>`api.ogt` line 18905</sub>
 
 <a id="type-ChoreoStagger"></a>
 
@@ -19863,7 +20417,7 @@ struct ChoreoStagger {
 }
 ```
 
-<sub>`api.ogt` line 18672</sub>
+<sub>`api.ogt` line 18910</sub>
 
 <a id="type-ChoreoCascade"></a>
 
@@ -19884,7 +20438,7 @@ struct ChoreoCascade {
 }
 ```
 
-<sub>`api.ogt` line 18687</sub>
+<sub>`api.ogt` line 18925</sub>
 
 <a id="type-Choreo"></a>
 
@@ -19914,7 +20468,7 @@ union Choreo {
 }
 ```
 
-<sub>`api.ogt` line 18693</sub>
+<sub>`api.ogt` line 18931</sub>
 
 <a id="type-PlayDesc"></a>
 
@@ -19950,7 +20504,7 @@ struct PlayDesc {
 }
 ```
 
-<sub>`api.ogt` line 18703</sub>
+<sub>`api.ogt` line 18941</sub>
 
 <a id="type-PlayInfo"></a>
 
@@ -19981,7 +20535,7 @@ struct PlayInfo {
 }
 ```
 
-<sub>`api.ogt` line 18717</sub>
+<sub>`api.ogt` line 18955</sub>
 
 <a id="type-GestureInfo"></a>
 
@@ -20030,7 +20584,7 @@ struct GestureInfo {
 }
 ```
 
-<sub>`api.ogt` line 18730</sub>
+<sub>`api.ogt` line 18968</sub>
 
 <a id="type-UiMotionEvent"></a>
 
@@ -20059,7 +20613,7 @@ struct UiMotionEvent {
 }
 ```
 
-<sub>`api.ogt` line 18752</sub>
+<sub>`api.ogt` line 18990</sub>
 
 <a id="type-UiOverlap"></a>
 
@@ -20084,7 +20638,7 @@ struct UiOverlap {
 }
 ```
 
-<sub>`api.ogt` line 18762</sub>
+<sub>`api.ogt` line 19000</sub>
 
 <a id="type-UiLayoutStats"></a>
 
@@ -20109,7 +20663,7 @@ struct UiLayoutStats {
 }
 ```
 
-<sub>`api.ogt` line 18770</sub>
+<sub>`api.ogt` line 19008</sub>
 
 <a id="type-NotificationVariant"></a>
 
@@ -20138,7 +20692,7 @@ enum NotificationVariant {
 }
 ```
 
-<sub>`api.ogt` line 18901</sub>
+<sub>`api.ogt` line 19139</sub>
 
 <a id="type-Rarity"></a>
 
@@ -20171,7 +20725,7 @@ enum Rarity {
 }
 ```
 
-<sub>`api.ogt` line 18910</sub>
+<sub>`api.ogt` line 19148</sub>
 
 <a id="type-NotificationItem"></a>
 
@@ -20230,7 +20784,7 @@ struct NotificationItem {
 }
 ```
 
-<sub>`api.ogt` line 18921</sub>
+<sub>`api.ogt` line 19159</sub>
 
 <a id="type-NotificationsDesc"></a>
 
@@ -20267,7 +20821,7 @@ struct NotificationsDesc {
 }
 ```
 
-<sub>`api.ogt` line 18948</sub>
+<sub>`api.ogt` line 19186</sub>
 
 <a id="type-NotificationsResult"></a>
 
@@ -20292,7 +20846,7 @@ struct NotificationsResult {
 }
 ```
 
-<sub>`api.ogt` line 18965</sub>
+<sub>`api.ogt` line 19203</sub>
 
 <a id="type-BadgeKind"></a>
 
@@ -20317,7 +20871,7 @@ enum BadgeKind {
 }
 ```
 
-<sub>`api.ogt` line 18983</sub>
+<sub>`api.ogt` line 19221</sub>
 
 <a id="type-CountBadgeDesc"></a>
 
@@ -20359,7 +20913,7 @@ struct CountBadgeDesc {
 }
 ```
 
-<sub>`api.ogt` line 18990</sub>
+<sub>`api.ogt` line 19228</sub>
 
 <a id="type-TooltipStat"></a>
 
@@ -20389,7 +20943,7 @@ struct TooltipStat {
 }
 ```
 
-<sub>`api.ogt` line 19018</sub>
+<sub>`api.ogt` line 19256</sub>
 
 <a id="type-TooltipLink"></a>
 
@@ -20415,7 +20969,7 @@ struct TooltipLink {
 }
 ```
 
-<sub>`api.ogt` line 19028</sub>
+<sub>`api.ogt` line 19266</sub>
 
 <a id="type-TooltipCardDesc"></a>
 
@@ -20490,7 +21044,7 @@ struct TooltipCardDesc {
 }
 ```
 
-<sub>`api.ogt` line 19036</sub>
+<sub>`api.ogt` line 19274</sub>
 
 <a id="type-TooltipCardResult"></a>
 
@@ -20515,7 +21069,7 @@ struct TooltipCardResult {
 }
 ```
 
-<sub>`api.ogt` line 19076</sub>
+<sub>`api.ogt` line 19314</sub>
 
 <a id="type-ProgressStyle"></a>
 
@@ -20540,7 +21094,7 @@ enum ProgressStyle {
 }
 ```
 
-<sub>`api.ogt` line 19093</sub>
+<sub>`api.ogt` line 19331</sub>
 
 <a id="type-ProgressBarDesc"></a>
 
@@ -20595,7 +21149,7 @@ struct ProgressBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 19100</sub>
+<sub>`api.ogt` line 19338</sub>
 
 <a id="type-ProgressRingDesc"></a>
 
@@ -20635,7 +21189,7 @@ struct ProgressRingDesc {
 }
 ```
 
-<sub>`api.ogt` line 19138</sub>
+<sub>`api.ogt` line 19376</sub>
 
 <a id="type-SkeletonShape"></a>
 
@@ -20664,7 +21218,7 @@ enum SkeletonShape {
 }
 ```
 
-<sub>`api.ogt` line 19166</sub>
+<sub>`api.ogt` line 19404</sub>
 
 <a id="type-SkeletonGroupDesc"></a>
 
@@ -20701,7 +21255,7 @@ struct SkeletonGroupDesc {
 }
 ```
 
-<sub>`api.ogt` line 19175</sub>
+<sub>`api.ogt` line 19413</sub>
 
 <a id="type-Notation"></a>
 
@@ -20730,7 +21284,7 @@ enum Notation {
 }
 ```
 
-<sub>`api.ogt` line 19200</sub>
+<sub>`api.ogt` line 19438</sub>
 
 <a id="type-NumberFormatDesc"></a>
 
@@ -20770,7 +21324,7 @@ struct NumberFormatDesc {
 }
 ```
 
-<sub>`api.ogt` line 19209</sub>
+<sub>`api.ogt` line 19447</sub>
 
 <a id="type-NumberCounterDesc"></a>
 
@@ -20823,7 +21377,7 @@ struct NumberCounterDesc {
 }
 ```
 
-<sub>`api.ogt` line 19234</sub>
+<sub>`api.ogt` line 19472</sub>
 
 <a id="type-BannerKind"></a>
 
@@ -20852,7 +21406,7 @@ enum BannerKind {
 }
 ```
 
-<sub>`api.ogt` line 19270</sub>
+<sub>`api.ogt` line 19508</sub>
 
 <a id="type-BannerDesc"></a>
 
@@ -20893,7 +21447,7 @@ struct BannerDesc {
 }
 ```
 
-<sub>`api.ogt` line 19279</sub>
+<sub>`api.ogt` line 19517</sub>
 
 <a id="type-BannerResult"></a>
 
@@ -20918,7 +21472,7 @@ struct BannerResult {
 }
 ```
 
-<sub>`api.ogt` line 19297</sub>
+<sub>`api.ogt` line 19535</sub>
 
 <a id="type-UiRibbonDesc"></a>
 
@@ -20952,7 +21506,7 @@ struct UiRibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 19315</sub>
+<sub>`api.ogt` line 19553</sub>
 
 <a id="type-CelebrationKind"></a>
 
@@ -20979,7 +21533,7 @@ enum CelebrationKind {
 }
 ```
 
-<sub>`api.ogt` line 19338</sub>
+<sub>`api.ogt` line 19576</sub>
 
 <a id="type-CelebrationDesc"></a>
 
@@ -21022,7 +21576,7 @@ struct CelebrationDesc {
 }
 ```
 
-<sub>`api.ogt` line 19346</sub>
+<sub>`api.ogt` line 19584</sub>
 
 <a id="type-StarRatingDesc"></a>
 
@@ -21062,7 +21616,7 @@ struct StarRatingDesc {
 }
 ```
 
-<sub>`api.ogt` line 19376</sub>
+<sub>`api.ogt` line 19614</sub>
 
 <a id="type-SubtitleSize"></a>
 
@@ -21089,7 +21643,7 @@ enum SubtitleSize {
 }
 ```
 
-<sub>`api.ogt` line 19404</sub>
+<sub>`api.ogt` line 19642</sub>
 
 <a id="type-SubtitleSettings"></a>
 
@@ -21138,7 +21692,7 @@ struct SubtitleSettings {
 }
 ```
 
-<sub>`api.ogt` line 19412</sub>
+<sub>`api.ogt` line 19650</sub>
 
 <a id="type-SubtitleLine"></a>
 
@@ -21172,7 +21726,7 @@ struct SubtitleLine {
 }
 ```
 
-<sub>`api.ogt` line 19439</sub>
+<sub>`api.ogt` line 19677</sub>
 
 <a id="type-SubtitlesDesc"></a>
 
@@ -21201,7 +21755,7 @@ struct SubtitlesDesc {
 }
 ```
 
-<sub>`api.ogt` line 19452</sub>
+<sub>`api.ogt` line 19690</sub>
 
 <a id="type-StatBarStyle"></a>
 
@@ -21226,7 +21780,7 @@ enum StatBarStyle {
 }
 ```
 
-<sub>`api.ogt` line 19483</sub>
+<sub>`api.ogt` line 19721</sub>
 
 <a id="type-StatBarDesc"></a>
 
@@ -21325,7 +21879,7 @@ struct StatBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 19490</sub>
+<sub>`api.ogt` line 19728</sub>
 
 <a id="type-OrbMeterDesc"></a>
 
@@ -21372,7 +21926,7 @@ struct OrbMeterDesc {
 }
 ```
 
-<sub>`api.ogt` line 19557</sub>
+<sub>`api.ogt` line 19795</sub>
 
 <a id="type-RadialMeterDesc"></a>
 
@@ -21415,7 +21969,7 @@ struct RadialMeterDesc {
 }
 ```
 
-<sub>`api.ogt` line 19589</sub>
+<sub>`api.ogt` line 19827</sub>
 
 <a id="type-AbilitySlotDesc"></a>
 
@@ -21490,7 +22044,7 @@ struct AbilitySlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 19618</sub>
+<sub>`api.ogt` line 19856</sub>
 
 <a id="type-AbilityBarDesc"></a>
 
@@ -21528,7 +22082,7 @@ struct AbilityBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 19666</sub>
+<sub>`api.ogt` line 19904</sub>
 
 <a id="type-AbilityBarResult"></a>
 
@@ -21549,7 +22103,7 @@ struct AbilityBarResult {
 }
 ```
 
-<sub>`api.ogt` line 19684</sub>
+<sub>`api.ogt` line 19922</sub>
 
 <a id="type-StatusEffect"></a>
 
@@ -21595,7 +22149,7 @@ struct StatusEffect {
 }
 ```
 
-<sub>`api.ogt` line 19699</sub>
+<sub>`api.ogt` line 19937</sub>
 
 <a id="type-StatusGridDesc"></a>
 
@@ -21636,7 +22190,7 @@ struct StatusGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 19720</sub>
+<sub>`api.ogt` line 19958</sub>
 
 <a id="type-StatusGridResult"></a>
 
@@ -21657,7 +22211,7 @@ struct StatusGridResult {
 }
 ```
 
-<sub>`api.ogt` line 19739</sub>
+<sub>`api.ogt` line 19977</sub>
 
 <a id="type-UnitClass"></a>
 
@@ -21684,7 +22238,7 @@ enum UnitClass {
 }
 ```
 
-<sub>`api.ogt` line 19754</sub>
+<sub>`api.ogt` line 19992</sub>
 
 <a id="type-UnitFrameSize"></a>
 
@@ -21709,7 +22263,7 @@ enum UnitFrameSize {
 }
 ```
 
-<sub>`api.ogt` line 19762</sub>
+<sub>`api.ogt` line 20000</sub>
 
 <a id="type-UnitFrameDesc"></a>
 
@@ -21793,7 +22347,7 @@ struct UnitFrameDesc {
 }
 ```
 
-<sub>`api.ogt` line 19769</sub>
+<sub>`api.ogt` line 20007</sub>
 
 <a id="type-PartyFramesDesc"></a>
 
@@ -21824,7 +22378,7 @@ struct PartyFramesDesc {
 }
 ```
 
-<sub>`api.ogt` line 19820</sub>
+<sub>`api.ogt` line 20058</sub>
 
 <a id="type-FramesResult"></a>
 
@@ -21843,7 +22397,7 @@ struct FramesResult {
 }
 ```
 
-<sub>`api.ogt` line 19833</sub>
+<sub>`api.ogt` line 20071</sub>
 
 <a id="type-RaidRole"></a>
 
@@ -21870,7 +22424,7 @@ enum RaidRole {
 }
 ```
 
-<sub>`api.ogt` line 19847</sub>
+<sub>`api.ogt` line 20085</sub>
 
 <a id="type-RaidMember"></a>
 
@@ -21924,7 +22478,7 @@ struct RaidMember {
 }
 ```
 
-<sub>`api.ogt` line 19855</sub>
+<sub>`api.ogt` line 20093</sub>
 
 <a id="type-RaidFramesDesc"></a>
 
@@ -21962,7 +22516,7 @@ struct RaidFramesDesc {
 }
 ```
 
-<sub>`api.ogt` line 19880</sub>
+<sub>`api.ogt` line 20118</sub>
 
 <a id="type-CastState"></a>
 
@@ -21989,7 +22543,7 @@ enum CastState {
 }
 ```
 
-<sub>`api.ogt` line 19907</sub>
+<sub>`api.ogt` line 20145</sub>
 
 <a id="type-CastBarDesc"></a>
 
@@ -22049,7 +22603,7 @@ struct CastBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 19915</sub>
+<sub>`api.ogt` line 20153</sub>
 
 <a id="type-CrosshairStyle"></a>
 
@@ -22078,7 +22632,7 @@ enum CrosshairStyle {
 }
 ```
 
-<sub>`api.ogt` line 19954</sub>
+<sub>`api.ogt` line 20192</sub>
 
 <a id="type-HitKind"></a>
 
@@ -22103,7 +22657,7 @@ enum HitKind {
 }
 ```
 
-<sub>`api.ogt` line 19963</sub>
+<sub>`api.ogt` line 20201</sub>
 
 <a id="type-CrosshairDesc"></a>
 
@@ -22163,7 +22717,7 @@ struct CrosshairDesc {
 }
 ```
 
-<sub>`api.ogt` line 19970</sub>
+<sub>`api.ogt` line 20208</sub>
 
 <a id="type-AmmoDesc"></a>
 
@@ -22218,7 +22772,7 @@ struct AmmoDesc {
 }
 ```
 
-<sub>`api.ogt` line 20012</sub>
+<sub>`api.ogt` line 20250</sub>
 
 <a id="type-MarkerKind"></a>
 
@@ -22251,7 +22805,7 @@ enum MarkerKind {
 }
 ```
 
-<sub>`api.ogt` line 20049</sub>
+<sub>`api.ogt` line 20287</sub>
 
 <a id="type-MapMarkerItem"></a>
 
@@ -22295,7 +22849,7 @@ struct MapMarkerItem {
 }
 ```
 
-<sub>`api.ogt` line 20060</sub>
+<sub>`api.ogt` line 20298</sub>
 
 <a id="type-MapShape"></a>
 
@@ -22318,7 +22872,7 @@ enum MapShape {
 }
 ```
 
-<sub>`api.ogt` line 20080</sub>
+<sub>`api.ogt` line 20318</sub>
 
 <a id="type-MinimapViewDesc"></a>
 
@@ -22380,7 +22934,7 @@ struct MinimapViewDesc {
 }
 ```
 
-<sub>`api.ogt` line 20086</sub>
+<sub>`api.ogt` line 20324</sub>
 
 <a id="type-MinimapResult"></a>
 
@@ -22399,7 +22953,7 @@ struct MinimapResult {
 }
 ```
 
-<sub>`api.ogt` line 20121</sub>
+<sub>`api.ogt` line 20359</sub>
 
 <a id="type-CompassPoi"></a>
 
@@ -22437,7 +22991,7 @@ struct CompassPoi {
 }
 ```
 
-<sub>`api.ogt` line 20135</sub>
+<sub>`api.ogt` line 20373</sub>
 
 <a id="type-CompassDesc"></a>
 
@@ -22483,7 +23037,7 @@ struct CompassDesc {
 }
 ```
 
-<sub>`api.ogt` line 20151</sub>
+<sub>`api.ogt` line 20389</sub>
 
 <a id="type-ObjectiveStep"></a>
 
@@ -22521,7 +23075,7 @@ struct ObjectiveStep {
 }
 ```
 
-<sub>`api.ogt` line 20184</sub>
+<sub>`api.ogt` line 20422</sub>
 
 <a id="type-ObjectiveQuest"></a>
 
@@ -22565,7 +23119,7 @@ struct ObjectiveQuest {
 }
 ```
 
-<sub>`api.ogt` line 20199</sub>
+<sub>`api.ogt` line 20437</sub>
 
 <a id="type-ObjectiveTrackerDesc"></a>
 
@@ -22604,7 +23158,7 @@ struct ObjectiveTrackerDesc {
 }
 ```
 
-<sub>`api.ogt` line 20219</sub>
+<sub>`api.ogt` line 20457</sub>
 
 <a id="type-KillfeedEntry"></a>
 
@@ -22646,7 +23200,7 @@ struct KillfeedEntry {
 }
 ```
 
-<sub>`api.ogt` line 20246</sub>
+<sub>`api.ogt` line 20484</sub>
 
 <a id="type-KillfeedDesc"></a>
 
@@ -22679,7 +23233,7 @@ struct KillfeedDesc {
 }
 ```
 
-<sub>`api.ogt` line 20262</sub>
+<sub>`api.ogt` line 20500</sub>
 
 <a id="type-ScoreColumn"></a>
 
@@ -22708,7 +23262,7 @@ struct ScoreColumn {
 }
 ```
 
-<sub>`api.ogt` line 20285</sub>
+<sub>`api.ogt` line 20523</sub>
 
 <a id="type-ScoreRow"></a>
 
@@ -22746,7 +23300,7 @@ struct ScoreRow {
 }
 ```
 
-<sub>`api.ogt` line 20296</sub>
+<sub>`api.ogt` line 20534</sub>
 
 <a id="type-ScoreTeam"></a>
 
@@ -22774,7 +23328,7 @@ struct ScoreTeam {
 }
 ```
 
-<sub>`api.ogt` line 20310</sub>
+<sub>`api.ogt` line 20548</sub>
 
 <a id="type-ScoreboardDesc"></a>
 
@@ -22811,7 +23365,7 @@ struct ScoreboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 20319</sub>
+<sub>`api.ogt` line 20557</sub>
 
 <a id="type-TimerMode"></a>
 
@@ -22834,7 +23388,7 @@ enum TimerMode {
 }
 ```
 
-<sub>`api.ogt` line 20344</sub>
+<sub>`api.ogt` line 20582</sub>
 
 <a id="type-HudTimerDesc"></a>
 
@@ -22882,7 +23436,7 @@ struct HudTimerDesc {
 }
 ```
 
-<sub>`api.ogt` line 20350</sub>
+<sub>`api.ogt` line 20588</sub>
 
 <a id="type-ComboDesc"></a>
 
@@ -22922,7 +23476,7 @@ struct ComboDesc {
 }
 ```
 
-<sub>`api.ogt` line 20384</sub>
+<sub>`api.ogt` line 20622</sub>
 
 <a id="type-JudgementEvent"></a>
 
@@ -22952,7 +23506,7 @@ struct JudgementEvent {
 }
 ```
 
-<sub>`api.ogt` line 20411</sub>
+<sub>`api.ogt` line 20649</sub>
 
 <a id="type-JudgementDesc"></a>
 
@@ -22990,7 +23544,7 @@ struct JudgementDesc {
 }
 ```
 
-<sub>`api.ogt` line 20422</sub>
+<sub>`api.ogt` line 20660</sub>
 
 <a id="type-ResourceItem"></a>
 
@@ -23028,7 +23582,7 @@ struct ResourceItem {
 }
 ```
 
-<sub>`api.ogt` line 20449</sub>
+<sub>`api.ogt` line 20687</sub>
 
 <a id="type-ResourceBarDesc"></a>
 
@@ -23058,7 +23612,7 @@ struct ResourceBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 20464</sub>
+<sub>`api.ogt` line 20702</sub>
 
 <a id="type-TurnUnit"></a>
 
@@ -23096,7 +23650,7 @@ struct TurnUnit {
 }
 ```
 
-<sub>`api.ogt` line 20485</sub>
+<sub>`api.ogt` line 20723</sub>
 
 <a id="type-TurnOrderDesc"></a>
 
@@ -23137,7 +23691,7 @@ struct TurnOrderDesc {
 }
 ```
 
-<sub>`api.ogt` line 20500</sub>
+<sub>`api.ogt` line 20738</sub>
 
 <a id="type-SpeedoStyle"></a>
 
@@ -23160,7 +23714,7 @@ enum SpeedoStyle {
 }
 ```
 
-<sub>`api.ogt` line 20529</sub>
+<sub>`api.ogt` line 20767</sub>
 
 <a id="type-SpeedometerDesc"></a>
 
@@ -23216,7 +23770,7 @@ struct SpeedometerDesc {
 }
 ```
 
-<sub>`api.ogt` line 20535</sub>
+<sub>`api.ogt` line 20773</sub>
 
 <a id="type-ScorebugTeam"></a>
 
@@ -23250,7 +23804,7 @@ struct ScorebugTeam {
 }
 ```
 
-<sub>`api.ogt` line 20575</sub>
+<sub>`api.ogt` line 20813</sub>
 
 <a id="type-ScorebugDesc"></a>
 
@@ -23286,7 +23840,7 @@ struct ScorebugDesc {
 }
 ```
 
-<sub>`api.ogt` line 20587</sub>
+<sub>`api.ogt` line 20825</sub>
 
 <a id="type-FlightHudDesc"></a>
 
@@ -23351,7 +23905,7 @@ struct FlightHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 20610</sub>
+<sub>`api.ogt` line 20848</sub>
 
 <a id="type-DamageHit"></a>
 
@@ -23382,7 +23936,7 @@ struct DamageHit {
 }
 ```
 
-<sub>`api.ogt` line 20656</sub>
+<sub>`api.ogt` line 20894</sub>
 
 <a id="type-DamageDirectionDesc"></a>
 
@@ -23416,7 +23970,7 @@ struct DamageDirectionDesc {
 }
 ```
 
-<sub>`api.ogt` line 20669</sub>
+<sub>`api.ogt` line 20907</sub>
 
 <a id="type-LowHealthDesc"></a>
 
@@ -23449,7 +24003,7 @@ struct LowHealthDesc {
 }
 ```
 
-<sub>`api.ogt` line 20693</sub>
+<sub>`api.ogt` line 20931</sub>
 
 <a id="type-Reaction"></a>
 
@@ -23478,7 +24032,7 @@ enum Reaction {
 }
 ```
 
-<sub>`api.ogt` line 20726</sub>
+<sub>`api.ogt` line 20964</sub>
 
 <a id="type-NameplateDesc"></a>
 
@@ -23544,7 +24098,7 @@ struct NameplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 20735</sub>
+<sub>`api.ogt` line 20973</sub>
 
 <a id="type-OverheadBar"></a>
 
@@ -23576,7 +24130,7 @@ struct OverheadBar {
 }
 ```
 
-<sub>`api.ogt` line 20778</sub>
+<sub>`api.ogt` line 21016</sub>
 
 <a id="type-OverheadBarsDesc"></a>
 
@@ -23616,7 +24170,7 @@ struct OverheadBarsDesc {
 }
 ```
 
-<sub>`api.ogt` line 20790</sub>
+<sub>`api.ogt` line 21028</sub>
 
 <a id="type-DamageKind"></a>
 
@@ -23649,7 +24203,7 @@ enum DamageKind {
 }
 ```
 
-<sub>`api.ogt` line 20819</sub>
+<sub>`api.ogt` line 21057</sub>
 
 <a id="type-DamageHitDesc"></a>
 
@@ -23681,7 +24235,7 @@ struct DamageHitDesc {
 }
 ```
 
-<sub>`api.ogt` line 20830</sub>
+<sub>`api.ogt` line 21068</sub>
 
 <a id="type-DamageNumbersDesc"></a>
 
@@ -23718,7 +24272,7 @@ struct DamageNumbersDesc {
 }
 ```
 
-<sub>`api.ogt` line 20841</sub>
+<sub>`api.ogt` line 21079</sub>
 
 <a id="type-InteractionPromptDesc"></a>
 
@@ -23764,7 +24318,7 @@ struct InteractionPromptDesc {
 }
 ```
 
-<sub>`api.ogt` line 20868</sub>
+<sub>`api.ogt` line 21106</sub>
 
 <a id="type-WaypointKind"></a>
 
@@ -23795,7 +24349,7 @@ enum WaypointKind {
 }
 ```
 
-<sub>`api.ogt` line 20900</sub>
+<sub>`api.ogt` line 21138</sub>
 
 <a id="type-WaypointDesc"></a>
 
@@ -23850,7 +24404,7 @@ struct WaypointDesc {
 }
 ```
 
-<sub>`api.ogt` line 20910</sub>
+<sub>`api.ogt` line 21148</sub>
 
 <a id="type-GroundDesc"></a>
 
@@ -23901,7 +24455,7 @@ struct GroundDesc {
 }
 ```
 
-<sub>`api.ogt` line 20947</sub>
+<sub>`api.ogt` line 21185</sub>
 
 <a id="type-SelectionRingDesc"></a>
 
@@ -23943,7 +24497,7 @@ struct SelectionRingDesc {
 }
 ```
 
-<sub>`api.ogt` line 20973</sub>
+<sub>`api.ogt` line 21211</sub>
 
 <a id="type-TelegraphShape"></a>
 
@@ -23970,7 +24524,7 @@ enum TelegraphShape {
 }
 ```
 
-<sub>`api.ogt` line 21002</sub>
+<sub>`api.ogt` line 21240</sub>
 
 <a id="type-TelegraphDesc"></a>
 
@@ -24032,7 +24586,7 @@ struct TelegraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 21010</sub>
+<sub>`api.ogt` line 21248</sub>
 
 <a id="type-PathLineDesc"></a>
 
@@ -24076,7 +24630,7 @@ struct PathLineDesc {
 }
 ```
 
-<sub>`api.ogt` line 21056</sub>
+<sub>`api.ogt` line 21294</sub>
 
 <a id="type-PlacementGhostDesc"></a>
 
@@ -24131,7 +24685,7 @@ struct PlacementGhostDesc {
 }
 ```
 
-<sub>`api.ogt` line 21087</sub>
+<sub>`api.ogt` line 21325</sub>
 
 <a id="type-LootLabelDesc"></a>
 
@@ -24175,7 +24729,7 @@ struct LootLabelDesc {
 }
 ```
 
-<sub>`api.ogt` line 21128</sub>
+<sub>`api.ogt` line 21366</sub>
 
 <a id="type-LootLabelResult"></a>
 
@@ -24198,7 +24752,7 @@ struct LootLabelResult {
 }
 ```
 
-<sub>`api.ogt` line 21149</sub>
+<sub>`api.ogt` line 21387</sub>
 
 <a id="type-SpeechBubbleDesc"></a>
 
@@ -24252,7 +24806,7 @@ struct SpeechBubbleDesc {
 }
 ```
 
-<sub>`api.ogt` line 21165</sub>
+<sub>`api.ogt` line 21403</sub>
 
 <a id="type-VectorArt"></a>
 
@@ -24266,7 +24820,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle VectorArt "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill."
 ```
 
-<sub>`api.ogt` line 21204</sub>
+<sub>`api.ogt` line 21442</sub>
 
 <a id="type-UiMaterial"></a>
 
@@ -24280,7 +24834,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle UiMaterial "A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through."
 ```
 
-<sub>`api.ogt` line 21205</sub>
+<sub>`api.ogt` line 21443</sub>
 
 <a id="type-ShapeType"></a>
 
@@ -24309,7 +24863,7 @@ enum ShapeType {
 }
 ```
 
-<sub>`api.ogt` line 21221</sub>
+<sub>`api.ogt` line 21459</sub>
 
 <a id="type-CornerShape"></a>
 
@@ -24336,7 +24890,7 @@ enum CornerShape {
 }
 ```
 
-<sub>`api.ogt` line 21230</sub>
+<sub>`api.ogt` line 21468</sub>
 
 <a id="type-LineCap"></a>
 
@@ -24361,7 +24915,7 @@ enum LineCap {
 }
 ```
 
-<sub>`api.ogt` line 21238</sub>
+<sub>`api.ogt` line 21476</sub>
 
 <a id="type-LineJoin"></a>
 
@@ -24386,7 +24940,7 @@ enum LineJoin {
 }
 ```
 
-<sub>`api.ogt` line 21245</sub>
+<sub>`api.ogt` line 21483</sub>
 
 <a id="type-DrawShape"></a>
 
@@ -24474,7 +25028,7 @@ struct DrawShape {
 }
 ```
 
-<sub>`api.ogt` line 21252</sub>
+<sub>`api.ogt` line 21490</sub>
 
 <a id="type-GradientType"></a>
 
@@ -24501,7 +25055,7 @@ enum GradientType {
 }
 ```
 
-<sub>`api.ogt` line 21307</sub>
+<sub>`api.ogt` line 21545</sub>
 
 <a id="type-GradientSpread"></a>
 
@@ -24526,7 +25080,7 @@ enum GradientSpread {
 }
 ```
 
-<sub>`api.ogt` line 21315</sub>
+<sub>`api.ogt` line 21553</sub>
 
 <a id="type-GradientStop"></a>
 
@@ -24554,7 +25108,7 @@ struct GradientStop {
 }
 ```
 
-<sub>`api.ogt` line 21322</sub>
+<sub>`api.ogt` line 21560</sub>
 
 <a id="type-Gradient"></a>
 
@@ -24591,7 +25145,7 @@ struct Gradient {
 }
 ```
 
-<sub>`api.ogt` line 21333</sub>
+<sub>`api.ogt` line 21571</sub>
 
 <a id="type-ImageFit"></a>
 
@@ -24622,7 +25176,7 @@ enum ImageFit {
 }
 ```
 
-<sub>`api.ogt` line 21349</sub>
+<sub>`api.ogt` line 21587</sub>
 
 <a id="type-SliceEdges"></a>
 
@@ -24647,7 +25201,7 @@ enum SliceEdges {
 }
 ```
 
-<sub>`api.ogt` line 21359</sub>
+<sub>`api.ogt` line 21597</sub>
 
 <a id="type-SolidFill"></a>
 
@@ -24669,7 +25223,7 @@ struct SolidFill {
 }
 ```
 
-<sub>`api.ogt` line 21366</sub>
+<sub>`api.ogt` line 21604</sub>
 
 <a id="type-ImageFill"></a>
 
@@ -24728,7 +25282,7 @@ struct ImageFill {
 }
 ```
 
-<sub>`api.ogt` line 21372</sub>
+<sub>`api.ogt` line 21610</sub>
 
 <a id="type-VectorFill"></a>
 
@@ -24752,7 +25306,7 @@ struct VectorFill {
 }
 ```
 
-<sub>`api.ogt` line 21402</sub>
+<sub>`api.ogt` line 21640</sub>
 
 <a id="type-Fill"></a>
 
@@ -24780,7 +25334,7 @@ union Fill {
 }
 ```
 
-<sub>`api.ogt` line 21409</sub>
+<sub>`api.ogt` line 21647</sub>
 
 <a id="type-StrokeAlign"></a>
 
@@ -24805,7 +25359,7 @@ enum StrokeAlign {
 }
 ```
 
-<sub>`api.ogt` line 21418</sub>
+<sub>`api.ogt` line 21656</sub>
 
 <a id="type-Stroke"></a>
 
@@ -24851,7 +25405,7 @@ struct Stroke {
 }
 ```
 
-<sub>`api.ogt` line 21425</sub>
+<sub>`api.ogt` line 21663</sub>
 
 <a id="type-ShadowEffect"></a>
 
@@ -24888,7 +25442,7 @@ struct ShadowEffect {
 }
 ```
 
-<sub>`api.ogt` line 21449</sub>
+<sub>`api.ogt` line 21687</sub>
 
 <a id="type-GlowEffect"></a>
 
@@ -24920,7 +25474,7 @@ struct GlowEffect {
 }
 ```
 
-<sub>`api.ogt` line 21467</sub>
+<sub>`api.ogt` line 21705</sub>
 
 <a id="type-BlurEffect"></a>
 
@@ -24946,7 +25500,7 @@ struct BlurEffect {
 }
 ```
 
-<sub>`api.ogt` line 21481</sub>
+<sub>`api.ogt` line 21719</sub>
 
 <a id="type-BackdropEffect"></a>
 
@@ -25001,7 +25555,7 @@ struct BackdropEffect {
 }
 ```
 
-<sub>`api.ogt` line 21491</sub>
+<sub>`api.ogt` line 21729</sub>
 
 <a id="type-GlassWeight"></a>
 
@@ -25028,7 +25582,7 @@ enum GlassWeight {
 }
 ```
 
-<sub>`api.ogt` line 21521</sub>
+<sub>`api.ogt` line 21759</sub>
 
 <a id="type-Elevation"></a>
 
@@ -25055,7 +25609,7 @@ enum Elevation {
 }
 ```
 
-<sub>`api.ogt` line 21529</sub>
+<sub>`api.ogt` line 21767</sub>
 
 <a id="type-Effect"></a>
 
@@ -25087,7 +25641,7 @@ union Effect {
 }
 ```
 
-<sub>`api.ogt` line 21537</sub>
+<sub>`api.ogt` line 21775</sub>
 
 <a id="type-ClipMode"></a>
 
@@ -25112,7 +25666,7 @@ enum ClipMode {
 }
 ```
 
-<sub>`api.ogt` line 21548</sub>
+<sub>`api.ogt` line 21786</sub>
 
 <a id="type-MaskDesc"></a>
 
@@ -25138,7 +25692,7 @@ struct MaskDesc {
 }
 ```
 
-<sub>`api.ogt` line 21555</sub>
+<sub>`api.ogt` line 21793</sub>
 
 <a id="type-MaterialName"></a>
 
@@ -25179,7 +25733,7 @@ enum MaterialName {
 }
 ```
 
-<sub>`api.ogt` line 21563</sub>
+<sub>`api.ogt` line 21801</sub>
 
 <a id="type-LayerDesc"></a>
 
@@ -25205,7 +25759,7 @@ struct LayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 21578</sub>
+<sub>`api.ogt` line 21816</sub>
 
 <a id="type-TextShadowDesc"></a>
 
@@ -25238,7 +25792,7 @@ struct TextShadowDesc {
 }
 ```
 
-<sub>`api.ogt` line 21586</sub>
+<sub>`api.ogt` line 21824</sub>
 
 <a id="type-TextOutlineDesc"></a>
 
@@ -25268,7 +25822,7 @@ struct TextOutlineDesc {
 }
 ```
 
-<sub>`api.ogt` line 21601</sub>
+<sub>`api.ogt` line 21839</sub>
 
 <a id="type-TextEffectsDesc"></a>
 
@@ -25294,7 +25848,7 @@ struct TextEffectsDesc {
 }
 ```
 
-<sub>`api.ogt` line 21613</sub>
+<sub>`api.ogt` line 21851</sub>
 
 <a id="type-DrawDesc"></a>
 
@@ -25340,7 +25894,7 @@ struct DrawDesc {
 }
 ```
 
-<sub>`api.ogt` line 21621</sub>
+<sub>`api.ogt` line 21859</sub>
 
 <a id="type-BlendMode"></a>
 
@@ -25373,7 +25927,7 @@ enum BlendMode {
 }
 ```
 
-<sub>`api.ogt` line 21641</sub>
+<sub>`api.ogt` line 21879</sub>
 
 <a id="type-SemanticsDesc"></a>
 
@@ -25417,7 +25971,7 @@ struct SemanticsDesc {
 }
 ```
 
-<sub>`api.ogt` line 21652</sub>
+<sub>`api.ogt` line 21890</sub>
 
 <a id="type-WorldTarget"></a>
 
@@ -25441,7 +25995,7 @@ struct WorldTarget {
 }
 ```
 
-<sub>`api.ogt` line 21683</sub>
+<sub>`api.ogt` line 21921</sub>
 
 <a id="type-AnchorScaleMode"></a>
 
@@ -25464,7 +26018,7 @@ enum AnchorScaleMode {
 }
 ```
 
-<sub>`api.ogt` line 21690</sub>
+<sub>`api.ogt` line 21928</sub>
 
 <a id="type-WorldOcclusion"></a>
 
@@ -25489,7 +26043,7 @@ enum WorldOcclusion {
 }
 ```
 
-<sub>`api.ogt` line 21696</sub>
+<sub>`api.ogt` line 21934</sub>
 
 <a id="type-Declutter"></a>
 
@@ -25516,7 +26070,7 @@ enum Declutter {
 }
 ```
 
-<sub>`api.ogt` line 21703</sub>
+<sub>`api.ogt` line 21941</sub>
 
 <a id="type-EdgeClampDesc"></a>
 
@@ -25550,7 +26104,7 @@ struct EdgeClampDesc {
 }
 ```
 
-<sub>`api.ogt` line 21711</sub>
+<sub>`api.ogt` line 21949</sub>
 
 <a id="type-WorldAnchorDesc"></a>
 
@@ -25645,7 +26199,7 @@ struct WorldAnchorDesc {
 }
 ```
 
-<sub>`api.ogt` line 21727</sub>
+<sub>`api.ogt` line 21965</sub>
 
 <a id="type-AnchorInfo"></a>
 
@@ -25692,7 +26246,7 @@ struct AnchorInfo {
 }
 ```
 
-<sub>`api.ogt` line 21782</sub>
+<sub>`api.ogt` line 22020</sub>
 
 <a id="type-WorldPanelDesc"></a>
 
@@ -25752,7 +26306,7 @@ struct WorldPanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 21813</sub>
+<sub>`api.ogt` line 22051</sub>
 
 <a id="type-PanelInfo"></a>
 
@@ -25783,7 +26337,7 @@ struct PanelInfo {
 }
 ```
 
-<sub>`api.ogt` line 21847</sub>
+<sub>`api.ogt` line 22085</sub>
 
 <a id="type-MassKind"></a>
 
@@ -25812,7 +26366,7 @@ enum MassKind {
 }
 ```
 
-<sub>`api.ogt` line 21868</sub>
+<sub>`api.ogt` line 22106</sub>
 
 <a id="type-MassEase"></a>
 
@@ -25841,7 +26395,7 @@ enum MassEase {
 }
 ```
 
-<sub>`api.ogt` line 21877</sub>
+<sub>`api.ogt` line 22115</sub>
 
 <a id="type-MassSpace"></a>
 
@@ -25864,7 +26418,7 @@ enum MassSpace {
 }
 ```
 
-<sub>`api.ogt` line 21886</sub>
+<sub>`api.ogt` line 22124</sub>
 
 <a id="type-ParticleShape"></a>
 
@@ -25889,7 +26443,7 @@ enum ParticleShape {
 }
 ```
 
-<sub>`api.ogt` line 21892</sub>
+<sub>`api.ogt` line 22130</sub>
 
 <a id="type-MassKey"></a>
 
@@ -25936,7 +26490,7 @@ struct MassKey {
 }
 ```
 
-<sub>`api.ogt` line 21899</sub>
+<sub>`api.ogt` line 22137</sub>
 
 <a id="type-MassTemplateDesc"></a>
 
@@ -26036,7 +26590,7 @@ struct MassTemplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 21925</sub>
+<sub>`api.ogt` line 22163</sub>
 
 <a id="type-MassInstance"></a>
 
@@ -26083,7 +26637,7 @@ struct MassInstance {
 }
 ```
 
-<sub>`api.ogt` line 21983</sub>
+<sub>`api.ogt` line 22221</sub>
 
 <a id="type-EmitFrom"></a>
 
@@ -26108,7 +26662,7 @@ enum EmitFrom {
 }
 ```
 
-<sub>`api.ogt` line 22033</sub>
+<sub>`api.ogt` line 22271</sub>
 
 <a id="type-ParticlesDesc"></a>
 
@@ -26202,7 +26756,7 @@ struct ParticlesDesc {
 }
 ```
 
-<sub>`api.ogt` line 22040</sub>
+<sub>`api.ogt` line 22278</sub>
 
 <a id="type-MetaKind"></a>
 
@@ -26227,7 +26781,7 @@ enum MetaKind {
 }
 ```
 
-<sub>`api.ogt` line 22106</sub>
+<sub>`api.ogt` line 22344</sub>
 
 <a id="type-MetaDesc"></a>
 
@@ -26289,7 +26843,7 @@ struct MetaDesc {
 }
 ```
 
-<sub>`api.ogt` line 22113</sub>
+<sub>`api.ogt` line 22351</sub>
 
 <a id="type-SceneViewportDesc"></a>
 
@@ -26337,7 +26891,7 @@ struct SceneViewportDesc {
 }
 ```
 
-<sub>`api.ogt` line 22157</sub>
+<sub>`api.ogt` line 22395</sub>
 
 <a id="type-SceneViewportInfo"></a>
 
@@ -26382,7 +26936,7 @@ struct SceneViewportInfo {
 }
 ```
 
-<sub>`api.ogt` line 22180</sub>
+<sub>`api.ogt` line 22418</sub>
 
 <a id="type-UiDocEvent"></a>
 
@@ -26409,7 +26963,7 @@ struct UiDocEvent {
 }
 ```
 
-<sub>`api.ogt` line 22209</sub>
+<sub>`api.ogt` line 22447</sub>
 
 <a id="type-UiDocResponse"></a>
 
@@ -26432,7 +26986,7 @@ struct UiDocResponse {
 }
 ```
 
-<sub>`api.ogt` line 22218</sub>
+<sub>`api.ogt` line 22456</sub>
 
 <a id="type-UiLayer"></a>
 
@@ -26475,7 +27029,7 @@ struct UiLayer {
 }
 ```
 
-<sub>`api.ogt` line 22225</sub>
+<sub>`api.ogt` line 22463</sub>
 
 <a id="type-UiActionTrigger"></a>
 
@@ -26500,7 +27054,7 @@ enum UiActionTrigger {
 }
 ```
 
-<sub>`api.ogt` line 22242</sub>
+<sub>`api.ogt` line 22480</sub>
 
 <a id="type-UiActionDesc"></a>
 
@@ -26537,7 +27091,7 @@ struct UiActionDesc {
 }
 ```
 
-<sub>`api.ogt` line 22249</sub>
+<sub>`api.ogt` line 22487</sub>
 
 <a id="type-UiDevice"></a>
 
@@ -26568,7 +27122,7 @@ enum UiDevice {
 }
 ```
 
-<sub>`api.ogt` line 22265</sub>
+<sub>`api.ogt` line 22503</sub>
 
 <a id="type-UiGlyph"></a>
 
@@ -26591,7 +27145,7 @@ struct UiGlyph {
 }
 ```
 
-<sub>`api.ogt` line 22275</sub>
+<sub>`api.ogt` line 22513</sub>
 
 <a id="type-UiActionHint"></a>
 
@@ -26618,7 +27172,7 @@ struct UiActionHint {
 }
 ```
 
-<sub>`api.ogt` line 22282</sub>
+<sub>`api.ogt` line 22520</sub>
 
 ## Column kinds
 
@@ -26638,7 +27192,7 @@ column VectorArt {
 }
 ```
 
-<sub>`api.ogt` line 21207</sub>
+<sub>`api.ogt` line 21445</sub>
 
 ```ogt
 column UiMaterial {
@@ -26649,4 +27203,4 @@ column UiMaterial {
 }
 ```
 
-<sub>`api.ogt` line 21214</sub>
+<sub>`api.ogt` line 21452</sub>

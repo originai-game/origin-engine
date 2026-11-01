@@ -27772,6 +27772,611 @@ export interface KeyboardResult {
 
 
 /**
+ * An item of an inventory grid or a paperdoll slot, as the game's viewmodel holds it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GridItem {
+  /**
+   * Its key, stable while it lives: its element id (letters, digits, - and _), so its probe path is <id>/Cells/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * What it is called: a screen reader's name and the tooltip's title.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * An icon of the style's set drawn on it; empty draws its art, else its kind's silhouette.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Its art (art kind item: 1×1, 1×2, 2×3, 2×4 cells), covering its cells and turning with it.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Its column from the start edge, 0 first.
+   *
+   * @default 0
+   */
+  readonly x?: number;
+  /**
+   * Its row from the top, 0 first.
+   *
+   * @default 0
+   */
+  readonly y?: number;
+  /**
+   * Columns it covers lying unturned.
+   *
+   * @default 1
+   * @range 1..
+   */
+  readonly w?: number;
+  /**
+   * Rows it covers lying unturned.
+   *
+   * @default 1
+   * @range 1..
+   */
+  readonly h?: number;
+  /**
+   * It lies turned a quarter: it covers h columns and w rows, and its art turns with it.
+   *
+   * @default false
+   */
+  readonly rotated?: boolean;
+  /**
+   * How many are in its stack: shown from 2, or from 1 when it stacks.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * The most its stack holds; 0 and 1 do not stack.
+   *
+   * @default 0
+   */
+  readonly maxStack?: number;
+  /**
+   * Its tier: the tile's wash, its edge and its pips.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * What kind of thing it is (helmet, ring, potion): a paperdoll slot takes the tags it lists, and InventoryGridDesc.highlight lights every item of one.
+   *
+   * @default ""
+   */
+  readonly tag?: string;
+  /**
+   * It cannot be moved (a quest item, a bound one): a lock in its corner, and a drag or a pick-up of it shakes and is refused.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * Picked up since the player last looked: a dot in its corner (the game clears it on InventoryGridResult.hovered).
+   *
+   * @default false
+   */
+  readonly fresh?: boolean;
+  /**
+   * Worn or slotted elsewhere: a tick in its corner.
+   *
+   * @default false
+   */
+  readonly equipped?: boolean;
+  /**
+   * The player cannot use it (a class it does not fit, a level too high): a danger wash, and said so to a screen reader.
+   *
+   * @default false
+   */
+  readonly unusable?: boolean;
+  /**
+   * Durability or charge, 0 to 1: a thin bar along its foot, danger under a quarter.
+   *
+   * @default null
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly charge?: number | null;
+}
+
+/**
+ * An item in the player's hand: dragged by the pointer or a finger, or picked up with confirm and moved with keys or a pad. A grid or paperdoll reports the one it holds; pass it to the others on the screen (their desc's carry) so the places that take it light up and a release over them lands it.
+ */
+export interface InventoryCarry {
+  /** The item. */
+  readonly key: string;
+  /** The id of the grid or paperdoll it was picked up from. */
+  readonly source: string;
+  /** The paperdoll slot it was picked up from; empty when from a grid. */
+  readonly slot: string;
+  /** Its tag. */
+  readonly tag: string;
+  /** Columns it covers as carried (turned when rotated). */
+  readonly w: number;
+  /** Rows it covers as carried. */
+  readonly h: number;
+  /** It is carried turned. */
+  readonly rotated: boolean;
+  /** How many are carried: its whole stack, or the part split from it. */
+  readonly count: number;
+  /**
+   * The pointer's x (for keys and pads, the centre of the place the focus is on).
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * The pointer's y.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+  /**
+   * Keys or a pad carry it: it lands where confirm is pressed, not where the pointer lets go.
+   */
+  readonly byFocus: boolean;
+  /**
+   * The pointer let it go this tick at x and y, outside the place that holds it: the grid or paperdoll under that point takes it (it is in no one's hand from the next tick).
+   */
+  readonly released: boolean;
+}
+
+/**
+ * The game puts an item (or part of a stack) in the player's hand: after its own menu's Split 10, Take one, or a transfer it wants carried.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface InventoryPick {
+  /**
+   * The item.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * How many to carry; 0 is the whole stack.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+}
+
+/**
+ * A move the player made: apply it to the viewmodel (the item is drawn where the viewmodel says, so it stays where it was until you do).
+ */
+export interface InventoryMove {
+  /** The item moved. */
+  readonly key: string;
+  /** The id of the grid or paperdoll it came from (this grid's own id for a move inside it). */
+  readonly from: string;
+  /** The paperdoll slot it came from; empty when from a grid. */
+  readonly fromSlot: string;
+  /** Its new column. */
+  readonly x: number;
+  /** Its new row. */
+  readonly y: number;
+  /** It now lies turned. */
+  readonly rotated: boolean;
+  /**
+   * How many moved: the whole stack, or the part split from it (leave the rest where it was, and give the moved part a new key).
+   */
+  readonly count: number;
+  /** Part of a stack moved. */
+  readonly split: boolean;
+  /**
+   * It was dropped on a stack of the same tag with room: add count to that stack (up to its maxStack) instead of placing it; what does not fit stays where it came from.
+   */
+  readonly mergeInto: string | null;
+  /**
+   * It was dropped on one item it trades places with: that item goes where this one came from.
+   */
+  readonly swapWith: string | null;
+}
+
+/**
+ * A grid inventory (a backpack, a stash, a chest): items of several cells, rotation, stacks and splitting, quick transfer between containers.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface InventoryGridDesc {
+  /**
+   * Its columns.
+   *
+   * @default 10
+   * @range 1..
+   */
+  readonly columns?: number;
+  /**
+   * Its rows.
+   *
+   * @default 6
+   * @range 1..
+   */
+  readonly rows?: number;
+  /**
+   * The items, each at its cell.
+   *
+   * @default []
+   */
+  readonly items?: readonly GridItem[];
+  /**
+   * A cell's side; 0 is 52 on a desktop and 48 on touch. Cells never go below 44 on a coarse pointer: a grid wider than its room scrolls.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly cellSize?: number;
+  /**
+   * Cells past this many, in reading order, are locked (a bag not yet bought): drawn with a lock, taking nothing; 0 is every cell.
+   *
+   * @default 0
+   */
+  readonly capacity?: number;
+  /**
+   * The selected item's key: ringed in the focus ink (a details panel beside shows it).
+   *
+   * @default ""
+   */
+  readonly selected?: string;
+  /**
+   * A tag whose items are lit and the others dimmed (what a slot or a recipe takes); empty lights none.
+   *
+   * @default ""
+   */
+  readonly highlight?: string;
+  /**
+   * An item carried from another grid or a paperdoll: its footprint shows where it would land under the pointer (or the focus), and a release or confirm there answers move with its from.
+   *
+   * @default null
+   */
+  readonly carry?: InventoryCarry | null;
+  /**
+   * Put an item, or part of a stack, in the player's hand this tick (pass it once).
+   *
+   * @default null
+   */
+  readonly pick?: InventoryPick | null;
+  /**
+   * What a screen reader calls the grid (Backpack); it is also said with the cells used.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * What a screen reader calls an empty cell.
+   *
+   * @default "Empty"
+   */
+  readonly emptyLabel?: string;
+  /**
+   * What it calls a locked cell, and a locked item's state.
+   *
+   * @default "Locked"
+   */
+  readonly lockedLabel?: string;
+  /**
+   * What it says of an item the player cannot use.
+   *
+   * @default "Cannot use"
+   */
+  readonly unusableLabel?: string;
+  /**
+   * The touch button that turns the carried item.
+   *
+   * @default "Rotate"
+   */
+  readonly rotateLabel?: string;
+}
+
+/** What an inventory grid answered this tick. */
+export interface InventoryGridResult {
+  /**
+   * The item pressed (a tap, a click, confirm on it while nothing is carried and it cannot be picked up): select it.
+   */
+  readonly selected: string | null;
+  /** The item used: a double press or a double tap (drink the potion, equip the sword). */
+  readonly used: string | null;
+  /**
+   * The item whose actions were asked for: a long press, or the details action (X, a pad's Y) on the focused item. Open its menu at menuAt (og.ui.contextMenu): split, drop, use.
+   */
+  readonly menu: string | null;
+  /**
+   * Where that menu opens: the long press's point, or the focused item's corner.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly menuAt: Vector2;
+  /**
+   * The item to send to the other container at once (quick transfer): a press with Shift held, or the details action held.
+   */
+  readonly quick: string | null;
+  /**
+   * A move to apply: an item placed, turned, merged, swapped or split, or one carried in from elsewhere.
+   */
+  readonly move: InventoryMove | null;
+  /**
+   * The item in the player's hand from this grid while it is carried (and on the tick it is let go outside the grid, with released): pass it to the paperdoll and the other grids on the screen.
+   */
+  readonly carried: InventoryCarry | null;
+  /**
+   * The item under the pointer or the focus: show its tooltip beside hoveredRect (og.ui.tooltipCard, og.ui.popover).
+   */
+  readonly hovered: string | null;
+  /** Where that item is on screen. */
+  readonly hoveredRect: UiRect | null;
+  /**
+   * A drop or a pick-up was refused this tick (no room, a locked cell or item): the place shook red and the error sound played.
+   */
+  readonly refused: boolean;
+}
+
+
+/**
+ * An equipment slot around the paperdoll's figure.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PaperdollSlot {
+  /**
+   * The slot's id (head, chest, mainHand): its element id.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name (Head): said by a screen reader, and shown under an empty slot on a desktop.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * The item tags it takes; empty takes any.
+   *
+   * @default []
+   */
+  readonly accept?: readonly string[];
+  /**
+   * What is worn there; null is empty (its w and h are not read: the item fills the slot).
+   *
+   * @default null
+   */
+  readonly item?: GridItem | null;
+  /**
+   * Where its centre sits across the doll's box, 0 its start edge to 1 its end.
+   *
+   * @default 0.5
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly x?: number;
+  /**
+   * Where its centre sits down the box, 0 the top to 1 the foot.
+   *
+   * @default 0.5
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly y?: number;
+  /**
+   * Its side; 0 is 64 on a desktop, 56 on a phone.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * Its width over its height (a two-handed weapon's tall slot is 0.5); 0 is square.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly aspect?: number;
+  /**
+   * The empty slot's silhouette, an icon of the style's set; empty draws the slot's initial.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Not open yet: a lock, taking nothing.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * Why it is locked (Unlocks at level 20).
+   *
+   * @default ""
+   */
+  readonly lockedHint?: string;
+}
+
+/**
+ * A line of the paperdoll's stats, with the change the carried or hovered item would make.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PaperdollStat {
+  /**
+   * What it is (Armor).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its value as shown (1,240).
+   *
+   * @default ""
+   */
+  readonly value?: string;
+  /**
+   * The change the compared item makes: positive is better, drawn with an up mark in success; negative with a down mark in danger; 0 shows none.
+   *
+   * @default 0
+   */
+  readonly delta?: number;
+  /**
+   * The change as shown (+48); empty writes delta.
+   *
+   * @default ""
+   */
+  readonly deltaText?: string;
+  /**
+   * A smaller value is better (a cooldown): flips the marks' meaning.
+   *
+   * @default false
+   */
+  readonly lowerIsBetter?: boolean;
+}
+
+/** An item the player put in a slot. */
+export interface PaperdollEquip {
+  /** The slot. */
+  readonly slot: string;
+  /** The item. */
+  readonly key: string;
+  /** The id of the grid (or this paperdoll) it came from. */
+  readonly from: string;
+  /** The slot it came from when moved between slots. */
+  readonly fromSlot: string;
+  /** The item that was in the slot: it goes where the new one came from. */
+  readonly swapped: string | null;
+}
+
+/**
+ * A paperdoll: equipment slots around the character's figure, and its stats.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PaperdollDesc {
+  /**
+   * The slots, each placed around the figure.
+   *
+   * @default []
+   */
+  readonly slots?: readonly PaperdollSlot[];
+  /**
+   * The character's name over the figure; empty is none.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * A line under it (Level 42 Paladin); empty is none.
+   *
+   * @default ""
+   */
+  readonly subtitle?: string;
+  /**
+   * A headline number (812); empty is none.
+   *
+   * @default ""
+   */
+  readonly rating?: string;
+  /**
+   * What it is (Item power).
+   *
+   * @default ""
+   */
+  readonly ratingLabel?: string;
+  /**
+   * The stats beside the figure (under it on a phone in portrait).
+   *
+   * @default []
+   */
+  readonly stats?: readonly PaperdollStat[];
+  /**
+   * The stats' heading (Attributes); empty is none.
+   *
+   * @default ""
+   */
+  readonly statsTitle?: string;
+  /**
+   * The stats go under the figure, not beside it (a screen that puts the grids beside the doll); a phone in portrait always stacks them.
+   *
+   * @default false
+   */
+  readonly stack?: boolean;
+  /**
+   * An item carried from a grid: the slots that take its tag light up and the others dim; a release or confirm over one answers equip.
+   *
+   * @default null
+   */
+  readonly carry?: InventoryCarry | null;
+  /**
+   * The stats' deltas are shown (the game sets them from the carried or hovered item).
+   *
+   * @default false
+   */
+  readonly compare?: boolean;
+  /**
+   * The selected slot's key: ringed in the focus ink.
+   *
+   * @default ""
+   */
+  readonly selected?: string;
+  /**
+   * The figure's box, width over height; 0 is 0.62 (a standing character).
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly figureAspect?: number;
+  /**
+   * What a screen reader adds for an empty slot.
+   *
+   * @default "Empty"
+   */
+  readonly emptyLabel?: string;
+  /**
+   * What it adds for a locked slot.
+   *
+   * @default "Locked"
+   */
+  readonly lockedLabel?: string;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+}
+
+/** What a paperdoll answered this tick. */
+export interface PaperdollResult {
+  /** An item placed in a slot: apply it. */
+  readonly equip: PaperdollEquip | null;
+  /** The slot pressed while nothing is carried. */
+  readonly selected: string | null;
+  /** The slot double pressed (take the item off at once). */
+  readonly used: string | null;
+  /**
+   * The item dragged out of a slot (or picked up with confirm) while it is carried, and on the tick it is let go outside with released: pass it to the grids.
+   */
+  readonly carried: InventoryCarry | null;
+  /** The slot under the pointer or the focus: show its item's tooltip beside hoveredRect. */
+  readonly hovered: string | null;
+  /** Where that slot is on screen. */
+  readonly hoveredRect: UiRect | null;
+  /**
+   * The carried item was refused this tick (a slot that does not take its tag, a locked slot): the slot shook and the error sound played.
+   */
+  readonly refused: boolean;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -44973,6 +45578,23 @@ export declare namespace og {
      * @param desc What it edits and how it types.
      */
     function onScreenKeyboard(id: string, open: boolean, desc?: KeyboardDesc): KeyboardResult;
+    /**
+     * A grid inventory (Diablo, Path of Exile, Escape from Tarkov, Resident Evil): items covering several cells, drawn on wells in their tier's colour with pips, a count on stacks, a lock, a fresh dot, an equipped tick and a charge bar. The pointer or a finger drags an item (Shift splits half a stack off), its footprint lit success where it fits, primary where it merges or swaps, danger where it cannot; R (a pad's X, a touch button) turns it a quarter while carried; a release outside lands it on the paperdoll or grid under the pointer. Keys and a pad move the focus cell by cell; confirm picks the focused item up, the footprint follows the focus, confirm places it and Back puts it back. A long press or the details action asks for the item's menu; a double press uses it; Shift and a press, or the details action held, sends it to the other container.
+     * Parts: Inventory.grid, Inventory.cell[empty|locked|target], Inventory.item[rarity=<tier>][selected][lifted][locked][unusable][dim], Inventory.art, Inventory.count, Inventory.charge, Inventory.footprint[valid|merge|swap|invalid], Inventory.ghost, Inventory.rotate. Slots: each item's image (art kind item, its cells' aspect). States: on each item, group selection (off, on), carry (resting, lifted) and highlight (normal, lit, dim); on the footprint, group drop (valid, merge, swap, invalid). Motion: the carried item lifts on the ui spring, items that move without a drag slide to their new cells (layout motion), a refused drop shakes. Sounds: select on a pick-up, confirm on a placing, error on a refusal, cancel when Back puts it back. Accessibility: a grid named by label and the cells used; items are gridcells named by their name, count, tier and states; empty cells too. Probe ids: <id>/Cells/<key>, <id>/Cells/Cell#<index>, <id>/Cells/Footprint, <id>/Ghost.
+     *
+     * @param id Its id.
+     * @param desc The grid, its items and what is carried in.
+     */
+    function inventoryGrid(id: string, desc?: InventoryGridDesc): InventoryGridResult;
+    /**
+     * A paperdoll (Diablo, Baldur's Gate 3, World of Warcraft, Genshin's artifacts): the figure the game builds, framed in a well, with equipment slots placed around it by fractions of its box, each an item tile or an empty slot's silhouette and name; the character's name, a headline rating and the stats with the deltas of the item being compared beside it (under it on a phone in portrait). A carried item lights the slots that take its tag and dims the rest; dropping it there, or confirm on the slot with keys or a pad, equips it. An item is dragged out of its slot as from a grid.
+     * Parts: Paperdoll.frame, Paperdoll.figure, Paperdoll.slot[empty|filled][accepts|rejects][locked][selected], Paperdoll.slotLabel, Paperdoll.rating, Paperdoll.stats, Paperdoll.stat, Paperdoll.delta[up|down]. Slots: the figure (built by the game: art kind character, a sceneViewport turntable); each worn item's image (art kind item). States: on each slot, group fill (empty, filled), target (none, accepts, rejects) and selection (off, on). Sounds: confirm on equip, error on a refusal. Accessibility: a group named by title; each slot a button named by its label and its item (or empty, locked); stats are text with their changes said. Probe ids: <id>/Doll/Slots/<slot key>, <id>/Doll/Figure, <id>/Stats/Stat#<i>.
+     *
+     * @param id Its id.
+     * @param desc The slots, the stats and what is carried.
+     * @param figure Builds the figure in its box (an art slot, a viewport).
+     */
+    function paperdoll(id: string, desc: PaperdollDesc, figure: UiBuild): PaperdollResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *
