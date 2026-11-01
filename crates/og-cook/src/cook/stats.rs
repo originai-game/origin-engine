@@ -774,6 +774,24 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
                 json!({ "params": s.params.len(), "codeBytes": s.code.len() }),
             )
         }
+        "og.UiMaterial" => {
+            let s = bundle.ui_material(id, &bytes()?).map_err(e)?;
+            (
+                "ui-material",
+                json!({ "params": s.params.len(), "codeBytes": s.code.len() }),
+            )
+        }
+        "og.Vector" => {
+            let v = bundle.vector(id, &bytes()?).map_err(e)?;
+            (
+                "vector",
+                json!({
+                    "triangles": v.indices.len() / 3,
+                    "paints": v.paints.len(),
+                    "viewBox": v.view_box,
+                }),
+            )
+        }
         "og.ParticleEmitter" => {
             let text = bundle.emitter_text(id, &bytes()?).map_err(e)?;
             let p = crate::fx::parse_emitter(&text, &mut |_| Ok(None))?;

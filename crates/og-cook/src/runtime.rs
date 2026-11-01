@@ -621,6 +621,96 @@ impl Bundle {
         .map_err(|e| invalid(&blob, &e))
     }
 
+    /// The custom UI material of a UI material blob.
+    pub fn ui_material(
+        &self,
+        id: &str,
+        bytes: &[u8],
+    ) -> Result<og_render::UiMaterialShader, LoadError> {
+        let blob = self.blob::<format::UiMaterial>(id, bytes)?;
+        let meta = one::<format::UiMaterialMeta>(&blob)?;
+        let text = blob.raw("text")?;
+        if text.len() < meta.text_bytes as usize {
+            return Err(invalid(&blob, "the UI material text is cut short"));
+        }
+        let text = std::str::from_utf8(&text[..meta.text_bytes as usize])
+            .map_err(|_| invalid(&blob, "the UI material text is not UTF-8"))?;
+        crate::shader::parse_ui_material(id, text, &mut |_| {
+            Err("a cooked UI material carries its code".to_string())
+        })
+        .map_err(|e| invalid(&blob, &e))
+    }
+
+    /// The triangles and paints of a vector blob, for
+    /// `og_render::RenderScene::add_ui_vector`.
+    pub fn vector(&self, id: &str, bytes: &[u8]) -> Result<og_render::UiVectorData, LoadError> {
+        use og_core::glam::Vec2;
+        let blob = self.blob::<format::Vector>(id, bytes)?;
+        let meta = one::<format::VectorMeta>(&blob)?;
+        let paints = table::<format::VectorPaintRow>(&blob, "paints")?;
+        let stops = table::<format::VectorStopRow>(&blob, "stops")?;
+        let vertices = blob.raw("vertices")?;
+        let indices = blob.raw("indices")?;
+        let vsize = std::mem::size_of::<og_render::UiVectorVertex>();
+        if vertices.len() < meta.vertex_count as usize * vsize
+            || indices.len() < meta.index_count as usize * 4
+            || paints.len() != meta.paint_count as usize
+        {
+            return Err(invalid(&blob, "the vector's sections are cut short"));
+        }
+        let vertices: Vec<og_render::UiVectorVertex> =
+            bytemuck::pod_collect_to_vec(&vertices[..meta.vertex_count as usize * vsize]);
+        let indices: Vec<u32> =
+            bytemuck::pod_collect_to_vec(&indices[..meta.index_count as usize * 4]);
+        if indices.iter().any(|i| *i as usize >= vertices.len())
+            || vertices.iter().any(|v| v.paint as usize >= paints.len())
+        {
+            return Err(invalid(&blob, "an index or a paint out of range"));
+        }
+        let mut out = Vec::with_capacity(paints.len());
+        for p in &paints {
+            out.push(if p.kind == 0 {
+                og_render::UiVectorPaint::Solid([p.r, p.g, p.b, p.a])
+            } else {
+                let range = p.first_stop as usize..(p.first_stop + p.stop_count) as usize;
+                let stops = stops
+                    .get(range)
+                    .ok_or_else(|| invalid(&blob, "a paint's stops out of range"))?
+                    .iter()
+                    .map(|s| og_render::UiStop {
+                        offset: s.offset,
+                        color: [s.r, s.g, s.b, s.a],
+                    })
+                    .collect();
+                og_render::UiVectorPaint::Gradient(og_render::UiGradient {
+                    kind: match p.kind {
+                        1 => og_render::UiGradientKind::Linear,
+                        2 => og_render::UiGradientKind::Radial,
+                        3 => og_render::UiGradientKind::Conic,
+                        4 => og_render::UiGradientKind::Diamond,
+                        _ => return Err(invalid(&blob, "a paint of an unknown kind")),
+                    },
+                    from: Vec2::new(p.from_x, p.from_y),
+                    to: Vec2::new(p.to_x, p.to_y),
+                    stops,
+                    spread: match p.spread {
+                        1 => og_render::UiSpread::Repeat,
+                        2 => og_render::UiSpread::Reflect,
+                        _ => og_render::UiSpread::Pad,
+                    },
+                    dither: p.dither != 0,
+                })
+            });
+        }
+        Ok(og_render::UiVectorData {
+            view_box: [meta.x, meta.y, meta.width, meta.height],
+            vertices,
+            indices,
+            paints: out,
+            strokes: Vec::new(),
+        })
+    }
+
     /// The validated text of a UI style blob (parse it with og-ui's
     /// `parse_style` and load the assets it names from the bundle).
     pub fn style_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {

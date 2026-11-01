@@ -39,6 +39,7 @@ pub mod texture_array;
 mod texture_cache;
 pub mod tilemap;
 mod timeline;
+pub mod vector;
 pub mod video;
 pub mod vox;
 
@@ -661,6 +662,8 @@ enum Kind {
     Rig2d,
     Shader,
     Post,
+    UiMaterial,
+    Vector,
     Behaviour,
     NavMesh,
     Strings,
@@ -693,6 +696,8 @@ impl Kind {
             Kind::Rig2d => "rig2d",
             Kind::Shader => "shader",
             Kind::Post => "post",
+            Kind::UiMaterial => "ui-material",
+            Kind::Vector => "vector",
             Kind::Behaviour => "behaviour",
             Kind::NavMesh => "navmesh",
             Kind::Strings => "strings",
@@ -764,6 +769,8 @@ enum Work<'a> {
     Rig2d(&'a Source),
     Shader(&'a Source),
     Post(&'a Source),
+    UiMaterial(&'a Source),
+    Vector(&'a Source),
     Behaviour(&'a Source),
     NavMesh(&'a Source),
     Strings(&'a Source),
@@ -1213,6 +1220,8 @@ fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
                     Ok(doc) if doc.ty == og_anim::RIG2D_TYPE => Kind::Rig2d,
                     Ok(doc) if doc.ty == crate::shader::SHADER_TYPE => Kind::Shader,
                     Ok(doc) if doc.ty == crate::shader::POST_TYPE => Kind::Post,
+                    Ok(doc) if doc.ty == crate::shader::UI_MATERIAL_TYPE => Kind::UiMaterial,
+                    Ok(doc) if doc.ty == vector::VECTOR_TYPE => Kind::Vector,
                     Ok(doc) if doc.ty == sfx::SFX_TYPE => Kind::Sound,
                     Ok(doc) if doc.ty == e6::BEHAVIOUR_TYPE => Kind::Behaviour,
                     Ok(doc) if doc.ty == og_i18n::STRINGS_TYPE => Kind::Strings,
@@ -1838,6 +1847,25 @@ pub fn cook_project_with_texture_cache(
                     .unwrap_or_default();
                 let st = stamp(&[b"post", &hash, wgsl.as_bytes()]);
                 outs.push((s.rel.clone(), format::Post::NAME, st, Work::Post(s)));
+            }
+            Kind::UiMaterial => {
+                let text = String::from_utf8_lossy(&s.bytes);
+                let wgsl = crate::shader::shader_source(&text)
+                    .map(|src| read_sibling(s, &src).unwrap_or_default())
+                    .unwrap_or_default();
+                let st = stamp(&[b"ui-material", &hash, wgsl.as_bytes()]);
+                outs.push((
+                    s.rel.clone(),
+                    format::UiMaterial::NAME,
+                    st,
+                    Work::UiMaterial(s),
+                ));
+            }
+            Kind::Vector => {
+                // The stamp covers the SVG the vector names.
+                let svg = vector::dependencies(s);
+                let st = stamp(&[b"vector", &hash, svg.as_bytes()]);
+                outs.push((s.rel.clone(), format::Vector::NAME, st, Work::Vector(s)));
             }
             Kind::Style => {
                 let text = String::from_utf8_lossy(&s.bytes);
@@ -2923,6 +2951,39 @@ fn run(
             flipbook::cook_layer(s, sheet, *n, &options.texture, p.stamp).map(|b| (b, Vec::new()))
         }
         Work::Icons(s) => icons::cook(s, p.stamp),
+        Work::Vector(s) => vector::cook(s, p.stamp),
+        Work::UiMaterial(s) => {
+            let text = std::str::from_utf8(&s.bytes)
+                .map_err(|_| CookError("a UI material is text (UTF-8)".into()))?;
+            let name = s.rel.trim_end_matches(".ogt");
+            let material =
+                crate::shader::parse_ui_material(name, text, &mut |src| read_sibling(s, src))
+                    .map_err(CookError)?;
+            let compiled = crate::shader::validate_ui_material(&material)
+                .map_err(|e| CookError(format!("the UI material does not compile: {e}")))?;
+            let canonical = crate::shader::ui_material_text(&material);
+            let mut w = og_blob::BlobWriter::new(
+                format::UiMaterial::type_hash(),
+                format::UiMaterial::schema_version(),
+                p.stamp,
+            );
+            w.table(
+                "meta",
+                &[format::UiMaterialMeta {
+                    text_bytes: canonical.len() as u32,
+                }],
+                format::row_hash::<format::UiMaterialMeta>(),
+            )
+            .raw("text", canonical.into_bytes(), 16);
+            Ok((
+                w.finish(),
+                vec![format!(
+                    "{} parameter(s); compiled for {}",
+                    material.params.len(),
+                    compiled.join(", ")
+                )],
+            ))
+        }
         Work::Behaviour(s) => e6::cook_behaviour(s, p.stamp),
         Work::Strings(s) => e6::cook_strings(s, p.stamp),
         Work::Rig(s) => anim::cook_rig(&s.bytes, p.stamp),

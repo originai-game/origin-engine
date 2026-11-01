@@ -87,6 +87,96 @@ pub fn validate_post(post: &og_render::PostShader) -> Result<Vec<String>, String
     Ok(vec!["SPIR-V, MSL".to_string()])
 }
 
+/// The `.ogt` type of a custom UI material (`docs/ui.md` §5.4, og-render's
+/// `UiMaterialShader`): the same `code`/`source` and `param` lines (at most
+/// four), the code defining
+/// `fn material(m: MaterialInput, p: Params) -> vec4<f32>`, the colour a
+/// UI layer composites with.
+///
+/// ```text
+/// type ui-material
+/// version 1
+/// ---
+/// source "ui/duotone.wgsl"
+/// param dark color 0.05 0.02 0.1
+/// param light color 1 0.8 0.4
+/// ```
+pub const UI_MATERIAL_TYPE: &str = "ui-material";
+
+/// Parses a UI material file (`read` as for [`parse_shader`]).
+pub fn parse_ui_material(
+    name: &str,
+    text: &str,
+    read: &mut dyn FnMut(&str) -> Result<String, String>,
+) -> Result<og_render::UiMaterialShader, String> {
+    let (code, params, _) = parse_entries(text, read, UI_MATERIAL_TYPE)?;
+    let material = og_render::UiMaterialShader {
+        name: name.to_string(),
+        code: code
+            .ok_or("a UI material needs `code` or `source` (its WGSL `material` function)")?,
+        params,
+    };
+    material.check()?;
+    Ok(material)
+}
+
+/// The canonical file of a UI material, its code inlined.
+pub fn ui_material_text(material: &og_render::UiMaterialShader) -> String {
+    entries_text(
+        UI_MATERIAL_TYPE,
+        &material.code,
+        &material.params,
+        ShaderMode::Hooks,
+    )
+}
+
+/// Compiles a UI material's composite module for every back end the
+/// engine draws with (naga: WGSL validation, SPIR-V for Vulkan, MSL for
+/// Metal, HLSL for DX12). The engine also compiles it on the device and
+/// composites the plain layer, reported, when that fails.
+#[cfg(feature = "cook")]
+pub fn validate_ui_material(material: &og_render::UiMaterialShader) -> Result<Vec<String>, String> {
+    use naga::back::hlsl;
+    use naga::valid::{Capabilities, ValidationFlags, Validator};
+    let src = og_render::ui_material_module_source(material);
+    let first = src
+        .find(material.code.as_str())
+        .map_or(0, |at| src[..at].lines().count());
+    let lines = material.code.lines().count();
+    let module = naga::front::wgsl::parse_str(&src).map_err(|e| {
+        format!(
+            "WGSL: {}",
+            user_lines(&e.emit_to_string(&src), first, lines)
+        )
+    })?;
+    let info = Validator::new(ValidationFlags::all(), Capabilities::all())
+        .validate(&module)
+        .map_err(|e| {
+            format!(
+                "validation: {}",
+                user_lines(&e.emit_to_string(&src), first, lines)
+            )
+        })?;
+    naga::back::spv::write_vec(&module, &info, &Default::default(), None)
+        .map_err(|e| format!("SPIR-V: {e}"))?;
+    // The instance index the UI pass reads needs MSL 2.4 (what wgpu asks of Metal).
+    let msl = naga::back::msl::Options {
+        lang_version: (2, 4),
+        ..Default::default()
+    };
+    naga::back::msl::write_string(&module, &info, &msl, &Default::default())
+        .map_err(|e| format!("MSL: {e}"))?;
+    let options = hlsl::Options {
+        shader_model: hlsl::ShaderModel::V6_0,
+        ..Default::default()
+    };
+    let mut out = String::new();
+    hlsl::Writer::new(&mut out, &options, &hlsl::PipelineOptions::default())
+        .write(&module, &info, None)
+        .map_err(|e| format!("HLSL: {e}"))?;
+    Ok(vec!["SPIR-V, MSL, HLSL".to_string()])
+}
+
 /// The WGSL file a shader names with `source` (the cook reads it).
 pub fn shader_source(text: &str) -> Option<String> {
     Document::parse(text).ok().and_then(|d| {
@@ -390,6 +480,44 @@ mod tests {
         assert!(e.contains("hooks:3"), "{e}");
         let e = parse_post("crt", &text("fn other() {}"), &mut refuse).expect_err("no post");
         assert!(e.contains("post"), "{e}");
+    }
+
+    /// A UI material cooks for Metal, Vulkan and DX12 and round-trips; a
+    /// broken one is refused at its own line, one without `material` or
+    /// with a fifth parameter before it compiles.
+    #[test]
+    fn a_ui_material_cooks_for_every_back_end_and_is_refused_at_its_line() {
+        let text = |code: &str, params: &str| {
+            format!(
+                "type ui-material\nversion 1\n---\ncode \"{}\"\n{params}",
+                code.replace('\n', "\\n")
+            )
+        };
+        let code = "fn material(m: MaterialInput, p: Params) -> vec4<f32> {\n  let c = layer(m.uv);\n  return vec4<f32>(mix(p.dark, p.light, c.r), c.a);\n}";
+        let params = "param dark color 0 0 0.1\nparam light color 1 0.8 0.4\n";
+        let m = parse_ui_material("duo", &text(code, params), &mut refuse).expect("parses");
+        assert_eq!(
+            validate_ui_material(&m).expect("validates"),
+            ["SPIR-V, MSL, HLSL"]
+        );
+        assert_eq!(
+            parse_ui_material("duo", &ui_material_text(&m), &mut refuse).expect("again"),
+            m
+        );
+        let broken = parse_ui_material(
+            "duo",
+            &text(&code.replace("p.light", "p.bright"), params),
+            &mut refuse,
+        )
+        .expect("parses");
+        let e = validate_ui_material(&broken).expect_err("refused");
+        assert!(e.contains("hooks:3"), "{e}");
+        let e = parse_ui_material("duo", &text("fn other() {}", ""), &mut refuse)
+            .expect_err("no material");
+        assert!(e.contains("material"), "{e}");
+        let five: String = (0..5).map(|i| format!("param p{i} float 0\n")).collect();
+        let e = parse_ui_material("duo", &text(code, &five), &mut refuse).expect_err("five");
+        assert!(e.contains("at most"), "{e}");
     }
 
     /// A full shader's error is reported at its own line, and one with

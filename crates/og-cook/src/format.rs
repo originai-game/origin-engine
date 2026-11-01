@@ -105,6 +105,8 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         Style,
         Shader,
         Post,
+        UiMaterial,
+        Vector,
         Emitter,
         Tileset,
         Tilemap,
@@ -957,6 +959,76 @@ impl BlobKind for Post {
     const NAME: &'static str = "og.PostPass";
     fn schemas() -> Vec<Schema> {
         vec![PostMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a custom UI material blob (an `.ogt` of `type ui-material`).
+    UiMaterialMeta, "og.UiMaterial", 1 {
+        /// Bytes of the canonical UI material file (code inlined) in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The custom UI material blob (`docs/ui.md` §5.4): `text` holds the
+/// material file the cook compiled for every back end (`crate::shader`),
+/// its code inlined.
+pub struct UiMaterial;
+impl BlobKind for UiMaterial {
+    const NAME: &'static str = "og.UiMaterial";
+    fn schemas() -> Vec<Schema> {
+        vec![UiMaterialMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a vector blob (an `.ogt` of `type vector`, `docs/ui.md`
+    /// §5.1): its view box and counts.
+    VectorMeta, "og.Vector", 1 {
+        x: f32, y: f32, width: f32, height: f32,
+        /// `og_render::UiVectorVertex`es in `vertices` (24 bytes each).
+        vertex_count: u32,
+        /// `u32` triangle indices in `indices`.
+        index_count: u32,
+        paint_count: u32,
+    }
+);
+
+row!(
+    /// A vector's paint: `kind` 0 solid (`r g b a`, linear, straight
+    /// alpha), 1 linear, 2 radial, 3 conic, 4 diamond gradient (`from`,
+    /// `to` in view-box units, its stops at `first_stop` in `stops`);
+    /// `spread` 0 pad, 1 repeat, 2 reflect.
+    VectorPaintRow, "og.VectorPaint", 1 {
+        kind: u32,
+        spread: u32,
+        dither: u32,
+        first_stop: u32,
+        stop_count: u32,
+        r: f32, g: f32, b: f32, a: f32,
+        from_x: f32, from_y: f32, to_x: f32, to_y: f32,
+    }
+);
+
+row!(
+    /// A gradient stop of a vector's paint (linear RGBA, straight alpha).
+    VectorStopRow, "og.VectorStop", 1 {
+        offset: f32,
+        r: f32, g: f32, b: f32, a: f32,
+    }
+);
+
+/// The vector blob: `meta`, `paints`, `stops`, and raw `vertices` and
+/// `indices`, the triangles og-render's UI pass draws.
+pub struct Vector;
+impl BlobKind for Vector {
+    const NAME: &'static str = "og.Vector";
+    fn schemas() -> Vec<Schema> {
+        vec![
+            VectorMeta::schema(),
+            VectorPaintRow::schema(),
+            VectorStopRow::schema(),
+        ]
     }
 }
 
