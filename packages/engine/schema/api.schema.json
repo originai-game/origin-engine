@@ -38838,7 +38838,7 @@
         },
         "bumpers": {
           "type": "boolean",
-          "description": "The tabPrev and tabNext actions (Q and E, LB and RB) step through the tabs, their glyphs at the row's ends.",
+          "description": "The tabPrev and tabNext actions (Q and E, LB and RB) step through the tabs, their glyphs on the device used last (keyboard, Xbox, PlayStation, Switch) at the row's ends.",
           "default": true
         },
         "wrap": {
@@ -39268,12 +39268,12 @@
         },
         "icon": {
           "type": "string",
-          "description": "The glyph's icon (og.ui.glyph's).",
+          "description": "The glyph's icon, for an action with no glyph on the device in use (a UI action's own glyph, og.ui.frameGlyph, follows the device live and wins).",
           "default": ""
         },
         "text": {
           "type": "string",
-          "description": "The glyph as text (`Enter`, `A`, `LB`).",
+          "description": "The glyph as text (`Enter`, `A`, `LB`), with the same fallback as icon.",
           "default": ""
         },
         "hold": {
