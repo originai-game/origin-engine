@@ -9039,6 +9039,17 @@
         "CyclerDesc",
         "SegmentItem",
         "SegmentedDesc",
+        "DropdownOption",
+        "DropdownDesc",
+        "DropdownResult",
+        "InputFieldDesc",
+        "InputResult",
+        "InputAreaDesc",
+        "SearchBoxDesc",
+        "SearchResult",
+        "PickedColor",
+        "ColorPickerDesc",
+        "ColorPickerResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -12182,6 +12193,135 @@
             }
           ],
           "returns": "ChoiceIndexResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "dropdown",
+          "doc": "A dropdown (a select): a field-like trigger with the chosen option and a chevron that turns as it opens; its list opens below it (above without room, kept on screen) as a floating layer that takes the focus at the chosen option, with groups, icons, descriptions, a tick on the chosen and a filter past 10 options. A press, Enter, Space or A opens it and chooses; Back, Escape or a press outside closes it and the focus returns to the trigger. Plays open, select and close. Parts: `Dropdown.trigger[open][invalid][hover|pressed|focused|disabled]`, `Dropdown.list`, `Dropdown.option[selected][hover|focused|disabled]`, `Dropdown.group`. Role combobox (expanded while open) and a listbox of options. Probe: `<id>/Trigger`, `<id>.list/Panel/Content/Option#i`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "DropdownDesc",
+              "optional": true,
+              "doc": "Its options and states."
+            }
+          ],
+          "returns": "DropdownResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "inputField",
+          "doc": "A text field (og.ui.textField's editing: IME, selection, clipboard, undo) in a framed row with a label above, an icon, a suffix, a clear button and a helper, error or counter line below. Its frame takes the focus ring as it is edited, turns danger and shakes once when an error appears (validity group). On a coarse pointer its row is 44 CSS px at least. Parts: `Input.frame[focused][invalid][disabled][hover]`, `Input.clear`. Role textbox named by its label; the error is an alert. Probe: `<id>/Frame/Field` (its text), `<id>/Frame/Clear`, `<id>/Foot/Error`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "value",
+              "type": "String",
+              "optional": false,
+              "doc": "The text from game state."
+            },
+            {
+              "name": "desc",
+              "type": "InputFieldDesc",
+              "optional": true,
+              "doc": "Its label and adornments."
+            }
+          ],
+          "returns": "InputResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "inputArea",
+          "doc": "A text area (og.ui.textArea's editing) framed as inputField is, with its label, helper, error and counter. Parts: `Input.frame[area][focused][invalid]` and the field's. Probe: `<id>/Frame/Area`, `<id>/Foot/Counter`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "value",
+              "type": "String",
+              "optional": false,
+              "doc": "The text from game state."
+            },
+            {
+              "name": "desc",
+              "type": "InputAreaDesc",
+              "optional": true,
+              "doc": "Its label and adornments."
+            }
+          ],
+          "returns": "InputResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "searchBox",
+          "doc": "A search box with suggestions: a field with a lens, a clear button and, while it has the focus and something matches, a list of suggestions under it (recent searches while it is empty) whose matching part is bold. Down (or a pad's down) moves into the list, Enter or a press chooses, Escape leaves. Typing stays in the field (the list takes no focus scope). Parts: `Search.frame[focused]`, `Search.list`, `Search.option[hover|focused]` (the query's match in bold). Role textbox with a listbox of options. Probe: `<id>/Frame/Field`, `<id>/List/Option#i`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "query",
+              "type": "String",
+              "optional": false,
+              "doc": "The query from game state."
+            },
+            {
+              "name": "desc",
+              "type": "SearchBoxDesc",
+              "optional": true,
+              "doc": "Its suggestions and look."
+            }
+          ],
+          "returns": "SearchResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "colorPicker",
+          "doc": "A colour picker: a saturation and brightness square with a ring at the colour, a hue strip, an opacity strip, swatches and a hex field, with the colour before and after. A press or a drag on the square or a strip sets it (a touch too); Left and Right step the hue strip, the opacity strip and the square's saturation while they have the focus; swatches are buttons; a hex field takes `#rgb`, `#rrggbb` and `#rrggbbaa`. The hue is kept while the colour is grey (UI state). Parts: `ColorPicker.square[focused]`, `ColorPicker.hue`, `ColorPicker.alpha`, `ColorPicker.thumb[focused]`, `ColorPicker.swatch[selected][hover|focused]`, `ColorPicker.preview`. Roles: two sliders and a slider-like square (its hex as its value), swatches as radios. Probe: `<id>/Square`, `<id>/Hue`, `<id>/Alpha`, `<id>/Swatches/Swatch#i`, `<id>/Bottom/Hex/Input/Frame/Field`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "color",
+              "type": "PickedColor",
+              "optional": true,
+              "doc": "The colour from game state."
+            },
+            {
+              "name": "desc",
+              "type": "ColorPickerDesc",
+              "optional": true,
+              "doc": "Its swatches and parts."
+            }
+          ],
+          "returns": "ColorPickerResult",
           "publish": true,
           "host": false
         },
@@ -44139,6 +44279,552 @@
           "default": false
         }
       },
+      "additionalProperties": false
+    },
+    "DropdownOption": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One option of a dropdown.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Its label.",
+          "default": ""
+        },
+        "description": {
+          "type": "string",
+          "description": "A line under it in the list; empty for none.",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon before it; empty for none.",
+          "default": ""
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but cannot be chosen.",
+          "default": false
+        },
+        "group": {
+          "type": "string",
+          "description": "The heading it sits under; options of one group follow each other.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "DropdownDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A dropdown: its options, label and states.",
+      "type": "object",
+      "properties": {
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DropdownOption"
+          },
+          "description": "The options.",
+          "default": []
+        },
+        "selected": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The chosen one from game state; -1 shows the placeholder.",
+          "default": -1
+        },
+        "label": {
+          "type": "string",
+          "description": "Its name, above it; empty for none.",
+          "default": ""
+        },
+        "placeholder": {
+          "type": "string",
+          "description": "Shown while nothing is chosen; empty is `Select…`.",
+          "default": ""
+        },
+        "helper": {
+          "type": "string",
+          "description": "A line under it; empty for none.",
+          "default": ""
+        },
+        "error": {
+          "type": "string",
+          "description": "An error under it (and the danger frame); empty for none.",
+          "default": ""
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "searchable": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A filter field at the list's top; null shows it past 10 options.",
+          "default": null
+        },
+        "searchPlaceholder": {
+          "type": "string",
+          "description": "The filter's placeholder; empty is `Filter`.",
+          "default": ""
+        },
+        "maxHeight": {
+          "type": "number",
+          "description": "The list's most height before it scrolls.",
+          "default": 320,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DropdownResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A dropdown's state after this tick.",
+      "type": "object",
+      "properties": {
+        "selected": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The chosen index, to keep and pass back."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "It changed this tick."
+        },
+        "open": {
+          "type": "boolean",
+          "description": "Its list is open."
+        }
+      },
+      "required": [
+        "selected",
+        "changed",
+        "open"
+      ],
+      "additionalProperties": false
+    },
+    "InputFieldDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A text field with its label, helper, error and adornments.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Its name, above it (a screen reader names the field by it); empty for none.",
+          "default": ""
+        },
+        "placeholder": {
+          "type": "string",
+          "description": "Shown while it is empty.",
+          "default": ""
+        },
+        "helper": {
+          "type": "string",
+          "description": "A line under it; empty for none.",
+          "default": ""
+        },
+        "error": {
+          "type": "string",
+          "description": "An error under it, the danger frame, the validity group's invalid (a shake); empty for none.",
+          "default": ""
+        },
+        "required": {
+          "type": "boolean",
+          "description": "A mark after the label.",
+          "default": false
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon at its start; empty for none.",
+          "default": ""
+        },
+        "clearable": {
+          "type": "boolean",
+          "description": "A clear button at its end while it has text.",
+          "default": true
+        },
+        "maxChars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most characters it takes (0: no limit); with counter, `12/20` under it.",
+          "default": 0
+        },
+        "counter": {
+          "type": "boolean",
+          "description": "Show the count under it (with maxChars, against the limit).",
+          "default": false
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "suffix": {
+          "type": "string",
+          "description": "Text at its end (`gold`, `.com`); empty for none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "InputResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A text field's state after this tick.",
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/$defs/Response",
+          "description": "The field's response (focused while it is edited, submitted on Enter)."
+        },
+        "value": {
+          "type": "string",
+          "description": "The text, to keep and pass back."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "The text changed this tick."
+        },
+        "submitted": {
+          "type": "boolean",
+          "description": "Enter was pressed in it."
+        },
+        "cleared": {
+          "type": "boolean",
+          "description": "The clear button emptied it."
+        }
+      },
+      "required": [
+        "response",
+        "value",
+        "changed",
+        "submitted",
+        "cleared"
+      ],
+      "additionalProperties": false
+    },
+    "InputAreaDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A text area with its label, helper, error and counter.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Its name, above it; empty for none.",
+          "default": ""
+        },
+        "placeholder": {
+          "type": "string",
+          "description": "Shown while it is empty.",
+          "default": ""
+        },
+        "helper": {
+          "type": "string",
+          "description": "A line under it; empty for none.",
+          "default": ""
+        },
+        "error": {
+          "type": "string",
+          "description": "An error under it; empty for none.",
+          "default": ""
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Lines shown at once (more scroll).",
+          "default": 4
+        },
+        "maxChars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most characters (0: no limit).",
+          "default": 0
+        },
+        "counter": {
+          "type": "boolean",
+          "description": "Show the count under it.",
+          "default": false
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "SearchBoxDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A search box and its suggestions.",
+      "type": "object",
+      "properties": {
+        "placeholder": {
+          "type": "string",
+          "description": "Shown while it is empty; empty is `Search`.",
+          "default": ""
+        },
+        "suggestions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "What to suggest for the query now (the game's, already filtered), or with filter every candidate.",
+          "default": []
+        },
+        "filter": {
+          "type": "boolean",
+          "description": "Filter suggestions itself: those containing the query, case and accents ignored, those starting with it first.",
+          "default": false
+        },
+        "recent": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Shown while the query is empty and it has the focus (recent searches); empty for none.",
+          "default": []
+        },
+        "maxSuggestions": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most shown.",
+          "default": 6
+        },
+        "label": {
+          "type": "string",
+          "description": "Its accessible name; empty is the placeholder.",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "SearchResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A search box's state after this tick.",
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "The query, to keep and pass back."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "The query changed this tick."
+        },
+        "submitted": {
+          "type": "boolean",
+          "description": "Enter was pressed with the query (search for it)."
+        },
+        "chosen": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The suggestion chosen this tick (the query becomes it)."
+        },
+        "cleared": {
+          "type": "boolean",
+          "description": "The clear button emptied it."
+        },
+        "focused": {
+          "type": "boolean",
+          "description": "The field or a suggestion has the focus."
+        }
+      },
+      "required": [
+        "query",
+        "changed",
+        "submitted",
+        "chosen",
+        "cleared",
+        "focused"
+      ],
+      "additionalProperties": false
+    },
+    "PickedColor": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A colour as a picker answers it: sRGB components 0 to 1 and alpha.",
+      "type": "object",
+      "properties": {
+        "r": {
+          "type": "number",
+          "description": "Red.",
+          "default": 0
+        },
+        "g": {
+          "type": "number",
+          "description": "Green.",
+          "default": 0
+        },
+        "b": {
+          "type": "number",
+          "description": "Blue.",
+          "default": 0
+        },
+        "a": {
+          "type": "number",
+          "description": "Alpha.",
+          "default": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "ColorPickerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A colour picker: its swatches and the parts it shows.",
+      "type": "object",
+      "properties": {
+        "swatches": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Preset colours as `#rrggbb` (a livery's, a team's); empty for none.",
+          "default": []
+        },
+        "alpha": {
+          "type": "boolean",
+          "description": "An opacity strip.",
+          "default": false
+        },
+        "hex": {
+          "type": "boolean",
+          "description": "A hex field.",
+          "default": true
+        },
+        "label": {
+          "type": "string",
+          "description": "Its name; empty for none.",
+          "default": ""
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null is 280.",
+          "default": null
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but inert.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ColorPickerResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A colour picker's colour after this tick.",
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/PickedColor",
+          "description": "The colour, to keep and pass back."
+        },
+        "hex": {
+          "type": "string",
+          "description": "It as `#rrggbb` (`#rrggbbaa` with alpha under 1)."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "It changed this tick."
+        },
+        "committed": {
+          "type": "boolean",
+          "description": "A drag ended, a swatch was chosen, a hex was entered or a step landed."
+        }
+      },
+      "required": [
+        "color",
+        "hex",
+        "changed",
+        "committed"
+      ],
       "additionalProperties": false
     },
     "MenuItem": {

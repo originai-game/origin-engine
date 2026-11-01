@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1713 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1729 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -320,6 +320,8 @@ Field units the docs and Tune use.
 | [`ColorMath.fromHsl`](math.md#member-ColorMath-fromHsl) | method | math | — |
 | [`ColorMath.lerp`](math.md#member-ColorMath-lerp) | method | math | — |
 | [`ColorMath.toHex`](math.md#member-ColorMath-toHex) | method | math | — |
+| [`ColorPickerDesc`](ui.md#type-ColorPickerDesc) | desc struct | ui | — |
+| [`ColorPickerResult`](ui.md#type-ColorPickerResult) | struct | ui | — |
 | [`CommandDesc`](commands.md#type-CommandDesc) | desc struct | commands | — |
 | [`CommandHandler`](commands.md#type-CommandHandler) | callback | commands | — |
 | [`CommandInfo`](commands.md#type-CommandInfo) | struct | commands | — |
@@ -389,6 +391,9 @@ Field units the docs and Tune use.
 | [`DRIVE_ALL`](physics.md#const-DRIVE_ALL) | constant | physics | — |
 | [`DRIVE_FRONT`](physics.md#const-DRIVE_FRONT) | constant | physics | — |
 | [`DRIVE_REAR`](physics.md#const-DRIVE_REAR) | constant | physics | — |
+| [`DropdownDesc`](ui.md#type-DropdownDesc) | desc struct | ui | — |
+| [`DropdownOption`](ui.md#type-DropdownOption) | desc struct | ui | — |
+| [`DropdownResult`](ui.md#type-DropdownResult) | struct | ui | — |
 | [`DropSpec`](ui.md#type-DropSpec) | desc struct | ui | — |
 | [`DumpDesc`](probe.md#type-DumpDesc) | desc struct | probe | — |
 | [`DumpKind`](probe.md#type-DumpKind) | enum | probe | — |
@@ -537,11 +542,14 @@ Field units the docs and Tune use.
 | [`Input.down`](input.md#member-Input-down) | method | input | `og_input_down` |
 | [`Input.pressed`](input.md#member-Input-pressed) | method | input | `og_input_pressed` |
 | [`Input.released`](input.md#member-Input-released) | method | input | `og_input_released` |
+| [`InputAreaDesc`](ui.md#type-InputAreaDesc) | desc struct | ui | — |
 | [`InputBinding`](input.md#type-InputBinding) | desc struct | input | — |
 | [`InputDesc`](net.md#type-InputDesc) | desc struct | net | — |
 | [`InputDevice`](input.md#type-InputDevice) | enum | input | — |
+| [`InputFieldDesc`](ui.md#type-InputFieldDesc) | desc struct | ui | — |
 | [`InputGlyph`](input.md#type-InputGlyph) | struct | input | — |
 | [`InputOperation`](probe.md#type-InputOperation) | struct | probe | — |
+| [`InputResult`](ui.md#type-InputResult) | struct | ui | — |
 | [`Insets`](ui.md#type-Insets) | struct | ui | — |
 | [`InstantSpec`](ui.md#type-InstantSpec) | struct | ui | — |
 | [`InventoryDesc`](ui.md#type-InventoryDesc) | desc struct | ui | — |
@@ -1095,6 +1103,7 @@ Field units the docs and Tune use.
 | [`og.ui.close`](ui.md#fn-close) | function | ui | `og_ui_close` |
 | [`og.ui.closeList`](ui.md#fn-closeList) | function | ui | `og_ui_close_list` |
 | [`og.ui.closeModal`](ui.md#fn-closeModal) | function | ui | `og_ui_close_modal` |
+| [`og.ui.colorPicker`](ui.md#fn-colorPicker) | function | ui | — |
 | [`og.ui.column`](ui.md#fn-column) | function | ui | — |
 | [`og.ui.component`](ui.md#fn-component) | function | ui | `og_ui_component` |
 | [`og.ui.configure`](ui.md#fn-configure) | function | ui | `og_ui_configure` |
@@ -1119,6 +1128,7 @@ Field units the docs and Tune use.
 | [`og.ui.documentSchema`](ui.md#fn-documentSchema) | function | ui | `og_ui_document_schema` |
 | [`og.ui.dpad`](ui.md#fn-dpad) | function | ui | `og_ui_dpad` |
 | [`og.ui.dragging`](ui.md#fn-dragging) | function | ui | `og_ui_dragging` |
+| [`og.ui.dropdown`](ui.md#fn-dropdown) | function | ui | — |
 | [`og.ui.effectLayer`](ui.md#fn-effectLayer) | function | ui | — |
 | [`og.ui.emitter`](ui.md#fn-emitter) | function | ui | — |
 | [`og.ui.feedback`](ui.md#fn-feedback) | function | ui | `og_ui_feedback` |
@@ -1142,6 +1152,8 @@ Field units the docs and Tune use.
 | [`og.ui.idi`](ui.md#fn-idi) | function | ui | — |
 | [`og.ui.idleHud`](ui.md#fn-idleHud) | function | ui | — |
 | [`og.ui.image`](ui.md#fn-image) | function | ui | `og_ui_image` |
+| [`og.ui.inputArea`](ui.md#fn-inputArea) | function | ui | — |
+| [`og.ui.inputField`](ui.md#fn-inputField) | function | ui | — |
 | [`og.ui.inventoryScreen`](ui.md#fn-inventoryScreen) | function | ui | — |
 | [`og.ui.joystick`](ui.md#fn-joystick) | function | ui | `og_ui_joystick` |
 | [`og.ui.keyValue`](ui.md#fn-keyValue) | function | ui | `og_ui_key_value` |
@@ -1218,6 +1230,7 @@ Field units the docs and Tune use.
 | [`og.ui.screenVm`](ui.md#fn-screenVm) | function | ui | `og_ui_screen_vm` |
 | [`og.ui.scroll`](ui.md#fn-scroll) | function | ui | — |
 | [`og.ui.scrollArea`](ui.md#fn-scrollArea) | function | ui | — |
+| [`og.ui.searchBox`](ui.md#fn-searchBox) | function | ui | — |
 | [`og.ui.seconds`](ui.md#fn-seconds) | function | ui | `og_ui_seconds` |
 | [`og.ui.seek`](ui.md#fn-seek) | function | ui | `og_ui_seek` |
 | [`og.ui.segmented`](ui.md#fn-segmented) | function | ui | — |
@@ -1325,6 +1338,7 @@ Field units the docs and Tune use.
 | [`PercentSize`](ui.md#type-PercentSize) | struct | ui | — |
 | [`PhysicsPhase`](physics.md#type-PhysicsPhase) | struct | physics | — |
 | [`PhysicsStats`](physics.md#type-PhysicsStats) | struct | physics | — |
+| [`PickedColor`](ui.md#type-PickedColor) | desc struct | ui | — |
 | [`PickOperation`](probe.md#type-PickOperation) | struct | probe | — |
 | [`PickResult`](probe.md#type-PickResult) | struct | probe | — |
 | [`PIN_LEFT`](physics.md#const-PIN_LEFT) | constant | physics | — |
@@ -1538,6 +1552,8 @@ Field units the docs and Tune use.
 | [`ScrollAreaDesc`](ui.md#type-ScrollAreaDesc) | desc struct | ui | — |
 | [`ScrollAxes`](ui.md#type-ScrollAxes) | enum | ui | — |
 | [`ScrollDesc`](ui.md#type-ScrollDesc) | desc struct | ui | — |
+| [`SearchBoxDesc`](ui.md#type-SearchBoxDesc) | desc struct | ui | — |
+| [`SearchResult`](ui.md#type-SearchResult) | struct | ui | — |
 | [`SegmentedDesc`](ui.md#type-SegmentedDesc) | desc struct | ui | — |
 | [`SegmentItem`](ui.md#type-SegmentItem) | desc struct | ui | — |
 | [`SelectDesc`](ui.md#type-SelectDesc) | desc struct | ui | — |

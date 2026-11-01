@@ -5,6 +5,8 @@
 
 import { holdButton, iconButton, pushButton } from "./buttons.ts";
 import { checkField, cycler, radioGroup, segmented, toggleSwitch } from "./choices.ts";
+import { inputArea, inputField, searchBox } from "./fields.ts";
+import { colorPicker, dropdown } from "./pickers.ts";
 import { numberStepper, rangeSlider, valueSlider } from "./ranges.ts";
 
 export const controls = Object.freeze({
@@ -19,4 +21,9 @@ export const controls = Object.freeze({
   valueSlider,
   rangeSlider,
   numberStepper,
+  inputField,
+  inputArea,
+  searchBox,
+  dropdown,
+  colorPicker,
 });

@@ -24792,6 +24792,450 @@ export interface SegmentedDesc {
 
 
 /**
+ * One option of a dropdown.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DropdownOption {
+  /**
+   * Its label.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * A line under it in the list; empty for none.
+   *
+   * @default ""
+   */
+  readonly description?: string;
+  /**
+   * An icon before it; empty for none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Shown but cannot be chosen.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * The heading it sits under; options of one group follow each other.
+   *
+   * @default ""
+   */
+  readonly group?: string;
+}
+
+/**
+ * A dropdown: its options, label and states.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DropdownDesc {
+  /**
+   * The options.
+   *
+   * @default []
+   */
+  readonly options?: readonly DropdownOption[];
+  /**
+   * The chosen one from game state; -1 shows the placeholder.
+   *
+   * @default -1
+   */
+  readonly selected?: number;
+  /**
+   * Its name, above it; empty for none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Shown while nothing is chosen; empty is `Select…`.
+   *
+   * @default ""
+   */
+  readonly placeholder?: string;
+  /**
+   * A line under it; empty for none.
+   *
+   * @default ""
+   */
+  readonly helper?: string;
+  /**
+   * An error under it (and the danger frame); empty for none.
+   *
+   * @default ""
+   */
+  readonly error?: string;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * A filter field at the list's top; null shows it past 10 options.
+   *
+   * @default null
+   */
+  readonly searchable?: boolean | null;
+  /**
+   * The filter's placeholder; empty is `Filter`.
+   *
+   * @default ""
+   */
+  readonly searchPlaceholder?: string;
+  /**
+   * The list's most height before it scrolls.
+   *
+   * @default 320
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly maxHeight?: number;
+}
+
+/** A dropdown's state after this tick. */
+export interface DropdownResult {
+  /** The chosen index, to keep and pass back. */
+  readonly selected: number;
+  /** It changed this tick. */
+  readonly changed: boolean;
+  /** Its list is open. */
+  readonly open: boolean;
+}
+
+
+/**
+ * A text field with its label, helper, error and adornments.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface InputFieldDesc {
+  /**
+   * Its name, above it (a screen reader names the field by it); empty for none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Shown while it is empty.
+   *
+   * @default ""
+   */
+  readonly placeholder?: string;
+  /**
+   * A line under it; empty for none.
+   *
+   * @default ""
+   */
+  readonly helper?: string;
+  /**
+   * An error under it, the danger frame, the validity group's invalid (a shake); empty for none.
+   *
+   * @default ""
+   */
+  readonly error?: string;
+  /**
+   * A mark after the label.
+   *
+   * @default false
+   */
+  readonly required?: boolean;
+  /**
+   * An icon at its start; empty for none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * A clear button at its end while it has text.
+   *
+   * @default true
+   */
+  readonly clearable?: boolean;
+  /**
+   * The most characters it takes (0: no limit); with counter, `12/20` under it.
+   *
+   * @default 0
+   */
+  readonly maxChars?: number;
+  /**
+   * Show the count under it (with maxChars, against the limit).
+   *
+   * @default false
+   */
+  readonly counter?: boolean;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Text at its end (`gold`, `.com`); empty for none.
+   *
+   * @default ""
+   */
+  readonly suffix?: string;
+}
+
+/** A text field's state after this tick. */
+export interface InputResult {
+  /** The field's response (focused while it is edited, submitted on Enter). */
+  readonly response: Response;
+  /** The text, to keep and pass back. */
+  readonly value: string;
+  /** The text changed this tick. */
+  readonly changed: boolean;
+  /** Enter was pressed in it. */
+  readonly submitted: boolean;
+  /** The clear button emptied it. */
+  readonly cleared: boolean;
+}
+
+
+/**
+ * A text area with its label, helper, error and counter.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface InputAreaDesc {
+  /**
+   * Its name, above it; empty for none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Shown while it is empty.
+   *
+   * @default ""
+   */
+  readonly placeholder?: string;
+  /**
+   * A line under it; empty for none.
+   *
+   * @default ""
+   */
+  readonly helper?: string;
+  /**
+   * An error under it; empty for none.
+   *
+   * @default ""
+   */
+  readonly error?: string;
+  /**
+   * Lines shown at once (more scroll).
+   *
+   * @default 4
+   */
+  readonly rows?: number;
+  /**
+   * The most characters (0: no limit).
+   *
+   * @default 0
+   */
+  readonly maxChars?: number;
+  /**
+   * Show the count under it.
+   *
+   * @default false
+   */
+  readonly counter?: boolean;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+}
+
+
+/**
+ * A search box and its suggestions.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SearchBoxDesc {
+  /**
+   * Shown while it is empty; empty is `Search`.
+   *
+   * @default ""
+   */
+  readonly placeholder?: string;
+  /**
+   * What to suggest for the query now (the game's, already filtered), or with filter every candidate.
+   *
+   * @default []
+   */
+  readonly suggestions?: readonly string[];
+  /**
+   * Filter suggestions itself: those containing the query, case and accents ignored, those starting with it first.
+   *
+   * @default false
+   */
+  readonly filter?: boolean;
+  /**
+   * Shown while the query is empty and it has the focus (recent searches); empty for none.
+   *
+   * @default []
+   */
+  readonly recent?: readonly string[];
+  /**
+   * The most shown.
+   *
+   * @default 6
+   */
+  readonly maxSuggestions?: number;
+  /**
+   * Its accessible name; empty is the placeholder.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+}
+
+/** A search box's state after this tick. */
+export interface SearchResult {
+  /** The query, to keep and pass back. */
+  readonly query: string;
+  /** The query changed this tick. */
+  readonly changed: boolean;
+  /** Enter was pressed with the query (search for it). */
+  readonly submitted: boolean;
+  /** The suggestion chosen this tick (the query becomes it). */
+  readonly chosen: string | null;
+  /** The clear button emptied it. */
+  readonly cleared: boolean;
+  /** The field or a suggestion has the focus. */
+  readonly focused: boolean;
+}
+
+
+/**
+ * A colour as a picker answers it: sRGB components 0 to 1 and alpha.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PickedColor {
+  /**
+   * Red.
+   *
+   * @default 0
+   */
+  readonly r?: number;
+  /**
+   * Green.
+   *
+   * @default 0
+   */
+  readonly g?: number;
+  /**
+   * Blue.
+   *
+   * @default 0
+   */
+  readonly b?: number;
+  /**
+   * Alpha.
+   *
+   * @default 1
+   */
+  readonly a?: number;
+}
+
+/**
+ * A colour picker: its swatches and the parts it shows.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ColorPickerDesc {
+  /**
+   * Preset colours as `#rrggbb` (a livery's, a team's); empty for none.
+   *
+   * @default []
+   */
+  readonly swatches?: readonly string[];
+  /**
+   * An opacity strip.
+   *
+   * @default false
+   */
+  readonly alpha?: boolean;
+  /**
+   * A hex field.
+   *
+   * @default true
+   */
+  readonly hex?: boolean;
+  /**
+   * Its name; empty for none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its width; null is 280.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Shown but inert.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+}
+
+/** A colour picker's colour after this tick. */
+export interface ColorPickerResult {
+  /** The colour, to keep and pass back. */
+  readonly color: PickedColor;
+  /** It as `#rrggbb` (`#rrggbbaa` with alpha under 1). */
+  readonly hex: string;
+  /** It changed this tick. */
+  readonly changed: boolean;
+  /** A drag ended, a swatch was chosen, a hex was entered or a step landed. */
+  readonly committed: boolean;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -36554,6 +36998,45 @@ export declare namespace og {
      * @param desc Its segments.
      */
     function segmented(id: string, desc?: SegmentedDesc): ChoiceIndexResult;
+    /**
+     * A dropdown (a select): a field-like trigger with the chosen option and a chevron that turns as it opens; its list opens below it (above without room, kept on screen) as a floating layer that takes the focus at the chosen option, with groups, icons, descriptions, a tick on the chosen and a filter past 10 options. A press, Enter, Space or A opens it and chooses; Back, Escape or a press outside closes it and the focus returns to the trigger. Plays open, select and close. Parts: `Dropdown.trigger[open][invalid][hover|pressed|focused|disabled]`, `Dropdown.list`, `Dropdown.option[selected][hover|focused|disabled]`, `Dropdown.group`. Role combobox (expanded while open) and a listbox of options. Probe: `<id>/Trigger`, `<id>.list/Panel/Content/Option#i`.
+     *
+     * @param id Its id.
+     * @param desc Its options and states.
+     */
+    function dropdown(id: string, desc?: DropdownDesc): DropdownResult;
+    /**
+     * A text field (og.ui.textField's editing: IME, selection, clipboard, undo) in a framed row with a label above, an icon, a suffix, a clear button and a helper, error or counter line below. Its frame takes the focus ring as it is edited, turns danger and shakes once when an error appears (validity group). On a coarse pointer its row is 44 CSS px at least. Parts: `Input.frame[focused][invalid][disabled][hover]`, `Input.clear`. Role textbox named by its label; the error is an alert. Probe: `<id>/Frame/Field` (its text), `<id>/Frame/Clear`, `<id>/Foot/Error`.
+     *
+     * @param id Its id.
+     * @param value The text from game state.
+     * @param desc Its label and adornments.
+     */
+    function inputField(id: string, value: string, desc?: InputFieldDesc): InputResult;
+    /**
+     * A text area (og.ui.textArea's editing) framed as inputField is, with its label, helper, error and counter. Parts: `Input.frame[area][focused][invalid]` and the field's. Probe: `<id>/Frame/Area`, `<id>/Foot/Counter`.
+     *
+     * @param id Its id.
+     * @param value The text from game state.
+     * @param desc Its label and adornments.
+     */
+    function inputArea(id: string, value: string, desc?: InputAreaDesc): InputResult;
+    /**
+     * A search box with suggestions: a field with a lens, a clear button and, while it has the focus and something matches, a list of suggestions under it (recent searches while it is empty) whose matching part is bold. Down (or a pad's down) moves into the list, Enter or a press chooses, Escape leaves. Typing stays in the field (the list takes no focus scope). Parts: `Search.frame[focused]`, `Search.list`, `Search.option[hover|focused]` (the query's match in bold). Role textbox with a listbox of options. Probe: `<id>/Frame/Field`, `<id>/List/Option#i`.
+     *
+     * @param id Its id.
+     * @param query The query from game state.
+     * @param desc Its suggestions and look.
+     */
+    function searchBox(id: string, query: string, desc?: SearchBoxDesc): SearchResult;
+    /**
+     * A colour picker: a saturation and brightness square with a ring at the colour, a hue strip, an opacity strip, swatches and a hex field, with the colour before and after. A press or a drag on the square or a strip sets it (a touch too); Left and Right step the hue strip, the opacity strip and the square's saturation while they have the focus; swatches are buttons; a hex field takes `#rgb`, `#rrggbb` and `#rrggbbaa`. The hue is kept while the colour is grey (UI state). Parts: `ColorPicker.square[focused]`, `ColorPicker.hue`, `ColorPicker.alpha`, `ColorPicker.thumb[focused]`, `ColorPicker.swatch[selected][hover|focused]`, `ColorPicker.preview`. Roles: two sliders and a slider-like square (its hex as its value), swatches as radios. Probe: `<id>/Square`, `<id>/Hue`, `<id>/Alpha`, `<id>/Swatches/Swatch#i`, `<id>/Bottom/Hex/Input/Frame/Field`.
+     *
+     * @param id Its id.
+     * @param color The colour from game state.
+     * @param desc Its swatches and parts.
+     */
+    function colorPicker(id: string, color?: PickedColor, desc?: ColorPickerDesc): ColorPickerResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

@@ -3734,6 +3734,189 @@ module ui {
     returns ChoiceIndexResult
   }
 
+  struct DropdownOption {
+    doc "One option of a dropdown."
+    desc true
+    field label String "Its label."
+    field description String "A line under it in the list; empty for none."
+    field icon String "An icon before it; empty for none."
+    field disabled bool "Shown but cannot be chosen."
+    field group String "The heading it sits under; options of one group follow each other."
+  }
+
+  struct DropdownDesc {
+    doc "A dropdown: its options, label and states."
+    desc true
+    field options List.DropdownOption "The options."
+    field selected i32 "The chosen one from game state; -1 shows the placeholder." {
+      default -1
+    }
+    field label String "Its name, above it; empty for none."
+    field placeholder String "Shown while nothing is chosen; empty is `Select…`."
+    field helper String "A line under it; empty for none."
+    field error String "An error under it (and the danger frame); empty for none."
+    field disabled bool "Shown but inert."
+    field width Option.Size "Its width; null grows."
+    field searchable Option.bool "A filter field at the list's top; null shows it past 10 options."
+    field searchPlaceholder String "The filter's placeholder; empty is `Filter`."
+    field maxHeight f32 "The list's most height before it scrolls." {
+      default 320
+      unit cssPx
+    }
+  }
+
+  struct DropdownResult {
+    doc "A dropdown's state after this tick."
+    field selected i32 "The chosen index, to keep and pass back."
+    field changed bool "It changed this tick."
+    field open bool "Its list is open."
+  }
+
+  fn dropdown {
+    doc "A dropdown (a select): a field-like trigger with the chosen option and a chevron that turns as it opens; its list opens below it (above without room, kept on screen) as a floating layer that takes the focus at the chosen option, with groups, icons, descriptions, a tick on the chosen and a filter past 10 options. A press, Enter, Space or A opens it and chooses; Back, Escape or a press outside closes it and the focus returns to the trigger. Plays open, select and close. Parts: `Dropdown.trigger[open][invalid][hover|pressed|focused|disabled]`, `Dropdown.list`, `Dropdown.option[selected][hover|focused|disabled]`, `Dropdown.group`. Role combobox (expanded while open) and a listbox of options. Probe: `<id>/Trigger`, `<id>.list/Panel/Content/Option#i`."
+    host false
+    param id String "Its id."
+    param desc DropdownDesc "Its options and states."
+    returns DropdownResult
+  }
+
+  struct InputFieldDesc {
+    doc "A text field with its label, helper, error and adornments."
+    desc true
+    field label String "Its name, above it (a screen reader names the field by it); empty for none."
+    field placeholder String "Shown while it is empty."
+    field helper String "A line under it; empty for none."
+    field error String "An error under it, the danger frame, the validity group's invalid (a shake); empty for none."
+    field required bool "A mark after the label."
+    field icon String "An icon at its start; empty for none."
+    field clearable bool "A clear button at its end while it has text." {
+      default true
+    }
+    field maxChars u32 "The most characters it takes (0: no limit); with counter, `12/20` under it."
+    field counter bool "Show the count under it (with maxChars, against the limit)."
+    field disabled bool "Shown but inert."
+    field width Option.Size "Its width; null grows."
+    field suffix String "Text at its end (`gold`, `.com`); empty for none."
+  }
+
+  struct InputResult {
+    doc "A text field's state after this tick."
+    field response Response "The field's response (focused while it is edited, submitted on Enter)."
+    field value String "The text, to keep and pass back."
+    field changed bool "The text changed this tick."
+    field submitted bool "Enter was pressed in it."
+    field cleared bool "The clear button emptied it."
+  }
+
+  fn inputField {
+    doc "A text field (og.ui.textField's editing: IME, selection, clipboard, undo) in a framed row with a label above, an icon, a suffix, a clear button and a helper, error or counter line below. Its frame takes the focus ring as it is edited, turns danger and shakes once when an error appears (validity group). On a coarse pointer its row is 44 CSS px at least. Parts: `Input.frame[focused][invalid][disabled][hover]`, `Input.clear`. Role textbox named by its label; the error is an alert. Probe: `<id>/Frame/Field` (its text), `<id>/Frame/Clear`, `<id>/Foot/Error`."
+    host false
+    param id String "Its id."
+    param value String "The text from game state."
+    param desc InputFieldDesc "Its label and adornments."
+    returns InputResult
+  }
+
+  struct InputAreaDesc {
+    doc "A text area with its label, helper, error and counter."
+    desc true
+    field label String "Its name, above it; empty for none."
+    field placeholder String "Shown while it is empty."
+    field helper String "A line under it; empty for none."
+    field error String "An error under it; empty for none."
+    field rows u32 "Lines shown at once (more scroll)." {
+      default 4
+    }
+    field maxChars u32 "The most characters (0: no limit)."
+    field counter bool "Show the count under it."
+    field disabled bool "Shown but inert."
+    field width Option.Size "Its width; null grows."
+  }
+
+  fn inputArea {
+    doc "A text area (og.ui.textArea's editing) framed as inputField is, with its label, helper, error and counter. Parts: `Input.frame[area][focused][invalid]` and the field's. Probe: `<id>/Frame/Area`, `<id>/Foot/Counter`."
+    host false
+    param id String "Its id."
+    param value String "The text from game state."
+    param desc InputAreaDesc "Its label and adornments."
+    returns InputResult
+  }
+
+  struct SearchBoxDesc {
+    doc "A search box and its suggestions."
+    desc true
+    field placeholder String "Shown while it is empty; empty is `Search`."
+    field suggestions List.String "What to suggest for the query now (the game's, already filtered), or with filter every candidate."
+    field filter bool "Filter suggestions itself: those containing the query, case and accents ignored, those starting with it first."
+    field recent List.String "Shown while the query is empty and it has the focus (recent searches); empty for none."
+    field maxSuggestions u32 "The most shown." {
+      default 6
+    }
+    field label String "Its accessible name; empty is the placeholder."
+    field width Option.Size "Its width; null grows."
+    field disabled bool "Shown but inert."
+  }
+
+  struct SearchResult {
+    doc "A search box's state after this tick."
+    field query String "The query, to keep and pass back."
+    field changed bool "The query changed this tick."
+    field submitted bool "Enter was pressed with the query (search for it)."
+    field chosen Option.String "The suggestion chosen this tick (the query becomes it)."
+    field cleared bool "The clear button emptied it."
+    field focused bool "The field or a suggestion has the focus."
+  }
+
+  fn searchBox {
+    doc "A search box with suggestions: a field with a lens, a clear button and, while it has the focus and something matches, a list of suggestions under it (recent searches while it is empty) whose matching part is bold. Down (or a pad's down) moves into the list, Enter or a press chooses, Escape leaves. Typing stays in the field (the list takes no focus scope). Parts: `Search.frame[focused]`, `Search.list`, `Search.option[hover|focused]` (the query's match in bold). Role textbox with a listbox of options. Probe: `<id>/Frame/Field`, `<id>/List/Option#i`."
+    host false
+    param id String "Its id."
+    param query String "The query from game state."
+    param desc SearchBoxDesc "Its suggestions and look."
+    returns SearchResult
+  }
+
+  struct PickedColor {
+    doc "A colour as a picker answers it: sRGB components 0 to 1 and alpha."
+    desc true
+    field r f32 "Red."
+    field g f32 "Green."
+    field b f32 "Blue."
+    field a f32 "Alpha." {
+      default 1
+    }
+  }
+
+  struct ColorPickerDesc {
+    doc "A colour picker: its swatches and the parts it shows."
+    desc true
+    field swatches List.String "Preset colours as `#rrggbb` (a livery's, a team's); empty for none."
+    field alpha bool "An opacity strip."
+    field hex bool "A hex field." {
+      default true
+    }
+    field label String "Its name; empty for none."
+    field width Option.Size "Its width; null is 280."
+    field disabled bool "Shown but inert."
+  }
+
+  struct ColorPickerResult {
+    doc "A colour picker's colour after this tick."
+    field color PickedColor "The colour, to keep and pass back."
+    field hex String "It as `#rrggbb` (`#rrggbbaa` with alpha under 1)."
+    field changed bool "It changed this tick."
+    field committed bool "A drag ended, a swatch was chosen, a hex was entered or a step landed."
+  }
+
+  fn colorPicker {
+    doc "A colour picker: a saturation and brightness square with a ring at the colour, a hue strip, an opacity strip, swatches and a hex field, with the colour before and after. A press or a drag on the square or a strip sets it (a touch too); Left and Right step the hue strip, the opacity strip and the square's saturation while they have the focus; swatches are buttons; a hex field takes `#rgb`, `#rrggbb` and `#rrggbbaa`. The hue is kept while the colour is grey (UI state). Parts: `ColorPicker.square[focused]`, `ColorPicker.hue`, `ColorPicker.alpha`, `ColorPicker.thumb[focused]`, `ColorPicker.swatch[selected][hover|focused]`, `ColorPicker.preview`. Roles: two sliders and a slider-like square (its hex as its value), swatches as radios. Probe: `<id>/Square`, `<id>/Hue`, `<id>/Alpha`, `<id>/Swatches/Swatch#i`, `<id>/Bottom/Hex/Input/Frame/Field`."
+    host false
+    param id String "Its id."
+    param color PickedColor "The colour from game state."
+    param desc ColorPickerDesc "Its swatches and parts."
+    returns ColorPickerResult
+  }
+
   # ── the UI kit: screen templates (TypeScript over the calls above) ──────
 
   callback UiAction {
