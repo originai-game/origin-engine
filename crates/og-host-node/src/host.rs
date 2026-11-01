@@ -1020,6 +1020,9 @@ impl UiApi for NodeHost {
     fn og_ui_last_path(&self) -> String {
         rt::og_ui_last_path()
     }
+    fn og_ui_frame_pointer(&self) -> String {
+        rt::og_ui_frame_pointer()
+    }
     fn og_ui_counter(&self, id: String, value: f64, desc: Option<String>) -> f64 {
         rt::og_ui_counter(id, value, desc)
     }

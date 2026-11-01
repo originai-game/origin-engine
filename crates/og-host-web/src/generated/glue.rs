@@ -1664,6 +1664,11 @@ pub fn og_ui_breakpoint() -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_frame_pointer() -> String {
+    <Host as UiApi>::og_ui_frame_pointer(&Host)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_frame_viewport() -> String {
     <Host as UiApi>::og_ui_frame_viewport(&Host)
 }

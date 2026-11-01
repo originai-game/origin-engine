@@ -669,6 +669,8 @@ export interface HostAbi<A, V> {
   og_ui_tooltip(text: string): void;
   /** `og.ui.breakpoint` */
   og_ui_breakpoint(): string;
+  /** `og.ui.framePointer` */
+  og_ui_frame_pointer(): string;
   /** `og.ui.frameViewport` */
   og_ui_frame_viewport(): string;
   /** `og.ui.hasIcon` */
@@ -1330,6 +1332,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_text_area",
   "og_ui_tooltip",
   "og_ui_breakpoint",
+  "og_ui_frame_pointer",
   "og_ui_frame_viewport",
   "og_ui_has_icon",
   "og_ui_seconds",

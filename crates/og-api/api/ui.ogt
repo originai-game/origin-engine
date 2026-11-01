@@ -1188,6 +1188,23 @@ module ui {
     returns Breakpoint
   }
 
+  struct UiPointer {
+    doc "The primary pointer as the UI reads it this tick."
+    field x f32 "Its x from the surface's left." {
+      unit cssPx
+    }
+    field y f32 "Its y from the surface's top." {
+      unit cssPx
+    }
+    field inside bool "It is over the surface: false for a mouse that left it, or a touch screen with no finger down."
+    field down bool "Its button or finger is down."
+  }
+
+  fn framePointer {
+    doc "The primary pointer of the frame being built, without the world: for a component that hit-tests a shape it draws itself (a pie's wedges, a wheel's slices) by angle and radius rather than by rectangles. Keys and pads reach the same choices through focusable parts."
+    returns UiPointer
+  }
+
   fn frameViewport {
     doc "The play surface of the frame being built: og.ui.viewport without the world, for code that only builds UI."
     returns Viewport

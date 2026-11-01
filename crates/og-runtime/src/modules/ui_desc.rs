@@ -249,6 +249,15 @@ pub fn og_ui_frame_viewport() -> String {
     viewport_json(&v, hud).to_string()
 }
 
+pub fn og_ui_frame_pointer() -> String {
+    with_ui("og.ui.framePointer", |ui| {
+        let i = ui.input();
+        json!({ "x": i.pointer.x, "y": i.pointer.y, "inside": i.pointer_inside, "down": i.down })
+    })
+    .unwrap_or_else(|| json!({ "x": 0.0, "y": 0.0, "inside": false, "down": false }))
+    .to_string()
+}
+
 pub fn og_ui_frame_direction() -> String {
     let rtl = with_ui("og.ui.frameDirection", |ui| {
         ui.direction() == og_i18n::Direction::Rtl
