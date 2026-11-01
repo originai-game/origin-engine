@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Sourced by non-interactive login shells in this checkout. No secrets or
 # services belong in the shared project snapshot.
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
@@ -10,4 +11,17 @@ if [[ -z ${CHROME:-} ]]; then
     fi
   done
   unset chrome
+fi
+# sccache shares its cache between orbs through Cloudflare R2 (the owner,
+# 2026-11-01) when the project secrets SCCACHE_R2_ACCESS_KEY_ID and
+# SCCACHE_R2_SECRET_ACCESS_KEY are present; without them it keeps its local
+# disk cache. The token reads and writes this one bucket only; objects
+# expire after 30 days. macrunner and studio-win keep their local caches.
+if [[ -n ${SCCACHE_R2_ACCESS_KEY_ID:-} && -n ${SCCACHE_R2_SECRET_ACCESS_KEY:-} ]]; then
+  export SCCACHE_BUCKET=origin-engine-sccache
+  export SCCACHE_ENDPOINT=https://bca3392cf595465b8f0a046434c1ab82.r2.cloudflarestorage.com
+  export SCCACHE_REGION=auto
+  export SCCACHE_S3_KEY_PREFIX=orb-linux-x64
+  export AWS_ACCESS_KEY_ID="$SCCACHE_R2_ACCESS_KEY_ID"
+  export AWS_SECRET_ACCESS_KEY="$SCCACHE_R2_SECRET_ACCESS_KEY"
 fi

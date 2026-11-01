@@ -9,7 +9,8 @@ step() {
   printf '==> done (%ss)\n' "$((SECONDS - start))"
 }
 
-# Cache prerequisites, not a full engine build, in the project snapshot.
+# Cache prerequisites and a warm dev build (prewarm, at the end) in the
+# project snapshot.
 packages=(build-essential pkg-config libasound2-dev brotli shellcheck curl ca-certificates unzip xz-utils)
 missing=()
 for package in "${packages[@]}"; do
@@ -91,3 +92,26 @@ EOF
 fi
 # shellcheck disable=SC2016 # Expand CHROME in the new login shell, not setup.
 step bash -lc 'command -v cargo bun sccache wasm-bindgen wasm-opt node; test -x "$CHROME"'
+
+# Prewarm (the owner, 2026-11-01): the snapshot carries target/ with what an
+# agent's loop builds (clippy over every target, the test binaries the gate's
+# nextest runs, og), so a new orb starts warm and a stale snapshot only
+# rebuilds what changed. Dependencies come from the shared R2 sccache
+# (.agents/environment), so even a cold snapshot build mostly downloads.
+# A failing build on main does not fail setup; a run past the timeout stops
+# here, so setup stays under Amp's 20-minute limit and still publishes.
+# shellcheck disable=SC1091
+source .agents/environment
+# The server may already run from install-tools without the R2 settings.
+sccache --stop-server >/dev/null 2>&1 || true
+exclude=()
+for crate in $(awk '{ sub(/#.*/, "") } NF >= 1 { print $1 }' scripts/gate-exclude.txt); do
+  exclude+=(--exclude "$crate")
+done
+prewarm() {
+  timeout "$1" "${@:2}" || printf '==> prewarm step failed or timed out (%s); continuing\n' "$*"
+}
+step prewarm 600 cargo clippy --workspace "${exclude[@]}" --all-targets --locked -q -- -D warnings
+step prewarm 600 cargo nextest run --workspace "${exclude[@]}" --no-run --locked
+step sccache --show-stats
+sccache --stop-server >/dev/null 2>&1 || true
