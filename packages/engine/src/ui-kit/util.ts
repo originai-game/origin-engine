@@ -13,14 +13,21 @@ export const all = (n: number): Api.Insets => ({ left: n, top: n, right: n, bott
 export const xy = (x: number, y: number): Api.Insets => ({ left: x, top: y, right: x, bottom: y });
 export const token = (name: Api.ThemeColor, alpha?: number): Api.Paint => (alpha === undefined ? { token: name } : { token: name, alpha });
 
-/** The tokens of the frame being built, read once per UI tick. */
-let cached: { tick: number; theme: Api.UiTheme; viewport: Api.Viewport } | null = null;
-export function frame(): { theme: Api.UiTheme; viewport: Api.Viewport; t: Tokens; phone: boolean; touch: boolean } {
-  const tick = kit.tick();
-  if (!cached || cached.tick !== tick) cached = { tick, theme: kit.frameTheme(), viewport: kit.frameViewport() };
-  const { theme, viewport } = cached;
+/**
+ * The tokens of the frame being built. The theme and viewport are read
+ * from the host each call (kit parses them only when they change), so two
+ * engines at the same tick never share a stale surface; what is derived
+ * from them is kept while they are the same objects.
+ */
+type Frame = { theme: Api.UiTheme; viewport: Api.Viewport; t: Tokens; phone: boolean; touch: boolean };
+let cached: Frame | null = null;
+export function frame(): Frame {
+  const theme = kit.frameTheme();
+  const viewport = kit.frameViewport();
+  if (cached && cached.theme === theme && cached.viewport === viewport) return cached;
   const phone = viewport.breakpoint === "phonePortrait" || viewport.breakpoint === "phoneLandscape";
-  return { theme, viewport, t: tokens(theme), phone, touch: viewport.coarsePointer || phone || viewport.breakpoint === "tablet" };
+  cached = { theme, viewport, t: tokens(theme), phone, touch: viewport.coarsePointer || phone || viewport.breakpoint === "tablet" };
+  return cached;
 }
 
 export interface Tokens {

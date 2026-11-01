@@ -19,6 +19,21 @@ const parse = <T>(text: string): T => JSON.parse(text) as T;
 const json = (value: unknown): string | undefined => (value === undefined ? undefined : JSON.stringify(value));
 const worldId = (world: Api.World): number => (world as unknown as { id: number }).id;
 
+/**
+ * The frame's theme and viewport, parsed only when their text changes: the
+ * same object while the frame's style and surface stay the same (the
+ * components read them many times a tick), and a fresh one the tick they
+ * change, whichever engine is building.
+ */
+const lastParsed = new Map<string, { text: string; value: unknown }>();
+function parsedOnce<T>(key: string, text: string): T {
+  const last = lastParsed.get(key);
+  if (last && last.text === text) return last.value as T;
+  const value = parse<T>(text);
+  lastParsed.set(key, { text, value });
+  return value;
+}
+
 /** Runs `build` between an open and its close, closing even when it throws. */
 function within(open: () => void, build: () => void, close: () => void): void {
   open();
@@ -31,8 +46,8 @@ function within(open: () => void, build: () => void, close: () => void): void {
 
 export const widgets = {
   breakpoint: (): Api.Breakpoint => abi().og_ui_breakpoint() as Api.Breakpoint,
-  frameViewport: (): Api.Viewport => parse(abi().og_ui_frame_viewport()),
-  frameTheme: (): Api.UiTheme => parse(abi().og_ui_frame_theme()),
+  frameViewport: (): Api.Viewport => parsedOnce("viewport", abi().og_ui_frame_viewport()),
+  frameTheme: (): Api.UiTheme => parsedOnce("theme", abi().og_ui_frame_theme()),
   framePointer: (): Api.UiPointer => parse(abi().og_ui_frame_pointer()),
   setFocus: (path: string): void => abi().og_ui_set_focus(path),
   frameGlyph: (action: string): Api.UiGlyph | null => parse(abi().og_ui_frame_glyph(action)),
