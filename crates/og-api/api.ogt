@@ -14217,6 +14217,20 @@ module ui {
   handle VectorArt "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill."
   handle UiMaterial "A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through."
 
+  column VectorArt {
+    doc "A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill."
+    array Uint32Array
+    stride 2
+    value VectorArt
+  }
+
+  column UiMaterial {
+    doc "A UiMaterial handle field (0 is none): a UI material og.load.uiMaterial answered, kept for a LayerDesc or a custom paint."
+    array Uint32Array
+    stride 2
+    value UiMaterial
+  }
+
   enum ShapeType {
     doc "An element's outline (DrawShape.kind)."
     variant rect "Its rectangle, with DrawShape.radii (or its radius) and corner."

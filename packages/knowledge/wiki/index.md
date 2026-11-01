@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1450 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1452 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1529,6 +1529,7 @@ Field units the docs and Tune use.
 | [`UiLayer`](ui.md#type-UiLayer) | struct | ui | — |
 | [`UiLayoutStats`](ui.md#type-UiLayoutStats) | struct | ui | — |
 | [`UiMaterial`](ui.md#type-UiMaterial) | handle | ui | — |
+| [`UiMaterial()`](ui.md#column-UiMaterial) | column kind | ui | — |
 | [`UiMotionEvent`](ui.md#type-UiMotionEvent) | struct | ui | — |
 | [`UiOverlap`](ui.md#type-UiOverlap) | struct | ui | — |
 | [`UiPatch`](ui.md#type-UiPatch) | desc struct | ui | — |
@@ -1570,6 +1571,7 @@ Field units the docs and Tune use.
 | [`Vector3Math.scale`](math.md#member-Vector3Math-scale) | method | math | — |
 | [`Vector3Math.sub`](math.md#member-Vector3Math-sub) | method | math | — |
 | [`VectorArt`](ui.md#type-VectorArt) | handle | ui | — |
+| [`VectorArt()`](ui.md#column-VectorArt) | column kind | ui | — |
 | [`VectorFill`](ui.md#type-VectorFill) | desc struct | ui | — |
 | [`Video`](video.md#type-Video) | handle | video | — |
 | [`Video()`](video.md#column-Video) | column kind | video | — |

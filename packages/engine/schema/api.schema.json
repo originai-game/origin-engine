@@ -7983,6 +7983,8 @@
         "UiLayoutStats",
         "VectorArt",
         "UiMaterial",
+        "VectorArt",
+        "UiMaterial",
         "ShapeType",
         "CornerShape",
         "LineCap",

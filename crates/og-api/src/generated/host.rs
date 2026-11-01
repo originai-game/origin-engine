@@ -23419,6 +23419,8 @@ pub const COLUMNS: &[ColumnDecl] = &[
     ColumnDecl { name: "PanningModel", variants: &["equalpower", "hrtf"] },
     ColumnDecl { name: "Navigation", variants: &[] },
     ColumnDecl { name: "Behaviour", variants: &[] },
+    ColumnDecl { name: "VectorArt", variants: &[] },
+    ColumnDecl { name: "UiMaterial", variants: &[] },
     ColumnDecl { name: "TerrainData", variants: &[] },
     ColumnDecl { name: "Video", variants: &[] },
     ColumnDecl { name: "Path", variants: &[] },

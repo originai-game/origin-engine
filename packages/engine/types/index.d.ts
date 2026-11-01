@@ -241,6 +241,14 @@ export interface ColumnKinds {
   Navigation: { readonly array: Uint32Array; readonly stride: 2; readonly value: Navigation };
   /** A Behaviour handle field. */
   Behaviour: { readonly array: Uint32Array; readonly stride: 2; readonly value: Behaviour };
+  /**
+   * A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill.
+   */
+  VectorArt: { readonly array: Uint32Array; readonly stride: 2; readonly value: VectorArt };
+  /**
+   * A UiMaterial handle field (0 is none): a UI material og.load.uiMaterial answered, kept for a LayerDesc or a custom paint.
+   */
+  UiMaterial: { readonly array: Uint32Array; readonly stride: 2; readonly value: UiMaterial };
   /** A TerrainData handle field. */
   TerrainData: { readonly array: Uint32Array; readonly stride: 2; readonly value: TerrainData };
   /** A Video handle field (0 is none). */
@@ -22235,6 +22243,24 @@ export type VectorArt = number & { readonly [handleType]: "VectorArt" };
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
 export type UiMaterial = number & { readonly [handleType]: "UiMaterial" };
+
+/**
+ * A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill.
+ *
+ * A `VectorArt` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function VectorArt(value?: VectorArt, options?: FieldOptions): FieldSpec<"VectorArt">;
+
+/**
+ * A UiMaterial handle field (0 is none): a UI material og.load.uiMaterial answered, kept for a LayerDesc or a custom paint.
+ *
+ * A `UiMaterial` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function UiMaterial(value?: UiMaterial, options?: FieldOptions): FieldSpec<"UiMaterial">;
 
 /**
  * An element's outline (DrawShape.kind).

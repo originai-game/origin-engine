@@ -352,6 +352,8 @@ module ui {
 | [`og.ui.layoutStats`](#fn-layoutStats) | function | What the last frame built, rebuilt, laid out and kept. |
 | [`VectorArt`](#type-VectorArt) | handle | A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill. |
 | [`UiMaterial`](#type-UiMaterial) | handle | A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through. |
+| [`VectorArt()`](#column-VectorArt) | column kind | A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill. |
+| [`UiMaterial()`](#column-UiMaterial) | column kind | A UiMaterial handle field (0 is none): a UI material og.load.uiMaterial answered, kept for a LayerDesc or a custom paint. |
 | [`ShapeType`](#type-ShapeType) | enum | An element's outline (DrawShape.kind). |
 | [`CornerShape`](#type-CornerShape) | enum | How a rect's corners turn. |
 | [`LineCap`](#type-LineCap) | enum | The end of an open line, an arc or a dash. |
@@ -3979,7 +3981,7 @@ fn setDraw {
 }
 ```
 
-<sub>`api.ogt` line 14624</sub>
+<sub>`api.ogt` line 14638</sub>
 
 <a id="fn-openWorldAnchor"></a>
 
@@ -4009,7 +4011,7 @@ fn openWorldAnchor {
 }
 ```
 
-<sub>`api.ogt` line 14754</sub>
+<sub>`api.ogt` line 14768</sub>
 
 <a id="fn-openWorldPanel"></a>
 
@@ -4039,7 +4041,7 @@ fn openWorldPanel {
 }
 ```
 
-<sub>`api.ogt` line 14809</sub>
+<sub>`api.ogt` line 14823</sub>
 
 <a id="fn-defineMass"></a>
 
@@ -4069,7 +4071,7 @@ fn defineMass {
 }
 ```
 
-<sub>`api.ogt` line 14954</sub>
+<sub>`api.ogt` line 14968</sub>
 
 <a id="fn-spawnMass"></a>
 
@@ -4099,7 +4101,7 @@ fn spawnMass {
 }
 ```
 
-<sub>`api.ogt` line 14961</sub>
+<sub>`api.ogt` line 14975</sub>
 
 <a id="fn-pushMass"></a>
 
@@ -4129,7 +4131,7 @@ fn pushMass {
 }
 ```
 
-<sub>`api.ogt` line 14968</sub>
+<sub>`api.ogt` line 14982</sub>
 
 <a id="fn-massCount"></a>
 
@@ -4157,7 +4159,7 @@ fn massCount {
 }
 ```
 
-<sub>`api.ogt` line 14975</sub>
+<sub>`api.ogt` line 14989</sub>
 
 <a id="fn-particles"></a>
 
@@ -4185,7 +4187,7 @@ fn particles {
 }
 ```
 
-<sub>`api.ogt` line 15048</sub>
+<sub>`api.ogt` line 15062</sub>
 
 <a id="fn-meta"></a>
 
@@ -4215,7 +4217,7 @@ fn meta {
 }
 ```
 
-<sub>`api.ogt` line 15098</sub>
+<sub>`api.ogt` line 15112</sub>
 
 <a id="fn-sceneViewport"></a>
 
@@ -4245,7 +4247,7 @@ fn sceneViewport {
 }
 ```
 
-<sub>`api.ogt` line 15149</sub>
+<sub>`api.ogt` line 15163</sub>
 
 <a id="fn-screen"></a>
 
@@ -4277,7 +4279,7 @@ fn screen {
 }
 ```
 
-<sub>`api.ogt` line 15236</sub>
+<sub>`api.ogt` line 15250</sub>
 
 <a id="fn-component"></a>
 
@@ -4311,7 +4313,7 @@ fn component {
 }
 ```
 
-<sub>`api.ogt` line 15245</sub>
+<sub>`api.ogt` line 15259</sub>
 
 <a id="fn-openSlot"></a>
 
@@ -4339,7 +4341,7 @@ fn openSlot {
 }
 ```
 
-<sub>`api.ogt` line 15255</sub>
+<sub>`api.ogt` line 15269</sub>
 
 <a id="fn-push"></a>
 
@@ -4373,7 +4375,7 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 15261</sub>
+<sub>`api.ogt` line 15275</sub>
 
 <a id="fn-pop"></a>
 
@@ -4401,7 +4403,7 @@ fn pop {
 }
 ```
 
-<sub>`api.ogt` line 15271</sub>
+<sub>`api.ogt` line 15285</sub>
 
 <a id="fn-replace"></a>
 
@@ -4435,7 +4437,7 @@ fn replace {
 }
 ```
 
-<sub>`api.ogt` line 15277</sub>
+<sub>`api.ogt` line 15291</sub>
 
 <a id="fn-clear"></a>
 
@@ -4463,7 +4465,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 15287</sub>
+<sub>`api.ogt` line 15301</sub>
 
 <a id="fn-layers"></a>
 
@@ -4491,7 +4493,7 @@ fn layers {
 }
 ```
 
-<sub>`api.ogt` line 15293</sub>
+<sub>`api.ogt` line 15307</sub>
 
 <a id="fn-screenVm"></a>
 
@@ -4521,7 +4523,7 @@ fn screenVm {
 }
 ```
 
-<sub>`api.ogt` line 15299</sub>
+<sub>`api.ogt` line 15313</sub>
 
 <a id="fn-docEvents"></a>
 
@@ -4549,7 +4551,7 @@ fn docEvents {
 }
 ```
 
-<sub>`api.ogt` line 15306</sub>
+<sub>`api.ogt` line 15320</sub>
 
 <a id="fn-gameInput"></a>
 
@@ -4577,7 +4579,7 @@ fn gameInput {
 }
 ```
 
-<sub>`api.ogt` line 15312</sub>
+<sub>`api.ogt` line 15326</sub>
 
 <a id="fn-paused"></a>
 
@@ -4605,7 +4607,7 @@ fn paused {
 }
 ```
 
-<sub>`api.ogt` line 15318</sub>
+<sub>`api.ogt` line 15332</sub>
 
 <a id="fn-defineAction"></a>
 
@@ -4635,7 +4637,7 @@ fn defineAction {
 }
 ```
 
-<sub>`api.ogt` line 15324</sub>
+<sub>`api.ogt` line 15338</sub>
 
 <a id="fn-action"></a>
 
@@ -4663,7 +4665,7 @@ fn action {
 }
 ```
 
-<sub>`api.ogt` line 15331</sub>
+<sub>`api.ogt` line 15345</sub>
 
 <a id="fn-actionHeld"></a>
 
@@ -4691,7 +4693,7 @@ fn actionHeld {
 }
 ```
 
-<sub>`api.ogt` line 15337</sub>
+<sub>`api.ogt` line 15351</sub>
 
 <a id="fn-glyph"></a>
 
@@ -4721,7 +4723,7 @@ fn glyph {
 }
 ```
 
-<sub>`api.ogt` line 15343</sub>
+<sub>`api.ogt` line 15357</sub>
 
 <a id="fn-device"></a>
 
@@ -4749,7 +4751,7 @@ fn device {
 }
 ```
 
-<sub>`api.ogt` line 15350</sub>
+<sub>`api.ogt` line 15364</sub>
 
 <a id="fn-setDevice"></a>
 
@@ -4779,7 +4781,7 @@ fn setDevice {
 }
 ```
 
-<sub>`api.ogt` line 15356</sub>
+<sub>`api.ogt` line 15370</sub>
 
 <a id="fn-actionBar"></a>
 
@@ -4807,7 +4809,7 @@ fn actionBar {
 }
 ```
 
-<sub>`api.ogt` line 15363</sub>
+<sub>`api.ogt` line 15377</sub>
 
 <a id="fn-documentSchema"></a>
 
@@ -4830,7 +4832,7 @@ fn documentSchema {
 }
 ```
 
-<sub>`api.ogt` line 15369</sub>
+<sub>`api.ogt` line 15383</sub>
 
 <a id="fn-setProp"></a>
 
@@ -4864,7 +4866,7 @@ fn setProp {
 }
 ```
 
-<sub>`api.ogt` line 15374</sub>
+<sub>`api.ogt` line 15388</sub>
 
 <a id="fn-saveEdits"></a>
 
@@ -4892,7 +4894,7 @@ fn saveEdits {
 }
 ```
 
-<sub>`api.ogt` line 15383</sub>
+<sub>`api.ogt` line 15397</sub>
 
 ## Types
 
@@ -11464,7 +11466,7 @@ enum ShapeType {
 }
 ```
 
-<sub>`api.ogt` line 14220</sub>
+<sub>`api.ogt` line 14234</sub>
 
 <a id="type-CornerShape"></a>
 
@@ -11491,7 +11493,7 @@ enum CornerShape {
 }
 ```
 
-<sub>`api.ogt` line 14229</sub>
+<sub>`api.ogt` line 14243</sub>
 
 <a id="type-LineCap"></a>
 
@@ -11516,7 +11518,7 @@ enum LineCap {
 }
 ```
 
-<sub>`api.ogt` line 14237</sub>
+<sub>`api.ogt` line 14251</sub>
 
 <a id="type-LineJoin"></a>
 
@@ -11541,7 +11543,7 @@ enum LineJoin {
 }
 ```
 
-<sub>`api.ogt` line 14244</sub>
+<sub>`api.ogt` line 14258</sub>
 
 <a id="type-DrawShape"></a>
 
@@ -11627,7 +11629,7 @@ struct DrawShape {
 }
 ```
 
-<sub>`api.ogt` line 14251</sub>
+<sub>`api.ogt` line 14265</sub>
 
 <a id="type-GradientType"></a>
 
@@ -11654,7 +11656,7 @@ enum GradientType {
 }
 ```
 
-<sub>`api.ogt` line 14305</sub>
+<sub>`api.ogt` line 14319</sub>
 
 <a id="type-GradientSpread"></a>
 
@@ -11679,7 +11681,7 @@ enum GradientSpread {
 }
 ```
 
-<sub>`api.ogt` line 14313</sub>
+<sub>`api.ogt` line 14327</sub>
 
 <a id="type-GradientStop"></a>
 
@@ -11707,7 +11709,7 @@ struct GradientStop {
 }
 ```
 
-<sub>`api.ogt` line 14320</sub>
+<sub>`api.ogt` line 14334</sub>
 
 <a id="type-Gradient"></a>
 
@@ -11744,7 +11746,7 @@ struct Gradient {
 }
 ```
 
-<sub>`api.ogt` line 14331</sub>
+<sub>`api.ogt` line 14345</sub>
 
 <a id="type-ImageFit"></a>
 
@@ -11775,7 +11777,7 @@ enum ImageFit {
 }
 ```
 
-<sub>`api.ogt` line 14347</sub>
+<sub>`api.ogt` line 14361</sub>
 
 <a id="type-SliceEdges"></a>
 
@@ -11800,7 +11802,7 @@ enum SliceEdges {
 }
 ```
 
-<sub>`api.ogt` line 14357</sub>
+<sub>`api.ogt` line 14371</sub>
 
 <a id="type-SolidFill"></a>
 
@@ -11822,7 +11824,7 @@ struct SolidFill {
 }
 ```
 
-<sub>`api.ogt` line 14364</sub>
+<sub>`api.ogt` line 14378</sub>
 
 <a id="type-ImageFill"></a>
 
@@ -11881,7 +11883,7 @@ struct ImageFill {
 }
 ```
 
-<sub>`api.ogt` line 14370</sub>
+<sub>`api.ogt` line 14384</sub>
 
 <a id="type-VectorFill"></a>
 
@@ -11905,7 +11907,7 @@ struct VectorFill {
 }
 ```
 
-<sub>`api.ogt` line 14400</sub>
+<sub>`api.ogt` line 14414</sub>
 
 <a id="type-Fill"></a>
 
@@ -11933,7 +11935,7 @@ union Fill {
 }
 ```
 
-<sub>`api.ogt` line 14407</sub>
+<sub>`api.ogt` line 14421</sub>
 
 <a id="type-StrokeAlign"></a>
 
@@ -11958,7 +11960,7 @@ enum StrokeAlign {
 }
 ```
 
-<sub>`api.ogt` line 14416</sub>
+<sub>`api.ogt` line 14430</sub>
 
 <a id="type-Stroke"></a>
 
@@ -12004,7 +12006,7 @@ struct Stroke {
 }
 ```
 
-<sub>`api.ogt` line 14423</sub>
+<sub>`api.ogt` line 14437</sub>
 
 <a id="type-ShadowEffect"></a>
 
@@ -12041,7 +12043,7 @@ struct ShadowEffect {
 }
 ```
 
-<sub>`api.ogt` line 14447</sub>
+<sub>`api.ogt` line 14461</sub>
 
 <a id="type-GlowEffect"></a>
 
@@ -12073,7 +12075,7 @@ struct GlowEffect {
 }
 ```
 
-<sub>`api.ogt` line 14465</sub>
+<sub>`api.ogt` line 14479</sub>
 
 <a id="type-BlurEffect"></a>
 
@@ -12099,7 +12101,7 @@ struct BlurEffect {
 }
 ```
 
-<sub>`api.ogt` line 14479</sub>
+<sub>`api.ogt` line 14493</sub>
 
 <a id="type-BackdropEffect"></a>
 
@@ -12139,7 +12141,7 @@ struct BackdropEffect {
 }
 ```
 
-<sub>`api.ogt` line 14489</sub>
+<sub>`api.ogt` line 14503</sub>
 
 <a id="type-Effect"></a>
 
@@ -12171,7 +12173,7 @@ union Effect {
 }
 ```
 
-<sub>`api.ogt` line 14510</sub>
+<sub>`api.ogt` line 14524</sub>
 
 <a id="type-ClipMode"></a>
 
@@ -12196,7 +12198,7 @@ enum ClipMode {
 }
 ```
 
-<sub>`api.ogt` line 14521</sub>
+<sub>`api.ogt` line 14535</sub>
 
 <a id="type-MaskDesc"></a>
 
@@ -12222,7 +12224,7 @@ struct MaskDesc {
 }
 ```
 
-<sub>`api.ogt` line 14528</sub>
+<sub>`api.ogt` line 14542</sub>
 
 <a id="type-MaterialName"></a>
 
@@ -12263,7 +12265,7 @@ enum MaterialName {
 }
 ```
 
-<sub>`api.ogt` line 14536</sub>
+<sub>`api.ogt` line 14550</sub>
 
 <a id="type-LayerDesc"></a>
 
@@ -12289,7 +12291,7 @@ struct LayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 14551</sub>
+<sub>`api.ogt` line 14565</sub>
 
 <a id="type-TextShadowDesc"></a>
 
@@ -12322,7 +12324,7 @@ struct TextShadowDesc {
 }
 ```
 
-<sub>`api.ogt` line 14559</sub>
+<sub>`api.ogt` line 14573</sub>
 
 <a id="type-TextOutlineDesc"></a>
 
@@ -12352,7 +12354,7 @@ struct TextOutlineDesc {
 }
 ```
 
-<sub>`api.ogt` line 14574</sub>
+<sub>`api.ogt` line 14588</sub>
 
 <a id="type-TextEffectsDesc"></a>
 
@@ -12378,7 +12380,7 @@ struct TextEffectsDesc {
 }
 ```
 
-<sub>`api.ogt` line 14586</sub>
+<sub>`api.ogt` line 14600</sub>
 
 <a id="type-DrawDesc"></a>
 
@@ -12422,7 +12424,7 @@ struct DrawDesc {
 }
 ```
 
-<sub>`api.ogt` line 14594</sub>
+<sub>`api.ogt` line 14608</sub>
 
 <a id="type-BlendMode"></a>
 
@@ -12455,7 +12457,7 @@ enum BlendMode {
 }
 ```
 
-<sub>`api.ogt` line 14613</sub>
+<sub>`api.ogt` line 14627</sub>
 
 <a id="type-WorldTarget"></a>
 
@@ -12479,7 +12481,7 @@ struct WorldTarget {
 }
 ```
 
-<sub>`api.ogt` line 14632</sub>
+<sub>`api.ogt` line 14646</sub>
 
 <a id="type-AnchorScaleMode"></a>
 
@@ -12502,7 +12504,7 @@ enum AnchorScaleMode {
 }
 ```
 
-<sub>`api.ogt` line 14639</sub>
+<sub>`api.ogt` line 14653</sub>
 
 <a id="type-WorldOcclusion"></a>
 
@@ -12527,7 +12529,7 @@ enum WorldOcclusion {
 }
 ```
 
-<sub>`api.ogt` line 14645</sub>
+<sub>`api.ogt` line 14659</sub>
 
 <a id="type-Declutter"></a>
 
@@ -12554,7 +12556,7 @@ enum Declutter {
 }
 ```
 
-<sub>`api.ogt` line 14652</sub>
+<sub>`api.ogt` line 14666</sub>
 
 <a id="type-EdgeClampDesc"></a>
 
@@ -12588,7 +12590,7 @@ struct EdgeClampDesc {
 }
 ```
 
-<sub>`api.ogt` line 14660</sub>
+<sub>`api.ogt` line 14674</sub>
 
 <a id="type-WorldAnchorDesc"></a>
 
@@ -12681,7 +12683,7 @@ struct WorldAnchorDesc {
 }
 ```
 
-<sub>`api.ogt` line 14676</sub>
+<sub>`api.ogt` line 14690</sub>
 
 <a id="type-AnchorInfo"></a>
 
@@ -12728,7 +12730,7 @@ struct AnchorInfo {
 }
 ```
 
-<sub>`api.ogt` line 14730</sub>
+<sub>`api.ogt` line 14744</sub>
 
 <a id="type-WorldPanelDesc"></a>
 
@@ -12788,7 +12790,7 @@ struct WorldPanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 14761</sub>
+<sub>`api.ogt` line 14775</sub>
 
 <a id="type-PanelInfo"></a>
 
@@ -12819,7 +12821,7 @@ struct PanelInfo {
 }
 ```
 
-<sub>`api.ogt` line 14795</sub>
+<sub>`api.ogt` line 14809</sub>
 
 <a id="type-MassKind"></a>
 
@@ -12848,7 +12850,7 @@ enum MassKind {
 }
 ```
 
-<sub>`api.ogt` line 14816</sub>
+<sub>`api.ogt` line 14830</sub>
 
 <a id="type-MassEase"></a>
 
@@ -12877,7 +12879,7 @@ enum MassEase {
 }
 ```
 
-<sub>`api.ogt` line 14825</sub>
+<sub>`api.ogt` line 14839</sub>
 
 <a id="type-MassSpace"></a>
 
@@ -12900,7 +12902,7 @@ enum MassSpace {
 }
 ```
 
-<sub>`api.ogt` line 14834</sub>
+<sub>`api.ogt` line 14848</sub>
 
 <a id="type-ParticleShape"></a>
 
@@ -12925,7 +12927,7 @@ enum ParticleShape {
 }
 ```
 
-<sub>`api.ogt` line 14840</sub>
+<sub>`api.ogt` line 14854</sub>
 
 <a id="type-MassKey"></a>
 
@@ -12972,7 +12974,7 @@ struct MassKey {
 }
 ```
 
-<sub>`api.ogt` line 14847</sub>
+<sub>`api.ogt` line 14861</sub>
 
 <a id="type-MassTemplateDesc"></a>
 
@@ -13072,7 +13074,7 @@ struct MassTemplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 14873</sub>
+<sub>`api.ogt` line 14887</sub>
 
 <a id="type-MassInstance"></a>
 
@@ -13119,7 +13121,7 @@ struct MassInstance {
 }
 ```
 
-<sub>`api.ogt` line 14931</sub>
+<sub>`api.ogt` line 14945</sub>
 
 <a id="type-EmitFrom"></a>
 
@@ -13144,7 +13146,7 @@ enum EmitFrom {
 }
 ```
 
-<sub>`api.ogt` line 14981</sub>
+<sub>`api.ogt` line 14995</sub>
 
 <a id="type-ParticlesDesc"></a>
 
@@ -13238,7 +13240,7 @@ struct ParticlesDesc {
 }
 ```
 
-<sub>`api.ogt` line 14988</sub>
+<sub>`api.ogt` line 15002</sub>
 
 <a id="type-MetaKind"></a>
 
@@ -13263,7 +13265,7 @@ enum MetaKind {
 }
 ```
 
-<sub>`api.ogt` line 15054</sub>
+<sub>`api.ogt` line 15068</sub>
 
 <a id="type-MetaDesc"></a>
 
@@ -13325,7 +13327,7 @@ struct MetaDesc {
 }
 ```
 
-<sub>`api.ogt` line 15061</sub>
+<sub>`api.ogt` line 15075</sub>
 
 <a id="type-SceneViewportDesc"></a>
 
@@ -13373,7 +13375,7 @@ struct SceneViewportDesc {
 }
 ```
 
-<sub>`api.ogt` line 15105</sub>
+<sub>`api.ogt` line 15119</sub>
 
 <a id="type-SceneViewportInfo"></a>
 
@@ -13418,7 +13420,7 @@ struct SceneViewportInfo {
 }
 ```
 
-<sub>`api.ogt` line 15128</sub>
+<sub>`api.ogt` line 15142</sub>
 
 <a id="type-UiDocEvent"></a>
 
@@ -13445,7 +13447,7 @@ struct UiDocEvent {
 }
 ```
 
-<sub>`api.ogt` line 15157</sub>
+<sub>`api.ogt` line 15171</sub>
 
 <a id="type-UiDocResponse"></a>
 
@@ -13468,7 +13470,7 @@ struct UiDocResponse {
 }
 ```
 
-<sub>`api.ogt` line 15166</sub>
+<sub>`api.ogt` line 15180</sub>
 
 <a id="type-UiLayer"></a>
 
@@ -13511,7 +13513,7 @@ struct UiLayer {
 }
 ```
 
-<sub>`api.ogt` line 15173</sub>
+<sub>`api.ogt` line 15187</sub>
 
 <a id="type-UiActionTrigger"></a>
 
@@ -13536,7 +13538,7 @@ enum UiActionTrigger {
 }
 ```
 
-<sub>`api.ogt` line 15190</sub>
+<sub>`api.ogt` line 15204</sub>
 
 <a id="type-UiActionDesc"></a>
 
@@ -13569,7 +13571,7 @@ struct UiActionDesc {
 }
 ```
 
-<sub>`api.ogt` line 15197</sub>
+<sub>`api.ogt` line 15211</sub>
 
 <a id="type-UiDevice"></a>
 
@@ -13600,7 +13602,7 @@ enum UiDevice {
 }
 ```
 
-<sub>`api.ogt` line 15210</sub>
+<sub>`api.ogt` line 15224</sub>
 
 <a id="type-UiGlyph"></a>
 
@@ -13623,7 +13625,7 @@ struct UiGlyph {
 }
 ```
 
-<sub>`api.ogt` line 15220</sub>
+<sub>`api.ogt` line 15234</sub>
 
 <a id="type-UiActionHint"></a>
 
@@ -13650,4 +13652,35 @@ struct UiActionHint {
 }
 ```
 
-<sub>`api.ogt` line 15227</sub>
+<sub>`api.ogt` line 15241</sub>
+
+## Column kinds
+
+Each is a factory, `VectorArt(value?, options?)`, that makes one field of a component or resource layout.
+
+| Column | Value | Typed array | Stride | Doc |
+|---|---|---|---|---|
+| <a id="column-VectorArt"></a>`VectorArt` | `VectorArt` | `Uint32Array` | 2 | A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill. |
+| <a id="column-UiMaterial"></a>`UiMaterial` | `UiMaterial` | `Uint32Array` | 2 | A UiMaterial handle field (0 is none): a UI material og.load.uiMaterial answered, kept for a LayerDesc or a custom paint. |
+
+```ogt
+column VectorArt {
+  doc "A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill."
+  array Uint32Array
+  stride 2
+  value VectorArt
+}
+```
+
+<sub>`api.ogt` line 14220</sub>
+
+```ogt
+column UiMaterial {
+  doc "A UiMaterial handle field (0 is none): a UI material og.load.uiMaterial answered, kept for a LayerDesc or a custom paint."
+  array Uint32Array
+  stride 2
+  value UiMaterial
+}
+```
+
+<sub>`api.ogt` line 14227</sub>

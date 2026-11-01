@@ -387,6 +387,18 @@
       "value": "Behaviour"
     },
     {
+      "name": "VectorArt",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "VectorArt"
+    },
+    {
+      "name": "UiMaterial",
+      "array": "Uint32Array",
+      "stride": 2,
+      "value": "UiMaterial"
+    },
+    {
       "name": "TerrainData",
       "array": "Uint32Array",
       "stride": 2,

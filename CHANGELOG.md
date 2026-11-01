@@ -15,6 +15,10 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- Field factories `VectorArt()` and `UiMaterial()` for the two handle
+  types U1 added without one (og.load.vector, og.load.uiMaterial): every
+  handle type of the API has its factory again, as
+  `packages/engine/tests/api-surface.test.ts` holds.
 - `og test --jobs N` runs up to N playtests at once (default 1, as
   before); each one's output is printed whole, in the playtests' order.
 - **Breaking: WebGL2 is removed; the web is WebGPU only** (the owner,
