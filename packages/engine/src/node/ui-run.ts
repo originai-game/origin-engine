@@ -30,7 +30,7 @@ import { decodePng, encodePng, type Image } from "./png.ts";
 import type { PlaytestDesc } from "../playtest.ts";
 import { boundHost, createEngine, type Engine, type GameToken } from "../runtime.ts";
 import { og } from "../index.ts";
-import { cellName, checkFrame, checkLocales, formatText, mergeFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot } from "./ui-check.ts";
+import { cellName, checkFrame, checkLocales, checkScale, formatText, mergeFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot } from "./ui-check.ts";
 import { sheet, type SheetCell } from "./ui-sheet.ts";
 
 /** The surfaces of the matrix: CSS size, DPR 1 (the sheet's), safe area, pointer. Phone and tablet as the kit's `viewport:` command lays them out. */
@@ -109,7 +109,12 @@ async function main(): Promise<void> {
   const cjk = have.find((l) => /^(ja|zh|ko)/.test(l)) ?? "ja";
   const rtl = have.find((l) => /^(ar|he|fa|ur)/.test(l)) ?? "ar";
   const locales = list("--locales", `game,pseudo,${cjk},${rtl}`).map((l) => (l === "game" ? "" : l));
-  const scales = list("--scales", "100").map(Number);
+  // The check holds every screen to 200 % text (§15.2) in the game's
+  // locale and the pseudo-locale (the longest text: CJK and right to left
+  // add no length) unless --scales asks for every cell; a preview draws
+  // 100 % unless asked.
+  const scalesGiven = opt("--scales") !== undefined;
+  const scales = list("--scales", mode === "check" ? "100,200" : "100").map(Number);
   const settle = Number(opt("--settle") ?? 0.8);
   const highContrast = argv.includes("--high-contrast");
 
@@ -120,7 +125,7 @@ async function main(): Promise<void> {
   if (!game) fail(`${entry} has no default export`);
 
   /** One run: an engine of its own, the script, then its UI frame and the frames it captured. */
-  const runCell = (bp: string, locale: string, steps: string[], shots: Array<{ at: number; name: string }>): { frame: UiFrameSnapshot | null; images: Map<string, Image>; warnings: string[] } => {
+  const runCell = (bp: string, locale: string, steps: string[], shots: Array<{ at: number; name: string }>, scale = 100): { frame: UiFrameSnapshot | null; images: Map<string, Image>; warnings: string[] } => {
     const vp = BREAKPOINTS[bp]!;
     const restore = pseudoAbi(locale === "pseudo");
     const created = createEngine(game!, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale && locale !== "pseudo" ? { locale } : {}) });
@@ -136,6 +141,9 @@ async function main(): Promise<void> {
       extras.og_node_attach_offscreen(engine.id, vp.width, vp.height);
       const started = engine.advance(0);
       if (!started.ok) fail(started.reason);
+      // The player's text size: configure keeps it through the game's own
+      // configure calls (a field they leave out keeps its value).
+      if (scale !== 100) og.ui.configure(engine.world, { textScale: scale / 100 });
       og.ui.previewViewport(engine.world, { width: vp.width, height: vp.height, dpr: 1, safeArea: vp.safeArea, coarsePointer: vp.coarsePointer, highContrast, breakpoint: bp } as never);
       const script = [...steps, ...shots.map((s) => `${s.at}:screenshot:${s.name}.png`)];
       const report = engine.probe.commands(script.join(";")) as { untilTick: number } | null;
@@ -215,35 +223,36 @@ async function main(): Promise<void> {
   const t0 = performance.now();
   for (const screen of screens) for (const style of styles.length ? styles : [""]) for (const bp of bps) {
     let base: UiFrameSnapshot | null = null;
-    for (const locale of locales) for (const scale of scales) {
-      const cell: UiCell = { screen: screen.name, breakpoint: bp, locale, style, scale, highContrast };
-      const index = cells.length;
-      const uiFrame = join("cells", `${index}.uiframe.json`);
-      if (scale !== 100) {
-        // og-ui has no text scale yet: the cell is listed, not drawn.
-        cells.push({ ...cell, index, commands: "", frame: null, uiFrame: "", findings: 0 });
-        images.push(null as never);
-        continue;
+    for (const locale of locales) {
+      let unscaled: UiFrameSnapshot | null = null;
+      for (const scale of scales) {
+        if (scale !== 100 && !scalesGiven && locale !== "" && locale !== "pseudo") continue;
+        const cell: UiCell = { screen: screen.name, breakpoint: bp, locale, style, scale, highContrast };
+        const index = cells.length;
+        const uiFrame = join("cells", `${index}.uiframe.json`);
+        const steps = [...(style ? timed(styleCmd.replaceAll("{style}", style)) : []), ...timed(screen.commands)];
+        const r = runCell(bp, locale, steps, [{ at: screen.at ?? settle, name: "cell" }], scale);
+        const img = r.images.get("cell") ?? null;
+        let frame: string | null = null;
+        if (img) {
+          frame = join("cells", `${index}.png`);
+          writeFileSync(join(outDir, frame), encodePng(img));
+        }
+        let found: UiFinding[] = [];
+        if (r.frame) {
+          writeFileSync(join(outDir, uiFrame), JSON.stringify(r.frame));
+          found = checkFrame(r.frame, cell, { image: img });
+          if (scale === 100) {
+            unscaled = r.frame;
+            if (locale === "") base = r.frame;
+            else if (base) found.push(...checkLocales(base, r.frame, cell));
+          } else if (unscaled) found.push(...checkScale(unscaled, r.frame, cell));
+        }
+        for (const w of r.warnings) process.stderr.write(`og ui ${mode}: ${cellName(cell)}: ${w}\n`);
+        all.push(...found);
+        cells.push({ ...cell, index, commands: steps.join(";"), frame, uiFrame: r.frame ? uiFrame : "", findings: found.length });
+        images.push(img as Image);
       }
-      const steps = [...(style ? timed(styleCmd.replaceAll("{style}", style)) : []), ...timed(screen.commands)];
-      const r = runCell(bp, locale, steps, [{ at: screen.at ?? settle, name: "cell" }]);
-      const img = r.images.get("cell") ?? null;
-      let frame: string | null = null;
-      if (img) {
-        frame = join("cells", `${index}.png`);
-        writeFileSync(join(outDir, frame), encodePng(img));
-      }
-      let found: UiFinding[] = [];
-      if (r.frame) {
-        writeFileSync(join(outDir, uiFrame), JSON.stringify(r.frame));
-        found = checkFrame(r.frame, cell, { image: img });
-        if (locale === "") base = r.frame;
-        else if (base) found.push(...checkLocales(base, r.frame, cell));
-      }
-      for (const w of r.warnings) process.stderr.write(`og ui ${mode}: ${cellName(cell)}: ${w}\n`);
-      all.push(...found);
-      cells.push({ ...cell, index, commands: steps.join(";"), frame, uiFrame: r.frame ? uiFrame : "", findings: found.length });
-      images.push(img as Image);
     }
   }
   const findings = mergeFindings(all);
@@ -257,13 +266,13 @@ async function main(): Promise<void> {
     const sheets: string[] = [];
     for (const screen of screens) for (const style of styles.length ? styles : [""]) {
       const mine = cells.filter((c) => c.screen === screen.name && c.style === style);
-      const sc: SheetCell[] = mine.map((c) => ({ image: images[c.index] ?? null, flagged: c.findings > 0, lines: [`#${c.index} ${c.breakpoint} ${c.locale || "GAME"}${c.scale !== 100 ? ` ${c.scale}%` : ""}`, c.scale !== 100 ? "NOT CHECKABLE YET" : `${c.findings} FINDING${c.findings === 1 ? "" : "S"}`] }));
+      const sc: SheetCell[] = mine.map((c) => ({ image: images[c.index] ?? null, flagged: c.findings > 0, lines: [`#${c.index} ${c.breakpoint} ${c.locale || "GAME"}${c.scale !== 100 ? ` ${c.scale}%` : ""}`, `${c.findings} FINDING${c.findings === 1 ? "" : "S"}`] }));
       const img = sheet(sc, locales.length * scales.length, 300, `${screen.name}${style ? ` ${style}` : ""}`);
       const file = join(outDir, `sheet-${screen.name}${style ? `-${style}` : ""}.png`);
       writeFileSync(file, encodePng(img));
       sheets.push(file);
     }
-    writeFileSync(join(outDir, "index.json"), JSON.stringify({ project: project_, sheets: sheets.map((s) => basename(s)), axes: { screens: screens.map((s) => s.name), styles, breakpoints: bps, locales: locales.map((l) => l || "game"), scales }, cells: cells.map((c) => ({ ...c, locale: c.locale || "game", note: c.scale !== 100 ? "not checkable yet: og-ui has no text scale" : undefined })) }, null, 1) + "\n");
+    writeFileSync(join(outDir, "index.json"), JSON.stringify({ project: project_, sheets: sheets.map((s) => basename(s)), axes: { screens: screens.map((s) => s.name), styles, breakpoints: bps, locales: locales.map((l) => l || "game"), scales }, cells: cells.map((c) => ({ ...c, locale: c.locale || "game" })) }, null, 1) + "\n");
     if (argv.includes("--json")) process.stdout.write(JSON.stringify({ sheets, index: join(outDir, "index.json"), cells: cells.length, findings: findings.length }) + "\n");
     else process.stdout.write(`og ui preview: ${cells.length} cell(s) in ${((performance.now() - t0) / 1000).toFixed(1)} s; ${sheets.map((s) => basename(s)).join(", ")}; ${join(outDir, "index.json")}\n`);
     return;

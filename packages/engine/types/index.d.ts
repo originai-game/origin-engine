@@ -2523,93 +2523,6 @@ export interface InputGlyph {
 }
 
 /**
- * The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own (a settings screen's Mouse sensitivity and Stick sensitivity sliders, Invert Y). Kept by og.input.saveBindings, forgotten by og.input.resetBindings; a world whose player set none saves and hashes as before.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface SensitivityDesc {
-  /**
-   * The action (axis or axis2).
-   *
-   * @default ""
-   */
-  readonly action?: string;
-  /**
-   * The device class it is for: keyboardMouse (the mouse's movement and the wheel; inversion turns the keys over too), any pad family (every pad), or touch (a touch stick).
-   *
-   * @default "keyboardMouse"
-   */
-  readonly device?: InputDevice;
-  /**
-   * Multiplies the value of the action's analog bindings on that class (the mouse's movement, the wheel, a stick, a trigger, a touch stick), after each binding's own scale: 2 turns twice as far for the same mouse movement. Keys, buttons, the d-pad and composites read whole.
-   *
-   * @default 1
-   * @range 0.01..100
-   */
-  readonly scale?: number;
-  /**
-   * The value's x (an axis action's only value) is turned over.
-   *
-   * @default false
-   */
-  readonly invertX?: boolean;
-  /**
-   * A two-axis value's y is turned over: inverted look (an action's y is up-positive, so the mouse moved up then reads down).
-   *
-   * @default false
-   */
-  readonly invertY?: boolean;
-}
-
-/**
- * A key and what the player's keyboard layout prints on it: `KeyQ` and `a` on AZERTY.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface KeyLabel {
-  /**
-   * The physical key (KeyboardEvent.code).
-   *
-   * @default ""
-   */
-  readonly code?: string;
-  /**
-   * The character it types without modifiers, as the layout map gives it (`a`, `,`, `ö`).
-   *
-   * @default ""
-   */
-  readonly label?: string;
-}
-
-/**
- * How the host reads the mouse while the pointer is locked (og.PointerLock): the player's setting, kept by the game with its settings (og.platform.saveSettings). Host only: none of it is world state.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface MouseDesc {
-  /**
-   * Raw input: ask the browser for the mouse's movement without the OS's pointer acceleration (requestPointerLock with unadjustedMovement), where it supports that (Chrome and Edge on Windows, macOS and ChromeOS); elsewhere the lock is the plain one and the movement keeps the OS's acceleration (MouseInfo.rawUnsupported). Takes effect at the next lock.
-   *
-   * @default true
-   */
-  readonly raw?: boolean;
-}
-
-/** The mouse as the host reads it (og.input.mouse). */
-export interface MouseInfo {
-  /** Raw input is asked for (MouseDesc.raw). */
-  readonly raw: boolean;
-  /**
-   * The lock now delivers raw movement: the browser granted unadjustedMovement. False while unlocked.
-   */
-  readonly rawActive: boolean;
-  /**
-   * The browser refused unadjustedMovement (Firefox, Safari, Linux): its lock moves with the OS's acceleration. A settings screen shows the Raw input switch as unavailable then.
-   */
-  readonly rawUnsupported: boolean;
-}
-
-/**
  * A pad's dead zones: what its sticks and triggers read as rest. The player's to set (a settings slider); og.input.saveBindings keeps them.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -2676,12 +2589,6 @@ export interface RumbleDesc {
    */
   readonly ms?: number;
 }
-
-
-
-
-
-
 
 
 
@@ -8238,31 +8145,15 @@ export declare function Shader(value?: Shader, options?: FieldOptions): FieldSpe
  * - `"display"`: Every frame the display shows (requestAnimationFrame): 120 on ProMotion, 144 and more on gaming monitors.
  * - `"fps60"`: At most 60 a second.
  * - `"fps30"`: At most 30 a second: the battery's choice, and a steady rate for a GPU that cannot hold 60.
- * - `"fps120"`: At most 120 a second: a 144 Hz or faster monitor held to a rate its GPU keeps.
- * - `"fps144"`: At most 144 a second: a 240 Hz monitor held to the gaming rate.
  */
-export type FrameCap = "auto" | "display" | "fps60" | "fps30" | "fps120" | "fps144";
+export type FrameCap = "auto" | "display" | "fps60" | "fps30";
 
 /**
- * Which GPU the browser's adapter is asked for (requestAdapter's powerPreference), on a laptop with two. The adapter is made once, at the boot: a change applies on the next load (DisplayInfo.restartNeeded), which the web shell keeps for the page.
- * - `"highPerformance"`: The discrete GPU where there is one: the frame rate's choice.
- * - `"lowPower"`: The integrated GPU: the battery's choice, cooler and quieter.
- */
-export type PowerPreference = "highPerformance" | "lowPower";
-
-/**
- * The player's graphics settings, as a settings page shows them and og.render.setDisplay sets them: the graphics preset, the frame cap, battery saver, render scale and automatic quality, fullscreen and the GPU's power preference. Presentation only: none of it is in the world, so the world's hash, snapshots, saves and replays never see it, and a native run (`og run`, `og test`, reference captures) draws every frame at render scale 1 whatever it says (the preset is drawn there too, as RenderSettings' quality is). The game keeps them with the player's settings, not the world: og.render.display(world).settings is the whole object to save (og.platform.saveSettings, GameSettings.display), and og.render.setDisplay(world, saved) puts it back at the next start.
- * What the browser decides, a page reads from DisplayInfo: vsync is always on (a browser presents on the display's refresh and has no switch), fullscreen follows the page (Escape leaves it and turns the setting off), and a power preference applies at the next load (restartNeeded).
+ * How the frame is presented on a display: the frame cap, battery saver, render scale and automatic quality, set with og.render.setDisplay. Presentation only: none of it is in the world, so the world's hash, snapshots, saves and replays never see it, and a native run (`og run`, `og test`, reference captures) draws every frame at render scale 1 whatever it says. The web shell's graphics settings write it; a game may too.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
 export interface DisplaySettings {
-  /**
-   * The player's graphics preset: its row of quality fields (og.render.applyQuality's table) is drawn in place of RenderSettings', which keep the game's values. Null draws the game's own RenderSettings quality.
-   *
-   * @default null
-   */
-  readonly quality?: GraphicsQuality | null;
   /**
    * The most frames a second (auto: 60 on phones, the display's rate on desktops).
    *
@@ -8302,18 +8193,6 @@ export interface DisplaySettings {
    * @range 0..2
    */
   readonly autoPresetSteps?: number;
-  /**
-   * The page fills the screen: the web shell asks for fullscreen (on the player's click on the settings page, or their next press when the browser wanted a gesture) and leaves it when false. The page leaving fullscreen itself (Escape) turns it off.
-   *
-   * @default false
-   */
-  readonly fullscreen?: boolean;
-  /**
-   * The GPU the next load asks for (highPerformance or lowPower): the adapter is chosen once, at the boot, so a change shows DisplayInfo.restartNeeded until the page loads again.
-   *
-   * @default "highPerformance"
-   */
-  readonly powerPreference?: PowerPreference;
 }
 
 /**
@@ -8386,22 +8265,7 @@ export interface DisplayInfo {
   readonly deviceLosses: number;
   /** The GPU memory the renderer holds; null without a renderer. */
   readonly gpu: GpuMemory | null;
-  /**
-   * Frames are presented on the display's refresh (no tearing): always on a presenting host, since a browser has no switch for it; a settings page shows V-Sync as on and fixed. False on a native run, which presents nothing.
-   */
-  readonly vsync: boolean;
-  /** The page is fullscreen now, as the host last reported it. */
-  readonly fullscreen: boolean;
-  /**
-   * The power preference the GPU adapter was made with at the boot (highPerformance on a native run).
-   */
-  readonly powerPreference: PowerPreference;
-  /**
-   * settings.powerPreference differs from the adapter's: it applies on the next load (a settings page says so).
-   */
-  readonly restartNeeded: boolean;
 }
-
 
 
 
@@ -18478,10 +18342,6 @@ export interface Viewport {
   readonly covered?: UiRect;
   /** Its size class: phone portrait or landscape, tablet, desktop. */
   readonly breakpoint: Breakpoint;
-  /**
-   * The HUD band (read only): the safe area at most UiDesc.hudMaxAspect times its height wide, centred, where anchored groups and toasts lay out; a component that places itself (a HUD of the game's own) reads it so it sits with them on an ultrawide. Ignored where a host passes a viewport in.
-   */
-  readonly hud?: UiRect;
 }
 
 /**
@@ -18551,6 +18411,14 @@ export interface UiDesc {
    */
   readonly reducedMotion?: boolean;
   /**
+   * The player's text size (a settings screen's slider, kept with the other settings): every text size and leading is multiplied by it and the layout grows around the text (control, row and header heights by the leading body text gains), never clipping it. 1 is the style's sizes; docs/ui.md §15.2 holds every screen to 2.
+   *
+   * @default 1
+   * @range 1..2
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly textScale?: number;
+  /**
    * Nothing is see-through: glass parts (a style's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on.
    *
    * @default false
@@ -18568,13 +18436,6 @@ export interface UiDesc {
    * @default null
    */
   readonly toastAnchor?: Anchor | null;
-  /**
-   * The widest the HUD band is, over its height: on a wider surface (a 21:9 or 32:9 ultrawide monitor) the anchored groups (og.ui.anchor, the HUD corners) and the toasts lay out in a band this wide, centred in the safe area, so the player's eyes stay near the play; og.ui.viewport's hud is that band. 16/9 keeps a 16:9 game's HUD where it was designed; 0 is the whole safe area (a HUD at the screen's edges). Full-screen layers (dialogs, menus, scrims, world-space markers and their edge clamping) keep the whole surface. The UI itself never stretches: it lays out in CSS pixels at every aspect.
-   *
-   * @default 2.3333
-   * @range 0..
-   */
-  readonly hudMaxAspect?: number;
   /**
    * A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style, the engine's placeholder.
    *
@@ -18744,6 +18605,10 @@ export interface UiTheme {
    * Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement.
    */
   readonly reducedMotion: boolean;
+  /**
+   * The player's text scale in effect (UiDesc.textScale, 1 to 2): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this.
+   */
+  readonly textScale: number;
   /**
    * Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too.
    */
@@ -23374,6 +23239,14 @@ export interface GameSettings {
    */
   readonly highContrast?: boolean;
   /**
+   * The text size, 1 to 2: UiDesc.textScale (the settings screen configures it in SettingsDesc.world; without one the game passes it to og.ui.configure in onChange).
+   *
+   * @default 1
+   * @range 1..2
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly textScale?: number;
+  /**
    * Vibrate on hits (where the device can).
    *
    * @default true
@@ -23392,18 +23265,6 @@ export interface GameSettings {
    * @range 0.1..3
    */
   readonly sensitivity?: number;
-  /**
-   * Raw mouse input while the pointer is locked (og.input.setMouse: no OS acceleration where the browser grants unadjustedMovement).
-   *
-   * @default true
-   */
-  readonly rawMouse?: boolean;
-  /**
-   * The player's graphics settings (og.render.display(world).settings, kept here so they are saved with the rest): with them the Graphics tab is the PC graphics page (the preset, render scale, frame-rate limit, V-Sync as the browser fixes it, adaptive quality, battery saver, fullscreen and the GPU's power preference, which says it applies after a restart) and the screen applies each change with og.render.setDisplay(SettingsDesc.world, display). Null: the Graphics tab shows the preset alone, applied with og.render.applyQuality as before.
-   *
-   * @default null
-   */
-  readonly display?: DisplaySettings | null;
   /**
    * The language code.
    *
@@ -23455,17 +23316,11 @@ export interface SettingsDesc {
    */
   readonly onSave?: SettingsChanged | null;
   /**
-   * The world the graphics preset is drawn in: when the player picks another preset the screen calls og.render.applyQuality(world, preset) before onChange (with GameSettings.display, og.render.setDisplay(world, display) instead, which never writes the world). The Controls tab sets the mouse's raw input (og.input.setMouse) and, with lookAction, its sensitivity there too. Null leaves applying them to the game. Inside a system, the system declares RenderSettings among its writes.
+   * The world the graphics preset is drawn in: when the player picks another preset the screen calls og.render.applyQuality(world, preset) before onChange, and another text size og.ui.configure(world, { textScale }). Null leaves applying it to the game. Inside a system, the system declares RenderSettings among its writes.
    *
    * @default null
    */
   readonly world?: World | null;
-  /**
-   * The axis action (`look`) the Controls tab's Sensitivity and Invert vertical look set for the mouse: og.input.setSensitivity(world, { action, device: keyboardMouse, scale: sensitivity, invertY }). Empty leaves them to the game.
-   *
-   * @default ""
-   */
-  readonly lookAction?: string;
   /**
    * The dialog's title. Every word of the screen is a field with its English default: a localised game passes its string table's (og.i18n.t).
    *
@@ -23563,6 +23418,12 @@ export interface SettingsDesc {
    */
   readonly contrastLabel?: string;
   /**
+   * The text-size slider.
+   *
+   * @default "Text size"
+   */
+  readonly textSizeLabel?: string;
+  /**
    * The look sensitivity's slider.
    *
    * @default "Sensitivity"
@@ -23598,96 +23459,6 @@ export interface SettingsDesc {
    * @default "Languages"
    */
   readonly languagesLabel?: string;
-  /**
-   * The render scale's slider (GameSettings.display).
-   *
-   * @default "Render scale"
-   */
-  readonly renderScaleLabel?: string;
-  /**
-   * The frame-rate limit's select.
-   *
-   * @default "Frame rate limit"
-   */
-  readonly frameCapLabel?: string;
-  /**
-   * The frame-rate limit's automatic choice (FrameCap auto).
-   *
-   * @default "Automatic"
-   */
-  readonly frameCapAutoLabel?: string;
-  /**
-   * The frame-rate limit at the display's rate (FrameCap display).
-   *
-   * @default "Display's rate"
-   */
-  readonly frameCapDisplayLabel?: string;
-  /**
-   * The V-Sync row.
-   *
-   * @default "V-Sync"
-   */
-  readonly vsyncLabel?: string;
-  /**
-   * What the V-Sync row says: the browser always presents on the display's refresh.
-   *
-   * @default "On (set by the browser)"
-   */
-  readonly vsyncValueLabel?: string;
-  /**
-   * The adaptive quality toggle (DisplaySettings.autoQuality).
-   *
-   * @default "Adapt quality to hold the frame rate"
-   */
-  readonly autoQualityLabel?: string;
-  /**
-   * The battery saver toggle.
-   *
-   * @default "Battery saver"
-   */
-  readonly batteryLabel?: string;
-  /**
-   * The fullscreen toggle.
-   *
-   * @default "Fullscreen"
-   */
-  readonly fullscreenLabel?: string;
-  /**
-   * The power preference's select.
-   *
-   * @default "Graphics processor"
-   */
-  readonly powerLabel?: string;
-  /**
-   * The high-performance GPU.
-   *
-   * @default "High performance"
-   */
-  readonly highPerformanceLabel?: string;
-  /**
-   * The low-power GPU.
-   *
-   * @default "Low power"
-   */
-  readonly lowPowerLabel?: string;
-  /**
-   * Shown under the power preference while it differs from the GPU the page loaded with.
-   *
-   * @default "Applies after a restart"
-   */
-  readonly restartLabel?: string;
-  /**
-   * The raw mouse input toggle (GameSettings.rawMouse).
-   *
-   * @default "Raw mouse input"
-   */
-  readonly rawMouseLabel?: string;
-  /**
-   * Shown under it where the browser has no raw input (og.input.mouse's rawUnsupported).
-   *
-   * @default "Not available in this browser"
-   */
-  readonly rawUnavailableLabel?: string;
 }
 
 /** The settings screen's answer this tick. */
@@ -29267,10 +29038,6 @@ export interface ProbeMemory {
   readonly audio: number | null;
   /** The GPU memory the renderer holds (og.render.display's gpu); null without a renderer. */
   readonly gpu: GpuMemory | null;
-  /**
-   * How many times the GPU device was lost and the renderer made again (og.render.display's deviceLosses): field telemetry reports it beside the GPU memory. Null without a renderer.
-   */
-  readonly deviceLosses: number | null;
 }
 
 /**
@@ -31963,46 +31730,6 @@ export declare namespace og {
      */
     function setDeadzones(world: World, desc?: DeadzoneDesc): Result<void>;
     /**
-     * Set the player's sensitivity and inversion of an axis action on a device class (SensitivityDesc): applied from the next tick's actions, kept by og.input.saveBindings.
-     *
-     * @param world The world.
-     * @param desc The action, the device class, the scale and the inversions.
-     * @returns Refused for an unknown action, a button action, or a scale that is not above 0.
-     */
-    function setSensitivity(world: World, desc?: SensitivityDesc): Result<void>;
-    /**
-     * An action's sensitivity on a device class (the device used last when omitted): the player's, else scale 1 and nothing inverted.
-     *
-     * @param world The world.
-     * @param action The action.
-     * @param device The device class; omitted is the one used last.
-     */
-    function sensitivity(world: World, action: string, device?: InputDevice): SensitivityDesc;
-    /**
-     * The keys the player's keyboard layout prints, for glyphs: the web shell sets it from navigator.keyboard.getLayoutMap() (Chrome, Edge), and where the browser has none from the characters the player's unmodified keys type as they are pressed (Firefox, Safari: a key reads as on a US layout until it is pressed once). Bindings still name physical keys (KeyboardEvent.code), so WASD is the same four keys on every layout; only their glyphs change (Z Q S D on AZERTY). Empty is the US layout (native runs). The host's, one for the page: no world state.
-     *
-     * @param labels Each key's printed label, in place of the last list.
-     */
-    function setKeyboardLayout(labels: readonly KeyLabel[]): void;
-    /**
-     * The keys the layout prints as og.input.setKeyboardLayout last set them, sorted by code (empty: the US layout).
-     */
-    function keyboardLayout(): readonly KeyLabel[];
-    /**
-     * Set how the host reads the mouse (MouseDesc: raw input). Host only, never world state; fields left out keep their values.
-     *
-     * @param world The world.
-     * @param desc The settings.
-     * @returns Refused for a world that is not alive.
-     */
-    function setMouse(world: World, desc?: MouseDesc): Result<void>;
-    /**
-     * How the host reads the mouse: raw input asked for, granted or refused by the browser.
-     *
-     * @param world The world.
-     */
-    function mouse(world: World): MouseInfo;
-    /**
      * Rumble a pad (or every connected pad): the web shell plays it on the pad's vibration actuator. Output only: it never feeds back into the simulation, and a native run records it in the frame answer's `rumble`.
      *
      * @param world The world.
@@ -32322,22 +32049,15 @@ export declare namespace og {
      */
     function applyQuality(world: World, preset: GraphicsQuality): Result<void>;
     /**
-     * Set the player's graphics settings (DisplaySettings: preset, frame cap, battery saver, render scale, automatic quality, fullscreen, power preference). A call merges over the current settings: only the fields it names change, so a settings screen sets the one the player moved without restating the rest (og.render.resetDisplay goes back to the defaults). Applied from the next frame (the power preference at the next load); presentation only, so it is allowed inside any system and never changes the simulation.
+     * Set how the frame is presented (DisplaySettings: frame cap, battery saver, render scale, automatic quality). Applied from the next frame; presentation only, so it is allowed inside any system and never changes the simulation.
      *
      * @param world The world whose display it is.
-     * @param settings The settings to change: fields left out keep their values (the defaults before any call), so a game that sets its frame cap keeps the player's render scale; quality null is the game's own.
+     * @param settings The settings; fields left out take their defaults.
      * @returns Refused for a world that is not alive.
      */
     function setDisplay(world: World, settings?: DisplaySettings): Result<void>;
     /**
-     * Put every graphics setting back to its default (DisplaySettings' zero value: the game's own quality, frame cap auto, render scale 1, automatic quality on, no battery saver, windowed, high performance): a settings page's Reset to defaults. Applied from the next frame like og.render.setDisplay; a power preference that changes back applies at the next load.
-     *
-     * @param world The world whose display it is.
-     * @returns Refused for a world that is not alive.
-     */
-    function resetDisplay(world: World): Result<void>;
-    /**
-     * What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived, the GPU memory, and what the browser decides (vsync, fullscreen now, the adapter's power preference and whether a restart is needed).
+     * What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived and the GPU memory.
      *
      * @param world The world asked.
      */

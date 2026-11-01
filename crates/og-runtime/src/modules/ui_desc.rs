@@ -338,6 +338,7 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, style: &str) -> String {
         "contrast": if theme.contrast == og_ui::Contrast::High { "high" } else { "standard" },
         "reducedMotion": theme.reduced_motion,
         "reducedTransparency": theme.reduced_transparency,
+        "textScale": theme.text_scale,
         "tokens": tokens_json(&theme.tokens),
     })
     .to_string()

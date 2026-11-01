@@ -327,6 +327,82 @@ fn a_steps_tracking_spaces_latin_glyphs_and_not_cjk() {
     assert_eq!(cjk_drawn, 0.0);
 }
 
+/// The player's text scale (`Theme::text_scale`) draws every text at
+/// that multiple and lets the layout grow around it: a label's box and a
+/// button's height grow, and the button's text stays inside it. Ways it
+/// could fail: the ramp scales but the role steps do not (the button's
+/// label stays small), the text grows inside a fixed control height (it is
+/// clipped), or reapplying the theme scales the ramp again.
+#[test]
+fn text_scale_grows_every_text_and_the_layout_around_it() {
+    let run = |scale: f32| {
+        let mut scene = og_render::RenderScene::new();
+        let mut ui = ui_with_font(add_test_font(&mut scene));
+        let mut t = *ui.theme();
+        t.text_scale = scale;
+        ui.set_theme(t);
+        // A theme read back and set again is scaled once.
+        let again = *ui.theme();
+        ui.set_theme(again);
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.label("L", "Origin", LabelDesc::default());
+        ui.button("B", "Play", ButtonDesc::default());
+        ui.end();
+        let f = ui.frame();
+        let texts: Vec<(f32, Rect, Rect)> = f
+            .items
+            .iter()
+            .filter_map(|i| match &i.cmd {
+                DrawCmd::Text {
+                    size, bounds, clip, ..
+                } => Some((*size, *bounds, *clip)),
+                _ => None,
+            })
+            .collect();
+        let (l, b) = (
+            f.element("L").expect("label").clone(),
+            f.element("B").expect("button").clone(),
+        );
+        (texts, l, b)
+    };
+    let (t1, l1, b1) = run(1.0);
+    let (t2, l2, b2) = run(2.0);
+    assert_eq!(t1.len(), 2);
+    assert_eq!(t2.len(), 2);
+    for (a, b) in t1.iter().zip(&t2) {
+        assert!(
+            (b.0 - 2.0 * a.0).abs() < 0.01,
+            "every text twice its size: {} then {}",
+            a.0,
+            b.0
+        );
+    }
+    assert!(
+        l2.height >= 2.0 * l1.height - 0.5,
+        "the label's line box doubles: {} then {}",
+        l1.height,
+        l2.height
+    );
+    assert!(
+        b2.height > b1.height,
+        "the button grows: {} then {}",
+        b1.height,
+        b2.height
+    );
+    let (_, bounds, clip) = t2[1];
+    assert!(
+        bounds.y >= b2.y - 0.5 && bounds.y + bounds.height <= b2.y + b2.height + 0.5,
+        "the button's text inside it: {bounds:?} in {b2:?}"
+    );
+    assert!(
+        clip.height >= bounds.height - 0.5,
+        "and not clipped: {bounds:?} under {clip:?}"
+    );
+    // Out of range is clamped: 3 draws as 2.
+    let (t3, _, _) = run(3.0);
+    assert!((t3[0].0 - t2[0].0).abs() < 0.01);
+}
+
 /// An icon set (an MTSDF font, `IconAtlas::font`): `icon` draws its glyph
 /// (U+E000 + the icon's index) fitted to the icon's square in its ink,
 /// rich text's `[icon=]` draws the same glyph inline, and the probe reads

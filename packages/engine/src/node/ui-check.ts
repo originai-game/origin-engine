@@ -137,7 +137,7 @@ export const RULES: readonly UiRule[] = [
   { id: "text-truncated", title: "text truncated with an ellipsis but without a tooltip", status: "partial", note: "the ellipsis is read from the drawn text; a tooltip exists only while hovered (og-ui builds it then), so its absence is reported as a warning until U3's dump_ui lists an element's tooltip" },
   { id: "offscreen", title: "an interactive element laid out past the screen with nothing to scroll to it", status: "checked" },
   { id: "pseudo-overflow", title: "overflow under the pseudo-locale (+40 % length, accents, brackets)", status: "checked", note: "the pseudo cells run every rule above on text lengthened in process (og.i18n.t and the text arguments of og.ui's widgets)" },
-  { id: "text-scale", title: "overflow at 200 % text", status: "not checkable yet", note: "og-ui has no text scale (no Viewport or UiDesc field scales the type ramp alone); the 200 % column waits for it (§15.2)" },
+  { id: "text-scale", title: "overflow at 200 % text, and text that does not grow with the player's text size", status: "checked", note: "a scale cell configures UiDesc.textScale (og.ui.configure) and runs every rule above; a text cut there is reported under this rule, and a text drawn at less than the scale times its size at 100 % (a fixed size the scale does not reach) too" },
   { id: "safe-area", title: "elements outside the safe area", status: "checked" },
   { id: "covered", title: "elements under the shell's covered region", status: "checked" },
   { id: "touch-target", title: "touch targets under 44 CSS px on a coarse pointer", status: "checked", note: "an element's hitSlop is not in the frame: a small control with slop enough is still reported" },
@@ -375,7 +375,7 @@ export function checkFrame(f: UiFrameSnapshot, cell: UiCell, opts: CheckOptions 
     const cut = [cutX > 1 ? `${r1(cutX)} CSS px of its width` : "", cutY > h * 0.3 ? `${r1(cutY)} of its ${r1(h)} CSS px height` : ""].filter(Boolean).join(" and ");
     const ellipsis = /(…|\.\.\.)$/.test(t.text.trim());
     if (cutX > 1 || cutY > h * 0.3) {
-      add("text-cut", {
+      add(cell.scale !== 100 ? "text-scale" : "text-cut", {
         ...(e?.clipped ? { severity: "warning" as const } : {}),
         paths: [path],
         measured: `"${t.text.slice(0, 32)}" cut by its clip: ${cut}${pseudo}`,
@@ -384,7 +384,7 @@ export function checkFrame(f: UiFrameSnapshot, cell: UiCell, opts: CheckOptions 
         fix: "let the box grow with its text, wrap it, or cut it with an ellipsis and give it a tooltip",
       });
     } else if (e && !PICTURES.has(e.kind ?? "") && w > e.width + 1.5 && (e.kind === "label" || e.kind === "button")) {
-      add("text-cut", {
+      add(cell.scale !== 100 ? "text-scale" : "text-cut", {
         paths: [path],
         measured: `"${t.text.slice(0, 32)}" is ${r1(w)} CSS px in a ${r1(e.width)} px box${pseudo}`,
         limit: "text inside its box",
@@ -618,6 +618,43 @@ export function checkLocales(base: UiFrameSnapshot, other: UiFrameSnapshot, cell
       limit: "names and texts in the player's locale",
       prop: `${n.path}: its text through og.i18n.t (a key in every string table)`,
       fix: "og-i18n §2: every word the player reads comes from the string table",
+      cells: [cellName(cell)],
+    });
+  }
+  return out;
+}
+
+/**
+ * The text-scale rule's comparison: each text the 100 % frame draws, found
+ * again in the scaled frame (by its string, in drawing order), drawn at
+ * the scale times its size. A text that stays smaller is a size the
+ * player's setting does not reach (a fixed pixel size, a text drawn by the
+ * game from the style's authored tokens).
+ */
+export function checkScale(base: UiFrameSnapshot, scaled: UiFrameSnapshot, cell: UiCell): UiFinding[] {
+  if (cell.scale === 100) return [];
+  const k = cell.scale / 100;
+  const out: UiFinding[] = [];
+  const left = new Map<string, number[]>();
+  for (const t of scaled.texts) left.set(t.text, [...(left.get(t.text) ?? []), t.size]);
+  const paths = scaled.elements.map((e) => e.id);
+  const seen = new Set<string>();
+  for (const t of base.texts) {
+    if (!/[\p{L}\p{N}]/u.test(t.text)) continue;
+    const sizes = left.get(t.text);
+    const size = sizes?.shift();
+    if (size === undefined || size + 0.05 >= t.size * k * 0.95 || seen.has(t.text)) continue;
+    seen.add(t.text);
+    const i = owner(scaled, scaled.texts.find((u) => u.text === t.text && u.size === size)!);
+    const path = i >= 0 ? paths[i]! : `text "${t.text.slice(0, 24)}"`;
+    out.push({
+      rule: "text-scale",
+      severity: "error",
+      paths: [path],
+      measured: `"${t.text.slice(0, 32)}" ${r1(size)} CSS px at ${cell.scale} %, ${r1(t.size)} at 100 %`,
+      limit: `${r1(t.size * k)} CSS px: every text grows with UiDesc.textScale`,
+      prop: `${path}: step (a type ramp step, which the scale reaches), not a fixed size`,
+      fix: "size text from the ramp (og.ui's step) or multiply a size of your own by og.ui.theme().textScale (§15.2)",
       cells: [cellName(cell)],
     });
   }

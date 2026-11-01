@@ -160,3 +160,32 @@ test("og.ui.settingsScreen: picking a graphics preset applies it to the world's 
   if (!s.ok) throw new Error(s.reason);
   expect([s.value.quality, s.value.rectShadows, s.value.shadowedLights, s.value.msaaSamples, s.value.volumetricFog]).toEqual(["low", false, 2, 1, false]);
 });
+
+// The text size is the UI's (UiDesc.textScale): dragging the Graphics
+// tab's Text size slider to its end configures the world's UI at 200 %, so
+// og.ui.theme answers it and the screen's own labels draw larger (the tab's
+// rows scroll, the slider's row now below the fold). Fails if
+// the screen only answers the new settings and the UI never grows.
+let scale = 1;
+const TextSize = defineSystem("UlTextSize", {}, (_q, _t, world: World) => {
+  const r = og.ui.settingsScreen("Settings", { open: true, world, settings: { textScale: scale } });
+  scale = r.settings.textScale ?? 1;
+});
+
+test("og.ui.settingsScreen: the text size slider configures the UI's text scale", () => {
+  const engine = start(og.game({ systems: [TextSize] }));
+  engine.advance(30);
+  engine.probe.commands("0:touch_move_to:Section/Tab#1;0.05:touch_start;0.1:touch_end");
+  engine.advance(20);
+  const label = () => elements(engine).find((e) => e.id === "QualityLabel")!;
+  const before = label();
+  const slider = elements(engine).find((e) => e.id === "Slider" && e.parent.endsWith("TextSize"));
+  expect(slider).toBeDefined();
+  const y = Math.round(slider!.y + slider!.height / 2);
+  engine.probe.commands(`0:touch_move:${Math.round(slider!.x + 2)},${y};0.05:touch_start;0.1:touch_move:${Math.round(slider!.x + slider!.width + 8)},${y};0.2:touch_end`);
+  engine.advance(30);
+  expect(scale).toBe(2);
+  expect(og.ui.theme(engine.world).textScale).toBe(2);
+  const after = label();
+  expect(after.height).toBeGreaterThan(before.height * 1.8);
+});

@@ -293,6 +293,39 @@ pub struct TypeRamp {
     pub xs: TypeStep,
 }
 
+impl TypeRamp {
+    /// Every step, to change them all (a text scale).
+    pub fn steps_mut(&mut self) -> [&mut TypeStep; 21] {
+        let TypeRamp {
+            xl2,
+            xl3,
+            xl4,
+            xl5,
+            xl6,
+            xl7,
+            xl8,
+            base,
+            body,
+            caption,
+            display_xl2,
+            display_lg,
+            display_md,
+            display_sm,
+            display_xl,
+            lg,
+            meta,
+            reading,
+            sm,
+            xl,
+            xs,
+        } = self;
+        [
+            xl2, xl3, xl4, xl5, xl6, xl7, xl8, base, body, caption, display_xl2, display_lg,
+            display_md, display_sm, display_xl, lg, meta, reading, sm, xl, xs,
+        ]
+    }
+}
+
 const fn step(size: f32, line_height: f32, cjk_line_height: f32) -> TypeStep {
     TypeStep {
         size,

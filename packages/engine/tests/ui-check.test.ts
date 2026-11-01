@@ -3,7 +3,7 @@
 // names its rule, paths, measured value and the prop to change. The rules
 // that wait for later phases are listed as such, never dropped.
 import { expect, test } from "bun:test";
-import { checkFrame, checkLocales, elementPaths, formatText, mergeFindings, padFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiElementDump, type UiFrameSnapshot } from "../src/node/ui-check.ts";
+import { checkFrame, checkLocales, checkScale, elementPaths, formatText, mergeFindings, padFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiElementDump, type UiFrameSnapshot } from "../src/node/ui-check.ts";
 
 const cell: UiCell = { screen: "s", breakpoint: "phonePortrait", locale: "", style: "", scale: 100, highContrast: false };
 
@@ -38,7 +38,7 @@ test("every §16.5 rule is listed, and those waiting for a later phase say so wi
   for (const id of ["overlap", "text-cut", "text-truncated", "pseudo-overflow", "text-scale", "safe-area", "covered", "touch-target", "contrast", "text-size", "focus-reach", "focus-trap", "layer-back", "a11y-name", "a11y-locale", "primary-actions", "feedback", "motion", "art-slot", "budget"]) expect(ids).toContain(id);
   for (const r of RULES.filter((r) => r.status !== "checked")) expect(r.note ?? "").not.toBe("");
   const text = formatText([]);
-  for (const id of ["text-scale", "layer-back", "motion", "art-slot"]) expect(text).toContain(`${id} (not checkable yet)`);
+  for (const id of ["layer-back", "motion", "art-slot"]) expect(text).toContain(`${id} (not checkable yet)`);
 });
 
 test("an undeclared overlap names both paths, the area and the prop; nested pairs are one finding", () => {
@@ -176,6 +176,25 @@ test("a name left in the game's language in another locale is a finding", () => 
   const en = frame({ a11y: { focused: "", focusOrder: [], nodes: [n("Play")] } });
   expect(checkLocales(en, frame({ a11y: { focused: "", focusOrder: [], nodes: [n("Play")] } }), { ...cell, locale: "ja" }).map((x) => x.rule)).toEqual(["a11y-locale"]);
   expect(checkLocales(en, frame({ a11y: { focused: "", focusOrder: [], nodes: [n("プレイ")] } }), { ...cell, locale: "ja" })).toEqual([]);
+});
+
+test("at 200 % text, a cut is the text-scale rule's and a text that did not grow is a finding", () => {
+  const big: UiCell = { ...cell, scale: 200 };
+  const els = [el("Panel", "", "panel", "", [0, 100, 100, 40]), el("Name", "Panel", "label", "text", [10, 110, 80, 20], { text: "Strength" }), el("Gold", "Panel", "label", "text", [10, 130, 80, 20], { text: "120" })];
+  const line = (text: string, size: number, y: number, w: number) => ({ text, size, bounds: [10, y, w, size * 1.4] as [number, number, number, number], clip: [0, 100, 200, 400] as [number, number, number, number], color: [1, 1, 1, 1] });
+  // The same line cut in a 100 % cell is text-cut, in a 200 % cell text-scale.
+  const cut = frame({ elements: els, texts: [{ ...line("Strength", 28, 110, 130), clip: [0, 100, 100, 40] }] });
+  expect(rules(cut)).toContain("text-cut");
+  expect(rules(cut, big)).toContain("text-scale");
+  expect(rules(cut, big)).not.toContain("text-cut");
+  // "120" stays 14 px where "Strength" doubled: a size the scale does not reach.
+  const at100 = frame({ elements: els, texts: [line("Strength", 14, 110, 60), line("120", 14, 130, 24)] });
+  const at200 = frame({ elements: els, texts: [line("Strength", 28, 110, 120), line("120", 14, 140, 24)] });
+  const got = checkScale(at100, at200, big);
+  expect(got.map((f) => f.rule)).toEqual(["text-scale"]);
+  expect(got[0]!.measured).toContain('"120" 14 CSS px at 200 %');
+  expect(checkScale(at100, at200, cell)).toEqual([]);
+  expect(checkScale(at100, frame({ elements: els, texts: [line("Strength", 28, 110, 120), line("120", 28, 140, 48)] }), big)).toEqual([]);
 });
 
 test("two primary buttons in one layer are a finding; a primary and a translucent secondary are not", () => {
