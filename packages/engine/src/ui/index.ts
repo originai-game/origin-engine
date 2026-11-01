@@ -8,6 +8,7 @@ import { confirm, contextMenu, dialog, menu, popover, sheet } from "./containers
 import { actionHints, breadcrumbs, carousel, pagination, radialMenu, tabBar } from "./containers/navigation.ts";
 import { dataGrid, dataList, table } from "./data/table.ts";
 import { nodeGraph, tree } from "./data/tree.ts";
+import { chart } from "./data/charts.ts";
 import { keyValueRows, statCompare } from "./data/rows.ts";
 import { calendar } from "./data/calendar.ts";
 
@@ -33,6 +34,7 @@ export const components = Object.freeze({
   table,
   tree,
   nodeGraph,
+  chart,
   keyValueRows,
   statCompare,
   calendar,

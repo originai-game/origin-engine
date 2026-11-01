@@ -8985,6 +8985,10 @@
         "GraphLink",
         "NodeGraphDesc",
         "NodeGraphResult",
+        "ChartKind",
+        "ChartSeries",
+        "ChartDesc",
+        "ChartResult",
         "KeyValueRow",
         "KeyValueRowsDesc",
         "StatCompareRow",
@@ -11497,6 +11501,27 @@
             }
           ],
           "returns": "NodeGraphResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "chart",
+          "doc": "A line, area, bar, radar, pie or donut chart.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ChartDesc",
+              "optional": true,
+              "doc": "The kind, the series and the categories."
+            }
+          ],
+          "returns": "ChartResult",
           "publish": true,
           "host": false
         },
@@ -40747,6 +40772,316 @@
         "chosen",
         "zoom",
         "changed"
+      ],
+      "additionalProperties": false
+    },
+    "ChartKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a chart draws.",
+      "type": "string",
+      "enum": [
+        "line",
+        "area",
+        "bar",
+        "radar",
+        "pie",
+        "donut"
+      ],
+      "x-og-variants": {
+        "line": "Lines through the values (the default).",
+        "area": "Lines with the area under them filled, stacked with stacked.",
+        "bar": "Bars, grouped or stacked.",
+        "radar": "A polygon a series over rings, one axis a category (at least three).",
+        "pie": "The first series' values as wedges, with a legend.",
+        "donut": "A pie with a hole that shows the total, or the hovered value."
+      }
+    },
+    "ChartSeries": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A series of a chart: its name and a value a category.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Its name, in the legend and the tooltip.",
+          "default": ""
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "A value for each category.",
+          "default": []
+        },
+        "color": {
+          "type": "string",
+          "description": "Its colour as `#rrggbb`; empty is the style's series colour for its place.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "ChartDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A chart: line, area, bar, radar, pie or donut, with axes, a legend, a tooltip and its states.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ChartKind",
+          "description": "What it draws.",
+          "default": "line"
+        },
+        "series": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChartSeries"
+          },
+          "description": "The series.",
+          "default": []
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The categories' names: the x axis, a radar's axes, a pie's wedges.",
+          "default": []
+        },
+        "title": {
+          "type": "string",
+          "description": "A title over it; empty is none.",
+          "default": ""
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "A line under the title.",
+          "default": ""
+        },
+        "stacked": {
+          "type": "boolean",
+          "description": "Bars and areas stack instead of standing side by side.",
+          "default": false
+        },
+        "smooth": {
+          "type": "boolean",
+          "description": "Lines curve through the values (monotone: never past them).",
+          "default": true
+        },
+        "dots": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A dot on every value; null is on short series.",
+          "default": null
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The value axis's start; null fits the data (with zero for bars and areas).",
+          "default": null
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its end; null fits the data.",
+          "default": null
+        },
+        "format": {
+          "$ref": "#/$defs/NumberFormat",
+          "description": "How values read.",
+          "default": "grouped"
+        },
+        "digits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Decimals.",
+          "default": 0
+        },
+        "unit": {
+          "type": "string",
+          "description": "A unit after values in the tooltip.",
+          "default": ""
+        },
+        "axis": {
+          "type": "boolean",
+          "description": "The value and category axes.",
+          "default": true
+        },
+        "grid": {
+          "type": "boolean",
+          "description": "Grid lines at the value ticks.",
+          "default": true
+        },
+        "legend": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A legend; null is when there is more than one series (a pie lists its wedges always).",
+          "default": null
+        },
+        "hole": {
+          "type": "number",
+          "description": "A donut's hole, as a fraction of its radius.",
+          "default": 0.62,
+          "minimum": 0.2,
+          "maximum": 0.9,
+          "x-og-unit": "ratio"
+        },
+        "totalLabel": {
+          "type": "string",
+          "description": "What a donut's centre says under the total; empty is Total.",
+          "default": ""
+        },
+        "selected": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The category marked as selected.",
+          "default": null
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null grows.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The plot's height; null is 240 (200 on a phone).",
+          "default": null,
+          "x-og-unit": "cssPx"
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls it; its description is made from the data.",
+          "default": ""
+        },
+        "loading": {
+          "type": "boolean",
+          "description": "Loading.",
+          "default": false
+        },
+        "error": {
+          "type": "string",
+          "description": "An error to show with Retry; empty is none.",
+          "default": ""
+        },
+        "emptyLabel": {
+          "type": "string",
+          "description": "What it says with no data; empty is No data yet.",
+          "default": ""
+        },
+        "emptyHint": {
+          "type": "string",
+          "description": "A line under it.",
+          "default": ""
+        },
+        "retry": {
+          "type": "boolean",
+          "description": "The error has a Retry button.",
+          "default": true
+        },
+        "retryLabel": {
+          "type": "string",
+          "description": "Retry's label.",
+          "default": ""
+        },
+        "loadingLabel": {
+          "type": "string",
+          "description": "What a screen reader hears while loading.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "ChartResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a chart answered this tick.",
+      "type": "object",
+      "properties": {
+        "hovered": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The category under the pointer or the focus."
+        },
+        "clicked": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The category pressed."
+        },
+        "retry": {
+          "type": "boolean",
+          "description": "Retry was pressed."
+        }
+      },
+      "required": [
+        "hovered",
+        "clicked",
+        "retry"
       ],
       "additionalProperties": false
     },

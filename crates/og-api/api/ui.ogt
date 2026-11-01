@@ -2529,6 +2529,80 @@ module ui {
     field changed bool "The zoom changed this tick."
   }
 
+  enum ChartKind {
+    doc "What a chart draws."
+    variant line "Lines through the values (the default)."
+    variant area "Lines with the area under them filled, stacked with stacked."
+    variant bar "Bars, grouped or stacked."
+    variant radar "A polygon a series over rings, one axis a category (at least three)."
+    variant pie "The first series' values as wedges, with a legend."
+    variant donut "A pie with a hole that shows the total, or the hovered value."
+  }
+
+  struct ChartSeries {
+    doc "A series of a chart: its name and a value a category."
+    desc true
+    field label String "Its name, in the legend and the tooltip."
+    field values List.f32 "A value for each category."
+    field color String "Its colour as `#rrggbb`; empty is the style's series colour for its place."
+  }
+
+  struct ChartDesc {
+    doc "A chart: line, area, bar, radar, pie or donut, with axes, a legend, a tooltip and its states."
+    desc true
+    field kind ChartKind "What it draws."
+    field series List.ChartSeries "The series."
+    field categories List.String "The categories' names: the x axis, a radar's axes, a pie's wedges."
+    field title String "A title over it; empty is none."
+    field subtitle String "A line under the title."
+    field stacked bool "Bars and areas stack instead of standing side by side."
+    field smooth bool "Lines curve through the values (monotone: never past them)." {
+      default true
+    }
+    field dots Option.bool "A dot on every value; null is on short series."
+    field min Option.f32 "The value axis's start; null fits the data (with zero for bars and areas)."
+    field max Option.f32 "Its end; null fits the data."
+    field format NumberFormat "How values read."
+    field digits u32 "Decimals."
+    field unit String "A unit after values in the tooltip."
+    field axis bool "The value and category axes." {
+      default true
+    }
+    field grid bool "Grid lines at the value ticks." {
+      default true
+    }
+    field legend Option.bool "A legend; null is when there is more than one series (a pie lists its wedges always)."
+    field hole f32 "A donut's hole, as a fraction of its radius." {
+      default 0.62
+      min 0.2
+      max 0.9
+      unit ratio
+    }
+    field totalLabel String "What a donut's centre says under the total; empty is Total."
+    field selected Option.u32 "The category marked as selected."
+    field width Option.Size "Its width; null grows."
+    field height Option.f32 "The plot's height; null is 240 (200 on a phone)." {
+      unit cssPx
+    }
+    field label String "What a screen reader calls it; its description is made from the data."
+    field loading bool "Loading."
+    field error String "An error to show with Retry; empty is none."
+    field emptyLabel String "What it says with no data; empty is No data yet."
+    field emptyHint String "A line under it."
+    field retry bool "The error has a Retry button." {
+      default true
+    }
+    field retryLabel String "Retry's label."
+    field loadingLabel String "What a screen reader hears while loading."
+  }
+
+  struct ChartResult {
+    doc "What a chart answered this tick."
+    field hovered Option.u32 "The category under the pointer or the focus."
+    field clicked Option.u32 "The category pressed."
+    field retry bool "Retry was pressed."
+  }
+
   struct KeyValueRow {
     doc "A row of key-value rows."
     desc true
@@ -2820,6 +2894,14 @@ module ui {
     param id String "Its id."
     param desc NodeGraphDesc "Nodes, links and the zoom."
     returns NodeGraphResult
+  }
+
+  fn chart {
+    doc "A line, area, bar, radar, pie or donut chart."
+    host false
+    param id String "Its id."
+    param desc ChartDesc "The kind, the series and the categories."
+    returns ChartResult
   }
 
   fn keyValueRows {

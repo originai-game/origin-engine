@@ -22489,6 +22489,238 @@ export interface NodeGraphResult {
 }
 
 /**
+ * What a chart draws.
+ * - `"line"`: Lines through the values (the default).
+ * - `"area"`: Lines with the area under them filled, stacked with stacked.
+ * - `"bar"`: Bars, grouped or stacked.
+ * - `"radar"`: A polygon a series over rings, one axis a category (at least three).
+ * - `"pie"`: The first series' values as wedges, with a legend.
+ * - `"donut"`: A pie with a hole that shows the total, or the hovered value.
+ */
+export type ChartKind = "line" | "area" | "bar" | "radar" | "pie" | "donut";
+
+/**
+ * A series of a chart: its name and a value a category.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ChartSeries {
+  /**
+   * Its name, in the legend and the tooltip.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * A value for each category.
+   *
+   * @default []
+   */
+  readonly values?: readonly number[];
+  /**
+   * Its colour as `#rrggbb`; empty is the style's series colour for its place.
+   *
+   * @default ""
+   */
+  readonly color?: string;
+}
+
+/**
+ * A chart: line, area, bar, radar, pie or donut, with axes, a legend, a tooltip and its states.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ChartDesc {
+  /**
+   * What it draws.
+   *
+   * @default "line"
+   */
+  readonly kind?: ChartKind;
+  /**
+   * The series.
+   *
+   * @default []
+   */
+  readonly series?: readonly ChartSeries[];
+  /**
+   * The categories' names: the x axis, a radar's axes, a pie's wedges.
+   *
+   * @default []
+   */
+  readonly categories?: readonly string[];
+  /**
+   * A title over it; empty is none.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * A line under the title.
+   *
+   * @default ""
+   */
+  readonly subtitle?: string;
+  /**
+   * Bars and areas stack instead of standing side by side.
+   *
+   * @default false
+   */
+  readonly stacked?: boolean;
+  /**
+   * Lines curve through the values (monotone: never past them).
+   *
+   * @default true
+   */
+  readonly smooth?: boolean;
+  /**
+   * A dot on every value; null is on short series.
+   *
+   * @default null
+   */
+  readonly dots?: boolean | null;
+  /**
+   * The value axis's start; null fits the data (with zero for bars and areas).
+   *
+   * @default null
+   */
+  readonly min?: number | null;
+  /**
+   * Its end; null fits the data.
+   *
+   * @default null
+   */
+  readonly max?: number | null;
+  /**
+   * How values read.
+   *
+   * @default "grouped"
+   */
+  readonly format?: NumberFormat;
+  /**
+   * Decimals.
+   *
+   * @default 0
+   */
+  readonly digits?: number;
+  /**
+   * A unit after values in the tooltip.
+   *
+   * @default ""
+   */
+  readonly unit?: string;
+  /**
+   * The value and category axes.
+   *
+   * @default true
+   */
+  readonly axis?: boolean;
+  /**
+   * Grid lines at the value ticks.
+   *
+   * @default true
+   */
+  readonly grid?: boolean;
+  /**
+   * A legend; null is when there is more than one series (a pie lists its wedges always).
+   *
+   * @default null
+   */
+  readonly legend?: boolean | null;
+  /**
+   * A donut's hole, as a fraction of its radius.
+   *
+   * @default 0.62
+   * @range 0.2..0.9
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly hole?: number;
+  /**
+   * What a donut's centre says under the total; empty is Total.
+   *
+   * @default ""
+   */
+  readonly totalLabel?: string;
+  /**
+   * The category marked as selected.
+   *
+   * @default null
+   */
+  readonly selected?: number | null;
+  /**
+   * Its width; null grows.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * The plot's height; null is 240 (200 on a phone).
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height?: number | null;
+  /**
+   * What a screen reader calls it; its description is made from the data.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Loading.
+   *
+   * @default false
+   */
+  readonly loading?: boolean;
+  /**
+   * An error to show with Retry; empty is none.
+   *
+   * @default ""
+   */
+  readonly error?: string;
+  /**
+   * What it says with no data; empty is No data yet.
+   *
+   * @default ""
+   */
+  readonly emptyLabel?: string;
+  /**
+   * A line under it.
+   *
+   * @default ""
+   */
+  readonly emptyHint?: string;
+  /**
+   * The error has a Retry button.
+   *
+   * @default true
+   */
+  readonly retry?: boolean;
+  /**
+   * Retry's label.
+   *
+   * @default ""
+   */
+  readonly retryLabel?: string;
+  /**
+   * What a screen reader hears while loading.
+   *
+   * @default ""
+   */
+  readonly loadingLabel?: string;
+}
+
+/** What a chart answered this tick. */
+export interface ChartResult {
+  /** The category under the pointer or the focus. */
+  readonly hovered: number | null;
+  /** The category pressed. */
+  readonly clicked: number | null;
+  /** Retry was pressed. */
+  readonly retry: boolean;
+}
+
+/**
  * A row of key-value rows.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -22881,6 +23113,7 @@ export interface CalendarResult {
   /** The month was turned this tick. */
   readonly changed: boolean;
 }
+
 
 
 
@@ -34398,6 +34631,13 @@ export declare namespace og {
      * @param desc Nodes, links and the zoom.
      */
     function nodeGraph(id: string, desc?: NodeGraphDesc): NodeGraphResult;
+    /**
+     * A line, area, bar, radar, pie or donut chart.
+     *
+     * @param id Its id.
+     * @param desc The kind, the series and the categories.
+     */
+    function chart(id: string, desc?: ChartDesc): ChartResult;
     /**
      * Key-value rows: labels at the start, values at the end.
      *
