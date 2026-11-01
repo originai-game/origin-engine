@@ -726,8 +726,14 @@ These are the checks to use before opening frames. All of them run from
   missing report or a texture past `textureSize` (the device limit). The keys are `triangles` 100000, `vertices` 65536,
   `textureSize` 2048, `bones` 128, `clips` 64, `assetBytes` 8 MiB,
   `totalBytes` 64 MiB, `soundSeconds` 600, `videoSeconds` 300,
-  `fontGlyphs` 8192, `navPolygons` 65536, `sceneEntities` 10000 and
-  `emitterParticles` 16384, each a default a project may move.
+  `fontGlyphs` 8192, `navPolygons` 65536, `sceneEntities` 10000,
+  `emitterParticles` 16384 and `gpuBytes` 256 MiB, each a default a
+  project may move. `gpuBytes` is the report's `totals.gpuBytes`, an
+  estimate of what every texture and model takes on the GPU loaded at once
+  (a compressed texture a byte a texel, an RGBA8 one four, a third more for
+  mips; 64 bytes a vertex): a phone's browser gives a page little more.
+  The running figure is the probe's `memory().gpu` (textures, meshes,
+  render targets, buffers), also in `og.render.display(world).gpu`.
   `bvhShare` 30 is a warning, not a limit: a model whose cooked raycast
   BVH is over 30 % of its blob (and at least 16 KiB) is named by `og cook
   --report` and `og doctor`; write `model { raycast false }` in its .ogt

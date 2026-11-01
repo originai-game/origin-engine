@@ -167,7 +167,7 @@ pub fn findings(root: &Path) -> Vec<Value> {
             "warning",
             "over-budget",
             fl["message"].as_str().unwrap_or("").to_string(),
-            fix_for("totalBytes"),
+            fix_for(fl["budget"].as_str().unwrap_or("totalBytes")),
         );
         for k in ["budget", "limit", "value"] {
             f[k] = fl[k].clone();
@@ -200,6 +200,9 @@ fn fix_for(budget: &str) -> &'static str {
         "sceneEntities" => "split the scene, or raise budgets.sceneEntities",
         "emitterParticles" => {
             "lower the emitter's max_particles (or its rate), or raise budgets.emitterParticles"
+        }
+        "gpuBytes" => {
+            "resize the largest textures, cook them compressed (not rgba8), stream levels in groups (og.stream), or raise budgets.gpuBytes"
         }
         _ => "reduce the project's assets, or raise budgets.totalBytes",
     }

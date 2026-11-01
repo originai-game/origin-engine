@@ -83,6 +83,12 @@ pub struct Budgets {
     /// The percent of a model's blob its raycast BVH may take before the
     /// report warns (a warning, not a flag; the module's documentation).
     pub bvh_share: u64,
+    /// The GPU memory the whole project's textures and models would take
+    /// loaded at once ([`gpu_bytes`]): 256 MiB by default, what a phone's
+    /// browser gives a page's WebGPU comfortably beside the page itself
+    /// (iOS Safari ends a tab at about 1.5 GB in all). The renderer's own
+    /// targets come on top; the running count is ProbeMemory.gpu.
+    pub gpu_bytes: u64,
 }
 
 /// The smallest BVH the report warns about, whatever its share: below it
@@ -106,11 +112,12 @@ impl Default for Budgets {
             scene_entities: 10_000,
             emitter_particles: 16_384,
             bvh_share: 30,
+            gpu_bytes: 256 << 20,
         }
     }
 }
 
-const KEYS: [&str; 14] = [
+const KEYS: [&str; 15] = [
     "triangles",
     "vertices",
     "textureSize",
@@ -125,6 +132,7 @@ const KEYS: [&str; 14] = [
     "sceneEntities",
     "emitterParticles",
     "bvhShare",
+    "gpuBytes",
 ];
 
 impl Budgets {
@@ -162,6 +170,7 @@ impl Budgets {
                 "sceneEntities" => b.scene_entities = v,
                 "emitterParticles" => b.emitter_particles = v,
                 "bvhShare" => b.bvh_share = v,
+                "gpuBytes" => b.gpu_bytes = v,
                 k => {
                     return Err(format!(
                         "project.ogt line {}: unknown budget '{k}' (expected {})",
@@ -190,6 +199,7 @@ impl Budgets {
             "sceneEntities": self.scene_entities,
             "emitterParticles": self.emitter_particles,
             "bvhShare": self.bvh_share,
+            "gpuBytes": self.gpu_bytes,
         })
     }
 
@@ -213,6 +223,7 @@ impl Budgets {
             scene_entities: n("sceneEntities", d.scene_entities),
             emitter_particles: n("emitterParticles", d.emitter_particles),
             bvh_share: n("bvhShare", d.bvh_share),
+            gpu_bytes: n("gpuBytes", d.gpu_bytes),
         }
     }
 }
@@ -965,17 +976,54 @@ pub fn asset_warnings(asset: &Value, b: &Budgets) -> Vec<Value> {
 
 /// The project-wide flags of a report (its `totals`).
 pub fn total_flags(report: &Value, b: &Budgets) -> Vec<Value> {
+    let mut out = Vec::new();
     let bytes = report["totals"]["cookedBytes"].as_u64().unwrap_or(0);
     if bytes > b.total_bytes {
-        vec![flag(
+        out.push(flag(
             "totalBytes",
             b.total_bytes,
             bytes,
             "the project cooks to bytes".into(),
-        )]
-    } else {
-        Vec::new()
+        ));
     }
+    let gpu = report["totals"]["gpuBytes"].as_u64().unwrap_or(0);
+    if gpu > b.gpu_bytes {
+        out.push(flag(
+            "gpuBytes",
+            b.gpu_bytes,
+            gpu,
+            "the project's textures and models take GPU bytes loaded at once".into(),
+        ));
+    }
+    out
+}
+
+/// The bytes one vertex takes on the GPU (og-render's `Vertex`: position,
+/// normal, uv, colour and tangent as f32).
+const GPU_VERTEX_BYTES: u64 = 64;
+
+/// The GPU memory an asset of the report takes loaded (its `textures` and
+/// `model` as `asset_stats` reads them): a Basis texture transcodes to a
+/// block format of one byte a texel (BC7, ASTC 4x4, ETC2: a device without
+/// any takes four), an RGBA8 one four, each with its mip chain (a third
+/// more); a model's vertices and its triangles' 32-bit indices. An
+/// estimate for budgets: the renderer counts what it holds
+/// (ProbeMemory.gpu).
+pub fn gpu_bytes(asset: &Value) -> u64 {
+    let textures: u64 = asset["textures"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|t| {
+            let texels = t["width"].as_u64().unwrap_or(0) * t["height"].as_u64().unwrap_or(0);
+            let per = if t["format"] == "rgba8" { 4 } else { 1 };
+            texels * per * 4 / 3
+        })
+        .sum();
+    let m = &asset["model"];
+    let model = m["vertices"].as_u64().unwrap_or(0) * GPU_VERTEX_BYTES
+        + m["triangles"].as_u64().unwrap_or(0) * 12;
+    textures + model
 }
 
 /// `cook-report.json`: every source asset of `report` with what its
@@ -984,7 +1032,7 @@ pub fn total_flags(report: &Value, b: &Budgets) -> Vec<Value> {
 pub fn cook_report_json(report: &Report, cooked: &Path, budgets: &Budgets) -> Value {
     let bundle = Bundle::open(cooked).ok();
     let mut assets = Vec::new();
-    let (mut cooked_bytes, mut source_bytes, mut triangles) = (0u64, 0u64, 0u64);
+    let (mut cooked_bytes, mut source_bytes, mut triangles, mut gpu) = (0u64, 0u64, 0u64, 0u64);
     for a in &report.assets {
         let outputs: Vec<(String, String, u64)> = a
             .outputs
@@ -1013,6 +1061,7 @@ pub fn cook_report_json(report: &Report, cooked: &Path, budgets: &Budgets) -> Va
             }
         }
         triangles += entry["model"]["triangles"].as_u64().unwrap_or(0);
+        gpu += gpu_bytes(&entry);
         entry["flags"] = Value::Array(asset_flags(&entry, budgets));
         entry["warnings"] = Value::Array(asset_warnings(&entry, budgets));
         assets.push(entry);
@@ -1026,6 +1075,7 @@ pub fn cook_report_json(report: &Report, cooked: &Path, budgets: &Budgets) -> Va
             "sourceBytes": source_bytes,
             "cookedBytes": cooked_bytes,
             "triangles": triangles,
+            "gpuBytes": gpu,
             "flagged": assets.iter().filter(|a| a["flags"].as_array().is_some_and(|f| !f.is_empty())).count(),
             "warned": assets.iter().filter(|a| a["warnings"].as_array().is_some_and(|w| !w.is_empty())).count(),
         },
@@ -1066,6 +1116,36 @@ mod tests {
                 .unwrap_err()
                 .contains("unknown budget 'polygons'")
         );
+    }
+
+    /// A Basis texture is a byte a texel on the GPU, an RGBA8 one four, both
+    /// with a third more for their mips; a model its 64-byte vertices and
+    /// 12 bytes of indices a triangle. Past the budget the project is flagged.
+    #[test]
+    fn gpu_bytes_estimate_textures_and_models_and_flag_the_total() {
+        let asset = json!({
+            "textures": [
+                { "width": 1024, "height": 1024, "format": "uastc" },
+                { "width": 256, "height": 128, "format": "rgba8" },
+            ],
+            "model": { "vertices": 1000, "triangles": 500 },
+        });
+        let tex = 1024 * 1024 * 4 / 3 + 256 * 128 * 4 * 4 / 3;
+        assert_eq!(gpu_bytes(&asset), tex + 64_000 + 6_000);
+        let b = Budgets {
+            gpu_bytes: 1 << 20,
+            ..Budgets::default()
+        };
+        let report = json!({ "totals": { "cookedBytes": 0, "gpuBytes": gpu_bytes(&asset) } });
+        let flags = total_flags(&report, &b);
+        assert_eq!(flags.len(), 1, "{flags:?}");
+        assert_eq!(flags[0]["budget"], "gpuBytes");
+        assert!(total_flags(&report, &Budgets::default()).is_empty());
+        let doc = og_core::ogt::Document::parse(
+            "type project\nversion 1\n---\nbudgets {\n  gpuBytes 1000\n}\n",
+        )
+        .unwrap();
+        assert_eq!(Budgets::from_project(&doc.body).unwrap().gpu_bytes, 1000);
     }
 
     #[test]
