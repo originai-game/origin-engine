@@ -156,7 +156,12 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   `["model:claude-opus-5-5", "effort:medium"]` (the owner, 2026-11-01;
   high before), the project ref
   `origingame/origin-engine`, and its base commit named in the prompt;
-  never Fable or another model, never a mode picked for the task. A
+  never Fable or another model, never a mode picked for the task. One
+  exception (the owner, 2026-11-01): splitting oversized source files
+  runs in Amp `high` mode threads, briefed to move code verbatim (only
+  `mod`, `use` and visibility edits; no new checks, error handling,
+  helpers, renames or comments) and reviewed by the coordinator with
+  `git diff --color-moved` before merging. A
   stopped or paused thread is not resumed: its pushed commits are merged
   or dropped by the coordinator, its findings go into the brief of a new
   thread, and the new thread starts from the merged `origin/main`.
