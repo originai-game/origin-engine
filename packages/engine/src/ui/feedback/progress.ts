@@ -30,8 +30,9 @@ export function progressBar(id: string, desc: Api.ProgressBarDesc = {}): void {
     sound("success", e.changed && done);
     if (desc.label || showValue) {
       kit.row("Head", { gap: tk.sm, cross: "end", width: { kind: "grow" } }, () => {
-        text("Label", desc.label ?? "", { step: ts(14), color: token("inkMuted"), width: { kind: "grow" }, nowrap: true, ellipsis: true });
-        if (showValue && style !== "indeterminate") text("Value", valueText, { step: ts(14), font: "mono", nowrap: true });
+        // Outlined, so a bar laid over a bright scene still reads (4.5:1 against its own outline).
+        text("Label", desc.label ?? "", { step: ts(14), color: token("ink"), width: { kind: "grow" }, nowrap: true, ellipsis: true, outline: 0.8 });
+        if (showValue && style !== "indeterminate") text("Value", valueText, { step: ts(14), font: "mono", nowrap: true, outline: 0.8 });
       });
     }
     if (style === "steps") {
@@ -133,7 +134,7 @@ export function progressRing(id: string, desc: Api.ProgressRingDesc = {}): void 
       fills: [solid(lit(ink))],
     }, absolute({ start: 0, top: 0 }, { opacity }));
     const label = desc.label ?? (spinning ? "" : `${Math.round(target * 100)}%`);
-    if (label && size >= 40) text("Label", label, { step: size >= 72 ? ts(18) : ts(13), font: "mono", nowrap: true });
+    if (label && size >= 40) text("Label", label, { step: size >= 72 ? ts(18) : ts(13), font: "mono", nowrap: true, outline: 0.8 });
   }, {
     a11y: a11y("progressbar", name, spinning ? { busy: true } : { value: `${Math.round(target * 100)}%`, valueMin: 0, valueMax: 100, valueNow: Math.round(target * 100) }),
     ...groups({ mode: spinning ? "indeterminate" : "determinate" }, { mode: ["determinate", "indeterminate"] }),

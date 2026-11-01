@@ -9,7 +9,7 @@
 import type * as Api from "@origingame/engine";
 import {
   a11y, absolute, box, clamp01, close, drop, easeBack, easeOut, frame, groups, kit, leaf, lit, msToTicks, now, open, pct, px,
-  radial, reduced, role, sel, solid, sound, stroke, text, toneRole, token, vgrad, xy, inkOn, ts,
+  radial, reduced, role, sel, solid, sound, stroke, text, toneRole, token, vgrad, xy, inkOn, ts, mix,
 } from "./core.ts";
 
 const HOLD_MS: Record<Api.BannerKind, number> = { title: 3000, wave: 2400, victory: 3500, defeat: 3500, warning: 3000 };
@@ -38,7 +38,8 @@ export function banner(id: string, desc: Api.BannerDesc = {}): Api.BannerResult 
   const gold = role("gold");
   const ink: Api.Paint = kind === "victory" ? lit(gold) : kind === "defeat" ? lit(danger) : kind === "warning" ? token("ink") : token("ink");
 
-  kit.anchor(id, { anchor: desc.anchor ?? "center", width: pct(1), direction: "column", cross: "center", over: false }, () => {
+  // Over the rest of the UI: an announcement is never covered by a card or a meter.
+  kit.anchor(id, { anchor: desc.anchor ?? "center", width: pct(1), direction: "column", cross: "center", over: true }, () => {
     const band = kind !== "title";
     const bandInk = kind === "victory" ? gold : kind === "defeat" || kind === "warning" ? danger : role("primary");
     open("Band", {
@@ -51,8 +52,10 @@ export function banner(id: string, desc: Api.BannerDesc = {}): Api.BannerResult 
       partClass: "hud",
     }, {
       fills: band
-        ? [vgrad([[0, token("hud", 0)], [0.18, token("hud", 0.92)], [0.82, token("hud", 0.92)], [1, token("hud", 0)]], 90), vgrad([[0, lit(bandInk, 0.0)], [0.5, lit(bandInk, kind === "warning" ? 0.28 : 0.18)], [1, lit(bandInk, 0)]], 90)]
-        : [radial([[0, token("shadow", 0.55)], [1, token("shadow", 0)]], 0.5, 0.5, 0.5, 0.5)],
+        // A dark scrim under the band's own fill, so its title reads at
+        // 4.5:1 or better over a bright scene as well as a dark one.
+        ? [vgrad([[0, token("shadow", 0)], [0.14, token("shadow", 0.82)], [0.86, token("shadow", 0.82)], [1, token("shadow", 0)]], 90), vgrad([[0, token("hud", 0)], [0.18, token("hud", 0.9)], [0.82, token("hud", 0.9)], [1, token("hud", 0)]], 90), vgrad([[0, lit(bandInk, 0.0)], [0.5, lit(bandInk, kind === "warning" ? 0.24 : 0.14)], [1, lit(bandInk, 0)]], 90)]
+        : [radial([[0, token("shadow", 0.72)], [0.7, token("shadow", 0.4)], [1, token("shadow", 0)]], 0.5, 0.5, 0.5, 0.5)],
       strokes: [],
       effects: [],
     });
@@ -80,7 +83,7 @@ export function banner(id: string, desc: Api.BannerDesc = {}): Api.BannerResult 
         fills: [{ kind: "image", texture: desc.image, fit: "cover", tint: { token: "ink", alpha: 0.35 } }],
       }, absolute({ start: 0, top: 0 }));
     }
-    if (desc.eyebrow) text("Eyebrow", desc.eyebrow.toUpperCase(), { step: ts(14), color: kind === "title" ? token("inkMuted") : lit(bandInk), nowrap: true, outline: 0.8 });
+    if (desc.eyebrow) text("Eyebrow", desc.eyebrow.toUpperCase(), { step: ts(14), color: kind === "title" ? token("ink") : lit(mix(bandInk, { r: 1, g: 1, b: 1, a: 1 }, 0.35)), nowrap: true, outline: 1.2 });
     // The title: a title card fades up; a wave or a plate slams in from large and settles.
     const slam = kind !== "title" && !still;
     const s = phase === "entering" && slam ? 1 + 0.9 * (1 - easeBack(x, 2.2)) : 1;
@@ -92,7 +95,7 @@ export function banner(id: string, desc: Api.BannerDesc = {}): Api.BannerResult 
       nowrap: true,
       align: "center",
       color: ink,
-      outline: 1.4,
+      outline: 2,
       ...(kind === "victory" ? { gradient: { type: "linear", from: { x: 0, y: 0 }, to: { x: 0, y: 1 }, stops: [{ offset: 0, color: lit({ ...gold, r: Math.min(1, gold.r + 0.2), g: Math.min(1, gold.g + 0.2), b: Math.min(1, gold.b + 0.15) }) }, { offset: 1, color: lit(gold) }] } } : {}),
     }, { transform: { scaleX: s, scaleY: s, y: rise, x: shake }, opacity: kind === "title" ? easeOut(x) : clamp01(x * 3) });
     if (kind === "title") {
@@ -100,7 +103,7 @@ export function banner(id: string, desc: Api.BannerDesc = {}): Api.BannerResult 
         fills: [vgrad([[0, token("ink", 0)], [0.5, token("ink", 0.85)], [1, token("ink", 0)]], 90)],
       });
     }
-    if (desc.subtitle) text("Subtitle", desc.subtitle, { step: ts(16), color: token("inkMuted"), nowrap: true, align: "center", outline: 0.8 }, { opacity: clamp01((age - enter * 0.5) / enter) });
+    if (desc.subtitle) text("Subtitle", desc.subtitle, { step: ts(16), color: token("ink"), nowrap: true, align: "center", outline: 1.2 }, { opacity: clamp01((age - enter * 0.5) / enter) });
     if (kind === "victory" && age === enter) kit.particles({ burst: 48, fire: true, colors: [lit(gold), token("primary"), token("highlight")], travelMin: 80, travelMax: 260, gravity: 120, spin: 3, shape: "square", size: { x: 8, y: 5 }, from: "area" });
     else if (kind === "victory") kit.particles({ burst: 48, fire: false, colors: [lit(gold)], from: "area" });
     close({

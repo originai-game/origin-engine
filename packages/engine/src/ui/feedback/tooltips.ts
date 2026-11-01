@@ -9,7 +9,7 @@
 // clamped inside the safe area, mirrored right to left.
 
 import type * as Api from "@origingame/engine";
-import { a11y, arc, bp, box, clamp, clamp01, close, drop, frame, groups, icon, kit, leaf, lit, msToTicks, open, px, rarityColor, rarityPips, role, sel, shapeOf, solid, sound, stroke, text, token, vgrad, xy, type Rgba, ts, apply } from "./core.ts";
+import { a11y, arc, bp, box, clamp, clamp01, close, drop, frame, groups, icon, kit, leaf, lit, msToTicks, open, pct, px, rarityColor, rarityPips, role, sel, shapeOf, solid, sound, stroke, text, token, vgrad, xy, type Rgba, ts, apply } from "./core.ts";
 
 interface Placed {
   x: number;
@@ -109,7 +109,7 @@ function card(id: string, desc: Api.TooltipCardDesc, target: string, open_: bool
   out.depth = Math.max(out.depth, depth);
 
   const rare = rarityColor(desc.rarity);
-  const width = desc.width || (b.phone ? 300 : 320);
+  const width = desc.width || (b.phone ? 300 : 340);
   const compare = !!desc.compareTitle && (desc.compareStats?.length ?? 0) > 0;
   const total = compare ? width * 2 + tk.sm : width;
   const trig = target ? kit.bounds(target) : null;
@@ -187,7 +187,7 @@ function sheet(id: string, d: Api.TooltipCardDesc, equipped: boolean, width: num
     strokes: [stroke(rare && !equipped ? 1.5 : 1, rare && !equipped ? lit(rare, 0.7) : token("lineStrong", 0.8), "inside")],
     effects: [drop(12, 32, token("shadow", 0.55)), drop(2, 6, token("shadow", 0.35))],
   });
-  if (equipped) text("Eyebrow", title.toUpperCase(), { step: ts(13), color: token("inkMuted"), nowrap: true });
+  if (equipped) text("Eyebrow", title.toUpperCase(), { step: ts(13), color: token("inkMuted"), width: pct(1), maxLines: 2, ellipsis: true });
   // Header: the art slot or icon, the title in its rarity's colour with pips, the subtitle.
   kit.row("Header", { gap: tk.sm, cross: "center", width: { kind: "grow" } }, () => {
     if (!equipped && (d.image || d.icon)) {
@@ -207,7 +207,7 @@ function sheet(id: string, d: Api.TooltipCardDesc, equipped: boolean, width: num
         kit.row("Sub", { gap: tk.xs, cross: "center" }, () => {
           const pips = rarityPips(d.rarity);
           for (let i = 0; i < pips; i++) leaf(kit.idi("Pip", i), { width: px(5), height: px(5) }, { shape: { kind: "polygon", sides: 4 }, fills: [solid(rare ? lit(rare) : token("inkMuted"))] });
-          text("Subtitle", d.subtitle ?? "", { step: ts(13), color: token("inkMuted"), nowrap: true, ellipsis: true });
+          text("Subtitle", d.subtitle ?? "", { step: ts(13), color: token("inkMuted"), width: { kind: "grow" }, maxLines: 2, ellipsis: true });
         });
       }
     });
