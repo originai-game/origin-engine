@@ -87,6 +87,10 @@ impl Ui {
             vp.width - vp.safe_area.horizontal(),
             vp.height - vp.safe_area.vertical(),
         );
+        // The HUD band: the safe area at most `hud_max_aspect` wide,
+        // centred (an ultrawide's corners stay near the play), where the
+        // anchored groups and the toasts lay out.
+        let hud = vp.hud_rect(self.hud_max_aspect);
         // The host's control, where the layout stands before a right-to-left
         // mirror (which moves a top-left group to the top right).
         let covered = {
@@ -122,7 +126,7 @@ impl Ui {
                             .filter(|&(j, _)| j != k)
                             .map(|(_, &(_, o))| o)
                             .collect();
-                        spots[k].1 = keep_out(r, anchor, covered, margin.max(gap), safe, &others);
+                        spots[k].1 = keep_out(r, anchor, covered, margin.max(gap), hud, &others);
                     }
                 }
                 for &(g, placed) in &spots {
@@ -179,10 +183,10 @@ impl Ui {
             }
             let area = match float {
                 Float::Anchored { margin, .. } | Float::Toasts { margin, .. } => Rect::new(
-                    safe.x + margin,
-                    safe.y + margin,
-                    (safe.width - 2.0 * margin).max(0.0),
-                    (safe.height - 2.0 * margin).max(0.0),
+                    hud.x + margin,
+                    hud.y + margin,
+                    (hud.width - 2.0 * margin).max(0.0),
+                    (hud.height - 2.0 * margin).max(0.0),
                 ),
                 _ => safe,
             };

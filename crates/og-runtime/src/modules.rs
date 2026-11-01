@@ -437,8 +437,11 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
     Ok(())
 }
 
-fn viewport_json(v: &Viewport) -> Value {
+/// A viewport as og.ui.viewport answers it, with the HUD band the UI's
+/// `hud_max_aspect` makes of it (og-ui's `Ui::hud_area`).
+fn viewport_json(v: &Viewport, hud_max_aspect: f32) -> Value {
     json!({
+        "hud": rect_json(&v.hud_rect(hud_max_aspect)),
         "width": v.width, "height": v.height, "dpr": v.dpr,
         "safeArea": { "left": v.safe_area.left, "top": v.safe_area.top, "right": v.safe_area.right, "bottom": v.safe_area.bottom },
         "coarsePointer": v.coarse_pointer,

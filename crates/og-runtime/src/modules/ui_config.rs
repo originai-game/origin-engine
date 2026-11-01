@@ -254,6 +254,11 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         ui.set_icons(atlas);
         ui.set_style_name(style.as_ref().map_or("", |s| s.0.name.as_str()));
         ui.set_toast_anchor(anchor_of(&d["toastAnchor"]).unwrap_or(Anchor::Bottom));
+        ui.set_hud_max_aspect(
+            d["hudMaxAspect"]
+                .as_f64()
+                .map_or(og_ui::HUD_MAX_ASPECT, |a| a as f32),
+        );
         drop(ui);
         let mut st = eng.state.borrow_mut();
         st.ui_desc = d;

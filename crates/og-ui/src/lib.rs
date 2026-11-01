@@ -100,9 +100,9 @@ pub use style_file::{
 pub use text::{FontMetrics, Piece, UiFont, VisualGlyph, bidi_runs, needs_visual, pieces};
 pub use tokens::StyleTokens;
 pub use ui::{
-    ButtonDesc, ButtonVariant, ControlSize, FeedbackPlay, FieldDesc, Fonts, IconAtlas, ImageDesc,
-    LabelDesc, PanelDesc, ProgressDesc, Response, ScrollAxes, ScrollDesc, SliderDesc, TextAreaDesc,
-    TextTarget, Ui, UiDesc, UiFrame, Viewport,
+    ButtonDesc, ButtonVariant, ControlSize, FeedbackPlay, FieldDesc, Fonts, HUD_MAX_ASPECT,
+    IconAtlas, ImageDesc, LabelDesc, PanelDesc, ProgressDesc, Response, ScrollAxes, ScrollDesc,
+    SliderDesc, TextAreaDesc, TextTarget, Ui, UiDesc, UiFrame, Viewport,
 };
 pub use viewport::{ViewportDesc, ViewportResponse};
 pub use widgets::{

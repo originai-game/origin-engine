@@ -18336,6 +18336,10 @@ export interface Viewport {
   readonly covered?: UiRect;
   /** Its size class: phone portrait or landscape, tablet, desktop. */
   readonly breakpoint: Breakpoint;
+  /**
+   * The HUD band (read only): the safe area at most UiDesc.hudMaxAspect times its height wide, centred, where anchored groups and toasts lay out; a component that places itself (a HUD of the game's own) reads it so it sits with them on an ultrawide. Ignored where a host passes a viewport in.
+   */
+  readonly hud?: UiRect;
 }
 
 /**
@@ -18422,6 +18426,13 @@ export interface UiDesc {
    * @default null
    */
   readonly toastAnchor?: Anchor | null;
+  /**
+   * The widest the HUD band is, over its height: on a wider surface (a 21:9 or 32:9 ultrawide monitor) the anchored groups (og.ui.anchor, the HUD corners) and the toasts lay out in a band this wide, centred in the safe area, so the player's eyes stay near the play; og.ui.viewport's hud is that band. 16/9 keeps a 16:9 game's HUD where it was designed; 0 is the whole safe area (a HUD at the screen's edges). Full-screen layers (dialogs, menus, scrims, world-space markers and their edge clamping) keep the whole surface. The UI itself never stretches: it lays out in CSS pixels at every aspect.
+   *
+   * @default 2.3333
+   * @range 0..
+   */
+  readonly hudMaxAspect?: number;
   /**
    * A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style, the engine's placeholder.
    *

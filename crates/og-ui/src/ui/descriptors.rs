@@ -1,5 +1,10 @@
 use super::*;
 
+/// The widest the HUD band is by default, over its height: 21:9, so a
+/// 32:9 surface's HUD corners sit where a 21:9 one's do, centred
+/// ([`Ui::hud_area`]).
+pub const HUD_MAX_ASPECT: f32 = 21.0 / 9.0;
+
 /// The play surface the UI lays out in, in CSS pixels.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Viewport {
@@ -67,6 +72,36 @@ impl Viewport {
     /// The size class of this surface.
     pub fn breakpoint(&self) -> Breakpoint {
         Breakpoint::of(self.width, self.height)
+    }
+
+    /// The safe area, in CSS pixels.
+    pub fn safe_rect(&self) -> Rect {
+        Rect::new(
+            self.safe_area.left,
+            self.safe_area.top,
+            (self.width - self.safe_area.horizontal()).max(0.0),
+            (self.height - self.safe_area.vertical()).max(0.0),
+        )
+    }
+
+    /// The HUD band ([`Ui::hud_area`]): the safe area at most `max_aspect`
+    /// times its height wide, centred; the whole safe area where it is no
+    /// wider, or for a `max_aspect` of 0 (or not finite).
+    pub fn hud_rect(&self, max_aspect: f32) -> Rect {
+        let safe = self.safe_rect();
+        if !(max_aspect.is_finite() && max_aspect > 0.0) {
+            return safe;
+        }
+        let widest = max_aspect * safe.height;
+        if safe.width <= widest {
+            return safe;
+        }
+        Rect::new(
+            safe.x + (safe.width - widest) / 2.0,
+            safe.y,
+            widest,
+            safe.height,
+        )
     }
 
     pub(crate) fn dpr(&self) -> f32 {

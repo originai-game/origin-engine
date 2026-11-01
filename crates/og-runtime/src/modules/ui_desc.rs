@@ -216,7 +216,11 @@ pub(crate) fn with_ui<T>(call: &str, f: impl FnOnce(&mut Ui) -> T) -> Option<T> 
 }
 
 pub fn og_ui_viewport(world: u32) -> String {
-    viewport_json(&viewport_of(world)).to_string()
+    let hud = engine(world)
+        .ok()
+        .and_then(|e| e.state.borrow().ui.clone())
+        .map_or(og_ui::HUD_MAX_ASPECT, |ui| ui.lock().hud_max_aspect());
+    viewport_json(&viewport_of(world), hud).to_string()
 }
 
 pub fn og_ui_theme(world: u32) -> String {
@@ -236,8 +240,11 @@ pub fn og_ui_theme(world: u32) -> String {
 }
 
 pub fn og_ui_frame_viewport() -> String {
-    viewport_json(&with_ui("og.ui.frameViewport", |ui| ui.viewport()).unwrap_or_default())
-        .to_string()
+    let (v, hud) = with_ui("og.ui.frameViewport", |ui| {
+        (ui.viewport(), ui.hud_max_aspect())
+    })
+    .unwrap_or((Viewport::default(), og_ui::HUD_MAX_ASPECT));
+    viewport_json(&v, hud).to_string()
 }
 
 pub fn og_ui_has_icon(name: String) -> bool {

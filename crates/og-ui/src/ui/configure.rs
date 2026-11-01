@@ -35,6 +35,7 @@ impl Ui {
             scopes: Vec::new(),
             icons: IconAtlas::default(),
             toast_anchor: Anchor::Bottom,
+            hud_max_aspect: HUD_MAX_ASPECT,
             feedback: Vec::new(),
             haptics: 1.0,
             haptic_out: Vec::new(),
@@ -78,6 +79,32 @@ impl Ui {
     /// Where toasts stack (default: bottom centre of the safe area).
     pub fn set_toast_anchor(&mut self, anchor: Anchor) {
         self.toast_anchor = anchor;
+    }
+
+    /// The widest the HUD band is, over its height (UiDesc.hudMaxAspect;
+    /// default [`HUD_MAX_ASPECT`], 21:9): on a wider surface the anchored
+    /// groups and toasts lay out in a centred band this wide, so an
+    /// ultrawide's HUD corners stay near the play. 0 is the whole safe area.
+    pub fn set_hud_max_aspect(&mut self, max_aspect: f32) {
+        self.hud_max_aspect = if max_aspect.is_finite() {
+            max_aspect.max(0.0)
+        } else {
+            HUD_MAX_ASPECT
+        };
+    }
+
+    /// The widest the HUD band is, over its height ([`Ui::set_hud_max_aspect`]).
+    pub fn hud_max_aspect(&self) -> f32 {
+        self.hud_max_aspect
+    }
+
+    /// The HUD band this frame lays out in: the safe area at most
+    /// UiDesc.hudMaxAspect wide, centred (CSS px). The anchored groups (HUD
+    /// corners) and the toasts sit in it; a component that places itself
+    /// reads it (og.ui.viewport's `hud`). Full-screen layers (dialogs,
+    /// scrims, world-space markers) keep the whole safe area.
+    pub fn hud_area(&self) -> Rect {
+        self.viewport.hud_rect(self.hud_max_aspect)
     }
 
     /// The size class of the current play surface.

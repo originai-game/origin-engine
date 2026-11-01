@@ -295,6 +295,8 @@ pub struct Ui {
     pub(crate) scopes: Vec<usize>,
     pub(crate) icons: IconAtlas,
     pub(crate) toast_anchor: Anchor,
+    /// The widest the HUD band is, over its height ([`Ui::hud_area`]).
+    pub(crate) hud_max_aspect: f32,
     /// UI events the style gives a sound or a haptic, not yet taken by the
     /// host ([`Ui::take_feedback`]), each with where it is in a rising
     /// cascade (0–1; NaN: a random pitch in the event's range).
