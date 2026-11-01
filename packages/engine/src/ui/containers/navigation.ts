@@ -6,7 +6,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  byText, chevron, clamp, fit, flags, frame, glyphCap, grow, kit, lastGesture, mark, over, pointerFrom, px, rememberPath, role, rtl, spring, still, surface, target, text, token, xy,
+  all, byText, chevron, clamp, fit, flags, frame, glyphCap, grow, kit, lastGesture, mark, over, pointerFrom, px, overProps, parentOf, rememberPath, role, rtl, spring, still, surface, target, text, token, xy,
 } from "./base.ts";
 import { menu } from "./layers.ts";
 import { edge } from "./panels.ts";
@@ -51,15 +51,59 @@ export function tabBar(id: string, desc: Api.TabBarDesc, build: Api.UiItemBuild)
       // The bumpers' hints: a key cap or a pad's shoulder; none under a finger, where the row scrolls.
       const hints = (desc.bumpers ?? true) && !touch;
       if (hints) bumper("Prev", "tabPrev", () => (selected = step(-1)));
-      // Tabs that fill the row share it, each at least as wide as its own label (remembered from
-      // last tick); when they do not fit they scroll sideways, a fade at the edge where more lie.
-      const nat = tabs.map((_, k) => kit.memory(`~nat${k}`, 0));
-      const natSum = nat.reduce((a, b) => a + b, 0) + (pill ? 2 * t.xxs + Math.max(0, n - 1) * t.xs : 0);
-      kit.open("Clip", { direction: "row", width: grow() });
-      kit.openScroll("Strip", { width: grow(), axes: "horizontal", padding: xy(0, 0), gap: 0 });
-      let stripPath = "";
+      // The strip: a clipped window the tabs slide in. Its offset is the tab bar's own (memory, in
+      // this row's scope), so it knows where the tabs are cut: it fades at that edge, keeps the
+      // selected (or focused) tab clear of the fades, follows a drag with rubber past its ends, and
+      // ends a gap short of the bumper caps. Tabs that fill the row share it, each at least as wide
+      // as its own label; the widths are last tick's, so the row settles in one tick.
+      const fade = 28;
+      const gap = pill ? t.xs : 0;
+      const pad = pill ? t.xxs : 0;
+      // A tab never in view has not been measured (the window cuts its box): it counts as the
+      // measured ones' mean until it scrolls in and is measured.
+      const known = tabs.map((_, k) => kit.memory(`~nat${k}`, 0));
+      const seen = known.filter((w) => w > 0);
+      const guess = seen.length > 0 ? seen.reduce((a, b) => a + b, 0) / seen.length : byText(96);
+      const nat = known.map((w) => w || guess);
+      const natSum = nat.reduce((a, b) => a + b, 0) + 2 * pad + Math.max(0, n - 1) * gap;
+      const clipW = kit.memory("~clipW", 0);
+      const tallFallback = byText(Math.max(phone ? 44 : 40, t.controlMd)) + 2 * pad;
+      const tall = kit.memory("~h", 0) || tallFallback;
+      const contentW = Math.max(natSum, desc.fill ? clipW : 0);
+      // A px past the end: a tab whose width is still being learnt (a cut label measures short) is never cut by a sliver.
+      const maxOff = contentW > clipW + 0.5 ? contentW - clipW + 1 : 0;
+      // Where a tab lies along the row, in the reading direction.
+      const startOf = (k: number) => pad + nat.slice(0, k).reduce((a, b) => a + b, 0) + k * gap;
+      let off = clamp(kit.memory("~off", 0), 0, maxOff);
+      const ges = lastGesture(`tabs:${id}/Tabs`);
+      const along = (dx: number) => (rtl() ? dx : -dx);
+      if (ges && !ges.dragging && kit.memory("~held", 0) !== 0) off = clamp(off + along(kit.memory("~dx", 0) + ges.velocityX * 0.15), 0, maxOff);
+      kit.remember("~held", ges?.dragging ? 1 : 0);
+      kit.remember("~dx", ges?.dragging ? ges.offsetX : 0);
+      const reveal = (k: number) => {
+        if (clipW <= 0 || k < 0 || k >= n) return;
+        const a = startOf(k);
+        const b = a + (nat[k] ?? 0);
+        const room = Math.min(fade, Math.max(0, (clipW - (b - a)) / 2));
+        if (a - off < room) off = clamp(a - room, 0, maxOff);
+        else if (b - off > clipW - room) off = clamp(b - clipW + room + 1, 0, maxOff);
+      };
+      // The selected tab comes into view when it changes (a bumper, a tap), and on the first build.
+      // Again while its width is being learnt (a tab scrolled in for the first time).
+      if (selected !== Math.round(kit.memory("~shown", -1)) || known[selected] !== kit.memory("~shownW", -1)) reveal(selected);
+      const live = ges?.dragging ? clamp(off + along(ges.offsetX), -fade, maxOff + fade) : off;
+      const shownOff = still() || ges?.dragging ? live : kit.animate("~offAnim", live, spring("ui"));
+      // The pill track is the strip itself, so the sliding pill sits on it, behind the tabs.
+      kit.open("Clip", { direction: "row", width: grow(), height: px(tall), radius: pill ? t.control + t.xxs : 0, background: pill ? token("control") : null, part: `Tabs.track${flags(style)}`, partClass: "tab" });
+      // A scroll container is the window: it cuts the tabs' hits and the probe's boxes as well as
+      // their drawing. It never scrolls by itself (the tabs are placed over it, so it has no extent):
+      // the offset is the tab bar's.
+      kit.openScroll("Strip", { width: grow(), height: grow(), axes: "horizontal", padding: xy(0, 0), gap: 0 });
+      let focusedTab = -1;
+      const measured: number[] = [];
+      let row = "";
       try {
-        kit.open("Tabs", { direction: "row", width: desc.fill ? grow(natSum) : null, gap: pill ? t.xs : 0, cross: "stretch", padding: pill ? xy(t.xxs, t.xxs) : xy(0, 0), radius: pill ? t.control + t.xxs : 0, background: pill ? token("control") : null, part: `Tabs.track${flags(style)}`, partClass: "tab" });
+        kit.open("Tabs", { direction: "row", width: desc.fill ? px(contentW) : null, gap, cross: "stretch", padding: xy(pad, pad) });
         tabs.forEach((tab, k) => {
           const on = k === selected;
           const r = surface(kit.idi("Tab", k), {
@@ -83,33 +127,50 @@ export function tabBar(id: string, desc: Api.TabBarDesc, build: Api.UiItemBuild)
             if (tab.badge) kit.badge("Badge", tab.badge, tab.badgeTone ?? "primary");
           });
           if (r.clicked && k !== selected) selected = k;
-          // Its own width: its parts' laid out, never what a share squeezed it to.
+          if (r.focused) focusedTab = k;
+          // Its own width: its parts' laid out, never what a share squeezed it to. A part the clip
+          // cuts measures short, so a narrower measure is kept only for a tab wholly in view.
           const tp = kit.lastPath();
           const parts = ["Icon", "Label", "Badge"].map((c) => kit.bounds(`${tp}/${c}`)?.width ?? -1).filter((w) => w >= 0);
-          if (parts.length > 0) kit.remember(`~nat${k}`, Math.ceil(parts.reduce((a, b) => a + b, 0) + (parts.length - 1) * t.xs + 2 * t.md));
+          const w = parts.length > 0 ? Math.ceil(parts.reduce((a, b) => a + b, 0) + (parts.length - 1) * t.xs + 2 * t.md) : 0;
+          const inView = startOf(k) >= off - 0.5 && startOf(k) + (nat[k] ?? 0) <= off + clipW + 0.5;
+          measured.push(w > (known[k] ?? 0) || (inView && w > 0) ? w : known[k] ?? 0);
         });
         kit.close();
-        const row = kit.lastPath();
+        row = kit.lastPath();
         kit.semantics({ role: "tablist", name: desc.label ?? "" });
-        // The indicator: under (or behind) the chosen tab, sliding between tabs.
-        indicator("Indicator", row, before, pill);
+        kit.props({
+          ...overProps({ insets: { start: 0, top: 0 } }),
+          transform: { x: rtl() ? shownOff : -shownOff },
+          drag: { axis: "x", returnHome: true, rubber: 0.55, threshold: 6, spring: { kind: "instant" } },
+        });
+        rememberPath(`tabs:${id}/Tabs`, row);
+        // The indicator: under (or behind) the chosen tab, sliding between tabs. Where the tabs
+        // share a row that fits, the tab's laid-out box; otherwise each tab is its own width.
+        const tabB = kit.bounds(`${row}/${kit.idi("Tab", before)}`);
+        const clipB = kit.bounds(parentOf(row));
+        const shared = desc.fill && maxOff === 0 && tabB !== null && clipB !== null;
+        const ix = shared ? (rtl() ? clipB!.x + clipB!.width - (tabB!.x + tabB!.width) : tabB!.x - clipB!.x) : startOf(before) - shownOff;
+        const iw = shared ? tabB!.width : nat[before] ?? 0;
+        if (iw > 0) indicator("Indicator", ix, iw, pad, tall - 2 * pad, pill);
+        kit.close();
+        // The fades, over the tabs at the edge where more lie.
+        edge("FadeStart", true, kit.animate("~fs", off > 0.5 ? 1 : 0, spring("ui")), true, fade, "panel");
+        edge("FadeEnd", false, kit.animate("~fe", off < maxOff - 0.5 ? 1 : 0, spring("ui")), true, fade, "panel");
       } finally {
         kit.close();
-        stripPath = kit.lastPath();
       }
-      // The fades: where the row's first or last tab lies past the strip's edge (last tick's).
-      const sb = kit.bounds(stripPath);
-      const first = kit.bounds(`${stripPath}/Tabs/${kit.idi("Tab", 0)}`);
-      const lastTab = kit.bounds(`${stripPath}/Tabs/${kit.idi("Tab", n - 1)}`);
-      const ends = [first, lastTab].filter((x): x is Api.UiRect => x !== null);
-      const leftCut = sb !== null && ends.some((e) => e.x < sb.x - 0.5);
-      const rightCut = sb !== null && ends.some((e) => e.x + e.width > sb.x + sb.width + 0.5);
-      // The reading direction's start is the right under a right-to-left locale.
-      const startCut = rtl() ? rightCut : leftCut;
-      const endCut = rtl() ? leftCut : rightCut;
-      edge("FadeStart", true, kit.animate("~fs", startCut ? 1 : 0, spring("ui")), true, 28, "panel");
-      edge("FadeEnd", false, kit.animate("~fe", endCut ? 1 : 0, spring("ui")), true, 28, "panel");
-      kit.close();
+      const cb = kit.bounds(kit.lastPath());
+      // A focused tab (keys, a pad) is kept in view as the focus moves.
+      if (focusedTab >= 0 && focusedTab !== Math.round(kit.memory("~focused", -1))) reveal(focusedTab);
+      kit.remember("~focused", focusedTab);
+      measured.forEach((w, k) => kit.remember(`~nat${k}`, w));
+      if (cb) kit.remember("~clipW", cb.width);
+      const tb = kit.bounds(row);
+      if (tb) kit.remember("~h", Math.max(tb.height, tallFallback));
+      kit.remember("~off", off);
+      kit.remember("~shown", selected);
+      kit.remember("~shownW", known[selected] ?? 0);
       if (hints) bumper("Next", "tabNext", () => (selected = step(1)));
     });
     if (style === "underline") kit.divider("Rule", false);
@@ -122,19 +183,14 @@ export function tabBar(id: string, desc: Api.TabBarDesc, build: Api.UiItemBuild)
   return { selected, changed: selected !== before };
 }
 
-/** The selected tab's indicator: a bar under it (or a pill behind it) whose position and width follow the tab on the ui spring. */
-function indicator(id: string, row: string, k: number, pill: boolean): void {
-  const tab = kit.bounds(`${row}/${kit.idi("Tab", k)}`);
-  const base = kit.bounds(row);
-  if (!tab || !base) return;
-  const x = kit.animate("~x", tab.x - base.x, spring("ui"));
-  const w = kit.animate("~w", tab.width, spring("ui"));
-  const h = pill ? tab.height : 3;
+/** The selected tab's indicator: a bar under it (or a pill behind it) at `x` (from the strip's start, in the reading direction), `w` wide, whose position and width follow the tab on the ui spring. */
+function indicator(id: string, x0: number, w0: number, top0: number, tabH: number, pill: boolean): void {
+  const x = kit.animate("~x", x0, spring("ui"));
+  const w = kit.animate("~w", w0, spring("ui"));
+  const h = pill ? tabH : 3;
   kit.open(id, { width: px(Math.max(0, w - (pill ? 0 : 16))), height: px(h), radius: pill ? frame().t.control : 2, background: token(pill ? "panelRaised" : "primary"), part: `Tabs.indicator${flags(pill ? "pill" : "underline")}`, partClass: "tab" });
   kit.close();
-  const top = pill ? tab.y - base.y : tab.y - base.y + tab.height - h;
-  const startX = rtl() ? base.width - (x + w) : x;
-  over({ insets: { start: startX + (pill ? 0 : 8), top }, inert: true, z: pill ? -1 : 2 });
+  over({ insets: { start: x + (pill ? 0 : 8), top: pill ? top0 : top0 + tabH - h }, inert: true, z: pill ? -1 : 2 });
 }
 
 /**
@@ -475,7 +531,9 @@ export function radialMenu(id: string, open: boolean, desc: Api.RadialDesc): Api
   // moves or presses, so a resting mouse leaves the stick its aim.
   const key = `${id}~wheel`;
   const ptr = open ? pointerFrom(key) : null;
-  const moved = ptr !== null && (ptr.down || Math.round(ptr.x) !== kit.memory(`${id}~px`, -1) || Math.round(ptr.y) !== kit.memory(`${id}~py`, -1));
+  // A pointer resting where the wheel opens aims at nothing until it moves (no position last tick: just opened).
+  const had = kit.memory(`${id}~px`, -1) >= 0;
+  const moved = ptr !== null && (ptr.down || (had && (Math.round(ptr.x) !== kit.memory(`${id}~px`, -1) || Math.round(ptr.y) !== kit.memory(`${id}~py`, -1))));
   const onRing = ptr !== null && ptr.d >= hole * 0.6 && ptr.d <= radius + 12;
   if (moved && onRing) hovered = pick(ptr.dx, ptr.dy);
   // A pointer press released off the ring (in the hole: the way to cancel) chooses nothing.
@@ -492,8 +550,49 @@ export function radialMenu(id: string, open: boolean, desc: Api.RadialDesc): Api
   };
   const was = hovered;
   const f = kit.modal(id, open, { bare: true, backdrop: token("scrim", desc.dim === false ? 0 : 0.55), transition: "scale", width: px(radius * 2) }, () => {
-    // The wheel takes the pointer, keys (Left and Right step round it, Enter chooses) and pads.
-    kit.open("Wheel", { width: px(radius * 2), height: px(radius * 2), interactive: true, focusable: true, adjustable: true, part: "Radial.frame", partClass: "dialog" });
+    // The captions: each slice's icon over its name, placed where the box fits wholly inside its
+    // wedge (between its two edges and the ring's inner and outer circles, a margin from each),
+    // tried from the ring's middle outwards and inwards. The names' widths are last tick's (kept
+    // while they are hidden). When any slice's would not fit (a small wheel, a large text size)
+    // every slice shows its icon alone, as weapon wheels do, and the centre names the one aimed at.
+    const thick = radius - hole;
+    const iconPx = Math.round(clamp(thick * 0.34, 18, 28));
+    const capLine = Math.round(16 * Math.max(1, frame().theme.textScale ?? 1));
+    const gap = 2;
+    const named = desc.labels !== false;
+    const widths = items.map((it, k) => kit.memory(`~capW${k}`, 0) || (it.label?.length ?? 0) * capLine * 0.55);
+    const margin = 6;
+    // Where a w×h box centred on the bisector at `rho` lies inside wedge k (none: it does not).
+    const inWedge = (k: number, w: number, h: number, rho: number): boolean => {
+      const mid = -Math.PI / 2 + k * turn;
+      const bx = Math.cos(mid) * rho;
+      const by = Math.sin(mid) * rho;
+      const edges = [mid - turn / 2, mid + turn / 2];
+      for (const [dx, dy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+        const x = bx + (dx * w) / 2;
+        const y = by + (dy * h) / 2;
+        const d = Math.hypot(x, y);
+        if (d < hole + margin || d > radius - margin) return false;
+        // Its distance inside each edge line (an edge is a ray from the centre at angle e).
+        for (const [j, e] of edges.entries()) {
+          const cross = Math.cos(e) * y - Math.sin(e) * x;
+          if ((j === 0 ? cross : -cross) < margin) return false;
+        }
+      }
+      return true;
+    };
+    const place = (k: number, w: number, h: number): number | null => {
+      const middle = (radius + hole) / 2;
+      for (const step of [0, 4, -4, 8, -8, 12, -12, 16, -16, 20, -20]) if (inWedge(k, w, h, middle + step)) return middle + step;
+      return null;
+    };
+    const capH = iconPx + gap + capLine;
+    const plan = items.map((it, k) => (it.label && named ? place(k, Math.max(iconPx, widths[k]!), it.icon ? capH : capLine) : null));
+    const captions = items.every((it, k) => !it.label || !named || plan[k] !== null);
+    // The wheel takes the pointer, keys (Left and Right step round it, Enter chooses) and pads; its
+    // focus ring follows its circle.
+    const measuredW = [...widths];
+    kit.open("Wheel", { width: px(radius * 2), height: px(radius * 2), radius, interactive: true, focusable: true, adjustable: true, part: "Radial.frame", partClass: "dialog" });
     kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("panel", 0.82) }], effects: [{ kind: "backdrop", blur: 10 }] });
     items.forEach((it, k) => {
       const on = k === hovered;
@@ -506,42 +605,41 @@ export function radialMenu(id: string, open: boolean, desc: Api.RadialDesc): Api
           fills: [{ kind: "solid", color: on ? token("primary", 0.9) : token("control") }],
         });
         const mid = a0 + turn / 2;
-        const rr = (radius + hole) / 2;
-        const cx = radius + Math.cos(mid) * rr * (rtl() ? -1 : 1);
-        const cy = radius + Math.sin(mid) * rr;
-        // The label inside its wedge, never across its edges: as wide as the wedge is at the
-        // label's inner edge, the icon sized to the ring. A caption that would not fit (a small
-        // wheel, a large text size) leaves the slice to its icon, as weapon wheels do: the name of
-        // the slice aimed at is in the centre.
-        const thick = radius - hole;
-        const iconPx = Math.round(clamp(thick * 0.34, 18, 28));
-        const capLine = 16 * Math.max(1, frame().theme.textScale ?? 1);
-        const lh = iconPx + 2 + capLine;
-        const lw = Math.max(24, 2 * (rr - lh / 2) * Math.sin(turn / 2) - 8);
-        // Every slice captioned or none: a wheel where some slices are named and some not reads as broken.
-        const fits = (x: Api.RadialItem) => !x.icon || ((x.label?.length ?? 0) * capLine * 0.55 <= lw && lh <= thick - 8);
-        const caption = !!it.label && desc.labels !== false && (!it.icon || items.every(fits));
-        const boxH = caption ? lh : iconPx;
-        kit.column("Label", { width: px(lw), cross: "center", gap: 2 }, () => {
+        const caption = captions && !!it.label && named;
+        const rho = (caption ? plan[k] : null) ?? (radius + hole) / 2;
+        const boxW = caption ? Math.max(iconPx, widths[k]!) : iconPx;
+        const boxH = caption ? (it.icon ? capH : capLine) : iconPx;
+        const cx = radius + Math.cos(mid) * rho * (rtl() ? -1 : 1);
+        const cy = radius + Math.sin(mid) * rho;
+        kit.column("Label", { width: fit(), cross: "center", gap }, () => {
           if (it.icon) kit.icon("Icon", it.icon, { size: iconPx, tint: token(on ? "onPrimary" : "ink"), label: "" });
-          if (caption) text("Text", it.label ?? "", { step: "caption", color: on ? "onPrimary" : "inkMuted", align: "center", width: grow(), maxLines: 2 });
+          if (caption) text("Text", it.label ?? "", { step: "caption", color: on ? "onPrimary" : "inkMuted", align: "center", nowrap: true });
         });
-        over({ insets: { start: (rtl() ? radius * 2 - cx : cx) - lw / 2, top: cy - boxH / 2 }, inert: true });
+        over({ insets: { start: (rtl() ? radius * 2 - cx : cx) - boxW / 2, top: cy - boxH / 2 }, inert: true });
+        const tb = caption ? kit.bounds(`${kit.lastPath()}/Text`) : null;
+        if (tb) measuredW[k] = tb.width;
       }
       kit.close();
       over({ insets: { start: 0, top: 0 }, inert: true });
       kit.semantics({ role: "menuitem", name: it.label ?? "", selected: on, disabled: it.disabled ?? false });
     });
     // The centre: what is chosen.
-    kit.column("Centre", { width: px(hole * 2 - 8), height: px(hole * 2 - 8), align: "center", cross: "center", gap: 2, part: "Radial.centre", partClass: "avatar" }, () => {
+    // The hub: a disc (drawn on the hub itself, right after it opens) naming what is aimed at; its
+    // text keeps inside the disc's inscribed square.
+    const hub = hole * 2 - 8;
+    const inner = Math.round(hub * 0.7071);
+    kit.open("Centre", { direction: "column", width: px(hub), height: px(hub), align: "center", cross: "center", gap: 2, padding: all(Math.round((hub - inner) / 2)), part: "Radial.centre", partClass: "avatar" });
+    kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("panelRaised") }], strokes: [{ width: 1, align: "inside", paint: { kind: "solid", color: token("line") } }] });
+    {
       const it = items[hovered];
       text("Name", it?.label ?? desc.title ?? "", { step: "base", heading: true, align: "center", width: grow(), maxLines: 2 });
-      if (it?.detail) text("Detail", it.detail, { step: "caption", color: "inkMuted", align: "center", width: grow(), maxLines: 2, ellipsis: true });
-    });
-    kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("panelRaised") }], strokes: [{ width: 1, align: "inside", paint: { kind: "solid", color: token("line") } }] });
+      if (it?.detail) text("Detail", it.detail, { step: "caption", color: "inkMuted", align: "center", width: grow(), maxLines: 2 });
+    }
+    kit.close();
     over({ insets: { start: radius - hole + 4, top: radius - hole + 4 }, inert: true, z: 2 });
     const w = kit.close() as Api.Response;
     rememberPath(key, kit.lastPath());
+    measuredW.forEach((v, k) => kit.remember(`~capW${k}`, v));
     kit.semantics({ role: "menu", name: desc.title ?? "", value: items[hovered]?.label ?? "" });
     // Right goes clockwise (counter-clockwise under a right-to-left locale, as the wheel is mirrored).
     if (w.adjust !== 0) hovered = step(w.adjust * (rtl() ? -1 : 1));
