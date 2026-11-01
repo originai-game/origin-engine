@@ -9050,6 +9050,11 @@
         "PickedColor",
         "ColorPickerDesc",
         "ColorPickerResult",
+        "KeyBindingRowDesc",
+        "KeyBindingResult",
+        "KeyboardLayout",
+        "KeyboardDesc",
+        "KeyboardResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -12322,6 +12327,60 @@
             }
           ],
           "returns": "ColorPickerResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "keyBindingRow",
+          "doc": "A key-binding row (the settings tree's controls page, docs/ui.md §11): the action's name and a slot per binding on a device (keyboard and mouse, or a pad, the device used last by default) showing its glyphs from og.input (keys as caps, pad buttons as their family's discs, composites as their parts). A press on a slot (Enter, A) starts og.input.startCapture for it: the slot pulses `Press a key…` with the cancel hint until the player presses something (Escape, the pad's back or the timeout cancels). A capture with no conflict is applied at once; one that shares a control asks inline (`W is used by Move forward`: Swap, Replace, Cancel) with og.input's conflict report. A locked action shows a lock and takes no press; a rebound one shows a reset. Plays select, confirm, cancel and error. Parts: `Rebind.row[capturing][conflict][locked]`, `Rebind.slot[empty][capturing][conflict][hover|pressed|focused|disabled]`, `Rebind.conflict`; the caps are the action bar's `ActionBar.glyph[key|face|shoulder]`, the reset an icon button (`Button.base[quiet][icon]`). A group named by the action, slots as buttons named `<action>, <slot>: <binding>`. Probe: `<id>/Main/Slots/Slot#i`, `<id>/Conflict/Swap`, `<id>/Conflict/Replace`, `<id>/Conflict/Cancel`, `<id>/Main/Reset` (once rebound).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world (the action map is world state)."
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "KeyBindingRowDesc",
+              "optional": true,
+              "doc": "The action, device and labels."
+            }
+          ],
+          "returns": "KeyBindingResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "onScreenKeyboard",
+          "doc": "An on-screen keyboard for pads and touch (docs/ui.md §11, Appendix D: search and names with a pad): a panel at the screen's bottom with the text being typed and its caret, a candidate bar while composing, and keys a pad walks with focus wrapping by rows (Y erases, LB and RB move the caret, Back closes) and a finger presses (a key pops its letter above the finger on a press). Letters (shift for one, double tap for caps), symbols, a number pad and the Japanese kana table, with composition for an IME: typed kana (or letters with compose) stay underlined in KeyboardResult.composition until a candidate (the game's, plus the katakana) or Enter commits them. Plays press, select and back sounds. Parts: `Keyboard.panel`, `Keyboard.key[wide][action][active][primary][hover|pressed|focused|disabled]` (primary: the enter key; disabled: a gap in the kana table), `Keyboard.preview`, `Keyboard.candidates`, `Keyboard.candidate[hover|pressed|focused]`, `Keyboard.popup`. A dialog named by its title; keys are buttons named by what they type. Probe: `<id>/Panel/Content/Keys/Row#r/Key#k`, `<id>/Panel/Content/Preview`, `<id>/Panel/Content/Candidates/Candidate#i`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "open",
+              "type": "bool",
+              "optional": false,
+              "doc": "Whether it shows."
+            },
+            {
+              "name": "desc",
+              "type": "KeyboardDesc",
+              "optional": true,
+              "doc": "What it edits and how it types."
+            }
+          ],
+          "returns": "KeyboardResult",
           "publish": true,
           "host": false
         },
@@ -44824,6 +44883,253 @@
         "hex",
         "changed",
         "committed"
+      ],
+      "additionalProperties": false
+    },
+    "KeyBindingRowDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A controls screen's row for one action: its name, its bindings on a device, and their capture.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "The action (og.input.defineAction).",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "What it shows; empty is the action's label.",
+          "default": ""
+        },
+        "device": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InputDevice"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Whose bindings it shows and captures: keyboard and mouse, or a pad (its family's glyphs); null is the device used last (it follows live).",
+          "default": null
+        },
+        "slots": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many bindings it shows on that device (primary, secondary).",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 4
+        },
+        "reset": {
+          "type": "boolean",
+          "description": "A reset button while the player changed it.",
+          "default": true
+        },
+        "timeoutMs": {
+          "type": "number",
+          "description": "A capture cancels itself after this long (0: never).",
+          "default": 8000,
+          "x-og-unit": "ms"
+        },
+        "waitingLabel": {
+          "type": "string",
+          "description": "What a slot says while it waits; empty is `Press a key…` (`Press a button…` on a pad).",
+          "default": ""
+        },
+        "cancelHint": {
+          "type": "string",
+          "description": "The hint beside it; empty is `Esc to cancel` (the pad's back glyph on a pad).",
+          "default": ""
+        },
+        "emptyLabel": {
+          "type": "string",
+          "description": "What an unbound slot says; empty is `—`.",
+          "default": ""
+        },
+        "conflictLabel": {
+          "type": "string",
+          "description": "The conflict line, `{control}` and `{action}` filled; empty is `{control} is used by {action}`.",
+          "default": ""
+        },
+        "swapLabel": {
+          "type": "string",
+          "description": "The swap button; empty is `Swap`.",
+          "default": ""
+        },
+        "replaceLabel": {
+          "type": "string",
+          "description": "The replace button; empty is `Replace`.",
+          "default": ""
+        },
+        "cancelLabel": {
+          "type": "string",
+          "description": "The cancel button; empty is `Cancel`.",
+          "default": ""
+        },
+        "resetLabel": {
+          "type": "string",
+          "description": "The reset button's name; empty is `Reset to default`.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "KeyBindingResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a key-binding row did this tick.",
+      "type": "object",
+      "properties": {
+        "capturing": {
+          "type": "boolean",
+          "description": "One of its slots waits for input."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "Its bindings changed this tick (save with og.input.saveBindings)."
+        },
+        "conflict": {
+          "type": "boolean",
+          "description": "A captured control is used by another action: the row asks the player."
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The slot capturing or in conflict (-1: none)."
+        }
+      },
+      "required": [
+        "capturing",
+        "changed",
+        "conflict",
+        "slot"
+      ],
+      "additionalProperties": false
+    },
+    "KeyboardLayout": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "An on-screen keyboard's keys.",
+      "type": "string",
+      "enum": [
+        "letters",
+        "symbols",
+        "numeric",
+        "kana"
+      ],
+      "x-og-variants": {
+        "letters": "Latin letters (QWERTY), shift and caps, digits on a long press of the top row (the default).",
+        "symbols": "Digits and punctuation.",
+        "numeric": "A number pad: digits, a decimal point and a minus.",
+        "kana": "The Japanese kana table (gojūon) with the voicing marks, small kana and the long-vowel mark; typed kana compose until committed."
+      }
+    },
+    "KeyboardDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An on-screen keyboard: what it edits and how it types.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "The text it edits, from game state.",
+          "default": ""
+        },
+        "layout": {
+          "$ref": "#/$defs/KeyboardLayout",
+          "description": "The keys it opens with (the player switches between letters and symbols, and kana when allowed).",
+          "default": "letters"
+        },
+        "kana": {
+          "type": "boolean",
+          "description": "The kana layout is offered.",
+          "default": false
+        },
+        "compose": {
+          "type": "boolean",
+          "description": "Letters compose (an IME: pinyin, romaji) instead of typing: the composition shows underlined and candidates take it.",
+          "default": false
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Conversions of the composition the game offers (a dictionary's, for KeyboardResult.composition); the kana layout adds its katakana itself.",
+          "default": []
+        },
+        "maxChars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most characters (0: no limit).",
+          "default": 0
+        },
+        "title": {
+          "type": "string",
+          "description": "What is being typed (`Name your hero`); empty for none.",
+          "default": ""
+        },
+        "placeholder": {
+          "type": "string",
+          "description": "Shown while the text is empty.",
+          "default": ""
+        },
+        "submitLabel": {
+          "type": "string",
+          "description": "The enter key's label; empty is `Done`.",
+          "default": ""
+        },
+        "password": {
+          "type": "boolean",
+          "description": "Show the text as dots (the game keeps it).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "KeyboardResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What an on-screen keyboard did this tick.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "The text, to keep and pass back."
+        },
+        "composition": {
+          "type": "string",
+          "description": "What is being composed and not yet committed (show it, and look up candidates for it)."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "The text changed this tick."
+        },
+        "submitted": {
+          "type": "boolean",
+          "description": "Done was pressed: take the text."
+        },
+        "closed": {
+          "type": "boolean",
+          "description": "It was closed without submitting (Back, the close key, a press outside)."
+        },
+        "layout": {
+          "$ref": "#/$defs/KeyboardLayout",
+          "description": "The keys shown now."
+        }
+      },
+      "required": [
+        "value",
+        "composition",
+        "changed",
+        "submitted",
+        "closed",
+        "layout"
       ],
       "additionalProperties": false
     },

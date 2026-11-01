@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1729 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1736 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -565,6 +565,11 @@ Field units the docs and Tune use.
 | [`JoystickResult`](ui.md#type-JoystickResult) | struct | ui | — |
 | [`KeyAction`](input.md#type-KeyAction) | enum | input | — |
 | [`KeyBinding`](ui.md#type-KeyBinding) | desc struct | ui | — |
+| [`KeyBindingResult`](ui.md#type-KeyBindingResult) | struct | ui | — |
+| [`KeyBindingRowDesc`](ui.md#type-KeyBindingRowDesc) | desc struct | ui | — |
+| [`KeyboardDesc`](ui.md#type-KeyboardDesc) | desc struct | ui | — |
+| [`KeyboardLayout`](ui.md#type-KeyboardLayout) | enum | ui | — |
+| [`KeyboardResult`](ui.md#type-KeyboardResult) | struct | ui | — |
 | [`KeyEase`](ui.md#type-KeyEase) | union | ui | — |
 | [`KeyInput`](input.md#type-KeyInput) | struct | input | — |
 | [`KeyLabel`](input.md#type-KeyLabel) | desc struct | input | — |
@@ -1156,6 +1161,7 @@ Field units the docs and Tune use.
 | [`og.ui.inputField`](ui.md#fn-inputField) | function | ui | — |
 | [`og.ui.inventoryScreen`](ui.md#fn-inventoryScreen) | function | ui | — |
 | [`og.ui.joystick`](ui.md#fn-joystick) | function | ui | `og_ui_joystick` |
+| [`og.ui.keyBindingRow`](ui.md#fn-keyBindingRow) | function | ui | — |
 | [`og.ui.keyValue`](ui.md#fn-keyValue) | function | ui | `og_ui_key_value` |
 | [`og.ui.keyValueRows`](ui.md#fn-keyValueRows) | function | ui | — |
 | [`og.ui.label`](ui.md#fn-label) | function | ui | `og_ui_label` |
@@ -1179,6 +1185,7 @@ Field units the docs and Tune use.
 | [`og.ui.navigate`](ui.md#fn-navigate) | function | ui | `og_ui_navigate` |
 | [`og.ui.nodeGraph`](ui.md#fn-nodeGraph) | function | ui | — |
 | [`og.ui.numberStepper`](ui.md#fn-numberStepper) | function | ui | — |
+| [`og.ui.onScreenKeyboard`](ui.md#fn-onScreenKeyboard) | function | ui | — |
 | [`og.ui.open`](ui.md#fn-open) | function | ui | `og_ui_open` |
 | [`og.ui.openAnchor`](ui.md#fn-openAnchor) | function | ui | `og_ui_open_anchor` |
 | [`og.ui.openGrid`](ui.md#fn-openGrid) | function | ui | `og_ui_open_grid` |

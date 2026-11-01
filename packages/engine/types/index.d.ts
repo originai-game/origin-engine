@@ -25236,6 +25236,207 @@ export interface ColorPickerResult {
 
 
 /**
+ * A controls screen's row for one action: its name, its bindings on a device, and their capture.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface KeyBindingRowDesc {
+  /**
+   * The action (og.input.defineAction).
+   *
+   * @default ""
+   */
+  readonly action?: string;
+  /**
+   * What it shows; empty is the action's label.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Whose bindings it shows and captures: keyboard and mouse, or a pad (its family's glyphs); null is the device used last (it follows live).
+   *
+   * @default null
+   */
+  readonly device?: InputDevice | null;
+  /**
+   * How many bindings it shows on that device (primary, secondary).
+   *
+   * @default 2
+   * @range 1..4
+   */
+  readonly slots?: number;
+  /**
+   * A reset button while the player changed it.
+   *
+   * @default true
+   */
+  readonly reset?: boolean;
+  /**
+   * A capture cancels itself after this long (0: never).
+   *
+   * @default 8000
+   * @unit ms (milliseconds)
+   */
+  readonly timeoutMs?: number;
+  /**
+   * What a slot says while it waits; empty is `Press a key…` (`Press a button…` on a pad).
+   *
+   * @default ""
+   */
+  readonly waitingLabel?: string;
+  /**
+   * The hint beside it; empty is `Esc to cancel` (the pad's back glyph on a pad).
+   *
+   * @default ""
+   */
+  readonly cancelHint?: string;
+  /**
+   * What an unbound slot says; empty is `—`.
+   *
+   * @default ""
+   */
+  readonly emptyLabel?: string;
+  /**
+   * The conflict line, `{control}` and `{action}` filled; empty is `{control} is used by {action}`.
+   *
+   * @default ""
+   */
+  readonly conflictLabel?: string;
+  /**
+   * The swap button; empty is `Swap`.
+   *
+   * @default ""
+   */
+  readonly swapLabel?: string;
+  /**
+   * The replace button; empty is `Replace`.
+   *
+   * @default ""
+   */
+  readonly replaceLabel?: string;
+  /**
+   * The cancel button; empty is `Cancel`.
+   *
+   * @default ""
+   */
+  readonly cancelLabel?: string;
+  /**
+   * The reset button's name; empty is `Reset to default`.
+   *
+   * @default ""
+   */
+  readonly resetLabel?: string;
+}
+
+/** What a key-binding row did this tick. */
+export interface KeyBindingResult {
+  /** One of its slots waits for input. */
+  readonly capturing: boolean;
+  /** Its bindings changed this tick (save with og.input.saveBindings). */
+  readonly changed: boolean;
+  /** A captured control is used by another action: the row asks the player. */
+  readonly conflict: boolean;
+  /** The slot capturing or in conflict (-1: none). */
+  readonly slot: number;
+}
+
+
+/**
+ * An on-screen keyboard's keys.
+ * - `"letters"`: Latin letters (QWERTY), shift and caps, digits on a long press of the top row (the default).
+ * - `"symbols"`: Digits and punctuation.
+ * - `"numeric"`: A number pad: digits, a decimal point and a minus.
+ * - `"kana"`: The Japanese kana table (gojūon) with the voicing marks, small kana and the long-vowel mark; typed kana compose until committed.
+ */
+export type KeyboardLayout = "letters" | "symbols" | "numeric" | "kana";
+
+/**
+ * An on-screen keyboard: what it edits and how it types.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface KeyboardDesc {
+  /**
+   * The text it edits, from game state.
+   *
+   * @default ""
+   */
+  readonly value?: string;
+  /**
+   * The keys it opens with (the player switches between letters and symbols, and kana when allowed).
+   *
+   * @default "letters"
+   */
+  readonly layout?: KeyboardLayout;
+  /**
+   * The kana layout is offered.
+   *
+   * @default false
+   */
+  readonly kana?: boolean;
+  /**
+   * Letters compose (an IME: pinyin, romaji) instead of typing: the composition shows underlined and candidates take it.
+   *
+   * @default false
+   */
+  readonly compose?: boolean;
+  /**
+   * Conversions of the composition the game offers (a dictionary's, for KeyboardResult.composition); the kana layout adds its katakana itself.
+   *
+   * @default []
+   */
+  readonly candidates?: readonly string[];
+  /**
+   * The most characters (0: no limit).
+   *
+   * @default 0
+   */
+  readonly maxChars?: number;
+  /**
+   * What is being typed (`Name your hero`); empty for none.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * Shown while the text is empty.
+   *
+   * @default ""
+   */
+  readonly placeholder?: string;
+  /**
+   * The enter key's label; empty is `Done`.
+   *
+   * @default ""
+   */
+  readonly submitLabel?: string;
+  /**
+   * Show the text as dots (the game keeps it).
+   *
+   * @default false
+   */
+  readonly password?: boolean;
+}
+
+/** What an on-screen keyboard did this tick. */
+export interface KeyboardResult {
+  /** The text, to keep and pass back. */
+  readonly value: string;
+  /** What is being composed and not yet committed (show it, and look up candidates for it). */
+  readonly composition: string;
+  /** The text changed this tick. */
+  readonly changed: boolean;
+  /** Done was pressed: take the text. */
+  readonly submitted: boolean;
+  /** It was closed without submitting (Back, the close key, a press outside). */
+  readonly closed: boolean;
+  /** The keys shown now. */
+  readonly layout: KeyboardLayout;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -37037,6 +37238,22 @@ export declare namespace og {
      * @param desc Its swatches and parts.
      */
     function colorPicker(id: string, color?: PickedColor, desc?: ColorPickerDesc): ColorPickerResult;
+    /**
+     * A key-binding row (the settings tree's controls page, docs/ui.md §11): the action's name and a slot per binding on a device (keyboard and mouse, or a pad, the device used last by default) showing its glyphs from og.input (keys as caps, pad buttons as their family's discs, composites as their parts). A press on a slot (Enter, A) starts og.input.startCapture for it: the slot pulses `Press a key…` with the cancel hint until the player presses something (Escape, the pad's back or the timeout cancels). A capture with no conflict is applied at once; one that shares a control asks inline (`W is used by Move forward`: Swap, Replace, Cancel) with og.input's conflict report. A locked action shows a lock and takes no press; a rebound one shows a reset. Plays select, confirm, cancel and error. Parts: `Rebind.row[capturing][conflict][locked]`, `Rebind.slot[empty][capturing][conflict][hover|pressed|focused|disabled]`, `Rebind.conflict`; the caps are the action bar's `ActionBar.glyph[key|face|shoulder]`, the reset an icon button (`Button.base[quiet][icon]`). A group named by the action, slots as buttons named `<action>, <slot>: <binding>`. Probe: `<id>/Main/Slots/Slot#i`, `<id>/Conflict/Swap`, `<id>/Conflict/Replace`, `<id>/Conflict/Cancel`, `<id>/Main/Reset` (once rebound).
+     *
+     * @param world The world (the action map is world state).
+     * @param id Its id.
+     * @param desc The action, device and labels.
+     */
+    function keyBindingRow(world: World, id: string, desc?: KeyBindingRowDesc): KeyBindingResult;
+    /**
+     * An on-screen keyboard for pads and touch (docs/ui.md §11, Appendix D: search and names with a pad): a panel at the screen's bottom with the text being typed and its caret, a candidate bar while composing, and keys a pad walks with focus wrapping by rows (Y erases, LB and RB move the caret, Back closes) and a finger presses (a key pops its letter above the finger on a press). Letters (shift for one, double tap for caps), symbols, a number pad and the Japanese kana table, with composition for an IME: typed kana (or letters with compose) stay underlined in KeyboardResult.composition until a candidate (the game's, plus the katakana) or Enter commits them. Plays press, select and back sounds. Parts: `Keyboard.panel`, `Keyboard.key[wide][action][active][primary][hover|pressed|focused|disabled]` (primary: the enter key; disabled: a gap in the kana table), `Keyboard.preview`, `Keyboard.candidates`, `Keyboard.candidate[hover|pressed|focused]`, `Keyboard.popup`. A dialog named by its title; keys are buttons named by what they type. Probe: `<id>/Panel/Content/Keys/Row#r/Key#k`, `<id>/Panel/Content/Preview`, `<id>/Panel/Content/Candidates/Candidate#i`.
+     *
+     * @param id Its id.
+     * @param open Whether it shows.
+     * @param desc What it edits and how it types.
+     */
+    function onScreenKeyboard(id: string, open: boolean, desc?: KeyboardDesc): KeyboardResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *
