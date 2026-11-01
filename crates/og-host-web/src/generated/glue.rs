@@ -1679,6 +1679,11 @@ pub fn og_ui_seconds() -> f64 {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_last_path() -> String {
+    <Host as UiApi>::og_ui_last_path(&Host)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_frame_direction() -> String {
     <Host as UiApi>::og_ui_frame_direction(&Host)
 }
