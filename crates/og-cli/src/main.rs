@@ -124,6 +124,9 @@ commands:
                       import settings, licences) into the game's assets/styles/<name>/ (default
                       <slug>) to change at will, refusing to overwrite without --force; the look
                       names it as ui \"styles/<name>/style.ogt\"
+  style upgrade <style.ogt> [--out <file>] [--check]
+                      write a version 1 UI style as version 2 (its values kept, its part lines as
+                      dressings, the new tokens derived from its palette); --check only fails on v1
   style pack <dir> [--out <dir>]
                       pack a UI style's art drawn by hand (<part>.9.png nine-patches, other PNGs)
                       into atlas.png and the style file's atlas, slice and ornament lines

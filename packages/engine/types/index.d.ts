@@ -24416,7 +24416,7 @@ export declare namespace og {
      */
     function textureArray(world: World, path: string): Result<TextureArrayInfo>;
     /**
-     * Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`.
+     * Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 2 (docs/ui.md §12, what `og style upgrade` writes from version 1 and every built-in style is) adds the tokens (rarity, team, damage and chart colours each with its cue, the type scale per breakpoint, the space, size, radius and stroke scales, elevation, the shape language, motion springs and eases, sounds and haptics per UI event) and dresses parts by selector (`dress "Button.base[pressed]" { … }`); the tokens are carried, not yet drawn from. Version 1 still loads. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`.
      *
      * @param world The world whose UI uses it.
      * @param path The asset id, such as `styles/pixel/style.ogt` or `@styles/pixel/style.ogt`.

@@ -29,12 +29,19 @@
 //! game's own style to change at will. Its Chinese companions stay the
 //! shared built-in `@styles/cjk/` fonts, which the cook bundles for a game
 //! that shows Chinese.
+//!
+//! `og style upgrade <style.ogt> [--out <file>] [--check]` writes a
+//! version 1 style as version 2 (og-ui's `upgrade_style`, docs/ui.md
+//! §12): every version 1 value kept, so it draws the same; its part lines
+//! become dressings, its radii the shape language, its durations motion
+//! tokens; the new tokens derived from its palette and scheme. In place
+//! unless `--out`; `--check` writes nothing and fails while it is version 1.
 
 use image::{Rgba, RgbaImage};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og style list\n       og style eject <slug> [<name>] [--project <dir>] [--force]\n       og style pack <dir> [--out <dir>]\n       og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]";
+const USAGE: &str = "usage: og style list\n       og style upgrade <style.ogt> [--out <file>] [--check]\n       og style eject <slug> [<name>] [--project <dir>] [--force]\n       og style pack <dir> [--out <dir>]\n       og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]";
 
 /// The parts a nine-patch can dress (og-ui's `StylePart` names) and `soft`.
 const SLICES: [&str; 13] = [
@@ -82,6 +89,13 @@ pub fn run(args: &[&str]) -> ExitCode {
             Ok(()) => ExitCode::SUCCESS,
             Err(e) => {
                 eprintln!("og style eject: {e}");
+                ExitCode::from(1)
+            }
+        },
+        ["upgrade", rest @ ..] => match upgrade(rest) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("og style upgrade: {e}");
                 ExitCode::from(1)
             }
         },
@@ -206,6 +220,38 @@ fn eject(args: &[&str]) -> Result<(), String> {
     }
     println!(
         "name it in the game's look: ui \"styles/{name}/style.ogt\"\nthen change its palette roles, radius, ramp and fonts in {rel_dir}/style.ogt (og-ui §6); its cjk fonts stay the built-in @styles/cjk/ ones"
+    );
+    Ok(())
+}
+
+/// `og style upgrade <style.ogt> [--out <file>] [--check]`.
+fn upgrade(args: &[&str]) -> Result<(), String> {
+    let usage = "usage: og style upgrade <style.ogt> [--out <file>] [--check]";
+    let (path, out, check) = match args {
+        [p] => (*p, *p, false),
+        [p, "--check"] => (*p, *p, true),
+        [p, "--out", o] => (*p, *o, false),
+        _ => return Err(usage.into()),
+    };
+    let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+    let file = og_ui::parse_style(&text).map_err(|e| format!("{path}: {e}"))?;
+    if file.version >= 2 {
+        println!(
+            "og style upgrade: {path} is version {} already",
+            file.version
+        );
+        return Ok(());
+    }
+    if check {
+        return Err(format!(
+            "{path} is version 1: run `og style upgrade {path}` (version 1 loading is removed in a later minor version)"
+        ));
+    }
+    let upgraded = og_ui::upgrade_style(&text).map_err(|e| format!("{path}: {e}"))?;
+    std::fs::write(out, &upgraded).map_err(|e| format!("{out}: {e}"))?;
+    println!(
+        "og style upgrade: {path} -> {out} (version 2: {} dressing(s); its new tokens are derived, so make them the style's own: colors, typography, shape, elevation, motion, sounds)",
+        file.dressings.len()
     );
     Ok(())
 }
@@ -448,6 +494,12 @@ fn style_text(
     };
     let mut slices: Vec<&Piece> = pieces.iter().filter(|p| p.insets.is_some()).collect();
     slices.sort_by_key(|p| SLICES.iter().position(|s| *s == p.name));
+    if let Some(old) = old
+        && let Ok(doc) = og_core::ogt::Document::parse(old)
+        && doc.version >= 2
+    {
+        return style_text_v2(doc, atlas_id, pieces, size);
+    }
     let Some(old) = old else {
         let mut l = vec![
             "type style".to_string(),
@@ -510,4 +562,88 @@ fn style_text(
         out.extend(slices.iter().map(|p| slice_line(p)));
     }
     out.join("\n") + "\n"
+}
+
+/// A version 2 style file with its atlas, its parts' `slice` lines (in
+/// their `dress` blocks, made when missing) and its ornament regions
+/// replaced from the packed pieces.
+fn style_text_v2(
+    mut doc: og_core::ogt::Document,
+    atlas_id: &str,
+    pieces: &[Piece],
+    size: (u32, u32),
+) -> String {
+    use og_core::ogt::{Block, Entry, Number, Value};
+    let n = |v: u32| Value::Number(Number::from_f64(f64::from(v)).expect("finite"));
+    let region = |p: &Piece| {
+        vec![
+            n(p.at.0),
+            n(p.at.1),
+            n(p.image.width()),
+            n(p.image.height()),
+        ]
+    };
+    let body = &mut doc.body;
+    let mut atlas = Entry::new("atlas");
+    atlas.values = vec![Value::String(atlas_id.into()), n(size.0), n(size.1)];
+    match body.entries.iter_mut().find(|e| e.key == "atlas") {
+        Some(e) => *e = atlas,
+        None => body.entries.insert(0, atlas),
+    }
+    for p in pieces {
+        match (p.insets, p.name.as_str()) {
+            (Some([l, t, r, b]), "soft") => {
+                let mut e = Entry::new("soft");
+                e.values = region(p);
+                e.values.push(n(l.max(t).max(r).max(b)));
+                match body.entries.iter_mut().find(|e| e.key == "soft") {
+                    Some(old) => *old = e,
+                    None => body.push(e),
+                }
+            }
+            (Some([l, t, r, b]), name) => {
+                // `capsule` is the HUD capsule's nine-patch.
+                let part =
+                    og_ui::StylePart::from_name(if name == "capsule" { "hud" } else { name })
+                        .expect("a nine-patch names a part");
+                let sel = part.selector().to_string();
+                let i = match body.entries.iter().position(|e| {
+                    e.key == "dress"
+                        && e.values.first().and_then(Value::as_str) == Some(sel.as_str())
+                }) {
+                    Some(i) => i,
+                    None => {
+                        body.push(
+                            Entry::new("dress")
+                                .with(Value::String(sel))
+                                .with_block(Block::new()),
+                        );
+                        body.entries.len() - 1
+                    }
+                };
+                let block = body.entries[i].block.get_or_insert_with(Block::new);
+                let mut e = Entry::new("slice");
+                e.values = region(p);
+                e.values.extend([n(l), n(t), n(r), n(b)]);
+                match block.entries.iter_mut().find(|e| e.key == "slice") {
+                    Some(old) => {
+                        // Its words (tint or authored, stretch, repeat or round) stay.
+                        e.values
+                            .extend(old.values.iter().filter(|v| v.as_word().is_some()).cloned());
+                        *old = e;
+                    }
+                    None => block.entries.insert(0, e),
+                }
+            }
+            (None, key @ ("corner" | "divider" | "flourish" | "tile")) => {
+                for e in body.entries.iter_mut().filter(|e| e.key == key) {
+                    let rest: Vec<Value> = e.values.iter().skip(4).cloned().collect();
+                    e.values = region(p);
+                    e.values.extend(rest);
+                }
+            }
+            _ => {}
+        }
+    }
+    doc.to_text().expect("a style file writes back")
 }

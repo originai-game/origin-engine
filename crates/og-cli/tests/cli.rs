@@ -987,6 +987,60 @@ fn style_pack_packs_nine_patches_and_rewrites_the_style_file() {
     );
 }
 
+/// `og style upgrade` writes the hand-drawn fixture's version 1 style as
+/// version 2 in place, og-ui reads it with every part a dressing, and
+/// `og style pack` then rewrites the slices inside those dressings (a
+/// version 2 file has no top-level `slice` line to rewrite); `--check`
+/// fails on a version 1 style and passes once it is upgraded.
+///
+/// Ways it could fail: the upgrade writes a file og-ui refuses, pack writes
+/// version 1 `slice` lines into a version 2 file (which then no longer
+/// loads), or a slice's tint and repeat words are lost on the way.
+#[test]
+fn style_upgrade_writes_version_2_and_pack_rewrites_its_dressings() {
+    let dir = style_fixture();
+    let style = dir.join("style.ogt");
+    let check = og()
+        .args(["style", "upgrade", style.to_str().unwrap(), "--check"])
+        .output()
+        .unwrap();
+    assert_eq!(check.status.code(), Some(1), "{}", text(&check));
+    assert!(text(&check).contains("is version 1"), "{}", text(&check));
+    let out = og()
+        .args(["style", "upgrade", style.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    let up = std::fs::read_to_string(&style).unwrap();
+    let parsed = og_ui::parse_style(&up).unwrap_or_else(|e| panic!("og-ui reads it: {e}\n{up}"));
+    assert_eq!((parsed.version, parsed.name.as_str()), (2, "handmade"));
+    assert!(up.contains("dress \"Button.base\" {"), "{up}");
+    let out = og()
+        .args(["style", "pack", dir.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    let packed = std::fs::read_to_string(&style).unwrap();
+    let file =
+        og_ui::parse_style(&packed).unwrap_or_else(|e| panic!("og-ui reads it: {e}\n{packed}"));
+    assert!(!packed.lines().any(|l| l.starts_with("slice ")), "{packed}");
+    let atlas = image::open(dir.join("atlas.png")).unwrap().to_rgba8();
+    let button =
+        file.theme.art.slices[og_ui::StylePart::Button.index()].expect("the button's slice");
+    // The button's nine-patch is 4 3 4 3 inside a one-pixel border; it keeps tint and repeat.
+    let w = atlas.width() as f32;
+    assert_eq!((button.border_uv[0] * w).round(), 4.0);
+    assert!(
+        button.tint && button.fill == og_ui::SliceFill::Repeat,
+        "{packed}"
+    );
+    let again = og()
+        .args(["style", "upgrade", style.to_str().unwrap(), "--check"])
+        .output()
+        .unwrap();
+    assert!(again.status.success(), "{}", text(&again));
+}
+
 /// `og dev` stopped from outside (SIGTERM from a supervisor, SIGHUP from a
 /// closed terminal, SIGINT) stops its game process and whatever that
 /// started (here a stand-in for a browser), then ends by the same signal;

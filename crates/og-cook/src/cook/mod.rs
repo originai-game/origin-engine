@@ -1028,14 +1028,8 @@ fn style_tones(file: &og_ui::StyleFile, root: &Path) -> Vec<String> {
         }
         let t = slice_tone(&img, &sl);
         if t.iter().any(|v| *v < 0.98) {
-            out.push(format!(
-                "tone {} {:.3} {:.3} {:.3} {:.2}",
-                part.name(),
-                t[0],
-                t[1],
-                t[2],
-                t[3]
-            ));
+            // A version 2 style's tone is a line of its part's dressing.
+            out.push(file.tone_text(part, t));
         }
     }
     out
@@ -2897,7 +2891,12 @@ fn run(
             let parts = file.theme.art.slices.iter().flatten().count();
             Ok((
                 w.finish(),
-                vec![format!("style '{}', {parts} frame(s)", file.name)],
+                vec![format!(
+                    "style '{}' version {}, {parts} frame(s), {} dressing(s)",
+                    file.name,
+                    file.version,
+                    file.dressings.len()
+                )],
             ))
         }
         Work::Tileset(s) => {
