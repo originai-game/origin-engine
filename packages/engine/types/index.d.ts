@@ -21066,7 +21066,7 @@ export interface TabBarDesc {
    */
   readonly variant?: TabVariant;
   /**
-   * The tabPrev and tabNext actions (Q and E, LB and RB) step through the tabs, their glyphs at the row's ends.
+   * The tabPrev and tabNext actions (Q and E, LB and RB) step through the tabs, their glyphs on the device used last (keyboard, Xbox, PlayStation, Switch) at the row's ends.
    *
    * @default true
    */
@@ -21357,13 +21357,13 @@ export interface ActionHint {
    */
   readonly hint?: string;
   /**
-   * The glyph's icon (og.ui.glyph's).
+   * The glyph's icon, for an action with no glyph on the device in use (a UI action's own glyph, og.ui.frameGlyph, follows the device live and wins).
    *
    * @default ""
    */
   readonly icon?: string;
   /**
-   * The glyph as text (`Enter`, `A`, `LB`).
+   * The glyph as text (`Enter`, `A`, `LB`), with the same fallback as icon.
    *
    * @default ""
    */

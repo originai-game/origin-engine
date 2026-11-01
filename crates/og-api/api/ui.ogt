@@ -2105,7 +2105,7 @@ module ui {
     field tabs List.TabItem "The tabs."
     field selected u32 "The selected tab (keep TabBarResult.selected)."
     field variant TabVariant "How the selected tab is marked."
-    field bumpers bool "The tabPrev and tabNext actions (Q and E, LB and RB) step through the tabs, their glyphs at the row's ends." {
+    field bumpers bool "The tabPrev and tabNext actions (Q and E, LB and RB) step through the tabs, their glyphs on the device used last (keyboard, Xbox, PlayStation, Switch) at the row's ends." {
       default true
     }
     field wrap bool "Stepping past the last tab comes back to the first." {
@@ -2206,8 +2206,8 @@ module ui {
     desc true
     field action String "The action's name (answered when the hint is pressed)."
     field hint String "What it does (`Buy`, `Back`)."
-    field icon String "The glyph's icon (og.ui.glyph's)."
-    field text String "The glyph as text (`Enter`, `A`, `LB`)."
+    field icon String "The glyph's icon, for an action with no glyph on the device in use (a UI action's own glyph, og.ui.frameGlyph, follows the device live and wins)."
+    field text String "The glyph as text (`Enter`, `A`, `LB`), with the same fallback as icon."
     field hold bool "It fires on a hold: a ring fills."
     field progress f32 "How far the hold has gone." {
       min 0

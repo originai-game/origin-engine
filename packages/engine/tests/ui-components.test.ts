@@ -6,7 +6,8 @@ import { expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { og, defineSystem } from "@origingame/engine";
+import { og, defineSystem, type World } from "@origingame/engine";
+import type * as Api from "@origingame/engine";
 import { loadNativeHost, native } from "../src/node/index.ts";
 import { checkFrame, checkScale, pseudo, type UiCell, type UiFrameSnapshot } from "../src/node/ui-check.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
@@ -84,6 +85,34 @@ test("tabBar: the bumper steps to the next enabled tab, skipping a disabled one,
   expect(sel).toBe(1);
   expect(byPath(engine, "Tabs/Panel")?.role).toBe("tabpanel");
   expect(byPath(engine, "Panel/Body")?.text).toBe("Panel 1");
+});
+
+test("tabBar and actionHints: the bumpers and hints show the device's glyphs, following it live (keyboard, Xbox, PlayStation, Switch)", () => {
+  // Wrong: fixed Q and E caps, or a hint that keeps the text it was given when the player picks up a pad.
+  let device: Api.UiDevice = "keyboardMouse";
+  const sys = defineSystem(`UcBuild${systems++}`, {}, (_q, _t, world: World) => {
+    og.ui.setDevice(world, device);
+    og.ui.anchor("Root", { anchor: "center", direction: "column", width: { kind: "fixed", px: 640 } } as never, () => {
+      og.ui.tabBar("Tabs", { tabs: [{ label: "Gear" }, { label: "Skills" }], selected: 0 }, () => {});
+      og.ui.actionHints("Hints", { hints: [{ action: "confirm", hint: "Select", text: "Given", icon: "key.given" }, { action: "back", hint: "Back" }, { action: "gameOwn", hint: "Own", text: "F", icon: "key.f" }] });
+    });
+  });
+  const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, {});
+  if (!r.ok) throw new Error(r.reason);
+  const engine = r.value;
+  const caps = () => ["Prev/Glyph/Text", "Next/Glyph/Text", "Hint#0/Glyph/Text", "Hint#1/Glyph/Text", "Hint#2/Glyph/Text"].map((p) => byPath(engine, p)?.text);
+  const expected: Array<[Api.UiDevice, Array<string | undefined>]> = [
+    ["keyboardMouse", ["Q", "E", "Enter", "Esc", "F"]],
+    ["xbox", ["LB", "RB", "A", "B", "F"]],
+    ["playstation", ["L1", "R1", "×", "○", "F"]],
+    ["switch", ["L", "R", "B", "A", "F"]],
+    ["keyboardMouse", ["Q", "E", "Enter", "Esc", "F"]],
+  ];
+  for (const [d, want] of expected) {
+    device = d;
+    engine.advance(4);
+    expect([d, ...caps()]).toEqual([d, ...want]);
+  }
 });
 
 // ── visual states ───────────────────────────────────────────────────────

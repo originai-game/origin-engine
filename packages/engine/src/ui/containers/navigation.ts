@@ -18,7 +18,7 @@ import { menu } from "./layers.ts";
  * behind it) that slides from the old tab to the new one on the style's
  * ui spring. With `bumpers` the tabPrev and tabNext actions (Q and E, [
  * and ], LB and RB) step through the enabled tabs from anywhere on the
- * layer, their glyphs drawn at the row's ends; the arrows move along the
+ * layer, their glyphs on the device used last drawn at the row's ends; the arrows move along the
  * row when it has the focus. A tab can carry a count badge, be disabled,
  * and the row scrolls sideways when it does not fit (the chosen tab kept
  * in view).
@@ -112,13 +112,24 @@ function indicator(id: string, row: string, k: number, pill: boolean): void {
   over({ insets: { start: startX + (pill ? 0 : 8), top }, inert: true, z: pill ? -1 : 2 });
 }
 
-/** A bumper hint at a tab row's end: its action's key cap (Q, E); a press steps as the action does. */
+/**
+ * A bumper hint at a tab row's end: its action's glyph on the device used
+ * last (Q and E on a keyboard, LB and RB on an Xbox pad, L1 and R1 on a
+ * PlayStation's, L and R on a Switch's), following the player's rebinding;
+ * a press steps as the action does.
+ */
 function bumper(id: string, action: "tabPrev" | "tabNext", onPress: () => void): void {
-  const g = action === "tabPrev" ? { text: "Q", icon: "key.q" } : { text: "E", icon: "key.e" };
+  const g = deviceGlyph(action) ?? (action === "tabPrev" ? { text: "Q", icon: "key.q" } : { text: "E", icon: "key.e" });
   const r = surface(id, { part: "Tabs.bumper", cls: "chip", fill: null, focusable: false, width: fit(44), padding: xy(4, 4), align: "center", cross: "center", height: fit(44), semantics: { role: "button", name: action === "tabPrev" ? "Previous tab" : "Next tab", description: g.text } }, () => {
     glyphCap("Glyph", g, 24);
   });
   if (r.clicked) onPress();
+}
+
+/** An action's glyph on the device used last (og.ui.frameGlyph); null when it has none there. */
+function deviceGlyph(action: string): { text: string; icon: string } | null {
+  const g = kit.frameGlyph(action);
+  return g && g.text ? { text: g.text, icon: g.icon } : null;
 }
 
 // ── carousel ────────────────────────────────────────────────────────────
@@ -362,7 +373,8 @@ export function actionHints(id: string, desc: Api.ActionHintsDesc): Api.ActionHi
   const maxW = Math.max(120, viewport.width - viewport.safeArea.left - viewport.safeArea.right - 2 * t.gutter);
   kit.anchor(id, { anchor: where, direction: "column", width: fit(0, maxW), padding: xy(t.md, t.xs), background: desc.background === false ? null : token("hud"), radius: t.control, frame: "hud" }, () => kit.row("Row", { width: grow(), gap: touch ? t.sm : t.lg, cross: "center", align: right ? "end" : where.endsWith("Left") ? "start" : "center", wrap: true }, () => {
     hints.forEach((h, k) => {
-      const glyph = { text: h.text ?? "", icon: h.icon ?? "" };
+      // The device's glyph for a UI action it knows, live; the hint's own text and icon otherwise.
+      const glyph = (h.action ? deviceGlyph(h.action) : null) ?? { text: h.text ?? "", icon: h.icon ?? "" };
       const r = surface(kit.idi("Hint", k), {
         part: "ActionBar.hint",
         cls: "chip",
