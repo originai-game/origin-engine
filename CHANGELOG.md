@@ -15,6 +15,21 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Saves that survive game and engine updates (G1-5).** Added to the
+  IDL: `GameDesc.saveVersion`, `GameDesc.migrations`, `SaveMigration`,
+  `World.openSave`, `SaveEdit` (`version`, `types`, `has`, `records`,
+  `setRecords`, `transform`, `split`, `renameType`, `renameField`,
+  `dropType`, `spawn`, `text`, `close`), `SaveType` and `SnapshotDesc`
+  (`world.snapshot(desc)`). Every save carries the game's save version
+  (`og-save:2:`; `og-save:1:` saves read as version 1), and a restore
+  runs the game's migrations from it to the current version on the save,
+  refusing with the step's reason and the world untouched when one
+  fails. The engine migrates its own state in an older build's save
+  first (og.ui's block 9 → 11: a 0.7.7 save restores without `migrate`).
+  A selection saves and restores only tagged entities and chosen
+  resources. The slot cap stays 512 KiB (its two banks are the
+  platform's 1 MiB a player): a 5,000-entity world saves to 437 KiB.
+
 - Fixed: `World.restore` takes a save without `migrate` when an engine
   type (an og.* component, resource or event) only gained fields since
   the save: each added field gets its declared default (not zero), so an

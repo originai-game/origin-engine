@@ -6,6 +6,14 @@
     "breaking": [],
     "added": [
       {
+        "member": "GameDesc.saveVersion, GameDesc.migrations, SaveMigration, World.openSave, SaveEdit, SaveType",
+        "summary": "A game's own save version (GameDesc.saveVersion or project.ogt's `saveVersion`, 1 when absent) is written into every save, and its migrations run on a restore from the save's version to the current one, in order: each `{ from, migrate(save) }` edits the save as a SaveEdit (renameField, renameType, transform with the old record, split, dropType, setRecords, spawn) before the world sees it. A step that refuses or throws refuses the restore with its reason and leaves the world as it was; a save of a newer version is refused. The migrated world is the one the new version builds from the same state. world.openSave opens a save for the same edits outside a restore."
+      },
+      {
+        "member": "SnapshotDesc, world.snapshot(desc)",
+        "summary": "Selective saves: world.snapshot({ with: [tags], resources: [chosen] }) saves only the entities carrying every tag and the chosen resources (50 tagged entities of a 5,000-entity world: 1.9 KiB), and world.restore of it replaces those entities and sets those resources, leaving the rest of the world as it is."
+      },
+      {
         "member": "og style eject, og style list",
         "summary": "og style eject <slug> [<name>] [--project <dir>] [--force] writes a built-in UI style (style.ogt, atlas, icons, fonts with their import settings, licences), byte for byte from the copy og carries, into the game's assets/styles/<name>/ (default the slug), refusing to overwrite without --force, and prints the look's ui \"styles/<name>/style.ogt\" line; the ejected style cooks to the built-in's blobs, and its cjk fonts stay the shared @styles/cjk/ built-ins. og style list names the built-in slugs with their signatures. The og-ui and og-taste skills use it in place of copying templates/styles/, which the installed package does not have."
       },
@@ -27,6 +35,14 @@
       }
     ],
     "fixed": [
+      {
+        "member": "World.restore",
+        "summary": "An engine upgrade no longer refuses or resets a player's save: the engine migrates its own state in a save from an older build before the restore checks it (a table of steps by what moved and its version; og.ui's state block 9 -> 11, so a save from 0.7.7 restores without migrate, its game data, engine components and og.Rng record for record as this build runs the game)."
+      },
+      {
+        "member": "og.platform.saveSlot",
+        "summary": "The 512 KiB cap stays, measured against a 5,000-entity world (half physics bodies): 437 KiB, about 100 ms to save and 65 ms to restore natively; a slot's two banks are the platform's 1 MiB a player and game. A text over the cap is refused pointing at selections. Saves are og-save:2: (with the game's save version); og-save:1: saves still read, as version 1."
+      },
       {
         "member": "World.restore",
         "summary": "A save restores without `migrate` when an engine type (og.* component, resource or event) only gained fields since it was written: every saved field is still there with its type, and each added field takes its declared default from the IDL (og.RenderSettings' new fields in every save of the build before), never zero by accident. A removed, renamed or retyped engine field still needs an engine migration; a game's own types stay strict, refused naming the fields."
