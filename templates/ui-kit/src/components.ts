@@ -40,6 +40,8 @@ const s = {
   radialAim: { x: 0.7, y: -0.7 },
   check: true,
   sort: "name",
+  /** The action bar's room at the bottom (last tick's): the page keeps its content clear of it. */
+  bar: 0,
 };
 
 /** `demo:<key>:<value>`: a preview's state (overlay, data, aim), the player's text size (text, percent), or the device prompts are drawn for (device: keyboardMouse, xbox, playstation, switch). */
@@ -60,7 +62,7 @@ export function demoCommand(world: World, args: readonly string[]): void {
 function panel(id: string, title: string, width: Size, build: () => void): void {
   const t = og.ui.frameTheme();
   og.ui.panel(id, { width, gap: t.space.sm, padding: { left: t.space.md, top: t.space.md, right: t.space.md, bottom: t.space.md } }, () => {
-    og.ui.label("Heading", title, { step: "caption", color: { token: "inkMuted" }, nowrap: true });
+    og.ui.label("Heading", title, { step: "caption", color: { token: "inkMuted" }, width: grow });
     build();
   });
 }
@@ -70,12 +72,18 @@ function phone(): boolean {
   return b === "phonePortrait" || b === "phoneLandscape";
 }
 
-/** A page of the previews: a scrolling column on a phone, a wrapping row of panels elsewhere. */
-function page(id: string, build: () => void): void {
+/**
+ * A page of the previews: a scrolling column on a phone, a wrapping row of panels elsewhere,
+ * fading at an edge where more lies, and ending above the safe area and the action bar (`bar`:
+ * its room at the bottom), so nothing hides under either.
+ */
+function page(id: string, build: () => void, bar = 0): void {
   const t = og.ui.frameTheme();
   const vp = og.ui.frameViewport();
-  og.ui.anchor(id, { anchor: phone() ? "top" : "center", width: phone() ? grow : px(Math.min(1200, vp.width - 48)), direction: "column", padding: { left: t.space.md, top: phone() ? 96 : t.space.md, right: t.space.md, bottom: t.space.md } }, () => {
-    og.ui.scroll("Body", { width: grow, height: px(vp.height - (phone() ? 120 : 96)), gap: t.space.md }, () => {
+  const top = phone() ? 96 : t.space.md;
+  const bottom = Math.max(bar, vp.safeArea.bottom) + t.space.md;
+  og.ui.anchor(id, { anchor: phone() ? "top" : "center", ...(phone() ? { margin: 0 } : {}), width: phone() ? grow : px(Math.min(1200, vp.width - 48)), direction: "column", padding: { left: t.space.md, top, right: t.space.md, bottom: t.space.md } }, () => {
+    og.ui.scrollArea("Body", { width: grow, height: px(vp.height - vp.safeArea.top - top - bottom - (phone() ? 0 : 64)), gap: t.space.md, fadeInto: "backdrop", label: id }, () => {
       // One panel under another on a phone (a row that does not wrap would leave all but the first off screen).
       if (phone()) og.ui.column("Panels", { width: grow, gap: t.space.md, cross: "stretch" }, build);
       else og.ui.row("Panels", { width: grow, gap: t.space.md, wrap: true, cross: "start" }, build);
@@ -135,7 +143,7 @@ export function containersScreen(): void {
 
 export function navigationScreen(): void {
   page("Navigation", () => {
-    panel("TabsUnderline", "Tabs with bumpers (Q E, LB RB), a badge, a disabled tab", phone() ? grow : px(560), () => {
+    panel("TabsUnderline", "Tabs with bumpers, a badge, a disabled tab", phone() ? grow : px(560), () => {
       s.tab = og.ui.tabBar("Tabs", { tabs: [{ label: "Gear", icon: "shield" }, { label: "Skills", badge: "3" }, { label: "Map", disabled: true }, { label: "Codex" }], selected: s.tab }, (k) => og.ui.label("Body", ["Equip up to six items.", "Three skill points to spend.", "", "142 entries discovered."][k] ?? "", { color: { token: "inkMuted" } })).selected;
     });
     panel("TabsPill", "Pill tabs, filling the row", phone() ? grow : px(420), () => {
@@ -153,8 +161,8 @@ export function navigationScreen(): void {
       s.page = og.ui.pagination("Pager", { pages: 20, page: s.page }).page;
       og.ui.pagination("Compact", { pages: 20, page: s.page, compact: true });
     });
-  });
-  og.ui.actionHints("Hints", { hints: [{ action: "confirm", hint: "Select", text: "Enter", icon: "key.enter" }, { action: "back", hint: "Back", text: "Esc", icon: "key.escape" }, { action: "details", hint: "Hold to sell", text: "X", icon: "key.x", hold: true, progress: 0.6 }] });
+  }, s.bar);
+  s.bar = og.ui.actionHints("Hints", { hints: [{ action: "confirm", hint: "Select", text: "Enter", icon: "key.enter" }, { action: "back", hint: "Back", text: "Esc", icon: "key.escape" }, { action: "details", hint: "Hold to sell", text: "X", icon: "key.x", hold: true, progress: 0.6 }] }).height;
 }
 
 // ── overlays ────────────────────────────────────────────────────────────
@@ -177,7 +185,7 @@ export function overlaysScreen(): void {
   const t = og.ui.frameTheme();
   let anchor = "";
   page("Overlays", () => {
-    panel("Openers", `Overlay: ${s.overlay} (demo:overlay:<menu|submenu|context|popover|dialog|confirm|sheet|sideSheet|radial>)`, phone() ? grow : px(560), () => {
+    panel("Openers", "Menus, popovers, dialogs, sheets and the wheel", phone() ? grow : px(560), () => {
       og.ui.row("Row", { gap: t.space.sm, wrap: true }, () => {
         for (const o of ["menu", "popover", "dialog", "confirm", "sheet", "sideSheet", "radial"]) {
           if (og.ui.button(o, o, { variant: s.overlay === o ? "primary" : "secondary", size: "small" }).clicked) s.overlay = o;
@@ -222,7 +230,7 @@ const BOARD = Array.from({ length: 10_000 }, (_, i) => ({ rank: i + 1, name: `${
 export function dataScreen(): void {
   const state = { loading: s.data === "loading", error: s.data === "error" ? "Could not reach the leaderboard" : "", emptyLabel: "No matches played yet", emptyHint: "Play a ranked match to appear here." };
   page("Data", () => {
-    panel("Board", `Table: 10,000 rows, sort, filter (demo:data:<rows|loading|empty|error>)`, phone() ? grow : px(640), () => {
+    panel("Board", "Table: 10,000 rows, sort, filter", phone() ? grow : px(640), () => {
       const r = og.ui.table("Leaderboard", {
         rows: s.data === "empty" ? [] : BOARD,
         columns: [
@@ -248,7 +256,7 @@ export function dataScreen(): void {
     panel("Lists", "List with states", phone() ? grow : px(300), () => {
       og.ui.dataList("Mail", { count: s.data === "empty" ? 0 : 400, selected: 1, height: px(200), label: "Mail", ...state }, (i) => {
         og.ui.icon("Icon", i % 4 === 0 ? "gift" : "chat-bubble", { size: 18 });
-        og.ui.label("Subject", `Letter ${i + 1}: ${i % 4 === 0 ? "a gift for you" : "match report"}`, { width: grow, nowrap: true, ellipsis: true });
+        og.ui.label("Subject", `Letter ${i + 1}: ${i % 4 === 0 ? "a gift for you" : "match report"}`, { width: grow, maxLines: 2, ellipsis: true });
       });
     });
     panel("Trees", "Tree: a codex", phone() ? grow : px(300), () => {
