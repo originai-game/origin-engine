@@ -103,12 +103,14 @@ mod overlay;
 pub mod particles;
 pub mod ui;
 pub use ui::{
-    UI_GRADIENT_STOPS, UI_MATERIAL_PARAMS, UiAlign, UiBlend, UiBuiltin, UiCap, UiClip, UiCorner,
-    UiEdge, UiFit, UiGeometry, UiGradient, UiGradientKind, UiImage, UiJoin, UiLayer, UiList,
-    UiMask, UiMaterial, UiMaterialHandle, UiMaterialShader, UiMode, UiPaint, UiShape, UiSpread,
-    UiStop, UiStroke, UiTextEffects, UiTextOutline, UiTextShadow, UiVectorData, UiVectorDraw,
-    UiVectorHandle, UiVectorPaint, UiVectorStroke, UiVectorVertex, example_ui_material,
-    flatten_cubic, flatten_quad, oklab, oklab_to_linear, ui_material_module_source,
+    UI_GRADIENT_STOPS, UI_MASS_KEYS, UI_MASS_QUADS, UI_MATERIAL_PARAMS, UiAlign, UiBlend,
+    UiBuiltin, UiCap, UiClip, UiCorner, UiEdge, UiFit, UiGeometry, UiGradient, UiGradientKind,
+    UiImage, UiJoin, UiLayer, UiList, UiMask, UiMassBatch, UiMassEase, UiMassInstance, UiMassKey,
+    UiMassKind, UiMassSpace, UiMassTemplate, UiMaterial, UiMaterialHandle, UiMaterialShader,
+    UiMode, UiOccluder, UiOcclusion, UiPaint, UiShape, UiSpread, UiStop, UiStroke, UiTextEffects,
+    UiTextOutline, UiTextShadow, UiVectorData, UiVectorDraw, UiVectorHandle, UiVectorPaint,
+    UiVectorStroke, UiVectorVertex, example_ui_material, flatten_cubic, flatten_quad,
+    format_number, oklab, oklab_to_linear, ui_material_module_source,
 };
 mod particles_gpu;
 mod pipeline_cache;
@@ -5475,6 +5477,7 @@ impl Renderer {
         // Custom post passes (post_custom.rs) that compiled; they read the
         // prepass's depth and normals.
         let custom_posts = self.custom_posts.prepare(&self.device, scene);
+        let ui_depth = scene.overlay.as_ref().is_some_and(|o| o.ui.needs_depth());
         let prepass = !custom_posts.is_empty()
             || ao.is_some()
             || ssr.is_some()
@@ -5490,7 +5493,9 @@ impl Renderer {
             || particle_frame.needs_depth
             // Water and 3D fluids read the depth below them.
             || !scene_water.is_empty()
-            || fluids_3d;
+            || fluids_3d
+            // UI occluders and mass elements the scene hides (§14).
+            || ui_depth;
         // Decals and screen-space AO need the effect shader on every batch;
         // decals take screen derivatives (the lean pipelines keep the discard).
         if ao.is_some() || !scene.decals.is_empty() {
@@ -5640,7 +5645,15 @@ impl Renderer {
             None => None,
         };
         if let Some(of) = &overlay_frame {
-            let textures: Vec<_> = overlay::run_textures(of).collect();
+            let mut textures: Vec<_> = overlay::run_textures(of).collect();
+            // Mass elements' icon textures (and the white one).
+            if let Some(o) = &scene.overlay {
+                for r in &of.runs {
+                    if let overlay::OverlaySource::Mass(k) = r.source {
+                        textures.push(o.ui.mass[k as usize].template.texture);
+                    }
+                }
+            }
             for t in textures {
                 self.sprite_group(t);
             }
@@ -6695,6 +6708,7 @@ impl Renderer {
             "sprites",
             bytemuck::cast_slice(&sprite_frame.instances),
         );
+        let mut ui_uniform = None;
         if let (Some(of), Some(o)) = (&overlay_frame, &scene.overlay) {
             grow_and_write(
                 &self.device,
@@ -6709,24 +6723,7 @@ impl Renderer {
                 o,
                 !self.output_format.is_srgb() && !self.has_linear_view(target),
             );
-            let textures = &self.cache.textures;
-            let backdrop = self.glass_targets.as_ref().filter(|_| glass_on).map(|g| {
-                (
-                    &g.pyramid_view,
-                    &g.behind_view,
-                    !self.output_format.is_srgb(),
-                )
-            });
-            self.ui.upload(
-                &self.device,
-                &self.queue,
-                &self.overlay.layout,
-                scene,
-                of,
-                u,
-                backdrop,
-                |t| textures.get(t.index()).map(|g| g.view.clone()),
-            );
+            ui_uniform = Some(u);
         }
         let (lights_2d, occluders_2d) = match scene.lighting_2d {
             Some(_) => self.lights_2d.write(
@@ -7539,6 +7536,7 @@ impl Renderer {
                         reflections.get(1).map(|r| r.4),
                     ],
                     object_space,
+                    ui_depth: ui_depth && prepass,
                 },
                 &self.post,
                 &self.persistent,
@@ -7546,6 +7544,51 @@ impl Renderer {
                 (palette_view, canvas_view, stylise_key),
             )
             .map_err(|e| RenderError::Graph(e.to_string()))?;
+        // The UI's tables and groups: after the graph, whose view depth
+        // occluders and mass elements read.
+        if let (Some(of), Some(o), Some(u)) = (&overlay_frame, &scene.overlay, ui_uniform) {
+            let textures = &self.cache.textures;
+            let backdrop = self.glass_targets.as_ref().filter(|_| glass_on).map(|g| {
+                (
+                    &g.pyramid_view,
+                    &g.behind_view,
+                    !self.output_format.is_srgb(),
+                )
+            });
+            let depth = self
+                .graph
+                .try_view("lindepth")
+                .unwrap_or(&self.post.far_depth);
+            let scale = overlay::OverlayRenderer::scale(self.out_height, o).max(1e-6);
+            let camera = ui::mass::MassCameraGpu {
+                view_proj: cam.view_proj.to_cols_array_2d(),
+                eye: scene
+                    .camera
+                    .position
+                    .extend(f32::from(u8::from(cam.orthographic)))
+                    .to_array(),
+                forward: cam.forward.extend(0.0).to_array(),
+                css: [
+                    self.out_width as f32 / scale,
+                    self.out_height as f32 / scale,
+                    o.ui.tick_fraction.clamp(0.0, 1.0),
+                    0.0,
+                ],
+                tick: [o.ui.tick, 0, 0, 0],
+            };
+            self.ui.upload(
+                &self.device,
+                &self.queue,
+                &self.overlay.layout,
+                scene,
+                of,
+                u,
+                backdrop,
+                |t| textures.get(t.index()).map(|g| g.view.clone()),
+                depth,
+                camera,
+            );
+        }
 
         let surface_frame = match target {
             RenderTarget::Surface => {

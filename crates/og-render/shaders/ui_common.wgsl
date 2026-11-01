@@ -46,6 +46,11 @@ struct UiGradient {
 // Polyline points: xy local, z the length along the line up to the point.
 @group(0) @binding(3) var<storage, read> points: array<vec4<f32>>;
 
+// The frame's view depth (the prepass's `lindepth`: r is the depth along
+// the camera's forward axis, world units; far without a prepass), for
+// occluders (UiOccluder) and mass elements (ui_mass.wgsl).
+@group(0) @binding(5) var scene_depth: texture_2d<f32>;
+
 const PI: f32 = 3.14159265;
 const TAU: f32 = 6.28318531;
 
@@ -55,6 +60,8 @@ const GEO_ELLIPSE: u32 = 1u;
 const GEO_ARC: u32 = 2u;
 const GEO_POLYGON: u32 = 3u;
 const GEO_POLYLINE: u32 = 4u;
+// A clip record that is a depth test against the scene (UiOccluder).
+const GEO_OCCLUDE: u32 = 5u;
 const CORNER_ROUND: u32 = 0u;
 const CORNER_SQUIRCLE: u32 = 1u;
 const CORNER_BEVEL: u32 = 2u;
@@ -477,6 +484,14 @@ fn clip_coverage(head: u32, css: vec2<f32>) -> f32 {
   var c = 1.0;
   for (var i = 0; i < 8 && k != 0u; i++) {
     let s = clip_shapes[k - 1u];
+    if (u32(s.kinds.x) == GEO_OCCLUDE) {
+      // center_half: the point and the overlay's CSS size; geo: depth,
+      // alpha behind the scene, bias, softness.
+      let v = scene_visibility(s.center_half.xy, s.center_half.zw, s.geo.x, s.geo.z, s.geo.w);
+      c *= mix(s.geo.y, 1.0, v);
+      k = u32(s.kinds.w);
+      continue;
+    }
     let local = mat_apply(s.inverse, css - s.center_half.xy);
     let det = abs(s.inverse.x * s.inverse.w - s.inverse.y * s.inverse.z);
     let px = sqrt(max(det, 1e-8)) / frame.output.z;
@@ -486,6 +501,30 @@ fn clip_coverage(head: u32, css: vec2<f32>) -> f32 {
     k = kinds.w;
   }
   return c;
+}
+
+// How much of the scene around `css` (CSS px of an overlay `size` CSS px)
+// is behind a point `depth` world units along the camera's forward axis:
+// five taps two CSS px apart, each 1 where the scene is no nearer than the
+// depth less `bias`, fading to 0 over `soft` world units nearer. A point
+// off the frame is visible.
+fn scene_visibility(css: vec2<f32>, size: vec2<f32>, depth: f32, bias: f32, soft: f32) -> f32 {
+  let dims = vec2<f32>(textureDimensions(scene_depth));
+  let k = dims / max(size, vec2<f32>(1.0));
+  let p = css * k;
+  if (p.x < 0.0 || p.y < 0.0 || p.x >= dims.x || p.y >= dims.y) {
+    return 1.0;
+  }
+  var taps = array<vec2<f32>, 5>(
+    vec2<f32>(0.0, 0.0), vec2<f32>(2.0, 0.0), vec2<f32>(-2.0, 0.0),
+    vec2<f32>(0.0, 2.0), vec2<f32>(0.0, -2.0));
+  var v = 0.0;
+  for (var i = 0; i < 5; i++) {
+    let q = clamp(p + taps[i] * k, vec2<f32>(0.0), dims - vec2<f32>(1.0));
+    let d = textureLoad(scene_depth, vec2<i32>(q), 0).r;
+    v += clamp((d - (depth - bias)) / max(soft, 1e-3) + 1.0, 0.0, 1.0);
+  }
+  return v / 5.0;
 }
 
 // ── shadows ──────────────────────────────────────────────────────────────

@@ -143,6 +143,7 @@ pub const SCENES: &[&str] = &[
     "ui-effects",
     "ui-layers",
     "ui-text-effects",
+    "ui-world",
 ];
 
 /// Scenes rendered natively only, beside [`SCENES`] (`og-gfx --all` takes
@@ -1118,6 +1119,12 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         "ui-text-effects" => |g, _| {
             g.scene = crate::ui_scenes::text_effects(load_font)?;
+            Ok(())
+        },
+        // World-space UI (docs/ui.md §14, src/ui_scenes.rs): mass elements
+        // (numbers, nameplates, bars, icons) and occluders over a 3D scene.
+        "ui-world" => |g, _| {
+            g.scene = crate::ui_scenes::world(load_font, |s| sprite_textures(s)[1])?;
             Ok(())
         },
         #[cfg(not(target_arch = "wasm32"))]

@@ -17,6 +17,9 @@
 //!   and stacked shadows.
 //! - `ui-vector` (native: cooked by og-cook): an SVG emblem tessellated and
 //!   drawn at three sizes and turned.
+//! - `ui-world` (`docs/ui.md` §14): mass elements (damage numbers,
+//!   nameplates faded behind a wall, bars with a ghost, icons, a compact
+//!   score) and two occluded panels over a lit 3D scene.
 
 use og_core::glam::{Vec2, Vec3};
 use og_render::{
@@ -1210,4 +1213,273 @@ pub fn vector() -> Result<RenderScene, String> {
         Some(e) => Err(e),
         None => Ok(scene),
     }
+}
+
+/// `ui-world` (`docs/ui.md` §14, og-render's `ui::mass`): mass elements and
+/// occluders over a lit 3D scene. The camera looks down -z from (0, 2, 12)
+/// at a wall 4 m wide and 4 m tall at z = 0 (centred on the screen); the
+/// mass elements' tick is 100.
+///
+/// - Damage numbers: 300 in a fan over the ground, each started 0 to 47
+///   ticks ago of a 48-tick pop, rise and fade, every tenth a critical hit
+///   at 1.6 times the size, white, gold or red, outlined.
+/// - Nameplates, a string per instance, faded to a quarter behind the
+///   scene: `Brenna` at (0, 2, -5) behind the wall, `Aldric` at (5, 2, -5)
+///   against the sky, `Corin` at (-5, 2, -5) on the left.
+/// - Overhead bars (screen space, 120×12 CSS px from (80, 80) down in 24
+///   px rows): fills of 0.5, 0.25 and 0.9 with ghosts of 0.75, 0.6 and 0.
+/// - Icons: the four quadrants of the sprite atlas at 48 px, top right.
+/// - Occluders: two 160×60 panels at the screen's centre row, the left one
+///   (centred at 320, 360) at a depth of 20 m with only sky behind it, the
+///   right (centred at 640, 360) at 20 m behind the wall (12 m), hidden;
+///   both over the numbers.
+/// - A score `+12.3k` in screen space, compact, top centre.
+pub fn world(
+    font: impl FnOnce(&mut RenderScene) -> Result<FontHandle, String>,
+    atlas: impl FnOnce(&mut RenderScene) -> TextureHandle,
+) -> Result<RenderScene, String> {
+    use og_render::{
+        Camera, Material, Projection, UiMassBatch, UiMassEase, UiMassInstance, UiMassKey,
+        UiMassKind, UiMassSpace, UiMassTemplate, UiOccluder, UiOcclusion, shapes,
+    };
+    use std::sync::Arc;
+    let mut scene = RenderScene::new();
+    let font = font(&mut scene)?;
+    let atlas = atlas(&mut scene);
+    crate::scenes::ground(&mut scene, 60.0, 1.0, 0.8);
+    let wall = scene.add_mesh(shapes::cuboid(Vec3::new(4.0, 4.0, 0.4)));
+    let stone = scene.add_material(Material {
+        base_color: [0.55, 0.5, 0.45, 1.0],
+        roughness: 0.8,
+        ..Default::default()
+    });
+    scene.add_instance(
+        wall,
+        stone,
+        og_core::glam::Mat4::from_translation(Vec3::new(0.0, 2.0, 0.0)),
+    );
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 2.0, 12.0),
+        target: Vec3::new(0.0, 2.0, 0.0),
+        up: Vec3::Y,
+        projection: Projection::Perspective {
+            fov_y_degrees: 50.0,
+        },
+        near: 0.1,
+        far: 200.0,
+        ..Default::default()
+    };
+    scene.environment.background = Background::Color(Vec3::new(0.25, 0.35, 0.55));
+    scene.post.tonemap = Tonemap::None;
+    let mut o = Overlay::new(W, H, 0.0);
+    o.ui.tick = 100;
+    let outline = Some((2.0, [0.02, 0.02, 0.03, 1.0]));
+    // Damage numbers.
+    let numbers = Arc::new(UiMassTemplate {
+        kind: UiMassKind::Number {
+            decimals: 0,
+            plus: false,
+            compact: false,
+        },
+        font: Some(font),
+        size: Vec2::new(22.0, 22.0),
+        pivot: Vec2::new(0.5, 1.0),
+        lifetime: 48,
+        keys: vec![
+            UiMassKey {
+                t: 0.0,
+                scale: 1.8,
+                ..Default::default()
+            },
+            UiMassKey {
+                t: 0.15,
+                scale: 1.0,
+                offset: Vec2::new(0.0, -10.0),
+                ease: UiMassEase::Back,
+                ..Default::default()
+            },
+            UiMassKey {
+                t: 0.7,
+                offset: Vec2::new(0.0, -36.0),
+                ease: UiMassEase::Out,
+                ..Default::default()
+            },
+            UiMassKey {
+                t: 1.0,
+                offset: Vec2::new(0.0, -48.0),
+                alpha: 0.0,
+                ..Default::default()
+            },
+        ],
+        drift: 14.0,
+        distance: Vec3::new(12.0, 0.5, 2.0),
+        outline,
+        ..Default::default()
+    });
+    let colors = [
+        [1.0, 1.0, 1.0, 1.0],
+        [1.0, 0.75, 0.15, 1.0],
+        [1.0, 0.25, 0.2, 1.0],
+    ];
+    let instances = (0..300u32)
+        .map(|i| {
+            let a = i as f32 * 2.399_963;
+            let r = 2.0 + (i as f32).sqrt() * 0.75;
+            UiMassInstance {
+                position: [
+                    a.cos() * r,
+                    0.5 + (i % 7) as f32 * 0.3,
+                    -a.sin().abs() * r + 4.0,
+                ],
+                value: (17 + (i * 7919) % 983) as f32,
+                color: colors[(i % 3) as usize],
+                start: 100 - (i * 13) % 48,
+                seed: i,
+                scale: if i % 10 == 0 { 1.6 } else { 1.0 },
+                ..Default::default()
+            }
+        })
+        .collect();
+    o.ui.mass.push(UiMassBatch {
+        template: numbers,
+        space: UiMassSpace::World,
+        instances,
+        layer: 10,
+        clip: None,
+    });
+    // Nameplates.
+    let names = Arc::new(UiMassTemplate {
+        kind: UiMassKind::Text {
+            strings: vec!["Aldric".into(), "Brenna".into(), "Corin".into()],
+        },
+        font: Some(font),
+        size: Vec2::new(28.0, 28.0),
+        pivot: Vec2::new(0.5, 0.5),
+        occlusion: UiOcclusion::Fade { alpha: 0.25 },
+        outline,
+        ..Default::default()
+    });
+    let plate = |p: [f32; 3], s: f32| UiMassInstance {
+        position: p,
+        value: s,
+        color: [0.6, 1.0, 0.6, 1.0],
+        scale: 1.0,
+        ..Default::default()
+    };
+    o.ui.mass.push(UiMassBatch {
+        template: names,
+        space: UiMassSpace::World,
+        instances: vec![
+            plate([5.0, 2.0, -5.0], 0.0),
+            plate([0.0, 2.0, -5.0], 1.0),
+            plate([-5.0, 2.0, -5.0], 2.0),
+        ],
+        layer: 11,
+        clip: None,
+    });
+    // Overhead bars, in screen space.
+    let bars = Arc::new(UiMassTemplate {
+        kind: UiMassKind::Bar {
+            back: [0.02, 0.02, 0.03, 0.85],
+            ghost: [1.0, 0.9, 0.9, 1.0],
+            radius: 6.0,
+        },
+        size: Vec2::new(120.0, 12.0),
+        pivot: Vec2::ZERO,
+        ..Default::default()
+    });
+    let bar = |y: f32, v: f32, ghost: f32| UiMassInstance {
+        position: [80.0, y, 0.0],
+        value: v,
+        color: [0.1, 0.8, 0.2, 1.0],
+        scale: 1.0,
+        aux: [0.0, 0.0, ghost, 0.0],
+        ..Default::default()
+    };
+    o.ui.mass.push(UiMassBatch {
+        template: bars,
+        space: UiMassSpace::Screen,
+        instances: vec![
+            bar(80.0, 0.5, 0.75),
+            bar(104.0, 0.25, 0.6),
+            bar(128.0, 0.9, 0.0),
+        ],
+        layer: 12,
+        clip: None,
+    });
+    // Icons.
+    let icons = Arc::new(UiMassTemplate {
+        kind: UiMassKind::Icon {
+            frames: vec![
+                [0.0, 0.0, 0.5, 0.5],
+                [0.5, 0.0, 1.0, 0.5],
+                [0.0, 0.5, 0.5, 1.0],
+                [0.5, 0.5, 1.0, 1.0],
+            ],
+        },
+        texture: Some(atlas),
+        size: Vec2::new(48.0, 48.0),
+        pivot: Vec2::ZERO,
+        ..Default::default()
+    });
+    o.ui.mass.push(UiMassBatch {
+        template: icons,
+        space: UiMassSpace::Screen,
+        instances: (0..4)
+            .map(|i| UiMassInstance {
+                position: [1000.0 + 56.0 * i as f32, 60.0, 0.0],
+                value: i as f32,
+                color: [1.0; 4],
+                scale: 1.0,
+                ..Default::default()
+            })
+            .collect(),
+        layer: 12,
+        clip: None,
+    });
+    // A compact score.
+    let score = Arc::new(UiMassTemplate {
+        kind: UiMassKind::Number {
+            decimals: 0,
+            plus: true,
+            compact: true,
+        },
+        font: Some(font),
+        size: Vec2::new(40.0, 40.0),
+        pivot: Vec2::new(0.5, 0.0),
+        outline,
+        ..Default::default()
+    });
+    o.ui.mass.push(UiMassBatch {
+        template: score,
+        space: UiMassSpace::Screen,
+        instances: vec![UiMassInstance {
+            position: [640.0, 40.0, 0.0],
+            value: 12_345.0,
+            color: [1.0, 0.85, 0.3, 1.0],
+            scale: 1.0,
+            ..Default::default()
+        }],
+        layer: 12,
+        clip: None,
+    });
+    // Occluded panels.
+    for (x, depth) in [(320.0, 20.0), (640.0, 20.0)] {
+        let rect = o.add_clip([0.0, 0.0, W, H]);
+        o.ui.occluders.push(UiOccluder {
+            rect,
+            at: Vec2::new(x, 360.0),
+            depth,
+            alpha: 0.0,
+            bias: 0.25,
+            soft: 0.5,
+        });
+        o.ui.shapes.push(UiShape {
+            clip: Some(rect),
+            layer: 20,
+            ..UiShape::rect([x - 80.0, 330.0, 160.0, 60.0], 12.0, [0.9, 0.3, 0.6, 1.0])
+        });
+    }
+    scene.overlay = Some(o);
+    Ok(scene)
 }

@@ -1649,6 +1649,9 @@ pub(crate) struct GraphConfig {
     /// `object-space` (stylise_object.rs), which the paint and lines
     /// passes read.
     pub object_space: bool,
+    /// The overlay reads the prepass's view depth (UI occluders and mass
+    /// elements, after every pass): `lindepth` lives to the frame's end.
+    pub ui_depth: bool,
 }
 
 /// The metaball field targets, by field.
@@ -2178,6 +2181,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 }
                 if has(FramePass::GodRaysBlur) {
                     reads.push("god.blur");
+                }
+                if cfg.ui_depth && prepass {
+                    reads.push("lindepth");
                 }
                 let target = if chain.is_empty() {
                     "output".to_string()

@@ -286,6 +286,24 @@ impl UiTables {
         });
         self.clips.len() as u32
     }
+
+    /// Adds occluder `o` over an overlay `size` CSS px; `parent` is the
+    /// record + 1 of its rectangle's clip shape (0: none).
+    pub fn occluder(&mut self, o: &UiOccluder, size: Vec2, parent: u32) -> u32 {
+        self.clips.push(GpuClip {
+            center_half: [o.at.x, o.at.y, size.x, size.y],
+            inverse: IDENTITY,
+            radii: [0.0; 4],
+            geo: [
+                o.depth,
+                o.alpha.clamp(0.0, 1.0),
+                o.bias.max(0.0),
+                o.soft.max(1e-3),
+            ],
+            kinds: [5.0, 0.0, 0.0, parent as f32],
+        });
+        self.clips.len() as u32
+    }
 }
 
 /// The clip shape head (record + 1, 0: none) of every clip rectangle of

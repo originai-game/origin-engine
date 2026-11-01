@@ -36,6 +36,8 @@ pub(crate) struct UiPipelines {
     backdrop: Deferred<wgpu::RenderPipeline>,
     vector: Deferred<wgpu::RenderPipeline>,
     composite: Deferred<wgpu::RenderPipeline>,
+    /// Mass elements (`shaders/ui_mass.wgsl`).
+    mass: Deferred<wgpu::RenderPipeline>,
 }
 
 /// Which pipelines a target draws with.
@@ -77,6 +79,8 @@ pub(crate) struct UiFrameGroups {
     /// By layer index.
     layers: HashMap<u32, (wgpu::BindGroup, usize, wgpu::BindGroup)>,
     backdrop: Option<wgpu::BindGroup>,
+    /// The mass elements' camera, templates, table and instances.
+    mass: Option<wgpu::BindGroup>,
 }
 
 pub(crate) struct UiRenderer {
@@ -99,6 +103,11 @@ pub(crate) struct UiRenderer {
     points: wgpu::Buffer,
     uniforms: Vec<wgpu::Buffer>,
     layer_params: Vec<wgpu::Buffer>,
+    mass_layout: wgpu::BindGroupLayout,
+    mass_camera: wgpu::Buffer,
+    /// The glyph table's texture and its rows.
+    mass_table: Option<(wgpu::Texture, wgpu::TextureView, u32)>,
+    mass_instances: wgpu::Buffer,
     targets: Vec<LayerTarget>,
     custom: HashMap<(u64, usize), (String, Compiled)>,
     vectors: HashMap<(u64, usize), VectorMesh>,
@@ -150,6 +159,11 @@ pub(crate) fn ui_source() -> String {
     format!("{}{}", super::UI_COMMON_WGSL, UI_WGSL)
 }
 
+/// The mass elements' module.
+pub(crate) fn mass_source() -> String {
+    format!("{}{}", super::UI_COMMON_WGSL, UI_MASS_WGSL)
+}
+
 /// The built-in materials' composite module.
 pub(crate) fn builtin_source() -> String {
     format!(
@@ -162,6 +176,7 @@ pub(crate) fn builtin_source() -> String {
 
 const UI_WGSL: &str = wgsl!("ui.wgsl");
 const UI_BUILTIN_WGSL: &str = wgsl!("ui_builtin.wgsl");
+const UI_MASS_WGSL: &str = wgsl!("ui_mass.wgsl");
 
 fn blend_state(pipe: Option<ShapePipe>) -> wgpu::BlendState {
     let keep_alpha = wgpu::BlendComponent {
@@ -196,6 +211,55 @@ fn blend_state(pipe: Option<ShapePipe>) -> wgpu::BlendState {
         },
         _ => wgpu::BlendState::ALPHA_BLENDING,
     }
+}
+
+fn vertex_buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("ui mass instances"),
+        size: size.max(256),
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
+}
+
+/// The mass elements' pipeline: one instance per element from the vertex
+/// buffer.
+fn mass_pipeline(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    module: &wgpu::ShaderModule,
+    format: wgpu::TextureFormat,
+) -> Deferred<wgpu::RenderPipeline> {
+    let (device, layout, module) = (device.clone(), layout.clone(), module.clone());
+    Deferred::new(move || {
+        const BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] =
+            &[Some(super::mass::MASS_LAYOUT)];
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("ui mass"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &module,
+                entry_point: Some("vs_mass"),
+                compilation_options: Default::default(),
+                buffers: BUFFERS,
+            },
+            primitive: Default::default(),
+            depth_stencil: None,
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &module,
+                entry_point: Some("fs_mass"),
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview_mask: None,
+            cache: crate::pipeline_cache::of(&device).as_ref(),
+        })
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -296,6 +360,46 @@ impl UiRenderer {
             bind_group_layouts: &[Some(&overlay.layout), Some(&layer_layout)],
             immediate_size: 0,
         });
+        // A uniform and a texture only: group 0 already takes the four
+        // storage buffers a stage may have, and a uniform holds 16 KiB.
+        let mass_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("ui mass"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        let mass_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("ui mass"),
+            bind_group_layouts: &[
+                Some(&overlay.layout),
+                Some(sprite_layout),
+                Some(&mass_layout),
+            ],
+            immediate_size: 0,
+        });
+        let mass_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("ui mass"),
+            source: wgpu::ShaderSource::Wgsl(mass_source().into()),
+        });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ui"),
             source: wgpu::ShaderSource::Wgsl(ui_source().into()),
@@ -347,6 +451,7 @@ impl UiRenderer {
                     wgpu::BlendState::ALPHA_BLENDING,
                     false,
                 ),
+                mass: mass_pipeline(device, &mass_pipeline_layout, &mass_module, format),
             }
         };
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -410,6 +515,14 @@ impl UiRenderer {
             points: storage_buffer(device, "ui points", 256),
             uniforms: Vec::new(),
             layer_params: Vec::new(),
+            mass_camera: uniform_buffer(
+                device,
+                "ui mass camera",
+                std::mem::size_of::<super::mass::MassCameraGpu>() as u64,
+            ),
+            mass_table: None,
+            mass_instances: vertex_buffer(device, 4096),
+            mass_layout,
             targets: Vec::new(),
             custom: HashMap::new(),
             vectors: HashMap::new(),
@@ -608,6 +721,8 @@ impl UiRenderer {
         uniform: [f32; 8],
         backdrop: Option<(&wgpu::TextureView, &wgpu::TextureView, bool)>,
         texture_view: impl Fn(crate::TextureHandle) -> Option<wgpu::TextureView>,
+        depth: &wgpu::TextureView,
+        camera: super::mass::MassCameraGpu,
     ) {
         let Some(overlay) = &scene.overlay else {
             return;
@@ -662,6 +777,7 @@ impl UiRenderer {
                     self.gradients.as_entire_binding(),
                     self.points.as_entire_binding(),
                     self.instances.as_entire_binding(),
+                    wgpu::BindingResource::TextureView(depth),
                 ],
             )
         };
@@ -670,6 +786,75 @@ impl UiRenderer {
             main: Some(group0(&self.uniforms[0])),
             ..Default::default()
         };
+        if !frame.mass_instances.is_empty() {
+            let n = frame.mass_templates.len().min(super::UI_MASS_BATCHES);
+            let mut camera = camera;
+            camera.tick[1] = (n * super::mass::TEMPLATE_TEXELS) as u32;
+            queue.write_buffer(&self.mass_camera, 0, bytemuck::bytes_of(&camera));
+            let bytes: &[u8] = bytemuck::cast_slice(&frame.mass_instances);
+            if bytes.len() as u64 > self.mass_instances.size() {
+                self.mass_instances =
+                    vertex_buffer(device, (bytes.len() as u64).next_power_of_two());
+            }
+            queue.write_buffer(&self.mass_instances, 0, bytes);
+            // The table: rows of TABLE_WIDTH entries, at least one.
+            let width = super::mass::TABLE_WIDTH;
+            let mut texels: Vec<[f32; 4]> =
+                Vec::with_capacity(n * super::mass::TEMPLATE_TEXELS + frame.mass_table.len());
+            for t in &frame.mass_templates[..n] {
+                texels.extend(t.texels());
+            }
+            texels.extend_from_slice(&frame.mass_table);
+            let rows = (texels.len() as u32).div_ceil(width).max(1);
+            if self.mass_table.as_ref().is_none_or(|t| t.2 < rows) {
+                let texture = device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("ui mass table"),
+                    size: wgpu::Extent3d {
+                        width,
+                        height: rows.next_power_of_two(),
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba32Float,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                    view_formats: &[],
+                });
+                let view = texture.create_view(&Default::default());
+                self.mass_table = Some((texture, view, rows.next_power_of_two()));
+            }
+            let (texture, view, _) = self.mass_table.as_ref().expect("made above");
+            texels.resize((rows * width) as usize, [0.0; 4]);
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                bytemuck::cast_slice(&texels),
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(width * 16),
+                    rows_per_image: Some(rows),
+                },
+                wgpu::Extent3d {
+                    width,
+                    height: rows,
+                    depth_or_array_layers: 1,
+                },
+            );
+            groups.mass = Some(crate::bind_group(
+                device,
+                "ui mass",
+                &self.mass_layout,
+                &[
+                    self.mass_camera.as_entire_binding(),
+                    wgpu::BindingResource::TextureView(view),
+                ],
+            ));
+        }
         // Targets: one per layer drawn, reused by size.
         let mut used = vec![false; self.targets.len()];
         let mut target_of = Vec::new();
@@ -955,6 +1140,36 @@ impl Renderer {
                     pass.set_pipeline(pipeline);
                     pass.set_bind_group(1, group, &[]);
                     pass.draw(0..6, range);
+                }
+                OverlaySource::Mass(k) => {
+                    let (Some(group), Some(batch)) = (
+                        self.ui.frame.mass.as_ref(),
+                        scene
+                            .overlay
+                            .as_ref()
+                            .and_then(|o| o.ui.mass.get(k as usize)),
+                    ) else {
+                        continue;
+                    };
+                    let t = &batch.template;
+                    let texture = match t.kind {
+                        super::UiMassKind::Number { .. } | super::UiMassKind::Text { .. } => {
+                            t.font.map(|f| &self.cache.fonts[f.index()].bind_group)
+                        }
+                        _ => None,
+                    }
+                    .unwrap_or_else(|| sprite_group(t.texture));
+                    let stride = std::mem::size_of::<super::UiMassInstance>() as u64;
+                    pass.set_pipeline(&ui.mass);
+                    pass.set_bind_group(1, texture, &[]);
+                    pass.set_bind_group(2, group, &[]);
+                    pass.set_vertex_buffer(
+                        0,
+                        self.ui.mass_instances.slice(
+                            run.first as u64 * stride..(run.first + run.count) as u64 * stride,
+                        ),
+                    );
+                    pass.draw(0..6 * t.quads(), 0..run.count);
                 }
                 OverlaySource::Vector(h) => {
                     let Some(mesh) = self.ui.vectors.get(&(scene.id(), h.index())) else {

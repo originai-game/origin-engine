@@ -64,6 +64,9 @@ pub(crate) enum OverlaySource {
     Ui(ShapeSource),
     /// A cooked vector's mesh, instanced from the UI buffer.
     Vector(UiVectorHandle),
+    /// [`crate::ui::UiList::mass`]' batch `n`: mass elements, instanced
+    /// from the frame's mass buffer (`shaders/ui_mass.wgsl`).
+    Mass(u32),
 }
 
 impl OverlaySource {
@@ -127,6 +130,11 @@ pub(crate) struct OverlayFrame {
     pub sprites: u32,
     pub glyphs: u32,
     pub missing_glyphs: u32,
+    /// Mass elements: each batch's template, their glyph tables and the
+    /// instances, in run order.
+    pub mass_templates: Vec<crate::ui::mass::TemplateGpu>,
+    pub mass_table: Vec<[f32; 4]>,
+    pub mass_instances: Vec<crate::ui::UiMassInstance>,
 }
 
 impl OverlayFrame {
@@ -220,7 +228,25 @@ pub(crate) fn build<'a>(
         array_layers,
     )?;
     let mut tables = UiTables::default();
-    let heads = ub::clip_heads(ui, overlay.clips.len(), &mut tables)?;
+    let mut heads = ub::clip_heads(ui, overlay.clips.len(), &mut tables)?;
+    // Occluders: a depth test chained in front of their rectangle's shape.
+    let css = Vec2::new(overlay.width.max(1.0), overlay.height.max(1.0));
+    let css = if overlay.scale > 0.0 {
+        css
+    } else {
+        // Fitted to the output's height: its width follows the output's.
+        Vec2::new(target.width as f32 / target.scale.max(1e-6), css.y)
+    };
+    for (i, o) in ui.occluders.iter().enumerate() {
+        let slot = heads.get_mut(o.rect as usize).ok_or_else(|| {
+            RenderError::InvalidHandle(format!(
+                "ui occluder {i}: clip rectangle {} of {}",
+                o.rect,
+                overlay.clips.len()
+            ))
+        })?;
+        *slot = tables.occluder(o, css, *slot);
+    }
     let layers = &ui.layers;
     // (target, layer, source, index into `ov` or `uv`)
     let mut keyed: Vec<(u32, i32, OverlaySource, u32)> =
@@ -348,6 +374,44 @@ pub(crate) fn build<'a>(
         }
     }
     sprites += uv.len() as u32;
+    // Mass elements: one run per batch.
+    let mut mass_templates = Vec::with_capacity(ui.mass.len());
+    let mut mass_table = Vec::new();
+    for (k, b) in ui.mass.iter().enumerate() {
+        let t = &b.template;
+        let font_layout = match (&t.kind, t.font) {
+            (
+                crate::ui::UiMassKind::Number { .. } | crate::ui::UiMassKind::Text { .. },
+                Some(f),
+            ) => Some(font(f.index()).ok_or_else(|| {
+                RenderError::InvalidHandle(format!("ui mass batch {k}: font {}", f.index()))
+            })?),
+            _ => None,
+        };
+        if let Some(tex) = t.texture
+            && tex.index() >= texture_count
+        {
+            return Err(RenderError::InvalidHandle(format!(
+                "ui mass batch {k}: texture {}",
+                tex.index()
+            )));
+        }
+        let clip = clip_rect(overlay, &heads, b.clip, &format!("ui mass batch {k}"))?;
+        mass_templates.push(crate::ui::mass::template_gpu(
+            b,
+            clip,
+            font_layout,
+            &mut mass_table,
+        ));
+        if !b.instances.is_empty() && k < crate::ui::UI_MASS_BATCHES {
+            keyed.push((
+                target_of(b.layer, layers),
+                b.layer,
+                OverlaySource::Mass(k as u32),
+                k as u32,
+            ));
+        }
+    }
     let glyphs_from = keyed.len();
     let effects: HashMap<u32, &crate::ui::UiTextEffects> =
         ui.text_effects.iter().map(|e| (e.text, e)).collect();
@@ -542,7 +606,23 @@ pub(crate) fn build<'a>(
     let mut runs: Vec<OverlayRun> = Vec::new();
     let mut instances = Vec::with_capacity(ov.len());
     let mut ui_instances = Vec::with_capacity(uv.len());
+    let mut mass_instances = Vec::new();
     for (t, _, source, index) in keyed {
+        if let OverlaySource::Mass(k) = source {
+            let first = mass_instances.len() as u32;
+            mass_instances.extend(ui.mass[k as usize].instances.iter().map(|i| {
+                let mut i = *i;
+                i.batch = k;
+                i
+            }));
+            runs.push(OverlayRun {
+                target: t,
+                source,
+                first,
+                count: mass_instances.len() as u32 - first,
+            });
+            continue;
+        }
         let first = if source.is_ui() {
             ui_instances.push(uv[index as usize]);
             ui_instances.len() as u32 - 1
@@ -570,6 +650,9 @@ pub(crate) fn build<'a>(
         sprites,
         glyphs,
         missing_glyphs,
+        mass_templates,
+        mass_table,
+        mass_instances,
     })
 }
 
@@ -640,6 +723,17 @@ impl OverlayRenderer {
                 storage(2),
                 storage(3),
                 storage(4),
+                // The frame's view depth (occluders, mass elements).
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {

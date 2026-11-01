@@ -20,6 +20,10 @@
 //!   text, read from its font's distance field.
 //! - [`UiVectorDraw`]s: a cooked vector ([`UiVectorData`], tessellated at
 //!   cook with an antialiasing fringe) drawn into a rectangle.
+//! - [`UiMassBatch`]es: mass elements ([`mass`], §14), each an instance of
+//!   a template whose motion and number formatting run in the shader.
+//! - [`UiOccluder`]s: a depth test against the scene for what uses a clip
+//!   rectangle (anchored elements behind a wall fade or hide).
 //!
 //! Sorting and batching (§5.7) are the overlay's: by layer, then by
 //! pipeline and texture; consecutive instances of one batch are one draw.
@@ -28,7 +32,13 @@
 //! glass does (src/glass.rs).
 
 pub(crate) mod build;
+pub mod mass;
 pub(crate) mod pass;
+
+pub use mass::{
+    UI_MASS_BATCHES, UI_MASS_KEYS, UI_MASS_QUADS, UiMassBatch, UiMassEase, UiMassInstance,
+    UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiOccluder, UiOcclusion, format_number,
+};
 
 use crate::TextureHandle;
 use crate::hooks::{ParamKind, ShaderParam};
@@ -560,11 +570,27 @@ pub struct UiList {
     pub vectors: Vec<UiVectorDraw>,
     /// The UI clock in seconds: patterns scroll and materials move by it.
     pub time: f32,
+    pub mass: Vec<UiMassBatch>,
+    pub occluders: Vec<UiOccluder>,
+    /// The tick mass elements' ages count from ([`UiMassInstance::start`]),
+    /// and how far the frame is past it (0 to 1).
+    pub tick: u32,
+    pub tick_fraction: f32,
 }
 
 impl UiList {
     pub fn is_empty(&self) -> bool {
-        self.shapes.is_empty() && self.vectors.is_empty()
+        self.shapes.is_empty() && self.vectors.is_empty() && self.mass.is_empty()
+    }
+
+    /// Whether it reads the frame's depth (occluders, mass elements the
+    /// scene hides): the frame runs its depth prepass.
+    pub fn needs_depth(&self) -> bool {
+        !self.occluders.is_empty()
+            || self
+                .mass
+                .iter()
+                .any(|b| b.space == UiMassSpace::World && b.template.occlusion != UiOcclusion::None)
     }
 }
 

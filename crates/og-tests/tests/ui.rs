@@ -101,6 +101,11 @@ fn ui_vector_matches_its_reference() {
     check("ui-vector");
 }
 
+#[test]
+fn ui_world_matches_its_reference() {
+    check("ui-world");
+}
+
 /// Corner shapes cut where their geometry says: 12 px in from a 28 px
 /// corner a round corner is inside, a bevel's and a notch's cut leave the
 /// card; 4 px in, the squircle (radius 48, continuous) is still outside
@@ -336,4 +341,52 @@ fn ui_vector_fills_by_its_rule() {
     println!("ring {ring:?} hole {hole:?}");
     assert!(ring[2] > ring[0] + 40.0, "the ring is not blue: {ring:?}");
     assert!(hole[0] > hole[2] + 60.0, "the hole is filled: {hole:?}");
+}
+
+/// World-space UI (`docs/ui.md` §14, `ui_scenes::world`): occluders hide a
+/// panel behind the wall and keep the one against the sky; the bars draw
+/// their back, ghost and fill where their values put them; the mass
+/// elements' numbers and names draw at all.
+#[test]
+fn ui_world_occludes_and_draws_mass_elements() {
+    let r = render("ui-world");
+    let pink = srgb8([0.9, 0.3, 0.6, 1.0]);
+    // The left panel: only sky behind it at 20 m.
+    assert!(near(px(&r, 320, 360), pink, 6.0), "{:?}", px(&r, 320, 360));
+    // The right one: the wall (12 m) is in front of 20 m.
+    assert!(
+        !near(px(&r, 640, 360), pink, 40.0),
+        "{:?}",
+        px(&r, 640, 360)
+    );
+    // Bars from x = 80, 120 px: the first's fill to 0.5 (green), its
+    // ghost to 0.75 (pale), its back past it (dark).
+    let fill = px(&r, 110, 86);
+    let ghost = px(&r, 160, 86);
+    let back = px(&r, 190, 86);
+    assert!(fill[1] > fill[0] + 60.0, "fill {fill:?}");
+    assert!(ghost[0] > 200.0 && ghost[1] > 180.0, "ghost {ghost:?}");
+    // 85 % opaque over the sky (136, 155, 197).
+    assert!(back.iter().all(|&c| c < 110.0), "back {back:?}");
+    // The third bar's fill reaches 0.9 (x 188) and has no ghost.
+    assert!(px(&r, 185, 134)[1] > 120.0, "{:?}", px(&r, 185, 134));
+    // The score's glyphs: gold ink in its band at the top centre.
+    let gold = (40..90)
+        .flat_map(|y| (560..720).map(move |x| (x, y)))
+        .filter(|&(x, y)| {
+            let p = px(&r, x, y);
+            // (1, 0.85, 0.3) linear: about (255, 237, 149) in sRGB.
+            p[0] > 220.0 && p[1] > 200.0 && p[2] < 180.0
+        })
+        .count();
+    assert!(gold > 200, "{gold} gold pixels in the score");
+    // Damage numbers: white, gold and red ink over the lower half.
+    let red = (360..720)
+        .flat_map(|y| (0..1280).map(move |x| (x, y)))
+        .filter(|&(x, y)| {
+            let p = px(&r, x, y);
+            p[0] > 200.0 && p[1] < 120.0 && p[2] < 120.0
+        })
+        .count();
+    assert!(red > 500, "{red} red pixels of damage numbers");
 }
