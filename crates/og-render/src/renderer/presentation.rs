@@ -101,6 +101,41 @@ impl GpuMemory {
     }
 }
 
+/// What a renderer on a new device is made from ([`Renderer::successor`]).
+#[derive(Clone, Copy, Debug)]
+pub struct Successor {
+    desc: RenderDesc,
+    render_scale: f32,
+    clock: Option<fn() -> f64>,
+    keep_frame: bool,
+}
+
+impl Successor {
+    /// The new renderer: `surface`, with the instance it was created from,
+    /// is the canvas's or window's again (a surface is configured for one
+    /// device); `None` makes a headless renderer. Its first frame uploads
+    /// the whole scene again. The device may come back with other texture
+    /// encodings ([`RenderInfo::texture_formats`]): a host that transcoded
+    /// textures for the old one checks.
+    pub async fn make(
+        self,
+        surface: Option<(&wgpu::Instance, wgpu::Surface<'static>)>,
+    ) -> Result<Renderer, RenderError> {
+        let mut renderer = match surface {
+            Some((instance, surface)) => {
+                Renderer::with_surface(&self.desc, instance, surface).await?
+            }
+            None => Renderer::new(&self.desc).await?,
+        };
+        renderer.render_scale = self.render_scale;
+        renderer.set_clock(self.clock);
+        if self.keep_frame {
+            let _ = renderer.set_keep_frame(true);
+        }
+        Ok(renderer)
+    }
+}
+
 /// What `texture` allocates: every level of every layer, times its samples.
 pub(crate) fn texture_bytes(texture: &wgpu::Texture) -> u64 {
     let size = texture.size();
@@ -184,33 +219,31 @@ impl Renderer {
         let _ = self.device.poll(wgpu::PollType::Poll);
     }
 
-    /// A renderer like this one on a new device: the same [`RenderDesc`]
-    /// at the output's current size, with this one's render scale, clock
-    /// and frame keeping. `surface`, with the instance it was created
-    /// from, is the canvas's or window's again (a surface is configured
-    /// for one device); `None` makes a headless renderer. Its first frame
-    /// uploads the whole scene again. The device may come back with other
-    /// texture encodings ([`RenderInfo::texture_formats`]): a host that
-    /// transcoded textures for this one checks.
+    /// What a renderer like this one on a new device is made from
+    /// ([`Successor::make`]): the same [`RenderDesc`] at the output's
+    /// current size, with this one's render scale, clock and frame
+    /// keeping. Plain data, so a host can make the new renderer in a task
+    /// of its own (the web's device is asked for asynchronously).
+    pub fn successor(&self) -> Successor {
+        Successor {
+            desc: RenderDesc {
+                width: self.out_width,
+                height: self.out_height,
+                ..self.desc
+            },
+            render_scale: self.render_scale,
+            clock: self.clock,
+            keep_frame: self.keep_frame,
+        }
+    }
+
+    /// [`Renderer::successor`] made at once: `surface` (with the instance
+    /// it came from) for a canvas or window, `None` for a headless one.
     pub async fn recreate(
         &self,
         surface: Option<(&wgpu::Instance, wgpu::Surface<'static>)>,
     ) -> Result<Renderer, RenderError> {
-        let desc = RenderDesc {
-            width: self.out_width,
-            height: self.out_height,
-            ..self.desc
-        };
-        let mut renderer = match surface {
-            Some((instance, surface)) => Renderer::with_surface(&desc, instance, surface).await?,
-            None => Renderer::new(&desc).await?,
-        };
-        renderer.render_scale = self.render_scale;
-        renderer.set_clock(self.clock);
-        if self.keep_frame {
-            let _ = renderer.set_keep_frame(true);
-        }
-        Ok(renderer)
+        self.successor().make(surface).await
     }
 
     /// The GPU memory this renderer holds now ([`GpuMemory`]).

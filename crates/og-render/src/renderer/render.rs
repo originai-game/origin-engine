@@ -1830,6 +1830,9 @@ impl Renderer {
                         Some((t, view, linear))
                     }
                     other => {
+                        if let Some(reason) = self.lost() {
+                            return Err(RenderError::DeviceLost(reason));
+                        }
                         surface.configure(&self.device, config);
                         return Err(RenderError::Surface(format!("{other:?}")));
                     }

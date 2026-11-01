@@ -855,6 +855,18 @@ pub fn og_render_apply_quality(env: Env, world: u32, preset: String) -> String {
     <Host as RenderApi>::og_render_apply_quality(&Host, world, preset)
 }
 
+#[napi(js_name = "og_render_set_display")]
+pub fn og_render_set_display(env: Env, world: u32, settings: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_set_display(&Host, world, settings)
+}
+
+#[napi(js_name = "og_render_display")]
+pub fn og_render_display(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_display(&Host, world)
+}
+
 #[napi(js_name = "og_render_look")]
 pub fn og_render_look(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

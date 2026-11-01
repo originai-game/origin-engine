@@ -481,6 +481,8 @@ struct OffscreenBackend {
     missing: u32,
     /// The last frame's `FrameStats::triangles`.
     triangles: u64,
+    /// Devices lost and the renderer made again on a new one.
+    losses: u32,
     /// The window drawing this engine's frames, when the process was told
     /// one (`ORIGIN_FRAMES_SOCKET`, og-render's `shared_frames`).
     #[cfg(any(target_os = "macos", target_os = "linux", windows))]
@@ -488,8 +490,20 @@ struct OffscreenBackend {
 }
 
 impl OffscreenBackend {
-    /// The frame drawn offscreen, where the probe reads it.
+    /// The frame drawn offscreen, where the probe reads it. A lost device
+    /// (a driver reset, out of memory, `lose_device`) is replaced first: a
+    /// renderer on a new device from the same description, which uploads
+    /// the scene again on this frame, so the game goes on.
     fn draw(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
+        if let Some(why) = self.renderer.lost() {
+            eprintln!("og-host-node: the GPU device was {why}; making the renderer again");
+            let renderer = pollster::block_on(self.renderer.recreate(None))
+                .map_err(|e| format!("the GPU device was {why}, and a new one failed: {e}"))?;
+            let device = renderer.device().clone();
+            self.renderer = renderer;
+            self.losses += 1;
+            DEVICES.with(|d| d.borrow_mut().insert(self.engine, device));
+        }
         self.renderer
             .render(scene, &og_render::RenderTarget::Offscreen)
             .map(|s| {
@@ -592,6 +606,16 @@ impl RenderBackend for OffscreenBackend {
     fn read_frame(&mut self) -> Option<og_render::RgbaImage> {
         self.renderer.read_offscreen().ok()
     }
+    fn gpu_memory(&self) -> Option<og_render::GpuMemory> {
+        Some(self.renderer.gpu_memory())
+    }
+    fn device_losses(&self) -> u32 {
+        self.losses
+    }
+    fn lose_device(&mut self) -> bool {
+        self.renderer.lose_device();
+        true
+    }
     fn save_state(&mut self) -> u64 {
         self.renderer.save_state().id()
     }
@@ -666,6 +690,7 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
                     tier: tier.clone(),
                     missing: 0,
                     triangles: 0,
+                    losses: 0,
                     #[cfg(any(target_os = "macos", target_os = "linux", windows))]
                     frames,
                 })),

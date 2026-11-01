@@ -95,6 +95,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     eng.render.borrow_mut().capture_ms = 0.0;
     let t0 = rprobe::now_ms();
     let stepped = rprobe::with_probe(&eng, false, |p, w| p.frame(w, due));
+    let frame_t0 = t0;
     super::modules::end_of_ticks();
     super::stream::sound_chunks(&eng);
     let ticks = match stepped {
@@ -112,6 +113,19 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     let rendered = match render(&eng, alpha) {
         Ok(r) => r,
         Err(e) => return refuse(e),
+    };
+    // Automatic quality reads the drawn frame: its interval, the engine's
+    // work on it (ticks and render) and the GPU's newest time.
+    let max_fps = {
+        let gpu_ms = {
+            let st = eng.state.borrow();
+            (!st.gpu_ms.is_empty()).then(|| st.gpu_ms.iter().map(|(_, ms)| *ms).sum::<f64>())
+        };
+        let mut rs = eng.render.borrow_mut();
+        if rendered {
+            crate::display::after_frame(&mut rs, elapsed_ms, rprobe::now_ms() - frame_t0, gpu_ms);
+        }
+        crate::display::max_fps(&rs)
     };
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
     let (behind, step_ms, render_ms) = {
@@ -137,11 +151,14 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // `pointerLock`: og.PointerLock.wanted, the game's ask for the pointer
     // lock (the web shell requests it on the next press, exits it when
     // false, and reports `locked` back as input).
+    // `maxFps`: the frame cap resolved (og.render.setDisplay; 0: the
+    // display's rate), which the web Worker keeps by skipping display frames.
     let mut answer = json!({
         "ok": true, "ticks": ticks, "tick": tick, "rendered": rendered,
         "paused": probe.paused(), "quit": probe.quit_requested(), "behind": behind,
         "text": text, "stepMs": step_ms, "renderMs": render_ms,
         "pending": probe.steps_left(), "pointerLock": pointer_lock,
+        "maxFps": max_fps,
     });
     if let Some(c) = copy {
         answer["copy"] = json!(c);
@@ -247,6 +264,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
         rs.interp.alpha = None;
         rs.interp.display = false;
         super::probes::load_bakes(eng, &mut rs);
+        crate::display::before_render(&mut rs);
         let rs = &mut *rs;
         if let Some(b) = rs.backend.as_mut() {
             b.set_clock(Some(rprobe::now_ms));

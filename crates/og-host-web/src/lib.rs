@@ -698,6 +698,24 @@ pub fn og_web_gpu(engine: u32) -> String {
         .unwrap_or_else(|| "null".into())
 }
 
+/// The display's refresh interval the Worker measured (its
+/// requestAnimationFrame's), ms: automatic quality's budget where the frame
+/// cap is the display's rate (og-runtime's `display.rs`).
+#[wasm_bindgen]
+pub fn og_web_display_interval(engine: u32, ms: f64) {
+    og_runtime::set_display_interval(engine, ms);
+}
+
+/// A test hook: destroy the engine's GPU device, as iOS Safari does to a
+/// page left in the background; the next frame finds it lost and the
+/// renderer is made again on a new device, the game going on. The engine
+/// Worker's `loseDevice` call (the browser check of device loss). False
+/// without a renderer.
+#[wasm_bindgen]
+pub fn og_web_lose_device(engine: u32) -> bool {
+    og_runtime::lose_device(engine)
+}
+
 /// Make one pipeline the engine's renderer has not used yet (og-render's
 /// `Renderer::warm`): the engine Worker calls it in idle time behind the
 /// play gate, until it answers false, so the pipelines of the passes the
@@ -758,6 +776,18 @@ pub fn og_web_panic() -> String {
     og_runtime::panic_report().to_string()
 }
 
+/// `console.warn(message)` on this thread.
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+fn console_warn(message: &str) {
+    let console = js_sys::Reflect::get(&js_sys::global(), &JsValue::from_str("console"));
+    if let Ok(console) = console
+        && let Ok(warn) = js_sys::Reflect::get(&console, &JsValue::from_str("warn"))
+        && let Some(f) = warn.dyn_ref::<js_sys::Function>()
+    {
+        let _ = f.call1(&console, &JsValue::from_str(message));
+    }
+}
+
 /// Routes Rust panics to the console instead of an opaque `unreachable`,
 /// after recording them for `og_web_panic` (on any thread: a lane's panic
 /// on a pool Worker wakes the engine thread waiting for it, og-lanes).
@@ -800,6 +830,73 @@ mod canvas {
         /// once a reader has asked (the renderer keeps each presented frame
         /// offscreen from then on), answered once it lands.
         kept: Option<Kept>,
+        /// The canvas, for a renderer on a new device after a loss.
+        canvas: web_sys::OffscreenCanvas,
+        /// Devices lost and the renderer made again on a new one.
+        losses: u32,
+        /// A new renderer is being made (the device was lost): frames
+        /// draw nothing until it lands in [`RECOVERED`].
+        recovering: bool,
+    }
+
+    thread_local! {
+        /// Renderers made on a new device after a loss, by engine, taken by
+        /// the next frame.
+        static RECOVERED: std::cell::RefCell<og_core::IdMap<u32, Result<Renderer, String>>> =
+            const { std::cell::RefCell::new(og_core::IdMap::new()) };
+    }
+
+    impl CanvasBackend {
+        /// Recovery from a lost device (iOS Safari after the page was in
+        /// the background or under memory pressure, a GPU reset, the test
+        /// hook): true while there is no device to draw on. The first frame
+        /// that finds the device lost asks for a new one on the same canvas
+        /// (asynchronously: the browser's adapter and device are promises);
+        /// the frames until it lands draw nothing while the simulation goes
+        /// on, and the first frame after it draws the world as it is then,
+        /// every mesh and texture uploaded again from the scene.
+        fn recover(&mut self) -> Result<bool, String> {
+            if let Some(made) = RECOVERED.with(|m| m.borrow_mut().remove(&self.engine)) {
+                self.recovering = false;
+                let renderer = made.map_err(|e| {
+                    format!("the GPU device was lost and a new one could not be made: {e}")
+                })?;
+                super::FORMATS.with(|f| {
+                    f.borrow_mut()
+                        .insert(self.engine, renderer.info().texture_formats.clone())
+                });
+                self.renderer = renderer;
+                self.losses += 1;
+                self.pending.clear();
+                self.kept = None;
+            }
+            let Some(why) = self.renderer.lost() else {
+                return Ok(false);
+            };
+            if !self.recovering {
+                self.recovering = true;
+                super::console_warn(&format!(
+                    "origin-engine: the GPU device was {why}; making the renderer again"
+                ));
+                let successor = self.renderer.successor();
+                let canvas = self.canvas.clone();
+                let engine = self.engine;
+                wasm_bindgen_futures::spawn_local(async move {
+                    let instance = Backend::WebGpu.instance();
+                    let made = match instance
+                        .create_surface(wgpu::SurfaceTarget::OffscreenCanvas(canvas))
+                    {
+                        Ok(surface) => successor
+                            .make(Some((&instance, surface)))
+                            .await
+                            .map_err(|e| e.to_string()),
+                        Err(e) => Err(format!("surface: {e}")),
+                    };
+                    RECOVERED.with(|m| m.borrow_mut().insert(engine, made));
+                });
+            }
+            Ok(true)
+        }
     }
 
     struct Kept {
@@ -838,6 +935,9 @@ mod canvas {
             Some(self.renderer.info().clone())
         }
         fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+            if self.recover()? {
+                return Ok(());
+            }
             if let Some((w, h)) = super::take_resize(self.engine) {
                 self.renderer.resize(w, h);
             }
@@ -849,13 +949,15 @@ mod canvas {
                 p.landed = p.req.is_ready();
                 kept
             });
-            self.renderer
-                .render(scene, &RenderTarget::Surface)
-                .map(|s| {
+            match self.renderer.render(scene, &RenderTarget::Surface) {
+                Ok(s) => {
                     self.missing = s.missing_glyphs;
                     self.triangles = s.triangles;
-                })
-                .map_err(|e| e.to_string())?;
+                }
+                // Lost while drawing: recovered from the next frame on.
+                Err(og_render::RenderError::DeviceLost(_)) => return Ok(()),
+                Err(e) => return Err(e.to_string()),
+            }
             self.drawn += 1;
             // A reader of every frame: this one's readback starts now (the
             // renderer copied it offscreen before presenting it).
@@ -935,14 +1037,22 @@ mod canvas {
                     Err(_) => {}
                 }
             }
+            if self.recovering || self.renderer.lost().is_some() {
+                return None;
+            }
             if size != target {
                 self.renderer.resize(size.0, size.1);
             }
+            // A capture is the frame at its own size and scale 1, whatever
+            // the display draws at (automatic quality, og.render.setDisplay).
+            let scale = self.renderer.render_scale();
+            self.renderer.set_render_scale(1.0);
             let started = self
                 .renderer
                 .render(scene, &RenderTarget::Offscreen)
                 .ok()
                 .and_then(|_| self.renderer.begin_capture().ok());
+            self.renderer.set_render_scale(scale);
             if size != target {
                 self.renderer.resize(target.0, target.1);
             }
@@ -971,6 +1081,25 @@ mod canvas {
         fn warm(&mut self) -> bool {
             self.renderer.warm()
         }
+        fn presents(&self) -> bool {
+            true
+        }
+        fn set_render_scale(&mut self, scale: f32) {
+            self.renderer.set_render_scale(scale);
+        }
+        fn scene_size(&self) -> (u32, u32) {
+            self.renderer.scene_size_drawn()
+        }
+        fn gpu_memory(&self) -> Option<og_render::GpuMemory> {
+            Some(self.renderer.gpu_memory())
+        }
+        fn device_losses(&self) -> u32 {
+            self.losses
+        }
+        fn lose_device(&mut self) -> bool {
+            self.renderer.lose_device();
+            true
+        }
     }
 
     /// Put the renderer on an OffscreenCanvas transferred to this Worker,
@@ -998,6 +1127,7 @@ mod canvas {
             },
         );
         let instance = backend.instance();
+        let canvas_kept = canvas.clone();
         let surface = instance
             .create_surface(wgpu::SurfaceTarget::OffscreenCanvas(canvas))
             .map_err(|e| JsValue::from_str(&format!("surface: {e}")))?;
@@ -1025,6 +1155,9 @@ mod canvas {
                 kept: None,
                 missing: 0,
                 triangles: 0,
+                canvas: canvas_kept,
+                losses: 0,
+                recovering: false,
             })),
         )
         .map_err(|e| JsValue::from_str(&e))?;

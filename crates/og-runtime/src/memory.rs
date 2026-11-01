@@ -15,6 +15,8 @@
 //! - `stream`: the streaming budget (`og.stream.budget`): `budget`, `used`,
 //!   `peak` in bytes.
 //! - `audio`: the sound bank's decoded and resident samples, in bytes.
+//! - `gpu`: the renderer's GPU memory (`GpuMemory`: textures, meshes,
+//!   render targets, buffers and their total, in bytes); null without one.
 
 use super::engine::engine;
 use og_ecs::World;
@@ -23,12 +25,15 @@ use serde_json::{Value, json};
 /// The report for engine `id` over its `world` (the probe's hook passes the
 /// world it holds).
 pub(crate) fn report(id: u32, world: &World) -> Value {
-    let (stream, audio) = match engine(id) {
+    let (stream, audio, gpu) = match engine(id) {
         Ok(eng) => (
             super::stream::memory(&eng),
             og_audio::link(id).map(|l| l.bank().resident_bytes() as f64),
+            eng.render
+                .try_borrow()
+                .map_or(Value::Null, |rs| super::display::gpu_memory(&rs)),
         ),
-        Err(_) => (Value::Null, None),
+        Err(_) => (Value::Null, None, Value::Null),
     };
     json!({
         "host": if cfg!(target_arch = "wasm32") { "web" } else { "native" },
@@ -42,6 +47,7 @@ pub(crate) fn report(id: u32, world: &World) -> Value {
         "world": { "entities": world.entity_count() },
         "stream": stream,
         "audio": audio,
+        "gpu": gpu,
     })
 }
 

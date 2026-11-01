@@ -18,7 +18,7 @@ mod uploads;
 pub(crate) use buffers::*;
 pub use config::*;
 pub(crate) use pipelines::*;
-pub use presentation::{GpuMemory, MAX_RENDER_SCALE, MIN_RENDER_SCALE};
+pub use presentation::{GpuMemory, MAX_RENDER_SCALE, MIN_RENDER_SCALE, Successor};
 pub(crate) use presentation::{LostFlag, texture_bytes, view_bytes};
 pub(crate) use resources::*;
 pub(crate) use shader_source::*;

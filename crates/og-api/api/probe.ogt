@@ -212,6 +212,7 @@ module probe {
     field audio Option.f64 "The sound bank's samples in memory (decoded sounds and the resident chunks of streamed ones); null without audio." {
       unit bytes
     }
+    field gpu Option.GpuMemory "The GPU memory the renderer holds (og.render.display's gpu); null without a renderer."
   }
 
   struct SweepDesc {

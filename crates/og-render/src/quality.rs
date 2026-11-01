@@ -142,6 +142,36 @@ impl RenderQuality {
         }
     }
 
+    /// This quality with every field no costlier than `preset`'s row: each
+    /// switch on only where both are, each count and scale the smaller,
+    /// ambient occlusion at the lower resolution (automatic quality's
+    /// preset steps, which cap the game's own quality and never raise it).
+    pub fn capped(&self, preset: QualityPreset) -> RenderQuality {
+        let row = RenderQuality::preset(preset);
+        let ao = |r: Option<AoResolution>| match r {
+            Some(AoResolution::Half) => 0,
+            None => 1,
+            Some(AoResolution::Full) => 2,
+        };
+        RenderQuality {
+            rect_shadows: self.rect_shadows && row.rect_shadows,
+            shadowed_lights: self.shadowed_lights.min(row.shadowed_lights),
+            shadow_map_scale: self.shadow_map_scale.min(row.shadow_map_scale),
+            volumetric_fog: self.volumetric_fog && row.volumetric_fog,
+            soft_particles: self.soft_particles && row.soft_particles,
+            ssr: self.ssr && row.ssr,
+            ambient_occlusion: self.ambient_occlusion && row.ambient_occlusion,
+            ao_resolution: if ao(row.ao_resolution) < ao(self.ao_resolution) {
+                row.ao_resolution
+            } else {
+                self.ao_resolution
+            },
+            ssr_step_scale: self.ssr_step_scale.min(row.ssr_step_scale),
+            volumetric_step_scale: self.volumetric_step_scale.min(row.volumetric_step_scale),
+            msaa_samples: self.msaa_samples.min(row.msaa_samples),
+        }
+    }
+
     /// Whether antialiasing that multisamples does (else it is FXAA).
     pub(crate) fn multisample(&self) -> bool {
         self.msaa_samples >= crate::MSAA_SAMPLES
@@ -198,6 +228,33 @@ mod tests {
         assert_eq!(q.froxel_slices(), FROXELS[2]);
         assert_eq!(q.raymarch_steps(), RAYMARCH_STEPS);
         assert_eq!(q.shadow_side(2048, 4096), 2048);
+    }
+
+    /// A cap only lowers: high capped at medium is medium, low capped at
+    /// medium stays low, and a game's own mix keeps what is already cheaper
+    /// (half-resolution AO under medium's scene choice; no SSR under any).
+    #[test]
+    fn a_cap_lowers_each_field_and_never_raises_one() {
+        let high = RenderQuality::preset(QualityPreset::High);
+        let low = RenderQuality::preset(QualityPreset::Low);
+        assert_eq!(high.capped(QualityPreset::Medium), RenderQuality::default());
+        assert_eq!(low.capped(QualityPreset::Medium), low);
+        assert_eq!(high.capped(QualityPreset::Low), low);
+        let own = RenderQuality {
+            ssr: false,
+            ao_resolution: Some(AoResolution::Half),
+            shadow_map_scale: 1.5,
+            ..RenderQuality::default()
+        };
+        let c = own.capped(QualityPreset::Medium);
+        assert!(!c.ssr);
+        assert_eq!(c.ao_resolution, Some(AoResolution::Half));
+        assert_eq!(c.shadow_map_scale, 1.0);
+        let full = RenderQuality {
+            ao_resolution: Some(AoResolution::Full),
+            ..RenderQuality::default()
+        };
+        assert_eq!(full.capped(QualityPreset::Medium).ao_resolution, None);
     }
 
     /// High refines every scale (within the passes' bounds) and asks

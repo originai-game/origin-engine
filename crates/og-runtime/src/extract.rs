@@ -138,6 +138,33 @@ pub trait RenderBackend {
     fn read_frame(&mut self) -> Option<og_render::RgbaImage> {
         None
     }
+    /// Whether it presents to a display (the web canvas): only then are
+    /// the render scale and automatic quality applied (`super::display`);
+    /// a native run draws at its fixed size and scale 1.
+    fn presents(&self) -> bool {
+        false
+    }
+    /// og-render's `Renderer::set_render_scale`, from the next frame.
+    fn set_render_scale(&mut self, _scale: f32) {}
+    /// The size the 3D scene was drawn at last (og-render's
+    /// `Renderer::scene_size_drawn`).
+    fn scene_size(&self) -> (u32, u32) {
+        self.size()
+    }
+    /// The GPU memory the renderer holds (og-render's `Renderer::gpu_memory`).
+    fn gpu_memory(&self) -> Option<og_render::GpuMemory> {
+        None
+    }
+    /// How many times the device was lost and the renderer made again on
+    /// a new one (each backend recovers in its own `render`).
+    fn device_losses(&self) -> u32 {
+        0
+    }
+    /// A test hook: destroy the device (og-render's `Renderer::lose_device`);
+    /// false where there is none.
+    fn lose_device(&mut self) -> bool {
+        false
+    }
 }
 
 /// One loaded font: a cooked MTSDF font as one `MsdfFont` per atlas page.
@@ -292,6 +319,8 @@ pub(crate) struct RenderState {
     pub ui_draw: super::ui_draw::UiDrawState,
     /// Interpolation between ticks (`super::interpolate`).
     pub interp: super::interpolate::InterpState,
+    /// How the frame is presented (`super::display`).
+    pub display: super::display::DisplayState,
 }
 
 impl RenderState {
@@ -338,6 +367,7 @@ impl RenderState {
             art: Default::default(),
             ui_draw: Default::default(),
             interp: Default::default(),
+            display: Default::default(),
         }
     }
 }

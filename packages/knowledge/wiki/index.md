@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1502 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1508 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -338,6 +338,8 @@ Field units the docs and Tune use.
 | [`DialogueResult`](ui.md#type-DialogueResult) | struct | ui | — |
 | [`Direction`](ui.md#type-Direction) | enum | ui | — |
 | [`DismissSpec`](ui.md#type-DismissSpec) | desc struct | ui | — |
+| [`DisplayInfo`](render.md#type-DisplayInfo) | struct | render | — |
+| [`DisplaySettings`](render.md#type-DisplaySettings) | desc struct | render | — |
 | [`DitherPattern`](render.md#type-DitherPattern) | enum | render | — |
 | [`DitherPattern()`](render.md#column-DitherPattern) | column kind | render | — |
 | [`DofQuality`](render.md#type-DofQuality) | enum | render | — |
@@ -410,6 +412,7 @@ Field units the docs and Tune use.
 | [`Font()`](load.md#column-Font) | column kind | load | — |
 | [`FontInfo`](load.md#type-FontInfo) | struct | load | — |
 | [`FontRole`](ui.md#type-FontRole) | enum | ui | — |
+| [`FrameCap`](render.md#type-FrameCap) | enum | render | — |
 | [`Frustum`](math.md#type-Frustum) | struct | math | — |
 | [`frustum`](math.md#value-frustum) | value | math | — |
 | [`FrustumMath`](math.md#type-FrustumMath) | interface | math | — |
@@ -441,6 +444,7 @@ Field units the docs and Tune use.
 | [`GlowEffect`](ui.md#type-GlowEffect) | desc struct | ui | — |
 | [`GltfDesc`](load.md#type-GltfDesc) | desc struct | load | — |
 | [`GltfInfo`](load.md#type-GltfInfo) | struct | load | — |
+| [`GpuMemory`](render.md#type-GpuMemory) | struct | render | — |
 | [`Gradient`](ui.md#type-Gradient) | desc struct | ui | — |
 | [`GradientSpread`](ui.md#type-GradientSpread) | enum | ui | — |
 | [`GradientStop`](ui.md#type-GradientStop) | desc struct | ui | — |
@@ -875,6 +879,7 @@ Field units the docs and Tune use.
 | [`og.render.coneGeometry`](render.md#fn-coneGeometry) | function | render | `og_render_cone_geometry` |
 | [`og.render.csgGeometry`](render.md#fn-csgGeometry) | function | render | `og_render_csg_geometry` |
 | [`og.render.cylinderGeometry`](render.md#fn-cylinderGeometry) | function | render | `og_render_cylinder_geometry` |
+| [`og.render.display`](render.md#fn-display) | function | render | `og_render_display` |
 | [`og.render.dodecahedronGeometry`](render.md#fn-dodecahedronGeometry) | function | render | `og_render_dodecahedron_geometry` |
 | [`og.render.extrudeGeometry`](render.md#fn-extrudeGeometry) | function | render | `og_render_extrude_geometry` |
 | [`og.render.floatingText`](render.md#fn-floatingText) | function | render | `og_render_floating_text` |
@@ -894,6 +899,7 @@ Field units the docs and Tune use.
 | [`og.render.renderTarget`](render.md#fn-renderTarget) | function | render | `og_render_render_target` |
 | [`og.render.ribbon`](render.md#fn-ribbon) | function | render | `og_render_ribbon` |
 | [`og.render.ringGeometry`](render.md#fn-ringGeometry) | function | render | `og_render_ring_geometry` |
+| [`og.render.setDisplay`](render.md#fn-setDisplay) | function | render | `og_render_set_display` |
 | [`og.render.setMaterialShader`](render.md#fn-setMaterialShader) | function | render | `og_render_set_material_shader` |
 | [`og.render.setPostParam`](render.md#fn-setPostParam) | function | render | `og_render_set_post_param` |
 | [`og.render.setShaderParam`](render.md#fn-setShaderParam) | function | render | `og_render_set_shader_param` |

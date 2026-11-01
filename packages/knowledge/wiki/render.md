@@ -128,6 +128,12 @@ module render {
 | [`og.render.setShaderParam`](#fn-setShaderParam) | function | Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color. |
 | [`og.render.applyLook`](#fn-applyLook) | function | Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma, which game code animates, keep theirs), and the UI is configured with its style, keeping the rest of the last UiDesc. Resources it does not name are left as they are. Inside a system, the system must declare those resources among its writes, except the art contract's (ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion, ArtCamera): one the system does not declare is left as it is, so a system that declares the frame's resources applies looks that carry a contract. A look that switches the stylisation (a Stylise pass on or off, the pixel grid, retro 3D, the material style) starts TAA's history over, as a camera cut does, so its first frame holds no ghost of the old look. |
 | [`og.render.applyQuality`](#fn-applyQuality) | function | Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. The settings screen calls it when the player picks a preset (SettingsDesc.world); a game applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows: |
+| [`FrameCap`](#type-FrameCap) | enum | How many frames a second the display draws at most (DisplaySettings.frameCap). The simulation's fixed tick is the same at every cap: a capped frame runs the ticks its time owes, and input is read on every display frame, drawn or not. |
+| [`DisplaySettings`](#type-DisplaySettings) | desc struct | How the frame is presented on a display: the frame cap, battery saver, render scale and automatic quality, set with og.render.setDisplay. Presentation only: none of it is in the world, so the world's hash, snapshots, saves and replays never see it, and a native run (`og run`, `og test`, reference captures) draws every frame at render scale 1 whatever it says. The web shell's graphics settings write it; a game may too. |
+| [`GpuMemory`](#type-GpuMemory) | struct | The GPU memory the renderer holds, counted where it creates each texture and buffer (sizes as allocated, without the driver's alignment and padding). |
+| [`DisplayInfo`](#type-DisplayInfo) | struct | What the display draws now (og.render.display): the settings, and what they resolved to on this device. |
+| [`og.render.setDisplay`](#fn-setDisplay) | function | Set how the frame is presented (DisplaySettings: frame cap, battery saver, render scale, automatic quality). Applied from the next frame; presentation only, so it is allowed inside any system and never changes the simulation. |
+| [`og.render.display`](#fn-display) | function | What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived and the GPU memory. |
 | [`og.render.look`](#fn-look) | function | The look last applied (by og.render.applyLook or GameDesc.look), as og.load.lookInfo describes it; null before any. |
 | [`og.render.capabilities`](#fn-capabilities) | function | The renderer's tier and limits on this device. |
 | [`og.render.text`](#fn-text) | function | Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout. |
@@ -725,6 +731,64 @@ fn applyQuality {
 
 <sub>`api.ogt` line 5023</sub>
 
+<a id="fn-setDisplay"></a>
+
+### `og.render.setDisplay`
+
+Set how the frame is presented (DisplaySettings: frame cap, battery saver, render scale, automatic quality). Applied from the next frame; presentation only, so it is allowed inside any system and never changes the simulation.
+
+```ts
+og.render.setDisplay(world: World, settings?: DisplaySettings): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose display it is. |
+| `settings` | `DisplaySettings` | yes | The settings; fields left out take their defaults. |
+
+**Returns** `Result<void>`: Refused for a world that is not alive.
+
+Binding symbol `og_render_set_display` · publish builds: kept
+
+```ogt
+fn setDisplay {
+  doc "Set how the frame is presented (DisplaySettings: frame cap, battery saver, render scale, automatic quality). Applied from the next frame; presentation only, so it is allowed inside any system and never changes the simulation."
+  param world World "The world whose display it is."
+  param settings DisplaySettings "The settings; fields left out take their defaults."
+  returns Result.Void "Refused for a world that is not alive."
+}
+```
+
+<sub>`api.ogt` line 5111</sub>
+
+<a id="fn-display"></a>
+
+### `og.render.display`
+
+What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived and the GPU memory.
+
+```ts
+og.render.display(world: World): DisplayInfo
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world asked. |
+
+**Returns** `DisplayInfo`.
+
+Binding symbol `og_render_display` · publish builds: kept
+
+```ogt
+fn display {
+  doc "What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived and the GPU memory."
+  param world World "The world asked."
+  returns DisplayInfo
+}
+```
+
+<sub>`api.ogt` line 5118</sub>
+
 <a id="fn-look"></a>
 
 ### `og.render.look`
@@ -751,7 +815,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 5044</sub>
+<sub>`api.ogt` line 5124</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -779,7 +843,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 5050</sub>
+<sub>`api.ogt` line 5130</sub>
 
 <a id="fn-text"></a>
 
@@ -809,7 +873,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 5056</sub>
+<sub>`api.ogt` line 5136</sub>
 
 <a id="fn-bufferGeometry"></a>
 
@@ -839,7 +903,7 @@ fn bufferGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5094</sub>
+<sub>`api.ogt` line 5174</sub>
 
 <a id="fn-updateGeometry"></a>
 
@@ -871,7 +935,7 @@ fn updateGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5101</sub>
+<sub>`api.ogt` line 5181</sub>
 
 <a id="fn-geometryInfo"></a>
 
@@ -901,7 +965,7 @@ fn geometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 5109</sub>
+<sub>`api.ogt` line 5189</sub>
 
 <a id="fn-cylinderGeometry"></a>
 
@@ -931,7 +995,7 @@ fn cylinderGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5304</sub>
+<sub>`api.ogt` line 5384</sub>
 
 <a id="fn-coneGeometry"></a>
 
@@ -961,7 +1025,7 @@ fn coneGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5311</sub>
+<sub>`api.ogt` line 5391</sub>
 
 <a id="fn-capsuleGeometry"></a>
 
@@ -991,7 +1055,7 @@ fn capsuleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5318</sub>
+<sub>`api.ogt` line 5398</sub>
 
 <a id="fn-torusGeometry"></a>
 
@@ -1021,7 +1085,7 @@ fn torusGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5325</sub>
+<sub>`api.ogt` line 5405</sub>
 
 <a id="fn-ringGeometry"></a>
 
@@ -1051,7 +1115,7 @@ fn ringGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5332</sub>
+<sub>`api.ogt` line 5412</sub>
 
 <a id="fn-circleGeometry"></a>
 
@@ -1081,7 +1145,7 @@ fn circleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5339</sub>
+<sub>`api.ogt` line 5419</sub>
 
 <a id="fn-tubeGeometry"></a>
 
@@ -1111,7 +1175,7 @@ fn tubeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5346</sub>
+<sub>`api.ogt` line 5426</sub>
 
 <a id="fn-shapeGeometry"></a>
 
@@ -1141,7 +1205,7 @@ fn shapeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5583</sub>
+<sub>`api.ogt` line 5663</sub>
 
 <a id="fn-extrudeGeometry"></a>
 
@@ -1171,7 +1235,7 @@ fn extrudeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5590</sub>
+<sub>`api.ogt` line 5670</sub>
 
 <a id="fn-latheGeometry"></a>
 
@@ -1201,7 +1265,7 @@ fn latheGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5597</sub>
+<sub>`api.ogt` line 5677</sub>
 
 <a id="fn-polyhedronGeometry"></a>
 
@@ -1231,7 +1295,7 @@ fn polyhedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5604</sub>
+<sub>`api.ogt` line 5684</sub>
 
 <a id="fn-icosahedronGeometry"></a>
 
@@ -1261,7 +1325,7 @@ fn icosahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5611</sub>
+<sub>`api.ogt` line 5691</sub>
 
 <a id="fn-dodecahedronGeometry"></a>
 
@@ -1291,7 +1355,7 @@ fn dodecahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5618</sub>
+<sub>`api.ogt` line 5698</sub>
 
 <a id="fn-octahedronGeometry"></a>
 
@@ -1321,7 +1385,7 @@ fn octahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5625</sub>
+<sub>`api.ogt` line 5705</sub>
 
 <a id="fn-tetrahedronGeometry"></a>
 
@@ -1351,7 +1415,7 @@ fn tetrahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5632</sub>
+<sub>`api.ogt` line 5712</sub>
 
 <a id="fn-sweepGeometry"></a>
 
@@ -1381,7 +1445,7 @@ fn sweepGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5639</sub>
+<sub>`api.ogt` line 5719</sub>
 
 <a id="fn-csgGeometry"></a>
 
@@ -1411,7 +1475,7 @@ fn csgGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5646</sub>
+<sub>`api.ogt` line 5726</sub>
 
 <a id="fn-mergeGeometries"></a>
 
@@ -1441,7 +1505,7 @@ fn mergeGeometries {
 }
 ```
 
-<sub>`api.ogt` line 5653</sub>
+<sub>`api.ogt` line 5733</sub>
 
 <a id="fn-lines"></a>
 
@@ -1471,7 +1535,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 5711</sub>
+<sub>`api.ogt` line 5791</sub>
 
 <a id="fn-points"></a>
 
@@ -1501,7 +1565,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 5746</sub>
+<sub>`api.ogt` line 5826</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1533,7 +1597,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 5850</sub>
+<sub>`api.ogt` line 5930</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1563,7 +1627,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 5906</sub>
+<sub>`api.ogt` line 5986</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1597,7 +1661,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 6018</sub>
+<sub>`api.ogt` line 6098</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1625,7 +1689,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 6033</sub>
+<sub>`api.ogt` line 6113</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1653,7 +1717,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 6101</sub>
+<sub>`api.ogt` line 6181</sub>
 
 ## Components, resources and events
 
@@ -3549,7 +3613,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 5753</sub>
+<sub>`api.ogt` line 5833</sub>
 
 <a id="record-Points"></a>
 
@@ -3603,7 +3667,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 5790</sub>
+<sub>`api.ogt` line 5870</sub>
 
 <a id="record-CameraView"></a>
 
@@ -3710,7 +3774,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 5913</sub>
+<sub>`api.ogt` line 5993</sub>
 
 <a id="record-Mirror"></a>
 
@@ -3755,7 +3819,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 5985</sub>
+<sub>`api.ogt` line 6065</sub>
 
 <a id="record-RectLight"></a>
 
@@ -3805,7 +3869,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 6047</sub>
+<sub>`api.ogt` line 6127</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -3839,7 +3903,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 6074</sub>
+<sub>`api.ogt` line 6154</sub>
 
 ## Types
 
@@ -5494,6 +5558,155 @@ handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`
 
 <sub>`api.ogt` line 4982</sub>
 
+<a id="type-FrameCap"></a>
+
+### `FrameCap` (enum)
+
+How many frames a second the display draws at most (DisplaySettings.frameCap). The simulation's fixed tick is the same at every cap: a capped frame runs the ticks its time owes, and input is read on every display frame, drawn or not.
+
+A string: one of the variants below. The zero value is `"auto"`.
+
+| Variant | Doc |
+|---|---|
+| `"auto"` | The device class's default: 60 on a phone or tablet (a coarse pointer), which halves the GPU's work on a 120 Hz ProMotion display for a game whose tick is 60 Hz or less; the display's own rate on a desktop. 30 with batterySaver. |
+| `"display"` | Every frame the display shows (requestAnimationFrame): 120 on ProMotion, 144 and more on gaming monitors. |
+| `"fps60"` | At most 60 a second. |
+| `"fps30"` | At most 30 a second: the battery's choice, and a steady rate for a GPU that cannot hold 60. |
+
+```ogt
+enum FrameCap {
+  doc "How many frames a second the display draws at most (DisplaySettings.frameCap). The simulation's fixed tick is the same at every cap: a capped frame runs the ticks its time owes, and input is read on every display frame, drawn or not."
+  variant auto "The device class's default: 60 on a phone or tablet (a coarse pointer), which halves the GPU's work on a 120 Hz ProMotion display for a game whose tick is 60 Hz or less; the display's own rate on a desktop. 30 with batterySaver."
+  variant display "Every frame the display shows (requestAnimationFrame): 120 on ProMotion, 144 and more on gaming monitors."
+  variant fps60 "At most 60 a second."
+  variant fps30 "At most 30 a second: the battery's choice, and a steady rate for a GPU that cannot hold 60."
+}
+```
+
+<sub>`api.ogt` line 5044</sub>
+
+<a id="type-DisplaySettings"></a>
+
+### `DisplaySettings` (desc struct)
+
+How the frame is presented on a display: the frame cap, battery saver, render scale and automatic quality, set with og.render.setDisplay. Presentation only: none of it is in the world, so the world's hash, snapshots, saves and replays never see it, and a native run (`og run`, `og test`, reference captures) draws every frame at render scale 1 whatever it says. The web shell's graphics settings write it; a game may too.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `frameCap` | `FrameCap` | `"auto"` | — | — | — | The most frames a second (auto: 60 on phones, the display's rate on desktops). |
+| `batterySaver` | `boolean` | `false` | — | — | — | Save power: at most 30 frames a second whatever frameCap says, the render scale at most 0.75, and automatic quality as on. For a phone on battery or a player who asks for it. |
+| `renderScale` | `number` | `1` | 0.5 … 2 | — | — | The 3D scene's resolution as a fraction of the display's: below 1 it is drawn smaller and scaled up bilinearly (softer, cheaper), above 1 it is supersampled; the UI, screen text and screen sprites stay at the display's resolution. With autoQuality it is the most the automatic quality draws at. |
+| `autoQuality` | `boolean` | `true` | — | — | — | Lower the render scale (and then, where autoPresetSteps allows, the graphics preset) while frames take longer than the frame cap's interval, and raise them again when there is room, with hysteresis so it never oscillates: the GPU's time where the device times it (RenderCapabilities.gpuTimestamps), else frames that miss the display's interval, with a step up tried after a calm while and given up after three failures. False draws at renderScale and RenderSettings exactly. |
+| `autoMinScale` | `number` | `0.5` | 0.5 … 2 | — | — | The least render scale automatic quality lowers to. |
+| `autoPresetSteps` | `number` | `1` | 0 … 2 | — | — | Graphics preset steps automatic quality may take below the game's own RenderSettings once the scale is at autoMinScale: 1 caps every quality field at the medium row, 2 at the low row (the rows of og.render.applyQuality); 0 never touches RenderSettings' quality. RenderSettings keeps its values: the cap is applied when the frame is drawn. |
+
+```ogt
+struct DisplaySettings {
+  doc "How the frame is presented on a display: the frame cap, battery saver, render scale and automatic quality, set with og.render.setDisplay. Presentation only: none of it is in the world, so the world's hash, snapshots, saves and replays never see it, and a native run (`og run`, `og test`, reference captures) draws every frame at render scale 1 whatever it says. The web shell's graphics settings write it; a game may too."
+  desc true
+  field frameCap FrameCap "The most frames a second (auto: 60 on phones, the display's rate on desktops)."
+  field batterySaver bool "Save power: at most 30 frames a second whatever frameCap says, the render scale at most 0.75, and automatic quality as on. For a phone on battery or a player who asks for it."
+  field renderScale f32 "The 3D scene's resolution as a fraction of the display's: below 1 it is drawn smaller and scaled up bilinearly (softer, cheaper), above 1 it is supersampled; the UI, screen text and screen sprites stay at the display's resolution. With autoQuality it is the most the automatic quality draws at." {
+    default 1
+    min 0.5
+    max 2
+  }
+  field autoQuality bool "Lower the render scale (and then, where autoPresetSteps allows, the graphics preset) while frames take longer than the frame cap's interval, and raise them again when there is room, with hysteresis so it never oscillates: the GPU's time where the device times it (RenderCapabilities.gpuTimestamps), else frames that miss the display's interval, with a step up tried after a calm while and given up after three failures. False draws at renderScale and RenderSettings exactly." {
+    default true
+  }
+  field autoMinScale f32 "The least render scale automatic quality lowers to." {
+    default 0.5
+    min 0.5
+    max 2
+  }
+  field autoPresetSteps u32 "Graphics preset steps automatic quality may take below the game's own RenderSettings once the scale is at autoMinScale: 1 caps every quality field at the medium row, 2 at the low row (the rows of og.render.applyQuality); 0 never touches RenderSettings' quality. RenderSettings keeps its values: the cap is applied when the frame is drawn." {
+    default 1
+    min 0
+    max 2
+  }
+}
+```
+
+<sub>`api.ogt` line 5052</sub>
+
+<a id="type-GpuMemory"></a>
+
+### `GpuMemory` (struct)
+
+The GPU memory the renderer holds, counted where it creates each texture and buffer (sizes as allocated, without the driver's alignment and padding).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `textures` | `number` | `0` | — | `bytes` | — | The scene's textures (every mip level as uploaded), texture arrays, environment maps, palettes, colour LUTs and the image-based light. |
+| `meshes` | `number` | `0` | — | `bytes` | — | The meshes' vertex and index buffers and their skins. |
+| `renderTargets` | `number` | `0` | — | `bytes` | — | Textures drawn into: og.render.renderTarget's, the frame's targets at the scene's size (the render scale included), the output, TAA's history, the shadow maps, the UI's glass, the reflection probes' faces and the volumetric fog. |
+| `buffers` | `number` | `0` | — | `bytes` | — | The renderer's own buffers: instances, uniforms, light tables. |
+| `total` | `number` | `0` | — | `bytes` | — | All four. |
+
+```ogt
+struct GpuMemory {
+  doc "The GPU memory the renderer holds, counted where it creates each texture and buffer (sizes as allocated, without the driver's alignment and padding)."
+  field textures f64 "The scene's textures (every mip level as uploaded), texture arrays, environment maps, palettes, colour LUTs and the image-based light." {
+    unit bytes
+  }
+  field meshes f64 "The meshes' vertex and index buffers and their skins." {
+    unit bytes
+  }
+  field renderTargets f64 "Textures drawn into: og.render.renderTarget's, the frame's targets at the scene's size (the render scale included), the output, TAA's history, the shadow maps, the UI's glass, the reflection probes' faces and the volumetric fog." {
+    unit bytes
+  }
+  field buffers f64 "The renderer's own buffers: instances, uniforms, light tables." {
+    unit bytes
+  }
+  field total f64 "All four." {
+    unit bytes
+  }
+}
+```
+
+<sub>`api.ogt` line 5077</sub>
+
+<a id="type-DisplayInfo"></a>
+
+### `DisplayInfo` (struct)
+
+What the display draws now (og.render.display): the settings, and what they resolved to on this device.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `settings` | `DisplaySettings` | `{}` | — | — | — | The settings og.render.setDisplay last set (the defaults before). |
+| `presenting` | `boolean` | `false` | — | — | — | Whether this host presents to a display (the web canvas): false on a native run, where nothing below moves from its default. |
+| `maxFps` | `number` | `0` | — | — | — | The frame cap resolved: 30, 60, or 0 for the display's rate. |
+| `displayHz` | `number` | `0` | — | — | — | The display's refresh rate as measured (requestAnimationFrame's interval); 0 where unknown. |
+| `renderScale` | `number` | `0` | — | — | — | The render scale the scene is drawn at now (automatic quality's, within its bounds). |
+| `presetSteps` | `number` | `0` | — | — | — | The preset steps automatic quality has taken below RenderSettings (0: none). |
+| `sceneWidth` | `number` | `0` | — | — | — | The 3D scene's width in device pixels (the display's times the render scale). |
+| `sceneHeight` | `number` | `0` | — | — | — | Its height. |
+| `frameMs` | `number` | `0` | — | — | — | The frame time automatic quality reads, smoothed: the GPU's where timed, else the interval between frames; 0 before a frame. |
+| `deviceLosses` | `number` | `0` | — | — | — | How many times the GPU device was lost and the renderer made again on a new one (iOS Safari loses it after the page was in the background or under memory pressure). The game goes on: the next frame draws the world as it is, every mesh and texture uploaded again from the loaded assets. |
+| `gpu` | `GpuMemory \| null` | `null` | — | — | — | The GPU memory the renderer holds; null without a renderer. |
+
+```ogt
+struct DisplayInfo {
+  doc "What the display draws now (og.render.display): the settings, and what they resolved to on this device."
+  field settings DisplaySettings "The settings og.render.setDisplay last set (the defaults before)."
+  field presenting bool "Whether this host presents to a display (the web canvas): false on a native run, where nothing below moves from its default."
+  field maxFps u32 "The frame cap resolved: 30, 60, or 0 for the display's rate."
+  field displayHz f32 "The display's refresh rate as measured (requestAnimationFrame's interval); 0 where unknown."
+  field renderScale f32 "The render scale the scene is drawn at now (automatic quality's, within its bounds)."
+  field presetSteps u32 "The preset steps automatic quality has taken below RenderSettings (0: none)."
+  field sceneWidth u32 "The 3D scene's width in device pixels (the display's times the render scale)."
+  field sceneHeight u32 "Its height."
+  field frameMs f32 "The frame time automatic quality reads, smoothed: the GPU's where timed, else the interval between frames; 0 before a frame."
+  field deviceLosses u32 "How many times the GPU device was lost and the renderer made again on a new one (iOS Safari loses it after the page was in the background or under memory pressure). The game goes on: the next frame draws the world as it is, every mesh and texture uploaded again from the loaded assets."
+  field gpu Option.GpuMemory "The GPU memory the renderer holds; null without a renderer."
+}
+```
+
+<sub>`api.ogt` line 5096</sub>
+
 <a id="type-BufferGeometryDesc"></a>
 
 ### `BufferGeometryDesc` (desc struct)
@@ -5533,7 +5746,7 @@ struct BufferGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5065</sub>
+<sub>`api.ogt` line 5145</sub>
 
 <a id="type-GeometryInfo"></a>
 
@@ -5564,7 +5777,7 @@ struct GeometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 5081</sub>
+<sub>`api.ogt` line 5161</sub>
 
 <a id="type-CylinderGeometryDesc"></a>
 
@@ -5623,7 +5836,7 @@ struct CylinderGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5116</sub>
+<sub>`api.ogt` line 5196</sub>
 
 <a id="type-ConeGeometryDesc"></a>
 
@@ -5667,7 +5880,7 @@ struct ConeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5152</sub>
+<sub>`api.ogt` line 5232</sub>
 
 <a id="type-CapsuleGeometryDesc"></a>
 
@@ -5714,7 +5927,7 @@ struct CapsuleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5176</sub>
+<sub>`api.ogt` line 5256</sub>
 
 <a id="type-TorusGeometryDesc"></a>
 
@@ -5761,7 +5974,7 @@ struct TorusGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5203</sub>
+<sub>`api.ogt` line 5283</sub>
 
 <a id="type-RingGeometryDesc"></a>
 
@@ -5812,7 +6025,7 @@ struct RingGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5230</sub>
+<sub>`api.ogt` line 5310</sub>
 
 <a id="type-CircleGeometryDesc"></a>
 
@@ -5852,7 +6065,7 @@ struct CircleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5260</sub>
+<sub>`api.ogt` line 5340</sub>
 
 <a id="type-TubeGeometryDesc"></a>
 
@@ -5896,7 +6109,7 @@ struct TubeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5281</sub>
+<sub>`api.ogt` line 5361</sub>
 
 <a id="type-ShapePoints"></a>
 
@@ -5917,7 +6130,7 @@ struct ShapePoints {
 }
 ```
 
-<sub>`api.ogt` line 5355</sub>
+<sub>`api.ogt` line 5435</sub>
 
 <a id="type-ShapeGeometryDesc"></a>
 
@@ -5954,7 +6167,7 @@ struct ShapeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5361</sub>
+<sub>`api.ogt` line 5441</sub>
 
 <a id="type-ExtrudeGeometryDesc"></a>
 
@@ -6027,7 +6240,7 @@ struct ExtrudeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5378</sub>
+<sub>`api.ogt` line 5458</sub>
 
 <a id="type-LatheGeometryDesc"></a>
 
@@ -6075,7 +6288,7 @@ struct LatheGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5423</sub>
+<sub>`api.ogt` line 5503</sub>
 
 <a id="type-PolyhedronGeometryDesc"></a>
 
@@ -6119,7 +6332,7 @@ struct PolyhedronGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5449</sub>
+<sub>`api.ogt` line 5529</sub>
 
 <a id="type-SolidGeometryDesc"></a>
 
@@ -6159,7 +6372,7 @@ struct SolidGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5471</sub>
+<sub>`api.ogt` line 5551</sub>
 
 <a id="type-SweepKey"></a>
 
@@ -6182,7 +6395,7 @@ struct SweepKey {
 }
 ```
 
-<sub>`api.ogt` line 5491</sub>
+<sub>`api.ogt` line 5571</sub>
 
 <a id="type-SweepGeometryDesc"></a>
 
@@ -6234,7 +6447,7 @@ struct SweepGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5499</sub>
+<sub>`api.ogt` line 5579</sub>
 
 <a id="type-MirrorAxis"></a>
 
@@ -6261,7 +6474,7 @@ enum MirrorAxis {
 }
 ```
 
-<sub>`api.ogt` line 5526</sub>
+<sub>`api.ogt` line 5606</sub>
 
 <a id="type-GeometryPart"></a>
 
@@ -6295,7 +6508,7 @@ struct GeometryPart {
 }
 ```
 
-<sub>`api.ogt` line 5534</sub>
+<sub>`api.ogt` line 5614</sub>
 
 <a id="type-CsgOp"></a>
 
@@ -6320,7 +6533,7 @@ enum CsgOp {
 }
 ```
 
-<sub>`api.ogt` line 5548</sub>
+<sub>`api.ogt` line 5628</sub>
 
 <a id="type-CsgGeometryDesc"></a>
 
@@ -6356,7 +6569,7 @@ struct CsgGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5555</sub>
+<sub>`api.ogt` line 5635</sub>
 
 <a id="type-MergeGeometriesDesc"></a>
 
@@ -6388,7 +6601,7 @@ struct MergeGeometriesDesc {
 }
 ```
 
-<sub>`api.ogt` line 5570</sub>
+<sub>`api.ogt` line 5650</sub>
 
 <a id="type-LineMode"></a>
 
@@ -6413,7 +6626,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 5660</sub>
+<sub>`api.ogt` line 5740</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -6479,7 +6692,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 5674</sub>
+<sub>`api.ogt` line 5754</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -6530,7 +6743,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 5718</sub>
+<sub>`api.ogt` line 5798</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -6563,7 +6776,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5821</sub>
+<sub>`api.ogt` line 5901</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -6598,7 +6811,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 5835</sub>
+<sub>`api.ogt` line 5915</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -6621,7 +6834,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 5860</sub>
+<sub>`api.ogt` line 5940</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -6635,7 +6848,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 5873</sub>
+<sub>`api.ogt` line 5953</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -6669,7 +6882,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 5882</sub>
+<sub>`api.ogt` line 5962</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -6696,7 +6909,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 5897</sub>
+<sub>`api.ogt` line 5977</sub>
 
 <a id="type-Post"></a>
 
@@ -6710,7 +6923,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 6009</sub>
+<sub>`api.ogt` line 6089</sub>
 
 <a id="type-PostError"></a>
 
@@ -6731,7 +6944,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 6027</sub>
+<sub>`api.ogt` line 6107</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -6754,7 +6967,7 @@ enum VolumetricFog {
 }
 ```
 
-<sub>`api.ogt` line 6041</sub>
+<sub>`api.ogt` line 6121</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -6787,7 +7000,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 6089</sub>
+<sub>`api.ogt` line 6169</sub>
 
 ## Column kinds
 
@@ -7085,7 +7298,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 5667</sub>
+<sub>`api.ogt` line 5747</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -7096,7 +7309,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 5866</sub>
+<sub>`api.ogt` line 5946</sub>
 
 ```ogt
 column RenderTarget {
@@ -7107,7 +7320,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 5875</sub>
+<sub>`api.ogt` line 5955</sub>
 
 ```ogt
 column Post {
@@ -7118,7 +7331,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 6011</sub>
+<sub>`api.ogt` line 6091</sub>
 
 ## Constants
 

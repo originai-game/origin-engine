@@ -2246,6 +2246,86 @@ module render {
     returns Result.Void "Refused for a world that is not alive, or inside a system that did not declare RenderSettings among its writes."
   }
 
+  enum FrameCap {
+    doc "How many frames a second the display draws at most (DisplaySettings.frameCap). The simulation's fixed tick is the same at every cap: a capped frame runs the ticks its time owes, and input is read on every display frame, drawn or not."
+    variant auto "The device class's default: 60 on a phone or tablet (a coarse pointer), which halves the GPU's work on a 120 Hz ProMotion display for a game whose tick is 60 Hz or less; the display's own rate on a desktop. 30 with batterySaver."
+    variant display "Every frame the display shows (requestAnimationFrame): 120 on ProMotion, 144 and more on gaming monitors."
+    variant fps60 "At most 60 a second."
+    variant fps30 "At most 30 a second: the battery's choice, and a steady rate for a GPU that cannot hold 60."
+  }
+
+  struct DisplaySettings {
+    doc "How the frame is presented on a display: the frame cap, battery saver, render scale and automatic quality, set with og.render.setDisplay. Presentation only: none of it is in the world, so the world's hash, snapshots, saves and replays never see it, and a native run (`og run`, `og test`, reference captures) draws every frame at render scale 1 whatever it says. The web shell's graphics settings write it; a game may too."
+    desc true
+    field frameCap FrameCap "The most frames a second (auto: 60 on phones, the display's rate on desktops)."
+    field batterySaver bool "Save power: at most 30 frames a second whatever frameCap says, the render scale at most 0.75, and automatic quality as on. For a phone on battery or a player who asks for it."
+    field renderScale f32 "The 3D scene's resolution as a fraction of the display's: below 1 it is drawn smaller and scaled up bilinearly (softer, cheaper), above 1 it is supersampled; the UI, screen text and screen sprites stay at the display's resolution. With autoQuality it is the most the automatic quality draws at." {
+      default 1
+      min 0.5
+      max 2
+    }
+    field autoQuality bool "Lower the render scale (and then, where autoPresetSteps allows, the graphics preset) while frames take longer than the frame cap's interval, and raise them again when there is room, with hysteresis so it never oscillates: the GPU's time where the device times it (RenderCapabilities.gpuTimestamps), else frames that miss the display's interval, with a step up tried after a calm while and given up after three failures. False draws at renderScale and RenderSettings exactly." {
+      default true
+    }
+    field autoMinScale f32 "The least render scale automatic quality lowers to." {
+      default 0.5
+      min 0.5
+      max 2
+    }
+    field autoPresetSteps u32 "Graphics preset steps automatic quality may take below the game's own RenderSettings once the scale is at autoMinScale: 1 caps every quality field at the medium row, 2 at the low row (the rows of og.render.applyQuality); 0 never touches RenderSettings' quality. RenderSettings keeps its values: the cap is applied when the frame is drawn." {
+      default 1
+      min 0
+      max 2
+    }
+  }
+
+  struct GpuMemory {
+    doc "The GPU memory the renderer holds, counted where it creates each texture and buffer (sizes as allocated, without the driver's alignment and padding)."
+    field textures f64 "The scene's textures (every mip level as uploaded), texture arrays, environment maps, palettes, colour LUTs and the image-based light." {
+      unit bytes
+    }
+    field meshes f64 "The meshes' vertex and index buffers and their skins." {
+      unit bytes
+    }
+    field renderTargets f64 "Textures drawn into: og.render.renderTarget's, the frame's targets at the scene's size (the render scale included), the output, TAA's history, the shadow maps, the UI's glass, the reflection probes' faces and the volumetric fog." {
+      unit bytes
+    }
+    field buffers f64 "The renderer's own buffers: instances, uniforms, light tables." {
+      unit bytes
+    }
+    field total f64 "All four." {
+      unit bytes
+    }
+  }
+
+  struct DisplayInfo {
+    doc "What the display draws now (og.render.display): the settings, and what they resolved to on this device."
+    field settings DisplaySettings "The settings og.render.setDisplay last set (the defaults before)."
+    field presenting bool "Whether this host presents to a display (the web canvas): false on a native run, where nothing below moves from its default."
+    field maxFps u32 "The frame cap resolved: 30, 60, or 0 for the display's rate."
+    field displayHz f32 "The display's refresh rate as measured (requestAnimationFrame's interval); 0 where unknown."
+    field renderScale f32 "The render scale the scene is drawn at now (automatic quality's, within its bounds)."
+    field presetSteps u32 "The preset steps automatic quality has taken below RenderSettings (0: none)."
+    field sceneWidth u32 "The 3D scene's width in device pixels (the display's times the render scale)."
+    field sceneHeight u32 "Its height."
+    field frameMs f32 "The frame time automatic quality reads, smoothed: the GPU's where timed, else the interval between frames; 0 before a frame."
+    field deviceLosses u32 "How many times the GPU device was lost and the renderer made again on a new one (iOS Safari loses it after the page was in the background or under memory pressure). The game goes on: the next frame draws the world as it is, every mesh and texture uploaded again from the loaded assets."
+    field gpu Option.GpuMemory "The GPU memory the renderer holds; null without a renderer."
+  }
+
+  fn setDisplay {
+    doc "Set how the frame is presented (DisplaySettings: frame cap, battery saver, render scale, automatic quality). Applied from the next frame; presentation only, so it is allowed inside any system and never changes the simulation."
+    param world World "The world whose display it is."
+    param settings DisplaySettings "The settings; fields left out take their defaults."
+    returns Result.Void "Refused for a world that is not alive."
+  }
+
+  fn display {
+    doc "What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived and the GPU memory."
+    param world World "The world asked."
+    returns DisplayInfo
+  }
+
   fn look {
     doc "The look last applied (by og.render.applyLook or GameDesc.look), as og.load.lookInfo describes it; null before any."
     param world World "The world asked."

@@ -7904,6 +7904,136 @@ export declare function Shader(value?: Shader, options?: FieldOptions): FieldSpe
 
 
 
+/**
+ * How many frames a second the display draws at most (DisplaySettings.frameCap). The simulation's fixed tick is the same at every cap: a capped frame runs the ticks its time owes, and input is read on every display frame, drawn or not.
+ * - `"auto"`: The device class's default: 60 on a phone or tablet (a coarse pointer), which halves the GPU's work on a 120 Hz ProMotion display for a game whose tick is 60 Hz or less; the display's own rate on a desktop. 30 with batterySaver.
+ * - `"display"`: Every frame the display shows (requestAnimationFrame): 120 on ProMotion, 144 and more on gaming monitors.
+ * - `"fps60"`: At most 60 a second.
+ * - `"fps30"`: At most 30 a second: the battery's choice, and a steady rate for a GPU that cannot hold 60.
+ */
+export type FrameCap = "auto" | "display" | "fps60" | "fps30";
+
+/**
+ * How the frame is presented on a display: the frame cap, battery saver, render scale and automatic quality, set with og.render.setDisplay. Presentation only: none of it is in the world, so the world's hash, snapshots, saves and replays never see it, and a native run (`og run`, `og test`, reference captures) draws every frame at render scale 1 whatever it says. The web shell's graphics settings write it; a game may too.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DisplaySettings {
+  /**
+   * The most frames a second (auto: 60 on phones, the display's rate on desktops).
+   *
+   * @default "auto"
+   */
+  readonly frameCap?: FrameCap;
+  /**
+   * Save power: at most 30 frames a second whatever frameCap says, the render scale at most 0.75, and automatic quality as on. For a phone on battery or a player who asks for it.
+   *
+   * @default false
+   */
+  readonly batterySaver?: boolean;
+  /**
+   * The 3D scene's resolution as a fraction of the display's: below 1 it is drawn smaller and scaled up bilinearly (softer, cheaper), above 1 it is supersampled; the UI, screen text and screen sprites stay at the display's resolution. With autoQuality it is the most the automatic quality draws at.
+   *
+   * @default 1
+   * @range 0.5..2
+   */
+  readonly renderScale?: number;
+  /**
+   * Lower the render scale (and then, where autoPresetSteps allows, the graphics preset) while frames take longer than the frame cap's interval, and raise them again when there is room, with hysteresis so it never oscillates: the GPU's time where the device times it (RenderCapabilities.gpuTimestamps), else frames that miss the display's interval, with a step up tried after a calm while and given up after three failures. False draws at renderScale and RenderSettings exactly.
+   *
+   * @default true
+   */
+  readonly autoQuality?: boolean;
+  /**
+   * The least render scale automatic quality lowers to.
+   *
+   * @default 0.5
+   * @range 0.5..2
+   */
+  readonly autoMinScale?: number;
+  /**
+   * Graphics preset steps automatic quality may take below the game's own RenderSettings once the scale is at autoMinScale: 1 caps every quality field at the medium row, 2 at the low row (the rows of og.render.applyQuality); 0 never touches RenderSettings' quality. RenderSettings keeps its values: the cap is applied when the frame is drawn.
+   *
+   * @default 1
+   * @range 0..2
+   */
+  readonly autoPresetSteps?: number;
+}
+
+/**
+ * The GPU memory the renderer holds, counted where it creates each texture and buffer (sizes as allocated, without the driver's alignment and padding).
+ */
+export interface GpuMemory {
+  /**
+   * The scene's textures (every mip level as uploaded), texture arrays, environment maps, palettes, colour LUTs and the image-based light.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly textures: number;
+  /**
+   * The meshes' vertex and index buffers and their skins.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly meshes: number;
+  /**
+   * Textures drawn into: og.render.renderTarget's, the frame's targets at the scene's size (the render scale included), the output, TAA's history, the shadow maps, the UI's glass, the reflection probes' faces and the volumetric fog.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly renderTargets: number;
+  /**
+   * The renderer's own buffers: instances, uniforms, light tables.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly buffers: number;
+  /**
+   * All four.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly total: number;
+}
+
+/**
+ * What the display draws now (og.render.display): the settings, and what they resolved to on this device.
+ */
+export interface DisplayInfo {
+  /** The settings og.render.setDisplay last set (the defaults before). */
+  readonly settings: DisplaySettings;
+  /**
+   * Whether this host presents to a display (the web canvas): false on a native run, where nothing below moves from its default.
+   */
+  readonly presenting: boolean;
+  /** The frame cap resolved: 30, 60, or 0 for the display's rate. */
+  readonly maxFps: number;
+  /**
+   * The display's refresh rate as measured (requestAnimationFrame's interval); 0 where unknown.
+   */
+  readonly displayHz: number;
+  /** The render scale the scene is drawn at now (automatic quality's, within its bounds). */
+  readonly renderScale: number;
+  /** The preset steps automatic quality has taken below RenderSettings (0: none). */
+  readonly presetSteps: number;
+  /** The 3D scene's width in device pixels (the display's times the render scale). */
+  readonly sceneWidth: number;
+  /** Its height. */
+  readonly sceneHeight: number;
+  /**
+   * The frame time automatic quality reads, smoothed: the GPU's where timed, else the interval between frames; 0 before a frame.
+   */
+  readonly frameMs: number;
+  /**
+   * How many times the GPU device was lost and the renderer made again on a new one (iOS Safari loses it after the page was in the background or under memory pressure). The game goes on: the next frame draws the world as it is, every mesh and texture uploaded again from the loaded assets.
+   */
+  readonly deviceLosses: number;
+  /** The GPU memory the renderer holds; null without a renderer. */
+  readonly gpu: GpuMemory | null;
+}
+
+
+
 
 
 
@@ -25608,6 +25738,8 @@ export interface ProbeMemory {
    * @unit bytes (bytes)
    */
   readonly audio: number | null;
+  /** The GPU memory the renderer holds (og.render.display's gpu); null without a renderer. */
+  readonly gpu: GpuMemory | null;
 }
 
 /**
@@ -28618,6 +28750,20 @@ export declare namespace og {
      * @returns Refused for a world that is not alive, or inside a system that did not declare RenderSettings among its writes.
      */
     function applyQuality(world: World, preset: GraphicsQuality): Result<void>;
+    /**
+     * Set how the frame is presented (DisplaySettings: frame cap, battery saver, render scale, automatic quality). Applied from the next frame; presentation only, so it is allowed inside any system and never changes the simulation.
+     *
+     * @param world The world whose display it is.
+     * @param settings The settings; fields left out take their defaults.
+     * @returns Refused for a world that is not alive.
+     */
+    function setDisplay(world: World, settings?: DisplaySettings): Result<void>;
+    /**
+     * What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived and the GPU memory.
+     *
+     * @param world The world asked.
+     */
+    function display(world: World): DisplayInfo;
     /**
      * The look last applied (by og.render.applyLook or GameDesc.look), as og.load.lookInfo describes it; null before any.
      *

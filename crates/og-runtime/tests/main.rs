@@ -12,6 +12,7 @@ mod billboards;
 mod camera_projection;
 mod contact_hit;
 mod cookie_cap;
+mod display;
 mod drop_shadows;
 mod geometry_uv_repeat;
 mod material_arrays;
