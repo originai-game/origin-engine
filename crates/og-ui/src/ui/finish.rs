@@ -639,13 +639,43 @@ impl Ui {
             self.state.focus = self.request_focus;
         }
         if top_scope != self.state.scope {
-            if top_scope != 0 {
-                let inside = hits
-                    .iter()
-                    .any(|h| h.key == self.state.focus && h.scope == top_scope);
-                if !inside {
-                    if self.state.scope == 0 {
-                        self.state.focus_return = self.state.focus;
+            let inside = |f: u64| {
+                if top_scope == 0 {
+                    f != 0 && alive(f)
+                } else {
+                    hits.iter().any(|h| h.key == f && h.scope == top_scope)
+                }
+            };
+            // Back to a scope it opened over (the base, a menu under its
+            // submenu): the focus it had there, else that scope's first.
+            let back_to = self
+                .state
+                .focus_returns
+                .iter()
+                .rposition(|&(s, _)| s == top_scope);
+            if let Some(k) = back_to {
+                let (_, back) = self.state.focus_returns[k];
+                self.state.focus_returns.truncate(k);
+                if !inside(self.state.focus) {
+                    self.state.focus = if inside(back) {
+                        back
+                    } else if top_scope != 0 {
+                        first_in(top_scope)
+                    } else {
+                        0
+                    };
+                }
+            } else if top_scope != 0 {
+                if !inside(self.state.focus) {
+                    // Entries of scopes no longer on screen are dropped; one
+                    // that replaced another (the old one gone) opened over
+                    // what that one had.
+                    let on_screen = |s: u64| s == 0 || hits.iter().any(|h| h.scope == s);
+                    self.state.focus_returns.retain(|&(s, _)| on_screen(s));
+                    if on_screen(self.state.scope) {
+                        self.state
+                            .focus_returns
+                            .push((self.state.scope, self.state.focus));
                     }
                     let req = self.request_focus;
                     self.state.focus =
@@ -656,11 +686,7 @@ impl Ui {
                         };
                 }
             } else {
-                if !alive(self.state.focus) || self.state.focus == 0 {
-                    let back = self.state.focus_return;
-                    self.state.focus = if alive(back) { back } else { 0 };
-                }
-                self.state.focus_return = 0;
+                self.state.focus_returns.clear();
             }
         }
         if !alive(self.state.focus) {

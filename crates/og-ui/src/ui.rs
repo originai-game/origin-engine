@@ -211,8 +211,11 @@ pub(crate) struct State {
     /// That scope is a locked dialog: Back does not close it, so
     /// `Ui::back` answers it.
     pub scope_locked: bool,
-    /// Where focus returns when that scope closes.
-    pub focus_return: u64,
+    /// Where focus returns as scopes close, innermost last: each entry is
+    /// the scope (0: none) a scope opened over and the focus it had there,
+    /// so a submenu closing gives the focus back to its row and the menu
+    /// closing then to what opened it.
+    pub focus_returns: Vec<(u64, u64)>,
     /// Keyboard and gamepad navigation as the last frame declared it.
     pub nav_off: bool,
     /// The stick's held direction (0 none, 1 + Nav index) and since which tick.
@@ -384,7 +387,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 11;
+const STATE_VERSION: u32 = 12;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,
