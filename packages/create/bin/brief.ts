@@ -1068,3 +1068,87 @@ if (import.meta.main) {
     process.exit(1);
   }
 }
+
+// ------------------------------------------------------- a style's art
+
+/**
+ * The art a generated UI style asks for: `art-requests.json`, written by
+ * `og style new` beside its `style.ogt` (og-ui's `style_gen::art_requests_json`,
+ * docs/ui.md §12.5 and §13.3).
+ */
+export interface StyleArtRequests {
+  /** The style's slug. */
+  readonly style: string;
+  /** The look family it was generated for (og-taste §12: `ornate fantasy`). */
+  readonly look: string;
+  readonly premise: string;
+  readonly choices: {
+    readonly scheme: string;
+    readonly seed: string;
+    readonly shape: string;
+    readonly ornament: string;
+    readonly motion: string;
+    readonly finish: string;
+  };
+  /** The style's palette roles the art must sit in (`#rrggbb`). */
+  readonly palette: Readonly<Record<string, string>>;
+  /** Each slot's spec, as og-ui's `slot_json` writes it. */
+  readonly slots: readonly { readonly name: string; readonly kind: string; readonly insets?: readonly number[] | null }[];
+}
+
+/** One slot of a generated style and the brief that fills it. */
+export interface StyleArtBrief {
+  /** The slot's name (`gilded/panel`). */
+  readonly slot: string;
+  readonly brief: ArtBrief;
+}
+
+/** How each shape language reads in a prompt. */
+const SHAPE_WORDS: Readonly<Record<string, string>> = {
+  soft: "gently rounded corners",
+  round: "chunky rounded corners",
+  pill: "capsule shapes, fully rounded ends",
+  squircle: "continuous squircle corners",
+  sharp: "hard square corners",
+  cut: "45-degree cut corners",
+  notch: "square notched corners",
+  pixel: "square pixel corners on a hard pixel grid",
+};
+
+/** How each finish reads in a prompt. */
+const FINISH_WORDS: Readonly<Record<string, string>> = {
+  flat: "flat fills and hairline outlines",
+  gradient: "lit top-to-bottom gradients, a thick outline and a hard drop shadow",
+  glass: "frosted translucent glass with a faint light edge",
+  hologram: "glowing hairlines and a faint holographic inner glow",
+  neon: "glowing neon tubes on a dark ground",
+  paper: "paper sheets with ink outlines and soft shadows",
+  bevel: "hard bevels, light top-left edges and dark bottom-right edges",
+  brush: "ink washes and dry brush strokes",
+};
+
+/**
+ * The briefs for a generated style's art slots (its frames, buttons,
+ * ornaments and icon set), in the look's style: each slot's kind through
+ * `artBrief`, its subject the style's shape language, finish, ornament
+ * level and palette, so the art lands as the procedural dressings already
+ * draw it. Pure: the same look and requests give the same briefs.
+ */
+export function styleArtBriefs(look: BriefLook, requests: StyleArtRequests): StyleArtBrief[] {
+  const c = requests.choices;
+  const roles = Object.entries(requests.palette)
+    .map(([role, hex]) => `${role} ${colourName(hex)} ${hex}`)
+    .join(", ");
+  const shape = SHAPE_WORDS[c.shape] ?? c.shape;
+  const finish = FINISH_WORDS[c.finish] ?? c.finish;
+  const ornament = c.ornament === "rich" ? "rich ornament at the corners" : c.ornament === "light" ? "a little ornament" : "no ornament";
+  return requests.slots.map((s) => {
+    if (!(ART_KINDS as readonly string[]).includes(s.kind)) throw new Error(`${s.name}: '${s.kind}' is not an art kind`);
+    const part = s.name.split("/").pop() ?? s.name;
+    const subject =
+      `the ${part.replace(/-/g, " ")} of the ${requests.style} UI style for ${requests.premise} (a ${requests.look} look, ${c.scheme} scheme): ` +
+      `${shape}, ${finish}, ${ornament}; in its palette: ${roles}`;
+    const insets = s.insets && s.insets.length === 4 ? (s.insets as unknown as readonly [number, number, number, number]) : undefined;
+    return { slot: s.name, brief: artBrief(look, s.kind as ArtKind, subject, insets ? { insets } : {}) };
+  });
+}

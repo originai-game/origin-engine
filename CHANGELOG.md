@@ -21,6 +21,36 @@ is one line here, written at the merge that changes
   `packages/engine/tests/api-surface.test.ts` holds.
 - `og test --jobs N` runs up to N playtests at once (default 1, as
   before); each one's output is printed whole, in the playtests' order.
+- **UI styles are systems (docs/ui.md U4b).** Widgets draw as style
+  parts (`Button.base[primary][pressed]`, `Slot.frame[rarity=epic]`,
+  `Meter.fill[kind=mana]`, ...) from the style's most specific `dress`
+  blocks with the UI pass's paints, strokes, effects and materials; a
+  part a style does not dress draws from its tokens (shape language per
+  element class, elevation, strokes), and every state moves on the
+  style's `spring ui`. Widget frames move (the built-in packs' sheets,
+  og-ui's references); an existing game draws in its style as before
+  otherwise. Added to the IDL: `ElementDesc.part` and `partClass`,
+  `UiTheme.tokens` (the style's tokens as JSON), `og.ui.feedback(event,
+  rise)` and `og.ui.setHaptics(intensity)`. Each UI event plays a sound
+  of its set (never the same twice running) at a volume and pitch from
+  its ranges, and its haptic pattern reaches the pad's rumble and the
+  phone's vibration on both hosts, scaled or silenced by the player.
+- Added: `og style new <name> --look <family> --premise <text>` (and
+  `--seed`, `--scheme`, `--shape`, `--ornament`, `--motion`, `--finish`)
+  generates a version 2 style with its sounds and the art slots it asks
+  for (`art-requests.json`); thirteen generated seed styles are built in,
+  one per look family: `gilded`, `storybook`, `tactical`, `holo`,
+  `cyber`, `bubbly`, `kawaii`, `arcade`, `craft`, `minimal`, `dread`,
+  `broadcast`, `inkwash` (`og style list`). The cook bundles the packs'
+  fonts and icons a style names.
+- Added: `og ui slots [project] [--json]` lists every art slot of a game
+  with its spec; an art slot without a texture draws the style's
+  placeholder for its kind. `styleArtBriefs(look, requests)` in the art
+  brief (`@origingame/create-game`) turns a generated style's
+  art requests into briefs (an addition: `artBrief`, `readLook` and
+  `presetLook` are unchanged).
+- The archetypes' and examples' styles are version 2 (`og style
+  upgrade`); version 1 still loads.
 - **Breaking: WebGL2 is removed; the web is WebGPU only** (the owner,
   2026-11-01, design §8). A browser without WebGPU gets the player
   shell's "This browser does not support WebGPU" card (reported to the

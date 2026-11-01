@@ -30,8 +30,8 @@ import { fileURLToPath } from "node:url";
 // for one asset. bin/brief.ts is a copy of the knowledge package's
 // scripts/brief.ts (scripts/pack-template.ts writes it; the tests hold it
 // equal); README §The art brief.
-export { ART_KINDS, ART_RESOURCES, artBrief, colourName, parseLook, parsePalette, presetLook, readLook } from "./brief.ts";
-export type { ArtBlocks, ArtBrief, ArtKind, ArtResource, ArtValue, BriefLook, BriefOptions, BriefPalette, BriefReference, BriefStyle, ImageParams, ModelParams, PaletteColour, ReadLookOptions } from "./brief.ts";
+export { ART_KINDS, ART_RESOURCES, artBrief, colourName, parseLook, parsePalette, presetLook, readLook, styleArtBriefs } from "./brief.ts";
+export type { ArtBlocks, ArtBrief, ArtKind, ArtResource, ArtValue, BriefLook, BriefOptions, BriefPalette, BriefReference, BriefStyle, ImageParams, ModelParams, PaletteColour, ReadLookOptions, StyleArtBrief, StyleArtRequests } from "./brief.ts";
 
 /** Directories of a template copy that are build output, never scaffolded. */
 export const SKIPPED = new Set(["cooked", "dist", "node_modules", "og-out", ".og"]);

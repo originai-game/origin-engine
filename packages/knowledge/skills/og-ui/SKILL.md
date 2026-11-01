@@ -321,21 +321,155 @@ The game's UI follows the game's art, never the Origin platform's look:
 the engine has no house style to fall back on. Without a style a UI draws
 in **prototype**, the engine's placeholder: greys, near-square corners and
 a cyan focus ring, meant to be replaced. `og polish` warns when a game
-ships in it. A **style** (`og.load.style`, an `.ogt` of `type style`) is
-complete: its scheme, every palette role (`backdrop`, `panel`, `ink`,
-`inkMuted`, `primary`, `focus`, `hud`, `danger`, ...), the four radii
-(`small`, `control`, `bar`, `panel`), the type ramp, durations, fonts and
-icons. It dresses every element class in nine-slice frames from its atlas
-(panel, card, button with hover, pressed and disabled, field, slot,
-tooltip, HUD box, progress track and fill), with ornaments (panel corners,
-the divider, a heading flourish), a panel texture, shadows and glows,
-press squash and hover lift, entrances and sounds. Choosing one is
-og-taste §1.
+ships in it. A **style** (`og.load.style`, an `.ogt` of `type style`,
+`version 2`) is a whole design system: its tokens (palette roles, semantic
+colours, typography by role and breakpoint, space and size scales, radii,
+strokes, elevation, a shape language per element class, motion, sounds and
+haptics) and its **dressings**, which draw every part of every widget with
+paints, strokes, effects and materials (or nine-slices from its atlas). A
+part a style does not dress draws from its tokens and still looks
+finished. Choosing one is og-taste §1.
+
+The grammar, block by block (`templates/styles/minimal/style.ogt` is a
+short complete one; `og style upgrade <file>` writes a version 1 style as
+version 2, keeping how it draws):
+
+```text
+type style
+version 2
+---
+name "arena"
+scheme dark
+# Every palette role (backdrop, panel, ink, inkMuted, primary, focus, ...).
+palette {
+  backdrop "#0a1431"
+  panel "#1c2540"
+  ink "#f5f7ff"
+  primary "#e8322b"
+}
+# Semantic colours: status icons and patterns, rarities with pips, teams, elements, chart series.
+colors {
+  success icon "check"
+  rare "#2f7fef" pips 3
+  team1 "#3d7eff"
+}
+# A role: size, line height, tracking (em; past 0.05 it is set in capitals), weight, font; per breakpoint.
+typography {
+  display 48 54 -0.01 700 display {
+    phonePortrait 38 43
+    phoneLandscape 43 48
+  }
+  body 15 22 0 400 body
+  label 12 17 0.08 600 body
+  numeric 19 26 0 500 numeric
+}
+space {
+  sm 8
+  md 12
+}
+size {
+  touch 44
+}
+stroke {
+  hairline 1
+  focus 2
+}
+elevation {
+  raised {
+    shadow 0 2 6 0 "#00000040"
+  }
+}
+# Each element class: round, squircle, bevel, notch or square, then a radius or pill.
+shape {
+  panel bevel 10
+  button round pill
+  slot notch 6
+}
+fonts {
+  body "Rajdhani-Bold.ttf"
+  display "@styles/neon/ChakraPetch-BoldItalic.ttf"
+  cjk "@styles/cjk/NotoSansSC-Bold.ttf"
+}
+motion {
+  spring ui 150 0
+  spring playful 400 0.18
+  ease standard 0.2 0 0 1
+  duration fast 140
+  stagger 30
+  overshoot 0.06
+}
+# Every event of docs/ui.md §7.8 (hover to revealMythic): a set, picked never twice running, its ranges, a haptic.
+sounds {
+  press "tap.ogt" "tap2.ogt" volume 0.5 0.65 pitch 0.96 1.04 haptic tick
+  error "error.ogt" volume 0.6 0.7 pitch 1 1.02 haptic error
+  hover none haptic none
+}
+dress "Button.base" {
+  fill linear 180 controlStrong control
+  stroke 2 lineStrong inside
+  effect dropShadow 0 4 0 0 "#0000006c"
+  press 1 0.96 2
+  hover 0 1
+}
+dress "Button.base[primary]" {
+  fill linear 180 primary primaryActive
+}
+dress "Button.base[primary][pressed]" {
+  effect innerShadow 0 3 0 0 "#0000002e"
+}
+dress "Slot.frame[rarity=epic]" {
+  stroke 2 "#a855f7" inside
+  effect outerGlow 8 "#a855f766"
+}
+```
+
+A selector is `Component.part`, then any of `[variant]`, `[state]`
+(`hover`, `pressed`, `focused`, `disabled`, `selected`, `on`, `low`) and
+`[attr=value]`; the more specific wins and lines of the same selector merge.
+The parts: `Panel.frame`, `Card.frame`, `Dialog.frame`, `Tooltip.frame`,
+`Hud.frame`, `Button.base`, `Field.frame`, `Slot.frame`, `Meter.track`,
+`Meter.fill[kind=health]`, `Tabs.track`, `Tabs.tab`, `Chip.base`,
+`Badge.base[tone=danger]`, `Checkbox.box`, `Radio.box`, `Toggle.track`,
+`Slider.track`; an element names its own part, with attributes the game
+chooses, in its desc (`{ part: "ShopCard.frame[rarity=epic]", partClass:
+"card" }`). Name colours by palette role (`primary`, `lineStrong`) so a
+game's `primaryColor` and high contrast follow; a quoted `"#rrggbbaa"` is
+fixed. A `fill vector "<asset>.svg"` paints vector art the style's asset
+binding loads. Every state moves on the style's `spring ui`, so hover,
+press and selection never snap.
+
+Haptics: each event's pattern reaches the pad's rumble and the phone's
+vibration on both hosts; the player's setting scales or silences them
+(`og.ui.setHaptics(world, 0..1)`, 0 off, the settings screen's vibration
+switch). `og.ui.feedback(world, "reward")` plays an event's sound and
+haptic by hand.
+
+Art slots (docs/ui.md §13): a UI document's `art` element is a slot (its
+kind, aspect, focal point); it draws the slot's texture, or until it lands
+the style's placeholder for its kind (a gradient of the style's colours
+and the kind's icon, never a grey box). `og ui slots [project] [--json]` lists every slot of a game with
+its spec (kind, aspect, focal point, safe area, fit) and fails on a bad one.
+
+**A new style for the game's look**: `og style new <name> --look "<family>"
+--premise "<one line>"`, then any of `--seed "#rrggbb"`, `--scheme dark|light`,
+`--shape soft|round|pill|squircle|sharp|cut|notch|pixel`,
+`--ornament none|light|rich`,
+`--motion calm|snappy|bouncy|heavy|mechanical|floaty` and
+`--finish flat|gradient|glass|hologram|neon|paper|bevel|brush`. It starts
+from the seed style nearest the look, writes `assets/styles/<name>/` (the
+style with every ink held to its contrast bar, its `type sfx` sounds, and
+`art-requests.json`: the frames, buttons, ornaments and icons it asks for,
+which the art brief's `styleArtBriefs` turns into prompts) and prints the
+`ui` line. It draws finished before any art lands; read its contact sheet
+(§8), then tune its values.
 
 The usual way in is the game's look (og-taste §12): its `ui` line names
 the style, and every catalogue preset already names one. `ui "pixel"` is a
-built-in style by slug (`pixel`, `cartoon`, `fantasy`, `scifi`, `paper`,
-`neon`; `og cook` bundles the one a look names). `ui
+built-in style by slug (`og style list`: the atlas packs `pixel`, `cartoon`,
+`fantasy`, `scifi`, `paper`, `neon`, and the generated seeds `gilded`,
+`storybook`, `tactical`, `holo`, `cyber`, `bubbly`, `kawaii`, `arcade`,
+`craft`, `minimal`, `dread`, `broadcast`, `inkwash`, one per look family;
+`og cook` bundles the one a look names and the fonts and icons it shares). `ui
 "styles/<name>/style.ogt"` is the game's own, and a game's
 `assets/styles/<slug>/style.ogt` wins over the built-in of that slug.
 To make one from a built-in, run `og style eject <slug> <name>` (`og style
@@ -343,10 +477,10 @@ list` names the slugs): it writes the built-in's style.ogt, atlas, icons,
 fonts with their import settings and licences into `assets/styles/<name>/`
 (never over existing files without `--force`) and prints the `ui
 "styles/<name>/style.ogt"` line for the look. Then edit palette roles,
-radii and fonts in `assets/styles/<name>/style.ogt`; a style's ids are read
-relative to its file first, then from `assets/`, and its `cjk` fonts stay
-the shared built-in `@styles/cjk/` ones. A style file must name every
-palette role and all four radii; `og cook` lists the ones missing. Loading
+tokens and dressings in `assets/styles/<name>/style.ogt`; a style's ids are
+read relative to its file first, then from `assets/`, and its `cjk` fonts
+stay the shared built-in `@styles/cjk/` ones. A style file must name every
+palette role; `og cook` lists what is missing or malformed. Loading
 one by hand:
 
 ```ts

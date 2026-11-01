@@ -9,7 +9,7 @@ import { afterAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ART_KINDS, artBrief, colourName, parsePalette, presetLook, readLook, UI_KINDS, uiAllows, type BriefLook } from "../scripts/brief.ts";
+import { ART_KINDS, artBrief, colourName, parsePalette, presetLook, readLook, styleArtBriefs, UI_KINDS, uiAllows, type BriefLook } from "../scripts/brief.ts";
 
 const temps: string[] = [];
 afterAll(() => {
@@ -251,4 +251,26 @@ test("style art is a nine-slice with its insets and one cell per state", () => {
   expect(pixel.ui?.conform.join(" ")).toContain("pixel grid");
   // A 1 x 2 item there: cells of the smallest size, 16, so 16 x 32 at 1024 / 32 = 32.
   expect(artBrief(presetLook("16bit-pixel"), "itemIcon", "a torch", { cells: [1, 2] }).image?.grid).toEqual({ width: 16, height: 32, scale: 32 });
+});
+
+test("a generated style's art requests become one brief per slot, in its shape language, finish and palette", () => {
+  // templates/styles/gilded/art-requests.json, written by og style new: six
+  // frames, the button and the primary, three ornaments (ornament rich), the icon set.
+  const file = join(import.meta.dir, "..", "..", "..", "templates", "styles", "gilded", "art-requests.json");
+  const requests = JSON.parse(readFileSync(file, "utf8"));
+  const briefs = styleArtBriefs(presetLook("16bit-pixel"), requests);
+  expect(briefs.map((b) => b.slot)).toEqual([
+    "gilded/panel", "gilded/card", "gilded/field", "gilded/slot", "gilded/tooltip", "gilded/hud",
+    "gilded/button", "gilded/button-primary", "gilded/corner", "gilded/divider", "gilded/flourish", "gilded/icons",
+  ]);
+  const button = briefs.find((b) => b.slot === "gilded/button-primary")!.brief;
+  expect(button.kind).toBe("styleButton");
+  expect(button.ui?.nineSlice?.states).toEqual(["normal", "hover", "pressed", "disabled", "focused"]);
+  expect(button.prompt).toContain("square notched corners");
+  expect(button.prompt).toContain("primary");
+  expect(button.prompt).toContain(requests.palette.primary);
+  const corner = briefs.find((b) => b.slot === "gilded/corner")!.brief;
+  expect(corner.kind).toBe("ornament");
+  expect(corner.prompt).toContain("rich ornament");
+  expect(() => styleArtBriefs(presetLook("16bit-pixel"), { ...requests, slots: [{ name: "x/y", kind: "frame" }] })).toThrow("not an art kind");
 });
