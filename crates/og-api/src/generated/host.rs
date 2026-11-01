@@ -820,6 +820,24 @@ pub trait UiApi: Wire {
     fn og_ui_layout_stats(&self) -> String;
     /// `og.ui.setDraw`
     fn og_ui_set_draw(&self, desc: Option<String>);
+    /// `og.ui.openWorldAnchor`
+    fn og_ui_open_world_anchor(&self, id: String, desc: Option<String>) -> String;
+    /// `og.ui.openWorldPanel`
+    fn og_ui_open_world_panel(&self, id: String, desc: Option<String>) -> String;
+    /// `og.ui.defineMass`
+    fn og_ui_define_mass(&self, name: String, desc: Option<String>) -> u32;
+    /// `og.ui.spawnMass`
+    fn og_ui_spawn_mass(&self, template: u32, instances: String);
+    /// `og.ui.pushMass`
+    fn og_ui_push_mass(&self, template: u32, instances: String);
+    /// `og.ui.massCount`
+    fn og_ui_mass_count(&self, template: u32) -> u32;
+    /// `og.ui.particles`
+    fn og_ui_particles(&self, desc: Option<String>);
+    /// `og.ui.meta`
+    fn og_ui_meta(&self, id: String, desc: Option<String>);
+    /// `og.ui.sceneViewport`
+    fn og_ui_scene_viewport(&self, id: String, desc: Option<String>) -> String;
     /// `og.ui.screen`
     fn og_ui_screen(&self, name: String, vm: Option<String>) -> String;
     /// `og.ui.component`
@@ -1369,6 +1387,15 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_overlaps",
     "og_ui_layout_stats",
     "og_ui_set_draw",
+    "og_ui_open_world_anchor",
+    "og_ui_open_world_panel",
+    "og_ui_define_mass",
+    "og_ui_spawn_mass",
+    "og_ui_push_mass",
+    "og_ui_mass_count",
+    "og_ui_particles",
+    "og_ui_meta",
+    "og_ui_scene_viewport",
     "og_ui_screen",
     "og_ui_component",
     "og_ui_open_slot",

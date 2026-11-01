@@ -8014,6 +8014,28 @@
         "TextEffectsDesc",
         "DrawDesc",
         "BlendMode",
+        "WorldTarget",
+        "AnchorScaleMode",
+        "WorldOcclusion",
+        "Declutter",
+        "EdgeClampDesc",
+        "WorldAnchorDesc",
+        "AnchorInfo",
+        "WorldPanelDesc",
+        "PanelInfo",
+        "MassKind",
+        "MassEase",
+        "MassSpace",
+        "ParticleShape",
+        "MassKey",
+        "MassTemplateDesc",
+        "MassInstance",
+        "EmitFrom",
+        "ParticlesDesc",
+        "MetaKind",
+        "MetaDesc",
+        "SceneViewportDesc",
+        "SceneViewportInfo",
         "UiDocEvent",
         "UiDocResponse",
         "UiLayer",
@@ -10417,6 +10439,174 @@
             }
           ],
           "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "openWorldAnchor",
+          "doc": "Open an element anchored in the world, closed by close(): its children are an ordinary subtree (labels, bars, icons, buttons) laid out at its own size, then projected, scaled, depth tested, decluttered and clamped as desc says. Drawn under the screen's own elements. og.ui.setDraw after it draws its box. For thousands of tags of one kind (overhead bars on an army) use mass elements instead.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id; the probe path is the id alone."
+            },
+            {
+              "name": "desc",
+              "type": "WorldAnchorDesc",
+              "optional": true,
+              "doc": "What it sits on and how it follows the camera."
+            }
+          ],
+          "returns": "AnchorInfo",
+          "publish": true
+        },
+        {
+          "name": "openWorldPanel",
+          "doc": "Open a world panel, closed by close(): its children are an ordinary UI (buttons, lists, fields) laid out at width by height and drawn into desc.target; a press on its quad reaches its controls. One render target per panel.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id; the probe path is the id alone."
+            },
+            {
+              "name": "desc",
+              "type": "WorldPanelDesc",
+              "optional": true,
+              "doc": "Its target, size and quad."
+            }
+          ],
+          "returns": "PanelInfo",
+          "publish": true
+        },
+        {
+          "name": "defineMass",
+          "doc": "Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle.",
+          "params": [
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "Its name."
+            },
+            {
+              "name": "desc",
+              "type": "MassTemplateDesc",
+              "optional": true,
+              "doc": "What it draws and how it moves."
+            }
+          ],
+          "returns": "u32",
+          "publish": true
+        },
+        {
+          "name": "spawnMass",
+          "doc": "Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them.",
+          "params": [
+            {
+              "name": "template",
+              "type": "u32",
+              "optional": false,
+              "doc": "From defineMass."
+            },
+            {
+              "name": "instances",
+              "type": "List<MassInstance>",
+              "optional": false,
+              "doc": "The instances."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "pushMass",
+          "doc": "Show instances of a template for this tick only (overhead bars, nameplates, status icons rebuilt every tick with their values).",
+          "params": [
+            {
+              "name": "template",
+              "type": "u32",
+              "optional": false,
+              "doc": "From defineMass."
+            },
+            {
+              "name": "instances",
+              "type": "List<MassInstance>",
+              "optional": false,
+              "doc": "The instances."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "massCount",
+          "doc": "The live spawned instances of a template.",
+          "params": [
+            {
+              "name": "template",
+              "type": "u32",
+              "optional": false,
+              "doc": "From defineMass."
+            }
+          ],
+          "returns": "u32",
+          "publish": true
+        },
+        {
+          "name": "particles",
+          "doc": "Emit particles from the element built just before (a control, or a container just opened). Call every tick it emits; a burst throws on the ticks desc.fire is set. og.ui.burst is a preset of it.",
+          "params": [
+            {
+              "name": "desc",
+              "type": "ParticlesDesc",
+              "optional": true,
+              "doc": "What it throws."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "meta",
+          "doc": "A meta layer this tick: a damage vignette, a low-health pulse, a material over the whole frame.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "MetaDesc",
+              "optional": true,
+              "doc": "What it draws."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "sceneViewport",
+          "doc": "A viewport: a camera's render target shown in the layout, its drag, wheel and pointer ray handed back so a menu can orbit, pick and rotate.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SceneViewportDesc",
+              "optional": true,
+              "doc": "What it shows and its camera."
+            }
+          ],
+          "returns": "SceneViewportInfo",
           "publish": true
         },
         {
@@ -40732,6 +40922,1331 @@
         "softLight": "A gentle overlay.",
         "colorDodge": "Brightens what is under it by the paint."
       }
+    },
+    "WorldTarget": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "What an anchored element or a world panel is placed on: an entity (its world pose, down og.Parent) or a world point.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Entity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The entity; null places it on point.",
+          "default": null
+        },
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The world point, when entity is null.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "AnchorScaleMode": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How an anchored element's size follows its distance from the camera.",
+      "type": "string",
+      "enum": [
+        "constant",
+        "distance"
+      ],
+      "x-og-variants": {
+        "constant": "Its laid-out size at every distance (a nameplate that stays readable).",
+        "distance": "1 at reference world units, larger nearer and smaller farther, between minScale and maxScale (a tag that feels in the world)."
+      }
+    },
+    "WorldOcclusion": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What the scene in front of an anchored element does to it: a depth test of its point against the frame's depth, on the GPU.",
+      "type": "string",
+      "enum": [
+        "none",
+        "fade",
+        "hide"
+      ],
+      "x-og-variants": {
+        "none": "Drawn over the scene.",
+        "fade": "Drawn at occludedAlpha where the scene is in front.",
+        "hide": "Not drawn where the scene is in front."
+      }
+    },
+    "Declutter": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How an anchored element that overlaps one of higher priority (or as high and nearer) resolves.",
+      "type": "string",
+      "enum": [
+        "none",
+        "shift",
+        "stack",
+        "hide"
+      ],
+      "x-og-variants": {
+        "none": "It overlaps.",
+        "shift": "Moved the shortest way clear (else stacked above).",
+        "stack": "Moved above what it overlaps, one over another (a crowd's nameplates).",
+        "hide": "Faded out while it overlaps."
+      }
+    },
+    "EdgeClampDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Edge clamping for a waypoint or a ping: off the screen or behind the camera it stays inside the safe area, on the edge toward its point, with an arrow pointing there.",
+      "type": "object",
+      "properties": {
+        "margin": {
+          "type": "number",
+          "description": "Inset from the safe area's edges.",
+          "default": 24,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "arrow": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The arrow's ink; null draws none.",
+          "default": null
+        },
+        "arrowSize": {
+          "type": "number",
+          "description": "The arrow's length.",
+          "default": 14,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WorldAnchorDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An element anchored in the world (docs/ui.md §14): laid out at its own size and placed each tick on its target's point projected with the tick's camera. A nameplate, an interaction prompt, a speech bubble, a waypoint.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/WorldTarget",
+          "description": "What it sits on.",
+          "default": {}
+        },
+        "offset": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Added to the point in world units (above a head: 0, 2, 0).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "screenOffsetX": {
+          "type": "number",
+          "description": "Moves it right on the screen.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "screenOffsetY": {
+          "type": "number",
+          "description": "Moves it down on the screen.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "pivot": {
+          "$ref": "#/$defs/Anchor",
+          "description": "Its point that sits on the projected point; the default is its bottom centre.",
+          "default": "topLeft"
+        },
+        "direction": {
+          "$ref": "#/$defs/Direction",
+          "description": "Which way it lays out its children; the default is a column.",
+          "default": "row"
+        },
+        "gap": {
+          "type": "number",
+          "description": "Space between children.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "padding": {
+          "$ref": "#/$defs/Insets",
+          "description": "Space inside its edges.",
+          "default": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        },
+        "align": {
+          "$ref": "#/$defs/Align",
+          "description": "Where children sit along the main axis.",
+          "default": "start"
+        },
+        "cross": {
+          "$ref": "#/$defs/Cross",
+          "description": "Where children sit across it.",
+          "default": "start"
+        },
+        "background": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its fill; null draws none.",
+          "default": null
+        },
+        "radius": {
+          "type": "number",
+          "description": "Corner radius.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "scale": {
+          "$ref": "#/$defs/AnchorScaleMode",
+          "description": "How its size follows its distance.",
+          "default": "constant"
+        },
+        "reference": {
+          "type": "number",
+          "description": "For scale distance: the distance at which it is its laid-out size.",
+          "default": 10,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "minScale": {
+          "type": "number",
+          "description": "For scale distance: the smallest it gets.",
+          "default": 0.25,
+          "minimum": 0
+        },
+        "maxScale": {
+          "type": "number",
+          "description": "For scale distance: the largest it gets.",
+          "default": 2,
+          "minimum": 0
+        },
+        "occlusion": {
+          "$ref": "#/$defs/WorldOcclusion",
+          "description": "What the scene in front of it does.",
+          "default": "none"
+        },
+        "occludedAlpha": {
+          "type": "number",
+          "description": "Its opacity behind the scene, for occlusion fade.",
+          "default": 0.25,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "lod": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Level-of-detail distances, ascending: level k from lod[k - 1] on (AnchorInfo.lod; build less at a higher level).",
+          "default": []
+        },
+        "maxDistance": {
+          "type": "number",
+          "description": "Hidden past this distance, fading over its last tenth; 0 never.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "declutter": {
+          "$ref": "#/$defs/Declutter",
+          "description": "How it resolves against the anchors it overlaps.",
+          "default": "none"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Higher keeps its place; equal priorities favour the nearer.",
+          "default": 0
+        },
+        "clamp": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EdgeClampDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Edge clamping; null lets it leave the screen.",
+          "default": null
+        },
+        "fadeTicks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks a fade (declutter, distance, appearing) takes; 0 is 6.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "AnchorInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "Where an anchored element stands: its distance and level of detail from this tick's camera, the rest as last tick placed it.",
+      "type": "object",
+      "properties": {
+        "inView": {
+          "type": "boolean",
+          "description": "Its point is in front of the camera and within maxDistance (or clamped to the edge)."
+        },
+        "onScreen": {
+          "type": "boolean",
+          "description": "Its point projects inside the screen."
+        },
+        "clamped": {
+          "type": "boolean",
+          "description": "Held on the screen's edge."
+        },
+        "lod": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its level of detail."
+        },
+        "distance": {
+          "type": "number",
+          "description": "From the camera.",
+          "x-og-unit": "m"
+        },
+        "x": {
+          "type": "number",
+          "description": "Where its pivot was drawn.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Where its pivot was drawn.",
+          "x-og-unit": "cssPx"
+        },
+        "angle": {
+          "type": "number",
+          "description": "Toward its point from the screen's centre, clockwise from +x (the edge arrow's).",
+          "x-og-unit": "rad"
+        },
+        "scale": {
+          "type": "number",
+          "description": "The scale it was drawn at."
+        },
+        "alpha": {
+          "type": "number",
+          "description": "Its eased opacity (declutter, distance).",
+          "x-og-unit": "ratio"
+        }
+      },
+      "required": [
+        "inView",
+        "onScreen",
+        "clamped",
+        "lod",
+        "distance",
+        "x",
+        "y",
+        "angle",
+        "scale",
+        "alpha"
+      ],
+      "additionalProperties": false
+    },
+    "WorldPanelDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A world panel (docs/ui.md §14): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The colour of an og.render.renderTarget made with format rgba16float (RenderTargetInfo.texture); give the mesh's material it as map (lit) or emissiveMap with colour black (unlit). It shows the frame after the UI drew it. Null: laid out and hit, drawn nowhere.",
+          "default": null
+        },
+        "width": {
+          "type": "number",
+          "description": "Its layout width; the target's pixels spread over it.",
+          "default": 480,
+          "minimum": 1,
+          "x-og-unit": "cssPx"
+        },
+        "height": {
+          "type": "number",
+          "description": "Its layout height.",
+          "default": 320,
+          "minimum": 1,
+          "x-og-unit": "cssPx"
+        },
+        "quad": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorldTarget"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where its quad is: centred on the target's pose, facing its +Z (an og.render.planeGeometry of quadWidth by quadHeight on that entity). Null: no ray reaches it.",
+          "default": null
+        },
+        "rotation": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "The quad's rotation after its target's.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "quadWidth": {
+          "type": "number",
+          "description": "The quad's width along its +X.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "quadHeight": {
+          "type": "number",
+          "description": "The quad's height along its +Y.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "direction": {
+          "$ref": "#/$defs/Direction",
+          "description": "Which way it lays out its children; the default is a column.",
+          "default": "row"
+        },
+        "gap": {
+          "type": "number",
+          "description": "Space between children.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "padding": {
+          "$ref": "#/$defs/Insets",
+          "description": "Space inside its edges.",
+          "default": {
+            "left": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0
+          }
+        },
+        "background": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its fill; null draws none (the target clears to transparent).",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "PanelInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the pointer does on a world panel this tick.",
+      "type": "object",
+      "properties": {
+        "pointed": {
+          "type": "boolean",
+          "description": "The ray from the pointer meets the panel's quad (and no screen element is under it): its controls take the press."
+        },
+        "x": {
+          "type": "number",
+          "description": "Where on the panel, from its top left.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Where on the panel, from its top left.",
+          "x-og-unit": "cssPx"
+        },
+        "distance": {
+          "type": "number",
+          "description": "Along the ray to the hit.",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "pointed",
+        "x",
+        "y",
+        "distance"
+      ],
+      "additionalProperties": false
+    },
+    "MassKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a mass element template draws.",
+      "type": "string",
+      "enum": [
+        "number",
+        "text",
+        "bar",
+        "icon",
+        "particle"
+      ],
+      "x-og-variants": {
+        "number": "The instance's value as a number (a damage number, a score).",
+        "text": "One of strings, by the instance's value (a nameplate, a loot label).",
+        "bar": "A bar filled to the instance's value 0–1 with a ghost at its ghost (an overhead health bar).",
+        "icon": "Frame value of frames on texture (a status icon).",
+        "particle": "A particle of particleShape (confetti, sparks)."
+      }
+    },
+    "MassEase": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How a mass element's timeline moves into a key.",
+      "type": "string",
+      "enum": [
+        "linear",
+        "out",
+        "in",
+        "back",
+        "step"
+      ],
+      "x-og-variants": {
+        "linear": "Evenly.",
+        "out": "Fast then slow.",
+        "in": "Slow then fast.",
+        "back": "Out, past the key and back (a pop).",
+        "step": "Holds the key before until this one."
+      }
+    },
+    "MassSpace": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "Where a mass element's position is.",
+      "type": "string",
+      "enum": [
+        "world",
+        "screen"
+      ],
+      "x-og-variants": {
+        "world": "A world point, projected by the GPU each frame.",
+        "screen": "CSS pixels of the screen."
+      }
+    },
+    "ParticleShape": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A particle's shape.",
+      "type": "string",
+      "enum": [
+        "square",
+        "circle",
+        "diamond"
+      ],
+      "x-og-variants": {
+        "square": "A rectangle of size (a long thin one is a streak).",
+        "circle": "A disc.",
+        "diamond": "A diamond."
+      }
+    },
+    "MassKey": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A key of a mass element's timeline, evaluated in the shader.",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "number",
+          "description": "Where in its life, 0–1.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "offsetX": {
+          "type": "number",
+          "description": "Moves it right.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "offsetY": {
+          "type": "number",
+          "description": "Moves it down (negative rises).",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "scale": {
+          "type": "number",
+          "description": "Its scale.",
+          "default": 1,
+          "minimum": 0
+        },
+        "alpha": {
+          "type": "number",
+          "description": "Its opacity.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "ease": {
+          "$ref": "#/$defs/MassEase",
+          "description": "How it moves into this key.",
+          "default": "linear"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MassTemplateDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A mass element template (docs/ui.md §14): declared once, then instanced thousands of times a frame with a few values each. No instance is laid out; its motion is the timeline, evaluated on the GPU.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/MassKind",
+          "description": "What it draws.",
+          "default": "number"
+        },
+        "space": {
+          "$ref": "#/$defs/MassSpace",
+          "description": "Where instances' positions are.",
+          "default": "world"
+        },
+        "font": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Font"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Numbers and text: the font (one page); null is the UI's body font.",
+          "default": null
+        },
+        "texture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Icons: the texture its frames are in.",
+          "default": null
+        },
+        "strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Text: the strings an instance's value picks.",
+          "default": []
+        },
+        "frames": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Icons: uv rectangles, four numbers each (u0, v0, u1, v1).",
+          "default": []
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Numbers: digits after the point.",
+          "default": 0
+        },
+        "plus": {
+          "type": "boolean",
+          "description": "Numbers: a + before positive values.",
+          "default": false
+        },
+        "compact": {
+          "type": "boolean",
+          "description": "Numbers: 12.3k, 4.5M.",
+          "default": false
+        },
+        "barBack": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Bars: the track's ink; null is near black at 85 %.",
+          "default": null
+        },
+        "barGhost": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Bars: the ghost's ink; null is pale.",
+          "default": null
+        },
+        "barRadius": {
+          "type": "number",
+          "description": "Bars: corner radius.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "particleShape": {
+          "$ref": "#/$defs/ParticleShape",
+          "description": "Particles: the shape.",
+          "default": "square"
+        },
+        "size": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Text and numbers: x is the em size; bars, icons and particles: width and height.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "cssPx"
+        },
+        "pivot": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The element's point on its position, fractions (0.5, 1: its bottom centre).",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "lifetime": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks an instance lives; 0 shows pushed instances for their tick only.",
+          "default": 0
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MassKey"
+          },
+          "description": "The timeline over its life (up to 8).",
+          "default": []
+        },
+        "drift": {
+          "type": "number",
+          "description": "Each instance drifts sideways up to this far over its life, by its seed.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "gravity": {
+          "type": "number",
+          "description": "Added downward over its life, this much at its end.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "drag": {
+          "type": "boolean",
+          "description": "Instances' velocity slows to rest over the life.",
+          "default": false
+        },
+        "reference": {
+          "type": "number",
+          "description": "World space: the distance at which it is its size, nearer larger and farther smaller; 0 keeps its screen size.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "minScale": {
+          "type": "number",
+          "description": "World space: the smallest distance scale.",
+          "default": 0.25,
+          "minimum": 0
+        },
+        "maxScale": {
+          "type": "number",
+          "description": "World space: the largest distance scale.",
+          "default": 4,
+          "minimum": 0
+        },
+        "occlusion": {
+          "$ref": "#/$defs/WorldOcclusion",
+          "description": "World space: what the scene in front of an instance does.",
+          "default": "none"
+        },
+        "occludedAlpha": {
+          "type": "number",
+          "description": "Its opacity behind the scene, for occlusion fade.",
+          "default": 0.25,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "outline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Text and numbers: an outline's ink; null draws none.",
+          "default": null
+        },
+        "outlineWidth": {
+          "type": "number",
+          "description": "Its width.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MassInstance": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One mass element: a few values; its template does the rest.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "A world point, or CSS pixels (x, y) in screen space.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "value": {
+          "type": "number",
+          "description": "The number, the string or frame index, or the bar's fill 0–1.",
+          "default": 0
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its ink (text, icon tint, bar fill, particle); null is white.",
+          "default": null
+        },
+        "scale": {
+          "type": "number",
+          "description": "Multiplies its timeline's scale (a critical hit).",
+          "default": 1,
+          "minimum": 0
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its drift's side.",
+          "default": 0
+        },
+        "ghost": {
+          "type": "number",
+          "description": "Bars: the ghost's fill 0–1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "velocity": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Travelled over its life.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "x-og-unit": "cssPx"
+        },
+        "spin": {
+          "type": "number",
+          "description": "Turns over its life.",
+          "default": 0
+        },
+        "rotation": {
+          "type": "number",
+          "description": "Its starting rotation, clockwise.",
+          "default": 0,
+          "x-og-unit": "rad"
+        }
+      },
+      "additionalProperties": false
+    },
+    "EmitFrom": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "Where on its element a particle starts.",
+      "type": "string",
+      "enum": [
+        "center",
+        "area",
+        "edges"
+      ],
+      "x-og-variants": {
+        "center": "Its centre.",
+        "area": "Anywhere inside its box.",
+        "edges": "On its edges."
+      }
+    },
+    "ParticlesDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "UI particles from an element (docs/ui.md §5.5): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion.",
+      "type": "object",
+      "properties": {
+        "rate": {
+          "type": "number",
+          "description": "Particles a second while it is built.",
+          "default": 0,
+          "minimum": 0
+        },
+        "burst": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Particles at once on a tick fire is set.",
+          "default": 0
+        },
+        "fire": {
+          "type": "boolean",
+          "description": "Throw the burst this tick.",
+          "default": false
+        },
+        "lifetimeMs": {
+          "type": "number",
+          "description": "How long a particle lives; 0 is 900.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "shape": {
+          "$ref": "#/$defs/ParticleShape",
+          "description": "Its shape.",
+          "default": "square"
+        },
+        "size": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Its size.",
+          "default": {
+            "x": 8,
+            "y": 8
+          },
+          "x-og-unit": "cssPx"
+        },
+        "colors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Paint"
+          },
+          "description": "Picked by each particle's seed; empty is the accent.",
+          "default": []
+        },
+        "travelMin": {
+          "type": "number",
+          "description": "The shortest way a particle flies over its life.",
+          "default": 40,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "travelMax": {
+          "type": "number",
+          "description": "The longest.",
+          "default": 120,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "direction": {
+          "type": "number",
+          "description": "Its heading, clockwise from +x (-π/2 is up).",
+          "default": -1.5707964,
+          "x-og-unit": "rad"
+        },
+        "spread": {
+          "type": "number",
+          "description": "The spread about the heading (2π is every way).",
+          "default": 6.2831855,
+          "minimum": 0,
+          "x-og-unit": "rad"
+        },
+        "gravity": {
+          "type": "number",
+          "description": "Added downward over its life, this much at its end.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "drag": {
+          "type": "boolean",
+          "description": "Its flight slows to rest.",
+          "default": true
+        },
+        "spin": {
+          "type": "number",
+          "description": "Turns over its life, up to this many either way.",
+          "default": 0,
+          "minimum": 0
+        },
+        "align": {
+          "type": "boolean",
+          "description": "Its rotation follows its heading (a streak flying outward).",
+          "default": false
+        },
+        "from": {
+          "$ref": "#/$defs/EmitFrom",
+          "description": "Where it starts.",
+          "default": "center"
+        },
+        "endScale": {
+          "type": "number",
+          "description": "Its scale at the end of its life.",
+          "default": 1,
+          "minimum": 0
+        },
+        "fade": {
+          "type": "boolean",
+          "description": "Fades out toward its end.",
+          "default": true
+        },
+        "clip": {
+          "type": "boolean",
+          "description": "Clipped by the element's clip (a scroll view, a masked panel).",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "MetaKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a meta layer draws over the scene.",
+      "type": "string",
+      "enum": [
+        "vignette",
+        "tint",
+        "material"
+      ],
+      "x-og-variants": {
+        "vignette": "Its colour at the edges, clear in the middle (a damage vignette).",
+        "tint": "A flat tint.",
+        "material": "The frame under it composited through a UI material (a ripple for sanity, a glitch for a hit)."
+      }
+    },
+    "MetaDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A meta layer (docs/ui.md §14): full screen, over the scene and under the screen's elements, never taking input.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/MetaKind",
+          "description": "What it draws.",
+          "default": "vignette"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Vignette and tint: its ink; null is a deep red.",
+          "default": null
+        },
+        "inner": {
+          "type": "number",
+          "description": "Vignette: clear out to this fraction of the half diagonal.",
+          "default": 0.55,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "outer": {
+          "type": "number",
+          "description": "Vignette: full colour from this fraction on.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "material": {
+          "$ref": "#/$defs/MaterialName",
+          "description": "Material: the built-in material, or custom.",
+          "default": "plain"
+        },
+        "custom": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UiMaterial"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Material: the custom material.",
+          "default": null
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Material: its parameters, up to four vec4s flattened.",
+          "default": []
+        },
+        "intensity": {
+          "type": "number",
+          "description": "Its opacity.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "pulseHz": {
+          "type": "number",
+          "description": "Pulses this many times a second (a low-health heartbeat); 0 is steady.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "hz"
+        },
+        "pulseDepth": {
+          "type": "number",
+          "description": "How far a pulse dims it.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SceneViewportDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The viewport element (docs/ui.md §5.5): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in.",
+      "type": "object",
+      "properties": {
+        "texture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The target's colour (RenderTargetInfo.texture).",
+          "default": null
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null is 320 CSS px.",
+          "default": null
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its height; null is 320 CSS px.",
+          "default": null
+        },
+        "aspect": {
+          "type": "number",
+          "description": "Width over height; 0 is free.",
+          "default": 0,
+          "minimum": 0
+        },
+        "cameraPosition": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its camera's position, for rays.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "cameraTarget": {
+          "$ref": "#/$defs/Vector3",
+          "description": "What its camera looks at, for rays.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "fov": {
+          "type": "number",
+          "description": "Its camera's vertical field of view; 0 gives no ray.",
+          "default": 50,
+          "minimum": 0,
+          "x-og-unit": "deg"
+        },
+        "background": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Drawn under the view.",
+          "default": null
+        },
+        "radius": {
+          "type": "number",
+          "description": "Corner radius.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "label": {
+          "type": "string",
+          "description": "What the probe and the accessibility tree call it.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "SceneViewportInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the pointer does in a viewport this tick.",
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "number",
+          "description": "Its laid-out width, last tick.",
+          "x-og-unit": "cssPx"
+        },
+        "height": {
+          "type": "number",
+          "description": "Its laid-out height, last tick.",
+          "x-og-unit": "cssPx"
+        },
+        "pixelWidth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The target width that fills it at the device's pixel ratio."
+        },
+        "pixelHeight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The target height that fills it."
+        },
+        "hovered": {
+          "type": "boolean",
+          "description": "The pointer is over it."
+        },
+        "pressed": {
+          "type": "boolean",
+          "description": "A press that started in it is held."
+        },
+        "clicked": {
+          "type": "boolean",
+          "description": "Pressed and released in it."
+        },
+        "drag": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The pointer's move while held this tick (orbit, turn).",
+          "x-og-unit": "cssPx"
+        },
+        "wheel": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The wheel over it (zoom)."
+        },
+        "at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Vector2"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The pointer in it, fractions of its box from the top left."
+        },
+        "ray": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Ray"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The ray into its scene through the pointer."
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "pixelWidth",
+        "pixelHeight",
+        "hovered",
+        "pressed",
+        "clicked",
+        "drag",
+        "wheel",
+        "at",
+        "ray"
+      ],
+      "additionalProperties": false
     },
     "UiDocEvent": {
       "x-og-kind": "struct",

@@ -23081,6 +23081,1079 @@ export type BlendMode = "normal" | "multiply" | "screen" | "add" | "overlay" | "
 
 
 /**
+ * What an anchored element or a world panel is placed on: an entity (its world pose, down og.Parent) or a world point.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface WorldTarget {
+  /**
+   * The entity; null places it on point.
+   *
+   * @default null
+   */
+  readonly entity?: Entity | null;
+  /**
+   * The world point, when entity is null.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly point?: Vector3;
+}
+
+/**
+ * How an anchored element's size follows its distance from the camera.
+ * - `"constant"`: Its laid-out size at every distance (a nameplate that stays readable).
+ * - `"distance"`: 1 at reference world units, larger nearer and smaller farther, between minScale and maxScale (a tag that feels in the world).
+ */
+export type AnchorScaleMode = "constant" | "distance";
+
+/**
+ * What the scene in front of an anchored element does to it: a depth test of its point against the frame's depth, on the GPU.
+ * - `"none"`: Drawn over the scene.
+ * - `"fade"`: Drawn at occludedAlpha where the scene is in front.
+ * - `"hide"`: Not drawn where the scene is in front.
+ */
+export type WorldOcclusion = "none" | "fade" | "hide";
+
+/**
+ * How an anchored element that overlaps one of higher priority (or as high and nearer) resolves.
+ * - `"none"`: It overlaps.
+ * - `"shift"`: Moved the shortest way clear (else stacked above).
+ * - `"stack"`: Moved above what it overlaps, one over another (a crowd's nameplates).
+ * - `"hide"`: Faded out while it overlaps.
+ */
+export type Declutter = "none" | "shift" | "stack" | "hide";
+
+/**
+ * Edge clamping for a waypoint or a ping: off the screen or behind the camera it stays inside the safe area, on the edge toward its point, with an arrow pointing there.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface EdgeClampDesc {
+  /**
+   * Inset from the safe area's edges.
+   *
+   * @default 24
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly margin?: number;
+  /**
+   * The arrow's ink; null draws none.
+   *
+   * @default null
+   */
+  readonly arrow?: Paint | null;
+  /**
+   * The arrow's length.
+   *
+   * @default 14
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly arrowSize?: number;
+}
+
+/**
+ * An element anchored in the world (docs/ui.md §14): laid out at its own size and placed each tick on its target's point projected with the tick's camera. A nameplate, an interaction prompt, a speech bubble, a waypoint.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface WorldAnchorDesc {
+  /**
+   * What it sits on.
+   *
+   * @default {}
+   */
+  readonly target?: WorldTarget;
+  /**
+   * Added to the point in world units (above a head: 0, 2, 0).
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly offset?: Vector3;
+  /**
+   * Moves it right on the screen.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly screenOffsetX?: number;
+  /**
+   * Moves it down on the screen.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly screenOffsetY?: number;
+  /**
+   * Its point that sits on the projected point; the default is its bottom centre.
+   *
+   * @default "topLeft"
+   */
+  readonly pivot?: Anchor;
+  /**
+   * Which way it lays out its children; the default is a column.
+   *
+   * @default "row"
+   */
+  readonly direction?: Direction;
+  /**
+   * Space between children.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number;
+  /**
+   * Space inside its edges.
+   *
+   * @default { left: 0, top: 0, right: 0, bottom: 0 }
+   */
+  readonly padding?: Insets;
+  /**
+   * Where children sit along the main axis.
+   *
+   * @default "start"
+   */
+  readonly align?: Align;
+  /**
+   * Where children sit across it.
+   *
+   * @default "start"
+   */
+  readonly cross?: Cross;
+  /**
+   * Its fill; null draws none.
+   *
+   * @default null
+   */
+  readonly background?: Paint | null;
+  /**
+   * Corner radius.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly radius?: number;
+  /**
+   * How its size follows its distance.
+   *
+   * @default "constant"
+   */
+  readonly scale?: AnchorScaleMode;
+  /**
+   * For scale distance: the distance at which it is its laid-out size.
+   *
+   * @default 10
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly reference?: number;
+  /**
+   * For scale distance: the smallest it gets.
+   *
+   * @default 0.25
+   * @range 0..
+   */
+  readonly minScale?: number;
+  /**
+   * For scale distance: the largest it gets.
+   *
+   * @default 2
+   * @range 0..
+   */
+  readonly maxScale?: number;
+  /**
+   * What the scene in front of it does.
+   *
+   * @default "none"
+   */
+  readonly occlusion?: WorldOcclusion;
+  /**
+   * Its opacity behind the scene, for occlusion fade.
+   *
+   * @default 0.25
+   * @range 0..1
+   */
+  readonly occludedAlpha?: number;
+  /**
+   * Level-of-detail distances, ascending: level k from lod[k - 1] on (AnchorInfo.lod; build less at a higher level).
+   *
+   * @default []
+   */
+  readonly lod?: readonly number[];
+  /**
+   * Hidden past this distance, fading over its last tenth; 0 never.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly maxDistance?: number;
+  /**
+   * How it resolves against the anchors it overlaps.
+   *
+   * @default "none"
+   */
+  readonly declutter?: Declutter;
+  /**
+   * Higher keeps its place; equal priorities favour the nearer.
+   *
+   * @default 0
+   */
+  readonly priority?: number;
+  /**
+   * Edge clamping; null lets it leave the screen.
+   *
+   * @default null
+   */
+  readonly clamp?: EdgeClampDesc | null;
+  /**
+   * Ticks a fade (declutter, distance, appearing) takes; 0 is 6.
+   *
+   * @default 0
+   */
+  readonly fadeTicks?: number;
+}
+
+/**
+ * Where an anchored element stands: its distance and level of detail from this tick's camera, the rest as last tick placed it.
+ */
+export interface AnchorInfo {
+  /** Its point is in front of the camera and within maxDistance (or clamped to the edge). */
+  readonly inView: boolean;
+  /** Its point projects inside the screen. */
+  readonly onScreen: boolean;
+  /** Held on the screen's edge. */
+  readonly clamped: boolean;
+  /** Its level of detail. */
+  readonly lod: number;
+  /**
+   * From the camera.
+   *
+   * @unit m (metres)
+   */
+  readonly distance: number;
+  /**
+   * Where its pivot was drawn.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * Where its pivot was drawn.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+  /**
+   * Toward its point from the screen's centre, clockwise from +x (the edge arrow's).
+   *
+   * @unit rad (radians)
+   */
+  readonly angle: number;
+  /** The scale it was drawn at. */
+  readonly scale: number;
+  /**
+   * Its eased opacity (declutter, distance).
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly alpha: number;
+}
+
+
+/**
+ * A world panel (docs/ui.md §14): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface WorldPanelDesc {
+  /**
+   * The colour of an og.render.renderTarget made with format rgba16float (RenderTargetInfo.texture); give the mesh's material it as map (lit) or emissiveMap with colour black (unlit). It shows the frame after the UI drew it. Null: laid out and hit, drawn nowhere.
+   *
+   * @default null
+   */
+  readonly target?: Texture | null;
+  /**
+   * Its layout width; the target's pixels spread over it.
+   *
+   * @default 480
+   * @range 1..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+  /**
+   * Its layout height.
+   *
+   * @default 320
+   * @range 1..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height?: number;
+  /**
+   * Where its quad is: centred on the target's pose, facing its +Z (an og.render.planeGeometry of quadWidth by quadHeight on that entity). Null: no ray reaches it.
+   *
+   * @default null
+   */
+  readonly quad?: WorldTarget | null;
+  /**
+   * The quad's rotation after its target's.
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly rotation?: Quaternion;
+  /**
+   * The quad's width along its +X.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly quadWidth?: number;
+  /**
+   * The quad's height along its +Y.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly quadHeight?: number;
+  /**
+   * Which way it lays out its children; the default is a column.
+   *
+   * @default "row"
+   */
+  readonly direction?: Direction;
+  /**
+   * Space between children.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number;
+  /**
+   * Space inside its edges.
+   *
+   * @default { left: 0, top: 0, right: 0, bottom: 0 }
+   */
+  readonly padding?: Insets;
+  /**
+   * Its fill; null draws none (the target clears to transparent).
+   *
+   * @default null
+   */
+  readonly background?: Paint | null;
+}
+
+/** What the pointer does on a world panel this tick. */
+export interface PanelInfo {
+  /**
+   * The ray from the pointer meets the panel's quad (and no screen element is under it): its controls take the press.
+   */
+  readonly pointed: boolean;
+  /**
+   * Where on the panel, from its top left.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * Where on the panel, from its top left.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+  /**
+   * Along the ray to the hit.
+   *
+   * @unit m (metres)
+   */
+  readonly distance: number;
+}
+
+
+/**
+ * What a mass element template draws.
+ * - `"number"`: The instance's value as a number (a damage number, a score).
+ * - `"text"`: One of strings, by the instance's value (a nameplate, a loot label).
+ * - `"bar"`: A bar filled to the instance's value 0–1 with a ghost at its ghost (an overhead health bar).
+ * - `"icon"`: Frame value of frames on texture (a status icon).
+ * - `"particle"`: A particle of particleShape (confetti, sparks).
+ */
+export type MassKind = "number" | "text" | "bar" | "icon" | "particle";
+
+/**
+ * How a mass element's timeline moves into a key.
+ * - `"linear"`: Evenly.
+ * - `"out"`: Fast then slow.
+ * - `"in"`: Slow then fast.
+ * - `"back"`: Out, past the key and back (a pop).
+ * - `"step"`: Holds the key before until this one.
+ */
+export type MassEase = "linear" | "out" | "in" | "back" | "step";
+
+/**
+ * Where a mass element's position is.
+ * - `"world"`: A world point, projected by the GPU each frame.
+ * - `"screen"`: CSS pixels of the screen.
+ */
+export type MassSpace = "world" | "screen";
+
+/**
+ * A particle's shape.
+ * - `"square"`: A rectangle of size (a long thin one is a streak).
+ * - `"circle"`: A disc.
+ * - `"diamond"`: A diamond.
+ */
+export type ParticleShape = "square" | "circle" | "diamond";
+
+/**
+ * A key of a mass element's timeline, evaluated in the shader.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MassKey {
+  /**
+   * Where in its life, 0–1.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly t?: number;
+  /**
+   * Moves it right.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly offsetX?: number;
+  /**
+   * Moves it down (negative rises).
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly offsetY?: number;
+  /**
+   * Its scale.
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly scale?: number;
+  /**
+   * Its opacity.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  readonly alpha?: number;
+  /**
+   * How it moves into this key.
+   *
+   * @default "linear"
+   */
+  readonly ease?: MassEase;
+}
+
+/**
+ * A mass element template (docs/ui.md §14): declared once, then instanced thousands of times a frame with a few values each. No instance is laid out; its motion is the timeline, evaluated on the GPU.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MassTemplateDesc {
+  /**
+   * What it draws.
+   *
+   * @default "number"
+   */
+  readonly kind?: MassKind;
+  /**
+   * Where instances' positions are.
+   *
+   * @default "world"
+   */
+  readonly space?: MassSpace;
+  /**
+   * Numbers and text: the font (one page); null is the UI's body font.
+   *
+   * @default null
+   */
+  readonly font?: Font | null;
+  /**
+   * Icons: the texture its frames are in.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * Text: the strings an instance's value picks.
+   *
+   * @default []
+   */
+  readonly strings?: readonly string[];
+  /**
+   * Icons: uv rectangles, four numbers each (u0, v0, u1, v1).
+   *
+   * @default []
+   */
+  readonly frames?: readonly number[];
+  /**
+   * Numbers: digits after the point.
+   *
+   * @default 0
+   */
+  readonly decimals?: number;
+  /**
+   * Numbers: a + before positive values.
+   *
+   * @default false
+   */
+  readonly plus?: boolean;
+  /**
+   * Numbers: 12.3k, 4.5M.
+   *
+   * @default false
+   */
+  readonly compact?: boolean;
+  /**
+   * Bars: the track's ink; null is near black at 85 %.
+   *
+   * @default null
+   */
+  readonly barBack?: Paint | null;
+  /**
+   * Bars: the ghost's ink; null is pale.
+   *
+   * @default null
+   */
+  readonly barGhost?: Paint | null;
+  /**
+   * Bars: corner radius.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly barRadius?: number;
+  /**
+   * Particles: the shape.
+   *
+   * @default "square"
+   */
+  readonly particleShape?: ParticleShape;
+  /**
+   * Text and numbers: x is the em size; bars, icons and particles: width and height.
+   *
+   * @default { x: 0, y: 0 }
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: Vector2;
+  /**
+   * The element's point on its position, fractions (0.5, 1: its bottom centre).
+   *
+   * @default { x: 0, y: 0 }
+   */
+  readonly pivot?: Vector2;
+  /**
+   * Ticks an instance lives; 0 shows pushed instances for their tick only.
+   *
+   * @default 0
+   */
+  readonly lifetime?: number;
+  /**
+   * The timeline over its life (up to 8).
+   *
+   * @default []
+   */
+  readonly keys?: readonly MassKey[];
+  /**
+   * Each instance drifts sideways up to this far over its life, by its seed.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly drift?: number;
+  /**
+   * Added downward over its life, this much at its end.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gravity?: number;
+  /**
+   * Instances' velocity slows to rest over the life.
+   *
+   * @default false
+   */
+  readonly drag?: boolean;
+  /**
+   * World space: the distance at which it is its size, nearer larger and farther smaller; 0 keeps its screen size.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly reference?: number;
+  /**
+   * World space: the smallest distance scale.
+   *
+   * @default 0.25
+   * @range 0..
+   */
+  readonly minScale?: number;
+  /**
+   * World space: the largest distance scale.
+   *
+   * @default 4
+   * @range 0..
+   */
+  readonly maxScale?: number;
+  /**
+   * World space: what the scene in front of an instance does.
+   *
+   * @default "none"
+   */
+  readonly occlusion?: WorldOcclusion;
+  /**
+   * Its opacity behind the scene, for occlusion fade.
+   *
+   * @default 0.25
+   * @range 0..1
+   */
+  readonly occludedAlpha?: number;
+  /**
+   * Text and numbers: an outline's ink; null draws none.
+   *
+   * @default null
+   */
+  readonly outline?: Paint | null;
+  /**
+   * Its width.
+   *
+   * @default 2
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly outlineWidth?: number;
+}
+
+/**
+ * One mass element: a few values; its template does the rest.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MassInstance {
+  /**
+   * A world point, or CSS pixels (x, y) in screen space.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly position?: Vector3;
+  /**
+   * The number, the string or frame index, or the bar's fill 0–1.
+   *
+   * @default 0
+   */
+  readonly value?: number;
+  /**
+   * Its ink (text, icon tint, bar fill, particle); null is white.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Multiplies its timeline's scale (a critical hit).
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly scale?: number;
+  /**
+   * Its drift's side.
+   *
+   * @default 0
+   */
+  readonly seed?: number;
+  /**
+   * Bars: the ghost's fill 0–1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly ghost?: number;
+  /**
+   * Travelled over its life.
+   *
+   * @default { x: 0, y: 0 }
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly velocity?: Vector2;
+  /**
+   * Turns over its life.
+   *
+   * @default 0
+   */
+  readonly spin?: number;
+  /**
+   * Its starting rotation, clockwise.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly rotation?: number;
+}
+
+
+
+
+
+/**
+ * Where on its element a particle starts.
+ * - `"center"`: Its centre.
+ * - `"area"`: Anywhere inside its box.
+ * - `"edges"`: On its edges.
+ */
+export type EmitFrom = "center" | "area" | "edges";
+
+/**
+ * UI particles from an element (docs/ui.md §5.5): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ParticlesDesc {
+  /**
+   * Particles a second while it is built.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly rate?: number;
+  /**
+   * Particles at once on a tick fire is set.
+   *
+   * @default 0
+   */
+  readonly burst?: number;
+  /**
+   * Throw the burst this tick.
+   *
+   * @default false
+   */
+  readonly fire?: boolean;
+  /**
+   * How long a particle lives; 0 is 900.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly lifetimeMs?: number;
+  /**
+   * Its shape.
+   *
+   * @default "square"
+   */
+  readonly shape?: ParticleShape;
+  /**
+   * Its size.
+   *
+   * @default { x: 8, y: 8 }
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: Vector2;
+  /**
+   * Picked by each particle's seed; empty is the accent.
+   *
+   * @default []
+   */
+  readonly colors?: readonly Paint[];
+  /**
+   * The shortest way a particle flies over its life.
+   *
+   * @default 40
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly travelMin?: number;
+  /**
+   * The longest.
+   *
+   * @default 120
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly travelMax?: number;
+  /**
+   * Its heading, clockwise from +x (-π/2 is up).
+   *
+   * @default -1.5707964
+   * @unit rad (radians)
+   */
+  readonly direction?: number;
+  /**
+   * The spread about the heading (2π is every way).
+   *
+   * @default 6.2831855
+   * @range 0..
+   * @unit rad (radians)
+   */
+  readonly spread?: number;
+  /**
+   * Added downward over its life, this much at its end.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gravity?: number;
+  /**
+   * Its flight slows to rest.
+   *
+   * @default true
+   */
+  readonly drag?: boolean;
+  /**
+   * Turns over its life, up to this many either way.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly spin?: number;
+  /**
+   * Its rotation follows its heading (a streak flying outward).
+   *
+   * @default false
+   */
+  readonly align?: boolean;
+  /**
+   * Where it starts.
+   *
+   * @default "center"
+   */
+  readonly from?: EmitFrom;
+  /**
+   * Its scale at the end of its life.
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly endScale?: number;
+  /**
+   * Fades out toward its end.
+   *
+   * @default true
+   */
+  readonly fade?: boolean;
+  /**
+   * Clipped by the element's clip (a scroll view, a masked panel).
+   *
+   * @default true
+   */
+  readonly clip?: boolean;
+}
+
+
+/**
+ * What a meta layer draws over the scene.
+ * - `"vignette"`: Its colour at the edges, clear in the middle (a damage vignette).
+ * - `"tint"`: A flat tint.
+ * - `"material"`: The frame under it composited through a UI material (a ripple for sanity, a glitch for a hit).
+ */
+export type MetaKind = "vignette" | "tint" | "material";
+
+/**
+ * A meta layer (docs/ui.md §14): full screen, over the scene and under the screen's elements, never taking input.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MetaDesc {
+  /**
+   * What it draws.
+   *
+   * @default "vignette"
+   */
+  readonly kind?: MetaKind;
+  /**
+   * Vignette and tint: its ink; null is a deep red.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Vignette: clear out to this fraction of the half diagonal.
+   *
+   * @default 0.55
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly inner?: number;
+  /**
+   * Vignette: full colour from this fraction on.
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly outer?: number;
+  /**
+   * Material: the built-in material, or custom.
+   *
+   * @default "plain"
+   */
+  readonly material?: MaterialName;
+  /**
+   * Material: the custom material.
+   *
+   * @default null
+   */
+  readonly custom?: UiMaterial | null;
+  /**
+   * Material: its parameters, up to four vec4s flattened.
+   *
+   * @default []
+   */
+  readonly params?: readonly number[];
+  /**
+   * Its opacity.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  readonly intensity?: number;
+  /**
+   * Pulses this many times a second (a low-health heartbeat); 0 is steady.
+   *
+   * @default 0
+   * @range 0..
+   * @unit hz (ticks or cycles per second)
+   */
+  readonly pulseHz?: number;
+  /**
+   * How far a pulse dims it.
+   *
+   * @default 0.5
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly pulseDepth?: number;
+}
+
+
+/**
+ * The viewport element (docs/ui.md §5.5): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SceneViewportDesc {
+  /**
+   * The target's colour (RenderTargetInfo.texture).
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * Its width; null is 320 CSS px.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * Its height; null is 320 CSS px.
+   *
+   * @default null
+   */
+  readonly height?: Size | null;
+  /**
+   * Width over height; 0 is free.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly aspect?: number;
+  /**
+   * Its camera's position, for rays.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly cameraPosition?: Vector3;
+  /**
+   * What its camera looks at, for rays.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly cameraTarget?: Vector3;
+  /**
+   * Its camera's vertical field of view; 0 gives no ray.
+   *
+   * @default 50
+   * @range 0..
+   * @unit deg (degrees)
+   */
+  readonly fov?: number;
+  /**
+   * Drawn under the view.
+   *
+   * @default null
+   */
+  readonly background?: Paint | null;
+  /**
+   * Corner radius.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly radius?: number;
+  /**
+   * What the probe and the accessibility tree call it.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/** What the pointer does in a viewport this tick. */
+export interface SceneViewportInfo {
+  /**
+   * Its laid-out width, last tick.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width: number;
+  /**
+   * Its laid-out height, last tick.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height: number;
+  /** The target width that fills it at the device's pixel ratio. */
+  readonly pixelWidth: number;
+  /** The target height that fills it. */
+  readonly pixelHeight: number;
+  /** The pointer is over it. */
+  readonly hovered: boolean;
+  /** A press that started in it is held. */
+  readonly pressed: boolean;
+  /** Pressed and released in it. */
+  readonly clicked: boolean;
+  /**
+   * The pointer's move while held this tick (orbit, turn).
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly drag: Vector2;
+  /** The wheel over it (zoom). */
+  readonly wheel: Vector2;
+  /** The pointer in it, fractions of its box from the top left. */
+  readonly at: Vector2 | null;
+  /** The ray into its scene through the pointer. */
+  readonly ray: Ray | null;
+}
+
+
+/**
  * Something a document did (docs/ui.md §10.2): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`.
  */
 export interface UiDocEvent {
@@ -28859,6 +29932,67 @@ export declare namespace og {
      * @param desc What it draws with.
      */
     function setDraw(desc?: DrawDesc): void;
+    /**
+     * Open an element anchored in the world, closed by close(): its children are an ordinary subtree (labels, bars, icons, buttons) laid out at its own size, then projected, scaled, depth tested, decluttered and clamped as desc says. Drawn under the screen's own elements. og.ui.setDraw after it draws its box. For thousands of tags of one kind (overhead bars on an army) use mass elements instead.
+     *
+     * @param id Its id; the probe path is the id alone.
+     * @param desc What it sits on and how it follows the camera.
+     */
+    function openWorldAnchor(id: string, desc?: WorldAnchorDesc): AnchorInfo;
+    /**
+     * Open a world panel, closed by close(): its children are an ordinary UI (buttons, lists, fields) laid out at width by height and drawn into desc.target; a press on its quad reaches its controls. One render target per panel.
+     *
+     * @param id Its id; the probe path is the id alone.
+     * @param desc Its target, size and quad.
+     */
+    function openWorldPanel(id: string, desc?: WorldPanelDesc): PanelInfo;
+    /**
+     * Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle.
+     *
+     * @param name Its name.
+     * @param desc What it draws and how it moves.
+     */
+    function defineMass(name: string, desc?: MassTemplateDesc): number;
+    /**
+     * Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them.
+     *
+     * @param template From defineMass.
+     * @param instances The instances.
+     */
+    function spawnMass(template: number, instances: readonly MassInstance[]): void;
+    /**
+     * Show instances of a template for this tick only (overhead bars, nameplates, status icons rebuilt every tick with their values).
+     *
+     * @param template From defineMass.
+     * @param instances The instances.
+     */
+    function pushMass(template: number, instances: readonly MassInstance[]): void;
+    /**
+     * The live spawned instances of a template.
+     *
+     * @param template From defineMass.
+     */
+    function massCount(template: number): number;
+    /**
+     * Emit particles from the element built just before (a control, or a container just opened). Call every tick it emits; a burst throws on the ticks desc.fire is set. og.ui.burst is a preset of it.
+     *
+     * @param desc What it throws.
+     */
+    function particles(desc?: ParticlesDesc): void;
+    /**
+     * A meta layer this tick: a damage vignette, a low-health pulse, a material over the whole frame.
+     *
+     * @param id Its id.
+     * @param desc What it draws.
+     */
+    function meta(id: string, desc?: MetaDesc): void;
+    /**
+     * A viewport: a camera's render target shown in the layout, its drag, wheel and pointer ray handed back so a menu can orbit, pick and rotate.
+     *
+     * @param id Its id.
+     * @param desc What it shows and its camera.
+     */
+    function sceneViewport(id: string, desc?: SceneViewportDesc): SceneViewportInfo;
     /**
      * Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots after this call (og.ui.openSlot). Its bindings read the viewmodel every tick, a Capitalised root (`Wallet.gold`) the resource as of the last tick; two-way controls write into it (each write is a `set` event). Layers code does not mount are built at the frame's end with the viewmodel they have.
      *

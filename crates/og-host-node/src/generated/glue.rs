@@ -2121,6 +2121,60 @@ pub fn og_ui_set_draw(env: Env, desc: Option<String>) {
     <Host as UiApi>::og_ui_set_draw(&Host, desc)
 }
 
+#[napi(js_name = "og_ui_open_world_anchor")]
+pub fn og_ui_open_world_anchor(env: Env, id: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_open_world_anchor(&Host, id, desc)
+}
+
+#[napi(js_name = "og_ui_open_world_panel")]
+pub fn og_ui_open_world_panel(env: Env, id: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_open_world_panel(&Host, id, desc)
+}
+
+#[napi(js_name = "og_ui_define_mass")]
+pub fn og_ui_define_mass(env: Env, name: String, desc: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_define_mass(&Host, name, desc)
+}
+
+#[napi(js_name = "og_ui_spawn_mass")]
+pub fn og_ui_spawn_mass(env: Env, template: u32, instances: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_spawn_mass(&Host, template, instances)
+}
+
+#[napi(js_name = "og_ui_push_mass")]
+pub fn og_ui_push_mass(env: Env, template: u32, instances: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_push_mass(&Host, template, instances)
+}
+
+#[napi(js_name = "og_ui_mass_count")]
+pub fn og_ui_mass_count(env: Env, template: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_mass_count(&Host, template)
+}
+
+#[napi(js_name = "og_ui_particles")]
+pub fn og_ui_particles(env: Env, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_particles(&Host, desc)
+}
+
+#[napi(js_name = "og_ui_meta")]
+pub fn og_ui_meta(env: Env, id: String, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_meta(&Host, id, desc)
+}
+
+#[napi(js_name = "og_ui_scene_viewport")]
+pub fn og_ui_scene_viewport(env: Env, id: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_scene_viewport(&Host, id, desc)
+}
+
 #[napi(js_name = "og_ui_screen")]
 pub fn og_ui_screen(env: Env, name: String, vm: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

@@ -102,6 +102,21 @@ export const widgets = {
   tick: (): number => abi().og_ui_tick(),
   counter: (id: string, value: number, desc?: Api.CounterDesc): number => abi().og_ui_counter(id, value, json(desc)),
   burst: (desc?: Api.BurstDesc): void => abi().og_ui_burst(json(desc)),
+  // World-space UI (docs/ui.md §14, §5.5).
+  openWorldAnchor: (id: string, desc?: Api.WorldAnchorDesc): Api.AnchorInfo =>
+    parse(abi().og_ui_open_world_anchor(id, json(desc))),
+  openWorldPanel: (id: string, desc?: Api.WorldPanelDesc): Api.PanelInfo =>
+    parse(abi().og_ui_open_world_panel(id, json(desc))),
+  defineMass: (name: string, desc?: Api.MassTemplateDesc): number => abi().og_ui_define_mass(name, json(desc)),
+  spawnMass: (template: number, instances: Api.MassInstance[]): void =>
+    abi().og_ui_spawn_mass(template, JSON.stringify(instances)),
+  pushMass: (template: number, instances: Api.MassInstance[]): void =>
+    abi().og_ui_push_mass(template, JSON.stringify(instances)),
+  massCount: (template: number): number => abi().og_ui_mass_count(template),
+  particles: (desc?: Api.ParticlesDesc): void => abi().og_ui_particles(json(desc)),
+  meta: (id: string, desc?: Api.MetaDesc): void => abi().og_ui_meta(id, json(desc)),
+  sceneViewport: (id: string, desc?: Api.SceneViewportDesc): Api.SceneViewportInfo =>
+    parse(abi().og_ui_scene_viewport(id, json(desc))),
   shake: (desc?: Api.ShakeDesc): void => abi().og_ui_shake(json(desc)),
   screenTransition: (id: string, screen: string, desc?: Api.ScreenTransitionDesc): Api.ScreenTransitionResult =>
     parse(abi().og_ui_screen_transition(id, screen, json(desc))),

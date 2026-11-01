@@ -1407,6 +1407,24 @@ pub fn og_camera_look_at(world: u32, target: String) {
 fn view_proj(eng: &Engine) -> Result<(glam::Mat4, glam::Mat4, f32, f32), String> {
     let cam = resource_value(eng, "og.Camera")?;
     let (w, h) = surface_size(eng);
+    let vp = camera_view_proj(&cam, w, h);
+    Ok((vp, vp.inverse(), w, h))
+}
+
+/// og.Camera's projection times view on a `w`×`h` surface, and its eye,
+/// forward axis and whether it is orthographic: what og.camera's
+/// worldToScreen projects with and the UI's world anchors follow.
+pub(crate) fn camera_view(cam: &Value, w: f32, h: f32) -> og_ui::WorldView {
+    let rot = quat(&cam["quaternion"]);
+    og_ui::WorldView {
+        view_proj: camera_view_proj(cam, w, h),
+        eye: vec3(&cam["position"]),
+        forward: rot * glam::Vec3::NEG_Z,
+        orthographic: cam["orthographic"].as_bool().unwrap_or(false),
+    }
+}
+
+fn camera_view_proj(cam: &Value, w: f32, h: f32) -> glam::Mat4 {
     let rot = quat(&cam["quaternion"]);
     let view = glam::Mat4::from_rotation_translation(rot, vec3(&cam["position"])).inverse();
     let near = cam["near"].as_f64().unwrap_or(0.1) as f32;
@@ -1435,7 +1453,7 @@ fn view_proj(eng: &Engine) -> Result<(glam::Mat4, glam::Mat4, f32, f32), String>
             glam::Vec4::new(0.0, 0.0, r * near, 0.0),
         )
     };
-    Ok((proj * view, (proj * view).inverse(), w, h))
+    proj * view
 }
 
 pub fn og_camera_world_to_screen(world: u32, point: String) -> String {

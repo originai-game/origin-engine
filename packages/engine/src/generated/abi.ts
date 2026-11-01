@@ -711,6 +711,24 @@ export interface HostAbi<A, V> {
   og_ui_layout_stats(): string;
   /** `og.ui.setDraw` */
   og_ui_set_draw(desc: string | undefined): void;
+  /** `og.ui.openWorldAnchor` */
+  og_ui_open_world_anchor(id: string, desc: string | undefined): string;
+  /** `og.ui.openWorldPanel` */
+  og_ui_open_world_panel(id: string, desc: string | undefined): string;
+  /** `og.ui.defineMass` */
+  og_ui_define_mass(name: string, desc: string | undefined): number;
+  /** `og.ui.spawnMass` */
+  og_ui_spawn_mass(template: number, instances: string): void;
+  /** `og.ui.pushMass` */
+  og_ui_push_mass(template: number, instances: string): void;
+  /** `og.ui.massCount` */
+  og_ui_mass_count(template: number): number;
+  /** `og.ui.particles` */
+  og_ui_particles(desc: string | undefined): void;
+  /** `og.ui.meta` */
+  og_ui_meta(id: string, desc: string | undefined): void;
+  /** `og.ui.sceneViewport` */
+  og_ui_scene_viewport(id: string, desc: string | undefined): string;
   /** `og.ui.screen` */
   og_ui_screen(name: string, vm: string | undefined): string;
   /** `og.ui.component` */
@@ -1223,6 +1241,15 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_overlaps",
   "og_ui_layout_stats",
   "og_ui_set_draw",
+  "og_ui_open_world_anchor",
+  "og_ui_open_world_panel",
+  "og_ui_define_mass",
+  "og_ui_spawn_mass",
+  "og_ui_push_mass",
+  "og_ui_mass_count",
+  "og_ui_particles",
+  "og_ui_meta",
+  "og_ui_scene_viewport",
   "og_ui_screen",
   "og_ui_component",
   "og_ui_open_slot",

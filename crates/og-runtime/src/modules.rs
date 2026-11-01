@@ -28,6 +28,8 @@ pub use docs::{
     og_ui_set_prop,
 };
 mod motion;
+/// og.ui's world-space members (docs/ui.md §14).
+pub(crate) mod ui_world;
 pub use motion::{
     og_ui_animate, og_ui_define_timeline, og_ui_force_state, og_ui_gesture, og_ui_layout_stats,
     og_ui_motion_events, og_ui_overlaps, og_ui_pause, og_ui_play, og_ui_play_info,
@@ -190,11 +192,14 @@ pub(crate) fn mount_back(
     link: Option<og_audio::AudioLink>,
 ) -> Result<Mounted, String> {
     let shared = ui.clone();
+    let feed = ui_world::Feed::of(world);
     world
-        .add_system(SystemDesc::new(UI_END), move |ctx| {
+        .add_system(feed.desc(UI_END), move |ctx| {
             let warnings = {
                 let mut ui = shared.lock();
                 docs::end_of_frame(engine_id, &mut ui, ctx);
+                // The tick's camera and anchored entities (docs/ui.md §14).
+                feed.before_end(ctx, &mut ui);
                 BUILDING.with(|b| b.set(None));
                 ui.end().warnings.clone()
             };
@@ -255,6 +260,12 @@ pub(crate) fn mount_back(
     audio.bank().start_decode_thread();
     world
         .add_state_block(UI_STATE, Box::new(UiState(ui.clone())))
+        .map_err(err)?;
+    world
+        .add_state_block(
+            ui_world::UI_WORLD_STATE,
+            Box::new(ui_world::WorldState(ui.clone())),
+        )
         .map_err(err)?;
     Ok(Mounted { physics, ui, audio })
 }
@@ -1603,7 +1614,8 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState) {
     };
     let ui = ui.lock();
     let frame = ui.frame();
-    if frame.items.is_empty() {
+    let world_frame = ui.world_frame();
+    if frame.items.is_empty() && world_frame.batches.is_empty() {
         return;
     }
     let vp = frame.viewport;
@@ -1625,6 +1637,8 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState) {
         },
         overlay,
     );
+    // Mass elements no element owns (docs/ui.md §14), under the UI.
+    world_frame.emit(og_render::UI_OVERLAY_LAYER, overlay);
     // A multi-page font draws once per page with one layout.
     let mut more = Vec::new();
     for t in &overlay.texts[first_text..] {

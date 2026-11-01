@@ -1769,6 +1769,51 @@ pub fn og_ui_set_draw(desc: Option<String>) {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_open_world_anchor(id: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_open_world_anchor(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_open_world_panel(id: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_open_world_panel(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_define_mass(name: String, desc: Option<String>) -> u32 {
+    <Host as UiApi>::og_ui_define_mass(&Host, name, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_spawn_mass(template: u32, instances: String) {
+    <Host as UiApi>::og_ui_spawn_mass(&Host, template, instances)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_push_mass(template: u32, instances: String) {
+    <Host as UiApi>::og_ui_push_mass(&Host, template, instances)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_mass_count(template: u32) -> u32 {
+    <Host as UiApi>::og_ui_mass_count(&Host, template)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_particles(desc: Option<String>) {
+    <Host as UiApi>::og_ui_particles(&Host, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_meta(id: String, desc: Option<String>) {
+    <Host as UiApi>::og_ui_meta(&Host, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_scene_viewport(id: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_scene_viewport(&Host, id, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_screen(name: String, vm: Option<String>) -> String {
     <Host as UiApi>::og_ui_screen(&Host, name, vm)
 }

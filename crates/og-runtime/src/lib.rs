@@ -121,6 +121,11 @@ pub use geometry::{
 };
 pub use i18n::{og_i18n_has, og_i18n_load, og_i18n_locale, og_i18n_set_locale, og_i18n_t};
 pub use memory::memory_report;
+pub use modules::ui_world::{
+    og_ui_define_mass, og_ui_mass_count, og_ui_meta, og_ui_open_world_anchor,
+    og_ui_open_world_panel, og_ui_particles, og_ui_push_mass, og_ui_scene_viewport,
+    og_ui_spawn_mass,
+};
 pub use modules::{
     THEME_COLORS, TYPE_STEPS, og_load_document, og_load_style, og_physics_overlap,
     og_physics_raycast, og_physics_set_mesh, og_physics_shape_cast, og_ui_a11y, og_ui_action,

@@ -783,6 +783,33 @@ impl UiApi for WebHost {
     fn og_ui_set_draw(&self, desc: Option<String>) {
         rt::og_ui_set_draw(desc)
     }
+    fn og_ui_open_world_anchor(&self, id: String, desc: Option<String>) -> String {
+        rt::og_ui_open_world_anchor(id, desc)
+    }
+    fn og_ui_open_world_panel(&self, id: String, desc: Option<String>) -> String {
+        rt::og_ui_open_world_panel(id, desc)
+    }
+    fn og_ui_define_mass(&self, name: String, desc: Option<String>) -> u32 {
+        rt::og_ui_define_mass(name, desc)
+    }
+    fn og_ui_spawn_mass(&self, template: u32, instances: String) {
+        rt::og_ui_spawn_mass(template, instances)
+    }
+    fn og_ui_push_mass(&self, template: u32, instances: String) {
+        rt::og_ui_push_mass(template, instances)
+    }
+    fn og_ui_mass_count(&self, template: u32) -> u32 {
+        rt::og_ui_mass_count(template)
+    }
+    fn og_ui_particles(&self, desc: Option<String>) {
+        rt::og_ui_particles(desc)
+    }
+    fn og_ui_meta(&self, id: String, desc: Option<String>) {
+        rt::og_ui_meta(id, desc)
+    }
+    fn og_ui_scene_viewport(&self, id: String, desc: Option<String>) -> String {
+        rt::og_ui_scene_viewport(id, desc)
+    }
     fn og_ui_open_scroll(&self, id: String, desc: Option<String>) {
         rt::og_ui_open_scroll(id, desc)
     }

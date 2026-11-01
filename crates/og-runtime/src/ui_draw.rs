@@ -100,6 +100,32 @@ pub fn og_ui_set_draw(desc: Option<String>) {
     with_ui("og.ui.setDraw", |ui| ui.set_draw(draw));
 }
 
+/// A LayerDesc's material and parameters as og-render takes them (a meta
+/// layer's material, `docs/ui.md` §14); `None` for a value that is not one.
+pub(crate) fn layer_material(
+    v: &Value,
+) -> Option<(
+    og_render::UiMaterial,
+    [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
+)> {
+    let assets = ui_engine().and_then(|id| engine(id).ok()).map(|eng| {
+        let rs = eng.render.borrow();
+        (rs.ui_draw.vectors.clone(), rs.ui_draw.materials.clone())
+    });
+    let (vectors, materials) = assets.unwrap_or_default();
+    let read = Reader {
+        vectors: &vectors,
+        materials: &materials,
+    };
+    let l = read.layer(v)?;
+    let material = match l.material {
+        Material::Plain => og_render::UiMaterial::Plain,
+        Material::Builtin(b) => og_render::UiMaterial::Builtin(b),
+        Material::Custom(h) => og_render::UiMaterial::Custom(h),
+    };
+    Some((material, l.params))
+}
+
 fn num(v: &Value, k: &str, d: f32) -> f32 {
     v[k].as_f64().map_or(d, |x| x as f32)
 }

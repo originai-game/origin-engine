@@ -384,6 +384,37 @@ module ui {
 | [`DrawDesc`](#type-DrawDesc) | desc struct | What an element draws with (og.ui.setDraw), over its background: its shape, fills and strokes in order, effects, opacity and blend, how it clips its children, and whether its subtree draws offscreen through a material. Colours given as theme tokens follow the style; every value is data an agent can read and set. |
 | [`BlendMode`](#type-BlendMode) | enum | How a paint mixes with what is under it. |
 | [`og.ui.setDraw`](#fn-setDraw) | function | Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §5). Call it right after the element's open or control; immediate mode, so every tick it is drawn. |
+| [`WorldTarget`](#type-WorldTarget) | desc struct | What an anchored element or a world panel is placed on: an entity (its world pose, down og.Parent) or a world point. |
+| [`AnchorScaleMode`](#type-AnchorScaleMode) | enum | How an anchored element's size follows its distance from the camera. |
+| [`WorldOcclusion`](#type-WorldOcclusion) | enum | What the scene in front of an anchored element does to it: a depth test of its point against the frame's depth, on the GPU. |
+| [`Declutter`](#type-Declutter) | enum | How an anchored element that overlaps one of higher priority (or as high and nearer) resolves. |
+| [`EdgeClampDesc`](#type-EdgeClampDesc) | desc struct | Edge clamping for a waypoint or a ping: off the screen or behind the camera it stays inside the safe area, on the edge toward its point, with an arrow pointing there. |
+| [`WorldAnchorDesc`](#type-WorldAnchorDesc) | desc struct | An element anchored in the world (docs/ui.md §14): laid out at its own size and placed each tick on its target's point projected with the tick's camera. A nameplate, an interaction prompt, a speech bubble, a waypoint. |
+| [`AnchorInfo`](#type-AnchorInfo) | struct | Where an anchored element stands: its distance and level of detail from this tick's camera, the rest as last tick placed it. |
+| [`og.ui.openWorldAnchor`](#fn-openWorldAnchor) | function | Open an element anchored in the world, closed by close(): its children are an ordinary subtree (labels, bars, icons, buttons) laid out at its own size, then projected, scaled, depth tested, decluttered and clamped as desc says. Drawn under the screen's own elements. og.ui.setDraw after it draws its box. For thousands of tags of one kind (overhead bars on an army) use mass elements instead. |
+| [`WorldPanelDesc`](#type-WorldPanelDesc) | desc struct | A world panel (docs/ui.md §14): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad. |
+| [`PanelInfo`](#type-PanelInfo) | struct | What the pointer does on a world panel this tick. |
+| [`og.ui.openWorldPanel`](#fn-openWorldPanel) | function | Open a world panel, closed by close(): its children are an ordinary UI (buttons, lists, fields) laid out at width by height and drawn into desc.target; a press on its quad reaches its controls. One render target per panel. |
+| [`MassKind`](#type-MassKind) | enum | What a mass element template draws. |
+| [`MassEase`](#type-MassEase) | enum | How a mass element's timeline moves into a key. |
+| [`MassSpace`](#type-MassSpace) | enum | Where a mass element's position is. |
+| [`ParticleShape`](#type-ParticleShape) | enum | A particle's shape. |
+| [`MassKey`](#type-MassKey) | desc struct | A key of a mass element's timeline, evaluated in the shader. |
+| [`MassTemplateDesc`](#type-MassTemplateDesc) | desc struct | A mass element template (docs/ui.md §14): declared once, then instanced thousands of times a frame with a few values each. No instance is laid out; its motion is the timeline, evaluated on the GPU. |
+| [`MassInstance`](#type-MassInstance) | desc struct | One mass element: a few values; its template does the rest. |
+| [`og.ui.defineMass`](#fn-defineMass) | function | Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle. |
+| [`og.ui.spawnMass`](#fn-spawnMass) | function | Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them. |
+| [`og.ui.pushMass`](#fn-pushMass) | function | Show instances of a template for this tick only (overhead bars, nameplates, status icons rebuilt every tick with their values). |
+| [`og.ui.massCount`](#fn-massCount) | function | The live spawned instances of a template. |
+| [`EmitFrom`](#type-EmitFrom) | enum | Where on its element a particle starts. |
+| [`ParticlesDesc`](#type-ParticlesDesc) | desc struct | UI particles from an element (docs/ui.md §5.5): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion. |
+| [`og.ui.particles`](#fn-particles) | function | Emit particles from the element built just before (a control, or a container just opened). Call every tick it emits; a burst throws on the ticks desc.fire is set. og.ui.burst is a preset of it. |
+| [`MetaKind`](#type-MetaKind) | enum | What a meta layer draws over the scene. |
+| [`MetaDesc`](#type-MetaDesc) | desc struct | A meta layer (docs/ui.md §14): full screen, over the scene and under the screen's elements, never taking input. |
+| [`og.ui.meta`](#fn-meta) | function | A meta layer this tick: a damage vignette, a low-health pulse, a material over the whole frame. |
+| [`SceneViewportDesc`](#type-SceneViewportDesc) | desc struct | The viewport element (docs/ui.md §5.5): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in. |
+| [`SceneViewportInfo`](#type-SceneViewportInfo) | struct | What the pointer does in a viewport this tick. |
+| [`og.ui.sceneViewport`](#fn-sceneViewport) | function | A viewport: a camera's render target shown in the layout, its drag, wheel and pointer ray handed back so a menu can orbit, pick and rotate. |
 | [`UiDocEvent`](#type-UiDocEvent) | struct | Something a document did (docs/ui.md §10.2): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`. |
 | [`UiDocResponse`](#type-UiDocResponse) | struct | What mounting a document answers: its events this tick (and, for a screen, those of its builds code did not see), its root's path, and for a component its props after its two-way writes. |
 | [`UiLayer`](#type-UiLayer) | struct | A layer of the stack (docs/ui.md §8.1), as its screen declares it. |
@@ -3950,6 +3981,272 @@ fn setDraw {
 
 <sub>`api.ogt` line 14624</sub>
 
+<a id="fn-openWorldAnchor"></a>
+
+### `og.ui.openWorldAnchor`
+
+Open an element anchored in the world, closed by close(): its children are an ordinary subtree (labels, bars, icons, buttons) laid out at its own size, then projected, scaled, depth tested, decluttered and clamped as desc says. Drawn under the screen's own elements. og.ui.setDraw after it draws its box. For thousands of tags of one kind (overhead bars on an army) use mass elements instead.
+
+```ts
+og.ui.openWorldAnchor(id: string, desc?: WorldAnchorDesc): AnchorInfo
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id; the probe path is the id alone. |
+| `desc` | `WorldAnchorDesc` | yes | What it sits on and how it follows the camera. |
+
+**Returns** `AnchorInfo`.
+
+Binding symbol `og_ui_open_world_anchor` · publish builds: kept
+
+```ogt
+fn openWorldAnchor {
+  doc "Open an element anchored in the world, closed by close(): its children are an ordinary subtree (labels, bars, icons, buttons) laid out at its own size, then projected, scaled, depth tested, decluttered and clamped as desc says. Drawn under the screen's own elements. og.ui.setDraw after it draws its box. For thousands of tags of one kind (overhead bars on an army) use mass elements instead."
+  param id String "Its id; the probe path is the id alone."
+  param desc WorldAnchorDesc "What it sits on and how it follows the camera."
+  returns AnchorInfo
+}
+```
+
+<sub>`api.ogt` line 14754</sub>
+
+<a id="fn-openWorldPanel"></a>
+
+### `og.ui.openWorldPanel`
+
+Open a world panel, closed by close(): its children are an ordinary UI (buttons, lists, fields) laid out at width by height and drawn into desc.target; a press on its quad reaches its controls. One render target per panel.
+
+```ts
+og.ui.openWorldPanel(id: string, desc?: WorldPanelDesc): PanelInfo
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id; the probe path is the id alone. |
+| `desc` | `WorldPanelDesc` | yes | Its target, size and quad. |
+
+**Returns** `PanelInfo`.
+
+Binding symbol `og_ui_open_world_panel` · publish builds: kept
+
+```ogt
+fn openWorldPanel {
+  doc "Open a world panel, closed by close(): its children are an ordinary UI (buttons, lists, fields) laid out at width by height and drawn into desc.target; a press on its quad reaches its controls. One render target per panel."
+  param id String "Its id; the probe path is the id alone."
+  param desc WorldPanelDesc "Its target, size and quad."
+  returns PanelInfo
+}
+```
+
+<sub>`api.ogt` line 14809</sub>
+
+<a id="fn-defineMass"></a>
+
+### `og.ui.defineMass`
+
+Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle.
+
+```ts
+og.ui.defineMass(name: string, desc?: MassTemplateDesc): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | Its name. |
+| `desc` | `MassTemplateDesc` | yes | What it draws and how it moves. |
+
+**Returns** `number`.
+
+Binding symbol `og_ui_define_mass` · publish builds: kept
+
+```ogt
+fn defineMass {
+  doc "Declare a mass element template by name and answer its handle; declaring the name again replaces it and keeps the handle."
+  param name String "Its name."
+  param desc MassTemplateDesc "What it draws and how it moves."
+  returns u32
+}
+```
+
+<sub>`api.ogt` line 14954</sub>
+
+<a id="fn-spawnMass"></a>
+
+### `og.ui.spawnMass`
+
+Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them.
+
+```ts
+og.ui.spawnMass(template: number, instances: readonly MassInstance[]): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `template` | `number` | no | From defineMass. |
+| `instances` | `readonly MassInstance[]` | no | The instances. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_spawn_mass` · publish builds: kept
+
+```ogt
+fn spawnMass {
+  doc "Start instances of a template on this tick: each plays its template's timeline over its lifetime and leaves after it (damage numbers, pickups). They live in the UI's state, so a snapshot or a replay carries them."
+  param template u32 "From defineMass."
+  param instances List.MassInstance "The instances."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 14961</sub>
+
+<a id="fn-pushMass"></a>
+
+### `og.ui.pushMass`
+
+Show instances of a template for this tick only (overhead bars, nameplates, status icons rebuilt every tick with their values).
+
+```ts
+og.ui.pushMass(template: number, instances: readonly MassInstance[]): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `template` | `number` | no | From defineMass. |
+| `instances` | `readonly MassInstance[]` | no | The instances. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_push_mass` · publish builds: kept
+
+```ogt
+fn pushMass {
+  doc "Show instances of a template for this tick only (overhead bars, nameplates, status icons rebuilt every tick with their values)."
+  param template u32 "From defineMass."
+  param instances List.MassInstance "The instances."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 14968</sub>
+
+<a id="fn-massCount"></a>
+
+### `og.ui.massCount`
+
+The live spawned instances of a template.
+
+```ts
+og.ui.massCount(template: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `template` | `number` | no | From defineMass. |
+
+**Returns** `number`.
+
+Binding symbol `og_ui_mass_count` · publish builds: kept
+
+```ogt
+fn massCount {
+  doc "The live spawned instances of a template."
+  param template u32 "From defineMass."
+  returns u32
+}
+```
+
+<sub>`api.ogt` line 14975</sub>
+
+<a id="fn-particles"></a>
+
+### `og.ui.particles`
+
+Emit particles from the element built just before (a control, or a container just opened). Call every tick it emits; a burst throws on the ticks desc.fire is set. og.ui.burst is a preset of it.
+
+```ts
+og.ui.particles(desc?: ParticlesDesc): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `desc` | `ParticlesDesc` | yes | What it throws. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_particles` · publish builds: kept
+
+```ogt
+fn particles {
+  doc "Emit particles from the element built just before (a control, or a container just opened). Call every tick it emits; a burst throws on the ticks desc.fire is set. og.ui.burst is a preset of it."
+  param desc ParticlesDesc "What it throws."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 15048</sub>
+
+<a id="fn-meta"></a>
+
+### `og.ui.meta`
+
+A meta layer this tick: a damage vignette, a low-health pulse, a material over the whole frame.
+
+```ts
+og.ui.meta(id: string, desc?: MetaDesc): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `MetaDesc` | yes | What it draws. |
+
+**Returns** `void`.
+
+Binding symbol `og_ui_meta` · publish builds: kept
+
+```ogt
+fn meta {
+  doc "A meta layer this tick: a damage vignette, a low-health pulse, a material over the whole frame."
+  param id String "Its id."
+  param desc MetaDesc "What it draws."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 15098</sub>
+
+<a id="fn-sceneViewport"></a>
+
+### `og.ui.sceneViewport`
+
+A viewport: a camera's render target shown in the layout, its drag, wheel and pointer ray handed back so a menu can orbit, pick and rotate.
+
+```ts
+og.ui.sceneViewport(id: string, desc?: SceneViewportDesc): SceneViewportInfo
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `SceneViewportDesc` | yes | What it shows and its camera. |
+
+**Returns** `SceneViewportInfo`.
+
+Binding symbol `og_ui_scene_viewport` · publish builds: kept
+
+```ogt
+fn sceneViewport {
+  doc "A viewport: a camera's render target shown in the layout, its drag, wheel and pointer ray handed back so a menu can orbit, pick and rotate."
+  param id String "Its id."
+  param desc SceneViewportDesc "What it shows and its camera."
+  returns SceneViewportInfo
+}
+```
+
+<sub>`api.ogt` line 15149</sub>
+
 <a id="fn-screen"></a>
 
 ### `og.ui.screen`
@@ -3980,7 +4277,7 @@ fn screen {
 }
 ```
 
-<sub>`api.ogt` line 14710</sub>
+<sub>`api.ogt` line 15236</sub>
 
 <a id="fn-component"></a>
 
@@ -4014,7 +4311,7 @@ fn component {
 }
 ```
 
-<sub>`api.ogt` line 14719</sub>
+<sub>`api.ogt` line 15245</sub>
 
 <a id="fn-openSlot"></a>
 
@@ -4042,7 +4339,7 @@ fn openSlot {
 }
 ```
 
-<sub>`api.ogt` line 14729</sub>
+<sub>`api.ogt` line 15255</sub>
 
 <a id="fn-push"></a>
 
@@ -4076,7 +4373,7 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 14735</sub>
+<sub>`api.ogt` line 15261</sub>
 
 <a id="fn-pop"></a>
 
@@ -4104,7 +4401,7 @@ fn pop {
 }
 ```
 
-<sub>`api.ogt` line 14745</sub>
+<sub>`api.ogt` line 15271</sub>
 
 <a id="fn-replace"></a>
 
@@ -4138,7 +4435,7 @@ fn replace {
 }
 ```
 
-<sub>`api.ogt` line 14751</sub>
+<sub>`api.ogt` line 15277</sub>
 
 <a id="fn-clear"></a>
 
@@ -4166,7 +4463,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 14761</sub>
+<sub>`api.ogt` line 15287</sub>
 
 <a id="fn-layers"></a>
 
@@ -4194,7 +4491,7 @@ fn layers {
 }
 ```
 
-<sub>`api.ogt` line 14767</sub>
+<sub>`api.ogt` line 15293</sub>
 
 <a id="fn-screenVm"></a>
 
@@ -4224,7 +4521,7 @@ fn screenVm {
 }
 ```
 
-<sub>`api.ogt` line 14773</sub>
+<sub>`api.ogt` line 15299</sub>
 
 <a id="fn-docEvents"></a>
 
@@ -4252,7 +4549,7 @@ fn docEvents {
 }
 ```
 
-<sub>`api.ogt` line 14780</sub>
+<sub>`api.ogt` line 15306</sub>
 
 <a id="fn-gameInput"></a>
 
@@ -4280,7 +4577,7 @@ fn gameInput {
 }
 ```
 
-<sub>`api.ogt` line 14786</sub>
+<sub>`api.ogt` line 15312</sub>
 
 <a id="fn-paused"></a>
 
@@ -4308,7 +4605,7 @@ fn paused {
 }
 ```
 
-<sub>`api.ogt` line 14792</sub>
+<sub>`api.ogt` line 15318</sub>
 
 <a id="fn-defineAction"></a>
 
@@ -4338,7 +4635,7 @@ fn defineAction {
 }
 ```
 
-<sub>`api.ogt` line 14798</sub>
+<sub>`api.ogt` line 15324</sub>
 
 <a id="fn-action"></a>
 
@@ -4366,7 +4663,7 @@ fn action {
 }
 ```
 
-<sub>`api.ogt` line 14805</sub>
+<sub>`api.ogt` line 15331</sub>
 
 <a id="fn-actionHeld"></a>
 
@@ -4394,7 +4691,7 @@ fn actionHeld {
 }
 ```
 
-<sub>`api.ogt` line 14811</sub>
+<sub>`api.ogt` line 15337</sub>
 
 <a id="fn-glyph"></a>
 
@@ -4424,7 +4721,7 @@ fn glyph {
 }
 ```
 
-<sub>`api.ogt` line 14817</sub>
+<sub>`api.ogt` line 15343</sub>
 
 <a id="fn-device"></a>
 
@@ -4452,7 +4749,7 @@ fn device {
 }
 ```
 
-<sub>`api.ogt` line 14824</sub>
+<sub>`api.ogt` line 15350</sub>
 
 <a id="fn-setDevice"></a>
 
@@ -4482,7 +4779,7 @@ fn setDevice {
 }
 ```
 
-<sub>`api.ogt` line 14830</sub>
+<sub>`api.ogt` line 15356</sub>
 
 <a id="fn-actionBar"></a>
 
@@ -4510,7 +4807,7 @@ fn actionBar {
 }
 ```
 
-<sub>`api.ogt` line 14837</sub>
+<sub>`api.ogt` line 15363</sub>
 
 <a id="fn-documentSchema"></a>
 
@@ -4533,7 +4830,7 @@ fn documentSchema {
 }
 ```
 
-<sub>`api.ogt` line 14843</sub>
+<sub>`api.ogt` line 15369</sub>
 
 <a id="fn-setProp"></a>
 
@@ -4567,7 +4864,7 @@ fn setProp {
 }
 ```
 
-<sub>`api.ogt` line 14848</sub>
+<sub>`api.ogt` line 15374</sub>
 
 <a id="fn-saveEdits"></a>
 
@@ -4595,7 +4892,7 @@ fn saveEdits {
 }
 ```
 
-<sub>`api.ogt` line 14857</sub>
+<sub>`api.ogt` line 15383</sub>
 
 ## Types
 
@@ -12160,6 +12457,969 @@ enum BlendMode {
 
 <sub>`api.ogt` line 14613</sub>
 
+<a id="type-WorldTarget"></a>
+
+### `WorldTarget` (desc struct)
+
+What an anchored element or a world panel is placed on: an entity (its world pose, down og.Parent) or a world point.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity \| null` | `null` | — | — | — | The entity; null places it on point. |
+| `point` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | The world point, when entity is null. |
+
+```ogt
+struct WorldTarget {
+  doc "What an anchored element or a world panel is placed on: an entity (its world pose, down og.Parent) or a world point."
+  desc true
+  field entity Option.Entity "The entity; null places it on point."
+  field point Vector3 "The world point, when entity is null."
+}
+```
+
+<sub>`api.ogt` line 14632</sub>
+
+<a id="type-AnchorScaleMode"></a>
+
+### `AnchorScaleMode` (enum)
+
+How an anchored element's size follows its distance from the camera.
+
+A string: one of the variants below. The zero value is `"constant"`.
+
+| Variant | Doc |
+|---|---|
+| `"constant"` | Its laid-out size at every distance (a nameplate that stays readable). |
+| `"distance"` | 1 at reference world units, larger nearer and smaller farther, between minScale and maxScale (a tag that feels in the world). |
+
+```ogt
+enum AnchorScaleMode {
+  doc "How an anchored element's size follows its distance from the camera."
+  variant constant "Its laid-out size at every distance (a nameplate that stays readable)."
+  variant distance "1 at reference world units, larger nearer and smaller farther, between minScale and maxScale (a tag that feels in the world)."
+}
+```
+
+<sub>`api.ogt` line 14639</sub>
+
+<a id="type-WorldOcclusion"></a>
+
+### `WorldOcclusion` (enum)
+
+What the scene in front of an anchored element does to it: a depth test of its point against the frame's depth, on the GPU.
+
+A string: one of the variants below. The zero value is `"none"`.
+
+| Variant | Doc |
+|---|---|
+| `"none"` | Drawn over the scene. |
+| `"fade"` | Drawn at occludedAlpha where the scene is in front. |
+| `"hide"` | Not drawn where the scene is in front. |
+
+```ogt
+enum WorldOcclusion {
+  doc "What the scene in front of an anchored element does to it: a depth test of its point against the frame's depth, on the GPU."
+  variant none "Drawn over the scene."
+  variant fade "Drawn at occludedAlpha where the scene is in front."
+  variant hide "Not drawn where the scene is in front."
+}
+```
+
+<sub>`api.ogt` line 14645</sub>
+
+<a id="type-Declutter"></a>
+
+### `Declutter` (enum)
+
+How an anchored element that overlaps one of higher priority (or as high and nearer) resolves.
+
+A string: one of the variants below. The zero value is `"none"`.
+
+| Variant | Doc |
+|---|---|
+| `"none"` | It overlaps. |
+| `"shift"` | Moved the shortest way clear (else stacked above). |
+| `"stack"` | Moved above what it overlaps, one over another (a crowd's nameplates). |
+| `"hide"` | Faded out while it overlaps. |
+
+```ogt
+enum Declutter {
+  doc "How an anchored element that overlaps one of higher priority (or as high and nearer) resolves."
+  variant none "It overlaps."
+  variant shift "Moved the shortest way clear (else stacked above)."
+  variant stack "Moved above what it overlaps, one over another (a crowd's nameplates)."
+  variant hide "Faded out while it overlaps."
+}
+```
+
+<sub>`api.ogt` line 14652</sub>
+
+<a id="type-EdgeClampDesc"></a>
+
+### `EdgeClampDesc` (desc struct)
+
+Edge clamping for a waypoint or a ping: off the screen or behind the camera it stays inside the safe area, on the edge toward its point, with an arrow pointing there.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `margin` | `number` | `24` | ≥ 0 | `cssPx` | — | Inset from the safe area's edges. |
+| `arrow` | `Paint \| null` | `null` | — | — | — | The arrow's ink; null draws none. |
+| `arrowSize` | `number` | `14` | ≥ 0 | `cssPx` | — | The arrow's length. |
+
+```ogt
+struct EdgeClampDesc {
+  doc "Edge clamping for a waypoint or a ping: off the screen or behind the camera it stays inside the safe area, on the edge toward its point, with an arrow pointing there."
+  desc true
+  field margin f32 "Inset from the safe area's edges." {
+    default 24
+    unit cssPx
+    min 0
+  }
+  field arrow Option.Paint "The arrow's ink; null draws none."
+  field arrowSize f32 "The arrow's length." {
+    default 14
+    unit cssPx
+    min 0
+  }
+}
+```
+
+<sub>`api.ogt` line 14660</sub>
+
+<a id="type-WorldAnchorDesc"></a>
+
+### `WorldAnchorDesc` (desc struct)
+
+An element anchored in the world (docs/ui.md §14): laid out at its own size and placed each tick on its target's point projected with the tick's camera. A nameplate, an interaction prompt, a speech bubble, a waypoint.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `target` | `WorldTarget` | `{}` | — | — | — | What it sits on. |
+| `offset` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | Added to the point in world units (above a head: 0, 2, 0). |
+| `screenOffsetX` | `number` | `0` | — | `cssPx` | — | Moves it right on the screen. |
+| `screenOffsetY` | `number` | `0` | — | `cssPx` | — | Moves it down on the screen. |
+| `pivot` | `Anchor` | `"topLeft"` | — | — | — | Its point that sits on the projected point; the default is its bottom centre. |
+| `direction` | `Direction` | `"row"` | — | — | — | Which way it lays out its children; the default is a column. |
+| `gap` | `number` | `0` | — | `cssPx` | — | Space between children. |
+| `padding` | `Insets` | `{ left: 0, top: 0, right: 0, bottom: 0 }` | — | — | — | Space inside its edges. |
+| `align` | `Align` | `"start"` | — | — | — | Where children sit along the main axis. |
+| `cross` | `Cross` | `"start"` | — | — | — | Where children sit across it. |
+| `background` | `Paint \| null` | `null` | — | — | — | Its fill; null draws none. |
+| `radius` | `number` | `0` | — | `cssPx` | — | Corner radius. |
+| `scale` | `AnchorScaleMode` | `"constant"` | — | — | — | How its size follows its distance. |
+| `reference` | `number` | `10` | ≥ 0 | `m` | — | For scale distance: the distance at which it is its laid-out size. |
+| `minScale` | `number` | `0.25` | ≥ 0 | — | — | For scale distance: the smallest it gets. |
+| `maxScale` | `number` | `2` | ≥ 0 | — | — | For scale distance: the largest it gets. |
+| `occlusion` | `WorldOcclusion` | `"none"` | — | — | — | What the scene in front of it does. |
+| `occludedAlpha` | `number` | `0.25` | 0 … 1 | — | — | Its opacity behind the scene, for occlusion fade. |
+| `lod` | `readonly number[]` | `[]` | — | — | — | Level-of-detail distances, ascending: level k from lod[k - 1] on (AnchorInfo.lod; build less at a higher level). |
+| `maxDistance` | `number` | `0` | ≥ 0 | `m` | — | Hidden past this distance, fading over its last tenth; 0 never. |
+| `declutter` | `Declutter` | `"none"` | — | — | — | How it resolves against the anchors it overlaps. |
+| `priority` | `number` | `0` | — | — | — | Higher keeps its place; equal priorities favour the nearer. |
+| `clamp` | `EdgeClampDesc \| null` | `null` | — | — | — | Edge clamping; null lets it leave the screen. |
+| `fadeTicks` | `number` | `0` | — | — | — | Ticks a fade (declutter, distance, appearing) takes; 0 is 6. |
+
+```ogt
+struct WorldAnchorDesc {
+  doc "An element anchored in the world (docs/ui.md §14): laid out at its own size and placed each tick on its target's point projected with the tick's camera. A nameplate, an interaction prompt, a speech bubble, a waypoint."
+  desc true
+  field target WorldTarget "What it sits on."
+  field offset Vector3 "Added to the point in world units (above a head: 0, 2, 0)."
+  field screenOffsetX f32 "Moves it right on the screen." {
+    unit cssPx
+  }
+  field screenOffsetY f32 "Moves it down on the screen." {
+    unit cssPx
+  }
+  field pivot Anchor "Its point that sits on the projected point; the default is its bottom centre."
+  field direction Direction "Which way it lays out its children; the default is a column."
+  field gap f32 "Space between children." {
+    unit cssPx
+  }
+  field padding Insets "Space inside its edges."
+  field align Align "Where children sit along the main axis."
+  field cross Cross "Where children sit across it."
+  field background Option.Paint "Its fill; null draws none."
+  field radius f32 "Corner radius." {
+    unit cssPx
+  }
+  field scale AnchorScaleMode "How its size follows its distance."
+  field reference f32 "For scale distance: the distance at which it is its laid-out size." {
+    default 10
+    unit m
+    min 0
+  }
+  field minScale f32 "For scale distance: the smallest it gets." {
+    default 0.25
+    min 0
+  }
+  field maxScale f32 "For scale distance: the largest it gets." {
+    default 2
+    min 0
+  }
+  field occlusion WorldOcclusion "What the scene in front of it does."
+  field occludedAlpha f32 "Its opacity behind the scene, for occlusion fade." {
+    default 0.25
+    min 0
+    max 1
+  }
+  field lod List.f32 "Level-of-detail distances, ascending: level k from lod[k - 1] on (AnchorInfo.lod; build less at a higher level)."
+  field maxDistance f32 "Hidden past this distance, fading over its last tenth; 0 never." {
+    unit m
+    min 0
+  }
+  field declutter Declutter "How it resolves against the anchors it overlaps."
+  field priority i32 "Higher keeps its place; equal priorities favour the nearer."
+  field clamp Option.EdgeClampDesc "Edge clamping; null lets it leave the screen."
+  field fadeTicks u32 "Ticks a fade (declutter, distance, appearing) takes; 0 is 6."
+}
+```
+
+<sub>`api.ogt` line 14676</sub>
+
+<a id="type-AnchorInfo"></a>
+
+### `AnchorInfo` (struct)
+
+Where an anchored element stands: its distance and level of detail from this tick's camera, the rest as last tick placed it.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `inView` | `boolean` | `false` | — | — | — | Its point is in front of the camera and within maxDistance (or clamped to the edge). |
+| `onScreen` | `boolean` | `false` | — | — | — | Its point projects inside the screen. |
+| `clamped` | `boolean` | `false` | — | — | — | Held on the screen's edge. |
+| `lod` | `number` | `0` | — | — | — | Its level of detail. |
+| `distance` | `number` | `0` | — | `m` | — | From the camera. |
+| `x` | `number` | `0` | — | `cssPx` | — | Where its pivot was drawn. |
+| `y` | `number` | `0` | — | `cssPx` | — | Where its pivot was drawn. |
+| `angle` | `number` | `0` | — | `rad` | — | Toward its point from the screen's centre, clockwise from +x (the edge arrow's). |
+| `scale` | `number` | `0` | — | — | — | The scale it was drawn at. |
+| `alpha` | `number` | `0` | — | `ratio` | — | Its eased opacity (declutter, distance). |
+
+```ogt
+struct AnchorInfo {
+  doc "Where an anchored element stands: its distance and level of detail from this tick's camera, the rest as last tick placed it."
+  field inView bool "Its point is in front of the camera and within maxDistance (or clamped to the edge)."
+  field onScreen bool "Its point projects inside the screen."
+  field clamped bool "Held on the screen's edge."
+  field lod u32 "Its level of detail."
+  field distance f32 "From the camera." {
+    unit m
+  }
+  field x f32 "Where its pivot was drawn." {
+    unit cssPx
+  }
+  field y f32 "Where its pivot was drawn." {
+    unit cssPx
+  }
+  field angle f32 "Toward its point from the screen's centre, clockwise from +x (the edge arrow's)." {
+    unit rad
+  }
+  field scale f32 "The scale it was drawn at."
+  field alpha f32 "Its eased opacity (declutter, distance)." {
+    unit ratio
+  }
+}
+```
+
+<sub>`api.ogt` line 14730</sub>
+
+<a id="type-WorldPanelDesc"></a>
+
+### `WorldPanelDesc` (desc struct)
+
+A world panel (docs/ui.md §14): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `target` | `Texture \| null` | `null` | — | — | — | The colour of an og.render.renderTarget made with format rgba16float (RenderTargetInfo.texture); give the mesh's material it as map (lit) or emissiveMap with colour black (unlit). It shows the frame after the UI drew it. Null: laid out and hit, drawn nowhere. |
+| `width` | `number` | `480` | ≥ 1 | `cssPx` | — | Its layout width; the target's pixels spread over it. |
+| `height` | `number` | `320` | ≥ 1 | `cssPx` | — | Its layout height. |
+| `quad` | `WorldTarget \| null` | `null` | — | — | — | Where its quad is: centred on the target's pose, facing its +Z (an og.render.planeGeometry of quadWidth by quadHeight on that entity). Null: no ray reaches it. |
+| `rotation` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | The quad's rotation after its target's. |
+| `quadWidth` | `number` | `1` | ≥ 0 | `m` | — | The quad's width along its +X. |
+| `quadHeight` | `number` | `1` | ≥ 0 | `m` | — | The quad's height along its +Y. |
+| `direction` | `Direction` | `"row"` | — | — | — | Which way it lays out its children; the default is a column. |
+| `gap` | `number` | `0` | — | `cssPx` | — | Space between children. |
+| `padding` | `Insets` | `{ left: 0, top: 0, right: 0, bottom: 0 }` | — | — | — | Space inside its edges. |
+| `background` | `Paint \| null` | `null` | — | — | — | Its fill; null draws none (the target clears to transparent). |
+
+```ogt
+struct WorldPanelDesc {
+  doc "A world panel (docs/ui.md §14): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad."
+  desc true
+  field target Option.Texture "The colour of an og.render.renderTarget made with format rgba16float (RenderTargetInfo.texture); give the mesh's material it as map (lit) or emissiveMap with colour black (unlit). It shows the frame after the UI drew it. Null: laid out and hit, drawn nowhere."
+  field width f32 "Its layout width; the target's pixels spread over it." {
+    default 480
+    unit cssPx
+    min 1
+  }
+  field height f32 "Its layout height." {
+    default 320
+    unit cssPx
+    min 1
+  }
+  field quad Option.WorldTarget "Where its quad is: centred on the target's pose, facing its +Z (an og.render.planeGeometry of quadWidth by quadHeight on that entity). Null: no ray reaches it."
+  field rotation Quaternion "The quad's rotation after its target's."
+  field quadWidth f32 "The quad's width along its +X." {
+    default 1
+    unit m
+    min 0
+  }
+  field quadHeight f32 "The quad's height along its +Y." {
+    default 1
+    unit m
+    min 0
+  }
+  field direction Direction "Which way it lays out its children; the default is a column."
+  field gap f32 "Space between children." {
+    unit cssPx
+  }
+  field padding Insets "Space inside its edges."
+  field background Option.Paint "Its fill; null draws none (the target clears to transparent)."
+}
+```
+
+<sub>`api.ogt` line 14761</sub>
+
+<a id="type-PanelInfo"></a>
+
+### `PanelInfo` (struct)
+
+What the pointer does on a world panel this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `pointed` | `boolean` | `false` | — | — | — | The ray from the pointer meets the panel's quad (and no screen element is under it): its controls take the press. |
+| `x` | `number` | `0` | — | `cssPx` | — | Where on the panel, from its top left. |
+| `y` | `number` | `0` | — | `cssPx` | — | Where on the panel, from its top left. |
+| `distance` | `number` | `0` | — | `m` | — | Along the ray to the hit. |
+
+```ogt
+struct PanelInfo {
+  doc "What the pointer does on a world panel this tick."
+  field pointed bool "The ray from the pointer meets the panel's quad (and no screen element is under it): its controls take the press."
+  field x f32 "Where on the panel, from its top left." {
+    unit cssPx
+  }
+  field y f32 "Where on the panel, from its top left." {
+    unit cssPx
+  }
+  field distance f32 "Along the ray to the hit." {
+    unit m
+  }
+}
+```
+
+<sub>`api.ogt` line 14795</sub>
+
+<a id="type-MassKind"></a>
+
+### `MassKind` (enum)
+
+What a mass element template draws.
+
+A string: one of the variants below. The zero value is `"number"`.
+
+| Variant | Doc |
+|---|---|
+| `"number"` | The instance's value as a number (a damage number, a score). |
+| `"text"` | One of strings, by the instance's value (a nameplate, a loot label). |
+| `"bar"` | A bar filled to the instance's value 0–1 with a ghost at its ghost (an overhead health bar). |
+| `"icon"` | Frame value of frames on texture (a status icon). |
+| `"particle"` | A particle of particleShape (confetti, sparks). |
+
+```ogt
+enum MassKind {
+  doc "What a mass element template draws."
+  variant number "The instance's value as a number (a damage number, a score)."
+  variant text "One of strings, by the instance's value (a nameplate, a loot label)."
+  variant bar "A bar filled to the instance's value 0–1 with a ghost at its ghost (an overhead health bar)."
+  variant icon "Frame value of frames on texture (a status icon)."
+  variant particle "A particle of particleShape (confetti, sparks)."
+}
+```
+
+<sub>`api.ogt` line 14816</sub>
+
+<a id="type-MassEase"></a>
+
+### `MassEase` (enum)
+
+How a mass element's timeline moves into a key.
+
+A string: one of the variants below. The zero value is `"linear"`.
+
+| Variant | Doc |
+|---|---|
+| `"linear"` | Evenly. |
+| `"out"` | Fast then slow. |
+| `"in"` | Slow then fast. |
+| `"back"` | Out, past the key and back (a pop). |
+| `"step"` | Holds the key before until this one. |
+
+```ogt
+enum MassEase {
+  doc "How a mass element's timeline moves into a key."
+  variant linear "Evenly."
+  variant out "Fast then slow."
+  variant in "Slow then fast."
+  variant back "Out, past the key and back (a pop)."
+  variant step "Holds the key before until this one."
+}
+```
+
+<sub>`api.ogt` line 14825</sub>
+
+<a id="type-MassSpace"></a>
+
+### `MassSpace` (enum)
+
+Where a mass element's position is.
+
+A string: one of the variants below. The zero value is `"world"`.
+
+| Variant | Doc |
+|---|---|
+| `"world"` | A world point, projected by the GPU each frame. |
+| `"screen"` | CSS pixels of the screen. |
+
+```ogt
+enum MassSpace {
+  doc "Where a mass element's position is."
+  variant world "A world point, projected by the GPU each frame."
+  variant screen "CSS pixels of the screen."
+}
+```
+
+<sub>`api.ogt` line 14834</sub>
+
+<a id="type-ParticleShape"></a>
+
+### `ParticleShape` (enum)
+
+A particle's shape.
+
+A string: one of the variants below. The zero value is `"square"`.
+
+| Variant | Doc |
+|---|---|
+| `"square"` | A rectangle of size (a long thin one is a streak). |
+| `"circle"` | A disc. |
+| `"diamond"` | A diamond. |
+
+```ogt
+enum ParticleShape {
+  doc "A particle's shape."
+  variant square "A rectangle of size (a long thin one is a streak)."
+  variant circle "A disc."
+  variant diamond "A diamond."
+}
+```
+
+<sub>`api.ogt` line 14840</sub>
+
+<a id="type-MassKey"></a>
+
+### `MassKey` (desc struct)
+
+A key of a mass element's timeline, evaluated in the shader.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `t` | `number` | `0` | 0 … 1 | `ratio` | — | Where in its life, 0–1. |
+| `offsetX` | `number` | `0` | — | `cssPx` | — | Moves it right. |
+| `offsetY` | `number` | `0` | — | `cssPx` | — | Moves it down (negative rises). |
+| `scale` | `number` | `1` | ≥ 0 | — | — | Its scale. |
+| `alpha` | `number` | `1` | 0 … 1 | — | — | Its opacity. |
+| `ease` | `MassEase` | `"linear"` | — | — | — | How it moves into this key. |
+
+```ogt
+struct MassKey {
+  doc "A key of a mass element's timeline, evaluated in the shader."
+  desc true
+  field t f32 "Where in its life, 0–1." {
+    unit ratio
+    min 0
+    max 1
+  }
+  field offsetX f32 "Moves it right." {
+    unit cssPx
+  }
+  field offsetY f32 "Moves it down (negative rises)." {
+    unit cssPx
+  }
+  field scale f32 "Its scale." {
+    default 1
+    min 0
+  }
+  field alpha f32 "Its opacity." {
+    default 1
+    min 0
+    max 1
+  }
+  field ease MassEase "How it moves into this key."
+}
+```
+
+<sub>`api.ogt` line 14847</sub>
+
+<a id="type-MassTemplateDesc"></a>
+
+### `MassTemplateDesc` (desc struct)
+
+A mass element template (docs/ui.md §14): declared once, then instanced thousands of times a frame with a few values each. No instance is laid out; its motion is the timeline, evaluated on the GPU.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `kind` | `MassKind` | `"number"` | — | — | — | What it draws. |
+| `space` | `MassSpace` | `"world"` | — | — | — | Where instances' positions are. |
+| `font` | `Font \| null` | `null` | — | — | — | Numbers and text: the font (one page); null is the UI's body font. |
+| `texture` | `Texture \| null` | `null` | — | — | — | Icons: the texture its frames are in. |
+| `strings` | `readonly string[]` | `[]` | — | — | — | Text: the strings an instance's value picks. |
+| `frames` | `readonly number[]` | `[]` | — | — | — | Icons: uv rectangles, four numbers each (u0, v0, u1, v1). |
+| `decimals` | `number` | `0` | — | — | — | Numbers: digits after the point. |
+| `plus` | `boolean` | `false` | — | — | — | Numbers: a + before positive values. |
+| `compact` | `boolean` | `false` | — | — | — | Numbers: 12.3k, 4.5M. |
+| `barBack` | `Paint \| null` | `null` | — | — | — | Bars: the track's ink; null is near black at 85 %. |
+| `barGhost` | `Paint \| null` | `null` | — | — | — | Bars: the ghost's ink; null is pale. |
+| `barRadius` | `number` | `0` | ≥ 0 | `cssPx` | — | Bars: corner radius. |
+| `particleShape` | `ParticleShape` | `"square"` | — | — | — | Particles: the shape. |
+| `size` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | — | Text and numbers: x is the em size; bars, icons and particles: width and height. |
+| `pivot` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The element's point on its position, fractions (0.5, 1: its bottom centre). |
+| `lifetime` | `number` | `0` | — | — | — | Ticks an instance lives; 0 shows pushed instances for their tick only. |
+| `keys` | `readonly MassKey[]` | `[]` | — | — | — | The timeline over its life (up to 8). |
+| `drift` | `number` | `0` | — | `cssPx` | — | Each instance drifts sideways up to this far over its life, by its seed. |
+| `gravity` | `number` | `0` | — | `cssPx` | — | Added downward over its life, this much at its end. |
+| `drag` | `boolean` | `false` | — | — | — | Instances' velocity slows to rest over the life. |
+| `reference` | `number` | `0` | ≥ 0 | `m` | — | World space: the distance at which it is its size, nearer larger and farther smaller; 0 keeps its screen size. |
+| `minScale` | `number` | `0.25` | ≥ 0 | — | — | World space: the smallest distance scale. |
+| `maxScale` | `number` | `4` | ≥ 0 | — | — | World space: the largest distance scale. |
+| `occlusion` | `WorldOcclusion` | `"none"` | — | — | — | World space: what the scene in front of an instance does. |
+| `occludedAlpha` | `number` | `0.25` | 0 … 1 | — | — | Its opacity behind the scene, for occlusion fade. |
+| `outline` | `Paint \| null` | `null` | — | — | — | Text and numbers: an outline's ink; null draws none. |
+| `outlineWidth` | `number` | `2` | ≥ 0 | `cssPx` | — | Its width. |
+
+```ogt
+struct MassTemplateDesc {
+  doc "A mass element template (docs/ui.md §14): declared once, then instanced thousands of times a frame with a few values each. No instance is laid out; its motion is the timeline, evaluated on the GPU."
+  desc true
+  field kind MassKind "What it draws."
+  field space MassSpace "Where instances' positions are."
+  field font Option.Font "Numbers and text: the font (one page); null is the UI's body font."
+  field texture Option.Texture "Icons: the texture its frames are in."
+  field strings List.String "Text: the strings an instance's value picks."
+  field frames List.f32 "Icons: uv rectangles, four numbers each (u0, v0, u1, v1)."
+  field decimals u32 "Numbers: digits after the point."
+  field plus bool "Numbers: a + before positive values."
+  field compact bool "Numbers: 12.3k, 4.5M."
+  field barBack Option.Paint "Bars: the track's ink; null is near black at 85 %."
+  field barGhost Option.Paint "Bars: the ghost's ink; null is pale."
+  field barRadius f32 "Bars: corner radius." {
+    unit cssPx
+    min 0
+  }
+  field particleShape ParticleShape "Particles: the shape."
+  field size Vector2 "Text and numbers: x is the em size; bars, icons and particles: width and height." {
+    unit cssPx
+  }
+  field pivot Vector2 "The element's point on its position, fractions (0.5, 1: its bottom centre)."
+  field lifetime u32 "Ticks an instance lives; 0 shows pushed instances for their tick only."
+  field keys List.MassKey "The timeline over its life (up to 8)."
+  field drift f32 "Each instance drifts sideways up to this far over its life, by its seed." {
+    unit cssPx
+  }
+  field gravity f32 "Added downward over its life, this much at its end." {
+    unit cssPx
+  }
+  field drag bool "Instances' velocity slows to rest over the life."
+  field reference f32 "World space: the distance at which it is its size, nearer larger and farther smaller; 0 keeps its screen size." {
+    unit m
+    min 0
+  }
+  field minScale f32 "World space: the smallest distance scale." {
+    default 0.25
+    min 0
+  }
+  field maxScale f32 "World space: the largest distance scale." {
+    default 4
+    min 0
+  }
+  field occlusion WorldOcclusion "World space: what the scene in front of an instance does."
+  field occludedAlpha f32 "Its opacity behind the scene, for occlusion fade." {
+    default 0.25
+    min 0
+    max 1
+  }
+  field outline Option.Paint "Text and numbers: an outline's ink; null draws none."
+  field outlineWidth f32 "Its width." {
+    default 2
+    unit cssPx
+    min 0
+  }
+}
+```
+
+<sub>`api.ogt` line 14873</sub>
+
+<a id="type-MassInstance"></a>
+
+### `MassInstance` (desc struct)
+
+One mass element: a few values; its template does the rest.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | A world point, or CSS pixels (x, y) in screen space. |
+| `value` | `number` | `0` | — | — | — | The number, the string or frame index, or the bar's fill 0–1. |
+| `color` | `Paint \| null` | `null` | — | — | — | Its ink (text, icon tint, bar fill, particle); null is white. |
+| `scale` | `number` | `1` | ≥ 0 | — | — | Multiplies its timeline's scale (a critical hit). |
+| `seed` | `number` | `0` | — | — | — | Its drift's side. |
+| `ghost` | `number` | `0` | — | `ratio` | — | Bars: the ghost's fill 0–1. |
+| `velocity` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | — | Travelled over its life. |
+| `spin` | `number` | `0` | — | — | — | Turns over its life. |
+| `rotation` | `number` | `0` | — | `rad` | — | Its starting rotation, clockwise. |
+
+```ogt
+struct MassInstance {
+  doc "One mass element: a few values; its template does the rest."
+  desc true
+  field position Vector3 "A world point, or CSS pixels (x, y) in screen space."
+  field value f64 "The number, the string or frame index, or the bar's fill 0–1."
+  field color Option.Paint "Its ink (text, icon tint, bar fill, particle); null is white."
+  field scale f32 "Multiplies its timeline's scale (a critical hit)." {
+    default 1
+    min 0
+  }
+  field seed u32 "Its drift's side."
+  field ghost f32 "Bars: the ghost's fill 0–1." {
+    unit ratio
+  }
+  field velocity Vector2 "Travelled over its life." {
+    unit cssPx
+  }
+  field spin f32 "Turns over its life."
+  field rotation f32 "Its starting rotation, clockwise." {
+    unit rad
+  }
+}
+```
+
+<sub>`api.ogt` line 14931</sub>
+
+<a id="type-EmitFrom"></a>
+
+### `EmitFrom` (enum)
+
+Where on its element a particle starts.
+
+A string: one of the variants below. The zero value is `"center"`.
+
+| Variant | Doc |
+|---|---|
+| `"center"` | Its centre. |
+| `"area"` | Anywhere inside its box. |
+| `"edges"` | On its edges. |
+
+```ogt
+enum EmitFrom {
+  doc "Where on its element a particle starts."
+  variant center "Its centre."
+  variant area "Anywhere inside its box."
+  variant edges "On its edges."
+}
+```
+
+<sub>`api.ogt` line 14981</sub>
+
+<a id="type-ParticlesDesc"></a>
+
+### `ParticlesDesc` (desc struct)
+
+UI particles from an element (docs/ui.md §5.5): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `rate` | `number` | `0` | ≥ 0 | — | — | Particles a second while it is built. |
+| `burst` | `number` | `0` | — | — | — | Particles at once on a tick fire is set. |
+| `fire` | `boolean` | `false` | — | — | — | Throw the burst this tick. |
+| `lifetimeMs` | `number` | `0` | ≥ 0 | `ms` | — | How long a particle lives; 0 is 900. |
+| `shape` | `ParticleShape` | `"square"` | — | — | — | Its shape. |
+| `size` | `Vector2` | `{ x: 8, y: 8 }` | — | `cssPx` | — | Its size. |
+| `colors` | `readonly Paint[]` | `[]` | — | — | — | Picked by each particle's seed; empty is the accent. |
+| `travelMin` | `number` | `40` | ≥ 0 | `cssPx` | — | The shortest way a particle flies over its life. |
+| `travelMax` | `number` | `120` | ≥ 0 | `cssPx` | — | The longest. |
+| `direction` | `number` | `-1.5707964` | — | `rad` | — | Its heading, clockwise from +x (-π/2 is up). |
+| `spread` | `number` | `6.2831855` | ≥ 0 | `rad` | — | The spread about the heading (2π is every way). |
+| `gravity` | `number` | `0` | — | `cssPx` | — | Added downward over its life, this much at its end. |
+| `drag` | `boolean` | `true` | — | — | — | Its flight slows to rest. |
+| `spin` | `number` | `0` | ≥ 0 | — | — | Turns over its life, up to this many either way. |
+| `align` | `boolean` | `false` | — | — | — | Its rotation follows its heading (a streak flying outward). |
+| `from` | `EmitFrom` | `"center"` | — | — | — | Where it starts. |
+| `endScale` | `number` | `1` | ≥ 0 | — | — | Its scale at the end of its life. |
+| `fade` | `boolean` | `true` | — | — | — | Fades out toward its end. |
+| `clip` | `boolean` | `true` | — | — | — | Clipped by the element's clip (a scroll view, a masked panel). |
+
+```ogt
+struct ParticlesDesc {
+  doc "UI particles from an element (docs/ui.md §5.5): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion."
+  desc true
+  field rate f32 "Particles a second while it is built." {
+    min 0
+  }
+  field burst u32 "Particles at once on a tick fire is set."
+  field fire bool "Throw the burst this tick."
+  field lifetimeMs f32 "How long a particle lives; 0 is 900." {
+    unit ms
+    min 0
+  }
+  field shape ParticleShape "Its shape."
+  field size Vector2 "Its size." {
+    default 8 8
+    unit cssPx
+  }
+  field colors List.Paint "Picked by each particle's seed; empty is the accent."
+  field travelMin f32 "The shortest way a particle flies over its life." {
+    default 40
+    unit cssPx
+    min 0
+  }
+  field travelMax f32 "The longest." {
+    default 120
+    unit cssPx
+    min 0
+  }
+  field direction f32 "Its heading, clockwise from +x (-π/2 is up)." {
+    default -1.5707964
+    unit rad
+  }
+  field spread f32 "The spread about the heading (2π is every way)." {
+    default 6.2831855
+    unit rad
+    min 0
+  }
+  field gravity f32 "Added downward over its life, this much at its end." {
+    unit cssPx
+  }
+  field drag bool "Its flight slows to rest." {
+    default true
+  }
+  field spin f32 "Turns over its life, up to this many either way." {
+    min 0
+  }
+  field align bool "Its rotation follows its heading (a streak flying outward)."
+  field from EmitFrom "Where it starts."
+  field endScale f32 "Its scale at the end of its life." {
+    default 1
+    min 0
+  }
+  field fade bool "Fades out toward its end." {
+    default true
+  }
+  field clip bool "Clipped by the element's clip (a scroll view, a masked panel)." {
+    default true
+  }
+}
+```
+
+<sub>`api.ogt` line 14988</sub>
+
+<a id="type-MetaKind"></a>
+
+### `MetaKind` (enum)
+
+What a meta layer draws over the scene.
+
+A string: one of the variants below. The zero value is `"vignette"`.
+
+| Variant | Doc |
+|---|---|
+| `"vignette"` | Its colour at the edges, clear in the middle (a damage vignette). |
+| `"tint"` | A flat tint. |
+| `"material"` | The frame under it composited through a UI material (a ripple for sanity, a glitch for a hit). |
+
+```ogt
+enum MetaKind {
+  doc "What a meta layer draws over the scene."
+  variant vignette "Its colour at the edges, clear in the middle (a damage vignette)."
+  variant tint "A flat tint."
+  variant material "The frame under it composited through a UI material (a ripple for sanity, a glitch for a hit)."
+}
+```
+
+<sub>`api.ogt` line 15054</sub>
+
+<a id="type-MetaDesc"></a>
+
+### `MetaDesc` (desc struct)
+
+A meta layer (docs/ui.md §14): full screen, over the scene and under the screen's elements, never taking input.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `kind` | `MetaKind` | `"vignette"` | — | — | — | What it draws. |
+| `color` | `Paint \| null` | `null` | — | — | — | Vignette and tint: its ink; null is a deep red. |
+| `inner` | `number` | `0.55` | 0 … 1 | `ratio` | — | Vignette: clear out to this fraction of the half diagonal. |
+| `outer` | `number` | `1` | 0 … 1 | `ratio` | — | Vignette: full colour from this fraction on. |
+| `material` | `MaterialName` | `"plain"` | — | — | — | Material: the built-in material, or custom. |
+| `custom` | `UiMaterial \| null` | `null` | — | — | — | Material: the custom material. |
+| `params` | `readonly number[]` | `[]` | — | — | — | Material: its parameters, up to four vec4s flattened. |
+| `intensity` | `number` | `1` | 0 … 1 | — | — | Its opacity. |
+| `pulseHz` | `number` | `0` | ≥ 0 | `hz` | — | Pulses this many times a second (a low-health heartbeat); 0 is steady. |
+| `pulseDepth` | `number` | `0.5` | 0 … 1 | `ratio` | — | How far a pulse dims it. |
+
+```ogt
+struct MetaDesc {
+  doc "A meta layer (docs/ui.md §14): full screen, over the scene and under the screen's elements, never taking input."
+  desc true
+  field kind MetaKind "What it draws."
+  field color Option.Paint "Vignette and tint: its ink; null is a deep red."
+  field inner f32 "Vignette: clear out to this fraction of the half diagonal." {
+    default 0.55
+    unit ratio
+    min 0
+    max 1
+  }
+  field outer f32 "Vignette: full colour from this fraction on." {
+    default 1
+    unit ratio
+    min 0
+    max 1
+  }
+  field material MaterialName "Material: the built-in material, or custom."
+  field custom Option.UiMaterial "Material: the custom material."
+  field params List.f32 "Material: its parameters, up to four vec4s flattened."
+  field intensity f32 "Its opacity." {
+    default 1
+    min 0
+    max 1
+  }
+  field pulseHz f32 "Pulses this many times a second (a low-health heartbeat); 0 is steady." {
+    unit hz
+    min 0
+  }
+  field pulseDepth f32 "How far a pulse dims it." {
+    default 0.5
+    unit ratio
+    min 0
+    max 1
+  }
+}
+```
+
+<sub>`api.ogt` line 15061</sub>
+
+<a id="type-SceneViewportDesc"></a>
+
+### `SceneViewportDesc` (desc struct)
+
+The viewport element (docs/ui.md §5.5): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `texture` | `Texture \| null` | `null` | — | — | — | The target's colour (RenderTargetInfo.texture). |
+| `width` | `Size \| null` | `null` | — | — | — | Its width; null is 320 CSS px. |
+| `height` | `Size \| null` | `null` | — | — | — | Its height; null is 320 CSS px. |
+| `aspect` | `number` | `0` | ≥ 0 | — | — | Width over height; 0 is free. |
+| `cameraPosition` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | Its camera's position, for rays. |
+| `cameraTarget` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | What its camera looks at, for rays. |
+| `fov` | `number` | `50` | ≥ 0 | `deg` | — | Its camera's vertical field of view; 0 gives no ray. |
+| `background` | `Paint \| null` | `null` | — | — | — | Drawn under the view. |
+| `radius` | `number` | `0` | — | `cssPx` | — | Corner radius. |
+| `label` | `string` | `""` | — | — | — | What the probe and the accessibility tree call it. |
+
+```ogt
+struct SceneViewportDesc {
+  doc "The viewport element (docs/ui.md §5.5): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in."
+  desc true
+  field texture Option.Texture "The target's colour (RenderTargetInfo.texture)."
+  field width Option.Size "Its width; null is 320 CSS px."
+  field height Option.Size "Its height; null is 320 CSS px."
+  field aspect f32 "Width over height; 0 is free." {
+    min 0
+  }
+  field cameraPosition Vector3 "Its camera's position, for rays."
+  field cameraTarget Vector3 "What its camera looks at, for rays."
+  field fov f32 "Its camera's vertical field of view; 0 gives no ray." {
+    default 50
+    unit deg
+    min 0
+  }
+  field background Option.Paint "Drawn under the view."
+  field radius f32 "Corner radius." {
+    unit cssPx
+  }
+  field label String "What the probe and the accessibility tree call it."
+}
+```
+
+<sub>`api.ogt` line 15105</sub>
+
+<a id="type-SceneViewportInfo"></a>
+
+### `SceneViewportInfo` (struct)
+
+What the pointer does in a viewport this tick.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `width` | `number` | `0` | — | `cssPx` | — | Its laid-out width, last tick. |
+| `height` | `number` | `0` | — | `cssPx` | — | Its laid-out height, last tick. |
+| `pixelWidth` | `number` | `0` | — | — | — | The target width that fills it at the device's pixel ratio. |
+| `pixelHeight` | `number` | `0` | — | — | — | The target height that fills it. |
+| `hovered` | `boolean` | `false` | — | — | — | The pointer is over it. |
+| `pressed` | `boolean` | `false` | — | — | — | A press that started in it is held. |
+| `clicked` | `boolean` | `false` | — | — | — | Pressed and released in it. |
+| `drag` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | — | The pointer's move while held this tick (orbit, turn). |
+| `wheel` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The wheel over it (zoom). |
+| `at` | `Vector2 \| null` | `null` | — | — | — | The pointer in it, fractions of its box from the top left. |
+| `ray` | `Ray \| null` | `null` | — | — | — | The ray into its scene through the pointer. |
+
+```ogt
+struct SceneViewportInfo {
+  doc "What the pointer does in a viewport this tick."
+  field width f32 "Its laid-out width, last tick." {
+    unit cssPx
+  }
+  field height f32 "Its laid-out height, last tick." {
+    unit cssPx
+  }
+  field pixelWidth u32 "The target width that fills it at the device's pixel ratio."
+  field pixelHeight u32 "The target height that fills it."
+  field hovered bool "The pointer is over it."
+  field pressed bool "A press that started in it is held."
+  field clicked bool "Pressed and released in it."
+  field drag Vector2 "The pointer's move while held this tick (orbit, turn)." {
+    unit cssPx
+  }
+  field wheel Vector2 "The wheel over it (zoom)."
+  field at Option.Vector2 "The pointer in it, fractions of its box from the top left."
+  field ray Option.Ray "The ray into its scene through the pointer."
+}
+```
+
+<sub>`api.ogt` line 15128</sub>
+
 <a id="type-UiDocEvent"></a>
 
 ### `UiDocEvent` (struct)
@@ -12185,7 +13445,7 @@ struct UiDocEvent {
 }
 ```
 
-<sub>`api.ogt` line 14631</sub>
+<sub>`api.ogt` line 15157</sub>
 
 <a id="type-UiDocResponse"></a>
 
@@ -12208,7 +13468,7 @@ struct UiDocResponse {
 }
 ```
 
-<sub>`api.ogt` line 14640</sub>
+<sub>`api.ogt` line 15166</sub>
 
 <a id="type-UiLayer"></a>
 
@@ -12251,7 +13511,7 @@ struct UiLayer {
 }
 ```
 
-<sub>`api.ogt` line 14647</sub>
+<sub>`api.ogt` line 15173</sub>
 
 <a id="type-UiActionTrigger"></a>
 
@@ -12276,7 +13536,7 @@ enum UiActionTrigger {
 }
 ```
 
-<sub>`api.ogt` line 14664</sub>
+<sub>`api.ogt` line 15190</sub>
 
 <a id="type-UiActionDesc"></a>
 
@@ -12309,7 +13569,7 @@ struct UiActionDesc {
 }
 ```
 
-<sub>`api.ogt` line 14671</sub>
+<sub>`api.ogt` line 15197</sub>
 
 <a id="type-UiDevice"></a>
 
@@ -12340,7 +13600,7 @@ enum UiDevice {
 }
 ```
 
-<sub>`api.ogt` line 14684</sub>
+<sub>`api.ogt` line 15210</sub>
 
 <a id="type-UiGlyph"></a>
 
@@ -12363,7 +13623,7 @@ struct UiGlyph {
 }
 ```
 
-<sub>`api.ogt` line 14694</sub>
+<sub>`api.ogt` line 15220</sub>
 
 <a id="type-UiActionHint"></a>
 
@@ -12390,4 +13650,4 @@ struct UiActionHint {
 }
 ```
 
-<sub>`api.ogt` line 14701</sub>
+<sub>`api.ogt` line 15227</sub>
