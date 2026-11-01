@@ -22,7 +22,9 @@
 //! layout rules, the id grammar, the theme generation and the probe contract.
 
 mod a11y;
+pub mod actions;
 pub mod bind;
+pub mod doc;
 mod draw;
 mod draw_codec;
 pub mod dress;
@@ -32,6 +34,7 @@ pub mod glyphs;
 mod id;
 mod input;
 mod juice;
+pub mod layers;
 mod layout;
 pub mod markup;
 pub mod motion;
@@ -53,6 +56,9 @@ mod ui;
 mod widgets;
 
 pub use a11y::{A11yNode, A11yTree};
+pub use actions::{ActionDesc, ActionHint, ActionTrigger, Device, Glyph};
+pub use doc::UiDocument;
+pub use doc::build::{DocEvent, DocResponse};
 pub use draw::{DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, MAX_LAYERS};
 pub use dress::{DressFrame, Dressing, Selector};
 pub use element::{
@@ -66,6 +72,7 @@ pub use juice::{
     BurstDesc, CounterDesc, ScreenTransition, ScreenTransitionDesc, ScreenWipe, ShakeDesc, Side,
     format_count,
 };
+pub use layers::{LayerInfo, LayerOp};
 pub use layout::{
     Align, Anchor, Cross, Direction, Element, FontRole, Insets, Rect, Size, TextAlign,
 };

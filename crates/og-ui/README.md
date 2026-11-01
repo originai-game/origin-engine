@@ -165,6 +165,329 @@ layer's probe path is its own id. Anchored groups sit at one of nine points of
 the safe area (`Anchor::TopLeft` … `BottomRight`, `Center`), inset by the
 density's gutter (or `margin`), moved by `offset`.
 
+## Documents (`src/doc/`)
+
+A **screen** (`type screen`) or a **component** (`type component`) is an
+`.ogt` document: an element tree with props, slots, parts, state groups,
+transitions, timelines, breakpoint overrides, list templates and bindings
+(docs/ui.md §10). `UiDocument::parse(source, text)` reads and validates one
+against the reflected props below (`doc::schema`, the one schema: the
+parser, `ui:set`, the probe's `schema`, `og.ui.documentSchema` and this
+table all read it, and `tests/documents.rs` holds this table equal to
+it); every error names its line and its fix. og-cook cooks a document into
+an `og.UiDocument` blob (the validated text, as styles are); a game loads it
+with `og.load.document` and a `Ui` registers it with `define_document`.
+
+### Grammar
+
+```text
+type screen                       # or: type component
+version 1
+---
+name "shop"                       # what og.ui.screen / push / component name it
+layer menu                        # screens: hud menu modal popover toast tooltip system
+input menu                        # game | menu | all (the kind's default)
+capture true                      # takes the pointer on its gaps too
+pause true                        # the game pauses while it is on the stack
+under dim                         # the layers under it: none | dim | blur | hide
+back pop                          # pop | none | emit <event>
+focus "Footer/Buy"                # where focus starts (a path below the root)
+remember true                     # focus returns where it was when it is the top again
+enter slideUp 24 spring 320 0.1   # the layer's presence (as an element's enter/exit)
+exit fade
+props {                           # the viewmodel's contract: name type "doc"
+  gold number "The player's gold."  # number string bool list object any
+  items list "What the shop sells."
+}
+parts frame price                 # part names a style dresses (every one used by an element)
+actions {                         # the action bar's hints while this layer is on top
+  confirm "Buy"
+  back "Leave"
+}
+timeline bought {                 # defined as <name>/<timeline>: shop/bought
+  track "" scale {                # target: "" the element it plays on, or a path below it
+    key 0 1                       # <ms> <value> [linear|out|exit|inOut|hold|spring <ms> <bounce>|bezier a b c d]
+    key 120 1.08 out
+    key 260 1
+  }
+  event 0 "" sound buy            # sound <name> [pitch] | haptic <kind> | burst [n] [radius] [#colour] | state <group> <state> | callback <name>
+  label hit 120
+  duration 400
+}
+fixture rich "{\"gold\": 1250000, \"items\": []}"   # a viewmodel to preview or push with (ui:push:shop:rich)
+panel Shop {                      # the one root element: <kind> [id] { … }
+  width 520                       # <prop> <value>: the table below
+  part frame
+  label Gold {
+    text bind gold compact        # bind <expression> [format [digits]]
+  }
+  label Price {
+    text "{price, grouped} gold"  # a quoted text with { is a template
+  }
+  for item in items {             # one copy of the block per entry; $index is its index
+    row Item {                    # its elements are told apart: Item#0, Item#1 …
+      label Name {
+        text bind item.name
+      }
+      state selection bind "$index == selected" {   # a group: its binding picks the state
+        off {                     # (a bool: the second state when true; a string: by name)
+          opacity 0.6             # an animatable prop and its value
+        }
+        on {
+          opacity 1
+          background token primarySoft    # or ink; a palette role or "#rrggbb[aa]"
+          enter bought            # a timeline played when the state is entered (exit: left)
+        }
+        transition off on spring 260 0.2  # <from|*> <to|*> spring <ms> <bounce> | tween <ms> [ease] | token <name> | instant
+      }
+    }
+  }
+  if "gold > 0" {                 # its block only while the expression is true
+    label Rich {
+      text "Rich"
+    }
+  }
+  list Items {                    # list and cells: virtualised, exactly one `for` inside
+    rowHeight 56                  # (only the rows in view are built)
+    for item in items {
+      label Name {
+        text bind item.name
+      }
+    }
+  }
+  slot Preview {                  # a place code fills: og.ui.openSlot("shop/Preview")
+    height 120
+  }
+  use PriceTag Tag {              # a component: its props by name (bound ones are two-way)
+    price bind item.price
+    width 80                      # an element prop applies to the instance's root
+  }
+  slider Volume {
+    value bind volume             # two-way: the slider writes volume back
+  }
+  button Buy {
+    text "Buy"
+    disabled bind "gold < price"
+    on click emit buy             # on <when> <act>
+    on click play bought
+    at phone {                    # breakpoint overrides: phonePortrait phoneLandscape
+      width grow                  # phone tablet desktop portrait landscape (later wins)
+    }
+  }
+}
+```
+
+Lines are `.ogt` lines (one construct per line, `#` comments, quoted strings
+for anything that is not a word: paths with `/`, expressions with spaces).
+Element ids are unique among siblings (paths name elements by them); an
+element without one is `<kind>#<n>` among its same-kind siblings.
+
+- **When** (`on <when> <act>`): `click`, `changed` (a control's value),
+  `appear` (it was not built last tick), `change <expression>` (its value
+  differs from last tick's), `action <name>` (a UI action fired while the
+  element's layer is the top one that takes input).
+- **Act**: `play <timeline>` (the document's, or `<doc>/<name>`),
+  `state <group> <state>`, `emit <event>` (an event to code), `push
+  <screen>`, `pop`, `action <name>`, `set <path> <expression>` (a write into
+  the viewmodel).
+
+### Bindings and formats (`src/bind.rs`)
+
+A **viewmodel** is JSON: an object code passes (`og.ui.screen("shop", vm)`),
+a fixture, or a reflected resource or component code reads into it. A path
+(`hero.health`, `items.0.price`, `items.length`) reads the viewmodel, a
+`for`'s item variable first; a Capitalised root (`Wallet.gold`) is the
+host's (`Env::lookup`: the resource as of the last tick's end). Expressions:
+paths, numbers, strings, `true false null`, `! -`, `* / % + -`,
+`< <= > >= == !=`, `&& ||`, `a ? b : c`, parentheses. Bindings are read every
+tick after the game's systems; an unchanged value leaves its element's
+layout and drawing kept (docs/ui.md §6.3).
+
+Formats (`bind <expr> <format> [digits]`, or `{path, format[, digits]}` in a
+template), by the language og-i18n sets:
+
+| format | 1234567.891 | what it does |
+|---|---|---|
+| `plain` | 1234567.891 | as written |
+| `grouped` | 1,234,568 | the locale's grouping, `digits` decimals (0) |
+| `fixed` | 1,234,567.89 | grouped, always `digits` decimals (2) |
+| `compact` | 1.23M | K M B T (CJK: 万 億 兆; 1.23億 in ja) |
+| `engineering` | 1.23e6 | exponents in threes |
+| `scientific` | 1.23e6 | one digit before the point |
+| `letters` | 1.23M | idle notation: K M B T, then aa ab … from 1e15 (1.5e400: 15ey) |
+| `percent` | 123,456,789% | ×100 |
+| `duration` | 14d 6h | seconds as the two largest units |
+| `clock` | 342:56:07 | seconds as h:mm:ss |
+| `countdown` | 342:56:08 | as clock, rounded up, never below 0 |
+| `ordinal` | 1234567th | og-i18n's ordinal rules (scientific past 1e15) |
+
+Numbers past 1e308 are a mantissa and an exponent: `{ "m": 1.5, "e": 400 }`
+or the string `"1.5e400"`, formatted by every format above. Plurals and
+selects are og-i18n's message syntax in a template (`"{count, plural, one {#
+gem} other {# gems}}"`).
+
+### Documents and code
+
+`Ui::screen(name, vm, env)` mounts a screen as a layer (pushed when it is
+not on the stack), with its viewmodel for this tick, and builds it where it
+is called, so code fills its slots right after (`open_slot(path)` …
+`close()`); `Ui::component(id, name, &mut props, env)` builds a component
+in place, inside whatever code has open. Both answer a `DocResponse`: the
+document's events this tick (`click`, `changed`, `select` of a list row,
+`emit`, `action`, `set` for each two-way write with the path it wrote,
+`back` when the layer's Back is `emit`). Layers code does not build this
+tick are built by `build_layers(env)` (and by `end` with no host), their
+events kept for `take_doc_events`. Code and documents build one tree: a
+document's elements have the same props, states, motion and checks as
+code's.
+
+### The layer stack (`src/layers.rs`)
+
+`push_screen(screen, vm)`, `pop_screen`, `replace_screen`, `clear_screens`;
+`layer_stack()` lists them bottom first. Each layer is a full-surface layer
+of its own (id: its screen's name), built in stack order:
+
+| kind | input | capture | under | back |
+|---|---|---|---|---|
+| `hud` | game | no | none | none |
+| `menu` | menu | yes | dim | pop |
+| `modal` | menu | yes | dim | pop |
+| `popover` | menu | no | none | pop |
+| `toast` | game | no | none | none |
+| `tooltip` | game | no | none | none |
+| `system` | all | no | none | pop |
+
+- Input goes to the top layer that takes it, once per tick: a `menu` or
+  `all` layer is a focus scope (focus stays inside, it takes Back before
+  `Ui::back` sees it), the layers under a `menu` layer are inert, and
+  `game_input()` is false while one is on the stack. A capturing layer
+  (or a dimmed one) takes the pointer on its gaps.
+- Focus: a layer that becomes the top takes the focus it had when a layer
+  was pushed over it (`remember`), else its `focus` path, else its first
+  control.
+- `under dim` and `blur` draw the palette's scrim under the layer (blur
+  becomes a backdrop blur with the UI pass); `hide` leaves the layers under
+  it unbuilt. `paused()` is true while a `pause` layer is on the stack.
+- `save_state` carries the stack, each layer's viewmodel and focus, and the
+  states triggers set.
+
+### Actions and glyphs (`src/actions.rs`)
+
+Named UI actions bound to og-input's controls: `ActionDesc { name, keys,
+buttons, trigger, toggle, label }` with `trigger` press, release or
+`Hold(ms)`, and `toggle` the hold's alternative (a tap turns it on, the next
+off: `action_held`). The defaults: `confirm` (Enter, Space, A), `back`
+(Escape, B), `tabNext` (E, `]`, RB), `tabPrev` (Q, `[`, LB), `details` (X,
+Y). `action(name)` is true the tick it fires; a document's `on action`
+fires on the top layer that takes input. `device()` is the device used
+last (keyboard and mouse, the pad family the host set with
+`set_pad_family`: Xbox, PlayStation, Switch or a generic pad, or touch on a
+coarse pointer), and `glyph(action)` its glyph there (`icon` a style's
+icon name, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `key.enter`,
+`touch.<action>`, and `text`). `action_bar()` is what an action bar
+component reads: the top layer's `actions` with their hints and glyphs.
+
+### The props
+
+Every kind takes the box and element-model props (`on` all); the rest are
+the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
+`list`, `cells`, `slot` (containers), `label`, `button`, `image`, `art`,
+`icon`, `progress`, `slider`, `toggle`, `field`, `badge`, `spacer`,
+`divider`.
+
+| prop | value | on | what it does |
+|---|---|---|---|
+| `width` | size | all | Its width (fit by default). |
+| `height` | size | all | Its height (fit by default). |
+| `padding` | insets | all | Space inside its edges, CSS px. |
+| `gap` | number | all | Space between its children, CSS px. |
+| `align` | start \| center \| end \| spaceBetween | all | Where children sit along the main axis. |
+| `cross` | start \| center \| end \| stretch \| baseline | all | Where children sit across it. |
+| `wrap` | bool | all | A row breaks its children into lines. |
+| `background` | paint | all | Its fill. |
+| `radius` | number | all | Its corner radius, CSS px. |
+| `frame` | panel \| card \| button \| buttonHover \| buttonPressed \| buttonDisabled \| field \| slot \| tooltip \| hud \| track \| fill | all | The style frame its background takes. |
+| `aspect` | number | all | Width over height (0: none). |
+| `interactive` | bool | all | It reports clicks (`on click`). |
+| `visible` | bool | all | False leaves it (and its subtree) out of the tree. |
+| `name` | text | all | What a screen reader calls it. |
+| `part` | name | all | Its part name a style dresses (`ShopCard.frame`); the document's `parts` lists them. |
+| `x` | number | all | Moved right after layout, CSS px. |
+| `y` | number | all | Moved down after layout, CSS px. |
+| `scale` | number | all | Both scales. |
+| `scaleX` | number | all | Its horizontal scale. |
+| `scaleY` | number | all | Its vertical scale. |
+| `rotate` | number | all | A turn, radians, clockwise. |
+| `skewX` | number | all | A skew, radians. |
+| `skewY` | number | all | A skew, radians. |
+| `pivot` | x y | all | The transform's origin, fractions of its box. |
+| `opacity` | number | all | 0 to 1, multiplied down the tree. |
+| `z` | number | all | Drawing order among its siblings. |
+| `position` | flow \| absolute \| anchored | all | In the flow, placed by its insets, or against another element. |
+| `start` | number | all | The inset from its parent's start edge (absolute). |
+| `top` | number | all | The inset from the top. |
+| `end` | number | all | The inset from the end edge. |
+| `bottom` | number | all | The inset from the bottom. |
+| `centerX` | bool | all | Centred across its parent. |
+| `centerY` | bool | all | Centred down its parent. |
+| `anchorTo` | name | all | The path of the element an anchored element sits against. |
+| `anchorAt` | topLeft \| top \| topRight \| left \| center \| right \| bottomLeft \| bottom \| bottomRight | all | The target's point it sits on. |
+| `anchorSelf` | topLeft \| top \| topRight \| left \| center \| right \| bottomLeft \| bottom \| bottomRight | all | Its own point that sits there. |
+| `hitSlop` | number | all | Extra pointer reach, CSS px. |
+| `columns` | tracks | all | A grid's column tracks. |
+| `rows` | tracks | all | A grid's row tracks. |
+| `areas` | names | all | A grid's named areas, one string per row. |
+| `flow` | row \| column | all | How a grid auto-places. |
+| `dense` | bool | all | A grid back-fills holes. |
+| `area` | name | all | The named grid area it takes. |
+| `cell` | x y | all | Its grid column and row, 1-based. |
+| `span` | x y | all | Columns and rows it spans. |
+| `overlaps` | names | all | Paths it overlaps on purpose. |
+| `match` | name | all | A shared-element key. |
+| `motion` | transition | all | How its animatable values move when they change. |
+| `layoutMotion` | transition | all | Moves from its old rectangle to its new one. |
+| `enter` | presence | all | How it arrives. |
+| `exit` | presence | all | How it leaves. |
+| `inert` | bool | all | It and its subtree take no input. |
+| `reduced` | fade \| none \| keep | all | Its reduced-motion fallback. |
+| `text` | text | label, button, badge, toggle | What it says. |
+| `key` | name | label, button, badge, toggle | A string table key (og.i18n) its text comes from; `text` is the fallback. |
+| `step` | body \| xs \| meta \| caption \| sm \| reading \| base \| lg \| xl \| xl2 \| xl3 \| xl4 \| xl5 \| xl6 \| xl7 \| xl8 \| displaySm \| displayMd \| displayLg \| displayXl \| displayXl2 | label | The type step. |
+| `color` | paint | label, icon | Its ink. |
+| `textAlign` | start \| center \| end | label | How its lines align. |
+| `nowrap` | bool | label | One line. |
+| `maxLines` | number | label | The most lines it shows. |
+| `ellipsis` | bool | label | Cut with … where it does not fit. |
+| `font` | body \| display \| mono \| rounded | label | The font role. |
+| `heading` | bool | label | A heading (a style's flourish frames it). |
+| `variant` | secondary \| primary \| quiet \| danger | button | The button's role. |
+| `size` | small \| medium \| large | button | The control height. |
+| `disabled` | bool | button, slider, toggle, field | Takes no input. |
+| `autofocus` | bool | button | Takes the focus when it appears. |
+| `value` | number | progress, slider | Its value (a slider writes it back). Two-way. |
+| `min` | number | slider | The range's low end. |
+| `max` | number | slider | The range's high end. |
+| `stepBy` | number | slider | Snap to multiples of this (0: continuous). |
+| `checked` | bool | toggle | Whether it is on (written back). Two-way. |
+| `input` | text | field | The field's text (written back). Two-way. |
+| `placeholder` | text | field | Shown while it is empty. |
+| `maxChars` | number | field | The most characters it takes. |
+| `tone` | neutral \| info \| success \| warn \| danger \| accent | badge | Its tone. |
+| `vertical` | bool | divider | Upright. |
+| `texture` | number | image, art | A texture handle (og.load.texture), usually bound. |
+| `tint` | paint | image, art | Multiplies the texture (or fills without one). |
+| `icon` | name | icon | The icon's name in the style's set. |
+| `iconSize` | number | icon | CSS px (24 by default). |
+| `kind` | name | art | The slot's kind (Appendix F: itemIcon, bust, keyArt…). |
+| `ratio` | x y | art | The slot's aspect, width and height in whole numbers. |
+| `focal` | x y | art | The point cropping keeps, 0–1. |
+| `safe` | 4 numbers | art | Where text or controls lie over it: x0 y0 x1 y1, 0–1. |
+| `fit` | cover \| contain \| fill \| nineSlice \| tile | art | How the art fills the slot. |
+| `rowHeight` | number | list | Every row's height, CSS px. |
+| `cellWidth` | number | cells | A cell's width, CSS px. |
+| `cellHeight` | number | cells | A cell's height, CSS px. |
+| `cellColumns` | number | cells | Cells across (0: as many as fit). |
+
 ## Accessibility tree (`src/a11y.rs`)
 
 Every frame builds the accessibility tree from the nodes it draws and

@@ -46,6 +46,11 @@ pub trait Env {
         let _ = key;
         None
     }
+    /// The texture of an asset handle a document's `texture` binds (`og.load.texture`).
+    fn texture(&self, handle: f64) -> Option<og_render::TextureHandle> {
+        let _ = handle;
+        None
+    }
 }
 
 /// No host: viewmodels alone, English.
@@ -951,6 +956,8 @@ pub fn format_num(n: Num, format: Format, lang: &str) -> String {
                 }
             }
         }
+        // Past what a place can be, the number itself.
+        Format::Ordinal if a.to_f64() >= 1e15 => scientific(a, 3, lang),
         Format::Ordinal => og_i18n::format_ordinal(a.to_f64(), lang),
     };
     if neg && body != "0" {

@@ -860,6 +860,10 @@ pub struct Ui {
     drawing: Affine,
     /// What elements of this frame draw with ([`Ui::set_draw`]), by node.
     pub(crate) draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
+    /// Documents, their mounts and the layer stack (docs/ui.md §8.1, §10).
+    pub(crate) docs: crate::doc::build::DocHost,
+    /// Named UI actions and the last device (docs/ui.md §8.2).
+    pub(crate) actions: crate::actions::Actions,
 }
 
 impl Default for Ui {
@@ -868,7 +872,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 10;
+const STATE_VERSION: u32 = 11;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,
@@ -943,6 +947,8 @@ impl Ui {
             stats: LayoutStats::default(),
             drawing: Affine::IDENTITY,
             draws: Default::default(),
+            docs: Default::default(),
+            actions: Default::default(),
         }
     }
 
@@ -1244,6 +1250,8 @@ impl Ui {
         self.nav_on = true;
         self.players = 1;
         self.cover = None;
+        self.docs_begin();
+        self.actions_begin(&input);
 
         // Hit test against last frame's rectangles, topmost first.
         let p = input.pointer;
@@ -2427,6 +2435,7 @@ impl Ui {
                 self.path_of(i)
             ));
         }
+        crate::layers::build_without_host(self);
         self.build_toasts();
         self.building = false;
         // Breakpoint and orientation variants (docs/ui.md §6.2), before
@@ -4592,6 +4601,8 @@ impl Ui {
         b.push(u8::from(s.caret_upstream) | u8::from(s.killing) << 1);
         text(&mut b, &s.kill);
         crate::motion::codec::W(&mut b).motion(&s.motion);
+        // The layer stack, its viewmodels and the documents' states.
+        text(&mut b, &self.docs_state().to_string());
         b
     }
 
@@ -4618,10 +4629,15 @@ impl Ui {
         let s = r
             .state()
             .ok_or_else(|| bad("truncated or malformed".into()))?;
+        let docs: serde_json::Value = r
+            .string()
+            .and_then(|t| serde_json::from_str(&t).ok())
+            .ok_or_else(|| bad("truncated or malformed layer stack".into()))?;
         if r.at != bytes.len() {
             return Err(bad("trailing bytes".into()));
         }
         self.state = s;
+        self.restore_docs_state(&docs);
         Ok(())
     }
 }

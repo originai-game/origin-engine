@@ -242,7 +242,11 @@ fn the_gamepad_dpad_and_stick_navigate_with_repeat_by_tick() {
     let b = &mut grid;
     rig.idle(1, b);
     let pad = |pressed: u32, stick: Vec2| InputFrame {
-        gamepad: GamepadFrame { pressed, stick },
+        gamepad: GamepadFrame {
+            pressed,
+            stick,
+            ..Default::default()
+        },
         ..InputFrame::default()
     };
     rig.step(pad(GamepadFrame::RIGHT, Vec2::ZERO), b);

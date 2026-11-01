@@ -165,6 +165,11 @@ pub trait InputSource {
     fn primary_released(&self) -> bool;
     /// A key (`KeyboardEvent.code`) went down this tick.
     fn key_pressed(&self, code: &str) -> bool;
+    /// A key is held (UI actions' holds and releases).
+    fn key_down(&self, code: &str) -> bool {
+        let _ = code;
+        false
+    }
     /// Text typed this tick, appended to `out` in order.
     fn typed(&self, out: &mut String);
     /// A Shift key is held (Shift+Tab moves focus backwards).
@@ -201,6 +206,8 @@ pub struct GamepadFrame {
     pub pressed: u32,
     /// The left stick, x right and y down, each -1..1.
     pub stick: Vec2,
+    /// Buttons held (the same bits): holds and releases of UI actions.
+    pub held: u32,
 }
 
 impl GamepadFrame {
@@ -213,6 +220,7 @@ impl GamepadFrame {
     pub fn from_pad(pad: &og_input::Gamepad, n: u32) -> GamepadFrame {
         GamepadFrame {
             pressed: pad.masks(n).1,
+            held: pad.masks(n).0,
             stick: Vec2::new(
                 pad.axis(og_input::GamepadAxis::LeftX, n),
                 pad.axis(og_input::GamepadAxis::LeftY, n),
@@ -296,6 +304,10 @@ impl InputSource for og_input::Input {
         self.pressed(code)
     }
 
+    fn key_down(&self, code: &str) -> bool {
+        self.down(code)
+    }
+
     /// `og.Input` has key codes but no characters: a printable key pressed
     /// this tick types the US-layout character for it, shifted while a Shift
     /// key is held. This is the fallback for a world that has never had
@@ -376,6 +388,10 @@ pub struct InputFrame {
     /// `og.A11yAction`, from the shell's mirror of the accessibility tree):
     /// the action and the control's path.
     pub a11y: Vec<(og_input::A11yAct, String)>,
+    /// Every key held, and every key that went down this tick, by code
+    /// (og-input's [`og_input::KEY_CODES`]): what UI actions bind.
+    pub keys_held: Vec<&'static str>,
+    pub keys_pressed: Vec<&'static str>,
 }
 
 impl InputFrame {
@@ -404,6 +420,16 @@ impl InputFrame {
             extra_pads: [GamepadFrame::default(); 3],
             pointers: og_input::Pointers::default(),
             a11y: Vec::new(),
+            keys_held: og_input::KEY_CODES
+                .iter()
+                .copied()
+                .filter(|c| source.key_down(c))
+                .collect(),
+            keys_pressed: og_input::KEY_CODES
+                .iter()
+                .copied()
+                .filter(|c| source.key_pressed(c))
+                .collect(),
         }
     }
 
