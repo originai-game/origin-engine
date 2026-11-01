@@ -220,6 +220,20 @@ fn moon_at(d: vec3<f32>, up: f32) -> vec4<f32> {
   return vec4<f32>(light * coverage + frame.sky_moon_look.rgb * halo, coverage);
 }
 
+// A uniform value in [0, 1) for an integer lattice cell, from integer
+// operations only (noise.wgsl's PCG), so every GPU picks the same cells: the
+// stars here, the caustic cells (lighting.wgsl) and the foam (water.wgsl).
+// The `fract(sin(x) * 43758.5453)` hash this replaces scaled sin's last bits,
+// which GPUs round differently, into unrelated values, so a cell lit on one
+// GPU was dark on another.
+fn lattice_hash(c: vec3<i32>) -> f32 {
+  var h = (bitcast<u32>(c.x) * 73856093u) ^ (bitcast<u32>(c.y) * 19349663u) ^ (bitcast<u32>(c.z) * 83492791u);
+  h = h * 747796405u + 2891336453u;
+  h = ((h >> ((h >> 28u) + 4u)) ^ h) * 277803737u;
+  h = (h >> 22u) ^ h;
+  return f32(h >> 8u) / 16777216.0;
+}
+
 // The procedural sky of a chosen look in direction `d` (sky_* fields): a
 // zenith to horizon gradient, dark ground, the sun disc with its glow,
 // stars where the sky is dark, and the moon over them.
@@ -237,7 +251,7 @@ fn sky_look(d: vec3<f32>) -> vec3<f32> {
     // Stars: a hashed grid of points on the sky, dimmed by the sky's brightness.
     let g = d * 220.0;
     let cell = floor(g);
-    let h = fract(sin(dot(cell, vec3<f32>(12.9898, 78.233, 37.719))) * 43758.5453);
+    let h = lattice_hash(vec3<i32>(cell));
     let f = fract(g) - 0.5;
     let star = smoothstep(0.985, 1.0, h) * smoothstep(0.32, 0.0, length(f));
     let dark = 1.0 - clamp(dot(sky, vec3<f32>(0.2126, 0.7152, 0.0722)) * 4.0, 0.0, 1.0);

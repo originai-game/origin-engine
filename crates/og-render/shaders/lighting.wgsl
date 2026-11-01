@@ -253,8 +253,8 @@ fn caustics(p: vec3<f32>) -> f32 {
 }
 
 fn caustic_hash(p: vec2<f32>) -> vec2<f32> {
-  let q = vec2<f32>(dot(p, vec2<f32>(127.1, 311.7)), dot(p, vec2<f32>(269.5, 183.3)));
-  return fract(sin(q) * 43758.5453);
+  let c = vec2<i32>(p);
+  return vec2<f32>(lattice_hash(vec3<i32>(c, 1)), lattice_hash(vec3<i32>(c, 2)));
 }
 
 // 1 on the cell borders of a jittered grid, falling off towards the centres.

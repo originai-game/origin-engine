@@ -171,7 +171,7 @@ fn map_slope(world: vec2<f32>, uv: vec2<f32>, t: f32) -> vec2<f32> {
 }
 
 fn value_hash(p: vec2<f32>) -> f32 {
-  return fract(sin(dot(p, vec2<f32>(127.1, 311.7))) * 43758.5453);
+  return lattice_hash(vec3<i32>(vec2<i32>(p), 3));
 }
 
 // A cheap smooth noise for breaking up the foam.
