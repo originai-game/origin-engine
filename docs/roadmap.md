@@ -129,7 +129,7 @@ After R, as the plan's final stage:
 
 | Stream | Thread | Branch | State |
 |---|---|---|---|
-| G1-2 | [T-d77ec7d3](https://ampcode.com/threads/T-d77ec7d3-271f-4b67-9d15-d46a5959df5a) | `g1-input-actions` | merged 2026-11-01 (main 1fa0b316); follow-up g1-save-empty-types (a type a save holds no data for is not compared) |
+| G1-2 | [T-d77ec7d3](https://ampcode.com/threads/T-d77ec7d3-271f-4b67-9d15-d46a5959df5a) | `g1-input-actions` | merged 2026-11-01 (main 1fa0b316; follow-up g1-save-empty-types merged at 1c1451ea) |
 | G1-6 | [T-01a197e9](https://ampcode.com/threads/T-01a197e9-a4d5-742d-9c41-fa7086e21b35) | `g1-sourcemaps-telemetry` | merged 2026-11-01 (main 3aca1209); Chrome checked on macrunner; Chrome and Edge passed on studio-win (RTX 5060, gpu names nvidia/blackwell); Safari blocked (macrunner's GUI session locked) |
 | U6b | [T-90964ef0](https://ampcode.com/threads/T-90964ef0-8bb4-40fd-947e-90c23eeb1649) | `u6b-containers-data` | started 2026-11-01 |
 | U6c | [T-52f25cda](https://ampcode.com/threads/T-52f25cda-5a9c-42e6-a2b3-dbe62c284b35) | `u6c-feedback-hud-world` | started 2026-11-01 |
@@ -137,7 +137,8 @@ After R, as the plan's final stage:
 | G1-1 | [T-ed474375](https://ampcode.com/threads/T-ed474375-d637-48c0-8d9a-9ca91cf6b7b6) | `g1-render-interpolation` | reviewed at f6e6d2ab; sent back for skinned joints, world-anchored UI, motion blur |
 | G1-5 | [T-4157fcd5](https://ampcode.com/threads/T-4157fcd5-17e7-43b7-8471-59ff1b6b6356) | `g1-save-migration` | started 2026-11-01 |
 | og-cook cook/mod.rs, look.rs split | — | — | after G1-3 |
-| G1-3 | [T-01a1980c](https://ampcode.com/threads/T-01a1980c-a132-73a9-96bf-c2ebfbde9c2e) | `g1-gltf-formats` | frames read and recorded on macrunner; lands after g1-save-empty-types |
+| G1-3 | [T-01a1980c](https://ampcode.com/threads/T-01a1980c-a132-73a9-96bf-c2ebfbde9c2e) | `g1-gltf-formats` | merged 2026-11-01 (main 1c1451ea, five gltf references) |
 | G1-4 | [T-532b590f](https://ampcode.com/threads/T-532b590f-cff8-4ccc-89da-b4c97a97180a) | `g1-frame-quality` | started 2026-11-01 |
 | U6a, G1-7, U6d | — | — | as slots free (U6a next, on G1-2's API) |
+| png-references | — | — | next free slot: record paths write Best + adaptive PNG (fast encoders since 10-17/10-25 made 309 references 167 MB), existing ones recompressed pixel-exact |
 | web-tests | — | — | owed: tests/web/player.ts and export.ts wait on fixed sleeps, so a fresh headless profile's warm-up on D3D12 fails them; "behind the gate the game took its first tick" reads 2 for 1 on both machines (older than G1-6) |
