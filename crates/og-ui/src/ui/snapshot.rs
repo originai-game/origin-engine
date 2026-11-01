@@ -190,7 +190,7 @@ impl Ui {
             return Err(bad(format!("version {version}, expected {STATE_VERSION}")));
         }
         let s = r
-            .state()
+            .state(STATE_VERSION)
             .ok_or_else(|| bad("truncated or malformed".into()))?;
         let docs: serde_json::Value = r
             .string()
@@ -204,6 +204,45 @@ impl Ui {
         Ok(())
     }
 }
+
+impl Ui {
+    /// [`Ui::save_state`] bytes of an earlier version as this version's,
+    /// for a save from an older engine (og-runtime's engine migrations):
+    /// the bytes as they are at this version, the state of version 9
+    /// (engine 0.7.7) with what it did not have at its defaults (no hit
+    /// transforms, the feedback stream unseeded, no motion channels, an
+    /// empty layer stack) and its six sound voices moved to their events.
+    /// Refused for another version, or bytes that do not read as theirs.
+    pub fn upgrade_state(bytes: &[u8]) -> og_core::Result<Vec<u8>> {
+        let bad = |why: String| {
+            og_core::Error::new(og_core::ErrorKind::Parse, format!("UI state: {why}"))
+        };
+        let mut r = Reader { bytes, at: 0 };
+        let version = r.u32().ok_or_else(|| bad("truncated".into()))?;
+        match version {
+            STATE_VERSION => Ok(bytes.to_vec()),
+            9 => {
+                let s = r
+                    .state(9)
+                    .ok_or_else(|| bad("truncated or malformed version 9 state".into()))?;
+                if r.at != bytes.len() {
+                    return Err(bad("trailing bytes after a version 9 state".into()));
+                }
+                let ui = Ui {
+                    state: s,
+                    ..Ui::default()
+                };
+                Ok(ui.save_state())
+            }
+            v => Err(bad(format!(
+                "version {v}: this engine reads version {STATE_VERSION} and upgrades version 9"
+            ))),
+        }
+    }
+}
+
+/// Version 9's six sound voices, in its order (og-ui's `UiSound` then).
+const V9_VOICES: [&str; 6] = ["hover", "press", "open", "close", "success", "error"];
 
 struct Reader<'a> {
     bytes: &'a [u8],
@@ -245,7 +284,9 @@ impl Reader<'_> {
         ))
     }
 
-    fn state(&mut self) -> Option<State> {
+    /// The state as `version` (this one's, or 9) wrote it.
+    fn state(&mut self, version: u32) -> Option<State> {
+        let v9 = version == 9;
         let mut s = State {
             hot: self.u64()?,
             active: self.u64()?,
@@ -260,23 +301,39 @@ impl Reader<'_> {
             s.scroll.insert(k, self.f32()?);
         }
         for _ in 0..self.u32()? {
+            let (key, rect, full) = (self.u64()?, self.rect()?, self.rect()?);
+            let flags = if v9 {
+                u16::from(self.u8()?)
+            } else {
+                u16::from_le_bytes(self.take()?)
+            };
+            let (scope, scroller) = (self.u64()?, self.u64()?);
+            let (inv, local, clip) = if v9 {
+                (Affine::IDENTITY, full, rect)
+            } else {
+                (
+                    Affine {
+                        a: self.f32()?,
+                        b: self.f32()?,
+                        c: self.f32()?,
+                        d: self.f32()?,
+                        e: self.f32()?,
+                        f: self.f32()?,
+                    },
+                    self.rect()?,
+                    self.rect()?,
+                )
+            };
             s.hits.push(Hit {
-                key: self.u64()?,
-                rect: self.rect()?,
-                full: self.rect()?,
-                flags: u16::from_le_bytes(self.take()?),
-                scope: self.u64()?,
-                scroller: self.u64()?,
-                inv: Affine {
-                    a: self.f32()?,
-                    b: self.f32()?,
-                    c: self.f32()?,
-                    d: self.f32()?,
-                    e: self.f32()?,
-                    f: self.f32()?,
-                },
-                local: self.rect()?,
-                clip: self.rect()?,
+                key,
+                rect,
+                full,
+                flags,
+                scope,
+                scroller,
+                inv,
+                local,
+                clip,
             });
         }
         s.tick = self.u64()?;
@@ -331,10 +388,18 @@ impl Reader<'_> {
                 },
             );
         }
-        s.feedback_rng = self.u64()?;
-        s.feedback_last = self.take()?;
-        for v in s.voices.iter_mut() {
-            *v = self.u64()?;
+        if v9 {
+            for name in V9_VOICES {
+                let v = self.u64()?;
+                let event = crate::tokens::SoundEvent::from_name(name)?;
+                s.voices[event.index()] = v;
+            }
+        } else {
+            s.feedback_rng = self.u64()?;
+            s.feedback_last = self.take()?;
+            for v in s.voices.iter_mut() {
+                *v = self.u64()?;
+            }
         }
         s.players = self.u8()?;
         for k in 0..3 {
@@ -419,6 +484,9 @@ impl Reader<'_> {
         s.caret_upstream = flags & 1 != 0;
         s.killing = flags & 2 != 0;
         s.kill = self.string()?;
+        if v9 {
+            return Some(s);
+        }
         let mut r = crate::motion::codec::R {
             bytes: self.bytes,
             at: self.at,
