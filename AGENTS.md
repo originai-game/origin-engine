@@ -193,7 +193,8 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
 - **When to run the gate.** Function first, measurement later. After a
   batch of merges on main, the one session that merges runs the
   functional lane (`scripts/check.sh functional`: fmt, clippy, every
-  test with the GPU reference frames, drift, the packages' tests on the
+  test with the GPU reference frames, drift, every style pack's reference
+  sheets (`ui-styles`), the packages' tests on the
   native host) and that is what a merge must pass. The wasm build and its
   size, determinism and the browser tiers are measurements of a wave's
   end: `scripts/wave-end.sh` (`scripts/check.sh --all`, then

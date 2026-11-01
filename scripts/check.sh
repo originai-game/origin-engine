@@ -25,7 +25,8 @@
 # the wasm steps (crates/), drift (the IDL, og-idl, og and the generated
 # files), check-conformance (packages/engine, templates/, examples/, the
 # comparer, its corpus and the pins), web-reference (og-host-web's and og-tests-web's crates,
-# packages/engine, templates/fx-showcase). A change to scripts/, Cargo.toml,
+# packages/engine, templates/fx-showcase), ui-styles (og, templates/ui-kit,
+# templates/styles, og-ui's references). A change to scripts/, Cargo.toml,
 # Cargo.lock, rust-toolchain.toml, .cargo/ or .config/ reruns all of them. Each skip is
 # printed with its reason. --all, or CI set in the environment, runs
 # everything.
@@ -57,8 +58,8 @@ STEPS_QUICK="fmt clippy test-quick drift bun-quick"
 # reference frames, the generated API, the packages' tests on the native
 # host), without the wasm build, its size, determinism and the browser
 # tiers, which are a wave's end measurements (docs/ci.md §Lanes).
-STEPS_FUNCTIONAL="fmt clippy test drift bun-functional"
-STEPS="$STEPS_FULL test-quick bun-quick bun-functional web-reference check-conformance"
+STEPS_FUNCTIONAL="fmt clippy test drift bun-functional ui-styles"
+STEPS="$STEPS_FULL test-quick bun-quick bun-functional ui-styles web-reference check-conformance"
 FUNCTIONAL=0
 BUN_QUICK_PACKAGES="packages/knowledge packages/create"   # no native build needed
 WASM_TRIPLE=wasm32-unknown-unknown
@@ -72,7 +73,7 @@ PASS_NOTE="" # what a step that passed left out, for the summary
 # Everything reruns on a change to the build's own configuration.
 RULE_COMMON="Cargo.toml Cargo.lock rust-toolchain.toml .cargo .config scripts"
 rule_gpu() {
-  echo "$(og_crate_dirs -p og-tests -p og-ui -p og-render -e normal,build,dev | og_words) templates/ui-kit/assets $RULE_COMMON"
+  echo "$(og_crate_dirs -p og-tests -p og-ui -p og-render -e normal,build,dev | og_words) templates/ui-kit/assets templates/styles $RULE_COMMON"
 }
 # third_party: the vendored crates the wasm links.
 rule_wasm() { echo "crates third_party $RULE_COMMON"; }
@@ -88,8 +89,13 @@ crates/og-host-web/src/generated crates/og-host-node/src/generated packages/know
 rule_conformance() {
   echo "packages/engine templates examples crates/og-cli/src/check.rs scripts/tsrs-diff.sh scripts/tsrs-corpus scripts/install-tools.sh scripts/lib.sh"
 }
+# ui-styles: og (og-cli and everything it links), the kit and the
+# built-in styles its sheets draw, and og-ui's references.
+rule_ui_styles() {
+  echo "$(og_crate_dirs -p og-cli -e normal,build | og_words) templates/ui-kit templates/styles crates/og-ui/references $RULE_COMMON"
+}
 rule_web() {
-  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase templates/looks templates/ui-kit templates/archetypes/third-person examples/brasswick examples/meridian-loop $RULE_COMMON"
+  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase templates/looks templates/ui-kit templates/styles templates/archetypes/third-person examples/brasswick examples/meridian-loop $RULE_COMMON"
 }
 
 # skip_unchanged KEY WHAT RULE...: true (and prints why) when KEY may be
@@ -530,6 +536,19 @@ step_bun_test() {
     return 1
   fi
   OG_GATE=1 bun_test_packages packages/*/
+}
+
+# Every built-in style pack's reference sheets, desktop and phone
+# (templates/ui-kit/tests/style-*.og.ts against
+# crates/og-ui/references/<tier>/kit-style-*.png, else metal's): the native
+# og-ui tests draw no style pack's screens, so without this step a style
+# changed without its sheets re-recorded was first caught by a wave end's
+# web-reference (2026-11-01, neon after bc65bed4). Without a renderer the
+# playtests report their frames unchecked. Path-aware (rule_ui_styles).
+step_ui_styles() {
+  if skip_unchanged ui-styles "ui-styles" "$(rule_ui_styles)"; then return $SKIP; fi
+  cargo build -q -p og-cli || return 1
+  "$OG_TARGET_DIR/debug/og" test templates/ui-kit --filter tests/style-
 }
 
 # The packages that need no native build.
