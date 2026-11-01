@@ -319,3 +319,29 @@ fn knobs_and_switch_tracks_stay_round_in_a_square_style() {
         );
     }
 }
+
+/// a background.
+#[test]
+fn an_anchor_without_a_background_draws_no_frame() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
+    for seed in ["storybook", "kawaii"] {
+        let text = std::fs::read_to_string(dir.join(seed).join("style.ogt")).unwrap();
+        let file = parse_style(&text).unwrap();
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_theme(file.theme(None, [0; 6]));
+        ui.set_dressings(file.dressings.clone());
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.anchor("Score", AnchorDesc::default(), |ui| {
+            ui.label("Value", "680", LabelDesc::default());
+        });
+        ui.end();
+        let drawn: Vec<_> = ui
+            .frame()
+            .items
+            .iter()
+            .filter(|it| !matches!(it.cmd, DrawCmd::Text { .. } | DrawCmd::StyledText { .. }))
+            .map(|it| format!("{:?}", std::mem::discriminant(&it.cmd)))
+            .collect();
+        assert!(drawn.is_empty(), "{seed}: {drawn:?}");
+    }
+}

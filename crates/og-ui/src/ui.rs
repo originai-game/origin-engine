@@ -4721,8 +4721,13 @@ impl Ui {
                 continue;
             }
             let n = &self.nodes[i];
-            let Some(part) = n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref)) else {
-                continue;
+            // A version 1 frame dresses a background: an element with a
+            // frame and none (an anchor, a layout box) draws nothing, as
+            // it always has; a part an element names draws its dressing.
+            let part = match (n.el.part, n.el.frame) {
+                (Some(p), _) => p,
+                (None, Some(f)) if n.el.background.is_some() => f.part_ref(),
+                _ => continue,
             };
             let r = self.dress.resolve(&part);
             if r.frame.slice.is_some() && self.theme.art.atlas.is_some() {

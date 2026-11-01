@@ -8,7 +8,7 @@
 
 import type * as Api from "@origingame/engine";
 import { kit } from "./bind.ts";
-import { all, hudBox, clock, fit, fmt, frame, grow, iconOr, lapTime, px, token } from "./util.ts";
+import { all, hudBox, clock, fit, fmt, frame, grow, iconOr, lapTime, px, token, xy } from "./util.ts";
 
 type Hud = { paused: boolean; action: string | null; moveX: number; moveY: number; held: string[] };
 
@@ -23,9 +23,19 @@ function pauseButton(out: Hud, label: string): void {
   if (r.clicked) out.paused = true;
 }
 
-/** A big number with a small caption under it. */
+/**
+ * The style's HUD chip under a group of the HUD's own text: the game behind
+ * a HUD can be any colour, so its words and numbers never sit on it bare
+ * (a light style's ink read dark on a dusk sky).
+ */
+function chip(): { background: Api.Paint; frame: "hud"; padding: Api.Insets; radius: number } {
+  const { t } = frame();
+  return { background: token("hud"), frame: "hud", padding: xy(t.md, t.xs), radius: t.control };
+}
+
+/** A big number with a small caption under it, on the HUD chip. */
 function stat(id: string, value: string, caption: string, step: Api.TypeStepName = "xl3", align: Api.TextAlign = "start"): void {
-  kit.column(id, { gap: 0, cross: align === "end" ? "end" : align === "center" ? "center" : "start" }, () => {
+  kit.column(id, { ...chip(), gap: 0, cross: align === "end" ? "end" : align === "center" ? "center" : "start" }, () => {
     kit.label("Value", value, { step, font: "mono", nowrap: true, align });
     kit.label("Caption", caption, { step: "meta", color: token("inkMuted"), nowrap: true, align });
   });
@@ -71,7 +81,7 @@ export function platformerHud(id: string, desc: Api.PlatformerHudDesc = {}): Api
           for (let i = 0; i < maxLives; i++) iconOr(kit.idi("Life", i), "heart", 20, token(i < (desc.lives ?? 0) ? "danger" : "controlStrong"));
         });
       }
-      if (desc.level) kit.label("Level", desc.level, { step: "meta", color: token("inkMuted"), nowrap: true });
+      if (desc.level) hudBox("LevelBox", () => kit.label("Level", desc.level!, { step: "meta", color: token("inkMuted"), nowrap: true }));
     });
   }
   if (desc.timeLeft !== null && desc.timeLeft !== undefined) {
@@ -127,7 +137,7 @@ export function shooterHud(id: string, desc: Api.ShooterHudDesc = {}): Api.HudRe
     });
     pauseButton(out, desc.pauseLabel ?? "Pause");
   });
- kit.anchor(`${id}.ammo`, { anchor: showTouch ? "topRight" : "bottomRight", offsetY: showTouch ? 56 : 0, direction: "column", cross: "end", gap: t.xs }, () => {
+ kit.anchor(`${id}.ammo`, { ...chip(), anchor: showTouch ? "topRight" : "bottomRight", offsetY: showTouch ? 56 : 0, direction: "column", cross: "end", gap: t.xs }, () => {
     const mag = desc.magazine ?? 0;
     const ammo = desc.ammo ?? 0;
     kit.row("Rounds", { gap: t.xs, cross: "end" }, () => {
@@ -158,10 +168,10 @@ export function puzzleHud(id: string, desc: Api.PuzzleHudDesc = {}): Api.HudResu
   const score = desc.score ?? 0;
   const marks = desc.stars && desc.stars.length > 0 ? desc.stars : [Math.round(target / 3), Math.round((2 * target) / 3), target];
   kit.anchor(`${id}.left`, { anchor: "topLeft", direction: "column", gap: t.xs }, () => {
-    if (desc.level) kit.label("Level", desc.level, { step: "meta", color: token("inkMuted"), nowrap: true });
+    if (desc.level) hudBox("LevelBox", () => kit.label("Level", desc.level!, { step: "meta", color: token("inkMuted"), nowrap: true }));
     if (desc.moves !== null && desc.moves !== undefined) stat("Moves", `${desc.moves}`, desc.movesLabel ?? "moves left", "xl3");
   });
-  kit.anchor(`${id}.score`, { anchor: "top", direction: "column", cross: "center", gap: t.xs, width: px(260) }, () => {
+  kit.anchor(`${id}.score`, { ...chip(), anchor: "top", direction: "column", cross: "center", gap: t.xs, width: px(260) }, () => {
     kit.label("Score", fmt(score), { step: "displaySm", font: "display", align: "center", width: grow() });
     kit.meter("Progress", score, target, { kind: "primary", width: grow(), segments: 3 });
     kit.row("Stars", { gap: t.sm, cross: "center" }, () => {
@@ -242,7 +252,7 @@ export function racingHud(id: string, desc: Api.RacingHudDesc = {}): Api.HudResu
   kit.anchor(`${id}.place`, { anchor: "topLeft", gap: t.lg }, () => {
     // A time trial (racers 0) has no place.
     if (racers > 0) {
-      kit.row("Position", { gap: t.xxs, cross: "end" }, () => {
+      kit.row("Position", { ...chip(), gap: t.xxs, cross: "end" }, () => {
         kit.label("Place", `${desc.position ?? 1}`, { step: "displayXl", font: "display", nowrap: true });
         kit.label("Of", `/${racers}`, { step: "xl", font: "mono", color: token("inkMuted"), nowrap: true });
       });
@@ -251,32 +261,35 @@ export function racingHud(id: string, desc: Api.RacingHudDesc = {}): Api.HudResu
   });
   kit.anchor(`${id}.times`, { anchor: "topRight", direction: "column", cross: "end", gap: t.xxs }, () => {
     kit.row("Top", { gap: t.sm, cross: "center" }, () => {
-      kit.label("Time", clock(desc.time ?? 0, true), { step: "xl", font: "mono", nowrap: true });
+      hudBox("Clock", () => kit.label("Time", clock(desc.time ?? 0, true), { step: "xl", font: "mono", nowrap: true }));
       pauseButton(out, desc.pauseLabel ?? "Pause");
     });
     const delta = desc.delta ?? null;
-    if (delta !== null) kit.label("Delta", deltaText(delta), { step: "lg", font: "mono", color: deltaInk(delta), nowrap: true });
-    if (desc.best !== null && desc.best !== undefined) {
-      // A finished lap: m:ss.mmm as lapTime cuts it (30.717 s is 0:30.717, where the running clock's floor reads 0:30.716).
-      kit.label("Best", (desc.bestLabel ?? "Best {best}").replaceAll("{best}", lapTime(desc.best)), { step: "meta", font: "mono", color: token("inkMuted"), nowrap: true });
-    }
     const splits = desc.splits ?? [];
-    if (splits.length > 0) {
-      kit.column("Splits", { gap: 0, cross: "end" }, () => {
-        splits.forEach((sp, i) => {
-          kit.row(kit.idi("Split", i), { gap: t.sm, cross: "center" }, () => {
-            kit.label("Label", sp.label ?? "", { step: "meta", color: token("inkMuted"), nowrap: true });
-            const time = sp.time ?? null;
-            kit.label("Time", time === null ? "-:--.---" : lapTime(time), { step: "meta", font: "mono", color: token(time === null ? "inkFaint" : "ink"), nowrap: true });
-            const d = sp.delta ?? null;
-            if (d !== null) kit.label("Delta", deltaText(d), { step: "meta", font: "mono", color: deltaInk(d), nowrap: true });
+    const best = desc.best ?? null;
+    if (delta !== null || best !== null || splits.length > 0) kit.column("Laps", { ...chip(), gap: t.xxs, cross: "end" }, () => {
+      if (delta !== null) kit.label("Delta", deltaText(delta), { step: "lg", font: "mono", color: deltaInk(delta), nowrap: true });
+      if (best !== null) {
+        // A finished lap: m:ss.mmm as lapTime cuts it (30.717 s is 0:30.717, where the running clock's floor reads 0:30.716).
+        kit.label("Best", (desc.bestLabel ?? "Best {best}").replaceAll("{best}", lapTime(best)), { step: "meta", font: "mono", color: token("inkMuted"), nowrap: true });
+      }
+      if (splits.length > 0) {
+        kit.column("Splits", { gap: 0, cross: "end" }, () => {
+          splits.forEach((sp, i) => {
+            kit.row(kit.idi("Split", i), { gap: t.sm, cross: "center" }, () => {
+              kit.label("Label", sp.label ?? "", { step: "meta", color: token("inkMuted"), nowrap: true });
+              const time = sp.time ?? null;
+              kit.label("Time", time === null ? "-:--.---" : lapTime(time), { step: "meta", font: "mono", color: token(time === null ? "inkFaint" : "ink"), nowrap: true });
+              const d = sp.delta ?? null;
+              if (d !== null) kit.label("Delta", deltaText(d), { step: "meta", font: "mono", color: deltaInk(d), nowrap: true });
+            });
           });
         });
-      });
-    }
+      }
+    });
     if (desc.map) kit.minimap("Map", { ...desc.map, size: phone ? 112 : (desc.map.size ?? 140) });
   });
-  kit.anchor(`${id}.dash`, { anchor: showTouch ? "bottom" : "bottomRight", offsetY: showTouch ? -120 : 0, direction: "column", cross: "end", gap: t.xs, width: px(220) }, () => {
+  kit.anchor(`${id}.dash`, { ...chip(), anchor: showTouch ? "bottom" : "bottomRight", offsetY: showTouch ? -120 : 0, direction: "column", cross: "end", gap: t.xs, width: px(220) }, () => {
     kit.row("Speed", { gap: t.sm, cross: "end", width: grow(), align: "end" }, () => {
       kit.label("Value", `${Math.round(desc.speed ?? 0)}`, { step: "displayXl2", font: "display", nowrap: true });
       kit.column("Side", { cross: "end" }, () => {

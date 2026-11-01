@@ -75,7 +75,7 @@ test("og.ui.racingHud: a time trial's words are the desc's, with its delta and s
   expect(ui.some((e) => e.id === "Place" || e.id === "Position")).toBeFalse();
   expect(ui.some((e) => e.id === "Boost")).toBeFalse();
   // The live delta and the splits, signed with the ASCII minus.
-  expect(ui.find((e) => e.id === "Delta" && e.parent === "Hud.times")?.text).toBe("-0.412");
+  expect(ui.find((e) => e.id === "Delta" && e.parent === "Laps")?.text).toBe("-0.412");
   const split = (i: number) => ui.filter((e) => e.parent === `Split#${i}`).map((e) => e.text);
   expect(split(0)).toEqual(["S1", "0:31.200", "-0.412"]);
   expect(split(1)).toEqual(["S2", "0:30.050", "+1.050"]);
