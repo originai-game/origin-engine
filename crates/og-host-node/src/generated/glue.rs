@@ -669,6 +669,42 @@ pub fn og_input_set_deadzones(env: Env, world: u32, desc: Option<String>) -> Str
     <Host as InputApi>::og_input_set_deadzones(&Host, world, desc)
 }
 
+#[napi(js_name = "og_input_set_sensitivity")]
+pub fn og_input_set_sensitivity(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_set_sensitivity(&Host, world, desc)
+}
+
+#[napi(js_name = "og_input_sensitivity")]
+pub fn og_input_sensitivity(env: Env, world: u32, action: String, device: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_sensitivity(&Host, world, action, device)
+}
+
+#[napi(js_name = "og_input_set_keyboard_layout")]
+pub fn og_input_set_keyboard_layout(env: Env, labels: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_set_keyboard_layout(&Host, labels)
+}
+
+#[napi(js_name = "og_input_keyboard_layout")]
+pub fn og_input_keyboard_layout(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_keyboard_layout(&Host)
+}
+
+#[napi(js_name = "og_input_set_mouse")]
+pub fn og_input_set_mouse(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_set_mouse(&Host, world, desc)
+}
+
+#[napi(js_name = "og_input_mouse")]
+pub fn og_input_mouse(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_mouse(&Host, world)
+}
+
 #[napi(js_name = "og_input_rumble")]
 pub fn og_input_rumble(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

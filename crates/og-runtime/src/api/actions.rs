@@ -270,6 +270,79 @@ pub fn og_input_set_deadzones(world: u32, desc: Option<String>) -> String {
     result_void(r)
 }
 
+pub fn og_input_set_sensitivity(world: u32, desc: Option<String>) -> String {
+    let r = desc_json(desc).and_then(|d| {
+        let action = d["action"].as_str().unwrap_or_default().to_string();
+        let device =
+            device_of(d["device"].as_str().map(str::to_string))?.unwrap_or(Device::KeyboardMouse);
+        let sense = og_input::Sensitivity {
+            scale: d["scale"].as_f64().map_or(1.0, |x| x as f32),
+            invert_x: d["invertX"].as_bool().unwrap_or(false),
+            invert_y: d["invertY"].as_bool().unwrap_or(false),
+        };
+        on_map(world, |m| m.set_sensitivity(&action, device, sense))?
+    });
+    result_void(r)
+}
+
+pub fn og_input_sensitivity(world: u32, action: String, device: Option<String>) -> String {
+    let device = device_of(device).ok().flatten();
+    on_map(world, |m| {
+        let d = device.unwrap_or(m.device());
+        let s = m.sensitivity(&action, d);
+        // The class's own name: any pad family is the pads'.
+        let class = if d.is_pad() { d } else { d.class() };
+        json!({ "action": action, "device": class.name(), "scale": s.scale, "invertX": s.invert_x, "invertY": s.invert_y })
+    })
+    .unwrap_or_else(|_| json!({ "action": action, "device": "keyboardMouse", "scale": 1.0, "invertX": false, "invertY": false }))
+    .to_string()
+}
+
+pub fn og_input_set_keyboard_layout(labels: String) {
+    let v: Value = serde_json::from_str(&labels).unwrap_or(Value::Null);
+    og_input::set_key_labels(v.as_array().into_iter().flatten().filter_map(|e| {
+        Some((
+            e["code"].as_str()?.to_string(),
+            e["label"].as_str()?.to_string(),
+        ))
+    }));
+}
+
+pub fn og_input_keyboard_layout() -> String {
+    Value::Array(
+        og_input::key_labels()
+            .into_iter()
+            .map(|(code, label)| json!({ "code": code, "label": label }))
+            .collect(),
+    )
+    .to_string()
+}
+
+pub fn og_input_set_mouse(world: u32, desc: Option<String>) -> String {
+    let r = (|| -> Result<(), String> {
+        let eng = engine(world)?;
+        let d = desc_json(desc)?;
+        let mut rs = eng
+            .render
+            .try_borrow_mut()
+            .map_err(|_| "the renderer is busy drawing".to_string())?;
+        if let Some(raw) = d["raw"].as_bool() {
+            rs.display.mouse.raw = raw;
+        }
+        Ok(())
+    })();
+    result_void(r)
+}
+
+pub fn og_input_mouse(world: u32) -> String {
+    let m = engine(world)
+        .ok()
+        .and_then(|eng| eng.render.try_borrow().ok().map(|rs| rs.display.mouse))
+        .unwrap_or_default();
+    json!({ "raw": m.raw, "rawActive": m.raw_active, "rawUnsupported": m.raw_unsupported })
+        .to_string()
+}
+
 pub fn og_input_rumble(world: u32, desc: Option<String>) -> String {
     let r = desc_json(desc).and_then(|d| {
         let num = |k: &str, def: f64| d[k].as_f64().unwrap_or(def);

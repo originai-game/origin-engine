@@ -1,5 +1,5 @@
 // og.input (IDL `input`): gameplay actions, rebinding, capture, glyphs, dead
-// zones and rumble, as thin calls into the host's binding symbols (og-input's
+// zones, sensitivity, the keyboard layout's printed keys, the host's mouse and rumble, as thin calls into the host's binding symbols (og-input's
 // actions.rs owns the behaviour), typed by the generated declarations through
 // index.ts.
 
@@ -45,5 +45,11 @@ export const input = Object.freeze({
   device: (world: W) => abi().og_input_device(world.id),
   padDevice: (world: W, pad: number) => parse(abi().og_input_pad_device(world.id, pad)),
   setDeadzones: (world: W, desc?: unknown) => parse(abi().og_input_set_deadzones(world.id, json(desc))),
+  setSensitivity: (world: W, desc?: unknown) => parse(abi().og_input_set_sensitivity(world.id, json(desc))),
+  sensitivity: (world: W, action: string, device?: string) => parse(abi().og_input_sensitivity(world.id, action, device)),
+  setKeyboardLayout: (labels: readonly unknown[]) => abi().og_input_set_keyboard_layout(JSON.stringify(labels ?? [])),
+  keyboardLayout: () => parse(abi().og_input_keyboard_layout()),
+  setMouse: (world: W, desc?: unknown) => parse(abi().og_input_set_mouse(world.id, json(desc))),
+  mouse: (world: W) => parse(abi().og_input_mouse(world.id)),
   rumble: (world: W, desc?: unknown) => parse(abi().og_input_rumble(world.id, json(desc))),
 });

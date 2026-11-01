@@ -56,7 +56,7 @@ impl Renderer {
         let instance = desc.backend.instance();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
+                power_preference: power_preference(desc),
                 force_fallback_adapter: false,
                 compatible_surface: None,
                 ..Default::default()
@@ -79,7 +79,7 @@ impl Renderer {
         }
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
+                power_preference: power_preference(desc),
                 force_fallback_adapter: false,
                 compatible_surface: Some(&surface),
                 ..Default::default()
@@ -940,5 +940,14 @@ impl Renderer {
             sprite_arrays: None,
             sprite_meshes: None,
         })
+    }
+}
+
+/// The adapter's power preference for `desc` ([`RenderDesc::low_power`]).
+fn power_preference(desc: &RenderDesc) -> wgpu::PowerPreference {
+    if desc.low_power {
+        wgpu::PowerPreference::LowPower
+    } else {
+        wgpu::PowerPreference::HighPerformance
     }
 }

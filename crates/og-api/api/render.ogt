@@ -2252,11 +2252,21 @@ module render {
     variant display "Every frame the display shows (requestAnimationFrame): 120 on ProMotion, 144 and more on gaming monitors."
     variant fps60 "At most 60 a second."
     variant fps30 "At most 30 a second: the battery's choice, and a steady rate for a GPU that cannot hold 60."
+    variant fps120 "At most 120 a second: a 144 Hz or faster monitor held to a rate its GPU keeps."
+    variant fps144 "At most 144 a second: a 240 Hz monitor held to the gaming rate."
+  }
+
+  enum PowerPreference {
+    doc "Which GPU the browser's adapter is asked for (requestAdapter's powerPreference), on a laptop with two. The adapter is made once, at the boot: a change applies on the next load (DisplayInfo.restartNeeded), which the web shell keeps for the page."
+    variant highPerformance "The discrete GPU where there is one: the frame rate's choice."
+    variant lowPower "The integrated GPU: the battery's choice, cooler and quieter."
   }
 
   struct DisplaySettings {
-    doc "How the frame is presented on a display: the frame cap, battery saver, render scale and automatic quality, set with og.render.setDisplay. Presentation only: none of it is in the world, so the world's hash, snapshots, saves and replays never see it, and a native run (`og run`, `og test`, reference captures) draws every frame at render scale 1 whatever it says. The web shell's graphics settings write it; a game may too."
+    doc "The player's graphics settings, as a settings page shows them and og.render.setDisplay sets them: the graphics preset, the frame cap, battery saver, render scale and automatic quality, fullscreen and the GPU's power preference. Presentation only: none of it is in the world, so the world's hash, snapshots, saves and replays never see it, and a native run (`og run`, `og test`, reference captures) draws every frame at render scale 1 whatever it says (the preset is drawn there too, as RenderSettings' quality is). The game keeps them with the player's settings, not the world: og.render.display(world).settings is the whole object to save (og.platform.saveSettings, GameSettings.display), and og.render.setDisplay(world, saved) puts it back at the next start."
+    doc "What the browser decides, a page reads from DisplayInfo: vsync is always on (a browser presents on the display's refresh and has no switch), fullscreen follows the page (Escape leaves it and turns the setting off), and a power preference applies at the next load (restartNeeded)."
     desc true
+    field quality Option.GraphicsQuality "The player's graphics preset: its row of quality fields (og.render.applyQuality's table) is drawn in place of RenderSettings', which keep the game's values. Null draws the game's own RenderSettings quality."
     field frameCap FrameCap "The most frames a second (auto: 60 on phones, the display's rate on desktops)."
     field batterySaver bool "Save power: at most 30 frames a second whatever frameCap says, the render scale at most 0.75, and automatic quality as on. For a phone on battery or a player who asks for it."
     field renderScale f32 "The 3D scene's resolution as a fraction of the display's: below 1 it is drawn smaller and scaled up bilinearly (softer, cheaper), above 1 it is supersampled; the UI, screen text and screen sprites stay at the display's resolution. With autoQuality it is the most the automatic quality draws at." {
@@ -2277,6 +2287,8 @@ module render {
       min 0
       max 2
     }
+    field fullscreen bool "The page fills the screen: the web shell asks for fullscreen (on the player's click on the settings page, or their next press when the browser wanted a gesture) and leaves it when false. The page leaving fullscreen itself (Escape) turns it off."
+    field powerPreference PowerPreference "The GPU the next load asks for (highPerformance or lowPower): the adapter is chosen once, at the boot, so a change shows DisplayInfo.restartNeeded until the page loads again."
   }
 
   struct GpuMemory {
@@ -2311,17 +2323,21 @@ module render {
     field frameMs f32 "The frame time automatic quality reads, smoothed: the GPU's where timed, else the interval between frames; 0 before a frame."
     field deviceLosses u32 "How many times the GPU device was lost and the renderer made again on a new one (iOS Safari loses it after the page was in the background or under memory pressure). The game goes on: the next frame draws the world as it is, every mesh and texture uploaded again from the loaded assets."
     field gpu Option.GpuMemory "The GPU memory the renderer holds; null without a renderer."
+    field vsync bool "Frames are presented on the display's refresh (no tearing): always on a presenting host, since a browser has no switch for it; a settings page shows V-Sync as on and fixed. False on a native run, which presents nothing."
+    field fullscreen bool "The page is fullscreen now, as the host last reported it."
+    field powerPreference PowerPreference "The power preference the GPU adapter was made with at the boot (highPerformance on a native run)."
+    field restartNeeded bool "settings.powerPreference differs from the adapter's: it applies on the next load (a settings page says so)."
   }
 
   fn setDisplay {
-    doc "Set how the frame is presented (DisplaySettings: frame cap, battery saver, render scale, automatic quality). Applied from the next frame; presentation only, so it is allowed inside any system and never changes the simulation."
+    doc "Set the player's graphics settings (DisplaySettings: preset, frame cap, battery saver, render scale, automatic quality, fullscreen, power preference). Applied from the next frame (the power preference at the next load); presentation only, so it is allowed inside any system and never changes the simulation."
     param world World "The world whose display it is."
-    param settings DisplaySettings "The settings; fields left out take their defaults."
+    param settings DisplaySettings "The settings to change: fields left out keep their values (the defaults before any call), so a game that sets its frame cap keeps the player's render scale; quality null is the game's own."
     returns Result.Void "Refused for a world that is not alive."
   }
 
   fn display {
-    doc "What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived and the GPU memory."
+    doc "What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived, the GPU memory, and what the browser decides (vsync, fullscreen now, the adapter's power preference and whether a restart is needed)."
     param world World "The world asked."
     returns DisplayInfo
   }

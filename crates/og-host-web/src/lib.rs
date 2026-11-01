@@ -775,6 +775,20 @@ pub fn og_web_display_interval(engine: u32, ms: f64) {
     og_runtime::set_display_interval(engine, ms);
 }
 
+/// The page went fullscreen or left it (the shell's `fullscreenchange`):
+/// og.render.display's `fullscreen`, which the player's setting follows.
+#[wasm_bindgen]
+pub fn og_web_fullscreen(engine: u32, on: bool) {
+    og_runtime::set_fullscreen(engine, on);
+}
+
+/// What the browser granted the pointer lock: raw movement now (`active`),
+/// and whether it refused unadjustedMovement (`unsupported`): og.input.mouse.
+#[wasm_bindgen]
+pub fn og_web_mouse_report(engine: u32, active: bool, unsupported: bool) {
+    og_runtime::set_mouse_report(engine, active, unsupported);
+}
+
 /// A test hook: destroy the engine's GPU device, as iOS Safari does to a
 /// page left in the background; the next frame finds it lost and the
 /// renderer is made again on a new device, the game going on. The engine
@@ -1175,13 +1189,16 @@ mod canvas {
     }
 
     /// Put the renderer on an OffscreenCanvas transferred to this Worker,
-    /// on WebGPU (the engine has no other web backend). Resolves to the
+    /// on WebGPU (the engine has no other web backend), its adapter asked
+    /// for the low-power GPU with `low_power` (the player's power
+    /// preference, kept by the shell from the last load). Resolves to the
     /// tier (`webgpu`), or rejects with the reason: no WebGPU adapter in
     /// this browser, or the canvas or device refused.
     #[wasm_bindgen]
     pub async fn og_web_attach_canvas(
         engine: u32,
         canvas: web_sys::OffscreenCanvas,
+        low_power: bool,
     ) -> Result<String, JsValue> {
         if !wgpu::util::is_browser_webgpu_supported().await {
             return Err(JsValue::from_str(
@@ -1195,6 +1212,7 @@ mod canvas {
                 width: canvas.width().max(1),
                 height: canvas.height().max(1),
                 backend,
+                low_power,
                 ..RenderDesc::default()
             },
         );
@@ -1233,6 +1251,7 @@ mod canvas {
             })),
         )
         .map_err(|e| JsValue::from_str(&e))?;
+        og_runtime::set_power_preference(engine, low_power);
         Ok(tier)
     }
 }

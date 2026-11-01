@@ -97,7 +97,10 @@ pub use atmosphere::{
 };
 pub use baked::og_render_baked_lighting;
 pub use codec::{Kind, Layout, RecordKind};
-pub use display::{lose_device, og_render_display, og_render_set_display, set_display_interval};
+pub use display::{
+    lose_device, og_render_display, og_render_set_display, set_display_interval, set_fullscreen,
+    set_mouse_report, set_power_preference,
+};
 pub use engine::{
     ColumnPtr, Dispatch, Hooks, RenderBackend, advance, answer_call, antialias_name, begin_bundle,
     call_rpc, command, create, destroy, frame, point_shadows_name, render_desc, render_options,

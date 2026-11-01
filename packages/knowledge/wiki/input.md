@@ -45,6 +45,10 @@ module input {
 | [`CaptureDesc`](#type-CaptureDesc) | desc struct | A capture of the player's next input for a slot of an action: a controls screen's "press a key". From the next tick every action reads nothing until it ends; what was pressed for it moves no action until it is let go. |
 | [`CaptureState`](#type-CaptureState) | struct | Where a capture is: waiting, done with the control it took, or cancelled. |
 | [`InputGlyph`](#type-InputGlyph) | struct | A control's glyph, for prompts and a controls screen. |
+| [`SensitivityDesc`](#type-SensitivityDesc) | desc struct | The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own (a settings screen's Mouse sensitivity and Stick sensitivity sliders, Invert Y). Kept by og.input.saveBindings, forgotten by og.input.resetBindings; a world whose player set none saves and hashes as before. |
+| [`KeyLabel`](#type-KeyLabel) | desc struct | A key and what the player's keyboard layout prints on it: `KeyQ` and `a` on AZERTY. |
+| [`MouseDesc`](#type-MouseDesc) | desc struct | How the host reads the mouse while the pointer is locked (og.PointerLock): the player's setting, kept by the game with its settings (og.platform.saveSettings). Host only: none of it is world state. |
+| [`MouseInfo`](#type-MouseInfo) | struct | The mouse as the host reads it (og.input.mouse). |
 | [`DeadzoneDesc`](#type-DeadzoneDesc) | desc struct | A pad's dead zones: what its sticks and triggers read as rest. The player's to set (a settings slider); og.input.saveBindings keeps them. |
 | [`RumbleDesc`](#type-RumbleDesc) | desc struct | A rumble of a pad's motors: output for the host, never world state (a replay does not repeat it). |
 | [`og.input.defineAction`](#fn-defineAction) | function | Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it. |
@@ -74,6 +78,12 @@ module input {
 | [`og.input.device`](#fn-device) | function | The device the player used last: a key or the mouse, a pad (its family as the host told it, else xbox), or a touch. Prompts follow it live. |
 | [`og.input.padDevice`](#fn-padDevice) | function | A pad's family as the host told it from the pad's id (Xbox, PlayStation, Switch or a generic pad). Null for a pad that is not connected or that the host did not name. |
 | [`og.input.setDeadzones`](#fn-setDeadzones) | function | A pad's dead zones (or every pad's): the player's setting, kept by og.input.saveBindings. |
+| [`og.input.setSensitivity`](#fn-setSensitivity) | function | Set the player's sensitivity and inversion of an axis action on a device class (SensitivityDesc): applied from the next tick's actions, kept by og.input.saveBindings. |
+| [`og.input.sensitivity`](#fn-sensitivity) | function | An action's sensitivity on a device class (the device used last when omitted): the player's, else scale 1 and nothing inverted. |
+| [`og.input.setKeyboardLayout`](#fn-setKeyboardLayout) | function | The keys the player's keyboard layout prints, for glyphs: the web shell sets it from navigator.keyboard.getLayoutMap() (Chrome, Edge), and where the browser has none from the characters the player's unmodified keys type as they are pressed (Firefox, Safari: a key reads as on a US layout until it is pressed once). Bindings still name physical keys (KeyboardEvent.code), so WASD is the same four keys on every layout; only their glyphs change (Z Q S D on AZERTY). Empty is the US layout (native runs). The host's, one for the page: no world state. |
+| [`og.input.keyboardLayout`](#fn-keyboardLayout) | function | The keys the layout prints as og.input.setKeyboardLayout last set them, sorted by code (empty: the US layout). |
+| [`og.input.setMouse`](#fn-setMouse) | function | Set how the host reads the mouse (MouseDesc: raw input). Host only, never world state; fields left out keep their values. |
+| [`og.input.mouse`](#fn-mouse) | function | How the host reads the mouse: raw input asked for, granted or refused by the browser. |
 | [`og.input.rumble`](#fn-rumble) | function | Rumble a pad (or every connected pad): the web shell plays it on the pad's vibration actuator. Output only: it never feeds back into the simulation, and a native run records it in the frame answer's `rumble`. |
 | [`GamepadButton`](#type-GamepadButton) | enum | A gamepad button in the W3C standard mapping, in its index order (a is button 0). |
 | [`GamepadAxis`](#type-GamepadAxis) | enum | An analog input of a gamepad. |
@@ -133,7 +143,7 @@ fn defineAction {
 }
 ```
 
-<sub>`api.ogt` line 1709</sub>
+<sub>`api.ogt` line 1745</sub>
 
 <a id="fn-actions"></a>
 
@@ -161,7 +171,7 @@ fn actions {
 }
 ```
 
-<sub>`api.ogt` line 1716</sub>
+<sub>`api.ogt` line 1752</sub>
 
 <a id="fn-action"></a>
 
@@ -191,7 +201,7 @@ fn action {
 }
 ```
 
-<sub>`api.ogt` line 1722</sub>
+<sub>`api.ogt` line 1758</sub>
 
 <a id="fn-actionDown"></a>
 
@@ -221,7 +231,7 @@ fn actionDown {
 }
 ```
 
-<sub>`api.ogt` line 1729</sub>
+<sub>`api.ogt` line 1765</sub>
 
 <a id="fn-actionPressed"></a>
 
@@ -251,7 +261,7 @@ fn actionPressed {
 }
 ```
 
-<sub>`api.ogt` line 1736</sub>
+<sub>`api.ogt` line 1772</sub>
 
 <a id="fn-actionReleased"></a>
 
@@ -281,7 +291,7 @@ fn actionReleased {
 }
 ```
 
-<sub>`api.ogt` line 1743</sub>
+<sub>`api.ogt` line 1779</sub>
 
 <a id="fn-actionHeld"></a>
 
@@ -311,7 +321,7 @@ fn actionHeld {
 }
 ```
 
-<sub>`api.ogt` line 1750</sub>
+<sub>`api.ogt` line 1786</sub>
 
 <a id="fn-actionValue"></a>
 
@@ -341,7 +351,7 @@ fn actionValue {
 }
 ```
 
-<sub>`api.ogt` line 1757</sub>
+<sub>`api.ogt` line 1793</sub>
 
 <a id="fn-actionVector"></a>
 
@@ -371,7 +381,7 @@ fn actionVector {
 }
 ```
 
-<sub>`api.ogt` line 1764</sub>
+<sub>`api.ogt` line 1800</sub>
 
 <a id="fn-setContexts"></a>
 
@@ -401,7 +411,7 @@ fn setContexts {
 }
 ```
 
-<sub>`api.ogt` line 1771</sub>
+<sub>`api.ogt` line 1807</sub>
 
 <a id="fn-contexts"></a>
 
@@ -429,7 +439,7 @@ fn contexts {
 }
 ```
 
-<sub>`api.ogt` line 1778</sub>
+<sub>`api.ogt` line 1814</sub>
 
 <a id="fn-rebind"></a>
 
@@ -459,7 +469,7 @@ fn rebind {
 }
 ```
 
-<sub>`api.ogt` line 1784</sub>
+<sub>`api.ogt` line 1820</sub>
 
 <a id="fn-conflicts"></a>
 
@@ -489,7 +499,7 @@ fn conflicts {
 }
 ```
 
-<sub>`api.ogt` line 1791</sub>
+<sub>`api.ogt` line 1827</sub>
 
 <a id="fn-resetBindings"></a>
 
@@ -521,7 +531,7 @@ fn resetBindings {
 }
 ```
 
-<sub>`api.ogt` line 1798</sub>
+<sub>`api.ogt` line 1834</sub>
 
 <a id="fn-setToggle"></a>
 
@@ -553,7 +563,7 @@ fn setToggle {
 }
 ```
 
-<sub>`api.ogt` line 1807</sub>
+<sub>`api.ogt` line 1843</sub>
 
 <a id="fn-saveBindings"></a>
 
@@ -581,7 +591,7 @@ fn saveBindings {
 }
 ```
 
-<sub>`api.ogt` line 1815</sub>
+<sub>`api.ogt` line 1851</sub>
 
 <a id="fn-loadBindings"></a>
 
@@ -611,7 +621,7 @@ fn loadBindings {
 }
 ```
 
-<sub>`api.ogt` line 1821</sub>
+<sub>`api.ogt` line 1857</sub>
 
 <a id="fn-startCapture"></a>
 
@@ -641,7 +651,7 @@ fn startCapture {
 }
 ```
 
-<sub>`api.ogt` line 1828</sub>
+<sub>`api.ogt` line 1864</sub>
 
 <a id="fn-capture"></a>
 
@@ -669,7 +679,7 @@ fn capture {
 }
 ```
 
-<sub>`api.ogt` line 1835</sub>
+<sub>`api.ogt` line 1871</sub>
 
 <a id="fn-cancelCapture"></a>
 
@@ -697,7 +707,7 @@ fn cancelCapture {
 }
 ```
 
-<sub>`api.ogt` line 1841</sub>
+<sub>`api.ogt` line 1877</sub>
 
 <a id="fn-applyCapture"></a>
 
@@ -729,7 +739,7 @@ fn applyCapture {
 }
 ```
 
-<sub>`api.ogt` line 1847</sub>
+<sub>`api.ogt` line 1883</sub>
 
 <a id="fn-glyph"></a>
 
@@ -763,7 +773,7 @@ fn glyph {
 }
 ```
 
-<sub>`api.ogt` line 1856</sub>
+<sub>`api.ogt` line 1892</sub>
 
 <a id="fn-glyphs"></a>
 
@@ -797,7 +807,7 @@ fn glyphs {
 }
 ```
 
-<sub>`api.ogt` line 1866</sub>
+<sub>`api.ogt` line 1902</sub>
 
 <a id="fn-controlGlyph"></a>
 
@@ -829,7 +839,7 @@ fn controlGlyph {
 }
 ```
 
-<sub>`api.ogt` line 1876</sub>
+<sub>`api.ogt` line 1912</sub>
 
 <a id="fn-device"></a>
 
@@ -857,7 +867,7 @@ fn device {
 }
 ```
 
-<sub>`api.ogt` line 1885</sub>
+<sub>`api.ogt` line 1921</sub>
 
 <a id="fn-padDevice"></a>
 
@@ -887,7 +897,7 @@ fn padDevice {
 }
 ```
 
-<sub>`api.ogt` line 1891</sub>
+<sub>`api.ogt` line 1927</sub>
 
 <a id="fn-setDeadzones"></a>
 
@@ -917,7 +927,180 @@ fn setDeadzones {
 }
 ```
 
-<sub>`api.ogt` line 1898</sub>
+<sub>`api.ogt` line 1934</sub>
+
+<a id="fn-setSensitivity"></a>
+
+### `og.input.setSensitivity`
+
+Set the player's sensitivity and inversion of an axis action on a device class (SensitivityDesc): applied from the next tick's actions, kept by og.input.saveBindings.
+
+```ts
+og.input.setSensitivity(world: World, desc?: SensitivityDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `SensitivityDesc` | yes | The action, the device class, the scale and the inversions. |
+
+**Returns** `Result<void>`: Refused for an unknown action, a button action, or a scale that is not above 0.
+
+Binding symbol `og_input_set_sensitivity` · publish builds: kept
+
+```ogt
+fn setSensitivity {
+  doc "Set the player's sensitivity and inversion of an axis action on a device class (SensitivityDesc): applied from the next tick's actions, kept by og.input.saveBindings."
+  param world World "The world."
+  param desc SensitivityDesc "The action, the device class, the scale and the inversions."
+  returns Result.Void "Refused for an unknown action, a button action, or a scale that is not above 0."
+}
+```
+
+<sub>`api.ogt` line 1941</sub>
+
+<a id="fn-sensitivity"></a>
+
+### `og.input.sensitivity`
+
+An action's sensitivity on a device class (the device used last when omitted): the player's, else scale 1 and nothing inverted.
+
+```ts
+og.input.sensitivity(world: World, action: string, device?: InputDevice): SensitivityDesc
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `action` | `string` | no | The action. |
+| `device` | `InputDevice` | yes | The device class; omitted is the one used last. |
+
+**Returns** `SensitivityDesc`.
+
+Binding symbol `og_input_sensitivity` · publish builds: kept
+
+```ogt
+fn sensitivity {
+  doc "An action's sensitivity on a device class (the device used last when omitted): the player's, else scale 1 and nothing inverted."
+  param world World "The world."
+  param action String "The action."
+  param device InputDevice "The device class; omitted is the one used last." {
+    optional true
+  }
+  returns SensitivityDesc
+}
+```
+
+<sub>`api.ogt` line 1948</sub>
+
+<a id="fn-setKeyboardLayout"></a>
+
+### `og.input.setKeyboardLayout`
+
+The keys the player's keyboard layout prints, for glyphs: the web shell sets it from navigator.keyboard.getLayoutMap() (Chrome, Edge), and where the browser has none from the characters the player's unmodified keys type as they are pressed (Firefox, Safari: a key reads as on a US layout until it is pressed once). Bindings still name physical keys (KeyboardEvent.code), so WASD is the same four keys on every layout; only their glyphs change (Z Q S D on AZERTY). Empty is the US layout (native runs). The host's, one for the page: no world state.
+
+```ts
+og.input.setKeyboardLayout(labels: readonly KeyLabel[]): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `labels` | `readonly KeyLabel[]` | no | Each key's printed label, in place of the last list. |
+
+**Returns** `void`.
+
+Binding symbol `og_input_set_keyboard_layout` · publish builds: kept
+
+```ogt
+fn setKeyboardLayout {
+  doc "The keys the player's keyboard layout prints, for glyphs: the web shell sets it from navigator.keyboard.getLayoutMap() (Chrome, Edge), and where the browser has none from the characters the player's unmodified keys type as they are pressed (Firefox, Safari: a key reads as on a US layout until it is pressed once). Bindings still name physical keys (KeyboardEvent.code), so WASD is the same four keys on every layout; only their glyphs change (Z Q S D on AZERTY). Empty is the US layout (native runs). The host's, one for the page: no world state."
+  param labels List.KeyLabel "Each key's printed label, in place of the last list."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 1958</sub>
+
+<a id="fn-keyboardLayout"></a>
+
+### `og.input.keyboardLayout`
+
+The keys the layout prints as og.input.setKeyboardLayout last set them, sorted by code (empty: the US layout).
+
+```ts
+og.input.keyboardLayout(): readonly KeyLabel[]
+```
+
+**Returns** `readonly KeyLabel[]`.
+
+Binding symbol `og_input_keyboard_layout` · publish builds: kept
+
+```ogt
+fn keyboardLayout {
+  doc "The keys the layout prints as og.input.setKeyboardLayout last set them, sorted by code (empty: the US layout)."
+  returns List.KeyLabel
+}
+```
+
+<sub>`api.ogt` line 1964</sub>
+
+<a id="fn-setMouse"></a>
+
+### `og.input.setMouse`
+
+Set how the host reads the mouse (MouseDesc: raw input). Host only, never world state; fields left out keep their values.
+
+```ts
+og.input.setMouse(world: World, desc?: MouseDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `MouseDesc` | yes | The settings. |
+
+**Returns** `Result<void>`: Refused for a world that is not alive.
+
+Binding symbol `og_input_set_mouse` · publish builds: kept
+
+```ogt
+fn setMouse {
+  doc "Set how the host reads the mouse (MouseDesc: raw input). Host only, never world state; fields left out keep their values."
+  param world World "The world."
+  param desc MouseDesc "The settings."
+  returns Result.Void "Refused for a world that is not alive."
+}
+```
+
+<sub>`api.ogt` line 1969</sub>
+
+<a id="fn-mouse"></a>
+
+### `og.input.mouse`
+
+How the host reads the mouse: raw input asked for, granted or refused by the browser.
+
+```ts
+og.input.mouse(world: World): MouseInfo
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+
+**Returns** `MouseInfo`.
+
+Binding symbol `og_input_mouse` · publish builds: kept
+
+```ogt
+fn mouse {
+  doc "How the host reads the mouse: raw input asked for, granted or refused by the browser."
+  param world World "The world."
+  returns MouseInfo
+}
+```
+
+<sub>`api.ogt` line 1976</sub>
 
 <a id="fn-rumble"></a>
 
@@ -947,7 +1130,7 @@ fn rumble {
 }
 ```
 
-<sub>`api.ogt` line 1905</sub>
+<sub>`api.ogt` line 1982</sub>
 
 ## Components, resources and events
 
@@ -1109,7 +1292,7 @@ resource Input {
 }
 ```
 
-<sub>`api.ogt` line 2096</sub>
+<sub>`api.ogt` line 2173</sub>
 
 <a id="member-Input-down"></a>
 
@@ -1137,7 +1320,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 2170</sub>
+<sub>`api.ogt` line 2247</sub>
 
 <a id="member-Input-pressed"></a>
 
@@ -1165,7 +1348,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 2175</sub>
+<sub>`api.ogt` line 2252</sub>
 
 <a id="member-Input-released"></a>
 
@@ -1193,7 +1376,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 2180</sub>
+<sub>`api.ogt` line 2257</sub>
 
 <a id="member-Input-axis"></a>
 
@@ -1223,7 +1406,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 2185</sub>
+<sub>`api.ogt` line 2262</sub>
 
 <a id="member-Input-axis2"></a>
 
@@ -1257,7 +1440,7 @@ fn axis2 {
 }
 ```
 
-<sub>`api.ogt` line 2191</sub>
+<sub>`api.ogt` line 2268</sub>
 
 <a id="member-Input-buttonDown"></a>
 
@@ -1285,7 +1468,7 @@ fn buttonDown {
 }
 ```
 
-<sub>`api.ogt` line 2199</sub>
+<sub>`api.ogt` line 2276</sub>
 
 <a id="member-Input-buttonPressed"></a>
 
@@ -1313,7 +1496,7 @@ fn buttonPressed {
 }
 ```
 
-<sub>`api.ogt` line 2204</sub>
+<sub>`api.ogt` line 2281</sub>
 
 <a id="member-Input-buttonReleased"></a>
 
@@ -1341,7 +1524,7 @@ fn buttonReleased {
 }
 ```
 
-<sub>`api.ogt` line 2209</sub>
+<sub>`api.ogt` line 2286</sub>
 
 <a id="record-Pointers"></a>
 
@@ -1463,7 +1646,7 @@ resource Pointers {
 }
 ```
 
-<sub>`api.ogt` line 2216</sub>
+<sub>`api.ogt` line 2293</sub>
 
 <a id="member-Pointers-down"></a>
 
@@ -1491,7 +1674,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 2275</sub>
+<sub>`api.ogt` line 2352</sub>
 
 <a id="member-Pointers-pressed"></a>
 
@@ -1519,7 +1702,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 2280</sub>
+<sub>`api.ogt` line 2357</sub>
 
 <a id="member-Pointers-released"></a>
 
@@ -1547,7 +1730,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 2285</sub>
+<sub>`api.ogt` line 2362</sub>
 
 <a id="member-Pointers-position"></a>
 
@@ -1575,7 +1758,7 @@ fn position {
 }
 ```
 
-<sub>`api.ogt` line 2290</sub>
+<sub>`api.ogt` line 2367</sub>
 
 <a id="member-Pointers-start"></a>
 
@@ -1603,7 +1786,7 @@ fn start {
 }
 ```
 
-<sub>`api.ogt` line 2295</sub>
+<sub>`api.ogt` line 2372</sub>
 
 <a id="member-Pointers-count"></a>
 
@@ -1626,7 +1809,7 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 2300</sub>
+<sub>`api.ogt` line 2377</sub>
 
 <a id="record-PointerLock"></a>
 
@@ -1654,7 +1837,7 @@ resource PointerLock {
 }
 ```
 
-<sub>`api.ogt` line 2306</sub>
+<sub>`api.ogt` line 2383</sub>
 
 <a id="record-Gamepad"></a>
 
@@ -1915,7 +2098,7 @@ resource Gamepad {
 }
 ```
 
-<sub>`api.ogt` line 2315</sub>
+<sub>`api.ogt` line 2392</sub>
 
 <a id="member-Gamepad-connected"></a>
 
@@ -1945,7 +2128,7 @@ fn connected {
 }
 ```
 
-<sub>`api.ogt` line 2468</sub>
+<sub>`api.ogt` line 2545</sub>
 
 <a id="member-Gamepad-down"></a>
 
@@ -1977,7 +2160,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 2475</sub>
+<sub>`api.ogt` line 2552</sub>
 
 <a id="member-Gamepad-pressed"></a>
 
@@ -2009,7 +2192,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 2483</sub>
+<sub>`api.ogt` line 2560</sub>
 
 <a id="member-Gamepad-released"></a>
 
@@ -2041,7 +2224,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 2491</sub>
+<sub>`api.ogt` line 2568</sub>
 
 <a id="member-Gamepad-axis"></a>
 
@@ -2073,7 +2256,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 2499</sub>
+<sub>`api.ogt` line 2576</sub>
 
 <a id="record-KeyDown"></a>
 
@@ -2101,7 +2284,7 @@ event KeyDown {
 }
 ```
 
-<sub>`api.ogt` line 2509</sub>
+<sub>`api.ogt` line 2586</sub>
 
 <a id="record-TextInput"></a>
 
@@ -2126,7 +2309,7 @@ event TextInput {
 }
 ```
 
-<sub>`api.ogt` line 2519</sub>
+<sub>`api.ogt` line 2596</sub>
 
 <a id="record-KeyUp"></a>
 
@@ -2152,7 +2335,7 @@ event KeyUp {
 }
 ```
 
-<sub>`api.ogt` line 2526</sub>
+<sub>`api.ogt` line 2603</sub>
 
 <a id="record-PointerDown"></a>
 
@@ -2184,7 +2367,7 @@ event PointerDown {
 }
 ```
 
-<sub>`api.ogt` line 2535</sub>
+<sub>`api.ogt` line 2612</sub>
 
 <a id="record-PointerUp"></a>
 
@@ -2216,7 +2399,7 @@ event PointerUp {
 }
 ```
 
-<sub>`api.ogt` line 2547</sub>
+<sub>`api.ogt` line 2624</sub>
 
 <a id="record-PointerMove"></a>
 
@@ -2245,7 +2428,7 @@ event PointerMove {
 }
 ```
 
-<sub>`api.ogt` line 2559</sub>
+<sub>`api.ogt` line 2636</sub>
 
 <a id="record-Wheel"></a>
 
@@ -2268,7 +2451,7 @@ event Wheel {
 }
 ```
 
-<sub>`api.ogt` line 2568</sub>
+<sub>`api.ogt` line 2645</sub>
 
 <a id="record-A11yAction"></a>
 
@@ -2291,7 +2474,7 @@ event A11yAction {
 }
 ```
 
-<sub>`api.ogt` line 2574</sub>
+<sub>`api.ogt` line 2651</sub>
 
 ## Types
 
@@ -2791,6 +2974,111 @@ struct InputGlyph {
 
 <sub>`api.ogt` line 1656</sub>
 
+<a id="type-SensitivityDesc"></a>
+
+### `SensitivityDesc` (desc struct)
+
+The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own (a settings screen's Mouse sensitivity and Stick sensitivity sliders, Invert Y). Kept by og.input.saveBindings, forgotten by og.input.resetBindings; a world whose player set none saves and hashes as before.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `action` | `string` | `""` | — | — | — | The action (axis or axis2). |
+| `device` | `InputDevice` | `"keyboardMouse"` | — | — | — | The device class it is for: keyboardMouse (the mouse's movement and the wheel; inversion turns the keys over too), any pad family (every pad), or touch (a touch stick). |
+| `scale` | `number` | `1` | 0.01 … 100 | — | — | Multiplies the value of the action's analog bindings on that class (the mouse's movement, the wheel, a stick, a trigger, a touch stick), after each binding's own scale: 2 turns twice as far for the same mouse movement. Keys, buttons, the d-pad and composites read whole. |
+| `invertX` | `boolean` | `false` | — | — | — | The value's x (an axis action's only value) is turned over. |
+| `invertY` | `boolean` | `false` | — | — | — | A two-axis value's y is turned over: inverted look (an action's y is up-positive, so the mouse moved up then reads down). |
+
+```ogt
+struct SensitivityDesc {
+  doc "The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own (a settings screen's Mouse sensitivity and Stick sensitivity sliders, Invert Y). Kept by og.input.saveBindings, forgotten by og.input.resetBindings; a world whose player set none saves and hashes as before."
+  desc true
+  field action String "The action (axis or axis2)."
+  field device InputDevice "The device class it is for: keyboardMouse (the mouse's movement and the wheel; inversion turns the keys over too), any pad family (every pad), or touch (a touch stick)."
+  field scale f32 "Multiplies the value of the action's analog bindings on that class (the mouse's movement, the wheel, a stick, a trigger, a touch stick), after each binding's own scale: 2 turns twice as far for the same mouse movement. Keys, buttons, the d-pad and composites read whole." {
+    default 1
+    min 0.01
+    max 100
+  }
+  field invertX bool "The value's x (an axis action's only value) is turned over."
+  field invertY bool "A two-axis value's y is turned over: inverted look (an action's y is up-positive, so the mouse moved up then reads down)."
+}
+```
+
+<sub>`api.ogt` line 1664</sub>
+
+<a id="type-KeyLabel"></a>
+
+### `KeyLabel` (desc struct)
+
+A key and what the player's keyboard layout prints on it: `KeyQ` and `a` on AZERTY.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `code` | `string` | `""` | — | — | — | The physical key (KeyboardEvent.code). |
+| `label` | `string` | `""` | — | — | — | The character it types without modifiers, as the layout map gives it (`a`, `,`, `ö`). |
+
+```ogt
+struct KeyLabel {
+  doc "A key and what the player's keyboard layout prints on it: `KeyQ` and `a` on AZERTY."
+  desc true
+  field code String "The physical key (KeyboardEvent.code)."
+  field label String "The character it types without modifiers, as the layout map gives it (`a`, `,`, `ö`)."
+}
+```
+
+<sub>`api.ogt` line 1678</sub>
+
+<a id="type-MouseDesc"></a>
+
+### `MouseDesc` (desc struct)
+
+How the host reads the mouse while the pointer is locked (og.PointerLock): the player's setting, kept by the game with its settings (og.platform.saveSettings). Host only: none of it is world state.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `raw` | `boolean` | `true` | — | — | — | Raw input: ask the browser for the mouse's movement without the OS's pointer acceleration (requestPointerLock with unadjustedMovement), where it supports that (Chrome and Edge on Windows, macOS and ChromeOS); elsewhere the lock is the plain one and the movement keeps the OS's acceleration (MouseInfo.rawUnsupported). Takes effect at the next lock. |
+
+```ogt
+struct MouseDesc {
+  doc "How the host reads the mouse while the pointer is locked (og.PointerLock): the player's setting, kept by the game with its settings (og.platform.saveSettings). Host only: none of it is world state."
+  desc true
+  field raw bool "Raw input: ask the browser for the mouse's movement without the OS's pointer acceleration (requestPointerLock with unadjustedMovement), where it supports that (Chrome and Edge on Windows, macOS and ChromeOS); elsewhere the lock is the plain one and the movement keeps the OS's acceleration (MouseInfo.rawUnsupported). Takes effect at the next lock." {
+    default true
+  }
+}
+```
+
+<sub>`api.ogt` line 1685</sub>
+
+<a id="type-MouseInfo"></a>
+
+### `MouseInfo` (struct)
+
+The mouse as the host reads it (og.input.mouse).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `raw` | `boolean` | `false` | — | — | — | Raw input is asked for (MouseDesc.raw). |
+| `rawActive` | `boolean` | `false` | — | — | — | The lock now delivers raw movement: the browser granted unadjustedMovement. False while unlocked. |
+| `rawUnsupported` | `boolean` | `false` | — | — | — | The browser refused unadjustedMovement (Firefox, Safari, Linux): its lock moves with the OS's acceleration. A settings screen shows the Raw input switch as unavailable then. |
+
+```ogt
+struct MouseInfo {
+  doc "The mouse as the host reads it (og.input.mouse)."
+  field raw bool "Raw input is asked for (MouseDesc.raw)."
+  field rawActive bool "The lock now delivers raw movement: the browser granted unadjustedMovement. False while unlocked."
+  field rawUnsupported bool "The browser refused unadjustedMovement (Firefox, Safari, Linux): its lock moves with the OS's acceleration. A settings screen shows the Raw input switch as unavailable then."
+}
+```
+
+<sub>`api.ogt` line 1693</sub>
+
 <a id="type-DeadzoneDesc"></a>
 
 ### `DeadzoneDesc` (desc struct)
@@ -2827,7 +3115,7 @@ struct DeadzoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 1664</sub>
+<sub>`api.ogt` line 1700</sub>
 
 <a id="type-RumbleDesc"></a>
 
@@ -2871,7 +3159,7 @@ struct RumbleDesc {
 }
 ```
 
-<sub>`api.ogt` line 1684</sub>
+<sub>`api.ogt` line 1720</sub>
 
 <a id="type-GamepadButton"></a>
 
@@ -2924,7 +3212,7 @@ enum GamepadButton {
 }
 ```
 
-<sub>`api.ogt` line 1913</sub>
+<sub>`api.ogt` line 1990</sub>
 
 <a id="type-GamepadAxis"></a>
 
@@ -2955,7 +3243,7 @@ enum GamepadAxis {
 }
 ```
 
-<sub>`api.ogt` line 1934</sub>
+<sub>`api.ogt` line 2011</sub>
 
 <a id="type-KeyAction"></a>
 
@@ -2980,7 +3268,7 @@ enum KeyAction {
 }
 ```
 
-<sub>`api.ogt` line 1944</sub>
+<sub>`api.ogt` line 2021</sub>
 
 <a id="type-PointerAction"></a>
 
@@ -3007,7 +3295,7 @@ enum PointerAction {
 }
 ```
 
-<sub>`api.ogt` line 1951</sub>
+<sub>`api.ogt` line 2028</sub>
 
 <a id="type-PointerButton"></a>
 
@@ -3034,7 +3322,7 @@ enum PointerButton {
 }
 ```
 
-<sub>`api.ogt` line 1959</sub>
+<sub>`api.ogt` line 2036</sub>
 
 <a id="type-Modifiers"></a>
 
@@ -3059,7 +3347,7 @@ struct Modifiers {
 }
 ```
 
-<sub>`api.ogt` line 1967</sub>
+<sub>`api.ogt` line 2044</sub>
 
 <a id="type-KeyInput"></a>
 
@@ -3090,7 +3378,7 @@ struct KeyInput {
 }
 ```
 
-<sub>`api.ogt` line 1975</sub>
+<sub>`api.ogt` line 2052</sub>
 
 <a id="type-PointerInput"></a>
 
@@ -3140,7 +3428,7 @@ struct PointerInput {
 }
 ```
 
-<sub>`api.ogt` line 1989</sub>
+<sub>`api.ogt` line 2066</sub>
 
 <a id="type-PointerLockReport"></a>
 
@@ -3159,7 +3447,7 @@ struct PointerLockReport {
 }
 ```
 
-<sub>`api.ogt` line 2018</sub>
+<sub>`api.ogt` line 2095</sub>
 
 <a id="type-GamepadInput"></a>
 
@@ -3201,7 +3489,7 @@ struct GamepadInput {
 }
 ```
 
-<sub>`api.ogt` line 2023</sub>
+<sub>`api.ogt` line 2100</sub>
 
 <a id="type-WheelInput"></a>
 
@@ -3234,7 +3522,7 @@ struct WheelInput {
 }
 ```
 
-<sub>`api.ogt` line 2046</sub>
+<sub>`api.ogt` line 2123</sub>
 
 <a id="type-TextEntry"></a>
 
@@ -3257,7 +3545,7 @@ struct TextEntry {
 }
 ```
 
-<sub>`api.ogt` line 2062</sub>
+<sub>`api.ogt` line 2139</sub>
 
 <a id="type-A11yActionKind"></a>
 
@@ -3284,7 +3572,7 @@ enum A11yActionKind {
 }
 ```
 
-<sub>`api.ogt` line 2070</sub>
+<sub>`api.ogt` line 2147</sub>
 
 <a id="type-A11yRequest"></a>
 
@@ -3305,7 +3593,7 @@ struct A11yRequest {
 }
 ```
 
-<sub>`api.ogt` line 2078</sub>
+<sub>`api.ogt` line 2155</sub>
 
 <a id="type-InjectedInput"></a>
 
@@ -3339,7 +3627,7 @@ union InjectedInput {
 }
 ```
 
-<sub>`api.ogt` line 2084</sub>
+<sub>`api.ogt` line 2161</sub>
 
 ## Constants
 

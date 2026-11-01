@@ -116,7 +116,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     };
     // Automatic quality reads the drawn frame: its interval, the engine's
     // work on it (ticks and render) and the GPU's newest time.
-    let max_fps = {
+    let (max_fps, page) = {
         let gpu_ms = {
             let st = eng.state.borrow();
             (!st.gpu_ms.is_empty()).then(|| st.gpu_ms.iter().map(|(_, ms)| *ms).sum::<f64>())
@@ -125,7 +125,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         if rendered {
             crate::display::after_frame(&mut rs, elapsed_ms, rprobe::now_ms() - frame_t0, gpu_ms);
         }
-        crate::display::max_fps(&rs)
+        (crate::display::max_fps(&rs), crate::display::page_asks(&rs))
     };
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
     let (behind, step_ms, render_ms) = {
@@ -153,12 +153,16 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // false, and reports `locked` back as input).
     // `maxFps`: the frame cap resolved (og.render.setDisplay; 0: the
     // display's rate), which the web Worker keeps by skipping display frames.
+    // `fullscreen`, `lowPower`, `rawMouse`: what the player's settings ask
+    // of the page (the web shell enters or leaves fullscreen, keeps the
+    // power preference for the next load, asks pointer lock for raw input).
     let mut answer = json!({
         "ok": true, "ticks": ticks, "tick": tick, "rendered": rendered,
         "paused": probe.paused(), "quit": probe.quit_requested(), "behind": behind,
         "text": text, "stepMs": step_ms, "renderMs": render_ms,
         "pending": probe.steps_left(), "pointerLock": pointer_lock,
-        "maxFps": max_fps,
+        "maxFps": max_fps, "fullscreen": page["fullscreen"],
+        "lowPower": page["lowPower"], "rawMouse": page["rawMouse"],
     });
     if let Some(c) = copy {
         answer["copy"] = json!(c);

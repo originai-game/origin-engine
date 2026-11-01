@@ -2909,6 +2909,10 @@
         "CaptureDesc",
         "CaptureState",
         "InputGlyph",
+        "SensitivityDesc",
+        "KeyLabel",
+        "MouseDesc",
+        "MouseInfo",
         "DeadzoneDesc",
         "RumbleDesc",
         "GamepadButton",
@@ -3482,6 +3486,109 @@
           "publish": true
         },
         {
+          "name": "setSensitivity",
+          "doc": "Set the player's sensitivity and inversion of an axis action on a device class (SensitivityDesc): applied from the next tick's actions, kept by og.input.saveBindings.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "SensitivityDesc",
+              "optional": true,
+              "doc": "The action, the device class, the scale and the inversions."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an unknown action, a button action, or a scale that is not above 0.",
+          "publish": true
+        },
+        {
+          "name": "sensitivity",
+          "doc": "An action's sensitivity on a device class (the device used last when omitted): the player's, else scale 1 and nothing inverted.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "action",
+              "type": "String",
+              "optional": false,
+              "doc": "The action."
+            },
+            {
+              "name": "device",
+              "type": "InputDevice",
+              "optional": true,
+              "doc": "The device class; omitted is the one used last."
+            }
+          ],
+          "returns": "SensitivityDesc",
+          "publish": true
+        },
+        {
+          "name": "setKeyboardLayout",
+          "doc": "The keys the player's keyboard layout prints, for glyphs: the web shell sets it from navigator.keyboard.getLayoutMap() (Chrome, Edge), and where the browser has none from the characters the player's unmodified keys type as they are pressed (Firefox, Safari: a key reads as on a US layout until it is pressed once). Bindings still name physical keys (KeyboardEvent.code), so WASD is the same four keys on every layout; only their glyphs change (Z Q S D on AZERTY). Empty is the US layout (native runs). The host's, one for the page: no world state.",
+          "params": [
+            {
+              "name": "labels",
+              "type": "List<KeyLabel>",
+              "optional": false,
+              "doc": "Each key's printed label, in place of the last list."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "keyboardLayout",
+          "doc": "The keys the layout prints as og.input.setKeyboardLayout last set them, sorted by code (empty: the US layout).",
+          "params": [],
+          "returns": "List<KeyLabel>",
+          "publish": true
+        },
+        {
+          "name": "setMouse",
+          "doc": "Set how the host reads the mouse (MouseDesc: raw input). Host only, never world state; fields left out keep their values.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "MouseDesc",
+              "optional": true,
+              "doc": "The settings."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a world that is not alive.",
+          "publish": true
+        },
+        {
+          "name": "mouse",
+          "doc": "How the host reads the mouse: raw input asked for, granted or refused by the browser.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "MouseInfo",
+          "publish": true
+        },
+        {
           "name": "rumble",
           "doc": "Rumble a pad (or every connected pad): the web shell plays it on the pad's vibration actuator. Output only: it never feeds back into the simulation, and a native run records it in the frame answer's `rumble`.",
           "params": [
@@ -3685,6 +3792,7 @@
         "Shader",
         "Shader",
         "FrameCap",
+        "PowerPreference",
         "DisplaySettings",
         "GpuMemory",
         "DisplayInfo",
@@ -4124,7 +4232,7 @@
         },
         {
           "name": "setDisplay",
-          "doc": "Set how the frame is presented (DisplaySettings: frame cap, battery saver, render scale, automatic quality). Applied from the next frame; presentation only, so it is allowed inside any system and never changes the simulation.",
+          "doc": "Set the player's graphics settings (DisplaySettings: preset, frame cap, battery saver, render scale, automatic quality, fullscreen, power preference). Applied from the next frame (the power preference at the next load); presentation only, so it is allowed inside any system and never changes the simulation.",
           "params": [
             {
               "name": "world",
@@ -4136,7 +4244,7 @@
               "name": "settings",
               "type": "DisplaySettings",
               "optional": true,
-              "doc": "The settings; fields left out take their defaults."
+              "doc": "The settings to change: fields left out keep their values (the defaults before any call), so a game that sets its frame cap keeps the player's render scale; quality null is the game's own."
             }
           ],
           "returns": "Result<Void>",
@@ -4145,7 +4253,7 @@
         },
         {
           "name": "display",
-          "doc": "What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived and the GPU memory.",
+          "doc": "What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived, the GPU memory, and what the browser decides (vsync, fullscreen now, the adapter's power preference and whether a restart is needed).",
           "params": [
             {
               "name": "world",
@@ -15170,6 +15278,101 @@
       ],
       "additionalProperties": false
     },
+    "SensitivityDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "input",
+      "description": "The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own (a settings screen's Mouse sensitivity and Stick sensitivity sliders, Invert Y). Kept by og.input.saveBindings, forgotten by og.input.resetBindings; a world whose player set none saves and hashes as before.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "The action (axis or axis2).",
+          "default": ""
+        },
+        "device": {
+          "$ref": "#/$defs/InputDevice",
+          "description": "The device class it is for: keyboardMouse (the mouse's movement and the wheel; inversion turns the keys over too), any pad family (every pad), or touch (a touch stick).",
+          "default": "keyboardMouse"
+        },
+        "scale": {
+          "type": "number",
+          "description": "Multiplies the value of the action's analog bindings on that class (the mouse's movement, the wheel, a stick, a trigger, a touch stick), after each binding's own scale: 2 turns twice as far for the same mouse movement. Keys, buttons, the d-pad and composites read whole.",
+          "default": 1,
+          "minimum": 0.01,
+          "maximum": 100
+        },
+        "invertX": {
+          "type": "boolean",
+          "description": "The value's x (an axis action's only value) is turned over.",
+          "default": false
+        },
+        "invertY": {
+          "type": "boolean",
+          "description": "A two-axis value's y is turned over: inverted look (an action's y is up-positive, so the mouse moved up then reads down).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "KeyLabel": {
+      "x-og-kind": "desc",
+      "x-og-module": "input",
+      "description": "A key and what the player's keyboard layout prints on it: `KeyQ` and `a` on AZERTY.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "The physical key (KeyboardEvent.code).",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "The character it types without modifiers, as the layout map gives it (`a`, `,`, `ö`).",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "MouseDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "input",
+      "description": "How the host reads the mouse while the pointer is locked (og.PointerLock): the player's setting, kept by the game with its settings (og.platform.saveSettings). Host only: none of it is world state.",
+      "type": "object",
+      "properties": {
+        "raw": {
+          "type": "boolean",
+          "description": "Raw input: ask the browser for the mouse's movement without the OS's pointer acceleration (requestPointerLock with unadjustedMovement), where it supports that (Chrome and Edge on Windows, macOS and ChromeOS); elsewhere the lock is the plain one and the movement keeps the OS's acceleration (MouseInfo.rawUnsupported). Takes effect at the next lock.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "MouseInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "The mouse as the host reads it (og.input.mouse).",
+      "type": "object",
+      "properties": {
+        "raw": {
+          "type": "boolean",
+          "description": "Raw input is asked for (MouseDesc.raw)."
+        },
+        "rawActive": {
+          "type": "boolean",
+          "description": "The lock now delivers raw movement: the browser granted unadjustedMovement. False while unlocked."
+        },
+        "rawUnsupported": {
+          "type": "boolean",
+          "description": "The browser refused unadjustedMovement (Firefox, Safari, Linux): its lock moves with the OS's acceleration. A settings screen shows the Raw input switch as unavailable then."
+        }
+      },
+      "required": [
+        "raw",
+        "rawActive",
+        "rawUnsupported"
+      ],
+      "additionalProperties": false
+    },
     "DeadzoneDesc": {
       "x-og-kind": "desc",
       "x-og-module": "input",
@@ -22080,21 +22283,51 @@
         "auto",
         "display",
         "fps60",
-        "fps30"
+        "fps30",
+        "fps120",
+        "fps144"
       ],
       "x-og-variants": {
         "auto": "The device class's default: 60 on a phone or tablet (a coarse pointer), which halves the GPU's work on a 120 Hz ProMotion display for a game whose tick is 60 Hz or less; the display's own rate on a desktop. 30 with batterySaver.",
         "display": "Every frame the display shows (requestAnimationFrame): 120 on ProMotion, 144 and more on gaming monitors.",
         "fps60": "At most 60 a second.",
-        "fps30": "At most 30 a second: the battery's choice, and a steady rate for a GPU that cannot hold 60."
+        "fps30": "At most 30 a second: the battery's choice, and a steady rate for a GPU that cannot hold 60.",
+        "fps120": "At most 120 a second: a 144 Hz or faster monitor held to a rate its GPU keeps.",
+        "fps144": "At most 144 a second: a 240 Hz monitor held to the gaming rate."
+      }
+    },
+    "PowerPreference": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "Which GPU the browser's adapter is asked for (requestAdapter's powerPreference), on a laptop with two. The adapter is made once, at the boot: a change applies on the next load (DisplayInfo.restartNeeded), which the web shell keeps for the page.",
+      "type": "string",
+      "enum": [
+        "highPerformance",
+        "lowPower"
+      ],
+      "x-og-variants": {
+        "highPerformance": "The discrete GPU where there is one: the frame rate's choice.",
+        "lowPower": "The integrated GPU: the battery's choice, cooler and quieter."
       }
     },
     "DisplaySettings": {
       "x-og-kind": "desc",
       "x-og-module": "render",
-      "description": "How the frame is presented on a display: the frame cap, battery saver, render scale and automatic quality, set with og.render.setDisplay. Presentation only: none of it is in the world, so the world's hash, snapshots, saves and replays never see it, and a native run (`og run`, `og test`, reference captures) draws every frame at render scale 1 whatever it says. The web shell's graphics settings write it; a game may too.",
+      "description": "The player's graphics settings, as a settings page shows them and og.render.setDisplay sets them: the graphics preset, the frame cap, battery saver, render scale and automatic quality, fullscreen and the GPU's power preference. Presentation only: none of it is in the world, so the world's hash, snapshots, saves and replays never see it, and a native run (`og run`, `og test`, reference captures) draws every frame at render scale 1 whatever it says (the preset is drawn there too, as RenderSettings' quality is). The game keeps them with the player's settings, not the world: og.render.display(world).settings is the whole object to save (og.platform.saveSettings, GameSettings.display), and og.render.setDisplay(world, saved) puts it back at the next start.\nWhat the browser decides, a page reads from DisplayInfo: vsync is always on (a browser presents on the display's refresh and has no switch), fullscreen follows the page (Escape leaves it and turns the setting off), and a power preference applies at the next load (restartNeeded).",
       "type": "object",
       "properties": {
+        "quality": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GraphicsQuality"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The player's graphics preset: its row of quality fields (og.render.applyQuality's table) is drawn in place of RenderSettings', which keep the game's values. Null draws the game's own RenderSettings quality.",
+          "default": null
+        },
         "frameCap": {
           "$ref": "#/$defs/FrameCap",
           "description": "The most frames a second (auto: 60 on phones, the display's rate on desktops).",
@@ -22132,6 +22365,16 @@
           "default": 1,
           "minimum": 0,
           "maximum": 2
+        },
+        "fullscreen": {
+          "type": "boolean",
+          "description": "The page fills the screen: the web shell asks for fullscreen (on the player's click on the settings page, or their next press when the browser wanted a gesture) and leaves it when false. The page leaving fullscreen itself (Escape) turns it off.",
+          "default": false
+        },
+        "powerPreference": {
+          "$ref": "#/$defs/PowerPreference",
+          "description": "The GPU the next load asks for (highPerformance or lowPower): the adapter is chosen once, at the boot, so a change shows DisplayInfo.restartNeeded until the page loads again.",
+          "default": "highPerformance"
         }
       },
       "additionalProperties": false
@@ -22243,6 +22486,22 @@
             }
           ],
           "description": "The GPU memory the renderer holds; null without a renderer."
+        },
+        "vsync": {
+          "type": "boolean",
+          "description": "Frames are presented on the display's refresh (no tearing): always on a presenting host, since a browser has no switch for it; a settings page shows V-Sync as on and fixed. False on a native run, which presents nothing."
+        },
+        "fullscreen": {
+          "type": "boolean",
+          "description": "The page is fullscreen now, as the host last reported it."
+        },
+        "powerPreference": {
+          "$ref": "#/$defs/PowerPreference",
+          "description": "The power preference the GPU adapter was made with at the boot (highPerformance on a native run)."
+        },
+        "restartNeeded": {
+          "type": "boolean",
+          "description": "settings.powerPreference differs from the adapter's: it applies on the next load (a settings page says so)."
         }
       },
       "required": [
@@ -22256,7 +22515,11 @@
         "sceneHeight",
         "frameMs",
         "deviceLosses",
-        "gpu"
+        "gpu",
+        "vsync",
+        "fullscreen",
+        "powerPreference",
+        "restartNeeded"
       ],
       "additionalProperties": false
     },

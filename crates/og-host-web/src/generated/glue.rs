@@ -559,6 +559,36 @@ pub fn og_input_set_deadzones(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_input_set_sensitivity(world: u32, desc: Option<String>) -> String {
+    <Host as InputApi>::og_input_set_sensitivity(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_input_sensitivity(world: u32, action: String, device: Option<String>) -> String {
+    <Host as InputApi>::og_input_sensitivity(&Host, world, action, device)
+}
+
+#[wasm_bindgen]
+pub fn og_input_set_keyboard_layout(labels: String) {
+    <Host as InputApi>::og_input_set_keyboard_layout(&Host, labels)
+}
+
+#[wasm_bindgen]
+pub fn og_input_keyboard_layout() -> String {
+    <Host as InputApi>::og_input_keyboard_layout(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_input_set_mouse(world: u32, desc: Option<String>) -> String {
+    <Host as InputApi>::og_input_set_mouse(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_input_mouse(world: u32) -> String {
+    <Host as InputApi>::og_input_mouse(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_input_rumble(world: u32, desc: Option<String>) -> String {
     <Host as InputApi>::og_input_rumble(&Host, world, desc)
 }

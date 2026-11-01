@@ -1,7 +1,11 @@
 //! Devices and glyphs: what a prompt draws for a control. One table for
 //! gameplay actions ([`crate::ActionMap::glyph`]) and og-ui's UI actions
 //! (docs/ui.md §8.2), so a key, a pad button or a stick is named the same
-//! way everywhere and switches live with the device used last.
+//! way everywhere and switches live with the device used last. A key's
+//! glyph is the player's keyboard layout's printed key ([`set_key_labels`]).
+
+use std::collections::BTreeMap;
+use std::sync::RwLock;
 
 /// A kind of input device: the set a glyph is drawn from, and what a pad
 /// is (IDL `input.InputDevice`; og-ui's `UiDevice` has the same values in
@@ -160,9 +164,85 @@ pub fn pad_glyph(device: Device, button: &str) -> Glyph {
     }
 }
 
+/// The keyboard layout's printed keys, by `KeyboardEvent.code`: what the
+/// host read from the player's layout (the web shell's
+/// `navigator.keyboard.getLayoutMap()`, or the characters its keys typed
+/// where the browser has no layout map). Empty is the US layout. Bindings
+/// never read it: they name physical keys, so a game's WASD is ZQSD on
+/// AZERTY by position, and only the glyphs say so.
+static LAYOUT: RwLock<BTreeMap<String, String>> = RwLock::new(BTreeMap::new());
+
+/// Sets the keyboard layout's printed keys (`code`, `label`), in place of
+/// the last ones; an empty list is the US layout. A label is the character
+/// the key types without modifiers (`a` for `KeyQ` on AZERTY); an entry
+/// with an empty code or label is skipped.
+pub fn set_key_labels(labels: impl IntoIterator<Item = (String, String)>) {
+    let map = labels
+        .into_iter()
+        .filter(|(c, l)| !c.is_empty() && !l.is_empty())
+        .collect();
+    *LAYOUT.write().unwrap_or_else(|e| e.into_inner()) = map;
+}
+
+/// The keyboard layout's printed keys as [`set_key_labels`] last set
+/// them, sorted by code.
+pub fn key_labels() -> Vec<(String, String)> {
+    LAYOUT
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .iter()
+        .map(|(c, l)| (c.clone(), l.clone()))
+        .collect()
+}
+
+/// The key a layout's label names, for its glyph: a letter's own key's
+/// glyph (`KeyA` for `a`), another character the key that types it on a
+/// US layout without Shift. `None` keeps the physical key's glyph: the
+/// digit row (its digits are printed on every layout's keys) and a label
+/// that is not one character.
+fn printed(code: &str) -> Option<Glyph> {
+    if code.starts_with("Digit") {
+        return None;
+    }
+    let label = LAYOUT
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(code)
+        .cloned()?;
+    let mut chars = label.chars();
+    let (c, None) = (chars.next()?, chars.next()) else {
+        return None;
+    };
+    if c.is_alphabetic() {
+        let text: String = c.to_uppercase().collect();
+        let icon = if c.is_ascii_alphabetic() {
+            format!("key.key{}", c.to_ascii_lowercase())
+        } else {
+            format!("key.{}", code.to_ascii_lowercase())
+        };
+        return Some(Glyph { icon, text });
+    }
+    if c.is_whitespace() || c.is_control() {
+        return None;
+    }
+    let icon = match crate::keys::key_for_char(c) {
+        Some((us, false)) => format!("key.{}", us.to_ascii_lowercase()),
+        _ => format!("key.{}", code.to_ascii_lowercase()),
+    };
+    Some(Glyph {
+        icon,
+        text: c.to_string(),
+    })
+}
+
 /// A key's glyph (a `KeyboardEvent.code`): `key.<code lowercased>` and a
-/// short name (`W`, `Space`, `←`).
+/// short name (`W`, `Space`, `←`), as the player's keyboard layout prints
+/// it ([`set_key_labels`]): `KeyQ` is `A` (`key.keya`) on AZERTY, `KeyY`
+/// is `Z` on QWERTZ.
 pub fn key_glyph(code: &str) -> Glyph {
+    if let Some(g) = printed(code) {
+        return g;
+    }
     let text = match code {
         "Enter" | "NumpadEnter" => "Enter".to_string(),
         "Escape" => "Esc".into(),

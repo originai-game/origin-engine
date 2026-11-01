@@ -203,6 +203,11 @@ pub struct RenderDesc {
     /// take an effect group without it ([`RenderInfo::planar_reflections`]
     /// says what the renderer was made with).
     pub planar_reflections: u32,
+    /// Ask the adapter for the low-power GPU (a laptop's integrated one)
+    /// instead of the high-performance one: the player's power preference
+    /// (og.render.setDisplay's `powerPreference`), which only a new
+    /// renderer takes (an adapter is chosen once).
+    pub low_power: bool,
 }
 
 /// The most planar reflections one frame draws
@@ -257,6 +262,7 @@ impl Default for RenderDesc {
             taa_sharpen: 0.0,
             volumetric: None,
             planar_reflections: 1,
+            low_power: false,
         }
     }
 }

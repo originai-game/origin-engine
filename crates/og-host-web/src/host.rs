@@ -392,6 +392,24 @@ impl InputApi for WebHost {
     fn og_input_set_deadzones(&self, world: u32, desc: Option<String>) -> String {
         rt::og_input_set_deadzones(world, desc)
     }
+    fn og_input_set_sensitivity(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_input_set_sensitivity(world, desc)
+    }
+    fn og_input_sensitivity(&self, world: u32, action: String, device: Option<String>) -> String {
+        rt::og_input_sensitivity(world, action, device)
+    }
+    fn og_input_set_keyboard_layout(&self, labels: String) {
+        rt::og_input_set_keyboard_layout(labels)
+    }
+    fn og_input_keyboard_layout(&self) -> String {
+        rt::og_input_keyboard_layout()
+    }
+    fn og_input_set_mouse(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_input_set_mouse(world, desc)
+    }
+    fn og_input_mouse(&self, world: u32) -> String {
+        rt::og_input_mouse(world)
+    }
     fn og_input_rumble(&self, world: u32, desc: Option<String>) -> String {
         rt::og_input_rumble(world, desc)
     }

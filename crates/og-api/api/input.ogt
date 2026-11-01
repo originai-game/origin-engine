@@ -203,6 +203,42 @@ module input {
     field control String "The control it names (a composite's: its parts', space-separated)."
   }
 
+  struct SensitivityDesc {
+    doc "The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own (a settings screen's Mouse sensitivity and Stick sensitivity sliders, Invert Y). Kept by og.input.saveBindings, forgotten by og.input.resetBindings; a world whose player set none saves and hashes as before."
+    desc true
+    field action String "The action (axis or axis2)."
+    field device InputDevice "The device class it is for: keyboardMouse (the mouse's movement and the wheel; inversion turns the keys over too), any pad family (every pad), or touch (a touch stick)."
+    field scale f32 "Multiplies the value of the action's analog bindings on that class (the mouse's movement, the wheel, a stick, a trigger, a touch stick), after each binding's own scale: 2 turns twice as far for the same mouse movement. Keys, buttons, the d-pad and composites read whole." {
+      default 1
+      min 0.01
+      max 100
+    }
+    field invertX bool "The value's x (an axis action's only value) is turned over."
+    field invertY bool "A two-axis value's y is turned over: inverted look (an action's y is up-positive, so the mouse moved up then reads down)."
+  }
+
+  struct KeyLabel {
+    doc "A key and what the player's keyboard layout prints on it: `KeyQ` and `a` on AZERTY."
+    desc true
+    field code String "The physical key (KeyboardEvent.code)."
+    field label String "The character it types without modifiers, as the layout map gives it (`a`, `,`, `ö`)."
+  }
+
+  struct MouseDesc {
+    doc "How the host reads the mouse while the pointer is locked (og.PointerLock): the player's setting, kept by the game with its settings (og.platform.saveSettings). Host only: none of it is world state."
+    desc true
+    field raw bool "Raw input: ask the browser for the mouse's movement without the OS's pointer acceleration (requestPointerLock with unadjustedMovement), where it supports that (Chrome and Edge on Windows, macOS and ChromeOS); elsewhere the lock is the plain one and the movement keeps the OS's acceleration (MouseInfo.rawUnsupported). Takes effect at the next lock." {
+      default true
+    }
+  }
+
+  struct MouseInfo {
+    doc "The mouse as the host reads it (og.input.mouse)."
+    field raw bool "Raw input is asked for (MouseDesc.raw)."
+    field rawActive bool "The lock now delivers raw movement: the browser granted unadjustedMovement. False while unlocked."
+    field rawUnsupported bool "The browser refused unadjustedMovement (Firefox, Safari, Linux): its lock moves with the OS's acceleration. A settings screen shows the Raw input switch as unavailable then."
+  }
+
   struct DeadzoneDesc {
     doc "A pad's dead zones: what its sticks and triggers read as rest. The player's to set (a settings slider); og.input.saveBindings keeps them."
     desc true
@@ -442,6 +478,47 @@ module input {
     param world World "The world."
     param desc DeadzoneDesc "The pad and its dead zones."
     returns Result.Void
+  }
+
+  fn setSensitivity {
+    doc "Set the player's sensitivity and inversion of an axis action on a device class (SensitivityDesc): applied from the next tick's actions, kept by og.input.saveBindings."
+    param world World "The world."
+    param desc SensitivityDesc "The action, the device class, the scale and the inversions."
+    returns Result.Void "Refused for an unknown action, a button action, or a scale that is not above 0."
+  }
+
+  fn sensitivity {
+    doc "An action's sensitivity on a device class (the device used last when omitted): the player's, else scale 1 and nothing inverted."
+    param world World "The world."
+    param action String "The action."
+    param device InputDevice "The device class; omitted is the one used last." {
+      optional true
+    }
+    returns SensitivityDesc
+  }
+
+  fn setKeyboardLayout {
+    doc "The keys the player's keyboard layout prints, for glyphs: the web shell sets it from navigator.keyboard.getLayoutMap() (Chrome, Edge), and where the browser has none from the characters the player's unmodified keys type as they are pressed (Firefox, Safari: a key reads as on a US layout until it is pressed once). Bindings still name physical keys (KeyboardEvent.code), so WASD is the same four keys on every layout; only their glyphs change (Z Q S D on AZERTY). Empty is the US layout (native runs). The host's, one for the page: no world state."
+    param labels List.KeyLabel "Each key's printed label, in place of the last list."
+    returns Void
+  }
+
+  fn keyboardLayout {
+    doc "The keys the layout prints as og.input.setKeyboardLayout last set them, sorted by code (empty: the US layout)."
+    returns List.KeyLabel
+  }
+
+  fn setMouse {
+    doc "Set how the host reads the mouse (MouseDesc: raw input). Host only, never world state; fields left out keep their values."
+    param world World "The world."
+    param desc MouseDesc "The settings."
+    returns Result.Void "Refused for a world that is not alive."
+  }
+
+  fn mouse {
+    doc "How the host reads the mouse: raw input asked for, granted or refused by the browser."
+    param world World "The world."
+    returns MouseInfo
   }
 
   fn rumble {

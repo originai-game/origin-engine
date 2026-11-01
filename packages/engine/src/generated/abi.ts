@@ -227,6 +227,18 @@ export interface HostAbi<A, V> {
   og_input_pad_device(world: number, pad: number): string;
   /** `og.input.setDeadzones` */
   og_input_set_deadzones(world: number, desc: string | undefined): string;
+  /** `og.input.setSensitivity` */
+  og_input_set_sensitivity(world: number, desc: string | undefined): string;
+  /** `og.input.sensitivity` */
+  og_input_sensitivity(world: number, action: string, device: string | undefined): string;
+  /** `og.input.setKeyboardLayout` */
+  og_input_set_keyboard_layout(labels: string): void;
+  /** `og.input.keyboardLayout` */
+  og_input_keyboard_layout(): string;
+  /** `og.input.setMouse` */
+  og_input_set_mouse(world: number, desc: string | undefined): string;
+  /** `og.input.mouse` */
+  og_input_mouse(world: number): string;
   /** `og.input.rumble` */
   og_input_rumble(world: number, desc: string | undefined): string;
   /** `Input.down` */
@@ -1089,6 +1101,12 @@ export const SYMBOLS: readonly string[] = [
   "og_input_device",
   "og_input_pad_device",
   "og_input_set_deadzones",
+  "og_input_set_sensitivity",
+  "og_input_sensitivity",
+  "og_input_set_keyboard_layout",
+  "og_input_keyboard_layout",
+  "og_input_set_mouse",
+  "og_input_mouse",
   "og_input_rumble",
   "og_input_down",
   "og_input_pressed",

@@ -229,6 +229,20 @@ impl Binding {
         self.parts().iter().any(|(_, c)| !c.is_empty())
     }
 
+    /// A single analog control (the mouse's movement, the wheel, a stick,
+    /// a trigger, a touch stick): what a player's sensitivity scales. Keys,
+    /// buttons, the d-pad and composites read whole.
+    pub fn is_analog(&self) -> bool {
+        !self.is_composite()
+            && matches!(
+                Control::parse(&self.control),
+                Some(Control::Axis(..))
+                    | Some(Control::Axis2(
+                        Axis2::Mouse | Axis2::Touch | Axis2::PadLeft | Axis2::PadRight
+                    ))
+            )
+    }
+
     /// Its controls with the part each is (`None`: the binding's own),
     /// skipping names that name none.
     pub fn controls(&self) -> Vec<(Option<&'static str>, Control)> {
@@ -974,6 +988,93 @@ pub struct ActionFeed {
     pub bindings: Vec<Binding>,
 }
 
+/// The player's sensitivity and inversion of an axis action on one
+/// device class (IDL `input.SensitivityDesc`): a look action's mouse and
+/// stick each have their own.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Sensitivity {
+    /// Multiplies the analog bindings' value (the mouse's movement, the
+    /// wheel, a stick, a trigger, a touch stick); keys and buttons read
+    /// whole whatever it says.
+    pub scale: f32,
+    /// x (an axis action's only value) is turned over.
+    pub invert_x: bool,
+    /// A two-axis action's y is turned over (inverted look).
+    pub invert_y: bool,
+}
+
+impl Sensitivity {
+    pub const DEFAULT: Sensitivity = Sensitivity {
+        scale: 1.0,
+        invert_x: false,
+        invert_y: false,
+    };
+    /// The least and most [`Sensitivity::scale`].
+    pub const MIN_SCALE: f32 = 0.01;
+    pub const MAX_SCALE: f32 = 100.0;
+
+    /// A binding's value with this sensitivity: turned over where it
+    /// inverts, scaled where the binding is `analog`.
+    fn apply(self, v: Vec2, analog: bool) -> Vec2 {
+        let k = if analog { self.scale } else { 1.0 };
+        Vec2::new(
+            if self.invert_x { -v.x } else { v.x } * k,
+            if self.invert_y { -v.y } else { v.y } * k,
+        )
+    }
+
+    fn to_json(self, device: Device) -> Value {
+        json!({ "device": device.name(), "scale": self.scale, "invertX": self.invert_x, "invertY": self.invert_y })
+    }
+}
+
+impl Default for Sensitivity {
+    fn default() -> Self {
+        Sensitivity::DEFAULT
+    }
+}
+
+/// The device classes a [`Sensitivity`] is kept for, by index: keyboard
+/// and mouse, every pad, touch.
+const SENSE_CLASSES: [Device; 3] = [Device::KeyboardMouse, Device::Gamepad, Device::Touch];
+
+fn sense_class(device: Device) -> usize {
+    match device.class() {
+        Device::Gamepad => 1,
+        Device::Touch => 2,
+        _ => 0,
+    }
+}
+
+/// One action's sensitivities, by [`SENSE_CLASSES`].
+type Senses = [Sensitivity; 3];
+
+fn senses_json(s: &Senses) -> Value {
+    Value::Array(
+        SENSE_CLASSES
+            .iter()
+            .zip(s)
+            .filter(|(_, x)| **x != Sensitivity::DEFAULT)
+            .map(|(d, x)| x.to_json(*d))
+            .collect(),
+    )
+}
+
+/// An action's sensitivities from [`senses_json`]'s list.
+fn senses_of(v: &Value) -> Result<Senses, String> {
+    let mut out = [Sensitivity::DEFAULT; 3];
+    for e in v.as_array().ok_or("its sensitivities are a list")? {
+        let device = Device::from_name(&str_of(e, "device")?)
+            .ok_or_else(|| format!("{} is not an input device", e["device"]))?;
+        out[sense_class(device)] = Sensitivity {
+            scale: f32_of(e, "scale", 1.0)?.clamp(Sensitivity::MIN_SCALE, Sensitivity::MAX_SCALE),
+            invert_x: bool_of(e, "invertX", false)?,
+            invert_y: bool_of(e, "invertY", false)?,
+        };
+    }
+    Ok(out)
+}
+
 /// Gameplay actions, their bindings and state, and the player's
 /// settings: see the module docs.
 #[derive(Clone, Debug, Default)]
@@ -984,6 +1085,9 @@ pub struct ActionMap {
     pending_toggles: BTreeMap<String, bool>,
     contexts: Vec<String>,
     deadzones: [PadDeadzone; MAX_GAMEPADS],
+    /// The player's sensitivities of axis actions, by action name (kept
+    /// for an action not defined yet, as loaded bindings are).
+    senses: BTreeMap<String, Senses>,
     device: Device,
     capture: Option<Capture>,
     captured: CaptureState,
@@ -1149,6 +1253,51 @@ impl ActionMap {
         Ok(())
     }
 
+    /// The player's sensitivity and inversion of an axis action on a
+    /// device's class (any pad family is every pad's).
+    pub fn set_sensitivity(
+        &mut self,
+        name: &str,
+        device: Device,
+        sense: Sensitivity,
+    ) -> Result<(), String> {
+        let i = self.known(name)?;
+        if self.actions[i].desc.kind == ActionKind::Button {
+            return Err(format!(
+                "{name} is a button action: sensitivity is an axis action's (axis, axis2)"
+            ));
+        }
+        if !sense.scale.is_finite() || sense.scale <= 0.0 {
+            return Err(format!(
+                "scale {}: a sensitivity is a number above 0 (1 as bound)",
+                sense.scale
+            ));
+        }
+        let sense = Sensitivity {
+            scale: sense
+                .scale
+                .clamp(Sensitivity::MIN_SCALE, Sensitivity::MAX_SCALE),
+            ..sense
+        };
+        let entry = self
+            .senses
+            .entry(name.to_string())
+            .or_insert([Sensitivity::DEFAULT; 3]);
+        entry[sense_class(device)] = sense;
+        if entry.iter().all(|x| *x == Sensitivity::DEFAULT) {
+            self.senses.remove(name);
+        }
+        Ok(())
+    }
+
+    /// An action's sensitivity on a device's class (the default for an
+    /// action the player never set).
+    pub fn sensitivity(&self, name: &str, device: Device) -> Sensitivity {
+        self.senses
+            .get(name)
+            .map_or(Sensitivity::DEFAULT, |s| s[sense_class(device)])
+    }
+
     /// Takes the player's settings from `from` (each action's bindings and
     /// toggle, by name; bindings kept for actions not defined yet; the
     /// pads' dead zones), keeping everything else: what a loaded save keeps
@@ -1183,6 +1332,7 @@ impl ActionMap {
             }
         }
         self.deadzones = from.deadzones;
+        self.senses = from.senses.clone();
     }
 
     /// Queues a rumble for the host.
@@ -1245,7 +1395,9 @@ impl ActionMap {
         }
         let claims = self.claims();
         let contexts = self.contexts.clone();
+        let senses = &self.senses;
         for a in &mut self.actions {
+            let sense = senses.get(&a.desc.name);
             let rank = if contexts.is_empty() {
                 Some(usize::MAX)
             } else {
@@ -1263,7 +1415,12 @@ impl ActionMap {
                     if b.is_empty() {
                         continue;
                     }
-                    let r = b.read(a.desc.kind, &reader, &muted);
+                    let mut r = b.read(a.desc.kind, &reader, &muted);
+                    if let (Some(s), Some(d)) = (sense, r.device)
+                        && a.desc.kind != ActionKind::Button
+                    {
+                        r.value = s[sense_class(d)].apply(r.value, b.is_analog());
+                    }
                     any_pressed |= r.pressed;
                     let len = match a.desc.kind {
                         ActionKind::Axis2 => r.value.length(),
@@ -1589,6 +1746,7 @@ impl ActionMap {
                 let i = self.known(name)?;
                 self.actions[i].current = None;
                 self.actions[i].toggle = None;
+                self.senses.remove(name);
             }
             None => {
                 for a in &mut self.actions {
@@ -1598,6 +1756,7 @@ impl ActionMap {
                 self.pending.clear();
                 self.pending_toggles.clear();
                 self.deadzones = [PadDeadzone::DEFAULT; MAX_GAMEPADS];
+                self.senses.clear();
             }
         }
         Ok(())
@@ -1636,8 +1795,16 @@ impl ActionMap {
             .filter(|(_, d)| **d != PadDeadzone::DEFAULT)
             .map(|(p, d)| json!({ "pad": p, "stick": d.stick, "trigger": d.trigger }))
             .collect();
-        json!({ "version": BINDINGS_VERSION, "bindings": bindings, "toggles": toggles, "deadzones": deadzones })
-            .to_string()
+        let mut out = json!({ "version": BINDINGS_VERSION, "bindings": bindings, "toggles": toggles, "deadzones": deadzones });
+        if !self.senses.is_empty() {
+            out["sensitivity"] = self
+                .senses
+                .iter()
+                .map(|(k, v)| (k.clone(), senses_json(v)))
+                .collect::<Map<_, _>>()
+                .into();
+        }
+        out.to_string()
     }
 
     /// Takes what [`ActionMap::save_bindings`] wrote, in place of the
@@ -1661,6 +1828,22 @@ impl ActionMap {
         self.pending.clear();
         self.pending_toggles.clear();
         self.deadzones = [PadDeadzone::DEFAULT; MAX_GAMEPADS];
+        self.senses.clear();
+        for (name, list) in v["sensitivity"].as_object().into_iter().flatten() {
+            match senses_of(list) {
+                Ok(_)
+                    if self
+                        .find(name)
+                        .is_some_and(|i| self.actions[i].desc.kind == ActionKind::Button) =>
+                {
+                    warnings.push(format!("{name}: only an axis action has a sensitivity"))
+                }
+                Ok(senses) => {
+                    self.senses.insert(name.clone(), senses);
+                }
+                Err(e) => warnings.push(format!("{name}: {e}")),
+            }
+        }
         for (name, list) in v["bindings"].as_object().into_iter().flatten() {
             let parsed: Result<Vec<Binding>, String> = list
                 .as_array()
@@ -2012,8 +2195,13 @@ pub fn combined_glyph(parts: &[(Glyph, String)], device: Device) -> Option<Glyph
         [(g, _)] => Some(g.clone()),
         _ => {
             let names: Vec<&str> = parts.iter().map(|(_, n)| n.as_str()).collect();
+            let texts: Vec<&str> = parts.iter().map(|(g, _)| g.text.as_str()).collect();
             let icon = match names.as_slice() {
-                ["KeyW", "KeyA", "KeyS", "KeyD"] => "key.wasd".to_string(),
+                // The set's WASD icon only where the layout prints W A S D
+                // there: AZERTY's Z Q S D draw as their first key's.
+                ["KeyW", "KeyA", "KeyS", "KeyD"] if texts == ["W", "A", "S", "D"] => {
+                    "key.wasd".to_string()
+                }
                 ["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"] => "key.arrows".to_string(),
                 ["pad.up", "pad.left", "pad.down", "pad.right"] => {
                     Control::Axis2(Axis2::Dpad).glyph(device).icon
@@ -2096,6 +2284,17 @@ impl ActionMap {
             "capture": self.capture.as_ref().map(|c| json!({ "desc": c.desc.to_json(), "start": c.start, "disarmed": c.disarmed })),
             "captured": self.captured.to_json(),
         });
+        let mut v = v;
+        // Only when set: a world whose player set none saves the bytes it
+        // always did (and hashes the same).
+        if !self.senses.is_empty() {
+            v["senses"] = self
+                .senses
+                .iter()
+                .map(|(k, s)| (k.clone(), senses_json(s)))
+                .collect::<Map<_, _>>()
+                .into();
+        }
         v.to_string().into_bytes()
     }
 
@@ -2157,6 +2356,9 @@ impl ActionMap {
             });
         }
         out.captured = CaptureState::from_json(&v["captured"])?;
+        for (k, l) in v["senses"].as_object().into_iter().flatten() {
+            out.senses.insert(k.clone(), senses_of(l)?);
+        }
         Ok(out)
     }
 }

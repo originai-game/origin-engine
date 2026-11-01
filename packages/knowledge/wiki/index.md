@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1533 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1544 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -507,6 +507,7 @@ Field units the docs and Tune use.
 | [`KeyBinding`](ui.md#type-KeyBinding) | desc struct | ui | — |
 | [`KeyEase`](ui.md#type-KeyEase) | union | ui | — |
 | [`KeyInput`](input.md#type-KeyInput) | struct | input | — |
+| [`KeyLabel`](input.md#type-KeyLabel) | desc struct | input | — |
 | [`LabelDesc`](ui.md#type-LabelDesc) | desc struct | ui | — |
 | [`LanguageOption`](ui.md#type-LanguageOption) | desc struct | ui | — |
 | [`LatheGeometryDesc`](render.md#type-LatheGeometryDesc) | desc struct | render | — |
@@ -594,6 +595,8 @@ Field units the docs and Tune use.
 | [`MOTOR_NONE`](physics.md#const-MOTOR_NONE) | constant | physics | — |
 | [`MOTOR_POSITION`](physics.md#const-MOTOR_POSITION) | constant | physics | — |
 | [`MOTOR_VELOCITY`](physics.md#const-MOTOR_VELOCITY) | constant | physics | — |
+| [`MouseDesc`](input.md#type-MouseDesc) | desc struct | input | — |
+| [`MouseInfo`](input.md#type-MouseInfo) | struct | input | — |
 | [`NAV_ARRIVED`](nav.md#const-NAV_ARRIVED) | constant | nav | — |
 | [`NAV_IDLE`](nav.md#const-NAV_IDLE) | constant | nav | — |
 | [`NAV_MOVING`](nav.md#const-NAV_MOVING) | constant | nav | — |
@@ -721,14 +724,20 @@ Field units the docs and Tune use.
 | [`og.input.device`](input.md#fn-device) | function | input | `og_input_device` |
 | [`og.input.glyph`](input.md#fn-glyph) | function | input | `og_input_glyph` |
 | [`og.input.glyphs`](input.md#fn-glyphs) | function | input | `og_input_glyphs` |
+| [`og.input.keyboardLayout`](input.md#fn-keyboardLayout) | function | input | `og_input_keyboard_layout` |
 | [`og.input.loadBindings`](input.md#fn-loadBindings) | function | input | `og_input_load_bindings` |
+| [`og.input.mouse`](input.md#fn-mouse) | function | input | `og_input_mouse` |
 | [`og.input.padDevice`](input.md#fn-padDevice) | function | input | `og_input_pad_device` |
 | [`og.input.rebind`](input.md#fn-rebind) | function | input | `og_input_rebind` |
 | [`og.input.resetBindings`](input.md#fn-resetBindings) | function | input | `og_input_reset_bindings` |
 | [`og.input.rumble`](input.md#fn-rumble) | function | input | `og_input_rumble` |
 | [`og.input.saveBindings`](input.md#fn-saveBindings) | function | input | `og_input_save_bindings` |
+| [`og.input.sensitivity`](input.md#fn-sensitivity) | function | input | `og_input_sensitivity` |
 | [`og.input.setContexts`](input.md#fn-setContexts) | function | input | `og_input_set_contexts` |
 | [`og.input.setDeadzones`](input.md#fn-setDeadzones) | function | input | `og_input_set_deadzones` |
+| [`og.input.setKeyboardLayout`](input.md#fn-setKeyboardLayout) | function | input | `og_input_set_keyboard_layout` |
+| [`og.input.setMouse`](input.md#fn-setMouse) | function | input | `og_input_set_mouse` |
+| [`og.input.setSensitivity`](input.md#fn-setSensitivity) | function | input | `og_input_set_sensitivity` |
 | [`og.input.setToggle`](input.md#fn-setToggle) | function | input | `og_input_set_toggle` |
 | [`og.input.startCapture`](input.md#fn-startCapture) | function | input | `og_input_start_capture` |
 | [`og.Interpolation`](render.md#record-Interpolation) | component | render | — |
@@ -1241,6 +1250,7 @@ Field units the docs and Tune use.
 | [`Post`](render.md#type-Post) | handle | render | — |
 | [`Post()`](render.md#column-Post) | column kind | render | — |
 | [`PostError`](render.md#type-PostError) | struct | render | — |
+| [`PowerPreference`](render.md#type-PowerPreference) | enum | render | — |
 | [`Presence`](ui.md#type-Presence) | struct | ui | — |
 | [`PresenceSpec`](ui.md#type-PresenceSpec) | desc struct | ui | — |
 | [`PROBE_GLOBAL`](probe.md#const-PROBE_GLOBAL) | constant | probe | — |
@@ -1397,6 +1407,7 @@ Field units the docs and Tune use.
 | [`ScrollAxes`](ui.md#type-ScrollAxes) | enum | ui | — |
 | [`ScrollDesc`](ui.md#type-ScrollDesc) | desc struct | ui | — |
 | [`SelectDesc`](ui.md#type-SelectDesc) | desc struct | ui | — |
+| [`SensitivityDesc`](input.md#type-SensitivityDesc) | desc struct | input | — |
 | [`SetRecordsDesc`](world.md#type-SetRecordsDesc) | desc struct | world | — |
 | [`SetTileDesc`](tilemap.md#type-SetTileDesc) | desc struct | tilemap | — |
 | [`SettingsChanged`](ui.md#type-SettingsChanged) | callback | ui | — |

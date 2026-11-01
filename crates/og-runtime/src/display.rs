@@ -1,7 +1,11 @@
 //! How the frame is presented (`og.render.setDisplay`, `og.render.display`):
-//! the frame cap, battery saver, render scale and automatic quality
-//! (og-render's `AutoQuality`), and what a presenting host reports back
-//! (the display's rate, device losses, GPU memory).
+//! the player's graphics settings (the frame cap, battery saver, render
+//! scale, automatic quality (og-render's `AutoQuality`), the graphics
+//! preset, fullscreen and the GPU's power preference), and what a
+//! presenting host reports back (the display's rate, device losses, GPU
+//! memory, whether the page is fullscreen, the adapter's power preference);
+//! and the host's mouse (`og.input.setMouse`: raw input, what the browser
+//! granted).
 //!
 //! Presentation only. The settings live in the engine's render state, not
 //! in the world, so the world's hash, snapshots, saves and replays never
@@ -11,7 +15,11 @@
 //! reference captures) draws every frame at its fixed size and scale 1.
 //! The frame cap is the host's to keep (the web Worker skips display
 //! frames, `packages/engine/src/web/worker.ts`); the engine answers it with
-//! every frame (`maxFps`).
+//! every frame (`maxFps`), and with it what the page does for the player:
+//! `fullscreen` (the shell enters or leaves it), `lowPower` (the shell
+//! keeps it for the next load: the adapter is chosen once, at the boot)
+//! and `rawMouse` (pointer lock's unadjustedMovement). The graphics preset
+//! (`quality`) is drawn on every host, as RenderSettings' quality is.
 
 use super::engine::engine;
 use super::extract::RenderState;
@@ -20,7 +28,17 @@ use og_render::{AutoQuality, AutoQualityBounds, FrameSample, QualityPreset};
 use serde_json::{Value, json};
 
 /// The IDL `FrameCap`'s variants, in order.
-const FRAME_CAPS: &[&str] = &["auto", "display", "fps60", "fps30"];
+const FRAME_CAPS: &[&str] = &["auto", "display", "fps60", "fps30", "fps120", "fps144"];
+
+/// The IDL `GraphicsQuality`'s variants, in order, with og-render's preset.
+const PRESETS: [(&str, QualityPreset); 3] = [
+    ("medium", QualityPreset::Medium),
+    ("low", QualityPreset::Low),
+    ("high", QualityPreset::High),
+];
+
+/// The IDL `PowerPreference`'s variants, in order (`false`, `true`: low power).
+const POWER: [&str; 2] = ["highPerformance", "lowPower"];
 
 /// The battery saver's frame rate and largest render scale.
 const SAVER_FPS: u32 = 30;
@@ -38,6 +56,14 @@ pub(crate) struct Settings {
     pub auto_quality: bool,
     pub auto_min_scale: f32,
     pub auto_preset_steps: u8,
+    /// The player's graphics preset, drawn in place of RenderSettings'
+    /// quality fields; `None` draws the game's.
+    pub quality: Option<QualityPreset>,
+    /// The player wants the page fullscreen.
+    pub fullscreen: bool,
+    /// The GPU adapter the next load asks for: low power (the integrated
+    /// GPU of a laptop with two) instead of high performance.
+    pub low_power: bool,
 }
 
 impl Default for Settings {
@@ -49,23 +75,31 @@ impl Default for Settings {
             auto_quality: true,
             auto_min_scale: og_render::MIN_RENDER_SCALE,
             auto_preset_steps: 1,
+            quality: None,
+            fullscreen: false,
+            low_power: false,
         }
     }
 }
 
 fn scale(v: &Value, default: f32) -> f32 {
+    // A value left out keeps `default`, the settings' value now.
     v.as_f64()
         .map_or(default, |x| x as f32)
         .clamp(og_render::MIN_RENDER_SCALE, og_render::MAX_RENDER_SCALE)
 }
 
 impl Settings {
-    /// A `DisplaySettings` desc: fields left out take their defaults, a
-    /// value out of its bounds its nearest bound.
-    pub fn parse(d: &Value) -> Result<Settings, String> {
-        let base = Settings::default();
+    /// A `DisplaySettings` desc over `base` (the settings now): fields left
+    /// out (or null) keep `base`'s values, but `quality: null`, which is the
+    /// game's own quality; a value out of its bounds takes its nearest
+    /// bound.
+    pub fn parse(d: &Value, base: &Settings) -> Result<Settings, String> {
+        if !d.is_object() && !d.is_null() {
+            return Err(format!("display settings are an object, not {d}"));
+        }
         let frame_cap = match &d["frameCap"] {
-            Value::Null => 0,
+            Value::Null => base.frame_cap,
             Value::String(s) => FRAME_CAPS.iter().position(|c| c == s).ok_or_else(|| {
                 format!("'{s}' is not a frame cap (auto, display, fps60 or fps30)")
             })?,
@@ -75,9 +109,43 @@ impl Settings {
                 .min(FRAME_CAPS.len() - 1),
             other => return Err(format!("frameCap {other} is not a frame cap")),
         };
+        let quality = match d.get("quality") {
+            None => base.quality,
+            Some(Value::Null) => None,
+            Some(Value::String(q)) => Some(
+                PRESETS
+                    .iter()
+                    .find(|(n, _)| n == q)
+                    .map(|(_, p)| *p)
+                    .ok_or_else(|| {
+                        format!("'{q}' is not a graphics preset (low, medium or high; null is the game's)")
+                    })?,
+            ),
+            Some(Value::Number(n)) => n
+                .as_u64()
+                .and_then(|i| PRESETS.get(i as usize))
+                .map(|(_, p)| *p),
+            Some(other) => return Err(format!("quality {other} is not a graphics preset")),
+        };
+        let low_power = match &d["powerPreference"] {
+            Value::Null => base.low_power,
+            Value::String(p) => match POWER.iter().position(|x| x == p) {
+                Some(i) => i == 1,
+                None => {
+                    return Err(format!(
+                        "'{p}' is not a power preference (highPerformance or lowPower)"
+                    ));
+                }
+            },
+            Value::Number(n) => n.as_u64() == Some(1),
+            other => return Err(format!("powerPreference {other} is not a power preference")),
+        };
         let flag = |k: &str, default: bool| d[k].as_bool().unwrap_or(default);
         Ok(Settings {
             frame_cap,
+            quality,
+            low_power,
+            fullscreen: flag("fullscreen", base.fullscreen),
             battery_saver: flag("batterySaver", base.battery_saver),
             render_scale: scale(&d["renderScale"], base.render_scale),
             auto_quality: flag("autoQuality", base.auto_quality),
@@ -96,6 +164,9 @@ impl Settings {
             "autoQuality": self.auto_quality,
             "autoMinScale": self.auto_min_scale,
             "autoPresetSteps": self.auto_preset_steps,
+            "quality": self.quality.map(|q| PRESETS.iter().find(|(_, p)| *p == q).map_or("medium", |(n, _)| n)),
+            "fullscreen": self.fullscreen,
+            "powerPreference": POWER[usize::from(self.low_power)],
         })
     }
 
@@ -106,6 +177,8 @@ impl Settings {
             "display" => 0,
             "fps60" => 60,
             "fps30" => 30,
+            "fps120" => 120,
+            "fps144" => 144,
             _ if phone => 60,
             _ => 0,
         };
@@ -137,6 +210,33 @@ pub(crate) struct DisplayState {
     /// The render scale and preset steps the last frame drew with.
     pub scale: f32,
     pub step: u8,
+    /// The page is fullscreen now, as the host last reported it.
+    pub fullscreen: bool,
+    /// The power preference the host's GPU adapter was made with (`true`:
+    /// low power); `None` where the host made none by preference (a
+    /// native run).
+    pub booted_low_power: Option<bool>,
+    /// The host's mouse (`og.input.setMouse`, `og.input.mouse`).
+    pub mouse: Mouse,
+}
+
+/// The host's mouse while the pointer is locked: the player's raw-input
+/// setting and what the browser granted (IDL `input.MouseInfo`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Mouse {
+    pub raw: bool,
+    pub raw_active: bool,
+    pub raw_unsupported: bool,
+}
+
+impl Default for Mouse {
+    fn default() -> Mouse {
+        Mouse {
+            raw: true,
+            raw_active: false,
+            raw_unsupported: false,
+        }
+    }
 }
 
 impl DisplayState {
@@ -171,6 +271,11 @@ fn phone(rs: &RenderState) -> bool {
 /// settings' scale without it). Elsewhere nothing: scale 1, the game's
 /// quality.
 pub(crate) fn before_render(rs: &mut RenderState) {
+    // The player's preset replaces the game's quality fields on every host,
+    // as RenderSettings' own do; automatic quality's steps cap it below.
+    if let Some(q) = rs.display.settings.quality {
+        rs.scene.quality = og_render::RenderQuality::preset(q);
+    }
     let Some(presents) = rs.backend.as_ref().map(|b| b.presents()) else {
         return;
     };
@@ -242,6 +347,53 @@ pub fn set_display_interval(id: u32, ms: f64) {
     }
 }
 
+/// The page went fullscreen or left it (the web shell's
+/// `fullscreenchange`): `DisplayInfo.fullscreen`, and the player's setting
+/// follows it, so a player who leaves with Escape finds Fullscreen off on
+/// the settings page and the shell does not ask for it again.
+pub fn set_fullscreen(id: u32, on: bool) {
+    if let Ok(eng) = engine(id)
+        && let Ok(mut rs) = eng.render.try_borrow_mut()
+    {
+        rs.display.fullscreen = on;
+        rs.display.settings.fullscreen = on;
+    }
+}
+
+/// The power preference the host's GPU adapter was made with (`true`: low
+/// power), at the boot: the settings take it too, so the page reports no
+/// restart until the player picks the other.
+pub fn set_power_preference(id: u32, low_power: bool) {
+    if let Ok(eng) = engine(id)
+        && let Ok(mut rs) = eng.render.try_borrow_mut()
+    {
+        rs.display.booted_low_power = Some(low_power);
+        rs.display.settings.low_power = low_power;
+    }
+}
+
+/// What the browser granted the pointer lock (the web shell's
+/// requestPointerLock): raw movement now (`active`), and whether it
+/// refused unadjustedMovement (`unsupported`).
+pub fn set_mouse_report(id: u32, active: bool, unsupported: bool) {
+    if let Ok(eng) = engine(id)
+        && let Ok(mut rs) = eng.render.try_borrow_mut()
+    {
+        rs.display.mouse.raw_active = active;
+        rs.display.mouse.raw_unsupported = unsupported;
+    }
+}
+
+/// What the frame answer tells the page: fullscreen wanted, the power
+/// preference for the next load, raw mouse input.
+pub(crate) fn page_asks(rs: &RenderState) -> Value {
+    json!({
+        "fullscreen": rs.display.settings.fullscreen,
+        "lowPower": rs.display.settings.low_power,
+        "rawMouse": rs.display.mouse.raw,
+    })
+}
+
 /// Destroy the renderer's device (a test hook: the device-loss checks of
 /// the web host, `og_web_lose_device`); the next frame finds it lost and
 /// the host makes the renderer again. False without a renderer.
@@ -272,11 +424,11 @@ pub fn og_render_set_display(world: u32, settings: Option<String>) -> String {
     let r = (|| -> Result<(), String> {
         let eng = engine(world)?;
         let d = super::parse(settings.as_deref())?;
-        let s = Settings::parse(&d)?;
         let mut rs = eng
             .render
             .try_borrow_mut()
             .map_err(|_| "the renderer is busy drawing".to_string())?;
+        let s = Settings::parse(&d, &rs.display.settings)?;
         rs.display.settings = s;
         Ok(())
     })();
@@ -309,6 +461,12 @@ pub fn og_render_display(world: u32) -> String {
         "frameMs": d.auto.as_ref().map_or(0.0, |a| a.cost_ms()),
         "deviceLosses": rs.backend.as_ref().map_or(0, |b| b.device_losses()),
         "gpu": gpu_memory(&rs),
+        // A browser presents every frame on the display's refresh and has
+        // no switch for it; a native run presents nothing.
+        "vsync": presenting,
+        "fullscreen": d.fullscreen,
+        "powerPreference": POWER[usize::from(d.booted_low_power.unwrap_or(false))],
+        "restartNeeded": d.booted_low_power.is_some_and(|b| b != d.settings.low_power),
     })
     .to_string()
 }
@@ -324,16 +482,18 @@ mod tests {
     fn the_frame_cap_resolves_by_device_class_and_battery() {
         let s = Settings::default();
         assert_eq!((s.max_fps(true), s.max_fps(false)), (60, 0));
-        let d = Settings::parse(&json!({ "frameCap": "display" })).unwrap();
+        let d = Settings::parse(&json!({ "frameCap": "display" }), &Settings::default()).unwrap();
         assert_eq!(d.max_fps(true), 0);
-        let saver = Settings::parse(&json!({ "frameCap": "display", "batterySaver": true, "renderScale": 1.5, "autoQuality": false })).unwrap();
+        let saver = Settings::parse(&json!({ "frameCap": "display", "batterySaver": true, "renderScale": 1.5, "autoQuality": false }), &Settings::default()).unwrap();
         assert_eq!(saver.max_fps(false), 30);
         assert_eq!(saver.max_scale(), 0.75);
         assert!(saver.auto());
-        assert!(Settings::parse(&json!({ "frameCap": "fps90" })).is_err());
-        let wild =
-            Settings::parse(&json!({ "renderScale": 9, "autoMinScale": 0, "autoPresetSteps": 7 }))
-                .unwrap();
+        assert!(Settings::parse(&json!({ "frameCap": "fps90" }), &Settings::default()).is_err());
+        let wild = Settings::parse(
+            &json!({ "renderScale": 9, "autoMinScale": 0, "autoPresetSteps": 7 }),
+            &Settings::default(),
+        )
+        .unwrap();
         assert_eq!(
             (
                 wild.render_scale,

@@ -533,6 +533,7 @@ fn bindings_come_back_from_their_text() {
 
 #[test]
 fn eight_pads_with_their_families_and_glyphs() {
+    let _us = LAYOUT.lock().unwrap_or_else(|e| e.into_inner());
     let jump = action(
         "jump",
         ActionKind::Button,
@@ -706,4 +707,209 @@ fn touch_zones_drive_a_stick_and_a_button() {
     rig.tick(&[touch(PointerAction::Up, 0, 130.0, 360.0)]);
     assert!(rig.state("move").released);
     assert!(rig.state("fire").down, "the other touch still holds fire");
+}
+
+/// The keyboard layout is the host's, one for the process: the tests that
+/// read a key's glyph take this so a layout set by another test never
+/// shows in theirs (cargo test runs them on threads of one process).
+static LAYOUT: Mutex<()> = Mutex::new(());
+
+/// Puts the US layout back however the test ends.
+struct UsLayout;
+
+impl Drop for UsLayout {
+    fn drop(&mut self) {
+        og_input::set_key_labels([]);
+    }
+}
+
+/// A player's sensitivity is per action and per device class: the
+/// mouse's scales the mouse's movement, a pad's the stick, and neither
+/// the other's; inversion turns keys over too, but keys are never scaled
+/// past a whole press. It comes back from the bindings' text, a reset
+/// forgets it, and a world whose player set none saves the bytes it did
+/// before sensitivity existed (no `senses` key), so its hash is unmoved.
+///
+/// Ways it could fail: a single sensitivity for every device (the stick
+/// reads 2× too); the scale applied to WASD or arrows (a diagonal past
+/// 1); invert on the raw screen y instead of the action's up-positive y;
+/// a sensitivity lost from the saved text or kept across a reset; the
+/// state block written with an empty `senses`, which moves every hash.
+#[test]
+fn sensitivity_and_inversion_are_per_action_and_device_class() {
+    let look = action(
+        "look",
+        ActionKind::Axis2,
+        vec![
+            Binding::control("mouse.xy"),
+            Binding::control("pad.rightXY"),
+            Binding::plane("ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"),
+        ],
+    );
+    let jump = action("jump", ActionKind::Button, vec![Binding::control("Space")]);
+    let mut rig = Rig::new(&[look, jump]);
+    let plain = rig.map.lock().unwrap().save_state();
+    assert!(
+        !String::from_utf8_lossy(&plain).contains("senses"),
+        "a world without sensitivities saves no senses key"
+    );
+    {
+        let mut map = rig.map.lock().unwrap();
+        let mouse = og_input::Sensitivity {
+            scale: 2.0,
+            invert_y: true,
+            ..Default::default()
+        };
+        map.set_sensitivity("look", Device::KeyboardMouse, mouse)
+            .unwrap();
+        // Any pad family is every pad's.
+        let stick = og_input::Sensitivity {
+            scale: 0.5,
+            ..Default::default()
+        };
+        map.set_sensitivity("look", Device::PlayStation, stick)
+            .unwrap();
+        assert!(
+            map.set_sensitivity("jump", Device::KeyboardMouse, mouse)
+                .is_err()
+        );
+        assert!(
+            map.set_sensitivity(
+                "look",
+                Device::Touch,
+                og_input::Sensitivity {
+                    scale: 0.0,
+                    ..Default::default()
+                }
+            )
+            .is_err()
+        );
+        assert_eq!(map.sensitivity("look", Device::Xbox).scale, 0.5);
+        assert_eq!(map.sensitivity("look", Device::Touch).scale, 1.0);
+    }
+    // The mouse moved right 4 and up 3 (screen y -3): up is +3 in actions,
+    // inverted -3, then twice.
+    rig.tick(&[InjectedInput::Pointer {
+        action: og_input::PointerAction::Move,
+        x: 10.0,
+        y: 10.0,
+        button: og_input::PointerButton::None,
+        id: 0,
+        movement_x: 4.0,
+        movement_y: -3.0,
+    }]);
+    let v = rig.state("look").vector;
+    assert!(close(v.x, 8.0) && close(v.y, -6.0), "mouse: {v:?}");
+    // The right stick pushed right: past the pad's 0.15 dead zone,
+    // rescaled to reach 1, then half (not twice), and not inverted.
+    rig.tick(&[pad(0, &[], [0.0, 0.0, 0.8, 0.0], [0.0, 0.0], None)]);
+    let v = rig.state("look").vector;
+    let expected = 0.5 * (0.8 - 0.15) / (1.0 - 0.15);
+    assert!(close(v.x, expected) && close(v.y, 0.0), "stick: {v:?}");
+    rig.tick(&[pad(0, &[], [0.0; 4], [0.0, 0.0], None)]);
+    // The up arrow: keyboard and mouse's inversion, no scale (a whole press).
+    rig.tick(&[down("ArrowUp")]);
+    let v = rig.state("look").vector;
+    assert!(close(v.x, 0.0) && close(v.y, -1.0), "arrow: {v:?}");
+    rig.tick(&[up("ArrowUp")]);
+
+    // The text carries them; a reset forgets them.
+    let text = rig.map.lock().unwrap().save_bindings();
+    let mut other = ActionMap::new();
+    let (look, jump) = (
+        action(
+            "look",
+            ActionKind::Axis2,
+            vec![Binding::control("mouse.xy")],
+        ),
+        action("jump", ActionKind::Button, vec![]),
+    );
+    other.define(look).unwrap();
+    other.define(jump).unwrap();
+    assert_eq!(other.load_bindings(&text).unwrap(), Vec::<String>::new());
+    let s = other.sensitivity("look", Device::KeyboardMouse);
+    assert_eq!((s.scale, s.invert_x, s.invert_y), (2.0, false, true));
+    assert_eq!(other.sensitivity("look", Device::Switch).scale, 0.5);
+    // And the state block, for a snapshot.
+    let bytes = rig.map.lock().unwrap().save_state();
+    let back = rig.map.lock().unwrap().restore_state(&bytes).unwrap();
+    assert_eq!(back.sensitivity("look", Device::KeyboardMouse).scale, 2.0);
+    other.reset(None).unwrap();
+    assert_eq!(
+        other.sensitivity("look", Device::KeyboardMouse),
+        og_input::Sensitivity::default()
+    );
+    // Every sensitivity back at 1: the world saves what it did before.
+    let mut map = rig.map.lock().unwrap();
+    map.set_sensitivity("look", Device::KeyboardMouse, Default::default())
+        .unwrap();
+    map.set_sensitivity("look", Device::Gamepad, Default::default())
+        .unwrap();
+    assert!(!String::from_utf8_lossy(&map.save_state()).contains("senses"));
+}
+
+/// Bindings name physical keys (`KeyboardEvent.code`); the glyphs name
+/// what the player's layout prints on them. On AZERTY the WASD positions
+/// print Z Q S D, `KeyQ` prints A, `KeyM` a comma; on QWERTZ `KeyY` is
+/// Z; the digit row stays digits whatever the unshifted character is.
+///
+/// Ways it could fail: the glyph still US (an AZERTY player is told to
+/// press W, which is their Z key); the layout applied to the binding
+/// (KeyZ read for "W", so the player's Z moves nothing); the set's WASD
+/// icon drawn over Z Q S D; AZERTY's `&` shown for the 1 key.
+#[test]
+fn key_glyphs_follow_the_layouts_printed_keys() {
+    let _one = LAYOUT.lock().unwrap_or_else(|e| e.into_inner());
+    let _us = UsLayout;
+    let mv = action(
+        "move",
+        ActionKind::Axis2,
+        vec![Binding::plane("KeyW", "KeyS", "KeyA", "KeyD")],
+    );
+    let mut rig = Rig::new(&[mv]);
+    let azerty = [
+        ("KeyQ", "a"),
+        ("KeyA", "q"),
+        ("KeyW", "z"),
+        ("KeyZ", "w"),
+        ("KeyS", "s"),
+        ("KeyD", "d"),
+        ("KeyM", ","),
+        ("Semicolon", "m"),
+        ("Digit1", "&"),
+    ];
+    og_input::set_key_labels(azerty.map(|(c, l)| (c.to_string(), l.to_string())));
+    let map = rig.map.lock().unwrap();
+    let keys = map.glyphs("move", Some(Device::KeyboardMouse)).unwrap();
+    let one = combined_glyph(&keys, Device::KeyboardMouse).unwrap();
+    assert_eq!(
+        (one.icon.as_str(), one.text.as_str()),
+        ("key.keyz", "Z Q S D")
+    );
+    // The controls are still the physical keys.
+    let names: Vec<&str> = keys.iter().map(|(_, n)| n.as_str()).collect();
+    assert_eq!(names, ["KeyW", "KeyA", "KeyS", "KeyD"]);
+    drop(map);
+    let g = og_input::key_glyph("KeyQ");
+    assert_eq!((g.icon.as_str(), g.text.as_str()), ("key.keya", "A"));
+    let g = og_input::key_glyph("KeyM");
+    assert_eq!((g.icon.as_str(), g.text.as_str()), ("key.comma", ","));
+    let g = og_input::key_glyph("Semicolon");
+    assert_eq!((g.icon.as_str(), g.text.as_str()), ("key.keym", "M"));
+    let g = og_input::key_glyph("Digit1");
+    assert_eq!((g.icon.as_str(), g.text.as_str()), ("key.digit1", "1"));
+    // The player's Z key (KeyW) moves up: the binding reads the position.
+    rig.tick(&[down("KeyW")]);
+    assert!(close(rig.state("move").vector.y, 1.0));
+    rig.tick(&[up("KeyW")]);
+
+    og_input::set_key_labels([
+        ("KeyY".to_string(), "z".to_string()),
+        ("KeyZ".to_string(), "y".to_string()),
+    ]);
+    assert_eq!(og_input::key_glyph("KeyY").text, "Z");
+    assert_eq!(og_input::key_glyph("KeyZ").text, "Y");
+    assert_eq!(og_input::key_labels().len(), 2);
+    og_input::set_key_labels([]);
+    assert_eq!(og_input::key_glyph("KeyQ").text, "Q");
 }

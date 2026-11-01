@@ -1428,6 +1428,12 @@ export class Engine {
     pointerLock?: boolean;
     /** The frame cap og.render.setDisplay resolved to (0: the display's rate): the web Worker draws at most this many frames a second (web/pacing.ts). */
     maxFps?: number;
+    /** The player's graphics settings ask the page to be fullscreen (og.render.setDisplay's `fullscreen`; the web shell enters or leaves it). */
+    fullscreen?: boolean;
+    /** The power preference the next load's GPU adapter is asked for: low power (the web shell keeps it in the page's storage). */
+    lowPower?: boolean;
+    /** Ask pointer lock for raw mouse movement (og.input.setMouse's `raw`: unadjustedMovement). */
+    rawMouse?: boolean;
   } {
     this.pumpPlatform();
     const answer = parse<{ ok: boolean; ticks?: number }>(abi().og_engine_frame(this.id, elapsedMs));

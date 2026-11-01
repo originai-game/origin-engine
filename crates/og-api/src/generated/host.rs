@@ -277,6 +277,18 @@ pub trait InputApi: Wire {
     fn og_input_pad_device(&self, world: u32, pad: u32) -> String;
     /// `og.input.setDeadzones`
     fn og_input_set_deadzones(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.input.setSensitivity`
+    fn og_input_set_sensitivity(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.input.sensitivity`
+    fn og_input_sensitivity(&self, world: u32, action: String, device: Option<String>) -> String;
+    /// `og.input.setKeyboardLayout`
+    fn og_input_set_keyboard_layout(&self, labels: String);
+    /// `og.input.keyboardLayout`
+    fn og_input_keyboard_layout(&self) -> String;
+    /// `og.input.setMouse`
+    fn og_input_set_mouse(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.input.mouse`
+    fn og_input_mouse(&self, world: u32) -> String;
     /// `og.input.rumble`
     fn og_input_rumble(&self, world: u32, desc: Option<String>) -> String;
     /// `Input.down`
@@ -1232,6 +1244,12 @@ pub const SYMBOLS: &[&str] = &[
     "og_input_device",
     "og_input_pad_device",
     "og_input_set_deadzones",
+    "og_input_set_sensitivity",
+    "og_input_sensitivity",
+    "og_input_set_keyboard_layout",
+    "og_input_keyboard_layout",
+    "og_input_set_mouse",
+    "og_input_mouse",
     "og_input_rumble",
     "og_input_down",
     "og_input_pressed",
