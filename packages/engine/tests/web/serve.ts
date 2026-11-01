@@ -10,10 +10,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-declare module "node:path" {
-  export function normalize(path: string): string;
-}
-import { normalize } from "node:path";
+// URL paths, so posix on every host: on Windows `normalize` turns `/` into `\`
+// and `/game/` then missed index.html (studio-win, 2026-11-01).
+import { posix } from "node:path";
 
 declare const Bun: {
   serve(o: { port: number; hostname?: string; fetch(req: Request): Response | Promise<Response> }): { port: number; stop(): void };
@@ -86,7 +85,7 @@ export function serve(o: ServeOptions): { port: number; stop(): void } {
       const page = o.extra?.[url.pathname];
       if (page !== undefined) return new Response(page, { headers: { ...headers, ...isolation, ...o.headers, "content-type": TYPES[".html"]! } });
       if (!url.pathname.startsWith("/game/")) return new Response("not found", { status: 404, headers });
-      let rel = normalize(decodeURIComponent(url.pathname.slice("/game".length)));
+      let rel = posix.normalize(decodeURIComponent(url.pathname.slice("/game".length)));
       if (rel.endsWith("/")) rel += "index.html";
       const path = join(o.dist, rel);
       if (!path.startsWith(o.dist) || !(await Bun.file(path).exists())) return new Response("not found", { status: 404, headers });
