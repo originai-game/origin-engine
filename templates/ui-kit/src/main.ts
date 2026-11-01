@@ -10,7 +10,7 @@
 //
 // Commands: show:<screen>, viewport:<desktop|tablet|phone|landscape>,
 // pad:<up|down|left|right|next|prev|activate|back>, toast:<text>,
-// damage:<hp>, heal:<hp>, style:<prototype|pixel|cartoon|fantasy|scifi|paper|neon>
+// damage:<hp>, heal:<hp>, style:<a STYLES name: prototype, a pack (pixel, ...) or a seed (gilded, ...)>
 // (a built-in style pack, @styles/<name>), transition:<none|fade|wipe|iris|dissolve|slide>
 // (screen changes go through og.ui.screenTransition), sounds:<on|off> (on by default),
 // mixed:<on|off> (a label of CJK, Latin and Arabic under the locale screens),
@@ -27,9 +27,13 @@ export const SCREENS = [
 export type Screen = (typeof SCREENS)[number];
 
 /** The engine's built-in UI styles (templates/styles, in the bundle as
- * `@styles/<name>/` because assets/looks/kit-<name>.ogt names each);
+ * `@styles/<name>/` because assets/looks/kit-<name>.ogt names each): the
+ * six atlas packs, then the seed styles og style new generated;
  * "prototype" is the engine's placeholder. */
-export const STYLES = ["prototype", "pixel", "cartoon", "fantasy", "scifi", "paper", "neon"] as const;
+export const STYLES = [
+  "prototype", "pixel", "cartoon", "fantasy", "scifi", "paper", "neon",
+  "gilded", "storybook", "tactical", "holo", "cyber", "bubbly", "kawaii", "arcade", "craft", "minimal", "dread", "broadcast", "inkwash",
+] as const;
 const WIPES = ["none", "fade", "wipe", "iris", "dissolve", "slide"] as const;
 const UI_SOUNDS = ["hover", "press", "open", "close", "success", "error"] as const;
 
@@ -1178,7 +1182,7 @@ export default og.game({
     toast: { usage: "<text>", doc: "Queue a toast." },
     damage: { usage: "<hp>", doc: "Take hit points off the HUDs' health." },
     heal: { usage: "<hp>", doc: "Give hit points back." },
-    style: { usage: "<prototype|pixel|cartoon|fantasy|scifi|paper|neon>", doc: "Dress every screen in a style pack." },
+    style: { usage: "<prototype|pixel|cartoon|fantasy|scifi|paper|neon|gilded|storybook|tactical|holo|cyber|bubbly|kawaii|arcade|craft|minimal|dread|broadcast|inkwash>", doc: "Dress every screen in a built-in style." },
     transition: { usage: "<none|fade|wipe|iris|dissolve|slide>", doc: "Send screen changes through og.ui.screenTransition." },
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
     mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },
