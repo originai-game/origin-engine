@@ -2230,7 +2230,10 @@ mod tests {
         ] {
             assert!(ids.contains(&id), "{id}: {ids:?}");
         }
-        assert!(!ids.iter().any(|id| id.starts_with("@styles/cjk/")), "{ids:?}");
+        assert!(
+            !ids.iter().any(|id| id.starts_with("@styles/cjk/")),
+            "{ids:?}"
+        );
         assert!(!ids.contains(&"@styles/fantasy/atlas.png"), "{ids:?}");
     }
 
