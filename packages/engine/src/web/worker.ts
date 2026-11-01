@@ -102,6 +102,8 @@ interface Start {
   trace?: boolean;
   /** Count the played frames for field telemetry (frames.ts; the `telemetry` call takes them). */
   telemetry?: boolean;
+  /** Ask for the low-power GPU adapter: the player's power preference from the last load (og.render.setDisplay). */
+  lowPower?: boolean;
 }
 
 type Viewport = { width: number; height: number; dpr: number; safeArea?: Record<string, number>; covered?: Record<string, number>; coarsePointer?: boolean; reducedMotion?: boolean; highContrast?: boolean; reducedTransparency?: boolean; macKeys?: boolean };
@@ -125,6 +127,9 @@ type Message =
   | { type: "platform-host"; host: string; capabilities: string[]; time?: number }
   | { type: "room-events"; events: unknown[] }
   | { type: "room-host"; host: string; join?: string }
+  | { type: "fullscreen"; on: boolean }
+  | { type: "mouse-report"; active: boolean; unsupported: boolean }
+  | { type: "keyboard-layout"; labels: { code: string; label: string }[] }
   | AudioMessage
   | AudioLatencyMessage;
 
@@ -180,7 +185,11 @@ export interface WebExtras {
   og_web_bundle_files(manifest: string): string;
   og_web_texture_ktx2(manifest: string, id: string, bytes: Uint8Array): Uint8Array;
   og_web_pack_ktx2?(engine: number | undefined, manifest: string, pack: Uint8Array): Array<string | Uint8Array>;
-  og_web_attach_canvas(engine: number, canvas: OffscreenCanvas): Promise<string>;
+  og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, lowPower: boolean): Promise<string>;
+  /** The page went fullscreen or left it (og.render.display's `fullscreen`; the setting follows). */
+  og_web_fullscreen?(engine: number, on: boolean): void;
+  /** What the browser granted the pointer lock: raw movement now, and whether it refused unadjustedMovement (og.input.mouse). */
+  og_web_mouse_report?(engine: number, active: boolean, unsupported: boolean): void;
   og_web_set_viewport(engine: number, viewport: string): string;
   og_web_resize?(engine: number, width: number, height: number): void;
   og_web_lanes?(): string;
@@ -693,6 +702,9 @@ export function startWorker(game: GameToken): void {
   let textTarget = "null";
   /** og.PointerLock.wanted as last sent to the shell. */
   let lockWanted = false;
+  let lockRaw = true;
+  /** The page asks the last frame relayed ([fullscreen, lowPower]), so only a change is posted. */
+  let pageAsks = "";
   /**
    * The played frames' timings, the last FRAME_RECORDS of them (the shell's
    * `timings` call, which `og run --device` reads): the display interval
@@ -746,9 +758,17 @@ export function startWorker(game: GameToken): void {
     if (answered.haptics?.length) self.postMessage({ type: "haptics", patterns: answered.haptics });
     if (answered.rumble?.length) self.postMessage({ type: "rumble", rumble: answered.rumble });
     const wanted = answered.pointerLock === true;
-    if (wanted !== lockWanted) {
+    const raw = answered.rawMouse !== false;
+    if (wanted !== lockWanted || raw !== lockRaw) {
       lockWanted = wanted;
-      self.postMessage({ type: "pointer-lock", wanted });
+      lockRaw = raw;
+      self.postMessage({ type: "pointer-lock", wanted, raw });
+    }
+    // The player's graphics settings that are the page's to carry out: fullscreen, and the power preference for the next load.
+    const asks = JSON.stringify([answered.fullscreen === true, answered.lowPower === true]);
+    if (asks !== pageAsks) {
+      pageAsks = asks;
+      self.postMessage({ type: "page", fullscreen: answered.fullscreen === true, lowPower: answered.lowPower === true });
     }
   };
 
@@ -1110,7 +1130,7 @@ export function startWorker(game: GameToken): void {
         if (data.canvas) {
           canvas = data.canvas;
           // WebGPU only: a rejection is the reason the renderer did not start (no fallback).
-          tier = await glue.og_web_attach_canvas(engine.id, data.canvas).catch((e: unknown) => {
+          tier = await glue.og_web_attach_canvas(engine.id, data.canvas, data.lowPower === true).catch((e: unknown) => {
             throw new Error(`WebGPU did not start: ${e instanceof Error ? e.message : String(e)}`);
           });
           rendering = true;
@@ -1196,6 +1216,9 @@ export function startWorker(game: GameToken): void {
       glueRef.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
       if (!playing) present();
     }
+    if (data.type === "fullscreen") glueRef?.og_web_fullscreen?.(engine.id, data.on);
+    if (data.type === "mouse-report") glueRef?.og_web_mouse_report?.(engine.id, data.active, data.unsupported);
+    if (data.type === "keyboard-layout") boundHost()?.abi.og_input_set_keyboard_layout(JSON.stringify(data.labels));
     if (data.type === "audio-latency") audio?.latency(data.latency);
     if (data.type === "audio" && glueRef && !audio) {
       const attached = WorkerAudio.attach(glueRef, engine.id, data);

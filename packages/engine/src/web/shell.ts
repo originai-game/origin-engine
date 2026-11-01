@@ -35,11 +35,28 @@
 // (og.Pointers.movement sums them per tick). When a frame's answer says the
 // game wants the lock (og.PointerLock.wanted, the Worker's `pointer-lock`
 // message), the next press on the canvas calls requestPointerLock (browsers
-// grant it only to a gesture); when it no longer does, exitPointerLock.
+// grant it only to a gesture), with unadjustedMovement when the player wants
+// raw input (og.input.setMouse) and the browser has not refused it; when it
+// no longer does, exitPointerLock. pointer-lock.ts's state machine decides
+// every step, so Escape, focus loss and a refused or unanswered request
+// never leave the game stuck: the next click locks again.
 // pointerlockchange is reported to the engine as a `pointerLock` input, so
-// og.PointerLock.locked follows the page (Escape releases it). While
-// locked, the absolute position the shell sends stays where the lock began
-// (the UI's hover and clicks land there), and only the movement moves.
+// og.PointerLock.locked follows the page (Escape releases it), and what the
+// browser granted as og.input.mouse. While locked, the absolute position the
+// shell sends stays where the lock began (the UI's hover and clicks land
+// there), and only the movement moves.
+//
+// Presentation (og.render.setDisplay's page asks, each frame's answer):
+// fullscreen is entered on the frame that asks for it (within the click's
+// activation on the settings page) or on the next press or key when the
+// browser wanted a gesture, left when it no longer asks, and the page's
+// fullscreenchange is reported back (Escape turns the setting off). The
+// power preference is kept in the page's storage for the next load, whose
+// adapter it picks (an adapter is chosen once). The device pixel ratio is
+// followed with matchMedia on `resolution`: a window moved to a monitor of
+// another DPR resizes the canvas and the UI's viewport before the next
+// frame. The keyboard layout's printed keys reach og.input's glyphs
+// (keyboard-layout.ts).
 
 import { createRing, writeRing, type InjectedInput } from "./input.ts";
 import { TextEntry, type TextTarget } from "./text-input.ts";
@@ -47,6 +64,8 @@ import { A11yMirror, type A11yTree } from "./a11y.ts";
 import { playHaptics, type HapticPulse } from "./haptics.ts";
 import { playRumble, type RumbleRequest } from "./gamepad.ts";
 import { laneChoice } from "./lanes.ts";
+import { PointerLockMachine, type LockAction } from "./pointer-lock.ts";
+import { LayoutLearner, readLayoutMap, type KeyLabel } from "./keyboard-layout.ts";
 import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
 import { localPlatform, storagePersistence, type PlatformCall, type PlatformHost } from "../platform-local.ts";
 import type { BootPhases } from "./worker.ts";
@@ -103,6 +122,62 @@ export interface ShellOptions {
   readonly telemetry?: boolean;
   /** A file of the bundle did not arrive, at the boot or later: its path under `cooked/` and why (`http_<status>`, `timeout`, `network`). */
   readonly onLoadFailure?: (failure: { readonly file: string; readonly reason: string }) => void;
+  /**
+   * Ask the browser for the low-power GPU adapter (og.render's PowerPreference
+   * lowPower). Omitted: what the player chose last on this page
+   * (og.render.setDisplay's powerPreference, kept in the page's storage under
+   * `displayKey`), else high performance.
+   */
+  readonly lowPower?: boolean;
+  /** The storage key the player's power preference is kept under (default: `og.display:<path>`). */
+  readonly displayKey?: string;
+}
+
+/** The power preference kept for the next load under `key` (localStorage), false where none is or storage is closed. */
+export function storedLowPower(key: string, storage: Pick<Storage, "getItem"> | null = safeStorage()): boolean {
+  try {
+    return (JSON.parse(storage?.getItem(key) ?? "null") as { lowPower?: unknown } | null)?.lowPower === true;
+  } catch {
+    return false;
+  }
+}
+
+function safeStorage(): Storage | null {
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Calls `changed` with the new device pixel ratio whenever it changes (a
+ * window moved to a monitor of another scale, the page zoomed): a
+ * `(resolution: <dpr>dppx)` query that stops matching, re-armed at the new
+ * ratio each time. Answers the function that stops it.
+ */
+export function watchPixelRatio(
+  changed: (dpr: number) => void,
+  env: { matchMedia?: ((q: string) => MediaQueryList | undefined) | undefined; dpr: () => number } = {
+    matchMedia: globalThis.matchMedia ? (q) => globalThis.matchMedia(q) : undefined,
+    dpr: () => globalThis.devicePixelRatio || 1,
+  },
+): () => void {
+  let media: MediaQueryList | undefined;
+  let at = env.dpr();
+  const fire = () => {
+    media?.removeEventListener("change", fire);
+    const was = at;
+    arm();
+    if (at !== was) changed(at);
+  };
+  const arm = () => {
+    at = env.dpr();
+    media = env.matchMedia?.(`(resolution: ${at}dppx)`);
+    media?.addEventListener?.("change", fire);
+  };
+  arm();
+  return () => media?.removeEventListener?.("change", fire);
 }
 
 /** The pixel size of a canvas laid out at `cssWidth`×`cssHeight` on this display, with the DPR cap. */
@@ -272,8 +347,15 @@ export class Shell {
   #watched = 0;
   #watchdog: ReturnType<typeof setInterval> | undefined;
   #rooms: RoomHost | null = null;
-  /** og.PointerLock.wanted, as the Worker last said. */
-  #lockWanted = false;
+  /** The pointer lock's state machine (pointer-lock.ts): og.PointerLock.wanted and og.input's raw input in, requests out. */
+  readonly #lock = new PointerLockMachine();
+  /** What the last frame asked of the page: fullscreen and the power preference for the next load. */
+  #fullWanted = false;
+  /** A fullscreen request waits for the next gesture (the browser refused one without it). */
+  #fullArmed = false;
+  #displayKey = `og.display:${globalThis.location?.pathname ?? "/"}`;
+  /** The canvas's CSS box, safe area and covered region as the page last laid it out: what a DPR change resizes again. */
+  #layout: { width: number; height: number; safeArea?: Record<string, number>; covered?: Record<string, number> } | null = null;
   /** The canvas the shell wired (the pointer lock's element). */
   #canvas: HTMLCanvasElement | undefined;
   #platform: PlatformHost = localPlatform(storagePersistence(`og.platform:${globalThis.location?.pathname ?? "/"}`));
@@ -332,10 +414,15 @@ export class Shell {
         return;
       }
       if (m.type === "pointer-lock") {
-        this.#lockWanted = (m as unknown as { wanted: boolean }).wanted === true;
+        const ask = m as unknown as { wanted: boolean; raw?: boolean };
         // Releasing needs no gesture: the lock ends at once. Taking it waits for the next press.
-        const doc = globalThis.document;
-        if (!this.#lockWanted && doc?.pointerLockElement && doc.pointerLockElement === this.#canvas) doc.exitPointerLock?.();
+        this.#act(this.#lock.want(ask.wanted === true, ask.raw !== false));
+        return;
+      }
+      if (m.type === "page") {
+        const ask = m as unknown as { fullscreen?: boolean; lowPower?: boolean };
+        if (typeof ask.lowPower === "boolean") this.#keepLowPower(ask.lowPower);
+        if (typeof ask.fullscreen === "boolean") this.#fullscreen(ask.fullscreen);
         return;
       }
       if (m.type === "rpc" && m.frame !== undefined) {
@@ -430,9 +517,12 @@ export class Shell {
       arm();
     });
     const choice = laneChoice(!!options.lanes, !!globalThis.crossOriginIsolated, globalThis.navigator?.hardwareConcurrency ?? 0);
+    const displayKey = options.displayKey ?? `og.display:${globalThis.location?.pathname ?? "/"}`;
+    const lowPower = options.lowPower ?? storedLowPower(displayKey);
     worker.postMessage(
       {
         type: "start",
+        lowPower,
         glue: options.glue,
         wasm: options.wasm,
         ...("threads" in choice ? { lanes: { ...options.lanes!, threads: choice.threads } } : { lanesWhy: choice.why }),
@@ -462,6 +552,7 @@ export class Shell {
     }
     const shell = new Shell(worker, answered, rpc);
     shell.#ring = ring;
+    shell.#displayKey = displayKey;
     shell.#dprCap = options.dprCap ?? 2;
     shell.#onLog = options.onLog;
     shell.#onCrash = options.onCrash;
@@ -469,6 +560,7 @@ export class Shell {
     shell.#onLoadFailure = options.onLoadFailure;
     shell.#playing = options.autoplay ?? true;
     shell.#viewport = { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false };
+    shell.#layout = { width: shell.#viewport["width"] as number, height: shell.#viewport["height"] as number };
     shell.#beat = shell.#watched = performance.now();
     shell.#watchdog = setInterval(() => shell.#watch(), 1000);
     if (options.platform) shell.setPlatform(options.platform);
@@ -624,6 +716,7 @@ export class Shell {
    * the shell's Back) that anchored groups keep out of.
    */
   resize(cssWidth: number, cssHeight: number, safeArea?: Record<string, number>, covered?: Record<string, number>): { width: number; height: number; dpr: number } {
+    this.#layout = { width: cssWidth, height: cssHeight, ...(safeArea ? { safeArea } : {}), ...(covered ? { covered } : {}) };
     const size = pixelSize(cssWidth, cssHeight, globalThis.devicePixelRatio || 1, this.#dprCap);
     const viewport = {
       width: cssWidth,
@@ -651,6 +744,106 @@ export class Shell {
   #send(ring: SharedArrayBuffer | undefined, event: InjectedInput): void {
     if (ring) writeRing(ring, event);
     else this.worker.postMessage({ type: "input", event });
+  }
+
+  /** Do what the pointer lock's machine says: request the lock (raw or not) or release it. */
+  #act(actions: readonly LockAction[]): void {
+    const doc = globalThis.document;
+    const canvas = this.#canvas;
+    for (const a of actions) {
+      if (a.kind === "exit") {
+        if (doc?.pointerLockElement && doc.pointerLockElement === canvas) doc.exitPointerLock?.();
+        continue;
+      }
+      if (!canvas) continue;
+      let asked: unknown;
+      try {
+        asked = (canvas.requestPointerLock as (o?: unknown) => unknown).call(canvas, a.raw ? { unadjustedMovement: true } : undefined);
+      } catch {
+        // Refused at once (no gesture, a sandboxed frame): armed for the next press.
+        this.#act(this.#lock.refused(performance.now(), false));
+        this.#reportMouse();
+        continue;
+      }
+      if (asked instanceof Promise) {
+        asked.then(
+          () => {
+            this.#lock.answered(true);
+            this.#reportMouse();
+          },
+          (e: unknown) => {
+            this.#act(this.#lock.refused(performance.now(), (e as { name?: string } | null)?.name === "NotSupportedError"));
+            this.#reportMouse();
+          },
+        );
+      } else {
+        this.#lock.answered(false);
+        this.#reportMouse();
+      }
+    }
+  }
+
+  #mouseSent = "";
+  /** og.input.mouse's rawActive and rawUnsupported, when they changed. */
+  #reportMouse(): void {
+    const report = { active: this.#lock.rawActive, unsupported: this.#lock.rawUnsupported };
+    const text = JSON.stringify(report);
+    if (text === this.#mouseSent) return;
+    this.#mouseSent = text;
+    this.worker.postMessage({ type: "mouse-report", ...report });
+  }
+
+  #lowPowerKept: boolean | null = null;
+  /** The power preference for the next load, kept in the page's storage. */
+  #keepLowPower(lowPower: boolean): void {
+    if (lowPower === this.#lowPowerKept) return;
+    this.#lowPowerKept = lowPower;
+    try {
+      safeStorage()?.setItem(this.#displayKey, JSON.stringify({ lowPower }));
+    } catch {
+      /* storage full or closed: the next load asks for high performance */
+    }
+  }
+
+  /** Enter or leave fullscreen as the last frame asks; a refused entry waits for the next gesture. */
+  #fullscreen(wanted: boolean): void {
+    if (wanted === this.#fullWanted) return;
+    this.#fullWanted = wanted;
+    this.#fullArmed = false;
+    const doc = globalThis.document;
+    if (!doc) return;
+    if (!wanted) {
+      if (doc.fullscreenElement) void doc.exitFullscreen?.().catch(() => {});
+      return;
+    }
+    this.#enterFullscreen();
+  }
+
+  #enterFullscreen(): void {
+    const doc = globalThis.document;
+    if (!doc || doc.fullscreenElement || !this.#fullWanted) return;
+    const gesture = (globalThis.navigator as { userActivation?: { isActive?: boolean } } | undefined)?.userActivation?.isActive;
+    const asked = doc.documentElement?.requestFullscreen?.({ navigationUI: "hide" });
+    const refused = () => {
+      // Refused inside a gesture (a frame without allow="fullscreen"): the page is not
+      // fullscreen and the setting says so. Without one: the next press or key asks again.
+      if (gesture === true || this.#fullArmed) {
+        this.#fullArmed = false;
+        this.#fullWanted = false;
+        this.worker.postMessage({ type: "fullscreen", on: false });
+      } else this.#fullArmed = true;
+    };
+    if (asked instanceof Promise) asked.catch(refused);
+    else if (!asked) refused();
+  }
+
+  /** The keyboard layout's printed keys, sent when they change (og.input.setKeyboardLayout). */
+  #layoutSent = "";
+  #sendLayout(labels: readonly KeyLabel[]): void {
+    const text = JSON.stringify(labels);
+    if (text === this.#layoutSent) return;
+    this.#layoutSent = text;
+    this.worker.postMessage({ type: "keyboard-layout", labels });
   }
 
   #wire(canvas: HTMLCanvasElement, ring: SharedArrayBuffer | undefined): void {
@@ -692,18 +885,36 @@ export class Shell {
     const underCommand = new Set<string>();
     // Every key sent down and not yet up: released when the window loses focus.
     const heldKeys = new Set<string>();
+    // The layout's printed keys: the layout map where the browser has one, else learnt from the keys pressed.
+    let mapped = false;
+    const learner = new LayoutLearner();
+    const readLayout = () =>
+      void readLayoutMap().then((labels) => {
+        if (!labels || this.#stopped) return;
+        mapped = true;
+        this.#sendLayout(labels);
+      });
+    readLayout();
+    listen(globalThis as unknown as EventTarget, "focus", readLayout);
+    const keyboard = (globalThis.navigator as { keyboard?: EventTarget } | undefined)?.keyboard;
+    if (keyboard?.addEventListener) listen(keyboard, "layoutchange" as keyof HTMLElementEventMap, readLayout);
     listen(globalThis as unknown as EventTarget, "keydown", (e) => {
       if (typing(e) || !e.code) return;
       // In the text target Space types and shortcuts copy, cut and paste.
       const shortcut = text.owns(e.target) && (e.ctrlKey || e.metaKey || e.code === "Space");
       if (KEPT_KEYS.has(e.code) && !shortcut) e.preventDefault();
       if (e.metaKey && !MODIFIER_KEYS.has(e.code)) underCommand.add(e.code);
+      if (!mapped && learner.learn(e)) this.#sendLayout(learner.labels());
+      // A key is a gesture: a fullscreen the browser refused without one is asked again.
+      if (this.#fullArmed) this.#enterFullscreen();
       heldKeys.add(e.code);
       if (!e.repeat) this.#send(ring, { kind: "key", key: e.code, action: "down", time: stamp(e) });
     });
     const releaseAll = () => {
       underCommand.clear();
       for (const e of releaseHeld(heldKeys, performance.timeOrigin + performance.now())) this.#send(ring, e);
+      // The browser drops the lock (and a request still out) with the focus.
+      this.#act(this.#lock.blurred());
     };
     listen(globalThis as unknown as EventTarget, "blur", releaseAll);
     if (globalThis.document) {
@@ -734,8 +945,29 @@ export class Shell {
         if (now === locked) return;
         locked = now;
         this.#send(ring, { kind: "pointerLock", locked: now });
+        this.#act(this.#lock.changed(now));
+        this.#reportMouse();
+      });
+      listen(doc as unknown as EventTarget, "pointerlockerror" as keyof HTMLElementEventMap, () => {
+        this.#act(this.#lock.refused(performance.now(), false));
+        this.#reportMouse();
+      });
+      listen(doc as unknown as EventTarget, "fullscreenchange" as keyof HTMLElementEventMap, () => {
+        const on = !!doc.fullscreenElement;
+        // Left by the player (Escape, F11): the setting follows, and nothing asks again.
+        if (!on) {
+          this.#fullWanted = false;
+          this.#fullArmed = false;
+        }
+        this.worker.postMessage({ type: "fullscreen", on });
       });
     }
+    // A window moved to a monitor of another DPR: the canvas and the UI's viewport again, before the next frame.
+    const stopDpr = watchPixelRatio(() => {
+      const l = this.#layout;
+      if (l) this.resize(l.width, l.height, l.safeArea, l.covered);
+    });
+    this.#listeners.push(stopDpr);
     // Relative to the canvas's CSS box, whichever element the event landed on; while locked, where the lock began.
     const at = (e: PointerEvent | WheelEvent) => {
       if (locked) return held;
@@ -760,14 +992,8 @@ export class Shell {
     };
     listen(canvas, "pointerdown", (e) => {
       // The game wants the lock: this press is the gesture browsers grant it to.
-      if (this.#lockWanted && !locked && e.pointerType === "mouse") {
-        try {
-          const asked = (canvas.requestPointerLock as (o?: unknown) => unknown)?.call(canvas);
-          if (asked instanceof Promise) asked.catch(() => {});
-        } catch {
-          /* refused (no gesture, a sandboxed frame): locked stays false */
-        }
-      }
+      if (e.pointerType === "mouse") this.#act(this.#lock.press(performance.now()));
+      if (this.#fullArmed) this.#enterFullscreen();
       let id = this.#pointers.get(e.pointerId);
       if (id === undefined) {
         const taken = new Set(this.#pointers.values());
