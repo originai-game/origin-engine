@@ -137,8 +137,8 @@ Mistakes the games made, or would have, before reading the right page:
 
 Beside them, six craft skills teach no module and name no API of their
 own; they point to the skills above for every call:
-**architecture-discipline** (the project's layers, when to split, the first
-playable, loud failure, tuning in data), **component-forge** (a unit built
+**architecture-discipline** (the project's layers, when to split, the
+whole game in a working order, loud failure, tuning in data), **component-forge** (a unit built
 as code from a measured reference: the route, decomposition, gates,
 assembly), **level-texturing** (a gray level painted from views with `og
 bake projection`), **localization** (the discipline beside og-i18n),

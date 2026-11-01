@@ -1,6 +1,6 @@
 ---
 name: architecture-discipline
-description: How an Origin Engine project keeps its shape as it grows — the layers (engine, components, systems, scenes, the game entry, playtests), when and where to split a file, why a line ceiling is a road sign, building the first playable before later systems, failing loudly instead of stubbing, and keeping every tunable number in data. Use when starting a project's code, when a file or system grows a second responsibility, or when reviewing a project's structure.
+description: How an Origin Engine project keeps its shape as it grows — the layers (engine, components, systems, scenes, the game entry, playtests), when and where to split a file, why a line ceiling is a road sign, building the whole game in a working order that keeps it running, every visible subject an asset from its pipeline, failing loudly instead of stubbing, and keeping every tunable number in data. Use when starting a project's code, when a file or system grows a second responsibility, or when reviewing a project's structure.
 ---
 
 Two failure modes govern a long project's codebase. A scaffold full of
@@ -53,24 +53,27 @@ Splitting for the line count alone, into `foo-part-2.ts`, satisfies nothing
 and costs the next reader the seam that used to be obvious. If that is the
 only split available, the real problem is upstream.
 
-## 3. The first playable precedes later systems
+## 3. The whole game, in a working order
 
-Order the work as milestones and build the first one small but in the
-game's look: real input, the player or piece as its own asset, a route from
-boot to play and the first level's ground. Keep the whole game in the plan, but register only the systems
-this slice needs in the game entry; input is always present, because people
-and the probe both play through it. Later systems stay unwritten and
-unregistered until their milestone; write and register each together, then
-rerun the earlier playtests. An optional later system (sound, saves) never
-blocks the first movement build.
+What is made is the whole game as designed, at the quality it launches
+with: there is no first version, slice or prototype to show first and
+finish later. The order of work is a working order, not a version: it
+keeps the build running at every step, and everything it builds is final.
 
-Run it as soon as this slice builds: prove that scripted input moves the
-player and the tick advances (`og run . --headless --commands`, og-build
-§1), and let someone play it before the rest of the content and the progression
-are built. Never stand a visible subject in for later with primitive shapes
-placed from game code: the first playable is the first impression, and a
-subject is an asset (a `type model`, a glTF, sprites) the cook conforms to
-the look.
+Build and run continuously. Start from the route from boot to play, real
+input and the player or piece; input is always present, because people and
+the probe both play through it. As soon as it builds, prove that scripted
+input moves the player and the tick advances (`og run . --headless
+--commands`, og-build §1), and keep proving it as the game grows. Write each
+system the design names and register it in the game entry together with its
+implementation, never before it and never as a silent no-op (§4); rerun the
+earlier playtests each time one is added.
+
+Every visible subject is an asset made through its pipeline before gameplay
+code uses it: a `type model` (og-model), a glTF, sprites, each the cook
+conforms to the look (og-taste). Never primitive shapes placed from game
+code, not even for a moment: what the game code places is the asset the
+game launches with.
 
 ## 4. Loud failure
 
