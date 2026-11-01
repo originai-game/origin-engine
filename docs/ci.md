@@ -283,7 +283,7 @@ split, and the lowest such crate is its cause.
 | `web-reference` | `OG_GATE=1 sh packages/engine/scripts/build.sh` first, so `packages/engine/native` holds this checkout's dev og and addon and `dist/web` the gate's wasm (a release build or an older gate leaves older ones there, and the tests cook every project with that og); then, in `packages/engine`, seven groups, `OG_WEB_JOBS` at a time (§Two machines): `fx` (`bun tests/web/reference.ts`: templates/fx-showcase's five stations; `bun tests/web/reference-e5.ts`: its E5 stations, each a fresh run like its playtest; `bun tests/web/reference.ts --looks`: its looks station, 37 presets in one run), `ui` (`bun tests/web/reference-ui.ts`: templates/ui-kit's reference frames; `bun tests/web/a11y.ts`: the accessibility mirror), `gfx` (`bun tests/web/reference-gfx.ts`: og-tests' gfx scenes and og-ui's), `ember-vale` (`reference.ts --project templates/archetypes/third-person`: its three frames), `brasswick` and `meridian-loop` (`reference.ts --project examples/<game> --playtest tests/frames.og.ts`: their nine and ten), `lane-panic` (`bun tests/web/lane-panic.ts`) (§Browser reference tiers), in headless Chrome on WebGPU, compared with `references/webgpu` or else `metal` under og-tests' tolerance (below); path-aware (§Lanes) | `scripts/check.sh web-reference` (`make web-reference`), windows | | | | |
 | `wasm-export` | the web modules `wasm-opt` left in `target/og-wasm` (`opt/`, `bindgen/`, `opt.txt`, `opt-all.txt`) and their `stamp` (the commit, the wasm profile and the git tree of each of the wasm's inputs, `rule_wasm`), as `target/og-wasm.tar.gz`; needs `wasm-opt` (§Two machines) | `scripts/check.sh --only wasm-export` on the Mac | | | | |
 | `wasm-import` | `OG_WASM_FROM` (that archive, or a directory with its contents) into `target/og-wasm`, refused unless its stamp's input trees equal this checkout's (the paths that differ are named) (§Two machines) | windows | | | | |
-| `test-windows` | `cargo nextest run --workspace -E` the cfg(windows) tests (`package(og-cli) & test(/windows/)`), the GPU reference tests when their inputs changed (DX12's frames; as in `test`) and `rdeps(=<crate>)` of every crate changed since the step last passed on this machine; every test on a first run, a change to the build's configuration or `third_party`, or `--all` (§Two machines) | windows | | | | |
+| `test-windows` | `cargo nextest run --workspace -E` the cfg(windows) tests (`package(og-cli) & test(/windows/)`), the GPU reference tests when their inputs changed (DX12's frames; as in `test`) and `package(<crate>)` for every crate changed since the step last passed on this machine (its own tests: the Mac ran its dependents' at the commit, and every test binary is still built); every test on a first run, a change to the build's configuration or `third_party`, or `--all` (§Two machines) | windows | | | | |
 
 `cargo nextest` runs test binaries in parallel, one process per test.
 Fixtures several tests read are made once across their processes under a
@@ -577,6 +577,27 @@ order); each group's output is in
 end, and the step fails when any group does. A frame that differs between
 a serial and a parallel run is a defect to report, never a reason to
 raise a tolerance.
+
+**Measured (2026-11-01; Mac: Apple M4 Pro, metal; studio-win: RTX 5060,
+D3D12, Chrome 155).**
+
+| Step | Machine | Before | After |
+|---|---|---|---|
+| The wasm | studio-win | built there, 1045–1654 s | `wasm-import` 2 s plus a 49 MB download, 6 s; the Mac's `wasm-export` 368 s when `crates/` or `scripts/` changed, else reused |
+| Edge | studio-win | 827–842 s every round | before a release only |
+| web-reference | Mac | 330 s, serial | 101 s at 3 groups (133 at 2, 109 at 4: ui alone runs about 100 s) |
+| web-reference | studio-win | Chrome 900–1039 s | 469 s at 2 groups (844 at 1, 466 at 3: fx, about 440 s for its 37 looks stations, bounds it) |
+| tests | studio-win | nextest 859 s + `og-gfx --all` 329–471 s | `test-windows`: 21 s for a change outside `crates/`; a crate change runs the GPU reference tests whose inputs it touched and the changed crates' own tests; a first run or a configuration change runs all of them (848 s) |
+| ui-styles | Mac | 120–160 s | 32 s at 3 jobs (80 s at 1, 27 s at 4) |
+
+`OG_WEB_JOBS` defaults to 3 on the Mac and 2 on Windows. In 1,565 PNGs on
+the Mac and 563 on studio-win, every RMSE and outlier figure was the same
+at every job count. Byte for byte, the frames that differed were lane-panic's
+two crash cards (the fault is armed by the wall clock, so the tick on the
+card varies from run to run, at any job count) and one terrain-grass frame
+per run at one LSB on the Mac. A `test-windows` failure no longer cancels
+web-reference: the windows lane stops only the steps that read a failed
+step's output, so a failing round still reports the browser tiers.
 
 ## The wave-end run
 

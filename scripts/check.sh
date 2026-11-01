@@ -245,8 +245,9 @@ step_test_quick() { run_tests test-quick 0 og-tests; }
 # The tests whose result Windows can change, beside the Mac's functional
 # lane at the same commit (docs/ci.md §Two machines): the GPU reference
 # tests (DX12's frames; path-aware as in test), the cfg(windows) tests, and
-# the tests of every crate changed since this step last passed here, with
-# the crates that depend on it (nextest's rdeps). A change to the build's
+# the tests of every crate changed since this step last passed here (its
+# own; the Mac ran its dependents' at the commit, and nextest still builds
+# every test binary, so a Windows compile error fails). A change to the build's
 # configuration (RULE_COMMON), to third_party, a first run, or --all runs
 # every test. The wave's end and a release run the whole suite (test).
 WINDOWS_TESTS='(package(og-cli) & test(/windows/))'
@@ -287,9 +288,9 @@ step_test_windows() {
     fi
   done
   SKIP_NOTE=""
-  for c in $crates; do expr="$expr | rdeps(=$c)"; done
+  for c in $crates; do expr="$expr | package($c)"; done
   og_say "test-windows: changed since ${green:0:12}:${crates:- no crate}; nextest -E '$expr'"
-  PASS_NOTE="the cfg(windows) tests${crates:+, the crates changed and their dependents:$crates}${gpus:+, the GPU reference tests of$gpus}"
+  PASS_NOTE="the cfg(windows) tests${crates:+, the tests of the crates changed:$crates}${gpus:+, the GPU reference tests of$gpus}"
   cargo nextest run --workspace --no-tests=warn -E "$expr" || return 1
   for pk in $gpus; do og_green_set "test-windows.gpu.$pk"; done
 }
@@ -739,7 +740,9 @@ step_bun_quick() {
 # mkdtemp: tests/web/serve.ts, cdp.ts).
 WEB_GROUPS="fx ui gfx meridian-loop brasswick ember-vale lane-panic"
 case "$(uname -s)" in
-  MINGW*|MSYS*) WEB_JOBS_DEFAULT=3 ;;
+  # studio-win: fx (about 440 s) bounds the run from 2 on; 3 only adds
+  # contention. The Mac: 3 (101 s), 4 slower (docs/ci.md §Two machines).
+  MINGW*|MSYS*) WEB_JOBS_DEFAULT=2 ;;
   *) WEB_JOBS_DEFAULT=3 ;;
 esac
 
@@ -1087,7 +1090,10 @@ while :; do
     done_n=$((done_n + 1))
     gate_finish "$s" "$rc"
   done
-  [ -z "$FAILED" ] || break
+  # The windows lane is a round's measurement: a failed step stops only the
+  # steps that read its output, so a failing test still leaves the browser
+  # tiers' results.
+  [ -z "$FAILED" ] || [ "$WINDOWS" = 1 ] || break
   [ "$done_n" -lt "$total" ] || break
   for s in $selected; do
     [ "$GATE_JOBS" = 0 ] || [ "$running" -lt "$GATE_JOBS" ] || break
@@ -1097,6 +1103,13 @@ while :; do
     fi
   done
   if [ "$running" -eq 0 ]; then
+    if [ -n "$FAILED" ]; then
+      for s in $selected; do
+        [ "$(gate_get state "$s")" = pending ] || continue
+        gate_set line "$s" "NOT RUN $s: a step it reads failed ($(step_needs "$s" | og_words))"
+      done
+      break
+    fi
     og_err "gate: no step can start (scripts/check.sh step_needs)"; FAILED="${FAILED:-scheduler}"; break
   fi
   sleep 0.2
