@@ -94,8 +94,11 @@ fn apply_size(size: Size, pref: f32, min: f32) -> (f32, f32) {
         Size::Fixed(v) => (v, v),
         Size::Fit { .. } | Size::Grow { .. } => {
             let (lo, hi) = size.bounds();
-            let p = pref.clamp(lo, hi);
-            (p, min.clamp(lo, hi).min(p))
+            // Its max never cuts under its content's least width (a wrapping
+            // text's longest word): a word is never split between characters
+            // because a box's max was narrower than it.
+            let p = pref.clamp(lo, hi).max(min.min(pref));
+            (p, min.max(lo).min(p))
         }
         Size::Percent(_) => (pref, min.min(pref)),
     }
