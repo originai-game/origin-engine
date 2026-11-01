@@ -26,7 +26,7 @@ pub mod text;
 
 pub use locale::{Direction, direction_of_locale, negotiate};
 pub use message::{Arg, Message, MessageError};
-pub use plural::{PluralCategory, plural_category};
+pub use plural::{PluralCategory, format_ordinal, plural_category};
 pub use table::{Catalog, MissingKey, STRINGS_TYPE, StringTable, check_tables};
 pub use text::{
     WordKind, WordSegment, graphemes, is_rtl_char, needs_shaping, paragraph_direction,

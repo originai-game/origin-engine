@@ -22,6 +22,7 @@
 //! layout rules, the id grammar, the theme generation and the probe contract.
 
 mod a11y;
+pub mod bind;
 mod draw;
 mod draw_codec;
 pub mod dress;
