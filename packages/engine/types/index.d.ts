@@ -43742,7 +43742,7 @@ export declare namespace og {
      */
     function glyph(world: World, action: string): UiGlyph | null;
     /**
-     * An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. Null for an unknown action, one with no binding on that device, or outside a frame being built.
+     * An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. A name that is no UI action answers as og.input.glyph does for the world whose frame is being built (a gameplay action an ability slot names). Null for an unknown action, one with no binding on that device, or outside a frame being built.
      *
      * @param action The action.
      */

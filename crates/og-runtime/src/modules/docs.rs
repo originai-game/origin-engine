@@ -435,13 +435,19 @@ pub fn og_ui_glyph(world: u32, action: String) -> String {
 }
 
 pub fn og_ui_frame_glyph(action: String) -> String {
-    with_ui("og.ui.frameGlyph", |ui| match ui.glyph(&action) {
+    let g = with_ui("og.ui.frameGlyph", |ui| match ui.glyph(&action) {
         Some(g) => {
             json!({ "icon": g.icon, "text": g.text, "device": ui.device().name() }).to_string()
         }
         None => "null".into(),
     })
-    .unwrap_or_else(|| "null".into())
+    .unwrap_or_else(|| "null".into());
+    // Not a UI action: a gameplay action of og.input, on the device used
+    // last in the world whose frame is being built (an ability slot's key).
+    match (g.as_str(), BUILDING.with(Cell::get)) {
+        ("null", Some(world)) => super::super::og_input_glyph(world, action, None),
+        _ => g,
+    }
 }
 
 pub fn og_ui_device(world: u32) -> String {

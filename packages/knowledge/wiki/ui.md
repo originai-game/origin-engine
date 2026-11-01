@@ -633,7 +633,7 @@ module ui {
 | [`og.ui.action`](#fn-action) | function | The action fired this tick (a document's `on action` fires on the top layer that takes input). |
 | [`og.ui.actionHeld`](#fn-actionHeld) | function | A hold action is held past its hold, or its toggle is on. |
 | [`og.ui.glyph`](#fn-glyph) | function | An action's glyph on the device used last: its first binding there. Null for an unknown action or one with no binding on that device. |
-| [`og.ui.frameGlyph`](#fn-frameGlyph) | function | An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. Null for an unknown action, one with no binding on that device, or outside a frame being built. |
+| [`og.ui.frameGlyph`](#fn-frameGlyph) | function | An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. A name that is no UI action answers as og.input.glyph does for the world whose frame is being built (a gameplay action an ability slot names). Null for an unknown action, one with no binding on that device, or outside a frame being built. |
 | [`og.ui.device`](#fn-device) | function | The device the player used last (glyphs follow it live): a key or the mouse, a pad of the family set with og.ui.setDevice (Xbox by default), or a touch on a coarse pointer. |
 | [`og.ui.setDevice`](#fn-setDevice) | function | Set the device (the host's when it knows: a pad's family from its id); a pad family also becomes what pad input shows from then on. |
 | [`og.ui.actionBar`](#fn-actionBar) | function | What an action bar component reads: the actions the top layer's document lists (`actions { confirm "Buy" }`), each with its hint and its glyph on the device used last. |
@@ -6830,7 +6830,7 @@ fn glyph {
 
 ### `og.ui.frameGlyph`
 
-An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. Null for an unknown action, one with no binding on that device, or outside a frame being built.
+An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. A name that is no UI action answers as og.input.glyph does for the world whose frame is being built (a gameplay action an ability slot names). Null for an unknown action, one with no binding on that device, or outside a frame being built.
 
 ```ts
 og.ui.frameGlyph(action: string): UiGlyph | null
@@ -6846,7 +6846,7 @@ Binding symbol `og_ui_frame_glyph` · publish builds: kept
 
 ```ogt
 fn frameGlyph {
-  doc "An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. Null for an unknown action, one with no binding on that device, or outside a frame being built."
+  doc "An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. A name that is no UI action answers as og.input.glyph does for the world whose frame is being built (a gameplay action an ability slot names). Null for an unknown action, one with no binding on that device, or outside a frame being built."
   param action String "The action."
   returns Option.UiGlyph
 }
