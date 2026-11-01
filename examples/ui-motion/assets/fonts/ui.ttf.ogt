@@ -1,0 +1,11 @@
+type import
+version 1
+---
+# The HUD's font: Noto Sans SC Regular subset to Latin-1 (the runner
+# archetype's assets/fonts/ui.ttf). A language with other characters needs
+# a font that holds them (og-i18n §2).
+font {
+  charset latin
+  em_px 48
+  px_range 6
+}

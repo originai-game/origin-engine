@@ -1,0 +1,13 @@
+type project
+version 1
+---
+# og-ui's element model and motion (docs/ui.md §6, §7) in one sample: a
+# fanned card hand that deals, reorders and lifts under the pointer, and a
+# results card whose stars, score rows and button arrive in sequence.
+name "UI motion"
+id "ui-motion"
+engine "0.7.7"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1

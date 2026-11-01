@@ -1,0 +1,13 @@
+{
+  "name": "origin-ui-motion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "og run .",
+    "check": "og check ."
+  },
+  "dependencies": {
+    "@origingame/engine": "0.7.7"
+  }
+}
