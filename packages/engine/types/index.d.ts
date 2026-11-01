@@ -28622,6 +28622,7 @@ export interface UiActionHint {
 
 
 
+
 // ── systems ─────────────────────────────────────────────────────
 // Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
 
@@ -34885,6 +34886,12 @@ export declare namespace og {
      * @param action The action.
      */
     function glyph(world: World, action: string): UiGlyph | null;
+    /**
+     * An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. Null for an unknown action, one with no binding on that device, or outside a frame being built.
+     *
+     * @param action The action.
+     */
+    function frameGlyph(action: string): UiGlyph | null;
     /**
      * The device the player used last (glyphs follow it live): a key or the mouse, a pad of the family set with og.ui.setDevice (Xbox by default), or a touch on a coarse pointer.
      *

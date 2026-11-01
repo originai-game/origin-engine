@@ -62,9 +62,9 @@ pub(crate) mod docs;
 pub use docs::{
     og_load_document, og_ui_action, og_ui_action_bar, og_ui_action_held, og_ui_clear,
     og_ui_component, og_ui_define_action, og_ui_device, og_ui_doc_events, og_ui_document_schema,
-    og_ui_game_input, og_ui_glyph, og_ui_layers, og_ui_open_slot, og_ui_paused, og_ui_pop,
-    og_ui_push, og_ui_replace, og_ui_save_edits, og_ui_screen, og_ui_screen_vm, og_ui_set_device,
-    og_ui_set_prop,
+    og_ui_frame_glyph, og_ui_game_input, og_ui_glyph, og_ui_layers, og_ui_open_slot, og_ui_paused,
+    og_ui_pop, og_ui_push, og_ui_replace, og_ui_save_edits, og_ui_screen, og_ui_screen_vm,
+    og_ui_set_device, og_ui_set_prop,
 };
 mod motion;
 /// og.ui's world-space members (docs/ui.md §14).

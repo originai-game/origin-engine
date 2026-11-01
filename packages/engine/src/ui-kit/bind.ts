@@ -34,6 +34,7 @@ export const widgets = {
   frameViewport: (): Api.Viewport => parse(abi().og_ui_frame_viewport()),
   frameTheme: (): Api.UiTheme => parse(abi().og_ui_frame_theme()),
   framePointer: (): Api.UiPointer => parse(abi().og_ui_frame_pointer()),
+  frameGlyph: (action: string): Api.UiGlyph | null => parse(abi().og_ui_frame_glyph(action)),
   hasIcon: (name: string): boolean => abi().og_ui_has_icon(name),
   seconds: (): number => abi().og_ui_seconds(),
   openAnchor: (id: string, desc?: Api.AnchorDesc): void => abi().og_ui_open_anchor(id, json(desc)),

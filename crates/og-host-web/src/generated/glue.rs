@@ -2174,6 +2174,11 @@ pub fn og_ui_glyph(world: u32, action: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_frame_glyph(action: String) -> String {
+    <Host as UiApi>::og_ui_frame_glyph(&Host, action)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_device(world: u32) -> String {
     <Host as UiApi>::og_ui_device(&Host, world)
 }
