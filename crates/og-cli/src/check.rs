@@ -647,6 +647,8 @@ impl Target {
             serde_json::json!({
                 "@origingame/engine": [typescript_path(&pkg.join("types/index.d.ts"))],
                 "@origingame/engine/playtest": [typescript_path(&pkg.join("src/playtest.ts"))],
+                // og ui check's rules over a playtest's frames (docs/ui.md §16.5).
+                "@origingame/engine/ui-check": [typescript_path(&pkg.join("src/node/ui-check.ts"))],
             })
         });
         let config = if own.is_file() {

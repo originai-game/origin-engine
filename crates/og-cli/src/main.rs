@@ -37,6 +37,7 @@ mod style;
 mod style_check;
 mod test;
 mod trace;
+mod ui;
 mod upgrade;
 
 use std::path::{Path, PathBuf};
@@ -139,6 +140,21 @@ commands:
                       the flags) and measure their colours, palette and edges; --critic prints only
                       the catalogue's three checks and the frames, for a blind critic; exit 0 within
                       the contract or no look, 3 off it
+  ui check [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b]
+      [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet]
+      [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,200] [--high-contrast] [--settle S]
+      [--out DIR] [--json]
+                      lay each screen (its commands, or show:<name>) out per style, breakpoint and
+                      locale (the game's, a pseudo-locale 40 % longer, CJK, RTL) and check what a
+                      designer checks by eye: undeclared overlap, cut text, the safe area and the
+                      shell's corner, 44 px touch targets, contrast on pixels, text size, pad reach,
+                      names, one primary action, feedback, counts; each finding names the paths, the
+                      measured value and the prop to change (DIR/check.json, check.txt; default
+                      <project>/og-out/ui-check); exit 0 clean, 3 with an error finding
+  ui preview [project] [the same options] [--film <commands> --at t,t,...]
+                      a contact sheet per screen and style (a row per breakpoint, a column per
+                      locale) and index.json of every cell, or a filmstrip of a motion at the
+                      chosen times after the screen settles (default <project>/og-out/ui-preview)
   relay [--port P] [--host <ip>]
                       a local WebSocket relay for rooms: `og run --room ws://127.0.0.1:P/<room>`
                       processes join <room> and play together (og.net's lockstep)
@@ -252,6 +268,7 @@ fn main() -> ExitCode {
         ["api", rest @ ..] => api::run(rest),
         ["sfx", rest @ ..] => sfx::run(rest),
         ["style", rest @ ..] => style::run(rest),
+        ["ui", rest @ ..] => ui::run(rest),
         [] => {
             eprint!("{USAGE}");
             ExitCode::from(2)

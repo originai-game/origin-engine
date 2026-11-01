@@ -14,7 +14,8 @@
 // `dump_pulse` at the start of every tick (crates/og-runtime/src/polish.rs: time
 // scale, hit stop, trauma, floating texts, tweens, particles, voices by
 // bus, named entities, UI bounds, step and render times). The run's audio
-// is captured to a WAV. The playtest's checks do not run: `og test` does
+// is captured to a WAV. Each dump_ui is joined by og ui check's reading of
+// the same frame (ui-check.ts), whose rules join the findings. The playtest's checks do not run: `og test` does
 // that. What is measured, and the thresholds, are og-build §5 (the
 // knowledge package's skills); each finding's fix names a skill section.
 // Without a renderer (tier `none`) the screenshots are frames unchecked: the
@@ -30,6 +31,7 @@ import { openAudio } from "./audio.ts";
 import { nativePlatform } from "./platform.ts";
 import { decodePng, encodePng, half, type Image } from "./png.ts";
 import { createEngine, type Engine, type GameToken } from "../runtime.ts";
+import { checkFrame, median, mergeFindings, pct, textBoxes, type TextBox, type UiDump, type UiFinding, type UiFrameSnapshot } from "./ui-check.ts";
 import type { PlaytestDesc } from "../playtest.ts";
 
 declare const Bun: {
@@ -74,15 +76,6 @@ export interface Pulse {
   renderMs: number;
 }
 
-interface UiDump {
-  tick: number;
-  /** The surface the CSS-pixel bounds are on (dpr: device pixels per CSS pixel). */
-  surface?: { width: number; height: number; dpr: number } | null;
-  /** The configured UI style's name: "" is the engine's placeholder, prototype. */
-  style?: string | null;
-  elements: Array<{ id: string; parent: string; kind?: string; disabled?: boolean; clipped?: boolean; text: string; x: number; y: number; width: number; height: number }>;
-}
-
 /** What `--one` writes as run.json. */
 interface RunRecord {
   playtest: string;
@@ -96,7 +89,7 @@ interface RunRecord {
   /** Facts by tick, where they changed. */
   facts: Array<{ tick: number; facts: unknown }>;
   inputs: Array<{ step: string; action: string; tick: number }>;
-  shots: Array<{ name: string; file: string; tick: number; ui: string | null }>;
+  shots: Array<{ name: string; file: string; tick: number; ui: string | null; frame: string | null }>;
   wav: string;
   warnings: string[];
 }
@@ -186,6 +179,9 @@ async function runOne(file: string, entry: string, root: string, out: string): P
         }
         writeFileSync(join(out, o.file), o.data);
         uiDumps.set(o.file, o.file);
+        // og ui check's reading of the same frame (docs/ui.md §16.5).
+        const frame = extras.og_node_ui_frame(engine.id);
+        if (!frame.startsWith('{"error"')) writeFileSync(join(out, o.file.replace(/\.json$/, ".frame.json")), frame);
       } else if (o.kind === "png") {
         const path = join(out, "frames", basename(o.file));
         mkdirSync(dirname(path), { recursive: true });
@@ -245,7 +241,8 @@ async function runOne(file: string, entry: string, root: string, out: string): P
     inputs: inputSteps.map((s) => ({ step: s.step, action: s.action, tick: markers.get(s.marker) ?? -1 })),
     shots: shotSteps.map((s) => {
       const shot = shotsByName.get(s.name);
-      return { name: s.name, file: shot?.file ?? "", tick: shot?.tick ?? -1, ui: uiDumps.has(s.ui) ? join(out, s.ui) : null };
+      const frame = join(out, s.ui.replace(/\.json$/, ".frame.json"));
+      return { name: s.name, file: shot?.file ?? "", tick: shot?.tick ?? -1, ui: uiDumps.has(s.ui) ? join(out, s.ui) : null, frame: existsSync(frame) ? frame : null };
     }),
     wav,
     warnings,
@@ -258,93 +255,9 @@ async function runOne(file: string, entry: string, root: string, out: string): P
 
 const BUS = { master: 0, music: 1, sfx: 2, ui: 3 };
 
-/** Relative luminance (WCAG) of an sRGB byte triple. */
-function luminance(r: number, g: number, b: number): number {
-  const c = (v: number) => {
-    const s = v / 255;
-    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * c(r) + 0.7152 * c(g) + 0.0722 * c(b);
-}
-
-const median = (xs: number[]) => {
-  if (xs.length === 0) return 0;
-  const s = [...xs].sort((a, b) => a - b);
-  return s[Math.floor(s.length / 2)]!;
-};
-const pct = (xs: number[], p: number) => {
-  if (xs.length === 0) return 0;
-  const s = [...xs].sort((a, b) => a - b);
-  return s[Math.min(s.length - 1, Math.floor(p * s.length))]!;
-};
 const r2 = (x: number) => Math.round(x * 100) / 100;
 /** 100 at or under `good`, 0 at or over `bad`, linear between. */
 const band = (x: number, good: number, bad: number) => Math.round(100 * Math.max(0, Math.min(1, (bad - x) / (bad - good))));
-
-interface TextBox {
-  id: string;
-  text: string;
-  contrast: number;
-  /** The tallest run of ink rows, px: a line's ascenders to its descenders. */
-  ink: number;
-}
-
-/** Kinds that show a picture, whose `text` is the picture's name (`heart`, `coin`), not words. */
-const PICTURES = new Set(["icon", "image"]);
-
-/**
- * Whether an element's text is read as text: not a picture (og-ui reports
- * an icon's name as its text), not cut by a scroll container (a sliver of a
- * line is no measure of it) and not a disabled control or inside one (WCAG
- * exempts inactive controls from contrast). The dump names each element's
- * `kind`, `clipped` and `disabled`.
- */
-function readsAsText(e: UiDump["elements"][number], byId: Map<string, UiDump["elements"][number]>): boolean {
-  if (PICTURES.has(e.kind ?? "") || e.clipped) return false;
-  for (let at: UiDump["elements"][number] | undefined = e, n = 0; at && n < 64; at = at.parent ? byId.get(at.parent) : undefined, n++) {
-    if (at.disabled) return false;
-  }
-  return true;
-}
-
-/**
- * The text elements of a frame: the contrast between ink and ground, and the
- * height of the ink's lines. Inside the element's rectangle (inset from its
- * rounded ends), the ground is the median luminance. The ink is measured
- * over the text's own glyphs, not the rectangle: the glyph pixels are those
- * at least half-way from the ground to the strongest ink (nearer the text's
- * colour than the ground's), and the ink is the mean of the farthest
- * twentieth of them, the glyph cores the eye reads (for a line of text
- * that fills its rectangle, what its 1 % farthest pixels read); so a short word in a wide label
- * (kestrel-stair FINDINGS #20: "You" on a 356 px row) reads what its
- * letters show, not its antialiased edges diluted by the empty rest. A
- * rectangle with no ink is not drawn (covered by a transition, faded out)
- * and is left out.
- */
-/**
- * What a dialog's or a tutorial's scrim covers: the elements built before the
- * topmost `modal` or `spotlight` layer and outside it, dimmed on purpose
- * (what shows through a spotlight's `hole` is not).
- */
-function behindScrim(ui: UiDump): Set<number> {
-  const out = new Set<number>();
-  const els = ui.elements;
-  let d = -1;
-  for (let i = 0; i < els.length; i++) if (els[i]!.kind === "modal" || els[i]!.kind === "spotlight") d = i;
-  if (d < 0) return out;
-  const byId = new Map(els.map((e) => [e.id, e]));
-  const inside = (e: UiDump["elements"][number]) => {
-    for (let at: UiDump["elements"][number] | undefined = e, n = 0; at && n < 64; at = at.parent ? byId.get(at.parent) : undefined, n++) if (at === els[d]) return true;
-    return false;
-  };
-  const holes = els.filter((e) => e.kind === "hole" && inside(e));
-  for (let i = 0; i < d; i++) {
-    const e = els[i]!;
-    const cx = e.x + e.width / 2, cy = e.y + e.height / 2;
-    if (!holes.some((h) => cx >= h.x && cx <= h.x + h.width && cy >= h.y && cy <= h.y + h.height)) out.add(i);
-  }
-  return out;
-}
 
 /**
  * What is mid-transition in a shot: an element whose bounds (CSS px) are not
@@ -358,75 +271,6 @@ function inMotion(ui: UiDump, before: Pulse | undefined, after: Pulse | undefine
   const still = (p: Pulse | undefined, e: UiDump["elements"][number]) =>
     !p || p.ui.some((u) => u[0] === e.id && Math.abs(u[1] - e.x) < 0.5 && Math.abs(u[2] - e.y) < 0.5 && Math.abs(u[3] - e.width) < 0.5 && Math.abs(u[4] - e.height) < 0.5);
   for (const [n, e] of ui.elements.entries()) if (!still(before, e) || !still(after, e)) out.add(n);
-  return out;
-}
-
-function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set()): TextBox[] {
-  const out: TextBox[] = [];
-  const byId = new Map(ui.elements.map((e) => [e.id, e]));
-  const dimmed = behindScrim(ui);
-  for (const [n, e] of ui.elements.entries()) {
-    if (dimmed.has(n) || moving.has(n) || !/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId) || e.width < 6 || e.height < 6) continue;
-    // A pill's rounded ends show what is behind it: inset a wide element's ends.
-    const ix = e.width > 3 * e.height ? Math.min(e.height / 2, 12) : 0, iy = e.height * 0.12;
-    const x0 = Math.max(0, Math.floor(e.x + ix)), y0 = Math.max(0, Math.floor(e.y + iy));
-    const x1 = Math.min(img.width, Math.ceil(e.x + e.width - ix)), y1 = Math.min(img.height, Math.ceil(e.y + e.height - iy));
-    if (x1 - x0 < 3 || y1 - y0 < 3) continue;
-    const w = x1 - x0;
-    const lum: number[] = [];
-    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-      const i = (y * img.width + x) * 4;
-      lum.push(luminance(img.rgba[i]!, img.rgba[i + 1]!, img.rgba[i + 2]!));
-    }
-    const ground = median(lum);
-    const dev = lum.map((v) => Math.abs(v - ground));
-    // The strongest ink (a few pixels short of the very farthest, so one
-    // stray pixel does not set it), then the glyphs: every pixel at least
-    // half-way to it, on the side most of them are.
-    const peak = pct(dev, 0.998);
-    if (peak < 0.01) continue;
-    let up = 0, down = 0;
-    for (let k = 0; k < lum.length; k++) {
-      if (dev[k]! < peak / 2) continue;
-      if (lum[k]! > ground) up++;
-      else down++;
-    }
-    const light = up >= down;
-    const glyphs: number[] = [];
-    for (let k = 0; k < lum.length; k++) if (dev[k]! >= peak / 2 && (lum[k]! > ground) === light) glyphs.push(dev[k]!);
-    // Their cores: the farthest twentieth (what the 1 % farthest of a
-    // rectangle a line of text fills reads, the measure before glyphs).
-    const core = pct(glyphs, 0.95);
-    let sum = 0, cores = 0;
-    for (let k = 0; k < lum.length; k++) {
-      if (dev[k]! >= core && dev[k]! >= peak / 2 && (lum[k]! > ground) === light) {
-        sum += lum[k]!;
-        cores++;
-      }
-    }
-    const ink = sum / Math.max(1, cores);
-    // The ink's rows, as before for a text that fills its rectangle; a
-    // sparse one's from its glyphs.
-    const far = Math.max(pct(dev, 0.99), peak / 2);
-    const contrast = (Math.max(ink, ground) + 0.05) / (Math.min(ink, ground) + 0.05);
-    const rows: boolean[] = [];
-    for (let y = 0; y < y1 - y0; y++) {
-      let any = false;
-      for (let x = 0; x < w && !any; x++) any = dev[y * w + x]! >= far / 4 && (lum[y * w + x]! > ground) === light;
-      rows.push(any);
-    }
-    const runs: number[] = [];
-    let run = 0;
-    // A run of ink rows, bridging one-row gaps (thin strokes between a glyph's bars).
-    for (let y = 0; y <= rows.length; y++) {
-      if (rows[y] || (rows[y - 1] && rows[y + 1])) run++;
-      else if (run > 0) {
-        runs.push(run);
-        run = 0;
-      }
-    }
-    out.push({ id: e.id, text: e.text, contrast: r2(contrast), ink: Math.max(0, ...runs.filter((h) => h >= 2)) });
-  }
   return out;
 }
 
@@ -620,6 +464,8 @@ interface PlaytestMeasures {
   /** The screenshots taken without a renderer: frames unchecked (contrast, text size and HUD read frames). */
   unchecked: number;
   audio: ReturnType<typeof audioStats>;
+  /** og ui check over the frames' UI (docs/ui.md §16.5): frames read, findings (errors) after merging. */
+  uiCheck: { frames: number; findings: number; errors: number };
   warnings: string[];
 }
 
@@ -679,6 +525,20 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
   for (const w of smallest.filter((w) => w.ink < 9)) findings.push({ measure: "text size", where: `${rec.playtest} ${w.shot}: \`${w.id}\` "${w.text}"`, detail: `ink lines ${w.ink} CSS px tall (a 13 px face's capitals and digits are about 9)`, fix: "og-taste §4 and §10.6: use the ramp's body step or larger for anything read on a phone" });
   if (gameplayShots > 0 && (worstShare > 15 || worstCentre > 5))
     findings.push({ measure: "HUD occupancy", where: `${rec.playtest}`, detail: `the HUD covers up to ${worstShare} % of the surface and ${worstCentre} % of the central third`, fix: "og-taste §2 (the play surface is the hero; HUD weight): HUD boxes in the corners, the centre third free" });
+
+  // og ui check's rules on each frame (docs/ui.md §16.5); contrast and
+  // text size are the measures above, so the checker leaves them out.
+  const uiFindings: UiFinding[] = [];
+  let uiFrames = 0;
+  for (const shot of rec.shots) {
+    if (!shot.frame || !existsSync(shot.frame)) continue;
+    const f = JSON.parse(readFileSync(shot.frame, "utf8")) as UiFrameSnapshot;
+    if (f.elements.length === 0) continue;
+    uiFrames++;
+    uiFindings.push(...checkFrame(f, { screen: `${rec.playtest} ${shot.name}`, breakpoint: f.viewport.breakpoint, locale: "", style: f.style, scale: 100, highContrast: f.viewport.highContrast }, { skip: ["contrast", "text-size"] }));
+  }
+  const uiMerged = mergeFindings(uiFindings);
+  for (const u of uiMerged) findings.push({ measure: `ui check: ${u.rule}`, where: `${u.cells.slice(0, 3).join("; ")}: ${u.paths.map((p) => `\`${p}\``).join(" × ")}`, detail: `${u.measured} (limit ${u.limit})`, fix: `change ${u.prop}: ${u.fix}` });
 
   // UI motion, transitions and sounds.
   let screenChanges = 0, withMotion = 0, motionTicks = 0;
@@ -832,6 +692,7 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
       frame,
       unchecked: rendered ? 0 : rec.shots.length,
       audio,
+      uiCheck: { frames: uiFrames, findings: uiMerged.length, errors: uiMerged.filter((u) => u.severity === "error").length },
       warnings: rec.warnings,
     },
     findings,
@@ -945,6 +806,7 @@ function markdown(project: string, ms: PlaytestMeasures[], sc: Scores, findings:
     L.push(`| Particles | peak ${m.particles.peakSystems} system(s), ${m.particles.bursts} burst(s) |`);
     if (m.frame.rendered) L.push(`| Frame (${m.frame.tier}) | step ${m.frame.stepMedianMs} ms median, ${m.frame.stepP95Ms} p95; render ${m.frame.renderMedianMs} median, ${m.frame.renderP95Ms} p95; frame p95 ${m.frame.frameP95Ms}, max ${m.frame.frameMaxMs} |`);
     else L.push(`| Frame (no renderer) | step ${m.frame.stepMedianMs} ms median, ${m.frame.stepP95Ms} p95; no renderer: render and frame time not measured; ${m.unchecked} frame(s) unchecked |`);
+    L.push(`| UI check | ${m.uiCheck.frames} frame(s), ${m.uiCheck.findings} finding(s), ${m.uiCheck.errors} error(s) (og ui check's rules; contrast and text size above) |`);
     L.push(`| Audio | ${m.audio.seconds} s, peak ${m.audio.peak}, RMS ${m.audio.rms}, ${m.audio.clipped} clipped, ${m.audio.silentShare} % silent ticks |`, "");
     const framed = m.shots.filter((s) => s.frame);
     for (const s of framed) L.push(`![${m.playtest} ${s.name}](${s.frame}) `);

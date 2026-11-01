@@ -226,6 +226,9 @@ function drain(): void {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, o.kind === "png" || o.kind === "wav" ? decode(o.data) : o.data);
     outputs.push(path);
+    // `dump_ui:<name>.uicheck.json`: og ui check's reading of the same frame
+    // beside it, `<name>.uiframe.json` (checkUi in a playtest reads it).
+    if (o.action === "dump_ui" && path.endsWith(".uicheck.json")) writeFileSync(path.replace(/\.uicheck\.json$/, ".uiframe.json"), extras.og_node_ui_frame(engine.id));
     if (!asJson) process.stdout.write(`tick ${o.tick} ${o.action}: wrote ${path}\n`);
   }
   for (const l of engine.takeLog()) {

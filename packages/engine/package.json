@@ -30,7 +30,8 @@
     "./runtime": "./src/runtime.ts",
     "./bindings.json": "./types/bindings.json",
     "./schema.json": "./schema/api.schema.json",
-    "./playtest": "./src/playtest.ts"
+    "./playtest": "./src/playtest.ts",
+    "./ui-check": "./src/node/ui-check.ts"
   },
   "bin": {
     "og": "./bin/og.mjs"
