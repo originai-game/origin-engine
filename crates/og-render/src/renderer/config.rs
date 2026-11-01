@@ -37,6 +37,9 @@ pub enum RenderError {
     InvalidData(String),
     /// The frame's render graph did not compile (a cycle, a missing target).
     Graph(String),
+    /// The GPU device was lost (`Renderer::lost`): no frame draws on this
+    /// renderer again; make a new one with `Renderer::recreate`.
+    DeviceLost(String),
 }
 
 impl std::fmt::Display for RenderError {
@@ -50,6 +53,7 @@ impl std::fmt::Display for RenderError {
             RenderError::Unsupported(m) => write!(f, "unsupported: {m}"),
             RenderError::InvalidData(m) => write!(f, "invalid data: {m}"),
             RenderError::Graph(m) => write!(f, "{m}"),
+            RenderError::DeviceLost(m) => write!(f, "the GPU device was lost ({m})"),
         }
     }
 }

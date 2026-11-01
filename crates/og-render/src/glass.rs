@@ -83,6 +83,15 @@ pub(crate) struct GlassTargets {
     down_groups: Vec<wgpu::BindGroup>,
 }
 
+impl GlassTargets {
+    /// GPU bytes of its source, pyramid and copy.
+    pub(crate) fn bytes(&self) -> u64 {
+        crate::renderer::texture_bytes(&self.source)
+            + crate::renderer::texture_bytes(&self.behind)
+            + crate::renderer::view_bytes(&self.pyramid_view)
+    }
+}
+
 impl GlassPasses {
     /// Makes one of its pipelines no frame used yet (Renderer::warm).
     pub(crate) fn warm(&self) -> bool {

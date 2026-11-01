@@ -203,12 +203,14 @@ impl Renderer {
                 view: self.upload_texture(texture, encoder),
                 format: TextureFormat::Rgba8,
                 bytes: rgba_texture_bytes(texture),
+                target: false,
             },
             TextureSource::Encoded(upload) => self.upload_encoded(upload),
             TextureSource::Target(t) => GpuTexture {
                 view: targets::create(&self.device, *t).create_view(&Default::default()),
                 format: TextureFormat::Rgba8,
                 bytes: t.bytes(),
+                target: true,
             },
         }
     }
@@ -293,6 +295,7 @@ impl Renderer {
             view: texture.create_view(&Default::default()),
             format: desc.format,
             bytes: upload.levels.iter().map(|l| l.len() as u64).sum(),
+            target: false,
         }
     }
 

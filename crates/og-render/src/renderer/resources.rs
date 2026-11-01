@@ -179,6 +179,9 @@ pub(crate) struct GpuTexture {
     pub(crate) format: TextureFormat,
     /// Bytes allocated, every level.
     pub(crate) bytes: u64,
+    /// A render target's ([`TextureSource::Target`]): counted with the
+    /// render targets in [`crate::GpuMemory`].
+    pub(crate) target: bool,
 }
 
 /// What an RGBA8 texture allocates on the GPU, every level.

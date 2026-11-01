@@ -64,6 +64,7 @@ pub use renderer::*;
 
 mod area;
 mod atmosphere;
+mod auto_quality;
 mod blue_noise;
 mod capture;
 mod clusters;
@@ -157,6 +158,7 @@ pub mod shared_frames;
 
 pub use area::{CookieLayers, LightCookie, MAX_COOKIE_LAYERS, RECT_SHADOW_FOV, cookie_layers};
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
+pub use auto_quality::{AutoQuality, AutoQualityBounds, FrameSample};
 pub use capture::{CAPTURE_TIMEOUT, CaptureRequest, png, png_best};
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS};
 pub use custom::{FULL_SHADER_ENTRIES, example as example_full_shader};
@@ -246,6 +248,13 @@ pub struct Renderer {
     device: wgpu::Device,
     queue: wgpu::Queue,
     info: RenderInfo,
+    /// What it was made with, for [`Renderer::recreate`].
+    desc: RenderDesc,
+    /// The scene's size as a fraction of the output's
+    /// ([`Renderer::set_render_scale`]).
+    render_scale: f32,
+    /// Set once the device is lost ([`Renderer::lost`]).
+    lost: renderer::LostFlag,
     /// The size the scene is drawn at: the output's, or the stylisation's
     /// logical pixel grid ([`Stylise::pixel`](crate::Stylise::pixel)),
     /// scaled up to the output by the last post pass.

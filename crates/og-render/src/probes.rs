@@ -344,6 +344,33 @@ pub(crate) struct Probes {
 }
 
 impl Probes {
+    /// GPU bytes of the probes' faces and their capture targets.
+    pub(crate) fn bytes(&self) -> u64 {
+        use crate::renderer::{texture_bytes, view_bytes};
+        let slots: u64 = self
+            .slots
+            .iter()
+            .map(|s| {
+                texture_bytes(&s.capture)
+                    + s.msaa.as_ref().map_or(0, view_bytes)
+                    + view_bytes(&s.depth)
+            })
+            .sum();
+        let targets: u64 = self
+            .targets
+            .iter()
+            .map(|t| {
+                let p = &t.prepass;
+                [&p.gbuffer, &p.lindepth, &p.outline, &p.depth]
+                    .into_iter()
+                    .map(view_bytes)
+                    .sum::<u64>()
+                    + t.copy.as_ref().map_or(0, view_bytes)
+            })
+            .sum();
+        slots + targets
+    }
+
     /// The frame's probes: slots made for new ones (and remade for a new
     /// face size or sample count), dropped for those gone, and the
     /// captures due at `tick`. `baked` tells whether a baked probe's

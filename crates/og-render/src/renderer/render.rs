@@ -52,6 +52,9 @@ impl Renderer {
         scene: &RenderScene,
         target: &RenderTarget,
     ) -> Result<FrameStats, RenderError> {
+        if let Some(reason) = self.lost() {
+            return Err(RenderError::DeviceLost(reason));
+        }
         if let Some(stale) = scene.stale_handle() {
             return Err(RenderError::InvalidHandle(stale));
         }

@@ -172,13 +172,16 @@ impl Renderer {
         self.lightmaps.forget_pipelines();
     }
 
-    /// The size the scene is drawn at this frame: the output's, or the
-    /// stylisation's logical grid ([`PixelScale::fit`]), with the
-    /// whole-number upscale and the scaled frame's offset in the output.
+    /// The size the scene is drawn at this frame: the output's, the
+    /// output's at the render scale ([`Renderer::set_render_scale`]), or
+    /// the stylisation's logical grid ([`PixelScale::fit`]), with the
+    /// whole-number upscale (0: the render scale's, filling the output
+    /// bilinearly) and the scaled frame's offset in the output.
     pub(crate) fn pixel_grid(&self, pixel: Option<PixelScale>) -> ((u32, u32), u32, (u32, u32)) {
         let out = (self.out_width, self.out_height);
         let Some(p) = pixel.filter(|p| p.height > 0) else {
-            return (out, 1, (0, 0));
+            let scaled = render_scaled(out, self.render_scale, self.info.max_texture_size);
+            return (scaled, u32::from(scaled == out), (0, 0));
         };
         let f = p.fit(out);
         ((f.width, f.height), f.upscale, f.offset)
@@ -196,5 +199,29 @@ impl Renderer {
             .resize_history(&self.device, width, height, self.info.antialias);
         self.graph.invalidate();
         self.taa_history = None;
+    }
+}
+
+/// The output's size at render scale `scale`, each side within 1 and `max`.
+fn render_scaled(out: (u32, u32), scale: f32, max: u32) -> (u32, u32) {
+    if scale == 1.0 {
+        return out;
+    }
+    let side = |n: u32| ((n as f32 * scale).round() as u32).clamp(1, max.max(1));
+    (side(out.0), side(out.1))
+}
+
+#[cfg(test)]
+mod tests {
+    /// A fractional scale rounds each side on its own (the aspect is kept
+    /// to a pixel), never reaches 0, and never passes the device's largest
+    /// texture; scale 1 is the output exactly.
+    #[test]
+    fn the_scaled_scene_rounds_each_side_within_the_device() {
+        assert_eq!(super::render_scaled((1920, 1080), 1.0, 8192), (1920, 1080));
+        assert_eq!(super::render_scaled((1920, 1080), 0.5, 8192), (960, 540));
+        assert_eq!(super::render_scaled((1179, 2556), 0.7, 8192), (825, 1789));
+        assert_eq!(super::render_scaled((1, 1), 0.5, 8192), (1, 1));
+        assert_eq!(super::render_scaled((5000, 3000), 2.0, 8192), (8192, 6000));
     }
 }

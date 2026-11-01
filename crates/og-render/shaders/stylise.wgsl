@@ -19,12 +19,14 @@
 //             by an ordered (Bayer), blue-noise or interleaved-gradient
 //             dither;
 //   upscale   the logical frame scaled up by a whole number with nearest
-//             filtering, centred in the output with the background round it.
+//             filtering, centred in the output with the background round it;
+//             or the render scale's frame (Renderer::set_render_scale)
+//             filling the output, bilinear.
 //
 // Prepended by fullscreen.wgsl. Every pass binds the same layout.
 struct Stylise {
   screen: vec4<f32>,          // logical w, h, 1/w, 1/h
-  output: vec4<f32>,          // output w, h, the whole-number upscale, 0
+  output: vec4<f32>,          // output w, h, the whole-number upscale (0: the render scale's, bilinear), 0
   offset: vec4<f32>,          // xy: where the scaled frame starts in the output, z: 1 with a canvas, w: palette colours
   background: vec4<f32>,      // the display colour round the frame (linear)
   quantize: vec4<f32>,        // x: tones per channel (0: none), y: dither (0 none, 2/4/8 Bayer, -1 interleaved gradient, -2 blue noise), z: strength in steps, w: cell size
@@ -782,6 +784,10 @@ fn fs_quantize_srgb(in: VsOut) -> @location(0) vec4<f32> {
 // --- upscale -------------------------------------------------------------
 
 fn upscale(in: VsOut) -> vec3<f32> {
+  // The render scale's frame (output.z 0): the whole output, bilinear.
+  if (st.output.z < 0.5) {
+    return textureSampleLevel(source, clamp_sampler, in.uv, 0.0).rgb;
+  }
   let scale = max(st.output.z, 1.0);
   let p = (in.pos.xy - st.offset.xy) / scale;
   let size = vec2<f32>(textureDimensions(source));

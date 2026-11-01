@@ -240,11 +240,11 @@ impl Renderer {
         let pipeline_disk =
             cache_dir.and_then(|dir| pipeline_cache::DiskCache::open(&device, &adapter_info, dir));
         info.pipeline_cache = pipeline_disk.is_some();
-        // No uncaptured-error handler on purpose: wgpu-core's default (native)
-        // panics on a validation error, which is how the web host
-        // ends the Worker and shows the shell's crash card and how native
-        // hosts and tests fail loudly; logging instead would leave a silently
-        // broken frame. The browser's WebGPU reports to its own console.
+        // Natively a validation error panics, as wgpu-core's default
+        // handler does (LostFlag::watch keeps that until the device is
+        // lost), which is how native hosts and tests fail loudly; logging
+        // instead would leave a silently broken frame. The browser's
+        // WebGPU reports to its own console.
         let max = device.limits().max_texture_dimension_2d;
         let mut surface = surface;
         if let Some((surface, config)) = &mut surface {
@@ -812,10 +812,14 @@ impl Renderer {
             offscreen_linear.or(surface_linear),
         );
 
+        let lost = LostFlag::watch(&device);
         Ok(Renderer {
             device,
             queue,
             info,
+            desc: *desc,
+            render_scale: 1.0,
+            lost,
             width,
             height,
             out_width: width,

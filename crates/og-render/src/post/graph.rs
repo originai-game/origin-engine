@@ -40,6 +40,14 @@ pub(crate) struct FrameGraph {
 }
 
 impl FrameGraph {
+    /// GPU bytes of the targets realized for the current plan.
+    pub fn target_bytes(&self) -> u64 {
+        self.pool
+            .iter()
+            .map(|(_, v)| crate::renderer::view_bytes(v))
+            .sum()
+    }
+
     /// Forgets everything size-dependent (on resize).
     pub fn invalidate(&mut self) {
         let generation = self.generation + 1;

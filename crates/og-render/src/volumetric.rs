@@ -235,6 +235,15 @@ pub(crate) fn source(froxel: bool) -> String {
 }
 
 impl Volumetric {
+    /// GPU bytes of the froxel volumes, when made.
+    pub(crate) fn bytes(&self) -> u64 {
+        self.froxels.as_ref().map_or(0, |f| {
+            crate::renderer::view_bytes(&f.scatter) + crate::renderer::view_bytes(&f.sum)
+        })
+    }
+}
+
+impl Volumetric {
     pub fn new(device: &wgpu::Device, method: VolumetricMethod) -> Volumetric {
         let froxel = method == VolumetricMethod::Froxel;
         let fragment = wgpu::ShaderStages::FRAGMENT;

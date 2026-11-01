@@ -135,6 +135,16 @@ pub struct IblGenerator {
 }
 
 impl IblGenerator {
+    /// GPU bytes of its cubes.
+    pub(crate) fn bytes(&self) -> u64 {
+        self._textures
+            .iter()
+            .map(crate::renderer::texture_bytes)
+            .sum()
+    }
+}
+
+impl IblGenerator {
     pub fn new(device: &wgpu::Device) -> IblGenerator {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ibl"),
