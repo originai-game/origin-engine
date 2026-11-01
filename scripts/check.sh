@@ -89,10 +89,10 @@ crates/og-host-web/src/generated crates/og-host-node/src/generated packages/know
 rule_conformance() {
   echo "packages/engine templates examples crates/og-cli/src/check.rs scripts/tsrs-diff.sh scripts/tsrs-corpus scripts/install-tools.sh scripts/lib.sh"
 }
-# ui-styles: og (og-cli and everything it links), the kit and the
+# ui-styles: og and the addon it loads (og-cli, og-host-node, packages/engine), the kit and the
 # built-in styles its sheets draw, and og-ui's references.
 rule_ui_styles() {
-  echo "$(og_crate_dirs -p og-cli -e normal,build | og_words) templates/ui-kit templates/styles crates/og-ui/references $RULE_COMMON"
+  echo "$(og_crate_dirs -p og-cli -p og-host-node -e normal,build | og_words) packages/engine templates/ui-kit templates/styles crates/og-ui/references $RULE_COMMON"
 }
 rule_web() {
   echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) packages/engine templates/fx-showcase templates/looks templates/ui-kit templates/styles templates/archetypes/third-person examples/brasswick examples/meridian-loop $RULE_COMMON"
@@ -547,7 +547,9 @@ step_bun_test() {
 # playtests report their frames unchecked. Path-aware (rule_ui_styles).
 step_ui_styles() {
   if skip_unchanged ui-styles "ui-styles" "$(rule_ui_styles)"; then return $SKIP; fi
-  cargo build -q -p og-cli || return 1
+  # og test loads packages/engine/native's addon (else the npm one, an
+  # older engine): build the dev addon and og there first.
+  OG_GATE=1 sh packages/engine/scripts/build.sh --native || return 1
   "$OG_TARGET_DIR/debug/og" test templates/ui-kit --filter tests/style-
 }
 

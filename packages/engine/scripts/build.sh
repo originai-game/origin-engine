@@ -18,6 +18,8 @@
 #                                           2.31, from macOS or Linux; on a Linux
 #                                           x86_64 host that is the only native
 #                                           build); always release
+#   OG_GATE=1 sh scripts/build.sh --native  the dev addon and og only (the gate's
+#                                           ui-styles step, which runs og test)
 #   OG_RELEASE=1 sh scripts/build.sh --native [--linux-x64]
 #                                           the native addon and og only, no wasm:
 #                                           what a platform's job of the release
@@ -57,8 +59,8 @@ for a in "$@"; do
     *) echo "build.sh: unknown argument '$a' (takes --native and --linux-x64)" >&2; exit 2 ;;
   esac
 done
-if [ "$native_only" = 1 ] && [ "${OG_RELEASE:-}" != 1 ]; then
-  echo "build.sh: --native is a release build: OG_RELEASE=1 sh scripts/build.sh --native" >&2
+if [ "$native_only" = 1 ] && [ "${OG_RELEASE:-}" != 1 ] && [ "${OG_GATE:-}" != 1 ]; then
+  echo "build.sh: --native is a release build (OG_RELEASE=1 sh scripts/build.sh --native), or the gate's dev addon and og (OG_GATE=1)" >&2
   exit 2
 fi
 # A release ships only the wasm-opt output the size gate measures: without
