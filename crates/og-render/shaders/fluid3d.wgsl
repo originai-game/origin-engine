@@ -125,13 +125,26 @@ fn depth_at(px: vec2<i32>) -> f32 {
   return textureLoad(fluid_depth, clamp(px, vec2<i32>(0), size - vec2<i32>(1)), 0).r;
 }
 
-// The surface's tangent along `step` (a pixel offset): the side whose
-// depth differs least, so silhouettes keep their own slope.
+// The surface's tangent along `step` (a pixel offset): the two one-sided
+// differences weighted towards the side whose depth differs less, so
+// silhouettes keep their own slope. The weight is continuous: where both
+// sides differ alike (anywhere the surface is smooth) they count half each,
+// and a last-bit difference in depth moves the normal by as little. Taking
+// the lesser side outright flipped there between GPUs, and the specular
+// drew the flips as stripes over the whole body.
 fn tangent(px: vec2<i32>, p: vec3<f32>, d: f32, step: vec2<i32>) -> vec3<f32> {
   let df = depth_at(px + step);
   let db = depth_at(px - step);
   let pc = vec2<f32>(px) + vec2<f32>(0.5);
-  if (abs(df - d) <= abs(db - d) && df < NONE) {
+  if (df < NONE && db < NONE) {
+    let ef = (df - d) * (df - d);
+    let eb = (db - d) * (db - d);
+    let w = select(0.5, eb / (ef + eb), ef + eb > 0.0);
+    let forward = world_at(pc + vec2<f32>(step), df) - p;
+    let back = p - world_at(pc - vec2<f32>(step), db);
+    return mix(back, forward, w);
+  }
+  if (df < NONE) {
     return world_at(pc + vec2<f32>(step), df) - p;
   }
   if (db < NONE) {
