@@ -7432,7 +7432,7 @@ module ui {
     field pathY f32 "Its offset, down." {
       unit rad
     }
-    field color Option.Paint "The HUD's ink; null is a bright phosphor green."
+    field color Option.Paint "The HUD's ink; null is the style's primary, lifted toward white."
     field fov f32 "The vertical field of view the ladder spans (degrees of pitch per screen); 0 is 40°." {
       min 0
       unit rad
@@ -7443,8 +7443,8 @@ module ui {
   }
 
   fn flightHud {
-    doc "A flight HUD to the bar of Ace Combat and DCS: a pitch ladder of rungs every 5° (dashed below the horizon, numbered at both ends) turning with roll about the boresight, the horizon line, the waterline mark, a flight path marker, a heading tape across the top, speed and altitude tapes with their boxes on either side and the climb rate, all in one phosphor ink with a dark outline."
-    doc "Parts: FlightHud.ladder, FlightHud.rung[up|down|horizon], FlightHud.waterline, FlightHud.path, FlightHud.heading, FlightHud.speed, FlightHud.altitude, FlightHud.box. Accessibility: group named Flight; the speed, altitude and heading boxes text. Probe ids: <id>, <id>/SpeedBox, <id>/AltitudeBox, <id>/HeadingBox (each a text whose value is the reading)."
+    doc "A flight HUD to the bar of Ace Combat and DCS: a pitch ladder of few rungs (every 10°, broken below the horizon, numbered in a face that reads at a glance) turning with roll about the boresight in a central window, the horizon line, the waterline and the flight path marker heaviest as the focal pair, a heading tape across the top (numbers every 30°, the cardinals by letter) fading at its ends, quiet speed and altitude tapes with large boxed readouts on either side and the climb rate, all in one ink from the style (its primary, lifted) with a dark outline. A narrow screen drops the ladder's left numbers."
+    doc "Parts: FlightHud.ladder, FlightHud.rung[up|down|horizon], FlightHud.waterline, FlightHud.path, FlightHud.heading, FlightHud.speed, FlightHud.altitude, FlightHud.box. Accessibility: group named Flight, its value the pitch, heading, speed and altitude; the speed, altitude and heading boxes text. Probe ids: <id>, <id>/SpeedBox, <id>/AltitudeBox, <id>/HeadingBox (each a text whose value is the reading)."
     host false
     param id String "Its id."
     param desc FlightHudDesc "The aircraft's state."

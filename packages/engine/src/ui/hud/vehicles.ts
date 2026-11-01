@@ -167,132 +167,158 @@ function digital(id: string, speed: number, rpm: number, red: number, unit: stri
 
 const DEG = Math.PI / 180;
 
+/**
+ * The flight HUD, read against Ace Combat 7's and DCS's head-up displays
+ * and drawn for a game screen rather than a cockpit glass: a ladder of few
+ * rungs (every 10°, numbered in a face that reads at a glance), the
+ * waterline and the flight path marker heaviest as the focal pair, quiet
+ * tapes with large boxed readouts, all in one ink from the style.
+ */
 export function flightHud(id: string, desc: Api.FlightHudDesc = {}): void {
   const f = frame();
-  const ink: Rgba = desc.color ? paintRgba(desc.color, { r: 0.3, g: 1, b: 0.5, a: 1 }) : { r: 0.3, g: 1, b: 0.5, a: 1 };
+  // The style's primary, lifted toward white so thin lines read over sky and ground.
+  const base = mix(role("primary"), { r: 1, g: 1, b: 1, a: 1 }, 0.35);
+  const ink: Rgba = desc.color ? paintRgba(desc.color, base) : base;
   const paint = lit(ink);
-  const edgeStroke = stroke(1, token("shadow", 0.75), "outside");
-  const W = Math.min(u(560), Math.round(f.viewport.width * 0.7));
-  const H = Math.min(u(420), Math.round(f.viewport.height * 0.7));
+  const quiet = lit(ink, 0.72);
+  const edgeStroke = stroke(1.5, token("shadow", 0.6), "outside");
+  const vp = f.viewport;
+  const roomW = vp.width - vp.safeArea.left - vp.safeArea.right;
+  const roomH = vp.height - vp.safeArea.top - vp.safeArea.bottom;
+  const W = Math.min(u(620), Math.round(roomW * 0.86));
+  const H = Math.min(u(440), Math.round(roomH * 0.78));
   const fovDeg = (desc.fov || 40 * DEG) / DEG;
   const ppd = H / fovDeg;
   const pitchDeg = (desc.pitch ?? 0) / DEG;
   const roll = desc.roll ?? 0;
   const c = { x: W / 2, y: H / 2 };
-  const line = (lid: string, pts: Array<[number, number]>, width = 2, part = sel("FlightHud", "line")) =>
-    leaf(lid, { width: px(W), height: px(H), part }, { shape: { kind: "path", points: pts.map(([x, y]) => ({ x, y })), width, cap: "butt", join: "miter" }, fills: [solid(paint)], strokes: [edgeStroke] }, fixed({ start: 0, top: 0 }));
-  const label = (lid: string, s: string, x: number, y: number, align: "start" | "end" | "center" = "center") => {
-    const w = u(40);
-    text(lid, s, { step: ts(11), font: "mono", color: paint, nowrap: true, width: px(w), align, outline: 0.7 }, fixed({ start: align === "end" ? x - w : align === "center" ? x - w / 2 : x, top: y - u(7) }));
+  const line = (lid: string, pts: Array<[number, number]>, width: number, ink0: Api.Paint, part: string) =>
+    leaf(lid, { width: px(W), height: px(H), part }, { shape: { kind: "path", points: pts.map(([x, y]) => ({ x, y })), width, cap: "round", join: "round" }, fills: [solid(ink0)], strokes: [edgeStroke] }, fixed({ start: 0, top: 0 }));
+  const num = (lid: string, s: string, x: number, y: number, align: "start" | "end" | "center", step: Api.TypeStepName, ink0: Api.Paint = paint, more: { opacity?: number } = {}) => {
+    const w = u(56);
+    const lh = u(22);
+    text(lid, s, { step, font: "mono", color: ink0, nowrap: true, width: px(w), align, outline: 1 }, fixed({ start: align === "end" ? x - w : align === "center" ? x - w / 2 : x, top: y - lh / 2 }, more));
   };
+  const narrow = W < u(420);
   kit.anchor(`${id}Hud`, { anchor: desc.anchor ?? "center", margin: 0 }, () => {
     box(id, { width: px(W), height: px(H), part: sel("FlightHud", "frame") }, undefined, () => {
-      // The ladder turns with roll about the boresight; the frame clips it.
-      box("Ladder", { width: pct(1), height: pct(1), part: sel("FlightHud", "ladder") }, { clip: "shape" }, () => {
+      // The ladder turns with roll about the boresight, clipped to its central window.
+      const lw = W * (narrow ? 0.62 : 0.56);
+      box("Ladder", { width: px(lw), height: px(H * 0.74), part: sel("FlightHud", "ladder") }, { clip: "shape" }, () => {
+        const lc = { x: lw / 2, y: (H * 0.74) / 2 };
         box("Rungs", { width: pct(1), height: pct(1) }, undefined, () => {
-          const lo = Math.ceil((pitchDeg - fovDeg / 2 - 5) / 5) * 5;
-          const hi = Math.floor((pitchDeg + fovDeg / 2 + 5) / 5) * 5;
-          for (let d = Math.max(-90, lo); d <= Math.min(90, hi); d += 5) {
-            const y = c.y + (pitchDeg - d) * ppd;
+          const lo = Math.ceil((pitchDeg - fovDeg / 2) / 10) * 10;
+          const hi = Math.floor((pitchDeg + fovDeg / 2) / 10) * 10;
+          const half = lw * 0.2;
+          const gap = lw * 0.1;
+          const L = (lid: string, pts: Array<[number, number]>, width: number, ink0: Api.Paint, part: string) =>
+            leaf(lid, { width: pct(1), height: pct(1), part }, { shape: { kind: "path", points: pts.map(([x, y]) => ({ x, y })), width, cap: "round", join: "round" }, fills: [solid(ink0)], strokes: [edgeStroke] }, fixed({ start: 0, top: 0 }));
+          for (let d = Math.max(-90, lo); d <= Math.min(90, hi); d += 10) {
+            const y = lc.y + (pitchDeg - d) * ppd;
             const rid = `R${d < 0 ? "m" : ""}${Math.abs(d)}`;
             if (d === 0) {
-              line(rid, [[c.x - W * 0.42, y], [c.x - W * 0.08, y]], 2, sel("FlightHud", "rung", "horizon"));
-              line(`${rid}b`, [[c.x + W * 0.08, y], [c.x + W * 0.42, y]], 2, sel("FlightHud", "rung", "horizon"));
+              // The horizon: one long line either side of a wide gap.
+              L(rid, [[0, y], [lc.x - gap, y]], 2.5, paint, sel("FlightHud", "rung", "horizon"));
+              L(`${rid}b`, [[lc.x + gap, y], [lw, y]], 2.5, paint, sel("FlightHud", "rung", "horizon"));
               continue;
             }
-            const half = W * 0.16;
-            const gap = W * 0.06;
-            const tip = d > 0 ? u(6) : -u(6);
+            const tip = d > 0 ? u(8) : -u(8);
+            const part = sel("FlightHud", "rung", d > 0 ? "up" : "down");
             if (d > 0) {
-              line(rid, [[c.x - gap - half, y], [c.x - gap, y], [c.x - gap, y + tip]], 1.5, sel("FlightHud", "rung", "up"));
-              line(`${rid}b`, [[c.x + gap + half, y], [c.x + gap, y], [c.x + gap, y + tip]], 1.5, sel("FlightHud", "rung", "up"));
+              L(rid, [[lc.x - gap - half, y], [lc.x - gap, y], [lc.x - gap, y + tip]], 2, quiet, part);
+              L(`${rid}b`, [[lc.x + gap + half, y], [lc.x + gap, y], [lc.x + gap, y + tip]], 2, quiet, part);
             } else {
-              // Below the horizon: dashed, two pieces a side, the tips pointing up to it.
-              const piece = half / 2 - u(3);
-              line(rid, [[c.x - gap - half, y], [c.x - gap - half + piece, y]], 1.5, sel("FlightHud", "rung", "down"));
-              line(`${rid}c`, [[c.x - gap - piece, y], [c.x - gap, y], [c.x - gap, y + tip]], 1.5, sel("FlightHud", "rung", "down"));
-              line(`${rid}b`, [[c.x + gap + half, y], [c.x + gap + half - piece, y]], 1.5, sel("FlightHud", "rung", "down"));
-              line(`${rid}d`, [[c.x + gap + piece, y], [c.x + gap, y], [c.x + gap, y + tip]], 1.5, sel("FlightHud", "rung", "down"));
+              // Below the horizon: broken in two a side, the tips pointing up to it.
+              const piece = half * 0.42;
+              L(rid, [[lc.x - gap - half, y], [lc.x - gap - half + piece, y]], 2, quiet, part);
+              L(`${rid}c`, [[lc.x - gap - piece, y], [lc.x - gap, y], [lc.x - gap, y + tip]], 2, quiet, part);
+              L(`${rid}b`, [[lc.x + gap + half, y], [lc.x + gap + half - piece, y]], 2, quiet, part);
+              L(`${rid}d`, [[lc.x + gap + piece, y], [lc.x + gap, y], [lc.x + gap, y + tip]], 2, quiet, part);
             }
-            label(`${rid}L`, String(Math.abs(d)), c.x - gap - half - u(4), y, "end");
-            label(`${rid}N`, String(Math.abs(d)), c.x + gap + half + u(4), y, "start");
+            if (!narrow) num(`${rid}L`, String(Math.abs(d)), lc.x - gap - half - u(6), y, "end", ts(14), quiet);
+            num(`${rid}N`, String(Math.abs(d)), lc.x + gap + half + u(6), y, "start", ts(14), quiet);
           }
         }, fixed({ start: 0, top: 0 }, { transform: { rotate: -roll, pivotX: 0.5, pivotY: 0.5 } }));
-      }, fixed({ start: 0, top: 0 }));
-      // The waterline: the aircraft's nose, fixed.
-      line("Waterline", [[c.x - u(26), c.y], [c.x - u(12), c.y], [c.x - u(6), c.y + u(7)], [c.x, c.y], [c.x + u(6), c.y + u(7)], [c.x + u(12), c.y], [c.x + u(26), c.y]], 2, sel("FlightHud", "waterline"));
+      }, fixed({ start: (W - lw) / 2, top: H * 0.13 }));
+      // The waterline: the aircraft's nose, fixed, the heaviest line.
+      const wl = u(30);
+      line("Waterline", [[c.x - wl, c.y], [c.x - u(14), c.y], [c.x - u(7), c.y + u(8)], [c.x, c.y], [c.x + u(7), c.y + u(8)], [c.x + u(14), c.y], [c.x + wl, c.y]], 3, paint, sel("FlightHud", "waterline"));
       // The flight path marker: where the aircraft is going.
       const fx = c.x + ((desc.pathX ?? 0) / DEG) * ppd;
       const fy = c.y + ((desc.pathY ?? 0) / DEG) * ppd;
-      const fr = u(7);
-      box("Path", { width: px(fr * 2 + u(28)), height: px(fr * 2 + u(12)), part: sel("FlightHud", "path") }, undefined, () => {
-        leaf("Ring", { width: px(fr * 2), height: px(fr * 2) }, { shape: { kind: "arc", start: 0, sweep: TAU, thickness: 2, cap: "butt" }, fills: [solid(paint)], strokes: [edgeStroke] }, fixed({ start: u(14), top: u(6) }));
-        const w0 = fr * 2 + u(28);
-        leaf("Wings", { width: px(w0), height: px(fr * 2 + u(12)) }, {
-          shape: { kind: "path", points: [{ x: 0, y: u(6) + fr }, { x: u(14), y: u(6) + fr }], width: 2 },
+      const fr = u(8);
+      const pw = fr * 2 + u(32);
+      const ph = fr * 2 + u(14);
+      box("Path", { width: px(pw), height: px(ph), part: sel("FlightHud", "path") }, undefined, () => {
+        leaf("Ring", { width: px(fr * 2), height: px(fr * 2) }, { shape: { kind: "arc", start: 0, sweep: TAU, thickness: 2.5, cap: "butt" }, fills: [solid(paint)], strokes: [edgeStroke] }, fixed({ start: u(16), top: u(7) }));
+        leaf("Wings", { width: px(pw), height: px(ph) }, {
+          shape: { kind: "path", points: [{ x: 0, y: u(7) + fr }, { x: u(16), y: u(7) + fr }], width: 2.5, cap: "round" },
           fills: [solid(paint)], strokes: [edgeStroke],
         }, fixed({ start: 0, top: 0 }));
-        leaf("Wings2", { width: px(w0), height: px(fr * 2 + u(12)) }, {
-          shape: { kind: "path", points: [{ x: w0 - u(14), y: u(6) + fr }, { x: w0, y: u(6) + fr }, ], width: 2 },
+        leaf("Wings2", { width: px(pw), height: px(ph) }, {
+          shape: { kind: "path", points: [{ x: pw - u(16), y: u(7) + fr }, { x: pw, y: u(7) + fr }], width: 2.5, cap: "round" },
           fills: [solid(paint)], strokes: [edgeStroke],
         }, fixed({ start: 0, top: 0 }));
-        leaf("Fin", { width: px(w0), height: px(fr * 2 + u(12)) }, {
-          shape: { kind: "path", points: [{ x: w0 / 2, y: u(6) }, { x: w0 / 2, y: 0 }], width: 2 },
+        leaf("Fin", { width: px(pw), height: px(ph) }, {
+          shape: { kind: "path", points: [{ x: pw / 2, y: u(7) }, { x: pw / 2, y: 0 }], width: 2.5, cap: "round" },
           fills: [solid(paint)], strokes: [edgeStroke],
         }, fixed({ start: 0, top: 0 }));
-      }, fixed({ start: fx - fr - u(14), top: fy - fr - u(6) }));
-      tapes(W, H, desc, paint, edgeStroke, label);
-    }, { a11y: a11y("group", "Flight") });
+      }, fixed({ start: fx - pw / 2, top: fy - fr - u(7) }));
+      tapes(W, H, desc, paint, quiet, edgeStroke, num, narrow);
+    }, { a11y: a11y("group", "Flight", { value: `Pitch ${Math.round(pitchDeg)}°, heading ${Math.round((((desc.heading ?? 0) / DEG) % 360 + 360) % 360)}°, speed ${Math.round(desc.speed ?? 0)}, altitude ${Math.round(desc.altitude ?? 0)}` }) });
   });
 }
 
-function tapes(W: number, H: number, desc: Api.FlightHudDesc, paint: Api.Paint, edgeStroke: Api.Stroke, label: (id: string, s: string, x: number, y: number, a?: "start" | "end" | "center") => void): void {
+type Num = (id: string, s: string, x: number, y: number, a: "start" | "end" | "center", step: Api.TypeStepName, ink?: Api.Paint, more?: { opacity?: number }) => void;
+
+function tapes(W: number, H: number, desc: Api.FlightHudDesc, paint: Api.Paint, quiet: Api.Paint, edgeStroke: Api.Stroke, num: Num, narrow: boolean): void {
   const headingDeg = ((((desc.heading ?? 0) / DEG) % 360) + 360) % 360;
-  // Heading tape across the top: ticks every 5°, numbers every 10° in tens (09 is 090).
-  const tw = W * 0.5;
+  // Heading across the top: a tick every 10°, a number every 30° (N E S W at the cardinals), fading at the ends.
+  const tw = W * (narrow ? 0.6 : 0.44);
   const tx = (W - tw) / 2;
-  const ppd = tw / 40;
-  box("Heading", { width: px(tw), height: px(u(34)), part: sel("FlightHud", "heading") }, { clip: "shape" }, () => {
-    for (let d = Math.floor((headingDeg - 22) / 5) * 5; d <= headingDeg + 22; d += 5) {
+  const span = 60;
+  const ppd = tw / span;
+  const cardinal: Record<number, string> = { 0: "N", 90: "E", 180: "S", 270: "W" };
+  box("Heading", { width: px(tw), height: px(u(40)), part: sel("FlightHud", "heading") }, { clip: "shape" }, () => {
+    for (let d = Math.floor((headingDeg - span / 2) / 10) * 10; d <= headingDeg + span / 2; d += 10) {
       const x = tw / 2 + (d - headingDeg) * ppd;
-      const major = d % 10 === 0;
-      leaf(`T${d}`, { width: px(2), height: px(major ? u(8) : u(4)) }, { fills: [solid(paint)], strokes: [edgeStroke] }, fixed({ start: x - 1, top: u(18) }));
-      if (major) {
-        const v = ((d % 360) + 360) % 360;
-        label(`N${d}`, String(Math.round(v / 10)).padStart(2, "0"), x, u(8));
-      }
+      const v = ((d % 360) + 360) % 360;
+      const major = v % 30 === 0;
+      const fade = 1 - Math.abs((x - tw / 2) / (tw / 2)) ** 3;
+      leaf(`T${d}`, { width: px(2), height: px(major ? u(10) : u(5)) }, { fills: [solid(quiet)], strokes: [edgeStroke] }, fixed({ start: x - 1, top: u(28) - (major ? u(10) : u(5)) }, { opacity: clamp01(fade) }));
+      if (major) num(`N${d}`, cardinal[v] ?? String(v / 10).padStart(2, "0"), x, u(10), "center", ts(14), quiet, { opacity: clamp01(fade) });
     }
   }, fixed({ start: tx, top: 0 }));
-  readout("Heading", String(Math.round(headingDeg) % 360).padStart(3, "0"), W / 2, u(46), paint, edgeStroke, "center");
-  // Speed at the left, altitude at the right: a tape of ticks and a boxed readout at the boresight.
+  readout("Heading", String(Math.round(headingDeg) % 360).padStart(3, "0"), W / 2, u(54), paint, edgeStroke, "center");
+  // Speed at the left, altitude at the right: a quiet tape and a large boxed readout at the boresight's height.
+  const tapeW = u(64);
   const tape = (tid: "Speed" | "Altitude", value: number, unitLabel: string, x: number, step: number, side: "start" | "end") => {
-    const th = H * 0.6;
-    const per = th / (step * 8);
-    box(tid, { width: px(u(60)), height: px(th), part: sel("FlightHud", tid === "Speed" ? "speed" : "altitude") }, { clip: "shape" }, () => {
-      for (let v = Math.floor((value - step * 4) / step) * step; v <= value + step * 4; v += step / 2) {
+    const th = H * 0.56;
+    const per = th / (step * 6);
+    box(tid, { width: px(tapeW), height: px(th), part: sel("FlightHud", tid === "Speed" ? "speed" : "altitude") }, { clip: "shape" }, () => {
+      for (let v = Math.floor((value - step * 3) / step) * step; v <= value + step * 3; v += step) {
         const y = th / 2 - (v - value) * per;
-        const major = Math.abs(v / step - Math.round(v / step)) < 1e-6;
-        const tw0 = major ? u(10) : u(5);
-        leaf(`T${Math.round(v * 10)}`, { width: px(tw0), height: px(2) }, { fills: [solid(paint)], strokes: [edgeStroke] }, fixed(side === "start" ? { end: 0, top: y - 1 } : { start: 0, top: y - 1 }));
-        if (major && Math.abs(y - th / 2) > u(14)) label(`N${Math.round(v)}`, String(Math.round(v)), side === "start" ? u(60) - u(14) : u(14), y, side === "start" ? "end" : "start");
+        const fade = clamp01(1 - Math.abs((y - th / 2) / (th / 2)) ** 3);
+        leaf(`T${Math.round(v)}`, { width: px(u(10)), height: px(2) }, { fills: [solid(quiet)], strokes: [edgeStroke] }, fixed(side === "start" ? { end: 0, top: y - 1 } : { start: 0, top: y - 1 }, { opacity: fade }));
+        if (Math.abs(y - th / 2) > u(24)) num(`N${Math.round(v)}`, String(Math.round(v)), side === "start" ? tapeW - u(14) : tapeW, y, "end", ts(13), quiet, { opacity: fade });
       }
     }, fixed({ start: x, top: (H - th) / 2 }));
-    readout(tid, String(Math.round(value)), side === "start" ? x + u(60) - u(2) : x + u(2), H / 2, paint, edgeStroke, side === "start" ? "end" : "start");
-    label(`${tid}Unit`, unitLabel, side === "start" ? x + u(60) : x, (H - th) / 2 - u(10), side === "start" ? "end" : "start");
+    // The box sits over the tape at its outer edge, inside the HUD's frame.
+    readout(tid, String(Math.round(value)), side === "start" ? x : x + tapeW, H / 2, paint, edgeStroke, side === "start" ? "start" : "end");
+    num(`${tid}Unit`, unitLabel, side === "start" ? x + tapeW : x, (H - th) / 2 - u(14), side === "start" ? "end" : "start", ts(12), quiet);
   };
-  tape("Speed", desc.speed ?? 0, desc.speedUnit ?? "kt", W * 0.06, 10, "start");
-  tape("Altitude", desc.altitude ?? 0, desc.altitudeUnit ?? "ft", W * 0.94 - u(60), 100, "end");
+  tape("Speed", desc.speed ?? 0, desc.speedUnit ?? "kt", 0, 10, "start");
+  tape("Altitude", desc.altitude ?? 0, desc.altitudeUnit ?? "ft", W - tapeW, 100, "end");
   const vs = desc.verticalSpeed ?? 0;
-  if (vs !== 0) label("Climb", `${vs > 0 ? "+" : ""}${Math.round(vs)}`, W * 0.94 - u(60), H * 0.8 + u(12), "start");
+  if (vs !== 0) num("Climb", `${vs > 0 ? "+" : "-"}${Math.abs(Math.round(vs))}`, W - tapeW, H * 0.78 + u(16), "start", ts(13), quiet);
 }
 
 function readout(rid: string, value: string, x: number, y: number, paint: Api.Paint, edgeStroke: Api.Stroke, align: "start" | "end" | "center"): void {
-  const w = u(58);
-  const h = u(22);
+  const w = u(76);
+  const h = u(32);
   box(`${rid}Box`, { width: px(w), height: px(h), align: "center", cross: "center", part: sel("FlightHud", "box") }, {
-    shape: { kind: "rect", radii: [0, 0, 0, 0] },
-    fills: [solid(token("shadow", 0.55))],
-    strokes: [stroke(1.5, paint), edgeStroke],
-  }, () => text("Text", value, { step: ts(13), font: "mono", color: paint, nowrap: true }), fixed({ start: align === "end" ? x - w : align === "center" ? x - w / 2 : x, top: y - h / 2 }, { a11y: a11y("text", rid, { value }) }));
+    shape: { kind: "rect", radii: [2, 2, 2, 2] },
+    fills: [solid(token("shadow", 0.62))],
+    strokes: [stroke(2, paint), edgeStroke],
+  }, () => text("Text", value, { step: ts(20), font: "mono", color: paint, nowrap: true, outline: 1 }), fixed({ start: align === "end" ? x - w : align === "center" ? x - w / 2 : x, top: y - h / 2 }, { a11y: a11y("text", rid, { value }) }));
 }
-
