@@ -40,6 +40,17 @@ impl Ui {
         if !desc.label.is_empty() {
             self.nodes[list].a11y.name = Some(desc.label.clone());
         }
+        // What the unselected labels sit on: the track's translucent fill over
+        // the ground behind it, blended in linear light as the renderer does
+        // (the dark track reads lighter than an sRGB mix says: inkMuted was
+        // 3.95:1 on it). The muted ink moves as little as it takes to read
+        // 4.5:1 there (a hair over, for the bytes), else is the main ink.
+        let track = t.palette.control.over_linear(self.behind(list));
+        let muted = t
+            .palette
+            .ink_muted
+            .readable_on(track, 4.55)
+            .unwrap_or(t.palette.ink);
         let mut out = Response::default();
         for (k, label) in items.iter().enumerate() {
             let i = self.leaf(
@@ -78,7 +89,7 @@ impl Ui {
                     .or_else(|| p.ink.readable_on(ground, 4.5))
                     .unwrap_or(p.ink_inverse)
             } else {
-                p.ink_muted
+                muted
             };
             let mut c = self.role_text(label, crate::tokens::TypeRole::Label, ink);
             c.align = TextAlign::Center;
