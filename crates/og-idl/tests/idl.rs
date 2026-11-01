@@ -385,12 +385,12 @@ fn a_record_text_field_carries_its_capacity_into_every_output() {
         (&"string".into(), &48.into())
     );
 
-    let host = out("og-api/src/generated/host.rs");
+    let host = out("og-records/src/generated/records.rs");
     assert!(host.contains("pub capacity: u32,"), "{host}");
     let field = |name: &str| {
         let at = host
             .find(&format!("name: \"{name}\""))
-            .unwrap_or_else(|| panic!("no {name} in host.rs"));
+            .unwrap_or_else(|| panic!("no {name} in records.rs"));
         host[at..at + host[at..].find("}").unwrap()].to_string()
     };
     assert!(
@@ -477,12 +477,12 @@ fn a_record_list_field_carries_its_element_and_capacity_into_every_output() {
         (&"array".into(), &4.into())
     );
 
-    let host = out("og-api/src/generated/host.rs");
+    let host = out("og-records/src/generated/records.rs");
     assert!(host.contains("pub list: u32,"), "{host}");
     let field = |name: &str| {
         let at = host
             .find(&format!("name: \"{name}\""))
-            .unwrap_or_else(|| panic!("no {name} in host.rs"));
+            .unwrap_or_else(|| panic!("no {name} in records.rs"));
         host[at..at + host[at..].find("}").unwrap()].to_string()
     };
     assert!(

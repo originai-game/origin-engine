@@ -2,12 +2,13 @@
 
 The engine's public API, declared once in `api.ogt`, the generators that
 turn it into everything else (design §3.1), and the host-neutral runtime both
-hosts wrap. Three crates, so that an edit rebuilds only what compiles it:
+hosts wrap. Four crates, so that an edit rebuilds only what compiles it:
 
 | Crate | Holds | Depends on it |
 |---|---|---|
 | `og-idl` (`crates/og-idl`) | the IDL's model, validator and generators: `read`, `generate`, `write`, `check` | `og` (`og api gen`, `og api check`) |
-| `og-api` (this crate) | `api.ogt` and what the generators write here: `og_api::host`, the traits and record tables; no dependencies | both hosts, `og-runtime`, `og`'s cook |
+| `og-records` (`crates/og-records`) | the record and column tables (`RECORDS`, `COLUMNS` and their decl types), which `og_api::host` re-exports; no dependencies | `og-api`, `og`'s cook |
+| `og-api` (this crate) | `api.ogt` and what the generators write here: `og_api::host`, the traits; depends only on `og-records` | both hosts, `og-runtime` |
 | `og-runtime` (`crates/og-runtime`) | the host-neutral runtime the traits call (below) | both hosts |
 
 `og api gen` rewrites only a file whose bytes change, and the generated Rust
@@ -15,9 +16,11 @@ carries no IDL prose (a trait method names its TypeScript path; the docs
 live in `api.ogt`, the `.d.ts` and the wiki). So a doc-only IDL edit
 rewrites the TypeScript, schema and wiki outputs and rebuilds no crate; an
 edit to a component field's doc rewrites `RECORDS` (the runtime's
-reflection serves it; each doc is written `doc!("...")`, empty with the
-crate's `publish` feature, so a published game's wasm carries none) and
-rebuilds the hosts; a generator edit rebuilds
+reflection serves it; each doc is written `doc!("...")`, empty with
+og-records' `publish` feature, which og-api's forwards to, so a published
+game's wasm carries none) and rebuilds the hosts and the cook; an edit that
+changes the traits and not the records rebuilds the hosts and not the cook;
+a generator edit rebuilds
 `og-idl` and `og` only. There is no build script: the outputs are committed
 and `og api check` (the gate's drift step) holds them to the IDL.
 
@@ -27,6 +30,7 @@ and `og api check` (the gate's drift step) holds them to the IDL.
 | runtime binding table | `packages/engine/types/bindings.json` | the TypeScript runtime of both hosts |
 | JSON Schema + API catalog | `packages/engine/schema/api.schema.json` | the platform's knowledge package, the wiki generator |
 | host traits | `crates/og-api/src/generated/host.rs` (`og_api::host`) | `og-host-web`, `og-host-node` implement them |
+| record and column tables | `crates/og-records/src/generated/records.rs` (`og_records`, re-exported as `og_api::host::RECORDS`, `COLUMNS`, ...) | `og-runtime`'s reflection, `og`'s cook |
 | wasm-bindgen glue | `crates/og-host-web/src/generated/glue.rs` | the web host's exports |
 | napi glue | `crates/og-host-node/src/generated/glue.rs` | the native host's exports |
 | host ABI interface | `packages/engine/src/generated/abi.ts` | the TypeScript runtime (`HostAbi`, `SYMBOLS`) |

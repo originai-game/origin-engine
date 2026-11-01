@@ -108,7 +108,7 @@ rule_wasm() { echo "crates third_party $RULE_COMMON"; }
 rule_drift() {
   echo "crates/og-api $(og_crate_dirs -p og-idl -e normal,build | og_words) crates/og-cli \
 packages/engine/types packages/engine/schema packages/engine/src/generated \
-crates/og-host-web/src/generated crates/og-host-node/src/generated packages/knowledge/wiki $RULE_COMMON"
+crates/og-records/src/generated crates/og-host-web/src/generated crates/og-host-node/src/generated packages/knowledge/wiki $RULE_COMMON"
 }
 # check-conformance: what the two checkers read (the engine package, the
 # templates, the examples), the comparer, and where the pins are stated.

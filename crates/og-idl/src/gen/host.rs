@@ -326,9 +326,7 @@ pub fn host_rs(ix: &Index<'_>) -> String {
          //! path, documented in api.ogt and packages/knowledge/wiki/<module>.md.\n\
          //! An edit to the docs alone then leaves this file, and so the hosts\n\
          //! and the wasm, unchanged; field docs stay in RECORDS, which the\n\
-         //! runtime's reflection serves.\n\n\
-         // Field metadata (min, max, step) is written as the IDL states it.\n\
-         #![allow(clippy::approx_constant)]\n\n",
+         //! runtime's reflection serves.\n\n",
     );
     out.push_str(
         "/// What aliases engine memory, chosen per host.\n\
@@ -399,6 +397,22 @@ pub fn host_rs(ix: &Index<'_>) -> String {
     }
     out.push_str("];\n");
 
+    out.push_str("\npub use og_records::{COLUMNS, ColumnDecl, FieldDecl, RECORDS, RecordDecl};\n");
+    out
+}
+
+/// `crates/og-records/src/generated/records.rs`: the record and column
+/// tables, out of host.rs so that og-cook, which reads only them, does not
+/// rebuild when the traits change.
+pub fn records_rs(ix: &Index<'_>) -> String {
+    let mut out = String::new();
+    out.push_str(&format!("// {GENERATED_BY}\n"));
+    out.push_str(
+        "//! The engine-owned record and column tables, generated from the IDL;\n\
+         //! `og_api::host` re-exports them.\n\n\
+         // Field metadata (min, max, step) is written as the IDL states it.\n\
+         #![allow(clippy::approx_constant)]\n",
+    );
     out.push_str(
         "\n/// One field of an engine-owned record.\n\
          #[derive(Clone, Copy, Debug, PartialEq)]\n\

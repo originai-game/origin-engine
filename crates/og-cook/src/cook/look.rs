@@ -8,7 +8,7 @@
 //!   "looks/base.ogt"` (a path) names another look under `assets/`. Bases
 //!   chain up to [`MAX_EXTENDS`] deep; a cycle is refused. The look is laid
 //!   over its base field by field ([`LookFile::over`]).
-//! - Every field is checked against the IDL's records (`og_api::host::RECORDS`,
+//! - Every field is checked against the IDL's records (`og_records::RECORDS`,
 //!   the reflection every tool reads): the resource and field exist and are
 //!   writable, a number is in its range, a variant is one of the enum's, a
 //!   colour is three linear numbers or an sRGB `#rrggbb` (written linear), a
@@ -1428,7 +1428,7 @@ fn check(look: &mut LookFile, known: &dyn Fn(&str) -> bool) -> Result<(), String
     }
     for block in &mut look.blocks {
         let schema = format!("og.{}", block.resource);
-        let record = og_api::host::RECORDS
+        let record = og_records::RECORDS
             .iter()
             .find(|r| r.schema == schema && r.kind == "resource")
             .ok_or_else(|| format!("{}: not a resource of this engine", block.resource))?;

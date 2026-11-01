@@ -4,15 +4,16 @@ version = "0.7.7"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine API: the host traits and record tables generated from api.ogt (og-idl generates them), and the host-neutral runtime."
+description = "Origin Engine API: the host traits generated from api.ogt (og-idl generates them), re-exporting og-records' record tables, and the host-neutral runtime."
 
 [features]
 # A published game (og-runtime's `publish`): RECORDS' field docs are empty
-# (`doc!` in src/lib.rs), so their text is not linked; nothing in a publish
+# (og-records' `doc!`), so their text is not linked; nothing in a publish
 # build reads them.
-publish = []
+publish = ["og-records/publish"]
 
 [dependencies]
+og-records = { path = "../og-records" }
 
 [dev-dependencies]
 og-core = { path = "../og-core" }

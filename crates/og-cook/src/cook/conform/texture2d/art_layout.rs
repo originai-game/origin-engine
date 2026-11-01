@@ -42,7 +42,7 @@ fn num(look: &LookFile, resource: &str, field: &str) -> f64 {
 /// A field's default in the IDL (its record's `default`), as numbers.
 fn default(resource: &str, field: &str) -> Vec<f64> {
     let schema = format!("og.{resource}");
-    og_api::host::RECORDS
+    og_records::RECORDS
         .iter()
         .find(|r| r.schema == schema)
         .and_then(|r| r.fields.iter().find(|f| f.name == field))
