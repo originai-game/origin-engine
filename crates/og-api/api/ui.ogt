@@ -3519,6 +3519,7 @@ module ui {
     }
     field curves bool "A path's points after the first come in threes: a cubic Bézier's two controls and its end."
     field closed bool "A path returns to its first point."
+    field filled bool "A path is an area: its fills cover the inside of the closed outline through its points (even-odd) instead of drawing its line, and its strokes outline it, as any other shape's (an area chart, a radar's polygon, a pie's wedge)."
     field width f32 "A path's line width." {
       default 2
       min 0

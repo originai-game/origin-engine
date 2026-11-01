@@ -320,6 +320,34 @@ fn sd_polyline(p: vec2<f32>, first: u32, count: u32, closed: bool, width: f32, c
   return vec2<f32>(best, along);
 }
 
+// A filled path's signed distance (geo.z 2): to the closed polygon
+// through instance points `first`..`first + count`, negative inside by the
+// even-odd rule, and the length along its outline at the nearest edge.
+fn sd_filled_path(p: vec2<f32>, first: u32, count: u32) -> vec2<f32> {
+  var best = 1e9;
+  var along = 0.0;
+  var inside = false;
+  if (count < 3u) {
+    return vec2<f32>(best, 0.0);
+  }
+  for (var i = 0u; i < count; i++) {
+    let a4 = points[first + i];
+    let a = a4.xy;
+    let b = points[first + (i + 1u) % count].xy;
+    let ab = b - a;
+    let h = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-10), 0.0, 1.0);
+    let d = length(p - a - ab * h);
+    if (d < best) {
+      best = d;
+      along = a4.z + h * length(ab);
+    }
+    if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) {
+      inside = !inside;
+    }
+  }
+  return vec2<f32>(select(best, -best, inside), along);
+}
+
 // The cut of a segment at a sharp joint `j` between directions `d0` and
 // `d1`: the bisector (`end`: the segment ends at `j`, else starts there)
 // and the miter limit or bevel line on the outer side of the turn.
@@ -750,6 +778,9 @@ fn shape_distance(s: UiInstance, p: vec2<f32>) -> vec2<f32> {
   let corner = (s.kinds.x >> 4u) & 15u;
   let cap = (s.kinds.x >> 8u) & 15u;
   let join = (s.kinds.x >> 12u) & 15u;
+  if (kind == GEO_POLYLINE && s.geo.z > 1.5) {
+    return sd_filled_path(p, u32(s.geo.x), u32(s.geo.y));
+  }
   if (kind == GEO_POLYLINE) {
     return sd_polyline(p, u32(s.geo.x), u32(s.geo.y), s.geo.z > 0.5, s.geo2.y, cap, join, s.geo2.z);
   }
@@ -785,12 +816,16 @@ fn mode_coverage(s: UiInstance, p: vec2<f32>, px: f32) -> f32 {
   }
   let sd = shape_distance(s, p);
   let cap = (s.kinds.x >> 8u) & 15u;
-  if (mode == MODE_STROKE && kind != GEO_POLYLINE) {
+  // A filled path is an area: strokes outline it, as any other shape's.
+  let filled = kind == GEO_POLYLINE && s.geo.z > 1.5;
+  if (mode == MODE_STROKE && (kind != GEO_POLYLINE || filled)) {
     // A band of the width around the outline, its centre moved by the alignment.
     let hw = 0.5 * max(s.mode.x, 0.0);
     let band = abs(sd.x - s.mode.y);
     var d = band - hw;
-    if (s.mode.z > 0.0) {
+    if (s.mode.z > 0.0 && filled) {
+      d = dashed(d, band, hw, sd.y, s.mode.z, s.mode.w, s.mode2.x, u32(s.mode2.y), 0.0);
+    } else if (s.mode.z > 0.0) {
       let a = outline_along(p, kind, cap, s.center_half.zw, s.geo, s.geo);
       // Every outline is closed but a partial arc's.
       let open = kind == GEO_ARC && abs(s.geo.y) < TAU;
@@ -798,7 +833,7 @@ fn mode_coverage(s: UiInstance, p: vec2<f32>, px: f32) -> f32 {
     }
     return clamp(0.5 - d / px, 0.0, 1.0);
   }
-  if (kind == GEO_POLYLINE && s.mode.z > 0.0) {
+  if (kind == GEO_POLYLINE && !filled && s.mode.z > 0.0) {
     let hw = 0.5 * s.geo2.y;
     let d = dashed(sd.x, sd.x + hw, hw, sd.y, s.mode.z, s.mode.w, s.mode2.x, u32(s.mode2.y), 0.0);
     return clamp(0.5 - d / px, 0.0, 1.0);

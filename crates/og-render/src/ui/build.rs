@@ -222,10 +222,12 @@ impl UiTables {
     /// returns the instance's centre offset (local), half extent, `geo` and
     /// `geo2`, and its kind word.
     #[allow(clippy::type_complexity)]
+    #[allow(clippy::too_many_arguments)]
     fn polyline(
         &mut self,
         points: &[Vec2],
         closed: bool,
+        filled: bool,
         width: f32,
         cap: UiCap,
         join: UiJoin,
@@ -266,7 +268,11 @@ impl UiTables {
             [
                 first as f32,
                 pts.len() as f32,
-                f32::from(u8::from(closed)),
+                if filled {
+                    2.0
+                } else {
+                    f32::from(u8::from(closed))
+                },
                 0.0,
             ],
             [0.0, w, limit, 0.0],
@@ -391,12 +397,13 @@ pub(crate) fn shape(
         UiGeometry::Polyline {
             points,
             closed,
+            filled,
             width,
             cap,
             join,
         } => {
             let (mid, half, geo, geo2, word) =
-                tables.polyline(points, *closed, *width, *cap, *join);
+                tables.polyline(points, *closed, *filled, *width, *cap, *join);
             // The local origin moves to the points' middle.
             let c = s.center + Vec2::new(m[0] * mid.x + m[2] * mid.y, m[1] * mid.x + m[3] * mid.y);
             g.center_half = [c.x, c.y, half.x, half.y];
@@ -620,6 +627,7 @@ pub(crate) fn vector_strokes(d: &UiVectorDraw, data: &UiVectorData) -> Vec<(UiSh
                 geometry: UiGeometry::Polyline {
                     points: st.points.iter().map(|p| (*p - vb_mid) * k).collect(),
                     closed: st.closed,
+                    filled: false,
                     width: st.width * k,
                     cap: st.cap,
                     join: st.join,
@@ -694,6 +702,7 @@ mod tests {
                     Vec2::new(30.0, 40.0),
                 ],
                 closed: false,
+                filled: false,
                 width: 4.0,
                 cap: UiCap::Round,
                 join: UiJoin::Round,

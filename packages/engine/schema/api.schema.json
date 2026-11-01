@@ -42346,6 +42346,11 @@
           "description": "A path returns to its first point.",
           "default": false
         },
+        "filled": {
+          "type": "boolean",
+          "description": "A path is an area: its fills cover the inside of the closed outline through its points (even-odd) instead of drawing its line, and its strokes outline it, as any other shape's (an area chart, a radar's polygon, a pie's wedge).",
+          "default": false
+        },
         "width": {
           "type": "number",
           "description": "A path's line width.",
