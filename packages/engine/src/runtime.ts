@@ -1452,6 +1452,8 @@ export const load = Object.freeze({
   environment: (world: WorldImpl, path: string) => parse(abi().og_load_environment(world.id, path)),
   emitter: (world: WorldImpl, path: string) => parse(abi().og_load_emitter(world.id, path)),
   shader: (world: WorldImpl, path: string) => parse(abi().og_load_shader(world.id, path)),
+  vector: (world: WorldImpl, path: string) => parse(abi().og_load_vector(world.id, path)),
+  uiMaterial: (world: WorldImpl, path: string) => parse(abi().og_load_ui_material(world.id, path)),
   style: (world: WorldImpl, path: string) => parse(abi().og_load_style(world.id, path)),
   look: (world: WorldImpl, path: string) => parse(abi().og_load_look(world.id, path)),
   lookInfo: (world: WorldImpl, look: number) => parse(abi().og_load_look_info(world.id, look)),
@@ -1581,6 +1583,7 @@ export const ui = Object.freeze({
   theme: (world: WorldImpl) => parse(abi().og_ui_theme(world.id)),
   open: (id: string, desc?: unknown) => abi().og_ui_open(id, json(desc)),
   openPanel: (id: string, desc?: unknown) => abi().og_ui_open_panel(id, json(desc)),
+  setDraw: (desc?: unknown) => abi().og_ui_set_draw(json(desc)),
   openScroll: (id: string, desc?: unknown) => abi().og_ui_open_scroll(id, json(desc)),
   close: () => parse(abi().og_ui_close()),
   row: (id: string, desc: Record<string, unknown> | undefined, build: () => void) =>

@@ -9236,6 +9236,8 @@ export interface Model {
 
 
 
+
+
 /**
  * A load completed.
  *
@@ -22219,6 +22221,864 @@ export interface UiLayoutStats {
 
 
 
+/**
+ * A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type VectorArt = number & { readonly [handleType]: "VectorArt" };
+
+/**
+ * A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type UiMaterial = number & { readonly [handleType]: "UiMaterial" };
+
+/**
+ * An element's outline (DrawShape.kind).
+ * - `"rect"`: Its rectangle, with DrawShape.radii (or its radius) and corner.
+ * - `"ellipse"`: The ellipse inscribed in its rectangle (a circle when square; a capsule is a rect with radii of half its height).
+ * - `"polygon"`: A regular polygon of sides vertices on the circle in its rectangle, the first at the top; inner under 1 makes a star.
+ * - `"arc"`: A ring segment on the circle in its rectangle: start, sweep and thickness (a ring at a full turn), with caps.
+ * - `"path"`: A line through points (CSS px from its top left), Béziers with curves; its fills draw the line.
+ */
+export type ShapeType = "rect" | "ellipse" | "polygon" | "arc" | "path";
+
+/**
+ * How a rect's corners turn.
+ * - `"round"`: Circular arcs.
+ * - `"squircle"`: Continuous corners: a superellipse of DrawShape.squircle.
+ * - `"bevel"`: A straight cut across, the radius along each edge.
+ * - `"notch"`: A concave quarter circle cut in (an inset notch).
+ */
+export type CornerShape = "round" | "squircle" | "bevel" | "notch";
+
+/**
+ * The end of an open line, an arc or a dash.
+ * - `"butt"`: Cut square at the end.
+ * - `"round"`: A half disc past the end.
+ * - `"square"`: Cut square half the width past the end.
+ */
+export type LineCap = "butt" | "round" | "square";
+
+/**
+ * Where a line's segments meet.
+ * - `"miter"`: Sharp, cut to a bevel past DrawShape.miterLimit half widths.
+ * - `"round"`: Rounded.
+ * - `"bevel"`: Cut across.
+ */
+export type LineJoin = "miter" | "round" | "bevel";
+
+/**
+ * An element's outline; its fills, strokes, effects and clip take it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DrawShape {
+  /**
+   * Which outline.
+   *
+   * @default "rect"
+   */
+  readonly kind?: ShapeType;
+  /**
+   * A rect's corner radii, top left, top right, bottom right, bottom left; null is the element's radius at every corner.
+   *
+   * @default null
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly radii?: [number, number, number, number] | null;
+  /**
+   * A rect's corner shape.
+   *
+   * @default "round"
+   */
+  readonly corner?: CornerShape;
+  /**
+   * A squircle corner's exponent: 2 is round, 4 the iOS look.
+   *
+   * @default 4
+   * @range 2..12
+   */
+  readonly squircle?: number;
+  /**
+   * A polygon's vertices.
+   *
+   * @default 6
+   * @range 3..64
+   */
+  readonly sides?: number;
+  /**
+   * A star's inner vertices as a fraction of its radius; 1 (or more) is a plain polygon.
+   *
+   * @default 1
+   * @range 0..
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly inner?: number;
+  /**
+   * A polygon's corner rounding.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly rounding?: number;
+  /**
+   * A polygon's turn, clockwise.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly rotation?: number;
+  /**
+   * An arc's start, clockwise from 3 o'clock.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly start?: number;
+  /**
+   * An arc's sweep, clockwise (a full turn or more: a ring).
+   *
+   * @default 6.2831855
+   * @unit rad (radians)
+   */
+  readonly sweep?: number;
+  /**
+   * An arc's thickness, inwards from the circle.
+   *
+   * @default 4
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly thickness?: number;
+  /**
+   * An arc's or a path's ends.
+   *
+   * @default "butt"
+   */
+  readonly cap?: LineCap;
+  /**
+   * A path's points, CSS px from the element's top left.
+   *
+   * @default []
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly points?: readonly Vector2[];
+  /**
+   * A path's points after the first come in threes: a cubic Bézier's two controls and its end.
+   *
+   * @default false
+   */
+  readonly curves?: boolean;
+  /**
+   * A path returns to its first point.
+   *
+   * @default false
+   */
+  readonly closed?: boolean;
+  /**
+   * A path's line width.
+   *
+   * @default 2
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+  /**
+   * Where a path's segments meet.
+   *
+   * @default "miter"
+   */
+  readonly join?: LineJoin;
+}
+
+/**
+ * How a gradient (Gradient.type) runs over the element's box (fractions: 0,0 top left, 1,1 bottom right).
+ * - `"linear"`: From `from` to `to`.
+ * - `"radial"`: Centred on `from`, `to` its x and y radii.
+ * - `"conic"`: Around `from`, starting at the angle to.x (radians clockwise from 3 o'clock).
+ * - `"diamond"`: Centred on `from`, `to` its x and y radii, by |x|/rx + |y|/ry.
+ */
+export type GradientType = "linear" | "radial" | "conic" | "diamond";
+
+/**
+ * What a gradient does past its ends.
+ * - `"pad"`: Holds the end stops' colours.
+ * - `"repeat"`: Starts over.
+ * - `"reflect"`: Runs back and forth.
+ */
+export type GradientSpread = "pad" | "repeat" | "reflect";
+
+/**
+ * A gradient's colour at an offset.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GradientStop {
+  /**
+   * Where along the gradient, 0 to 1.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly offset?: number;
+  /**
+   * Its colour: a theme token, resolved when the frame is drawn, or a literal.
+   *
+   * @default {}
+   */
+  readonly color?: Paint;
+}
+
+/**
+ * A gradient of up to 8 stops, mixed in OKLab (no grey middle between complementary colours) and dithered so a long shallow one shows no bands.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface Gradient {
+  /**
+   * Its shape.
+   *
+   * @default "linear"
+   */
+  readonly type?: GradientType;
+  /**
+   * Its start or centre, a fraction of the box.
+   *
+   * @default { x: 0, y: 0 }
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly from?: Vector2;
+  /**
+   * Its end, or its radii, a fraction of the box.
+   *
+   * @default { x: 0, y: 1 }
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly to?: Vector2;
+  /**
+   * Its stops in order (at most 8).
+   *
+   * @default []
+   */
+  readonly stops?: readonly GradientStop[];
+  /**
+   * Past its ends.
+   *
+   * @default "pad"
+   */
+  readonly spread?: GradientSpread;
+  /**
+   * Draws it without the dither.
+   *
+   * @default false
+   */
+  readonly noDither?: boolean;
+}
+
+/**
+ * How an image fills the element's box.
+ * - `"fill"`: Stretched to the box.
+ * - `"cover"`: Scaled to cover the box, cropped around the focal point.
+ * - `"contain"`: Scaled to fit inside the box, placed by the focal point.
+ * - `"none"`: At its own size (one image pixel per CSS px), placed by the focal point.
+ * - `"nineSlice"`: Nine-slice: corners kept at slice, edges and centre filled by edges.
+ * - `"pattern"`: Tiled at tile CSS px, turned, offset and scrolling.
+ */
+export type ImageFit = "fill" | "cover" | "contain" | "none" | "nineSlice" | "pattern";
+
+/**
+ * How a nine-slice's edges and centre fill their length.
+ * - `"stretch"`: Stretched.
+ * - `"repeat"`: Tiled at the border's scale, cut at the end.
+ * - `"round"`: Tiled a whole number of times, stretched to fit.
+ */
+export type SliceEdges = "stretch" | "repeat" | "round";
+
+/**
+ * A colour.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SolidFill {
+  /**
+   * The colour: a theme token, resolved when the frame is drawn, or a literal.
+   *
+   * @default {}
+   */
+  readonly color?: Paint;
+}
+
+/**
+ * A texture region with a fit.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ImageFill {
+  /**
+   * The texture (og.load.texture).
+   *
+   * @default 0
+   */
+  readonly texture?: Texture;
+  /**
+   * The region, [u0, v0, u1, v1] with v down; null is the whole texture.
+   *
+   * @default null
+   */
+  readonly uv?: [number, number, number, number] | null;
+  /**
+   * The region's size in image pixels (none, nineSlice and pattern read it); zero is the texture's.
+   *
+   * @default { x: 0, y: 0 }
+   */
+  readonly size?: Vector2;
+  /**
+   * Multiplies it; null is white.
+   *
+   * @default null
+   */
+  readonly tint?: Paint | null;
+  /**
+   * How it fills the box.
+   *
+   * @default "fill"
+   */
+  readonly fit?: ImageFit;
+  /**
+   * Where cover crops and contain or none place it, fractions of the free space.
+   *
+   * @default { x: 0.5, y: 0.5 }
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly focal?: Vector2;
+  /**
+   * A nine-slice's border in image pixels: left, top, right, bottom.
+   *
+   * @default [0, 0, 0, 0]
+   */
+  readonly slice?: [number, number, number, number];
+  /**
+   * A nine-slice's border as drawn, CSS px; null is slice.
+   *
+   * @default null
+   */
+  readonly border?: [number, number, number, number] | null;
+  /**
+   * A nine-slice's edges and centre.
+   *
+   * @default "stretch"
+   */
+  readonly edges?: SliceEdges;
+  /**
+   * A nine-slice leaves its centre empty.
+   *
+   * @default false
+   */
+  readonly hollow?: boolean;
+  /**
+   * A pattern's tile, CSS px; zero is size.
+   *
+   * @default { x: 0, y: 0 }
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly tile?: Vector2;
+  /**
+   * A pattern's turn.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly patternRotation?: number;
+  /**
+   * A pattern's offset.
+   *
+   * @default { x: 0, y: 0 }
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly offset?: Vector2;
+  /**
+   * A pattern's scroll, CSS px a second of the UI clock.
+   *
+   * @default { x: 0, y: 0 }
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly scroll?: Vector2;
+}
+
+/**
+ * A cooked vector contained and centred in the box.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface VectorFill {
+  /**
+   * The vector (og.load.vector).
+   *
+   * @default 0
+   */
+  readonly vector?: VectorArt;
+  /**
+   * Multiplies its paints; null is white.
+   *
+   * @default null
+   */
+  readonly tint?: Paint | null;
+}
+
+/** One layer of an element's fill, or a stroke's paint. */
+export type Fill =
+  /** A colour. */
+  | ({ readonly kind: "solid" } & SolidFill)
+  /** A gradient. */
+  | ({ readonly kind: "gradient" } & Gradient)
+  /** An image with a fit, a nine-slice or a pattern. */
+  | ({ readonly kind: "image" } & ImageFill)
+  /** A cooked vector (as a stroke's paint, its tint). */
+  | ({ readonly kind: "vector" } & VectorFill);
+
+/**
+ * Which side of the outline a stroke lies on.
+ * - `"center"`: Across the outline.
+ * - `"inside"`: Inside it.
+ * - `"outside"`: Outside it.
+ */
+export type StrokeAlign = "center" | "inside" | "outside";
+
+/**
+ * A stroke along the element's outline with a paint of its own (a gradient border is one stroke).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface Stroke {
+  /**
+   * Its width.
+   *
+   * @default 1
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+  /**
+   * Which side of the outline.
+   *
+   * @default "center"
+   */
+  readonly align?: StrokeAlign;
+  /**
+   * A dash's length; 0 is solid.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly dash?: number;
+  /**
+   * The gap between dashes; 0 is the dash's length.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly gap?: number;
+  /**
+   * Where the dashes start along the outline (move it by the tick for marching ants).
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly dashOffset?: number;
+  /**
+   * The dashes' ends.
+   *
+   * @default "butt"
+   */
+  readonly dashCap?: LineCap;
+  /**
+   * Its paint; null is the theme's line colour.
+   *
+   * @default null
+   */
+  readonly paint?: Fill | null;
+}
+
+/**
+ * A shadow: a drop shadow under the element, or an inner shadow cast inwards.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ShadowEffect {
+  /**
+   * How far it falls.
+   *
+   * @default { x: 0, y: 4 }
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly offset?: Vector2;
+  /**
+   * Its softness (CSS blur: the Gaussian's deviation is half of it).
+   *
+   * @default 12
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly blur?: number;
+  /**
+   * How far it grows (or with a negative value shrinks) past the shape.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly spread?: number;
+  /**
+   * Its colour; null is the theme's shadow.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+}
+
+/**
+ * A glow: around the element, or along its inside.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GlowEffect {
+  /**
+   * Its softness.
+   *
+   * @default 12
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly blur?: number;
+  /**
+   * How far it grows past the shape.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly spread?: number;
+  /**
+   * Its colour; null is the theme's primary.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+}
+
+/**
+ * The element and its subtree blurred (drawn offscreen).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface BlurEffect {
+  /**
+   * The blur.
+   *
+   * @default 4
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly radius?: number;
+}
+
+/**
+ * What is under the element (the scene and the UI below it) blurred, its saturation and brightness scaled and tinted: glass.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface BackdropEffect {
+  /**
+   * The blur.
+   *
+   * @default 16
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly blur?: number;
+  /**
+   * Multiplies the saturation.
+   *
+   * @default 1
+   * @range 0..
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly saturation?: number;
+  /**
+   * Multiplies the brightness.
+   *
+   * @default 1
+   * @range 0..
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly brightness?: number;
+  /**
+   * Over the blur, by its alpha; null is the theme's panel at 60 %.
+   *
+   * @default null
+   */
+  readonly tint?: Paint | null;
+}
+
+/** An effect of the element. */
+export type Effect =
+  /** A drop shadow (several layer). */
+  | ({ readonly kind: "dropShadow" } & ShadowEffect)
+  /** An inner shadow. */
+  | ({ readonly kind: "innerShadow" } & ShadowEffect)
+  /** A glow around it. */
+  | ({ readonly kind: "outerGlow" } & GlowEffect)
+  /** A glow along its inside. */
+  | ({ readonly kind: "innerGlow" } & GlowEffect)
+  /** Its subtree blurred. */
+  | ({ readonly kind: "layerBlur" } & BlurEffect)
+  /** Glass: what is under it blurred. */
+  | ({ readonly kind: "backdrop" } & BackdropEffect);
+
+/**
+ * How an element cuts its children.
+ * - `"none"`: Not at all (a scroll container still clips to its rectangle).
+ * - `"shape"`: To its shape, antialiased (a round avatar, a hex frame).
+ * - `"mask"`: By DrawDesc.mask's alpha (the subtree draws offscreen).
+ */
+export type ClipMode = "none" | "shape" | "mask";
+
+/**
+ * An alpha mask over an element's subtree: a gradient's alpha, else an image's.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MaskDesc {
+  /**
+   * The gradient whose alpha masks (a list fading at its edge).
+   *
+   * @default null
+   */
+  readonly gradient?: Gradient | null;
+  /**
+   * The image whose alpha masks, stretched over the element.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * The image's region; null is the whole texture.
+   *
+   * @default null
+   */
+  readonly uv?: [number, number, number, number] | null;
+}
+
+/**
+ * What a layer composites through: a built-in UI material, or a custom one. params is read per material.
+ * - `"plain"`: The layer as drawn.
+ * - `"dissolve"`: [threshold 0–1, edge width, noise scale (CSS px), _], [edge colour rgba].
+ * - `"shine"`: [position 0–1 across the diagonal (negative sweeps by the clock at -position a second), width, angle (rad), intensity], [colour rgba].
+ * - `"hologram"`: [scanline spacing (CSS px), flicker 0–1, chromatic split (CSS px), scanline strength], [tint rgba].
+ * - `"glitch"`: [strength 0–1, slice height (CSS px), split (CSS px), rate (Hz)].
+ * - `"ripple"`: [amplitude (CSS px), wavelength (CSS px), speed (CSS px/s), _], [centre x, y as fractions].
+ * - `"pixelate"`: [cell size (CSS px)].
+ * - `"colorAdjust"`: [hue (rad), saturation, brightness, grayscale 0–1].
+ * - `"outline"`: [width (CSS px), _, _, _], [colour rgba]: an outline of the layer's alpha.
+ * - `"blur"`: [radius (CSS px)].
+ * - `"custom"`: LayerDesc.custom, a `type ui-material`.
+ */
+export type MaterialName = "plain" | "dissolve" | "shine" | "hologram" | "glitch" | "ripple" | "pixelate" | "colorAdjust" | "outline" | "blur" | "custom";
+
+/**
+ * The element's subtree drawn offscreen, then composited through a material (a card that dissolves, a hologram panel).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LayerDesc {
+  /**
+   * The material.
+   *
+   * @default "plain"
+   */
+  readonly material?: MaterialName;
+  /**
+   * The custom material, for material custom.
+   *
+   * @default null
+   */
+  readonly custom?: UiMaterial | null;
+  /**
+   * Its parameters: up to four vec4s, flattened (16 numbers); for a custom material, missing ones are its defaults.
+   *
+   * @default []
+   */
+  readonly params?: readonly number[];
+}
+
+/**
+ * A shadow under an element's text.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TextShadowDesc {
+  /**
+   * How far it falls.
+   *
+   * @default { x: 0, y: 2 }
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly offset?: Vector2;
+  /**
+   * Its softness.
+   *
+   * @default 2
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly blur?: number;
+  /**
+   * Its colour; null is the theme's shadow.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+}
+
+/**
+ * An outline around an element's glyphs.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TextOutlineDesc {
+  /**
+   * Its width (up to the font's distance range).
+   *
+   * @default 2
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+  /**
+   * Its colour; null is the theme's shadow.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Across the glyph's edge, inside it or outside it.
+   *
+   * @default "center"
+   */
+  readonly align?: StrokeAlign;
+}
+
+/**
+ * Effects of the text an element holds (its labels and rich text).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TextEffectsDesc {
+  /**
+   * Shadows, under everything, in order.
+   *
+   * @default []
+   */
+  readonly shadows?: readonly TextShadowDesc[];
+  /**
+   * An outline.
+   *
+   * @default null
+   */
+  readonly outline?: TextOutlineDesc | null;
+  /**
+   * A gradient fill over each line's box instead of its colour.
+   *
+   * @default null
+   */
+  readonly fill?: Gradient | null;
+}
+
+/**
+ * What an element draws with (og.ui.setDraw), over its background: its shape, fills and strokes in order, effects, opacity and blend, how it clips its children, and whether its subtree draws offscreen through a material. Colours given as theme tokens follow the style; every value is data an agent can read and set.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DrawDesc {
+  /**
+   * Its outline; null is its rectangle with its radius.
+   *
+   * @default null
+   */
+  readonly shape?: DrawShape | null;
+  /**
+   * Fills, bottom first.
+   *
+   * @default []
+   */
+  readonly fills?: readonly Fill[];
+  /**
+   * Strokes, over the fills and the children, bottom first.
+   *
+   * @default []
+   */
+  readonly strokes?: readonly Stroke[];
+  /**
+   * Shadows, glows, blurs and backdrops.
+   *
+   * @default []
+   */
+  readonly effects?: readonly Effect[];
+  /**
+   * Multiplies its paints (with a layer, its composite).
+   *
+   * @default 1
+   * @range 0..1
+   */
+  readonly opacity?: number;
+  /**
+   * How its paints (or its layer) mix with what is under them.
+   *
+   * @default "normal"
+   */
+  readonly blend?: BlendMode;
+  /**
+   * How it cuts its children.
+   *
+   * @default "none"
+   */
+  readonly clip?: ClipMode;
+  /**
+   * The mask, for clip mask.
+   *
+   * @default null
+   */
+  readonly mask?: MaskDesc | null;
+  /**
+   * Its subtree drawn offscreen and composited through a material.
+   *
+   * @default null
+   */
+  readonly layer?: LayerDesc | null;
+  /**
+   * Effects of its text.
+   *
+   * @default null
+   */
+  readonly text?: TextEffectsDesc | null;
+}
+
+/**
+ * How a paint mixes with what is under it.
+ * - `"normal"`: Over it.
+ * - `"multiply"`: Multiplied: darkens.
+ * - `"screen"`: Screened: lightens.
+ * - `"add"`: Added: glows.
+ * - `"overlay"`: Multiply under half grey, screen over it.
+ * - `"softLight"`: A gentle overlay.
+ * - `"colorDodge"`: Brightens what is under it by the paint.
+ */
+export type BlendMode = "normal" | "multiply" | "screen" | "add" | "overlay" | "softLight" | "colorDodge";
+
+
 // ── systems ─────────────────────────────────────────────────────
 // Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
 
@@ -25812,6 +26672,22 @@ export declare namespace og {
      */
     function post(world: World, path: string): Result<Post>;
     /**
+     * A cooked vector for og.ui's VectorFill, from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges the UI pass antialiases at any size; anything outside the subset is refused by name. Loaded once per path.
+     *
+     * @param world The world whose renderer owns it.
+     * @param path The asset id, such as `ui/emblem.ogt`.
+     * @returns Refused for a path not in the bundle or not a vector.
+     */
+    function vector(world: World, path: string): Result<VectorArt>;
+    /**
+     * A custom UI material for og.ui's LayerDesc, from a cooked `.ogt` of `type ui-material`: `code` or `source` (a `.wgsl`) defining `fn material(m: MaterialInput, p: Params) -> vec4<f32>`, which returns the composite's straight-alpha linear colour at m.uv (0 to 1 over the layer; m.pixel, m.size in CSS px, m.time the UI clock), reading the layer with layer(uv) and layer_texel(), and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most four). The cook compiles it for every back end. Loaded once per path.
+     *
+     * @param world The world whose renderer owns it.
+     * @param path The asset id, such as `ui/duotone.ogt`.
+     * @returns Refused for a path not in the bundle or not a UI material.
+     */
+    function uiMaterial(world: World, path: string): Result<UiMaterial>;
+    /**
      * Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load.
      * Sources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is.
      *
@@ -27815,6 +28691,12 @@ export declare namespace og {
     function overlaps(): readonly UiOverlap[];
     /** What the last frame built, rebuilt, laid out and kept. */
     function layoutStats(): UiLayoutStats;
+    /**
+     * Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §5). Call it right after the element's open or control; immediate mode, so every tick it is drawn.
+     *
+     * @param desc What it draws with.
+     */
+    function setDraw(desc?: DrawDesc): void;
   }
   /**
    * Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.

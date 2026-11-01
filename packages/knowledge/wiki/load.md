@@ -55,6 +55,8 @@ module load {
 | [`og.load.emitter`](#fn-emitter) | function | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (og-render §2 gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off \| life <cycles> \| fps <n> \| random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path. |
 | [`og.load.shader`](#fn-shader) | function | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; og-render §10), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path. |
 | [`og.load.post`](#fn-post) | function | A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float\|vec2\|vec3\|vec4\|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (og-render §10 has the contract). The cook compiles it for every back end. Loaded once per path. |
+| [`og.load.vector`](#fn-vector) | function | A cooked vector for og.ui's VectorFill, from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges the UI pass antialiases at any size; anything outside the subset is refused by name. Loaded once per path. |
+| [`og.load.uiMaterial`](#fn-uiMaterial) | function | A custom UI material for og.ui's LayerDesc, from a cooked `.ogt` of `type ui-material`: `code` or `source` (a `.wgsl`) defining `fn material(m: MaterialInput, p: Params) -> vec4<f32>`, which returns the composite's straight-alpha linear colour at m.uv (0 to 1 over the layer; m.pixel, m.size in CSS px, m.time the UI clock), reading the layer with layer(uv) and layer_texel(), and `param <name> float\|vec2\|vec3\|vec4\|color <default...>` lines (at most four). The cook compiles it for every back end. Loaded once per path. |
 | [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
 | [`og.load.textureArray`](#fn-textureArray) | function | Load a cooked texture array (an `.ogt` of `type texture-array`: `kind color\|normal\|linear\|pixel` and one `layer "<file>"` per layer, 1 to 256 images of one size, each path beside the file or under assets/) and upload it as one 2D-array texture, its layers in file order, each in the encoding the device takes for its kind. Each layer is also a texture of its own, `<path>#layer<n>`, for og.load.texture. Loading the same path again answers the same array. |
 | [`og.load.style`](#fn-style) | function | Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 2 (docs/ui.md §12, what `og style upgrade` writes from version 1 and every built-in style is) adds the tokens (rarity, team, damage and chart colours each with its cue, the type scale per breakpoint, the space, size, radius and stroke scales, elevation, the shape language, motion springs and eases, sounds and haptics per UI event) and dresses parts by selector (`dress "Button.base[pressed]" { … }`); the tokens are carried, not yet drawn from. Version 1 still loads. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`. |
@@ -474,6 +476,66 @@ fn post {
 
 <sub>`api.ogt` line 5954</sub>
 
+<a id="fn-vector"></a>
+
+### `og.load.vector`
+
+A cooked vector for og.ui's VectorFill, from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges the UI pass antialiases at any size; anything outside the subset is refused by name. Loaded once per path.
+
+```ts
+og.load.vector(world: World, path: string): Result<VectorArt>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns it. |
+| `path` | `string` | no | The asset id, such as `ui/emblem.ogt`. |
+
+**Returns** `Result<VectorArt>`: Refused for a path not in the bundle or not a vector.
+
+Binding symbol `og_load_vector` · publish builds: kept
+
+```ogt
+fn vector {
+  doc "A cooked vector for og.ui's VectorFill, from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges the UI pass antialiases at any size; anything outside the subset is refused by name. Loaded once per path."
+  param world World "The world whose renderer owns it."
+  param path String "The asset id, such as `ui/emblem.ogt`."
+  returns Result.VectorArt "Refused for a path not in the bundle or not a vector."
+}
+```
+
+<sub>`api.ogt` line 5961</sub>
+
+<a id="fn-uiMaterial"></a>
+
+### `og.load.uiMaterial`
+
+A custom UI material for og.ui's LayerDesc, from a cooked `.ogt` of `type ui-material`: `code` or `source` (a `.wgsl`) defining `fn material(m: MaterialInput, p: Params) -> vec4<f32>`, which returns the composite's straight-alpha linear colour at m.uv (0 to 1 over the layer; m.pixel, m.size in CSS px, m.time the UI clock), reading the layer with layer(uv) and layer_texel(), and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most four). The cook compiles it for every back end. Loaded once per path.
+
+```ts
+og.load.uiMaterial(world: World, path: string): Result<UiMaterial>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world whose renderer owns it. |
+| `path` | `string` | no | The asset id, such as `ui/duotone.ogt`. |
+
+**Returns** `Result<UiMaterial>`: Refused for a path not in the bundle or not a UI material.
+
+Binding symbol `og_load_ui_material` · publish builds: kept
+
+```ogt
+fn uiMaterial {
+  doc "A custom UI material for og.ui's LayerDesc, from a cooked `.ogt` of `type ui-material`: `code` or `source` (a `.wgsl`) defining `fn material(m: MaterialInput, p: Params) -> vec4<f32>`, which returns the composite's straight-alpha linear colour at m.uv (0 to 1 over the layer; m.pixel, m.size in CSS px, m.time the UI clock), reading the layer with layer(uv) and layer_texel(), and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most four). The cook compiles it for every back end. Loaded once per path."
+  param world World "The world whose renderer owns it."
+  param path String "The asset id, such as `ui/duotone.ogt`."
+  returns Result.UiMaterial "Refused for a path not in the bundle or not a UI material."
+}
+```
+
+<sub>`api.ogt` line 5968</sub>
+
 <a id="fn-texture"></a>
 
 ### `og.load.texture`
@@ -505,7 +567,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 5961</sub>
+<sub>`api.ogt` line 5975</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -538,7 +600,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 5969</sub>
+<sub>`api.ogt` line 5983</sub>
 
 <a id="fn-style"></a>
 
@@ -568,7 +630,7 @@ fn style {
 }
 ```
 
-<sub>`api.ogt` line 5977</sub>
+<sub>`api.ogt` line 5991</sub>
 
 <a id="fn-look"></a>
 
@@ -598,7 +660,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 5984</sub>
+<sub>`api.ogt` line 5998</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -628,7 +690,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 5991</sub>
+<sub>`api.ogt` line 6005</sub>
 
 <a id="fn-palette"></a>
 
@@ -658,7 +720,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 5998</sub>
+<sub>`api.ogt` line 6012</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -688,7 +750,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 6005</sub>
+<sub>`api.ogt` line 6019</sub>
 
 <a id="fn-status"></a>
 
@@ -718,7 +780,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 6012</sub>
+<sub>`api.ogt` line 6026</sub>
 
 <a id="fn-error"></a>
 
@@ -748,7 +810,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 6019</sub>
+<sub>`api.ogt` line 6033</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -778,7 +840,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 6026</sub>
+<sub>`api.ogt` line 6040</sub>
 
 <a id="fn-animation"></a>
 
@@ -811,7 +873,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 6033</sub>
+<sub>`api.ogt` line 6047</sub>
 
 <a id="fn-rig"></a>
 
@@ -841,7 +903,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 6041</sub>
+<sub>`api.ogt` line 6055</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -871,7 +933,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 6048</sub>
+<sub>`api.ogt` line 6062</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -901,7 +963,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 6055</sub>
+<sub>`api.ogt` line 6069</sub>
 
 <a id="fn-video"></a>
 
@@ -931,7 +993,7 @@ fn video {
 }
 ```
 
-<sub>`api.ogt` line 6062</sub>
+<sub>`api.ogt` line 6076</sub>
 
 <a id="fn-videoInfo"></a>
 
@@ -961,7 +1023,7 @@ fn videoInfo {
 }
 ```
 
-<sub>`api.ogt` line 6069</sub>
+<sub>`api.ogt` line 6083</sub>
 
 <a id="fn-timeline"></a>
 
@@ -991,7 +1053,7 @@ fn timeline {
 }
 ```
 
-<sub>`api.ogt` line 6076</sub>
+<sub>`api.ogt` line 6090</sub>
 
 <a id="fn-rig2d"></a>
 
@@ -1021,7 +1083,7 @@ fn rig2d {
 }
 ```
 
-<sub>`api.ogt` line 6083</sub>
+<sub>`api.ogt` line 6097</sub>
 
 ## Components, resources and events
 
@@ -1109,7 +1171,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 6090</sub>
+<sub>`api.ogt` line 6104</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1134,7 +1196,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 6096</sub>
+<sub>`api.ogt` line 6110</sub>
 
 ## Types
 

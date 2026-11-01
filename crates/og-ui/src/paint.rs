@@ -132,6 +132,13 @@ pub enum Paint {
     Solid(ColorRef),
     Gradient(Gradient),
     Image(ImagePaint),
+    /// A cooked vector (`type vector`) contained and centred in the
+    /// element's rectangle, its paints multiplied by `tint`. As a stroke's
+    /// paint it is its tint.
+    Vector {
+        vector: UiVectorHandle,
+        tint: ColorRef,
+    },
 }
 
 impl Paint {
@@ -147,6 +154,7 @@ impl Paint {
                 fit: im.fit,
                 focal: Vec2::from(im.focal),
             }),
+            Paint::Vector { tint, .. } => og_render::UiPaint::Solid(tint.resolve(theme)),
         }
     }
 }
@@ -222,6 +230,17 @@ pub enum ShapeKind {
         thickness: f32,
         cap: Cap,
     },
+    /// A line `width` CSS px through `points` (CSS px from the element's
+    /// top left); with `curves`, each three points after the first are a
+    /// cubic Bézier's two controls and its end (connectors, graphs).
+    Path {
+        points: Vec<[f32; 2]>,
+        closed: bool,
+        curves: bool,
+        width: f32,
+        cap: Cap,
+        join: Join,
+    },
 }
 
 impl Default for ShapeKind {
@@ -234,8 +253,9 @@ impl Default for ShapeKind {
 }
 
 impl ShapeKind {
-    /// The geometry of an element of `radius` (its default corner radius).
-    pub fn geometry(&self, radius: f32) -> og_render::UiGeometry {
+    /// The geometry of an element of `radius` (its default corner radius)
+    /// and `size` (CSS px).
+    pub fn geometry(&self, radius: f32, size: [f32; 2]) -> og_render::UiGeometry {
         match self {
             ShapeKind::Rect { radii, corner } => og_render::UiGeometry::Rect {
                 radii: radii.unwrap_or([radius; 4]),
@@ -264,6 +284,38 @@ impl ShapeKind {
                 thickness: *thickness,
                 cap: *cap,
             },
+            ShapeKind::Path {
+                points,
+                closed,
+                curves,
+                width,
+                cap,
+                join,
+            } => {
+                let half = Vec2::from(size) * 0.5;
+                let p: Vec<Vec2> = points.iter().map(|p| Vec2::from(*p) - half).collect();
+                let mut line = p.first().map(|p| vec![*p]).unwrap_or_default();
+                if *curves {
+                    for c in p[1.min(p.len())..].as_chunks::<3>().0 {
+                        let from = *line.last().expect("the first point");
+                        // A quarter CSS px from the curve.
+                        line.extend(
+                            og_render::flatten_cubic(from, c[0], c[1], c[2], 0.25)
+                                .into_iter()
+                                .skip(1),
+                        );
+                    }
+                } else {
+                    line.extend(p.iter().skip(1));
+                }
+                og_render::UiGeometry::Polyline {
+                    points: line,
+                    closed: *closed,
+                    width: *width,
+                    cap: *cap,
+                    join: *join,
+                }
+            }
         }
     }
 }
@@ -391,7 +443,9 @@ impl ElementDraw {
         let r = at.rect;
         DrawCmd::Shape {
             shape: Box::new(og_render::UiShape {
-                geometry: self.shape.geometry(at.radius),
+                geometry: self
+                    .shape
+                    .geometry(at.radius, [at.rect.width, at.rect.height]),
                 center: Vec2::new(r.x + r.width / 2.0, r.y + r.height / 2.0),
                 half: Vec2::new(r.width / 2.0, r.height / 2.0),
                 transform: [1.0, 0.0, 0.0, 1.0],
@@ -526,6 +580,18 @@ impl ElementDraw {
             }
         }
         for f in &self.fills {
+            if let Paint::Vector { vector, tint } = f {
+                let mut tint = tint.resolve(theme);
+                tint[3] *= opacity;
+                out.push(DrawCmd::Vector {
+                    vector: *vector,
+                    rect: at.rect,
+                    transform: [1.0, 0.0, 0.0, 1.0],
+                    tint,
+                    clip: at.clip,
+                });
+                continue;
+            }
             out.push(self.shape(at, f.resolve(theme), o, opacity, blend));
         }
         for e in &self.effects {
@@ -575,7 +641,9 @@ impl ElementDraw {
         }
         let r = at.rect;
         vec![DrawCmd::PushClip {
-            geometry: self.shape.geometry(at.radius),
+            geometry: self
+                .shape
+                .geometry(at.radius, [at.rect.width, at.rect.height]),
             center: (r.x + r.width / 2.0, r.y + r.height / 2.0),
             half: (r.width / 2.0, r.height / 2.0),
         }]
@@ -613,7 +681,10 @@ impl ElementDraw {
             // to the element's shape only when it clips.
             let shaped = matches!(self.clip, Clip::Shape);
             out.push(DrawCmd::EndLayer {
-                geometry: shaped.then(|| self.shape.geometry(at.radius)),
+                geometry: shaped.then(|| {
+                    self.shape
+                        .geometry(at.radius, [at.rect.width, at.rect.height])
+                }),
                 rect: at.rect,
                 opacity: self.opacity,
                 blend: self.blend,

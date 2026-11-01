@@ -503,6 +503,12 @@ impl LoadApi for NodeHost {
     fn og_load_shader(&self, world: u32, path: String) -> String {
         rt::og_load_shader(world, path)
     }
+    fn og_load_vector(&self, world: u32, path: String) -> String {
+        rt::og_load_vector(world, path)
+    }
+    fn og_load_ui_material(&self, world: u32, path: String) -> String {
+        rt::og_load_ui_material(world, path)
+    }
     fn og_load_post(&self, world: u32, path: String) -> String {
         rt::og_load_post(world, path)
     }
@@ -764,6 +770,9 @@ impl UiApi for NodeHost {
     }
     fn og_ui_open_panel(&self, id: String, desc: Option<String>) {
         rt::og_ui_open_panel(id, desc)
+    }
+    fn og_ui_set_draw(&self, desc: Option<String>) {
+        rt::og_ui_set_draw(desc)
     }
     fn og_ui_open_scroll(&self, id: String, desc: Option<String>) {
         rt::og_ui_open_scroll(id, desc)

@@ -773,7 +773,7 @@ fn response(r: Response) -> Value {
 
 /// Runs `f` on the UI whose frame is open; outside a frame, logs a warning
 /// on the engine that opened one last and answers `None`.
-fn with_ui<T>(call: &str, f: impl FnOnce(&mut Ui) -> T) -> Option<T> {
+pub(crate) fn with_ui<T>(call: &str, f: impl FnOnce(&mut Ui) -> T) -> Option<T> {
     let building = BUILDING.with(Cell::get);
     let target = building.or_else(|| LAST.with(Cell::get));
     let eng = target.and_then(|id| engine(id).ok())?;
@@ -1700,9 +1700,14 @@ fn rect_json(r: &og_ui::Rect) -> Value {
     json!({ "x": r.x, "y": r.y, "width": r.width, "height": r.height })
 }
 
-fn texture_of(v: &Value) -> Option<og_render::TextureHandle> {
+/// The engine whose UI frame is open, else the one opened last.
+pub(crate) fn ui_engine() -> Option<u32> {
+    BUILDING.with(Cell::get).or_else(|| LAST.with(Cell::get))
+}
+
+pub(crate) fn texture_of(v: &Value) -> Option<og_render::TextureHandle> {
     let t = v.as_f64()?;
-    let eng = engine(BUILDING.with(Cell::get).or_else(|| LAST.with(Cell::get))?).ok()?;
+    let eng = engine(ui_engine()?).ok()?;
     let rs = eng.render.borrow();
     super::assets::index_of(t).and_then(|i| rs.textures.get(i).copied())
 }

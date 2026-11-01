@@ -12,6 +12,10 @@
       {
         "member": "og api show <module>",
         "summary": "og api show with a module's name as written (input, physics) prints the module's overview from its wiki page (what the module is for and how its parts fit, without the IDL); og.Input and og.physics.raycast still print the entry. The skills name `og api show <module>` where they pointed at a wiki page."
+      },
+      {
+        "member": "og.ui.setDraw, DrawDesc, og.load.vector, og.load.uiMaterial",
+        "summary": "The UI draws with analytic shapes (docs/ui.md U1): og.ui.setDraw gives the element added last a shape (rect with four radii and round, squircle, bevel or notch corners; ellipse; polygon and star; arc and ring; a path of lines or Béziers), layered fills (colour, linear/radial/conic/diamond gradients mixed in OKLab and dithered, images with cover/contain/none, a focal point, nine-slice and scrolling patterns, cooked vectors), strokes with their own paint, alignment and dashes, drop and inner shadows, glows, layer blur and backdrop glass, opacity and blend modes, a clip to its shape or a mask, an offscreen layer composited through a built-in UI material (dissolve, shine, hologram, glitch, ripple, pixelate, colour adjust, outline, blur) or a custom `type ui-material`, and text outline, gradient fill and shadows. Colours given as theme tokens follow the style. og.load.vector loads a cooked `type vector` (an SVG subset), og.load.uiMaterial a `type ui-material` (WGSL compiled at cook for every back end). Existing UI draws as before; circles and rings are now exact rather than atlas-sampled, so their antialiased edges move by a few levels."
       }
     ],
     "fixed": [

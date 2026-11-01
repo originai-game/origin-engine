@@ -277,6 +277,8 @@ pub(crate) struct RenderState {
     pub review: Option<super::review::ReviewView>,
     /// The art contract's runtime defaults (`super::art`).
     pub art: super::art::ArtState,
+    /// The vectors and UI materials elements draw with (`super::ui_draw`).
+    pub ui_draw: super::ui_draw::UiDrawState,
 }
 
 impl RenderState {
@@ -321,6 +323,7 @@ impl RenderState {
             baked: Default::default(),
             review: None,
             art: Default::default(),
+            ui_draw: Default::default(),
         }
     }
 }

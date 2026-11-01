@@ -784,6 +784,16 @@ pub fn og_load_post(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_vector(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_vector(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_load_ui_material(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_ui_material(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_load_texture(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_texture(&Host, world, path)
 }
@@ -1746,6 +1756,11 @@ pub fn og_ui_overlaps() -> String {
 #[wasm_bindgen]
 pub fn og_ui_layout_stats() -> String {
     <Host as UiApi>::og_ui_layout_stats(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_set_draw(desc: Option<String>) {
+    <Host as UiApi>::og_ui_set_draw(&Host, desc)
 }
 
 #[cfg(not(feature = "publish"))]

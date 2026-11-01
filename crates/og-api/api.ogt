@@ -5958,6 +5958,20 @@ module load {
     returns Result.Post "Refused for a path not in the bundle or not a post pass."
   }
 
+  fn vector {
+    doc "A cooked vector for og.ui's VectorFill, from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges the UI pass antialiases at any size; anything outside the subset is refused by name. Loaded once per path."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `ui/emblem.ogt`."
+    returns Result.VectorArt "Refused for a path not in the bundle or not a vector."
+  }
+
+  fn uiMaterial {
+    doc "A custom UI material for og.ui's LayerDesc, from a cooked `.ogt` of `type ui-material`: `code` or `source` (a `.wgsl`) defining `fn material(m: MaterialInput, p: Params) -> vec4<f32>`, which returns the composite's straight-alpha linear colour at m.uv (0 to 1 over the layer; m.pixel, m.size in CSS px, m.time the UI clock), reading the layer with layer(uv) and layer_texel(), and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most four). The cook compiles it for every back end. Loaded once per path."
+    param world World "The world whose renderer owns it."
+    param path String "The asset id, such as `ui/duotone.ogt`."
+    returns Result.UiMaterial "Refused for a path not in the bundle or not a UI material."
+  }
+
   fn texture {
     doc "Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load."
     doc "Sources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is."
@@ -14189,6 +14203,421 @@ module ui {
   fn layoutStats {
     doc "What the last frame built, rebuilt, laid out and kept."
     returns UiLayoutStats
+  }
+
+  # ── element draws (docs/ui.md §5): shapes, paints, effects, masks, layers ──
+
+  handle VectorArt "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill."
+  handle UiMaterial "A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through."
+
+  enum ShapeType {
+    doc "An element's outline (DrawShape.kind)."
+    variant rect "Its rectangle, with DrawShape.radii (or its radius) and corner."
+    variant ellipse "The ellipse inscribed in its rectangle (a circle when square; a capsule is a rect with radii of half its height)."
+    variant polygon "A regular polygon of sides vertices on the circle in its rectangle, the first at the top; inner under 1 makes a star."
+    variant arc "A ring segment on the circle in its rectangle: start, sweep and thickness (a ring at a full turn), with caps."
+    variant path "A line through points (CSS px from its top left), Béziers with curves; its fills draw the line."
+  }
+
+  enum CornerShape {
+    doc "How a rect's corners turn."
+    variant round "Circular arcs."
+    variant squircle "Continuous corners: a superellipse of DrawShape.squircle."
+    variant bevel "A straight cut across, the radius along each edge."
+    variant notch "A concave quarter circle cut in (an inset notch)."
+  }
+
+  enum LineCap {
+    doc "The end of an open line, an arc or a dash."
+    variant butt "Cut square at the end."
+    variant round "A half disc past the end."
+    variant square "Cut square half the width past the end."
+  }
+
+  enum LineJoin {
+    doc "Where a line's segments meet."
+    variant miter "Sharp, cut to a bevel past DrawShape.miterLimit half widths."
+    variant round "Rounded."
+    variant bevel "Cut across."
+  }
+
+  struct DrawShape {
+    doc "An element's outline; its fills, strokes, effects and clip take it."
+    desc true
+    field kind ShapeType "Which outline."
+    field radii Option.Array.f32.4 "A rect's corner radii, top left, top right, bottom right, bottom left; null is the element's radius at every corner." {
+      unit cssPx
+    }
+    field corner CornerShape "A rect's corner shape."
+    field squircle f32 "A squircle corner's exponent: 2 is round, 4 the iOS look." {
+      default 4
+      min 2
+      max 12
+    }
+    field sides u32 "A polygon's vertices." {
+      default 6
+      min 3
+      max 64
+    }
+    field inner f32 "A star's inner vertices as a fraction of its radius; 1 (or more) is a plain polygon." {
+      default 1
+      min 0
+      unit ratio
+    }
+    field rounding f32 "A polygon's corner rounding." {
+      unit cssPx
+    }
+    field rotation f32 "A polygon's turn, clockwise." {
+      unit rad
+    }
+    field start f32 "An arc's start, clockwise from 3 o'clock." {
+      unit rad
+    }
+    field sweep f32 "An arc's sweep, clockwise (a full turn or more: a ring)." {
+      default 6.2831855
+      unit rad
+    }
+    field thickness f32 "An arc's thickness, inwards from the circle." {
+      default 4
+      unit cssPx
+    }
+    field cap LineCap "An arc's or a path's ends."
+    field points List.Vector2 "A path's points, CSS px from the element's top left." {
+      unit cssPx
+    }
+    field curves bool "A path's points after the first come in threes: a cubic Bézier's two controls and its end."
+    field closed bool "A path returns to its first point."
+    field width f32 "A path's line width." {
+      default 2
+      min 0
+      unit cssPx
+    }
+    field join LineJoin "Where a path's segments meet."
+  }
+
+  enum GradientType {
+    doc "How a gradient (Gradient.type) runs over the element's box (fractions: 0,0 top left, 1,1 bottom right)."
+    variant linear "From `from` to `to`."
+    variant radial "Centred on `from`, `to` its x and y radii."
+    variant conic "Around `from`, starting at the angle to.x (radians clockwise from 3 o'clock)."
+    variant diamond "Centred on `from`, `to` its x and y radii, by |x|/rx + |y|/ry."
+  }
+
+  enum GradientSpread {
+    doc "What a gradient does past its ends."
+    variant pad "Holds the end stops' colours."
+    variant repeat "Starts over."
+    variant reflect "Runs back and forth."
+  }
+
+  struct GradientStop {
+    doc "A gradient's colour at an offset."
+    desc true
+    field offset f32 "Where along the gradient, 0 to 1." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field color Paint "Its colour: a theme token, resolved when the frame is drawn, or a literal."
+  }
+
+  struct Gradient {
+    doc "A gradient of up to 8 stops, mixed in OKLab (no grey middle between complementary colours) and dithered so a long shallow one shows no bands."
+    desc true
+    field type GradientType "Its shape."
+    field from Vector2 "Its start or centre, a fraction of the box." {
+      unit ratio
+    }
+    field to Vector2 "Its end, or its radii, a fraction of the box." {
+      default 0 1
+      unit ratio
+    }
+    field stops List.GradientStop "Its stops in order (at most 8)."
+    field spread GradientSpread "Past its ends."
+    field noDither bool "Draws it without the dither."
+  }
+
+  enum ImageFit {
+    doc "How an image fills the element's box."
+    variant fill "Stretched to the box."
+    variant cover "Scaled to cover the box, cropped around the focal point."
+    variant contain "Scaled to fit inside the box, placed by the focal point."
+    variant none "At its own size (one image pixel per CSS px), placed by the focal point."
+    variant nineSlice "Nine-slice: corners kept at slice, edges and centre filled by edges."
+    variant pattern "Tiled at tile CSS px, turned, offset and scrolling."
+  }
+
+  enum SliceEdges {
+    doc "How a nine-slice's edges and centre fill their length."
+    variant stretch "Stretched."
+    variant repeat "Tiled at the border's scale, cut at the end."
+    variant round "Tiled a whole number of times, stretched to fit."
+  }
+
+  struct SolidFill {
+    doc "A colour."
+    desc true
+    field color Paint "The colour: a theme token, resolved when the frame is drawn, or a literal."
+  }
+
+  struct ImageFill {
+    doc "A texture region with a fit."
+    desc true
+    field texture Texture "The texture (og.load.texture)."
+    field uv Option.Array.f32.4 "The region, [u0, v0, u1, v1] with v down; null is the whole texture."
+    field size Vector2 "The region's size in image pixels (none, nineSlice and pattern read it); zero is the texture's."
+    field tint Option.Paint "Multiplies it; null is white."
+    field fit ImageFit "How it fills the box."
+    field focal Vector2 "Where cover crops and contain or none place it, fractions of the free space." {
+      default 0.5 0.5
+      unit ratio
+    }
+    field slice Array.f32.4 "A nine-slice's border in image pixels: left, top, right, bottom."
+    field border Option.Array.f32.4 "A nine-slice's border as drawn, CSS px; null is slice."
+    field edges SliceEdges "A nine-slice's edges and centre."
+    field hollow bool "A nine-slice leaves its centre empty."
+    field tile Vector2 "A pattern's tile, CSS px; zero is size." {
+      unit cssPx
+    }
+    field patternRotation f32 "A pattern's turn." {
+      unit rad
+    }
+    field offset Vector2 "A pattern's offset." {
+      unit cssPx
+    }
+    field scroll Vector2 "A pattern's scroll, CSS px a second of the UI clock." {
+      unit cssPx
+    }
+  }
+
+  struct VectorFill {
+    doc "A cooked vector contained and centred in the box."
+    desc true
+    field vector VectorArt "The vector (og.load.vector)."
+    field tint Option.Paint "Multiplies its paints; null is white."
+  }
+
+  union Fill {
+    doc "One layer of an element's fill, or a stroke's paint."
+    tag kind
+    case solid SolidFill "A colour."
+    case gradient Gradient "A gradient."
+    case image ImageFill "An image with a fit, a nine-slice or a pattern."
+    case vector VectorFill "A cooked vector (as a stroke's paint, its tint)."
+  }
+
+  enum StrokeAlign {
+    doc "Which side of the outline a stroke lies on."
+    variant center "Across the outline."
+    variant inside "Inside it."
+    variant outside "Outside it."
+  }
+
+  struct Stroke {
+    doc "A stroke along the element's outline with a paint of its own (a gradient border is one stroke)."
+    desc true
+    field width f32 "Its width." {
+      default 1
+      min 0
+      unit cssPx
+    }
+    field align StrokeAlign "Which side of the outline."
+    field dash f32 "A dash's length; 0 is solid." {
+      min 0
+      unit cssPx
+    }
+    field gap f32 "The gap between dashes; 0 is the dash's length." {
+      min 0
+      unit cssPx
+    }
+    field dashOffset f32 "Where the dashes start along the outline (move it by the tick for marching ants)." {
+      unit cssPx
+    }
+    field dashCap LineCap "The dashes' ends."
+    field paint Option.Fill "Its paint; null is the theme's line colour."
+  }
+
+  struct ShadowEffect {
+    doc "A shadow: a drop shadow under the element, or an inner shadow cast inwards."
+    desc true
+    field offset Vector2 "How far it falls." {
+      default 0 4
+      unit cssPx
+    }
+    field blur f32 "Its softness (CSS blur: the Gaussian's deviation is half of it)." {
+      default 12
+      min 0
+      unit cssPx
+    }
+    field spread f32 "How far it grows (or with a negative value shrinks) past the shape." {
+      unit cssPx
+    }
+    field color Option.Paint "Its colour; null is the theme's shadow."
+  }
+
+  struct GlowEffect {
+    doc "A glow: around the element, or along its inside."
+    desc true
+    field blur f32 "Its softness." {
+      default 12
+      min 0
+      unit cssPx
+    }
+    field spread f32 "How far it grows past the shape." {
+      unit cssPx
+    }
+    field color Option.Paint "Its colour; null is the theme's primary."
+  }
+
+  struct BlurEffect {
+    doc "The element and its subtree blurred (drawn offscreen)."
+    desc true
+    field radius f32 "The blur." {
+      default 4
+      min 0
+      unit cssPx
+    }
+  }
+
+  struct BackdropEffect {
+    doc "What is under the element (the scene and the UI below it) blurred, its saturation and brightness scaled and tinted: glass."
+    desc true
+    field blur f32 "The blur." {
+      default 16
+      min 0
+      unit cssPx
+    }
+    field saturation f32 "Multiplies the saturation." {
+      default 1
+      min 0
+      unit ratio
+    }
+    field brightness f32 "Multiplies the brightness." {
+      default 1
+      min 0
+      unit ratio
+    }
+    field tint Option.Paint "Over the blur, by its alpha; null is the theme's panel at 60 %."
+  }
+
+  union Effect {
+    doc "An effect of the element."
+    tag kind
+    case dropShadow ShadowEffect "A drop shadow (several layer)."
+    case innerShadow ShadowEffect "An inner shadow."
+    case outerGlow GlowEffect "A glow around it."
+    case innerGlow GlowEffect "A glow along its inside."
+    case layerBlur BlurEffect "Its subtree blurred."
+    case backdrop BackdropEffect "Glass: what is under it blurred."
+  }
+
+  enum ClipMode {
+    doc "How an element cuts its children."
+    variant none "Not at all (a scroll container still clips to its rectangle)."
+    variant shape "To its shape, antialiased (a round avatar, a hex frame)."
+    variant mask "By DrawDesc.mask's alpha (the subtree draws offscreen)."
+  }
+
+  struct MaskDesc {
+    doc "An alpha mask over an element's subtree: a gradient's alpha, else an image's."
+    desc true
+    field gradient Option.Gradient "The gradient whose alpha masks (a list fading at its edge)."
+    field texture Option.Texture "The image whose alpha masks, stretched over the element."
+    field uv Option.Array.f32.4 "The image's region; null is the whole texture."
+  }
+
+  enum MaterialName {
+    doc "What a layer composites through: a built-in UI material, or a custom one. params is read per material."
+    variant plain "The layer as drawn."
+    variant dissolve "[threshold 0–1, edge width, noise scale (CSS px), _], [edge colour rgba]."
+    variant shine "[position 0–1 across the diagonal (negative sweeps by the clock at -position a second), width, angle (rad), intensity], [colour rgba]."
+    variant hologram "[scanline spacing (CSS px), flicker 0–1, chromatic split (CSS px), scanline strength], [tint rgba]."
+    variant glitch "[strength 0–1, slice height (CSS px), split (CSS px), rate (Hz)]."
+    variant ripple "[amplitude (CSS px), wavelength (CSS px), speed (CSS px/s), _], [centre x, y as fractions]."
+    variant pixelate "[cell size (CSS px)]."
+    variant colorAdjust "[hue (rad), saturation, brightness, grayscale 0–1]."
+    variant outline "[width (CSS px), _, _, _], [colour rgba]: an outline of the layer's alpha."
+    variant blur "[radius (CSS px)]."
+    variant custom "LayerDesc.custom, a `type ui-material`."
+  }
+
+  struct LayerDesc {
+    doc "The element's subtree drawn offscreen, then composited through a material (a card that dissolves, a hologram panel)."
+    desc true
+    field material MaterialName "The material."
+    field custom Option.UiMaterial "The custom material, for material custom."
+    field params List.f32 "Its parameters: up to four vec4s, flattened (16 numbers); for a custom material, missing ones are its defaults."
+  }
+
+  struct TextShadowDesc {
+    doc "A shadow under an element's text."
+    desc true
+    field offset Vector2 "How far it falls." {
+      default 0 2
+      unit cssPx
+    }
+    field blur f32 "Its softness." {
+      default 2
+      min 0
+      unit cssPx
+    }
+    field color Option.Paint "Its colour; null is the theme's shadow."
+  }
+
+  struct TextOutlineDesc {
+    doc "An outline around an element's glyphs."
+    desc true
+    field width f32 "Its width (up to the font's distance range)." {
+      default 2
+      min 0
+      unit cssPx
+    }
+    field color Option.Paint "Its colour; null is the theme's shadow."
+    field align StrokeAlign "Across the glyph's edge, inside it or outside it."
+  }
+
+  struct TextEffectsDesc {
+    doc "Effects of the text an element holds (its labels and rich text)."
+    desc true
+    field shadows List.TextShadowDesc "Shadows, under everything, in order."
+    field outline Option.TextOutlineDesc "An outline."
+    field fill Option.Gradient "A gradient fill over each line's box instead of its colour."
+  }
+
+  struct DrawDesc {
+    doc "What an element draws with (og.ui.setDraw), over its background: its shape, fills and strokes in order, effects, opacity and blend, how it clips its children, and whether its subtree draws offscreen through a material. Colours given as theme tokens follow the style; every value is data an agent can read and set."
+    desc true
+    field shape Option.DrawShape "Its outline; null is its rectangle with its radius."
+    field fills List.Fill "Fills, bottom first."
+    field strokes List.Stroke "Strokes, over the fills and the children, bottom first."
+    field effects List.Effect "Shadows, glows, blurs and backdrops."
+    field opacity f32 "Multiplies its paints (with a layer, its composite)." {
+      default 1
+      min 0
+      max 1
+    }
+    field blend BlendMode "How its paints (or its layer) mix with what is under them."
+    field clip ClipMode "How it cuts its children."
+    field mask Option.MaskDesc "The mask, for clip mask."
+    field layer Option.LayerDesc "Its subtree drawn offscreen and composited through a material."
+    field text Option.TextEffectsDesc "Effects of its text."
+  }
+
+  enum BlendMode {
+    doc "How a paint mixes with what is under it."
+    variant normal "Over it."
+    variant multiply "Multiplied: darkens."
+    variant screen "Screened: lightens."
+    variant add "Added: glows."
+    variant overlay "Multiply under half grey, screen over it."
+    variant softLight "A gentle overlay."
+    variant colorDodge "Brightens what is under it by the paint."
+  }
+
+  fn setDraw {
+    doc "Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §5). Call it right after the element's open or control; immediate mode, so every tick it is drawn."
+    param desc DrawDesc "What it draws with."
+    returns Void
   }
 }
 

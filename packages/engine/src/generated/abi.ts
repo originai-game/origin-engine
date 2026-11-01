@@ -317,6 +317,10 @@ export interface HostAbi<A, V> {
   og_load_shader(world: number, path: string): string;
   /** `og.load.post` */
   og_load_post(world: number, path: string): string;
+  /** `og.load.vector` */
+  og_load_vector(world: number, path: string): string;
+  /** `og.load.uiMaterial` */
+  og_load_ui_material(world: number, path: string): string;
   /** `og.load.texture` */
   og_load_texture(world: number, path: string): string;
   /** `og.load.textureArray` */
@@ -703,6 +707,8 @@ export interface HostAbi<A, V> {
   og_ui_overlaps(): string;
   /** `og.ui.layoutStats` */
   og_ui_layout_stats(): string;
+  /** `og.ui.setDraw` */
+  og_ui_set_draw(desc: string | undefined): void;
   /** `og.commands.register` */
   og_commands_register(name: string, handler: number, desc: string | undefined): string;
   /** `og.commands.parse` */
@@ -974,6 +980,8 @@ export const SYMBOLS: readonly string[] = [
   "og_load_emitter",
   "og_load_shader",
   "og_load_post",
+  "og_load_vector",
+  "og_load_ui_material",
   "og_load_texture",
   "og_load_texture_array",
   "og_load_style",
@@ -1167,6 +1175,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_motion_events",
   "og_ui_overlaps",
   "og_ui_layout_stats",
+  "og_ui_set_draw",
   "og_commands_register",
   "og_commands_parse",
   "og_commands_help",

@@ -75,6 +75,7 @@ mod terrain;
 mod terrain_stream;
 mod timeline;
 mod trace;
+mod ui_draw;
 mod video;
 mod views;
 
@@ -185,6 +186,7 @@ pub use timeline::{
     og_timeline_stop,
 };
 pub use trace::{BEFORE_ENGINE as TRACE_BEFORE_ENGINE, set as trace_set, take as trace_take};
+pub use ui_draw::{og_load_ui_material, og_load_vector, og_ui_set_draw};
 pub use video::{og_load_video, og_load_video_info};
 pub use views::{
     og_load_post, og_render_post_errors, og_render_render_target, og_render_set_post_param,

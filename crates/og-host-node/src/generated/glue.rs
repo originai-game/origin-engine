@@ -939,6 +939,18 @@ pub fn og_load_post(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_post(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_vector")]
+pub fn og_load_vector(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_vector(&Host, world, path)
+}
+
+#[napi(js_name = "og_load_ui_material")]
+pub fn og_load_ui_material(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_ui_material(&Host, world, path)
+}
+
 #[napi(js_name = "og_load_texture")]
 pub fn og_load_texture(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -2095,6 +2107,12 @@ pub fn og_ui_overlaps(env: Env) -> String {
 pub fn og_ui_layout_stats(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_layout_stats(&Host)
+}
+
+#[napi(js_name = "og_ui_set_draw")]
+pub fn og_ui_set_draw(env: Env, desc: Option<String>) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_set_draw(&Host, desc)
 }
 
 #[cfg(not(feature = "publish"))]

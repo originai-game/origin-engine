@@ -382,6 +382,10 @@ pub trait LoadApi: Wire {
     fn og_load_shader(&self, world: u32, path: String) -> String;
     /// `og.load.post`
     fn og_load_post(&self, world: u32, path: String) -> String;
+    /// `og.load.vector`
+    fn og_load_vector(&self, world: u32, path: String) -> String;
+    /// `og.load.uiMaterial`
+    fn og_load_ui_material(&self, world: u32, path: String) -> String;
     /// `og.load.texture`
     fn og_load_texture(&self, world: u32, path: String) -> String;
     /// `og.load.textureArray`
@@ -812,6 +816,8 @@ pub trait UiApi: Wire {
     fn og_ui_overlaps(&self) -> String;
     /// `og.ui.layoutStats`
     fn og_ui_layout_stats(&self) -> String;
+    /// `og.ui.setDraw`
+    fn og_ui_set_draw(&self, desc: Option<String>);
 }
 
 /// `commands`: packages/knowledge/wiki/commands.md.
@@ -1120,6 +1126,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_emitter",
     "og_load_shader",
     "og_load_post",
+    "og_load_vector",
+    "og_load_ui_material",
     "og_load_texture",
     "og_load_texture_array",
     "og_load_style",
@@ -1313,6 +1321,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_motion_events",
     "og_ui_overlaps",
     "og_ui_layout_stats",
+    "og_ui_set_draw",
     "og_commands_register",
     "og_commands_parse",
     "og_commands_help",

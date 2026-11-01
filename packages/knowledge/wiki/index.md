@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1352 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1388 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -213,13 +213,16 @@ Field units the docs and Tune use.
 | [`AudioBus()`](audio.md#column-AudioBus) | column kind | audio | — |
 | [`AudioResampler`](audio.md#type-AudioResampler) | enum | audio | — |
 | [`AudioResampler()`](audio.md#column-AudioResampler) | column kind | audio | — |
+| [`BackdropEffect`](ui.md#type-BackdropEffect) | desc struct | ui | — |
 | [`BakedScene`](render.md#type-BakedScene) | struct | render | — |
 | [`Behaviour`](ai.md#type-Behaviour) | handle | ai | — |
 | [`Behaviour()`](ai.md#column-Behaviour) | column kind | ai | — |
 | [`BehaviourInfo`](ai.md#type-BehaviourInfo) | struct | ai | — |
 | [`BezierKey`](ui.md#type-BezierKey) | struct | ui | — |
+| [`BlendMode`](ui.md#type-BlendMode) | enum | ui | — |
 | [`BlendshapeSource`](anim.md#type-BlendshapeSource) | enum | anim | — |
 | [`BlendshapeSource()`](anim.md#column-BlendshapeSource) | column kind | anim | — |
+| [`BlurEffect`](ui.md#type-BlurEffect) | desc struct | ui | — |
 | [`BODY_DYNAMIC`](physics.md#const-BODY_DYNAMIC) | constant | physics | — |
 | [`BODY_KINEMATIC`](physics.md#const-BODY_KINEMATIC) | constant | physics | — |
 | [`BODY_STATIC`](physics.md#const-BODY_STATIC) | constant | physics | — |
@@ -273,6 +276,7 @@ Field units the docs and Tune use.
 | [`ClipAsset`](anim.md#type-ClipAsset) | handle | anim | — |
 | [`ClipAsset()`](anim.md#column-ClipAsset) | column kind | anim | — |
 | [`ClipInfo`](anim.md#type-ClipInfo) | struct | anim | — |
+| [`ClipMode`](ui.md#type-ClipMode) | enum | ui | — |
 | [`Color`](math.md#type-Color) | struct | math | — |
 | [`color`](math.md#value-color) | value | math | — |
 | [`Color()`](reflect.md#column-Color) | column kind | reflect | — |
@@ -294,6 +298,7 @@ Field units the docs and Tune use.
 | [`ControlSizes`](ui.md#type-ControlSizes) | struct | ui | — |
 | [`CooldownDesc`](ui.md#type-CooldownDesc) | desc struct | ui | — |
 | [`CoreAction`](commands.md#type-CoreAction) | enum | commands | — |
+| [`CornerShape`](ui.md#type-CornerShape) | enum | ui | — |
 | [`CounterDesc`](ui.md#type-CounterDesc) | desc struct | ui | — |
 | [`Cross`](ui.md#type-Cross) | enum | ui | — |
 | [`CsgGeometryDesc`](render.md#type-CsgGeometryDesc) | desc struct | render | — |
@@ -328,6 +333,8 @@ Field units the docs and Tune use.
 | [`DpadResult`](ui.md#type-DpadResult) | struct | ui | — |
 | [`DragAxis`](ui.md#type-DragAxis) | enum | ui | — |
 | [`DragSpec`](ui.md#type-DragSpec) | desc struct | ui | — |
+| [`DrawDesc`](ui.md#type-DrawDesc) | desc struct | ui | — |
+| [`DrawShape`](ui.md#type-DrawShape) | desc struct | ui | — |
 | [`DRIVE_ALL`](physics.md#const-DRIVE_ALL) | constant | physics | — |
 | [`DRIVE_FRONT`](physics.md#const-DRIVE_FRONT) | constant | physics | — |
 | [`DRIVE_REAR`](physics.md#const-DRIVE_REAR) | constant | physics | — |
@@ -339,6 +346,7 @@ Field units the docs and Tune use.
 | [`EaseKey`](ui.md#type-EaseKey) | struct | ui | — |
 | [`EaseName`](ui.md#type-EaseName) | enum | ui | — |
 | [`Edges`](ui.md#type-Edges) | desc struct | ui | — |
+| [`Effect`](ui.md#type-Effect) | union | ui | — |
 | [`ElementDesc`](ui.md#type-ElementDesc) | desc struct | ui | — |
 | [`ElementProps`](ui.md#type-ElementProps) | desc struct | ui | — |
 | [`EngineProbe`](probe.md#type-EngineProbe) | interface | probe | — |
@@ -373,6 +381,7 @@ Field units the docs and Tune use.
 | [`FieldDesc`](ui.md#type-FieldDesc) | desc struct | ui | — |
 | [`FieldOptions`](reflect.md#type-FieldOptions) | desc struct | reflect | — |
 | [`FieldResult`](ui.md#type-FieldResult) | struct | ui | — |
+| [`Fill`](ui.md#type-Fill) | union | ui | — |
 | [`FixedSize`](ui.md#type-FixedSize) | struct | ui | — |
 | [`FlashDesc`](tween.md#type-FlashDesc) | desc struct | tween | — |
 | [`FlipbookClipInfo`](anim.md#type-FlipbookClipInfo) | struct | anim | — |
@@ -414,8 +423,13 @@ Field units the docs and Tune use.
 | [`GeometryInfo`](render.md#type-GeometryInfo) | struct | render | — |
 | [`GeometryPart`](render.md#type-GeometryPart) | desc struct | render | — |
 | [`GestureInfo`](ui.md#type-GestureInfo) | struct | ui | — |
+| [`GlowEffect`](ui.md#type-GlowEffect) | desc struct | ui | — |
 | [`GltfDesc`](load.md#type-GltfDesc) | desc struct | load | — |
 | [`GltfInfo`](load.md#type-GltfInfo) | struct | load | — |
+| [`Gradient`](ui.md#type-Gradient) | desc struct | ui | — |
+| [`GradientSpread`](ui.md#type-GradientSpread) | enum | ui | — |
+| [`GradientStop`](ui.md#type-GradientStop) | desc struct | ui | — |
+| [`GradientType`](ui.md#type-GradientType) | enum | ui | — |
 | [`GraphAsset`](anim.md#type-GraphAsset) | handle | anim | — |
 | [`GraphAsset()`](anim.md#column-GraphAsset) | column kind | anim | — |
 | [`GraphDesc`](anim.md#type-GraphDesc) | desc struct | anim | — |
@@ -441,6 +455,8 @@ Field units the docs and Tune use.
 | [`IkSpace`](anim.md#type-IkSpace) | enum | anim | — |
 | [`IkSpace()`](anim.md#column-IkSpace) | column kind | anim | — |
 | [`ImageDesc`](ui.md#type-ImageDesc) | desc struct | ui | — |
+| [`ImageFill`](ui.md#type-ImageFill) | desc struct | ui | — |
+| [`ImageFit`](ui.md#type-ImageFit) | enum | ui | — |
 | [`InjectedInput`](input.md#type-InjectedInput) | union | input | — |
 | [`Input.axis`](input.md#member-Input-axis) | method | input | `og_input_axis` |
 | [`Input.axis2`](input.md#member-Input-axis2) | method | input | `og_input_axis2` |
@@ -472,6 +488,7 @@ Field units the docs and Tune use.
 | [`LabelDesc`](ui.md#type-LabelDesc) | desc struct | ui | — |
 | [`LanguageOption`](ui.md#type-LanguageOption) | desc struct | ui | — |
 | [`LatheGeometryDesc`](render.md#type-LatheGeometryDesc) | desc struct | render | — |
+| [`LayerDesc`](ui.md#type-LayerDesc) | desc struct | ui | — |
 | [`LayoutMode`](ui.md#type-LayoutMode) | enum | ui | — |
 | [`LeaderboardDesc`](ui.md#type-LeaderboardDesc) | desc struct | ui | — |
 | [`LeaderboardEntry`](ui.md#type-LeaderboardEntry) | desc struct | ui | — |
@@ -482,6 +499,8 @@ Field units the docs and Tune use.
 | [`LevelSelectDesc`](ui.md#type-LevelSelectDesc) | desc struct | ui | — |
 | [`LevelSelectResult`](ui.md#type-LevelSelectResult) | struct | ui | — |
 | [`LinearKey`](ui.md#type-LinearKey) | struct | ui | — |
+| [`LineCap`](ui.md#type-LineCap) | enum | ui | — |
+| [`LineJoin`](ui.md#type-LineJoin) | enum | ui | — |
 | [`LineMode`](render.md#type-LineMode) | enum | render | — |
 | [`LineMode()`](render.md#column-LineMode) | column kind | render | — |
 | [`LinesDesc`](render.md#type-LinesDesc) | desc struct | render | — |
@@ -508,9 +527,11 @@ Field units the docs and Tune use.
 | [`Lut()`](render.md#column-Lut) | column kind | render | — |
 | [`MainMenuDesc`](ui.md#type-MainMenuDesc) | desc struct | ui | — |
 | [`MapMarker`](ui.md#type-MapMarker) | desc struct | ui | — |
+| [`MaskDesc`](ui.md#type-MaskDesc) | desc struct | ui | — |
 | [`mat4`](math.md#value-mat4) | value | math | — |
 | [`Material`](render.md#type-Material) | handle | render | — |
 | [`Material()`](render.md#column-Material) | column kind | render | — |
+| [`MaterialName`](ui.md#type-MaterialName) | enum | ui | — |
 | [`MaterialSurface`](render.md#type-MaterialSurface) | enum | render | — |
 | [`MaterialSurface()`](render.md#column-MaterialSurface) | column kind | render | — |
 | [`Matrix4`](math.md#type-Matrix4) | struct | math | — |
@@ -688,6 +709,8 @@ Field units the docs and Tune use.
 | [`og.load.textureArray`](load.md#fn-textureArray) | function | load | `og_load_texture_array` |
 | [`og.load.tilemap`](load.md#fn-tilemap) | function | load | `og_load_tilemap` |
 | [`og.load.timeline`](load.md#fn-timeline) | function | load | `og_load_timeline` |
+| [`og.load.uiMaterial`](load.md#fn-uiMaterial) | function | load | `og_load_ui_material` |
+| [`og.load.vector`](load.md#fn-vector) | function | load | `og_load_vector` |
 | [`og.load.video`](load.md#fn-video) | function | load | `og_load_video` |
 | [`og.load.videoInfo`](load.md#fn-videoInfo) | function | load | `og_load_video_info` |
 | [`og.Lockstep`](net.md#record-Lockstep) | resource | net | — |
@@ -994,6 +1017,7 @@ Field units the docs and Tune use.
 | [`og.ui.seconds`](ui.md#fn-seconds) | function | ui | `og_ui_seconds` |
 | [`og.ui.seek`](ui.md#fn-seek) | function | ui | `og_ui_seek` |
 | [`og.ui.select`](ui.md#fn-select) | function | ui | `og_ui_select` |
+| [`og.ui.setDraw`](ui.md#fn-setDraw) | function | ui | `og_ui_set_draw` |
 | [`og.ui.setNavigation`](ui.md#fn-setNavigation) | function | ui | `og_ui_set_navigation` |
 | [`og.ui.setPlayers`](ui.md#fn-setPlayers) | function | ui | `og_ui_set_players` |
 | [`og.ui.settingsScreen`](ui.md#fn-settingsScreen) | function | ui | — |
@@ -1254,6 +1278,7 @@ Field units the docs and Tune use.
 | [`SettingsResult`](ui.md#type-SettingsResult) | struct | ui | — |
 | [`Shader`](render.md#type-Shader) | handle | render | — |
 | [`Shader()`](render.md#column-Shader) | column kind | render | — |
+| [`ShadowEffect`](ui.md#type-ShadowEffect) | desc struct | ui | — |
 | [`ShakeDesc`](ui.md#type-ShakeDesc) | desc struct | ui | — |
 | [`Shape`](shapes.md#type-Shape) | interface | shapes | — |
 | [`Shape.extractPoints`](shapes.md#member-Shape-extractPoints) | method | shapes | — |
@@ -1272,6 +1297,7 @@ Field units the docs and Tune use.
 | [`ShapeDesc`](physics.md#type-ShapeDesc) | desc struct | physics | — |
 | [`ShapeGeometryDesc`](render.md#type-ShapeGeometryDesc) | desc struct | render | — |
 | [`ShapePoints`](render.md#type-ShapePoints) | struct | render | — |
+| [`ShapeType`](ui.md#type-ShapeType) | enum | ui | — |
 | [`ShooterHudDesc`](ui.md#type-ShooterHudDesc) | desc struct | ui | — |
 | [`ShopDesc`](ui.md#type-ShopDesc) | desc struct | ui | — |
 | [`ShopItem`](ui.md#type-ShopItem) | desc struct | ui | — |
@@ -1283,11 +1309,13 @@ Field units the docs and Tune use.
 | [`SkeletonAsset`](anim.md#type-SkeletonAsset) | handle | anim | — |
 | [`SkeletonAsset()`](anim.md#column-SkeletonAsset) | column kind | anim | — |
 | [`SkeletonDesc`](ui.md#type-SkeletonDesc) | desc struct | ui | — |
+| [`SliceEdges`](ui.md#type-SliceEdges) | enum | ui | — |
 | [`SliderDesc`](ui.md#type-SliderDesc) | desc struct | ui | — |
 | [`SliderResult`](ui.md#type-SliderResult) | struct | ui | — |
 | [`SlotMove`](ui.md#type-SlotMove) | struct | ui | — |
 | [`SnapPoint`](ui.md#type-SnapPoint) | struct | ui | — |
 | [`SnapshotInfo`](probe.md#type-SnapshotInfo) | struct | probe | — |
+| [`SolidFill`](ui.md#type-SolidFill) | desc struct | ui | — |
 | [`SolidGeometryDesc`](render.md#type-SolidGeometryDesc) | desc struct | render | — |
 | [`Sound`](load.md#type-Sound) | handle | load | — |
 | [`Sound()`](load.md#column-Sound) | column kind | load | — |
@@ -1344,6 +1372,8 @@ Field units the docs and Tune use.
 | [`StreamStatus`](stream.md#type-StreamStatus) | struct | stream | — |
 | [`StripBlend`](render.md#type-StripBlend) | enum | render | — |
 | [`StripBlend()`](render.md#column-StripBlend) | column kind | render | — |
+| [`Stroke`](ui.md#type-Stroke) | desc struct | ui | — |
+| [`StrokeAlign`](ui.md#type-StrokeAlign) | enum | ui | — |
 | [`Style`](load.md#type-Style) | handle | load | — |
 | [`Style()`](load.md#column-Style) | column kind | load | — |
 | [`StylePart`](ui.md#type-StylePart) | enum | ui | — |
@@ -1376,9 +1406,12 @@ Field units the docs and Tune use.
 | [`TextAlign`](ui.md#type-TextAlign) | enum | ui | — |
 | [`TextAreaDesc`](ui.md#type-TextAreaDesc) | desc struct | ui | — |
 | [`TextDesc`](render.md#type-TextDesc) | desc struct | render | — |
+| [`TextEffectsDesc`](ui.md#type-TextEffectsDesc) | desc struct | ui | — |
 | [`TextEntry`](input.md#type-TextEntry) | struct | input | — |
 | [`TextMeasureDesc`](render.md#type-TextMeasureDesc) | desc struct | render | — |
 | [`TextMetrics`](render.md#type-TextMetrics) | struct | render | — |
+| [`TextOutlineDesc`](ui.md#type-TextOutlineDesc) | desc struct | ui | — |
+| [`TextShadowDesc`](ui.md#type-TextShadowDesc) | desc struct | ui | — |
 | [`Texture`](render.md#type-Texture) | handle | render | — |
 | [`Texture()`](render.md#column-Texture) | column kind | render | — |
 | [`TextureArray`](load.md#type-TextureArray) | handle | load | — |
@@ -1437,6 +1470,7 @@ Field units the docs and Tune use.
 | [`UiElement`](probe.md#type-UiElement) | struct | probe | — |
 | [`UiItemBuild`](ui.md#type-UiItemBuild) | callback | ui | — |
 | [`UiLayoutStats`](ui.md#type-UiLayoutStats) | struct | ui | — |
+| [`UiMaterial`](ui.md#type-UiMaterial) | handle | ui | — |
 | [`UiMotionEvent`](ui.md#type-UiMotionEvent) | struct | ui | — |
 | [`UiOverlap`](ui.md#type-UiOverlap) | struct | ui | — |
 | [`UiPatch`](ui.md#type-UiPatch) | desc struct | ui | — |
@@ -1477,6 +1511,8 @@ Field units the docs and Tune use.
 | [`Vector3Math.normalize`](math.md#member-Vector3Math-normalize) | method | math | — |
 | [`Vector3Math.scale`](math.md#member-Vector3Math-scale) | method | math | — |
 | [`Vector3Math.sub`](math.md#member-Vector3Math-sub) | method | math | — |
+| [`VectorArt`](ui.md#type-VectorArt) | handle | ui | — |
+| [`VectorFill`](ui.md#type-VectorFill) | desc struct | ui | — |
 | [`Video`](video.md#type-Video) | handle | video | — |
 | [`Video()`](video.md#column-Video) | column kind | video | — |
 | [`VideoInfo`](video.md#type-VideoInfo) | struct | video | — |
