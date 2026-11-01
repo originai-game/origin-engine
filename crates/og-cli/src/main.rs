@@ -102,7 +102,8 @@ commands:
   polish [project] [--out DIR] [--frames N] [--json]
                       play the playtests headless and score them against og-taste and og-feel
                       (contrast, text size, HUD, transitions, UI sounds, input latency, hit
-                      feedback, idle frames, frame time, missing locale keys) into DIR/report.md
+                      feedback, idle frames, frame time, missing locale keys) and og ui check over
+                      every screen the project declares (DIR/ui-check) into DIR/report.md
                       (default <project>/og-out/polish) with frames and a fix per finding
   build [project] [--publish] [--out DIR] [--json] [--no-check]
                       cook, type-check and export the game to dist/ (or publish.out): the player shell,

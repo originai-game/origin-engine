@@ -311,6 +311,55 @@ test("og polish reports the string tables' missing keys as a finding for og-i18n
   expect(f?.fix ?? "").toContain("og-i18n");
 }, 300_000);
 
+test("og polish runs og ui check over the screens project.ogt declares and reports each rule with an error", () => {
+  const p = join(evidence, "ui-screens");
+  rmSync(p, { recursive: true, force: true });
+  for (const d of ["src", "tests", "assets/fonts"]) mkdirSync(join(p, d), { recursive: true });
+  copyFileSync(join(repo, "templates", "game", "assets", "fonts", "NotoSansSC-Regular-subset.ttf"), join(p, "assets", "fonts", "NotoSansSC-Regular-subset.ttf"));
+  // The playtest never opens the shop; only the declared screen reaches it,
+  // where two placed groups sit on one anchor with no declared overlap.
+  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Shop"\nid "shop"\nengine "0.7.7"\nentry "src/main.ts"\nui {\n  screen "shop" "0:shop"\n}\n');
+  writeFileSync(
+    join(p, "src", "main.ts"),
+    `import { og, defineResource, defineSystem, bool } from "@origingame/engine";
+const Shop = defineResource("Shop", { open: bool(false) });
+const Draw = defineSystem("Draw", { writes: [Shop] }, (_q, _t, world) => {
+  const s = world.resource(Shop);
+  og.ui.anchor("Title", { anchor: "topLeft" }, () => og.ui.label("Name", "Shopkeeper", { step: "body" }));
+  if (!(s.ok && s.value.open)) return;
+  og.ui.anchor("Price", { anchor: "center" }, () => og.ui.label("Cost", "120 gold", { step: "title" }));
+  og.ui.anchor("Stock", { anchor: "center" }, () => og.ui.label("Left", "3 in stock", { step: "title" }));
+});
+export default og.game({
+  tick: 60,
+  resources: [Shop],
+  systems: [Draw],
+  commands: { shop: (world) => { const s = world.resource(Shop); if (s.ok) s.value.open = true; } },
+  start: (world) => {
+    const font = og.load.font(world, "fonts/NotoSansSC-Regular-subset.ttf");
+    if (font.ok) og.ui.configure(world, { font: font.value });
+  },
+});
+`,
+  );
+  writeFileSync(join(p, "tests", "idle.og.ts"), 'import { playtest } from "@origingame/engine/playtest";\nexport default playtest({ name: "idle", commands: "0.2:screenshot:title.png;0.3:quit", check(run, t) { t.ok(run.quit, "quit"); } });\n');
+  const r = run([ogBin(), "polish", p]);
+  if (r.code !== 0) throw new Error(r.out);
+  const out = JSON.parse(readFileSync(join(p, "og-out", "polish", "polish.json"), "utf8")) as Polish & { uiCheck: { ran: boolean; cells: number; rules: Record<string, { errors: number }> } };
+  expect(out.uiCheck.ran).toBeTrue();
+  expect(out.uiCheck.cells).toBeGreaterThan(1);
+  expect(out.uiCheck.rules["overlap"]?.errors ?? 0).toBeGreaterThan(0);
+  const f = out.findings.find((x) => x.measure === "ui check: overlap");
+  expect(f?.where ?? "").toContain("Price");
+  expect(f?.where ?? "").toContain("Stock");
+  expect(f?.where ?? "").toContain("shop");
+  const report = readFileSync(join(p, "og-out", "polish", "report.md"), "utf8");
+  expect(report).toContain("## UI check");
+  expect(report).toMatch(/\| overlap \| [1-9]/);
+  expect(unresolved(report)).toEqual([]);
+  expect(existsSync(join(p, "og-out", "polish", "ui-check", "check.txt"))).toBeTrue();
+}, 600_000);
+
 test("og polish reads a phone's UI at its device pixels and measures text, not disabled controls", () => {
   const p = join(evidence, "phone-ui");
   rmSync(p, { recursive: true, force: true });

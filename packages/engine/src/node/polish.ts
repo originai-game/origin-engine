@@ -15,7 +15,10 @@
 // scale, hit stop, trauma, floating texts, tweens, particles, voices by
 // bus, named entities, UI bounds, step and render times). The run's audio
 // is captured to a WAV. Each dump_ui is joined by og ui check's reading of
-// the same frame (ui-check.ts), whose rules join the findings. The playtest's checks do not run: `og test` does
+// the same frame (ui-check.ts), whose rules join the findings, and og-cli
+// runs og ui check over every screen the project declares first (`--ui-check`
+// names its check.json): one finding per rule with an error, a UI check
+// section in the report. The playtest's checks do not run: `og test` does
 // that. What is measured, and the thresholds, are og-build §5 (the
 // knowledge package's skills); each finding's fix names a skill section.
 // Without a renderer (tier `none`) the screenshots are frames unchecked: the
@@ -44,7 +47,7 @@ const opt = (name: string) => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 const here = dirname(fileURLToPath(import.meta.url));
-const VALUED = new Set(["--one", "--entry", "--root", "--out", "--warnings", "--frames"]);
+const VALUED = new Set(["--one", "--entry", "--root", "--out", "--warnings", "--frames", "--ui-check"]);
 const positional = argv.filter((a, i) => !a.startsWith("--") && !VALUED.has(argv[i - 1] ?? ""));
 
 function fail(reason: string): never {
@@ -699,6 +702,58 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
   };
 }
 
+// ── og ui check over every declared screen ─────────────────────────────────
+
+/** What og ui check wrote (ui-run.ts's check.json), as polish reads it. */
+export interface UiCheckFile {
+  cells: number;
+  errors: number;
+  warnings: number;
+  findings: UiFinding[];
+}
+
+/** The summary polish.json keeps: the counts and the error count per rule. */
+export interface UiCheckSummary {
+  ran: boolean;
+  cells: number;
+  errors: number;
+  warnings: number;
+  rules: Record<string, { errors: number; warnings: number }>;
+}
+
+/**
+ * og ui check's result as polish's findings: one per rule with an error,
+ * naming how many, the first element, what it measured and the prop to
+ * change; the rest are in ui-check/check.txt. A check that did not run is
+ * a finding too: polish never reports a UI it did not check as clean.
+ */
+export function uiCheckFindings(check: UiCheckFile | null): { summary: UiCheckSummary; findings: Finding[] } {
+  if (!check) {
+    return {
+      summary: { ran: false, cells: 0, errors: 0, warnings: 0, rules: {} },
+      findings: [{ measure: "ui check", where: "ui-check/", detail: "og ui check did not run over the project's screens", fix: "og ui check . shows why (og-ui §8)" }],
+    };
+  }
+  const rules: UiCheckSummary["rules"] = {};
+  for (const f of check.findings) {
+    const r = (rules[f.rule] ??= { errors: 0, warnings: 0 });
+    if (f.severity === "error") r.errors++;
+    else r.warnings++;
+  }
+  const findings: Finding[] = [];
+  for (const [rule, n] of Object.entries(rules)) {
+    if (n.errors === 0) continue;
+    const first = check.findings.find((f) => f.rule === rule && f.severity === "error")!;
+    findings.push({
+      measure: `ui check: ${rule}`,
+      where: `${first.paths.join(", ")} (${first.cells[0] ?? ""}${first.cells.length > 1 ? ` and ${first.cells.length - 1} more cell(s)` : ""})`,
+      detail: `${n.errors} error(s)${n.errors > 1 ? "; the first" : ""}: ${first.measured} (${first.limit})`,
+      fix: `${first.prop}; every one in ui-check/check.txt (og-ui §8)`,
+    });
+  }
+  return { summary: { ran: true, cells: check.cells, errors: check.errors, warnings: check.warnings, rules }, findings };
+}
+
 // ── scores and the report ──────────────────────────────────────────────────
 
 interface Scores {
@@ -757,7 +812,7 @@ function scores(ms: PlaytestMeasures[], missingKeys: number, hasLocales: boolean
 
 const show = (x: number | null) => (x === null ? "n/a" : String(x));
 
-function markdown(project: string, ms: PlaytestMeasures[], sc: Scores, findings: Finding[], warnings: string[], date: string): string {
+function markdown(project: string, ms: PlaytestMeasures[], sc: Scores, findings: Finding[], warnings: string[], date: string, ui: UiCheckSummary): string {
   const L: string[] = [];
   L.push(`# og polish: ${project}`, "");
   L.push(`${date}, ${ms.length} playtest(s) on ${[...new Set(ms.map((m) => m.tier))].join(", ")}. Mechanical measures of og-taste and og-feel (og-build §5); a score is 0 to 100, n/a when nothing in the playtests exercises it. The measures cannot judge style: read the frames.`, "");
@@ -791,6 +846,17 @@ function markdown(project: string, ms: PlaytestMeasures[], sc: Scores, findings:
     for (const w of warnings) L.push(`- ${w}`);
     L.push("");
   }
+  L.push("## UI check", "");
+  if (!ui.ran) L.push("og ui check did not run over the project's screens: see the fixes above.", "");
+  else {
+    L.push(`og ui check over every screen the project declares (og-ui §8): ${ui.cells} cell(s), ${ui.errors} error(s), ${ui.warnings} warning(s); each with its path, measure and prop in ui-check/check.txt.`, "");
+    const rows = Object.entries(ui.rules);
+    if (rows.length) {
+      L.push("| Rule | Errors | Warnings |", "|---|---|---|");
+      for (const [rule, n] of rows.sort((a, b) => b[1].errors - a[1].errors || b[1].warnings - a[1].warnings)) L.push(`| ${rule} | ${n.errors} | ${n.warnings} |`);
+      L.push("");
+    }
+  }
   L.push("## Playtests", "");
   for (const m of ms) {
     L.push(`### ${m.playtest}`, "", `${m.title} (${m.ticks} ticks)`, "");
@@ -820,7 +886,7 @@ async function main(): Promise<void> {
   const entry = opt("--entry");
   const root = opt("--root");
   const out = opt("--out");
-  if (!entry || !root || !out) fail("usage: bun src/node/polish.ts --entry <bundle> --root <project> --out <dir> [--warnings <file>] [--frames N] [--json] <tests/x.og.ts>...");
+  if (!entry || !root || !out) fail("usage: bun src/node/polish.ts --entry <bundle> --root <project> --out <dir> [--warnings <file>] [--frames N] [--ui-check <check.json>] [--json] <tests/x.og.ts>...");
   if (one) return runOne(resolve(one), resolve(entry!), resolve(root!), resolve(out!));
   const files = positional.map((f) => resolve(f));
   if (files.length === 0) fail(`${root} has no playtests: og polish measures what playtests play; add tests/*.og.ts (og-build §3)`);
@@ -853,12 +919,15 @@ async function main(): Promise<void> {
   }
   const missing = warnings.filter((w) => /key '/.test(w)).length;
   if (missing > 0) findings.push({ measure: "locale keys", where: "assets/strings", detail: `og cook warns about ${missing} key(s) a table lacks or formats differently`, fix: "og-i18n §1: every locale has every key, with the same arguments" });
+  const uiFile = opt("--ui-check");
+  const ui = uiCheckFindings(uiFile && existsSync(uiFile) ? (JSON.parse(readFileSync(uiFile, "utf8")) as UiCheckFile) : null);
+  findings.push(...ui.findings);
   const hasLocales = existsSync(join(root!, "assets", "strings")) || warnings.length > 0;
   const sc = scores(ms, missing, hasLocales);
   const date = new Date().toISOString().slice(0, 10);
   const project = basename(resolve(root!));
-  writeFileSync(join(outDir, "report.md"), markdown(project, ms, sc, findings, warnings, date));
-  writeFileSync(join(outDir, "polish.json"), JSON.stringify({ project, date, scores: sc, findings, playtests: ms, warnings }, null, 1) + "\n");
+  writeFileSync(join(outDir, "report.md"), markdown(project, ms, sc, findings, warnings, date, ui.summary));
+  writeFileSync(join(outDir, "polish.json"), JSON.stringify({ project, date, scores: sc, findings, playtests: ms, warnings, uiCheck: ui.summary }, null, 1) + "\n");
   rmSync(runs, { recursive: true, force: true });
   if (argv.includes("--json")) process.stdout.write(JSON.stringify({ project, scores: sc, findings: findings.length, report: join(outDir, "report.md") }) + "\n");
   else process.stdout.write(`og polish: taste ${show(sc.taste)}, feel ${show(sc.feel)}; ${findings.length} finding(s); ${join(outDir, "report.md")}\n`);

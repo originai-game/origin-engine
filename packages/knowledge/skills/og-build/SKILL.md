@@ -238,7 +238,13 @@ named entities' positions and flipbook frames, step and render time), takes
 the mean of their rows; a row is n/a when no playtest exercises it), the
 frames, and for each finding the skill section that fixes it. It refuses a
 project without playtests: write them first (§3), with a `screenshot` on
-every screen that matters.
+every screen that matters. Before the playtests it runs `og ui check` over
+every screen the project declares (project.ogt's `ui { screen ... }`,
+og-ui §8) into `og-out/polish/ui-check/`: each rule with an error is a
+finding with its element path, measure and prop, and the report's UI check
+section counts every rule's errors and warnings. It is the full review, so
+it takes minutes on a large screen list; `og ui check . --screen <name>`
+reruns one screen while fixing it.
 
 | Axis | Measure | From | Passes at | Fixed in |
 |---|---|---|---|---|

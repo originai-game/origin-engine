@@ -4,7 +4,8 @@
 //! `<project>/og-out/polish`) with up to N frames (default 8, half size),
 //! the scores and a fix per finding. Refuses a project without playtests: polish measures what a
 //! playtest plays. The cook's warnings (a locale's missing string keys)
-//! join the report.
+//! join the report, and so does `og ui check` over every screen the project
+//! declares (DIR/ui-check, crate::ui::spawn).
 
 use crate::project::{self, Project};
 use std::path::Path;
@@ -102,6 +103,15 @@ pub fn run(args: &[&str]) -> ExitCode {
         eprintln!("og polish: {}: {e}", warnings_file.display());
         return ExitCode::FAILURE;
     }
+    // og ui check over every screen the project declares (docs/ui.md
+    // §16.5): polish is the full review, so its UI rules run on every
+    // screen × breakpoint × locale, not only the playtests' frames.
+    let ui_dir = out.join("ui-check");
+    match crate::ui::spawn("check", &p, &package, &bundle, &ui_dir, &[]) {
+        Ok(s) if s.success() || s.code() == Some(3) => {}
+        Ok(s) => eprintln!("og polish: og ui check did not finish ({s}); the report says so"),
+        Err(e) => eprintln!("og polish: og ui check: {e}"),
+    }
     let mut cmd: Command = project::bun(&package, "src/node/polish.ts");
     cmd.arg("--entry")
         .arg(&bundle)
@@ -112,7 +122,9 @@ pub fn run(args: &[&str]) -> ExitCode {
         .arg("--warnings")
         .arg(&warnings_file)
         .arg("--frames")
-        .arg(frames);
+        .arg(frames)
+        .arg("--ui-check")
+        .arg(ui_dir.join("check.json"));
     if json {
         cmd.arg("--json");
     }
