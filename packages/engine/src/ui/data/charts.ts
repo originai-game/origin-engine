@@ -8,7 +8,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  clamp, fit, flags, frame, grow, kit, mix, over, paint, pointerFrom, px, rememberPath, role, rtl, series, spring, still, surface, text, token, xy,
+  clamp, fit, flags, frame, grow, kit, mix, over, paint, pointerFrom, px, rememberPath, role, rtl, series, spring, still, surface, target, text, token, xy,
   type Rgba,
 } from "../containers/base.ts";
 import { dataState } from "./table.ts";
@@ -71,7 +71,7 @@ export function chart(id: string, desc: Api.ChartDesc): Api.ChartResult {
       });
     }
     if (desc.loading || desc.error || empty) {
-      kit.open("Body", { direction: "column", width: grow(), height: px(height), align: "center", cross: "stretch" });
+      kit.open("Body", { direction: "column", width: grow(), height: fit(height), align: "center", cross: "stretch" });
       retry = dataState("State", { ...desc, emptyLabel: desc.emptyLabel || "No data yet" }, 4, 28);
       kit.close();
     } else {
@@ -313,8 +313,11 @@ function cartesian(cx: Ctx, W: number, H: number): { hovered: number | null; cli
       // A target per category: hover, touch, focus and press.
       const cw = bar ? band : n <= 1 ? Wi : Wi / (n - 1);
       for (let i = 0; i < n; i++) {
-        const x0 = clamp(xs(i) - cw / 2, 0, W);
-        const x1 = clamp(xs(i) + cw / 2, 0, W);
+        // A whole touch target under a finger even where the columns are narrower (neighbours
+        // overlap a little, the later on top), and within the plot (the ends reach inwards).
+        const tw = Math.min(W, Math.max(cw, target(0)));
+        const x0 = clamp(xs(i) - tw / 2, 0, W - tw);
+        const x1 = x0 + tw;
         const r = surface(kit.idi("Category", i), {
           part: "Chart.category",
           cls: "slot",
@@ -356,8 +359,11 @@ function cartesian(cx: Ctx, W: number, H: number): { hovered: number | null; cli
       text("Strut", "\u00a0", { step: "caption", width: px(1) });
       if (W > 0) {
         const Wi = W - 2 * PAD;
+        // A caption's advance at the player's text size: labels are thinned to every step-th one
+        // that fits whole, never cut to a stub.
+        const chW = 7.5 * Math.max(1, frame().theme.textScale ?? 1);
         const longest = Math.max(...cx.cats.map((c) => c.length));
-        const each = Math.max(36, longest * 7 + 12);
+        const each = Math.max(36, Math.ceil(longest * chW) + 12);
         const fit = Math.max(1, Math.floor(Wi / each));
         const step = Math.max(1, Math.ceil(n / fit));
         const xs = (i: number) => (bar ? PAD + (Wi / n) * (i + 0.5) : n <= 1 ? PAD + Wi / 2 : PAD + (i * Wi) / (n - 1));
@@ -423,8 +429,13 @@ function radar(cx: Ctx, W: number, H: number): { hovered: number | null; clicked
   let clicked: number | null = null;
   kit.open("Plot", { direction: "column", width: grow(), height: px(H) });
   if (W > 0) {
-    const room = phone ? 44 : 64;
-    const R = Math.max(10, Math.min(W / 2 - room, H / 2 - 22));
+    // The axes' names sit outside the ring: as wide as the longest (at the text size, up to two
+    // lines), and the ring gives them the room, never cutting them.
+    const scale = Math.max(1, frame().theme.textScale ?? 1);
+    const longest = Math.max(4, ...cx.cats.map((c) => c.length));
+    const labelW = Math.round(clamp(longest * 7.5 * scale + 12, phone ? 56 : 72, Math.max(56, W / 2 - 52)));
+    const room = Math.max(phone ? 44 : 64, labelW + 12);
+    const R = Math.max(10, Math.min(W / 2 - room, H / 2 - 22 * scale));
     const c = { x: W / 2, y: H / 2 };
     const top = desc.max ?? niceTicks(0, Math.max(...values.flat(), 0), 4).hi;
     const ang = (k: number) => -Math.PI / 2 + (k * Math.PI * 2) / n;
@@ -466,7 +477,7 @@ function radar(cx: Ctx, W: number, H: number): { hovered: number | null; clicked
       const p = at(k, 1);
       const a = ang(k);
       const dx = Math.cos(a) * (flip ? -1 : 1);
-      const w = phone ? 72 : 96;
+      const w = labelW;
       const physRight = dx > 0.25;
       const physLeft = dx < -0.25;
       const lx = p.x + dx * 10;
@@ -480,12 +491,12 @@ function radar(cx: Ctx, W: number, H: number): { hovered: number | null; clicked
         fill: null,
         washBy: 0.06,
         width: px(w),
-        height: fit(28),
+        height: fit(target(28)),
         padding: xy(4, 0),
         align: align === "center" ? "center" : align === "end" ? "end" : "start",
         semantics: { role: "button", name: `${cx.cats[k] ?? k + 1}: ${values.map((v, s) => `${values.length > 1 ? `${cx.names[s]} ` : ""}${cx.fmt(v[k] ?? 0)}`).join(", ")}` },
-        layer: { insets: { start: flip ? W - physX - w : physX, top: ly - 14 + (Math.sin(a) > 0.5 ? 6 : Math.sin(a) < -0.5 ? -6 : 0) }, z: 30 },
-      }, () => text("Label", cx.cats[k] ?? "", { step: "caption", color: k === hot ? "ink" : "inkMuted", nowrap: true, ellipsis: true, align }));
+        layer: { insets: { start: flip ? W - physX - w : physX, top: ly - target(28) / 2 + (Math.sin(a) > 0.5 ? 6 : Math.sin(a) < -0.5 ? -6 : 0) }, z: 30 },
+      }, () => text("Label", cx.cats[k] ?? "", { step: "caption", color: k === hot ? "ink" : "inkMuted", maxLines: 2, ellipsis: true, align, width: grow() }));
       if (r.hovered || r.focused || r.pressed) hovered = k;
       if (r.clicked) clicked = k;
     }

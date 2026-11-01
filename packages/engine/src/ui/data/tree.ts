@@ -4,7 +4,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  byText, chevron, target, wrapRow, clamp, flags, frame, grow, kit, lastGesture, mark, over, px, rememberPath, role, rtl, spring, surface, text, token, xy,
+  byText, chevron, target, wrapRow, clamp, fit, flags, frame, grow, kit, lastGesture, mark, over, px, rememberPath, role, rtl, spring, surface, text, token, xy,
 } from "../containers/base.ts";
 
 // ── tree ────────────────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ export function tree(id: string, desc: Api.TreeDesc): Api.TreeResult {
       try {
         kit.row("Line", { width: grow(), height: grow(), padding: { left: t.xs + depth * indent, top: 0, right: t.sm, bottom: 0 }, gap: t.xs, cross: "center", part: `Tree.item${flags(sel && "selected", branch && (isOpen ? "expanded" : "collapsed"))}`, partClass: "slot" }, () => {
           if (branch) {
-            const tr = surface("Toggle", { part: "Tree.toggle", cls: "chip", fill: null, focusable: false, width: px(target(28)), height: px(target(28)), align: "center", cross: "center", semantics: { role: "button", name: isOpen ? "Collapse" : "Expand" } }, () => {
+            const tr = surface("Toggle", { part: "Tree.toggle", cls: "chip", fill: null, focusable: false, width: px(target(28)), height: px(target(28)), align: "center", cross: "center", semantics: { role: frame().touch ? "button" : "image", name: isOpen ? "Collapse" : "Expand" } }, () => {
               chevron("Chevron", "forward", 14, role("inkMuted"), { group: "expansion", current: isOpen ? "expanded" : "collapsed", turns: { collapsed: 0, expanded: 1 } });
             });
             if (tr.clicked) toggled = key;
@@ -127,14 +127,41 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
   const s = size * Math.max(0.75, Math.min(1.25, live));
   // Room round the nodes' centres for a node and its caption (two lines under it), at the text size.
   const capW = byText(120);
-  const padX = Math.max(s / 2, capW / 2) + t.sm;
+  const capH = byText(2 * 18);
+  const labelled = desc.labels !== false;
+  // Each caption's width: its text's at the caption size (about 0.56 em an average letter), up to
+  // capW, where it wraps. Estimated, not measured: a caption panned out of view has no bounds.
+  const em = 13 * Math.max(1, frame().theme.textScale ?? 1);
+  const capWs = nodes.map((n) => (n.label && labelled ? Math.min(capW, Math.ceil(n.label.length * em * 0.56) + 4) : 0));
+  // The least scale at which no two nodes overlap (kNode) and no two captions either (kCap): a
+  // pair is clear when it is far enough apart on either axis, measured at this text size.
+  let kNode = 0;
+  let kCap = 0;
+  if (nodes.length <= 400) {
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = Math.abs((nodes[i]!.x ?? 0) - (nodes[j]!.x ?? 0));
+        const dy = Math.abs((nodes[j]!.y ?? 0) - (nodes[i]!.y ?? 0));
+        const need = (nx: number, ny: number) => Math.min(dx > 0 ? nx / dx : Infinity, dy > 0 ? ny / dy : Infinity);
+        const a = need(s + t.xs, s + t.xs);
+        const b = need(Math.max(s, (capWs[i]! + capWs[j]!) / 2) + t.sm, s + 4 + (capWs[i]! > 0 ? capH : 0) + t.xs);
+        if (Number.isFinite(a)) kNode = Math.max(kNode, a);
+        if (Number.isFinite(b)) kCap = Math.max(kCap, b);
+      }
+    }
+  }
+  // The zoom controls' room along the bottom: the fit keeps every node clear of them.
+  const zoomRoom = target(40) + 4 + 2 * t.sm;
+  const padX = Math.max(s / 2, ...capWs.map((w) => w / 2)) + t.sm;
   const padTop = s / 2 + t.sm;
-  const padBottom = s / 2 + 4 + byText(2 * 18) + t.sm;
+  const padBottom = s / 2 + 4 + capH + t.sm + zoomRoom;
   // Zoom 1 fits the whole graph in its view (as laid out last tick): it opens with every node in
-  // sight, and zooming in from there pans.
+  // sight, and zooming in from there pans. Never tighter than its captions can stand apart: past
+  // that the graph pans instead, and zoomed out further the captions hide (as maps drop labels).
   const view = kit.bounds(`${id}/View`) ?? kit.bounds(id);
   const fitK = view ? Math.min(1, x1 > 0 ? Math.max(0.1, (view.width - 2 * padX) / x1) : 1, y1 > 0 ? Math.max(0.1, (view.height - padTop - padBottom) / y1) : 1) : 1;
-  const k = live * fitK;
+  const k = Math.max(kNode, live * Math.max(fitK, labelled ? kCap : kNode));
+  const captions = labelled && k >= kCap - 1e-6;
   const w0 = x1 * k + 2 * padX;
   const h0 = y1 * k + padTop + padBottom;
   // Smaller than its view, it sits in the middle.
@@ -216,9 +243,10 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
             over({ insets: { end: -2, bottom: -2 }, inert: true, z: 2 });
           }
         });
-        if (n.label && desc.labels !== false) {
-          text(kit.idi("Caption", k), n.label, { step: "caption", color: locked ? "inkFaint" : "inkMuted", align: "center", width: px(capW), maxLines: 2 });
-          over({ insets: { start: (rtl() ? W - p.x : p.x) - capW / 2, top: p.y + s / 2 + 4 }, inert: true, z: 1 });
+        if (n.label && captions) {
+          const cw = capWs[k]!;
+          text(kit.idi("Caption", k), n.label, { step: "caption", color: locked ? "inkFaint" : "inkMuted", align: "center", width: fit(cw, capW), maxLines: 2 });
+          over({ insets: { start: (rtl() ? W - p.x : p.x) - cw / 2, top: p.y + s / 2 + 4 }, inert: true, z: 1 });
         }
         if (r.clicked) chosen = n.id ?? null;
       });
@@ -230,9 +258,9 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
     }
     // Zoom controls in the corner.
     kit.row("Zoom", { gap: 2, padding: xy(2, 2), radius: t.control, background: token("panelRaised"), part: "Graph.zoom", partClass: "hud" }, () => {
-      const out = surface("Out", { part: "Graph.zoomButton", cls: "button", fill: null, disabled: zoom <= minZ + 1e-3, width: px(40), height: px(40), align: "center", cross: "center", semantics: { role: "button", name: desc.zoomOutLabel || "Zoom out" } }, () => mark("Minus", "minus", 16, role("ink")));
+      const out = surface("Out", { part: "Graph.zoomButton", cls: "button", fill: null, disabled: zoom <= minZ + 1e-3, width: px(target(40)), height: px(target(40)), align: "center", cross: "center", semantics: { role: "button", name: desc.zoomOutLabel || "Zoom out" } }, () => mark("Minus", "minus", 16, role("ink")));
       text("Level", `${Math.round(live * 100)}%`, { step: "caption", font: "mono", color: "inkMuted", nowrap: true });
-      const inn = surface("In", { part: "Graph.zoomButton", cls: "button", fill: null, disabled: zoom >= maxZ - 1e-3, width: px(40), height: px(40), align: "center", cross: "center", semantics: { role: "button", name: desc.zoomInLabel || "Zoom in" } }, () => mark("Plus", "plus", 16, role("ink")));
+      const inn = surface("In", { part: "Graph.zoomButton", cls: "button", fill: null, disabled: zoom >= maxZ - 1e-3, width: px(target(40)), height: px(target(40)), align: "center", cross: "center", semantics: { role: "button", name: desc.zoomInLabel || "Zoom in" } }, () => mark("Plus", "plus", 16, role("ink")));
       if (out.clicked) zoom = clamp(zoom / 1.25, minZ, maxZ);
       if (inn.clicked) zoom = clamp(zoom * 1.25, minZ, maxZ);
     });
