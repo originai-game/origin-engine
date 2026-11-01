@@ -80,7 +80,7 @@ is an engine feature request, not something to work around in the game.
 ### Saving progress
 
 The world is one snapshot: `world.snapshot()` returns it as text
-(`og-save:1:...`: every entity, component, name, resource, rng state,
+(`og-save:2:...`: the game's save version, every entity, component, name, resource, rng state,
 pending event and module state, with each type's schema hash) in every
 build, publish included, and `world.restore(save)` puts it back, so the
 restored world hashes as the saved one did, on either host. The session
@@ -92,11 +92,21 @@ and it names the system: the world restored from it completes the tick on
 its next step (the systems after that one, then the engine's, physics
 included) and then goes on tick for tick as the run that saved did, so a
 replay from it matches. Make the snapshot the system's last write of the
-tick. A restore asked for in a system applies when the tick ends. A save whose types' fields changed is refused naming them, or
-mapped by name with `{ migrate: true }`. Only what is in the world is
+tick. A restore asked for in a system applies when the tick ends. A save
+from an older engine restores: the engine migrates its own state, and an
+og.* type that only gained fields takes their declared defaults. A save
+whose game types' fields changed is refused naming them; the game's
+migrations (`og.game({ saveVersion, migrations })`, each a step from one
+version to the next on a SaveEdit: rename, transform with the old record,
+split, drop, spawn) take it to the current version first, and a step that
+refuses refuses the restore with the world untouched (og-game §8).
+`world.snapshot({ with: [Tag], resources: [Settings] })` saves a
+selection, only those entities and resources, which a restore puts back
+leaving the rest of the world as it is. Only what is in the world is
 saved: progress in module variables is lost. The text is a few tens of
 KiB (11 KiB for a few entities, 25 KiB for a 2D level of 189, 78 KB for a
-3D world of 93 with cloths, minds and skinned characters), often over the
+3D world of 93 with cloths, minds and skinned characters, 437 KiB for
+5,000 entities half of them physics bodies, near a slot's 512 KiB), often over the
 store's 64 KiB a key: save it with `og.platform.saveSlot(world, { slot,
 text, meta })`, which spreads it over as many keys as it needs and writes
 the slot's manifest last, so a save cut short leaves the last one whole,

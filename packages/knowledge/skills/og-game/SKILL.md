@@ -561,7 +561,7 @@ to 64 KiB a key: a record in one key, the world in a slot
 - **The world** (`world.snapshot()`, `world.restore(save)`): every entity,
   component, name, resource (og.Time and og.Rng too), pending event and
   module state (physics, animation, tweens, tile edits), as text
-  (`og-save:1:...`), in every build including publish and alike on both
+  (`og-save:2:...`, with the game's save version), in every build including publish and alike on both
   hosts. Restoring brings that world back to the hash it had; the session
   stays (input, the player's volumes, the platform's calls, the language,
   the command channel's scheduled steps). Use it where the moment itself
@@ -585,7 +585,10 @@ to 64 KiB a key: a record in one key, the world in a slot
   registered type), Hollowbell (a 2D platformer of 189 entities) to about
   25 KiB, Kestrel Stair (a 3D world of 93 entities: five skinned
   characters on graphs, five cloths and a rope, five navmesh agents with
-  minds) to about 78 KB. The store takes 64 KiB a key (a platform limit,
+  minds) to about 78 KB, 5,000 entities (half of them physics bodies) to
+  about 437 KiB, written in about 100 ms and restored in about 65 ms
+  natively, near the slot's 512 KiB (about 6,000 such entities): a bigger
+  world saves a selection (below). The store takes 64 KiB a key (a platform limit,
   with 64 keys and 1 MiB per player and game), so a world goes through
   `og.platform.saveSlot`/`loadSlot`, never one `storeSet`: the slot's
   text is cut into parts of a key each (at most eight: 512 KiB), written
@@ -616,11 +619,14 @@ to 64 KiB a key: a record in one key, the world in a slot
   playtest that taps Continue onto a save of a later tick, or an earlier
   one, runs the rest of its script and ends at its last step or `quit`.
   Take it as the system's last write of the tick:
-  what the system does after the call is not in it. A saved type whose fields changed since (a
-  release added one) is refused naming the type and fields; pass
-  `{ migrate: true }` to map it by field name (new fields take their
-  defaults), and keep a saved type's fields stable between releases where
-  you can. Keep progress in components and resources, never in module
+  what the system does after the call is not in it. A save from an older
+  engine restores on this one: the engine migrates its own state (og.*
+  components, resources and module state, og.ui's state since 0.7.7), and
+  an og.* type that only gained fields takes their declared defaults. One
+  of your types whose fields changed since the save is refused naming the
+  type and fields: write a migration (below), or pass `{ migrate: true }`
+  to map it by field name (new fields at their defaults, a renamed one at
+  its default too, so only for additions). Keep progress in components and resources, never in module
   variables (they are not in the save). Everything in the world rolls
   back with it, request numbers and the session's own state (a best score
   read from the store, the settings, an open menu) included, so reset
@@ -643,6 +649,43 @@ to 64 KiB a key: a record in one key, the world in a slot
   with the first whole tick after the completing step. Asset
   handles are saved as numbers: load in `start`, in the same order every
   launch.
+- **Save versions and migrations.** Declare the game's save version in
+  project.ogt (`saveVersion 2`, as `tick` and `seed`) or in
+  `og.game({ saveVersion: 2 })` (1 when absent; every save carries it),
+  and raise it in the release that changes a saved type, with the step
+  in `og.game({ migrations: [...] })`.
+  Each migration is `{ from, migrate(save) }`: it takes a save of version
+  `from` to `from + 1`, on the save before the world sees it (a SaveEdit:
+  the saved types, their records, `renameField`, `renameType`,
+  `transform` with the old record, `split`, `dropType`, `setRecords`,
+  `spawn`), and the restore runs them in order from the save's version to
+  the current one. A step answers a Result: refused (or a throw), the
+  restore is refused with its reason and the world is left as it was; a
+  save of a newer version than the game's is refused. The migrated world
+  is the one the new version builds from the same state.
+
+  ```ts
+  // Version 2 renamed Wallet.gold to coins, split Stats into Health and Mana,
+  // keeps the score in tenths and owes every player a chest.
+  const migrations = [{ from: 1, migrate: (save: SaveEdit): Result<void> => {
+    for (const step of [
+      () => save.renameField("Wallet", "gold", "coins"),
+      () => save.split("Stats", (v) => ({ Health: { hp: v.hp }, Mana: { mp: v.mp } })),
+      () => save.transform("Run", (v) => ({ tenths: (v.score as number) * 10 })),
+      () => save.spawn({ name: "chest", components: { Chest: { gold: 5 } } }),
+    ]) { const r = step(); if (!r.ok) return r; }
+    return { ok: true, value: undefined };
+  } }];
+  export default og.game({ saveVersion: 2, migrations, /* ... */ });
+  ```
+
+- **A selection** (`world.snapshot({ with: [Keep], resources: [Settings] })`):
+  only the entities carrying every tag in `with` and the chosen resources,
+  a few KiB where the world is hundreds. Restoring it replaces the
+  entities carrying those tags and sets those resources; the rest of the
+  world (the level the game rebuilt, the session) stays as it is. Use it
+  to keep progress and settings without the whole world.
+
 - **A record** (`storeSet(world, { key: "save", value: { chimes, glimmers,
   checkpoint } })`): a few hundred bytes of what progress means, rebuilt
   into a world on Continue. Smaller, readable on a title screen, and it
