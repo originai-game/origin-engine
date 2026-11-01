@@ -1096,7 +1096,8 @@ export class SaveEditImpl {
   }
 
   types(): readonly { name: string; version: number; fields: readonly string[] }[] {
-    return parse<Result<readonly { name: string; version: number; fields: readonly string[] }[]>>(abi().og_save_edit_types(this.#id)).value ?? [];
+    const r = parse<Result<readonly { name: string; version: number; fields: readonly string[] }[]>>(abi().og_save_edit_types(this.#id));
+    return r.ok ? r.value : [];
   }
 
   has(name: string): boolean {

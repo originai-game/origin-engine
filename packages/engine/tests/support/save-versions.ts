@@ -71,8 +71,11 @@ if (version === 1) {
   const migrate = (save: SaveEdit): Result<void> => {
     const steps = [
       () => save.renameField("Wallet", "gold", "coins"),
-      () => (keep ? ({ ok: true as const, value: undefined }) : save.split("Stats", (v) => ({ Health: { hp: v.hp }, Mana: { mp: v.mp } }))),
-      () => save.transform("Run", (v) => ({ tenths: (v.score as number) * 10 })),
+      () => (keep ? ({ ok: true as const, value: undefined }) : save.split("Stats", (value) => {
+            const v = value as Record<string, unknown>;
+            return { Health: { hp: v.hp }, Mana: { mp: v.mp } };
+          })),
+      () => save.transform("Run", (value) => ({ tenths: ((value as Record<string, unknown>).score as number) * 10 })),
       () => save.spawn({ name: "chest", components: { Chest: { gold: 5 } } }),
       () => (fail ? { ok: false as const, reason: "the test's migration refuses" } : { ok: true as const, value: undefined }),
     ];

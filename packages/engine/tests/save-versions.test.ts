@@ -18,6 +18,8 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import game, { Run, Wallet, start } from "./fixtures/saves/game.ts";
@@ -167,7 +169,9 @@ test("a selection saves and restores only the tagged entities and the chosen res
   if (!save.ok) throw new Error(save.reason);
   // A whole-world save of the same world is larger: a selection holds no
   // coin, no body, no UI.
-  expect(save.value.length).toBeLessThan(w.snapshot().value!.length);
+  const whole = w.snapshot();
+  if (!whole.ok) throw new Error(whole.reason);
+  expect(save.value.length).toBeLessThan(whole.value.length);
 
   // Changed after the save: the hero, both resources, an untagged coin.
   w.insert(kept.value, Wallet, { gold: 99 });
@@ -181,9 +185,13 @@ test("a selection saves and restores only the tagged entities and the chosen res
   const hero = w.find("hero")!;
   const wallet = w.get(hero, Wallet);
   expect(wallet.ok && wallet.value.gold).toBe(7);
-  expect(w.resource(Settings).value!.volume).toBe(3);
+  const settingsNow = w.resource(Settings);
+  if (!settingsNow.ok) throw new Error(settingsNow.reason);
+  expect(settingsNow.value.volume).toBe(3);
   // What the selection did not hold stays as it is now.
-  expect(w.resource(Score).value!.points).toBe(50);
+  const scoreNow = w.resource(Score);
+  if (!scoreNow.ok) throw new Error(scoreNow.reason);
+  expect(scoreNow.value.points).toBe(50);
   const c = w.get(coin, Wallet);
   expect(c.ok && c.value.gold).toBe(1234);
 });
@@ -196,7 +204,7 @@ test("a save holds the names given since the last tick began, between ticks and 
   const Spawner = defineSystem("NamesSpawner", { writes: [Mark] }, (_q, time, world) => {
     if (time.tick === 2) world.spawn({ name: "made-in-system", bare: true });
   });
-  const Saver = defineSystem("NamesSaver", { reads: [Mark], after: [Spawner] }, (_q, time, world) => {
+  const Saver = defineSystem("NamesSaver", { reads: [Mark], after: ["NamesSpawner"] }, (_q, time, world) => {
     if (time.tick === 2) {
       const s = world.snapshot();
       if (s.ok) mid = s.value;
