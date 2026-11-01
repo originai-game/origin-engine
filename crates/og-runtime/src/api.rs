@@ -622,12 +622,6 @@ pub(crate) fn resource_value(eng: &Engine, name: &str) -> Result<Value, String> 
         if name == Rng::NAME {
             return ctx.resource::<Rng>().map(|r| rng_json(&r)).map_err(err);
         }
-        if name == "og.Input" {
-            return ctx
-                .resource::<og_probe::Input>()
-                .map(|i| input_json(&i))
-                .map_err(err);
-        }
         drop(st);
         let (layout, id) = running_record(eng, name, RecordKind::Resource)?;
         let bytes = ctx.resource_bytes(id).map_err(err)?;
@@ -639,12 +633,6 @@ pub(crate) fn resource_value(eng: &Engine, name: &str) -> Result<Value, String> 
     }
     if name == Rng::NAME {
         return w.resource::<Rng>().map(|r| rng_json(&r)).map_err(err);
-    }
-    if name == "og.Input" {
-        return w
-            .resource::<og_probe::Input>()
-            .map(|i| input_json(&i))
-            .map_err(err);
     }
     let layout = eng
         .state
@@ -1260,14 +1248,6 @@ fn button(name: &str) -> og_probe::input::PointerButton {
         "right" => B::Right,
         _ => B::None,
     }
-}
-
-fn input_json(i: &og_probe::Input) -> Value {
-    json!({
-        "pointer": { "x": i.pointer.x, "y": i.pointer.y },
-        "pointerInside": i.pointer_inside,
-        "wheel": { "x": i.wheel.x, "y": i.wheel.y },
-    })
 }
 
 pub fn og_input_down(world: u32, key: String) -> bool {

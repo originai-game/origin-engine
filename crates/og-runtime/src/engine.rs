@@ -977,10 +977,11 @@ pub(crate) fn assemble(
     resources.push("og.Pointers".to_string());
     resources.push("og.Gamepad".to_string());
     resources.push("og.PointerLock".to_string());
-    // The input events and og-input's further resources are read through
-    // the layout og-input registered.
+    // og-input's records (og.Input, its further resources and the input
+    // events) are read through the layout og-input registered, so a value
+    // carries every field the schema declares.
     for decl in og_api::host::RECORDS {
-        if !REGISTERED_BY_MODULES.contains(&decl.schema) || decl.schema == "og.Input" {
+        if !REGISTERED_BY_MODULES.contains(&decl.schema) {
             continue;
         }
         let kind = match decl.kind {
@@ -2072,7 +2073,7 @@ fn layout_epoch() -> u32 {
 
 /// Resources whose handle is computed rather than their packed record.
 fn computed_resource(name: &str) -> bool {
-    name == Time::NAME || name == Rng::NAME || name == "og.Input"
+    name == Time::NAME || name == Rng::NAME
 }
 
 fn kind_name(f: &super::codec::FieldLayout) -> &'static str {

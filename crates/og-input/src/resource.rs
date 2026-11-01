@@ -15,9 +15,9 @@ use og_ecs::World;
 /// last exactly one tick: an event delivered between ticks N-1 and N is seen
 /// by every system of tick N, and the edges expire when tick N ends.
 ///
-/// The IDL members are `pointer`, `pointerInside`, `wheel` and the methods;
-/// the other fields are the state the methods read, laid out for typed
-/// access from TypeScript: button masks (left 1, middle 2, right 4) and
+/// Every field is an IDL member (read only), and a game's handle reads them
+/// all through the registered layout. Beside `pointer`, `pointerInside` and
+/// `wheel` they are the state the methods read: button masks (left 1, middle 2, right 4) and
 /// 128-bit key sets as four `u32` words each over [`KEY_CODES`] (bit `i` is
 /// word `i / 32`, bit `i % 32`; `keys0` holds codes 0–31).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]

@@ -565,7 +565,7 @@ function recordLayout(world: number, name: string): RecordLayout | null {
   return answer.ok ? answer.value : null;
 }
 
-/** The world's copy of a resource with a byte layout, or null for one read as JSON (og.Time, og.Rng, og.Input). */
+/** The world's copy of a resource with a byte layout, or null for one read as JSON (og.Time, og.Rng). */
 function recordOf(world: number, name: string): RecordCopy | null {
   let byName = records.get(world);
   if (!byName) records.set(world, (byName = new Map()));
@@ -574,7 +574,7 @@ function recordOf(world: number, name: string): RecordCopy | null {
   const layout = recordLayout(world, name);
   // An unregistered name is asked again next time (a reload may declare it).
   if (!layout) {
-    if (name === "og.Time" || name === "og.Rng" || name === "og.Input") byName.set(name, null);
+    if (name === "og.Time" || name === "og.Rng") byName.set(name, null);
     return null;
   }
   const bytes = new Uint8Array(layout.size + 4);
@@ -887,7 +887,7 @@ function methods(id: number, name: string, out: Record<string, unknown>): void {
   }
 }
 
-/** A resource read as JSON (og.Time, og.Rng, og.Input): computed by the engine, read only. */
+/** A resource read as JSON (og.Time, og.Rng): computed by the engine, read only. */
 function jsonResource(world: WorldImpl, token: Token, value: Record<string, unknown>): object {
   const id = world.id;
   if (token.name === "og.Rng") {

@@ -31,6 +31,12 @@ is one line here, written at the merge that changes
   shadows, SSAO, the raymarch, CPU culling and CPU particles stay as
   choices on every device. A game that set none of these draws as it did
   on WebGPU.
+- Fixed: `world.resource(og.Input)` carries every field the IDL declares.
+  It held only `pointer`, `pointerInside` and `wheel`, so `buttons`,
+  `buttonsPressed`, `buttonsReleased`, `buttonsReleaseNext` and the key
+  words (`keys0..3`, `pressed0..3`, `released0..3`, `releaseNext0..3`)
+  read `undefined` on both hosts; og.Input is now read through og-input's
+  registered layout like og.Pointers, all fields read only.
 - Entity arguments say what went wrong: a value that is not an entity
   number (`null` from `world.find`, `undefined`, a Result) is thrown naming
   the call and parameter, alike on both hosts (`world.set: entity is null

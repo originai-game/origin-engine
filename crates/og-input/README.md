@@ -23,10 +23,11 @@ ring. It depends on `og-core` and `og-ecs` only and reads no clock.
 
 ## The resource
 
-`og.Input` is the state at the start of a tick. Its IDL members are
-`pointer` (vec2, CSS px), `pointerInside` (bool, one byte) and `wheel` (vec2,
-the scroll accumulated for this tick) plus the methods; the rest is the
-state the methods read, laid out for typed access from TypeScript:
+`og.Input` is the state at the start of a tick: `pointer` (vec2, CSS px),
+`pointerInside` (bool, one byte) and `wheel` (vec2, the scroll accumulated
+for this tick), the state the methods read, and the methods. Every field is
+an IDL member, read only, and a game's handle reads all of them through the
+layout this crate registers:
 
 | fields | type | meaning |
 |---|---|---|
