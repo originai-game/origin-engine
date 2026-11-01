@@ -690,3 +690,81 @@ fn groups_and_icons_take_the_names_their_descs_give() {
         tree.nodes
     );
 }
+
+/// A component built from containers (a menu of rows, a tree item) names
+/// its role, value and states through `Ui::semantics`; an unknown role is
+/// refused with a warning and leaves the element as its kind gives it.
+///
+/// Ways it could fail: the role stays `button` (a nav container's
+/// default), `expanded: false` is dropped (a collapsed tree item reads as
+/// not expandable: it must say `collapsed`), a range's value number is lost, an unknown role is
+/// taken as given.
+#[test]
+fn semantics_give_containers_the_roles_components_need() {
+    let mut ui = Ui::new(UiDesc::default());
+    let mut warnings = Vec::new();
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.column("Menu", Element::column(), |ui| {
+            for (k, name) in ["Open", "Save"].into_iter().enumerate() {
+                ui.open(
+                    ui_idi("Item", k as u32),
+                    Element {
+                        interactive: true,
+                        ..Element::row()
+                    },
+                );
+                ui.label("Text", name, LabelDesc::default());
+                ui.close();
+                assert!(ui.semantics(&Semantics {
+                    role: Some("menuitem".into()),
+                    expanded: (k == 1).then_some(false),
+                    ..Semantics::default()
+                }));
+            }
+            ui.open("Bad", Element::column());
+            ui.label("Text", "x", LabelDesc::default());
+            ui.close();
+            assert!(!ui.semantics(&Semantics {
+                role: Some("wobble".into()),
+                ..Semantics::default()
+            }));
+        });
+        assert!(ui.semantics(&Semantics {
+            role: Some("menu".into()),
+            name: Some("File".into()),
+            value: Some("2 items".into()),
+            value_min: Some(0.0),
+            value_max: Some(2.0),
+            value_now: Some(1.0),
+            ..Semantics::default()
+        }));
+        warnings = ui.end().warnings.clone();
+    }
+    let tree = ui.a11y().clone();
+    let menu = node(&tree, "Menu");
+    assert_eq!(
+        (menu.role.as_str(), menu.name.as_str(), menu.value.as_str()),
+        ("menu", "File", "2 items")
+    );
+    assert_eq!(
+        (menu.value_min, menu.value_max, menu.value_now),
+        (Some(0.0), Some(2.0), Some(1.0))
+    );
+    let open = node(&tree, "Menu/Item#0");
+    assert_eq!(
+        (open.role.as_str(), open.name.as_str()),
+        ("menuitem", "Open")
+    );
+    assert!(!open.states.iter().any(|s| s == "expanded"));
+    let save = node(&tree, "Menu/Item#1");
+    assert_eq!(save.role, "menuitem");
+    assert!(save.states.iter().any(|s| s == "collapsed"), "{:?}", save.states);
+    assert!(tree.nodes.iter().all(|n| n.path != "Menu/Bad"));
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.contains("'wobble' is not a role")),
+        "{warnings:?}"
+    );
+}

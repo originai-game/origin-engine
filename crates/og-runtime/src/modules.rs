@@ -71,8 +71,8 @@ pub(crate) mod ui_world;
 pub use motion::{
     og_ui_animate, og_ui_define_timeline, og_ui_force_state, og_ui_gesture, og_ui_layout_stats,
     og_ui_motion_events, og_ui_overlaps, og_ui_pause, og_ui_play, og_ui_play_info,
-    og_ui_play_timeline, og_ui_props, og_ui_resume, og_ui_reverse, og_ui_seek, og_ui_stop,
-    og_ui_visual_state,
+    og_ui_play_timeline, og_ui_props, og_ui_resume, og_ui_reverse, og_ui_seek, og_ui_semantics,
+    og_ui_stop, og_ui_visual_state,
 };
 
 use super::engine::{Engine, engine, running};

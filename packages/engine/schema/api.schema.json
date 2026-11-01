@@ -9075,6 +9075,7 @@
         "TextEffectsDesc",
         "DrawDesc",
         "BlendMode",
+        "SemanticsDesc",
         "WorldTarget",
         "AnchorScaleMode",
         "WorldOcclusion",
@@ -11520,6 +11521,20 @@
           "doc": "What the last frame built, rebuilt, laid out and kept.",
           "params": [],
           "returns": "UiLayoutStats",
+          "publish": true
+        },
+        {
+          "name": "semantics",
+          "doc": "Give the element built just before (a container just closed, or a widget) a role, a name, a value and states for the accessibility tree and the probe's dump (dump_ui's role, name, value, states). Components built from containers call it so a screen reader meets a menu, a tree or a table, not rows of buttons. Answers false, with a frame warning, when no element was built before it or the role is unknown.",
+          "params": [
+            {
+              "name": "desc",
+              "type": "SemanticsDesc",
+              "optional": true,
+              "doc": "Its role, name, value and states."
+            }
+          ],
+          "returns": "bool",
           "publish": true
         },
         {
@@ -36750,7 +36765,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view)."
+          "description": "Its states: disabled, focused, focusable, checked, selected, expanded, collapsed (expandable and closed), pressed, busy, offscreen (a scroll container cuts it out of view)."
         },
         "valueMin": {
           "anyOf": [
@@ -43834,6 +43849,133 @@
         "colorDodge": "Brightens what is under it by the paint."
       }
     },
+    "SemanticsDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "What a component tells the accessibility tree about an element it built from containers (docs/ui.md §11): a role other than its kind's, a name, a value and states. Absent fields leave what the element's kind gives it.",
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "Its role: button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, tabpanel, radiogroup, progressbar, meter, timer, status, alert, dialog, alertdialog, tooltip, separator, group, region, navigation, toolbar, menu, menubar, menuitem, menuitemcheckbox, menuitemradio, list, listitem, tree, treeitem, table, grid, row, rowheader, columnheader, cell, gridcell, figure or scrollbar; empty keeps its kind's.",
+          "default": ""
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its accessible name; null keeps what it shows.",
+          "default": null
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Read after the name; null is none.",
+          "default": null
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its value as people read it (`3 of 12`, `Sorted ascending`); null is none.",
+          "default": null
+        },
+        "checked": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Checked (a menu item's check); null is not checkable.",
+          "default": null
+        },
+        "selected": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Selected (a tab, a row, an option); null is not selectable.",
+          "default": null
+        },
+        "expanded": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Expanded (an accordion header, a tree item, a menu button); null is not expandable.",
+          "default": null
+        },
+        "busy": {
+          "type": "boolean",
+          "description": "Loading.",
+          "default": false
+        },
+        "valueMin": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A range's smallest value.",
+          "default": null
+        },
+        "valueMax": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A range's largest value.",
+          "default": null
+        },
+        "valueNow": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A range's value as a number (a scroll position, a page); null is no range.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
     "WorldTarget": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
@@ -46966,7 +47108,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy."
+          "description": "Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, collapsed (expandable and closed), pressed, busy."
         },
         "opaque": {
           "type": "boolean",

@@ -19959,7 +19959,7 @@ export interface A11yNode {
    */
   readonly value: string;
   /**
-   * Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view).
+   * Its states: disabled, focused, focusable, checked, selected, expanded, collapsed (expandable and closed), pressed, busy, offscreen (a scroll container cuts it out of view).
    */
   readonly states: readonly string[];
   /**
@@ -24606,6 +24606,81 @@ export interface DrawDesc {
  */
 export type BlendMode = "normal" | "multiply" | "screen" | "add" | "overlay" | "softLight" | "colorDodge";
 
+/**
+ * What a component tells the accessibility tree about an element it built from containers (docs/ui.md §11): a role other than its kind's, a name, a value and states. Absent fields leave what the element's kind gives it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SemanticsDesc {
+  /**
+   * Its role: button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, tabpanel, radiogroup, progressbar, meter, timer, status, alert, dialog, alertdialog, tooltip, separator, group, region, navigation, toolbar, menu, menubar, menuitem, menuitemcheckbox, menuitemradio, list, listitem, tree, treeitem, table, grid, row, rowheader, columnheader, cell, gridcell, figure or scrollbar; empty keeps its kind's.
+   *
+   * @default ""
+   */
+  readonly role?: string;
+  /**
+   * Its accessible name; null keeps what it shows.
+   *
+   * @default null
+   */
+  readonly name?: string | null;
+  /**
+   * Read after the name; null is none.
+   *
+   * @default null
+   */
+  readonly description?: string | null;
+  /**
+   * Its value as people read it (`3 of 12`, `Sorted ascending`); null is none.
+   *
+   * @default null
+   */
+  readonly value?: string | null;
+  /**
+   * Checked (a menu item's check); null is not checkable.
+   *
+   * @default null
+   */
+  readonly checked?: boolean | null;
+  /**
+   * Selected (a tab, a row, an option); null is not selectable.
+   *
+   * @default null
+   */
+  readonly selected?: boolean | null;
+  /**
+   * Expanded (an accordion header, a tree item, a menu button); null is not expandable.
+   *
+   * @default null
+   */
+  readonly expanded?: boolean | null;
+  /**
+   * Loading.
+   *
+   * @default false
+   */
+  readonly busy?: boolean;
+  /**
+   * A range's smallest value.
+   *
+   * @default null
+   */
+  readonly valueMin?: number | null;
+  /**
+   * A range's largest value.
+   *
+   * @default null
+   */
+  readonly valueMax?: number | null;
+  /**
+   * A range's value as a number (a scroll position, a page); null is no range.
+   *
+   * @default null
+   */
+  readonly valueNow?: number | null;
+}
+
+
 
 /**
  * What an anchored element or a world panel is placed on: an entity (its world pose, down og.Parent) or a world point.
@@ -26508,7 +26583,7 @@ export interface UiElement {
    */
   readonly value: string;
   /**
-   * Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, pressed, busy.
+   * Its states: disabled, focused, focusable (keys and pads reach it now, in this order), checked, selected, expanded, collapsed (expandable and closed), pressed, busy.
    */
   readonly states: readonly string[];
   /**
@@ -31763,6 +31838,12 @@ export declare namespace og {
     function overlaps(): readonly UiOverlap[];
     /** What the last frame built, rebuilt, laid out and kept. */
     function layoutStats(): UiLayoutStats;
+    /**
+     * Give the element built just before (a container just closed, or a widget) a role, a name, a value and states for the accessibility tree and the probe's dump (dump_ui's role, name, value, states). Components built from containers call it so a screen reader meets a menu, a tree or a table, not rows of buttons. Answers false, with a frame warning, when no element was built before it or the role is unknown.
+     *
+     * @param desc Its role, name, value and states.
+     */
+    function semantics(desc?: SemanticsDesc): boolean;
     /**
      * Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §5). Call it right after the element's open or control; immediate mode, so every tick it is drawn.
      *

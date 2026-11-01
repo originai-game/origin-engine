@@ -608,6 +608,26 @@ pub fn og_ui_layout_stats() -> String {
     .to_string()
 }
 
+pub fn og_ui_semantics(desc: Option<String>) -> bool {
+    let d = super::desc_of(desc);
+    let text = |k: &str| d[k].as_str().map(str::to_owned);
+    let num = |k: &str| d[k].as_f64().map(|v| v as f32);
+    let s = og_ui::Semantics {
+        role: text("role"),
+        name: text("name"),
+        description: text("description"),
+        value: text("value"),
+        checked: d["checked"].as_bool(),
+        selected: d["selected"].as_bool(),
+        expanded: d["expanded"].as_bool(),
+        busy: d["busy"].as_bool().unwrap_or(false),
+        value_min: num("valueMin"),
+        value_max: num("valueMax"),
+        value_now: num("valueNow"),
+    };
+    with_ui("og.ui.semantics", |ui| ui.semantics(&s)).unwrap_or(false)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
