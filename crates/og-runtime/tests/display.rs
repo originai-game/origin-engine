@@ -114,7 +114,7 @@ fn frames(engine: u32, n: usize) -> Value {
 /// The world's save bytes (og.world.snapshot): everything a save and a
 /// replay carry.
 fn snapshot(engine: u32) -> Value {
-    let s = answer(og_runtime::og_world_snapshot(engine));
+    let s = answer(og_runtime::og_world_snapshot(engine, None));
     assert_eq!(s["ok"], json!(true), "{s}");
     assert!(s["value"].to_string().len() > 16, "{s}");
     s["value"].clone()
