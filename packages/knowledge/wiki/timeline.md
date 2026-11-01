@@ -18,7 +18,7 @@ module timeline {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 19054</sub>
+<sub>`api.ogt` line 19211</sub>
 
 ## Contents
 
@@ -68,7 +68,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 19127</sub>
+<sub>`api.ogt` line 19284</sub>
 
 <a id="fn-play"></a>
 
@@ -98,7 +98,7 @@ fn play {
 }
 ```
 
-<sub>`api.ogt` line 19134</sub>
+<sub>`api.ogt` line 19291</sub>
 
 <a id="fn-pause"></a>
 
@@ -128,7 +128,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 19141</sub>
+<sub>`api.ogt` line 19298</sub>
 
 <a id="fn-seek"></a>
 
@@ -160,7 +160,7 @@ fn seek {
 }
 ```
 
-<sub>`api.ogt` line 19148</sub>
+<sub>`api.ogt` line 19305</sub>
 
 <a id="fn-stop"></a>
 
@@ -190,7 +190,7 @@ fn stop {
 }
 ```
 
-<sub>`api.ogt` line 19156</sub>
+<sub>`api.ogt` line 19313</sub>
 
 ## Components, resources and events
 
@@ -229,7 +229,7 @@ component Timeline {
 }
 ```
 
-<sub>`api.ogt` line 19069</sub>
+<sub>`api.ogt` line 19226</sub>
 
 <a id="record-TimelineStarted"></a>
 
@@ -252,7 +252,7 @@ event TimelineStarted {
 }
 ```
 
-<sub>`api.ogt` line 19086</sub>
+<sub>`api.ogt` line 19243</sub>
 
 <a id="record-TimelineMarker"></a>
 
@@ -281,7 +281,7 @@ event TimelineMarker {
 }
 ```
 
-<sub>`api.ogt` line 19092</sub>
+<sub>`api.ogt` line 19249</sub>
 
 <a id="record-TimelineEnded"></a>
 
@@ -304,7 +304,7 @@ event TimelineEnded {
 }
 ```
 
-<sub>`api.ogt` line 19102</sub>
+<sub>`api.ogt` line 19259</sub>
 
 ## Types
 
@@ -320,7 +320,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TimelineAsset "A loaded timeline: its tracks, paths, sounds and clips."
 ```
 
-<sub>`api.ogt` line 19060</sub>
+<sub>`api.ogt` line 19217</sub>
 
 <a id="type-TimelineTrackInfo"></a>
 
@@ -343,7 +343,7 @@ struct TimelineTrackInfo {
 }
 ```
 
-<sub>`api.ogt` line 19108</sub>
+<sub>`api.ogt` line 19265</sub>
 
 <a id="type-TimelineInfo"></a>
 
@@ -374,7 +374,7 @@ struct TimelineInfo {
 }
 ```
 
-<sub>`api.ogt` line 19115</sub>
+<sub>`api.ogt` line 19272</sub>
 
 ## Column kinds
 
@@ -393,4 +393,4 @@ column TimelineAsset {
 }
 ```
 
-<sub>`api.ogt` line 19062</sub>
+<sub>`api.ogt` line 19219</sub>
