@@ -8,6 +8,7 @@
 
 import { Glb, MeshBuilder } from "./gltf.ts";
 import type { V3 } from "./gltf.ts";
+import { sincos } from "../src/track.ts";
 
 /** Cross-sections along z: [z, half width, bottom, top]. */
 const BODY: readonly [number, number, number, number][] = [
@@ -121,7 +122,10 @@ export function wheelModel(ghost: boolean): Uint8Array {
   for (let i = 0; i < n; i++) {
     const a0 = (i / n) * Math.PI * 2;
     const a1 = ((i + 1) / n) * Math.PI * 2;
-    const p = (a: number, r: number, x: number): V3 => [x, Math.sin(a) * r, Math.cos(a) * r];
+    const p = (a: number, r: number, x: number): V3 => {
+      const [s, c] = sincos(a);
+      return [x, s * r, c * r];
+    };
     m.quad(tyre, p(a0, R, W), p(a1, R, W), p(a1, R, -W), p(a0, R, -W));
     m.tri(tyre, [W, 0, 0], p(a1, R, W), p(a0, R, W));
     m.tri(tyre, [-W, 0, 0], p(a0, R, -W), p(a1, R, -W));

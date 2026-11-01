@@ -1,6 +1,9 @@
 // A small glTF 2.0 binary (.glb) writer and the vector and quaternion
 // arithmetic the generators share. Deterministic: the same calls write the
-// same bytes on every machine (no clock, no randomness of its own).
+// same bytes on every machine (no clock, no randomness of its own, and
+// track.ts's trigonometry rather than the engine-dependent Math.sin).
+
+import { hypot, sincos } from "../src/track.ts";
 
 export type V3 = [number, number, number];
 export type Q = [number, number, number, number]; // x, y, z, w
@@ -11,9 +14,9 @@ export const v3 = {
   scale: (a: V3, s: number): V3 => [a[0] * s, a[1] * s, a[2] * s],
   dot: (a: V3, b: V3): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
   cross: (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
-  len: (a: V3): number => Math.hypot(a[0], a[1], a[2]),
+  len: (a: V3): number => hypot(a[0], a[1], a[2]),
   norm: (a: V3): V3 => {
-    const l = Math.hypot(a[0], a[1], a[2]) || 1;
+    const l = hypot(a[0], a[1], a[2]) || 1;
     return [a[0] / l, a[1] / l, a[2] / l];
   },
 };
@@ -22,8 +25,8 @@ export const quat = {
   identity: (): Q => [0, 0, 0, 1],
   axisAngle: (axis: V3, angle: number): Q => {
     const n = v3.norm(axis);
-    const s = Math.sin(angle / 2);
-    return [n[0] * s, n[1] * s, n[2] * s, Math.cos(angle / 2)];
+    const [s, c] = sincos(angle / 2);
+    return [n[0] * s, n[1] * s, n[2] * s, c];
   },
   mul: (a: Q, b: Q): Q => [
     a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
@@ -50,7 +53,7 @@ export const quat = {
     }
     const c = v3.cross(x, y);
     const q: Q = [c[0], c[1], c[2], 1 + d];
-    const l = Math.hypot(q[0], q[1], q[2], q[3]);
+    const l = hypot(q[0], q[1], q[2], q[3]);
     return [q[0] / l, q[1] / l, q[2] / l, q[3] / l];
   },
   /** Keeps consecutive keys on one hemisphere, so linear interpolation takes the short way. */

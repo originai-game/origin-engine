@@ -14,7 +14,7 @@
 import { Glb, MeshBuilder, v3 } from "./gltf.ts";
 import type { V3 } from "./gltf.ts";
 import { draw, fbm, hash2, png, rng } from "./media.ts";
-import { SAMPLES, SPLITS, START, WALL_HEIGHT, WALL_THICK, WIDTH, fromStart } from "../src/track.ts";
+import { SAMPLES, SPLITS, START, WALL_HEIGHT, WALL_THICK, WIDTH, fromStart, hypot, sincos } from "../src/track.ts";
 import type { Sample } from "../src/track.ts";
 
 const N = SAMPLES.length;
@@ -268,8 +268,9 @@ export function sceneryModel(): Uint8Array {
     const ang = (k / 64) * Math.PI * 2 + r() * 0.05;
     if (r() < 0.25) continue;
     const dist = 380 + r() * 140;
-    const cx = 100 + Math.cos(ang) * dist;
-    const cz = Math.sin(ang) * dist;
+    const [sa, ca] = sincos(ang);
+    const cx = 100 + ca * dist;
+    const cz = sa * dist;
     const w = 14 + r() * 26;
     const h = 30 + r() * r() * 150;
     m.box(tower, [cx - w / 2, -0.02, cz - w / 2], [cx + w / 2, h, cz + w / 2], { tile: 64, skip: "-y" });
@@ -281,8 +282,10 @@ export function sceneryModel(): Uint8Array {
     const d = 760;
     const h0 = 40 + fbm(k * 0.6, 3, 11, 3, 48 * 0.6) * 110;
     const h1 = 40 + fbm((k + 1) * 0.6, 3, 11, 3, 48 * 0.6) * 110;
-    const p0: V3 = [100 + Math.cos(a0) * d, -0.02, Math.sin(a0) * d];
-    const p1: V3 = [100 + Math.cos(a1) * d, -0.02, Math.sin(a1) * d];
+    const [s0, c0] = sincos(a0);
+    const [s1, c1] = sincos(a1);
+    const p0: V3 = [100 + c0 * d, -0.02, s0 * d];
+    const p1: V3 = [100 + c1 * d, -0.02, s1 * d];
     m.quad(ridge, p0, p1, [p1[0], h1, p1[2]], [p0[0], h0, p0[2]], { tile: 64 });
   }
   const prims = [...m.groups.entries()].map(([material, g]) => ({ pos: g.pos, nor: g.nor, uv: g.uv, col: g.col, idx: g.idx, material }));
@@ -317,7 +320,7 @@ export function minimap(bounds: { minX: number; minZ: number; size: number }): U
       const y = y0 + ((y1 - y0) * k) / steps;
       for (let dy = -5; dy <= 5; dy++) {
         for (let dx = -5; dx <= 5; dx++) {
-          const d = Math.hypot(dx, dy);
+          const d = hypot(dx, dy);
           if (d > 4.5) continue;
           const xi = Math.floor(x + dx);
           const yi = Math.floor(y + dy);

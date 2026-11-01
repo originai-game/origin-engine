@@ -79,6 +79,73 @@ export interface Sample {
   gap: boolean;
 }
 
+// Host-independent trigonometry for the samples. Math.sin, Math.cos,
+// Math.atan2 and Math.hypot are each JavaScript engine's own approximation
+// (JavaScriptCore, so bun, takes the platform's libm), so the same generator
+// wrote last-bit-different samples, and models/track.glb, on macOS and on
+// Windows. These use + - * / and sqrt only, which every engine rounds
+// identically (as packages/engine/src/math.ts does).
+const PI = 3.141592653589793;
+
+/** sin and cos of x: reduced to [-pi/4, pi/4], then their series to r^15 / r^14. */
+export function sincos(x: number): [number, number] {
+  const q = Math.round(x / (PI / 2));
+  const r = x - q * (PI / 2);
+  const r2 = r * r;
+  let s = 1 / 1307674368000;
+  s = s * -r2 + 1 / 6227020800;
+  s = s * -r2 + 1 / 39916800;
+  s = s * -r2 + 1 / 362880;
+  s = s * -r2 + 1 / 5040;
+  s = s * -r2 + 1 / 120;
+  s = s * -r2 + 1 / 6;
+  s = r - r * r2 * s;
+  let c = 1 / 87178291200;
+  c = c * -r2 + 1 / 479001600;
+  c = c * -r2 + 1 / 3628800;
+  c = c * -r2 + 1 / 40320;
+  c = c * -r2 + 1 / 720;
+  c = c * -r2 + 1 / 24;
+  c = c * -r2 + 1 / 2;
+  c = 1 - r2 * c;
+  switch (((q % 4) + 4) % 4) {
+    case 0:
+      return [s, c];
+    case 1:
+      return [c, -s];
+    case 2:
+      return [-s, -c];
+    default:
+      return [-c, s];
+  }
+}
+
+/** atan(x) for |x| <= tan(pi/8): its series to x^45. */
+function atanSmall(x: number): number {
+  const x2 = x * x;
+  let s = 0;
+  for (let n = 22; n >= 0; n--) s = s * -x2 + 1 / (2 * n + 1);
+  return x * s;
+}
+
+/** atan2(y, x). */
+export function atan2(y: number, x: number): number {
+  if (x === 0 && y === 0) return 0;
+  const ax = Math.abs(x);
+  const ay = Math.abs(y);
+  const unit = (t: number): number => (t > 0.41421356237309503 ? PI / 4 + atanSmall((t - 1) / (t + 1)) : atanSmall(t));
+  const a = ay <= ax ? unit(ay / ax) : PI / 2 - unit(ax / ay);
+  const r = x < 0 ? PI - a : a;
+  return y < 0 ? -r : r;
+}
+
+/** The length of a vector. */
+export function hypot(...v: number[]): number {
+  let s = 0;
+  for (const a of v) s += a * a;
+  return Math.sqrt(s);
+}
+
 function catmull(p0: number, p1: number, p2: number, p3: number, t0: number, t1: number, t2: number, t3: number, t: number): number {
   const a1 = ((t1 - t) / (t1 - t0)) * p0 + ((t - t0) / (t1 - t0)) * p1;
   const a2 = ((t2 - t) / (t2 - t1)) * p1 + ((t - t1) / (t2 - t1)) * p2;
@@ -95,7 +162,7 @@ function dense(): [number, number, number][] {
   for (let i = 0; i < n; i++) {
     const p = [CONTROL[(i + n - 1) % n]!, CONTROL[i]!, CONTROL[(i + 1) % n]!, CONTROL[(i + 2) % n]!];
     const k = [0, 0, 0, 0];
-    for (let j = 1; j < 4; j++) k[j] = k[j - 1]! + Math.sqrt(Math.hypot(p[j]![0] - p[j - 1]![0], p[j]![1] - p[j - 1]![1]));
+    for (let j = 1; j < 4; j++) k[j] = k[j - 1]! + Math.sqrt(hypot(p[j]![0] - p[j - 1]![0], p[j]![1] - p[j - 1]![1]));
     for (let m = 0; m < 64; m++) {
       const t = k[1]! + ((k[2]! - k[1]!) * m) / 64;
       out.push([0, 1, 2].map((c) => catmull(p[0]![c]!, p[1]![c]!, p[2]![c]!, p[3]![c]!, k[0]!, k[1]!, k[2]!, k[3]!, t)) as [number, number, number]);
@@ -131,7 +198,7 @@ function build(): { samples: Sample[]; length: number } {
   for (let i = 1; i <= d.length; i++) {
     const a = d[i - 1]!;
     const b = d[i % d.length]!;
-    acc.push(acc[i - 1]! + Math.hypot(b[0] - a[0], b[1] - a[1]));
+    acc.push(acc[i - 1]! + hypot(b[0] - a[0], b[1] - a[1]));
   }
   const total = acc[d.length]!;
   const count = Math.round(total / STEP);
@@ -150,7 +217,7 @@ function build(): { samples: Sample[]; length: number } {
   // then the signed bank smoothed over 12 m, so the road twists evenly into and out of every bend.
   const heading = flat.map((c, i) => {
     const q = flat[(i + 1) % count]!;
-    return Math.atan2(q.x - c.x, q.z - c.z);
+    return atan2(q.x - c.x, q.z - c.z);
   });
   const signed = flat.map((c, i) => {
     let dh = heading[(i + 8) % count]! - heading[(i + count - 8) % count]!;
@@ -174,7 +241,7 @@ function build(): { samples: Sample[]; length: number } {
     let tx = q.x - p.x;
     let ty = hq - hp;
     let tz = q.z - p.z;
-    const tl = Math.hypot(tx, ty, tz);
+    const tl = hypot(tx, ty, tz);
     tx /= tl;
     ty /= tl;
     tz /= tl;
@@ -182,15 +249,14 @@ function build(): { samples: Sample[]; length: number } {
     // Flat right (heading x up = tangent x (0,1,0)), then turned about the tangent by the bank.
     let rx = -tz;
     let rz = tx;
-    const rl = Math.hypot(rx, rz);
+    const rl = hypot(rx, rz);
     rx /= rl;
     rz /= rl;
     // n0 = r x t (up-ish); rotate r towards n0 by bank.
     const n0x = 0 * tz - rz * ty;
     const n0y = rz * tx - rx * tz;
     const n0z = rx * ty - 0 * tx;
-    const cb = Math.cos(bank);
-    const sb = Math.sin(bank);
+    const [sb, cb] = sincos(bank);
     const Rx = rx * cb + n0x * sb;
     const Ry = 0 * cb + n0y * sb;
     const Rz = rz * cb + n0z * sb;
@@ -199,7 +265,7 @@ function build(): { samples: Sample[]; length: number } {
     const nz = Rx * ty - Ry * tx;
     const flip = ny < 0 ? -1 : 1;
     // A banked road is lifted so its low edge stays on the ground.
-    const lift = Math.abs(Math.sin(bank)) * WIDTH * 0.5;
+    const lift = Math.abs(sb) * WIDTH * 0.5;
     samples.push({ s: c.s, x: c.x, y: h.y + lift, z: c.z, tx, ty, tz, rx: Rx, ry: Ry, rz: Rz, nx: nx * flip, ny: ny * flip, nz: nz * flip, bank, gap: h.gap });
   }
   return { samples, length: total };
@@ -249,7 +315,7 @@ export function nearest(x: number, z: number, hint: number, span = 12): number {
 /** Signed distance across the road from the centre at sample i (positive to the right). */
 export function across(i: number, x: number, z: number): number {
   const s = SAMPLES[i]!;
-  const l = Math.hypot(s.rx, s.rz) || 1;
+  const l = hypot(s.rx, s.rz) || 1;
   return ((x - s.x) * s.rx + (z - s.z) * s.rz) / l;
 }
 

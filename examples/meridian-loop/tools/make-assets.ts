@@ -15,7 +15,7 @@ import { carModel, ghostModel, wheelModel } from "./car.ts";
 import { groundModel, minimap, sceneryModel, trackModel } from "./circuit.ts";
 import * as A from "./audio.ts";
 import { draw, hash2, wav } from "./media.ts";
-import { MAP } from "../src/track.ts";
+import { hypot, MAP } from "../src/track.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const assets = join(root, "assets");
@@ -42,7 +42,7 @@ write("textures/minimap.png", minimap(MAP));
 write(
   "textures/puff.png",
   draw(64, (u, v, x, y) => {
-    const d = Math.hypot(u - 0.5, v - 0.5) * 2;
+    const d = hypot(u - 0.5, v - 0.5) * 2;
     const n = 0.75 + 0.25 * hash2(x >> 2, y >> 2, 3);
     const a = Math.max(0, 1 - d) ** 1.6 * n;
     return [255, 255, 255, a * 255];
@@ -52,7 +52,7 @@ write(
 write(
   "textures/spark.png",
   draw(32, (u, v) => {
-    const d = Math.hypot(u - 0.5, v - 0.5) * 2;
+    const d = hypot(u - 0.5, v - 0.5) * 2;
     const a = Math.max(0, 1 - d) ** 2.5;
     return [255, 255, 255, a * 255];
   }),
