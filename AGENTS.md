@@ -1,6 +1,6 @@
 # Origin Engine repository guidance
 
-Normative design: `docs/design.md`. Platform contracts this engine implements:
+Normative design: `docs/design.md`, and for the game UI `docs/ui.md`. Platform contracts this engine implements:
 `origingame/docs/game-workflow.md` (the production contract),
 `origin-agent/packages/contracts/src/probe.ts` (the probe, protocol 5),
 `origingame/docs/design-language.md` (tokens and components for the player

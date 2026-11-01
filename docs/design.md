@@ -758,7 +758,11 @@ later.
 - **Audio**: the mixer runs in wasm; on the web the engine Worker feeds an
   AudioWorklet through a SharedArrayBuffer ring, on native through cpal.
   Buses, spatialisation, QOA streaming, one-shot and looped sources.
-- **UI**: immediate-mode (Clay-like layout) rendered by the engine; element
+- **UI**: the design of the UI as infrastructure, its rebuild (documents,
+  states and motion, the UI render pass, styles v2, art slots, world-space
+  UI, the agent's read, write and check tools) and its genre coverage are
+  `docs/ui.md` (the owner, 2026-11-01); this bullet states what exists
+  today. Immediate-mode (Clay-like layout) rendered by the engine; element
   ids are stable strings so the command channel can target them
   (`touch_move_to`, `move_to_text`, `dump_ui`). A game's UI is the game's,
   never the platform's: the engine owns its values (`crates/og-ui/src/theme.rs`,
