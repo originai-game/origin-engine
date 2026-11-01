@@ -1189,6 +1189,9 @@ impl UiApi for NodeHost {
     fn og_ui_props(&self, desc: Option<String>) -> bool {
         rt::og_ui_props(desc)
     }
+    fn og_ui_semantics(&self, desc: Option<String>) -> bool {
+        rt::og_ui_semantics(desc)
+    }
     fn og_ui_define_timeline(&self, name: String, timeline: Option<String>) {
         rt::og_ui_define_timeline(name, timeline)
     }

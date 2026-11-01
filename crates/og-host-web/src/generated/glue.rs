@@ -2024,6 +2024,11 @@ pub fn og_ui_layout_stats() -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_semantics(desc: Option<String>) -> bool {
+    <Host as UiApi>::og_ui_semantics(&Host, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_set_draw(desc: Option<String>) {
     <Host as UiApi>::og_ui_set_draw(&Host, desc)
 }

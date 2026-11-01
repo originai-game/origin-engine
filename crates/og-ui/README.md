@@ -507,8 +507,12 @@ the name (a labelled field's placeholder; the mirror's
 **value** (a slider's or stepper's number, a progress's percent, a meter's
 amount, a field's text, a select's choice, a cooldown's remaining share)
 and **states** (`disabled`, `focused`, `focusable`, `checked`, `selected`,
-`expanded`, `pressed`, `busy`; `offscreen` in the tree for a control a
-scroll container cuts out of view). The probe's `dump_ui` carries them on
+`expanded`, `collapsed` (expandable and closed), `pressed`, `busy`; `offscreen` in the tree for a control a
+scroll container cuts out of view). A component built from containers (a menu, a tree, a
+table) names its own with `Ui::semantics` (`og.ui.semantics`): one of
+`a11y::ROLES` (menu, menuitem, tree, treeitem, table, row, cell,
+tabpanel, toolbar, region…), a name, a value, its states and a range;
+an unknown role is refused with a frame warning. The probe's `dump_ui` carries them on
 every element; `Ui::a11y()` (`og.ui.a11y()`) answers the tree of the
 elements with a role, with full paths, nearest-ancestor parents, whole
 bounds, the focus order and the focused path, for a shell to mirror into

@@ -1754,6 +1754,7 @@ export const ui = Object.freeze({
   open: (id: string, desc?: unknown) => abi().og_ui_open(id, json(desc)),
   openPanel: (id: string, desc?: unknown) => abi().og_ui_open_panel(id, json(desc)),
   setDraw: (desc?: unknown) => abi().og_ui_set_draw(json(desc)),
+  semantics: (desc?: unknown): boolean => abi().og_ui_semantics(json(desc)),
   feedback: (event: string, rise: number) => abi().og_ui_feedback(event, rise),
   setHaptics: (intensity: number) => abi().og_ui_set_haptics(intensity),
   openScroll: (id: string, desc?: unknown) => abi().og_ui_open_scroll(id, json(desc)),

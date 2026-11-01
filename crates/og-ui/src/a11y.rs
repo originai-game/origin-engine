@@ -222,8 +222,12 @@ pub(crate) fn states_of(n: &Node) -> Vec<String> {
     if n.a11y.selected == Some(true) {
         s.push("selected".to_owned());
     }
-    if n.a11y.expanded == Some(true) {
-        s.push("expanded".to_owned());
+    match n.a11y.expanded {
+        Some(true) => s.push("expanded".to_owned()),
+        // Expandable and closed (a combobox, a tree item, an accordion
+        // header): a reader says "collapsed", not nothing.
+        Some(false) => s.push("collapsed".to_owned()),
+        None => {}
     }
     if let Widget::Button { pressed: true, .. } = n.widget {
         s.push("pressed".to_owned());
@@ -232,4 +236,134 @@ pub(crate) fn states_of(n: &Node) -> Vec<String> {
         s.push("busy".to_owned());
     }
     s
+}
+
+/// Every role an element can take ([`Semantics::role`]): the widgets' own
+/// and the composite roles components built from containers need (a menu
+/// and its items, a tree, a table's rows and cells, a tab panel, a toolbar).
+pub const ROLES: &[&str] = &[
+    "button",
+    "link",
+    "text",
+    "heading",
+    "image",
+    "checkbox",
+    "radio",
+    "switch",
+    "slider",
+    "spinbutton",
+    "textbox",
+    "combobox",
+    "listbox",
+    "option",
+    "tab",
+    "tablist",
+    "tabpanel",
+    "radiogroup",
+    "progressbar",
+    "meter",
+    "timer",
+    "status",
+    "alert",
+    "dialog",
+    "alertdialog",
+    "tooltip",
+    "separator",
+    "group",
+    "region",
+    "navigation",
+    "toolbar",
+    "menu",
+    "menubar",
+    "menuitem",
+    "menuitemcheckbox",
+    "menuitemradio",
+    "list",
+    "listitem",
+    "tree",
+    "treeitem",
+    "table",
+    "grid",
+    "row",
+    "rowheader",
+    "columnheader",
+    "cell",
+    "gridcell",
+    "figure",
+    "scrollbar",
+];
+
+/// What a component tells the accessibility tree about an element it built
+/// from containers (`Ui::semantics`, IDL `ui.SemanticsDesc`): a role other
+/// than its kind's, a name, a value and states. `None` leaves each as the
+/// element's kind gives it.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Semantics {
+    pub role: Option<String>,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub value: Option<String>,
+    pub checked: Option<bool>,
+    pub selected: Option<bool>,
+    pub expanded: Option<bool>,
+    pub busy: bool,
+    pub value_min: Option<f32>,
+    pub value_max: Option<f32>,
+    pub value_now: Option<f32>,
+}
+
+impl crate::Ui {
+    /// Gives the element built just before (a container just closed, or a
+    /// widget) a role, a name, a value and states for the accessibility
+    /// tree (docs/ui.md §11: a component's accessibility role). Answers
+    /// false, with a frame warning, when there is no element before it or
+    /// the role is none of [`ROLES`].
+    pub fn semantics(&mut self, s: &Semantics) -> bool {
+        let i = self.last_closed;
+        if i >= self.nodes.len() {
+            self.warnings.push(
+                "semantics with no element before it: call ui.semantics() right after the element"
+                    .into(),
+            );
+            return false;
+        }
+        let role = match s.role.as_deref() {
+            None | Some("") => None,
+            Some(r) => match ROLES.iter().find(|&&k| k == r) {
+                Some(&k) => Some(k),
+                None => {
+                    self.warnings.push(format!(
+                        "semantics: '{r}' is not a role; take one of {}",
+                        ROLES.join(", ")
+                    ));
+                    return false;
+                }
+            },
+        };
+        let a = &mut self.nodes[i].a11y;
+        if role.is_some() {
+            a.role = role;
+        }
+        if let Some(n) = &s.name {
+            a.name = Some(n.clone());
+        }
+        if let Some(d) = &s.description {
+            a.description = Some(d.clone());
+        }
+        if let Some(v) = &s.value {
+            a.value = Some(v.clone());
+        }
+        a.checked = s.checked.or(a.checked);
+        a.selected = s.selected.or(a.selected);
+        a.expanded = s.expanded.or(a.expanded);
+        a.busy |= s.busy;
+        if let Some(now) = s.value_now {
+            a.range = Some(A11yRange {
+                min: s.value_min,
+                max: s.value_max,
+                now,
+            });
+        }
+        true
+    }
 }

@@ -296,7 +296,7 @@ export class A11yMirror {
     set("aria-disabled", states.has("disabled") ? "true" : null);
     set("aria-checked", CHECKABLE.has(node.role) ? String(states.has("checked")) : null);
     set("aria-selected", SELECTABLE.has(node.role) ? String(states.has("selected")) : null);
-    set("aria-expanded", EXPANDABLE.has(node.role) ? String(states.has("expanded")) : null);
+    set("aria-expanded", EXPANDABLE.has(node.role) || states.has("collapsed") || states.has("expanded") ? String(states.has("expanded")) : null);
     set("aria-pressed", node.role === "button" && states.has("pressed") ? "true" : null);
     set("aria-busy", states.has("busy") ? "true" : null);
     set("aria-current", states.has("focused") ? "true" : null);

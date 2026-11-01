@@ -1539,7 +1539,7 @@ module ui {
     field name String "Its accessible name: what a screen reader says it is. A text field or area is named by the label before it in its row, else by its placeholder, else by its id; never by the text in it (that is its value)."
     field description String "Read after the name (aria-description): a text field's placeholder when a label names it; empty for none."
     field value String "Its value as text (a slider's number, a progress's percent, a field's text); empty for none."
-    field states List.String "Its states: disabled, focused, focusable, checked, selected, expanded, pressed, busy, offscreen (a scroll container cuts it out of view)."
+    field states List.String "Its states: disabled, focused, focusable, checked, selected, expanded, collapsed (expandable and closed), pressed, busy, offscreen (a scroll container cuts it out of view)."
     field valueMin Option.f32 "A range's smallest value (aria-valuemin): a slider's min, a bounded stepper's, 0 for a progress (in percent) and a meter; null for a stepper without bounds and a control that is no range."
     field valueMax Option.f32 "A range's largest value (aria-valuemax): a slider's max, a bounded stepper's, 100 for a progress, a meter's max; null as valueMin is."
     field valueNow Option.f32 "A range's value as a number (aria-valuenow; value says it as people read it): a slider's, a stepper's, a meter's, a progress's percent; null for a control that is no range."
@@ -3833,6 +3833,28 @@ module ui {
     variant overlay "Multiply under half grey, screen over it."
     variant softLight "A gentle overlay."
     variant colorDodge "Brightens what is under it by the paint."
+  }
+
+  struct SemanticsDesc {
+    doc "What a component tells the accessibility tree about an element it built from containers (docs/ui.md §11): a role other than its kind's, a name, a value and states. Absent fields leave what the element's kind gives it."
+    desc true
+    field role String "Its role: button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, tabpanel, radiogroup, progressbar, meter, timer, status, alert, dialog, alertdialog, tooltip, separator, group, region, navigation, toolbar, menu, menubar, menuitem, menuitemcheckbox, menuitemradio, list, listitem, tree, treeitem, table, grid, row, rowheader, columnheader, cell, gridcell, figure or scrollbar; empty keeps its kind's."
+    field name Option.String "Its accessible name; null keeps what it shows."
+    field description Option.String "Read after the name; null is none."
+    field value Option.String "Its value as people read it (`3 of 12`, `Sorted ascending`); null is none."
+    field checked Option.bool "Checked (a menu item's check); null is not checkable."
+    field selected Option.bool "Selected (a tab, a row, an option); null is not selectable."
+    field expanded Option.bool "Expanded (an accordion header, a tree item, a menu button); null is not expandable."
+    field busy bool "Loading."
+    field valueMin Option.f32 "A range's smallest value."
+    field valueMax Option.f32 "A range's largest value."
+    field valueNow Option.f32 "A range's value as a number (a scroll position, a page); null is no range."
+  }
+
+  fn semantics {
+    doc "Give the element built just before (a container just closed, or a widget) a role, a name, a value and states for the accessibility tree and the probe's dump (dump_ui's role, name, value, states). Components built from containers call it so a screen reader meets a menu, a tree or a table, not rows of buttons. Answers false, with a frame warning, when no element was built before it or the role is unknown."
+    param desc SemanticsDesc "Its role, name, value and states."
+    returns bool
   }
 
   fn setDraw {
