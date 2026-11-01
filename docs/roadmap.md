@@ -137,5 +137,6 @@ After R, as the plan's final stage:
 | G1-1 | [T-ed474375](https://ampcode.com/threads/T-ed474375-d637-48c0-8d9a-9ca91cf6b7b6) | `g1-render-interpolation` | reviewed at f6e6d2ab; sent back for skinned joints, world-anchored UI, motion blur |
 | G1-5 | [T-4157fcd5](https://ampcode.com/threads/T-4157fcd5-17e7-43b7-8471-59ff1b6b6356) | `g1-save-migration` | started 2026-11-01 |
 | og-cook cook/mod.rs, look.rs split | — | — | after G1-3 |
-| G1-3 | [T-01a1980c](https://ampcode.com/threads/T-01a1980c-a132-73a9-96bf-c2ebfbde9c2e) | `g1-gltf-formats` | started 2026-11-01 |
-| G1-4, U6a, U6d | — | — | as slots free (U6a after G1-2) |
+| G1-3 | [T-01a1980c](https://ampcode.com/threads/T-01a1980c-a132-73a9-96bf-c2ebfbde9c2e) | `g1-gltf-formats` | reviewed at f65cdcab, merging (five new reference frames) |
+| G1-4 | [T-532b590f](https://ampcode.com/threads/T-532b590f-cff8-4ccc-89da-b4c97a97180a) | `g1-frame-quality` | started 2026-11-01 |
+| U6a, G1-7, U6d | — | — | as slots free (U6a next, on G1-2's API) |
