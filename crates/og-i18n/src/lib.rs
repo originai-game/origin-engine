@@ -29,6 +29,6 @@ pub use message::{Arg, Message, MessageError};
 pub use plural::{PluralCategory, format_ordinal, plural_category};
 pub use table::{Catalog, MissingKey, STRINGS_TYPE, StringTable, check_tables};
 pub use text::{
-    WordKind, WordSegment, graphemes, is_rtl_char, needs_shaping, paragraph_direction,
-    word_per_character, word_segments,
+    WordKind, WordSegment, graphemes, is_bidi_control, is_rtl_char, needs_shaping,
+    paragraph_direction, word_per_character, word_segments,
 };

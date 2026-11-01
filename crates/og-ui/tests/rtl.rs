@@ -10,7 +10,9 @@
 //! - a right-to-left paragraph's words, or its digits, in the wrong order;
 //!   a left-to-right paragraph's embedded Arabic run not reversed; Hebrew
 //!   (unshaped) not reversed; brackets not mirrored; neutrals not resolved
-//!   by UAX #9 → `paragraphs_order_their_runs_by_the_bidi_algorithm`
+//!   by UAX #9; an isolate's text setting the paragraph's direction or
+//!   losing its punctuation, or a bidi control drawn →
+//!   `paragraphs_order_their_runs_by_the_bidi_algorithm`
 //! - kerning ignored, or measured and drawn differently →
 //!   `kerning_pairs_tighten_the_measure`
 //! - a right-to-left UI not mirrored, or its text not aligned to the right
@@ -132,6 +134,20 @@ fn paragraphs_order_their_runs_by_the_bidi_algorithm() {
         .map(|g| g.ch)
         .collect::<String>();
     assert_eq!(h, "40 ךותמ 12 בלש");
+    // Game text isolated (FSI … PDI) inside a right-to-left string keeps its
+    // full stop; without the isolate the stop goes to the paragraph's end
+    // (the left). The isolate sets no paragraph direction (UAX #9 P2), and
+    // no bidi control is drawn.
+    let line = |s: &str| {
+        hebrew
+            .visual(s, Direction::Ltr, 0.0)
+            .iter()
+            .map(|g| g.ch)
+            .collect::<String>()
+    };
+    assert_eq!(line("שלום: Hold it."), ".Hold it :םולש");
+    assert_eq!(line("שלום: \u{2068}Hold it.\u{2069}"), "Hold it. :םולש");
+    assert_eq!(line("\u{2068}Hold\u{2069} שלום"), "םולש Hold");
 }
 
 /// Kerning: the font's pairs move the pen between neighbours in measuring

@@ -27,9 +27,29 @@ fn is_ltr_strong(c: char) -> bool {
     c.is_alphabetic() && !is_rtl_char(c)
 }
 
-/// The direction of a paragraph: its first strong character's, or `default`.
+/// Whether `c` is one of the bidi formatting characters a text may carry
+/// (marks, embeddings, overrides and isolates, U+200E–F, U+202A–E,
+/// U+2066–9): they steer the bidi algorithm and are never drawn.
+pub fn is_bidi_control(c: char) -> bool {
+    matches!(c as u32, 0x200e..=0x200f | 0x202a..=0x202e | 0x2066..=0x2069)
+}
+
+/// The direction of a paragraph: its first strong character's, or
+/// `default`, skipping what an isolate (U+2066–8 to U+2069) holds (UAX #9
+/// P2), so game text isolated inside a string does not set its direction.
 pub fn paragraph_direction(text: &str, default: Direction) -> Direction {
+    let mut depth = 0usize;
     for c in text.chars() {
+        match c as u32 {
+            0x2066..=0x2068 => depth += 1,
+            0x2069 => depth = depth.saturating_sub(1),
+            0x200e if depth == 0 => return Direction::Ltr,
+            0x200f if depth == 0 => return Direction::Rtl,
+            _ => {}
+        }
+        if depth > 0 {
+            continue;
+        }
         if is_rtl_char(c) && c.is_alphabetic() {
             return Direction::Rtl;
         }

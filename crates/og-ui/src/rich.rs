@@ -301,7 +301,19 @@ fn visual_segments(
         let s = &rc.spans[p.span];
         s.icon.is_none() && fonts.metrics_for(s.font, &p.text).is_mixed()
     };
-    let plain = direction == og_i18n::Direction::Ltr
+    // The line's paragraph direction is its first strong character's (the
+    // UI's with none, and skipping isolates), as a plain text's is: an
+    // English line in a right-to-left UI keeps its full stop at its end.
+    let base = og_i18n::paragraph_direction(
+        &line
+            .pieces
+            .iter()
+            .filter(|p| rc.spans[p.span].icon.is_none())
+            .map(|p| p.text.as_str())
+            .collect::<String>(),
+        direction,
+    );
+    let plain = base == og_i18n::Direction::Ltr
         && line
             .pieces
             .iter()
@@ -331,7 +343,7 @@ fn visual_segments(
         ranges.push(start..text.len());
     }
     let mut out = Vec::new();
-    for (run, rtl) in crate::text::bidi_runs(&text, direction) {
+    for (run, rtl) in crate::text::bidi_runs(&text, base) {
         // The pieces this run crosses, in visual order.
         let mut parts: Vec<(usize, std::ops::Range<usize>)> = ranges
             .iter()
@@ -371,7 +383,8 @@ fn visual_segments(
                 continue;
             }
             let first = text[ranges[k].start..r.start].chars().count();
-            let glyphs = m.run(piece_text, rtl, tracking, first);
+            let mut glyphs = m.run(piece_text, rtl, tracking, first);
+            glyphs.retain(|g| !og_i18n::is_bidi_control(g.ch));
             let width = glyphs.iter().map(|g| g.advance).sum::<f32>() * s.step.size;
             out.push(Segment {
                 span: p.span,
@@ -518,7 +531,8 @@ impl Ui {
 
     /// Where each piece of rich node `i` sits on screen, after layout and
     /// motion, in visual order: each line is laid out by the bidirectional
-    /// algorithm over its whole text at the UI's direction (UAX #9), so
+    /// algorithm over its whole text at its paragraph direction (its first
+    /// strong character's, the UI's with none: UAX #9), so
     /// pieces are reordered and so are runs of either direction within one
     /// piece (a piece split by a direction change is several segments).
     pub(crate) fn rich_pieces(&self, i: usize) -> Vec<DrawnPiece> {

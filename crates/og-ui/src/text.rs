@@ -536,6 +536,8 @@ impl FontMetrics {
             let first = line[..range.start].chars().count();
             out.extend(self.run(&line[range], rtl, tracking, first));
         }
+        // Bidi marks and isolates have steered the runs; no face draws them.
+        out.retain(|g| !og_i18n::is_bidi_control(g.ch));
         out
     }
 
@@ -641,8 +643,9 @@ fn invisible(c: char) -> bool {
 
 /// Whether a line needs the bidi algorithm or shaping to be drawn.
 pub fn needs_visual(line: &str) -> bool {
-    line.chars()
-        .any(|c| og_i18n::needs_shaping(c) || og_i18n::is_rtl_char(c))
+    line.chars().any(|c| {
+        og_i18n::needs_shaping(c) || og_i18n::is_rtl_char(c) || og_i18n::is_bidi_control(c)
+    })
 }
 
 /// A line's level runs in visual order: byte ranges and whether each runs

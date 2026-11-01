@@ -13,7 +13,8 @@
 //! - markup it cannot read disappears silently instead of showing as text
 //!   with a warning;
 //! - in a right-to-left UI the spans run left to right, or punctuation
-//!   between two spans sits on the wrong side of its space.
+//!   between two spans sits on the wrong side of its space, or a Latin
+//!   line's full stop is moved before it.
 
 use crate::support;
 
@@ -353,6 +354,21 @@ fn a_right_to_left_paragraph_runs_its_spans_by_the_bidi_algorithm() {
     assert!(
         x(&ui, "one ") < x(&ui, "2") && x(&ui, "2") < x(&ui, "three"),
         "a left-to-right run reads left to right: {:?}",
+        texts(&ui)
+    );
+    // A Latin paragraph in a right-to-left UI takes its own direction, as a
+    // plain label does: its full stop stays at its end, not before it.
+    for _ in 0..2 {
+        step(
+            &mut ui,
+            InputFrame::default(),
+            "one [b]two[/b].",
+            Size::fit(),
+        );
+    }
+    assert!(
+        x(&ui, ".") > x(&ui, "two"),
+        "the full stop ends the line: {:?}",
         texts(&ui)
     );
 }
