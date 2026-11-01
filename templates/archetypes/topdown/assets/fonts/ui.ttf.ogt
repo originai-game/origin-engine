@@ -4,6 +4,7 @@ version 1
 # Written by tools/make-assets.py: the HUD and floating texts use Latin-1 only.
 font {
   charset latin
+  chars "−…←→"
   em_px 48
   px_range 6
 }
