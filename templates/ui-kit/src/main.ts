@@ -453,13 +453,20 @@ function gallery(d: DemoState): void {
     radius: t.radius.panel,
   }, () => {
     og.ui.label("Title", "UI kit", { step: "displayMd", font: "display" });
-    og.ui.label("Subtitle", "Templates and widgets for game screens, themed by the platform tokens.", { color: { token: "inkMuted" }, width: { kind: "grow" } });
-    const height = Math.min(phone ? vp.height - 260 : 460, vp.height - 200);
-    const r = og.ui.list("Screens", { count: SCREENS.length - 1, rowHeight: 52, height: { kind: "fixed", px: height }, width: { kind: "grow" } }, (i) => {
+    og.ui.label("Subtitle", "Templates and widgets for game screens, themed by the platform tokens.", { step: "base", color: { token: "inkMuted" }, width: { kind: "grow" } });
+    // Rows as tall as a name over a blurb of two lines (three at a large text size), at the player's text size (16 px
+    // text at 1080p); the list takes the room the title and subtitle leave (last tick's).
+    const ts = Math.max(1, t.textScale ?? 1);
+    const rowHeight = Math.round((t.typeRamp["base"]?.lineHeight ?? 24 * ts) * (ts > 1.25 ? 4 : 3) + 8 * ts + 8);
+    const g = og.ui.bounds("Gallery");
+    const list = og.ui.bounds("Gallery/Screens");
+    const above = g && list ? list.y - g.y : 200 * ts;
+    const height = Math.max(rowHeight * 2, Math.min(phone ? Infinity : 460 * ts, vp.height - vp.safeArea.top - vp.safeArea.bottom - above - t.space.lg - 2 * t.space.md));
+    const r = og.ui.list("Screens", { count: SCREENS.length - 1, rowHeight, height: { kind: "fixed", px: height }, width: { kind: "grow" } }, (i) => {
       const s = SCREENS[i + 1]!;
-      og.ui.column("Text", { width: { kind: "grow" }, gap: 0 }, () => {
-        og.ui.label("Name", s, { nowrap: true });
-        og.ui.label("Blurb", BLURBS[s], { step: "meta", color: { token: "inkMuted" }, nowrap: true });
+      og.ui.column("Text", { width: { kind: "grow" }, gap: 0, padding: { left: 0, top: 4, right: 0, bottom: 4 } }, () => {
+        og.ui.label("Name", s, { step: "base", nowrap: true });
+        og.ui.label("Blurb", BLURBS[s], { step: "base", color: { token: "inkMuted" }, width: { kind: "grow" }, maxLines: 2 } as never);
       });
     });
     if (r.clicked !== null) d.screen = r.clicked + 1;
@@ -584,7 +591,8 @@ function galleryButton(world: World, d: DemoState): void {
   // stray label in the HUD at every desktop aspect); its top middle is free.
   const top = bp === "phonePortrait" || bp === "phoneLandscape" || SCREENS[d.screen] === "shooter";
   og.ui.anchor("Back", { anchor: top ? "top" : "bottomLeft", offsetY: bp === "phonePortrait" ? 52 : 0 }, () => {
-    if (og.ui.button("Gallery", tr(world, "gallery.button"), { variant: "secondary", size: "small" }).clicked) d.screen = 0;
+    // The medium size: its label at the body's 16 px at 1080p, never under it.
+    if (og.ui.button("Gallery", tr(world, "gallery.button"), { variant: "secondary" }).clicked) d.screen = 0;
   });
 }
 

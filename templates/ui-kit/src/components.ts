@@ -85,10 +85,14 @@ function phone(): boolean {
 function page(id: string, build: () => void, bar = 0): void {
   const t = og.ui.frameTheme();
   const vp = og.ui.frameViewport();
-  const top = phone() ? 96 : t.space.md;
-  const bottom = Math.max(bar, vp.safeArea.bottom) + t.space.md;
-  og.ui.anchor(id, { anchor: phone() ? "top" : "center", ...(phone() ? { margin: 0 } : {}), width: phone() ? grow : px(Math.min(1200, vp.width - 48)), direction: "column", padding: { left: t.space.md, top, right: t.space.md, bottom: t.space.md } }, () => {
-    og.ui.scrollArea("Body", { width: grow, height: px(vp.height - vp.safeArea.top - top - bottom - (phone() ? 0 : 64)), gap: t.space.md, fadeInto: "backdrop", label: id }, () => {
+  // The Gallery button (last tick's place, at any text size): over the page on a phone, at its
+  // bottom-left corner elsewhere. The page starts below it or ends above it, never under it.
+  const back = og.ui.bounds("Back");
+  const top = phone() ? (back ? Math.max(0, back.y + back.height - vp.safeArea.top) + t.space.sm : 96) : t.space.md;
+  const backRoom = !phone() && back ? vp.height - back.y + t.space.sm : 0;
+  const bottom = Math.max(bar, vp.safeArea.bottom, backRoom);
+  og.ui.anchor(id, { anchor: "top", margin: 0, width: phone() ? grow : px(Math.min(1200, vp.width - 48)), direction: "column", padding: { left: t.space.md, top, right: t.space.md, bottom: t.space.md } }, () => {
+    og.ui.scrollArea("Body", { width: grow, height: px(Math.max(120, vp.height - vp.safeArea.top - top - t.space.md - bottom)), gap: t.space.md, fadeInto: "backdrop", label: id }, () => {
       // One panel under another on a phone (a row that does not wrap would leave all but the first off screen).
       if (phone()) og.ui.column("Panels", { width: grow, gap: t.space.md, cross: "stretch" }, build);
       else og.ui.row("Panels", { width: grow, gap: t.space.md, wrap: true, cross: "start" }, build);
