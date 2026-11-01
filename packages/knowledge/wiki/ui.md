@@ -284,7 +284,7 @@ module ui {
 | [`og.ui.dialog`](#fn-dialog) | function | A dialog on the modal layer: tone mark, message, body and actions. |
 | [`og.ui.confirm`](#fn-confirm) | function | A confirmation dialog: the message, Cancel and the action (danger when it cannot be undone). |
 | [`og.ui.popover`](#fn-popover) | function | A popover beside an element with an arrow at it; Back or a press outside dismisses it. |
-| [`og.ui.menu`](#fn-menu) | function | A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point. |
+| [`og.ui.menu`](#fn-menu) | function | A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point. A submenu opens beside its row; where none fits beside the menu (a phone) it drills in, its rows replacing the menu's under a back row, and Back goes up a level. |
 | [`og.ui.contextMenu`](#fn-contextMenu) | function | A menu at a point: where a right press or a long press happened. |
 | [`og.ui.sheet`](#fn-sheet) | function | A sheet sliding in from the bottom (resting at detents, dragged) or a side. |
 | [`og.ui.tabBar`](#fn-tabBar) | function | Tabs with a sliding indicator and bumpers over the panel of the selected one. |
@@ -3388,7 +3388,7 @@ fn popover {
 
 ### `og.ui.menu`
 
-A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point.
+A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point. A submenu opens beside its row; where none fits beside the menu (a phone) it drills in, its rows replacing the menu's under a back row, and Back goes up a level.
 
 ```ts
 og.ui.menu(id: string, open: boolean, desc?: MenuDesc): MenuChoice
@@ -3406,7 +3406,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn menu {
-  doc "A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point."
+  doc "A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point. A submenu opens beside its row; where none fits beside the menu (a phone) it drills in, its rows replacing the menu's under a back row, and Back goes up a level."
   host false
   param id String "Its id."
   param open bool "Whether it is open."
