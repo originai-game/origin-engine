@@ -53,10 +53,18 @@ is one line here, written at the merge that changes
   released, and pads come to rest with the keys they map to.
 
 - **Rendering interpolates between ticks (docs/design.md §2.4).** A
-  display frame between two ticks (a 60 Hz tick on a 120 or 144 Hz
-  screen) draws every entity's world transform and og.Camera's pose
-  blended from the tick before the last to the last by the accumulator's
-  fraction, so the picture is smooth and up to a tick late; frames on
+  behaviour change of the realtime display, released in the next minor
+  (the release's breaking entry): a display frame between two ticks (a
+  60 Hz tick on a 120 or 144 Hz screen) draws every entity's world
+  transform and og.Camera's pose blended from the tick before the last to
+  the last by the accumulator's fraction, so the picture is smooth and up
+  to a tick late. Skinned models blend each joint (translation and scale
+  lerped, rotation slerped) and their blendshape weights, with root motion
+  and every pose the simulation reads still at the tick; UI anchored to
+  an entity stays on its drawn place; object motion blur moves from the
+  frame drawn before; the probe's `teleport` snaps. Immediate-mode
+  sprites, text and lines (`og.render.sprite`, `og.render.text`,
+  `og.debug`) and shader time stay at the tick. Frames on
   tick boundaries (og run without --realtime, og render, og test), the
   probe's screenshots and captures draw the tick as before, so no
   reference frame moves, and the simulation, its hash and replays are

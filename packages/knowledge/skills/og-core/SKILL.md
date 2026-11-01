@@ -60,10 +60,12 @@ is an engine feature request, not something to work around in the game.
 - Rendering never feeds back into simulation: do not read camera or screen
   state to decide game logic.
 - Frames fall between ticks: on a screen faster than the tick (120 or
-  144 Hz) the renderer draws every entity and og.Camera blended from the
-  tick before the last to the last (`RenderSettings.interpolate`, on by
-  default), so motion is smooth and the picture is up to a tick behind the
-  world. On the tick a system teleports, respawns or resets an entity it
+  144 Hz) the renderer draws every entity, og.Camera, skinned poses
+  (per joint) and UI anchored to an entity blended from the tick before
+  the last to the last (`RenderSettings.interpolate`, on by default), so
+  motion is smooth and the picture is up to a tick behind the world;
+  immediate-mode draws (`og.render.sprite`, `og.render.text`, `og.debug`)
+  and shader time stay at the tick. On the tick a system teleports, respawns or resets an entity it
   calls `og.render.snap(world, e)` (`og.render.snapCamera(world)` for a
   camera cut), or the entity glides there over a tick; a jump past
   `RenderSettings.snapDistance` (10 m) snaps by itself, and

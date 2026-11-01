@@ -136,7 +136,8 @@ and the fallback where tsrs has no package.
 
 - Fixed tick (default 60 Hz, per project), accumulator with a cap; render
   interpolates between the last two ticks (`RenderSettings.interpolate`,
-  on by default: a display frame blends by the accumulator's fraction, a
+  on by default: a display frame blends transforms, the camera, skinned
+  joints and world-anchored UI by the accumulator's fraction, a
   frame on a tick boundary and every probe capture draw the tick, so
   reference frames are the ticks'; og-runtime's `interpolate.rs`). Game
   code never reads wall-clock time: `Time` is a resource with `tick`,
