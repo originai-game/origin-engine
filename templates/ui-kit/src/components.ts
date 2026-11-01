@@ -297,14 +297,23 @@ export function dataScreen(): void {
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export function chartsScreen(): void {
+/**
+ * The charts, three to a page (a preview page stays inside §15.1's 300-element dense-menu
+ * budget): line, area and grouped bars on the first; stacked bars, radar and donut on the second.
+ */
+export function chartsScreen(second = false): void {
   const w = phone() ? grow : px(370);
   const state = { loading: s.data === "loading", error: s.data === "error" ? "Stats are unavailable" : "" };
   const empty = s.data === "empty";
-  page("Charts", () => {
-    panel("Line", "Line", w, () => og.ui.chart("Players", { kind: "line", title: "Players online", subtitle: "This week", categories: DAYS, series: empty ? [] : [{ label: "EU", values: [1200, 1350, 1280, 1600, 2100, 2650, 2400] }, { label: "NA", values: [900, 950, 1020, 1100, 1700, 2200, 2050] }], format: "compact", height: 180, ...state }));
-    panel("Area", "Area, stacked", w, () => og.ui.chart("Gold", { kind: "area", stacked: true, title: "Gold earned", categories: DAYS, series: empty ? [] : [{ label: "Quests", values: [120, 180, 150, 220, 260, 310, 280] }, { label: "Trade", values: [60, 40, 90, 70, 120, 100, 140] }], height: 180, ...state }));
-    panel("Bar", "Bars, grouped", w, () => og.ui.chart("Matches", { kind: "bar", title: "Matches", categories: ["Duel", "Squad", "Ranked", "Event"], series: empty ? [] : [{ label: "Won", values: [34, 52, 18, 9] }, { label: "Lost", values: [21, 40, 22, 3] }], height: 180, selected: 2, ...state }));
+  if (!second) {
+    page("Charts", () => {
+      panel("Line", "Line", w, () => og.ui.chart("Players", { kind: "line", title: "Players online", subtitle: "This week", categories: DAYS, series: empty ? [] : [{ label: "EU", values: [1200, 1350, 1280, 1600, 2100, 2650, 2400] }, { label: "NA", values: [900, 950, 1020, 1100, 1700, 2200, 2050] }], format: "compact", height: 180, ...state }));
+      panel("Area", "Area, stacked", w, () => og.ui.chart("Gold", { kind: "area", stacked: true, title: "Gold earned", categories: DAYS, series: empty ? [] : [{ label: "Quests", values: [120, 180, 150, 220, 260, 310, 280] }, { label: "Trade", values: [60, 40, 90, 70, 120, 100, 140] }], height: 180, ...state }));
+      panel("Bar", "Bars, grouped", w, () => og.ui.chart("Matches", { kind: "bar", title: "Matches", categories: ["Duel", "Squad", "Ranked", "Event"], series: empty ? [] : [{ label: "Won", values: [34, 52, 18, 9] }, { label: "Lost", values: [21, 40, 22, 3] }], height: 180, selected: 2, ...state }));
+    });
+    return;
+  }
+  page("ChartsMore", () => {
     panel("Stacked", "Bars, stacked", w, () => og.ui.chart("Damage", { kind: "bar", stacked: true, title: "Damage by type", categories: ["R1", "R2", "R3", "R4", "R5"], series: empty ? [] : [{ label: "Fire", values: [40, 55, 30, 70, 60] }, { label: "Ice", values: [20, 15, 35, 25, 40] }, { label: "Poison", values: [10, 20, 15, 10, 30] }], height: 180, ...state }));
     panel("Radar", "Radar", w, () => og.ui.chart("Hero", { kind: "radar", title: "Hero stats", categories: ["Power", "Speed", "Range", "Defense", "Utility"], series: empty ? [] : [{ label: "Ava", values: [8, 6, 4, 7, 5] }, { label: "Kenji", values: [5, 9, 7, 3, 6] }], max: 10, height: 220, ...state }));
     panel("Donut", "Donut", w, () => og.ui.chart("Loot", { kind: "donut", title: "Loot by rarity", categories: ["Common", "Rare", "Epic", "Legendary"], series: empty ? [] : [{ values: [62, 25, 10, 3] }], height: 180, totalLabel: "Drops", ...state }));

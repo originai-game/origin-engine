@@ -24,7 +24,7 @@ export const SCREENS = [
   "gallery", "widgets", "mainMenu", "pause", "settings", "platformer", "shooter", "puzzle", "idle", "racing",
   "cutscene", "shop", "inventory", "levels", "results", "leaderboard", "tutorial", "loading", "confirm", "alert", "toasts",
   "players", "text", "materials",
-  "containers", "navigation", "overlays", "data", "charts", "graph",
+  "containers", "navigation", "overlays", "data", "charts", "chartsMore", "graph",
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
@@ -68,7 +68,8 @@ const BLURBS: Record<Screen, string> = {
   navigation: "Tabs with bumpers, carousel, breadcrumbs, pagination, action bar",
   overlays: "Menus, context menu, popover, dialog, confirm, sheets, radial wheel",
   data: "Table of 10,000 rows, list, tree, grid, stat rows",
-  charts: "Line, area, bar, stacked, radar, donut",
+  charts: "Line, area and grouped bar charts",
+  chartsMore: "Stacked bars, radar and donut charts",
   graph: "Skill tree graph and calendar",
 };
 
@@ -1104,6 +1105,10 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     case "charts":
       chartsScreen();
+      back = og.ui.back();
+      break;
+    case "chartsMore":
+      chartsScreen(true);
       back = og.ui.back();
       break;
     case "graph":
