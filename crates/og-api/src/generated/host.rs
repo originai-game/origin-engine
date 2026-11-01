@@ -383,6 +383,8 @@ pub trait RenderApi: Wire {
     fn og_render_apply_quality(&self, world: u32, preset: String) -> String;
     /// `og.render.setDisplay`
     fn og_render_set_display(&self, world: u32, settings: Option<String>) -> String;
+    /// `og.render.resetDisplay`
+    fn og_render_reset_display(&self, world: u32) -> String;
     /// `og.render.display`
     fn og_render_display(&self, world: u32) -> String;
     /// `og.render.look`
@@ -1293,6 +1295,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_render_apply_look",
     "og_render_apply_quality",
     "og_render_set_display",
+    "og_render_reset_display",
     "og_render_display",
     "og_render_look",
     "og_render_capabilities",

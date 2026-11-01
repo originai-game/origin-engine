@@ -963,6 +963,12 @@ pub fn og_render_set_display(env: Env, world: u32, settings: Option<String>) -> 
     <Host as RenderApi>::og_render_set_display(&Host, world, settings)
 }
 
+#[napi(js_name = "og_render_reset_display")]
+pub fn og_render_reset_display(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_reset_display(&Host, world)
+}
+
 #[napi(js_name = "og_render_display")]
 pub fn og_render_display(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

@@ -313,7 +313,9 @@ render sprite 12
   (`og run`, `og test`, reference frames) draws at scale 1 whatever they
   say; they take effect in the browser.
   - Each call changes only the fields it names; the rest keep their
-    values (the defaults before any call).
+    values (the defaults before any call), so a settings page sets the
+    one field the player moved. `og.render.resetDisplay(world)` puts every
+    field back to its default (a Reset to defaults button).
   - `quality`: the player's preset (`low` … `ultra`), drawn in place of
     the game's RenderSettings without writing them; null (the default) is
     the game's own.

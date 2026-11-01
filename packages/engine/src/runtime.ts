@@ -1585,6 +1585,7 @@ export const render = Object.freeze({
   applyLook: (world: WorldImpl, look: number) => parse(abi().og_render_apply_look(world.id, look)),
   applyQuality: (world: WorldImpl, preset: string) => parse(abi().og_render_apply_quality(world.id, preset)),
   setDisplay: (world: WorldImpl, settings?: unknown) => parse(abi().og_render_set_display(world.id, json(settings))),
+  resetDisplay: (world: WorldImpl) => parse(abi().og_render_reset_display(world.id)),
   display: (world: WorldImpl) => parse(abi().og_render_display(world.id)),
   look: (world: WorldImpl) => parse(abi().og_render_look(world.id)),
   snap: (world: WorldImpl, entity: number) => parse(abi().og_render_snap(world.id, entity)),

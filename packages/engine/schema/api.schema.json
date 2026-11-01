@@ -4232,7 +4232,7 @@
         },
         {
           "name": "setDisplay",
-          "doc": "Set the player's graphics settings (DisplaySettings: preset, frame cap, battery saver, render scale, automatic quality, fullscreen, power preference). Applied from the next frame (the power preference at the next load); presentation only, so it is allowed inside any system and never changes the simulation.",
+          "doc": "Set the player's graphics settings (DisplaySettings: preset, frame cap, battery saver, render scale, automatic quality, fullscreen, power preference). A call merges over the current settings: only the fields it names change, so a settings screen sets the one the player moved without restating the rest (og.render.resetDisplay goes back to the defaults). Applied from the next frame (the power preference at the next load); presentation only, so it is allowed inside any system and never changes the simulation.",
           "params": [
             {
               "name": "world",
@@ -4245,6 +4245,21 @@
               "type": "DisplaySettings",
               "optional": true,
               "doc": "The settings to change: fields left out keep their values (the defaults before any call), so a game that sets its frame cap keeps the player's render scale; quality null is the game's own."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a world that is not alive.",
+          "publish": true
+        },
+        {
+          "name": "resetDisplay",
+          "doc": "Put every graphics setting back to its default (DisplaySettings' zero value: the game's own quality, frame cap auto, render scale 1, automatic quality on, no battery saver, windowed, high performance): a settings page's Reset to defaults. Applied from the next frame like og.render.setDisplay; a power preference that changes back applies at the next load.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose display it is."
             }
           ],
           "returns": "Result<Void>",

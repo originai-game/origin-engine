@@ -634,6 +634,10 @@ impl RenderApi for NodeHost {
     fn og_render_set_display(&self, world: u32, settings: Option<String>) -> String {
         rt::og_render_set_display(world, settings)
     }
+
+    fn og_render_reset_display(&self, world: u32) -> String {
+        rt::og_render_reset_display(world)
+    }
     fn og_render_display(&self, world: u32) -> String {
         rt::og_render_display(world)
     }

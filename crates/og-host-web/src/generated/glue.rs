@@ -804,6 +804,11 @@ pub fn og_render_set_display(world: u32, settings: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_render_reset_display(world: u32) -> String {
+    <Host as RenderApi>::og_render_reset_display(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_render_display(world: u32) -> String {
     <Host as RenderApi>::og_render_display(&Host, world)
 }

@@ -325,6 +325,8 @@ export interface HostAbi<A, V> {
   og_render_apply_quality(world: number, preset: string): string;
   /** `og.render.setDisplay` */
   og_render_set_display(world: number, settings: string | undefined): string;
+  /** `og.render.resetDisplay` */
+  og_render_reset_display(world: number): string;
   /** `og.render.display` */
   og_render_display(world: number): string;
   /** `og.render.look` */
@@ -1150,6 +1152,7 @@ export const SYMBOLS: readonly string[] = [
   "og_render_apply_look",
   "og_render_apply_quality",
   "og_render_set_display",
+  "og_render_reset_display",
   "og_render_display",
   "og_render_look",
   "og_render_capabilities",

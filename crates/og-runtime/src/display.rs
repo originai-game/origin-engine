@@ -438,6 +438,22 @@ pub fn og_render_set_display(world: u32, settings: Option<String>) -> String {
     }
 }
 
+/// `og.render.resetDisplay`: every setting back to its default.
+pub fn og_render_reset_display(world: u32) -> String {
+    let r = engine(world).and_then(|eng| {
+        let mut rs = eng
+            .render
+            .try_borrow_mut()
+            .map_err(|_| "the renderer is busy drawing".to_string())?;
+        rs.display.settings = Settings::default();
+        Ok(())
+    });
+    match r {
+        Ok(()) => ok_void(),
+        Err(e) => refuse(e),
+    }
+}
+
 /// `og.render.display`.
 pub fn og_render_display(world: u32) -> String {
     let Ok(eng) = engine(world) else {

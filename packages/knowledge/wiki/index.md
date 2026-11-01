@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1544 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1545 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -907,6 +907,7 @@ Field units the docs and Tune use.
 | [`og.render.postErrors`](render.md#fn-postErrors) | function | render | `og_render_post_errors` |
 | [`og.render.raycast`](render.md#fn-raycast) | function | render | `og_render_raycast` |
 | [`og.render.renderTarget`](render.md#fn-renderTarget) | function | render | `og_render_render_target` |
+| [`og.render.resetDisplay`](render.md#fn-resetDisplay) | function | render | `og_render_reset_display` |
 | [`og.render.ribbon`](render.md#fn-ribbon) | function | render | `og_render_ribbon` |
 | [`og.render.ringGeometry`](render.md#fn-ringGeometry) | function | render | `og_render_ring_geometry` |
 | [`og.render.setDisplay`](render.md#fn-setDisplay) | function | render | `og_render_set_display` |

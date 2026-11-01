@@ -8407,6 +8407,7 @@ export interface DisplayInfo {
 
 
 
+
 /**
  * Geometry from attribute arrays, as three.js BufferGeometry with its attributes set: one item per vertex in each array, triangles three indices each (or, with no indices, every three vertices).
  * Missing normals are computed, as three.js computeVertexNormals (each vertex the area-weighted sum of its triangles' normals: shared vertices shade smooth, an unindexed geometry flat); missing tangents are generated when a normal map needs them. An unindexed geometry whose vertex count is not a multiple of three has no triangles: it draws nothing as an og.Mesh and is a vertex set for og.Lines and og.Points.
@@ -29284,13 +29285,20 @@ export declare namespace og {
      */
     function applyQuality(world: World, preset: GraphicsQuality): Result<void>;
     /**
-     * Set the player's graphics settings (DisplaySettings: preset, frame cap, battery saver, render scale, automatic quality, fullscreen, power preference). Applied from the next frame (the power preference at the next load); presentation only, so it is allowed inside any system and never changes the simulation.
+     * Set the player's graphics settings (DisplaySettings: preset, frame cap, battery saver, render scale, automatic quality, fullscreen, power preference). A call merges over the current settings: only the fields it names change, so a settings screen sets the one the player moved without restating the rest (og.render.resetDisplay goes back to the defaults). Applied from the next frame (the power preference at the next load); presentation only, so it is allowed inside any system and never changes the simulation.
      *
      * @param world The world whose display it is.
      * @param settings The settings to change: fields left out keep their values (the defaults before any call), so a game that sets its frame cap keeps the player's render scale; quality null is the game's own.
      * @returns Refused for a world that is not alive.
      */
     function setDisplay(world: World, settings?: DisplaySettings): Result<void>;
+    /**
+     * Put every graphics setting back to its default (DisplaySettings' zero value: the game's own quality, frame cap auto, render scale 1, automatic quality on, no battery saver, windowed, high performance): a settings page's Reset to defaults. Applied from the next frame like og.render.setDisplay; a power preference that changes back applies at the next load.
+     *
+     * @param world The world whose display it is.
+     * @returns Refused for a world that is not alive.
+     */
+    function resetDisplay(world: World): Result<void>;
     /**
      * What the display draws now: the settings, the frame cap resolved, the render scale automatic quality chose, the scene's size, the device losses survived, the GPU memory, and what the browser decides (vsync, fullscreen now, the adapter's power preference and whether a restart is needed).
      *

@@ -19,7 +19,7 @@ use og_render::{
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, lose_device, og_engine_create, og_engine_frame,
     og_game_game, og_host_begin_bundle, og_load_texture, og_load_texture_array, og_render_display,
-    og_render_set_display, set_hooks, set_render_backend, set_viewport,
+    og_render_reset_display, og_render_set_display, set_hooks, set_render_backend, set_viewport,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -528,6 +528,31 @@ fn graphics_settings_round_trip_and_apply() {
     assert_eq!(seen_f.borrow().quality, Some(RenderQuality::default()));
     assert!(set(f, json!({ "quality": "ultra" }))["ok"] == json!(false));
     assert!(set(f, json!({ "powerPreference": "battery" }))["ok"] == json!(false));
+
+    // resetDisplay is the way back: every field at its default, as on an
+    // engine nothing set, and the page told to leave fullscreen.
+    assert_eq!(answer(og_render_reset_display(f))["ok"], json!(true));
+    let reset = answer(og_render_display(f))["settings"].clone();
+    let (g, _) = engine(false);
+    assert_eq!(reset, answer(og_render_display(g))["settings"]);
+    assert_eq!(
+        (
+            reset["frameCap"].clone(),
+            reset["renderScale"].clone(),
+            reset["fullscreen"].clone(),
+            reset["powerPreference"].clone(),
+            reset["quality"].clone()
+        ),
+        (
+            json!("auto"),
+            json!(1.0),
+            json!(false),
+            json!("highPerformance"),
+            Value::Null
+        )
+    );
+    assert_eq!(frames(f, 1)["fullscreen"], json!(false));
+    assert_eq!(answer(og_render_reset_display(9999))["ok"], json!(false));
 }
 
 /// What the browser decides comes back from the page: fullscreen follows
