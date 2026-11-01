@@ -219,16 +219,21 @@ export function viewFrame(id: string, desc: Api.ViewFrameDesc = {}): Api.ViewFra
   }, () => {
     kit.open("Box", { direction: "column", width: grow(), aspect: desc.height ? 0 : aspect, height: desc.height ? grow() : null, align: "center", cross: "center" });
     if (desc.texture) {
+      // The target covers the box (cropped at its edges, never squashed): a target drawn at
+      // view.pixelWidth × view.pixelHeight fills it exactly, one of another shape (the frame
+      // before a resize lands, a still) keeps its proportions.
+      const shape: Api.DrawShape = { kind: "rect", radii: [slotRadius(), slotRadius(), slotRadius(), slotRadius()] };
+      kit.open("Picture", { direction: "column", width: grow(), height: grow() });
+      kit.setDraw({ shape, clip: "shape", fills: [{ kind: "image", texture: desc.texture, fit: "cover", focal: { x: 0.5, y: 0.5 } }] } as Api.DrawDesc);
       info = kit.sceneViewport("View", {
-        texture: desc.texture,
         width: grow(),
         height: grow(),
-        radius: slotRadius(),
         label: desc.label ?? "",
         ...(desc.cameraPosition ? { cameraPosition: desc.cameraPosition } : {}),
         ...(desc.cameraTarget ? { cameraTarget: desc.cameraTarget } : {}),
         fov: desc.fov ?? 50,
       }) as Api.SceneViewportInfo;
+      kit.close();
     } else {
       kit.open("Placeholder", { direction: "column", width: grow(), height: grow(), align: "center", cross: "center", gap: t.sm });
       kit.spinner("Spinner", 28);
@@ -260,6 +265,8 @@ export function viewFrame(id: string, desc: Api.ViewFrameDesc = {}): Api.ViewFra
     } else v = 0;
     if (i && i.wheel.y !== 0) zoom = clamp(zoom * (1 - i.wheel.y * 0.0015), minZ, maxZ);
     if (built.r.adjust) yaw += 15 * built.r.adjust;
+    // A press on the picture (the viewport takes it, for the drag) gives the frame the focus, as a press on its edge does.
+    if (i && i.pressed && !built.r.focused) kit.setFocus(built.path);
     kit.remember(`${id}~vel`, v);
     if (yaw !== (desc.yaw ?? 0) || pitch !== (desc.pitch ?? 0)) kit.remember(`${id}~moved`, 1);
   }
