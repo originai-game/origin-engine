@@ -85,7 +85,7 @@ struct ScatterFx {
 @fragment
 fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let h = scatter_hook(in, front);
-  let base = surface_color(h, shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, in.uv) * in.color);
+  let base = surface_color(h, shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)) * in.color);
   let dpx = dpdx(in.world);
   let dpy = dpdy(in.world);
   // Alpha to coverage (mode 16, an alpha-tested material, as pbr_fs.wgsl): alpha past the cut-off over one pixel's change
@@ -98,13 +98,13 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
     discard;
   }
   let out_a = select(1.0, coverage, a2c);
-  let emissive = surface_emissive(h, shader_params(), material.emissive.rgb * textureSample(emissive_tex, material_sampler, in.uv).rgb);
+  let emissive = surface_emissive(h, shader_params(), material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, in.uv)).rgb);
   if ((mode & 2u) != 0u) {
     return vec4<f32>(apply_fog(base.rgb + emissive, in.world), out_a);
   }
   var s: Surface;
-  s.metallic = clamp(material.mr.x * textureSample(metalness_tex, material_sampler, in.uv).b, 0.0, 1.0);
-  s.roughness = clamp(material.mr.y * textureSample(roughness_tex, material_sampler, in.uv).g, 0.04, 1.0);
+  s.metallic = clamp(material.mr.x * textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).b, 0.0, 1.0);
+  s.roughness = clamp(material.mr.y * textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).g, 0.04, 1.0);
   s.albedo = base.rgb;
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   var n = normalize(in.normal);
@@ -146,7 +146,7 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   var ibl_scale = material.flags.z * ssao_scale;
   if (material.flags.y >= 0.0) {
-    ibl_scale *= mix(1.0, textureSample(ao_tex, material_sampler, in.uv).r, material.flags.y);
+    ibl_scale *= mix(1.0, textureSample(ao_tex, material_sampler, material_uv(UV_AO, in.uv)).r, material.flags.y);
   }
   color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * ibl_scale;
   color += emissive * ao_all;
@@ -161,7 +161,7 @@ struct ScatterPrepass {
 
 @fragment
 fn fs_prepass(in: ScatterOut, @builtin(front_facing) front: bool) -> ScatterPrepass {
-  let base = surface_color(scatter_hook(in, front), shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, in.uv) * in.color);
+  let base = surface_color(scatter_hook(in, front), shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)) * in.color);
   let flat_n = normalize(cross(dpdx(in.world), dpdy(in.world)));
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || scatter_dropped(in.clip.xy, in.fade)) {
     discard;
@@ -176,8 +176,8 @@ fn fs_prepass(in: ScatterOut, @builtin(front_facing) front: bool) -> ScatterPrep
   o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
   // The reflectivity screen-space reflections read, as the lit pass shades
   // the copy (none unlit).
-  let metalness = material.mr.x * textureSample(metalness_tex, material_sampler, in.uv).b;
-  let roughness = clamp(material.mr.y * textureSample(roughness_tex, material_sampler, in.uv).g, 0.04, 1.0);
+  let metalness = material.mr.x * textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).b;
+  let roughness = clamp(material.mr.y * textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).g, 0.04, 1.0);
   let reflectivity = select(reflectivity_bits(roughness, metalness), 0.0, (u32(material.flags.w) & 2u) != 0u);
   o.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
   o.outline = vec4<f32>(0.0);

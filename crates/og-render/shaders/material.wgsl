@@ -13,7 +13,23 @@ struct MaterialFactors {
   dissolve: vec4<f32>,    // rgb: dissolve edge colour, w: noise scale (<0: dissolve map)
   outline: vec4<f32>,     // rgb: outline colour, w: outline width (px)
   coat: vec4<f32>,        // x: clearcoat (0 none), y: clearcoat roughness
+  uv: array<vec4<f32>, 10>,  // per slot (UV_MAP and on) its uv transform: [a, b, c, d], [tx, ty]
   custom: array<vec4<f32>, 8>,  // a material shader's parameters (hooks.rs)
 };
 
 @group(1) @binding(0) var<uniform> material: MaterialFactors;
+
+// The texture slots' uv transforms (KHR_texture_transform, three.js
+// Texture.offset/repeat/rotation): StandardMaterial::uv_transforms' order.
+const UV_MAP: u32 = 0u;
+const UV_METALNESS: u32 = 1u;  // metalness and roughness, and a physical material's packed maps
+const UV_NORMAL: u32 = 2u;
+const UV_EMISSIVE: u32 = 3u;
+const UV_AO: u32 = 4u;
+
+// `uv` as texture slot `slot` samples it.
+fn material_uv(slot: u32, uv: vec2<f32>) -> vec2<f32> {
+  let m = material.uv[slot * 2u];
+  let t = material.uv[slot * 2u + 1u];
+  return vec2<f32>(m.x * uv.x + m.y * uv.y, m.z * uv.x + m.w * uv.y) + t.xy;
+}

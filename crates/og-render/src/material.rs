@@ -30,6 +30,63 @@ impl Side {
     }
 }
 
+/// How a texture slot's uvs are transformed before it is sampled: glTF
+/// `KHR_texture_transform` (three.js Texture `offset`, `repeat`,
+/// `rotation` with `center` at the origin), in glTF's order: scaled, then
+/// rotated counter-clockwise by `rotation` radians, then offset. A
+/// [`StandardMaterial`] has one per slot ([`StandardMaterial::uv_transforms`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct UvTransform {
+    pub offset: Vec2,
+    pub scale: Vec2,
+    pub rotation: f32,
+}
+
+impl Default for UvTransform {
+    fn default() -> Self {
+        UvTransform::IDENTITY
+    }
+}
+
+impl UvTransform {
+    pub const IDENTITY: UvTransform = UvTransform {
+        offset: Vec2::ZERO,
+        scale: Vec2::ONE,
+        rotation: 0.0,
+    };
+
+    /// The slots of [`StandardMaterial::uv_transforms`].
+    pub const MAP: usize = 0;
+    pub const METALNESS_ROUGHNESS: usize = 1;
+    pub const NORMAL: usize = 2;
+    pub const EMISSIVE: usize = 3;
+    pub const AO: usize = 4;
+
+    pub fn is_identity(&self) -> bool {
+        *self == UvTransform::IDENTITY
+    }
+
+    /// The 2 x 3 matrix, rows `[a, b, tx]` and `[c, d, ty]`:
+    /// `u' = a u + b v + tx`, `v' = c u + d v + ty` (glTF's
+    /// `translation * rotation * scale`).
+    pub fn matrix(&self) -> [[f32; 3]; 2] {
+        let (s, c) = self.rotation.sin_cos();
+        [
+            [c * self.scale.x, s * self.scale.y, self.offset.x],
+            [-s * self.scale.x, c * self.scale.y, self.offset.y],
+        ]
+    }
+
+    /// `uv` transformed.
+    pub fn apply(&self, uv: [f32; 2]) -> [f32; 2] {
+        let [r0, r1] = self.matrix();
+        [
+            r0[0] * uv[0] + r0[1] * uv[1] + r0[2],
+            r1[0] * uv[0] + r1[1] * uv[1] + r1[2],
+        ]
+    }
+}
+
 /// A physically based metallic-roughness material with three.js
 /// `MeshStandardMaterial` parameter names, reflected: its schema
 /// (`og.StandardMaterial`) is what the inspector, Tune and the probe edit,
@@ -46,7 +103,7 @@ impl Side {
 /// metalness 0, roughness 1, opaque, front side.
 #[allow(non_snake_case)]
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.StandardMaterial", version = 7)]
+#[reflect(name = "og.StandardMaterial", version = 8)]
 pub struct StandardMaterial {
     /// The base colour (linear RGB), multiplied with `map` and vertex colours.
     #[reflect(default = [1.0, 1.0, 1.0], min = 0.0, tunable)]
@@ -271,6 +328,61 @@ pub struct StandardMaterial {
     /// cast no shadow.
     #[reflect(min = 0.0, max = 1.0, default = 0.0)]
     pub wireframe: u32,
+    /// The uv offset `map` is sampled with, as three.js Texture.offset
+    /// and glTF `KHR_texture_transform`: uv' = offset + rotate(rotation) *
+    /// (repeat * uv), glTF's order.
+    #[reflect(default = [0.0, 0.0], tunable)]
+    pub mapOffset: Vec2,
+    /// The uv scale of `map` (three.js Texture.repeat, glTF's `scale`).
+    #[reflect(default = [1.0, 1.0], tunable)]
+    pub mapRepeat: Vec2,
+    /// The uv rotation of `map` in radians, counter-clockwise in uv space.
+    #[reflect(default = 0.0, tunable)]
+    pub mapRotation: f32,
+    /// The uv offset `metalnessMap` and `roughnessMap` (one glTF texture; a physical material's packed maps too) is sampled with, as three.js Texture.offset
+    /// and glTF `KHR_texture_transform`: uv' = offset + rotate(rotation) *
+    /// (repeat * uv), glTF's order.
+    #[reflect(default = [0.0, 0.0], tunable)]
+    pub metalnessMapOffset: Vec2,
+    /// The uv scale of `metalnessMap` and `roughnessMap` (one glTF texture; a physical material's packed maps too) (three.js Texture.repeat, glTF's `scale`).
+    #[reflect(default = [1.0, 1.0], tunable)]
+    pub metalnessMapRepeat: Vec2,
+    /// The uv rotation of `metalnessMap` and `roughnessMap` (one glTF texture; a physical material's packed maps too) in radians, counter-clockwise in uv space.
+    #[reflect(default = 0.0, tunable)]
+    pub metalnessMapRotation: f32,
+    /// The uv offset `normalMap` is sampled with, as three.js Texture.offset
+    /// and glTF `KHR_texture_transform`: uv' = offset + rotate(rotation) *
+    /// (repeat * uv), glTF's order.
+    #[reflect(default = [0.0, 0.0], tunable)]
+    pub normalMapOffset: Vec2,
+    /// The uv scale of `normalMap` (three.js Texture.repeat, glTF's `scale`).
+    #[reflect(default = [1.0, 1.0], tunable)]
+    pub normalMapRepeat: Vec2,
+    /// The uv rotation of `normalMap` in radians, counter-clockwise in uv space.
+    #[reflect(default = 0.0, tunable)]
+    pub normalMapRotation: f32,
+    /// The uv offset `emissiveMap` is sampled with, as three.js Texture.offset
+    /// and glTF `KHR_texture_transform`: uv' = offset + rotate(rotation) *
+    /// (repeat * uv), glTF's order.
+    #[reflect(default = [0.0, 0.0], tunable)]
+    pub emissiveMapOffset: Vec2,
+    /// The uv scale of `emissiveMap` (three.js Texture.repeat, glTF's `scale`).
+    #[reflect(default = [1.0, 1.0], tunable)]
+    pub emissiveMapRepeat: Vec2,
+    /// The uv rotation of `emissiveMap` in radians, counter-clockwise in uv space.
+    #[reflect(default = 0.0, tunable)]
+    pub emissiveMapRotation: f32,
+    /// The uv offset `aoMap` is sampled with, as three.js Texture.offset
+    /// and glTF `KHR_texture_transform`: uv' = offset + rotate(rotation) *
+    /// (repeat * uv), glTF's order.
+    #[reflect(default = [0.0, 0.0], tunable)]
+    pub aoMapOffset: Vec2,
+    /// The uv scale of `aoMap` (three.js Texture.repeat, glTF's `scale`).
+    #[reflect(default = [1.0, 1.0], tunable)]
+    pub aoMapRepeat: Vec2,
+    /// The uv rotation of `aoMap` in radians, counter-clockwise in uv space.
+    #[reflect(default = 0.0, tunable)]
+    pub aoMapRotation: f32,
 }
 
 impl Default for StandardMaterial {
@@ -343,11 +455,79 @@ impl Default for StandardMaterial {
             normalMapLayer: 0,
             styled: 1,
             wireframe: 0,
+            mapOffset: Vec2::ZERO,
+            mapRepeat: Vec2::ONE,
+            mapRotation: 0.0,
+            metalnessMapOffset: Vec2::ZERO,
+            metalnessMapRepeat: Vec2::ONE,
+            metalnessMapRotation: 0.0,
+            normalMapOffset: Vec2::ZERO,
+            normalMapRepeat: Vec2::ONE,
+            normalMapRotation: 0.0,
+            emissiveMapOffset: Vec2::ZERO,
+            emissiveMapRepeat: Vec2::ONE,
+            emissiveMapRotation: 0.0,
+            aoMapOffset: Vec2::ZERO,
+            aoMapRepeat: Vec2::ONE,
+            aoMapRotation: 0.0,
         }
     }
 }
 
 impl StandardMaterial {
+    /// The uv transforms of the texture slots, in [`UvTransform`]'s slot
+    /// order: `map`, `metalnessMap` (with `roughnessMap`), `normalMap`,
+    /// `emissiveMap`, `aoMap`.
+    pub fn uv_transforms(&self) -> [UvTransform; 5] {
+        let t = |offset: Vec2, scale: Vec2, rotation: f32| UvTransform {
+            offset,
+            scale,
+            rotation,
+        };
+        [
+            t(self.mapOffset, self.mapRepeat, self.mapRotation),
+            t(
+                self.metalnessMapOffset,
+                self.metalnessMapRepeat,
+                self.metalnessMapRotation,
+            ),
+            t(
+                self.normalMapOffset,
+                self.normalMapRepeat,
+                self.normalMapRotation,
+            ),
+            t(
+                self.emissiveMapOffset,
+                self.emissiveMapRepeat,
+                self.emissiveMapRotation,
+            ),
+            t(self.aoMapOffset, self.aoMapRepeat, self.aoMapRotation),
+        ]
+    }
+
+    /// Sets the slots' uv transforms ([`StandardMaterial::uv_transforms`]'s order).
+    pub fn set_uv_transforms(&mut self, t: [UvTransform; 5]) {
+        (self.mapOffset, self.mapRepeat, self.mapRotation) =
+            (t[0].offset, t[0].scale, t[0].rotation);
+        (
+            self.metalnessMapOffset,
+            self.metalnessMapRepeat,
+            self.metalnessMapRotation,
+        ) = (t[1].offset, t[1].scale, t[1].rotation);
+        (
+            self.normalMapOffset,
+            self.normalMapRepeat,
+            self.normalMapRotation,
+        ) = (t[2].offset, t[2].scale, t[2].rotation);
+        (
+            self.emissiveMapOffset,
+            self.emissiveMapRepeat,
+            self.emissiveMapRotation,
+        ) = (t[3].offset, t[3].scale, t[3].rotation);
+        (self.aoMapOffset, self.aoMapRepeat, self.aoMapRotation) =
+            (t[4].offset, t[4].scale, t[4].rotation);
+    }
+
     /// three.js `MeshBasicMaterial`: unlit, `color` times `map`.
     pub fn basic(color: Vec3) -> StandardMaterial {
         StandardMaterial {
@@ -740,6 +920,10 @@ pub(crate) struct MaterialUniform {
     pub outline: [f32; 4],
     /// x: clearcoat, y: clearcoat roughness.
     pub coat: [f32; 4],
+    /// Each slot's uv transform ([`StandardMaterial::uv_transforms`]'s
+    /// order) as two rows: `[a, b, c, d]` (`u' = a u + b v`, `v' = c u +
+    /// d v`) and `[tx, ty, 0, 0]`.
+    pub uv: [[f32; 4]; 10],
     /// A material shader's parameters (`hooks.rs`).
     pub custom: [[f32; 4]; crate::MAX_SHADER_PARAMS],
 }
@@ -856,8 +1040,20 @@ pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> Materia
             0.0,
             0.0,
         ],
+        uv: uv_rows(&m.uv_transforms()),
         custom: [[0.0; 4]; crate::MAX_SHADER_PARAMS],
     }
+}
+
+/// [`MaterialUniform::uv`] of `t`.
+fn uv_rows(t: &[UvTransform; 5]) -> [[f32; 4]; 10] {
+    let mut out = [[0.0; 4]; 10];
+    for (i, t) in t.iter().enumerate() {
+        let [r0, r1] = t.matrix();
+        out[2 * i] = [r0[0], r0[1], r1[0], r1[1]];
+        out[2 * i + 1] = [r0[2], r1[2], 0.0, 0.0];
+    }
+    out
 }
 
 // ── array maps ───────────────────────────────────────────────────────────

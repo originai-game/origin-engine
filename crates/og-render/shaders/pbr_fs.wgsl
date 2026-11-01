@@ -22,7 +22,8 @@ fn fs(in: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) 
 // The lit shading of a fragment (`fs`, and `fs_lean`).
 fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let uv = stylised_uv(in.uv, in.affine);
-  let base_sample = textureSample(base_color_tex, material_sampler, uv);
+  let base_uv = material_uv(UV_MAP, uv);
+  let base_sample = textureSample(base_color_tex, material_sampler, base_uv);
   // A material shader's hooks (identities with the built-in hooks).
   var hook: Hook;
   hook.world = in.world_pos;
@@ -52,7 +53,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let alpha = select(select(1.0, coverage, a2c), base.a, (mode & 4u) != 0u);
   if ((mode & 2u) != 0u) {
     // Unlit (MeshBasicMaterial): the colour plus the emissive term.
-    let e = surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, uv).rgb);
+    let e = surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, uv)).rgb);
     var unlit = base.rgb + e + dissolve_edge;
     if (EFFECTS && material.toon.w > 0.0) { unlit = mix(unlit, material.flash.rgb, material.toon.w); }
     unlit = look_flash(unlit, in.look);
@@ -63,8 +64,8 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     }
     return vec4<f32>(apply_fog(unlit, in.world_pos), alpha);
   }
-  let metalness_sample = textureSample(metalness_tex, material_sampler, uv);
-  let roughness_sample = textureSample(roughness_tex, material_sampler, uv);
+  let metalness_sample = textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, uv));
+  let roughness_sample = textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, uv));
   let dpx = dpdx(in.world_pos);
   let dpy = dpdy(in.world_pos);
   var s: Surface;
@@ -90,7 +91,8 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     decal_emissive = d.emissive;
   }
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
-  let normal_sample = textureSample(normal_tex, material_sampler, uv);
+  let normal_uv = material_uv(UV_NORMAL, uv);
+  let normal_sample = textureSample(normal_tex, material_sampler, normal_uv);
   if (material.flags.x > 0.5) {
     var map = normal_sample.xyz * 2.0 - 1.0;
     if (material.flags.x > 1.5) {
@@ -121,7 +123,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     if (kind != 2u) {
       // Clay and toys are painted or moulded, not photographed: the base
       // texture's detail gives way to its local average (a coarse mip).
-      let coarse = look_tint(material.base_color * textureSampleBias(base_color_tex, material_sampler, uv, 6.0) * in.color, in.look).rgb;
+      let coarse = look_tint(material.base_color * textureSampleBias(base_color_tex, material_sampler, base_uv, 6.0) * in.color, in.look).rgb;
       s.albedo = mix(s.albedo, coarse, select(0.5, 0.7, kind == 3u) * ms.y);
     }
     // The pattern fades where it spans fewer than about four pixels, so a
@@ -211,7 +213,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let prefiltered = reflected_light(r, in.world_pos, mip);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y) * frame.params.x;
-  let ao_sample = textureSample(ao_tex, material_sampler, uv).r;
+  let ao_sample = textureSample(ao_tex, material_sampler, material_uv(UV_AO, uv)).r;
   // What the material's AO and envMapIntensity keep of the image-based light (the environment's intensity is in
   // diffuse_ibl and specular_ibl already).
   var ibl_scale = material.flags.z * keep;
@@ -245,7 +247,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let dbg_direct = color;
   color += ibl * ibl_scale;
 
-  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, uv).rgb) * ao_all;
+  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, uv)).rgb) * ao_all;
   if (EFFECTS && fx.decal_info.x > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve_edge; }
   if (EFFECTS && material.toon.y > 0.0) {

@@ -183,7 +183,7 @@ pub use lightmap::{
     BakedLighting, BakedMesh, LightmapPages, LightmapUvs, PROBE_VOLUMES, Probe, ProbeVolume,
 };
 pub use lines::{LineLayer, LineMode, Lines, wire_edges};
-pub use material::{PhysicalExtensions, Side, StandardMaterial};
+pub use material::{PhysicalExtensions, Side, StandardMaterial, UvTransform};
 pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
 pub use particles::{
     Burst, ColorCurve, Curve, EmitterHandle, EmitterShape, MAX_CURVE_KEYS, ParticleAlign,

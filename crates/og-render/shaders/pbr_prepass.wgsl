@@ -19,7 +19,8 @@ fn fs_prepass(in: PrepassOut, @builtin(front_facing) front_facing: bool) -> Prep
 // What the prepass writes for a fragment (`fs_prepass`, and
 // `fs_prepass_lean`, which may drop the discard: DISCARD in pbr_fs.wgsl).
 fn prepass_targets(in: PrepassOut) -> PrepassTargets {
-  let base_sample = textureSample(base_color_tex, material_sampler, in.uv);
+  let base_uv = material_uv(UV_MAP, in.uv);
+  let base_sample = textureSample(base_color_tex, material_sampler, base_uv);
   // A material shader's colour (and alpha cut) as in the lit pass.
   var hook: Hook;
   hook.world = in.world_pos;
@@ -50,8 +51,8 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   // and metalness as the lit pass shades them (the factors times their
   // maps' b and g), none for an unlit material (mode bit 2).
   let unlit = (u32(material.flags.w) & 2u) != 0u;
-  let metalness = material.mr.x * textureSample(metalness_tex, material_sampler, in.uv).b;
-  let roughness = material.mr.y * textureSample(roughness_tex, material_sampler, in.uv).g;
+  let metalness = material.mr.x * textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).b;
+  let roughness = material.mr.y * textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).g;
   let reflectivity = select(reflectivity_bits(roughness, metalness), 0.0, unlit);
   o.depth = vec4<f32>(dot(in.world_pos - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
   // The material style's outline distance: nearer than it the line grows,

@@ -303,7 +303,8 @@ fn fs(in: PhysicalOut, @builtin(front_facing) front_facing: bool) -> @location(0
 // `fs_physical_lightmap`).
 fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let uv = stylised_uv(in.uv, in.affine);
-  let base_sample = textureSample(base_color_tex, material_sampler, uv);
+  let base_uv = material_uv(UV_MAP, uv);
+  let base_sample = textureSample(base_color_tex, material_sampler, base_uv);
   var hook: Hook;
   hook.world = in.world_pos;
   hook.local = in.local_pos;
@@ -325,12 +326,14 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     discard;
   }
   let alpha = select(select(1.0, coverage, a2c), base.a, (mode & 4u) != 0u);
-  // The packed maps (physical.rs): white where a material has none.
-  let maps = pack_sample(physical.layers.x, uv);      // metalness, roughness, ao, dissolve
-  let coat_maps = pack_sample(physical.layers.y, uv); // clearcoat, its roughness, transmission, thickness
-  let sheen_maps = pack_sample(physical.layers.z, uv); // sheen colour (sRGB), its roughness
-  let film_maps = pack_sample(physical.layers.w, uv);  // the coat's normal, iridescence
-  let aniso_maps = pack_sample(physical.layers2.x, uv); // anisotropy, the film's thickness
+  // The packed maps (physical.rs): white where a material has none; all
+  // at the metalness map's uv transform.
+  let pack_uv = material_uv(UV_METALNESS, uv);
+  let maps = pack_sample(physical.layers.x, pack_uv);      // metalness, roughness, ao, dissolve
+  let coat_maps = pack_sample(physical.layers.y, pack_uv); // clearcoat, its roughness, transmission, thickness
+  let sheen_maps = pack_sample(physical.layers.z, pack_uv); // sheen colour (sRGB), its roughness
+  let film_maps = pack_sample(physical.layers.w, pack_uv);  // the coat's normal, iridescence
+  let aniso_maps = pack_sample(physical.layers2.x, pack_uv); // anisotropy, the film's thickness
   let dpx = dpdx(in.world_pos);
   let dpy = dpdy(in.world_pos);
   var s: Surface;
@@ -363,7 +366,8 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   t = select(normalize(cross(select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(n_vertex.y) > 0.9), n_vertex)), normalize(t), framed);
   let bt = cross(n_vertex, t) * select(1.0, -1.0, in.tangent.w < 0.0);
   let tbn = mat3x3<f32>(t, bt, n_vertex);
-  let normal_sample = textureSample(normal_tex, material_sampler, uv);
+  let normal_uv = material_uv(UV_NORMAL, uv);
+  let normal_sample = textureSample(normal_tex, material_sampler, normal_uv);
   if (material.flags.x > 0.5) {
     var map = normal_sample.xyz * 2.0 - 1.0;
     if (material.flags.x > 1.5) {
@@ -520,7 +524,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   }
   var color = diffuse + specular;
 
-  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, uv).rgb) * ao_direct;
+  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, uv)).rgb) * ao_direct;
   if (EFFECTS && fx.decal_info.x > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve.rgb; }
   if (EFFECTS && material.toon.y > 0.0) {

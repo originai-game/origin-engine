@@ -217,7 +217,8 @@ fn fs_lean(in: LeanVsOut) -> @location(0) vec4<f32> {
 fn fs_dissolve(in: VsOut) -> @location(0) vec4<f32> {
   let dx = dpdx(in.world);
   let dy = dpdy(in.world);
-  let alpha = material.base_color.a * textureSample(base_color_tex, material_sampler, in.uv).a * in.color.a;
+  let base_uv = material_uv(UV_MAP, in.uv);
+  let alpha = material.base_color.a * textureSample(base_color_tex, material_sampler, base_uv).a * in.color.a;
   if (dissolve_at(in.uv, in.local_pos).w > 0.5) { discard; }
   if (material.emissive.w >= 0.0 && alpha < material.emissive.w) { discard; }
   return shadow_value(in, dx, dy);
@@ -229,7 +230,8 @@ fn fs_dissolve(in: VsOut) -> @location(0) vec4<f32> {
 fn fs_hooked(in: VsOut) -> @location(0) vec4<f32> {
   let dx = dpdx(in.world);
   let dy = dpdy(in.world);
-  let base = surface_color(shadow_hook(in), shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, in.uv) * in.color);
+  let base_uv = material_uv(UV_MAP, in.uv);
+  let base = surface_color(shadow_hook(in), shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, base_uv) * in.color);
   let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5;
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved) { discard; }
   return shadow_value(in, dx, dy);
