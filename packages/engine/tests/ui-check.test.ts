@@ -118,6 +118,12 @@ test("a 30 px button on a coarse pointer is under 44 CSS px; on a mouse it is no
   expect(rules(frame({ elements: [el("Close", "", "button", "button", [300, 100, 44, 44])] }))).not.toContain("touch-target");
 });
 
+test("a link inside a sentence is exempt from the target size (WCAG 2.5.8); a standalone small link is not", () => {
+  const para = el("P", "", "richtext", "text", [20, 100, 300, 20], { text: "Read the pact first." });
+  expect(rules(frame({ elements: [para, el("pact", "P", "link", "link", [90, 100, 30, 20], { text: "pact" })] }))).not.toContain("touch-target");
+  expect(rules(frame({ elements: [el("More", "", "link", "link", [90, 300, 30, 20], { text: "More" })] }))).toContain("touch-target");
+});
+
 /** A 120×40 image: a ground of `bg` with a block of "glyph" strokes of `ink`. */
 function textImage(bg: number, ink: number) {
   const width = 120, height = 40, rgba = new Uint8Array(width * height * 4);

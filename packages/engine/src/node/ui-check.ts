@@ -140,7 +140,7 @@ export const RULES: readonly UiRule[] = [
   { id: "text-scale", title: "overflow at 200 % text, and text that does not grow with the player's text size", status: "checked", note: "a scale cell configures UiDesc.textScale (og.ui.configure) and runs every rule above; a text cut there is reported under this rule, and a text drawn at less than the scale times its size at 100 % (a fixed size the scale does not reach) too" },
   { id: "safe-area", title: "elements outside the safe area", status: "checked" },
   { id: "covered", title: "elements under the shell's covered region", status: "checked" },
-  { id: "touch-target", title: "touch targets under 44 CSS px on a coarse pointer", status: "checked", note: "an element's hitSlop is not in the frame: a small control with slop enough is still reported" },
+  { id: "touch-target", title: "touch targets under 44 CSS px on a coarse pointer", status: "checked", note: "an element's hitSlop is not in the frame: a small control with slop enough is still reported; a link inside a rich text's sentence is exempt (WCAG 2.5.8)" },
   { id: "contrast", title: "contrast under 4.5:1 (7:1 in high contrast), on pixels as og polish measures it", status: "checked" },
   { id: "text-size", title: "text under the minimum size", status: "checked" },
   { id: "focus-reach", title: "an interactive element unreachable by pad from the default focus", status: "checked" },
@@ -465,6 +465,8 @@ export function checkFrame(f: UiFrameSnapshot, cell: UiCell, opts: CheckOptions 
   if (v.coarsePointer) for (const [i, e] of f.elements.entries()) {
     if (!INTERACTIVE.has(e.role ?? "") || e.disabled || e.clipped) continue;
     if (e.width + 0.5 >= 44 && e.height + 0.5 >= 44) continue;
+    // A link inside a sentence (a rich text's span) is exempt (WCAG 2.5.8's inline exception).
+    if (e.kind === "link" && kindAt(paths[i]!.slice(0, paths[i]!.lastIndexOf("/"))) === "richtext") continue;
     add("touch-target", {
       paths: [paths[i]!],
       measured: `${r1(e.width)}×${r1(e.height)} CSS px`,
