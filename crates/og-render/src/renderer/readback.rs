@@ -1,0 +1,147 @@
+//! Frame readback, pipeline warming and temporal state.
+
+use super::*;
+
+impl Renderer {
+    /// Reads the next frame's GPU culling counts back (`culled`,
+    /// `occluded`, `triangles`, `shadow_casters` and the triangle counts
+    /// in and out of view; see
+    /// [`FrameStats::counts_lag`]), for one frame: a frame rendered
+    /// without a request copies none, so the stats keep the newest
+    /// requested frame's. Natively [`Renderer::finish_stats`] needs no
+    /// request for the last frame rendered.
+    pub fn request_culling_counts(&mut self) {
+        self.culling_counts = true;
+    }
+
+    /// Makes one pipeline no frame has drawn with yet, the likeliest to be
+    /// drawn soon first (the sprites and the overlay, the post passes, then
+    /// sky, ribbons, 2D lights, glass, water, terrain, metaballs, fluids);
+    /// false when every pipeline is made. The renderer makes a pipeline when
+    /// a pass first sets it (deferred.rs), so a frame compiles only what it
+    /// draws; a host with idle time (the web page behind its play gate)
+    /// calls this until
+    /// it answers false, so a pass met later does not stop a frame. The
+    /// frames are the same either way.
+    pub fn warm(&mut self) -> bool {
+        deferred::warm_one(&[
+            &self.sprite_pipeline,
+            &self.msdf_pipeline,
+            &self.sprite_cover_pipeline,
+            &self.sprite_untonemapped_pipeline,
+            &self.sprite_additive_pipeline,
+            &self.sprite_glow_pipeline,
+        ]) || self.overlay.warm()
+            || self.post.warm()
+            || deferred::warm_one(&[
+                &self.sky_pipeline,
+                &self.sky_look_pipeline,
+                &self.ribbon_pipelines[0],
+                &self.ribbon_pipelines[1],
+            ])
+            || self.lights_2d.warm()
+            || self.glass.warm()
+            || (WORLD_3D && self.water.warm())
+            || (WORLD_3D && self.terrain.warm())
+            || self.metaballs.warm()
+            || (WORLD_3D && self.fluid3d.warm())
+            || self.lines.warm()
+    }
+
+    /// Natively: waits for the GPU culling counts of the frame `stats` came
+    /// from and puts them in place of the older ones it was given
+    /// ([`FrameStats::counts_lag`] becomes 0); for the last frame rendered
+    /// they are copied now when it copied none. Whether it could: false on
+    /// the CPU path, or for a frame that found no readback free and was
+    /// not the last one rendered.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn finish_stats(&mut self, stats: &mut FrameStats) -> bool {
+        if !stats.gpu_culling {
+            return false;
+        }
+        let Some((exact, given)) = self
+            .gpu_cull
+            .as_mut()
+            .and_then(|gc| gc.finish(&self.device, &self.queue, stats.frame))
+        else {
+            return false;
+        };
+        stats.culled = stats.culled - given.culled + exact.culled;
+        stats.occluded = exact.occluded;
+        stats.occluded_triangles = exact.occluded_triangles;
+        stats.in_view_triangles = exact.triangles + exact.occluded_triangles;
+        stats.triangles = stats.triangles - given.triangles + exact.triangles;
+        stats.shadow_casters = stats.shadow_casters - given.shadow_casters + exact.shadow_casters;
+        stats.counts_lag = 0;
+        true
+    }
+
+    /// A copy of a particle system's slots after the last frame (the GPU
+    /// path reads its buffer back): for tests and tools (native only).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn read_particles(&self, id: u64) -> Option<Vec<ParticleState>> {
+        self.particles.read(&self.device, &self.queue, id)
+    }
+
+    /// Whether `target`, not sRGB itself, has an sRGB view the overlay
+    /// blends in ([`linear_view_format`]).
+    pub(crate) fn has_linear_view(&self, target: &RenderTarget) -> bool {
+        match target {
+            RenderTarget::Offscreen => self.persistent.offscreen_linear.is_some(),
+            RenderTarget::Surface => self
+                .surface
+                .as_ref()
+                .is_some_and(|(_, config)| !config.view_formats.is_empty()),
+            RenderTarget::View(_) => false,
+        }
+    }
+
+    /// Reads back the capture of reflection probe `id` (blocking): `None`
+    /// before its first capture (or for a probe sampling a baked map),
+    /// else its face size and [`ENVIRONMENT_MAP_LEVELS`] prefiltered
+    /// levels, each six faces of linear RGB floats (`og bake probes`).
+    pub fn read_reflection_probe(&self, id: u64) -> Option<Result<ProbeCapture, String>> {
+        let slot = self
+            .probes
+            .slots
+            .iter()
+            .find(|s| s.id == id && s.captured.is_some())?;
+        Some(probes::read_back(&self.device, &self.queue, slot).map(|l| (slot.size, l)))
+    }
+
+    /// Forgets the TAA history: the next frame starts from its own samples
+    /// (call it on a camera cut).
+    pub fn reset_history(&mut self) {
+        self.taa_history = None;
+    }
+
+    /// Keeps the renderer's state that belongs to the world's time (the
+    /// adapted exposure of [`Exposure::Auto`] with adapt speeds, and the
+    /// tick it was adapted to) for a world snapshot; [`Renderer::restore_state`]
+    /// with the answer brings it back, so frames after a restore are the
+    /// frames the snapshot's world would have drawn. Kept on the GPU (no
+    /// readback): the last 64 saves are kept.
+    pub fn save_state(&mut self) -> RendererState {
+        let mut encoder = Encoder::untimed(self.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label: Some("save state"),
+            },
+        ));
+        let exposure = self.post.save_exposure(&mut encoder);
+        self.queue.submit(Some(encoder.finish()));
+        RendererState { exposure }
+    }
+
+    /// Brings back what [`Renderer::save_state`] kept; state no longer kept
+    /// starts afresh (the next adapted frame takes the metered exposure).
+    pub fn restore_state(&mut self, state: RendererState) {
+        let mut encoder = Encoder::untimed(self.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label: Some("restore state"),
+            },
+        ));
+        self.post.restore_exposure(&mut encoder, state.exposure);
+        self.queue.submit(Some(encoder.finish()));
+        self.views.stale = true;
+    }
+}

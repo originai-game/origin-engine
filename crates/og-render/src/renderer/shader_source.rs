@@ -1,0 +1,207 @@
+//! Shared shader sources and effect layouts.
+
+use super::*;
+
+pub(crate) const FRAME_WGSL: &str = wgsl!("frame.wgsl");
+/// The lit shader's vertex stages, lights and decals; the standard
+/// fragment shader and the prepass's follow it (`pbr_fs.wgsl`,
+/// `pbr_prepass.wgsl`), the physical one replaces both (`physical.wgsl`).
+const PBR_WGSL: &str = wgsl!("pbr.wgsl");
+const PBR_FS_WGSL: &str = wgsl!("pbr_fs.wgsl");
+const PBR_PREPASS_WGSL: &str = wgsl!("pbr_prepass.wgsl");
+/// The lean entry points plain materials draw through ([`GpuMaterial::lean`]).
+const PBR_LEAN_WGSL: &str = wgsl!("pbr_lean.wgsl");
+const PHYSICAL_WGSL: &str = wgsl!("physical.wgsl");
+/// `instance_matrix`: an instance's transform from its columns in the
+/// instance buffers ([`instances::GpuTransform`]); `mul_point`: how the
+/// points it moves are projected.
+pub(crate) const INSTANCE_WGSL: &str = wgsl!("instance.wgsl");
+/// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water).
+pub(crate) const LIGHTING_WGSL: &str = wgsl!("lighting.wgsl");
+/// Rect lights and cookies (area.rs), after lighting.wgsl.
+pub(crate) const AREA_WGSL: &str = wgsl!("area.wgsl");
+/// The lightmap pages at group 3 and their lookup (lightmap.rs), in the
+/// standard and physical lit modules.
+const LIGHTMAP_PAGES_WGSL: &str = wgsl!("lightmap_pages.wgsl");
+/// The lightmapped entry points (lightmap.rs), after the standard lit shader.
+const LIGHTMAP_WGSL: &str = wgsl!("lightmap.wgsl");
+/// The physical lightmapped entry points, after the physical lit shader.
+const LIGHTMAP_PHYSICAL_WGSL: &str = wgsl!("lightmap_physical.wgsl");
+
+/// `planar_reflection` for material shaders: the frame's planar reflection
+/// (planar.wgsl, the effect group's binding 4) where the lit pipelines have
+/// a texture slot for it, else [`PLANAR_STUB`].
+const PLANAR_WGSL: &str = wgsl!("planar.wgsl");
+/// `planar_reflection` reading nothing: the shadow passes, the scattered
+/// copies, the physical shader, and every lit shader of a renderer made for
+/// one planar reflection or on a device whose skinned lit pipeline has no
+/// texture slot left (`planar_slot`).
+const PLANAR_STUB: &str = "fn planar_reflection(p: vec3<f32>, shift: vec2<f32>) -> vec4<f32> { return vec4<f32>(0.0); }\n";
+/// `screen_ao(p)` for material shaders in the lit and physical shaders: this
+/// frame's screen-space AO (the effect group's `ssao_tex`) where world point
+/// `p` lands on the screen, 1 without AO. An unlit material is not darkened
+/// by the AO on its own; three.js's post AO (FogShader) darkened every pixel,
+/// unlit water included, and a shader can now do the same.
+const SCREEN_AO_WGSL: &str = "fn screen_ao(p: vec3<f32>) -> f32 {
+  if (fx.ao.x < 0.5) { return 1.0; }
+  let c = fx.view_proj_unjittered * vec4<f32>(p, 1.0);
+  let ndc = c.xy / max(c.w, 1e-4);
+  return textureSampleLevel(ssao_tex, fx_sampler, vec2<f32>(0.5 + 0.5 * ndc.x, 0.5 - 0.5 * ndc.y), 0.0).r;
+}
+";
+/// `screen_ao` where there is no AO texture (shadow passes, scattered copies).
+const SCREEN_AO_STUB: &str = "fn screen_ao(p: vec3<f32>) -> f32 { return 1.0; }\n";
+
+/// Whether the effect group carries the planar reflection material shaders
+/// read (binding 4): with two planar reflections
+/// ([`RenderDesc::planar_reflections`]). With one, the effect group is the
+/// four bindings it was before material shaders could read the mirror.
+pub(crate) fn planar_slot(planar_reflections: u32) -> bool {
+    planar_reflections > 1
+}
+
+/// The lit pipelines' effect group (group 2): the effect uniform, the screen
+/// AO, the decal atlas and their sampler, and with `planar` ([`planar_slot`])
+/// the planar reflection material shaders read (planar.wgsl).
+pub(crate) fn fx_layout_entries(planar: bool) -> Vec<wgpu::BindGroupLayoutEntry> {
+    let mut entries = vec![
+        uniform_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
+        tex2d(1),
+        tex2d(2),
+        sampler_entry(3, wgpu::SamplerBindingType::Filtering),
+    ];
+    if planar {
+        entries.push(tex2d(4));
+    }
+    entries
+}
+
+/// The lit shader's source with `hooks` (`hooks.rs`); with `planar`
+/// ([`planar_slot`]) `planar_reflection` reads the effect group's binding 4,
+/// else it is [`PLANAR_STUB`].
+pub(crate) fn lit_source_with(hooks: &str, planar: bool) -> String {
+    format!(
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{}{SCREEN_AO_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
+        clusters::wgsl(),
+        particles_gpu::NOISE_WGSL,
+        skin::palette_wgsl(3),
+        lightmap::probe_wgsl(),
+        if planar { PLANAR_WGSL } else { PLANAR_STUB }
+    )
+}
+
+/// The physical lit shader's source (`physical.rs`): [`lit_source_with`]
+/// with the physical material group and fragment shader.
+pub(crate) fn physical_source(hooks: &str) -> String {
+    format!(
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PLANAR_STUB}{SCREEN_AO_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
+        clusters::wgsl(),
+        particles_gpu::NOISE_WGSL,
+        skin::palette_wgsl(3),
+        lightmap::probe_wgsl(),
+    )
+}
+
+/// [`lit_source_with`] with the planar reflection (two planar reflections,
+/// [`planar_slot`]): the cook validates a material shader against the
+/// module that reads it.
+pub(crate) fn lit_source(hooks: &str) -> String {
+    lit_source_with(hooks, planar_slot(MAX_PLANAR_REFLECTIONS))
+}
+pub(crate) const SHADOW_WGSL: &str = wgsl!("shadow.wgsl");
+/// The shadow pass's slot and the paraboloid projection every caster shares.
+pub(crate) const SHADOW_PASS_WGSL: &str = wgsl!("shadow_pass.wgsl");
+
+/// The shadow shader's source with `hooks` (a material shader's, or the
+/// built-in identities).
+pub(crate) fn shadow_source(hooks: &str) -> String {
+    format!(
+        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{PLANAR_STUB}{SCREEN_AO_STUB}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{SHADOW_WGSL}",
+        particles_gpu::NOISE_WGSL,
+        skin::palette_wgsl(2)
+    )
+}
+/// The scattered copies' lit module with a material shader's `hooks`
+/// (vertex_offset, surface_color, surface_normal and surface_emissive run
+/// on the copies as on meshes).
+pub(crate) fn scatter_lit_source(hooks: &str) -> String {
+    format!(
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{hooks}{PLANAR_STUB}{SCREEN_AO_STUB}{LIGHTING_WGSL}{AREA_WGSL}{INSTANCE_WGSL}{}{}",
+        clusters::wgsl(),
+        particles_gpu::NOISE_WGSL,
+        wgsl3d!("scatter_common.wgsl"),
+        wgsl3d!("scatter.wgsl")
+    )
+}
+
+/// The scattered copies' shadow module.
+pub(crate) fn scatter_shadow_source() -> String {
+    format!(
+        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}",
+        particles_gpu::NOISE_WGSL,
+        wgsl3d!("scatter_common.wgsl"),
+        wgsl3d!("scatter_shadow.wgsl")
+    )
+}
+
+/// What the 3D fluid's module starts with: the frame group, the light
+/// tables, the lighting and the area lights (area.wgsl).
+pub(crate) fn fluid_shared_source() -> String {
+    format!("{FRAME_WGSL}{}{LIGHTING_WGSL}{AREA_WGSL}", clusters::wgsl())
+}
+pub(crate) const SKY_WGSL: &str = wgsl!("sky.wgsl");
+pub(crate) const SPRITE_WGSL: &str = wgsl!("sprite.wgsl");
+/// The material uniform; the standard group's textures and the dissolve
+/// follow it (`material_maps.wgsl`, `material_dissolve.wgsl`), the
+/// physical group's replace the first (`material_physical.wgsl`).
+pub(crate) const MATERIAL_WGSL: &str = wgsl!("material.wgsl");
+pub(crate) const MATERIAL_MAPS_WGSL: &str = wgsl!("material_maps.wgsl");
+pub(crate) const MATERIAL_DISSOLVE_WGSL: &str = wgsl!("material_dissolve.wgsl");
+const MATERIAL_PHYSICAL_WGSL: &str = wgsl!("material_physical.wgsl");
+pub(crate) const RIBBON_WGSL: &str = wgsl!("ribbon.wgsl");
+
+/// Uniform slots of the shadow passes (dynamic offsets): 3 cascades, then 12 local faces.
+pub(crate) const SHADOW_SLOTS: usize = CASCADES + LOCAL_SHADOW_LAYERS;
+pub(crate) const SHADOW_SLOT_STRIDE: u64 = 256;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The sampled textures of a bind group layout's entries.
+    fn textures(entries: &[wgpu::BindGroupLayoutEntry]) -> usize {
+        entries
+            .iter()
+            .filter(|e| matches!(e.ty, wgpu::BindingType::Texture { .. }))
+            .count()
+    }
+
+    /// One planar reflection keeps the effect group main had before
+    /// material shaders could read the mirror (four bindings, no lean group
+    /// for the lightmapped pipelines, the lit module's `planar_reflection`
+    /// the stub); two add binding 4, and only then do the lightmapped
+    /// pipelines need the group without it.
+    #[test]
+    fn the_effect_group_carries_the_planar_reflection_only_with_two() {
+        let hooks = hooks::default_hooks();
+        for (count, slot) in [(1, false), (2, true)] {
+            let at = format!("with {count}");
+            assert_eq!(planar_slot(count), slot, "{at}");
+            let fx = fx_layout_entries(planar_slot(count));
+            let bindings: Vec<u32> = fx.iter().map(|e| e.binding).collect();
+            if slot {
+                assert_eq!(bindings, [0, 1, 2, 3, 4], "{at}");
+                assert_eq!(textures(&fx), 3, "{at}");
+                // The lightmapped pipelines' group: the default one's.
+                let lean = fx_layout_entries(false);
+                assert_eq!(textures(&lean), 2, "{at}");
+            } else {
+                assert_eq!(bindings, [0, 1, 2, 3], "{at}");
+                assert_eq!(textures(&fx), 2, "{at}");
+            }
+            let source = lit_source_with(&hooks, planar_slot(count));
+            assert_eq!(source.contains("var planar_tex"), slot, "{at}");
+            assert!(source.contains("fn planar_reflection("), "{at}");
+        }
+    }
+}
