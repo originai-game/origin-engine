@@ -4,7 +4,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  chevron, clamp, flags, frame, grow, kit, lastGesture, mark, over, px, rememberPath, role, rtl, spring, surface, text, token, xy,
+  byText, chevron, clamp, flags, frame, grow, kit, lastGesture, mark, over, px, rememberPath, role, rtl, spring, surface, text, token, xy,
 } from "../containers/base.ts";
 
 // ── tree ────────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ export function tree(id: string, desc: Api.TreeDesc): Api.TreeResult {
     });
   };
   walk("", 0);
-  const rowH = desc.rowHeight ?? (phone ? 44 : 36);
+  const rowH = byText(desc.rowHeight ?? (phone ? 44 : 36));
   const indent = desc.indent ?? 20;
   kit.open(id, { direction: "column", width: desc.width ?? grow(), height: desc.height ?? null, cross: "stretch", part: "Tree.frame", partClass: "panel" });
   try {

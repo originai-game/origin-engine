@@ -4,7 +4,7 @@
 // mark and a sign as well as its colour (XAG 103).
 
 import type * as Api from "@origingame/engine";
-import { clamp, flags, frame, grow, kit, mark, paint, px, role, spring, still, text, token, xy } from "../containers/base.ts";
+import { clamp, fit, flags, frame, grow, kit, mark, paint, px, role, spring, still, text, token, xy } from "../containers/base.ts";
 import { formatDelta, formatNumber } from "./format.ts";
 
 const TONE: Record<string, Api.ThemeColor> = { success: "success", warn: "warn", danger: "danger", info: "info", primary: "primary", neutral: "ink", gold: "gold", health: "health", mana: "mana", xp: "xp" };
@@ -100,9 +100,9 @@ export function statCompare(id: string, desc: Api.StatCompareDesc): void {
         kit.close();
         if (kit.frameDirection() === "rtl") kit.props({ transform: { scaleX: -1 } });
         text("Next", same ? "" : fmtOf(next), { step: "sm", font: "mono", color: ink === "inkFaint" ? "ink" : ink, nowrap: true, align: "end", width: px(phone ? 56 : 72) });
-        kit.open("Delta", { direction: "row", width: px(phone ? 64 : 76), height: px(24), gap: 2, align: "end", cross: "center" });
+        kit.open("Delta", { direction: "row", width: fit(phone ? 64 : 76), height: fit(24), gap: 2, align: "end", cross: "center" });
         if (!same) {
-          kit.open("Chip", { direction: "row", gap: 2, padding: xy(6, 0), height: px(22), cross: "center", radius: 11, background: paint(role(ink), 0.16), part: `StatCompare.delta${flags(better > 0 ? "better" : "worse")}`, partClass: "chip" });
+          kit.open("Chip", { direction: "row", gap: 2, padding: xy(6, 0), height: fit(22), cross: "center", radius: 11, background: paint(role(ink), 0.16), part: `StatCompare.delta${flags(better > 0 ? "better" : "worse")}`, partClass: "chip" });
           // Up or down, as a triangle: the direction of the change, whatever its colour.
           kit.open("Mark", { width: px(8), height: px(8) });
           kit.setDraw({ shape: { kind: "polygon", sides: 3, rotation: rawDelta > 0 ? 0 : Math.PI, rounding: 1 }, fills: [{ kind: "solid", color: token(ink) }] });
