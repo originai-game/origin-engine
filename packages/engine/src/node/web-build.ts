@@ -180,6 +180,14 @@ export interface BuildManifest {
   };
   readonly icons: ReadonlyArray<{ readonly src: string; readonly sizes: string; readonly type: "image/png"; readonly source: "project" | "brand" }>;
   readonly pwa: { readonly manifest: string; readonly serviceWorker: string } | null;
+  /**
+   * The build's source maps (docs/web-export.md §Source maps): `build`, the
+   * id the shell's crash reports carry (`build`), and each bundle's map. A
+   * dev build serves them beside the bundles; a publish build writes them
+   * under `sourcemaps/` for the platform to store privately: they are not in
+   * `files` or `version`, nor precached, and a host must not serve them.
+   */
+  readonly sourcemaps: { readonly build: string; readonly served: boolean; readonly maps: ReadonlyArray<{ readonly bundle: string; readonly map: string; readonly sha256: string }> };
   /** The Player protocol the shell speaks and over which transports (origingame docs/player-protocol.md §The top-level engine page). */
   readonly player: { readonly protocol: 2; readonly transports: readonly ("frame" | "page")[] };
   /** sha256 over the files' paths and hashes: the build's identity (the service worker's cache name). */
@@ -538,8 +546,21 @@ async function bundleScript(entry: string, minify: boolean): Promise<string | { 
   return r.outputs[0]!.text();
 }
 
+/**
+ * Where a build's source maps go (docs/web-export.md §Source maps): a dev
+ * build serves them beside their bundles (`game.js.map`, linked, so the
+ * browser's devtools and the crash card map stacks); a publish build writes
+ * them under `sourcemaps/`, unlinked, which the build's `_headers` refuse
+ * and its service worker never caches: the platform takes them out of the
+ * directory and stores them privately beside the release.
+ */
+export const SOURCEMAP_DIR = "sourcemaps";
+function mapOptions(out: string, file: string, publish: boolean): { root?: string; link: boolean; file: string } {
+  return publish ? { link: false, file: join(out, SOURCEMAP_DIR, `${file}.map`) } : { link: true, file: join(out, `${file}.map`) };
+}
+
 /** Files that never go into the service worker's precache (not fetched by the page). */
-const NOT_PRECACHED = /(^|\/)(LICENSE|NOTICE|README\.md|_headers|origingame\.runtime\.json|og-build\.json|sw\.js)$/;
+const NOT_PRECACHED = /(^|\/)(LICENSE|NOTICE|README\.md|_headers|origingame\.runtime\.json|og-build\.json|sw\.js|[^/]+\.map)$/;
 /**
  * The lanes variant's files beside each profile's publish module
  * (dist/web-publish for 3D, dist/web-publish-2d for 2D; scripts/build.sh);
@@ -611,12 +632,12 @@ export async function webBuild(project: string, entry: string, out: string, publ
   mkdirSync(out, { recursive: true });
   replaced = true;
 
-  const game = await bundleGame(entry, join(out, "game.js"), "web", publish);
+  // Source maps name the game's files relative to the project and the engine's as `@origingame/engine/<path>`.
+  const game = await bundleGame(entry, join(out, "game.js"), "web", publish, { root: project, ...mapOptions(out, "game.js", publish) });
   if (!game.ok) return fail(`bundling ${entry}: ${game.reason}`);
   for (const [file, src] of [["play.js", join(here, "..", "web", "play.ts")], ["audio-worklet.js", join(here, "..", "web", "audio-worklet.ts")]] as const) {
-    const text = await bundleScript(src, publish);
-    if (typeof text !== "string") return fail(`bundling ${file}: ${text.error}`);
-    writeFileSync(join(out, file), text);
+    const b = await bundleGame(src, join(out, file), "script", publish, { root: project, ...mapOptions(out, file, publish) });
+    if (!b.ok) return fail(`bundling ${file}: ${b.reason}`);
   }
   for (const f of ["origin-engine.js", "origin-engine_bg.wasm"]) cpSync(join(engineDir, f), join(out, f));
   // The lanes variant needs cross-origin isolation, which only a build that declares it can get.
@@ -663,8 +684,12 @@ export async function webBuild(project: string, entry: string, out: string, publ
     return !packs.has(path) && !SOUND_CHUNK.test(path);
   });
   const cookedBytes = firstGroup.filter((f) => !f.endsWith(".cook.ogt")).reduce((n, f) => n + statSync(f).size, 0);
+  // The build id a crash report names: the bundles whose stacks the maps resolve.
+  const bundles = ["game.js", "play.js", "audio-worklet.js"];
+  const buildId = sha256(bundles.map((f) => `${f}\0${sha256(new Uint8Array(readFileSync(join(out, f))))}\n`).join("")).slice(0, 16);
   const config = {
     engine: ENGINE_VERSION,
+    buildId,
     build: publish ? "publish" : "dev",
     name: settings.name,
     profile: settings.profile,
@@ -707,7 +732,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
         const bytes = new Uint8Array(readFileSync(path));
         return { path: relative(out, path).split("\\").join("/"), bytes: bytes.length, sha256: sha256(bytes) };
       })
-      .filter((f) => f.path !== BUILD_MANIFEST)
+      .filter((f) => f.path !== BUILD_MANIFEST && !f.path.startsWith(`${SOURCEMAP_DIR}/`))
       .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   const identity = (rows: BuildFile[]) => sha256(rows.filter((f) => f.path !== "sw.js").map((f) => `${f.path}\0${f.sha256}\n`).join(""));
   let version = identity(fileRows());
@@ -741,6 +766,14 @@ export async function webBuild(project: string, entry: string, out: string, publ
     display: { fit: p.fit, aspect: p.aspect, orientation: p.orientation, dprCap: p.dprCap, fullscreen: p.fullscreen, gate: p.gate, madeWith: p.madeWith },
     icons,
     pwa: publish ? { manifest: "manifest.webmanifest", serviceWorker: "sw.js" } : null,
+    sourcemaps: {
+      build: buildId,
+      served: !publish,
+      maps: bundles.map((bundle) => {
+        const map = publish ? `${SOURCEMAP_DIR}/${bundle}.map` : `${bundle}.map`;
+        return { bundle, map, sha256: sha256(new Uint8Array(readFileSync(join(out, map)))) };
+      }),
+    },
     player: { protocol: 2, transports: PLAYER_TRANSPORTS },
     version,
     files: rows,
@@ -758,7 +791,8 @@ export async function webBuild(project: string, entry: string, out: string, publ
   };
   writeFileSync(join(out, BUILD_MANIFEST), JSON.stringify(manifest, null, 2) + "\n");
 
-  const files = walk(out).map((path): SizeRow => {
+  // The size table is what a player can fetch: source maps are the developer's (and a publish build's are never served).
+  const files = walk(out).filter((path) => !path.endsWith(".map")).map((path): SizeRow => {
     const bytes = new Uint8Array(readFileSync(path));
     const c = compressedSize(bytes);
     return { path: relative(out, path), bytes: bytes.length, compressed: c.size, codec: c.codec };

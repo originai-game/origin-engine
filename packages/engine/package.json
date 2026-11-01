@@ -28,6 +28,7 @@
     "./web/play": "./src/web/play.ts",
     "./web/rpc-ring": "./src/web/rpc-ring.ts",
     "./runtime": "./src/runtime.ts",
+    "./sourcemap": "./src/sourcemap.ts",
     "./bindings.json": "./types/bindings.json",
     "./schema.json": "./schema/api.schema.json",
     "./playtest": "./src/playtest.ts",

@@ -20,6 +20,8 @@ og build . --publish    # what ships: the player probe members, minified, the PW
 | `index.html` | The player shell: the canvas, the boot splash (with the cover's backdrop on a platform page), the play gate, the error card, the install hint, Back, the badge. Carries `<meta name="og-engine" content="<engine version>">`, `og-build` (`publish`/`dev`), `og-profile` and `og-player` (`frame page`: the Player transports the shell speaks, what the platform reads to open the page at the top level), the inlined CSS (brand tokens and only the `genesis`, `progress` and `drift` motion rules) and the page configuration (`<script type="application/json" id="og-config">`). |
 | `play.js` | The shell (`packages/engine/shell/page.ts`, bundled). |
 | `game.js` | The engine Worker: the runtime and the game. |
+| `game.js.map`, `play.js.map`, `audio-worklet.js.map` | A dev build's source maps, beside their bundles and linked from them (§Source maps). |
+| `sourcemaps/` | A publish build's source maps of the same three bundles, unlinked: not in `files`, `version` or the service worker's cache, and not to be served (§Source maps). |
 | `audio-worklet.js` | The AudioWorklet, loaded on the first gesture. |
 | `origin-engine.js`, `origin-engine_bg.wasm` | The web host. A dev build takes `dist/web` (every member, both physics profiles). `--publish` takes the publish variant of the project's `profile` (§Variants): `dist/web-publish` for `3d`, `dist/web-publish-2d` for `2d`, each with only its profile's physics (probe trimmed to hello, tick, state, pick, entity, input, capture; `wasm-opt -Oz`); og-build.json's `variant` names it. |
 | `origin-engine-lanes.js`, `origin-engine-lanes_bg.wasm`, `snippets/` | `--publish` with `isolation` not `off`: the lanes variant of the web host of the project's `profile` (§Lanes, §Variants), the same engine built with wasm atomics and shared memory, taken from the same directory as `origin-engine_bg.wasm` (`dist/web-publish` or `dist/web-publish-2d`), and wasm-bindgen-rayon's Worker script. |
@@ -55,6 +57,8 @@ dates, no absolute paths, files in sorted order
   "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "source": "brand" },
             { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "source": "brand" }],
   "pwa": { "manifest": "manifest.webmanifest", "serviceWorker": "sw.js" },
+  "sourcemaps": { "build": "<16 hex>", "served": false,
+                  "maps": [{ "bundle": "game.js", "map": "sourcemaps/game.js.map", "sha256": "…" }] },
   "player": { "protocol": 2, "transports": ["frame", "page"] },
   "version": "<sha256 over every file's path and sha256>",
   "files": [{ "path": "index.html", "bytes": 12519, "sha256": "…" }],
@@ -79,6 +83,13 @@ dates, no absolute paths, files in sorted order
   `version` is the sha256 over the path and sha256 of each of them except
   `sw.js`, so it is the same before and after `sw.js` is written; the
   service worker's cache name is `og-` and its first 16 hex digits.
+- `sourcemaps` names each bundle's map (`game.js`, `play.js`,
+  `audio-worklet.js`) and `build`, the build id: the first 16 hex digits of
+  the sha256 over the three bundles' paths and hashes. The page's
+  configuration carries the same id as `buildId`, and a crash report names
+  it as `build` (§Telemetry), so the platform finds the maps of the bundles
+  that threw. `served` is `true` for a dev build (the maps beside their
+  bundles) and `false` for a publish build (`sourcemaps/`).
 - `player` is the Player protocol the shell speaks and its transports, in
   dev and publish builds alike: `frame` (protocol 2 over `postMessage` to a
   framing Player) and `page` (protocol 2 over same-origin HTTP when the
@@ -387,6 +398,51 @@ the engine runs) and on the error card:
 After any of them every pending and later probe call or `call` is refused
 at once ("the engine stopped: …"), so nothing on the page waits for an
 answer that will not come.
+
+## Source maps
+
+Every bundle `og build` makes has its source map (`bundleGame`,
+`packages/engine/src/node/build.ts`). Its `sources` name the game's files
+relative to the project (`src/main.ts`), the engine's as
+`@origingame/engine/<path>`, and never a path of the machine that built it;
+the text of each source is inside (`sourcesContent`), except for the
+generated Worker entry (`og:worker`). The bytes depend only on the inputs,
+as the rest of the build's do.
+
+- **Dev build.** `game.js.map`, `play.js.map` and `audio-worklet.js.map`
+  beside their bundles, each linked with `//# sourceMappingURL`. The
+  browser's devtools show the TypeScript, and the error card maps the stack
+  it shows with them before it draws it.
+- **Publish build.** The same maps under `sourcemaps/`, minified bundles
+  that do not link them. They are not in og-build.json's `files` and
+  `version` and not in the service worker's cache. The platform takes
+  `sourcemaps/` out of the directory before it uploads the release to the
+  game's origin, and stores it privately beside the release under
+  `sourcemaps.build`. A host that serves the directory as is must leave
+  `sourcemaps/` out.
+- **Native runs.** `og run`, `og dev`, `og test`, playtests, `og ui` and
+  `og polish` bundle the game with its linked map beside it
+  (`.og/game.native.js.map`). Bun reads the map when it formats a stack, so
+  every error a native run prints names the `.ts` file, line and column. A
+  hot-reloaded bundle's copy carries its own map.
+- **Mapping a stored stack.** `@origingame/engine/sourcemap` has no I/O and
+  no dependencies, and runs under bun, node, a browser and a Worker:
+
+  ```ts
+  import { mapStack } from "@origingame/engine/sourcemap";
+  // report.stack: the crash report's frames; the maps the release stored under sourcemaps/.
+  const text = mapStack(report.stack.join("\n"), { "game.js": gameMap, "play.js": playMap });
+  // "at drawWater (game.js:1:48213)" → "at drawWater (src/main.ts:10:31)"
+  ```
+
+  `mapStack(stack, maps)` rewrites each frame (V8's `at f (url:l:c)`,
+  JavaScriptCore's and SpiderMonkey's `f@url:l:c`) whose file has a map, and
+  leaves every other line as it was. Maps are looked up by the frame's file
+  name, so the origin that served the page does not matter. `maps` may also
+  be a function from a frame's location to its map. `SourceMap` answers
+  `original(line, column)` for one position, and `stackFrames(text)` turns
+  an error's text into report frames, as the shell does. These signatures
+  are a contract with the platform: a change to them is a break.
 
 ## project.ogt `publish`
 

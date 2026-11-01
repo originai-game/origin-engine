@@ -139,6 +139,11 @@ function takeTrace(engineId: number, last = false): void {
   trace.append(taken, unixMs());
 }
 let version = 0;
+/** The maps of reloaded bundles' copies, removed when the process exits. */
+const reloadMaps: string[] = [];
+process.on("exit", () => {
+  for (const m of reloadMaps) rmSync(m, { force: true });
+});
 /**
  * Import a bundle as a fresh module. A re-import goes through a copy under
  * its own name: bun keys file:// modules by path and ignores a query, so
@@ -149,6 +154,12 @@ async function importGame(file: string): Promise<GameToken> {
   if (version > 0) {
     const copy = path.replace(/(\.[cm]?[jt]s)?$/, (ext) => `.reload-${version}${ext || ".js"}`);
     copyFileSync(path, copy);
+    // bun maps a stack through `<module>.map`, read when the stack is formed: the copy's map
+    // stays until the process exits, so a reloaded bundle's errors still name its .ts lines.
+    if (existsSync(`${path}.map`)) {
+      copyFileSync(`${path}.map`, `${copy}.map`);
+      reloadMaps.push(`${copy}.map`);
+    }
     path = copy;
   }
   const url = pathToFileURL(path).href;

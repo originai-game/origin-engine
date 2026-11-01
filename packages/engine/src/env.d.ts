@@ -89,6 +89,8 @@ declare const process: {
   readonly version: string;
   readonly pid: number;
   exit(code?: number): never;
+  cwd(): string;
+  on(event: "exit", listener: () => void): unknown;
   readonly stdout: { write(text: string): boolean };
   readonly stderr: { write(text: string): boolean };
 };

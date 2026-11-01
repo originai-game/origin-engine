@@ -175,6 +175,33 @@ test.skipIf(SLOW)("a publish build ships the engine variant of the game's profil
   expect(dev.ok && dev.manifest!.variant === "full").toBe(true);
 }, slow(120_000));
 
+test.skipIf(SLOW)("source maps: a dev build serves them linked; a publish build writes them under sourcemaps/, never served (docs/web-export.md §Source maps)", async () => {
+  const pub = join(work, "a");
+  const m = JSON.parse(read(pub, "og-build.json"));
+  expect(m.sourcemaps.served).toBe(false);
+  expect(m.sourcemaps.maps.map((x: { map: string }) => x.map)).toEqual(["sourcemaps/game.js.map", "sourcemaps/play.js.map", "sourcemaps/audio-worklet.js.map"]);
+  for (const { bundle, map } of m.sourcemaps.maps as { bundle: string; map: string }[]) {
+    expect(read(pub, bundle)).not.toContain("sourceMappingURL");
+    const raw = JSON.parse(read(pub, map)) as { sources: string[]; sourcesContent: (string | null)[] };
+    // Named relative to the project (the engine's files by package), with no machine's path in them.
+    expect(raw.sources.some((s) => s.startsWith("/") || /^[A-Za-z]:/.test(s))).toBe(false);
+    expect(JSON.stringify(raw)).not.toContain(repo);
+  }
+  expect(JSON.parse(read(pub, m.sourcemaps.maps[0].map)).sources).toContain("src/main.ts");
+  // Not part of what is served: not in files or version, not precached.
+  expect(m.files.some((f: { path: string }) => f.path.endsWith(".map"))).toBe(false);
+  expect(read(pub, "sw.js")).not.toContain("sourcemaps/");
+  // The build id the shell's crash reports carry.
+  expect(JSON.parse(/<script type="application\/json" id="og-config">(.*?)<\/script>/s.exec(read(pub, "index.html"))![1]!).buildId).toBe(m.sourcemaps.build);
+
+  const dev = join(work, "maps-dev");
+  expect((await webBuild(project, entry, dev, false, settings())).ok).toBe(true);
+  const d = JSON.parse(read(dev, "og-build.json"));
+  expect(d.sourcemaps.served).toBe(true);
+  expect(read(dev, "game.js")).toContain("//# sourceMappingURL=game.js.map");
+  expect(existsSync(join(dev, "game.js.map"))).toBe(true);
+}, slow(120_000));
+
 test.skipIf(SLOW)("publish settings: isolation, the badge and the service worker's version", async () => {
   const off = await webBuild(project, entry, join(work, "off"), true, settings({ isolation: "off", madeWith: false }));
   expect(off.ok).toBe(true);
