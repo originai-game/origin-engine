@@ -523,6 +523,9 @@ builds it into the same model blob a glTF cooks to: meshopt, levels of
 detail with their measured errors, the raycast BVH, the nodes. Load it
 with `og.load.gltf(world, "models/clockwork.ogt")` and `world.instantiate`,
 or name it in a scene (`model "models/clockwork.ogt"`), as any model.
+This section is the asset's format only: the model is still built through
+§1's passes from the reference and reviewed with §3's `view:` and
+`turntable:` commands on the loaded model before it goes into the game.
 
 ```
 type model
