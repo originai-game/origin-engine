@@ -15,7 +15,9 @@
 //!   read as a button), or a square icon button keeps its label padding;
 //! - a set of sounds repeats one sound twice in a row, ignores its volume
 //!   or pitch range, differs after a restore, or the player's haptics
-//!   setting at 0 still plays the pattern.
+//!   setting at 0 still plays the pattern;
+//! - a focus ring's cut (what is behind, between the ring and the
+//!   control) covers a drawn control's fills.
 
 use crate::support::*;
 use og_ui::dress::PartRef;
@@ -436,4 +438,59 @@ fn an_anchor_without_a_background_draws_no_frame() {
             .collect();
         assert!(drawn.is_empty(), "{seed}: {drawn:?}");
     }
+}
+
+/// A focus ring is cut from its control by what is behind it; drawn after
+/// a draw's fills (a game's `set_draw`, a dressed part's), that cut covered
+/// them, and a focused control showed its panel's colour under its label.
+#[test]
+fn a_focus_ring_is_cut_under_a_drawn_fill_never_over_it() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let red = Srgba::rgb(230, 26, 26);
+    let build = |ui: &mut Ui, input: InputFrame| {
+        ui.begin(input, Viewport::new(800.0, 600.0));
+        ui.open(
+            "Card",
+            Element {
+                width: Size::Fixed(120.0),
+                height: Size::Fixed(40.0),
+                interactive: true,
+                focusable: true,
+                ..Element::row()
+            },
+        );
+        ui.set_draw(og_ui::paint::ElementDraw {
+            fills: vec![og_ui::paint::Paint::Solid(red.into())],
+            ..Default::default()
+        });
+        ui.close();
+        ui.end();
+    };
+    for _ in 0..3 {
+        build(&mut ui, InputFrame::default());
+    }
+    build(
+        &mut ui,
+        InputFrame {
+            keys: vec![UiKey::Tab],
+            ..InputFrame::default()
+        },
+    );
+    build(&mut ui, InputFrame::default());
+    let e = ui.frame().element("Card").unwrap().clone();
+    // Every fill that covers the card's middle, in drawing order: the last one is what shows.
+    let (cx, cy) = e.center();
+    let over: Vec<[f32; 4]> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|i| i.cmd.filled())
+        .filter(|(r, _)| r.contains(cx, cy) && r.width < 200.0)
+        .map(|(_, c)| c)
+        .collect();
+    assert!(over.len() >= 2, "the ring and its cut are drawn: {over:?}");
+    assert!(
+        near(*over.last().unwrap(), red),
+        "the card's own fill is drawn last: {over:?}"
+    );
 }

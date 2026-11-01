@@ -155,8 +155,7 @@ impl Ui {
             alpha: n.alpha,
         };
         for (k, &i) in order.iter().enumerate() {
-            let n = &self.nodes[i];
-            let world = n.world;
+            let world = self.nodes[i].world;
             let start = cmds.len();
             let game_draw = self.draws.contains_key(&i);
             let draw = self
@@ -164,6 +163,24 @@ impl Ui {
                 .get(&i)
                 .or_else(|| self.part_draws.get(&i))
                 .cloned();
+            // A focus ring is cut from the control by what is behind it:
+            // under a draw's fills, or the cut covers them (a focused
+            // dressed button drawn in its panel's colour).
+            if draw.is_some() {
+                let mut ring = Vec::new();
+                if world.is_identity() {
+                    self.focus_ring_commands(i, &mut ring);
+                } else if let Some(inv) = world.invert() {
+                    let screen_clip = self.nodes[i].clip;
+                    self.nodes[i].clip = inv.map_rect(&screen_clip);
+                    self.drawing = world;
+                    self.focus_ring_commands(i, &mut ring);
+                    self.drawing = Affine::IDENTITY;
+                    self.nodes[i].clip = screen_clip;
+                }
+                cmds.extend(ring.into_iter().map(|c| (c, world)));
+            }
+            let n = &self.nodes[i];
             if let Some(m) = self.world_marks(n.key) {
                 cmds.extend(m.enter.iter().map(|c| (c.clone(), Affine::IDENTITY)));
             }
@@ -197,13 +214,13 @@ impl Ui {
                     local = c.clone();
                     self.stats.kept_commands += 1;
                 } else if world.is_identity() {
-                    self.node_commands(i, &mut local, &snap);
+                    self.node_commands(i, &mut local, &snap, draw.is_none());
                 } else if let Some(inv) = world.invert() {
                     // Drawn in its layout box: its screen clip taken there.
                     let screen_clip = n.clip;
                     self.nodes[i].clip = inv.map_rect(&screen_clip);
                     self.drawing = world;
-                    self.node_commands(i, &mut local, &snap);
+                    self.node_commands(i, &mut local, &snap, draw.is_none());
                     self.drawing = Affine::IDENTITY;
                     self.nodes[i].clip = screen_clip;
                 }

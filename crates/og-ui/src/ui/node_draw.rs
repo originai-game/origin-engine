@@ -1,18 +1,16 @@
 use super::*;
 
 impl Ui {
-    pub(super) fn node_commands(
-        &self,
-        i: usize,
-        cmds: &mut Vec<DrawCmd>,
-        snap: &dyn Fn(f32) -> f32,
-    ) {
+    /// An element's focus rings (pads 1 to 3, the focus ring or the
+    /// style's outline), each cut from the control by what is behind it.
+    /// Drawn under the element's fills: before a draw's (a game's or a
+    /// dressed part's), which the cut would otherwise cover.
+    pub(super) fn focus_ring_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
         let t = &self.theme;
         let p = &t.palette;
         let n = &self.nodes[i];
         let rect = n.rect;
         let clip = n.clip;
-        let dpr = self.viewport.dpr();
         let alpha = n.alpha;
         let quad = |rect: Rect, radius: f32, color: Srgba| DrawCmd::Quad {
             rect,
@@ -64,6 +62,33 @@ impl Ui {
             // the ring under it tinted its text's ground (the scifi pack's
             // focused placeholder read 3.5:1 on primary-tinted navy).
             cmds.push(quad(rect.outset(gap), n.el.radius + gap, behind));
+        }
+    }
+
+    /// An element's commands; its focus rings too with `ring` (an element
+    /// with a draw has them drawn before its fills, [`Self::focus_ring_commands`]).
+    pub(super) fn node_commands(
+        &self,
+        i: usize,
+        cmds: &mut Vec<DrawCmd>,
+        snap: &dyn Fn(f32) -> f32,
+        ring: bool,
+    ) {
+        let t = &self.theme;
+        let p = &t.palette;
+        let n = &self.nodes[i];
+        let rect = n.rect;
+        let clip = n.clip;
+        let dpr = self.viewport.dpr();
+        let alpha = n.alpha;
+        let quad = |rect: Rect, radius: f32, color: Srgba| DrawCmd::Quad {
+            rect,
+            radius,
+            color: color.fade(alpha).linear(),
+            clip,
+        };
+        if ring {
+            self.focus_ring_commands(i, cmds);
         }
         // A part the UI pass draws (`part_draws`) has its background there.
         let part = n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref));
