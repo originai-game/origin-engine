@@ -1,7 +1,8 @@
 // The component library's previews at desktop size (1280×720 CSS px at 1×):
 // containers, navigation, the overlays, data views, charts, the graph and
 // the calendar in their states (idle, hover, press, focus, open, sorted,
-// loading, empty, error), each frame compared with
+// loading, empty, error), then again at 200 % text (text200-*), each frame
+// compared with
 // crates/og-ui/references/<tier>/kit-components-<file>.
 import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
@@ -34,6 +35,8 @@ export default playtest({
     const graph = ui(run, "graph.json");
     t.ok(graph.some((e) => e.role === "grid" && e.name === "December 2026"), "Next turned the calendar to December");
     t.ok(graph.some((e) => e.id === "Level" && e.text === "125%"), "Zoom in scaled the graph to 125 %");
+    const tabs = (f: string) => ui(run, f).filter((e) => e.role === "tab").map((e) => e.height);
+    t.ok(Math.min(...tabs("navigation-200.json")) > Math.max(...tabs("navigation.json")) * 1.25, "at 200 % text the tabs grow with their labels");
     t.frame(script.files, () => {
       for (const f of script.files) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
     });

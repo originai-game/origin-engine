@@ -32,6 +32,12 @@ function builder(t0: number) {
       files.push(`${name}.png`);
       t += 0.1;
     },
+    /** Scroll a page's body (a phone's single column) by `dy` CSS px at its centre. */
+    scroll(page: string, dy: number) {
+      steps.push(`${t.toFixed(2)}:touch_move_to:${page}/Body`);
+      steps.push(`${(t + 0.05).toFixed(2)}:scroll:0,${dy}`);
+      t += 0.4;
+    },
     dump(name: string) {
       steps.push(`${t.toFixed(2)}:dump_ui:${name}.json`);
       t += 0.05;
@@ -62,6 +68,8 @@ export function componentsScript(phone: boolean): Script {
     b.seq((at) => key(at, "Tab"), 0.2);
     b.shot("containers-focus", 0.3);
   }
+  // On a phone the panels are one column: the accordion is below the cards.
+  if (phone) b.scroll("Containers", 500);
   b.seq((at) => tap(at, "Section#1/Header"), 0.2);
   b.shot("containers-accordion", 0.6);
   b.dump("containers");
@@ -81,6 +89,7 @@ export function componentsScript(phone: boolean): Script {
     b.seq((at) => tap(at, "Viewport/Next"), 0.2);
     b.shot("navigation-carousel", 0.7);
   }
+  if (phone) b.scroll("Navigation", 500);
   b.seq((at) => tap(at, "Path/More"), 0.2);
   b.shot("navigation-crumbs-menu", 0.5);
   b.dump("navigation");
@@ -119,6 +128,8 @@ export function componentsScript(phone: boolean): Script {
   // Charts: revealed, a bar hovered (its tooltip), then their states.
   b.cmd("show:charts");
   b.shot("charts", 1.2);
+  // On a phone the bar chart is the third panel down.
+  if (phone) b.scroll("Charts", 560);
   b.seq((at) => tap(at, "Matches/Plot/Area/Category#1"), 0.1);
   b.shot("charts-category", 0.4);
   b.dump("charts");
@@ -136,5 +147,40 @@ export function componentsScript(phone: boolean): Script {
   b.seq((at) => tap(at, "Login/Header/Next"), 0.2);
   b.shot("graph-month", 0.7);
   b.dump("graph");
+
+  // At the player's largest text size (200 %, docs/ui.md §15.2): every screen grows with its
+  // text and cuts none of it; the overlays open, the data in its states.
+  b.cmd("demo:text:200");
+  b.cmd("show:containers");
+  b.shot("text200-containers", 0.8);
+  b.cmd("show:navigation");
+  b.shot("text200-navigation", 0.8);
+  b.dump("navigation-200");
+  if (phone) b.scroll("Navigation", 1100);
+  b.seq((at) => tap(at, "Path/More"), 0.2);
+  b.shot("text200-navigation-crumbs-menu", 0.5);
+  b.seq((at) => key(at, "Escape"), 0.3);
+  b.cmd("show:overlays");
+  for (const o of ["menu", "popover", "confirm", "sheet", "radial"] as const) {
+    b.cmd(`demo:overlay:${o}`);
+    b.shot(`text200-overlays-${o}`, o === "sheet" ? 0.9 : 0.5);
+    if (o === "menu") {
+      b.seq((at) => tap(at, "Menu/Panel/Content/Item#4"), 0.2);
+      b.shot("text200-overlays-submenu", 0.5);
+    }
+    b.cmd("demo:overlay:none", 0.4);
+  }
+  b.cmd("show:data");
+  b.shot("text200-data-rows", 0.8);
+  for (const s of ["empty", "error"]) {
+    b.cmd(`demo:data:${s}`);
+    b.shot(`text200-data-${s}`, 0.5);
+  }
+  b.cmd("demo:data:rows");
+  b.cmd("show:charts");
+  b.shot("text200-charts", 1.2);
+  b.cmd("show:graph");
+  b.shot("text200-graph", 0.9);
+  b.cmd("demo:text:100");
   return b.end();
 }

@@ -9,7 +9,7 @@
 // preview's, kept here between ticks: it is a gallery, never saved.
 
 import { og } from "@origingame/engine";
-import type { MenuEntry, Size } from "@origingame/engine";
+import type { MenuEntry, Size, World } from "@origingame/engine";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -42,10 +42,13 @@ const s = {
   sort: "name",
 };
 
-/** `demo:<key>:<value>`: a preview's state (overlay, data, aim). */
-export function demoCommand(args: readonly string[]): void {
+/** `demo:<key>:<value>`: a preview's state (overlay, data, aim), or the player's text size (text, percent). */
+export function demoCommand(world: World, args: readonly string[]): void {
   const [key, value = ""] = args;
-  if (key === "overlay") s.overlay = value;
+  if (key === "text") {
+    const r = og.ui.configure(world, { textScale: Math.min(2, Math.max(1, Number(value) / 100 || 1)) });
+    if (!r.ok) throw new Error(r.reason);
+  } else if (key === "overlay") s.overlay = value;
   else if (key === "data") s.data = value;
   else if (key === "aim") {
     const [x, y] = value.split(",").map(Number);
@@ -72,7 +75,9 @@ function page(id: string, build: () => void): void {
   const vp = og.ui.frameViewport();
   og.ui.anchor(id, { anchor: phone() ? "top" : "center", width: phone() ? grow : px(Math.min(1200, vp.width - 48)), direction: "column", padding: { left: t.space.md, top: phone() ? 96 : t.space.md, right: t.space.md, bottom: t.space.md } }, () => {
     og.ui.scroll("Body", { width: grow, height: px(vp.height - (phone() ? 120 : 96)), gap: t.space.md }, () => {
-      og.ui.row("Panels", { width: grow, gap: t.space.md, wrap: !phone(), cross: "start" }, build);
+      // One panel under another on a phone (a row that does not wrap would leave all but the first off screen).
+      if (phone()) og.ui.column("Panels", { width: grow, gap: t.space.md, cross: "stretch" }, build);
+      else og.ui.row("Panels", { width: grow, gap: t.space.md, wrap: true, cross: "start" }, build);
     });
   });
 }
@@ -204,7 +209,7 @@ export function overlaysScreen(): void {
   if (og.ui.sheet("Side", o === "sideSheet", { edge: "end", title: "Friends" }, () => {
     for (const [k, n] of ["Ava", "Kenji", "Lena"].entries()) og.ui.label(og.ui.idi("Friend", k), n, {});
   }).dismissed) close();
-  const w = og.ui.radialMenu("Wheel", o === "radial", { items: [{ label: "Sword", icon: "sword", detail: "Melee" }, { label: "Bow", icon: "bow" }, { label: "Bomb", icon: "bomb", detail: "3 left" }, { label: "Potion", icon: "potion" }, { label: "Shield", icon: "shield", disabled: true }, { label: "Map", icon: "map" }], aim: s.radialAim, title: "Quick select" });
+  const w = og.ui.radialMenu("Wheel", o === "radial", { items: [{ label: "Sword", icon: "sword", detail: "Melee" }, { label: "Wand", icon: "magic-wand", detail: "Arcane" }, { label: "Bomb", icon: "bomb", detail: "3 left" }, { label: "Potion", icon: "potion" }, { label: "Shield", icon: "shield", disabled: true }, { label: "Map", icon: "map" }], aim: s.radialAim, title: "Quick select" });
   if (w.chosen !== null || w.dismissed) close();
 }
 
@@ -241,7 +246,7 @@ export function dataScreen(): void {
     });
     panel("Lists", "List with states", phone() ? grow : px(300), () => {
       og.ui.dataList("Mail", { count: s.data === "empty" ? 0 : 400, selected: 1, height: px(200), label: "Mail", ...state }, (i) => {
-        og.ui.icon("Icon", i % 4 === 0 ? "gift" : "mail", { size: 18 });
+        og.ui.icon("Icon", i % 4 === 0 ? "gift" : "chat-bubble", { size: 18 });
         og.ui.label("Subject", `Letter ${i + 1}: ${i % 4 === 0 ? "a gift for you" : "match report"}`, { width: grow, nowrap: true, ellipsis: true });
       });
     });
