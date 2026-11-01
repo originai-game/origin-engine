@@ -62,6 +62,8 @@ export class Browser {
       [
         o.chrome ?? chromePath(),
         "--headless=new", "--no-first-run", "--no-default-browser-check", `--user-data-dir=${profile}`,
+        // References are English: the host's UI language must not pick the locale.
+        "--lang=en-US", "--accept-lang=en-US",
         `--window-size=${o.width ?? 1280},${o.height ?? 720}`, "--hide-scrollbars",
         ...(process.platform === "darwin" ? ["--use-angle=metal"] : []),
         "--enable-unsafe-webgpu", "--enable-features=WebGPU", "--ignore-gpu-blocklist", "--disable-gpu-vsync",
