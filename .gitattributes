@@ -4,3 +4,9 @@
 *.hdr binary
 # QOA sound fixtures: binary.
 *.qoa binary
+# Binary model and texture fixtures.
+*.glb binary
+*.dds binary
+*.psd binary
+*.tga binary
+*.webp binary

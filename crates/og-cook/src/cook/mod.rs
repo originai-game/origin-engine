@@ -27,6 +27,7 @@ pub mod look;
 mod model;
 pub mod model_text;
 pub mod probes;
+mod psd;
 mod rig2d;
 mod scene;
 pub mod sfx;
@@ -1198,7 +1199,7 @@ fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
         }
         let kind = match ext(rel).as_str() {
             "glb" | "gltf" | "vox" => Kind::Model,
-            "png" | "jpg" | "jpeg" | "ktx2" => Kind::Texture,
+            "png" | "jpg" | "jpeg" | "ktx2" | "webp" | "tga" | "psd" | "dds" => Kind::Texture,
             e if audio::EXTENSIONS.contains(&e) => Kind::Sound,
             "ttf" | "otf" => Kind::Font,
             "cube" => Kind::Lut,

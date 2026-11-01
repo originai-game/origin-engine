@@ -9,10 +9,13 @@ use og_blob::BlobWriter;
 use std::path::Path;
 
 mod blob;
+mod ext;
+pub mod plain;
 mod primitive;
 
 use super::conform;
 pub use blob::*;
+pub(super) use ext::uv_plan;
 pub(super) use primitive::*;
 
 /// A texture the model needs: which image, cooked as which kind.
@@ -25,6 +28,10 @@ pub struct TextureUse {
 /// A parsed glTF: the document, its buffers and the encoded image bytes.
 pub struct GltfSource {
     pub doc: gltf::Document,
+    /// The plain glTF's JSON ([`plain`]): the extensions the gltf crate
+    /// does not model (texture transforms, lights, instancing, variants)
+    /// are read from it.
+    pub json: serde_json::Value,
     pub buffers: Vec<gltf::buffer::Data>,
     /// Encoded image bytes (PNG/JPEG) per glTF image.
     pub images: Vec<Vec<u8>>,
@@ -219,66 +226,26 @@ pub(super) fn pointer_visibility(json: &mut serde_json::Value) -> Result<Vec<Str
     Ok(warnings)
 }
 
-/// `bytes` with [`pointer_visibility`] applied (a `.glb` rebuilt around its
-/// rewritten JSON chunk), borrowed as they are when it changes nothing.
-fn rewrite_pointers(bytes: &[u8]) -> Result<(std::borrow::Cow<'_, [u8]>, Vec<String>), String> {
-    use std::borrow::Cow;
-    let glb = bytes.len() >= 20 && &bytes[0..4] == b"glTF";
-    let (json_bytes, rest) = if glb {
-        let len = u32::from_le_bytes(bytes[12..16].try_into().expect("4 bytes")) as usize;
-        match bytes.get(20..20 + len) {
-            Some(j) => (j, &bytes[20 + len..]),
-            // Malformed: the gltf crate says how.
-            None => return Ok((Cow::Borrowed(bytes), Vec::new())),
-        }
-    } else {
-        (bytes, &[][..])
-    };
-    // Only a file that names the `pointer` path is parsed here.
-    if !json_bytes.windows(9).any(|w| w == b"\"pointer\"") {
-        return Ok((Cow::Borrowed(bytes), Vec::new()));
-    }
-    let Ok(mut json) = serde_json::from_slice::<serde_json::Value>(json_bytes) else {
-        return Ok((Cow::Borrowed(bytes), Vec::new()));
-    };
-    let warnings = pointer_visibility(&mut json)?;
-    let mut text = serde_json::to_vec(&json).map_err(|e| format!("glTF: {e}"))?;
-    if !glb {
-        return Ok((Cow::Owned(text), warnings));
-    }
-    while text.len() % 4 != 0 {
-        text.push(b' ');
-    }
-    let mut out = Vec::with_capacity(20 + text.len() + rest.len());
-    out.extend_from_slice(&bytes[0..8]);
-    out.extend_from_slice(&((20 + text.len() + rest.len()) as u32).to_le_bytes());
-    out.extend_from_slice(&(text.len() as u32).to_le_bytes());
-    out.extend_from_slice(&bytes[16..20]);
-    out.extend_from_slice(&text);
-    out.extend_from_slice(rest);
-    Ok((Cow::Owned(out), warnings))
-}
-
 pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
-    let (bytes, pointer_warnings) = rewrite_pointers(bytes)?;
-    let gltf = gltf::Gltf::from_slice(&bytes).map_err(|e| format!("glTF: {e}"))?;
-    let mut blob = gltf.blob;
-    let doc = gltf.document;
-    let mut external = Vec::new();
-    let mut buffers = Vec::new();
-    for b in doc.buffers() {
-        let data = match b.source() {
-            gltf::buffer::Source::Bin => blob.take().ok_or("glTF: the BIN chunk is missing")?,
-            gltf::buffer::Source::Uri(uri) => read_uri(uri, dir, &mut external)?,
-        };
+    let plain::Plain {
+        json,
+        buffers,
+        external,
+        warnings: plain_warnings,
+    } = plain::plain(bytes, dir)?;
+    let root: gltf::json::Root =
+        serde_json::from_value(json.clone()).map_err(|e| format!("glTF: {e}"))?;
+    let doc = gltf::Document::from_json(root).map_err(|e| format!("glTF: {e}"))?;
+    let mut external = external;
+    for (b, data) in doc.buffers().zip(&buffers) {
         if data.len() < b.length() {
             return Err(format!(
                 "glTF: buffer {} is shorter than declared",
                 b.index()
             ));
         }
-        buffers.push(gltf::buffer::Data(data));
     }
+    let buffers: Vec<gltf::buffer::Data> = buffers.into_iter().map(gltf::buffer::Data).collect();
     let mut images = Vec::new();
     for img in doc.images() {
         images.push(match img.source() {
@@ -292,7 +259,7 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
         });
     }
     let mut textures: Vec<TextureUse> = Vec::new();
-    let mut warnings = pointer_warnings;
+    let mut warnings = plain_warnings;
     for m in doc.materials() {
         let pbr = m.pbr_metallic_roughness();
         let slots = [
@@ -349,6 +316,7 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
     }
     Ok(GltfSource {
         doc,
+        json,
         buffers,
         images,
         external,

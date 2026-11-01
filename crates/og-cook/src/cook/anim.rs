@@ -1052,6 +1052,7 @@ fn cook_with(
     let mut targets = Vec::new();
     let mut morph_data: Vec<u8> = Vec::new();
     let default_material = doc.materials().count() as u32;
+    let uv_plan = model::uv_plan(src);
     let mut cooked_index = 0u32;
     for m in doc.meshes() {
         let target_names: Vec<String> = json
@@ -1087,6 +1088,7 @@ fn cook_with(
                 normal_mapped,
                 mesh,
                 false,
+                uv_plan.bake.get(&(m.index(), pi)).copied(),
             )
             .map_err(|e| CookError(format!("{what}: {e}")))?
             else {

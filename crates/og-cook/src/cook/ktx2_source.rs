@@ -133,6 +133,20 @@ fn decode(
         .map_err(|e| e.to_string())
 }
 
+/// A KTX2 as a source image (a glTF's `KHR_texture_basisu` image): level
+/// 0 as RGBA8, flipped to `rd` and swizzled as its metadata says.
+pub fn decode_image(bytes: &[u8]) -> Result<super::texture::Image, String> {
+    let info = ktx2::parse(bytes)?;
+    let (o, s) = (orientation(&info)?, swizzle(&info)?);
+    let (codec, cs) = shape(&info)?;
+    let rgba = decode(bytes, &info, codec, cs)?;
+    Ok(super::texture::Image {
+        width: info.width,
+        height: info.height,
+        rgba: apply(&rgba, info.width, info.height, o, s),
+    })
+}
+
 /// `toktx`'s output with its metadata honoured: as written when it is
 /// the identity, else decoded, fixed and handed to `encode` again.
 pub fn honour(

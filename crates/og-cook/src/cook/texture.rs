@@ -18,9 +18,33 @@ pub struct Image {
     pub rgba: Vec<u8>,
 }
 
-/// Decodes PNG or JPEG bytes to RGBA8.
+/// Decodes a source image to RGBA8, by its bytes: PNG, JPEG, WebP, KTX2
+/// (Basis or RGBA8, `KTXorientation` and `KTXswizzle` honoured), DDS (BC1
+/// to BC7 and the uncompressed formats; level 0, layer 0), PSD (the
+/// flattened composite the file stores, 8 or 16 bits, RGB, greyscale or
+/// CMYK) and TGA, the one without a signature (tried when nothing else
+/// matches).
 pub fn decode(bytes: &[u8]) -> Result<Image, String> {
-    let img = image::load_from_memory(bytes).map_err(|e| format!("image: {e}"))?;
+    if bytes.starts_with(&ktx2::IDENTIFIER) {
+        return super::ktx2_source::decode_image(bytes);
+    }
+    if bytes.starts_with(b"DDS ") {
+        let dds = image_dds::ddsfile::Dds::read(bytes).map_err(|e| format!("DDS: {e}"))?;
+        let rgba = image_dds::image_from_dds(&dds, 0).map_err(|e| format!("DDS: {e}"))?;
+        return Ok(Image {
+            width: rgba.width(),
+            height: rgba.height(),
+            rgba: rgba.into_raw(),
+        });
+    }
+    if bytes.starts_with(b"8BPS") {
+        return super::psd::composite(bytes);
+    }
+    let img = match image::guess_format(bytes) {
+        Ok(_) => image::load_from_memory(bytes),
+        Err(_) => image::load_from_memory_with_format(bytes, image::ImageFormat::Tga),
+    }
+    .map_err(|e| format!("image: {e}"))?;
     let rgba = img.to_rgba8();
     Ok(Image {
         width: rgba.width(),

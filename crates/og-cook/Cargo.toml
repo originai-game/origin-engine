@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render/bake", "dep:og-ai", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:symphonia", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom"]
+cook = ["og-render/bake", "dep:og-ai", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:symphonia", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -47,8 +47,15 @@ miniz_oxide = "0.8"
 basis-universal = { version = "0.3.1", optional = true }
 ruzstd = { version = "0.9.1", optional = true }
 gltf = { workspace = true, optional = true }
-# EXR heightmaps for terrains (`exr`), beside the workspace's PNG and JPEG.
-image = { workspace = true, optional = true, features = ["exr", "hdr"] }
+# EXR heightmaps for terrains (`exr`), WebP and TGA texture sources
+# (`webp`, `tga`; a glTF's `EXT_texture_webp` images), beside the
+# workspace's PNG and JPEG. The cook only: the wasm never decodes these.
+image = { workspace = true, optional = true, features = ["exr", "hdr", "webp", "tga"] }
+# DDS texture sources (BC1 to BC7 and the uncompressed formats, pure Rust).
+image_dds = { version = "0.7.2", default-features = false, features = ["ddsfile", "image"], optional = true }
+# glTF `KHR_draco_mesh_compression`: a pure-Rust Draco decoder, byte
+# compatible with Google's (draco 1.5.7); no `unsafe`. The cook only.
+draco-core = { version = "2.3.3", default-features = false, features = ["decoder", "edgebreaker_valence_decode", "legacy_bitstream_decode"], optional = true }
 meshopt = { version = "0.6.2", optional = true }
 mikktspace = { version = "0.3.0", default-features = false, features = ["glam"], optional = true }
 fdsm = { version = "0.8.0", optional = true }

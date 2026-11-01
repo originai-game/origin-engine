@@ -285,6 +285,9 @@ pub(crate) fn level_error(pos: &[[f32; 3]], full: &[u32], level: &[u32]) -> f32 
     farthest(level, &full_bvh).max(farthest(full, &level_bvh))
 }
 
+/// Cooks a primitive's levels (MSFT_lod: the first is the full mesh).
+/// `uv`: the `KHR_texture_transform` baked into its uvs ([`super::ext::uv_plan`]).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn cook_primitive(
     src: &GltfSource,
     levels: &[gltf::Primitive],
@@ -292,6 +295,7 @@ pub(crate) fn cook_primitive(
     normal_mapped: bool,
     opts: &MeshOptions,
     coarsest: bool,
+    uv: Option<og_render::UvTransform>,
 ) -> Result<Option<CookedPrimitive>, String> {
     // The primitive's levels of detail as the glTF gives them (MSFT_lod: the
     // first is the full mesh), read one after the other into one vertex
@@ -399,7 +403,9 @@ pub(crate) fn cook_primitive(
         .map(|i| FVertex {
             p: positions[i],
             n: normals.as_ref().map_or([0.0, 0.0, 1.0], |n| n[i]),
-            uv: uvs.as_ref().map_or([0.0; 2], |u| u[i]),
+            uv: uvs
+                .as_ref()
+                .map_or([0.0; 2], |u| uv.map_or(u[i], |t| t.apply(u[i]))),
             c: colors.as_ref().map_or([1.0; 4], |c| c[i]),
             t: tangents.as_ref().map_or([0.0; 4], |t| t[i]),
             key: keys[i],

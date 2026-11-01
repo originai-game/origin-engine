@@ -14,6 +14,7 @@ mod documents;
 mod environment;
 mod flipbook;
 mod fx;
+mod gltf_formats;
 mod lod;
 mod look_builtins;
 mod model_text;

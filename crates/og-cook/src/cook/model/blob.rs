@@ -9,6 +9,46 @@ pub(super) fn texture_kind(k: og_render::gltf::TextureKind) -> u32 {
     }
 }
 
+/// A material row's `KHR_texture_transform` fields, per og-render slot.
+fn set_uv(row: &mut MaterialRow, t: &[og_render::UvTransform; 5]) {
+    let f = |t: &og_render::UvTransform| (t.offset.x, t.offset.y, t.scale.x, t.scale.y, t.rotation);
+    (
+        row.map_offset_x,
+        row.map_offset_y,
+        row.map_scale_x,
+        row.map_scale_y,
+        row.map_rotation,
+    ) = f(&t[0]);
+    (
+        row.mr_offset_x,
+        row.mr_offset_y,
+        row.mr_scale_x,
+        row.mr_scale_y,
+        row.mr_rotation,
+    ) = f(&t[1]);
+    (
+        row.normal_offset_x,
+        row.normal_offset_y,
+        row.normal_scale_x,
+        row.normal_scale_y,
+        row.normal_rotation,
+    ) = f(&t[2]);
+    (
+        row.emissive_offset_x,
+        row.emissive_offset_y,
+        row.emissive_scale_x,
+        row.emissive_scale_y,
+        row.emissive_rotation,
+    ) = f(&t[3]);
+    (
+        row.occlusion_offset_x,
+        row.occlusion_offset_y,
+        row.occlusion_scale_x,
+        row.occlusion_scale_y,
+        row.occlusion_rotation,
+    ) = f(&t[4]);
+}
+
 /// What a model cook reports besides the blob.
 pub struct ModelNotes {
     pub notes: Vec<String>,
@@ -30,6 +70,8 @@ pub fn cook(
     let doc = &src.doc;
     let mut notes = src.warnings.clone();
     let mut strings = Strings(Vec::new());
+    let plan = super::ext::uv_plan(src);
+    notes.extend(plan.notes.iter().cloned());
     let tex_of = |t: Option<gltf::texture::Texture>, k: u32| -> u32 {
         t.filter(|_| !proxy)
             .and_then(|t| {
@@ -46,6 +88,7 @@ pub fn cook(
         .as_ref()
         .is_some_and(|c| c.bakes() && c.applies(src));
     let mut materials = Vec::new();
+    let mut unlit = 0;
     for m in doc.materials() {
         let pbr = m.pbr_metallic_roughness();
         let e = m.emissive_factor();
@@ -123,7 +166,15 @@ pub fn cook(
             occlusion_texture: tex_of(m.occlusion_texture().map(|t| t.texture()), kind::LINEAR),
             name_offset,
             name_len,
+            unlit: super::ext::unlit(&src.json, m.index().unwrap_or(usize::MAX)) as u32,
+            ..Default::default()
         });
+        let row = materials.last_mut().expect("pushed");
+        unlit += row.unlit as usize;
+        set_uv(row, &plan.materials[m.index().unwrap_or(0)]);
+    }
+    if unlit > 0 {
+        notes.push(format!("KHR_materials_unlit: {unlit} unlit material(s)"));
     }
     // The default material (glTF's, matching og-render's gltf bridge).
     let default_material = materials.len() as u32;
@@ -157,8 +208,13 @@ pub fn cook(
         name_len,
         ..Default::default()
     });
+    set_uv(
+        materials.last_mut().expect("pushed"),
+        &[og_render::UvTransform::IDENTITY; 5],
+    );
 
     let mut prims: Vec<PrimitiveRow> = Vec::new();
+    let mut mappings: Vec<VariantMappingRow> = Vec::new();
     let mut lods: Vec<LodRow> = Vec::new();
     let mut meshes: Vec<MeshRow> = Vec::new();
     let mut vertices: Vec<u8> = Vec::new();
@@ -197,7 +253,8 @@ pub fn cook(
                     }
                 }
             }
-            match cook_primitive(src, &levels, material, normal_mapped, opts, proxy)
+            let bake = plan.bake.get(&(mesh.index(), pi)).copied();
+            match cook_primitive(src, &levels, material, normal_mapped, opts, proxy, bake)
                 .map_err(|e| CookError(format!("{what}: {e}")))?
             {
                 Some(mut c) => {
@@ -224,6 +281,14 @@ pub fn cook(
                     changes.extend(c.conformed.take());
                     hulls.extend((c.hull.len() as u32).to_le_bytes());
                     hulls.extend(c.hull.iter().flatten().flat_map(|x| x.to_le_bytes()));
+                    let json_prim = &src.json["meshes"][mesh.index()]["primitives"][pi];
+                    for (material, variant) in super::ext::mappings(json_prim) {
+                        mappings.push(VariantMappingRow {
+                            primitive: prims.len() as u32,
+                            variant: variant as u32,
+                            material: material as u32,
+                        });
+                    }
                     prims.push(c.row);
                 }
                 None => notes.push(format!("{what}: no geometry")),
@@ -240,6 +305,84 @@ pub fn cook(
 
     let NodeOrder { new_index, rows } = node_order(doc, &mut |s| strings.add(s))?;
     let nodes = rows;
+    // EXT_mesh_gpu_instancing: each instanced node's instances, in cooked node order.
+    let instanced = super::ext::instances(src).map_err(CookError)?;
+    let mut instances: Vec<InstanceRow> = Vec::new();
+    let mut by_new: Vec<(u32, &Vec<Mat4>)> =
+        instanced.iter().map(|(&n, m)| (new_index[n], m)).collect();
+    by_new.sort_by_key(|(n, _)| *n);
+    for (node, mats) in by_new {
+        for m in mats {
+            let (s, r, t) = m.to_scale_rotation_translation();
+            instances.push(InstanceRow {
+                node,
+                tx: t.x,
+                ty: t.y,
+                tz: t.z,
+                rx: r.x,
+                ry: r.y,
+                rz: r.z,
+                rw: r.w,
+                sx: s.x,
+                sy: s.y,
+                sz: s.z,
+            });
+        }
+    }
+    if !instances.is_empty() {
+        notes.push(format!(
+            "EXT_mesh_gpu_instancing: {} instance(s) of {} node(s), drawn as instances of one mesh",
+            instances.len(),
+            instanced.len()
+        ));
+    }
+    // KHR_lights_punctual.
+    let lights: Vec<LightRow> = super::ext::lights(&src.json, &mut notes)
+        .into_iter()
+        .map(|l| {
+            let (name_offset, name_len) = strings.add(&l.name);
+            LightRow {
+                node: new_index[l.node],
+                kind: l.kind,
+                r: l.color[0],
+                g: l.color[1],
+                b: l.color[2],
+                intensity: l.intensity,
+                range: l.range,
+                inner_cone: l.cone[0],
+                outer_cone: l.cone[1],
+                name_offset,
+                name_len,
+            }
+        })
+        .collect();
+    if !lights.is_empty() {
+        notes.push(format!(
+            "KHR_lights_punctual: {} light(s), spawned with the model",
+            lights.len()
+        ));
+    }
+    // KHR_materials_variants.
+    let variants: Vec<VariantRow> = super::ext::variants(&src.json)
+        .iter()
+        .map(|n| {
+            let (name_offset, name_len) = strings.add(n);
+            VariantRow {
+                name_offset,
+                name_len,
+            }
+        })
+        .collect();
+    mappings.retain(|m| {
+        (m.variant as usize) < variants.len() && (m.material as usize) < default_material as usize
+    });
+    if !variants.is_empty() {
+        notes.push(format!(
+            "KHR_materials_variants: {} variant(s), {} primitive mapping(s)",
+            variants.len(),
+            mappings.len()
+        ));
+    }
     let mut scenes = Vec::new();
     let mut roots: Vec<u32> = Vec::new();
     for sc in doc.scenes() {
@@ -282,6 +425,11 @@ pub fn cook(
                     Quat::from_array(r),
                     Vec3::from(t),
                 );
+            // An instanced node draws its mesh at each instance only.
+            let at: Vec<Mat4> = match instanced.get(&node.index()) {
+                Some(i) => i.iter().map(|m| world * *m).collect(),
+                None => vec![world],
+            };
             if let Some(mesh) = node.mesh() {
                 for prim in mesh
                     .primitives()
@@ -290,9 +438,11 @@ pub fn cook(
                     let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
                     if let Some(ps) = reader.read_positions() {
                         for p in ps {
-                            let w = world.transform_point3(Vec3::from(p));
-                            lo = lo.min(w);
-                            hi = hi.max(w);
+                            for m in &at {
+                                let w = m.transform_point3(Vec3::from(p));
+                                lo = lo.min(w);
+                                hi = hi.max(w);
+                            }
                         }
                     }
                 }
@@ -366,7 +516,15 @@ pub fn cook(
         .raw("vertices", vertices, 16)
         .raw("indices", indices, 16)
         .raw("bvh_nodes", zlib(bytemuck::cast_slice(&bvh_nodes)), 4)
-        .raw("bvh_tris", zlib(bytemuck::cast_slice(&bvh_tris)), 4);
+        .raw("bvh_tris", zlib(bytemuck::cast_slice(&bvh_tris)), 4)
+        .table("lights", &lights, row_hash::<LightRow>())
+        .table("instances", &instances, row_hash::<InstanceRow>())
+        .table("variants", &variants, row_hash::<VariantRow>())
+        .table(
+            "variant_mappings",
+            &mappings,
+            row_hash::<VariantMappingRow>(),
+        );
     // The art contract's outline hull (`conform::mesh` gives the layout).
     if let Some(c) = &opts.conform
         && let Some(l) = &c.line

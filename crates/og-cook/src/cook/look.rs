@@ -1354,7 +1354,7 @@ fn flatten(
 /// What a handle column takes: the asset kinds by extension.
 fn handle_extensions(column: &str) -> Option<&'static [&'static str]> {
     Some(match column {
-        "Texture" => &["png", "jpg", "jpeg"],
+        "Texture" => &["png", "jpg", "jpeg", "webp", "tga", "psd", "dds"],
         "Lut" => &["cube"],
         "Palette" => &["hex", "gpl"],
         "EnvironmentMap" => &["ogt"],
