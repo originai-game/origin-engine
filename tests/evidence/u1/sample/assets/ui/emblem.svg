@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe082"/>
+      <stop offset="1" stop-color="#ff6f00"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="60" cy="56" r="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4fc3f7"/>
+      <stop offset="1" stop-color="#1a237e"/>
+    </radialGradient>
+  </defs>
+  <path d="M60 6 L108 24 C108 70 90 98 60 114 C30 98 12 70 12 24 Z" fill="url(#metal)" stroke="#3e2723" stroke-width="4" stroke-linejoin="round"/>
+  <path fill-rule="evenodd" fill="url(#glow)" d="M60 22 a34 34 0 1 0 0.01 0 Z M60 38 a18 18 0 1 1 -0.01 0 Z"/>
+  <polygon points="60,40 65,53 79,53 68,61 72,75 60,67 48,75 52,61 41,53 55,53" fill="#fffde7" stroke="#ff6f00" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="60" cy="56" r="44" fill="none" stroke="#fff" stroke-opacity="0.7" stroke-width="2" stroke-dasharray="6 4"/>
+  <g transform="translate(60 102) rotate(45)"><rect x="-5" y="-5" width="10" height="10" rx="2" fill="#3e2723"/></g>
+</svg>
