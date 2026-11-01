@@ -254,7 +254,11 @@ fn ogt_files(dir: &Path, out: &mut Vec<PathBuf>) {
         let path = entry.path();
         let name = entry.file_name();
         let name = name.to_string_lossy();
-        if path.is_dir() {
+        if path.join("parts.txt").is_file() {
+            // A document split into parts (the API IDL): one file, the
+            // concatenation `parts.txt` lists.
+            out.push(path);
+        } else if path.is_dir() {
             if !matches!(name.as_ref(), "target" | ".git" | "node_modules")
                 && !name.starts_with('.')
             {
@@ -281,10 +285,22 @@ fn every_ogt_file_in_the_repository_round_trips() {
         // while this test runs (`packages/create`'s packed `template/`,
         // a project's `cooked/`); one that vanished between the listing
         // and the read is not a file of the repository.
-        let text = match std::fs::read_to_string(path) {
-            Ok(text) => text,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
-            Err(e) => panic!("{}: {e}", path.display()),
+        let text = if path.is_dir() {
+            let parts = std::fs::read_to_string(path.join("parts.txt"))
+                .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+            parts
+                .lines()
+                .map(|part| {
+                    std::fs::read_to_string(path.join(part))
+                        .unwrap_or_else(|e| panic!("{}/{part}: {e}", path.display()))
+                })
+                .collect()
+        } else {
+            match std::fs::read_to_string(path) {
+                Ok(text) => text,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(e) => panic!("{}: {e}", path.display()),
+            }
         };
         let expect_line = text
             .lines()
