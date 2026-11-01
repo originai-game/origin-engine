@@ -675,6 +675,8 @@ export interface HostAbi<A, V> {
   og_ui_has_icon(name: string): boolean;
   /** `og.ui.seconds` */
   og_ui_seconds(): number;
+  /** `og.ui.frameDirection` */
+  og_ui_frame_direction(): string;
   /** `og.ui.frameTheme` */
   og_ui_frame_theme(): string;
   /** `og.ui.openAnchor` */
@@ -1329,6 +1331,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_frame_viewport",
   "og_ui_has_icon",
   "og_ui_seconds",
+  "og_ui_frame_direction",
   "og_ui_frame_theme",
   "og_ui_open_anchor",
   "og_ui_open_transition",
