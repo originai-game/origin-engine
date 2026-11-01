@@ -8,8 +8,11 @@ impl Renderer {
         // A look that switches the stylisation on or off (passes added or
         // removed, the pixel grid, the material style) is a cut: no ghost of
         // the old look in the first frame of the new one.
+        // So is a camera cut (`RenderScene::camera_cut`): TAA keeps no
+        // ghost of the previous shot. TAA is the only history the renderer
+        // reprojects; motion vectors take the cut from `prev_view_proj`.
         let chain = scene.stylise.chain_bits();
-        if self.stylise_chain.is_some_and(|c| c != chain) {
+        if scene.camera_cut || self.stylise_chain.is_some_and(|c| c != chain) {
             self.taa_history = None;
         }
         self.stylise_chain = Some(chain);

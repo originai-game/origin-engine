@@ -546,8 +546,8 @@ pub struct FrameStats {
     /// `instances`.
     pub counts_lag: u32,
     /// Whether TAA blended this frame with the earlier frames' history:
-    /// false on the first frame, after [`Renderer::reset_history`] (a camera
-    /// cut), a resize, a new scene, a change of the stylisation's
+    /// false on the first frame, after [`Renderer::reset_history`] or on a
+    /// frame with [`RenderScene::camera_cut`] (a camera cut), a resize, a new scene, a change of the stylisation's
     /// primitives ([`Stylise::chain_bits`]), and without TAA.
     pub taa_history: bool,
 }

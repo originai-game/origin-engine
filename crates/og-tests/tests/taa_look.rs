@@ -10,7 +10,14 @@
 //! antialiasing of every frame of an animated look. Broken once by leaving
 //! the reset out: the look's first frame reports a history blend and
 //! differs from the cut's frame.
+//!
+//! A frame with `RenderScene::camera_cut` (render interpolation's
+//! og.render.snapCamera, or a camera jump past snapDistance) is a cut too:
+//! it blends no history and is the frame `reset_history` draws, byte for
+//! byte, and the frame after it blends again. The code before this blended
+//! the cut's frame with the previous shot's history.
 
+use glam::Vec3;
 use og_render::{
     Antialias, DitherPattern, Quantize, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage,
 };
@@ -82,4 +89,42 @@ fn a_look_that_switches_the_stylisation_resets_the_taa_history() {
     // Back to the plain look: a cut again.
     scene.stylise = Default::default();
     assert!(!draw(&mut look, &scene).1, "the stylisation switched off");
+}
+
+#[test]
+fn a_camera_cut_resets_the_taa_history() {
+    let mut scene = scenes::thin_geometry();
+    let mut flagged = Renderer::new_blocking(&desc()).expect("renderer");
+    if flagged.info().antialias != Antialias::Taa {
+        println!("skipped: TAA is not available on this adapter");
+        return;
+    }
+    let mut reset = Renderer::new_blocking(&desc()).expect("renderer");
+    for f in 0..3 {
+        assert_eq!(draw(&mut flagged, &scene).1, f > 0, "frame {f}");
+        assert_eq!(draw(&mut reset, &scene).1, f > 0, "frame {f}");
+    }
+    // The next shot: the camera somewhere else. `flagged` is told through
+    // the scene, `reset` through the call.
+    let shift = Vec3::new(0.6, 0.2, 0.0);
+    scene.camera.position += shift;
+    scene.camera.target += shift;
+    scene.camera_cut = true;
+    let (a, blend_a) = draw(&mut flagged, &scene);
+    scene.camera_cut = false;
+    reset.reset_history();
+    let (b, blend_b) = draw(&mut reset, &scene);
+    assert!(
+        !blend_a,
+        "the cut's frame blends no history of the shot before"
+    );
+    assert!(!blend_b);
+    assert!(
+        a.pixels == b.pixels,
+        "the cut's frame is reset_history's, byte for byte"
+    );
+    assert!(
+        draw(&mut flagged, &scene).1,
+        "the frame after the cut blends"
+    );
 }

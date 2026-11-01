@@ -62,7 +62,8 @@ is one line here, written at the merge that changes
   lerped, rotation slerped) and their blendshape weights, with root motion
   and every pose the simulation reads still at the tick; UI anchored to
   an entity stays on its drawn place; object motion blur moves from the
-  frame drawn before, never across a snap or a camera cut; the probe's
+  frame drawn before, never across a snap or a camera cut, and a camera
+  cut (`RenderScene.camera_cut`) restarts TAA's history; the probe's
   `teleport` snaps. Immediate-mode sprites, text and lines
   (`og.render.sprite`, `og.render.text`, `og.debug`) and shader time stay
   at the tick. Frames on

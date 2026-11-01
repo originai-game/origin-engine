@@ -146,7 +146,8 @@ pub struct RenderScene {
     /// equals `instances`'; then only the camera's motion blurs.
     pub previous_transforms: Vec<Mat4>,
     /// The camera cut into this frame (a teleport or a cut between shots):
-    /// motion blur takes no camera motion from the frame before.
+    /// motion blur takes no camera motion from the frame before, and TAA
+    /// starts from this frame's samples ([`crate::Renderer::reset_history`]).
     pub camera_cut: bool,
     /// This frame's joint palettes ([`SkinnedInstance::palette`] indexes them).
     pub joint_palettes: Vec<JointPalette>,
