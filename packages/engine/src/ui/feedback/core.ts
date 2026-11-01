@@ -585,6 +585,20 @@ export function shortTime(seconds: number, tenths = true): string {
   return String(Math.ceil(s));
 }
 
+/**
+ * How far in from each side of the safe area the HUD's band starts: on a
+ * display wider than 21:9 (an ultrawide) the HUD keeps to a centred 21:9
+ * band, so the corners stay in the eye's reach. G1-7's
+ * UiDesc.hudMaxAspect narrows the safe area itself; once it does, the safe
+ * area is never wider than the band and this answers 0.
+ */
+export function hudBandInset(): number {
+  const vp = frame().viewport;
+  const w = vp.width - vp.safeArea.left - vp.safeArea.right;
+  const h = vp.height - vp.safeArea.top - vp.safeArea.bottom;
+  return Math.max(0, Math.round((w - h * (21 / 9)) / 2));
+}
+
 /** The viewport's breakpoint flags. */
 export function bp(): { phone: boolean; portrait: boolean; tablet: boolean; desktop: boolean; touch: boolean; wide: boolean } {
   const f = frame();

@@ -9,7 +9,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  a11y, absolute, box, bp, clamp01, close, drop, frame, groups, glow, icon, inner, keyId, kit, leaf, lit, msToTicks, now, open,
+  a11y, absolute, box, bp, clamp01, close, drop, frame, groups, glow, hudBandInset, icon, inner, keyId, kit, leaf, lit, msToTicks, now, open,
   pct, pop, px, radial, rarityColor, role, sel, shapeOf, solid, sound, stroke, text, toneRole, token, vgrad, xy, ts,
 } from "./core.ts";
 
@@ -42,7 +42,9 @@ export function notifications(id: string, desc: Api.NotificationsDesc = {}): Api
   const t = now();
   const cross: Api.Cross = anchor.endsWith("Right") || anchor === "right" ? "end" : anchor.endsWith("Left") || anchor === "left" ? "start" : "center";
 
-  kit.anchor(id, { anchor, direction: "column", gap: tk.sm, cross, over: true, width: px(width) }, () => {
+  // Inside the HUD's band on an ultrawide, as every HUD corner is.
+  const band = hudBandInset();
+  kit.anchor(id, { anchor, direction: "column", gap: tk.sm, cross, over: true, width: px(width), offsetX: cross === "start" ? band : cross === "end" ? -band : 0 }, () => {
     // A key posted again (a higher count, a later tick) is one card: the
     // last post wins. A post is done once it expired or was dismissed,
     // kept in the UI's memory while the game still lists it, so it never

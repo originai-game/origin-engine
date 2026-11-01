@@ -4,7 +4,7 @@
 // colours by kind and level, and a stable id for a list item.
 
 import type * as Api from "@origingame/engine";
-import { absolute, type Props, frame, kit, role, type Rgba, solid, token, drop, stroke, inner, vgrad, lit, mix, shapeOf } from "../feedback/core.ts";
+import { absolute, type Props, frame, hudBandInset, kit, role, type Rgba, solid, token, drop, stroke, inner, vgrad, lit, mix, shapeOf } from "../feedback/core.ts";
 
 export * from "../feedback/core.ts";
 
@@ -16,7 +16,7 @@ export * from "../feedback/core.ts";
 export function hudRoom(): number {
   const f = frame();
   const vp = f.viewport;
-  return vp.width - vp.safeArea.left - vp.safeArea.right - f.t.gutter * 2;
+  return vp.width - vp.safeArea.left - vp.safeArea.right - f.t.gutter * 2 - hudBandInset() * 2;
 }
 
 /**
@@ -77,7 +77,9 @@ export function hudPlace(id: string, anchor: Api.Anchor | null, build: (inAnchor
   kit.remember(`${key}/reach`, next);
   kit.remember(`${key}/total`, next);
   if (anchor.startsWith("bottom")) dy = -dy;
-  kit.anchor(path, { anchor, direction: "column", cross: crossOf(anchor), ...more, offsetY: dy + (more.offsetY ?? 0) }, () => build(true));
+  const band = hudBandInset();
+  const dx = crossOf(anchor) === "start" ? band : crossOf(anchor) === "end" ? -band : 0;
+  kit.anchor(path, { anchor, direction: "column", cross: crossOf(anchor), ...more, offsetX: dx + (more.offsetX ?? 0), offsetY: dy + (more.offsetY ?? 0) }, () => build(true));
 }
 
 /** How an anchored group lines its children up by where it sits. */

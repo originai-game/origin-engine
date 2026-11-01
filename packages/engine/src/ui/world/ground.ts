@@ -86,11 +86,11 @@ export function selectionRing(world: Api.World, id: string, desc: Api.SelectionR
   onGround(world, id, c, ring3, (g) => {
     const ring = all(g, ring3);
     if (!ring) return;
-    if (!hover) area("Glow", ring, lit(col, 0.16), sel("SelectionRing", "glow"));
+    if (!hover) area("Glow", ring, lit(col, 0.1), sel("SelectionRing", "glow"));
     const segs = desc.segments ?? 0;
     const ink = lit(col, hover ? 0.6 : 1);
     const part = sel("SelectionRing", "ring", desc.reaction ?? "self", hover ? "hover" : null);
-    const look = { effects: hover ? [] : [glow(4, lit(col, 0.6))], outline: true };
+    const look = { effects: hover ? [] : [glow(3, lit(col, 0.45))], outline: true };
     if (segs > 1) {
       const turn = phase(0.15) * Math.PI * 2;
       const span = (Math.PI * 2) / segs;
@@ -148,14 +148,14 @@ export function telegraph(world: Api.World, id: string, desc: Api.TelegraphDesc 
     const e = edge("impact", impact ? 1 : 0);
     const flash = impact && e.since < msToTicks(260) ? 1 - e.since / msToTicks(260) : 0;
     const body = all(g, full.area);
-    if (body) area("Area", body, lit(col, 0.2 + 0.5 * flash), sel("Telegraph", "area", shape, hostile ? "hostile" : "friendly"));
+    if (body) area("Area", body, lit(col, 0.13 + 0.45 * flash), sel("Telegraph", "area", shape, hostile ? "hostile" : "friendly"));
     if (progress > 0 && !impact) {
       const grown = all(g, telegraphShape(desc, c, ground, progress).area);
-      if (grown) area("Fill", grown, lit(mix(col, WHITE, 0.1), 0.32), sel("Telegraph", "fill"));
+      if (grown) area("Fill", grown, lit(mix(col, WHITE, 0.1), 0.2), sel("Telegraph", "fill"));
     }
     full.outline.forEach((o, k) => {
       const pts = all(g, o);
-      if (pts) line(kit.idi("Edge", k), pts, 2.5, lit(mix(col, WHITE, 0.2), 0.95), k === 0 ? sel("Telegraph", "edge") : null, { closed: true, effects: [glow(5, lit(col, 0.7))] });
+      if (pts) line(kit.idi("Edge", k), pts, 2, lit(mix(col, WHITE, 0.2), 0.85), k === 0 ? sel("Telegraph", "edge") : null, { closed: true, effects: [glow(3, lit(col, 0.4))] });
     });
   });
   if (drawn) apply(groups({ windup: impact ? "impact" : "charging" }, { windup: ["charging", "impact"] }));
@@ -196,7 +196,7 @@ export function pathLine(world: Api.World, id: string, desc: Api.PathLineDesc = 
   onGround(world, id, pts3[0]!, [...within3, ...beyond3], (g) => {
     const a = within3.map((p) => g.local(p)).filter((p): p is P => p !== null);
     const b = beyond3.map((p) => g.local(p)).filter((p): p is P => p !== null);
-    line("Line", a, width, lit(base, 0.9), sel("PathLine", "line", "reach", desc.invalid ? "invalid" : null), { outline: true, effects: [glow(4, lit(base, 0.5))] });
+    line("Line", a, width, lit(base, 0.9), sel("PathLine", "line", "reach", desc.invalid ? "invalid" : null), { outline: true, effects: [glow(3, lit(base, 0.35))] });
     if (b.length >= 2) line("Beyond", b, width * 0.8, lit(beyondInk, 0.85), sel("PathLine", "line", "beyond"), { outline: true });
     // Chevrons marching to the end, every 28 px along the screen line.
     const all2 = [...a, ...b.slice(1)];
@@ -277,23 +277,23 @@ export function placementGhost(world: Api.World, id: string, desc: Api.Placement
     if (ring3) {
       const ring = all(g, ring3);
       if (ring) {
-        area("RangeFill", ring, lit(role("info"), 0.06), null);
-        line("Range", ring, 1.5, lit(role("info"), 0.75), sel("PlacementGhost", "range"), { closed: true });
+        area("RangeFill", ring, lit(role("info"), 0.04), null);
+        line("Range", ring, 1.5, lit(role("info"), 0.5), sel("PlacementGhost", "range"), { closed: true });
       }
     }
     const foot = all(g, corners);
     if (!foot) return;
-    area("Footprint", foot, lit(col, 0.26 * breath), sel("PlacementGhost", "footprint", valid ? "valid" : "invalid"));
+    area("Footprint", foot, lit(col, 0.18 * breath), sel("PlacementGhost", "footprint", valid ? "valid" : "invalid"));
     const cell = desc.cell ?? 0;
     if (cell > 0) {
       let k = 0;
       for (let x = -w + cell; x < w - 1e-4 && k < 64; x += cell) {
         const p = all(g, across(at(x, -d), at(x, d)));
-        if (p) line(kit.idi("CellU", k++), p, 1, lit(col, 0.45), k === 1 ? sel("PlacementGhost", "cells") : null);
+        if (p) line(kit.idi("CellU", k++), p, 1, lit(col, 0.3), k === 1 ? sel("PlacementGhost", "cells") : null);
       }
       for (let y = -d + cell; y < d - 1e-4 && k < 128; y += cell) {
         const p = all(g, across(at(-w, y), at(w, y)));
-        if (p) line(kit.idi("CellV", k++), p, 1, lit(col, 0.45), null);
+        if (p) line(kit.idi("CellV", k++), p, 1, lit(col, 0.3), null);
       }
     }
     if (!valid) {
@@ -305,10 +305,10 @@ export function placementGhost(world: Api.World, id: string, desc: Api.Placement
         const v1 = Math.min(d, w - off);
         if (v1 <= v0) continue;
         const p = all(g, across(at(off + v0, v0), at(off + v1, v1)));
-        if (p) line(kit.idi("Hatch", k++), p, 2, lit(col, 0.55), null);
+        if (p) line(kit.idi("Hatch", k++), p, 2, lit(col, 0.35), null);
       }
     }
-    line("Edge", foot, 2.5, lit(mix(col, WHITE, 0.15)), null, { closed: true, effects: [glow(5, lit(col, 0.6))] });
+    line("Edge", foot, 2, lit(mix(col, WHITE, 0.15), 0.9), null, { closed: true, effects: [glow(3, lit(col, 0.4))] });
     if (desc.label) {
       const mid = g.local(c);
       if (mid) {

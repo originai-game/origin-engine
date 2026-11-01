@@ -428,7 +428,7 @@ function worldScreen(world: World): void {
   og.ui.selectionRing(world, "Mine", { center: { x: -3.4, y: 0.02, z: 0.6 }, radius: 0.7, reaction: "self" });
   og.ui.selectionRing(world, "Hover", { center: { x: 3.6, y: 0.02, z: 0.8 }, radius: 0.7, reaction: "neutral", hover: true });
   og.ui.telegraph(world, "Cone", { center: { x: -1.6, y: 0.03, z: -2.2 }, shape: "cone", radius: 5, angle: 1.1, direction: Math.PI * 0.85, progress: Math.min(1, (s % 3) / 2.6) });
-  og.ui.telegraph(world, "Donut", { center: { x: 2.1, y: 0.03, z: -3.2 }, shape: "ring", inner: 1.4, radius: 3, progress: 0.4 });
+  og.ui.telegraph(world, "Donut", { center: { x: 7.5, y: 0.03, z: -10 }, shape: "ring", inner: 1.4, radius: 3, progress: 0.4 });
   og.ui.telegraph(world, "Quake", { center: { x: -6.5, y: 0, z: -5 }, shape: "circle", radius: 2, progress: Math.min(1, (s % 2.4) / 2), ground: { colliders: true } });
   og.ui.telegraph(world, "Charge", { center: { x: 5, y: 0.03, z: -6 }, shape: "line", radius: 6, width: 1.6, direction: -2.4, progress: 0.7 });
   og.ui.pathLine(world, "Path", { points: [{ x: -3.4, y: 0.05, z: 0.6 }, { x: -2, y: 0.05, z: 2.6 }, { x: 0.5, y: 0.05, z: 3 }, { x: 3, y: 0.05, z: 2 }], reach: 5.5, label: L("9 m · 2 AP") });
