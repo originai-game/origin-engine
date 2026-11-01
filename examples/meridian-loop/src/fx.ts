@@ -27,7 +27,15 @@ export const Fx = defineSystem(
     const racer = must(world.get(carE, Racer));
     const wheels = og.physics.vehicleWheels(world, carE);
     const poses = wheels.ok ? wheels.value : [];
-    poses.forEach((w, i) => must(world.set(entity(world, `wheel-${i}`), og.Transform, { position: w.position, quaternion: w.rotation })));
+    poses.forEach((w, i) => {
+      const we = entity(world, `wheel-${i}`);
+      // The wheels follow a reset a tick after the car (physics places
+      // them): a jump no wheel makes in a tick is drawn where it lands.
+      const was = must(world.get(we, og.Transform)).position;
+      const dx = w.position.x - was.x, dy = w.position.y - was.y, dz = w.position.z - was.z;
+      if (dx * dx + dy * dy + dz * dz > 16) must(og.render.snap(world, we));
+      must(world.set(we, og.Transform, { position: w.position, quaternion: w.rotation }));
+    });
     if (r.held || time.scaledDt === 0) return;
     const tick = world.tick;
     const shake = prefs.reducedMotion ? 0.3 : 1;

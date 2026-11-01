@@ -168,6 +168,8 @@ export function placeCar(world: World, k: number): void {
   must(world.set(car, og.Velocity, { linear: { x: 0, y: 0, z: 0 }, angular: { x: 0, y: 0, z: 0 } }));
   must(world.set(car, og.Vehicle, { throttle: 0, steer: 0, brake: 1 }));
   must(world.set(car, Racer, { steer: 0, air: 0 }));
+  // A reset or a warp: drawn where it lands, not gliding there between ticks.
+  must(og.render.snap(world, car));
 }
 
 void SAMPLES;

@@ -53,6 +53,7 @@ export const Tapes = defineSystem("Tapes", { writes: [Race, TapeChunk, og.Transf
   // Per-entity reads and writes first (og-core §4), then the tape's columns.
   const car = must(world.get(entity(world, "car"), og.Transform));
   let place: { position: { x: number; y: number; z: number }; quaternion: { x: number; y: number; z: number; w: number }; spin: number } | null = null;
+  let restarted = false;
   const view = tapeView(q);
   if (view) {
     // The run's inputs, two bytes a tick, for the replay; a replay drives the car by them.
@@ -83,6 +84,8 @@ export const Tapes = defineSystem("Tapes", { writes: [Race, TapeChunk, og.Transf
     if (r.ghostActive && r.bestLen > 0) {
       const len = r.bestLen;
       const tick = Math.max(0, into + 1);
+      // A new lap's ghost starts again at the line: drawn there, not gliding back.
+      restarted = r.ghostTick === 0 || tick < r.ghostTick;
       const f = tick / POSE_EVERY;
       const i0 = Math.min(len - 1, Math.floor(f));
       const i1 = Math.min(len - 1, i0 + 1);
@@ -113,7 +116,9 @@ export const Tapes = defineSystem("Tapes", { writes: [Race, TapeChunk, og.Transf
       const q2 = place.quaternion;
       const wq = { x: q2.w * spin.x + q2.x * spin.w + q2.y * spin.z - q2.z * spin.y, y: q2.w * spin.y - q2.x * spin.z + q2.y * spin.w + q2.z * spin.x, z: q2.w * spin.z + q2.x * spin.y - q2.y * spin.x + q2.z * spin.w, w: q2.w * spin.w - q2.x * spin.x - q2.y * spin.y - q2.z * spin.z };
       must(world.set(entity(world, `ghost-wheel-${i}`), og.Transform, { position: { x: place.position.x + off.x, y: place.position.y + off.y, z: place.position.z + off.z }, quaternion: wq }));
+      if (restarted) must(og.render.snap(world, entity(world, `ghost-wheel-${i}`)));
     }
+    if (restarted) must(og.render.snap(world, entity(world, "ghost")));
   } else if (!r.ghostActive && r.ghostTick !== 0) {
     r.ghostTick = 0;
     hideGhost(world);

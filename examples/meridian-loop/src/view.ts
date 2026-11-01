@@ -76,7 +76,11 @@ export const View = defineSystem("View", { reads: [Race, Prefs, Tuning, og.Trans
     eye = { x: p.x - Math.sin(heading) * back, y: p.y + t.cameraHeight, z: p.z - Math.cos(heading) * back };
     target = { x: p.x + Math.sin(heading) * 6, y: p.y + 0.9, z: p.z + Math.cos(heading) * 6 };
     ease = t.cameraLag <= 0 ? 1 : 1 - Math.exp(-time.dt / t.cameraLag);
-    if (r.phase === Phase.Countdown && r.countdown > 170) ease = 1;
+    if (r.phase === Phase.Countdown && r.countdown > 170) {
+      // A cut from the title's orbit to the chase view, drawn as one.
+      ease = 1;
+      og.render.snapCamera(world);
+    }
   }
   const now = cam.position;
   const pos = { x: now.x + (eye.x - now.x) * ease, y: now.y + (eye.y - now.y) * ease, z: now.z + (eye.z - now.z) * ease };
