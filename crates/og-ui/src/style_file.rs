@@ -25,7 +25,7 @@
 //! fonts, icons and sounds through the bundle and hands the handles to
 //! [`StyleFile::theme`].
 
-use crate::dress::{DEFERRED, DressFrame, Dressing, Selector};
+use crate::dress::{DRAW_KEYS, DressFrame, Dressing, Selector};
 use crate::motion::TransitionKind;
 use crate::style::{Durations, Palette, Radius, Scheme, Srgba, Theme, TypeRamp, TypeStep};
 use crate::tokens::{
@@ -913,7 +913,7 @@ fn v1_dressings(art: &Art) -> Vec<Dressing> {
             out.push(Dressing {
                 selector: part.selector(),
                 frame: f,
-                deferred: Vec::new(),
+                draw: Default::default(),
             });
         }
     }
@@ -1432,12 +1432,17 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                         dressings.push(Dressing {
                             selector: sel,
                             frame: DressFrame::default(),
-                            deferred: Vec::new(),
+                            draw: Default::default(),
                         });
                         dressings.len() - 1
                     }
                 };
                 let d = &mut dressings[i];
+                let atlas = crate::paint_entry::AtlasContext {
+                    size: file.atlas.as_ref().map(|_| size),
+                    scale,
+                };
+                let mut seen = crate::dress::DrawSeen::default();
                 for c in &block.entries {
                     let q = P { e: c };
                     let bare = || {
@@ -1475,11 +1480,11 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                         }
                         "press" => d.frame.press = Some(press_at(&q)?),
                         "hover" => d.frame.hover = Some(hover_at(&q)?),
-                        k if DEFERRED.contains(&k) => d.deferred.push(c.clone()),
+                        k if DRAW_KEYS.contains(&k) => d.draw.apply(c, &atlas, &mut seen)?,
                         _ => {
                             return Err(q.err(&format!(
                                 "is not a dressing setting: slice, tone, shadow, glow, glass, corners, tile, shape, press, hover, or (for the UI pass) {}",
-                                DEFERRED.join(", ")
+                                DRAW_KEYS.join(", ")
                             )));
                         }
                     }

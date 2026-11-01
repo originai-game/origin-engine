@@ -30,24 +30,23 @@
 //!   [`crate::StylePart::selector`]: a style's `dress "Button.base[hover]"`
 //!   is what version 1 called `slice buttonHover`, and those land in the
 //!   [`crate::Art`] the widgets draw today.
-//! - [`Dressing::deferred`]: paints, strokes, effects, materials,
-//!   ornaments, blends, masks and sounds ([`DEFERRED`]), kept as the
-//!   `.ogt` entries the author wrote (`fill linear 90 "#ffd34a" "#e08a1e"`,
-//!   `stroke 2 lineStrong inside`, `effect innerShadow 0 2 4 "#0006"`). Their
-//!   value types are the UI pass's paint, stroke and effect types (thread
-//!   U1). At merge, each key gets a parser from an [`og_core::ogt::Entry`]
-//!   to its type (`Paint::from_entry`, …) and [`Dressing`] gains the typed
-//!   fields; the parse here already checks the key and keeps the line, so a
-//!   style written today reads unchanged then, and an entry the new parser
-//!   refuses reports its own line.
+//! - [`DressDraw`]: paints, strokes, effects, a material, ornaments, a
+//!   blend, a mask and sounds ([`DRAW_KEYS`]) in the UI pass's types
+//!   ([`crate::paint`]): `fill linear 90 "#ffd34a" "#e08a1e"`, `stroke 2
+//!   lineStrong inside`, `effect innerShadow 0 2 4 "#00000066"` (the
+//!   grammar is [`crate::paint_entry`]'s). `fill`, `stroke` and `effect`
+//!   lines stack in order; a later block of the same selector that sets
+//!   one of them replaces the earlier block's list.
 
-use crate::style_file::{Glass, Glow, Hover, Press, Shadow, Slice};
+use crate::paint::{Blend, Effect, Layer, Mask, Paint, Stroke};
+use crate::paint_entry::AtlasContext;
+use crate::style_file::{Glass, Glow, Hover, Press, Shadow, Slice, UiSound};
 use crate::tokens::ShapeToken;
 use og_core::ogt::Entry;
 use std::fmt;
 
-/// The dressing keys whose values wait for the UI pass's types (see the module docs).
-pub const DEFERRED: [&str; 8] = [
+/// The dressing keys of the UI pass's types ([`DressDraw`]).
+pub const DRAW_KEYS: [&str; 8] = [
     "fill", "stroke", "effect", "material", "ornament", "blend", "mask", "sound",
 ];
 
@@ -224,11 +223,97 @@ pub struct DressFrame {
     pub hover: Option<Hover>,
 }
 
+/// A dressing's material: a built-in's layer, or a `type ui-material`
+/// asset named by path (`asset`, bound to its handle when the style's
+/// assets load; `layer.material` is plain until then), with the `params`
+/// numbers it set (the rest are the material's defaults).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct DressMaterial {
+    pub layer: Layer,
+    pub asset: Option<String>,
+    pub params: usize,
+}
+
+/// The style's ornament art a dressing puts on its part.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OrnamentKind {
+    Corner,
+    Divider,
+    Flourish,
+}
+
+/// What a dressing draws with in the UI pass ([`DRAW_KEYS`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct DressDraw {
+    /// `fill` lines, bottom first.
+    pub fills: Vec<Paint>,
+    pub strokes: Vec<Stroke>,
+    pub effects: Vec<Effect>,
+    pub material: Option<DressMaterial>,
+    pub ornaments: Vec<OrnamentKind>,
+    pub blend: Option<Blend>,
+    pub mask: Option<Mask>,
+    /// Per UI event, an audio asset; a later line for one event wins.
+    pub sounds: Vec<(UiSound, String)>,
+}
+
+/// Which list keys a block has set (a block's first line of one replaces
+/// the earlier blocks' list).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct DrawSeen {
+    fills: bool,
+    strokes: bool,
+    effects: bool,
+}
+
+impl DressDraw {
+    /// Reads one [`DRAW_KEYS`] line of a block into its field.
+    pub fn apply(
+        &mut self,
+        e: &Entry,
+        atlas: &AtlasContext,
+        seen: &mut DrawSeen,
+    ) -> Result<(), String> {
+        fn push<T>(list: &mut Vec<T>, seen: &mut bool, v: T) {
+            if !*seen {
+                list.clear();
+                *seen = true;
+            }
+            list.push(v);
+        }
+        match e.key.as_str() {
+            "fill" => push(
+                &mut self.fills,
+                &mut seen.fills,
+                Paint::from_entry(e, atlas)?,
+            ),
+            "stroke" => push(
+                &mut self.strokes,
+                &mut seen.strokes,
+                Stroke::from_entry(e, atlas)?,
+            ),
+            "effect" => push(&mut self.effects, &mut seen.effects, Effect::from_entry(e)?),
+            "material" => self.material = Some(DressMaterial::from_entry(e)?),
+            "ornament" => self.ornaments = crate::paint_entry::ornaments_from_entry(e)?,
+            "blend" => self.blend = Some(crate::paint_entry::blend_from_entry(e)?),
+            "mask" => self.mask = Some(Mask::from_entry(e, atlas)?),
+            "sound" => {
+                let (s, path) = crate::paint_entry::sound_from_entry(e)?;
+                self.sounds.retain(|(k, _)| *k != s);
+                self.sounds.push((s, path));
+            }
+            k => return Err(format!("line {}: `{k}` is not a draw setting", e.line)),
+        }
+        Ok(())
+    }
+}
+
 /// A style's dressing of the parts one selector matches.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Dressing {
     pub selector: Selector,
     pub frame: DressFrame,
-    /// The [`DEFERRED`] entries as written, in order (see the module docs).
-    pub deferred: Vec<Entry>,
+    /// Its paints, strokes, effects, material, ornaments, blend, mask and
+    /// sounds (see the module docs).
+    pub draw: DressDraw,
 }

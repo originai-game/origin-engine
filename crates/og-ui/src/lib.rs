@@ -36,6 +36,7 @@ pub mod markup;
 pub mod motion;
 mod nav;
 pub mod paint;
+pub mod paint_entry;
 mod probe;
 mod rich;
 mod scroll;

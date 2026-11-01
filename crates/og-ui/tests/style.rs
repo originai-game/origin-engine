@@ -1454,10 +1454,29 @@ fn a_dressing_matches_by_selector_and_keeps_what_the_ui_pass_will_draw() {
         epic.frame.shape.map(|s| (s.corner, s.radius)),
         Some((og_ui::tokens::CornerShape::Notch, radius_md))
     );
-    // Paints and effects wait for the UI pass's types, kept as written.
-    let kept: Vec<&str> = epic.deferred.iter().map(|e| e.key.as_str()).collect();
-    assert_eq!(kept, ["fill", "effect"]);
-    assert_eq!(epic.deferred[0].values.len(), 4);
+    // Paints and effects are the UI pass's types: a CSS 90° runs left to
+    // right across the box, the stops at its ends.
+    use og_ui::paint::{ColorRef, Effect, Paint};
+    let lit = |hex: &str| ColorRef::Literal(og_ui::style_file::parse_color(hex).unwrap());
+    let [Paint::Gradient(g)] = &epic.draw.fills[..] else {
+        panic!("one gradient fill: {:?}", epic.draw.fills);
+    };
+    assert_eq!((g.from, g.to), ([0.0, 0.5], [1.0, 0.5]));
+    let stops: Vec<(f32, ColorRef)> = g
+        .stops
+        .iter()
+        .map(|s| (s.offset, s.color.clone()))
+        .collect();
+    assert_eq!(stops, [(0.0, lit("#ffd34a")), (1.0, lit("#e08a1e"))]);
+    assert_eq!(
+        epic.draw.effects,
+        [Effect::InnerShadow {
+            offset: [0.0, 2.0],
+            blur: 4.0,
+            spread: 0.0,
+            color: lit("#00000066"),
+        }]
+    );
     // An epic slot's dressing is not the plain slot's: version 1's art is untouched.
     assert_eq!(file.theme.art.glows[StylePart::Slot.index()], None);
     // Two blocks of one selector merge: the cook's measured tone lands on the slice before it.
@@ -1476,6 +1495,126 @@ fn a_dressing_matches_by_selector_and_keeps_what_the_ui_pass_will_draw() {
     );
     let card = parse_style(&measured).unwrap().theme.art.slices[StylePart::Card.index()];
     assert_eq!(card.map(|s| s.tone), Some([0.5, 0.25, 0.125, 0.75]));
+}
+
+/// A dressing's draw lines (docs/ui.md §5, §12.3): stops without an offset
+/// share the space between their neighbours, colours are tokens or
+/// literals, an atlas region is cut in the atlas's texels, a later block of
+/// one selector replaces the fills it sets and keeps the rest, and a line
+/// the grammar refuses names its own line.
+#[test]
+fn a_dressing_draws_with_the_ui_pass_types() {
+    use og_ui::dress::{DressMaterial, OrnamentKind};
+    use og_ui::paint::*;
+    let base = upgrade_style(&v1_style()).unwrap();
+    let extra = concat!(
+        "dress \"Meter.fill[rarity=epic]\" {\n",
+        "  fill primary\n",
+        "  fill conic 90 primary \"#ff000080\" 0.2 danger lineStrong reflect\n",
+        "  stroke 2 linear 180 primary danger inside dash 6 3 offset 1 round\n",
+        "  effect dropShadow 0 4 8 2 \"#000000\"\n",
+        "  effect backdrop 12 saturation 1.4 tint panel\n",
+        "  material hologram 0.5 2\n",
+        "  blend screen\n",
+        "  mask radial \"#ffffffff\" \"#ffffff00\"\n",
+        "  ornament corner flourish\n",
+        "  sound press \"audio/tick.wav\"\n",
+        "}\n",
+        "dress \"Meter.fill[rarity=epic]\" {\n",
+        "  fill image 8 16 32 32 cover focal 0.25 0.75\n",
+        "}\n",
+    );
+    let file = parse_style(&(base.clone() + extra)).unwrap_or_else(|e| panic!("{e}"));
+    let d = file
+        .dressings
+        .iter()
+        .find(|d| d.selector.part == "fill" && !d.selector.attrs.is_empty())
+        .expect("the epic meter's dressing");
+    // The second block's fill replaced both of the first's.
+    let [Paint::Atlas(a)] = &d.draw.fills[..] else {
+        panic!("one atlas fill: {:?}", d.draw.fills);
+    };
+    assert_eq!(a.fit, Fit::Cover);
+    assert_eq!(a.focal, [0.25, 0.75]);
+    // The first block's other lines stay.
+    let [s] = &d.draw.strokes[..] else {
+        panic!("one stroke");
+    };
+    assert_eq!(
+        (s.width, s.align, s.dash, s.dash_offset, s.dash_cap),
+        (2.0, StrokeAlign::Inside, [6.0, 3.0], 1.0, Cap::Round)
+    );
+    let Paint::Gradient(g) = &s.paint else {
+        panic!("a gradient stroke");
+    };
+    // 180°: top to bottom.
+    assert_eq!((g.from, g.to), ([0.5, 0.0], [0.5, 1.0]));
+    assert_eq!(g.stops[1].color, ColorRef::token("danger"));
+    assert_eq!(d.draw.effects.len(), 2);
+    assert!(matches!(
+        &d.draw.effects[1],
+        Effect::Backdrop { blur, saturation, brightness, tint }
+            if *blur == 12.0 && *saturation == 1.4 && *brightness == 1.0
+                && *tint == ColorRef::token("panel")
+    ));
+    let DressMaterial {
+        layer,
+        asset,
+        params,
+    } = d.draw.material.clone().unwrap();
+    assert_eq!(layer.material, Material::Builtin(Builtin::Hologram));
+    assert_eq!(
+        (layer.params[0], asset, params),
+        ([0.5, 2.0, 0.0, 0.0], None, 2)
+    );
+    assert_eq!(d.draw.blend, Some(Blend::Screen));
+    assert!(matches!(&d.draw.mask, Some(Mask::Gradient(g)) if g.kind == GradientKind::Radial));
+    assert_eq!(
+        d.draw.ornaments,
+        [OrnamentKind::Corner, OrnamentKind::Flourish]
+    );
+    assert_eq!(d.draw.sounds.len(), 1);
+
+    // Unset offsets between set ones: 0, 0.2, then 0.6 and 1 evenly.
+    let only_conic = concat!(
+        "dress \"Meter.fill[rarity=epic]\" {\n",
+        "  fill conic 90 primary \"#ff000080\" 0.2 danger lineStrong reflect\n",
+        "}\n",
+    );
+    let file = parse_style(&(base.clone() + only_conic)).unwrap();
+    let d = file
+        .dressings
+        .iter()
+        .find(|d| !d.selector.attrs.is_empty())
+        .unwrap();
+    let [Paint::Gradient(g)] = &d.draw.fills[..] else {
+        panic!("a conic fill");
+    };
+    let offsets: Vec<f32> = g.stops.iter().map(|s| s.offset).collect();
+    assert_eq!(offsets.len(), 4);
+    for (got, want) in offsets.iter().zip([0.0, 0.2, 0.6, 1.0]) {
+        assert!((got - want).abs() < 1e-6, "{offsets:?}");
+    }
+    // CSS 90° (right) is the paint's angle 0 from +x.
+    assert!(g.to[0].abs() < 1e-6, "{:?}", g.to);
+    assert_eq!((g.kind, g.spread), (GradientKind::Conic, Spread::Reflect));
+
+    // Refused lines report themselves.
+    let lines = base.lines().count();
+    for (bad, why) in [
+        ("fill linear 90 primary", "2 to 8 gradient stops"),
+        ("fill notAColour", "not a paint"),
+        ("stroke 2 linear 0 primary nope", "not a palette colour"),
+        ("stroke 2 primary sideways", "'sideways'"),
+        ("effect sparkle 2", "not an effect"),
+        ("blend lighten", "not a blend mode"),
+        ("fill linear 90 primary 0.8 danger 0.2", "out of order"),
+    ] {
+        let text = format!("{base}dress \"Meter.fill\" {{\n  {bad}\n}}\n");
+        let err = parse_style(&text).unwrap_err();
+        assert!(err.contains(why), "{bad}: {err}");
+        assert!(err.contains(&format!("line {}", lines + 2)), "{bad}: {err}");
+    }
 }
 
 /// A style's motion tokens reach the motion code: each built-in style's

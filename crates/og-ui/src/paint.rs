@@ -139,6 +139,21 @@ pub enum Paint {
         vector: UiVectorHandle,
         tint: ColorRef,
     },
+    /// A region of the style's atlas (a dressing's `fill image …`), drawn
+    /// as an image of [`crate::style_file::Art::atlas`] when the frame is
+    /// drawn; nothing without an atlas.
+    Atlas(AtlasPaint),
+}
+
+/// [`Paint::Atlas`]: `uv` the region `[u0, v0, u1, v1]`, `size` its CSS px
+/// (texels times the style's scale), as [`ImagePaint`] otherwise.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AtlasPaint {
+    pub uv: [f32; 4],
+    pub size: [f32; 2],
+    pub tint: ColorRef,
+    pub fit: Fit,
+    pub focal: [f32; 2],
 }
 
 impl Paint {
@@ -155,6 +170,17 @@ impl Paint {
                 focal: Vec2::from(im.focal),
             }),
             Paint::Vector { tint, .. } => og_render::UiPaint::Solid(tint.resolve(theme)),
+            Paint::Atlas(a) => match theme.art.atlas {
+                Some(texture) => og_render::UiPaint::Image(og_render::UiImage {
+                    texture,
+                    uv: a.uv,
+                    size: Vec2::from(a.size),
+                    tint: a.tint.resolve(theme),
+                    fit: a.fit,
+                    focal: Vec2::from(a.focal),
+                }),
+                None => og_render::UiPaint::Solid([0.0; 4]),
+            },
         }
     }
 }
@@ -328,6 +354,11 @@ pub enum Mask {
         texture: TextureHandle,
         uv: [f32; 4],
     },
+    /// A region `[u0, v0, u1, v1]` of the style's atlas (a dressing's
+    /// `mask image …`); no mask without an atlas.
+    Atlas {
+        uv: [f32; 4],
+    },
 }
 
 /// How the element cuts its children.
@@ -498,6 +529,10 @@ impl ElementDraw {
                     texture: *texture,
                     uv: *uv,
                 }),
+                Clip::Mask(Mask::Atlas { uv }) => theme
+                    .art
+                    .atlas
+                    .map(|texture| og_render::UiMask::Image { texture, uv: *uv }),
                 _ => None,
             };
             let blur = match material {
