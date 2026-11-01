@@ -704,6 +704,16 @@ export class Shell {
     this.worker.postMessage({ type: "play", on });
   }
 
+  /**
+   * A user gesture outside the canvas (the play gate's click, Enter or
+   * Space): a pointer lock the game already wants is asked for with it, so
+   * the click that starts the game also takes the lock instead of waiting
+   * for the next one on the canvas. A lock not wanted asks nothing.
+   */
+  gesture(): void {
+    this.#act(this.#lock.press(performance.now()));
+  }
+
   /** Whether the clock ticks with the display (the last `play`). */
   get playing(): boolean {
     return this.#playing;

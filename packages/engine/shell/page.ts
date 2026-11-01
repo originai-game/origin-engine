@@ -787,6 +787,9 @@ export async function play(): Promise<PlayHandle> {
         removeEventListener("keydown", key, true);
         void audio.unlock().catch((err) => log.push([`warn: audio: ${err instanceof Error ? err.message : String(err)}`]));
         void fullscreen();
+        // The gate's click is the gesture the browser grants pointer lock to:
+        // a game that wants it from its first screen locks now.
+        shell.gesture();
         start();
         canvas.focus?.({ preventScroll: true });
       };
