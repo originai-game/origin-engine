@@ -26121,6 +26121,10 @@ export interface ProbeMemory {
   readonly audio: number | null;
   /** The GPU memory the renderer holds (og.render.display's gpu); null without a renderer. */
   readonly gpu: GpuMemory | null;
+  /**
+   * How many times the GPU device was lost and the renderer made again (og.render.display's deviceLosses): field telemetry reports it beside the GPU memory. Null without a renderer.
+   */
+  readonly deviceLosses: number | null;
 }
 
 /**

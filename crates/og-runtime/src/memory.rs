@@ -25,15 +25,21 @@ use serde_json::{Value, json};
 /// The report for engine `id` over its `world` (the probe's hook passes the
 /// world it holds).
 pub(crate) fn report(id: u32, world: &World) -> Value {
-    let (stream, audio, gpu) = match engine(id) {
-        Ok(eng) => (
-            super::stream::memory(&eng),
-            og_audio::link(id).map(|l| l.bank().resident_bytes() as f64),
-            eng.render
-                .try_borrow()
-                .map_or(Value::Null, |rs| super::display::gpu_memory(&rs)),
-        ),
-        Err(_) => (Value::Null, None, Value::Null),
+    let (stream, audio, gpu, losses) = match engine(id) {
+        Ok(eng) => {
+            let render = eng.render.try_borrow().ok();
+            (
+                super::stream::memory(&eng),
+                og_audio::link(id).map(|l| l.bank().resident_bytes() as f64),
+                render
+                    .as_ref()
+                    .map_or(Value::Null, |rs| super::display::gpu_memory(rs)),
+                render
+                    .as_ref()
+                    .and_then(|rs| rs.backend.as_ref().map(|b| b.device_losses())),
+            )
+        }
+        Err(_) => (Value::Null, None, Value::Null, None),
     };
     json!({
         "host": if cfg!(target_arch = "wasm32") { "web" } else { "native" },
@@ -48,6 +54,7 @@ pub(crate) fn report(id: u32, world: &World) -> Value {
         "stream": stream,
         "audio": audio,
         "gpu": gpu,
+        "deviceLosses": losses,
     })
 }
 

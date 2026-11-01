@@ -213,6 +213,7 @@ module probe {
       unit bytes
     }
     field gpu Option.GpuMemory "The GPU memory the renderer holds (og.render.display's gpu); null without a renderer."
+    field deviceLosses Option.u32 "How many times the GPU device was lost and the renderer made again (og.render.display's deviceLosses): field telemetry reports it beside the GPU memory. Null without a renderer."
   }
 
   struct SweepDesc {

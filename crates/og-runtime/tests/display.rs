@@ -200,6 +200,8 @@ fn the_memory_report_counts_gpu_memory() {
         m["gpu"],
         json!({ "textures": 1000.0, "meshes": 200.0, "renderTargets": 30.0, "buffers": 4.0, "total": 1234.0 })
     );
+    // Field telemetry reads the device losses beside it (none yet).
+    assert_eq!(m["deviceLosses"], json!(0));
 }
 
 /// The quality a preset step hands the renderer is the game's capped:

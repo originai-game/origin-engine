@@ -34,9 +34,9 @@ test("browsers and devices are classed from coarse facts", () => {
   expect(browserOf("Mozilla/5.0 (X11; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0")).toEqual({ name: "firefox", major: 144, os: "linux" });
 });
 
-test("a memory report carries the renderer's GPU memory, and null figures where the engine has no renderer", () => {
-  const m = memoryOf({ linear: 64, heap: { live: 8, peak: 9 }, stream: null, audio: null, world: { entities: 2 }, gpu: { textures: 1000, meshes: 200, renderTargets: 30, buffers: 4, total: 1234 } });
-  expect([m?.gpuTotal, m?.gpuTextures, m?.gpuTargets]).toEqual([1234, 1000, 30]);
-  const none = memoryOf({ linear: 64, heap: null, stream: null, audio: null, world: { entities: 0 }, gpu: null });
-  expect([none?.gpuTotal, none?.gpuTextures, none?.heapLive]).toEqual([null, null, null]);
+test("a memory report carries the renderer's GPU memory and device losses, and null figures where the engine has no renderer", () => {
+  const m = memoryOf({ linear: 64, heap: { live: 8, peak: 9 }, stream: null, audio: null, world: { entities: 2 }, gpu: { textures: 1000, meshes: 200, renderTargets: 30, buffers: 4, total: 1234 }, deviceLosses: 2 });
+  expect([m?.gpuTotal, m?.gpuTextures, m?.gpuTargets, m?.deviceLosses]).toEqual([1234, 1000, 30, 2]);
+  const none = memoryOf({ linear: 64, heap: null, stream: null, audio: null, world: { entities: 0 }, gpu: null, deviceLosses: null });
+  expect([none?.gpuTotal, none?.gpuTextures, none?.heapLive, none?.deviceLosses]).toEqual([null, null, null, null]);
 });

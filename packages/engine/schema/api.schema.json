@@ -46263,6 +46263,19 @@
             }
           ],
           "description": "The GPU memory the renderer holds (og.render.display's gpu); null without a renderer."
+        },
+        "deviceLosses": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How many times the GPU device was lost and the renderer made again (og.render.display's deviceLosses): field telemetry reports it beside the GPU memory. Null without a renderer."
         }
       },
       "required": [
@@ -46273,7 +46286,8 @@
         "world",
         "stream",
         "audio",
-        "gpu"
+        "gpu",
+        "deviceLosses"
       ],
       "additionalProperties": false
     },

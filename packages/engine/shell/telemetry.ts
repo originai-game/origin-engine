@@ -53,6 +53,8 @@ export interface MemoryInfo {
   readonly gpuTotal?: number | null;
   readonly gpuTextures?: number | null;
   readonly gpuTargets?: number | null;
+  /** The GPU devices lost and recovered so far (ProbeMemory.deviceLosses, og.render.display's deviceLosses); null without a renderer. */
+  readonly deviceLosses?: number | null;
 }
 
 /** The limits a report carries: the ones the renderer's paths depend on. */
@@ -162,7 +164,7 @@ export function gpuOf(adapter: { info?: unknown; limits?: unknown; features?: re
 
 /** The probe's `memory` (ProbeMemory) as a report's figures; null when the engine did not answer. */
 export function memoryOf(m: unknown): MemoryInfo | null {
-  const p = m as { linear?: unknown; heap?: { live?: unknown; peak?: unknown } | null; stream?: { used?: unknown; budget?: unknown } | null; audio?: unknown; world?: { entities?: unknown }; gpu?: { total?: unknown; textures?: unknown; renderTargets?: unknown } | null } | null;
+  const p = m as { linear?: unknown; heap?: { live?: unknown; peak?: unknown } | null; stream?: { used?: unknown; budget?: unknown } | null; audio?: unknown; world?: { entities?: unknown }; gpu?: { total?: unknown; textures?: unknown; renderTargets?: unknown } | null; deviceLosses?: unknown } | null;
   if (!p || typeof p !== "object") return null;
   const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
   return {
@@ -176,6 +178,7 @@ export function memoryOf(m: unknown): MemoryInfo | null {
     gpuTotal: n(p.gpu?.total),
     gpuTextures: n(p.gpu?.textures),
     gpuTargets: n(p.gpu?.renderTargets),
+    deviceLosses: n(p.deviceLosses),
   };
 }
 
