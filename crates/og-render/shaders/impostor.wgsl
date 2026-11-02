@@ -31,6 +31,8 @@ struct ImpostorOut {
   @location(11) @interpolate(flat) extent: f32,
   @location(12) @interpolate(flat) par01: vec4<f32>,
   @location(13) @interpolate(flat) par2: vec2<f32>,
+  // The model's sphere's centre in the world.
+  @location(14) @interpolate(flat) centre: vec3<f32>,
 };
 
 @vertex
@@ -53,6 +55,7 @@ fn vs_impostor(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> Impost
   o.m1 = normalize(i.m1);
   o.m2 = normalize(i.m2);
   o.extent = card.extent;
+  o.centre = mul_point(model, vec4<f32>(scatter.impostor.xyz, 1.0)).xyz;
   return o;
 }
 
@@ -66,7 +69,7 @@ struct ImpSurface {
 
 // One frame's normal (its basis turned into the model's space) and depth.
 fn imp_normal(f: u32, at: vec2<f32>) -> vec4<f32> {
-  let s = textureSample(normal_tex, material_sampler, at);
+  let s = textureSampleLevel(normal_tex, material_sampler, at, imp_level);
   let d = imp_frame_dir(f);
   let r = imp_right(d);
   let u = cross(d, r);
@@ -78,9 +81,9 @@ fn imp_surface(in: ImpostorOut) -> ImpSurface {
   let uvs = imp_uvs(in.uv01, in.uv2, in.par01, in.par2, in.frames);
   let c = imp_coverage(uvs.uv01, uvs.uv2, in.frames, in.weights);
   let total = max(c.wa.x + c.wa.y + c.wa.z, 1e-5);
-  let rgb = textureSample(base_color_tex, material_sampler, c.a0).rgb * c.wa.x
-    + textureSample(base_color_tex, material_sampler, c.a1).rgb * c.wa.y
-    + textureSample(base_color_tex, material_sampler, c.a2).rgb * c.wa.z;
+  let rgb = textureSampleLevel(base_color_tex, material_sampler, c.a0, imp_level).rgb * c.wa.x
+    + textureSampleLevel(base_color_tex, material_sampler, c.a1, imp_level).rgb * c.wa.y
+    + textureSampleLevel(base_color_tex, material_sampler, c.a2, imp_level).rgb * c.wa.z;
   let nd = imp_normal(in.frames.x, c.a0) * c.wa.x
     + imp_normal(in.frames.y, c.a1) * c.wa.y
     + imp_normal(in.frames.z, c.a2) * c.wa.z;
@@ -108,6 +111,7 @@ struct ImpostorLit {
 
 @fragment
 fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
+  imp_set_level(in.uv01.xy);
   let surface = imp_surface(in);
   let alpha = surface.coverage.alpha;
   // Alpha to coverage under MSAA: the blended coverage past the cut over
@@ -138,11 +142,16 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
-  // Looked up a fifth of the model's radius towards the light: the lit
-  // surface and the shadow card's (impostor_shadow.wgsl) are each rebuilt
-  // from blended frames, and differ by about that in the frames' steps,
-  // which would otherwise shadow the card in blocks.
-  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(surface.world + l * (0.2 * in.extent), n, n_dot_l); }
+  // Looked up where the light's ray leaves the model's sphere: the card
+  // takes no shadow of its own. The lit surface and the shadow card's
+  // (impostor_shadow.wgsl) are each rebuilt from blended frames and differ
+  // by the frames' steps, most near the light's terminator, where any
+  // fixed bias left a stepped band; other casters still shadow it, and its
+  // own shadow on the rest of the scene is the surface's.
+  let rel = surface.world - in.centre;
+  let b = dot(rel, l);
+  let leave = -b + sqrt(max(b * b - dot(rel, rel) + in.extent * in.extent, 0.0));
+  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(surface.world + l * max(leave, 0.0), n, n_dot_l); }
   var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(surface.world);
   color += surface_local_lights(in.clip.xy, s, surface.world, n, v);
@@ -168,6 +177,7 @@ struct ImpostorPrepass {
 
 @fragment
 fn fs_impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
+  imp_set_level(in.uv01.xy);
   let surface = imp_surface(in);
   if (surface.coverage.alpha < imp_cutoff() || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
     discard;

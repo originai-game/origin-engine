@@ -51,6 +51,7 @@ struct ImpostorShadowFrag {
 // shows behind that plane (a palm's drooping fronds) shadows itself.
 @fragment
 fn fs_impostor_shadow(in: ImpostorShadowOut) -> ImpostorShadowFrag {
+  imp_set_level(in.uv01.xy);
   let dx = dpdx(in.world);
   let dy = dpdy(in.world);
   let uvs = imp_uvs(in.uv01, in.uv2, in.par01, in.par2, in.frames);

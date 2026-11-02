@@ -127,7 +127,7 @@ fn imp_inside(uv: vec2<f32>) -> f32 {
 // through the card's point meets, from its image `uv` of the card's point
 // moved by the depth it holds there (`par`: imp_frame_par).
 fn imp_parallax(f: u32, uv: vec2<f32>, par: vec2<f32>) -> vec2<f32> {
-  let depth = textureSample(normal_tex, material_sampler, imp_atlas(f, uv)).a * 2.0 - 1.0;
+  let depth = textureSampleLevel(normal_tex, material_sampler, imp_atlas(f, uv), imp_level).a * 2.0 - 1.0;
   return uv + par * depth;
 }
 
@@ -176,9 +176,9 @@ fn imp_coverage(uv01: vec4<f32>, uv2: vec2<f32>, frames: vec3<u32>, weights: vec
   o.a1 = imp_atlas(frames.y, uv01.zw);
   o.a2 = imp_atlas(frames.z, uv2);
   let c = vec3<f32>(
-    textureSample(base_color_tex, material_sampler, o.a0).a * imp_inside(uv01.xy),
-    textureSample(base_color_tex, material_sampler, o.a1).a * imp_inside(uv01.zw),
-    textureSample(base_color_tex, material_sampler, o.a2).a * imp_inside(uv2),
+    textureSampleLevel(base_color_tex, material_sampler, o.a0, imp_level).a * imp_inside(uv01.xy),
+    textureSampleLevel(base_color_tex, material_sampler, o.a1, imp_level).a * imp_inside(uv01.zw),
+    textureSampleLevel(base_color_tex, material_sampler, o.a2, imp_level).a * imp_inside(uv2),
   );
   o.wa = weights * c;
   o.alpha = (o.wa.x + o.wa.y + o.wa.z) * material.base_color.a;
@@ -190,11 +190,26 @@ fn imp_coverage(uv01: vec4<f32>, uv2: vec2<f32>, frames: vec3<u32>, weights: vec
 fn imp_blended_depth(c: ImpCoverage) -> f32 {
   let total = max(c.wa.x + c.wa.y + c.wa.z, 1e-5);
   let d = vec3<f32>(
-    textureSample(normal_tex, material_sampler, c.a0).a,
-    textureSample(normal_tex, material_sampler, c.a1).a,
-    textureSample(normal_tex, material_sampler, c.a2).a,
+    textureSampleLevel(normal_tex, material_sampler, c.a0, imp_level).a,
+    textureSampleLevel(normal_tex, material_sampler, c.a1, imp_level).a,
+    textureSampleLevel(normal_tex, material_sampler, c.a2, imp_level).a,
   ) * 2.0 - 1.0;
   return dot(d, c.wa) / total;
+}
+
+// The atlases' level of detail for this pixel (imp_set_level), shared by
+// every frame's samples: taken from the card's own coordinates, not the
+// parallax-moved ones, whose derivatives jump where the depth falls
+// steeply at the silhouette and would pick a coarse level there (a saw-
+// tooth rim, by 2 × 2 quads).
+var<private> imp_level: f32;
+
+// Sets imp_level from frame coordinates `uv` ([-1, 1]² a frame) before
+// any sample; called first in a fragment stage, in uniform control flow.
+fn imp_set_level(uv: vec2<f32>) {
+  let texels = f32(textureDimensions(base_color_tex, 0).x) / (2.0 * f32(imp_grid()));
+  let d = max(length(dpdx(uv)), length(dpdy(uv))) * texels;
+  imp_level = max(log2(max(d, 1e-6)), 0.0);
 }
 
 // The cut: the material's alpha test, half coverage without one.
