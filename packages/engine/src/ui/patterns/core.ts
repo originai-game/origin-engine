@@ -299,7 +299,7 @@ const KIND_SYMBOL: Record<string, SymbolKind> = {
 };
 
 /** Kinds whose placeholder is a figure (head and shoulders) rather than a symbol. */
-const FIGURE_KINDS = new Set(["portrait", "bust", "character", "splash", "avatar", "banner", "keyArt"]);
+export const FIGURE_KINDS: ReadonlySet<string> = new Set(["portrait", "bust", "character", "splash", "avatar", "banner", "keyArt"]);
 
 /**
  * A slot's placeholder, drawn in the open slot (docs/ui.md §13.1): a
@@ -307,8 +307,9 @@ const FIGURE_KINDS = new Set(["portrait", "bust", "character", "splash", "avatar
  * from it), a light at the focal point, and the kind's silhouette standing
  * on it: a figure for a portrait, bust, character or key art, else the
  * kind's symbol, both sized to the slot (its size as laid out last tick).
+ * og.ui.artSlot draws it for the figure kinds, with its frame's stroke.
  */
-function placeholderArt(s: Slot, tier: Rgba | null, radii: [number, number, number, number]): void {
+export function placeholderArt(s: Slot, tier: Rgba | null, radii: [number, number, number, number], strokes?: Api.Stroke[]): void {
   const base = tier ?? role("primary");
   // The second hue: the highlight against the primary, the primary against a tier's colour.
   const other = tier ? role("primary") : role("highlight");
@@ -321,6 +322,7 @@ function placeholderArt(s: Slot, tier: Rgba | null, radii: [number, number, numb
       vgrad([[0, paint(deep(base, 0.5))], [0.55, paint(deep(mix(base, other, 0.45), 0.34))], [1, paint(deep(other, 0.22))]], 135),
       radial([[0, paint(mix(base, role("ink"), 0.25), 0.55)], [0.45, paint(base, 0.18)], [1, paint(base, 0)]], f.x, f.y, 0.55, 0.55),
     ],
+    strokes,
     clip: "shape",
   });
   // Its size as laid out last tick (the first tick: what the slot asked for, or a small default).

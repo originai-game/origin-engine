@@ -8,6 +8,7 @@ import {
   byText, clamp, control, drawn, flags, frame, grow, hasMark, kit, mix, over, paint, px, role, still, text, token, xy,
 } from "../controls/base.ts";
 import { toneColor } from "./text.ts";
+import { FIGURE_KINDS, placeholderArt } from "../patterns/core.ts";
 
 // ── icon ────────────────────────────────────────────────────────────────
 
@@ -126,29 +127,37 @@ export function artSlot(id: string, desc: Api.ArtSlotDesc = {}): void {
     partClass: "slot",
   });
   try {
-    kit.setDraw({
-      shape,
-      clip: "shape",
-      fills: tex ? [] : [
-        { kind: "gradient", type: "linear", from: { x: 0, y: 0 }, to: { x: 1, y: 1 }, stops: [{ offset: 0, color: token("primarySoft") }, { offset: 1, color: token("well") }] },
-        { kind: "gradient", type: "radial", from: { x: 0.5, y: 0.38 }, to: { x: 0.7, y: 0.7 }, stops: [{ offset: 0, color: token("sheen", 0.4) }, { offset: 1, color: token("sheen", 0) }] },
-      ],
-      strokes: [{ width: 1, align: "inside", paint: { kind: "solid", color: token(desc.frame ?? "line", desc.frame ? 1 : 0.8) } }],
-    } as Api.DrawDesc);
-    if (tex) {
-      kit.open("Image", { width: grow(), height: grow(), part: "Art.image", partClass: "slot" });
-      kit.setDraw({ shape, clip: "shape", fills: [{ kind: "image", texture: tex, fit: desc.fit ?? "cover", focal: desc.focal ?? { x: 0.5, y: 0.5 } }] } as Api.DrawDesc);
-      kit.close();
-      // It fades in when it arrives (the style's enter motion), at once under reduced motion.
-      kit.props({ enter: { values: [{ prop: "opacity", value: 0 }], transition: { kind: "token", token: "enter" } }, reduced: "fade" });
-    } else {
-      const ph = Math.min(48, Math.max(16, Math.round(((kit.bounds(kit.lastPath() || id)?.width ?? 96) * 0.28))));
-      kit.open("Placeholder", { direction: "column", width: grow(), height: grow(), align: "center", cross: "center", part: "Art.placeholder", partClass: "slot" });
-      const icon = desc.kind && kit.hasIcon(desc.kind) ? desc.kind : "image";
-      if (kit.hasIcon(icon)) kit.icon("Kind", icon, { size: ph, tint: token("inkFaint"), label: "" });
-      else drawn("Kind", "star", ph, role("inkFaint"));
-      kit.close();
+    const strokes: Api.Stroke[] = [{ width: 1, align: "inside", paint: { kind: "solid", color: token(desc.frame ?? "line", desc.frame ? 1 : 0.8) } }];
+    // A portrait, a character or key art waits as a figure on a wash of two hues, its head at the focal point (§13.1).
+    if (!tex && FIGURE_KINDS.has(desc.kind ?? "")) {
+      const r = desc.mask === "circle" ? 9999 : desc.mask === "none" ? 0 : radius;
+      placeholderArt({ kind: desc.kind, focal: desc.focal ?? undefined, aspect, width: desc.width, height: desc.height }, null, [r, r, r, r], strokes);
       if (loading) sheen("Sheen");
+    } else {
+      kit.setDraw({
+        shape,
+        clip: "shape",
+        fills: tex ? [] : [
+          { kind: "gradient", type: "linear", from: { x: 0, y: 0 }, to: { x: 1, y: 1 }, stops: [{ offset: 0, color: token("primarySoft") }, { offset: 1, color: token("well") }] },
+          { kind: "gradient", type: "radial", from: { x: 0.5, y: 0.38 }, to: { x: 0.7, y: 0.7 }, stops: [{ offset: 0, color: token("sheen", 0.4) }, { offset: 1, color: token("sheen", 0) }] },
+        ],
+        strokes,
+      } as Api.DrawDesc);
+      if (tex) {
+        kit.open("Image", { width: grow(), height: grow(), part: "Art.image", partClass: "slot" });
+        kit.setDraw({ shape, clip: "shape", fills: [{ kind: "image", texture: tex, fit: desc.fit ?? "cover", focal: desc.focal ?? { x: 0.5, y: 0.5 } }] } as Api.DrawDesc);
+        kit.close();
+        // It fades in when it arrives (the style's enter motion), at once under reduced motion.
+        kit.props({ enter: { values: [{ prop: "opacity", value: 0 }], transition: { kind: "token", token: "enter" } }, reduced: "fade" });
+      } else {
+        const ph = Math.min(48, Math.max(16, Math.round(((kit.bounds(kit.lastPath() || id)?.width ?? 96) * 0.28))));
+        kit.open("Placeholder", { direction: "column", width: grow(), height: grow(), align: "center", cross: "center", part: "Art.placeholder", partClass: "slot" });
+        const icon = desc.kind && kit.hasIcon(desc.kind) ? desc.kind : "image";
+        if (kit.hasIcon(icon)) kit.icon("Kind", icon, { size: ph, tint: token("inkFaint"), label: "" });
+        else drawn("Kind", "star", ph, role("inkFaint"));
+        kit.close();
+        if (loading) sheen("Sheen");
+      }
     }
   } finally {
     kit.close();
