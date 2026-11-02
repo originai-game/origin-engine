@@ -66,7 +66,7 @@ function eyebrow(id: string, text: string): void {
 }
 
 /** The screens' state (a gallery's, never saved). */
-const st = { card: 0, cls: 0 };
+const st = { card: 0, cls: 0, zoom: 1 };
 
 // ── ship status ─────────────────────────────────────────────────────────
 
@@ -112,15 +112,9 @@ export function shipStatusScreen(): void {
         og.ui.label("N", "78", { step: "lg", font: "mono", nowrap: true });
         og.ui.label("Unit", "%", { step: "sm", color: { token: "inkMuted" }, nowrap: true });
       });
-      row("Shields", L("ship.shields"), () => {
-        og.ui.progressBar("Pips", { style: "steps", steps: 4, value: 0.75, tone: "info", width: grow, thickness: Math.round(12 * k), sheen: false });
-        og.ui.semantics({ name: L("ship.shields"), value: "3 / 4" });
-      }, () => {});
-      // The reactor's mark at the label's size (statBar's own icon is only as tall as its track).
-      row("Reactor", L("ship.reactor"), () => {
-        og.ui.icon("Icon", "bolt", { size: Math.round(f.line("base", 24) * 0.8), tint: { token: "mana" }, label: "" });
-        og.ui.statBar("Bar", { value: 64, max: 100, kind: "mana", ghost: false, width: grow, thickness: Math.round(8 * k), name: L("ship.reactor") });
-      }, () => {});
+      // Shields as discrete pips, three of four; the reactor's mark before its slimmer bar.
+      row("Shields", L("ship.shields"), () => og.ui.statBar("Bar", { value: 3, max: 4, style: "pips", color: { token: "info" }, width: grow, thickness: Math.round(12 * k), valueText: "3 / 4", name: L("ship.shields") }), () => {});
+      row("Reactor", L("ship.reactor"), () => og.ui.statBar("Bar", { value: 64, max: 100, kind: "mana", icon: "bolt", ghost: false, width: grow, thickness: Math.round(8 * k), name: L("ship.reactor") }), () => {});
     });
   });
 }
@@ -139,33 +133,25 @@ const UNITS: ReadonlyArray<{ name: string; art: ArtFile; hostile: boolean }> = [
 ];
 
 /**
- * The turn order (a tactics game's initiative): portrait rows read top to
- * bottom with no numbers, the acting ship first in the list's selected row
- * (the pack's selection), allies in ink, enemies marked by a danger stripe
- * on the start edge (mirrored right to left with the row).
+ * The turn order (a tactics game's initiative): og.ui.turnOrder's list,
+ * portrait rows read top to bottom with no numbers, the acting ship first on
+ * the selected row's rule, enemies marked by a danger stripe on the start
+ * edge (mirrored right to left with the row).
  */
 export function turnOrderScreen(): void {
   const f = frame();
   const { t, small, k, ts, m } = f;
   const w = small ? f.innerW - 2 * m : Math.min(f.innerW - 2 * m, 320 * k * Math.min(ts, 1.6));
   const pad = small ? t.space.md : t.space.lg;
-  const rowH = Math.round(Math.max(52 * k, f.line("base", 24) + 2 * t.space.sm + 8));
-  const gap = t.space.xxs ?? 2;
-  const head = f.line("lg", 26) + t.space.sm;
-  const room = f.innerH - f.top - 2 * m - 2 * pad - head - (small ? 0 : 0);
-  const listH = Math.min(UNITS.length * rowH + (UNITS.length - 1) * gap, Math.max(rowH * 3, room));
-  const artW = Math.round(rowH * 1.5);
   og.ui.anchor("TurnOrder", { anchor: small ? "topLeft" : "topRight", margin: m, offsetY: f.top, width: px(w), direction: "column", gap: t.space.sm, padding: all(pad), background: { token: "hud" }, radius: t.radius["panel"] ?? 12, frame: "hud" }, () => {
     og.ui.label("Title", L("turn.title"), { step: "lg", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
-    og.ui.list("Units", { count: UNITS.length, rowHeight: rowH, gap, width: grow, height: px(listH), selected: 0 }, (i) => {
-      const u = UNITS[i]!;
-      // The stripe's place is kept on allies too, so every portrait starts on one line.
-      og.ui.column("Side", { width: px(4), height: px(rowH - 2 * t.space.sm), background: u.hostile ? { token: "danger" } : null, radius: 2 }, () => {});
-      og.ui.row("Unit", { width: grow, gap: t.space.sm, cross: "center", padding: { left: t.space.xs, top: 0, right: t.space.xs, bottom: 0 } }, () => {
-        og.ui.artSlot("Art", { texture: art(u.art), kind: "unitPortrait", aspect: 2, fit: "contain", mask: "none", width: px(artW), label: "" });
-        og.ui.label("Name", u.name, { step: "base", nowrap: true, ellipsis: true, width: grow });
-      });
-      og.ui.semantics({ name: `${u.name}, ${L(u.hostile ? "turn.hostile" : "turn.allied")}${i === 0 ? `, ${L("turn.acting")}` : ""}` });
+    og.ui.turnOrder("Units", {
+      style: "list",
+      units: UNITS.map((u, i) => ({ key: u.name.toLowerCase(), name: u.name, portrait: art(u.art), team: u.hostile ? 1 : 0, current: i === 0 })),
+      size: Math.round(36 * k),
+      nowLabel: L("turn.acting"),
+      hostileLabel: L("turn.hostile"),
+      anchor: null,
     });
   });
 }
@@ -181,26 +167,14 @@ const ABILITIES: ReadonlyArray<{ key: string; art: ArtFile; cost: number; hotkey
   { key: "overcharge", art: "space/overcharge.jpg", cost: 4, hotkey: "Y" },
 ];
 
-/** One ability card: its number at the top start, its name in caps, its art, a line of effect and its cost in a disc; its hotkey under it. */
+/** One ability card: its number at the top start, its art, its name in caps, a line of effect and its cost in a disc; its hotkey under it. */
 function abilityCard(i: number, cw: number, keys: boolean): void {
-  const f = frame();
-  const { t, k } = f;
+  const { t } = frame();
   const a = ABILITIES[i]!;
-  const disc = Math.round(Math.max(30 * k, f.line("lg", 26) + 6));
   og.ui.column(`Slot${i}`, { width: px(cw), gap: t.space.xs, cross: "center" }, () => {
-    const r = og.ui.card("Card", { interactive: true, selected: st.card === i, width: px(cw), padding: t.space.sm }, () => {
-      og.ui.row("Head", { width: grow, gap: t.space.xs, cross: "center" }, () => {
-        og.ui.badge("No", `${i + 1}`, "neutral");
-        og.ui.label("Name", L(`ab.${a.key}`).toLocaleUpperCase(), { step: "caption", font: "display", maxLines: 2, ellipsis: true, width: grow });
-      });
-      og.ui.artSlot("Art", { texture: art(a.art), kind: "cardArt", aspect: 4 / 3, width: grow, label: "" });
-      og.ui.row("Foot", { width: grow, gap: t.space.xs, cross: "end" }, () => {
-        og.ui.label("Effect", L(`ab.${a.key}.text`), { step: "sm", color: { token: "inkMuted" }, maxLines: 2, ellipsis: true, width: grow });
-        og.ui.column("Cost", { width: px(disc), height: px(disc), align: "center", cross: "center", background: { token: "well" }, radius: disc / 2 }, () => {
-          og.ui.label("N", `${a.cost}`, { step: "lg", font: "rounded", nowrap: true });
-        });
-        og.ui.semantics({ name: L("ab.cost", { n: a.cost }) });
-      });
+    const r = og.ui.card("Card", { interactive: true, selected: st.card === i, width: px(cw), padding: t.space.sm, media: { texture: art(a.art) ?? 0, aspect: 4 / 3 } as never, number: `${i + 1}`, cost: `${a.cost}` }, () => {
+      og.ui.label("Name", L(`ab.${a.key}`).toLocaleUpperCase(), { step: "caption", font: "display", maxLines: 2, ellipsis: true, width: grow });
+      og.ui.label("Effect", L(`ab.${a.key}.text`), { step: "sm", color: { token: "inkMuted" }, maxLines: 2, ellipsis: true, width: grow });
     });
     if (r.clicked) st.card = st.card === i ? -1 : i;
     // The hotkey: a quiet cap under the card, never a boxed key on its art (a finger has none).
@@ -252,7 +226,7 @@ export function abilityCardsScreen(): void {
 
 // ── sector map ──────────────────────────────────────────────────────────
 
-/** The sector's systems, in fractions of the field (a map: never mirrored). */
+/** The sector's systems, in fractions of the field. */
 const NODES: ReadonlyArray<{ x: number; y: number; hostile: boolean; current?: boolean }> = [
   { x: 0.12, y: 0.62, hostile: false }, { x: 0.2, y: 0.36, hostile: false }, { x: 0.27, y: 0.5, hostile: false },
   { x: 0.36, y: 0.3, hostile: false }, { x: 0.33, y: 0.68, hostile: false }, { x: 0.45, y: 0.52, hostile: false, current: true },
@@ -263,87 +237,61 @@ const NODES: ReadonlyArray<{ x: number; y: number; hostile: boolean; current?: b
 /** The lanes between systems (indices into NODES). */
 const LANES: ReadonlyArray<[number, number]> = [[0, 2], [1, 2], [1, 3], [2, 5], [3, 5], [4, 5], [4, 6], [5, 10], [7, 8], [8, 9], [8, 10], [10, 11]];
 
-/** A system's mark: a triangle for an ally, a diamond for a foe, each in its side's hue. */
-function mark(id: string, size: number, hostile: boolean): void {
-  og.ui.column(id, { width: px(size), height: px(size) }, () => {});
-  og.ui.setDraw({
-    shape: { kind: "polygon", sides: hostile ? 4 : 3 },
-    fills: [{ kind: "solid", color: { token: hostile ? "danger" : "info" } }],
-    strokes: [{ width: 1.5, align: "outside", paint: { kind: "solid", color: { token: "shadow", alpha: 0.85 } } }],
-  } as never);
-}
-
 /**
- * The sector map: the systems on a dark field, allies and foes told by hue
- * and by shape, the current one ringed, and a caption plate at the foot
- * naming the sector.
+ * The sector map: og.ui.nodeGraph's systems, allies as triangles and foes as
+ * diamonds each in its side's colour (GraphNode.team), the current one
+ * ringed (its state), and a caption plate at the foot naming the sector.
  */
-export function sectorMapScreen(world: World): void {
+export function sectorMapScreen(): void {
   const f = frame();
-  const { t, small, k, ts, m } = f;
-  const rtl = og.i18n.locale(world).direction === "rtl";
+  const { t, small, k, m } = f;
   const pad = small ? t.space.md : t.space.lg;
   const w = small ? f.innerW - 2 * m : Math.min(f.innerW - 2 * m - 2 * f.footW, 920 * k);
   const fw = w - 2 * pad;
-  const head = Math.max(f.line(small ? "xl" : "xl2", 32), f.line("sm", 20));
+  const head = f.line(small ? "xl" : "xl2", 32);
+  const plate = f.line(small ? "base" : "lg", 26) + 2 * t.space.xs;
   // On a desktop the panel stands clear of the Gallery button below it (centred, so the same room above).
   const room = small ? f.innerH - f.top - 2 * m : f.innerH - 2 * (f.foot + m);
-  const fh = Math.max(160, Math.min(small ? fw * 1.15 : fw * 0.56, room - 2 * pad - head - t.space.md));
-  const node = Math.round((small ? 20 : 22) * k);
-  const legend = Math.round(12 * k * Math.min(ts, 1.5));
-  // insets.start mirrors right to left: a map's place is measured from the left either way.
-  const start = (left: number, size: number) => (rtl ? fw - left - size : left);
+  const fh = Math.max(200, Math.min(small ? fw * 1.25 : fw * 0.6, room - 2 * pad - head - plate - 2 * t.space.md));
+  // The systems in graph units shaped like the graph's window (its zoom bar, and the room nodeGraph keeps round its
+  // nodes and their captions, taken off), so at its fit the sector fills the window instead of a band of it.
+  const node = Math.round((small ? 20 : 24) * k);
+  const aspect = Math.max(0.3, (fh - (small ? 56 : 52) - 2 * node - 64 - 36 * f.ts) / Math.max(1, fw - node - 2 * t.space.sm));
+  const xs = NODES.map((n) => n.x);
+  const ys = NODES.map((n) => n.y);
+  const x0 = Math.min(...xs);
+  const y0 = Math.min(...ys);
+  const sx = 1000 / (Math.max(...xs) - x0);
+  const sy = (1000 * aspect) / (Math.max(...ys) - y0);
   og.ui.anchor("Sector", { anchor: small ? "topLeft" : "center", margin: small ? m : 0, offsetY: f.top, width: px(w), direction: "column", gap: t.space.md, padding: all(pad), background: { token: "hud" }, radius: t.radius["panel"] ?? 12, frame: "hud" }, () => {
-    og.ui.row("Head", { width: grow, gap: t.space.md, cross: "center" }, () => {
-      og.ui.label("Title", L("sector.title"), { step: small ? "xl" : "xl2", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
-      og.ui.row("Legend", { gap: t.space.sm, cross: "center" }, () => {
-        mark("Ally", legend, false);
-        og.ui.label("AllyText", L("sector.allied"), { step: "sm", color: { token: "inkMuted" }, nowrap: true });
-        mark("Foe", legend, true);
-        og.ui.label("FoeText", L("sector.hostile"), { step: "sm", color: { token: "inkMuted" }, nowrap: true });
+    og.ui.label("Title", L("sector.title"), { step: small ? "xl" : "xl2", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
+    const r = og.ui.nodeGraph("Map", {
+      nodes: NODES.map((n, i) => ({
+        id: `s${i}`,
+        x: Math.round((n.x - x0) * sx),
+        y: Math.round((n.y - y0) * sy),
+        // No caption under a system: its label is what a screen reader hears (its side, and whether the fleet is there).
+        label: `${L(n.hostile ? "sector.hostile" : "sector.allied")}${n.current ? `, ${L("sector.current")}` : ""}`,
+        shape: n.hostile ? "diamond" : "triangle",
+        team: n.hostile ? 1 : 0,
+        state: n.current ? "current" : "available",
+      })),
+      links: LANES.map(([a, b]) => ({ from: `s${a}`, to: `s${b}` })),
+      curved: false,
+      labels: false,
+      zoom: st.zoom,
+      nodeSize: node,
+      width: grow,
+      height: px(fh),
+      label: L("sector.title"),
+    });
+    st.zoom = r.zoom;
+    // The caption plate at the foot: the sector's name.
+    og.ui.row("Foot", { width: grow, align: "end" }, () => {
+      og.ui.row("Caption", { gap: t.space.xs, cross: "center", padding: { left: t.space.md, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, background: { token: "panelRaised" }, radius: t.radius["control"] ?? 6 }, () => {
+        og.ui.label("Text", "K-317 · Helios Reach", { step: small ? "base" : "lg", font: "display", nowrap: true });
       });
     });
-    // The field: a dark ground in every pack (space), its edge in the line ink.
-    og.ui.open("Field", { width: px(fw), height: px(fh) });
-    og.ui.setDraw({
-      shape: { kind: "rect", radii: [8, 8, 8, 8] },
-      fills: [
-        { kind: "solid", color: { token: "shadow", alpha: 0.92 } },
-        { kind: "gradient", type: "radial", from: { x: 0.45, y: 0.5 }, to: { x: 1, y: 1 }, stops: [{ offset: 0, color: { token: "info", alpha: 0.12 } }, { offset: 1, color: { token: "shadow", alpha: 0 } }] },
-      ],
-      strokes: [{ width: 1, align: "inside", paint: { kind: "solid", color: { token: "line" } } }],
-      clip: "shape",
-    } as never);
-    // The lanes, faint under the systems.
-    for (const [a, b] of LANES) {
-      const p = NODES[a]!;
-      const q = NODES[b]!;
-      og.ui.column(`Lane${a}-${b}`, { width: px(fw), height: px(fh) }, () => {});
-      og.ui.setDraw({
-        shape: { kind: "path", points: [{ x: p.x * fw, y: p.y * fh }, { x: q.x * fw, y: q.y * fh }], width: 1.5 },
-        fills: [{ kind: "solid", color: { token: p.hostile || q.hostile ? "danger" : "info", alpha: 0.3 } }],
-      } as never);
-      og.ui.props({ position: "absolute", insets: { start: 0, top: 0 }, inert: true } as never);
-    }
-    NODES.forEach((n, i) => {
-      const cx = Math.round(n.x * fw);
-      const cy = Math.round(n.y * fh);
-      if (n.current) {
-        const ring = node * 2;
-        og.ui.column("Here", { width: px(ring), height: px(ring) }, () => {});
-        og.ui.setDraw({ shape: { kind: "ellipse" }, strokes: [{ width: 2, align: "inside", paint: { kind: "solid", color: { token: "ink" } } }] } as never);
-        og.ui.props({ position: "absolute", insets: { start: start(cx - ring / 2, ring), top: cy - ring / 2 }, inert: true } as never);
-      }
-      mark(`Node${i}`, node, n.hostile);
-      og.ui.props({ position: "absolute", insets: { start: start(cx - node / 2, node), top: cy - node / 2 } } as never);
-      og.ui.semantics({ role: "image", name: `${L(n.hostile ? "sector.hostile" : "sector.allied")}${n.current ? `, ${L("sector.current")}` : ""}` });
-    });
-    // The caption plate at the foot: the sector's name.
-    og.ui.row("Caption", { gap: t.space.xs, cross: "center", padding: { left: t.space.md, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, background: { token: "panelRaised" }, radius: t.radius["control"] ?? 6 }, () => {
-      og.ui.label("Text", "K-317 · Helios Reach", { step: small ? "base" : "lg", font: "display", nowrap: true });
-    });
-    og.ui.props({ position: "absolute", insets: { end: t.space.sm, bottom: t.space.sm } } as never);
-    og.ui.close();
   });
 }
 
@@ -369,8 +317,7 @@ function heroStats(cls: (typeof CLASSES)[number], stacked: boolean): void {
     og.ui.column("Upgrade", { width: stacked ? grow : px(200 * k * Math.min(f.ts, 1.5)), gap: t.space.xs }, () => {
       eyebrow("Label", L("hangar.upgrade"));
       og.ui.row("Pips", { width: grow, gap: t.space.sm, cross: "center" }, () => {
-        og.ui.progressBar("Bar", { style: "steps", steps: 6, value: cls.upgrade / 6, width: grow, thickness: Math.round(10 * k), sheen: false });
-        og.ui.semantics({ name: L("hangar.upgrade"), value: `${cls.upgrade} / 6` });
+        og.ui.statBar("Bar", { value: cls.upgrade, max: 6, style: "pips", kind: "primary", width: grow, thickness: Math.round(10 * k), valueText: `${cls.upgrade} / 6`, name: L("hangar.upgrade") });
         og.ui.label("Value", `${cls.upgrade} / 6`, { step: "lg", font: "mono", nowrap: true });
       });
     });
@@ -467,6 +414,7 @@ export function starshipCommand(key: string, value: string): boolean {
   else if (key === "reset") {
     st.card = 0;
     st.cls = 0;
+    st.zoom = 1;
   } else return false;
   return true;
 }

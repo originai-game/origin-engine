@@ -19,13 +19,14 @@ export default playtest({
     t.ok(run.quit, "the script reached quit");
     const status = ui(run, "scifi-shipStatus.json");
     t.ok(status.some((e) => e.role === "heading" && e.name === "AFS Valiant"), "the ship's name is the status's heading");
-    t.ok(status.some((e) => e.role === "progressbar" && e.name === "Shields" && e.value === "3 / 4"), "the shields are pips, three of four");
-    const order = ui(run, "scifi-turnOrder.json").filter((e) => e.role === "option");
-    t.ok(order.length === 8 && order[0]!.name === "Valiant" && order[0]!.states.includes("selected"), "the acting ship heads the order, selected");
+    t.ok(status.some((e) => e.role === "meter" && e.name === "Shields" && e.value === "3 / 4"), "the shields are pips, three of four");
+    const order = ui(run, "scifi-turnOrder.json").filter((e) => e.role === "listitem");
+    t.ok(order.length === 8 && order[0]!.name === "Valiant, acting now" && order[0]!.states.includes("selected"), "the acting ship heads the order, selected");
+    t.ok(order.filter((e) => e.name.endsWith(", hostile")).length === 4, "the four enemies are said hostile");
     const cards = ui(run, "scifi-abilityCards.json");
     t.equal(cards.filter((e) => e.id === "Card" && e.role === "button").length, 6, "a hand of six cards");
     t.ok(cards.some((e) => e.id === "EndTurn" && e.role === "button"), "End turn is there");
-    t.ok(ui(run, "scifi-sectorMap.json").some((e) => e.role === "image" && e.name.endsWith("current sector")), "the current sector is marked");
+    t.ok(ui(run, "scifi-sectorMap.json").some((e) => e.role === "button" && e.name === "Allied, current sector" && e.value === "current"), "the current sector is marked");
     t.ok(ui(run, "scifi-hangar-carriers.json").some((e) => e.role === "option" && e.name.startsWith("Carriers") && e.states.includes("selected")), "a class picked is the selected row");
     t.frame(script.files, () => {
       for (const f of script.files) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);

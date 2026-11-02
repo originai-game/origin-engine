@@ -1426,7 +1426,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       back = og.ui.back();
       break;
     case "sectorMap":
-      sectorMapScreen(world);
+      sectorMapScreen();
       back = og.ui.back();
       break;
     case "hangar":

@@ -19,7 +19,7 @@ export default playtest({
     for (const e of ui(run, "scifi-hangar.json").filter((x) => x.role === "button" && !x.clipped)) {
       t.ok(e.width >= 43.5 && e.height >= 43.5, `${e.id} (${e.name}) is a whole touch target: ${Math.round(e.width)}×${Math.round(e.height)}`);
     }
-    t.ok(ui(run, "scifi-turnOrder.json").some((e) => e.role === "option" && e.name === "Valiant" && e.states.includes("selected")), "the acting ship heads the order, selected");
+    t.ok(ui(run, "scifi-turnOrder.json").some((e) => e.role === "listitem" && e.name === "Valiant, acting now" && e.states.includes("selected")), "the acting ship heads the order, selected");
     t.ok(ui(run, "scifi-abilityCards.json").some((e) => e.id === "EndTurn" && e.role === "button"), "End turn is there");
     t.frame(script.files, () => {
       for (const f of script.files) t.equal(run.png(f).width, 1170, `${f} is 1170 wide`);
