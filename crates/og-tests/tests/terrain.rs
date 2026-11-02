@@ -276,6 +276,7 @@ fn layers_follow_slope_altitude_and_the_control_map() {
             height: m,
             rgba: Arc::from(rgba),
         }),
+        holes: None,
     };
     let mut scene = RenderScene::new();
     let h = scene.add_terrain(data);
@@ -403,6 +404,42 @@ fn an_edit_changes_the_drawn_surface() {
     assert!(
         changed(1100, 600, 1270, 710) < 0.5,
         "the near ground far from it is unchanged"
+    );
+}
+
+/// R6's holes: the pit's centre shows the orange cave floor below it; a point of the meadow 6 m outside the pit is ground
+/// (greener than red). With the hole map gone the pit's centre is ground
+/// again: the hole is the map's.
+#[test]
+fn holes_cut_the_drawn_surface_and_its_shadow() {
+    let scene = ts::holes_scene();
+    let (holed, stats) = render(&scene);
+    keep("holes", &holed);
+    assert!(stats.terrain_shadow_draws > 0, "{stats:?}");
+    let c = ts::pit_center();
+    let floor = Vec3::new(c.x, ts::pit_floor(), c.z);
+    let pit = color_at(&holed, project(&scene.camera, floor));
+    assert!(
+        pit[0] > pit[1] * 1.4 && pit[0] > 60.0,
+        "the lit cave floor through the hole: {pit:?}"
+    );
+    let x = ts::PIT_X[1] + 6.0;
+    let beside = Vec3::new(x, ts::island_height(x, c.z), c.z);
+    let meadow = color_at(&holed, project(&scene.camera, beside));
+    assert!(meadow[1] > meadow[0], "the meadow beside it: {meadow:?}");
+
+    let mut filled = ts::holes_scene();
+    let handle = filled.terrains[0].terrain;
+    let mut data = filled.terrain(handle).expect("data").clone();
+    assert!(data.hole(Vec2::new(c.x, c.z)));
+    data.holes = None;
+    assert!(filled.set_terrain(handle, data));
+    let (closed, _) = render(&filled);
+    keep("holes-filled", &closed);
+    let ground = color_at(&closed, project(&scene.camera, c));
+    assert!(
+        ground[1] > ground[0],
+        "the pit's centre filled in is meadow: {ground:?}"
     );
 }
 

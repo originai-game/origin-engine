@@ -70,6 +70,7 @@ fn meadow() -> RenderScene {
             height: 2,
             rgba: Arc::from([255u8, 0, 0, 0].repeat(4)),
         }),
+        holes: None,
     });
     let layers = island_layers(&mut scene);
     scene.terrains.push(Terrain {
@@ -340,6 +341,7 @@ pub fn ssr_floor_scene(floor: SsrFloor, ssr: bool) -> RenderScene {
                 rows: 15,
                 heights: Arc::from(vec![0.0f32; 15 * 15]),
                 control: None,
+                holes: None,
             });
             scene.terrains.push(Terrain {
                 layers: vec![og_render::TerrainLayer {

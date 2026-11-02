@@ -34,6 +34,7 @@ fn field(columns: u32, rows: u32, size: Vec2, f: impl Fn(f32, f32) -> f32) -> He
         rows,
         size,
         heights: Arc::from(heights),
+        holes: None,
     }
 }
 
@@ -198,6 +199,7 @@ fn bad_or_missing_fields_are_refused() {
                 rows: 3,
                 size: Vec2::ONE,
                 heights: Arc::from(vec![0.0; 8]),
+                holes: None,
             }
         )
         .is_err()
@@ -227,4 +229,54 @@ fn bad_or_missing_fields_are_refused() {
     spawn_static(&mut w2, at(0.0, 0.0, 0.0), terrain_collider(1));
     let e = w2.step().unwrap_err();
     assert!(e.to_string().contains("3D only"), "{e}");
+}
+
+/// A terrain's holes: cell (column 5, row 1) of an 8 × 4 field cut out.
+/// A ray through it misses and a ball dropped over it falls through,
+/// while the cell across the row diagonal (column 5, row 2: where a
+/// transposed or mirrored map would put the hole) and the rest hold; the
+/// same drop twice lands bit for bit the same; a hole map of the wrong
+/// size is refused.
+#[test]
+fn holes_are_cut_out_of_the_field() {
+    let holed = || {
+        let mut f = field(9, 5, Vec2::new(8.0, 4.0), |_, _| 0.0);
+        let mut holes = vec![0u8; 8 * 4];
+        holes[8 + 5] = 1;
+        f.holes = Some(Arc::from(holes));
+        f
+    };
+    let drop = || {
+        let (mut w, p) = world(Physics::default(), 1);
+        p.set_heightfield(4, holed()).unwrap();
+        spawn_static(&mut w, at(0.0, 0.0, 0.0), terrain_collider(4));
+        run(&mut w, 1);
+        // Cell (5, 1) spans x 1..2, z -1..0.
+        assert!(down(&p, &w, 1.5, -0.5).is_none(), "the hole");
+        assert!(down(&p, &w, 1.5, 0.5).unwrap().point.y.abs() < 1e-3);
+        assert!(down(&p, &w, 0.5, -0.5).unwrap().point.y.abs() < 1e-3);
+        let over = spawn_body(
+            &mut w,
+            at(1.5, 3.0, -0.5),
+            RigidBody::default(),
+            Collider::sphere(0.3),
+        );
+        let beside = spawn_body(
+            &mut w,
+            at(1.5, 3.0, 0.5),
+            RigidBody::default(),
+            Collider::sphere(0.3),
+        );
+        run(&mut w, 120);
+        (transform(&w, over).position, transform(&w, beside).position)
+    };
+    let (over, beside) = drop();
+    assert!(over.y < -2.0, "fell through the hole to {over}");
+    assert!((beside.y - 0.3).abs() < 0.05, "rests beside it at {beside}");
+    assert_eq!(drop(), (over, beside));
+
+    let (_, p) = world(Physics::default(), 1);
+    let mut bad = holed();
+    bad.holes = Some(Arc::from(vec![0u8; 9 * 5]));
+    assert!(p.set_heightfield(1, bad).is_err());
 }

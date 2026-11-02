@@ -67,6 +67,7 @@ fn register(p: &PhysicsSystem) {
             rows: 16,
             size: Vec2::new(30.0, 30.0),
             heights,
+            holes: None,
         },
     )
     .unwrap();

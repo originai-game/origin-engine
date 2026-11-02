@@ -96,7 +96,7 @@ fn a_streamed_terrain_draws_what_has_arrived() {
     let data = ts::island();
     let layout = data.layout(128).expect("layout");
     let control = og_render::ControlPyramid::new(&layout, data.control.as_ref().unwrap());
-    let tile = |i: u32| Arc::new(data.tile(&layout, i, control.as_ref()));
+    let tile = |i: u32| Arc::new(data.tile(&layout, i, control.as_ref(), None));
     let memory = crack_view(ts::island_scene());
     let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
     r.render(&memory, &RenderTarget::Offscreen).expect("render");
@@ -182,7 +182,7 @@ fn a_streamed_tile_of_the_wrong_size_is_refused() {
     let layout = data.layout(128).expect("layout");
     let control = og_render::ControlPyramid::new(&layout, data.control.as_ref().unwrap());
     let top = layout.index(layout.levels - 1, 0, 0);
-    let good = data.tile(&layout, top, control.as_ref());
+    let good = data.tile(&layout, top, control.as_ref(), None);
     let mut scene = crack_view(ts::island_scene());
     let h = scene.add_terrain_stream(layout, data.range());
     scene.terrains[0].terrain = h;

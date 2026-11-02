@@ -494,6 +494,7 @@ pub fn sprites_shadow_terrain_scene() -> RenderScene {
         rows,
         heights: heights.into(),
         control: None,
+        holes: None,
     };
     let checker = scene.add_texture(shapes::checker(512, 16));
     let handle = scene.add_terrain(data.clone());

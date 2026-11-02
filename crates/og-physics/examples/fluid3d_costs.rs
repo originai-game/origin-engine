@@ -38,6 +38,7 @@ fn world(bowl: bool) -> (World, PhysicsSystem) {
                 rows: n,
                 size: Vec2::splat(size),
                 heights: Arc::from(heights),
+                holes: None,
             },
         )
         .unwrap();

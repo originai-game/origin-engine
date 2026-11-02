@@ -1,6 +1,8 @@
 // The terrain's lit, prepass and normal-map passes. Prepended by
 // frame.wgsl, the light tables (clusters.rs), lighting.wgsl and terrain.wgsl.
 //
+// Holes (terrain.wgsl terrain_hole) are discarded in every pass.
+//
 // Shading: the normal from the terrain's normal map (built from the
 // heights on the GPU, mipmapped), up to four layers weighted by the
 // control map's channels times each layer's slope and altitude rule,
@@ -196,6 +198,7 @@ fn terrain_look(in: TerrainOut, point: TerrainPoint, dpx: vec3<f32>, dpy: vec3<f
 
 @fragment
 fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
+  if (terrain_hole_at(in.local)) { discard; }
   let p = in.world;
   let dpx = dpdx(p);
   let dpy = dpdy(p);
@@ -252,6 +255,7 @@ struct TerrainPrepass {
 
 @fragment
 fn fs_prepass(in: TerrainOut) -> TerrainPrepass {
+  if (terrain_hole_at(in.local)) { discard; }
   let point = terrain_point(in.local);
   let n = point.normal;
   // The layers' roughness as the lit pass shades it, for screen-space

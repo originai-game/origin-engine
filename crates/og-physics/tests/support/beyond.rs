@@ -278,6 +278,7 @@ pub fn scene3d(w: &mut World, physics: &PhysicsSystem) -> Cast {
                 rows: n,
                 size: Vec2::splat(size),
                 heights: std::sync::Arc::from(heights),
+                holes: None,
             },
         )
         .unwrap();

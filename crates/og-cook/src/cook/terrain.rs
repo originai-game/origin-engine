@@ -18,6 +18,7 @@
 //! height 0 320                    # the metres black and white stand for (EXR: 0 1, metres as stored)
 //! size 2048 2048                  # metres along x and z (default: one metre per sample)
 //! control "island-control.png"    # optional: RGBA, one channel per layer
+//! holes "island-holes.png"        # optional: black (or transparent) cuts the cell out
 //! tile 128                        # quads per tile side (16 to 1024)
 //! heightBlend 0.6
 //! castShadows true
@@ -117,6 +118,13 @@
 //! A channel is the most any of its layer's biomes gives a sample (its
 //! weight times its three bands); the control map has the field's samples.
 //!
+//! **Holes.** A `holes` map (any size, read at each cell's centre) cuts
+//! the cells it is black or transparent over out of the surface: neither
+//! drawn nor collided with (a cave mouth, a pit, a tunnel through a
+//! hill). Each tile carries its cells' flags in its heights' lowest bit,
+//! a coarser level's cell a hole where most of the field cells it spans
+//! are (`og_render::HoleCounts`).
+//!
 //! The heightmap and the control map are read relative to the terrain file
 //! (or, failing that, `assets/`); they are part of the terrain, not
 //! textures of their own.
@@ -209,7 +217,7 @@ pub(super) fn terrain_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
     let Ok(doc) = Document::parse(text) else {
         return Vec::new();
     };
-    ["heightmap", "control"]
+    ["heightmap", "control", "holes"]
         .iter()
         .filter_map(|k| string_of(&doc.body, k))
         .map(|n| resolve(rel, root, &n))
@@ -297,6 +305,8 @@ pub(super) struct TerrainDoc {
     pub heightmap: Option<String>,
     pub generate: Option<super::terrain_generate::Generate>,
     pub control: Option<String>,
+    /// The hole map (an asset path).
+    pub holes: Option<String>,
     pub height: [f32; 2],
     pub size: Option<[f32; 2]>,
     pub tile: u32,
@@ -311,12 +321,13 @@ pub(super) struct TerrainDoc {
     pub normal_array: Option<String>,
 }
 
-const KEYS: [&str; 13] = [
+const KEYS: [&str; 14] = [
     "heightmap",
     "generate",
     "height",
     "size",
     "control",
+    "holes",
     "tile",
     "heightBlend",
     "castShadows",
@@ -504,6 +515,7 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
         heightmap: heightmap.map(|h| resolve(rel, root, &h)),
         generate,
         control: string_of(body, "control").map(|c| resolve(rel, root, &c)),
+        holes: string_of(body, "holes").map(|c| resolve(rel, root, &c)),
         height,
         size,
         tile: tile as u32,
@@ -527,6 +539,8 @@ pub(super) struct Field {
     /// quantisation): a heightmap's `min + v · (max - min)`.
     pub heights: Vec<f32>,
     pub control: Option<og_render::TerrainControl>,
+    /// Its cells cut out (`og_render::TerrainData::holes`; `None`: none).
+    pub holes: Option<Vec<u8>>,
     /// Its extent: `size`, or a metre per sample.
     pub size: [f32; 2],
     pub exr: bool,
@@ -555,6 +569,26 @@ pub(super) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
             }
         }
     };
+    // Each cell a hole where the map is black or transparent at its centre.
+    let holes = |columns: u32, rows: u32| -> Result<Option<Vec<u8>>, String> {
+        let Some(h) = &doc.holes else {
+            return Ok(None);
+        };
+        let img = super::texture::decode(&read(h, "hole map")?).map_err(|e| format!("{h}: {e}"))?;
+        let (cx, cz) = (columns - 1, rows - 1);
+        let mut out = vec![0u8; (cx * cz) as usize];
+        for r in 0..cz {
+            let y = ((r as f32 + 0.5) / cz as f32 * img.height as f32) as u32;
+            for c in 0..cx {
+                let x = ((c as f32 + 0.5) / cx as f32 * img.width as f32) as u32;
+                let at = ((y.min(img.height - 1) * img.width + x.min(img.width - 1)) * 4) as usize;
+                let p = &img.rgba[at..at + 4];
+                let black = p[0].max(p[1]).max(p[2]) < 128;
+                out[(r * cx + c) as usize] = u8::from(black || p[3] < 128);
+            }
+        }
+        Ok(out.contains(&1).then_some(out))
+    };
     let size_of = |columns: u32, rows: u32| {
         doc.size
             .unwrap_or([(columns - 1) as f32, (rows - 1) as f32])
@@ -575,6 +609,7 @@ pub(super) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
             rows: g.rows,
             heights: made.heights,
             control,
+            holes: holes(g.columns, g.rows)?,
             size,
             exr: false,
             generated: Some((g.sea, made.river_length)),
@@ -591,6 +626,7 @@ pub(super) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
         rows: map.rows,
         heights: map.values.iter().map(|v| lo + v * (hi - lo)).collect(),
         control: control()?,
+        holes: holes(map.columns, map.rows)?,
         size: size_of(map.columns, map.rows),
         exr: map.exr,
         generated: None,
@@ -631,12 +667,17 @@ pub(super) fn cook_terrain(
 
     let control = source.control;
     let (control_w, control_h) = control.as_ref().map_or((0, 0), |c| (c.width, c.height));
+    let hole_cells = source
+        .holes
+        .as_ref()
+        .map_or(0, |h| h.iter().filter(|c| **c != 0).count() as u32);
     let field = og_render::TerrainData {
         size: glam::Vec2::new(size[0], size[1]),
         columns,
         rows,
         heights: source.heights.into(),
         control,
+        holes: source.holes.map(Into::into),
     };
     field.check().map_err(CookError)?;
     let layout = field.layout(doc.tile).map_err(CookError)?;
@@ -646,22 +687,30 @@ pub(super) fn cook_terrain(
         .control
         .as_ref()
         .and_then(|c| og_render::ControlPyramid::new(&layout, c));
+    let holes = field.hole_counts();
     // Every tile of every level: its heights quantised over the terrain's
-    // range, its control texels, each zlib'd on its own.
+    // range (with holes, the lowest bit its sample's cell's hole flag),
+    // its control texels, each zlib'd on its own.
     let mut tiles = Vec::new();
     let mut packed = Vec::new();
     let mut control_packed = Vec::new();
     for index in 0..layout.tile_count() {
         let (level, x, z) = layout.locate(index).expect("in the layout");
-        let heights = field.tile_heights(&layout, index);
+        let mut heights = field.tile_heights(&layout, index);
+        if let Some(h) = &holes {
+            og_render::mark_holes(&layout, index, &mut heights, h);
+        }
         let (mut lo, mut hi) = (f32::MAX, f32::MIN);
         let mut q = Vec::with_capacity(heights.len() * 2);
         for v in &heights {
             lo = lo.min(*v);
             hi = hi.max(*v);
-            let n = (((v - lo_all) / span) * 65535.0)
+            let mut n = (((v - lo_all) / span) * 65535.0)
                 .round()
                 .clamp(0.0, 65535.0) as u16;
+            if holes.is_some() {
+                n = (n & !1) | u16::from(og_render::hole_bit(*v));
+            }
             q.extend_from_slice(&n.to_le_bytes());
         }
         let z_heights = miniz_oxide::deflate::compress_to_vec_zlib(&q, 6);
@@ -756,6 +805,7 @@ pub(super) fn cook_terrain(
         sea: u32::from(sea.is_some()),
         sea_level: sea.unwrap_or(0.0),
         river_length,
+        holes: hole_cells,
     };
     let mut w = BlobWriter::new(
         format::Terrain::type_hash(),
@@ -790,6 +840,9 @@ pub(super) fn cook_terrain(
             String::new()
         }
     )];
+    if hole_cells > 0 {
+        notes.push(format!("{hole_cells} cell(s) cut out as holes"));
+    }
     if source.exr {
         notes.push("heights from an EXR's first channel".into());
     }

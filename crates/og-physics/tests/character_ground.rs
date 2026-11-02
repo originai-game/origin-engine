@@ -165,6 +165,7 @@ fn terrain(w: &mut World, p: &PhysicsSystem) {
             rows: 81,
             size: Vec2::splat(80.0),
             heights: Arc::from(vec![0.0f32; 81 * 81]),
+            holes: None,
         },
     )
     .unwrap();

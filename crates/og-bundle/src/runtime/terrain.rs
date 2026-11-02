@@ -79,7 +79,9 @@ impl CookedTerrain {
         Some((h, c))
     }
 
-    /// A tile's heights in metres from its inflated 16-bit values.
+    /// A tile's heights in metres from its inflated 16-bit values (with
+    /// holes, each one's lowest bit its cell's hole flag:
+    /// `og_render::hole_bit`).
     pub fn heights_from(&self, index: u32, raw: &[u8]) -> Result<Vec<f32>, LoadError> {
         let side = self.layout.heights_side() as usize;
         if raw.len() != side * side * 2 {
@@ -87,11 +89,20 @@ impl CookedTerrain {
         }
         let (lo, hi) = self.range;
         let span = hi - lo;
+        let holes = self.layout.holes;
         Ok(raw
             .as_chunks::<2>()
             .0
             .iter()
-            .map(|v| lo + u16::from_le_bytes(*v) as f32 / 65535.0 * span)
+            .map(|v| {
+                let q = u16::from_le_bytes(*v);
+                let h = lo + q as f32 / 65535.0 * span;
+                if holes {
+                    og_render::with_hole_bit(h, q & 1 != 0)
+                } else {
+                    h
+                }
+            })
             .collect())
     }
 
@@ -163,6 +174,7 @@ impl CookedTerrain {
         let side = l.heights_side() as usize;
         let (tx, tz) = l.tiles(0);
         let mut heights = vec![0.0f32; cols * rows];
+        let mut holes = vec![0u8; (cols - 1) * (rows - 1)];
         let c = l.control as usize;
         let cside = l.control_side() as usize;
         let (cw, ch) = (c * tx as usize, c * tz as usize);
@@ -182,7 +194,11 @@ impl CookedTerrain {
                         if col >= cols {
                             break;
                         }
-                        heights[r * cols + col] = h[(j + 1) * side + i + 1];
+                        let v = h[(j + 1) * side + i + 1];
+                        heights[r * cols + col] = v;
+                        if l.holes && r + 1 < rows && col + 1 < cols {
+                            holes[r * (cols - 1) + col] = u8::from(og_render::hole_bit(v));
+                        }
                     }
                 }
                 if let Some(cz) = cz {
@@ -237,6 +253,7 @@ impl CookedTerrain {
             rows: l.rows,
             heights: heights.into(),
             control,
+            holes: l.holes.then(|| holes.into()),
         };
         data.check().map_err(|e| self.bad(e))?;
         Ok(data)
@@ -255,7 +272,7 @@ impl Bundle {
         let heights = blob.raw("heights")?.to_vec();
         let control = blob.raw("control")?.to_vec();
         let control_size = (m.control_width > 0).then_some((m.control_width, m.control_height));
-        let layout = og_render::TerrainLayout::new(
+        let mut layout = og_render::TerrainLayout::new(
             glam::Vec2::new(m.size_x, m.size_z),
             m.columns,
             m.rows,
@@ -263,6 +280,7 @@ impl Bundle {
             control_size,
         )
         .map_err(|e| invalid(&blob, e))?;
+        layout.holes = m.holes > 0;
         if layout.control != m.control || layout.levels != m.levels {
             return Err(invalid(&blob, "the tile layout does not match its cook"));
         }

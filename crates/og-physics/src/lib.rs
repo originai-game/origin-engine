@@ -120,6 +120,10 @@ pub struct HeightfieldDesc {
     pub rows: u32,
     pub size: Vec2,
     pub heights: Arc<[f32]>,
+    /// The cells cut out (a terrain's holes): `(columns - 1)` ×
+    /// `(rows - 1)` bytes, row-major like the heights, non-zero removed;
+    /// nothing collides with a removed cell. `None`: none.
+    pub holes: Option<Arc<[u8]>>,
 }
 
 /// The shape of a shape cast or an overlap test: the shape fields of a
@@ -945,6 +949,20 @@ impl PhysicsSystem {
                     field.rows,
                     field.columns * field.rows,
                     field.heights.len()
+                ),
+            ));
+        }
+        if let Some(h) = &field.holes
+            && h.len() != ((field.columns - 1) * (field.rows - 1)) as usize
+        {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!(
+                    "height field {handle}: {} × {} heights have {} cells, its holes {}",
+                    field.columns,
+                    field.rows,
+                    (field.columns - 1) * (field.rows - 1),
+                    h.len()
                 ),
             ));
         }

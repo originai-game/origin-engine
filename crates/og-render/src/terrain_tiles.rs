@@ -49,6 +49,9 @@ pub struct TerrainLayout {
     pub control: u32,
     /// Pyramid levels; the last is one tile.
     pub levels: u32,
+    /// The terrain has holes: each tile height's lowest bit is the hole
+    /// flag of the cell at that sample ([`mark_holes`]).
+    pub holes: bool,
 }
 
 fn ceil_log2(n: u32) -> u32 {
@@ -93,6 +96,7 @@ impl TerrainLayout {
             tile,
             control,
             levels: levels.min(MAX_TERRAIN_PYRAMID),
+            holes: false,
         };
         if levels > MAX_TERRAIN_PYRAMID || layout.tile_count() > MAX_TERRAIN_TILES {
             return Err(format!(
@@ -241,6 +245,91 @@ pub(crate) fn mip_sides(side: u32) -> Vec<u32> {
         out.push((out.last().expect("one") / 2).max(1));
     }
     out
+}
+
+/// A terrain's holes as its tiles carry them: a cell of pyramid level `k`
+/// (the `2^k` × `2^k` field cells between its samples, fewer at the far
+/// edges) is a hole when more than half of its field cells are, so a
+/// coarse tile standing in for one that has not arrived keeps the larger
+/// holes and drops the slivers. Counted with a summed-area table of the
+/// field's hole cells.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HoleCounts {
+    /// Cells along x (the table is `(cells_x + 1)` wide).
+    cells_x: u32,
+    cells_z: u32,
+    sums: Vec<u32>,
+}
+
+impl HoleCounts {
+    /// The counts of a hole map of `cells_x` × `cells_z` cells (non-zero
+    /// is a hole; [`TerrainData::holes`]).
+    pub fn new(cells_x: u32, cells_z: u32, holes: &[u8]) -> HoleCounts {
+        let w = cells_x as usize + 1;
+        let mut sums = vec![0u32; w * (cells_z as usize + 1)];
+        for r in 0..cells_z as usize {
+            let mut row = 0;
+            for c in 0..cells_x as usize {
+                row += u32::from(holes.get(r * cells_x as usize + c).is_some_and(|h| *h != 0));
+                sums[(r + 1) * w + c + 1] = sums[r * w + c + 1] + row;
+            }
+        }
+        HoleCounts {
+            cells_x,
+            cells_z,
+            sums,
+        }
+    }
+
+    /// Hole cells among field cells `c0..c1` × `r0..r1`.
+    fn count(&self, c0: u32, c1: u32, r0: u32, r1: u32) -> u32 {
+        let w = self.cells_x as usize + 1;
+        let at = |c: u32, r: u32| self.sums[r as usize * w + c as usize];
+        at(c1, r1) + at(c0, r0) - at(c0, r1) - at(c1, r0)
+    }
+
+    /// Whether cell (`gx`, `gz`) of pyramid `level` is a hole.
+    pub fn hole(&self, layout: &TerrainLayout, level: u32, gx: i64, gz: i64) -> bool {
+        let span = |g: i64, n: u32| {
+            let a = layout.fine(level, g, n + 1).min(n);
+            let b = layout.fine(level, g + 1, n + 1).min(n);
+            (a, b)
+        };
+        if gx < 0 || gz < 0 {
+            return false;
+        }
+        let (c0, c1) = span(gx, self.cells_x);
+        let (r0, r1) = span(gz, self.cells_z);
+        let area = (c1 - c0) * (r1 - r0);
+        area > 0 && self.count(c0, c1, r0, r1) * 2 > area
+    }
+}
+
+/// `height` with its lowest bit set to `hole` (the flag the tile's height
+/// texture carries for the shaders).
+pub fn with_hole_bit(height: f32, hole: bool) -> f32 {
+    f32::from_bits((height.to_bits() & !1) | u32::from(hole))
+}
+
+/// Whether a tile height carries the hole flag ([`with_hole_bit`]).
+pub fn hole_bit(height: f32) -> bool {
+    height.to_bits() & 1 != 0
+}
+
+/// Marks a tile's `(tile + 3)²` heights ([`tile_heights`]) with the hole
+/// flags of the cells at their samples on its level.
+pub fn mark_holes(layout: &TerrainLayout, index: u32, heights: &mut [f32], holes: &HoleCounts) {
+    let (k, tx, tz) = layout.locate(index).unwrap_or((0, 0, 0));
+    let t = layout.tile as i64;
+    let side = layout.heights_side() as i64;
+    for j in 0..side {
+        let gz = tz as i64 * t + j - 1;
+        for i in 0..side {
+            let gx = tx as i64 * t + i - 1;
+            let at = (j * side + i) as usize;
+            heights[at] = with_hole_bit(heights[at], holes.hole(layout, k, gx, gz));
+        }
+    }
 }
 
 /// One tile ready to draw: its heights (metres, `(tile + 3)²`, the border
@@ -511,13 +600,21 @@ impl ControlPyramid {
 impl TerrainData {
     /// This field's layout in tiles of `tile` quads.
     pub fn layout(&self, tile: u32) -> Result<TerrainLayout, String> {
-        TerrainLayout::new(
+        let mut layout = TerrainLayout::new(
             self.size,
             self.columns,
             self.rows,
             tile,
             self.control.as_ref().map(|c| (c.width, c.height)),
-        )
+        )?;
+        layout.holes = self.holes.is_some();
+        Ok(layout)
+    }
+
+    /// The hole counts its tiles are marked from (`None`: no holes).
+    pub fn hole_counts(&self) -> Option<HoleCounts> {
+        let (cx, cz) = self.cells();
+        self.holes.as_ref().map(|h| HoleCounts::new(cx, cz, h))
     }
 
     /// A tile's `(tile + 3)²` heights: the field's samples under its
@@ -528,17 +625,23 @@ impl TerrainData {
         })
     }
 
-    /// A tile ready to draw (`control`: this field's control pyramid).
+    /// A tile ready to draw (`control`: this field's control pyramid;
+    /// `holes`: its hole counts, which mark the heights).
     pub fn tile(
         &self,
         layout: &TerrainLayout,
         index: u32,
         control: Option<&ControlPyramid>,
+        holes: Option<&HoleCounts>,
     ) -> TerrainTile {
+        let mut heights = self.tile_heights(layout, index);
+        if let Some(h) = holes {
+            mark_holes(layout, index, &mut heights, h);
+        }
         TerrainTile::build(
             layout,
             index,
-            self.tile_heights(layout, index),
+            heights,
             control.map(|p| p.tile(layout, index)),
         )
     }

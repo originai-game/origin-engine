@@ -31,6 +31,15 @@
 //! first layer shows. A layer is sampled over world xz every `tile` metres
 //! or triplanar (cliffs), with an optional normal map.
 //!
+//! **Holes.** [`TerrainData::holes`] cuts cells out (a cave mouth, a
+//! pit): every tile height's lowest bit carries the hole flag of the cell
+//! at its sample on the tile's level (`terrain_tiles::mark_holes`, a
+//! coarser cell a hole where most of its field cells are), and the lit,
+//! prepass and shadow passes discard a fragment over a hole of the finest
+//! resident tile, so light falls through it too. No binding: the flag
+//! rides in the height texture the passes already read. Physics removes
+//! the same cells from the height field (og-physics `HeightfieldDesc`).
+//!
 //! **Layer arrays.** A terrain's layers may take their albedo and normal
 //! maps from two texture arrays instead ([`Terrain::layer_arrays`], each
 //! layer naming its layers with [`TerrainLayer::albedo_layer`] and
@@ -70,8 +79,8 @@ pub struct TerrainControl {
 
 /// A terrain's geometry: `columns` × `rows` heights in metres over a
 /// `size` rectangle centred on the terrain's origin, row-major from -z to
-/// +z and -x to +x (sample `(c, r)` at `-size / 2 + (c, r) · cell`), and
-/// an optional control map.
+/// +z and -x to +x (sample `(c, r)` at `-size / 2 + (c, r) · cell`), an
+/// optional control map and optional holes.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TerrainData {
     pub size: Vec2,
@@ -79,6 +88,11 @@ pub struct TerrainData {
     pub rows: u32,
     pub heights: Arc<[f32]>,
     pub control: Option<TerrainControl>,
+    /// The cells cut out of the surface: `(columns - 1)` × `(rows - 1)`
+    /// bytes, row-major like the heights, cell `(c, r)` the quad whose
+    /// -x, -z corner is sample `(c, r)`; non-zero is a hole. Neither drawn
+    /// nor collided with (`None`: no holes).
+    pub holes: Option<Arc<[u8]>>,
 }
 
 impl TerrainData {
@@ -90,7 +104,24 @@ impl TerrainData {
             rows,
             heights: Arc::from(vec![0.0; (columns * rows) as usize]),
             control: None,
+            holes: None,
         }
+    }
+
+    /// Cells along x and z (the hole map's size).
+    pub fn cells(&self) -> (u32, u32) {
+        (self.columns.max(1) - 1, self.rows.max(1) - 1)
+    }
+
+    /// Whether the cell under `local` (x and z relative to the terrain's
+    /// centre) is a hole; off the terrain, never.
+    pub fn hole(&self, local: Vec2) -> bool {
+        let Some(holes) = &self.holes else {
+            return false;
+        };
+        TerrainSampler::of(self)
+            .cell_of(local)
+            .is_some_and(|(c, r)| holes[(r * self.cells().0 + c) as usize] != 0)
     }
 
     /// The distance between two samples along x and z.
@@ -127,6 +158,18 @@ impl TerrainData {
         }
         if self.heights.iter().any(|h| !h.is_finite()) {
             return Err("a terrain's heights must be finite".into());
+        }
+        if let Some(h) = &self.holes {
+            let (cx, cz) = self.cells();
+            if h.len() != (cx * cz) as usize {
+                return Err(format!(
+                    "a {} × {} terrain has {} cells, its hole map {}",
+                    self.columns,
+                    self.rows,
+                    cx * cz,
+                    h.len()
+                ));
+            }
         }
         if let Some(c) = &self.control
             && (c.width == 0 || c.height == 0 || c.rgba.len() != (c.width * c.height * 4) as usize)
@@ -207,6 +250,19 @@ impl<F: Fn(u32, u32) -> f32> TerrainSampler<F> {
             Vec2::ZERO,
             Vec2::new(self.columns as f32 - 1.0, self.rows as f32 - 1.0),
         )
+    }
+
+    /// The cell (column, row) under `local`: the quad whose -x, -z corner is
+    /// that sample; `None` off the terrain.
+    pub fn cell_of(&self, local: Vec2) -> Option<(u32, u32)> {
+        let t = (local + self.size * 0.5) / self.cell();
+        let n = Vec2::new(self.columns as f32 - 1.0, self.rows as f32 - 1.0);
+        if !(t.x >= 0.0 && t.y >= 0.0 && t.x <= n.x && t.y <= n.y) {
+            return None;
+        }
+        let c = (t.x as u32).min(self.columns - 2);
+        let r = (t.y as u32).min(self.rows - 2);
+        Some((c, r))
     }
 
     /// As [`TerrainData::height`].
@@ -626,6 +682,8 @@ struct GpuData {
     by_tile: std::collections::HashMap<u32, usize>,
     /// A field in memory's control map resampled for its tiles.
     pyramid: Option<ControlPyramid>,
+    /// A field in memory's hole counts (its tiles' hole flags).
+    holes: Option<crate::terrain_tiles::HoleCounts>,
     range: (f32, f32),
     streamed: bool,
     /// Drawn in an earlier frame: tiles arriving now fade in.
@@ -657,6 +715,9 @@ pub(crate) struct TerrainRenderer {
     /// albedo (5) and normal (9) maps as 2D arrays and no other layer
     /// texture, and its pipelines; made when a terrain first needs it.
     arrays: Option<(wgpu::BindGroupLayout, TerrainPasses)>,
+    /// The passes with the hole test (a terrain with holes): the standard
+    /// layout's, then the layer-array variant's; made when first needed.
+    holed: [Option<TerrainPasses>; 2],
     /// The variant's stand-ins for a missing array: white and the flat normal.
     array_stand_ins: Option<(wgpu::TextureView, wgpu::TextureView)>,
     /// What the variant is made from.
@@ -716,7 +777,11 @@ pub(crate) enum TerrainPass {
     Shadow,
 }
 
-/// The pipelines in [`TerrainPasses`] over `layout`, from these modules.
+/// The pipelines in [`TerrainPasses`] over `layout`, from these modules;
+/// `holes`: with the hole test (terrain.wgsl `TERRAIN_HOLES`), whose
+/// discard a terrain without holes leaves out (early depth and Apple's
+/// hidden-surface removal keep working for it).
+#[allow(clippy::too_many_arguments)]
 fn terrain_passes(
     device: &wgpu::Device,
     frame_layout: &wgpu::BindGroupLayout,
@@ -725,6 +790,7 @@ fn terrain_passes(
     samples: u32,
     lit_source: String,
     shadow_source: String,
+    holes: bool,
 ) -> TerrainPasses {
     // Made when a terrain is first drawn (deferred.rs).
     let lit_module = crate::deferred::module(device, "terrain", lit_source);
@@ -739,26 +805,39 @@ fn terrain_passes(
     };
     let lit_layout = pl("terrain", &[frame_layout, layout]);
     let shadow_layout = pl("terrain shadow", &[shadow_layout, layout]);
-    let lit = crate::deferred_hdr(
-        device,
-        &lit_layout,
-        lit_module.clone(),
-        samples,
-        move |layout, module| crate::HdrPipeline {
-            alpha_to_coverage: false,
-            label: "terrain",
-            layout,
-            module,
-            vs: "vs",
-            fs: "fs",
-            buffers: &[],
-            cull: Some(wgpu::Face::Back),
-            depth_write: true,
-            depth_compare: wgpu::CompareFunction::Less,
-            blend: None,
-            samples,
-        },
-    );
+    let constants: &'static [(&'static str, f64)] = if holes {
+        &[("TERRAIN_HOLES", 1.0)]
+    } else {
+        &[("TERRAIN_HOLES", 0.0)]
+    };
+    let lit = {
+        let (device, lit_layout, lit_module) =
+            (device.clone(), lit_layout.clone(), lit_module.clone());
+        crate::deferred::Sampled::new(samples, move |samples| {
+            crate::hdr_pipeline_with(
+                &device,
+                constants,
+                crate::HdrPipeline {
+                    alpha_to_coverage: false,
+                    label: "terrain",
+                    layout: &lit_layout,
+                    module: lit_module.module(),
+                    vs: "vs",
+                    fs: "fs",
+                    buffers: &[],
+                    cull: Some(wgpu::Face::Back),
+                    depth_write: true,
+                    depth_compare: wgpu::CompareFunction::Less,
+                    blend: None,
+                    samples,
+                },
+            )
+        })
+    };
+    let options = move || wgpu::PipelineCompilationOptions {
+        constants,
+        ..Default::default()
+    };
     let target = |format| {
         Some(wgpu::ColorTargetState {
             format,
@@ -785,7 +864,7 @@ fn terrain_passes(
                 vertex: wgpu::VertexState {
                     module: lit_module,
                     entry_point: Some("vs"),
-                    compilation_options: Default::default(),
+                    compilation_options: options(),
                     buffers: &[],
                 },
                 primitive: wgpu::PrimitiveState {
@@ -797,7 +876,7 @@ fn terrain_passes(
                 fragment: Some(wgpu::FragmentState {
                     module: lit_module,
                     entry_point: Some("fs_prepass"),
-                    compilation_options: Default::default(),
+                    compilation_options: options(),
                     targets: &[
                         target(crate::post::GBUFFER_FORMAT),
                         target(crate::post::LINDEPTH_FORMAT),
@@ -821,7 +900,7 @@ fn terrain_passes(
                 vertex: wgpu::VertexState {
                     module: shadow_module,
                     entry_point: Some("vs_shadow"),
-                    compilation_options: Default::default(),
+                    compilation_options: options(),
                     buffers: &[],
                 },
                 primitive: Default::default(),
@@ -830,7 +909,7 @@ fn terrain_passes(
                 fragment: Some(wgpu::FragmentState {
                     module: shadow_module,
                     entry_point: Some("fs_shadow"),
-                    compilation_options: Default::default(),
+                    compilation_options: options(),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: wgpu::TextureFormat::R32Float,
                         blend: None,

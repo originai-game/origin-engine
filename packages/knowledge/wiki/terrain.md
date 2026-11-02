@@ -2,7 +2,7 @@
 
 # The `terrain` module
 
-Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
+Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight, and an optional `holes` map whose black or transparent cells are cut out of the surface: a cave mouth, a pit, a tunnel through a hill) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
 
 Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Terrain is 3D: the 2D profile's publish and lanes modules leave it out (RenderCapabilities.world3d is false), where every call here answers a refusal naming that field. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike).
 
@@ -73,7 +73,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 27096</sub>
+<sub>`api.ogt` line 27100</sub>
 
 <a id="fn-sample"></a>
 
@@ -103,7 +103,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 27103</sub>
+<sub>`api.ogt` line 27107</sub>
 
 <a id="fn-bounds"></a>
 
@@ -145,7 +145,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 27110</sub>
+<sub>`api.ogt` line 27114</sub>
 
 <a id="fn-edit"></a>
 
@@ -177,7 +177,7 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 27126</sub>
+<sub>`api.ogt` line 27130</sub>
 
 <a id="fn-layer"></a>
 
@@ -209,7 +209,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 27134</sub>
+<sub>`api.ogt` line 27138</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -243,7 +243,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 27142</sub>
+<sub>`api.ogt` line 27146</sub>
 
 ## Components, resources and events
 
@@ -286,7 +286,7 @@ component Terrain {
 }
 ```
 
-<sub>`api.ogt` line 26853</sub>
+<sub>`api.ogt` line 26855</sub>
 
 <a id="record-TerrainScatter"></a>
 
@@ -372,7 +372,7 @@ component TerrainScatter {
 }
 ```
 
-<sub>`api.ogt` line 26874</sub>
+<sub>`api.ogt` line 26876</sub>
 
 ## Types
 
@@ -405,6 +405,8 @@ A string: one of the variants below. The zero value is `"raise"`.
 | `"flatten"` | Pull them towards the brush centre's y, by `strength` (0 to 1) at the centre. |
 | `"smooth"` | Pull each towards its neighbours' mean, by `strength` (0 to 1) at the centre. |
 | `"paint"` | Paint `layer` into the control map, by `strength` (0 to 1) at the centre. |
+| `"hole"` | Cut holes: every cell whose centre the brush weighs at least half (its falloff times `strength`) is cut out of the surface, neither drawn nor collided with. |
+| `"fill"` | Fill holes in again where `hole` would cut them. |
 
 ```ogt
 enum TerrainBrushMode {
@@ -414,6 +416,8 @@ enum TerrainBrushMode {
   variant flatten "Pull them towards the brush centre's y, by `strength` (0 to 1) at the centre."
   variant smooth "Pull each towards its neighbours' mean, by `strength` (0 to 1) at the centre."
   variant paint "Paint `layer` into the control map, by `strength` (0 to 1) at the centre."
+  variant hole "Cut holes: every cell whose centre the brush weighs at least half (its falloff times `strength`) is cut out of the surface, neither drawn nor collided with."
+  variant fill "Fill holes in again where `hole` would cut them."
 }
 ```
 
@@ -437,6 +441,7 @@ A loaded terrain.
 | `layers` | `number` | `0` | — | — | — | Its material layers (up to 4). |
 | `collision` | `boolean` | `false` | — | — | — | Whether its terrain file asks for a collider (`collision`, default true). |
 | `castShadows` | `boolean` | `false` | — | — | — | Its terrain file's `castShadows`. |
+| `holes` | `boolean` | `false` | — | — | — | Whether it has holes (its terrain file's `holes` map, or og.terrain.edit's `hole` brush): cells cut out of the surface, neither drawn nor collided with. |
 | `seaLevel` | `number \| null` | `null` | — | `m` | — | A generated terrain's sea level (`generate { sea <m> }`) above its entity: place an og.Water there, the terrain's size; null without a sea. |
 
 ```ogt
@@ -458,13 +463,14 @@ struct TerrainInfo {
   field layers u32 "Its material layers (up to 4)."
   field collision bool "Whether its terrain file asks for a collider (`collision`, default true)."
   field castShadows bool "Its terrain file's `castShadows`."
+  field holes bool "Whether it has holes (its terrain file's `holes` map, or og.terrain.edit's `hole` brush): cells cut out of the surface, neither drawn nor collided with."
   field seaLevel Option.f32 "A generated terrain's sea level (`generate { sea <m> }`) above its entity: place an og.Water there, the terrain's size; null without a sea." {
     unit m
   }
 }
 ```
 
-<sub>`api.ogt` line 26932</sub>
+<sub>`api.ogt` line 26934</sub>
 
 <a id="type-TerrainSampleDesc"></a>
 
@@ -504,7 +510,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 26955</sub>
+<sub>`api.ogt` line 26958</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -518,6 +524,7 @@ The terrain under a point.
 | `normal` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | The surface normal, smoothed between samples as the renderer shades it. |
 | `slope` | `number` | `0` | — | `deg` | — | The normal's angle from straight up. |
 | `inside` | `boolean` | `false` | — | — | — | Whether the point is over the terrain (outside, the nearest edge answers). |
+| `hole` | `boolean` | `false` | — | — | — | Whether the point is over one of its holes: nothing collides there, and `height` is the surface the hole was cut from. |
 
 ```ogt
 struct TerrainSample {
@@ -530,10 +537,11 @@ struct TerrainSample {
     unit deg
   }
   field inside bool "Whether the point is over the terrain (outside, the nearest edge answers)."
+  field hole bool "Whether the point is over one of its holes: nothing collides there, and `height` is the surface the hole was cut from."
 }
 ```
 
-<sub>`api.ogt` line 26974</sub>
+<sub>`api.ogt` line 26977</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -558,7 +566,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 26986</sub>
+<sub>`api.ogt` line 26990</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -576,7 +584,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `scale` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | — | — | How it is scaled: its og.Terrain entity's world scale. |
 | `center` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The brush's centre in world space; its y is flatten's target height. |
 | `radius` | `number` | `8` | ≥ 0.01 | `m` | — | The brush's radius in world metres (across the terrain's surface). |
-| `strength` | `number` | `1` | ≥ 0 | — | — | World metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint). |
+| `strength` | `number` | `1` | ≥ 0 | — | — | World metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint; hole and fill cut where it times the falloff is at least half). |
 | `falloff` | `number` | `0.5` | 0 … 1 | `ratio` | — | The outer part of the radius over which it fades to nothing (0: a hard edge, 1: fading from the centre). |
 | `layer` | `number` | `0` | ≤ 3 | — | — | paint: the layer painted, 0 to 3. |
 
@@ -600,7 +608,7 @@ struct TerrainBrush {
     min 0.01
     unit m
   }
-  field strength f32 "World metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint)." {
+  field strength f32 "World metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint; hole and fill cut where it times the falloff is at least half)." {
     default 1
     min 0
   }
@@ -616,7 +624,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 26996</sub>
+<sub>`api.ogt` line 27000</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -643,7 +651,7 @@ struct TerrainEdit {
 }
 ```
 
-<sub>`api.ogt` line 27030</sub>
+<sub>`api.ogt` line 27034</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -724,7 +732,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 27041</sub>
+<sub>`api.ogt` line 27045</sub>
 
 ## Column kinds
 

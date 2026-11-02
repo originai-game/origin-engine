@@ -6,19 +6,24 @@
 struct TerrainShadowOut {
   @builtin(position) clip: vec4<f32>,
   @location(0) world: vec3<f32>,
+  @location(1) local: vec3<f32>,
 };
 
 @vertex
 fn vs_shadow(@builtin(vertex_index) vi: u32) -> TerrainShadowOut {
-  let p = terrain_vertex(vi);
+  let local = terrain_local_vertex(vi);
+  let p = terrain_world(local);
   var o: TerrainShadowOut;
   o.clip = shadow_clip(vec4<f32>(p, 1.0));
   o.world = p;
+  o.local = local;
   return o;
 }
 
 @fragment
 fn fs_shadow(in: TerrainShadowOut) -> @location(0) vec4<f32> {
+  // Light falls through the holes.
+  if (terrain_hole_at(in.local)) { discard; }
   let dx = dpdx(in.world);
   let dy = dpdy(in.world);
   if (shadow_pass.light.w > 0.0) {

@@ -250,6 +250,36 @@ test("terrain edits are world state: a snapshot keeps them and a restore brings 
   expect(replay.engine.hash()).toBe(raised.hash);
 });
 
+test("the hole brush cuts the terrain out for sample and physics, and fill closes it", () => {
+  const { engine, info } = start();
+  const w = engine.world;
+  const data = info.data as never;
+  const at = (x: number, z: number) => must(og.terrain.sample(w, { data, origin: { x: 0, y: 0, z: 0 }, x, z }));
+  const ray = (x: number, z: number) => must(og.physics.raycast(w, { origin: { x, y: 50, z }, direction: { x: 0, y: -1, z: 0 } }))?.point.y ?? null;
+  expect(at(20, 20).hole).toBeFalse();
+  const before = engine.probe.snapshot() as { id: string; hash: string };
+  const cut = must(og.terrain.edit(w, data, { mode: "hole" as never, center: { x: 20, y: 0, z: 20 }, radius: 3, falloff: 0 }));
+  expect(cut.samples).toBeGreaterThan(80); // half-metre cells inside a 3 m radius
+  expect(at(20, 20).hole).toBeTrue();
+  expect(at(20, 24).hole).toBeFalse();
+  expect(engine.hash()).not.toBe(before.hash);
+  expect(engine.advance(1).ok).toBeTrue();
+  expect(ray(20, 20)).toBeNull(); // physics: nothing under the hole
+  expect(ray(20, 24)).toBeCloseTo(ground(20, 24), 1);
+  const ball = must(w.spawn({ name: "ball", position: { x: 20, y: ground(20, 20) + 3, z: 20 } }));
+  w.insert(ball, og.RigidBody, {});
+  w.insert(ball, og.Collider, { shape: SHAPE_SPHERE, radius: 0.4 });
+  expect(engine.advance(90).ok).toBeTrue();
+  expect(must(w.get(ball, og.Transform)).position.y).toBeLessThan(ground(20, 20) - 5); // fell through
+  must(og.terrain.edit(w, data, { mode: "fill" as never, center: { x: 20, y: 0, z: 20 }, radius: 5, falloff: 0 }));
+  expect(at(20, 20).hole).toBeFalse();
+  expect(engine.advance(1).ok).toBeTrue();
+  expect(ray(20, 20)).toBeCloseTo(ground(20, 20), 1);
+  // A restore brings the cooked ground back, hole-free.
+  expect(engine.probe.restore(before.id)).toBeTrue();
+  expect(at(20, 20).hole).toBeFalse();
+});
+
 test("og.Terrain draws the terrain, and a layer reads back and retunes", () => {
   const { engine, info } = start({ x: 0, y: 0, z: 0 }, [160, 90]);
   const w = engine.world;

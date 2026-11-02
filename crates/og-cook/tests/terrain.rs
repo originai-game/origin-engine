@@ -792,3 +792,84 @@ cellHeight 0.2
         "the plateau is cut off: {to_plateau:?}"
     );
 }
+
+/// A `holes` map cuts cells out: its black block (cells x 40..46, z 10..14)
+/// and one transparent cell (100, 50) come back as the field's holes,
+/// and every tile carries them in its heights' lowest bit on its own
+/// level: at level 1 the block's cells (each of whose four field cells is
+/// a hole) are holes, the lone cell's (one of four) is not. The heights
+/// stay within a 16-bit step of the source.
+#[test]
+fn a_holes_map_cuts_cells_out() {
+    let terrain = "type terrain\nversion 1\n---\nheightmap \"h.png\"\nheight 0 100\nsize 128 64\nholes \"holes.png\"\ntile 32\n";
+    let height = png16(129, 65, |x, y| (x * 300 + y * 70) as u16);
+    let holes = rgba(128, 64, |x, y| {
+        if (40..46).contains(&x) && (10..14).contains(&y) {
+            [0, 0, 0, 255]
+        } else if (x, y) == (100, 50) {
+            [255, 255, 255, 0]
+        } else {
+            [255, 255, 255, 255]
+        }
+    });
+    let root = project(
+        "holes",
+        &[
+            ("t/cave.ogt", terrain.as_bytes()),
+            ("t/h.png", &height),
+            ("t/holes.png", &holes),
+        ],
+    );
+    let report = cook(&root);
+    let notes: Vec<String> = report.assets.iter().flat_map(|a| a.notes.clone()).collect();
+    assert!(
+        notes.iter().any(|n| n.contains("25 cell(s) cut out")),
+        "{notes:?}"
+    );
+    assert!(
+        !report
+            .cooked_outputs()
+            .iter()
+            .any(|o| o.id.starts_with("t/holes")),
+        "the hole map is the terrain's, not a texture"
+    );
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let t = bundle.load_terrain("t/cave.ogt").unwrap();
+    assert!(t.layout.holes);
+    let data = t.field().unwrap();
+    let cut = data.holes.as_ref().expect("holes");
+    let want: Vec<(u32, u32)> = (10..14)
+        .flat_map(|z| (40..46).map(move |x| (x, z)))
+        .chain([(100, 50)])
+        .collect();
+    for z in 0..64u32 {
+        for x in 0..128u32 {
+            assert_eq!(
+                cut[(z * 128 + x) as usize] != 0,
+                want.contains(&(x, z)),
+                "cell ({x}, {z})"
+            );
+        }
+    }
+    // Over a hole's centre and beside it, in the terrain's space.
+    assert!(data.hole(glam::Vec2::new(40.5 - 64.0, 10.5 - 32.0)));
+    assert!(!data.hole(glam::Vec2::new(39.5 - 64.0, 10.5 - 32.0)));
+    assert!(!data.hole(glam::Vec2::new(10.5 - 64.0, 40.5 - 32.0)));
+    // Level 1: cells of two field cells a side, 35 heights a tile row.
+    let level1 = |x: u32, z: u32| {
+        let tile = t.tile(t.layout.index(1, x / 32, z / 32)).unwrap();
+        og_render::hole_bit(tile.heights[((z % 32 + 1) * 35 + x % 32 + 1) as usize])
+    };
+    assert!(level1(20, 5) && level1(22, 6), "the block");
+    assert!(!level1(23, 5) && !level1(19, 5), "beside the block");
+    assert!(
+        !level1(50, 25),
+        "the lone cell is a quarter of its level-1 cell"
+    );
+    let step = 100.0 / 65535.0 * 2.0;
+    for (x, y) in [(0u32, 0u32), (41, 11), (128, 64), (77, 3)] {
+        let want = (x * 300 + y * 70) as f32 / 65535.0 * 100.0;
+        let got = data.heights[(y * 129 + x) as usize];
+        assert!((got - want).abs() <= step, "({x}, {y}): {got} vs {want}");
+    }
+}

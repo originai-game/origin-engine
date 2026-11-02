@@ -21,6 +21,7 @@ fn the_cpu_height_and_normal_follow_the_field() {
         rows: n,
         heights: Arc::from(heights),
         control: None,
+        holes: None,
     };
     for p in [
         Vec2::new(0.3, 0.7),
@@ -204,6 +205,7 @@ fn strip_scene(transform: Mat4, from_side: bool) -> RenderScene {
         rows,
         heights: Arc::from(heights),
         control: None,
+        holes: None,
     });
     scene.terrains.push(Terrain {
         transform,

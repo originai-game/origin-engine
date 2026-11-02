@@ -107,6 +107,7 @@ pub fn island() -> TerrainData {
                 height: m,
                 rgba: Arc::from(rgba),
             }),
+            holes: None,
         }
     })
     .clone()
@@ -587,5 +588,75 @@ pub fn with_layer_arrays(mut scene: RenderScene) -> RenderScene {
             l.normal_layer = normal;
         }
     }
+    scene
+}
+
+/// The pit cut out of the island's meadow in `terrain-holes`: its world
+/// x and z ranges (whole 2 m cells), and the cave floor's height under it.
+pub const PIT_X: [f32; 2] = [-76.0, -60.0];
+pub const PIT_Z: [f32; 2] = [110.0, 122.0];
+
+/// The pit's centre on the surface it was cut from.
+pub fn pit_center() -> Vec3 {
+    let (x, z) = ((PIT_X[0] + PIT_X[1]) * 0.5, (PIT_Z[0] + PIT_Z[1]) * 0.5);
+    Vec3::new(x, island_height(x, z), z)
+}
+
+/// The cave floor under the pit: 8 m below the pit's lowest corner.
+pub fn pit_floor() -> f32 {
+    [PIT_X[0], PIT_X[1]]
+        .iter()
+        .flat_map(|&x| [PIT_Z[0], PIT_Z[1]].map(|z| island_height(x, z)))
+        .fold(f32::MAX, f32::min)
+        - 8.0
+}
+
+/// The island with a 16 × 12 m pit cut out of its meadow
+/// ([`TerrainData::holes`]) over an orange cave floor, the sun nearly
+/// overhead, seen from 30 m above and behind the pit: the floor shows
+/// through the hole with the sunlight that falls through it (the hole
+/// casts no shadow), the meadow round it unbroken.
+pub fn holes_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    let mut data = island();
+    let (cx, cz) = data.cells();
+    let cell = ISLAND_SIZE / (ISLAND_SAMPLES - 1) as f32;
+    let mut holes = vec![0u8; (cx * cz) as usize];
+    let cells = |r: [f32; 2]| {
+        let a = ((r[0] + ISLAND_SIZE * 0.5) / cell) as u32;
+        let b = ((r[1] + ISLAND_SIZE * 0.5) / cell) as u32;
+        a..b
+    };
+    for r in cells(PIT_Z) {
+        for c in cells(PIT_X) {
+            holes[(r * cx + c) as usize] = 1;
+        }
+    }
+    data.holes = Some(Arc::from(holes));
+    let handle = scene.add_terrain(data);
+    let layers = island_layers(&mut scene);
+    scene.terrains.push(Terrain {
+        layers,
+        height_blend: 0.6,
+        ..Terrain::new(handle)
+    });
+    let floor = scene.add_mesh(shapes::cuboid(Vec3::new(60.0, 1.0, 60.0)));
+    let rock = scene.add_material(Material {
+        base_color: [0.9, 0.42, 0.12, 1.0],
+        roughness: 0.8,
+        emissive: [0.03, 0.01, 0.0],
+        ..Default::default()
+    });
+    let c = pit_center();
+    scene.add_instance(
+        floor,
+        rock,
+        Mat4::from_translation(Vec3::new(c.x, pit_floor() - 0.5, c.z)),
+    );
+    afternoon(&mut scene);
+    let sun = Vec3::new(0.2, 0.95, 0.15).normalize();
+    scene.light.direction_to_light = sun;
+    scene.environment.sky.sun_direction = sun;
+    scene.camera = camera_at(c + Vec3::new(0.0, 30.0, 24.0), c);
     scene
 }

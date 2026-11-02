@@ -1,6 +1,6 @@
 module terrain {
   skill og-render
-  doc "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry."
+  doc "Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight, and an optional `holes` map whose black or transparent cells are cut out of the surface: a cave mouth, a pit, a tunnel through a hill) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry."
   doc "Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Terrain is 3D: the 2D profile's publish and lanes modules leave it out (RenderCapabilities.world3d is false), where every call here answers a refusal naming that field. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike)."
   doc "Its tiles stream (phase 3): the cook stores the field as a pyramid of tiles, each compressed on its own, and every frame the renderer keeps on the GPU only the tiles the camera's clipmap wants, within each terrain's tile budget (16 MiB by default), decoded off the frame (a worker thread natively, the browser's DecompressionStream on the Web) a few at a time, the most needed first; until a tile arrives its area draws from the coarser level that holds it, then fades in. Nothing a tick reads depends on which tiles are resident (collision and og.terrain.sample read the whole field), so a run's world hash is the same streamed or not. The probe's `terrain_stream:resident` decodes every wanted tile before each frame instead (`terrain_stream:stream[:<MiB>]` streams again, within that budget), and `dump_stream`'s `terrain` gives the tiles resident, waiting, decoding and cached."
 
@@ -20,6 +20,8 @@ module terrain {
     variant flatten "Pull them towards the brush centre's y, by `strength` (0 to 1) at the centre."
     variant smooth "Pull each towards its neighbours' mean, by `strength` (0 to 1) at the centre."
     variant paint "Paint `layer` into the control map, by `strength` (0 to 1) at the centre."
+    variant hole "Cut holes: every cell whose centre the brush weighs at least half (its falloff times `strength`) is cut out of the surface, neither drawn nor collided with."
+    variant fill "Fill holes in again where `hole` would cut them."
   }
 
   component Terrain {
@@ -119,6 +121,7 @@ module terrain {
     field layers u32 "Its material layers (up to 4)."
     field collision bool "Whether its terrain file asks for a collider (`collision`, default true)."
     field castShadows bool "Its terrain file's `castShadows`."
+    field holes bool "Whether it has holes (its terrain file's `holes` map, or og.terrain.edit's `hole` brush): cells cut out of the surface, neither drawn nor collided with."
     field seaLevel Option.f32 "A generated terrain's sea level (`generate { sea <m> }`) above its entity: place an og.Water there, the terrain's size; null without a sea." {
       unit m
     }
@@ -153,6 +156,7 @@ module terrain {
       unit deg
     }
     field inside bool "Whether the point is over the terrain (outside, the nearest edge answers)."
+    field hole bool "Whether the point is over one of its holes: nothing collides there, and `height` is the surface the hole was cut from."
   }
 
   struct TerrainBounds {
@@ -184,7 +188,7 @@ module terrain {
       min 0.01
       unit m
     }
-    field strength f32 "World metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint)." {
+    field strength f32 "World metres at the centre (raise, lower), or how far to go, 0 to 1 (flatten, smooth, paint; hole and fill cut where it times the falloff is at least half)." {
       default 1
       min 0
     }

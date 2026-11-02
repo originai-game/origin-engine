@@ -11,6 +11,9 @@ impl TerrainRenderer {
         if let Some((_, passes)) = &self.arrays {
             passes.lit.set_samples(samples);
         }
+        for passes in self.holed.iter().flatten() {
+            passes.lit.set_samples(samples);
+        }
     }
 
     /// Makes one of its pipelines no frame used yet (Renderer::warm).
@@ -86,6 +89,7 @@ impl TerrainRenderer {
             self.samples,
             terrain_lit_array_source(&self.lit_source),
             terrain_shadow_array_source(),
+            false,
         );
         let solid = |label, rgba: [u8; 4]| {
             wgpu::util::DeviceExt::create_texture_with_data(
@@ -118,6 +122,42 @@ impl TerrainRenderer {
             solid("terrain arrays: flat normal", [128, 128, 255, 255]),
         ));
         (layout, passes)
+    }
+
+    /// The passes with the hole test, for the standard layout or (with
+    /// `arrayed`) the layer-array variant's, made when a terrain with holes
+    /// first needs them (the variant's layout made before).
+    fn holed_passes(&mut self, device: &wgpu::Device, arrayed: bool) -> TerrainPasses {
+        if self.holed[usize::from(arrayed)].is_none() {
+            let (layout, lit, shadow) = if arrayed {
+                let (layout, _) = self.arrays.as_ref().expect("the variant is made first");
+                (
+                    layout,
+                    terrain_lit_array_source(&self.lit_source),
+                    terrain_shadow_array_source(),
+                )
+            } else {
+                (
+                    &self.layout,
+                    self.lit_source.clone(),
+                    terrain_shadow_source(),
+                )
+            };
+            let passes = terrain_passes(
+                device,
+                &self.frame_layout,
+                &self.shadow_layout,
+                layout,
+                self.samples,
+                lit,
+                shadow,
+                true,
+            );
+            self.holed[usize::from(arrayed)] = Some(passes);
+        }
+        self.holed[usize::from(arrayed)]
+            .clone()
+            .expect("made above")
     }
 
     pub(crate) fn new(
@@ -175,6 +215,7 @@ impl TerrainRenderer {
             p.samples,
             terrain_lit_source(p.frame_wgsl, p.light_tables_wgsl, p.lighting_wgsl),
             terrain_shadow_source(),
+            false,
         );
         let layer_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("terrain layers"),
@@ -232,6 +273,7 @@ impl TerrainRenderer {
             layout,
             passes,
             arrays: None,
+            holed: [None, None],
             array_stand_ins: None,
             frame_layout: p.frame_layout.clone(),
             shadow_layout: p.shadow_layout.clone(),
@@ -335,6 +377,7 @@ impl TerrainRenderer {
             slots: (0..capacity).map(|_| None).collect(),
             by_tile: Default::default(),
             pyramid: None,
+            holes: None,
             range,
             streamed,
             drawn: false,
@@ -478,6 +521,7 @@ impl TerrainRenderer {
                     g.slots.iter_mut().for_each(|s| *s = None);
                     g.by_tile.clear();
                     g.pyramid = None;
+                    g.holes = None;
                     g.range = source.range();
                     g.streamed = streamed;
                     g
@@ -514,7 +558,15 @@ impl TerrainRenderer {
                             {
                                 gpu.pyramid = ControlPyramid::new(&layout, c);
                             }
-                            Arc::new(d.tile(&layout, tile, gpu.pyramid.as_ref()))
+                            if gpu.holes.is_none() {
+                                gpu.holes = d.hole_counts();
+                            }
+                            Arc::new(d.tile(
+                                &layout,
+                                tile,
+                                gpu.pyramid.as_ref(),
+                                gpu.holes.as_ref(),
+                            ))
                         }
                     },
                 };
@@ -676,6 +728,13 @@ impl TerrainRenderer {
                 self.arrays = Some(variant);
             }
             let di = t.terrain.index();
+            // A terrain with holes draws with the hole test's pipelines.
+            let holed = self
+                .datas
+                .get(di)
+                .and_then(Option::as_ref)
+                .is_some_and(|d| d.layout.holes)
+                .then(|| self.holed_passes(device, t.layer_arrays.any()));
             let Some(Some(data)) = self.datas.get(di) else {
                 return Err(crate::RenderError::InvalidHandle(format!("terrain {di}")));
             };
@@ -778,7 +837,7 @@ impl TerrainRenderer {
                 params: [
                     t.height_blend.max(0.0),
                     f32::from(lay.control > 0),
-                    0.0,
+                    f32::from(lay.holes),
                     0.0,
                 ],
                 tiles: [lay.tile as f32, lay.control as f32, lay.levels as f32, 0.0],
@@ -947,8 +1006,9 @@ impl TerrainRenderer {
             }
             draws.push(TerrainDraw {
                 group: slot.group.as_ref().expect("made above").1.clone(),
-                passes: match &self.arrays {
-                    Some((_, passes)) if arrayed => passes.clone(),
+                passes: match (holed, &self.arrays) {
+                    (Some(passes), _) => passes,
+                    (None, Some((_, passes))) if arrayed => passes.clone(),
                     _ => self.passes.clone(),
                 },
                 levels: out,

@@ -201,6 +201,7 @@ fn bowl(p: &PhysicsSystem, w: &mut World) -> impl Fn(f32, f32) -> f32 + use<> {
             rows: n,
             size: Vec2::splat(size),
             heights: Arc::from(heights),
+            holes: None,
         },
     )
     .unwrap();

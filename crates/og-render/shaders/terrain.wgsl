@@ -32,7 +32,7 @@ struct TerrainUniform {
   normal: mat3x3<f32>,  // normals from the terrain's space to the world (inverse transpose)
   origin: vec4<f32>,    // xyz: the terrain's centre in the world, w: layers
   extent: vec4<f32>,    // xy: size along x and z (m), zw: samples along x and z
-  params: vec4<f32>,    // x: height blend, y: 1 with a control map
+  params: vec4<f32>,    // x: height blend, y: 1 with a control map, z: 1 with holes
   tiles: vec4<f32>,     // x: quads per tile, y: control texels per tile, z: pyramid levels
   view_proj: mat4x4<f32>,       // unjittered (prepass velocity)
   prev_view_proj: mat4x4<f32>,
@@ -201,11 +201,6 @@ fn terrain_world(local: vec3<f32>) -> vec3<f32> {
   return (terrain.model * vec4<f32>(local, 1.0)).xyz;
 }
 
-// The clipmap vertex `vi` in world space.
-fn terrain_vertex(vi: u32) -> vec3<f32> {
-  return terrain_world(terrain_local_vertex(vi));
-}
-
 struct TerrainMaps {
   normal: vec3<f32>,    // in the terrain's space
   control: vec4<f32>,   // the layers' channels (1 without a control map)
@@ -252,4 +247,27 @@ fn terrain_maps_at(s: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> TerrainMaps {
   }
   m.normal = normalize(m.normal);
   return m;
+}
+
+// The pipelines of a terrain with holes (terrain.rs terrain_passes);
+// false leaves the hole test and its discard out.
+override TERRAIN_HOLES: bool = true;
+
+// Whether the field cell under field coordinates `s` is cut out: with
+// holes, each tile height's lowest bit is the hole flag of the cell at
+// its sample (terrain_tiles.rs mark_holes), read from the finest resident
+// tile there.
+fn terrain_hole(s: vec2<f32>) -> bool {
+  if (!TERRAIN_HOLES || terrain.params.z < 0.5) { return false; }
+  let o = resident_from(0u, s);
+  if (o.r.slot < 0.0) { return false; }
+  let t = terrain.tiles.x;
+  let c = clamp(floor(o.u) - o.r.tile * t, vec2<f32>(0.0), vec2<f32>(t)) + 1.0;
+  let h = textureLoad(heights, vec2<i32>(c), i32(o.r.slot), 0).r;
+  return (bitcast<u32>(h) & 1u) != 0u;
+}
+
+// `terrain_hole` at a point of the terrain's space.
+fn terrain_hole_at(local: vec3<f32>) -> bool {
+  return terrain_hole((local.xz - terrain_min()) / terrain_cell());
 }

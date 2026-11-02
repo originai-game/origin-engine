@@ -199,6 +199,8 @@ pub(crate) trait Ground {
     fn height(&self, p: Vec2) -> Option<f32>;
     fn normal(&self, p: Vec2) -> Option<Vec3>;
     fn control(&self, p: Vec2) -> Option<[f32; 4]>;
+    /// Whether `p` is over a hole (no copy grows there).
+    fn hole(&self, p: Vec2) -> Option<bool>;
 }
 
 impl Ground for TerrainData {
@@ -213,6 +215,9 @@ impl Ground for TerrainData {
     }
     fn control(&self, p: Vec2) -> Option<[f32; 4]> {
         Some(self.control_at(p))
+    }
+    fn hole(&self, p: Vec2) -> Option<bool> {
+        Some(TerrainData::hole(self, p))
     }
 }
 
@@ -258,6 +263,17 @@ impl TileGround<'_> {
 impl Ground for TileGround<'_> {
     fn size(&self) -> Vec2 {
         self.layout.size
+    }
+    fn hole(&self, p: Vec2) -> Option<bool> {
+        if !self.layout.holes {
+            return Some(false);
+        }
+        let (t, x, z) = self.tile(p)?;
+        let s = self.sampler(t, x, z);
+        Some(
+            s.cell_of(p)
+                .is_some_and(|(c, r)| crate::terrain_tiles::hole_bit((s.sample)(c, r))),
+        )
     }
     fn height(&self, p: Vec2) -> Option<f32> {
         let (t, x, z) = self.tile(p)?;
@@ -369,7 +385,7 @@ impl Terrain {
             return Some(None);
         }
         let weight = self.weights_on(g, p)?[s.layer as usize];
-        if unit(h3) >= weight {
+        if unit(h3) >= weight || g.hole(p)? {
             return Some(None);
         }
         let model = self.transform;

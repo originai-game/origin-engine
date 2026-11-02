@@ -455,7 +455,7 @@ fn scene_triangles(
 }
 
 /// A terrain's surface as triangles (every `step`th sample, each cell
-/// split along the renderer's diagonal), standing at `position`, only the
+/// split along the renderer's diagonal, its holes left out), standing at `position`, only the
 /// cells reaching into `bounds` when given. Returns how many it added.
 fn terrain_triangles(
     root: &Path,
@@ -470,7 +470,20 @@ fn terrain_triangles(
     let doc = super::terrain::parse(rel, root, &text)?;
     let field = super::terrain::field(&doc, root)?;
     let heights = field.heights;
+    let holes = field.holes;
     let (cols, rows) = (field.columns as usize, field.rows as usize);
+    // A quad of `step` cells is cut out where most of its cells are holes.
+    let cut = |c: usize, r: usize| {
+        let Some(h) = &holes else {
+            return false;
+        };
+        let (c1, r1) = ((c + step).min(cols - 1), (r + step).min(rows - 1));
+        let n = (r..r1)
+            .flat_map(|r| (c..c1).map(move |c| (c, r)))
+            .filter(|&(c, r)| h[r * (cols - 1) + c] != 0)
+            .count();
+        n * 2 > (c1 - c) * (r1 - r)
+    };
     let size = field.size;
     let cell = (size[0] / (cols - 1) as f32, size[1] / (rows - 1) as f32);
     let at = |c: usize, r: usize| {
@@ -491,7 +504,7 @@ fn terrain_triangles(
             let inside = bounds.is_none_or(|(lo, hi)| {
                 p11.x >= lo.x && p00.x <= hi.x && p11.z >= lo.z && p00.z <= hi.z
             });
-            if inside {
+            if inside && !cut(c, r) {
                 // Counter-clockwise seen from above: (c, r), (c, r+1), (c+1, r+1); (c, r), (c+1, r+1), (c+1, r).
                 out.push([p00, p01, p11]);
                 out.push([p00, p11, p10]);

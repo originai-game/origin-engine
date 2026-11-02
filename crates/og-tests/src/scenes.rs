@@ -151,6 +151,7 @@ pub const SCENES: &[&str] = &[
     "post-neutral",
     "post-lens",
     "terrain-grass-wind",
+    "terrain-holes",
     "post-blur",
     "ui-shapes",
     "ui-paints",
@@ -1084,6 +1085,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 gust: 0.7,
             });
             g.scene.tick = 90;
+            Ok(())
+        },
+        // R6: a 16 × 12 m pit cut out of the island's meadow over an
+        // orange cave floor, the sun nearly overhead: the floor and the
+        // sunlight falling through the hole show through it, the meadow
+        // round it unbroken.
+        "terrain-holes" => |g, _| {
+            g.scene = crate::terrain_scenes::holes_scene();
             Ok(())
         },
         // The bloom scene through a zoom blur towards a point left of and
