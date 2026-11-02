@@ -1090,7 +1090,9 @@ bun scripts/showcase.ts serve                           # the index on localhost
 ```
 
 `add` defaults `--commit` to HEAD, `--date` to today (UTC) and `--thread` to
-`$AMP_THREAD_ID`; it uploads only bytes the bucket does not hold and never
+`$AMP_THREAD_ID`, else `$AMP_CURRENT_THREAD_ID`; with neither set (a
+runner's shell sets no thread variable) it refuses the entry rather than
+record no thread, so pass `--thread T-…` (an ID or thread URL) there. It uploads only bytes the bucket does not hold and never
 repeats an entry of the same file, feature and title. It reaches the bucket
 over S3 as the user `origin-engine-showcase-s3`, whose policy allows put,
 get and list in this bucket alone (no delete, no other bucket), with

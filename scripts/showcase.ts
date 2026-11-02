@@ -17,8 +17,9 @@
 //
 // add's options: --kind frame|film|before-after|benchmark|concept (default:
 // film for video and gif, benchmark for metrics without a file, else frame),
-// --commit (default HEAD), --date (default today, UTC), --thread (default
-// $AMP_THREAD_ID), --machine, --metric name=value unit (repeatable),
+// --commit (default HEAD), --date (default today, UTC), --thread (the Amp
+// thread that made it, an ID or URL; default $AMP_THREAD_ID, else
+// $AMP_CURRENT_THREAD_ID; add refuses an entry without one), --machine, --metric name=value unit (repeatable),
 // --pair <name> --side before|after (a before-after pair: both sides share
 // the pair name), --source (where the file came from), --dry-run.
 //
@@ -109,6 +110,17 @@ const TYPES: Record<string, string> = {
   ".log": "text/plain",
 };
 const VIDEO = new Set([".webm", ".mp4", ".mov", ".gif"]);
+
+/**
+ * The Amp thread an artifact came from: `given` (an ID or a thread URL), else
+ * the thread Amp names in the environment (an orb sets AMP_THREAD_ID; a
+ * runner's shell may set AMP_CURRENT_THREAD_ID or neither). Undefined when
+ * there is none.
+ */
+export function threadOf(given?: string | null): string | undefined {
+  const raw = given ?? process.env.AMP_THREAD_ID ?? process.env.AMP_CURRENT_THREAD_ID;
+  return /T-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.exec(raw ?? "")?.[0];
+}
 
 /** add's refusal of withdrawn work, which a backfill catches and skips. */
 export class Refused extends Error {}
@@ -244,6 +256,13 @@ export interface AddDesc {
  */
 export async function add(d: AddDesc): Promise<{ entry: Entry; added: boolean; uploaded: boolean }> {
   if (!d.feature || !d.title) fail("add needs --feature and --title");
+  const thread = threadOf(d.thread);
+  if (!thread)
+    fail(
+      d.thread
+        ? `--thread ${d.thread} is not an Amp thread ID (T-…) or thread URL`
+        : "add needs the Amp thread that made the artifact: pass --thread T-… (or its URL); neither AMP_THREAD_ID nor AMP_CURRENT_THREAD_ID is set in this shell",
+    );
   for (const p of [d.file, d.source]) if (rejectedPath(p)) throw new Refused(`${p} is under a rejected/ directory: withdrawn work is never archived`);
   let bytes: Uint8Array;
   let ext: string;
@@ -273,7 +292,7 @@ export async function add(d: AddDesc): Promise<{ entry: Entry; added: boolean; u
     kind,
     commit: d.commit === undefined ? head() : d.commit,
     date: d.date ?? new Date().toISOString().slice(0, 10),
-    thread: d.thread === undefined ? (process.env.AMP_THREAD_ID ?? null) : d.thread,
+    thread,
     key,
     sha256,
     bytes: bytes.length,
@@ -332,7 +351,7 @@ export function exclude(what: string, reason: string, feature?: string, title?: 
       kind: "concept",
       commit: null,
       date: new Date().toISOString().slice(0, 10),
-      thread: process.env.AMP_THREAD_ID ?? null,
+      thread: threadOf() ?? null,
       key: null,
       sha256: sha,
       bytes: bytes?.length ?? 0,
