@@ -23682,6 +23682,12 @@ export interface JoystickDesc {
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly deadZone?: number;
+  /**
+   * The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit).
+   *
+   * @default null
+   */
+  readonly customize?: Customize | null;
 }
 
 /** A joystick's vector this tick. */
@@ -23708,6 +23714,12 @@ export interface DpadDesc {
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly size?: number;
+  /**
+   * The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit).
+   *
+   * @default null
+   */
+  readonly customize?: Customize | null;
 }
 
 /** Which arms of a d-pad are held this tick. */
@@ -23748,6 +23760,12 @@ export interface ActionButtonDesc {
    * @default ""
    */
   readonly icon?: string;
+  /**
+   * The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit).
+   *
+   * @default null
+   */
+  readonly customize?: Customize | null;
 }
 
 /**
@@ -23871,6 +23889,172 @@ export interface UiPointer {
 
 
 
+
+
+/**
+ * A pad's virtual cursor (docs/ui.md §8.3). The zero value moves at 900 units a second, takes a quarter second from a fine start to full speed, has a half-strength magnet and scrolls 1200 units a second.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface VirtualCursorDesc {
+  /**
+   * Units a second at full tilt; 0 is 900.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly speed?: number;
+  /**
+   * Milliseconds a held stick takes from a third of its speed to all of it, for fine aim first; 0 is 250, negative is none.
+   *
+   * @default 0
+   * @unit ms (milliseconds)
+   */
+  readonly accel?: number;
+  /**
+   * 0 to 1: how much it slows over a control and, once the stick rests, pulls to the control's centre; 0 is 0.5, negative is none.
+   *
+   * @default 0
+   * @range ..1
+   */
+  readonly magnet?: number;
+  /**
+   * Units a second the right stick scrolls under it at full tilt; 0 is 1200, negative leaves the right stick to the game.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly scroll?: number;
+}
+
+
+/** Where a pad's virtual cursor is. */
+export interface VirtualCursor {
+  /**
+   * Its x, from the surface's left.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * Its y, from the surface's top.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+  /** It is shown: the stick moved it since the real pointer last moved. */
+  readonly shown: boolean;
+}
+
+
+/**
+ * Where the player put a customisable element: moved from its laid-out place, scaled about its centre and faded.
+ */
+export interface HudPlacement {
+  /**
+   * Moved right.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * Moved down.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+  /**
+   * Its scale (1: as laid out).
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly scale: number;
+  /**
+   * Its opacity (1: opaque).
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly opacity: number;
+}
+
+/** The HUD edit mode as the last frame left it. */
+export interface HudEdit {
+  /** The edit mode is on. */
+  readonly on: boolean;
+  /** The player whose layout the screen shows and edits. */
+  readonly player: number;
+  /** The key of the element being edited; empty for none. */
+  readonly selected: string;
+  /** Its placement. */
+  readonly placement: HudPlacement;
+  /** The customisable elements on screen, in drawing order. */
+  readonly keys: readonly string[];
+  /**
+   * The player changed the layout this tick (a move ended, a step, a reset): the time to save og.ui.hudLayout in the game's settings.
+   */
+  readonly changed: boolean;
+}
+
+
+
+
+
+
+
+
+
+/**
+ * The HUD edit mode's panel; empty labels take English ones (pass the locale's).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface HudEditorDesc {
+  /**
+   * Its title; empty is Edit HUD.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The size steps' label; empty is Size.
+   *
+   * @default ""
+   */
+  readonly sizeLabel?: string;
+  /**
+   * The opacity steps' label; empty is Opacity.
+   *
+   * @default ""
+   */
+  readonly opacityLabel?: string;
+  /**
+   * Next's label; empty is Next.
+   *
+   * @default ""
+   */
+  readonly nextLabel?: string;
+  /**
+   * Reset's label; empty is Reset.
+   *
+   * @default ""
+   */
+  readonly resetLabel?: string;
+  /**
+   * Done's label; empty is Done.
+   *
+   * @default ""
+   */
+  readonly doneLabel?: string;
+}
+
+/** What the HUD editor's buttons did this tick. */
+export interface HudEditorResult {
+  /** Done was pressed: the edit mode is off from the next tick. */
+  readonly done: boolean;
+  /** A step or a reset changed the layout this tick. */
+  readonly changed: boolean;
+}
 
 
 
@@ -35492,6 +35676,62 @@ export interface GestureSpec {
 }
 
 /**
+ * An element the player can move, scale and fade in the HUD edit mode (docs/ui.md §8.4): a HUD group, a touch stick or button. Its placement is kept per player under key (og.ui.hudLayout). The zero value allows all three, from half to twice its size and down to a fifth of its opacity.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface Customize {
+  /**
+   * Its name in the saved layout; empty is its path. Name it when its path may change between versions of the game.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * It stays where it is laid out.
+   *
+   * @default false
+   */
+  readonly lockMove?: boolean;
+  /**
+   * It keeps its size.
+   *
+   * @default false
+   */
+  readonly lockScale?: boolean;
+  /**
+   * It stays opaque.
+   *
+   * @default false
+   */
+  readonly lockOpacity?: boolean;
+  /**
+   * The smallest it scales to; 0 is 0.5.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly minScale?: number;
+  /**
+   * The largest it scales to; 0 is 2.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly maxScale?: number;
+  /**
+   * The faintest it fades to; 0 is 0.2.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly minOpacity?: number;
+}
+
+/**
  * The pointer's shape over an element (CSS cursor, docs/ui.md §6.1), inherited by its subtree.
  * - `"auto"`: Its parent's; with none set above it, a text control's I-beam, a draggable element's open hand (closed while dragged), a link's hand, else the arrow.
  * - `"default"`: The arrow.
@@ -35667,6 +35907,12 @@ export interface ElementProps {
    * @default "auto"
    */
   readonly cursor?: Cursor;
+  /**
+   * The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit); its placement applies on every frame (og.ui.setHudLayout).
+   *
+   * @default null
+   */
+  readonly customize?: Customize | null;
   /**
    * How its animatable values move when they change; null is at once.
    *
@@ -51623,6 +51869,67 @@ export declare namespace og {
      * @param count Players, 1 to 4 (clamped).
      */
     function setPlayers(count: number): void;
+    /**
+     * A pad's virtual cursor, for a screen built for the pointer (a map, a shop grid, a strategy HUD) played on a pad: pad 0's left stick moves it instead of the focus, slowing and sticking over controls; its A presses where it points as the mouse's button does (drags, sliders and long presses work); its right stick scrolls under it. The style draws it and the system cursor hides (og.ui.frameCursor answers none). The real pointer moving hides it and the stick shows it again. Declare it every tick the screen shows; it takes effect from the next tick. Null turns it off.
+     *
+     * @param desc How it moves; null is none.
+     */
+    function setVirtualCursor(desc: VirtualCursorDesc | null): void;
+    /** The virtual cursor as the last frame left it; null when none is declared. */
+    function virtualCursor(): VirtualCursor | null;
+    /**
+     * Turns the HUD edit mode on or off (docs/ui.md §8.4; kept until changed). While it is on, elements with ElementProps.customize stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. Build og.ui.hudLayoutEditor for steps, Next, Reset and Done.
+     *
+     * @param on On or off.
+     */
+    function setHudEdit(on: boolean): void;
+    /**
+     * Whose layout this screen shows and edits, 0 to 3 (0 by default; kept until changed): each player of a shared screen keeps a layout of their own.
+     *
+     * @param player The player (clamped to 3).
+     */
+    function setHudPlayer(player: number): void;
+    /** The HUD edit mode as the last frame left it. */
+    function hudEdit(): HudEdit;
+    /**
+     * A player's HUD layout as JSON, for the game's settings: each moved, scaled or faded element's key with its x, y, scale and opacity. Save it when HudEdit.changed says so; give it back with og.ui.setHudLayout on the next run.
+     *
+     * @param player The player, 0 to 3.
+     */
+    function hudLayout(player: number): string;
+    /**
+     * Gives a player's HUD layout back (og.ui.hudLayout's JSON; `{}` resets it). Answers false and leaves the layout as it was when it does not read (the reason is in the frame's warnings).
+     *
+     * @param player The player, 0 to 3.
+     * @param layout The layout's JSON.
+     */
+    function setHudLayout(player: number, layout: string): boolean;
+    /**
+     * Selects an element to edit by its key (empty: none).
+     *
+     * @param key Its key.
+     */
+    function hudSelect(key: string): void;
+    /**
+     * Steps the selected element's size and opacity: each -1, 0 or +1 step (a tenth larger or smaller, a tenth more or less opaque), within its limits.
+     *
+     * @param scale The size step.
+     * @param opacity The opacity step.
+     */
+    function hudStep(scale: number, opacity: number): void;
+    /**
+     * Puts an element back where it was laid out: its key, empty for the selected one, `*` for every one.
+     *
+     * @param key Its key, empty or `*`.
+     */
+    function hudReset(key: string): void;
+    /**
+     * The HUD edit mode's panel (docs/ui.md §8.4): the selected element's key, size and opacity steps, Next (the next element: how keys and pads choose one), Reset (the selected one, or all with none selected) and Done, which turns the edit mode off. Build it where it fits, while og.ui.hudEdit().on; presses on it edit nothing behind it. Its children are `Title`, `Selected`, `Size/Less`, `Size/More`, `Opacity/Less`, `Opacity/More`, `Actions/Next`, `Actions/Reset`, `Actions/Done`.
+     *
+     * @param id Its id.
+     * @param desc Its labels.
+     */
+    function hudLayoutEditor(id: string, desc?: HudEditorDesc): HudEditorResult;
     /**
      * The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none.
      *

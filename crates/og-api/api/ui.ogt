@@ -1166,6 +1166,7 @@ module ui {
       min 0
       max 1
     }
+    field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit)."
   }
 
   struct JoystickResult {
@@ -1182,6 +1183,7 @@ module ui {
       unit cssPx
       min 0
     }
+    field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit)."
   }
 
   struct DpadResult {
@@ -1201,6 +1203,7 @@ module ui {
     }
     field primary bool "The primary button (one per screen)."
     field icon String "An icon of the atlas by name, instead of the label; empty is the label."
+    field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit)."
   }
 
   struct SkeletonDesc {
@@ -1619,6 +1622,145 @@ module ui {
     doc "Local multiplayer: how many players this screen takes (1 to 4; 1 by default). Pads 1 to count - 1 each move a focus of their own among the same controls, shown as a ring in the player's colour (info, success, warn), and their A presses the control under it (Response.pad says which pad); pad 0 shares the one focus with the keyboard and the pointer, and Back and adjusting a slider stay pad 0's. Declare it every tick the screen shows; it takes effect from the next tick, and a dialog's focus scope holds every pad's focus inside it."
     param count u32 "Players, 1 to 4 (clamped)."
     returns Void
+  }
+
+  struct VirtualCursorDesc {
+    doc "A pad's virtual cursor (docs/ui.md §8.3). The zero value moves at 900 units a second, takes a quarter second from a fine start to full speed, has a half-strength magnet and scrolls 1200 units a second."
+    desc true
+    field speed f32 "Units a second at full tilt; 0 is 900." {
+      unit cssPx
+      min 0
+    }
+    field accel f32 "Milliseconds a held stick takes from a third of its speed to all of it, for fine aim first; 0 is 250, negative is none." {
+      unit ms
+    }
+    field magnet f32 "0 to 1: how much it slows over a control and, once the stick rests, pulls to the control's centre; 0 is 0.5, negative is none." {
+      max 1
+    }
+    field scroll f32 "Units a second the right stick scrolls under it at full tilt; 0 is 1200, negative leaves the right stick to the game." {
+      unit cssPx
+    }
+  }
+
+  fn setVirtualCursor {
+    doc "A pad's virtual cursor, for a screen built for the pointer (a map, a shop grid, a strategy HUD) played on a pad: pad 0's left stick moves it instead of the focus, slowing and sticking over controls; its A presses where it points as the mouse's button does (drags, sliders and long presses work); its right stick scrolls under it. The style draws it and the system cursor hides (og.ui.frameCursor answers none). The real pointer moving hides it and the stick shows it again. Declare it every tick the screen shows; it takes effect from the next tick. Null turns it off."
+    param desc Option.VirtualCursorDesc "How it moves; null is none."
+    returns Void
+  }
+
+  struct VirtualCursor {
+    doc "Where a pad's virtual cursor is."
+    field x f32 "Its x, from the surface's left." {
+      unit cssPx
+    }
+    field y f32 "Its y, from the surface's top." {
+      unit cssPx
+    }
+    field shown bool "It is shown: the stick moved it since the real pointer last moved."
+  }
+
+  fn virtualCursor {
+    doc "The virtual cursor as the last frame left it; null when none is declared."
+    returns Option.VirtualCursor
+  }
+
+  struct HudPlacement {
+    doc "Where the player put a customisable element: moved from its laid-out place, scaled about its centre and faded."
+    field x f32 "Moved right." {
+      unit cssPx
+    }
+    field y f32 "Moved down." {
+      unit cssPx
+    }
+    field scale f32 "Its scale (1: as laid out)." {
+      unit ratio
+    }
+    field opacity f32 "Its opacity (1: opaque)." {
+      unit ratio
+    }
+  }
+
+  struct HudEdit {
+    doc "The HUD edit mode as the last frame left it."
+    field on bool "The edit mode is on."
+    field player u32 "The player whose layout the screen shows and edits."
+    field selected String "The key of the element being edited; empty for none."
+    field placement HudPlacement "Its placement."
+    field keys List.String "The customisable elements on screen, in drawing order."
+    field changed bool "The player changed the layout this tick (a move ended, a step, a reset): the time to save og.ui.hudLayout in the game's settings."
+  }
+
+  fn setHudEdit {
+    doc "Turns the HUD edit mode on or off (docs/ui.md §8.4; kept until changed). While it is on, elements with ElementProps.customize stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. Build og.ui.hudLayoutEditor for steps, Next, Reset and Done."
+    param on bool "On or off."
+    returns Void
+  }
+
+  fn setHudPlayer {
+    doc "Whose layout this screen shows and edits, 0 to 3 (0 by default; kept until changed): each player of a shared screen keeps a layout of their own."
+    param player u32 "The player (clamped to 3)."
+    returns Void
+  }
+
+  fn hudEdit {
+    doc "The HUD edit mode as the last frame left it."
+    returns HudEdit
+  }
+
+  fn hudLayout {
+    doc "A player's HUD layout as JSON, for the game's settings: each moved, scaled or faded element's key with its x, y, scale and opacity. Save it when HudEdit.changed says so; give it back with og.ui.setHudLayout on the next run."
+    param player u32 "The player, 0 to 3."
+    returns String
+  }
+
+  fn setHudLayout {
+    doc "Gives a player's HUD layout back (og.ui.hudLayout's JSON; `{}` resets it). Answers false and leaves the layout as it was when it does not read (the reason is in the frame's warnings)."
+    param player u32 "The player, 0 to 3."
+    param layout String "The layout's JSON."
+    returns bool
+  }
+
+  fn hudSelect {
+    doc "Selects an element to edit by its key (empty: none)."
+    param key String "Its key."
+    returns Void
+  }
+
+  fn hudStep {
+    doc "Steps the selected element's size and opacity: each -1, 0 or +1 step (a tenth larger or smaller, a tenth more or less opaque), within its limits."
+    param scale i32 "The size step."
+    param opacity i32 "The opacity step."
+    returns Void
+  }
+
+  fn hudReset {
+    doc "Puts an element back where it was laid out: its key, empty for the selected one, `*` for every one."
+    param key String "Its key, empty or `*`."
+    returns Void
+  }
+
+  struct HudEditorDesc {
+    doc "The HUD edit mode's panel; empty labels take English ones (pass the locale's)."
+    desc true
+    field title String "Its title; empty is Edit HUD."
+    field sizeLabel String "The size steps' label; empty is Size."
+    field opacityLabel String "The opacity steps' label; empty is Opacity."
+    field nextLabel String "Next's label; empty is Next."
+    field resetLabel String "Reset's label; empty is Reset."
+    field doneLabel String "Done's label; empty is Done."
+  }
+
+  struct HudEditorResult {
+    doc "What the HUD editor's buttons did this tick."
+    field done bool "Done was pressed: the edit mode is off from the next tick."
+    field changed bool "A step or a reset changed the layout this tick."
+  }
+
+  fn hudLayoutEditor {
+    doc "The HUD edit mode's panel (docs/ui.md §8.4): the selected element's key, size and opacity steps, Next (the next element: how keys and pads choose one), Reset (the selected one, or all with none selected) and Done, which turns the edit mode off. Build it where it fits, while og.ui.hudEdit().on; presses on it edit nothing behind it. Its children are `Title`, `Selected`, `Size/Less`, `Size/More`, `Opacity/Less`, `Opacity/More`, `Actions/Next`, `Actions/Reset`, `Actions/Done`."
+    param id String "Its id."
+    param desc HudEditorDesc "Its labels."
+    returns HudEditorResult
   }
 
   fn focus {
@@ -6756,6 +6898,28 @@ module ui {
     field priority i32 "Among nested elements' recognisers of one press: higher wins (ties: the innermost)."
   }
 
+  struct Customize {
+    doc "An element the player can move, scale and fade in the HUD edit mode (docs/ui.md §8.4): a HUD group, a touch stick or button. Its placement is kept per player under key (og.ui.hudLayout). The zero value allows all three, from half to twice its size and down to a fifth of its opacity."
+    desc true
+    field key String "Its name in the saved layout; empty is its path. Name it when its path may change between versions of the game."
+    field lockMove bool "It stays where it is laid out."
+    field lockScale bool "It keeps its size."
+    field lockOpacity bool "It stays opaque."
+    field minScale f32 "The smallest it scales to; 0 is 0.5." {
+      unit ratio
+      min 0
+    }
+    field maxScale f32 "The largest it scales to; 0 is 2." {
+      unit ratio
+      min 0
+    }
+    field minOpacity f32 "The faintest it fades to; 0 is 0.2." {
+      unit ratio
+      min 0
+      max 1
+    }
+  }
+
   enum Cursor {
     doc "The pointer's shape over an element (CSS cursor, docs/ui.md §6.1), inherited by its subtree."
     variant auto "Its parent's; with none set above it, a text control's I-beam, a draggable element's open hand (closed while dragged), a link's hand, else the arrow."
@@ -6812,6 +6976,7 @@ module ui {
     field focusGroup Option.FocusGroup "Its focusable controls are one focus group: arrows move among them first; at its edge it wraps or is left; it can remember its last member."
     field gestures Option.GestureSpec "Tap, double tap and long press on it."
     field cursor Cursor "The pointer's shape over it and its subtree; auto takes its parent's."
+    field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit); its placement applies on every frame (og.ui.setHudLayout)."
     field motion Option.Transition "How its animatable values move when they change; null is at once."
     field layoutMotion Option.Transition "Moves from its last laid-out rectangle to its new one (FLIP); null jumps."
     field enter Option.PresenceSpec "How it arrives."

@@ -529,6 +529,10 @@ impl Ui {
         if let Some(c) = r.str("cursor").and_then(crate::element::Cursor::from_name) {
             p.cursor = c;
         }
+        p.customize = r.flag("customize").then(|| crate::element::Customize {
+            key: r.str("customizeKey").unwrap_or_default().to_owned(),
+            ..crate::element::Customize::default()
+        });
         p.reduced = match r.str("reduced") {
             Some("fade") => Some(crate::Reduced::Fade),
             Some("none") => Some(crate::Reduced::None),

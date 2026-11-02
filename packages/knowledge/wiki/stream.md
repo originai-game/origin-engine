@@ -26,7 +26,7 @@ module stream {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 26853</sub>
+<sub>`api.ogt` line 27018</sub>
 
 ## Contents
 
@@ -81,7 +81,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 26968</sub>
+<sub>`api.ogt` line 27133</sub>
 
 <a id="fn-request"></a>
 
@@ -111,7 +111,7 @@ fn request {
 }
 ```
 
-<sub>`api.ogt` line 26975</sub>
+<sub>`api.ogt` line 27140</sub>
 
 <a id="fn-release"></a>
 
@@ -141,7 +141,7 @@ fn release {
 }
 ```
 
-<sub>`api.ogt` line 26982</sub>
+<sub>`api.ogt` line 27147</sub>
 
 <a id="fn-budget"></a>
 
@@ -169,7 +169,7 @@ fn budget {
 }
 ```
 
-<sub>`api.ogt` line 26989</sub>
+<sub>`api.ogt` line 27154</sub>
 
 <a id="fn-setBudget"></a>
 
@@ -199,7 +199,7 @@ fn setBudget {
 }
 ```
 
-<sub>`api.ogt` line 26995</sub>
+<sub>`api.ogt` line 27160</sub>
 
 ## Components, resources and events
 
@@ -242,7 +242,7 @@ component StreamCell {
 }
 ```
 
-<sub>`api.ogt` line 26864</sub>
+<sub>`api.ogt` line 27029</sub>
 
 <a id="record-StreamAnchor"></a>
 
@@ -266,7 +266,7 @@ component StreamAnchor {
 }
 ```
 
-<sub>`api.ogt` line 26884</sub>
+<sub>`api.ogt` line 27049</sub>
 
 <a id="record-CellMember"></a>
 
@@ -289,7 +289,7 @@ component CellMember {
 }
 ```
 
-<sub>`api.ogt` line 26892</sub>
+<sub>`api.ogt` line 27057</sub>
 
 <a id="record-CellEvent"></a>
 
@@ -314,7 +314,7 @@ event CellEvent {
 }
 ```
 
-<sub>`api.ogt` line 26899</sub>
+<sub>`api.ogt` line 27064</sub>
 
 <a id="record-StreamEvent"></a>
 
@@ -337,7 +337,7 @@ event StreamEvent {
 }
 ```
 
-<sub>`api.ogt` line 26921</sub>
+<sub>`api.ogt` line 27086</sub>
 
 ## Types
 
@@ -368,7 +368,7 @@ enum StreamState {
 }
 ```
 
-<sub>`api.ogt` line 26906</sub>
+<sub>`api.ogt` line 27071</sub>
 
 <a id="type-StreamStatus"></a>
 
@@ -419,7 +419,7 @@ struct StreamStatus {
 }
 ```
 
-<sub>`api.ogt` line 26927</sub>
+<sub>`api.ogt` line 27092</sub>
 
 <a id="type-StreamBudget"></a>
 
@@ -454,7 +454,7 @@ struct StreamBudget {
 }
 ```
 
-<sub>`api.ogt` line 26951</sub>
+<sub>`api.ogt` line 27116</sub>
 
 ## Constants
 
@@ -470,28 +470,28 @@ struct StreamBudget {
 const STREAM_UNLOADED u32 0 "`StreamEvent.state`: the group is unloaded (StreamState unloaded)."
 ```
 
-<sub>`api.ogt` line 26915</sub>
+<sub>`api.ogt` line 27080</sub>
 
 ```ogt
 const STREAM_QUEUED u32 1 "`StreamEvent.state`: the group waits for room in the budget (StreamState queued)."
 ```
 
-<sub>`api.ogt` line 26916</sub>
+<sub>`api.ogt` line 27081</sub>
 
 ```ogt
 const STREAM_LOADING u32 2 "`StreamEvent.state`: the group's pack is being read (StreamState loading)."
 ```
 
-<sub>`api.ogt` line 26917</sub>
+<sub>`api.ogt` line 27082</sub>
 
 ```ogt
 const STREAM_RESIDENT u32 3 "`StreamEvent.state`: the group's assets are in place (StreamState resident)."
 ```
 
-<sub>`api.ogt` line 26918</sub>
+<sub>`api.ogt` line 27083</sub>
 
 ```ogt
 const STREAM_FAILED u32 4 "`StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why)."
 ```
 
-<sub>`api.ogt` line 26919</sub>
+<sub>`api.ogt` line 27084</sub>

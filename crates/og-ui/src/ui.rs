@@ -296,6 +296,10 @@ pub(crate) struct State {
     pub recognizers: IdMap<u64, (crate::element::GestureSpec, u64)>,
     /// The press being recognised and a tap waiting for its double.
     pub tap: crate::recognize::TapState,
+    /// A pad's virtual cursor (docs/ui.md §8.3).
+    pub vcursor: crate::vcursor::VCursorState,
+    /// The players' HUD layouts and the edit mode (docs/ui.md §8.4).
+    pub hud: crate::hud_layout::HudState,
 }
 
 /// What navigation decided at the start of this frame.
@@ -355,6 +359,10 @@ pub struct Ui {
     pub(crate) nav_on: bool,
     /// Players declared for this frame (`set_players`).
     pub(crate) players: u32,
+    /// The virtual cursor declared for this frame (`set_virtual_cursor`).
+    pub(crate) vcursor: Option<crate::vcursor::VirtualCursorDesc>,
+    /// The HUD layout editor's panel this frame (its key; 0: none).
+    pub(crate) hud_editor_key: u64,
     /// The control a widget asked to focus this frame.
     pub(crate) request_focus: u64,
     /// Open focus scopes this frame, in build order.
@@ -449,7 +457,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 14;
+const STATE_VERSION: u32 = 15;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,

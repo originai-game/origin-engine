@@ -2,7 +2,9 @@
 //! `ElementProps`, `UiTimeline`, `Choreo` and `Transition` read into
 //! og-ui's types, and the calls that take them.
 
-use super::{anchor_of, f, insets, opt_f, paint, size, transition_kind, ui_rect, with_ui};
+use super::{
+    anchor_of, customize, f, insets, opt_f, paint, size, transition_kind, ui_rect, with_ui,
+};
 use og_ui::{
     Breakpoint, Choreo, Dismiss, DragAxis, DragSpec, DropSpec, Ease, Edges, EventKind, GridFlow,
     GridPlace, GridSpec, Key, KeyEase, LayoutMode, MotionToken, Orientation, Patch, PinchSpec,
@@ -354,6 +356,7 @@ pub(crate) fn props(d: &Value) -> Props {
             .as_str()
             .and_then(og_ui::Cursor::from_name)
             .unwrap_or_default(),
+        customize: customize(&d["customize"]),
         motion: transition(&d["motion"]),
         layout_motion: transition(&d["layoutMotion"]),
         enter: presence(&d["enter"], false),

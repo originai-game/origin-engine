@@ -85,6 +85,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(ui_upgrade),
     },
     Migration {
+        target: Target::Block,
+        name: "og.ui",
+        from: 14,
+        to: 15,
+        note: "ui-gaps B2: a pad's virtual cursor, the players' HUD layouts and the edit mode",
+        run: Some(ui_upgrade),
+    },
+    Migration {
         target: Target::Record,
         name: "og.Gamepad",
         from: 1,

@@ -527,6 +527,19 @@ fn tokens_json(t: &og_ui::StyleTokens) -> Value {
     })
 }
 
+/// An `og.ui.Customize` desc (null: not customisable).
+pub(super) fn customize(v: &Value) -> Option<og_ui::Customize> {
+    v.is_object().then(|| og_ui::Customize {
+        key: v["key"].as_str().unwrap_or_default().to_owned(),
+        lock_move: v["lockMove"].as_bool().unwrap_or(false),
+        lock_scale: v["lockScale"].as_bool().unwrap_or(false),
+        lock_opacity: v["lockOpacity"].as_bool().unwrap_or(false),
+        min_scale: f(v, "minScale", 0.0).max(0.0),
+        max_scale: f(v, "maxScale", 0.0).max(0.0),
+        min_opacity: f(v, "minOpacity", 0.0).clamp(0.0, 1.0),
+    })
+}
+
 pub(super) fn opt_f(v: &Value, k: &str) -> Option<f32> {
     v[k].as_f64().map(|x| x as f32)
 }

@@ -501,6 +501,15 @@ local multiplayer selection screens.
 Elements marked `customizable` can be moved, scaled and faded by the
 player in a layout editor component and are saved in the game's settings.
 Virtual controls on touch (sticks, buttons) are customisable the same way.
+Shipped as `ElementProps.customize` (a key, per-axis locks and scale and
+opacity limits); placements are kept per player by key and applied before
+the frame's transforms, so touches follow them. `og.ui.setHudEdit` is the
+edit mode (press to select, drag to move, pinch or wheel to scale, the
+stick for pads), `og.ui.hudLayoutEditor` its panel, and
+`og.ui.hudLayout()`/`setHudLayout(json)` move a layout in and out of the
+game's settings. The pad-driven virtual cursor of §8.3 is
+`og.ui.setVirtualCursor` (speed, fine-aim acceleration, magnet, right-stick
+scroll); A is its pointer button, the style draws it.
 
 ### 8.5 Gesture recognizers
 

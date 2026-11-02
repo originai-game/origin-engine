@@ -11,6 +11,7 @@ mod features;
 mod fields;
 mod gfx;
 mod glyphs;
+mod hud_layout;
 mod kit_gfx;
 mod layout;
 mod linebreak;

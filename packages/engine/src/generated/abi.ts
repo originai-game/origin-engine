@@ -953,6 +953,28 @@ export interface HostAbi<A, V> {
   og_ui_back(): boolean;
   /** `og.ui.setPlayers` */
   og_ui_set_players(count: number): void;
+  /** `og.ui.setVirtualCursor` */
+  og_ui_set_virtual_cursor(desc: string): void;
+  /** `og.ui.virtualCursor` */
+  og_ui_virtual_cursor(): string;
+  /** `og.ui.setHudEdit` */
+  og_ui_set_hud_edit(on: boolean): void;
+  /** `og.ui.setHudPlayer` */
+  og_ui_set_hud_player(player: number): void;
+  /** `og.ui.hudEdit` */
+  og_ui_hud_edit(): string;
+  /** `og.ui.hudLayout` */
+  og_ui_hud_layout(player: number): string;
+  /** `og.ui.setHudLayout` */
+  og_ui_set_hud_layout(player: number, layout: string): boolean;
+  /** `og.ui.hudSelect` */
+  og_ui_hud_select(key: string): void;
+  /** `og.ui.hudStep` */
+  og_ui_hud_step(scale: number, opacity: number): void;
+  /** `og.ui.hudReset` */
+  og_ui_hud_reset(key: string): void;
+  /** `og.ui.hudLayoutEditor` */
+  og_ui_hud_layout_editor(id: string, desc: string | undefined): string;
   /** `og.ui.focus` */
   og_ui_focus(pad: number): string;
   /** `og.ui.a11y` */
@@ -1703,6 +1725,17 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_navigate",
   "og_ui_back",
   "og_ui_set_players",
+  "og_ui_set_virtual_cursor",
+  "og_ui_virtual_cursor",
+  "og_ui_set_hud_edit",
+  "og_ui_set_hud_player",
+  "og_ui_hud_edit",
+  "og_ui_hud_layout",
+  "og_ui_set_hud_layout",
+  "og_ui_hud_select",
+  "og_ui_hud_step",
+  "og_ui_hud_reset",
+  "og_ui_hud_layout_editor",
   "og_ui_focus",
   "og_ui_a11y",
   "og_ui_feedback",

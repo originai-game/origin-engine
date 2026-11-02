@@ -294,7 +294,9 @@ impl Ui {
             order.extend(crate::layout::draw_order(&self.nodes, f));
         }
         self.world_order(&mut order);
+        self.hud_apply(&order);
         self.apply_world(&order);
+        self.hud_collect(&order);
         self.world_finish();
         self.note_drag_and_drop(&order);
 
@@ -745,6 +747,7 @@ impl Ui {
             }
         }
         self.state.players = self.players as u8;
+        self.state.vcursor.desc = self.vcursor;
         self.state.scope = top_scope;
         self.state.scope_locked = top_locked;
         self.state.nav_off = !self.nav_on;
@@ -790,7 +793,12 @@ impl Ui {
         self.state.hits = hits;
         self.note_groups();
         self.note_taps(&present);
-        let cursor = self.resolve_cursor(&present);
+        let cursor = if self.state.vcursor.shown && self.state.vcursor.desc.is_some() {
+            // The pad's cursor is drawn; the system's is hidden.
+            crate::Cursor::None
+        } else {
+            self.resolve_cursor(&present)
+        };
 
         self.build_part_draws(&order);
         let mut cmds = self.commands(&order);
@@ -800,6 +808,10 @@ impl Ui {
             self.cover_commands(&c, &mut cover);
             cmds.extend(cover.into_iter().map(|c| (c, Affine::IDENTITY)));
         }
+        let mut over = Vec::new();
+        self.hud_edit_commands(&mut over);
+        self.virtual_cursor_commands(&mut over);
+        cmds.extend(over.into_iter().map(|c| (c, Affine::IDENTITY)));
         let cmds: Vec<(DrawCmd, Affine)> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
         let missing_glyphs = self.missing_glyphs(&cmds);
         let motion_dump = self.motion_dump(&order);

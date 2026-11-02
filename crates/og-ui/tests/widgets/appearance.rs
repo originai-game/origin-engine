@@ -165,7 +165,13 @@ fn anchors_sit_in_the_safe_area_and_touch_controls_keep_44px() {
                         ..ActionButtonDesc::default()
                     },
                 );
-                ui.dpad("Dpad", DpadDesc { size: 60.0 });
+                ui.dpad(
+                    "Dpad",
+                    DpadDesc {
+                        size: 60.0,
+                        ..DpadDesc::default()
+                    },
+                );
             },
         );
     };

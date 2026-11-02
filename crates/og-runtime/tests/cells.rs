@@ -344,11 +344,12 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 /// (G3-2: a world without footage no longer has the type), and again
 /// (a4f0740b668ce590 -> 07d9679424bad231) when R11 made og.Lighting2D,
 /// og.Light2D and og.Occluder2D lazy, and again (07d9679424bad231 ->
-/// af7faee87b6dea25) for ui-gaps' UI state version 14, with no change to
+/// af7faee87b6dea25) for ui-gaps' UI state version 14, and again
+/// (af7faee87b6dea25 -> d68afb5b35367aa5) for version 15, with no change to
 /// the cells' own behaviour.
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
-const END_HASH: &str = "af7faee87b6dea25";
+const END_HASH: &str = "d68afb5b35367aa5";
 
 #[test]
 fn a_session_without_anchors_refuses_the_camera() {

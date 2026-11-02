@@ -2847,6 +2847,72 @@ pub fn og_ui_set_players(env: Env, count: u32) {
     <Host as UiApi>::og_ui_set_players(&Host, count)
 }
 
+#[napi(js_name = "og_ui_set_virtual_cursor")]
+pub fn og_ui_set_virtual_cursor(env: Env, desc: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_set_virtual_cursor(&Host, desc)
+}
+
+#[napi(js_name = "og_ui_virtual_cursor")]
+pub fn og_ui_virtual_cursor(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_virtual_cursor(&Host)
+}
+
+#[napi(js_name = "og_ui_set_hud_edit")]
+pub fn og_ui_set_hud_edit(env: Env, on: bool) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_set_hud_edit(&Host, on)
+}
+
+#[napi(js_name = "og_ui_set_hud_player")]
+pub fn og_ui_set_hud_player(env: Env, player: u32) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_set_hud_player(&Host, player)
+}
+
+#[napi(js_name = "og_ui_hud_edit")]
+pub fn og_ui_hud_edit(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_hud_edit(&Host)
+}
+
+#[napi(js_name = "og_ui_hud_layout")]
+pub fn og_ui_hud_layout(env: Env, player: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_hud_layout(&Host, player)
+}
+
+#[napi(js_name = "og_ui_set_hud_layout")]
+pub fn og_ui_set_hud_layout(env: Env, player: u32, layout: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_set_hud_layout(&Host, player, layout)
+}
+
+#[napi(js_name = "og_ui_hud_select")]
+pub fn og_ui_hud_select(env: Env, key: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_hud_select(&Host, key)
+}
+
+#[napi(js_name = "og_ui_hud_step")]
+pub fn og_ui_hud_step(env: Env, scale: i32, opacity: i32) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_hud_step(&Host, scale, opacity)
+}
+
+#[napi(js_name = "og_ui_hud_reset")]
+pub fn og_ui_hud_reset(env: Env, key: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_hud_reset(&Host, key)
+}
+
+#[napi(js_name = "og_ui_hud_layout_editor")]
+pub fn og_ui_hud_layout_editor(env: Env, id: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_hud_layout_editor(&Host, id, desc)
+}
+
 #[napi(js_name = "og_ui_focus")]
 pub fn og_ui_focus(env: Env, pad: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

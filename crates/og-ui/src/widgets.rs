@@ -373,12 +373,14 @@ pub struct DialogueResponse {
     pub advanced: bool,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct JoystickDesc {
     /// The base's diameter; 0: 128 (at least three touch targets).
     pub size: f32,
     /// Ignored radius as a ratio; 0: 0.15.
     pub dead_zone: f32,
+    /// The player can move, scale and fade it ([`crate::Ui::set_hud_edit`]).
+    pub customize: Option<crate::Customize>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -390,10 +392,12 @@ pub struct JoystickResponse {
     pub active: bool,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct DpadDesc {
     /// The whole pad's size; 0: 132 (each arm at least the touch target).
     pub size: f32,
+    /// The player can move, scale and fade it ([`crate::Ui::set_hud_edit`]).
+    pub customize: Option<crate::Customize>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -411,6 +415,8 @@ pub struct ActionButtonDesc {
     pub primary: bool,
     /// An icon of the atlas by name, instead of the label.
     pub icon: String,
+    /// The player can move, scale and fade it ([`crate::Ui::set_hud_edit`]).
+    pub customize: Option<crate::Customize>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

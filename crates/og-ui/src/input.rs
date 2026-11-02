@@ -206,6 +206,8 @@ pub struct GamepadFrame {
     pub pressed: u32,
     /// The left stick, x right and y down, each -1..1.
     pub stick: Vec2,
+    /// The right stick, the same way (a virtual cursor scrolls with it).
+    pub stick_r: Vec2,
     /// Buttons held (the same bits): holds and releases of UI actions.
     pub held: u32,
     /// The pad's family, when the host told it (`og.Gamepad`'s devices):
@@ -227,6 +229,10 @@ impl GamepadFrame {
             stick: Vec2::new(
                 pad.axis(og_input::GamepadAxis::LeftX, n),
                 pad.axis(og_input::GamepadAxis::LeftY, n),
+            ),
+            stick_r: Vec2::new(
+                pad.axis(og_input::GamepadAxis::RightX, n),
+                pad.axis(og_input::GamepadAxis::RightY, n),
             ),
             device: pad.device(n),
         }

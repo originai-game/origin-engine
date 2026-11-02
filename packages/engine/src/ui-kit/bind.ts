@@ -114,6 +114,20 @@ export const widgets = {
   setNavigation: (on: boolean): void => abi().og_ui_set_navigation(on),
   setPlayers: (count: number): void => abi().og_ui_set_players(count),
   focus: (pad: number): string => abi().og_ui_focus(pad),
+  // A pad's virtual cursor and the player's HUD layout (docs/ui.md §8.3, §8.4).
+  setVirtualCursor: (desc: Api.VirtualCursorDesc | null): void =>
+    abi().og_ui_set_virtual_cursor(JSON.stringify(desc ?? null)),
+  virtualCursor: (): Api.VirtualCursor | null => parse(abi().og_ui_virtual_cursor()),
+  setHudEdit: (on: boolean): void => abi().og_ui_set_hud_edit(on),
+  setHudPlayer: (player: number): void => abi().og_ui_set_hud_player(player),
+  hudEdit: (): Api.HudEdit => parse(abi().og_ui_hud_edit()),
+  hudLayout: (player: number): string => abi().og_ui_hud_layout(player),
+  setHudLayout: (player: number, layout: string): boolean => abi().og_ui_set_hud_layout(player, layout),
+  hudSelect: (key: string): void => abi().og_ui_hud_select(key),
+  hudStep: (scale: number, opacity: number): void => abi().og_ui_hud_step(scale, opacity),
+  hudReset: (key: string): void => abi().og_ui_hud_reset(key),
+  hudLayoutEditor: (id: string, desc?: Api.HudEditorDesc): Api.HudEditorResult =>
+    parse(abi().og_ui_hud_layout_editor(id, json(desc))),
   a11y: (): Api.A11yTree => parse(abi().og_ui_a11y()),
   memory: (id: string, initial: number): number => abi().og_ui_memory(id, initial),
   remember: (id: string, value: number): void => abi().og_ui_remember(id, value),

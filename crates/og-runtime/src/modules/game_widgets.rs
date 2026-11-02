@@ -444,6 +444,7 @@ pub fn og_ui_joystick(id: String, desc: Option<String>) -> String {
             JoystickDesc {
                 size: f(&d, "size", 0.0),
                 dead_zone: f(&d, "deadZone", 0.0),
+                customize: customize(&d["customize"]),
             },
         )
     })
@@ -458,6 +459,7 @@ pub fn og_ui_dpad(id: String, desc: Option<String>) -> String {
             id.as_str(),
             DpadDesc {
                 size: f(&d, "size", 0.0),
+                customize: customize(&d["customize"]),
             },
         )
     })
@@ -475,6 +477,7 @@ pub fn og_ui_action_button(id: String, text: String, desc: Option<String>) -> St
                 size: f(&d, "size", 0.0),
                 primary: d["primary"].as_bool().unwrap_or(false),
                 icon: d["icon"].as_str().unwrap_or_default().to_string(),
+                customize: customize(&d["customize"]),
             },
         )
     });
@@ -553,6 +556,90 @@ pub fn og_ui_set_navigation(on: bool) {
 
 pub fn og_ui_set_players(count: u32) {
     with_ui("og.ui.setPlayers", |ui| ui.set_players(count));
+}
+
+pub fn og_ui_set_virtual_cursor(desc: String) {
+    let d: Value = serde_json::from_str(&desc).unwrap_or(Value::Null);
+    let desc = d.is_object().then(|| og_ui::VirtualCursorDesc {
+        speed: f(&d, "speed", 0.0),
+        accel: f(&d, "accel", 0.0),
+        magnet: f(&d, "magnet", 0.0),
+        scroll: f(&d, "scroll", 0.0),
+    });
+    with_ui("og.ui.setVirtualCursor", |ui| ui.set_virtual_cursor(desc));
+}
+
+pub fn og_ui_virtual_cursor() -> String {
+    match with_ui("og.ui.virtualCursor", |ui| ui.virtual_cursor()).flatten() {
+        Some((p, shown)) => json!({ "x": p.x, "y": p.y, "shown": shown }).to_string(),
+        None => "null".into(),
+    }
+}
+
+pub fn og_ui_set_hud_edit(on: bool) {
+    with_ui("og.ui.setHudEdit", |ui| ui.set_hud_edit(on));
+}
+
+pub fn og_ui_set_hud_player(player: u32) {
+    with_ui("og.ui.setHudPlayer", |ui| ui.set_hud_player(player));
+}
+
+pub fn og_ui_hud_edit() -> String {
+    let e = with_ui("og.ui.hudEdit", |ui| ui.hud_edit()).unwrap_or_default();
+    let p = e.placement;
+    json!({
+        "on": e.on, "player": e.player, "selected": e.selected,
+        "placement": { "x": p.x, "y": p.y, "scale": p.scale, "opacity": p.opacity },
+        "keys": e.keys, "changed": e.changed,
+    })
+    .to_string()
+}
+
+pub fn og_ui_hud_layout(player: u32) -> String {
+    with_ui("og.ui.hudLayout", |ui| ui.hud_layout(player)).unwrap_or_else(|| "{}".into())
+}
+
+pub fn og_ui_set_hud_layout(player: u32, layout: String) -> bool {
+    with_ui("og.ui.setHudLayout", |ui| {
+        match ui.set_hud_layout(player, &layout) {
+            Ok(()) => true,
+            Err(e) => {
+                ui.warn(e);
+                false
+            }
+        }
+    })
+    .unwrap_or(false)
+}
+
+pub fn og_ui_hud_select(key: String) {
+    with_ui("og.ui.hudSelect", |ui| ui.hud_select(&key));
+}
+
+pub fn og_ui_hud_step(scale: i32, opacity: i32) {
+    with_ui("og.ui.hudStep", |ui| ui.hud_step(scale, opacity));
+}
+
+pub fn og_ui_hud_reset(key: String) {
+    with_ui("og.ui.hudReset", |ui| ui.hud_reset(&key));
+}
+
+pub fn og_ui_hud_layout_editor(id: String, desc: Option<String>) -> String {
+    let d = desc_of(desc);
+    let s = |k: &str| d[k].as_str().unwrap_or_default().to_owned();
+    let desc = og_ui::HudEditorDesc {
+        title: s("title"),
+        size_label: s("sizeLabel"),
+        opacity_label: s("opacityLabel"),
+        next_label: s("nextLabel"),
+        reset_label: s("resetLabel"),
+        done_label: s("doneLabel"),
+    };
+    let r = with_ui("og.ui.hudLayoutEditor", |ui| {
+        ui.hud_layout_editor(id.as_str(), &desc)
+    })
+    .unwrap_or_default();
+    json!({ "done": r.done, "changed": r.changed }).to_string()
 }
 
 pub fn og_ui_focus(pad: u32) -> String {

@@ -1067,6 +1067,28 @@ pub trait UiApi: Wire {
     fn og_ui_back(&self) -> bool;
     /// `og.ui.setPlayers`
     fn og_ui_set_players(&self, count: u32);
+    /// `og.ui.setVirtualCursor`
+    fn og_ui_set_virtual_cursor(&self, desc: String);
+    /// `og.ui.virtualCursor`
+    fn og_ui_virtual_cursor(&self) -> String;
+    /// `og.ui.setHudEdit`
+    fn og_ui_set_hud_edit(&self, on: bool);
+    /// `og.ui.setHudPlayer`
+    fn og_ui_set_hud_player(&self, player: u32);
+    /// `og.ui.hudEdit`
+    fn og_ui_hud_edit(&self) -> String;
+    /// `og.ui.hudLayout`
+    fn og_ui_hud_layout(&self, player: u32) -> String;
+    /// `og.ui.setHudLayout`
+    fn og_ui_set_hud_layout(&self, player: u32, layout: String) -> bool;
+    /// `og.ui.hudSelect`
+    fn og_ui_hud_select(&self, key: String);
+    /// `og.ui.hudStep`
+    fn og_ui_hud_step(&self, scale: i32, opacity: i32);
+    /// `og.ui.hudReset`
+    fn og_ui_hud_reset(&self, key: String);
+    /// `og.ui.hudLayoutEditor`
+    fn og_ui_hud_layout_editor(&self, id: String, desc: Option<String>) -> String;
     /// `og.ui.focus`
     fn og_ui_focus(&self, pad: u32) -> String;
     /// `og.ui.a11y`
@@ -1862,6 +1884,17 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_navigate",
     "og_ui_back",
     "og_ui_set_players",
+    "og_ui_set_virtual_cursor",
+    "og_ui_virtual_cursor",
+    "og_ui_set_hud_edit",
+    "og_ui_set_hud_player",
+    "og_ui_hud_edit",
+    "og_ui_hud_layout",
+    "og_ui_set_hud_layout",
+    "og_ui_hud_select",
+    "og_ui_hud_step",
+    "og_ui_hud_reset",
+    "og_ui_hud_layout_editor",
     "og_ui_focus",
     "og_ui_a11y",
     "og_ui_feedback",

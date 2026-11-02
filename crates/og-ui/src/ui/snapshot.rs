@@ -210,6 +210,62 @@ impl Ui {
         u64_(&mut b, t.waiting_tick);
         f32_(&mut b, t.waiting_at.x);
         f32_(&mut b, t.waiting_at.y);
+        // The virtual cursor and the HUD layouts (version 15).
+        let v = &s.vcursor;
+        b.push(
+            u8::from(v.desc.is_some())
+                | u8::from(v.shown) << 1
+                | u8::from(v.placed) << 2
+                | u8::from(v.down) << 3,
+        );
+        let d = v.desc.unwrap_or_default();
+        for x in [d.speed, d.accel, d.magnet, d.scroll, v.pos.x, v.pos.y] {
+            f32_(&mut b, x);
+        }
+        f32_(&mut b, v.last_pointer.x);
+        f32_(&mut b, v.last_pointer.y);
+        u32_(&mut b, v.held);
+        u64_(&mut b, v.over);
+        let h = &s.hud;
+        for l in &h.layouts {
+            u32_(&mut b, l.len() as u32);
+            for (k, p) in l {
+                text(&mut b, k);
+                for x in [p.x, p.y, p.scale, p.opacity] {
+                    f32_(&mut b, x);
+                }
+            }
+        }
+        b.push(h.player | u8::from(h.edit) << 2 | u8::from(h.drag.is_some()) << 3);
+        text(&mut b, &h.selected);
+        let (start, from, spread) = h.drag.unwrap_or_default();
+        for x in [
+            start.x,
+            start.y,
+            from.x,
+            from.y,
+            from.scale,
+            from.opacity,
+            spread,
+        ] {
+            f32_(&mut b, x);
+        }
+        u32_(&mut b, h.targets.len() as u32);
+        for t in &h.targets {
+            text(&mut b, &t.key);
+            rect(&mut b, &t.base);
+            rect(&mut b, &t.shown);
+            let c = &t.spec;
+            text(&mut b, &c.key);
+            b.push(
+                u8::from(c.lock_move) | u8::from(c.lock_scale) << 1 | u8::from(c.lock_opacity) << 2,
+            );
+            for x in [c.min_scale, c.max_scale, c.min_opacity] {
+                f32_(&mut b, x);
+            }
+        }
+        rect(&mut b, &h.editor);
+        u64_(&mut b, h.changed);
         // The layer stack, its viewmodels and the documents' states.
         text(&mut b, &self.docs_state().to_string());
         b
@@ -263,7 +319,10 @@ impl Ui {
     /// entry, the state of version 12 with each hit's focusable owner
     /// unset (the next frame's hit test fills it), and the state of
     /// version 13 with no focus groups, explicit moves or gesture
-    /// recognisers (the next frame collects them) and no press recognised.
+    /// recognisers (the next frame collects them) and no press recognised,
+    /// and the state of version 14 with no virtual cursor and no HUD
+    /// layouts (a game gives its saved layouts back with
+    /// [`Ui::set_hud_layout`]).
     /// Refused for another version, or bytes that do not read as theirs.
     pub fn upgrade_state(bytes: &[u8]) -> og_core::Result<Vec<u8>> {
         let bad = |why: String| {
@@ -286,7 +345,7 @@ impl Ui {
                 };
                 Ok(ui.save_state())
             }
-            11..=13 => {
+            11..=14 => {
                 let s = r.state(version).ok_or_else(|| {
                     bad(format!("truncated or malformed version {version} state"))
                 })?;
@@ -311,7 +370,7 @@ impl Ui {
                 Ok(ui.save_state())
             }
             v => Err(bad(format!(
-                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 13"
+                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 14"
             ))),
         }
     }
@@ -641,6 +700,75 @@ impl Reader<'_> {
         t.waiting = self.u64()?;
         t.waiting_tick = self.u64()?;
         t.waiting_at = Vec2::new(self.f32()?, self.f32()?);
+        if version < 15 {
+            return Some(s);
+        }
+        let f = self.u8()?;
+        let mut d = crate::vcursor::VirtualCursorDesc::default();
+        let v = &mut s.vcursor;
+        v.shown = f & 2 != 0;
+        v.placed = f & 4 != 0;
+        v.down = f & 8 != 0;
+        d.speed = self.f32()?;
+        d.accel = self.f32()?;
+        d.magnet = self.f32()?;
+        d.scroll = self.f32()?;
+        v.desc = (f & 1 != 0).then_some(d);
+        v.pos = Vec2::new(self.f32()?, self.f32()?);
+        v.last_pointer = Vec2::new(self.f32()?, self.f32()?);
+        v.held = self.u32()?;
+        v.over = self.u64()?;
+        let h = &mut s.hud;
+        for l in h.layouts.iter_mut() {
+            for _ in 0..self.u32()? {
+                let k = self.string()?;
+                let p = crate::hud_layout::HudPlacement {
+                    x: self.f32()?,
+                    y: self.f32()?,
+                    scale: self.f32()?,
+                    opacity: self.f32()?,
+                };
+                l.insert(k, p);
+            }
+        }
+        let f = self.u8()?;
+        h.player = f & 3;
+        h.edit = f & 4 != 0;
+        h.selected = self.string()?;
+        let start = Vec2::new(self.f32()?, self.f32()?);
+        let mut from = crate::hud_layout::HudPlacement {
+            x: self.f32()?,
+            y: self.f32()?,
+            ..Default::default()
+        };
+        from.scale = self.f32()?;
+        from.opacity = self.f32()?;
+        let spread = self.f32()?;
+        h.drag = (f & 8 != 0).then_some((start, from, spread));
+        for _ in 0..self.u32()? {
+            let key = self.string()?;
+            let base = self.rect()?;
+            let shown = self.rect()?;
+            let ckey = self.string()?;
+            let lf = self.u8()?;
+            let spec = crate::element::Customize {
+                key: ckey,
+                lock_move: lf & 1 != 0,
+                lock_scale: lf & 2 != 0,
+                lock_opacity: lf & 4 != 0,
+                min_scale: self.f32()?,
+                max_scale: self.f32()?,
+                min_opacity: self.f32()?,
+            };
+            h.targets.push(crate::hud_layout::HudTarget {
+                key,
+                base,
+                shown,
+                spec,
+            });
+        }
+        h.editor = self.rect()?;
+        h.changed = self.u64()?;
         Some(s)
     }
 }
@@ -649,9 +777,12 @@ impl Reader<'_> {
 mod tests {
     use super::*;
 
-    /// A save of a state with no focus groups, moves, recognisers or press
-    /// without the version 14 block they take before the layer stack.
-    fn without_v14_tail(b: &[u8]) -> Vec<u8> {
+    /// The version 15 block of a state with no virtual cursor and no HUD
+    /// layouts, edit mode or targets: its size.
+    const V15: usize = 1 + 6 * 4 + 2 * 4 + 4 + 8 + 4 * 4 + 1 + 4 + 7 * 4 + 4 + 4 * 4 + 8;
+
+    /// `b` without the `tail` bytes just before its layer stack.
+    fn cut_before_docs(b: &[u8], tail: usize) -> Vec<u8> {
         let n = b.len();
         let mut k = n;
         let docs = loop {
@@ -661,11 +792,17 @@ mod tests {
                 break len + 4;
             }
         };
-        let tail = 3 * 4 + 4 + 8 + 8 + 4 + 1 + 8 + 8 + 8;
         let cut = n - docs;
         let mut out = b[..cut - tail].to_vec();
         out.extend_from_slice(&b[cut..]);
         out
+    }
+
+    /// A save of a state with no focus groups, moves, recognisers or press,
+    /// virtual cursor or HUD layouts without the version 14 and 15 blocks
+    /// they take before the layer stack.
+    fn without_v14_tail(b: &[u8]) -> Vec<u8> {
+        cut_before_docs(b, 3 * 4 + 4 + 8 + 8 + 4 + 1 + 8 + 8 + 8 + V15)
     }
 
     /// A version 11 state block (one focus return) restores once upgraded:
@@ -762,5 +899,83 @@ mod tests {
         assert_eq!((fresh.state.focus, fresh.state.tick), (9, 77));
         assert_eq!(fresh.state.hits.len(), 1);
         assert!(fresh.state.groups.is_empty() && fresh.state.recognizers.is_empty());
+    }
+
+    /// A version 14 state (no virtual cursor, no HUD layouts) upgrades to
+    /// what this version saves with neither, and restores; read directly
+    /// it is refused.
+    #[test]
+    fn a_version_14_state_upgrades_and_restores() {
+        let mut ui = Ui::default();
+        ui.state.focus = 5;
+        ui.state.tick = 31;
+        let saved = ui.save_state();
+        let mut v14 = cut_before_docs(&saved, V15);
+        v14[..4].copy_from_slice(&14u32.to_le_bytes());
+        let mut fresh = Ui::default();
+        assert!(
+            fresh.restore_state(&v14).is_err(),
+            "14 is read only through the upgrade"
+        );
+        let up = Ui::upgrade_state(&v14).expect("version 14 upgrades");
+        assert_eq!(up, saved, "the upgrade writes what this version saves");
+        fresh
+            .restore_state(&up)
+            .expect("the upgraded block restores");
+        assert_eq!((fresh.state.focus, fresh.state.tick), (5, 31));
+    }
+
+    /// The virtual cursor and every player's HUD layout, the edit mode, a
+    /// move in progress and last frame's targets come back as they were.
+    #[test]
+    fn the_virtual_cursor_and_hud_layouts_round_trip() {
+        use crate::hud_layout::{HudPlacement, HudTarget};
+        let mut ui = Ui::default();
+        let v = &mut ui.state.vcursor;
+        v.desc = Some(crate::VirtualCursorDesc {
+            speed: 700.0,
+            accel: -1.0,
+            magnet: 0.25,
+            scroll: 900.0,
+        });
+        v.pos = Vec2::new(120.5, 64.0);
+        v.shown = true;
+        v.placed = true;
+        v.down = true;
+        v.held = 7;
+        v.over = 0xabcd;
+        v.last_pointer = Vec2::new(3.0, 4.0);
+        let h = &mut ui.state.hud;
+        let p = HudPlacement {
+            x: -40.0,
+            y: 12.0,
+            scale: 1.3,
+            opacity: 0.6,
+        };
+        h.layouts[0].insert("stick".into(), p);
+        h.layouts[2].insert("Hud/Map".into(), HudPlacement { scale: 0.7, ..p });
+        h.player = 2;
+        h.edit = true;
+        h.selected = "Hud/Map".into();
+        h.drag = Some((Vec2::new(9.0, 8.0), p, 31.0));
+        h.targets.push(HudTarget {
+            key: "Hud/Map".into(),
+            base: Rect::new(1.0, 2.0, 30.0, 40.0),
+            shown: Rect::new(5.0, 6.0, 21.0, 28.0),
+            spec: crate::Customize {
+                key: String::new(),
+                lock_opacity: true,
+                max_scale: 1.5,
+                ..Default::default()
+            },
+        });
+        h.editor = Rect::new(10.0, 20.0, 300.0, 200.0);
+        h.changed = 99;
+        let bytes = ui.save_state();
+        let mut back = Ui::default();
+        back.restore_state(&bytes).expect("restores");
+        assert_eq!(back.state.vcursor, ui.state.vcursor);
+        assert_eq!(back.state.hud, ui.state.hud);
+        assert_eq!(back.save_state(), bytes);
     }
 }

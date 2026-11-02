@@ -33,6 +33,8 @@ impl Ui {
             touched: Default::default(),
             nav_on: true,
             players: 1,
+            vcursor: None,
+            hud_editor_key: 0,
             request_focus: 0,
             scopes: Vec::new(),
             icons: IconAtlas::default(),
@@ -438,12 +440,16 @@ impl Ui {
         // in units too.
         let unit = surface_unit(&self.configured, &viewport);
         let viewport = viewport.zoomed(unit);
-        let input = input.zoomed(unit);
+        let mut input = input.zoomed(unit);
         self.unit = unit;
+        // A pad's virtual cursor is the pointer while it shows, and the
+        // HUD edit mode takes the presses on what it edits.
+        self.virtual_cursor_input(&mut input, viewport.width, viewport.height);
+        self.viewport = viewport;
+        self.hud_edit_input(&mut input);
         // Scrolling first: a press on a scrollbar grabs it before anything
         // under it, two touches scroll or zoom what is under them.
         let grabbed = self.scroll_input(&input);
-        let mut input = input;
         if self.gesture {
             input.pressed = false;
             input.released = false;
@@ -481,6 +487,8 @@ impl Ui {
         self.scopes.clear();
         self.nav_on = true;
         self.players = 1;
+        self.vcursor = None;
+        self.hud_editor_key = 0;
         self.cover = None;
         // A pointer on a world panel is moved onto the panel's layout.
         self.world_begin(&mut input);
@@ -589,6 +597,12 @@ impl Ui {
         if heard || f.haptic.count > 0 {
             self.feedback.push((event, rise));
         }
+    }
+
+    /// Adds a warning to the frame being built (a host's refused call),
+    /// reported with the frame's own.
+    pub fn warn(&mut self, message: impl Into<String>) {
+        self.warnings.push(message.into());
     }
 
     /// Text a copy (Ctrl or Cmd with C) or cut (with X) took from a text

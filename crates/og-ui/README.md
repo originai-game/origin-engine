@@ -466,6 +466,8 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `longPressMs` | number | all | How long its long press is held, ms (0: 500). |
 | `gesturePriority` | number | all | Among nested recognisers of one press: higher wins. |
 | `cursor` | auto \| default \| pointer \| text \| grab \| grabbing \| move \| notAllowed \| crosshair \| help \| wait \| progress \| resizeEw \| resizeNs \| resizeNesw \| resizeNwse \| zoomIn \| zoomOut \| none | all | The pointer's shape over it and its subtree. |
+| `customize` | bool | all | The player can move, scale and fade it in the HUD edit mode. |
+| `customizeKey` | name | all | With customize: its name in the saved HUD layout (default: its path). |
 | `reduced` | fade \| none \| keep | all | Its reduced-motion fallback. |
 | `text` | text | label, button, badge, toggle | What it says. |
 | `key` | name | label, button, badge, toggle | A string table key (og.i18n) its text comes from; `text` is the fallback. |
@@ -641,7 +643,7 @@ innermost of equals. A tap waits for a double tap only where one is
 declared; a long press that fires takes the press (its release clicks and
 taps nothing); travel past the slop fails both. Keys and pads tap a
 focused recogniser by activating it. The press, the waiting tap and the
-recognisers are UI state (`save_state` version 14).
+recognisers are UI state (`save_state` version 14 on).
 
 `Props::cursor` (`Cursor`, CSS names) sets the pointer's shape over an
 element and its subtree; `Auto` takes the parent's, and with none set a
@@ -680,6 +682,36 @@ keeps the finger that started on it, a button answers whichever is over it,
 so a thumb on the stick and another on Hit work together
 (`templates/ui-kit/tests/multitouch.og.ts`). Two touches on one scroll
 container scroll it, on a zoom view pinch it (§Scrolling).
+
+**A virtual cursor for pads (`src/vcursor.rs`).** `Ui::set_virtual_cursor(Some(
+VirtualCursorDesc { speed (900), accel (250 ms), magnet (0.5), scroll (1200) }))`,
+declared every tick like `set_players`, turns pad 0 into a pointer for a
+screen built for the mouse (a map, a shop grid, a strategy HUD): the left
+stick moves a cursor (squared for fine aim, from a third of its speed to all
+of it over `accel`), which slows over a control and settles to its centre
+once the stick rests (`magnet`); A is the pointer's button (press, hold,
+release, so drags, sliders and long presses work); the right stick feeds the
+wheel under it. While it shows the stick and A move and press no focus, the
+style draws it (a ring in `focus` on a shadow, larger over a control) and
+`UiFrame::cursor` is `none`. The real pointer moving hides it and the stick
+shows it again. It is UI state (`save_state` version 15).
+
+**The player's HUD layout (`src/hud_layout.rs`).** `Props::customize`
+(`Customize { key, lock_move, lock_scale, lock_opacity, min_scale (0.5),
+max_scale (2), min_opacity (0.2) }`; the touch controls take it in their
+descs) lets the player move, scale and fade an element. Each player's
+placements (`HudPlacement { x, y, scale, opacity }`) are kept by key (the
+element's path when `key` is empty) and applied before the frame's
+transforms, so its touches follow it. `Ui::set_hud_edit(true)` is the edit
+mode: customisable elements stop answering their presses and show outlines,
+a press selects one, a drag moves it (its centre kept on the surface), two
+touches or the wheel scale it, and with no virtual cursor pad 0's stick
+moves the selected one. `Ui::hud_layout_editor` is its panel (the selected
+key, size and opacity steps, Next, Reset, Done). `Ui::hud_layout(player)`
+answers the layout as JSON for the game's settings when `hud_edit().changed`
+says so, and `Ui::set_hud_layout(player, json)` gives it back on the next run.
+The layouts and the edit mode are UI state (version 15; a version 14 state
+upgrades with none).
 
 ## Motion (`src/motion.rs`)
 

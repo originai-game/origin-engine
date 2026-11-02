@@ -11259,6 +11259,12 @@
         "ActionButtonDesc",
         "SkeletonDesc",
         "UiPointer",
+        "VirtualCursorDesc",
+        "VirtualCursor",
+        "HudPlacement",
+        "HudEdit",
+        "HudEditorDesc",
+        "HudEditorResult",
         "A11yNode",
         "A11yTree",
         "CounterDesc",
@@ -11547,6 +11553,7 @@
         "NavLinks",
         "FocusGroup",
         "GestureSpec",
+        "Customize",
         "Cursor",
         "ElementProps",
         "EaseKey",
@@ -13377,6 +13384,164 @@
             }
           ],
           "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "setVirtualCursor",
+          "doc": "A pad's virtual cursor, for a screen built for the pointer (a map, a shop grid, a strategy HUD) played on a pad: pad 0's left stick moves it instead of the focus, slowing and sticking over controls; its A presses where it points as the mouse's button does (drags, sliders and long presses work); its right stick scrolls under it. The style draws it and the system cursor hides (og.ui.frameCursor answers none). The real pointer moving hides it and the stick shows it again. Declare it every tick the screen shows; it takes effect from the next tick. Null turns it off.",
+          "params": [
+            {
+              "name": "desc",
+              "type": "Option<VirtualCursorDesc>",
+              "optional": false,
+              "doc": "How it moves; null is none."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "virtualCursor",
+          "doc": "The virtual cursor as the last frame left it; null when none is declared.",
+          "params": [],
+          "returns": "Option<VirtualCursor>",
+          "publish": true
+        },
+        {
+          "name": "setHudEdit",
+          "doc": "Turns the HUD edit mode on or off (docs/ui.md §8.4; kept until changed). While it is on, elements with ElementProps.customize stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. Build og.ui.hudLayoutEditor for steps, Next, Reset and Done.",
+          "params": [
+            {
+              "name": "on",
+              "type": "bool",
+              "optional": false,
+              "doc": "On or off."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "setHudPlayer",
+          "doc": "Whose layout this screen shows and edits, 0 to 3 (0 by default; kept until changed): each player of a shared screen keeps a layout of their own.",
+          "params": [
+            {
+              "name": "player",
+              "type": "u32",
+              "optional": false,
+              "doc": "The player (clamped to 3)."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "hudEdit",
+          "doc": "The HUD edit mode as the last frame left it.",
+          "params": [],
+          "returns": "HudEdit",
+          "publish": true
+        },
+        {
+          "name": "hudLayout",
+          "doc": "A player's HUD layout as JSON, for the game's settings: each moved, scaled or faded element's key with its x, y, scale and opacity. Save it when HudEdit.changed says so; give it back with og.ui.setHudLayout on the next run.",
+          "params": [
+            {
+              "name": "player",
+              "type": "u32",
+              "optional": false,
+              "doc": "The player, 0 to 3."
+            }
+          ],
+          "returns": "String",
+          "publish": true
+        },
+        {
+          "name": "setHudLayout",
+          "doc": "Gives a player's HUD layout back (og.ui.hudLayout's JSON; `{}` resets it). Answers false and leaves the layout as it was when it does not read (the reason is in the frame's warnings).",
+          "params": [
+            {
+              "name": "player",
+              "type": "u32",
+              "optional": false,
+              "doc": "The player, 0 to 3."
+            },
+            {
+              "name": "layout",
+              "type": "String",
+              "optional": false,
+              "doc": "The layout's JSON."
+            }
+          ],
+          "returns": "bool",
+          "publish": true
+        },
+        {
+          "name": "hudSelect",
+          "doc": "Selects an element to edit by its key (empty: none).",
+          "params": [
+            {
+              "name": "key",
+              "type": "String",
+              "optional": false,
+              "doc": "Its key."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "hudStep",
+          "doc": "Steps the selected element's size and opacity: each -1, 0 or +1 step (a tenth larger or smaller, a tenth more or less opaque), within its limits.",
+          "params": [
+            {
+              "name": "scale",
+              "type": "i32",
+              "optional": false,
+              "doc": "The size step."
+            },
+            {
+              "name": "opacity",
+              "type": "i32",
+              "optional": false,
+              "doc": "The opacity step."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "hudReset",
+          "doc": "Puts an element back where it was laid out: its key, empty for the selected one, `*` for every one.",
+          "params": [
+            {
+              "name": "key",
+              "type": "String",
+              "optional": false,
+              "doc": "Its key, empty or `*`."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "hudLayoutEditor",
+          "doc": "The HUD edit mode's panel (docs/ui.md §8.4): the selected element's key, size and opacity steps, Next (the next element: how keys and pads choose one), Reset (the selected one, or all with none selected) and Done, which turns the edit mode off. Build it where it fits, while og.ui.hudEdit().on; presses on it edit nothing behind it. Its children are `Title`, `Selected`, `Size/Less`, `Size/More`, `Opacity/Less`, `Opacity/More`, `Actions/Next`, `Actions/Reset`, `Actions/Done`.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "HudEditorDesc",
+              "optional": true,
+              "doc": "Its labels."
+            }
+          ],
+          "returns": "HudEditorResult",
           "publish": true
         },
         {
@@ -47767,6 +47932,18 @@
           "minimum": 0,
           "maximum": 1,
           "x-og-unit": "ratio"
+        },
+        "customize": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Customize"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit).",
+          "default": null
         }
       },
       "additionalProperties": false
@@ -47809,6 +47986,18 @@
           "default": 0,
           "minimum": 0,
           "x-og-unit": "cssPx"
+        },
+        "customize": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Customize"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit).",
+          "default": null
         }
       },
       "additionalProperties": false
@@ -47866,6 +48055,18 @@
           "type": "string",
           "description": "An icon of the atlas by name, instead of the label; empty is the label.",
           "default": ""
+        },
+        "customize": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Customize"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit).",
+          "default": null
         }
       },
       "additionalProperties": false
@@ -47960,6 +48161,209 @@
         "shift",
         "ctrl",
         "alt"
+      ],
+      "additionalProperties": false
+    },
+    "VirtualCursorDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A pad's virtual cursor (docs/ui.md §8.3). The zero value moves at 900 units a second, takes a quarter second from a fine start to full speed, has a half-strength magnet and scrolls 1200 units a second.",
+      "type": "object",
+      "properties": {
+        "speed": {
+          "type": "number",
+          "description": "Units a second at full tilt; 0 is 900.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "accel": {
+          "type": "number",
+          "description": "Milliseconds a held stick takes from a third of its speed to all of it, for fine aim first; 0 is 250, negative is none.",
+          "default": 0,
+          "x-og-unit": "ms"
+        },
+        "magnet": {
+          "type": "number",
+          "description": "0 to 1: how much it slows over a control and, once the stick rests, pulls to the control's centre; 0 is 0.5, negative is none.",
+          "default": 0,
+          "maximum": 1
+        },
+        "scroll": {
+          "type": "number",
+          "description": "Units a second the right stick scrolls under it at full tilt; 0 is 1200, negative leaves the right stick to the game.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        }
+      },
+      "additionalProperties": false
+    },
+    "VirtualCursor": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "Where a pad's virtual cursor is.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Its x, from the surface's left.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Its y, from the surface's top.",
+          "x-og-unit": "cssPx"
+        },
+        "shown": {
+          "type": "boolean",
+          "description": "It is shown: the stick moved it since the real pointer last moved."
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "shown"
+      ],
+      "additionalProperties": false
+    },
+    "HudPlacement": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "Where the player put a customisable element: moved from its laid-out place, scaled about its centre and faded.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Moved right.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Moved down.",
+          "x-og-unit": "cssPx"
+        },
+        "scale": {
+          "type": "number",
+          "description": "Its scale (1: as laid out).",
+          "x-og-unit": "ratio"
+        },
+        "opacity": {
+          "type": "number",
+          "description": "Its opacity (1: opaque).",
+          "x-og-unit": "ratio"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "scale",
+        "opacity"
+      ],
+      "additionalProperties": false
+    },
+    "HudEdit": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "The HUD edit mode as the last frame left it.",
+      "type": "object",
+      "properties": {
+        "on": {
+          "type": "boolean",
+          "description": "The edit mode is on."
+        },
+        "player": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The player whose layout the screen shows and edits."
+        },
+        "selected": {
+          "type": "string",
+          "description": "The key of the element being edited; empty for none."
+        },
+        "placement": {
+          "$ref": "#/$defs/HudPlacement",
+          "description": "Its placement."
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The customisable elements on screen, in drawing order."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "The player changed the layout this tick (a move ended, a step, a reset): the time to save og.ui.hudLayout in the game's settings."
+        }
+      },
+      "required": [
+        "on",
+        "player",
+        "selected",
+        "placement",
+        "keys",
+        "changed"
+      ],
+      "additionalProperties": false
+    },
+    "HudEditorDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The HUD edit mode's panel; empty labels take English ones (pass the locale's).",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Its title; empty is Edit HUD.",
+          "default": ""
+        },
+        "sizeLabel": {
+          "type": "string",
+          "description": "The size steps' label; empty is Size.",
+          "default": ""
+        },
+        "opacityLabel": {
+          "type": "string",
+          "description": "The opacity steps' label; empty is Opacity.",
+          "default": ""
+        },
+        "nextLabel": {
+          "type": "string",
+          "description": "Next's label; empty is Next.",
+          "default": ""
+        },
+        "resetLabel": {
+          "type": "string",
+          "description": "Reset's label; empty is Reset.",
+          "default": ""
+        },
+        "doneLabel": {
+          "type": "string",
+          "description": "Done's label; empty is Done.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "HudEditorResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the HUD editor's buttons did this tick.",
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "boolean",
+          "description": "Done was pressed: the edit mode is off from the next tick."
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "A step or a reset changed the layout this tick."
+        }
+      },
+      "required": [
+        "done",
+        "changed"
       ],
       "additionalProperties": false
     },
@@ -62691,6 +63095,57 @@
       },
       "additionalProperties": false
     },
+    "Customize": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An element the player can move, scale and fade in the HUD edit mode (docs/ui.md §8.4): a HUD group, a touch stick or button. Its placement is kept per player under key (og.ui.hudLayout). The zero value allows all three, from half to twice its size and down to a fifth of its opacity.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its name in the saved layout; empty is its path. Name it when its path may change between versions of the game.",
+          "default": ""
+        },
+        "lockMove": {
+          "type": "boolean",
+          "description": "It stays where it is laid out.",
+          "default": false
+        },
+        "lockScale": {
+          "type": "boolean",
+          "description": "It keeps its size.",
+          "default": false
+        },
+        "lockOpacity": {
+          "type": "boolean",
+          "description": "It stays opaque.",
+          "default": false
+        },
+        "minScale": {
+          "type": "number",
+          "description": "The smallest it scales to; 0 is 0.5.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ratio"
+        },
+        "maxScale": {
+          "type": "number",
+          "description": "The largest it scales to; 0 is 2.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ratio"
+        },
+        "minOpacity": {
+          "type": "number",
+          "description": "The faintest it fades to; 0 is 0.2.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        }
+      },
+      "additionalProperties": false
+    },
     "Cursor": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
@@ -62910,6 +63365,18 @@
           "$ref": "#/$defs/Cursor",
           "description": "The pointer's shape over it and its subtree; auto takes its parent's.",
           "default": "auto"
+        },
+        "customize": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Customize"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit); its placement applies on every frame (og.ui.setHudLayout).",
+          "default": null
         },
         "motion": {
           "anyOf": [

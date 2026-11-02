@@ -181,7 +181,8 @@ fn a_grouped_world_restores_its_scales_in_a_fresh_session() {
 /// without footage), then 4251b57bfa40912f once R11 made og.Lighting2D,
 /// og.Light2D and og.Occluder2D lazy (the same for a world without 2D
 /// lights); neither type is registered until a game uses it. Then
-/// 3564e52caad6a083 after ui-gaps' UI state version 14.
+/// 3564e52caad6a083 after ui-gaps' UI state version 14, and 7fe0c67f5e82d9af
+/// after version 15.
 #[test]
 fn a_world_without_time_groups_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -194,5 +195,5 @@ fn a_world_without_time_groups_keeps_its_hash() {
         value(og_world_resource(engine, "og.TimeGroups".into())),
         json!({ "scales": [] })
     );
-    assert_eq!(hash(engine), "3564e52caad6a083");
+    assert_eq!(hash(engine), "7fe0c67f5e82d9af");
 }

@@ -466,6 +466,16 @@ pub const PROPS: &[PropSpec] = &[
         "The pointer's shape over it and its subtree."
     ),
     p!(
+        "customize",
+        Ty::Bool,
+        "The player can move, scale and fade it in the HUD edit mode."
+    ),
+    p!(
+        "customizeKey",
+        Ty::Name,
+        "With customize: its name in the saved HUD layout (default: its path)."
+    ),
+    p!(
         "reduced",
         Ty::Word(&["fade", "none", "keep"]),
         "Its reduced-motion fallback."

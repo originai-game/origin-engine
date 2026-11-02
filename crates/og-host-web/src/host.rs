@@ -1420,6 +1420,39 @@ impl UiApi for WebHost {
     fn og_ui_set_players(&self, count: u32) {
         rt::og_ui_set_players(count)
     }
+    fn og_ui_set_virtual_cursor(&self, desc: String) {
+        rt::og_ui_set_virtual_cursor(desc)
+    }
+    fn og_ui_virtual_cursor(&self) -> String {
+        rt::og_ui_virtual_cursor()
+    }
+    fn og_ui_set_hud_edit(&self, on: bool) {
+        rt::og_ui_set_hud_edit(on)
+    }
+    fn og_ui_set_hud_player(&self, player: u32) {
+        rt::og_ui_set_hud_player(player)
+    }
+    fn og_ui_hud_edit(&self) -> String {
+        rt::og_ui_hud_edit()
+    }
+    fn og_ui_hud_layout(&self, player: u32) -> String {
+        rt::og_ui_hud_layout(player)
+    }
+    fn og_ui_set_hud_layout(&self, player: u32, layout: String) -> bool {
+        rt::og_ui_set_hud_layout(player, layout)
+    }
+    fn og_ui_hud_select(&self, key: String) {
+        rt::og_ui_hud_select(key)
+    }
+    fn og_ui_hud_step(&self, scale: i32, opacity: i32) {
+        rt::og_ui_hud_step(scale, opacity)
+    }
+    fn og_ui_hud_reset(&self, key: String) {
+        rt::og_ui_hud_reset(key)
+    }
+    fn og_ui_hud_layout_editor(&self, id: String, desc: Option<String>) -> String {
+        rt::og_ui_hud_layout_editor(id, desc)
+    }
     fn og_ui_focus(&self, pad: u32) -> String {
         rt::og_ui_focus(pad)
     }

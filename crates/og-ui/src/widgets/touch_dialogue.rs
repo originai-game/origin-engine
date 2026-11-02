@@ -205,6 +205,7 @@ impl Ui {
                 ..Element::default()
             },
         );
+        self.nodes[i].props.customize = desc.customize;
         let key = self.nodes[i].key;
         let r = self.respond(key);
         let mut out = JoystickResponse::default();
@@ -278,6 +279,7 @@ impl Ui {
                 ..Element::default()
             },
         );
+        self.nodes[pad].props.customize = desc.customize;
         self.stack.push(pad);
         let mut out = DpadResponse::default();
         let cells: [Option<(&str, f32)>; 9] = [
@@ -389,6 +391,7 @@ impl Ui {
                 ..Element::default()
             },
         );
+        self.nodes[i].props.customize = desc.customize.clone();
         let key = self.nodes[i].key;
         let mut r = self.respond(key);
         // A further touch on the button: held while over it, a click when it

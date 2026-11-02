@@ -2374,6 +2374,61 @@ pub fn og_ui_set_players(count: u32) {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_set_virtual_cursor(desc: String) {
+    <Host as UiApi>::og_ui_set_virtual_cursor(&Host, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_virtual_cursor() -> String {
+    <Host as UiApi>::og_ui_virtual_cursor(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_set_hud_edit(on: bool) {
+    <Host as UiApi>::og_ui_set_hud_edit(&Host, on)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_set_hud_player(player: u32) {
+    <Host as UiApi>::og_ui_set_hud_player(&Host, player)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_hud_edit() -> String {
+    <Host as UiApi>::og_ui_hud_edit(&Host)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_hud_layout(player: u32) -> String {
+    <Host as UiApi>::og_ui_hud_layout(&Host, player)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_set_hud_layout(player: u32, layout: String) -> bool {
+    <Host as UiApi>::og_ui_set_hud_layout(&Host, player, layout)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_hud_select(key: String) {
+    <Host as UiApi>::og_ui_hud_select(&Host, key)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_hud_step(scale: i32, opacity: i32) {
+    <Host as UiApi>::og_ui_hud_step(&Host, scale, opacity)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_hud_reset(key: String) {
+    <Host as UiApi>::og_ui_hud_reset(&Host, key)
+}
+
+#[wasm_bindgen]
+pub fn og_ui_hud_layout_editor(id: String, desc: Option<String>) -> String {
+    <Host as UiApi>::og_ui_hud_layout_editor(&Host, id, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_focus(pad: u32) -> String {
     <Host as UiApi>::og_ui_focus(&Host, pad)
 }
