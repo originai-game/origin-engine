@@ -223,6 +223,15 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   `references/vulkan-cpu/` frame is recorded. After each
   batch of merges the coordinator runs both lanes on the runners, and a
   publish needs both green on its commit.
+- **Landing on the author's word (the owner, 2026-11-02).** To speed
+  development, a branch whose author reports it drawn, read and tested
+  is merged on that report, with no second review by the coordinator.
+  Landing a branch is a rebase, `scripts/check.sh quick` and a push;
+  the functional lane and the re-recording of reference frames run at
+  milestones (a stream's batch set finished, or a few landings
+  together), not per branch. A failure found there goes back to the
+  branch that caused it as a fix-forward commit. The rules below say
+  what each lane runs; this rule says how often.
 - **When to run the gate.** Function first, measurement later. After a
   batch of merges on main, the one session that merges runs, on
   macrunner, the functional lane (`scripts/check.sh functional`: fmt, clippy, every
