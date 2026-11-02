@@ -436,7 +436,7 @@ group is evicted to make room for a higher one. `og.stream.status`,
 and the probe's `dump_stream` say where each group is. `og build --publish`
 ships each group as its own file, fetched only when the group loads.
 
-There is no unload call for a single asset: memory comes back when a
+There is no unload call for a single cooked asset: memory comes back when a
 group unloads (its trigger lets go, or `og.stream.release(world, "boss")`
 after `og.stream.request`). Keep the handles you have; they wait and come
 back with the group, never load them again. To let a kept asset go, stop
@@ -448,6 +448,29 @@ group is put in place per tick boundary, and a group larger than the whole
 budget fails. A chunked sound (og-audio §5) may join a group: its first
 chunk comes in the pack and its other chunks are read ahead of its
 playheads only while the group is resident.
+
+**Uncooked content** is what a player makes or a generator writes while
+the game runs: a drawing, an upload, a model built in code. It never meets
+`og cook`. Load it from its bytes: `og.load.imageData(world, "made/sun.png",
+bytes, { kind: "color" })` takes a PNG or JPEG, and `og.load.gltfData(world,
+"made/vase.glb", bytes, {})` takes a `.glb`, or a `.gltf` with `data:`
+URIs. Give each a `budget` (`LoadBudget`: `bytes`, `triangles`,
+`textureSize`, `frameMs`). A file over a limit is refused at the call, read
+from its headers, with the fix in the reason. So are Draco, meshopt, Basis,
+WebP and files that name other files: re-export those as a plain `.glb` with
+PNG or JPEG textures. The handle is pending until a tick boundary puts it in
+place. Then `og.load.imageInfo` gives an image's `texture`, and a model is
+spawned like a cooked one. From a system, which cannot `world.instantiate`,
+spawn an entity and insert `og.Model { asset }`. Never wait in a loop: check
+`og.load.status` each tick, as `examples/uncooked-load` does. Completions
+are journaled, so `og replay` replays them at the same tick. In a lockstep
+room the content is only on the peer that made it: send the bytes with
+`og.platform.roomSend` (64 KiB a message), let every peer load them, and let
+the shared simulation use the content only from a tick the players agree on
+through their inputs (`og.net.submit`), never from `og.load.status`.
+`og.load.release(world, asset)` frees an uncooked asset when the game is
+done with it. Whatever still names it draws nothing, and its GPU and CPU
+memory go (`dump_memory` shows both).
 
 ## 7. Input
 

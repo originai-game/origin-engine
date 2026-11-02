@@ -1,0 +1,16 @@
+type project
+version 1
+---
+# Content made at run time and loaded uncooked (docs/web-export.md is the
+# cooked path; this is the other one): the game writes a glTF (a lathed
+# vase with a glaze texture embedded) and a PNG (a drawing) from code, as a
+# generator or a player's editor would, and loads them from their bytes
+# with og.load.gltfData and og.load.imageData, within their LoadBudget, then
+# draws them once each is ready. No og cook, no assets/.
+name "Uncooked load"
+id "uncooked-load"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1

@@ -186,6 +186,65 @@ and the fallback where tsrs has no package.
 - Reusable production assets come through the platform's asset MCP as today;
   the cook consumes what the agent put in `assets/`.
 
+#### Uncooked loads (G3-4) **(D)**
+
+Content a player makes or a generator writes at run time cannot go through
+`og cook`, so the runtime reads two formats from bytes, uncooked:
+`og.load.imageData` (PNG, JPEG) and `og.load.gltfData` (a `.glb`, or a
+`.gltf` whose buffers and images are `data:` URIs). Both answer a pending
+handle that turns ready or failed like any load, and the result is drawn as
+a cooked texture or model is (`og.Sprite`, material maps, `world.instantiate`,
+`og.Model`, `og.load.gltfInfo`).
+
+- **Budgets before decoding.** The source is untrusted, so `LoadBudget`
+  (bytes 32 MiB, triangles 500,000, textureSize 4096 and never past 8192,
+  the largest every WebGPU device takes, frameMs 2) is checked at the call
+  from the headers alone: the file's size, a PNG's IHDR or a JPEG's frame
+  header, a glTF's JSON (every triangle primitive of every mesh, each
+  embedded image's header). A load over a limit is refused then, naming the
+  limit, the value and the fix; nothing is allocated for it.
+- **The reader** (og-bundle `runtime::UncookedGltf`, serde_json, no `gltf`
+  crate in the wasm) builds the same `CookedModel` the cook's blob decodes
+  to, and the model joins the renderer through the insert path cooked
+  models take. It reads what the cook reads that needs no cook: the
+  metallic-roughness materials and their maps, `KHR_materials_unlit` and
+  `_emissive_strength`, nodes and scenes, vertex colours and tangents. A
+  colour texture magnified nearest is pixel art. What only the cook makes
+  is absent: levels of detail, cooked raycast BVHs (a raycast builds one
+  when first needed), meshopt-coded streams, compressed textures. Skins and
+  animations are skipped and counted. What would draw wrong is refused by
+  name: Draco and meshopt compression, Basis, WebP and AVIF textures,
+  sparse accessors, a buffer or image in another file, any other required
+  extension.
+- **Off the engine's thread.** Images decode in the browser on the web
+  (`createImageBitmap` and an `OffscreenCanvas` in the engine's Worker,
+  behind a host hook; no image decoder is in the wasm) and on a worker
+  thread natively (the `image` crate). A glTF's primitives are converted at
+  the tick boundaries, one at a time within `frameMs` on the web (at least
+  one a frame), all at once natively.
+- **Completion is host input.** On the web the tick a load lands on depends
+  on the browser, so each load is put in place at a tick boundary and
+  journaled as `{ request, tick, ok }` (`og.load.completions`), as G3-6
+  journals the platform's answers. `og replay --record` keeps the journal
+  in its trace; `--compare` and `og.load.replayCompletions` hold each load
+  until its recorded tick and put it in place there, waiting for it, and a
+  recorded failure fails. Natively a load is in place at the boundary after
+  its call, the same every run. An asset's status is not world state: it is
+  in no snapshot or hash. In a lockstep or rollback room, content made by
+  one player is not on the others' machines, so a completion stays local
+  to each session. A game sends the bytes to the other peers with
+  `og.platform.roomSend` (at most 64 KiB a message; room messages are
+  session events, not hashed), each peer loads them, and the shared
+  simulation uses the content only from a tick the peers agree on through
+  their inputs (`og.net.submit`), never from `og.load.status`.
+- **Release.** `og.load.release` frees an uncooked asset. A pending load is
+  dropped and never journaled. A ready one's textures and meshes are emptied
+  under their handles, as a stream group's stand-ins are, so whatever still
+  names them draws nothing and nothing breaks. Their GPU memory and the
+  scene's CPU copies go, with the model's draw parts and cached BVHs. The
+  handle answers failed. Physics shapes built from its geometries are world
+  state and stay. `dump_memory` (§3.3) shows both sides.
+
 #### Prefabs (G2-1) **(D)**
 
 A prefab is a reusable entity tree authored once and placed many times.
@@ -1493,6 +1552,7 @@ a game registers more (`commands:` above). Unknown actions warn and continue.
 | `move_to_text:[=]text[@N]` | pointer to a UI element by its text |
 | `teleport:<entity>:x,y,z` / `frame_entity:<entity>` | place and look |
 | `dump_world[:path]` / `dump_entity:<name>[:path]` / `dump_ui[:path]` | tables, systems and their matched counts; one entity's components and transform; the UI tree with bounds |
+| `dump_memory[:path]` | the probe's memory report: resident (native) or linear (web) memory, the counted heap, entities, the stream budget, the audio bank, GPU memory by textures, meshes, render targets and buffers |
 | `set:<entity>.<component>.<field>=<value>` | a Tune write through the schema |
 | `seed:<n>` / `pause` / `resume` / `advance:<ticks>` | determinism controls |
 | `describe[:path]` | the frame as data (§3.4): visible entities with screen boxes, depth order and occlusion; UI elements with rects and text; the camera |
