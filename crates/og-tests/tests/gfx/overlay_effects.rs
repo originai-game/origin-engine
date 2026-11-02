@@ -286,6 +286,18 @@ fn lit_mesh_and_distorting_particles_match_their_reference() {
         s.particles_cpu
     );
     assert_eq!(s.particle_collision_skipped, 0);
+    // The lit debris is brown rock and its dust tan: nothing in the debris
+    // area is near-white grey (lit particles once read as white there).
+    let img = gfx::render("particles-lit").expect("render").image;
+    let white = (340..680u32)
+        .flat_map(|y| (380..920u32).map(move |x| ((y * img.width + x) * 4) as usize))
+        .filter(|&i| {
+            let p = [0, 1, 2].map(|c| img.pixels[i + c]);
+            let (lo, hi) = (*p.iter().min().unwrap(), *p.iter().max().unwrap());
+            lo > 165 && hi - lo < 30
+        })
+        .count();
+    assert!(white < 150, "{white} near-white pixels among the debris");
 }
 
 #[test]

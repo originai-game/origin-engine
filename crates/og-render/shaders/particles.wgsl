@@ -118,12 +118,17 @@ fn particle_light(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
   return c;
 }
 
-// A billboard's normal: a soft ball facing the camera, so a lit puff
-// shades away from the light.
+// A billboard's normal: a ball facing the camera, so a lit puff shades
+// away from the light. The ball spans the middle of the quad (its rim at
+// 0.6 of the half-size), where a soft texture is still dense: a ball as
+// wide as the quad tilts only at the edges, which a puff's alpha has
+// already faded, and both sides then read alike.
 fn ball_normal(local: vec2<f32>) -> vec3<f32> {
-  let q = local * 2.0;
+  var q = local * (2.0 / 0.6);
+  let r = length(q);
+  if (r > 1.0) { q = q / r; }
   let z = sqrt(max(1.0 - dot(q, q), 0.0));
-  return normalize(view.cam_right.xyz * q.x + view.cam_up.xyz * q.y - view.cam_forward.xyz * (z + 0.3));
+  return normalize(view.cam_right.xyz * q.x + view.cam_up.xyz * q.y - view.cam_forward.xyz * (z + 0.1));
 }
 
 struct MeshIn {
@@ -199,7 +204,11 @@ fn fs_mesh(in: ParticleOut) -> @location(0) vec4<f32> {
 }
 
 // Distortion: the scene copy behind the particle, shifted along the
-// texture's red and green (a normal map) or out from the quad's centre.
+// texture's red and green (a normal map) or, without a texture, by a
+// smooth wavering field in screen space that rises over time (heat haze).
+// The field is the screen's, not the particle's, so overlapping particles
+// at a pixel bend it the same way and blend softly instead of pasting
+// differently shifted copies over each other (shards).
 @fragment
 fn fs_distort(in: ParticleOut) -> @location(0) vec4<f32> {
   let tex = textureSample(sprite_tex, sprite_sampler, in.uv);
@@ -210,9 +219,10 @@ fn fs_distort(in: ParticleOut) -> @location(0) vec4<f32> {
     mask = tex.a;
   } else {
     let r = length(in.local) * 2.0;
-    let d = clamp(1.0 - r, 0.0, 1.0);
-    bend = in.local * 2.0 * d * 4.0;
-    mask = smoothstep(0.0, 0.3, d);
+    mask = smoothstep(0.0, 0.6, clamp(1.0 - r, 0.0, 1.0));
+    let cells = in.clip.xy / f32(textureDimensions(scene_color).y) * 18.0;
+    let q = vec3<f32>(cells.x, cells.y + frame.time.x * 1.2, frame.time.x * 0.6);
+    bend = vec2<f32>(value_noise3(q, 11u), value_noise3(q, 23u)) * 2.0 - 1.0;
   }
   var w = in.color.a * mask;
   if (emitter.render.z > 0.0) {
@@ -225,7 +235,7 @@ fn fs_distort(in: ParticleOut) -> @location(0) vec4<f32> {
   // Screen rows run down: the bend's +y is up.
   let shift = vec2<f32>(bend.x, -bend.y) * emitter.look.y * f32(size.y) * w;
   let at = clamp(vec2<i32>(in.clip.xy + shift), vec2<i32>(0), size - vec2<i32>(1));
-  return vec4<f32>(textureLoad(scene_color, at, 0).rgb, smoothstep(0.0, 0.25, w));
+  return vec4<f32>(textureLoad(scene_color, at, 0).rgb, clamp(w, 0.0, 1.0));
 }
 
 @fragment

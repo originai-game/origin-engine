@@ -418,7 +418,8 @@ pub fn particles_lit_scene() -> RenderScene {
             (0.0, [1.0, 1.0, 1.0, 0.7]),
             (1.0, [1.0, 1.0, 1.0, 0.0]),
         ]),
-        color: [0.6, 0.5, 0.4, 1.0],
+        // Linear: a dry earth tan (sRGB about 140, 120, 95).
+        color: [0.26, 0.19, 0.12, 1.0],
         gravity: Vec3::new(0.0, 0.2, 0.0),
         texture: Some(smoke_tex),
         blend: ParticleBlend::Alpha,
@@ -438,7 +439,8 @@ pub fn particles_lit_scene() -> RenderScene {
         speed: [3.5, 5.0],
         size: [0.12, 0.22],
         color_over_life: ColorCurve::new(&[(0.0, [1.0; 4]), (1.0, [1.0; 4])]),
-        color: [0.55, 0.42, 0.32, 1.0],
+        // Linear: a rock brown (sRGB about 120, 85, 60), as dark as the dirt.
+        color: [0.19, 0.09, 0.045, 1.0],
         rotation_degrees: [0.0, 360.0],
         angular_velocity_degrees: [-540.0, 540.0],
         gravity: Vec3::new(0.0, -9.8, 0.0),
@@ -499,7 +501,8 @@ pub fn particles_lit_scene() -> RenderScene {
         ]),
         rotation_degrees: [0.0, 360.0],
         gravity: Vec3::ZERO,
-        distortion: 0.02,
+        // About 4 px at 720 rows: a waver, not a lens.
+        distortion: 0.006,
         ..Default::default()
     });
     scene.particles.push(ParticleSystem::new(
@@ -517,6 +520,9 @@ pub fn particles_lit_scene() -> RenderScene {
         ..Default::default()
     };
     scene.environment.sky.sun_direction = sun;
+    // A low, clear sun over a dimmer sky, so the lit particles' sun side
+    // reads against the sky's fill.
+    scene.environment.intensity = 0.5;
     scene.camera = Camera {
         position: Vec3::new(0.0, 2.4, 6.4),
         target: Vec3::new(0.0, 1.0, -0.8),

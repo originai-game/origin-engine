@@ -184,7 +184,7 @@ array "fx/smoke.ogt" random   # sprite mode: draw from a texture array, [<layers
 round false               # sprite mode: fade each particle to a round edge over its texture or layer
 render mesh box           # or sphere | tetrahedron | "models/shard.glb": each particle a small tumbling shape (3D)
 lit true                  # billboards and meshes shaded by the sun, the sky and local lights (default false: unlit)
-distortion 0.02           # billboards bend the scene behind them by up to this fraction of the screen (heat haze, shock rings)
+distortion 0.006          # billboards bend the scene behind them by up to this fraction of the screen height (heat haze 0.004 to 0.01)
 events death collision    # birth | death | collision: send og.ParticleEvent for these (simulated in the tick)
 subEmitter death "fx/pop.ogt" 12 0.3   # <birth | death | collision> "<emitter id>" <count> [<inherit velocity>], up to 4
 ```
@@ -213,8 +213,10 @@ subEmitter death "fx/pop.ogt" 12 0.3   # <birth | death | collision> "<emitter i
 - `render mesh` draws each particle as a shape (debris, shards, leaves)
   scaled by its size and turned by its rotation; `lit true` shades it
   (and lit billboards: smoke the sun lights from one side). `distortion`
-  draws a billboard as a bend in the scene behind it rather than a colour
-  (the texture's alpha shapes it); not on a mesh emitter.
+  draws a billboard as a bend in the scene behind it rather than a colour:
+  without a texture a rising waver (heat haze), with one along its red and
+  green as a normal map (a shock ring), shaped by its alpha; not on a mesh
+  emitter. Keep it small: 0.01 already bends a check by 7 px at 720p.
 - `subEmitter` starts another emitter's particles where one of this
   emitter's is born, dies or hits something (a firework's shell bursting
   into sparks): `count` particles each, inheriting that fraction of its

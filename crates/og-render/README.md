@@ -1241,7 +1241,9 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
   (8 sampled textures), so the lit pipelines' sixteen are untouched.
   `distortion` (billboards) bends the opaque scene behind each particle by
   up to that fraction of the screen's height along the texture's red and
-  green (an untextured one pushes outwards), from a copy of the scene
+  green (an untextured one wavers by a smooth field in screen space that
+  rises with the scene clock, the same for every particle over a pixel,
+  so overlapping ones blend instead of shredding), from a copy of the scene
   (`scene-copy`, the water's) after the opaque pass; the transparent
   particles draw after it. `sub_emitters` (up to `MAX_SUB_EMITTERS`, 4)
   fire another emitter's particles at a parent's birth, death or
