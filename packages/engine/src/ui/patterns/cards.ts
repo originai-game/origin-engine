@@ -104,14 +104,15 @@ function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
   kit.open("Name", { width: grow(), direction: "row", align: "center", cross: "center", padding: xy(Math.round(pad * 1.2), Math.max(2, Math.round(pad * 0.6))), radius: Math.max(3, Math.round(r * 0.5)), background: paint(band), part: "Card.name", partClass: "badge" });
   // The name whole: up to two lines, its step fitted to the banner where one word is wider than it (a narrow fan at large text).
   const nameW = cw - pad * 2 - Math.round(pad * 2.4);
-  const nameStep = fitStep(c.name ?? "", nameW, o.big ? 18 : cw >= u(180) ? 15 : 13);
-  // Overlapped in the fan: the name reads from the start in the strip that shows, or is left to the lifted card when it
-  // would be cut there (a stub like "Stri" reads as a broken label).
-  const nameWidth = [...(c.name ?? "")].length * (frame().theme.typeRamp[nameStep]?.size ?? 13) * 0.58;
-  // Centred, it shows whole while its end stays in the strip; else it moves to the start.
-  const covered = o.shows !== undefined && cw / 2 + nameWidth / 2 > o.shows - pad;
-  const room = (o.shows ?? cw) - pad * 2 - Math.round(pad * 1.2);
-  const nameFits = !covered || nameWidth <= room;
+  const base = o.big ? 18 : cw >= u(180) ? 15 : 13;
+  const sizeOf = (step: Api.TypeStepName) => frame().theme.typeRamp[step]?.size ?? 13;
+  const widthAt = (step: Api.TypeStepName) => [...(c.name ?? "")].length * sizeOf(step) * 0.58;
+  // Overlapped in the fan, every card still shows its name: in the strip that shows, from its start, its step fitted
+  // down to it (to 10 px at the reference scale) rather than cut to a stub.
+  const strip = (o.shows ?? cw) - pad * 2 - Math.round(pad * 1.2);
+  const covered = o.shows !== undefined && cw / 2 + widthAt(fitStep(c.name ?? "", nameW, base)) / 2 > o.shows - pad;
+  const nameStep = covered ? fitStep(c.name ?? "", strip, base, 10) : fitStep(c.name ?? "", nameW, base);
+  const nameFits = !covered || widthAt(nameStep) <= strip + 2;
   if (nameFits) text("Text", c.name ?? "", { step: nameStep, maxLines: covered ? 1 : 2, nowrap: covered, width: grow(), align: covered ? "start" : "center", font: "display", heading: true });
   kit.close();
   if (o.rules) {
@@ -404,9 +405,9 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
       playable,
       ready,
       // At rest at large text the rules are left to the lifted card (they would not fit the rest card).
-      // At rest the rules show only on a card no neighbour covers (the last of the fan): a covered card's lines would be cut
-      // at the next card's edge, so it reads its rules on lift.
-      rules: pl.w >= u(140) && (pl.mode !== "rest" || (ts < 1.5 && !(places[i + 1]?.mode === "rest" && places[i + 1]!.x - pl.x < pl.w * 0.92))),
+      // One rule for every card: its name at rest, its rules on lift (a covered card's lines would be cut at the next
+      // card's edge, and one card reading differently from its neighbours looks broken).
+      rules: pl.w >= u(140) && pl.mode !== "rest",
       big: pl.mode !== "rest" && pl.w >= u(200),
       focused: fanIx.focused && focusVisible && i === h.cur,
       ...(pl.mode === "rest" && places[i + 1]?.mode === "rest" ? { shows: Math.max(0, places[i + 1]!.x - pl.x) } : {}),

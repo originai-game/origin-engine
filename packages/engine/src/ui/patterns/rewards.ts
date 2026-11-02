@@ -7,7 +7,7 @@
 import type * as Api from "@origingame/engine";
 import {
   artSlot, btn, frame, glow, grow, keyHash, kit, lastInteraction, line, mix, over, paint, pips, px, rarityColor, rarityPips, role, shadow, st, still,
-  spring, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
+  inkOn, spring, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut, type Rgba,
 } from "./core.ts";
 
 /** A card's rules as words for a screen reader: the markup's tags left out. */
@@ -16,10 +16,12 @@ export function plainText(markup: string): string {
 }
 
 /** A small tag in a corner (New, Upgrade): ink on the highlight, outlined so it reads on any art. */
-export function cornerTag(id: string, s: string, tone: Api.ThemeColor = "highlight"): void {
+export function cornerTag(id: string, s: string, tone: Api.ThemeColor | Rgba = "highlight"): void {
+  // A tier's own colour (a pull's New on a legendary card) takes the ink that reads on it.
+  const fill = typeof tone === "string" ? role(tone) : tone;
   kit.open(id, { direction: "row", padding: xy(u(8), u(3)), part: "Reward.tag", partClass: "badge" });
-  kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token(tone) }], strokes: [line(1, token("shadow", 0.6), "outside")], effects: [shadow(2, 4, 0.45)] });
-  text("Text", s, { step: st(12), color: "onPrimary", nowrap: true, font: "display" });
+  kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: paint(fill) }], strokes: [line(1, token("shadow", 0.6), "outside")], effects: [shadow(2, 4, 0.45)] });
+  text("Text", s, { step: st(12), color: typeof tone === "string" ? "onPrimary" : inkOn(fill), nowrap: true, font: "display" });
   kit.close();
 }
 
@@ -124,13 +126,20 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
         effects: [shadow(u(6), u(16), 0.45), ...(high && !o.locked ? [glow(u(14), paint(edge, 0.55), 1)] : [])],
       });
       const artW = compact ? Math.round(Math.min(u(88), cw * 0.26) * Math.min(1.4, ts)) : cw - u(32);
-      artSlot("Art", "Reward.art", { texture: o.image ?? null, kind: "item", icon: o.icon, rarity: o.rarity, width: px(artW), height: px(compact ? artW : Math.round(artW * 0.62)), radius: Math.max(4, t.small) });
+      artSlot("Art", "Reward.art", { texture: o.image ?? null, kind: "item", icon: o.icon, rarity: o.rarity, width: px(artW), height: px(compact ? artW : Math.round(artW * 0.62)), radius: Math.max(4, t.small) }, () => {
+        // Locked: the art drained of its colour and down to about a third of its value; the lock line says why.
+        if (!o.locked) return;
+        kit.open("Dim", { width: grow(), height: grow(), part: "Reward.artLocked", partClass: "slot" });
+        kit.setDraw({ shape: { kind: "rect", radii: [Math.max(4, t.small), Math.max(4, t.small), Math.max(4, t.small), Math.max(4, t.small)] }, fills: [{ kind: "solid", color: paint(mix(role("well"), role("inkMuted"), 0.25), 0.62) }, { kind: "solid", color: token("shadow", 0.42) }] });
+        kit.close();
+      });
       kit.column("Text", { width: grow(), gap: u(4), cross: compact ? "start" : "center" }, () => {
         // A compact row's tag leads its words (standing on the corner it would cover them at large text).
         if (o.tag && compact) cornerTag("Tag", o.tag);
         if (o.kind) text("Kind", o.kind.toLocaleUpperCase(), { step: st(12), color: tier ? mix(edge, role("ink"), 0.45) : "inkMuted", nowrap: true, ellipsis: true, width: grow(), align: compact ? "start" : "center", font: "display" });
         text("Title", o.title ?? "", { step: st(compact ? 17 : 20), heading: true, font: "display", width: grow(), align: compact ? "start" : "center", maxLines: 2, ellipsis: true });
-        pips("Pips", o.rarity, u(7), 6);
+        // Diamonds big enough to count (about 8 px drawn).
+        pips("Pips", o.rarity, u(11), 6);
         if (o.text) {
           kit.open("Effect", { width: grow(), direction: "column", part: "Reward.text", partClass: "panel" });
           kit.richText("Body", o.text, { step: st(14), color: token("ink"), align: compact ? "start" : "center", width: grow() });

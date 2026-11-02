@@ -623,6 +623,8 @@ function galleryButton(world: World, d: DemoState): void {
     // The medium size: its label at the body's 16 px at 1080p, never under it.
     if (og.ui.button("Gallery", tr(world, "gallery.button"), { variant: "secondary" }).clicked) d.screen = 0;
   });
+  // Over every screen's own layers (a pattern screen's painted scene, a full-bleed banner).
+  og.ui.props({ z: 100 });
 }
 
 /** The raw widget set on one scrolling panel. */
@@ -767,7 +769,8 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
     screen = og.ui.screenTransition("Screens", screen, { kind: wipe, durationMs: 700 }).shown as Screen;
   }
   // The game behind every screen but the gallery and the widget sheet: a dusk landscape.
-  if (screen !== "gallery" && screen !== "widgets" && d.backdrop) og.render.sprite(world, { texture: d.backdrop as never, width: 640, height: 360, layer: -10 });
+  // The genre patterns' screens paint their own scene (patterns.ts): the pixel dusk would clash with their art.
+  if (screen !== "gallery" && screen !== "widgets" && !PATTERN_SCREENS.has(screen) && d.backdrop) og.render.sprite(world, { texture: d.backdrop as never, width: 640, height: 360, layer: -10 });
 
   if (screen !== "gallery" && screen !== "loading") galleryButton(world, d);
   let back = false;

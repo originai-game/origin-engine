@@ -737,6 +737,24 @@ export function fitStep(s: string, width: number, px0: number, min = 11): Api.Ty
   return best;
 }
 
+/**
+ * The colour a call to action wears: the style's primary, or its highlight
+ * when the primary is a neutral (a near-white or grey primary reads as a
+ * slab, not an accent).
+ */
+export function accent(): Rgba {
+  const p = role("primary");
+  const chroma = Math.max(p.r, p.g, p.b) - Math.min(p.r, p.g, p.b);
+  return chroma < 0.12 ? role("highlight") : p;
+}
+
+/** Dark or light ink, whichever reads on `c` (its relative luminance). */
+export function inkOn(c: Rgba): Rgba {
+  const lin = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  const l = 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+  return l > 0.28 ? hex("#0b1220") : hex("#ffffff");
+}
+
 /** A colour at full opacity. */
 const opaque = (c: Rgba): Rgba => ({ ...c, a: 1 });
 
@@ -792,9 +810,10 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
   const h = Math.max(touch ? 44 : 0, u(size === "lg" ? 48 : size === "sm" ? 32 : 40));
   const fillRole: Api.ThemeColor | null = v === "primary" ? "primary" : v === "danger" ? "danger" : v === "premium" ? "gold" : v === "secondary" ? "control" : null;
   const inkRole: Api.ThemeColor = v === "primary" || v === "danger" ? "onPrimary" : "ink";
-  const ink = v === "premium" ? hex("#1d1406") : role(inkRole);
+  const ink = v === "premium" ? hex("#1d1406") : v === "primary" && !d.disabled && d.selected === undefined ? inkOn(accent()) : role(inkRole);
   // Glass: a dark pane the scene shows through, for the second action beside a primary or premium one (Wish ×1).
-  const base = v === "glass" ? { ...mix(role("panel"), role("shadow"), 0.4), a: 0.62 } : fillRole ? opaque(fillRole === "control" ? mix(role("panelRaised"), role("ink"), 0.12) : role(fillRole)) : null;
+  const accentRaised = v === "primary" && !d.disabled && d.selected === undefined;
+  const base = v === "glass" ? { ...mix(role("panel"), role("shadow"), 0.4), a: 0.62 } : accentRaised ? opaque(accent()) : fillRole ? opaque(fillRole === "control" ? mix(role("panelRaised"), role("ink"), 0.12) : role(fillRole)) : null;
   // A call to action stands out of its screen (End turn, Wish, Done): a raised face over a ledge, lifting under the
   // pointer and sinking when pressed. Disabled it lies flat, which reads as inert.
   const raised = !!base && !d.disabled && d.selected === undefined && (v === "primary" || v === "premium" || v === "danger" || v === "glass" || !!d.raised);

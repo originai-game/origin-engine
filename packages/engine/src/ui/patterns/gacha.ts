@@ -6,8 +6,8 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  artSlot, btn, clamp, fit, flags, floating, frame, glow, grow, hex, keyHash, kit, line, mix, over, paint, priceTag, px, radial, rarityColor, rarityPips,
-  role, rtl, scrimFill, shadow, spring, st, still, surface, symbol, text, timerChip, token, u, vstate, xy, type Mut, type Rgba,
+  accent, artSlot, btn, clamp, fit, flags, floating, frame, glow, grow, hex, keyHash, kit, line, mix, over, paint, priceTag, px, radial, rarityColor, rarityPips,
+  role, rtl, scrimFill, shadow, spring, st, still, surface, symbol, text, timerChip, token, u, vgrad, vstate, xy, type Mut, type Rgba,
 } from "./core.ts";
 import { cornerTag, plainText } from "./rewards.ts";
 
@@ -61,8 +61,8 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
   artSlot("Art", "Gacha.art", { texture: desc.image ?? null, kind: "banner", focal, rarity: feat[0]?.rarity, radius: t.panel, width: grow(), height: grow() }, art);
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: -2, layoutMotion: spring("ui") });
   kit.open("Scrim", { width: grow(), height: grow(), part: "Gacha.scrim", partClass: "panel" });
-  // In portrait the words run from the top to the foot: an even shade under the foot's gradient.
-  kit.setDraw({ shape: { kind: "rect" }, fills: portrait ? [{ kind: "solid", color: token("shadow", 0.65) }, scrimFill("bottom", 0.75)] : [scrimFill("start", 0.9), scrimFill("bottom", 0.7)] });
+  // In portrait the words stand under the splash's face: the shade rises from the foot and leaves the face clear.
+  kit.setDraw({ shape: { kind: "rect" }, fills: portrait ? [scrimFill("bottom", 0.94), scrimFill("bottom", 0.5)] : [scrimFill("start", 0.9), scrimFill("bottom", 0.7)] });
   kit.close();
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: -1 });
 
@@ -87,7 +87,8 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
         radius: t.control,
         semantics: { role: "tab", name: b.name ?? b.key ?? "", selected: on },
       }, () => {
-        kit.setDraw({ shape: { kind: "rect", radii: [t.control, t.control, t.control, t.control] }, fills: [{ kind: "solid", color: token(on ? "panelRaised" : "panel", 0.92) }], strokes: [line(on ? 2 : 1, token(on ? "primary" : "line"))] });
+        // The current banner: an accent rim with a glow, lifted on its shadow (a white outline reads as a debug box).
+        kit.setDraw({ shape: { kind: "rect", radii: [t.control, t.control, t.control, t.control] }, fills: [{ kind: "solid", color: token(on ? "panelRaised" : "panel", 0.92) }], strokes: [line(on ? 2 : 1, on ? paint(accent()) : token("line", 0.6))], effects: on ? [glow(u(10), paint(accent(), 0.45)), shadow(u(4), u(10), 0.5)] : [] });
         if (!phone && !short) artSlot("Thumb", "Gacha.thumb", { texture: b.image ?? null, kind: "banner", width: px(u(44)), height: px(u(44)), radius: t.small });
         kit.column("Text", { width: grow(), gap: 2, cross: portrait ? "center" : "start" }, () => {
           text("Name", b.name ?? "", { step: st(14), font: "display", maxLines: 2, width: grow(), align: portrait ? "center" : "start" });
@@ -120,9 +121,11 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
   // Beside the art (a desktop, a phone on its side) the words and the purchase block under them are one column at the
   // start, centred down the frame; in portrait the words run from the top and the purchase block sits at the foot.
   const sideW = Math.min(u(480), Math.round(vp.width * 0.4));
-  kit.open("Main", { direction: "column", width: portrait ? grow() : px(sideW), height: grow(), gap: u(portrait ? 12 : 18), align: portrait || short ? "start" : "center" });
+  // In portrait the splash's face holds the top third and the words start under it, the purchase block straight after
+  // them: the column stands on the frame's foot (no gap between the rate line and the pity meter).
+  kit.open("Main", { direction: "column", width: portrait ? grow() : px(sideW), height: grow(), gap: u(portrait ? 10 : 18), align: portrait ? "end" : short ? "start" : "center" });
   // The words scroll when they outgrow the frame (a phone on its side, 200 % text); the purchase block never leaves it.
-  kit.openScroll("Info", { width: grow(), height: portrait || short ? grow() : fit(), gap: u(10), padding: xy(0, 0) });
+  kit.openScroll("Info", { width: grow(), height: short || (portrait && big) ? grow() : fit(), gap: u(portrait ? 8 : 10), padding: xy(0, 0) });
   {
     if (desc.subtitle) text("Subtitle", desc.subtitle.toLocaleUpperCase(), { step: st(13), color: "highlight", font: "display", nowrap: true, ellipsis: true, width: grow() });
     text("Title", desc.title ?? "", { step: st(phone ? 26 : 48), heading: true, font: "display", width: grow(), maxLines: 2, ellipsis: true });
@@ -131,26 +134,33 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
     }
     if (feat.length > 0) {
       kit.column("Featured", { width: grow(), gap: u(6), part: "Gacha.featured", partClass: "panel" }, () => {
-        // Each unit a tile (Star Rail, Genshin): its portrait at the start in a rim of its tier, its name, title and stars
-        // on an opaque ground beside it (the ground reads on any key art; the tier is the rim and the stars, not a wash).
-        const tileH = u(short ? 52 : portrait ? 64 : 84);
+        // Each unit a quiet strip of dark glass (Star Rail, Genshin): its portrait at the start carries the tier on its
+        // rim, the stars under the title carry it too; the strip itself stays neutral so the splash leads the screen.
+        // In portrait the units stand side by side, each a portrait over its name and stars.
+        const tileH = u(short ? 52 : portrait ? 76 : 84);
+        kit.open("Units", { direction: portrait ? "row" : "column", gap: u(portrait ? 8 : 6), width: grow() });
         feat.forEach((f, k) => {
           const ink = tierInk(f.rarity);
-          kit.row(kit.idi("Unit", k), { width: grow(), height: px(tileH), gap: u(12), cross: "center", padding: { left: 0, top: 0, right: u(10), bottom: 0 }, radius: t.small, part: `Gacha.unit${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "panel" }, () => {
-            kit.setDraw({
-              shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] },
-              fills: [{ kind: "solid", color: paint(mix(role("panel"), role("shadow"), 0.35), 0.92) }, { kind: "gradient", type: "linear", from: { x: rtl() ? 1 : 0, y: 0.5 }, to: { x: rtl() ? 0 : 1, y: 0.5 }, stops: [{ offset: 0, color: paint(ink, 0.16) }, { offset: 0.5, color: paint(ink, 0) }] }],
-              strokes: [line(k === 0 ? 2 : 1.5, paint(ink, k === 0 ? 1 : 0.8)), line(1, token("shadow", 0.7), "outside")],
-              effects: k === 0 ? [glow(u(10), paint(ink, 0.35))] : [],
-            });
-            artSlot("Portrait", "Gacha.unitPortrait", { texture: f.image ?? null, kind: "portrait", rarity: f.rarity, focal: { x: 0.5, y: 0.35 }, width: px(Math.round(tileH * 1.15)), height: px(tileH), radius: t.small });
-            kit.column("Text", { width: grow(), gap: u(2) }, () => {
-              text("Name", f.name ?? "", { step: st(17), font: "display", nowrap: true, ellipsis: true, width: grow() });
-              if (f.title && !short) text("Title", f.title, { step: st(12), color: "inkMuted", maxLines: 1, ellipsis: true, width: grow() });
-              stars("Stars", f.stars ?? 0, u(13), ink);
-            });
+          kit.open(kit.idi("Unit", k), { direction: portrait ? "column" : "row", width: grow(), height: portrait ? null : px(tileH), gap: u(portrait ? 4 : 12), cross: portrait ? "stretch" : "center", padding: portrait ? xy(u(4), u(4)) : { left: 0, top: 0, right: u(10), bottom: 0 }, radius: t.small, part: `Gacha.unit${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "panel" });
+          kit.setDraw({
+            shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] },
+            fills: [{ kind: "solid", color: token("shadow", 0.55) }, vgrad([[0, token("sheen", 0.06)], [1, token("sheen", 0)]])],
+            strokes: [line(1, token("sheen", 0.16))],
           });
+          artSlot("Portrait", "Gacha.unitPortrait", { texture: f.image ?? null, kind: "portrait", rarity: f.rarity, focal: { x: 0.5, y: 0.35 }, width: portrait ? grow() : px(Math.round(tileH * 1.15)), height: px(portrait ? tileH : tileH), radius: t.small }, () => {
+            // The tier's rim round the portrait.
+            kit.open("Rim", { width: grow(), height: grow(), part: `Gacha.unitRim${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "slot" });
+            kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, strokes: [line(2, paint(ink)), line(4, paint(ink, 0.2), "outside")] });
+            kit.close();
+          });
+          kit.column("Text", { width: grow(), gap: u(2), cross: portrait ? "center" : "start" }, () => {
+            text("Name", f.name ?? "", { step: st(portrait ? 14 : 17), font: "display", nowrap: true, ellipsis: true, width: grow(), align: portrait ? "center" : "start" });
+            if (f.title && !short && !portrait) text("Title", f.title, { step: st(12), color: "inkMuted", maxLines: 1, ellipsis: true, width: grow() });
+            stars("Stars", f.stars ?? 0, u(portrait ? 11 : 13), ink);
+          });
+          kit.close();
         });
+        kit.close();
       });
     }
     if (desc.rateText) {
@@ -422,7 +432,8 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
   artSlot("Art", "Pull.art", { texture: it.image ?? null, kind: "character", rarity: it.rarity, width: px(artW - 6), height: px(artH - 6), radius: u(12) });
   over({ insets: { start: 3, top: 3 }, inert: true });
   if (it.isNew) {
-    cornerTag("New", "NEW");
+    // New in the tier's own ink, not a second accent beside it.
+    cornerTag("New", "NEW", ink);
     over({ insets: { end: -u(8), top: -u(10) }, inert: true, z: 4 });
   }
   kit.close();
@@ -487,7 +498,7 @@ function summary(items: readonly Api.PullItem[], desc: Api.PullSequenceDesc, W: 
       if (it.extra) text("Extra", it.extra, { step: st(12), color: "highlight", maxLines: 2, width: grow(), align: portrait ? "start" : "center" });
     });
     if (it.isNew) {
-      cornerTag("New", "NEW");
+      cornerTag("New", "NEW", ink);
       // A row tile (a phone in portrait) wears it over its art at the start, clear of its name.
       over({ insets: portrait ? { start: -u(4), top: -u(8) } : { end: -u(4), top: -u(8) }, inert: true, z: 3 });
     }
