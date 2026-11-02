@@ -311,7 +311,8 @@ const BANNERS = [
 
 /** A gacha banner and its pull: the pull is the game's (it spends the purse and draws the results) and the reveal the pattern's. */
 /** The weapon banner wears the kit's backdrop (the art path); the others draw the style's placeholder. */
-export function gachaScreen(backdrop = 0): void {
+/** The rate lines are the game's strings (og.i18n), so an RTL locale shows its own sentence. */
+export function gachaScreen(backdrop = 0, rate: { event: string; standard: string } = { event: "", standard: "" }): void {
   const vp = og.ui.frameViewport();
   const sa = vp.safeArea;
   const small = phone();
@@ -324,7 +325,7 @@ export function gachaScreen(backdrop = 0): void {
       subtitle: b.subtitle,
       image: b.key === "weapon" && backdrop ? (backdrop as never) : null,
       featured: b.key === "std" ? [] : [{ name: "Aria", title: "Tidecaller of the Moon", stars: 5, rarity: "legendary" }, { name: "Kael", title: "The Ember", stars: 4, rarity: "epic" }, { name: "Mira", title: "Of the Grove", stars: 4, rarity: "epic" }],
-      rateText: b.key === "std" ? "A [b]5-star[/b] is guaranteed within [b]90[/b] wishes." : "[b]50 %[/b] chance your next 5-star is [color=highlight]Aria[/color]; a lost one makes the next one hers.",
+      rateText: b.key === "std" ? rate.standard : rate.event,
       endsIn: b.endsIn,
       pity: g.pity,
       pityMax: 90,

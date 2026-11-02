@@ -181,8 +181,8 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
             part: `Gacha.pull${flags(n > 1 ? "multi" : "single", !can && "short")}`,
             name: `${label}, ${cost} ${currency}${can ? "" : `, ${desc.shortLabel ?? "not enough"}`}`,
             before: () => {
-              // On the premium button's gold, the price takes the button's dark ink.
-              priceTag("Price", { amount: cost, currency, affordable: can, size: "sm", shortLabel: desc.shortLabel ?? "not enough", ...(n > 1 ? { ink: hex("#1d1406") } : {}) });
+              // In the button's ink and face (dark on the premium gold), its gem too.
+              priceTag("Price", { amount: cost, currency, affordable: can, size: "sm", shortLabel: desc.shortLabel ?? "not enough", ink: n > 1 ? hex("#1d1406") : role("ink") });
               kit.open("Sep", { width: px(1), height: px(u(18)), background: token("line") });
               kit.close();
             },

@@ -85,3 +85,6 @@ string "hud.brake" "브레이크"
 string "hud.left" "왼쪽"
 string "hud.right" "오른쪽"
 string "hud.unit" "km/h"
+# The rate lines stay English here: the kit's Korean subset (tools/make-locale-fonts.py) does not hold their words yet.
+string "gacha.rate.event" "[b]50 %[/b] chance your next 5-star is [color=highlight]Aria[/color]; a lost one makes the next one hers."
+string "gacha.rate.standard" "A [b]5-star[/b] is guaranteed within [b]90[/b] wishes."

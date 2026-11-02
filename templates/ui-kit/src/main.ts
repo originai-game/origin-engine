@@ -1176,7 +1176,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     case "gacha":
       // Back skips or closes a pull first (the sequence takes it).
-      gachaScreen(d.backdrop as number);
+      gachaScreen(d.backdrop as number, { event: tr(world, "gacha.rate.event"), standard: tr(world, "gacha.rate.standard") });
       back = og.ui.back();
       break;
     case "toasts": {

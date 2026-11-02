@@ -121,7 +121,7 @@ export type SymbolKind =
  * face without them). An icon of the atlas is used instead when the
  * style has one of `icon`'s name.
  */
-export function symbol(id: string, kind: SymbolKind, size: number, color: Rgba, opts: { label?: string | undefined; icon?: string | undefined; weight?: number | undefined } = {}): void {
+export function symbol(id: string, kind: SymbolKind, size: number, color: Rgba, opts: { label?: string | undefined; icon?: string | undefined; weight?: number | undefined; flat?: boolean | undefined } = {}): void {
   if (opts.icon && kit.hasIcon(opts.icon)) {
     kit.icon(id, opts.icon, { size, tint: paint(color), label: opts.label ?? "" });
     return;
@@ -159,7 +159,9 @@ export function symbol(id: string, kind: SymbolKind, size: number, color: Rgba, 
       kit.close();
       break;
     case "gem":
-      kit.setDraw({ shape: { kind: "polygon", sides: 6, rotation: Math.PI / 6 }, fills: [vgrad([[0, paint(mix(color, hex("#ffffff"), 0.45))], [1, paint(color)]])], strokes: [line(Math.max(1, s * 0.07), paint(mix(color, hex("#000000"), 0.35)))] });
+      // Flat: one ink (a gem set in a control's ink, which a light facet would wash out).
+      if (opts.flat) kit.setDraw({ shape: { kind: "polygon", sides: 6, rotation: Math.PI / 6 }, fills: fill });
+      else kit.setDraw({ shape: { kind: "polygon", sides: 6, rotation: Math.PI / 6 }, fills: [vgrad([[0, paint(mix(color, hex("#ffffff"), 0.45))], [1, paint(color)]])], strokes: [line(Math.max(1, s * 0.07), paint(mix(color, hex("#000000"), 0.35)))] });
       break;
     case "crown":
       kit.setDraw({ shape: { kind: "path", points: [p(0.1, 0.78), p(0.1, 0.3), p(0.32, 0.52), p(0.5, 0.2), p(0.68, 0.52), p(0.9, 0.3), p(0.9, 0.78)], closed: true, filled: true }, fills: fill });
@@ -445,7 +447,8 @@ export function priceTag(id: string, d: { amount: number; currency?: string; ori
     text("Amount", d.free, { step, color: "success", nowrap: true, font: "display" });
   } else {
     const look = currencyLook(d.currency ?? "");
-    symbol("Currency", look.sym, iconSize, look.color, { icon: d.currency, label: "" });
+    // Set inside a control (`ink`): the gem in the control's ink too, so it holds 4.5:1 on any fill (a pale gem on gold did not).
+    symbol("Currency", look.sym, iconSize, d.ink ?? look.color, { icon: d.ink ? undefined : d.currency, label: "", flat: !!d.ink });
     if (d.original && d.original > d.amount) {
       kit.open("Was", { direction: "row" });
       text("Value", grouped(d.original), { step: st(14), color: "inkMuted", nowrap: true, font: "mono" });
@@ -455,7 +458,8 @@ export function priceTag(id: string, d: { amount: number; currency?: string; ori
       kit.close();
       kit.props({ position: "absolute", insets: { start: 0, end: 0, centerY: true }, inert: true, overlaps: [kit.lastPath().replace(/\/Strike$/, "/Was")] });
     }
-    text("Amount", grouped(d.amount), { step, color: can ? d.ink ?? "ink" : "danger", nowrap: true, font: "mono" });
+    // Inside a control it reads in the control's face (the thin mono face at 14 px read faint beside a display label).
+    text("Amount", grouped(d.amount), { step, color: can ? d.ink ?? "ink" : "danger", nowrap: true, font: d.ink ? "display" : "mono" });
   }
   kit.close();
   const words = d.text || (d.amount === 0 && d.free ? d.free : `${grouped(d.amount)} ${d.currency ?? ""}`.trim());
