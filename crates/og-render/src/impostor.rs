@@ -17,10 +17,14 @@
 //! its centre, turned to face the eye (in the shadow passes, the light).
 //! Its vertex stage finds the three frames around the eye's direction on
 //! the grid and their weights ([`blend_frames`]); its fragment stage
-//! samples the three where the eye's ray through the pixel meets each
-//! frame's plane, blends their albedo and normals by weight and coverage,
-//! cuts at half coverage and lights the result as a scattered copy is lit
-//! (`shaders/impostor.wgsl`). The impostor's material is a
+//! samples each where that frame sees the card's point (its orthographic
+//! image along the frame's direction, moved by one parallax step on the
+//! frame's depth to where the eye's ray meets the surface), blends their
+//! albedo, normals and depth by weight and coverage, cuts at half coverage
+//! (alpha to coverage under MSAA), writes the surface's depth rather than
+//! the card's and lights the result as a scattered copy is lit
+//! (`shaders/impostor.wgsl`). A scatter's copy crossing to its impostor
+//! draws the dither pixels its mesh drops, and only those. The impostor's material is a
 //! StandardMaterial whose map is the albedo and whose normal map is the
 //! normal atlas, bound in the material group the copies use: the lit
 //! stage reads no texture it did not before.

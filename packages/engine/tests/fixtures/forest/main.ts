@@ -1,6 +1,8 @@
 // R6's forest: rows of palms from 6 m to 300 m down -z, the far ones drawn
-// as the palm's octahedral impostor (assets/models/palm.glb.ogt), and
-// `bias 0` drawing every one as its full mesh to compare.
+// as the palm's octahedral impostor (assets/models/palm.glb.ogt: from
+// about 26 m, where a 128 px frame's texel covers a pixel; `dump_entity
+// far` reports lod 1, the level after the full mesh), and `bias 0`
+// drawing every one as its full mesh to compare.
 // (--no-check: the fixture has no src/ for og check to read)
 //   og run packages/engine/tests/fixtures/forest --no-check --size 1280x720 --out og-out \
 //     --commands "0.2:screenshot:forest.png;0.3:bias:0;0.5:screenshot:forest-meshes.png;0.6:bias:1;0.7:dump_entity:far;0.8:quit"
@@ -41,6 +43,17 @@ export default og.game({
     if (sun.ok) {
       world.insert(sun.value, og.DirectionalLight, { intensity: 3 });
       world.set(sun.value, og.Transform, { quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: -0.4, y: -1.5, z: -0.6 }) });
+    }
+    // A pale sky behind the far rows, so a card's halo or square edge shows.
+    const sky = world.resource(og.Sky);
+    if (sky.ok) {
+      Object.assign(sky.value, {
+        enabled: true,
+        zenith: { r: 0.25, g: 0.45, b: 0.75 },
+        horizon: { r: 0.7, g: 0.78, b: 0.85 },
+        ground: { r: 0.3, g: 0.28, b: 0.24 },
+        sunDirection: { x: 0.4, y: 1.5, z: 0.6 },
+      });
     }
   },
   commands: {

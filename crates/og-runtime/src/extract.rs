@@ -237,25 +237,50 @@ pub(crate) struct ModelLods {
 impl ModelLods {
     /// The model's error per level, level 0 first (0): the largest of its
     /// parts' at that level, a part with fewer levels standing at its
-    /// coarsest; then its impostor's, when it has one.
+    /// coarsest; then its impostor's, when it has one. The impostor
+    /// replaces the mesh levels whose error is no smaller than its own
+    /// (it is the finer picture and the cheaper draw), so a model whose
+    /// coarse levels simplify badly (a palm's fronds, metres off) still
+    /// reaches its impostor rather than having its texel's error raised
+    /// to theirs by `lod::select`.
     pub fn errors(&self) -> Vec<f32> {
-        let n = self.parts.iter().map(|p| p.len()).max().unwrap_or(0);
-        std::iter::once(0.0)
-            .chain((0..n).map(|k| {
-                self.parts
-                    .iter()
-                    .filter_map(|p| p.get(k).or(p.last()))
-                    .map(|x| x.1)
-                    .fold(0.0, f32::max)
-            }))
+        (0..self.mesh_levels())
+            .map(|k| self.mesh_error(k))
             .chain(self.impostor.map(|i| i.1))
             .collect()
     }
 
     /// The level index of the impostor, when the model has one.
     pub fn impostor_level(&self) -> Option<usize> {
-        self.impostor
-            .map(|_| self.parts.iter().map(|p| p.len()).max().unwrap_or(0) + 1)
+        self.impostor.map(|_| self.mesh_levels())
+    }
+
+    /// Mesh level `k`'s error (0: the full mesh, 0).
+    fn mesh_error(&self, k: usize) -> f32 {
+        if k == 0 {
+            return 0.0;
+        }
+        self.parts
+            .iter()
+            .filter_map(|p| p.get(k - 1).or(p.last()))
+            .map(|x| x.1)
+            .fold(0.0, f32::max)
+    }
+
+    /// How many mesh levels the chain keeps (the full mesh counted): all
+    /// of them, or with an impostor those finer than it.
+    fn mesh_levels(&self) -> usize {
+        let n = self.parts.iter().map(|p| p.len()).max().unwrap_or(0) + 1;
+        let Some((_, limit)) = self.impostor else {
+            return n;
+        };
+        let mut worst = 0.0f32;
+        1 + (1..n)
+            .take_while(|&k| {
+                worst = worst.max(self.mesh_error(k));
+                worst < limit
+            })
+            .count()
     }
 }
 
@@ -707,9 +732,10 @@ pub(crate) fn add_font(
 mod tests {
     use super::*;
 
-    /// A model's impostor is the level after its parts' coarsest: chosen
-    /// by `lod::select` once its error (an atlas texel) projects under a
-    /// pixel, and never while a mesh level still would be finer.
+    /// A model's impostor is the level after its parts' coarsest finer
+    /// than it: chosen by `lod::select` once its error (an atlas texel)
+    /// projects under a pixel, and replacing the mesh levels coarser than
+    /// it.
     #[test]
     fn the_impostor_ends_the_level_chain() {
         let mut scene = RenderScene::new();
@@ -725,15 +751,30 @@ mod tests {
             parts: vec![vec![(mesh, 0.03), (mesh, 0.12)], vec![(mesh, 0.02)]],
             center: Vec3::ZERO,
             radius: 1.0,
-            impostor: Some((impostor, 2.0 / 128.0)),
+            impostor: Some((impostor, 0.05)),
         };
-        assert_eq!(lods.errors(), vec![0.0, 0.03, 0.12, 2.0 / 128.0]);
-        assert_eq!(lods.impostor_level(), Some(3));
-        // The impostor's error is under the coarsest mesh's here, so it
-        // counts as that (lod::select keeps errors rising): it replaces
-        // level 2, drawn once level 2 would be (under 8.3 px per unit).
-        assert_eq!(og_render::lod::select(&lods.errors(), 20.0, 1.0, None), 1);
-        assert_eq!(og_render::lod::select(&lods.errors(), 5.0, 1.0, None), 3);
+        // 5 cm: finer than level 2 (12 cm), which it replaces; drawn once
+        // it would show under a pixel (20 px per unit), level 1 nearer.
+        assert_eq!(lods.errors(), vec![0.0, 0.03, 0.05]);
+        assert_eq!(lods.impostor_level(), Some(2));
+        assert_eq!(og_render::lod::select(&lods.errors(), 30.0, 1.0, None), 1);
+        assert_eq!(og_render::lod::select(&lods.errors(), 19.0, 1.0, None), 2);
+        // Finer than every mesh level (a palm's, whose coarse fronds are
+        // metres off): it follows the full mesh directly.
+        let fine = ModelLods {
+            impostor: Some((impostor, 2.0 / 128.0)),
+            ..lods.clone()
+        };
+        assert_eq!(fine.errors(), vec![0.0, 2.0 / 128.0]);
+        assert_eq!(fine.impostor_level(), Some(1));
+        assert_eq!(og_render::lod::select(&fine.errors(), 60.0, 1.0, None), 1);
+        // Coarser than every one: after the coarsest.
+        let coarse = ModelLods {
+            impostor: Some((impostor, 0.5)),
+            ..lods.clone()
+        };
+        assert_eq!(coarse.errors(), vec![0.0, 0.03, 0.12, 0.5]);
+        assert_eq!(coarse.impostor_level(), Some(3));
         let none = ModelLods {
             impostor: None,
             ..lods

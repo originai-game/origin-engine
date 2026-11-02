@@ -40,24 +40,35 @@ fn imp_right(d: vec3<f32>) -> vec3<f32> {
 
 struct ImpCard {
   world: vec4<f32>,
-  // Each frame's point in its square ([-1, 1]², y up), where the ray
-  // from the eye through the card's vertex meets the frame's plane.
+  // Each frame's image of the card's vertex ([-1, 1]², y up): where the
+  // frame's own orthographic view along its direction sees that point.
   uv01: vec4<f32>,
   uv2: vec2<f32>,
+  // Per frame, how far its image moves per unit of depth along the eye
+  // (the parallax step of `imp_parallax`).
+  par01: vec4<f32>,
+  par2: vec2<f32>,
   frames: vec3<u32>,
   weights: vec3<f32>,
   // The model's sphere radius in the world.
   extent: f32,
 };
 
-// Where a frame's plane is met by the ray along -v through the card's
-// point `p` (both about the centre, the model's space), in the frame's square.
-fn imp_frame_uv(p: vec3<f32>, v: vec3<f32>, f: u32) -> vec2<f32> {
+// Frame `f`'s image of the point `x` (about the centre, the model's
+// space, in radii): its orthographic projection along the frame's
+// direction, in the frame's square. (Projecting along the eye instead
+// threw the rim outside the frames around it and shrank the silhouette.)
+fn imp_frame_uv(x: vec3<f32>, f: u32) -> vec2<f32> {
   let d = imp_frame_dir(f);
   let r = imp_right(d);
-  let u = cross(d, r);
-  let x = p - v * (dot(p, d) / max(dot(v, d), 0.05));
-  return vec2<f32>(dot(x, r), dot(x, u)) / scatter.impostor.w;
+  return vec2<f32>(dot(x, r), dot(x, cross(d, r)));
+}
+
+// How far frame `f`'s image moves per radius of depth the surface stands
+// towards the frame's viewer: the eye's ray `v`, rescaled from the
+// frame's depth axis to the eye's.
+fn imp_frame_par(v: vec3<f32>, f: u32) -> vec2<f32> {
+  return imp_frame_uv(v, f) / max(dot(v, imp_frame_dir(f)), 0.2);
 }
 
 // The card's corner `vertex` (0..6, two triangles) of the copy `model`
@@ -94,8 +105,11 @@ fn imp_card(model: mat4x4<f32>, vertex: u32, toward: vec3<f32>, is_dir: bool) ->
     o.frames = vec3<u32>(base + g + 1u, base + g, base + 1u);
     o.weights = vec3<f32>(f.x + f.y - 1.0, 1.0 - f.x, 1.0 - f.y);
   }
-  o.uv01 = vec4<f32>(imp_frame_uv(p, v, o.frames.x), imp_frame_uv(p, v, o.frames.y));
-  o.uv2 = imp_frame_uv(p, v, o.frames.z);
+  let pr = p / radius;
+  o.uv01 = vec4<f32>(imp_frame_uv(pr, o.frames.x), imp_frame_uv(pr, o.frames.y));
+  o.uv2 = imp_frame_uv(pr, o.frames.z);
+  o.par01 = vec4<f32>(imp_frame_par(v, o.frames.x), imp_frame_par(v, o.frames.y));
+  o.par2 = imp_frame_par(v, o.frames.z);
   o.extent = radius * max(length(model[0].xyz), max(length(model[1].xyz), length(model[2].xyz)));
   return o;
 }
@@ -112,6 +126,43 @@ fn imp_atlas(f: u32, uv: vec2<f32>) -> vec2<f32> {
 
 fn imp_inside(uv: vec2<f32>) -> f32 {
   return select(0.0, 1.0, all(abs(uv) <= vec2<f32>(1.0)));
+}
+
+// One parallax step: where frame `f` sees the surface the eye's ray
+// through the card's point meets, from its image `uv` of the card's point
+// moved by the depth it holds there (`par`: imp_frame_par).
+fn imp_parallax(f: u32, uv: vec2<f32>, par: vec2<f32>) -> vec2<f32> {
+  let depth = textureSample(normal_tex, material_sampler, imp_atlas(f, uv)).a * 2.0 - 1.0;
+  return uv + par * depth;
+}
+
+// The frames' images of the card's point, each moved by one parallax step.
+struct ImpUvs {
+  uv01: vec4<f32>,
+  uv2: vec2<f32>,
+};
+
+fn imp_uvs(uv01: vec4<f32>, uv2: vec2<f32>, par01: vec4<f32>, par2: vec2<f32>, frames: vec3<u32>) -> ImpUvs {
+  var o: ImpUvs;
+  o.uv01 = vec4<f32>(imp_parallax(frames.x, uv01.xy, par01.xy), imp_parallax(frames.y, uv01.zw, par01.zw));
+  o.uv2 = imp_parallax(frames.z, uv2, par2);
+  return o;
+}
+
+// How much of a card draws (scatter_dropped's threshold): its pixels
+// whose noise is at least `lo` and below `hi`, so a copy crossing to its
+// impostor keeps the pixels its mesh drops (scatter_near) and no others.
+fn imp_dropped(pixel: vec2<f32>, lo: f32, hi: f32) -> bool {
+  let n = fract(52.9829189 * fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))));
+  return n < lo || n >= hi;
+}
+
+// A copy at `at`: its card's (lo, hi) of imp_dropped. A model impostor
+// (no impostor distance) draws whole.
+fn imp_fade(at: vec3<f32>) -> vec2<f32> {
+  if (scatter.impostor_grid.y <= 0.0) { return vec2<f32>(0.0, 1.0); }
+  let f = scatter_fade(at);
+  return vec2<f32>(f * scatter_near(at), f);
 }
 
 // The three frames' coverage by weight (the blend's alpha), each also

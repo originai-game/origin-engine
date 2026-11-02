@@ -273,8 +273,9 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// lazy og.Lighting2D, og.Light2D and og.Occluder2D from fd4dddba26ef754a,
 /// for the same reason; then ui-gaps' UI state version 14 from
 /// 1069aa19a26d8691; then version 15 from e83b148c0f38efb5; then R9's
-/// og.Blendshapes version 2 (`influences`) from 46cc8d6517681608).
-const BY_HAND_HASH: &str = "5136c2039d7ed9ec";
+/// og.Blendshapes version 2 (`influences`) from 46cc8d6517681608, then
+/// R6's og.TerrainScatter impostor fields from 5136c2039d7ed9ec).
+const BY_HAND_HASH: &str = "c9cc80ca8f3b2c20";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

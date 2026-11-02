@@ -58,23 +58,49 @@ pub fn ball_atlases(grid: u32, frame: u32) -> (TextureData, TextureData) {
             let (right, up) = frame_basis(d);
             for y in 0..frame {
                 for x in 0..frame {
-                    let s = (x as f32 + 0.5) / frame as f32 * 2.0 - 1.0;
-                    let t = 1.0 - (y as f32 + 0.5) / frame as f32 * 2.0;
+                    // 4 × 4 samples a texel, as the cook's bake antialiases
+                    // its frames: coverage and colour averaged, a texel
+                    // nothing covers taking its nearest rim's (alpha 0).
+                    const SS: u32 = 4;
+                    let (mut rgb, mut nrm, mut z, mut hits) = ([0.0f32; 3], Vec3::ZERO, 0.0, 0.0);
+                    let (mut rim_c, mut rim_n) = ([0.0f32; 3], Vec3::ZERO);
+                    for sy in 0..SS {
+                        for sx in 0..SS {
+                            let s = (x as f32 + (sx as f32 + 0.5) / SS as f32) / frame as f32 * 2.0
+                                - 1.0;
+                            let t = 1.0
+                                - (y as f32 + (sy as f32 + 0.5) / SS as f32) / frame as f32 * 2.0;
+                            let r2 = s * s + t * t;
+                            let k = r2.sqrt().max(1e-6);
+                            let (s, t, h) = if r2 < 1.0 {
+                                (s, t, (1.0 - r2).sqrt())
+                            } else {
+                                (s / k, t / k, 0.0)
+                            };
+                            let c = ball_color(right * s + up * t + d * h).map(f32::from);
+                            if r2 < 1.0 {
+                                for (o, v) in rgb.iter_mut().zip(c) {
+                                    *o += v;
+                                }
+                                nrm += Vec3::new(s, t, h);
+                                z += h;
+                                hits += 1.0;
+                            } else {
+                                rim_c = c;
+                                rim_n = Vec3::new(s, t, 0.0);
+                            }
+                        }
+                    }
                     let at = ((((j * frame + y) * size) + i * frame + x) * 4) as usize;
-                    let r2 = s * s + t * t;
-                    // Inside: the ball's point; outside, its rim's colour
-                    // (alpha 0), so the filtering keeps no dark fringe.
-                    let k = r2.min(1.0).sqrt().max(1e-6);
-                    let (s, t, z, a) = if r2 < 1.0 {
-                        (s, t, (1.0 - r2).sqrt(), 255)
+                    let a = (hits / (SS * SS) as f32 * 255.0).round() as u8;
+                    let (c, n, z) = if hits > 0.0 {
+                        (rgb.map(|v| v / hits), nrm.normalize(), z / hits)
                     } else {
-                        (s / k, t / k, 0.0, 0)
+                        (rim_c, rim_n, 0.0)
                     };
-                    let n = right * s + up * t + d * z;
-                    let c = ball_color(n);
-                    albedo[at..at + 4].copy_from_slice(&[c[0], c[1], c[2], a]);
+                    albedo[at..at + 4].copy_from_slice(&[c[0] as u8, c[1] as u8, c[2] as u8, a]);
                     let q = |v: f32| ((v * 0.5 + 0.5) * 255.0).round() as u8;
-                    normal[at..at + 4].copy_from_slice(&[q(s), q(t), q(z), q(z)]);
+                    normal[at..at + 4].copy_from_slice(&[q(n.x), q(n.y), q(n.z), q(z)]);
                 }
             }
         }
@@ -92,9 +118,9 @@ pub fn ball_atlases(grid: u32, frame: u32) -> (TextureData, TextureData) {
     )
 }
 
-/// The ball's impostor in `scene` (8 × 8 frames of 64 px).
+/// The ball's impostor in `scene` (8 × 8 frames of 128 px).
 pub fn ball_impostor(scene: &mut RenderScene) -> Impostor {
-    let (a, n) = ball_atlases(8, 64);
+    let (a, n) = ball_atlases(8, 128);
     let (a, n) = (scene.add_texture(a), scene.add_texture(n));
     let material = scene.add_standard_material(StandardMaterial {
         map: a.slot(),

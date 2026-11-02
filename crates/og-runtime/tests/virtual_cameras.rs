@@ -201,9 +201,10 @@ fn a_world_without_virtual_cameras_keeps_its_hash() {
 /// [`a_world_without_virtual_cameras_keeps_its_hash`]'s world hashed on
 /// the code before og.VirtualCamera (main 00606971, re-pinned after R11
 /// made the 2D lighting records lazy and again after ui-gaps' UI state
-/// versions 14 and 15, and after R9's og.Blendshapes version 2
-/// (`influences`); R10 leaves it unmoved on either side).
-const PINNED_HASH: &str = "14720eeafacdda76";
+/// versions 14 and 15, after R9's og.Blendshapes version 2
+/// (`influences`) and after R6's og.TerrainScatter impostor fields; R10
+/// leaves it unmoved on either side).
+const PINNED_HASH: &str = "1f9355928d20343a";
 
 #[test]
 fn the_brain_picks_by_priority_then_the_later_enabled_and_a_solo_outranks_both() {

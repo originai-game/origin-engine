@@ -3,11 +3,15 @@
 // material.wgsl: group 1 the impostor's StandardMaterial, lighting.wgsl,
 // scatter_common.wgsl: group 2) and impostor_common.wgsl.
 //
-// The three frames around the eye's direction are blended by weight and
-// coverage: the albedo, the normal (each frame's turned out of its basis
-// into the model's, then the world's) and the depth, which moves the lit
-// point off the card towards the eye. Shaded as scatter.wgsl shades a copy,
-// without a material shader's hooks, normal maps or effects.
+// The three frames around the eye's direction are each sampled where they
+// see the eye's ray through the pixel meet the surface (one parallax step
+// on their depth), and blended by weight and coverage: the albedo, the
+// normal (each frame's turned out of its basis into the model's, then the
+// world's) and the depth, which places the lit point and the depth
+// written on the surface rather than the card, so ground in front of the
+// model's centre does not cut it. Shaded as scatter.wgsl shades a copy,
+// without a material shader's hooks, normal maps or effects. Its edge is
+// alpha to coverage, as a cut-out copy's.
 
 struct ImpostorOut {
   @builtin(position) clip: vec4<f32>,
@@ -16,7 +20,8 @@ struct ImpostorOut {
   @location(2) uv2: vec2<f32>,
   @location(3) @interpolate(flat) frames: vec3<u32>,
   @location(4) @interpolate(flat) weights: vec3<f32>,
-  @location(5) @interpolate(flat) fade: f32,
+  // (lo, hi) of imp_dropped.
+  @location(5) @interpolate(flat) fade: vec2<f32>,
   @location(6) cur_clip: vec4<f32>,
   @location(7) prev_clip: vec4<f32>,
   // The model's turn (its columns, normalised) and its sphere's radius in the world.
@@ -24,14 +29,9 @@ struct ImpostorOut {
   @location(9) @interpolate(flat) m1: vec3<f32>,
   @location(10) @interpolate(flat) m2: vec3<f32>,
   @location(11) @interpolate(flat) extent: f32,
+  @location(12) @interpolate(flat) par01: vec4<f32>,
+  @location(13) @interpolate(flat) par2: vec2<f32>,
 };
-
-// How much of a copy standing at `at` draws as its impostor: past the
-// fade in of scatter_near (scatter_common.wgsl), all of a model's.
-fn imp_fade(at: vec3<f32>) -> f32 {
-  let near = select(1.0, 1.0 - scatter_near(at), scatter.impostor_grid.y > 0.0);
-  return scatter_fade(at) * near;
-}
 
 @vertex
 fn vs_impostor(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> ImpostorOut {
@@ -39,10 +39,12 @@ fn vs_impostor(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> Impost
   let card = imp_card(model, vertex, frame.view_pos.xyz, false);
   var o: ImpostorOut;
   o.fade = imp_fade(i.m3);
-  o.clip = select(SCATTER_GONE, mul_point(frame.view_proj, card.world), o.fade > 0.0);
+  o.clip = select(SCATTER_GONE, mul_point(frame.view_proj, card.world), o.fade.y > o.fade.x);
   o.world = card.world.xyz;
   o.uv01 = card.uv01;
   o.uv2 = card.uv2;
+  o.par01 = card.par01;
+  o.par2 = card.par2;
   o.frames = card.frames;
   o.weights = card.weights;
   o.cur_clip = mul_point(scatter.view_proj, card.world);
@@ -59,6 +61,7 @@ struct ImpSurface {
   normal: vec3<f32>,
   // The point lit: the card's moved along the eye by the blended depth.
   world: vec3<f32>,
+  coverage: ImpCoverage,
 };
 
 // One frame's normal (its basis turned into the model's space) and depth.
@@ -71,7 +74,9 @@ fn imp_normal(f: u32, at: vec2<f32>) -> vec4<f32> {
   return vec4<f32>(r * n.x + u * n.y + d * n.z, s.a * 2.0 - 1.0);
 }
 
-fn imp_surface(in: ImpostorOut, c: ImpCoverage) -> ImpSurface {
+fn imp_surface(in: ImpostorOut) -> ImpSurface {
+  let uvs = imp_uvs(in.uv01, in.uv2, in.par01, in.par2, in.frames);
+  let c = imp_coverage(uvs.uv01, uvs.uv2, in.frames, in.weights);
   let total = max(c.wa.x + c.wa.y + c.wa.z, 1e-5);
   let rgb = textureSample(base_color_tex, material_sampler, c.a0).rgb * c.wa.x
     + textureSample(base_color_tex, material_sampler, c.a1).rgb * c.wa.y
@@ -80,6 +85,7 @@ fn imp_surface(in: ImpostorOut, c: ImpCoverage) -> ImpSurface {
     + imp_normal(in.frames.y, c.a1) * c.wa.y
     + imp_normal(in.frames.z, c.a2) * c.wa.z;
   var s: ImpSurface;
+  s.coverage = c;
   s.albedo = material.base_color.rgb * rgb / total;
   let m3 = mat3x3<f32>(in.m0, in.m1, in.m2);
   s.normal = normalize(m3 * nd.xyz + vec3<f32>(0.0, 1e-6, 0.0));
@@ -88,17 +94,35 @@ fn imp_surface(in: ImpostorOut, c: ImpCoverage) -> ImpSurface {
   return s;
 }
 
+// The surface's depth in the view (written, so the card stands where the
+// model's surface does).
+fn imp_depth(world: vec3<f32>) -> f32 {
+  let c = mul_point(frame.view_proj, vec4<f32>(world, 1.0));
+  return clamp(c.z / c.w, 0.0, 1.0);
+}
+
+struct ImpostorLit {
+  @location(0) color: vec4<f32>,
+  @builtin(frag_depth) depth: f32,
+};
+
 @fragment
-fn fs_impostor(in: ImpostorOut) -> @location(0) vec4<f32> {
-  let cover = imp_coverage(in.uv01, in.uv2, in.frames, in.weights);
-  let surface = imp_surface(in, cover);
-  if (cover.alpha < imp_cutoff() || scatter_dropped(in.clip.xy, in.fade)) {
+fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
+  let surface = imp_surface(in);
+  let alpha = surface.coverage.alpha;
+  // Alpha to coverage: the blended coverage past the cut over one pixel's
+  // change of it is the share of the samples covered.
+  let coverage = clamp((alpha - imp_cutoff()) / max(fwidth(alpha), 1e-4) + 0.5, 0.0, 1.0);
+  if (coverage <= 0.0 || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
     discard;
   }
+  var o: ImpostorLit;
+  o.depth = imp_depth(surface.world);
   let mode = u32(material.flags.w);
   let emissive = material.emissive.rgb;
   if ((mode & 2u) != 0u) {
-    return vec4<f32>(apply_fog(surface.albedo + emissive, surface.world), 1.0);
+    o.color = vec4<f32>(apply_fog(surface.albedo + emissive, surface.world), coverage);
+    return o;
   }
   var s: Surface;
   s.metallic = clamp(material.mr.x, 0.0, 1.0);
@@ -124,20 +148,21 @@ fn fs_impostor(in: ImpostorOut) -> @location(0) vec4<f32> {
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * material.flags.z;
   color += emissive;
-  return vec4<f32>(apply_fog(color, surface.world), 1.0);
+  o.color = vec4<f32>(apply_fog(color, surface.world), coverage);
+  return o;
 }
 
 struct ImpostorPrepass {
   @location(0) gbuffer: vec4<f32>,
   @location(1) depth: vec4<f32>,
   @location(2) outline: vec4<f32>,
+  @builtin(frag_depth) frag_depth: f32,
 };
 
 @fragment
 fn fs_impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
-  let cover = imp_coverage(in.uv01, in.uv2, in.frames, in.weights);
-  let surface = imp_surface(in, cover);
-  if (cover.alpha < imp_cutoff() || scatter_dropped(in.clip.xy, in.fade)) {
+  let surface = imp_surface(in);
+  if (surface.coverage.alpha < imp_cutoff() || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
     discard;
   }
   let v = select(normalize(frame.view_pos.xyz - surface.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
@@ -150,5 +175,6 @@ fn fs_impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
   let reflectivity = select(reflectivity_bits(clamp(material.mr.y, 0.04, 1.0), material.mr.x), 0.0, (u32(material.flags.w) & 2u) != 0u);
   o.depth = vec4<f32>(dot(surface.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
   o.outline = vec4<f32>(0.0);
+  o.frag_depth = imp_depth(surface.world);
   return o;
 }

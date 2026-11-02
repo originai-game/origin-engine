@@ -31,6 +31,7 @@ fn an_impostor_draws_as_the_mesh_it_stands_for() {
     let sun = scene.light.direction_to_light.normalize();
     let open = at(Vec3::new(0.0, 0.0, 2.5));
     let mut sides = Vec::new();
+    let mut shadows = Vec::new();
     for (name, c) in [("mesh", is::BALL_MESH_AT), ("card", is::BALL_CARD_AT)] {
         let right = at(c + Vec3::new(0.6, 0.0, 0.0));
         let left = at(c + Vec3::new(-0.6, 0.0, 0.0));
@@ -56,14 +57,23 @@ fn an_impostor_draws_as_the_mesh_it_stands_for() {
             above[2] > above[0] * 1.2 && !ball_pixel(above) || above[2] > 150.0,
             "{name}: above {above:?}"
         );
-        // Its shadow on the floor under it, along the sun.
+        // Its shadow on the floor under it, along the sun (the sky's
+        // light keeps it at about three quarters of the open floor's).
         let shadow = at(c - sun * (c.y / sun.y));
         assert!(
-            luma(shadow) < luma(open) * 0.6,
+            luma(shadow) < luma(open) * 0.85,
             "{name}: shadow {shadow:?} vs {open:?}"
         );
+        shadows.push(luma(shadow));
         sides.push((right, left, lit));
     }
+    // The card's shadow as dark as the mesh's, and where it is.
+    assert!(
+        (shadows[0] - shadows[1]).abs() < 0.1 * shadows[0],
+        "shadows: mesh {} card {}",
+        shadows[0],
+        shadows[1]
+    );
     // The card reads as the mesh: the same colours within a fifth.
     let (m, c) = (sides[0], sides[1]);
     for (a, b, what) in [
