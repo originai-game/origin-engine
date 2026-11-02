@@ -32,8 +32,18 @@
 //                        engine's own shape (joined, peer_joined, peer_left,
 //                        message, left), in order. A Player without room.join
 //                        carries no rooms: roomInfo's host is `none`.
+//   purchases, ads,      the same method names and arguments (docs/platform-asks.md
+//   achievements, the    #19): purchase.products/buy/entitlements/consume, ad.ready/
+//   player, friends,     show, achievement.unlock/progress/list, player.get,
+//   invites, share       friends.list, invite.send/list, share; each only where the
+//                        hello lists it, otherwise `unavailable` (never the browser's
+//                        storage: a page never fakes a purchase). The Player pauses
+//                        the game (`pause`, `resume`) while an ad shows and answers
+//                        after the resume; its pushed `platform` notices (a purchase
+//                        settled, entitlements changed, an invite) reach the engine
+//                        as og.PlatformNotice.
 
-import { answerLocally, fail, localPlatform, type LocalDocument, type LocalPersistence, type PlatformAnswer, type PlatformCall, type PlatformHost } from "../src/platform-local.ts";
+import { answerLocally, fail, localPlatform, SERVICE_METHODS, type LocalDocument, type LocalPersistence, type PlatformAnswer, type PlatformCall, type PlatformHost } from "../src/platform-local.ts";
 export { storagePersistence } from "../src/platform-local.ts";
 import type { PlayerResult } from "./player.ts";
 import type { RoomHost } from "../src/web/shell.ts";
@@ -88,7 +98,9 @@ export function playerPlatform(player: PlayerLink, local: LocalPersistence): Pla
     ...(has("leaderboard.around") || has("leaderboard.top") ? ["leaderboard.around"] : []),
     ...(has("point.award") ? ["point"] : []),
     ...(has("ai.mark") ? ["ai.mark"] : []),
+    ...SERVICE_METHODS.filter(has),
   ];
+  const services: ReadonlySet<string> = new Set(SERVICE_METHODS);
   let queue: Promise<void> = Promise.resolve();
 
   const viaLocal = (call: PlatformCall): PlatformAnswer | null => {
@@ -128,6 +140,8 @@ export function playerPlatform(player: PlayerLink, local: LocalPersistence): Pla
   const one = async (call: PlatformCall): Promise<PlatformAnswer | null> => {
     const a = call.args;
     if (STORE.includes(call.method)) return keyed ? keyedStore(call) : saved ? savedStore(call) : viaLocal(call);
+    // The platform's services pass through as they are: same name, same arguments, same answer.
+    if (services.has(call.method)) return has(call.method) ? fromPlayer(await player.request(call.method, a), (d) => d) : fail("unavailable", `this Player answers no ${call.method}`);
     const n = Math.max(1, Math.min(100, Number(a["count"] ?? 10)));
     switch (call.method) {
       case "telemetry":

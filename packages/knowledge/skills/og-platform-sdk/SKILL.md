@@ -1,6 +1,6 @@
 ---
 name: og-platform-sdk
-description: The OriginGame platform from inside an Origin Engine game — og.platform's store (saves with revisions and conflicts), leaderboards, telemetry, Origin Point, AI-content marks and the settings helpers, as requests answered at a later tick; how they work in the Player, on the stage and under og run; how to test them with dump_platform and --platform-store; and what to ask the platform for when a method is missing. Use when a game saves progress or settings, shows scores, files events or asks for points (the platform's og-platform skill covers the Player protocol around it).
+description: The OriginGame platform from inside an Origin Engine game — og.platform's store (saves with revisions and conflicts), leaderboards, telemetry, Origin Point, AI-content marks, the settings helpers, purchases and entitlements, rewarded and interstitial ads, achievements, the player, friends, invites and share, as requests answered at a later tick; how they work in the Player, on the stage and under og run; how to test them with dump_platform, --platform-store and the deterministic fake (--platform-fake, PlaytestDesc.platform); and what to ask the platform for when a method is missing. Use when a game saves progress or settings, shows scores, files events, asks for points, sells something, shows ads, unlocks achievements, shows the player or friends, invites or shares (the platform's og-platform skill covers the Player protocol around it).
 ---
 
 Game code never talks to the platform. It asks the engine, `og.platform.*`,
@@ -73,7 +73,9 @@ if (answer.ok && typeof answer.data.value === "number") run.best[i] = Math.max(r
   playtests), `none` before the platform attaches (`now` answers 0).
 - An error has a stable `code` (`offline`, `timeout`, `invalid`,
   `unauthorized`, `not_found`, `conflict`, `too_large`, `rate_limited`,
-  `unavailable`, `failed`) and `retryable`. Handle `unavailable` as
+  `unavailable`, `failed`, `cancelled` when the player backed out of a
+  purchase, an ad or a share sheet, `no_fill` when there is no ad now)
+  and `retryable`. Handle `unavailable` as
   "this feature is off here" and keep playing.
 
 ## 2. What to use
@@ -86,6 +88,11 @@ if (answer.ok && typeof answer.data.value === "number") run.best[i] = Math.max(r
 | Analytics | `telemetry(world, "round.over", { score, coins })` | one-way; a name of 1–64 letters, digits, `.` and `_` (the Player files it as `game.custom.<name>`), at most 16 scalar attributes; never personal data |
 | Origin Point | `point(world, { reason, amount })` | the platform decides what it grants (today nothing under a Player: `{ granted: 0, balance: null }` until an approved point policy; show nothing that depends on it) |
 | AI-generated content shown | `aiMark(world, { kind, label })` | disclosure, not permission |
+| Sell something | `products(world)`, `purchase(world, { product, quantity })`, `entitlements(world)`, `grant(world, purchase)`, `consume(world, purchase)` | the platform's sheet and money; §6 |
+| A rewarded or interstitial ad | `adReady(world, { kind, placement })`, `showAd(world, { kind, placement })` | the game is paused while it shows; pay a reward only when the outcome is completed; §6 |
+| Achievements | `achievementUnlock(world, id)`, `achievementProgress(world, { id, percent })`, `achievements(world)` | ids the platform knows; progress never goes back |
+| Who plays, friends, invites | `player(world)`, `friends(world, { count })`, `inviteSend(world, { to, payload })`, `invites(world)` | ids scoped to this game; a guest has no friends (`unauthorized`) |
+| Share | `share(world, { text, path, image })` | the host builds the game's own Play link from `path`; a game names no URL |
 | Play with others in one room | `roomCreate(world, { name })`, `roomJoin(world, room)`, `roomLeave`, `roomSend(world, data, to?)`, `roomPeers`, `roomInfo`; the answers as `og.RoomJoined`, `og.RoomPeerJoined`, `og.RoomPeerLeft`, `og.RoomMessage` (read one with `roomMessage`) | natively `og relay` with `og run --room ws://127.0.0.1:P/<room>`; on the web the Player's rooms, when its hello lists `room.join` (`roomInfo(world).host` is `none` otherwise and joins are refused). A message is this peer's host input only: for a game both peers simulate, use og.net's lockstep (`og.Lockstep`, `og.PlayerInput`, og-net §1) and send nothing yourself |
 
 A payload keeps the number it was given: an `f32` field's value is single
@@ -95,8 +102,9 @@ a playtest, round only for display, or keep a value that must compare
 exactly in an `f64` (og-build §1, Values in the JSON).
 
 `og.platform.info(world)` says what answers here (`player`, `local` or
-`none`) and the methods it answers (`capabilities`): check it rather than
-trying.
+`none`) and the methods it answers (`capabilities`); `og.platform.supports(world,
+"purchase.buy")` asks for one. Check it rather than trying: offer the shop,
+the ad button or Share only where it is true.
 
 ## 3. Rules
 
@@ -142,8 +150,9 @@ trying.
   not every tick: writes are rate limited.
 - Never store anything the game can recompute, and never a secret: the
   store belongs to the player, not to the game.
-- The engine exposes no identity (no player id, name or account): a game
-  that needs a display name asks for it (§5).
+- The player's identity is `og.platform.player(world)`: an id scoped to
+  this game and a name to show, never an account or an email. Do not
+  store either as a secret or send them anywhere but back to the platform.
 
 The settings read, as the UI kit does it (`followSettings` in
 `templates/ui-kit/src/main.ts`, called by its system every tick):
@@ -201,8 +210,64 @@ capabilities for a verification run, telemetry names) landed on
 2026-10-19; an older Player answers what its hello lists. One is open:
 the Player's `hello` and answers carrying its `time` (until then the web
 host's answers carry the browser's clock and `info(world).clock` says
-`browser`). When a game
+`browser`). The platform services of §6 (#19) are open too: until a
+Player's hello lists them, they answer `unavailable` on the web, so
+offer them only where `og.platform.supports` is true. When a game
 needs something none of them gives, do not work around it with a server of
 your own or by reaching the page: write the ask (the method, its arguments,
 its answer, why a game needs it) for the platform owners and keep the
 feature behind `info(world)` until it lands.
+
+## 6. Purchases, ads, achievements, the player and share
+
+These are the platform's (docs/platform-asks.md #19 of the engine
+repository); the engine carries the call and its answer and never holds
+an account or money.
+
+- **Entitlements are the host's word.** Ask `entitlements(world)` on the
+  first ticks and after a restore, and deliver from that answer; never
+  treat a save, the engine's log or a purchase you remember as proof of
+  payment.
+- **Grant once.** A purchase's answer, its notice and its entitlement can
+  each arrive again (a replay, a relaunch, a save restored from before you
+  consumed it). Deliver through `og.platform.grant(world, purchase)`: true
+  the first time, false after, kept in `og.PlatformGrants` (world state:
+  saved and hashed). Declare `og.PlatformGrants` among the system's writes.
+  Then `consume(world, purchase)` so the host drops a consumable from the
+  entitlements.
+- **Pending purchases** answer `state: "pending"` (a parent's approval, a
+  slow payment) and settle later as a notice: `og.PlatformNotice` with
+  kind `purchase`, read with `og.platform.notice(world, n)`. Notices also
+  say entitlements changed (`entitlements`) or an invite arrived (`invite`).
+- **Ads pause the game.** While an ad shows the host pauses it through its
+  lifecycle (no ticks, no audio) and the answer arrives after the resume;
+  never time an ad with og.Time. Pay a reward on `completed` only;
+  `no_fill` is retryable later, `rate_limited` is the platform's cap.
+- **Multiplayer.** A platform answer is this peer's alone. In a running
+  lockstep or rollback session (`og.Lockstep`) a system that writes
+  shared state (anything but input, audio, the camera and og.Lockstep)
+  hears no `og.PlatformAnswered` or `og.PlatformNotice` and reads null
+  from `result` and `notice`, and the engine logs it once: applying a
+  purchase to the shared world would split it from the other peers'.
+  Read answers in a system that writes none (a toast, a menu), and put
+  what every peer must see into the input it submits (`og.net.submit`).
+- **Test it.** Natively and in playtests a deterministic fake answers:
+  every call succeeds unless `PlaytestDesc.platform` (or `og run
+  --platform-fake fake.json`) scripts it: `products`, `outcomes` per
+  method in order (`{ "purchase.buy": ["cancelled", "ok", "pending"],
+  "ad.show": ["skipped"] }`), `player`, `friends`, `invites`, `notices`
+  at a tick, and `unavailable` methods (left out of the capabilities).
+  With `store: "keep"` its purchases persist across `then` relaunches, so
+  a delivery cut short by a quit can be shown delivered once on the next
+  launch. `og replay` records every answer and notice in its trace and
+  replays them at their ticks. A published page without a Player fakes
+  nothing: these answer `unavailable`.
+
+```ts
+// packages/engine/tests/fixtures/platform-shop: deliver a purchase once.
+const first = og.platform.grant(world, p.purchase);   // Shop writes og.PlatformGrants
+if (first.ok && first.value) {
+  wallet.gems += 100 * p.quantity;
+  og.platform.consume(world, p.purchase);
+}
+```

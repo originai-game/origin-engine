@@ -1071,6 +1071,33 @@ Each host carries rooms its own way:
   Worker-hosted pages joined by a Play link play the arena in lockstep
   through a relay (`packages/engine/tests/web-rooms.test.ts`).
 
+**Purchases, ads, achievements, identity and share** (G3-6;
+docs/platform-asks.md #19). `og.platform.products`, `purchase`,
+`entitlements`, `consume`, `adReady`, `showAd`, `achievementUnlock`,
+`achievementProgress`, `achievements`, `player`, `friends`, `inviteSend`,
+`invites` and `share` are requests on the same channel. The host answers
+them with game-scoped opaque ids. Accounts and money stay the platform's.
+`og.platform.supports` asks whether the host answers a method; one it
+lacks is `unavailable`.
+
+- **Notices.** Unasked host input (a pending purchase settled, entitlements
+  changed, an invite) comes in through `og_platform_notify` and is applied
+  at a tick's start as `og.PlatformNotice`, logged with the answers.
+- **Grant once.** `og.platform.grant` records a delivered purchase in
+  `og.PlatformGrants`, which is world state, so a consumable is delivered
+  once across restores, replays and relaunches. Entitlements are always
+  the host's answer.
+- **Ads.** The host pauses the game through its lifecycle while an ad
+  shows and answers after the resume.
+- **Sessions.** In a running lockstep or rollback session a system that
+  writes shared state hears no platform answer or notice: they are this
+  peer's alone.
+- **Replay.** `og replay` keeps every answer and notice with its tick and
+  feeds them back on compare.
+- **The fake.** Natively and in playtests a deterministic fake answers
+  (`og run --platform-fake`, `PlaytestDesc.platform`); a published page
+  never fakes them.
+
 ### 2.9 The video producer
 
 The engine already has what "video is code" pipelines bolt on (a fixed

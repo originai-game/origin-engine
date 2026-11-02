@@ -67,7 +67,7 @@ import { laneChoice } from "./lanes.ts";
 import { PointerLockMachine, type LockAction } from "./pointer-lock.ts";
 import { LayoutLearner, readLayoutMap, type KeyLabel } from "./keyboard-layout.ts";
 import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
-import { localPlatform, storagePersistence, type PlatformCall, type PlatformHost } from "../platform-local.ts";
+import { localPlatform, storagePersistence, type PlatformAnswer, type PlatformCall, type PlatformHost, type PlatformLink, type PlatformNotice } from "../platform-local.ts";
 import type { BootPhases } from "./worker.ts";
 import type { TraceDocument } from "../trace.ts";
 
@@ -385,6 +385,8 @@ export class Shell {
       if (m.type === "beat") {
         this.#beat = performance.now();
         this.#beatTick = (m as { tick?: number | null }).tick ?? this.#beatTick;
+        // A host that answers later (an ad's answer after the resume) or sends notices on its own.
+        this.#platform.poll?.(this.#link);
         return;
       }
       if (m.type === "frame") {
@@ -439,7 +441,8 @@ export class Shell {
       }
       if (m.type === "platform") {
         const calls = (m as unknown as { calls: PlatformCall[] }).calls ?? [];
-        this.#platform.handle(calls, (request, answer) => worker.postMessage({ type: "platform-answer", request, answer }));
+        this.#platform.handle(calls, this.#link.answer, this.#link);
+        this.#platform.poll?.(this.#link);
         return;
       }
       if (m.type !== "result" || m.id === undefined) return;
@@ -656,6 +659,31 @@ export class Shell {
   }
 
   /** What answers og.platform's calls from now on (og.platform.info reports its host and capabilities). */
+  /** What the platform host may do besides answering: notices, and pausing the game while an ad shows (onPlatformPause). */
+  readonly #link: PlatformLink = (() => {
+    const shell = this;
+    return {
+      get tick() {
+        return shell.#beatTick ?? 0;
+      },
+      answer: (request: number, answer: PlatformAnswer) => shell.worker.postMessage({ type: "platform-answer", request, answer }),
+      notify: (notice: PlatformNotice) => shell.notify(notice),
+      pause: () => shell.#platformPause(true),
+      resume: () => shell.#platformPause(false),
+    };
+  })();
+  #platformPause: (on: boolean) => void = (on) => this.play(!on);
+
+  /** How the page pauses the game for its platform host (ticks and audio, as its own pause does); default: the clock alone. */
+  onPlatformPause(pause: (on: boolean) => void): void {
+    this.#platformPause = pause;
+  }
+
+  /** Unasked platform input (a Player's pushed notice): applied at the next tick's start as og.PlatformNotice. */
+  notify(notice: PlatformNotice): void {
+    this.worker.postMessage({ type: "platform-notice", notice });
+  }
+
   setPlatform(host: PlatformHost): void {
     this.#platform = host;
     this.worker.postMessage({ type: "platform-host", host: host.host, capabilities: host.capabilities, time: host.time });

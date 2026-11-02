@@ -49,7 +49,7 @@
 // answered.
 
 import { boundHost, createEngine, systemClock, type Engine, type GameToken } from "../runtime.ts";
-import type { PlatformAnswer, PlatformHost } from "../platform-local.ts";
+import type { PlatformAnswer, PlatformHost, PlatformNotice } from "../platform-local.ts";
 import { loadWebHost, type WebGlue } from "./host.ts";
 import { FrameCounter } from "./frames.ts";
 import { FramePacer } from "./pacing.ts";
@@ -124,6 +124,7 @@ type Message =
   | { type: "viewport"; viewport: Viewport }
   | { type: "resize"; width: number; height: number; viewport: Viewport }
   | { type: "platform-answer"; request: number; answer: PlatformAnswer }
+  | { type: "platform-notice"; notice: PlatformNotice }
   | { type: "platform-host"; host: string; capabilities: string[]; time?: number }
   | { type: "room-events"; events: unknown[] }
   | { type: "room-host"; host: string; join?: string }
@@ -1230,6 +1231,7 @@ export function startWorker(game: GameToken): void {
       engine.answerPlatform(data.request, data.answer);
       platformCounter.answered();
     }
+    if (data.type === "platform-notice") engine.notifyPlatform(data.notice);
     if (data.type === "platform-host") engine.attachPlatform({ ...toPage(data.host, data.capabilities, platformCounter), time: data.time });
     if (data.type === "room-host") {
       boundHost()?.abi.og_room_set_host(engine.id, JSON.stringify({ host: data.host, ...(data.join ? { join: data.join } : {}) }));

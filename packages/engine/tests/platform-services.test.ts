@@ -1,4 +1,4 @@
-// og.platform's services on the native host (docs/platform-asks.md #18):
+// og.platform's services on the native host (docs/platform-asks.md #19):
 // purchases and entitlements, ads, achievements, the player, friends,
 // invites and share, answered by the local platform's deterministic fake.
 // Outcomes come from the fake's queues; a pending purchase is settled by a
@@ -13,6 +13,12 @@ import type { World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { localPlatform, memoryPersistence, type LocalFake } from "../src/platform-local.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
+import { playerPlatform } from "../shell/platform.ts";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { ogBin } from "./support/og-bin.ts";
+
+declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 
 beforeAll(() => {
   loadNativeHost();
@@ -190,3 +196,46 @@ test("og.platform.grant grants a purchase once, and a system must declare og.Pla
   expect(og.platform.granted(engine.world, "purchase-1")).toBeTrue();
   expect(og.platform.granted(engine.world, "purchase-2")).toBeFalse();
 });
+
+test("the Player bridge passes the services through by name, and answers what its hello lacks unavailable", async () => {
+  const asked: Array<[string, unknown]> = [];
+  const player = {
+    framed: true,
+    hosted: true,
+    capabilities: ["store.get", "store.set", "store.list", "purchase.buy", "share"],
+    request: async (method: string, args?: Record<string, unknown>) => {
+      asked.push([method, args]);
+      return method === "share" ? { ok: false as const, error: { code: "cancelled", message: "closed", retryable: false } } : { ok: true as const, data: { purchase: "pl-1", product: args?.["product"], quantity: 1, state: "completed" }, time: 9 };
+    },
+    event() {},
+  };
+  const host = playerPlatform(player, memoryPersistence());
+  expect(host.capabilities.filter((c) => c.includes(".") && !c.startsWith("store") && !c.startsWith("leader"))).toEqual(["purchase.buy"]);
+  expect(host.capabilities).toContain("share");
+  expect(host.capabilities).not.toContain("ad.show");
+  const got = new Map<number, unknown>();
+  host.handle(
+    [
+      { request: 1, method: "purchase.buy", args: { product: "gems", quantity: 1 }, tick: 5 },
+      { request: 2, method: "ad.show", args: { kind: "rewarded", placement: "default" }, tick: 5 },
+      { request: 3, method: "share", args: { text: "hi", title: "", path: "", image: false }, tick: 5 },
+    ],
+    (r, a) => got.set(r, a),
+  );
+  for (let i = 0; i < 10 && got.size < 3; i++) await new Promise((r) => setTimeout(r, 1));
+  expect(asked).toEqual([
+    ["purchase.buy", { product: "gems", quantity: 1 }],
+    ["share", { text: "hi", title: "", path: "", image: false }],
+  ]);
+  expect(got.get(1)).toEqual({ ok: true, data: { purchase: "pl-1", product: "gems", quantity: 1, state: "completed" }, time: 9 });
+  expect((got.get(2) as { error: { code: string } }).error.code).toBe("unavailable");
+  expect((got.get(3) as { error: { code: string } }).error.code).toBe("cancelled");
+});
+
+test("the shop fixture's playtests cover purchases, ads and a relaunch through PlaytestDesc.platform", () => {
+  const repo = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  const r = Bun.spawnSync([ogBin(), "test", join(repo, "packages/engine/tests/fixtures/platform-shop")], { cwd: repo });
+  const out = new TextDecoder().decode(r.stdout) + new TextDecoder().decode(r.stderr);
+  expect(r.exitCode, out).toBe(0);
+  for (const name of ["shop", "ads", "restore"]) expect(out).toContain(`PASS ${name} `);
+}, 300_000);

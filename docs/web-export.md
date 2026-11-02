@@ -831,6 +831,11 @@ messages the shell now sends and hears:
 | `call` `point.award` `{ reason, amount }` | `point` | `result` `{ granted, balance }` (today `{ granted: 0, balance: null }`: no release carries an approved point policy, origingame `docs/public-api.md` §15) |
 | `call` `ai.mark` `{ kind, label, model? }` | `aiMark` | `result` `{ marked: true }` |
 | `event` `game.custom.<name>` `{ attrs }` | `telemetry` (one-way; `<name>` 1–64 of letters, digits, `.` and `_`, at most 16 scalar attributes, checked by og.platform) | — |
+| `call` `purchase.*`, `ad.*`, `achievement.*`, `player.get`, `friends.list`, `invite.*`, `share` with og.platform's arguments | `products`, `purchase`, `entitlements`, `consume`, `adReady`, `showAd`, `achievementUnlock`, `achievementProgress`, `achievements`, `player`, `friends`, `inviteSend`, `invites`, `share`, only where the hello lists the method (otherwise `unavailable`, never the browser's storage) | `result` as docs/platform-asks.md #19 gives it, passed through unchanged; around an ad the Player sends `pause` and `resume` and answers after `resume` |
+
+| Player → shell | What |
+|---|---|
+| `platform` `{ notice: { kind, data, time? } }` | unasked input (`purchase`, `entitlements`, `invite`): forwarded to the Worker as `platform-notice`, applied at the next tick's start as og.PlatformNotice |
 
 The answers reach og.platform renamed only where its shape differs: a
 leaderboard's `sort` is og.platform's `order`, and `top` its `entries`.

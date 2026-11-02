@@ -1,0 +1,12 @@
+{
+  "kind": "get",
+  "target": "Wallet",
+  "tick": 150,
+  "value": {
+    "cancelled": 1,
+    "delivered": 2,
+    "gems": 200,
+    "skipped": 0,
+    "unlocked": 1
+  }
+}

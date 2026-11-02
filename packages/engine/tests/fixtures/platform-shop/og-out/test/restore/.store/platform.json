@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "player": "You",
+  "store": {},
+  "boards": {},
+  "points": {
+    "balance": 0,
+    "grants": []
+  },
+  "marks": [],
+  "events": [],
+  "purchases": [
+    {
+      "purchase": "purchase-1",
+      "product": "gems",
+      "kind": "consumable",
+      "quantity": 1,
+      "state": "completed",
+      "consumed": true,
+      "tick": 30
+    }
+  ],
+  "seq": 1,
+  "achievements": {
+    "first.gems": {
+      "percent": 100,
+      "unlocked": true,
+      "tick": 3
+    }
+  }
+}

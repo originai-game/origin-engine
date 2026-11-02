@@ -38,7 +38,7 @@ import { mountWire } from "./wire.ts";
 import { connectPlayer } from "./player.ts";
 import { connectPage, pageGame, type PageConnection, type PageInfo } from "./transport.ts";
 import { deferredPlatform, HELLO_WAIT_MS, playerPlatform, playerRooms, storagePersistence } from "./platform.ts";
-import { localPlatform, memoryPersistence, type PlatformHost } from "../src/platform-local.ts";
+import { localPlatform, memoryPersistence, type PlatformHost, type PlatformNotice } from "../src/platform-local.ts";
 import type { HostError } from "../src/web/shell.ts";
 import type { FrameStats } from "../src/web/frames.ts";
 import { mapStack } from "../src/sourcemap.ts";
@@ -502,16 +502,19 @@ export async function play(): Promise<PlayHandle> {
   const helloForPlatform = () => platformReady(playerPlatform(player, platformStore));
   playerEvents.hello = helloForPlatform;
   if (player.hosted) helloForPlatform();
-  else if (linked) setTimeout(() => platformReady(localPlatform(platformStore)), HELLO_WAIT_MS);
+  // Without a Player the browser's storage answers; a dev page fakes the platform services
+  // (every call succeeds), a publish page never does (they are `unavailable`).
+  const fake = config.build === "dev" ? {} : undefined;
+  if (!player.hosted && linked) setTimeout(() => platformReady(localPlatform(platformStore, fake)), HELLO_WAIT_MS);
   // A top-level platform page's calls wait for its play origin's hello; without one, the browser's storage.
   if (page)
     void page.hello.then((ok) => {
-      if (!ok) return platformReady(localPlatform(platformStore));
+      if (!ok) return platformReady(localPlatform(platformStore, fake));
       helloForPlatform();
       // The cover and Back as soon as the play origin names them, while the engine still loads.
       if (page.page) paintPage(page.page);
     });
-  const platform = linked || page ? deferredPlatform(hostReady, ["store.get", "store.set", "store.list", "telemetry"]) : localPlatform(platformStore);
+  const platform = linked || page ? deferredPlatform(hostReady, ["store.get", "store.set", "store.list", "telemetry"]) : localPlatform(platformStore, fake);
 
   let firstFrameAt = 0;
   // Ready is said once, never after the page failed; a crash before it is a start failure (Player protocol: fail before ready, crash after).
@@ -755,6 +758,9 @@ export async function play(): Promise<PlayHandle> {
     if (phase === "gate") start();
   };
   playerEvents.gesture = () => void audio.unlock().catch(() => {});
+  // A Player's notices (docs/platform-asks.md #19) and, on a dev page, the fake's ad pausing the game as the page's own pause does.
+  playerEvents.notice = (n) => shell.notify(n as PlatformNotice);
+  shell.onPlatformPause(pauseFor);
   playerEvents.pause = () => {
     pausedByPlayer = true;
     pauseFor(true);
