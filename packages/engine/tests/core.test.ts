@@ -90,7 +90,11 @@ test("og.procgen and og.Rng's picks give og-core's pinned outputs, bit for bit, 
   expect(node.refused.ok).toBeFalse();
   expect(node.refused.reason).toContain("0 x 32");
   if (STALE_WASM) return;
-  expect(run<Procgen>("web", "procgen")).toEqual(node);
+  const web = run<Procgen>("web", "procgen");
+  expect(web.hashes).toEqual(node.hashes);
+  expect(web.noise).toBe(node.noise);
+  expect(web.refused).toEqual(node.refused);
+  expect(web.hash).toBe(node.hash);
 }, 120_000);
 
 type Access = { ok: boolean; reason: string; tick: number; seen: { tries: number; refused: number }; shared: number; log: string[] };
