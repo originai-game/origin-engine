@@ -218,11 +218,16 @@ pub(crate) fn with_ui<T>(call: &str, f: impl FnOnce(&mut Ui) -> T) -> Option<T> 
 }
 
 pub fn og_ui_viewport(world: u32) -> String {
-    let hud = engine(world)
+    // In og-ui units, as the frame lays out (og.ui.frameViewport).
+    let css = viewport_of(world);
+    let (hud, unit) = engine(world)
         .ok()
         .and_then(|e| e.state.borrow().ui.clone())
-        .map_or(og_ui::HUD_MAX_ASPECT, |ui| ui.lock().hud_max_aspect());
-    viewport_json(&viewport_of(world), hud).to_string()
+        .map_or((og_ui::HUD_MAX_ASPECT, 1.0), |ui| {
+            let ui = ui.lock();
+            (ui.hud_max_aspect(), ui.unit_for(&css))
+        });
+    viewport_json(&css.zoomed(unit), hud).to_string()
 }
 
 pub fn og_ui_theme(world: u32) -> String {
@@ -353,6 +358,7 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, style: &str) -> String {
         "reducedMotion": theme.reduced_motion,
         "reducedTransparency": theme.reduced_transparency,
         "textScale": theme.text_scale,
+        "unit": theme.unit,
         "tokens": tokens_json(&theme.tokens),
     })
     .to_string()

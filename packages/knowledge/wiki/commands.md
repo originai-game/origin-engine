@@ -18,7 +18,7 @@ module commands {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 19163</sub>
+<sub>`api.ogt` line 18755</sub>
 
 ## Contents
 
@@ -67,7 +67,7 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 19246</sub>
+<sub>`api.ogt` line 18836</sub>
 
 <a id="fn-parse"></a>
 
@@ -95,7 +95,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 19254</sub>
+<sub>`api.ogt` line 18844</sub>
 
 <a id="fn-help"></a>
 
@@ -123,7 +123,7 @@ fn help {
 }
 ```
 
-<sub>`api.ogt` line 19260</sub>
+<sub>`api.ogt` line 18850</sub>
 
 <a id="fn-schedule"></a>
 
@@ -153,7 +153,7 @@ fn schedule {
 }
 ```
 
-<sub>`api.ogt` line 19266</sub>
+<sub>`api.ogt` line 18856</sub>
 
 ## Types
 
@@ -200,8 +200,6 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 | `"help"` | `help`: list every action the channel knows, core and registered. |
 | `"mouse_move"` | `mouse_move:dx,dy`: move the mouse by relative CSS pixels (movementX/Y, summed in og.Pointers.movement: mouse-look) with the pointer's position held, as a locked pointer moves. |
 | `"pointer_lock"` | `pointer_lock:<on\|off>`: report the pointer locked or released (og.PointerLock.locked), as the web shell does from pointerlockchange; headless hosts never lock on their own. |
-| `"apply_prefab"` | `apply_prefab:<entity>[:<Component>[.<field>]][:base]`: move an entity's prefab overrides (all, a component's or one field; a field set at run time too) into its prefab's `.ogt` at the entity's node, and out of its scene's instance block, so the scene cooks to the same world and every other instance takes the values; with `base`, into a variant's base (docs/design.md §2.5, prefabs). |
-| `"revert_prefab"` | `revert_prefab:<entity>[:<Component>[.<field>]]`: drop an entity's prefab overrides (all, a component's or one field) from its scene's instance block, and set the live values back to the prefab's. |
 
 ```ogt
 enum CoreAction {
@@ -239,12 +237,10 @@ enum CoreAction {
   variant help "`help`: list every action the channel knows, core and registered."
   variant mouse_move "`mouse_move:dx,dy`: move the mouse by relative CSS pixels (movementX/Y, summed in og.Pointers.movement: mouse-look) with the pointer's position held, as a locked pointer moves."
   variant pointer_lock "`pointer_lock:<on|off>`: report the pointer locked or released (og.PointerLock.locked), as the web shell does from pointerlockchange; headless hosts never lock on their own."
-  variant apply_prefab "`apply_prefab:<entity>[:<Component>[.<field>]][:base]`: move an entity's prefab overrides (all, a component's or one field; a field set at run time too) into its prefab's `.ogt` at the entity's node, and out of its scene's instance block, so the scene cooks to the same world and every other instance takes the values; with `base`, into a variant's base (docs/design.md §2.5, prefabs)."
-  variant revert_prefab "`revert_prefab:<entity>[:<Component>[.<field>]]`: drop an entity's prefab overrides (all, a component's or one field) from its scene's instance block, and set the live values back to the prefab's."
 }
 ```
 
-<sub>`api.ogt` line 19170</sub>
+<sub>`api.ogt` line 18762</sub>
 
 <a id="type-CommandHandler"></a>
 
@@ -271,7 +267,7 @@ callback CommandHandler {
 }
 ```
 
-<sub>`api.ogt` line 19209</sub>
+<sub>`api.ogt` line 18799</sub>
 
 <a id="type-CommandDesc"></a>
 
@@ -295,7 +291,7 @@ struct CommandDesc {
 }
 ```
 
-<sub>`api.ogt` line 19215</sub>
+<sub>`api.ogt` line 18805</sub>
 
 <a id="type-CommandStep"></a>
 
@@ -320,7 +316,7 @@ struct CommandStep {
 }
 ```
 
-<sub>`api.ogt` line 19222</sub>
+<sub>`api.ogt` line 18812</sub>
 
 <a id="type-CommandInfo"></a>
 
@@ -345,7 +341,7 @@ struct CommandInfo {
 }
 ```
 
-<sub>`api.ogt` line 19231</sub>
+<sub>`api.ogt` line 18821</sub>
 
 <a id="type-CommandsReport"></a>
 
@@ -368,4 +364,4 @@ struct CommandsReport {
 }
 ```
 
-<sub>`api.ogt` line 19239</sub>
+<sub>`api.ogt` line 18829</sub>

@@ -638,6 +638,10 @@ fn a_control_past_the_screen_edge_with_nothing_to_scroll_to_it_is_named() {
 #[test]
 fn hud_corners_sit_in_a_centred_band_on_an_ultrawide() {
     let mut rig = Rig::new(());
+    // One og-ui unit at every size: the band, not the unit, is the subject.
+    let mut t = *rig.ui.theme();
+    t.unit_pin = 1.0;
+    rig.ui.set_theme(t);
     let b = &mut |ui: &mut Ui, _: &mut ()| {
         for (id, anchor) in [("Vitals", Anchor::TopLeft), ("Map", Anchor::TopRight)] {
             ui.anchor(

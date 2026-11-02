@@ -9557,7 +9557,7 @@
         },
         {
           "name": "viewport",
-          "doc": "This tick's play surface: the render target's size in CSS pixels, its DPR and safe area, as the host reports them.",
+          "doc": "This tick's play surface as the UI lays out on it: the render target's size, safe area and covered region in og-ui units (CSS pixels over UiTheme.unit, docs/ui.md §15.2: 1 on touch and up to 720p, so CSS pixels there) and device pixels per unit, from what the host reports.",
           "params": [
             {
               "name": "world",
@@ -37246,7 +37246,7 @@
     "Viewport": {
       "x-og-kind": "struct",
       "x-og-module": "ui",
-      "description": "The play surface the UI lays out in.",
+      "description": "The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit.",
       "type": "object",
       "properties": {
         "width": {
@@ -37410,6 +37410,14 @@
           "description": "The player's text size (a settings screen's slider, kept with the other settings): every text size and leading is multiplied by it and the layout grows around the text (control, row and header heights by the leading body text gains), never clipping it. 1 is the style's sizes; docs/ui.md §15.2 holds every screen to 2.",
           "default": 1,
           "minimum": 1,
+          "maximum": 2,
+          "x-og-unit": "ratio"
+        },
+        "unitScale": {
+          "type": "number",
+          "description": "The og-ui unit in CSS px (docs/ui.md §15.2): the UI lays out in units (og.ui.viewport and og.ui.frameViewport are the surface over it) and draws them at it, so every length grows with the surface (the style's text, space, radii and controls, and a game's own px, alike) and the player's textScale multiplies over it. 0 is auto: on a mouse or pad surface its 1080p-equivalent height (the shorter of the height and the width's 16:9 height) over 720, 1 to 2, so a 1280x720 layout fills a 1080p window with body text at 21 CSS px and the smallest step at 18; a touch surface keeps CSS px (1). A value of 1 to 2 pins it (a game that lays out for one size).",
+          "default": 0,
+          "minimum": 0,
           "maximum": 2,
           "x-og-unit": "ratio"
         },
@@ -37734,6 +37742,10 @@
           "type": "number",
           "description": "The player's text scale in effect (UiDesc.textScale, 1 to 2): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this."
         },
+        "unit": {
+          "type": "number",
+          "description": "The og-ui unit in effect, in CSS px (UiDesc.unitScale; auto: 1 to 2 by the surface): what every length the UI reads and gives is in, og.ui.bounds and og.ui.viewport too. Only what leaves the UI for the page is CSS px: the probe's dump_ui and og.render's screen sprites; a game drawing its own screen sprites beside the UI multiplies by it."
+        },
         "reducedTransparency": {
           "type": "boolean",
           "description": "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
@@ -37754,6 +37766,7 @@
         "contrast",
         "reducedMotion",
         "textScale",
+        "unit",
         "reducedTransparency",
         "tokens"
       ],

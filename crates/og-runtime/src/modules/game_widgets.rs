@@ -555,7 +555,10 @@ pub fn og_ui_focus(pad: u32) -> String {
 }
 
 /// An accessibility tree as og.ui.a11y answers it (IDL `ui.A11yTree`).
-pub(crate) fn a11y_json(t: &og_ui::A11yTree) -> Value {
+/// The accessibility tree as JSON, its rectangles times `unit` (1: the
+/// game's units, as og.ui.a11y gives them; the frame's og-ui unit: CSS px,
+/// as the page's mirror places its nodes).
+pub(crate) fn a11y_json(t: &og_ui::A11yTree, unit: f32) -> Value {
     let nodes: Vec<Value> = t
         .nodes
         .iter()
@@ -564,7 +567,7 @@ pub(crate) fn a11y_json(t: &og_ui::A11yTree) -> Value {
                 "path": n.path, "parent": n.parent, "role": n.role, "name": n.name,
                 "description": n.description, "value": n.value, "states": n.states,
                 "valueMin": n.value_min, "valueMax": n.value_max, "valueNow": n.value_now,
-                "x": n.x, "y": n.y, "width": n.width, "height": n.height,
+                "x": n.x * unit, "y": n.y * unit, "width": n.width * unit, "height": n.height * unit,
             })
         })
         .collect();
@@ -572,7 +575,7 @@ pub(crate) fn a11y_json(t: &og_ui::A11yTree) -> Value {
 }
 
 pub fn og_ui_a11y() -> String {
-    with_ui("og.ui.a11y", |ui| a11y_json(ui.a11y()).to_string())
+    with_ui("og.ui.a11y", |ui| a11y_json(ui.a11y(), 1.0).to_string())
         .unwrap_or_else(|| r#"{"nodes":[],"focusOrder":[],"focused":""}"#.to_string())
 }
 

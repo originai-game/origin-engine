@@ -327,13 +327,16 @@ impl Ui {
             if instances.is_empty() {
                 continue;
             }
-            batches.push(UiMassBatch {
+            let mut b = UiMassBatch {
                 template: t.clone(),
                 space: *space,
                 instances,
                 layer: 0,
                 clip: None,
-            });
+            };
+            // Drawn in CSS px like the frame's commands (the og-ui unit).
+            crate::draw::zoom_mass(&mut b, self.unit);
+            batches.push(b);
         }
         self.world.frame = WorldFrame { tick, batches };
     }

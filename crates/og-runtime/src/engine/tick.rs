@@ -205,7 +205,7 @@ fn a11y_changed(eng: &Engine) -> Option<Value> {
         return None;
     }
     st.a11y_digest = digest;
-    Some(super::modules::a11y_json(tree))
+    Some(super::modules::a11y_json(tree, ui.frame().unit.max(1.0)))
 }
 
 /// The haptic patterns the UI played since the last frame answer.
@@ -233,10 +233,12 @@ fn text_entry(eng: &Engine) -> (Value, Option<String>) {
     };
     let mut ui = ui.lock();
     let copy = ui.take_clipboard();
+    // The page places its input method's window in CSS px.
+    let u = ui.frame().unit.max(1.0);
     let text = match &ui.frame().text_input {
         Some(t) => json!({
             "path": t.path,
-            "rect": [t.rect.x, t.rect.y, t.rect.width, t.rect.height],
+            "rect": [t.rect.x * u, t.rect.y * u, t.rect.width * u, t.rect.height * u],
             "multiline": t.multiline,
             "selection": t.selection,
             "composing": t.composing,

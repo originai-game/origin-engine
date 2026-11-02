@@ -402,6 +402,34 @@ pub struct InputFrame {
 }
 
 impl InputFrame {
+    /// This input in og-ui units of `unit` CSS px ([`crate::Viewport::zoomed`]):
+    /// every pointer's place, start and movement and the wheel over `unit`.
+    pub fn zoomed(mut self, unit: f32) -> InputFrame {
+        if unit == 1.0 {
+            return self;
+        }
+        let k = 1.0 / unit;
+        self.pointer *= k;
+        self.wheel *= k;
+        let p = &mut self.pointers;
+        for v in [
+            &mut p.position0,
+            &mut p.position1,
+            &mut p.position2,
+            &mut p.position3,
+            &mut p.position4,
+            &mut p.start0,
+            &mut p.start1,
+            &mut p.start2,
+            &mut p.start3,
+            &mut p.start4,
+            &mut p.movement,
+        ] {
+            *v *= k;
+        }
+        self
+    }
+
     pub fn read(source: &impl InputSource) -> InputFrame {
         let mut text = String::new();
         source.typed(&mut text);
