@@ -46630,6 +46630,14 @@ export interface StreamCell {
    */
   pin: boolean;
   /**
+   * Keep what happened in it: when it unloads, its entities as they are (moved, damaged, opened; every component and name) are kept in the world's og.cells state, carried by snapshots, saves and the hash, and they come back as they were when it loads again instead of its sub-scene as authored. False: it loads as authored every time.
+   */
+  persist: boolean;
+  /**
+   * The most of its entities spawned per tick while it loads, so a large cell spreads over consecutive ticks instead of one long one (0: all in one tick). `loaded` turns true, and CellEvent is sent, in the tick its last entity spawns; a cell that stops being wanted before then despawns what it spawned and sends nothing.
+   */
+  budget: number;
+  /**
    * Written by the engine: true while the sub-scene's entities are in the world (from the tick it loaded until the tick it unloaded).
    *
    * @readonly written by the engine
@@ -53700,7 +53708,7 @@ export declare namespace og {
   /**
    * A world cell: loads its sub-scene's entities while an og.StreamAnchor is near its box, and despawns them when none is (the module's doc). The box is the entity's world position ± half `size`, turned with it; a zero size is a point.
    */
-  const StreamCell: ComponentType<{ readonly scene: FieldSpec<"Asset">; readonly size: FieldSpec<"Vector3">; readonly load: FieldSpec<"f32">; readonly unload: FieldSpec<"f32">; readonly pin: FieldSpec<"bool">; readonly loaded: FieldSpec<"bool"> }, StreamCell>;
+  const StreamCell: ComponentType<{ readonly scene: FieldSpec<"Asset">; readonly size: FieldSpec<"Vector3">; readonly load: FieldSpec<"f32">; readonly unload: FieldSpec<"f32">; readonly pin: FieldSpec<"bool">; readonly persist: FieldSpec<"bool">; readonly budget: FieldSpec<"u32">; readonly loaded: FieldSpec<"bool"> }, StreamCell>;
   /**
    * What loads cells: every entity with one (the player, a vehicle, each player of a networked game) loads the cells within their StreamCell.load of it, from its world position. Without any anchor the og.Camera resource's position anchors (refused in an og.net session).
    */

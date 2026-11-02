@@ -26,6 +26,8 @@
 
 use super::super::assets::{self, Payload, Placement};
 use super::super::engine::Engine;
+use super::cell_store::{self, Loading, Source, lock};
+use super::kept;
 use og_core::math::Pose;
 use og_ecs::{Entity, QueryDesc, World};
 use serde_json::{Value, json};
@@ -47,6 +49,8 @@ pub(crate) struct CellLog {
     pub unloaded_at: Option<u64>,
     pub loads: u32,
     pub entities: u32,
+    /// Whether the last load brought back kept entities (`persist`).
+    pub kept: bool,
     /// The last refusal (a sub-scene that would not spawn), once per text.
     pub refused: Option<String>,
 }
@@ -248,27 +252,69 @@ pub(crate) fn before_tick(eng: &Engine, world: &mut World) {
     let Some(transform) = layout(eng, "og.Transform") else {
         return;
     };
+    let Some(store) = store(eng) else {
+        return;
+    };
     for (cell, v) in list {
         let loaded = v["loaded"] == json!(true);
+        let loading = lock(&store).loading.contains_key(&cell.to_bits());
         let scene = v["scene"].as_f64().unwrap_or(0.0) as u64;
         let pose = pose_of(world, &transform, cell);
-        let size = vec3(&v["size"]);
-        let load = v["load"].as_f64().unwrap_or(0.0).max(0.0) as f32;
-        let unload = match v["unload"].as_f64().unwrap_or(0.0) as f32 {
-            u if u > 0.0 => u.max(load),
-            _ => load * 1.25,
-        };
-        let reach = if loaded { unload } else { load };
+        let reach = reach_of(&v, loaded || loading);
         let near = anchors.iter().any(|&(p, extra)| {
             let r = reach + extra;
-            distance_sq(pose, size, p) <= r * r
+            distance_sq(pose, vec3(&v["size"]), p) <= r * r
         });
         let want = scene != 0 && (v["pin"] == json!(true) || near);
         if want && !loaded {
-            load_cell(eng, world, cell, scene, pose, tick);
+            step_load(eng, world, &store, cell, &v, pose, tick);
+        } else if !want && loading {
+            abandon(eng, world, &store, cell);
         } else if !want && loaded {
-            unload_cell(eng, world, cell, tick);
+            unload_cell(eng, world, &store, cell, &v, tick);
         }
+    }
+}
+
+/// How far from its box a cell is wanted: `load` while it is not loaded,
+/// `unload` (at least `load`; 1.25 × load when 0) while it is or is loading.
+fn reach_of(v: &Value, held: bool) -> f32 {
+    let load = v["load"].as_f64().unwrap_or(0.0).max(0.0) as f32;
+    if !held {
+        return load;
+    }
+    match v["unload"].as_f64().unwrap_or(0.0) as f32 {
+        u if u > 0.0 => u.max(load),
+        _ => load * 1.25,
+    }
+}
+
+thread_local! {
+    /// Each engine's og.cells store, the one its world's block holds.
+    static STORES: std::cell::RefCell<og_core::IdMap<u32, cell_store::Shared>> =
+        const { std::cell::RefCell::new(og_core::IdMap::new()) };
+}
+
+/// The world's og.cells store (added with the cell's records).
+fn store(eng: &Engine) -> Option<cell_store::Shared> {
+    STORES.with(|s| s.borrow().get(&eng.id).cloned())
+}
+
+/// Adds the og.cells state block to `world` (engine `engine`'s, whose
+/// cell records were just registered) with a store of its own, keeping
+/// the one it has.
+pub(crate) fn attach(engine: u32, world: &mut World) -> Result<(), String> {
+    let shared = cell_store::Shared::default();
+    match world.add_state_block(
+        cell_store::BLOCK,
+        Box::new(cell_store::Block(shared.clone())),
+    ) {
+        Ok(()) => {
+            STORES.with(|s| s.borrow_mut().insert(engine, shared));
+            Ok(())
+        }
+        Err(e) if e.reason().contains("already added") => Ok(()),
+        Err(e) => Err(e.reason().to_string()),
     }
 }
 
@@ -289,55 +335,177 @@ fn warn_once(eng: &Engine, cell: Option<Entity>, tick: u64, text: String) {
         .push(json!({ "tick": tick, "warning": true, "text": text }));
 }
 
-fn load_cell(eng: &Engine, world: &mut World, cell: Entity, scene: u64, pose: Pose, tick: u64) {
-    let desc = {
-        let a = eng.assets.borrow();
-        assets::index_of(scene as f64)
-            .and_then(|i| a.entries.get(i))
-            .and_then(|entry| match &entry.payload {
-                Payload::Scene(s) => Some(s.clone()),
-                _ => None,
-            })
+/// The scene a handle names, when it is a loaded one.
+fn scene_of(eng: &Engine, scene: u64) -> Option<Box<og_bundle::runtime::SceneDesc>> {
+    let a = eng.assets.borrow();
+    assets::index_of(scene as f64)
+        .and_then(|i| a.entries.get(i))
+        .and_then(|entry| match &entry.payload {
+            Payload::Scene(s) => Some(s.clone()),
+            _ => None,
+        })
+}
+
+/// One tick of a cell's load: starts it (from its kept rows when it
+/// persists and has them, else its sub-scene) or goes on with it, spawning
+/// at most `budget` entities; the tick the last one spawns, the cell is
+/// loaded and says so.
+fn step_load(
+    eng: &Engine,
+    world: &mut World,
+    store: &cell_store::Shared,
+    cell: Entity,
+    v: &Value,
+    pose: Pose,
+    tick: u64,
+) {
+    let bits = cell.to_bits();
+    let budget = match v["budget"].as_u64().unwrap_or(0) {
+        0 => usize::MAX,
+        n => n as usize,
     };
-    let Some(desc) = desc else {
-        warn_once(
-            eng,
-            Some(cell),
-            tick,
-            format!("cell {cell}: StreamCell.scene {scene} is not a loaded scene"),
-        );
-        return;
-    };
-    match assets::spawn_placed(eng, &desc, Placement::Cell { cell, pose }) {
-        Ok(spawned) => {
-            let n = spawned.len() as u32;
-            if let Err(e) = write(eng, world, cell, &json!({ "loaded": true })) {
-                warn_once(eng, Some(cell), tick, e);
+    let persist = v["persist"] == json!(true);
+    let mut progress = {
+        let mut s = lock(store);
+        match s.loading.get(&bits) {
+            Some(l) => l.clone(),
+            None => {
+                let source = if persist && s.kept.contains_key(&bits) {
+                    Source::Kept
+                } else {
+                    // Not kept (or no longer persisting): as authored.
+                    s.kept.remove(&bits);
+                    Source::Scene
+                };
+                Loading {
+                    source,
+                    spawned: Vec::new(),
+                }
             }
-            send(eng, world, cell, true, n, tick);
-            let mut a = eng.assets.borrow_mut();
-            let log = a.stream.cells.entry(cell.to_bits()).or_default();
-            log.loaded_at = Some(tick);
-            log.loads += 1;
-            log.entities = n;
-            log.refused = None;
         }
-        Err(e) => {
-            // Whatever spawned before the refusal goes again: the cell
-            // stays unloaded and tries again next tick.
-            despawn_members(eng, world, cell);
+    };
+    if progress.source == Source::Kept && progress.spawned.is_empty() {
+        let rows = lock(store).kept.get(&bits).cloned().unwrap_or_default();
+        if let Err(e) = kept::check(eng, world, &rows) {
+            // Kept by a build whose components differ: as authored.
             warn_once(
                 eng,
                 Some(cell),
                 tick,
-                format!("cell {cell} ({}): {e}", desc.id),
+                format!(
+                    "cell {cell}: its kept entities cannot come back ({e}); it loads as authored"
+                ),
             );
+            lock(store).kept.remove(&bits);
+            progress.source = Source::Scene;
         }
     }
+    let mut spawned: Vec<Entity> = progress
+        .spawned
+        .iter()
+        .map(|b| Entity::from_bits(*b))
+        .collect();
+    let (result, total) = match progress.source {
+        Source::Scene => {
+            let scene = v["scene"].as_f64().unwrap_or(0.0) as u64;
+            let Some(desc) = scene_of(eng, scene) else {
+                warn_once(
+                    eng,
+                    Some(cell),
+                    tick,
+                    format!("cell {cell}: StreamCell.scene {scene} is not a loaded scene"),
+                );
+                return;
+            };
+            let end = spawned.len().saturating_add(budget);
+            let r = assets::spawn_part(
+                eng,
+                &desc,
+                Placement::Cell { cell, pose },
+                &mut spawned,
+                end,
+            )
+            .map_err(|e| format!("cell {cell} ({}): {e}", desc.id));
+            (r, desc.entities.len())
+        }
+        Source::Kept => {
+            let rows = lock(store).kept.get(&bits).cloned().unwrap_or_default();
+            let end = spawned.len().saturating_add(budget).min(rows.len());
+            let r = kept::spawn(eng, world, &rows, &mut spawned, end)
+                .map_err(|e| format!("cell {cell} (kept): {e}"));
+            (r, rows.len())
+        }
+    };
+    if let Err(e) = result {
+        // Whatever spawned before the refusal goes again: the cell stays
+        // unloaded and tries again next tick.
+        despawn_members(eng, world, cell);
+        lock(store).loading.remove(&bits);
+        warn_once(eng, Some(cell), tick, e);
+        return;
+    }
+    if spawned.len() < total {
+        progress.spawned = spawned.iter().map(|e| e.to_bits()).collect();
+        lock(store).loading.insert(bits, progress);
+        return;
+    }
+    {
+        let mut s = lock(store);
+        s.loading.remove(&bits);
+        if progress.source == Source::Kept {
+            s.kept.remove(&bits);
+        }
+    }
+    let n = spawned.len() as u32;
+    if let Err(e) = write(eng, world, cell, &json!({ "loaded": true })) {
+        warn_once(eng, Some(cell), tick, e);
+    }
+    send(eng, world, cell, true, n, tick);
+    let mut a = eng.assets.borrow_mut();
+    let log = a.stream.cells.entry(bits).or_default();
+    log.loaded_at = Some(tick);
+    log.loads += 1;
+    log.entities = n;
+    log.kept = progress.source == Source::Kept;
+    log.refused = None;
 }
 
-fn unload_cell(eng: &Engine, world: &mut World, cell: Entity, tick: u64) {
-    let n = despawn_members(eng, world, cell);
+/// A load that stops being wanted before it completes: what it spawned
+/// goes, and nothing is sent (the cell never said it loaded).
+fn abandon(eng: &Engine, world: &mut World, store: &cell_store::Shared, cell: Entity) {
+    despawn_members(eng, world, cell);
+    lock(store).loading.remove(&cell.to_bits());
+    eng.state
+        .borrow_mut()
+        .scene_instances
+        .retain(|i| i.root != Some(cell.to_bits()));
+}
+
+fn unload_cell(
+    eng: &Engine,
+    world: &mut World,
+    store: &cell_store::Shared,
+    cell: Entity,
+    v: &Value,
+    tick: u64,
+) {
+    let order = subtree(world, cell);
+    if v["persist"] == json!(true) {
+        match kept::capture(eng, world, &order) {
+            Ok(rows) => {
+                lock(store).kept.insert(cell.to_bits(), rows);
+            }
+            Err(e) => warn_once(
+                eng,
+                Some(cell),
+                tick,
+                format!(
+                    "cell {cell}: its entities could not be kept ({e}); it loads as authored next time"
+                ),
+            ),
+        }
+    }
+    let n = despawn(eng, world, order);
     if let Err(e) = write(eng, world, cell, &json!({ "loaded": false })) {
         warn_once(eng, Some(cell), tick, e);
     }
@@ -355,8 +523,17 @@ fn unload_cell(eng: &Engine, world: &mut World, cell: Entity, tick: u64) {
 /// Despawns every entity whose og.CellMember names `cell`, and their
 /// descendants, children first and by entity; how many.
 fn despawn_members(eng: &Engine, world: &mut World, cell: Entity) -> u32 {
+    let order = subtree(world, cell);
+    despawn(eng, world, order)
+}
+
+/// The entities whose og.CellMember names `cell` and their descendants,
+/// parents before their children: the members that are roots of it (whose
+/// parent is not in it) by entity, each followed depth first by its
+/// children, by entity.
+fn subtree(world: &World, cell: Entity) -> Vec<Entity> {
     let Ok(member) = world.id_by_name(MEMBER) else {
-        return 0;
+        return Vec::new();
     };
     let bits = cell.to_bits();
     let mut members: Vec<Entity> = Vec::new();
@@ -377,8 +554,12 @@ fn despawn_members(eng: &Engine, world: &mut World, cell: Entity) -> u32 {
             }
         }
     }
+    if members.is_empty() {
+        return members;
+    }
     // Children by parent, each list by entity.
     let mut children: BTreeMap<u64, Vec<Entity>> = BTreeMap::new();
+    let mut parent_of: BTreeMap<u64, u64> = BTreeMap::new();
     if let Ok(pid) = world.id_by_name("og.Parent") {
         let q = QueryDesc {
             read: vec!["og.Parent".into()],
@@ -389,6 +570,7 @@ fn despawn_members(eng: &Engine, world: &mut World, cell: Entity) -> u32 {
                 if let Ok(col) = a.read::<u64>(field) {
                     for (e, p) in a.entities().iter().zip(col.iter()) {
                         children.entry(*p).or_default().push(*e);
+                        parent_of.insert(e.to_bits(), *p);
                     }
                 }
             }
@@ -397,20 +579,39 @@ fn despawn_members(eng: &Engine, world: &mut World, cell: Entity) -> u32 {
     for list in children.values_mut() {
         og_core::sort::sort_by_key(list, |e| (e.index(), e.generation()));
     }
-    og_core::sort::sort_by_key(&mut members, |e| (e.index(), e.generation()));
-    let mut seen: std::collections::BTreeSet<u64> = members.iter().map(|e| e.to_bits()).collect();
-    let mut order = members;
+    // Every member and descendant, then the roots among them.
+    let mut set: std::collections::BTreeSet<u64> = members.iter().map(|e| e.to_bits()).collect();
     let mut i = 0;
-    while i < order.len() {
-        if let Some(kids) = children.get(&order[i].to_bits()) {
+    let mut all = members.clone();
+    while i < all.len() {
+        if let Some(kids) = children.get(&all[i].to_bits()) {
             for k in kids {
-                if seen.insert(k.to_bits()) {
-                    order.push(*k);
+                if set.insert(k.to_bits()) {
+                    all.push(*k);
                 }
             }
         }
         i += 1;
     }
+    let mut roots: Vec<Entity> = all
+        .iter()
+        .copied()
+        .filter(|e| parent_of.get(&e.to_bits()).is_none_or(|p| !set.contains(p)))
+        .collect();
+    og_core::sort::sort_by_key(&mut roots, |e| (e.index(), e.generation()));
+    let mut order = Vec::with_capacity(all.len());
+    let mut stack: Vec<Entity> = roots.into_iter().rev().collect();
+    while let Some(e) = stack.pop() {
+        order.push(e);
+        if let Some(kids) = children.get(&e.to_bits()) {
+            stack.extend(kids.iter().rev().copied());
+        }
+    }
+    order
+}
+
+/// Despawns `order` (a [`subtree`]) children first; how many.
+fn despawn(eng: &Engine, world: &mut World, mut order: Vec<Entity>) -> u32 {
     order.reverse();
     if order.is_empty() {
         return 0;
