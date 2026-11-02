@@ -407,3 +407,36 @@ fn runs_of_either_direction_reorder_inside_one_span() {
         "go שלום עולם now ok"
     );
 }
+
+#[test]
+fn a_bold_span_keeps_room_for_its_thickened_ink() {
+    // Bold is thickened in the shader and drawn twice, one device pixel
+    // apart: its ink reaches past its advance, so the text after it must
+    // start that much later or the space between them closes up.
+    let mut ui = rich_ui();
+    let gap = |ui: &mut Ui, markup: &str| {
+        for _ in 0..2 {
+            step(ui, InputFrame::default(), markup, Size::Fixed(400.0));
+        }
+        let t = texts(ui);
+        let six = t
+            .iter()
+            .filter(|t| t.0 == "6")
+            .map(|t| t.1)
+            .fold(f32::MAX, f32::min);
+        let weight = t.iter().find(|t| t.0 == "6").map_or(0.0, |t| t.5);
+        let after = t
+            .iter()
+            .find(|t| t.0.starts_with(' '))
+            .expect("the text after")
+            .1;
+        (after - six, weight)
+    };
+    let (plain, _) = gap(&mut ui, "Deal [color=danger]6[/color] damage.");
+    let (bold, weight) = gap(&mut ui, "Deal [b]6[/b] damage.");
+    assert!(weight > 0.0, "the bold span is thickened");
+    assert!(
+        bold >= plain + weight + 1.0 - 1e-3,
+        "a bold span reserves its overhang: {bold} against {plain} + {weight} + 1"
+    );
+}

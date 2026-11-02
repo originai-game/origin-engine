@@ -101,7 +101,24 @@ pub(crate) fn span_width(s: &RichSpan, text: &str, fonts: &dyn Metrics) -> f32 {
         text,
         s.step.size,
         crate::layout::step_tracking(&s.step, text),
-    )
+    ) + bold_overhang(s, text)
+}
+
+/// How far a bold span's ink reaches past its advance (CSS px): the
+/// shader's thickening ([`bold_weight`]) and the second copy, one device
+/// pixel to the right (at most 1 px). Reserved after each bold word, so
+/// the space after it does not close up.
+fn bold_overhang(s: &RichSpan, text: &str) -> f32 {
+    if s.bold && !text.trim().is_empty() {
+        bold_weight(s.step.size) + 1.0
+    } else {
+        0.0
+    }
+}
+
+/// A bold span's thickening at `size` (CSS px).
+fn bold_weight(size: f32) -> f32 {
+    (size * 0.045).max(0.4)
 }
 
 fn span_metrics(s: &RichSpan, fonts: &dyn Metrics) -> (f32, f32, f32) {
@@ -385,7 +402,8 @@ fn visual_segments(
             let first = text[ranges[k].start..r.start].chars().count();
             let mut glyphs = m.run(piece_text, rtl, tracking, first);
             glyphs.retain(|g| !og_i18n::is_bidi_control(g.ch));
-            let width = glyphs.iter().map(|g| g.advance).sum::<f32>() * s.step.size;
+            let width = glyphs.iter().map(|g| g.advance).sum::<f32>() * s.step.size
+                + bold_overhang(s, piece_text);
             out.push(Segment {
                 span: p.span,
                 text: piece_text.to_string(),
@@ -686,7 +704,7 @@ impl Ui {
             // Bold: thickened in the shader (as far as the field reaches)
             // and drawn twice, the second copy one device pixel to the
             // right, so small text whose field is thin is bold too.
-            let weight = if s.bold { (size * 0.045).max(0.4) } else { 0.0 };
+            let weight = if s.bold { bold_weight(size) } else { 0.0 };
             let smear = if s.bold { 1.0 / dpr } else { 0.0 };
             let glyph = |x: f32,
                          dy: f32,
