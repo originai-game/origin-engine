@@ -7,6 +7,8 @@
 //!   or cannot be mended → `a_joint_breaks_past_its_force_and_is_mended`
 //! - the torque limit is ignored or read as a force →
 //!   `a_cantilever_breaks_past_its_torque`
+//! - a broken joint keeps its bodies from colliding with each other, as
+//!   it did while it held → `bodies_whose_joint_broke_collide_with_each_other_again`
 //! - breaking depends on anything but the world: a restore before the
 //!   break breaks it at another tick or force →
 //!   `a_break_replays_from_a_restore`
@@ -451,4 +453,57 @@ fn a_world_naming_none_of_g2_3s_types_registers_none_and_still_sleeps_and_breaks
         sent += broken_events(&w).len();
     }
     assert_eq!(sent, 1);
+}
+
+#[test]
+fn bodies_whose_joint_broke_collide_with_each_other_again() {
+    // A box on the floor and a second box jointed into it, overlapping by
+    // 0.6 m, the joint not colliding (the default): held, the upper box
+    // rests inside the lower. Its joint breaks under the first load; from
+    // then on the pair collides, so the upper box is pushed out and comes
+    // to rest stacked on the lower, not sunk through it to the floor.
+    for profile in [PROFILE_3D, PROFILE_2D] {
+        let (mut w, _p) = world(
+            Physics {
+                profile,
+                ..Physics::default()
+            },
+            1,
+        );
+        floor(&mut w);
+        let lower = spawn_body(
+            &mut w,
+            at(0.0, 0.5, 0.0),
+            RigidBody::dynamic(),
+            Collider::cuboid(Vec3::ONE),
+        );
+        let upper = spawn_body(
+            &mut w,
+            at(0.0, 0.9, 0.0),
+            RigidBody::dynamic(),
+            Collider::cuboid(Vec3::ONE),
+        );
+        w.insert(
+            upper,
+            Joint {
+                kind: JOINT_FIXED,
+                other: lower.to_bits(),
+                other_anchor: Vec3::new(0.0, 0.4, 0.0),
+                break_force: 1.0,
+                ..Joint::default()
+            },
+        )
+        .unwrap();
+        let mut broke = 0;
+        for _ in 0..180 {
+            w.step().unwrap();
+            broke += broken_events(&w).len();
+        }
+        assert_eq!(broke, 1, "profile {profile}");
+        let gap = transform(&w, upper).position.y - transform(&w, lower).position.y;
+        assert!(
+            gap > 0.95,
+            "profile {profile}: the freed box rests {gap} m above the other, inside it"
+        );
+    }
 }

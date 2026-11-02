@@ -137,7 +137,8 @@ export default og.game({
         topLink = link;
       } else {
         const j = must(world.spawn({ name: `link-joint-${i}` }));
-        world.insert(j, og.Joint, { kind: JOINT_BALL, body: link, other: above, anchor: { x: 0, y: 0.5, z: 0 }, otherAnchor: { x: 0, y: -0.5, z: 0 } });
+        // collide: links that stay jointed still meet each other when the chain falls in a heap.
+        world.insert(j, og.Joint, { kind: JOINT_BALL, body: link, other: above, anchor: { x: 0, y: 0.5, z: 0 }, otherAnchor: { x: 0, y: -0.5, z: 0 }, collide: true });
       }
       above = link;
     }
@@ -146,7 +147,7 @@ export default og.game({
     world.insert(platform, og.Collider, { shape: SHAPE_BOX });
     mesh(world, platform, box, plank, { x: 2, y: 0.2, z: 1.2 });
     const pj = must(world.spawn({ name: "platform-joint" }));
-    world.insert(pj, og.Joint, { kind: JOINT_BALL, body: platform, other: above!, anchor: { x: 0, y: 0.1, z: 0 }, otherAnchor: { x: 0, y: -0.5, z: 0 } });
+    world.insert(pj, og.Joint, { kind: JOINT_BALL, body: platform, other: above!, anchor: { x: 0, y: 0.1, z: 0 }, otherAnchor: { x: 0, y: -0.5, z: 0 }, collide: true });
     // The 40 kg crate, dropped from 1 m above the platform, right of the chain.
     const load = must(world.spawn({ name: "load", position: { x: HOOK.x + 0.6, y: HOOK.y - 1.6, z: 0 } }));
     world.insert(load, og.RigidBody, { mass: 40 });

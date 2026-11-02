@@ -4,7 +4,7 @@
 
 - Left: a compound dumbbell. One `og.RigidBody` has three child colliders, two spheres and a bar. It is thrown spinning at (-7, 4, 0), lands, tumbles and rolls on its spheres.
 - Centre: a pile of nine orange crates in three crossed layers. While `og.RigidBody.sleeping` is true, a crate is drawn blue, as the `Watch` system reads it.
-- Right: a platform hangs from a hook at (7, 7, 0) by three steel links joined with ball joints. Only the hook's joint breaks, at `breakForce` 300 N, about 31 kg held. A 40 kg crate falls 1.5 m onto the platform and breaks that joint. On `og.JointBroken`, the top link turns red and the chain falls.
+- Right: a platform hangs from a hook at (7, 7, 0) by three steel links joined with ball joints, which collide with each other (`collide: true`), as the platform's does: a jointed pair does not collide by default, and before this the fallen links lay folded through one another. Only the hook's joint breaks, at `breakForce` 300 N, about 31 kg held. A 40 kg crate falls 1.5 m onto the platform and breaks that joint. On `og.JointBroken`, the top link turns red and the chain falls.
 
 The entity `bench` carries `Bench`, which counts the crates asleep and the `og.BodySlept`, `og.BodyWoke` and `og.JointBroken` events seen.
 
@@ -16,7 +16,7 @@ The three frames below were drawn there and read:
 - At tick 72, `Bench` reads `broken 1`. The hook joint broke under the held load, not at the start.
 - At tick 240, all nine crates are blue. The dumbbell is still awake: it is rolling slowly on its spheres.
 
-A logic run in the orb (`OG_RENDERER=none`, the same scene) read `asleep 8` at tick 150 and `asleep 9`, `slept 14`, `woke 0` at tick 240. The other five sleeps are the chain, the platform and the load at rest. In both runs one crate, resting against the fallen platform, stays awake while that platform still moves. That is the island rule: a body sleeps only with every dynamic body it touches.
+With the chain's joints colliding (redrawn on the Mac at the batch-2 head), `Bench` reads `asleep 9`, `slept 10`, `woke 0` at both tick 150 and tick 240, and the run ends at hash `738203b7f2fad265`, the same in a logic run in the orb (`OG_RENDERER=none`). Before, with the links passing through each other, the run read `asleep 8` at tick 150 and `slept 14` at tick 240: one crate resting against the fallen platform stayed awake while the platform still moved (the island rule: a body sleeps only with every dynamic body it touches).
 
 ## Commands (seconds, not ticks)
 
@@ -33,11 +33,11 @@ og run tests/evidence/g2-3/sample --headless --size 1280x720 --out <dir> --comma
   - The chain hangs from the hook with the platform level and the 40 kg crate resting on its right half.
 - `joint-broken.png` (tick 72):
   - The dumbbell lies on the floor on both spheres.
-  - The top link is red. The chain, the tilted platform and the crate fall together under the hook.
+  - The chain has fallen: the red top link stands on end, the platform lies tilted against the dumbbell's side of it, and the crate sits by the links.
   - The crates are still orange.
 - `pile-asleep.png` (tick 240):
   - All nine crates are blue (asleep).
-  - The platform lies on the floor with its crate, and the red top link sits on it.
+  - The platform lies flat on the floor with the three links on it in a zig-zag, each apart from the next, the red one at the end; the crate lies beside it.
   - The dumbbell lies on its spheres, a little right of where it landed.
 
 # The vehicle sample (batch 2: the drivetrain and og.VehicleWheel)
