@@ -33020,6 +33020,14 @@
           "description": "Three.js layers of every mesh of the model, as Mesh.layers.",
           "default": 1
         },
+        "sway": {
+          "type": "number",
+          "description": "How much og.Wind sways this instance, as it sways og.TerrainScatter copies: 0 still (the default; a building, a rock), 1 as it blows (a tree, a bush), between for stiffer trunks. Each vertex above the model's origin moves downwind by its height (the root stays put, the top moves furthest), in the model's units, in gusts sweeping across the scene; its shadow and depth move with it. Visual only: nothing in the simulation reads it, and the same tick sways the same on every run. A material with its own shader asset keeps it and stays still; a posed (animated) model sways too.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
         "static": {
           "type": "boolean",
           "description": "Part of its scene's baked lighting: og bake lightmaps gives a static model lightmap UVs (xatlas, over its world-space triangles) and traces the light arriving at its surfaces from the scene into the scene's lightmap (`<scene>.lightmap.ogt` and `.ktx2` beside the scene). Once baked, the model draws with it (its ambient light from the lightmap instead of the sky; its lights' direct light, shadows and highlights still drawn every frame) for as long as the bake matches the scene. A scene entity says `static true` beside its `model` line; an unbaked static model draws as any model, and og doctor --project names the scene.",
@@ -37573,7 +37581,7 @@
     "Wind": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "The wind the renderer sways vegetation with: og.TerrainScatter copies lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).",
+      "description": "The wind the renderer sways vegetation with: og.TerrainScatter copies, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).",
       "type": "object",
       "properties": {
         "strength": {

@@ -6,7 +6,12 @@
 // (--no-check: the fixture has no src/ for og check to read)
 //   og run packages/engine/tests/fixtures/forest --no-check --size 1280x720 --out og-out \
 //     --commands "0.2:screenshot:forest.png;0.3:bias:0;0.5:screenshot:forest-meshes.png;0.6:bias:1;0.7:dump_entity:far;0.8:quit"
+// `wind` sways every palm in og.Wind (R6's og.Model.sway):
+//   og run packages/engine/tests/fixtures/forest --no-check --size 1280x720 --out og-out \
+//     --commands "0.2:screenshot:calm.png;0.3:wind:0.15;1.0:screenshot:windy.png;1.5:screenshot:windy-later.png;1.6:quit"
 import { og } from "@origingame/engine";
+
+const palms: unknown[] = [];
 
 export default og.game({
   start(world) {
@@ -20,6 +25,7 @@ export default og.game({
         const name = row === 13 && k === 0 ? "far" : `palm-${row}-${k}`;
         const e = world.instantiate(palm.value, { name, position: { x, y: 0, z } });
         if (!e.ok) throw new Error(e.reason);
+        palms.push(e.value);
       }
       z *= 1.35;
     }
@@ -62,8 +68,18 @@ export default og.game({
       const s = world.resource(og.RenderSettings);
       if (s.ok) s.value.lodBias = Number(args[0] ?? 1);
     },
+    /** `wind:<strength>`: og.Wind along +x, and every palm swaying in it. */
+    wind: (world, args) => {
+      const w = world.resource(og.Wind);
+      if (w.ok) {
+        w.value.strength = Number(args[0] ?? 0.15);
+        w.value.direction = { x: 1, y: 0, z: 0 };
+      }
+      for (const p of palms) world.set(p as never, og.Model, { sway: 1 });
+    },
   },
   commandHelp: {
     bias: { usage: "<v>", doc: "Set RenderSettings.lodBias (0: every palm its full mesh, no impostor)." },
+    wind: { usage: "<strength>", doc: "Blow og.Wind along +x and sway every palm in it (og.Model.sway 1)." },
   },
 });

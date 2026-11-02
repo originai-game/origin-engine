@@ -159,6 +159,7 @@ pub const SCENES: &[&str] = &[
     "terrain-layers",
     "impostors",
     "impostor-scatter",
+    "wind-models",
     "post-blur",
     "ui-shapes",
     "ui-paints",
@@ -1203,6 +1204,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // last 1.5 m): the far balls look as the near ones do.
         "impostor-scatter" => |g, _| {
             g.scene = crate::impostor_scenes::impostor_scatter_scene(15.0);
+            Ok(())
+        },
+        // R6: two 6 m columns on a grey floor, the red one (left) leaning
+        // downwind (+x, to the right) under og.Wind's hook, its top about
+        // 0.9 m over, the blue one (right) upright; the red column's
+        // shadow leans with it.
+        "wind-models" => |g, _| {
+            g.scene = crate::wind_scenes::wind_scene(true, 90);
             Ok(())
         },
         // The bloom scene through a zoom blur towards a point left of and

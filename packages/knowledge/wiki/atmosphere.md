@@ -16,7 +16,7 @@ module atmosphere {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10089</sub>
+<sub>`api.ogt` line 10094</sub>
 
 ## Contents
 
@@ -35,7 +35,7 @@ module atmosphere {
 | [`og.WeatherState`](#record-WeatherState) | resource | The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork("og.weather")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it. |
 | [`og.LightningStrike`](#record-LightningStrike) | event | Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first. |
 | [`og.Weather`](#record-Weather) | resource | A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation. |
-| [`og.Wind`](#record-Wind) | resource | The wind the renderer sways vegetation with: og.TerrainScatter copies lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind). |
+| [`og.Wind`](#record-Wind) | resource | The wind the renderer sways vegetation with: og.TerrainScatter copies, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind). |
 | [`og.Water`](#record-Water) | component | A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated). |
 | [`og.Water2D`](#record-Water2D) | component | Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface. |
 | [`og.atmosphere.timeOfDay`](#fn-timeOfDay) | function | The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads. |
@@ -68,7 +68,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 10749</sub>
+<sub>`api.ogt` line 10754</sub>
 
 ## Components, resources and events
 
@@ -183,7 +183,7 @@ resource Fog {
 }
 ```
 
-<sub>`api.ogt` line 10100</sub>
+<sub>`api.ogt` line 10105</sub>
 
 <a id="record-Sky"></a>
 
@@ -290,7 +290,7 @@ resource Sky {
 }
 ```
 
-<sub>`api.ogt` line 10182</sub>
+<sub>`api.ogt` line 10187</sub>
 
 <a id="record-DayNight"></a>
 
@@ -372,7 +372,7 @@ resource DayNight {
 }
 ```
 
-<sub>`api.ogt` line 10257</sub>
+<sub>`api.ogt` line 10262</sub>
 
 <a id="record-PhysicalSky"></a>
 
@@ -429,7 +429,7 @@ resource PhysicalSky {
 }
 ```
 
-<sub>`api.ogt` line 10314</sub>
+<sub>`api.ogt` line 10319</sub>
 
 <a id="record-Clouds"></a>
 
@@ -526,7 +526,7 @@ resource Clouds {
 }
 ```
 
-<sub>`api.ogt` line 10349</sub>
+<sub>`api.ogt` line 10354</sub>
 
 <a id="record-WeatherState"></a>
 
@@ -653,7 +653,7 @@ resource WeatherState {
 }
 ```
 
-<sub>`api.ogt` line 10419</sub>
+<sub>`api.ogt` line 10424</sub>
 
 <a id="record-LightningStrike"></a>
 
@@ -679,7 +679,7 @@ event LightningStrike {
 }
 ```
 
-<sub>`api.ogt` line 10513</sub>
+<sub>`api.ogt` line 10518</sub>
 
 <a id="record-Weather"></a>
 
@@ -741,13 +741,13 @@ resource Weather {
 }
 ```
 
-<sub>`api.ogt` line 10522</sub>
+<sub>`api.ogt` line 10527</sub>
 
 <a id="record-Wind"></a>
 
 ### `og.Wind` (resource)
 
-The wind the renderer sways vegetation with: og.TerrainScatter copies lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).
+The wind the renderer sways vegetation with: og.TerrainScatter copies, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).
 
 Token `og.Wind`, registered under the schema name `og.Wind`; its value type is `Wind`.
 
@@ -760,7 +760,7 @@ Token `og.Wind`, registered under the schema name `og.Wind`; its value type is `
 
 ```ogt
 resource Wind {
-  doc "The wind the renderer sways vegetation with: og.TerrainScatter copies lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind)."
+  doc "The wind the renderer sways vegetation with: og.TerrainScatter copies, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind)."
   field strength f32 "The mean lean: how far a copy's tip moves downwind per metre of its height (0.2: a 1 m stem's tip leans 20 cm); 0 is still." {
     min 0
     max 2
@@ -787,7 +787,7 @@ resource Wind {
 }
 ```
 
-<sub>`api.ogt` line 10562</sub>
+<sub>`api.ogt` line 10567</sub>
 
 <a id="record-Water"></a>
 
@@ -956,7 +956,7 @@ component Water {
 }
 ```
 
-<sub>`api.ogt` line 10589</sub>
+<sub>`api.ogt` line 10594</sub>
 
 <a id="record-Water2D"></a>
 
@@ -1010,7 +1010,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 10717</sub>
+<sub>`api.ogt` line 10722</sub>
 
 ## Constants
 
@@ -1026,28 +1026,28 @@ component Water2D {
 const WEATHER_NONE u32 0 "Weather.kind: clear."
 ```
 
-<sub>`api.ogt` line 10094</sub>
+<sub>`api.ogt` line 10099</sub>
 
 ```ogt
 const WEATHER_RAIN u32 1 "Weather.kind: rain streaks falling with the wind, the light dimmed and a grey distance fog."
 ```
 
-<sub>`api.ogt` line 10095</sub>
+<sub>`api.ogt` line 10100</sub>
 
 ```ogt
 const WEATHER_SNOW u32 2 "Weather.kind: flakes drifting down on gusts, a pale fog."
 ```
 
-<sub>`api.ogt` line 10096</sub>
+<sub>`api.ogt` line 10101</sub>
 
 ```ogt
 const WEATHER_DUST u32 3 "Weather.kind: dust blowing along the wind near the ground, a warm thick fog."
 ```
 
-<sub>`api.ogt` line 10097</sub>
+<sub>`api.ogt` line 10102</sub>
 
 ```ogt
 const WEATHER_MIST u32 4 "Weather.kind: no particles, a dense low height fog."
 ```
 
-<sub>`api.ogt` line 10098</sub>
+<sub>`api.ogt` line 10103</sub>

@@ -18,6 +18,7 @@
 
 mod frame;
 mod hierarchy;
+mod wind;
 
 use super::{
     art, assets, atmosphere, baked, environment, feel, fx, geometry, glyphs, interpolate, modules,
@@ -300,6 +301,9 @@ pub(crate) struct RenderState {
     /// The level each og.Model entity drew last (by entity bits): the
     /// hysteresis of the next choice, and what dump_entity reports.
     pub lod_drawn: IdMap<u64, u8>,
+    /// The models' wind (og.Model.sway): their tops and the wind copies
+    /// of their materials (`wind.rs`).
+    pub wind: wind::WindModels,
     /// The baked reflection probes' captures tried (`super::probes`).
     pub probe_bakes: super::probes::ProbeBakes,
     /// Fonts by Font handle index.
@@ -398,6 +402,7 @@ impl RenderState {
             models: IdMap::new(),
             model_lods: IdMap::new(),
             lod_drawn: IdMap::new(),
+            wind: Default::default(),
             probe_bakes: Default::default(),
             fonts: Vec::new(),
             texts: Vec::new(),

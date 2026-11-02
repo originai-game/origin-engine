@@ -183,8 +183,8 @@ fn a_grouped_world_restores_its_scales_in_a_fresh_session() {
 /// lights); neither type is registered until a game uses it. Then
 /// 3564e52caad6a083 after ui-gaps' UI state version 14, and 05d77e7f93ca8034
 /// after version 15, f2b37b7b96b431cc after R9's og.Blendshapes version 2
-/// (`influences`), and fcd11be7ffba10f8 after R6's og.TerrainScatter
-/// impostor fields.
+/// (`influences`), fcd11be7ffba10f8 after R6's og.TerrainScatter
+/// impostor fields, and 18463832eea4312c after og.Model.sway.
 #[test]
 fn a_world_without_time_groups_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -197,5 +197,5 @@ fn a_world_without_time_groups_keeps_its_hash() {
         value(og_world_resource(engine, "og.TimeGroups".into())),
         json!({ "scales": [] })
     );
-    assert_eq!(hash(engine), "fcd11be7ffba10f8");
+    assert_eq!(hash(engine), "18463832eea4312c");
 }

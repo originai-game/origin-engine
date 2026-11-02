@@ -126,12 +126,58 @@ const WIND_OCTAVE: f64 = 2.3;
 
 /// The wind's two time phases at `tick` (radians, reduced in f64): the
 /// first octave's `k speed t` and the second's.
-fn wind_phases(wind: &Wind, tick: u64, tick_rate: f32) -> [f32; 2] {
+pub fn wind_phases(wind: &Wind, tick: u64, tick_rate: f32) -> [f32; 2] {
     let t = tick as f64 / f64::from(tick_rate.max(1e-3));
     let k = std::f64::consts::TAU / f64::from(WIND_WAVELENGTH);
     let first = k * f64::from(wind.speed) * t;
     [first, first * WIND_OCTAVE].map(|p| p.rem_euclid(std::f64::consts::TAU) as f32)
 }
+
+/// The material shader that sways a placed model in the wind (R6): its
+/// `vertex_offset` hook moves each vertex above the model's origin as
+/// `scatter_sway` moves a scattered copy's (the same lean, gusts and
+/// wave), with its height in the model's units. Parameters, written each
+/// frame by its user (og-runtime's `og.Model.sway`):
+/// `wind` (xy the wind's horizontal direction, z its strength times the
+/// sway, w its gust), `wave` (xy [`wind_phases`], z the wave's wavenumber,
+/// w the model's top above its origin). A hooked material draws through
+/// the lit, prepass and shadow pipelines of every other material shader,
+/// static or skinned, so the shadows and the depth sway with it.
+pub fn wind_shader() -> crate::MaterialShader {
+    use crate::hooks::{ParamKind, ShaderParam};
+    let param = |name: &str| ShaderParam {
+        name: name.into(),
+        kind: ParamKind::Vec4,
+        default: [0.0; 4],
+    };
+    crate::MaterialShader {
+        name: "og.wind".into(),
+        code: WIND_HOOK.into(),
+        params: vec![param("wind"), param("wave")],
+        mode: Default::default(),
+    }
+}
+
+/// `wind_shader`'s hook: `scatter_sway` (scatter_common.wgsl) over the
+/// vertex's own place, the vertex's height its local y.
+const WIND_HOOK: &str = r#"
+fn vertex_offset(h: Hook, p: Params) -> vec3<f32> {
+  let lean = p.wind.z;
+  let top = p.wave.w;
+  let y = h.local.y;
+  if (lean <= 0.0 || top <= 0.0 || y <= 0.0) {
+    return vec3<f32>(0.0);
+  }
+  let dir = p.wind.xy;
+  // The place in the world (the same bits wherever the render origin is).
+  let at = h.world.xz + h.origin.xz;
+  let x = p.wave.z * dot(at, dir);
+  let wave = (sin(x - p.wave.x) + 0.5 * sin(2.3 * x + 1.7 - p.wave.y)) / 1.5;
+  let d = lean * (1.0 + p.wind.w * wave) * y * min(y / top, 1.0);
+  let drop = y - sqrt(max(y * y - d * d, 0.0));
+  return vec3<f32>(dir.x * d, -drop, dir.y * d);
+}
+"#;
 
 impl TerrainScatter {
     fn usable(&self, layers: usize) -> bool {

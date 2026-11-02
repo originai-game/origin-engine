@@ -23,6 +23,7 @@ use std::sync::Arc;
 mod impostors;
 mod sampling_scatter;
 mod streaming_wind;
+mod wind_models;
 
 use sampling_scatter::{crack_view, holes, rmse};
 

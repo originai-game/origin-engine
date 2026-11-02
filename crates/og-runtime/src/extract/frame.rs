@@ -220,7 +220,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // by offset, the fields resolved once a frame: decoding each row to
     // JSON was about a third of Lantern Vale's extraction
     // (tests/evidence/r4/perf-ui/NOTES.md).
-    let model_parts: Vec<(u64, u64, Parts, super::fx::ModelLook, f32)> = match &layouts.model {
+    let model_parts: Vec<(u64, u64, Parts, super::fx::ModelLook, f32, f32)> = match &layouts.model {
         Some(layout) => {
             let slot = |key| FieldSlot::of(layout, key);
             let (visible, lod_bias, asset) = (slot("visible"), slot("lodBias"), slot("asset"));
@@ -228,6 +228,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             let (cast, receive) = (slot("castShadow"), slot("receiveShadow"));
             let is_static = slot("static");
             let variant = slot("variant");
+            let sway = slot("sway");
             let fx_models = &rs.fx.models;
             let rows = world
                 .id_by_name(&layout.schema)
@@ -260,6 +261,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                     let lightmapped = (baked && on(&is_static, false))
                         .then(|| rs.baked.overrides.get(&e))
                         .flatten();
+                    // A lightmapped model keeps still: its light was baked where it stands.
+                    let sway = match lightmapped {
+                        Some(_) => 0.0,
+                        None => num(&sway, 0.0).max(0.0),
+                    };
                     let mut parts = lightmapped.or_else(|| models.get(&asset))?.clone();
                     // KHR_materials_variants: the variant's material on every
                     // part (the parts the model's own; -1 keeps the glTF's).
@@ -274,7 +280,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                             p.1 = m;
                         }
                     }
-                    Some((e, asset, parts, look, bias))
+                    Some((e, asset, parts, look, bias, sway))
                 })
                 .collect()
         }
@@ -309,7 +315,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // hysteresis), so both paths draw the same picture.
     rs.scene.instance_levels.clear();
     rs.scene.impostors.clear();
-    for (e, asset, parts, mut look, bias) in model_parts {
+    for (e, asset, mut parts, mut look, bias, sway) in model_parts {
         let m = h.world_of(e);
         let level = match model_lods.get(&asset) {
             Some(l) => {
@@ -349,6 +355,14 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 cast_shadows: look.cast,
             });
             continue;
+        }
+        // A swaying model's parts draw with their materials' wind copies.
+        if sway > 0.0
+            && let Some(&top) = rs.wind.tops.get(&asset)
+        {
+            for p in parts.iter_mut() {
+                p.1 = rs.wind.material(&mut rs.scene, p.1, sway, top);
+            }
         }
         if posed.contains(&e)
             && super::fx::posed_model(rs, e, asset, m, h.blend_alpha(e), &parts, look, &mut keys)
@@ -568,6 +582,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::fx::snap_to_grid(rs);
     // Cloth meshes are instances too: keyed for per-object motion.
     keys.extend(super::atmosphere::extract(world, rs, &mut h));
+    // The wind copies' parameters, from the og.Wind just read.
+    let (wind, tick, rate) = (rs.scene.wind, rs.scene.tick, rs.scene.tick_rate);
+    rs.wind.present(&mut rs.scene, wind, tick, rate);
     super::environment::extract(world, rs);
     super::probes::extract(world, rs, &mut h);
     // Scattered copies are instances too, keyed by their terrain cell.

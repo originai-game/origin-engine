@@ -1150,6 +1150,13 @@ A posed (animated) model keeps its meshes. Give an og.TerrainScatter the
 same model as `impostor` and an `impostorDistance` below its `distance`,
 and its copies past that distance draw as the card.
 
+Trees and bushes placed as models sway in og.Wind with `og.Model.sway`
+(0 still, the default; 1 as grass sways): each vertex above the model's
+origin moves downwind by its height, so model it with its root at the
+origin. It is drawing only, the same on every run for the same tick. A
+material with its own shader asset keeps it and stays still, and a
+model at its impostor's level draws a still card.
+
 **Debug draw.** `og.debug.line`, `box`, `sphere`, `arrow`, `axes` and
 `text` (a label above a world point, in the UI's body font; every field is
 in `og api show debug`) each take

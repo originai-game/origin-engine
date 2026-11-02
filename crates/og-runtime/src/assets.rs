@@ -663,6 +663,8 @@ pub(crate) fn insert_model(
         None => assets.push(&id, Status::Ready, payload),
     };
     rs.models.insert(handle(index), parts.parts);
+    // Its top above its origin: how high og.Model.sway's wind reaches.
+    rs.wind.tops.insert(handle(index), model.max.y);
     match lods {
         Some(l) => rs.model_lods.insert(handle(index), l),
         None => rs.model_lods.remove(&handle(index)),

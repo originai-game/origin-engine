@@ -1726,6 +1726,16 @@ Cost: `tests/evidence/P2/terrain-water/feature-costs.md`.
 
 Each off by default on `Water` (every earlier water frame is unchanged):
 
+- **Wind on placed models** (R6). `wind_shader()` is a material shader
+  (`og.wind`) whose `vertex_offset` hook sways a mesh as `scatter_sway`
+  sways a copy: each vertex above the model's origin moves downwind by
+  its height, from its parameters `wind` (direction, strength × sway,
+  gust) and `wave` (`wind_phases` at the tick, the wavenumber, the
+  model's top). A hooked material draws through the lit, prepass and
+  shadow pipelines every material shader uses, static or skinned, so its
+  shadow and depth sway with it. og-runtime gives an `og.Model` with a
+  `sway` a copy of each of its materials running it and writes the
+  parameters each frame; nothing feeds back into the simulation.
 - **Planar reflection** (`planar_reflection`, the fraction of the output's
   resolution; one surface a frame, the first that asks (a grid surface
   first), with the camera above it and perspective; with
