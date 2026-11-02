@@ -641,6 +641,19 @@ pub(crate) fn gate(engine: u32, world: &mut World) -> bool {
             }
         }
     }
+    // A run that could not stay in step is refused before it starts: the
+    // room stays a lobby, and the game hears why once.
+    if with(engine, |n| n.ls.would_start(&cfg))
+        && let Some(why) = super::stream::cells::session_refusal(&eng, world)
+    {
+        let text = format!("lockstep: not started: {why}");
+        let mut st = eng.state.borrow_mut();
+        if st.ui_warned.insert(text.clone()) {
+            st.log
+                .push(json!({ "tick": world.time().tick, "warning": true, "text": text }));
+        }
+        return true;
+    }
     loop {
         let tick = world.time().tick;
         let gate = with(engine, |n| {

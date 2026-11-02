@@ -11,7 +11,8 @@
 //!   the origin instead of the cell's place), or an unload leaves members
 //!   or their children → `a_cell_loads_near_an_anchor_and_unloads_past_unload`;
 //! - a session (og.Lockstep.enabled) loads cells by the camera →
-//!   `a_session_without_anchors_refuses_the_camera`;
+//!   `a_session_without_anchors_refuses_the_camera`, and one in a room
+//!   starts at all → `a_room_session_without_anchors_is_refused_at_its_start`;
 //! - a plain sub-scene is not spawned under its entity →
 //!   `a_plain_sub_scene_spawns_under_its_entity`.
 
@@ -527,4 +528,50 @@ fn a_budgeted_cell_loads_over_ticks_and_resumes_after_a_restore() {
     }
     assert!(!loaded(c, "village"));
     assert_eq!(cells(c)[0]["loads"], json!(0));
+}
+
+/// One peer of a two-peer room, by hand: a host that carries rooms and a
+/// `joined` with this peer (1) the lowest, so it is the authority that
+/// starts lockstep once enabled.
+fn in_room(e: u32) {
+    og_runtime::og_room_set_host(e, json!({ "host": "relay" }).to_string());
+    assert!(og_runtime::og_room_deliver(
+        e,
+        json!({ "type": "joined", "room": "r", "peer": 1, "peers": [{ "peer": 2, "name": "b" }] })
+            .to_string(),
+    ));
+    og_runtime::og_room_take(e);
+}
+
+fn running(e: u32) -> bool {
+    value_of(&og_runtime::og_net_status(e))["running"] == json!(true)
+}
+
+#[test]
+fn a_room_session_without_anchors_is_refused_at_its_start() {
+    let bare = WORLD.replace("  StreamAnchor {\n    reach 0\n  }\n", "");
+    for (name, world, starts) in [
+        ("room-bare", bare.as_str(), false),
+        ("room-anchored", WORLD, true),
+    ] {
+        let root = project(name, world);
+        let e = placed(&root);
+        in_room(e);
+        value(og_commands_schedule(
+            e,
+            "0:set:og.Lockstep.enabled=true".into(),
+        ));
+        step(e, 2);
+        let sent = og_runtime::og_room_take(e);
+        let log = og_engine_take_log(e);
+        assert_eq!(running(e), starts, "{name}: {log}");
+        assert_eq!(sent.contains("\"start\""), starts, "{name}: {sent}");
+        assert_eq!(
+            log.contains(
+                "lockstep: not started: cells in an og.net session need an og.StreamAnchor"
+            ),
+            !starts,
+            "{name}: {log}"
+        );
+    }
 }
