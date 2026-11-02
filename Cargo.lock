@@ -1983,6 +1983,7 @@ version = "0.7.7"
 dependencies = [
  "bytemuck",
  "naga",
+ "og-anim",
  "og-core",
  "pollster",
  "serde",

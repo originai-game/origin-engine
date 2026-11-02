@@ -13,6 +13,8 @@
 //! | [`glue`] | everything around the two networks, shared by every path |
 //! | [`cpu`] | the student and decoder on the CPU, the reference path |
 //! | [`gpu`] | the same on wgpu compute, the shipping path ([`gpu::Gpu`]) |
+//! | [`intent`] | the intent API: [`intent::Goal`]s queued per character, [`intent::Motion`] chaining generations in batches |
+//! | [`soma`] | the generated skeleton for og-anim: its asset, poses as local transforms, feet planted from contacts, frames as a clip |
 //!
 //! The specification is og-motion-train's `ogm/reference.py`; the tests
 //! check this crate against fixtures it wrote. Redistributing a bundle
@@ -26,6 +28,8 @@ pub mod contract;
 pub mod cpu;
 pub mod glue;
 pub mod gpu;
+pub mod intent;
+pub mod soma;
 
 pub use bundle::{Bundle, BundleError, Config, DecoderConfig, StudentConfig, read_safetensors};
 pub use contract::{Alignment, Inputs, Pose, Request, decode_frame, encode, valid_frames};
