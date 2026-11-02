@@ -619,7 +619,7 @@ try {
   // The engine Worker (game.js) gets the harness's clock before its first line; every Worker's console is heard.
   await page.prepareWorkers(async (w, session) => {
     await browser.send("Runtime.enable", {}, session).catch(() => {});
-    if (/\/game\.js(\?|$)/.test(w.url)) {
+    if (/\/game(\.[0-9a-f]{12})?\.js(\?|$)/.test(w.url)) {
       await page!.evalWorker(session, CLOCK);
       engine = session;
     }

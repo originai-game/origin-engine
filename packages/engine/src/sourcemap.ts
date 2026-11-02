@@ -162,6 +162,15 @@ export function fileOf(location: string): string {
   return path.slice(path.lastIndexOf("/") + 1);
 }
 
+/**
+ * A file name without the content hash a publish build names it by
+ * (`game.3f2a9c1e04b7.js` → `game.js`; docs/web-export.md §Content-hashed
+ * names); any other name as it is.
+ */
+export function unhashed(file: string): string {
+  return file.replace(/\.[0-9a-f]{12}(\.[A-Za-z0-9]+)$/, "$1");
+}
+
 /** What `mapStack` takes: maps by file name (`game.js`), or a function from a frame's location to its map. */
 export type SourceMaps =
   | Readonly<Record<string, SourceMap | RawSourceMap | string | null | undefined>>
@@ -172,7 +181,9 @@ export type SourceMaps =
  * source, line and column (`at r (game.js:1:2345)` → `at r (src/main.ts:12:9)`);
  * every other line as it was. Maps given by name are looked up by the
  * frame's file name (a URL's last segment), so a report's frames match the
- * maps the build wrote whatever origin served it.
+ * maps the build wrote whatever origin served it; a publish build's
+ * content-hashed bundle (`game.3f2a9c1e04b7.js`) finds its map under the
+ * bundle's own name (`game.js`).
  */
 export function mapStack(stack: string, maps: SourceMaps): string {
   const cache = new Map<string, SourceMap | null>();
@@ -181,7 +192,7 @@ export function mapStack(stack: string, maps: SourceMaps): string {
     if (cache.has(key)) return cache.get(key)!;
     let found: SourceMap | null = null;
     try {
-      const raw = typeof maps === "function" ? maps(location) : maps[key];
+      const raw = typeof maps === "function" ? maps(location) : (maps[key] ?? maps[unhashed(key)]);
       found = raw ? (raw instanceof SourceMap ? raw : new SourceMap(raw)) : null;
     } catch {
       found = null;

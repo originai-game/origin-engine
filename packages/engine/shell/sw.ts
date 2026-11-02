@@ -25,7 +25,9 @@
 // - message `{ type: "og-cache", files }`: files of one variant (absolute
 //   URLs); each names its whole variant (the lanes variant includes
 //   snippets/), and only the build's own variant files are cached.
-// - install: fetch every precached file into `og-<scope>-<version>`; a failure keeps the old build.
+// - install: copy into `og-<scope>-<version>` every precached or lazy file whose
+//   content (`OG_SW.hashes`) an older cache of this scope holds (its index,
+//   `og-sw-index.json`), fetch the rest of the precache; a failure keeps the old build.
 //   CacheStorage is per origin, so the name carries a hash of the registration's scope:
 //   builds served side by side on one origin keep their own caches.
 // - activate: delete this scope's other caches (`og-<scope>-*`, and an older build's
@@ -53,6 +55,8 @@ declare const OG_SW: {
   readonly lazy?: readonly string[];
   readonly single?: readonly string[];
   readonly lanes?: readonly string[];
+  /** Each file's content (the first 16 hex digits of its sha256), by its relative path. */
+  readonly hashes?: Readonly<Record<string, string>>;
 };
 
 import { laneChoice } from "../src/web/lanes.ts";
@@ -84,11 +88,53 @@ const urls = new Set([...OG_SW.files, ...mine].map((f) => new URL(f, base).href)
 const lazy = new Set([...(OG_SW.lazy ?? []), ...other].map((f) => new URL(f, base).href));
 const index = new URL("index.html", base).href;
 
+// Each cached file's content by its absolute URL, kept in the cache under
+// INDEX, so the next build's worker knows what it may carry over.
+const hashes = new Map(Object.entries(OG_SW.hashes ?? {}).map(([f, h]) => [new URL(f, base).href, h]));
+const INDEX = new URL("og-sw-index.json", base).href;
+
+/**
+ * Copies into `cache` every file of `wanted` whose content one of this
+ * scope's older caches already holds (by its index, whatever name it had
+ * there), and answers the URLs still to fetch. A new build downloads only
+ * what changed (docs/web-export.md §Incremental update).
+ */
+async function carryOver(cache: Cache, wanted: readonly string[]): Promise<string[]> {
+  const byHash = new Map<string, { cache: Cache; href: string }>();
+  for (const k of await caches.keys()) {
+    if (k === CACHE || !k.startsWith(SCOPE)) continue;
+    const old = await caches.open(k);
+    const index = await old.match(INDEX);
+    if (!index) continue;
+    try {
+      for (const [href, h] of Object.entries((await index.json()) as Record<string, string>)) if (!byHash.has(h)) byHash.set(h, { cache: old, href });
+    } catch {
+      /* an unreadable index carries nothing over */
+    }
+  }
+  const left: string[] = [];
+  for (const href of wanted) {
+    const h = hashes.get(href);
+    const from = h === undefined ? undefined : byHash.get(h);
+    const hit = from && (await from.cache.match(from.href));
+    if (hit) await cache.put(href, hit);
+    else left.push(href);
+  }
+  return left;
+}
+
 scope.addEventListener("install", (e) => {
   e.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll([...urls]))
+      .then(async (cache) => {
+        // The precache, then the packs, chunks and engine variant the player
+        // already had, carried over unchanged; only the rest is fetched.
+        const left = await carryOver(cache, [...urls]);
+        await carryOver(cache, [...lazy]);
+        await cache.addAll(left);
+        await cache.put(INDEX, new Response(JSON.stringify(Object.fromEntries(hashes)), { headers: { "Content-Type": "application/json" } }));
+      })
       .then(() => scope.skipWaiting()),
   );
 });

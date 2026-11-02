@@ -7,7 +7,8 @@ import { beforeAll, expect, test } from "bun:test";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEFAULT_PUBLISH, downloadLines, downloadsOf, settingsOf, webBuild, type ProjectSettings, type SizeRow } from "../src/node/web-build.ts";
+import { ALIASED_FILES, DEFAULT_PUBLISH, downloadLines, downloadsOf, hashedName, headersFile, HASHED_FILES, settingsOf, webBuild, type ProjectSettings, type SizeRow } from "../src/node/web-build.ts";
+import { mapStack } from "../src/sourcemap.ts";
 import { ogBin } from "./support/og-bin.ts";
 import { slow } from "./support/slow.ts";
 
@@ -109,7 +110,20 @@ test.skipIf(SLOW)("og-build.json names every file beside it, with bytes and sha2
     expect(hash(f.path)).toBe(f.sha256);
   }
   const paths = m.files.map((f: { path: string }) => f.path);
-  for (const p of ["index.html", "play.js", "game.js", "audio-worklet.js", "origin-engine.js", "origin-engine_bg.wasm", "sw.js", "manifest.webmanifest", "_headers", "cooked/.cook.ogt", "icons/icon-512.png"]) expect(paths).toContain(p);
+  for (const p of ["index.html", "sw.js", "manifest.webmanifest", "_headers", "cooked/.cook.ogt", "icons/icon-512.png"]) expect(paths).toContain(p);
+  // Content-hashed names (docs/web-export.md §Content-hashed names): each
+  // file the page fetches by name is served as <stem>.<12 hex of its sha256>.<ext>,
+  // and the page's configuration and og-build.json name it so.
+  const names = m.names as Record<string, string>;
+  expect(Object.keys(names).sort()).toEqual([...HASHED_FILES].sort());
+  for (const [plain, served] of Object.entries(names)) {
+    expect(served).toBe(hashedName(plain, hash(served)));
+    expect(paths).toContain(served);
+    // A plain copy stays only where the platform still reads the plain name (docs/platform-asks.md #10).
+    expect([plain, paths.includes(plain)]).toEqual([plain, (ALIASED_FILES as readonly string[]).includes(plain)]);
+  }
+  expect(m.worker).toBe(names["game.js"]);
+  expect(m.wasm).toBe(names["origin-engine_bg.wasm"]);
   expect(paths).not.toContain("og-build.json");
   expect(m.engine.name).toBe("origin-engine");
   expect(m.build).toBe("publish");
@@ -117,6 +131,13 @@ test.skipIf(SLOW)("og-build.json names every file beside it, with bytes and sha2
   expect(m.crossOriginIsolation).toBe("preferred");
   expect(m.game).toEqual({ name: "Runner", id: "runner", profile: "2d" });
   const html = read(dir, "index.html");
+  expect(html).toContain(`<script type="module" src="./${names["play.js"]}"></script>`);
+  expect(html).not.toContain('src="./play.js"');
+  expect(JSON.parse(/<script type="application\/json" id="og-config">(.*?)<\/script>/.exec(html)![1]!).files).toEqual(names);
+  // Hashed files are cached for a year; the entry points are revalidated.
+  const headers = read(dir, "_headers");
+  for (const served of Object.values(names)) expect(headers).toContain(`/${served}\n  Cache-Control: public, max-age=31536000, immutable`);
+  expect(headers).toContain("/sw.js\n  Cache-Control: no-cache");
   expect(html).toContain(`<meta name="og-engine" content="${m.engine.version}">`);
   // The Player transports: what the platform reads to open the page at the top level.
   expect(m.player).toEqual({ protocol: 2, transports: ["frame", "page"] });
@@ -125,21 +146,25 @@ test.skipIf(SLOW)("og-build.json names every file beside it, with bytes and sha2
   expect(html).toContain("Made with Origin Engine");
   // The service worker precaches what the page fetches, under a cache named by content.
   const sw = read(dir, "sw.js");
-  const precache = JSON.parse(/^const OG_SW=(\{.*?\});/.exec(sw)![1]!) as { version: string; files: string[]; single: string[]; lanes: string[] };
+  const precache = JSON.parse(/^const OG_SW=(\{.*?\});/.exec(sw)![1]!) as { version: string; files: string[]; single: string[]; lanes: string[]; hashes: Record<string, string> };
   expect(precache.files).toContain("cooked/.cook.ogt");
+  expect(precache.files).toContain(names["game.js"]);
+  // The plain copies are fetched by no page: not precached.
+  for (const plain of ALIASED_FILES) expect(precache.files).not.toContain(plain);
+  // Each precached file's content, which the next build's worker carries over by.
+  for (const f of precache.files.filter((f) => f !== "./")) expect(precache.hashes[f]).toBe(hash(f).slice(0, 16));
   // The two engine variants: the worker precaches the one its page boots, never both.
-  expect(precache.single).toEqual(["origin-engine.js", "origin-engine_bg.wasm"]);
-  expect(precache.lanes).toContain("origin-engine-lanes.js");
-  expect(precache.lanes).toContain("origin-engine-lanes_bg.wasm");
+  expect(precache.single).toEqual([names["origin-engine.js"], names["origin-engine_bg.wasm"]]);
+  expect(precache.lanes).toContain(names["origin-engine-lanes.js"]);
+  expect(precache.lanes).toContain(names["origin-engine-lanes_bg.wasm"]);
   expect(precache.lanes.some((f) => f.startsWith("snippets/"))).toBe(true);
   // The pool Worker's helper as published: its init call takes one object (WEB-FINDINGS #8).
   expect(positionalInits(dir)).toEqual([]);
   for (const f of [...precache.single, ...precache.lanes]) expect(precache.files).not.toContain(f);
   // The lanes variant ships beside the single-threaded engine, and the page knows its size.
-  expect(m.lanes).toEqual({ glue: "origin-engine-lanes.js", wasm: "origin-engine-lanes_bg.wasm" });
-  for (const p of ["origin-engine-lanes.js", "origin-engine-lanes_bg.wasm"]) expect(paths).toContain(p);
+  expect(m.lanes).toEqual({ glue: names["origin-engine-lanes.js"], wasm: names["origin-engine-lanes_bg.wasm"] });
   const config = JSON.parse(/<script type="application\/json" id="og-config">(.*?)<\/script>/.exec(html)![1]!);
-  expect(config.expect.lanes).toBe(m.files.find((f: { path: string }) => f.path === "origin-engine-lanes_bg.wasm").bytes);
+  expect(config.expect.lanes).toBe(m.files.find((f: { path: string }) => f.path === m.lanes.wasm).bytes);
   expect(precache.files).not.toContain("_headers");
   expect(precache.files).not.toContain("og-build.json");
   const web = JSON.parse(read(dir, "manifest.webmanifest"));
@@ -158,19 +183,19 @@ test.skipIf(SLOW)("a publish build ships the engine variant of the game's profil
   expect(same(join(work, "a", "origin-engine_bg.wasm"), join(pkg, "dist", "web-publish-2d", "origin-engine_bg.wasm"))).toBe(true);
   expect(same(join(work, "a", "origin-engine.js"), join(pkg, "dist", "web-publish-2d", "origin-engine.js"))).toBe(true);
   // Its lanes variant is the 2D lanes module, from the same directory (owed row 71).
-  expect(same(join(work, "a", "origin-engine-lanes_bg.wasm"), join(pkg, "dist", "web-publish-2d", "origin-engine-lanes_bg.wasm"))).toBe(true);
-  expect(same(join(work, "a", "origin-engine-lanes.js"), join(pkg, "dist", "web-publish-2d", "origin-engine-lanes.js"))).toBe(true);
+  expect(same(join(work, "a", two.lanes.wasm), join(pkg, "dist", "web-publish-2d", "origin-engine-lanes_bg.wasm"))).toBe(true);
+  expect(same(join(work, "a", two.lanes.glue), join(pkg, "dist", "web-publish-2d", "origin-engine-lanes.js"))).toBe(true);
   // The same project declared 3d takes the 3D module and the 3D lanes module.
   const out = join(work, "three-d");
   const b = await webBuild(project, entry, out, true, { ...settings(), profile: "3d" });
   expect(b.ok).toBe(true);
   expect([b.manifest!.game.profile, b.manifest!.variant]).toEqual(["3d", "3d"]);
   expect(same(join(out, "origin-engine_bg.wasm"), join(pkg, "dist", "web-publish", "origin-engine_bg.wasm"))).toBe(true);
-  expect(same(join(out, "origin-engine-lanes_bg.wasm"), join(pkg, "dist", "web-publish", "origin-engine-lanes_bg.wasm"))).toBe(true);
+  expect(same(join(out, b.manifest!.lanes!.wasm), join(pkg, "dist", "web-publish", "origin-engine-lanes_bg.wasm"))).toBe(true);
   // The variants differ (each has only its profile's physics), single-threaded
   // and lanes alike, and a dev build takes the full module.
   expect(same(join(pkg, "dist", "web-publish", "origin-engine_bg.wasm"), join(pkg, "dist", "web-publish-2d", "origin-engine_bg.wasm"))).toBe(false);
-  expect(same(join(out, "origin-engine-lanes_bg.wasm"), join(work, "a", "origin-engine-lanes_bg.wasm"))).toBe(false);
+  expect(b.manifest!.lanes!.wasm).not.toBe(two.lanes.wasm);
   const dev = await webBuild(project, entry, join(work, "dev"), false, settings());
   expect(dev.ok && dev.manifest!.variant === "full").toBe(true);
 }, slow(120_000));
@@ -180,8 +205,9 @@ test.skipIf(SLOW)("source maps: a dev build serves them linked; a publish build 
   const m = JSON.parse(read(pub, "og-build.json"));
   expect(m.sourcemaps.served).toBe(false);
   expect(m.sourcemaps.maps.map((x: { map: string }) => x.map)).toEqual(["sourcemaps/game.js.map", "sourcemaps/play.js.map", "sourcemaps/audio-worklet.js.map"]);
-  for (const { bundle, map } of m.sourcemaps.maps as { bundle: string; map: string }[]) {
-    expect(read(pub, bundle)).not.toContain("sourceMappingURL");
+  for (const { bundle, file, map } of m.sourcemaps.maps as { bundle: string; file: string; map: string }[]) {
+    expect(file).toBe(m.names[bundle]);
+    expect(read(pub, file)).not.toContain("sourceMappingURL");
     const raw = JSON.parse(read(pub, map)) as { sources: string[]; sourcesContent: (string | null)[] };
     // Named relative to the project (the engine's files by package), with no machine's path in them.
     expect(raw.sources.some((s) => s.startsWith("/") || /^[A-Za-z]:/.test(s))).toBe(false);
@@ -198,6 +224,9 @@ test.skipIf(SLOW)("source maps: a dev build serves them linked; a publish build 
   expect((await webBuild(project, entry, dev, false, settings())).ok).toBe(true);
   const d = JSON.parse(read(dev, "og-build.json"));
   expect(d.sourcemaps.served).toBe(true);
+  // A dev build keeps every plain name (og dev, the tests and its linked maps read them).
+  expect(d.names).toEqual({});
+  expect(d.worker).toBe("game.js");
   expect(read(dev, "game.js")).toContain("//# sourceMappingURL=game.js.map");
   expect(existsSync(join(dev, "game.js.map"))).toBe(true);
 }, slow(120_000));
@@ -288,6 +317,27 @@ test("og build prints what each page downloads, not the directory's total", () =
   const text = downloadLines(d, "brotli-11");
   expect(text).toContain("boot, lanes page (isolated)");
   expect(text).toContain(`${d.boot.single.compressed} B`);
+  // A publish build's content-hashed files count as their own names, and their plain copies not at all.
+  const hashed = files.flatMap((f) => {
+    if (!(HASHED_FILES as readonly string[]).includes(f.path)) return [f];
+    const served = { ...f, path: hashedName(f.path, "0123456789abcdef") };
+    return (ALIASED_FILES as readonly string[]).includes(f.path) ? [f, served] : [served];
+  });
+  expect(downloadsOf(hashed)).toEqual(d);
   // A dev build ships no lanes module: one page.
   expect(downloadsOf(files.filter((f) => !/lanes|snippets/.test(f.path))).boot.lanes).toBeNull();
+});
+
+test("a crash in a content-hashed bundle maps through the bundle's own map, and _headers caches only hashed files for good", () => {
+  // `a` at line 1 column 1 of game.js is src/main.ts line 3 column 5 (VLQ "AAEI").
+  const map = { version: 3, sources: ["src/main.ts"], names: [], mappings: "AAEI" };
+  const frame = "    at a (https://play.example/g/r/game.0123456789ab.js:1:1)";
+  expect(mapStack(frame, { "game.js": map })).toBe("    at a (src/main.ts:3:5)");
+  // A plain name that merely looks hashed is not taken for another bundle's.
+  expect(mapStack("    at a (https://play.example/g/r/other.0123456789ab.js:1:1)", { "game.js": map })).toBe("    at a (https://play.example/g/r/other.0123456789ab.js:1:1)");
+  const h = headersFile("off", ["game.0123456789ab.js"]);
+  expect(h).toContain("/game.0123456789ab.js\n  Cache-Control: public, max-age=31536000, immutable");
+  expect(h.match(/immutable/g)?.length).toBe(1);
+  expect(hashedName("basis/basis_transcoder.wasm", "abcdef0123456789")).toBe("basis/basis_transcoder.abcdef012345.wasm");
+  expect(hashedName("origin-engine_bg.wasm", "abcdef0123456789")).toBe("origin-engine_bg.abcdef012345.wasm");
 });

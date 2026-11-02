@@ -9,7 +9,9 @@ import { Shell } from "../src/web/shell.ts";
 const params = new URLSearchParams(location.search);
 const lines: string[] = [];
 (globalThis as Record<string, unknown>)["__og_log__"] = lines;
-const at = (path: string) => new URL(`/game/${path}`, location.href).href;
+// A publish build serves its files by content-hashed names (og-build.json `names`).
+const names = ((await (await fetch("/game/og-build.json")).json()) as { names?: Record<string, string> }).names ?? {};
+const at = (path: string) => new URL(`/game/${names[path] ?? path}`, location.href).href;
 try {
   const shell = await Shell.start({
     canvas: document.querySelector("canvas")!,

@@ -46,9 +46,10 @@ dates, no absolute paths, files in sorted order
   "build": "publish",
   "game": { "name": "Runner", "id": "runner", "profile": "2d" },
   "entry": "index.html",
-  "worker": "game.js",
-  "wasm": "origin-engine_bg.wasm",
+  "worker": "game.3f2a9c1e04b7.js",
+  "wasm": "origin-engine_bg.9b0c51d2e7a4.wasm",
   "variant": "2d",
+  "names": { "game.js": "game.3f2a9c1e04b7.js", "play.js": "play.81aa0f3c6d25.js", "…": "…" },
   "probe": { "protocol": 5, "wire": 1, "build": "publish",
              "members": ["hello", "tick", "state", "pick", "entity", "input", "capture"] },
   "crossOriginIsolation": "preferred",
@@ -59,7 +60,8 @@ dates, no absolute paths, files in sorted order
             { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "source": "brand" }],
   "pwa": { "manifest": "manifest.webmanifest", "serviceWorker": "sw.js" },
   "sourcemaps": { "build": "<16 hex>", "served": false,
-                  "maps": [{ "bundle": "game.js", "map": "sourcemaps/game.js.map", "sha256": "…" }] },
+                  "maps": [{ "bundle": "game.js", "file": "game.3f2a9c1e04b7.js",
+                             "map": "sourcemaps/game.js.map", "sha256": "…" }] },
   "player": { "protocol": 2, "transports": ["frame", "page"] },
   "version": "<sha256 over every file's path and sha256>",
   "files": [{ "path": "index.html", "bytes": 12519, "sha256": "…" }],
@@ -68,6 +70,11 @@ dates, no absolute paths, files in sorted order
 }
 ```
 
+- `worker`, `wasm` and `lanes` are the served names; `names` maps each
+  content-hashed file's own name to its served one (§Content-hashed names;
+  `{}` in a dev build). A source map's `file` is its bundle's served name;
+  `mapStack` matches a frame in `game.<hash>.js` to the map given as
+  `game.js`.
 - `engine.version` is the engine that built it; `engine.pinned` is
   project.ogt's `engine`. `probe.members` is read from the copied wasm's own
   `hello`, so a publish build proves its trim.
@@ -142,8 +149,34 @@ textures transcoded, and the visited groups loading offline.
   page framed by another origin also needs `allow="cross-origin-isolated"`
   on the iframe and `Cross-Origin-Resource-Policy: cross-origin` (in
   `_headers`).
-- `index.html`, `sw.js` and `og-build.json` should not be cached long; the
-  rest may be cached forever once a host names files by content.
+- `index.html`, `sw.js` and `og-build.json` should not be cached long. A
+  publish build's content-hashed files (§Content-hashed names) may be cached
+  forever, and `_headers` says so (`public, max-age=31536000, immutable`).
+
+### Content-hashed names
+
+A publish build serves every file the page or the engine Worker fetches by
+name under a name that carries its content: `<stem>.<the first 12 hex
+digits of its sha256>.<ext>` (`game.3f2a9c1e04b7.js`). This covers `play.js`,
+`game.js`, `audio-worklet.js`, `origin-engine.js`, `origin-engine_bg.wasm`,
+the lanes glue and module, and `basis/basis_transcoder.{js,wasm}`
+(`HASHED_FILES` in `src/node/web-build.ts`). A new build changes the URL of
+what changed and nothing else. The page finds them through its
+configuration's `files` (each file's own name to its served name, the same
+map as og-build.json's `names`), `index.html` loads `./play.<hash>.js`, and
+og-build.json's `worker`, `wasm` and `lanes` give the served names.
+
+Some names stay as they are: the entry points (`index.html`, `sw.js`,
+`og-build.json`, `manifest.webmanifest`), the icons, `snippets/` (the lanes
+pool's helper, which imports the glue by the URL it is given) and
+`cooked/`, whose files the cook's manifest names. The service worker
+carries an unchanged cooked file over by its content instead (§The shell,
+PWA). A dev build keeps every plain name, because `og dev`, the tests and
+its linked source maps read them. Until the platform reads og-build.json
+(`docs/platform-asks.md` #18), a publish build also writes `play.js`,
+`game.js`, `origin-engine.js` and `origin-engine_bg.wasm` under their plain
+names. No page fetches these copies, the service worker does not precache
+them, and the download figures do not count them.
 - Without isolation everything still works: input and probe calls cross
   `postMessage` instead of the SharedArrayBuffer rings; audio uses a
   MessagePort to the worklet; the engine runs single-threaded (§Lanes).
@@ -687,6 +720,15 @@ earlier build; a build that fails after replacing it removes what it wrote.
   A pack is not precached. It comes from the cache, or from the network into
   the same cache the first time the engine fetches it, so a place the player
   has already visited also plays offline.
+  **Incremental update.** `OG_SW.hashes` names each file's content (the
+  first 16 hex digits of its sha256), and each cache keeps that index
+  under `og-sw-index.json`. A new build's worker copies into its cache every
+  file, precached or lazy, whose content one of this scope's older caches
+  holds under any name, so a pack the player visited and an unchanged engine
+  are not fetched again. It fetches only the rest, and the page (`./`,
+  `index.html`) every time. A release that changes game code downloads the
+  game bundle, the cook manifest and the outputs that changed
+  (`tests/sw-update.test.ts`).
   The install hint appears only when the criteria hold: not framed, not
   installed, a manifest and a service worker, and either Chromium's
   `beforeinstallprompt` (an Install button, which calls the event's

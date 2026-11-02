@@ -76,6 +76,19 @@ export interface ShellConfig {
   readonly serviceWorker: boolean;
   /** Bytes the boot fetches; `lanes` is the lanes variant's module, 0 when the build ships none. */
   readonly expect: { readonly wasm: number; readonly cooked: number; readonly lanes: number };
+  /**
+   * A publish build's content-hashed names: each file's own name to the
+   * name it is served by (`"game.js": "game.3f2a9c1e04b7.js"`); a file it
+   * does not name is served by its own name (docs/web-export.md
+   * §Content-hashed names).
+   */
+  readonly files: Readonly<Record<string, string>>;
+}
+
+/** The URL of the build's file `name` (`game.js`), under the name the build serves it by. */
+export function fileUrl(config: Pick<ShellConfig, "files">, name: string, base: string): string {
+  const served = config.files[name];
+  return new URL(`./${typeof served === "string" ? served : name}`, base).href;
 }
 
 const PROBE_GLOBAL = "__runtime_probe__";
@@ -156,6 +169,7 @@ export function readConfig(doc: Document = document): ShellConfig {
     madeWith: c.madeWith !== false,
     serviceWorker: c.serviceWorker === true,
     expect: { wasm: c.expect?.wasm ?? 0, cooked: c.expect?.cooked ?? 0, lanes: c.expect?.lanes ?? 0 },
+    files: c.files && typeof c.files === "object" ? c.files : {},
   };
 }
 
@@ -222,6 +236,7 @@ export interface PlayHandle {
 
 export async function play(): Promise<PlayHandle> {
   const config = readConfig();
+  const at = (name: string) => fileUrl(config, name, location.href);
   const query = new URLSearchParams(location.search);
   // A Play link to a room (`?room=<id>`, docs/platform-asks.md #16): the engine joins it at load
   // once a host carries rooms (the Player's room.*), og.RoomJoined answering as for roomJoin.
@@ -563,14 +578,12 @@ export async function play(): Promise<PlayHandle> {
     shell = await Shell.start({
       platform,
       canvas,
-      worker: new Worker(new URL("./game.js", location.href), { type: "module" }),
-      glue: new URL("./origin-engine.js", location.href).href,
-      wasm: new URL("./origin-engine_bg.wasm", location.href).href,
-      ...(config.expect.lanes > 0
-        ? { lanes: { glue: new URL("./origin-engine-lanes.js", location.href).href, wasm: new URL("./origin-engine-lanes_bg.wasm", location.href).href, bytes: config.expect.lanes } }
-        : {}),
+      worker: new Worker(at("game.js"), { type: "module" }),
+      glue: at("origin-engine.js"),
+      wasm: at("origin-engine_bg.wasm"),
+      ...(config.expect.lanes > 0 ? { lanes: { glue: at("origin-engine-lanes.js"), wasm: at("origin-engine-lanes_bg.wasm"), bytes: config.expect.lanes } } : {}),
       root: new URL(".", location.href).href.replace(/\/$/, ""),
-      basis: { js: new URL("./basis/basis_transcoder.js", location.href).href, wasm: new URL("./basis/basis_transcoder.wasm", location.href).href },
+      basis: { js: at("basis/basis_transcoder.js"), wasm: at("basis/basis_transcoder.wasm") },
       autoplay: false,
       // Behind the gate, the first screen: one tick builds the game's UI (a harness keeps tick 0).
       prime: !harness,
@@ -647,7 +660,7 @@ export async function play(): Promise<PlayHandle> {
   });
 
   // ── audio, wake lock, fullscreen, visibility ─────────────────────────
-  const audio = new AudioShell({ worker: shell.worker, worklet: new URL("./audio-worklet.js", location.href).href });
+  const audio = new AudioShell({ worker: shell.worker, worklet: at("audio-worklet.js") });
   audio.listen();
   let wake: { release(): Promise<void> } | null = null;
   const lockWake = async () => {
@@ -808,8 +821,8 @@ export async function play(): Promise<PlayHandle> {
   // The shared Stage origin installs no service worker.
   if (config.serviceWorker && !harness && !stageSelf) {
     // The variant the engine booted, which the service worker caches whole (sw.ts `og-cache`).
-    const booted = lanes.on ? ["./origin-engine-lanes.js", "./origin-engine-lanes_bg.wasm"] : ["./origin-engine.js", "./origin-engine_bg.wasm"];
-    void installPwa(player.framed, log, booted.map((f) => new URL(f, location.href).href));
+    const booted = lanes.on ? ["origin-engine-lanes.js", "origin-engine-lanes_bg.wasm"] : ["origin-engine.js", "origin-engine_bg.wasm"];
+    void installPwa(player.framed, log, booted.map(at));
   }
   return { shell, config };
 }

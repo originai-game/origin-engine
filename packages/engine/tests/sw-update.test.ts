@@ -1,0 +1,132 @@
+// The publish build's service worker (shell/sw.ts) updating from one build
+// to the next: only what changed is downloaded; every file whose content the
+// old build's cache holds (precached, or a pack the player visited) is
+// carried over by its hash (docs/web-export.md §Incremental update). Run on
+// a CacheStorage and fetch of this file's own, so it needs no browser.
+import { expect, test } from "bun:test";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+declare const Bun: { build(o: { entrypoints: string[]; target: string; format: string }): Promise<{ success: boolean; outputs: Array<{ text(): Promise<string> }> }> };
+
+const SCOPE = "https://play.example/g/r/";
+const swSource = (async () => {
+  const r = await Bun.build({ entrypoints: [join(dirname(fileURLToPath(import.meta.url)), "..", "shell", "sw.ts")], target: "browser", format: "esm" });
+  if (!r.success) throw new Error("sw.ts did not bundle");
+  return r.outputs[0]!.text();
+})();
+
+/** A CacheStorage whose caches hold response bodies by URL. */
+function cacheStorage() {
+  const stores = new Map<string, Map<string, { body: string; type: string }>>();
+  const cache = (m: Map<string, { body: string; type: string }>) => ({
+    match: async (url: string) => {
+      const hit = m.get(url);
+      return hit ? new Response(hit.body, { headers: { "Content-Type": hit.type } }) : undefined;
+    },
+    put: async (url: string, r: Response) => void m.set(url, { body: await r.text(), type: r.headers.get("Content-Type") ?? "" }),
+    addAll: async (urls: string[]) => {
+      const got = await Promise.all(urls.map(async (u) => [u, await fetchOf(u)] as const));
+      for (const [u, r] of got) {
+        if (!r.ok) throw new Error(`${u}: ${r.status}`);
+        m.set(u, { body: await r.text(), type: "" });
+      }
+    },
+  });
+  let fetchOf: (url: string) => Promise<Response> = async () => new Response("", { status: 404 });
+  return {
+    stores,
+    setFetch: (f: typeof fetchOf) => (fetchOf = f),
+    api: {
+      keys: async () => [...stores.keys()],
+      open: async (name: string) => {
+        if (!stores.has(name)) stores.set(name, new Map());
+        return cache(stores.get(name)!);
+      },
+      delete: async (name: string) => stores.delete(name),
+    },
+  };
+}
+
+/** Runs one build's sw.js (its OG_SW) against `caches`, through install and activate; answers the URLs it fetched. */
+async function install(og: Record<string, unknown>, server: Record<string, string>, storage: ReturnType<typeof cacheStorage>): Promise<string[]> {
+  const fetched: string[] = [];
+  const fetchFn = async (input: string | Request) => {
+    const url = typeof input === "string" ? input : input.url;
+    fetched.push(url.slice(SCOPE.length) || "./");
+    const body = server[url.slice(SCOPE.length) || "./"];
+    return body === undefined ? new Response("", { status: 404 }) : new Response(body);
+  };
+  storage.setFetch(fetchFn);
+  const handlers: Record<string, (e: { waitUntil(p: Promise<unknown>): void }) => void> = {};
+  const scope = {
+    registration: { scope: SCOPE, navigationPreload: { enable: async () => {} } },
+    clients: { claim: async () => {} },
+    skipWaiting: async () => {},
+    navigator: { hardwareConcurrency: 4 },
+    crossOriginIsolated: false,
+    addEventListener: (type: string, fn: (e: { waitUntil(p: Promise<unknown>): void }) => void) => (handlers[type] = fn),
+  };
+  const code = `const OG_SW=${JSON.stringify(og)};\n${await swSource}`;
+  new Function("globalThis", "caches", "fetch", code)(scope, storage.api, fetchFn);
+  for (const type of ["install", "activate"]) {
+    let done: Promise<unknown> = Promise.resolve();
+    handlers[type]!({ waitUntil: (p) => (done = p) });
+    await done;
+  }
+  return fetched.sort();
+}
+
+test("a new build's service worker downloads only what changed, carrying the rest and visited packs over from the old cache", async () => {
+  const storage = cacheStorage();
+  const one = {
+    "./": "page 1",
+    "index.html": "page 1",
+    "game.aaaaaaaaaaaa.js": "game 1",
+    "origin-engine_bg.111111111111.wasm": "engine",
+    "cooked/.cook.ogt": "manifest 1",
+    "cooked/hero.png.ogb": "hero",
+    "cooked/stream/vale.ogb": "vale",
+  };
+  const first = await install(
+    {
+      version: "1111111111111111",
+      files: ["./", "index.html", "game.aaaaaaaaaaaa.js", "cooked/.cook.ogt", "cooked/hero.png.ogb"],
+      single: ["origin-engine_bg.111111111111.wasm"],
+      lanes: [],
+      lazy: ["cooked/stream/vale.ogb"],
+      hashes: { "index.html": "i1", "game.aaaaaaaaaaaa.js": "g1", "origin-engine_bg.111111111111.wasm": "e1", "cooked/.cook.ogt": "m1", "cooked/hero.png.ogb": "h1", "cooked/stream/vale.ogb": "v1" },
+    },
+    one,
+    storage,
+  );
+  expect(first).toEqual(["./", "cooked/.cook.ogt", "cooked/hero.png.ogb", "game.aaaaaaaaaaaa.js", "index.html", "origin-engine_bg.111111111111.wasm"]);
+  // The player visits the vale: the engine fetches its pack, the worker caches it.
+  const old = [...storage.stores.keys()][0]!;
+  storage.stores.get(old)!.set(`${SCOPE}cooked/stream/vale.ogb`, { body: "vale", type: "" });
+
+  // Build 2 changes the game code and the cook manifest; the engine, the hero texture and the pack are the same bytes.
+  const two = { ...one, "./": "page 2", "index.html": "page 2", "game.bbbbbbbbbbbb.js": "game 2", "cooked/.cook.ogt": "manifest 2" };
+  const second = await install(
+    {
+      version: "2222222222222222",
+      files: ["./", "index.html", "game.bbbbbbbbbbbb.js", "cooked/.cook.ogt", "cooked/hero.png.ogb"],
+      single: ["origin-engine_bg.111111111111.wasm"],
+      lanes: [],
+      lazy: ["cooked/stream/vale.ogb"],
+      hashes: { "index.html": "i2", "game.bbbbbbbbbbbb.js": "g2", "origin-engine_bg.111111111111.wasm": "e1", "cooked/.cook.ogt": "m2", "cooked/hero.png.ogb": "h1", "cooked/stream/vale.ogb": "v1" },
+    },
+    two,
+    storage,
+  );
+  // Only what changed (and the page, which is always the network's).
+  expect(second).toEqual(["./", "cooked/.cook.ogt", "game.bbbbbbbbbbbb.js", "index.html"]);
+  // The old build's cache is gone after activation; the new one holds everything, the visited pack included.
+  expect(storage.stores.size).toBe(1);
+  const now = storage.stores.get([...storage.stores.keys()][0]!)!;
+  expect(now.get(`${SCOPE}origin-engine_bg.111111111111.wasm`)?.body).toBe("engine");
+  expect(now.get(`${SCOPE}cooked/hero.png.ogb`)?.body).toBe("hero");
+  expect(now.get(`${SCOPE}cooked/stream/vale.ogb`)?.body).toBe("vale");
+  expect(now.get(`${SCOPE}game.bbbbbbbbbbbb.js`)?.body).toBe("game 2");
+  expect(now.get(`${SCOPE}cooked/.cook.ogt`)?.body).toBe("manifest 2");
+});

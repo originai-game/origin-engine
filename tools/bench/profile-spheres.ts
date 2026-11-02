@@ -96,7 +96,7 @@ try {
   await tab.until("!!(globalThis.__og_shell__ || globalThis.__og_shell_error__)", 180_000);
   const failed = await tab.eval<string | undefined>("globalThis.__og_shell_error__");
   if (failed) throw new Error(failed);
-  const engineSession = [...workers].find(([, url]) => url.endsWith("/game.js"))?.[0];
+  const engineSession = [...workers].find(([, url]) => /\/game(\.[0-9a-f]{12})?\.js$/.test(url))?.[0];
   if (!engineSession) throw new Error(`no engine Worker among ${[...workers.values()].join(", ")}`);
   const frames = (n: number) => tab.eval<{ each: number[]; step: number[]; render: number[]; total: number }>(`(async () => {
     const shell = globalThis.__og_shell__;
