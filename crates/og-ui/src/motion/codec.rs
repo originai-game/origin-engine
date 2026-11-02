@@ -149,7 +149,7 @@ impl W<'_> {
                         self.f32(sh.spread);
                         self.color4(&sh.color);
                     }
-                    self.u8(u8::from(material.solid) | u8::from(material.srgb_mix) << 1);
+                    crate::draw_codec::glass_flags(self, material);
                 }
             }
             DrawCmd::Quad {
@@ -554,9 +554,7 @@ impl R<'_> {
                         sh.spread = self.f32()?;
                         sh.color = self.color4()?;
                     }
-                    let flags = self.u8()?;
-                    material.solid = flags & 1 != 0;
-                    material.srgb_mix = flags & 2 != 0;
+                    crate::draw_codec::rglass_flags(self, &mut material)?;
                 }
                 DrawCmd::Glass {
                     rect,

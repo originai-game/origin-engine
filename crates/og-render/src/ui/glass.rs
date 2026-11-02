@@ -5,9 +5,12 @@
 //! may use any other values through [`UiGlass`] itself).
 //!
 //! The material is clear and takes its colour from what passes under it:
-//! a light tint over a modest blur with 200 % saturation, a 0.5 px
-//! hairline just inside the edge, a soft shadow outside. No specular rim,
-//! sheen or refraction. It mixes as CSS does ([`UiGlass::srgb_mix`]), so a
+//! a light tint over a modest blur with 200 % saturation (120 % dark), a 0.5 px
+//! hairline just inside the edge, a soft shadow outside. Dark glass also
+//! limits how bright the blurred scene may be (a sun behind it lifts it
+//! evenly instead of staining it) and catches a light along its top edge,
+//! the clean sci-fi direction's lit edge. No specular rim, sheen or
+//! refraction. It mixes as CSS does ([`UiGlass::srgb_mix`]), so a
 //! tint reads the same here as on the platform's pages.
 //!
 //! The engine's values diverge from the platform's in one place: the dark
@@ -139,15 +142,28 @@ impl UiGlassStyle {
         } else {
             [1.0; 4]
         };
+        // Dark glass: a bright scene behind it lifts it evenly rather than
+        // staining it (the sun through a menu read as a brown blob at
+        // 200 % saturation), and the top edge catches a light.
+        let (backdrop_max, edge_top) = if dark { (0.30, 0.22) } else { (0.0, 0.0) };
         let mut glass = UiGlass {
             edge: 0.5,
             edge_color,
             shadows,
             solid: false,
             srgb_mix: true,
+            backdrop_max,
+            edge_top,
         };
         let (blur, saturation, tint) = match self.fallback {
-            UiGlassFallback::None => (GLASS_BLUR_SCALE * self.css_blur(), 2.0, tint),
+            // Dark glass saturates 120 %, not CSS's 200 %: over a game's
+            // bright sky the doubled colour came through a dark tint as a
+            // brown stain.
+            UiGlassFallback::None => (
+                GLASS_BLUR_SCALE * self.css_blur(),
+                if dark { 1.2 } else { 2.0 },
+                tint,
+            ),
             UiGlassFallback::ReducedTransparency => {
                 glass.solid = true;
                 (0.0, 1.0, raised)

@@ -460,7 +460,13 @@ pub(crate) fn shape(
                 *a = [sh.offset.x, sh.offset.y, sh.blur.max(0.0), sh.spread];
                 *b = sh.color;
             }
-            g.extra[2] = f32::from(u8::from(glass.solid) | u8::from(glass.srgb_mix) << 1);
+            // extra.y (a solid paint has no gradient) the backdrop's
+            // limit; extra.z the flags and, above them, the top edge's
+            // light in 1/255 steps.
+            g.extra[1] = glass.backdrop_max.max(0.0);
+            let top = (glass.edge_top.clamp(0.0, 1.0) * 255.0).round() as u32;
+            let flags = u32::from(glass.solid) | u32::from(glass.srgb_mix) << 1;
+            g.extra[2] = (flags | top << 2) as f32;
             (
                 [blur.max(0.0), saturation, brightness, glass.edge.max(0.0)],
                 4,

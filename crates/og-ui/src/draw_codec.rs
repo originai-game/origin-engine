@@ -426,7 +426,7 @@ fn mode(w: &mut W, m: &UiMode) {
                     w.f32(sh.spread);
                     f4(w, &sh.color);
                 }
-                w.u8(u8::from(glass.solid) | u8::from(glass.srgb_mix) << 1);
+                glass_flags(w, glass);
             }
         }
     }
@@ -471,18 +471,18 @@ fn rmode(r: &mut R) -> Option<UiMode> {
                     color: rf4(r)?,
                 };
             }
-            let flags = r.u8()?;
+            let mut glass = og_render::UiGlass {
+                edge,
+                edge_color,
+                shadows,
+                ..Default::default()
+            };
+            rglass_flags(r, &mut glass)?;
             UiMode::Backdrop {
                 blur,
                 saturation,
                 brightness,
-                glass: og_render::UiGlass {
-                    edge,
-                    edge_color,
-                    shadows,
-                    solid: flags & 1 != 0,
-                    srgb_mix: flags & 2 != 0,
-                },
+                glass,
             }
         }
         _ => return None,
@@ -572,6 +572,29 @@ fn reffects(r: &mut R) -> Option<UiTextEffects> {
         fill_box: rf4(r)?,
         transform: rf4(r)?,
     })
+}
+
+/// A glass material's flags (solid 1, sRGB mix 2) and, when it limits its
+/// backdrop or lights its top edge, flag 4 and those two values: a save
+/// from before them reads unchanged.
+pub(crate) fn glass_flags(w: &mut W, g: &og_render::UiGlass) {
+    let lit = g.backdrop_max != 0.0 || g.edge_top != 0.0;
+    w.u8(u8::from(g.solid) | u8::from(g.srgb_mix) << 1 | u8::from(lit) << 2);
+    if lit {
+        w.f32(g.backdrop_max);
+        w.f32(g.edge_top);
+    }
+}
+
+pub(crate) fn rglass_flags(r: &mut R, g: &mut og_render::UiGlass) -> Option<()> {
+    let flags = r.u8()?;
+    g.solid = flags & 1 != 0;
+    g.srgb_mix = flags & 2 != 0;
+    if flags & 4 != 0 {
+        g.backdrop_max = r.f32()?;
+        g.edge_top = r.f32()?;
+    }
+    Some(())
 }
 
 fn material(w: &mut W, m: &UiMaterial) {
@@ -795,6 +818,8 @@ mod tests {
             ],
             solid: false,
             srgb_mix: true,
+            backdrop_max: 0.42,
+            edge_top: 0.22,
         };
         let rect = Rect::new(10.0, 20.0, 200.0, 100.0);
         let glass = |saturation, material| DrawCmd::Glass {

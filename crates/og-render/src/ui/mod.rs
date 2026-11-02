@@ -346,6 +346,16 @@ pub struct UiGlass {
     /// brightness then scale encoded values too. The shadows' alpha is
     /// mapped so a black shadow darkens as CSS's does.
     pub srgb_mix: bool,
+    /// The brightest the blurred backdrop may be before the tint, as a
+    /// luminance in the space it mixes in (encoded with `srgb_mix`); 0 is
+    /// no limit. Brighter backdrop is scaled down to it and loses its
+    /// colour as it goes, so a sun behind dark glass lifts the panel evenly
+    /// instead of staining it.
+    pub backdrop_max: f32,
+    /// A light along the top edge (concept B's lit edge): white at this
+    /// alpha over the outline's top 1 CSS px, fading down the sides and
+    /// towards the corners; 0 is none.
+    pub edge_top: f32,
 }
 
 /// One of [`UiGlass::shadows`]: a CSS `box-shadow` (offset, blur, spread,

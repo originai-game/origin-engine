@@ -244,13 +244,25 @@ fn glass_shadow(s: UiInstance, p: vec2<f32>, sh: vec4<f32>, px: f32) -> f32 {
 // outside it (paint..paint4); flag 1 (extra.z) draws the tint opaque and
 // reads nothing under it, flag 2 mixes in sRGB-encoded values as CSS does.
 // With none of them, the plain frosted backdrop, as it always was.
+// A backdrop brighter than `limit` (a luminance; 0 is none) scaled down to
+// it, losing its colour as it goes: a bright scene lifts the glass evenly.
+fn backdrop_limit(rgb: vec3<f32>, limit: f32) -> vec3<f32> {
+  let luma = dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+  if (limit <= 0.0 || luma <= limit) {
+    return rgb;
+  }
+  let k = limit / luma;
+  return mix(vec3<f32>(luma), rgb, k * k) * k;
+}
+
 @fragment
 fn fs_backdrop(in: UiOut) -> @location(0) vec4<f32> {
   let s = instances[in.instance];
   let px = local_px(in.local);
   let d = shape_distance(s, in.local).x;
   let cov = clamp(0.5 - d / px, 0.0, 1.0);
-  let flags = u32(s.extra.z);
+  let flags = u32(s.extra.z) & 3u;
+  let top_light = f32(u32(s.extra.z) >> 2u) / 255.0;
   let solid = (flags & 1u) != 0u;
   let srgb = (flags & 2u) != 0u;
   let clip = s.extra.x * instance_clip(s, in.position.xy);
@@ -270,10 +282,12 @@ fn fs_backdrop(in: UiOut) -> @location(0) vec4<f32> {
         rgb = encode(rgb);
         let luma = dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
         rgb = max(mix(vec3<f32>(luma), rgb, s.mode.y) * s.mode.z, vec3<f32>(0.0));
+        rgb = backdrop_limit(rgb, s.extra.y);
         rgb = decode(mix(min(rgb, vec3<f32>(1.0)), encode(s.color.rgb), s.color.a));
       } else {
         let luma = dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
         rgb = mix(vec3<f32>(luma), rgb, s.mode.y) * s.mode.z;
+        rgb = backdrop_limit(rgb, s.extra.y);
         rgb = mix(rgb, s.color.rgb, s.color.a);
       }
     }
@@ -286,6 +300,20 @@ fn fs_backdrop(in: UiOut) -> @location(0) vec4<f32> {
         rgb = decode(mix(encode(rgb), encode(s.mode2.rgb), k));
       } else {
         rgb = mix(rgb, s.mode2.rgb, k);
+      }
+    }
+    // The lit top edge: the outline's top 1 px, strongest at the top's
+    // middle, gone half way down the sides and softened at the corners.
+    if (top_light > 0.0) {
+      let band = cov - clamp(0.5 - (d + 1.0) / px, 0.0, 1.0);
+      let half = max(s.center_half.zw, vec2<f32>(1e-4));
+      let down = smoothstep(0.5, 1.0, -in.local.y / half.y);
+      let across = 1.0 - 0.7 * smoothstep(0.6, 1.0, abs(in.local.x) / half.x);
+      let k = clamp(band / cov, 0.0, 1.0) * top_light * down * across;
+      if (srgb) {
+        rgb = decode(mix(encode(rgb), vec3<f32>(1.0), k));
+      } else {
+        rgb = mix(rgb, vec3<f32>(1.0), k);
       }
     }
   }
