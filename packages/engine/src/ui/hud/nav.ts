@@ -96,7 +96,8 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
   // It grows with the text: at least the caption step's cap height and its padding, so the letter never shrinks to a dot.
   const nb = Math.max(u(14), Math.round(size * 0.1), Math.ceil(stepSize(capStep).size * 0.72) + u(8));
   hudPlace(id, anchorOf(desc, "topRight"), () => {
-    kit.column(id, { gap: u(4), cross: "center", padding: { top: Math.ceil(nb / 2), bottom: 0, left: 0, right: 0 } }, () => {
+    // Bare (a console's zone): no room above it, so the north badge sits inside the map's top edge.
+    kit.column(id, { gap: bare ? 0 : u(4), cross: "center", padding: { top: bare ? 0 : Math.ceil(nb / 2), bottom: 0, left: 0, right: 0 } }, () => {
       const { radius, corner } = shapeOf("hud");
       const outline: Api.DrawShape = shape === "circle" ? ellipseShape() : { kind: "rect", radii: [radius, radius, radius, radius], corner };
       const ro = radius + bezel;
@@ -110,7 +111,8 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
         shape: outline,
         fills: [solid(token("well", 0.92))],
         strokes: [stroke(1, lit(WHITE, 0.06))],
-        effects: [inner(0, size * 0.08, token("shadow", 0.6))],
+        // Bare, the zone's well is the map itself, edge to edge: a hairline inset, not a vignette that reads as a dish.
+        effects: [inner(0, bare ? u(3) : size * 0.08, token("shadow", bare ? 0.5 : 0.6))],
         clip: "shape",
       });
       // The map: a square larger than the frame, so it covers the corners as it turns.
@@ -205,7 +207,7 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
       }
       // North on the rim: centred on the bezel's ring, half outside the map, so it covers nothing on the map.
       const nAng = -Math.PI / 2 + turn;
-      const ring = R + bezel / 2;
+      const ring = bare ? R - nb / 2 - u(3) : R + bezel / 2;
       const nStep = tsFit(10, u(10));
       // The letter fits the badge at any text size (the badge keeps its share of the map).
       const fitK = Math.min(1, (nb * 0.62) / Math.max(1, stepSize(nStep).size));

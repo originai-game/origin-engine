@@ -635,9 +635,26 @@ test("og.ui.rtsConsole and dragSelect: four zones side by side, a paged selectio
     if (drag) box = og.ui.dragSelect("Drag", { from: { x: 100, y: 120 }, to: drag });
   });
   e.advance(4);
+  const draws = drawsDuring(() => e.advance(1));
   let els = dump(e);
   const zone = (p: string) => at(els, `RtsHud/Rts/Panel/${p}`)!;
   const map = zone("Map");
+  // The map fills its zone, square, edge to edge (not a dish inset in a well under a north badge's room).
+  const glass = at(els, "RtsHud/Rts/Panel/Map/View/Bezel/Map")!;
+  expect([glass.x, glass.y, glass.width, glass.height]).toEqual([map.x, map.y, map.width, map.height]);
+  // The control group tabs stand on the panel's top edge, the current one's seam over the panel's top hairline.
+  const panel = at(els, "RtsHud/Rts/Panel")!;
+  const tab = at(els, "RtsHud/Rts/TabRow/Tabs/g1")!;
+  expect(tab.y + tab.height).toBeCloseTo(panel.y, 0);
+  const seam = at(els, "RtsHud/Rts/TabRow/Tabs/g1/Seam")!;
+  expect(seam.y).toBeLessThanOrEqual(panel.y);
+  expect(seam.y + seam.height).toBeGreaterThan(panel.y);
+  expect(at(els, "RtsHud/Rts/TabRow/Tabs/g2/Seam")).toBe(undefined);
+  // The focused tile in the selected-tile rule: the highlight ring and a glow lifting it; the others neither.
+  const effects = (k: string) => JSON.stringify(draws.get(`RtsHud/Rts/Panel/Selection/Body/Grid/Tiles/${k}`)?.[0]?.effects ?? []);
+  expect(effects("u3")).toContain("outerGlow");
+  expect(effects("u0")).not.toContain("outerGlow");
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Grid/Tiles/u3/Focus")).toBeDefined();
   const sel = zone("Selection");
   const cmd = zone("Commands");
   // Minimap, selection and command card in that order along one panel, none over another.
@@ -666,13 +683,21 @@ test("og.ui.rtsConsole and dragSelect: four zones side by side, a paged selectio
   const card = at(els, "RtsHud/Rts/Panel/Selection/Body/Card")!;
   const prod = at(els, "RtsHud/Rts/Panel/Selection/Body/Production")!;
   expect(card.x + card.width).toBeLessThanOrEqual(prod.x);
-  const cur = at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Current/Queue/q0")!;
+  const cur = at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Current/Active/Queue/q0")!;
   const next = at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Next/q1")!;
   expect(cur.width).toBeGreaterThan(next.width);
-  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Current/Queue/q0/Time")?.text).toBe("5");
+  // The item being built is a slot the size of a command cell, so the building's card stays the one large image.
+  const cellW = at(els, "RtsHud/Rts/Panel/Commands/Grid/Row#0/a")!.width;
+  expect(cur.width).toBeCloseTo(cellW, -0.5);
+  expect(cur.width).toBeLessThan(at(els, "RtsHud/Rts/Panel/Selection/Body/Card/Detail/Portrait")!.height * 0.5);
+  // Its time under it, not over its art.
+  const time = at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Current/Active/Time")!;
+  expect(time.text).toBe("5");
+  expect(time.y).toBeGreaterThanOrEqual(cur.y + cur.height - 0.5);
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Current/Active/Queue/q0/Time")).toBe(undefined);
   expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Current/Info/Name")?.text).toBe("Marine");
   expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Next/q1/Count")?.text).toBe("3");
-  expect(states(at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Current/Queue")).queue).toBe("building");
+  expect(states(at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Current/Active/Queue")).queue).toBe("building");
   // The drag box: the rectangle between its corners, drawn where it says.
   expect(box).toEqual({ dragging: true, released: false, x: 100, y: 120, width: 200, height: 140 } as never);
   const b = at(els, "DragHud/Drag")!;

@@ -14,7 +14,7 @@
 // nothing here draws a glow edge or a bevel of a particular look.
 
 import type * as Api from "@origingame/engine";
-import { BLACK, WHITE, a11y, absolute, anchorOf, arc, artTile, box, bp, chip, clamp01, close, countdown, edge, fillDraw, frame, groups, hudPlace, hudRoom, hueOf, icon, keyId, kit, leaf, lit, mix, open, pct, px, role, sel, shapeOf, solid, sound, stepSize, stroke, text, token, ts, tsFit, u, ut, vgrad, type Rgba } from "./core.ts";
+import { BLACK, WHITE, a11y, absolute, anchorOf, arc, artTile, box, bp, chip, clamp01, close, countdown, edge, fillDraw, frame, glow, groups, innerGlow, hudPlace, hudRoom, hueOf, icon, keyId, kit, leaf, lit, mix, open, pct, px, role, sel, shapeOf, solid, sound, stepSize, stroke, text, token, ts, tsFit, u, ut, vgrad, type Rgba } from "./core.ts";
 import { slot } from "./abilities.ts";
 import { minimapView } from "./nav.ts";
 
@@ -60,11 +60,17 @@ function well(r: number): Api.DrawDesc {
 
 // ── production queue ──────────────────────────────────────────────────
 
+/** The time left on the item being built as its slot prints it: whole seconds under a minute, else m:ss; or paused. */
+function queueTime(desc: Api.ProductionQueueDesc, it: Api.QueueItem): string {
+  if (desc.paused) return desc.pausedLabel ?? "Paused";
+  return (it.remaining ?? 0) < 60 ? String(Math.ceil(it.remaining ?? 0)) : countdown(it.remaining ?? 0, false);
+}
+
 /**
  * The queue's row, in place (no panel): the first item with its progress sweeping and seconds left, then the rest,
  * then wells. `from` and `to` draw a range of the slots (a building's zone draws the first one large, the rest after it).
  */
-function queueRow(id: string, desc: Api.ProductionQueueDesc, side: number, from = 0, to = Infinity): Api.ProductionQueueResult {
+function queueRow(id: string, desc: Api.ProductionQueueDesc, side: number, from = 0, to = Infinity, timeInside = true): Api.ProductionQueueResult {
   const items = desc.items ?? [];
   const slots = Math.min(to, Math.max(items.length, desc.slots || 5));
   const gap = Math.max(2, u(3));
@@ -103,10 +109,11 @@ function queueRow(id: string, desc: Api.ProductionQueueDesc, side: number, from 
             fills: [solid(lit(BLACK, 0.62))],
           }, absolute({ start: -side * 0.25, top: -side * 0.25 }));
         }
-        const ink = paused ? lit(role("warn")) : token("ink");
-        text("Time", paused ? (desc.pausedLabel ?? "Paused") : ((it.remaining ?? 0) < 60 ? String(Math.ceil(it.remaining ?? 0)) : countdown(it.remaining ?? 0, false)), {
-          step: tsFit(11, side * 0.32, true), font: "mono", color: ink, nowrap: true, outline: 1,
-        }, absolute({ centerX: true, centerY: true }));
+        if (timeInside) {
+          text("Time", queueTime(desc, it), {
+            step: tsFit(11, side * 0.32, true), font: "mono", color: paused ? lit(role("warn")) : token("ink"), nowrap: true, outline: 1,
+          }, absolute({ centerX: true, centerY: true }));
+        }
       }
       if ((it.count ?? 0) > 1) {
         text("Count", `${it.count}`, { step: tsFit(9, side * 0.3, true), font: "display", color: token("ink"), nowrap: true, outline: 1 }, absolute({ end: Math.max(2, u(2)), bottom: 0 }));
@@ -145,31 +152,47 @@ function tabHeight(zone: number): number {
   return Math.max(u(20), Math.min(ut(26), Math.round(zone * 0.22)));
 }
 
-/** The control group tabs: the current one lit on the panel's own ground, the others a step back. */
-function tabs(desc: Api.SelectionPanelDesc, tabH: number, onClick: (k: string) => void): void {
+/**
+ * The control group tabs, seated on the panel's top edge as tabs of the selection zone: the current one on the panel's
+ * own ground (a seam over the panel's top hairline lets that ground run on into it), lit by the highlight along its top;
+ * the others a step back on a darker ground. Labels at the caption step.
+ */
+function tabs(desc: Api.SelectionPanelDesc, tabH: number, onClick: (k: string) => void, panelPath = ""): void {
   const list = desc.groups ?? [];
   if (list.length === 0) return;
   const r = Math.min(shapeOf("hud").radius, u(6));
+  const capStep: Api.TypeStepName = stepSize("caption").size <= tabH * 0.62 ? "caption" : tsFit(12, tabH * 0.62, true);
   kit.row("Tabs", { gap: Math.max(2, u(2)), cross: "end" }, () => {
     for (const g of list) {
       const cur = (g.key ?? "") === (desc.group ?? "");
       const empty = (g.count ?? 0) === 0;
       open(keyId(g.key ?? g.label ?? ""), {
         direction: "row", gap: 0, cross: "center", align: "center", interactive: true,
-        height: px(tabH), padding: { left: u(12), right: u(12), top: 0, bottom: 0 },
+        height: px(tabH), width: { kind: "fit", min: Math.round(tabH * 1.5) }, padding: { left: u(14), right: u(14), top: 0, bottom: 0 },
         part: sel("SelectionPanel", "tab", cur ? "current" : null, empty ? "empty" : null),
-      }, {
+      }, cur ? {
+        // The panel's ground and edge (panelDraw), so the current tab and the panel read as one surface.
         shape: { kind: "rect", radii: [r, r, 0, 0] },
-        fills: [solid(token("hud", cur ? 0.9 : 0.6))],
-        strokes: cur ? [stroke(2, token("highlight", 0.95), "inside")] : [],
+        fills: [solid(token("hud", 0.9))],
+        strokes: [stroke(1, token("lineStrong", 0.55))],
+        effects: [{ kind: "backdrop", blur: u(12) }],
+      } : {
+        shape: { kind: "rect", radii: [r, r, 0, 0] },
+        fills: [solid(token("hud", 0.72)), solid(lit(BLACK, 0.18))],
+        strokes: [stroke(1, token("line", 0.6))],
       });
-      // The lit tab's accent sits along its top edge only (the stroke above is clipped to it by the bar).
-      if (cur) leaf("Lit", { width: pct(1), height: px(2) }, { fills: [solid(token("highlight"))] }, absolute({ start: 0, top: 0 }));
-      text("Label", g.label ?? "", { step: tsFit(12, tabH * 0.62, true), font: "display", color: cur ? token("ink") : token("inkMuted"), nowrap: true });
+      if (cur) {
+        leaf("Lit", { width: pct(1), height: px(Math.max(2, u(2))), part: sel("SelectionPanel", "tabLit") }, { shape: { kind: "rect", radii: [r, r, 0, 0] }, fills: [solid(token("highlight"))] }, absolute({ start: 0, top: 0 }));
+        // Over the tab's foot and the panel's top hairline under it: the panel's ground running on into the tab.
+        if (panelPath) leaf("Seam", { width: pct(1), height: px(2), part: sel("SelectionPanel", "seam") }, { fills: [solid(token("hud", 0.9))] }, absolute({ start: 0, bottom: -1 }, { z: 2, overlaps: [panelPath] }));
+      }
+      text("Label", g.label ?? "", { step: capStep, font: "display", color: cur ? token("ink") : token("inkMuted"), nowrap: true });
       const res = close({ opacity: empty ? 0.55 : 1, a11y: a11y("tab", g.label ?? "", { value: `${g.count ?? 0}`, selected: cur }) });
       if (res.clicked) onClick(g.key ?? "");
     }
   });
+  // Over the panel built after them, so the current tab's seam lies over the panel's top hairline.
+  if (panelPath) kit.props({ z: 1 });
 }
 
 /** One unit's tile: its portrait, a thin health bar under the art (its shield and energy beside it), a gold build line. */
@@ -184,7 +207,9 @@ function tile(u0: Api.SelectedUnit, side: number, focused: boolean): Api.Respons
   open(k, { width: px(side), height: px(side), interactive: true, part: sel("SelectionPanel", "tile", focused ? "focused" : null), partClass: "slot" }, {
     shape: { kind: "rect", radii: [r, r, r, r] },
     fills: [solid(lit(BLACK, 0.9))],
-    strokes: [stroke(1, token("lineStrong", 0.4), "outside")],
+    strokes: [stroke(1, focused ? token("highlight", 0.6) : token("lineStrong", 0.4), "outside")],
+    // Focused, it lifts: a soft highlight glow round it (the selected-tile rule's lift).
+    effects: focused ? [glow(u(7), token("highlight", 0.4))] : [],
     clip: "shape",
   });
   artTile("Portrait", u0.image, u0.icon ?? "", side, hueOf(u0.icon || u0.name || k), absolute({ start: 0, top: 0 }));
@@ -208,8 +233,9 @@ function tile(u0: Api.SelectedUnit, side: number, focused: boolean): Api.Respons
   if (p !== null) {
     leaf("Progress", { width: pct(clamp01(p)), height: px(barH), part: sel("SelectionPanel", "progress") }, fillDraw(role("gold"), 0), absolute({ start: 0, top: 0 }));
   }
-  // The selected-tile rule (docs/ui.md §15.5): one mark, a highlight ring inside the edge.
-  if (focused) leaf("Focus", { width: pct(1), height: pct(1) }, { shape: { kind: "rect", radii: [r, r, r, r] }, strokes: [stroke(2, token("highlight"), "inside")] }, absolute({ start: 0, top: 0 }));
+  // The selected-tile rule (docs/ui.md §15.5): the highlight ring inside the edge at a clearly visible width (3 px at
+  // 1080p), the art lit from its rim inward, and the glow round the tile above.
+  if (focused) leaf("Focus", { width: pct(1), height: pct(1), part: sel("SelectionPanel", "focus") }, { shape: { kind: "rect", radii: [r, r, r, r] }, strokes: [stroke(Math.max(2, u(2)), token("highlight"), "inside")], effects: [innerGlow(u(10), token("highlight", 0.3))] }, absolute({ start: 0, top: 0 }));
   else leaf("Rim", { width: pct(1), height: pct(1) }, { shape: { kind: "rect", radii: [r, r, r, r] }, strokes: [{ width: 1, align: "inside", paint: vgrad([[0, lit(WHITE, 0.28)], [0.5, lit(WHITE, 0.05)], [1, lit(BLACK, 0.6)]]) }] }, absolute({ start: 0, top: 0 }));
   const res = close({ a11y: a11y("button", u0.name ?? "", { value: max > 0 ? `${Math.round(u0.health ?? 0)} of ${Math.round(max)}` : "", selected: focused }) });
   kit.tooltip(u0.name ?? "");
@@ -357,32 +383,32 @@ function unitLine(un: Api.SelectedUnit, w: number): void {
 }
 
 /**
- * A building's production beside its card (StarCraft II's single selection): the item being built large, its name
- * over a progress bar with the time left, then the rest of the queue as small slots under it.
+ * A building's production beside its card (StarCraft II's single selection): the item being built in a slot the size
+ * of a command cell, its sweep over the art and its time under it, its name over a progress bar beside it, then the
+ * rest of the queue as smaller slots under them. The building's card stays the zone's one large image.
  */
-function queueZone(desc: Api.ProductionQueueDesc, h: number, w: number, small: number): Api.ProductionQueueResult {
+function queueZone(desc: Api.ProductionQueueDesc, h: number, w: number, small: number, active: number): Api.ProductionQueueResult {
   const tk = frame().t;
   const items = desc.items ?? [];
   const first = items[0];
   const gap = u(6);
-  const big = Math.max(small, Math.min(Math.round(h - small - gap), Math.round(w * 0.3)));
+  const paused = !!desc.paused;
   let cancelled: string | null = null;
   kit.column("Production", { gap, width: px(w), height: px(h), part: sel("ProductionQueue", "zone") }, () => {
-    kit.row("Current", { gap: tk.md, cross: "center", width: pct(1) }, () => {
-      const r = queueRow("Queue", desc, big, 0, 1);
-      if (r.cancelled) cancelled = r.cancelled;
+    kit.row("Current", { gap: tk.md, cross: "start", width: pct(1) }, () => {
+      kit.column("Active", { gap: u(2), cross: "center" }, () => {
+        const r = queueRow("Queue", desc, active, 0, 1, false);
+        if (r.cancelled) cancelled = r.cancelled;
+        if (first) text("Time", queueTime(desc, first), { step: ts(12), font: "mono", color: paused ? lit(role("warn")) : token("ink"), nowrap: true, outline: 1 });
+      });
       if (!first) return;
       const dur = Math.max(1e-3, first.duration ?? 0);
       const done = (first.duration ?? 0) > 0 ? clamp01(1 - (first.remaining ?? 0) / dur) : 0;
-      const paused = !!desc.paused;
       const barH = Math.max(4, u(5));
-      kit.column("Info", { gap: u(4), width: { kind: "grow" } }, () => {
+      kit.column("Info", { gap: u(4), width: { kind: "grow" }, padding: { left: 0, right: 0, top: u(4), bottom: 0 } }, () => {
         text("Name", first.name ?? "", { step: ts(13, true), font: "display", color: token("ink"), nowrap: true, ellipsis: true, width: pct(1) });
-        kit.row("Progress", { gap: u(6), cross: "center", width: pct(1) }, () => {
-          box("Bar", { width: { kind: "grow" }, height: px(barH), part: sel("ProductionQueue", "bar", paused ? "paused" : null) }, { shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [solid(lit(BLACK, 0.7))] }, () => {
-            if (done > 0) leaf("Fill", { width: pct(done), height: pct(1) }, fillDraw(role(paused ? "warn" : "gold"), 2));
-          });
-          text("Left", paused ? (desc.pausedLabel ?? "Paused") : countdown(first.remaining ?? 0, false), { step: ts(11), font: "mono", color: paused ? lit(role("warn")) : token("inkMuted"), nowrap: true });
+        box("Bar", { width: pct(1), height: px(barH), part: sel("ProductionQueue", "bar", paused ? "paused" : null) }, { shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [solid(lit(BLACK, 0.7))] }, () => {
+          if (done > 0) leaf("Fill", { width: pct(done), height: pct(1) }, fillDraw(role(paused ? "warn" : "gold"), 2));
         });
       });
     });
@@ -411,7 +437,10 @@ function selectionBody(desc: Api.SelectionPanelDesc, h: number, lay: SelLayout, 
       if (queue) {
         kit.column("Card", { width: px(lay.card) }, () => unitCard(desc, focused, h, lay.card));
         rule("QueueRule", h);
-        const q = queueZone(queue, h, gridW, lay.queueSide);
+        // The item being built in a slot the size of a command cell (the console's three rows in its height), the
+        // waiting ones in slots a step smaller.
+        const active = Math.round((h - 2 * gap) / 3);
+        const q = queueZone(queue, h, gridW, Math.max(u(24), Math.round(active * 0.72)), active);
         if (q.cancelled) res.cancelled = q.cancelled;
       } else {
         // A unit or a building with nothing queued: the card keeps its width, and its stats and tags move into the
@@ -492,7 +521,7 @@ export function selectionPanel(id: string, desc: Api.SelectionPanelDesc = {}): A
   const n = (desc.units ?? []).length;
   hudPlace(id, anchor, (inAnchor) => {
     kit.column(id, { gap: 0, cross: "start" }, () => {
-      tabs(desc, tabHeight(h), (k) => { res.group = k; });
+      tabs(desc, tabHeight(h), (k) => { res.group = k; }, inAnchor ? `${kit.openPath()}/Panel` : "");
       if (inAnchor) {
         box("Panel", { padding: { left: tk.md, right: tk.md, top: tk.md, bottom: tk.md }, part: sel("SelectionPanel", "frame"), partClass: "hud" }, panelDraw(), () => selectionBody(desc, h, lay, res));
       } else selectionBody(desc, h, lay, res);
@@ -618,11 +647,14 @@ export function rtsConsole(id: string, desc: Api.RtsConsoleDesc = {}): Api.RtsCo
   hudPlace(id, anchorOf(desc, "bottom"), () => {
     kit.column(id, { gap: 0, cross: "start" }, () => {
       // The tabs stand on the panel's top edge over the selection zone.
-      kit.row("TabRow", { padding: { left: pad + (withMap && !stacked ? h + zone : 0), right: 0, top: 0, bottom: 0 } }, () => tabs(sd, tabH, (k) => { sres.group = k; }));
+      const panelPath = `${kit.openPath()}/Panel`;
+      kit.row("TabRow", { padding: { left: pad + (withMap && !stacked ? h + zone : 0), right: 0, top: 0, bottom: 0 } }, () => tabs(sd, tabH, (k) => { sres.group = k; }, panelPath));
+      kit.props({ z: 1 });
       box("Panel", { direction: stacked ? "column" : "row", gap: stacked ? tk.sm : pad, cross: stacked ? "start" : "center", padding: { left: pad, right: pad, top: pad, bottom: pad }, part: sel("RtsConsole", "frame"), partClass: "hud" }, panelDraw(), () => {
         if (withMap && desc.map) {
           kit.column("Map", { width: px(h), height: px(h), cross: "center" }, () => {
-            const m = minimapView("View", { ...desc.map!, anchor: null, size: Math.max(40, (h - Math.ceil(stepSize(ts(11)).size * 0.72 + u(8)) / 2 - (desc.map!.zone && desc.map!.shape !== "circle" ? Math.ceil(stepSize(ts(11)).line) + u(4) : 0)) / Math.max(0.5, u(100) / 100)) }, true);
+            // An RTS map is square: it fills the zone (less its caption's line), its north mark inside its top edge.
+            const m = minimapView("View", { ...desc.map!, shape: "square", anchor: null, size: Math.max(40, (h - (desc.map!.zone ? Math.ceil(stepSize(ts(11)).line) + u(4) : 0)) / Math.max(0.5, u(100) / 100)) }, true);
             out.mapClicked = m.clicked;
           });
           rule("MapRule", h);
