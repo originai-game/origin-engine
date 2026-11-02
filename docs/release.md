@@ -60,11 +60,12 @@ the layout was the interim that never became the rule. Now it does.
 
 What holds from this commit:
 
-1. **Four packages, one version.** `@origingame/engine` (with the
+1. **Five packages, one version.** `@origingame/engine` (with the
    agents' knowledge inside it as `knowledge/`, the owner's call of
    2026-10-22: one version, one install, 424 KB of text),
-   `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` and
-   `@origingame/create-game` are published to the npm registry, public, MIT,
+   `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64`,
+   `@origingame/create-game` and `@origingame/design` (the design language
+   origin-agent pins, `packages/design`) are published to the npm registry, public, MIT,
    at the same version, bumped together (§3). `packages/knowledge` stays a
    private source package of this repository.
 2. **Three ways to run the engine, and no fourth.** (a) The registry:
@@ -139,6 +140,7 @@ testing settled on, with every gate.
 | `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` | `origin-engine.node` (napi addon, `crates/og-host-node`) and `og` (`crates/og-cli`), release profile, `os`/`cpu`/`libc` so only the matching one installs, as `optionalDependencies` of the main package | both in the Mac's `scripts/release.sh pack`: linux-x64 by cargo zigbuild (glibc 2.31), darwin-arm64 natively |
 | `@origingame/engine-win32-x64` | `origin-engine.node` (MSVC napi addon) and `og.exe`, release profile, `os: win32`, `cpu: x64`; the same API, DX12 renderer, tsgo checker fallback | `build.sh --native` then `pack.sh --native` in Git Bash on the `studio-win` Amp runner (§3) |
 | `@origingame/create-game` | `bin/create.ts` (`npm create @origingame/game` runs it: npm and bun map `create @scope/name` to `@scope/create-name`, which is why the package is `create-game`, not `create`), `template/` (`templates/game`, the 3D template), `template-2d/` (`templates/game-2d`, the 2D starter `--profile 2d` writes), `archetypes/` (the eight), `looks/` (the catalogue) | `packages/create` `prepack` |
+| `@origingame/design` | `tokens.json` and `design-language.md`, the design language the engine's default UI style is generated from and origin-agent pins | `bun pm pack` of `packages/design` in `scripts/release.sh pack` |
 
 Not shipped yet: linux-arm64 (design §12 item 5); `og.mjs` says so when the
 platform package is missing. `@tsrs/*` are someone else's
@@ -335,7 +337,7 @@ member added, changed or removed, written at the merge that changes
 `api/<module>.ogt`; a release that is compatible but large may still take a minor
 when the owner names it. Every
 occurrence of the version is written by `scripts/release.sh bump` and
-held equal by `packages/knowledge`'s test: the three `package.json`
+held equal by `packages/knowledge`'s test: the four `package.json`
 (`optionalDependencies` included), `scaffold/origin-engine.json`,
 `templates/*/project.ogt` and `package.json`, `templates/archetypes/*`,
 `examples/*`, and what `create` writes into a new project. A Game's
@@ -418,7 +420,7 @@ scripts/release.sh pack               # on the Mac: OG_RELEASE=1 pack.sh --linux
 # on studio-win, Git Bash, the same commit: OG_RELEASE=1 sh packages/engine/scripts/build.sh --native && sh packages/engine/scripts/pack.sh --native
 scripts/release.sh manifest <dir>     # on the Mac, after copying the win32-x64 tarball into dist/release/<version>/: one manifest over the five
 scripts/release.sh verify [--registry] [--instabox]  # the install test (below) from the tarballs, or from the registry after publishing; --instabox once more inside an InstaBox machine
-scripts/release.sh publish            # npm publish, the three platform packages first, then engine, create-game; git tag v<version>; prints the install line
+scripts/release.sh publish            # npm publish, the three platform packages first, then engine, create-game, design; git tag v<version>; prints the install line
 gh workflow run release.yml --ref main  # a fallback when a machine is unavailable: the same pack on GitHub-hosted runners (below)
 scripts/release.sh fetch <run-id>     # that run's release-<version> artifact into dist/release/<version>/
 ```
