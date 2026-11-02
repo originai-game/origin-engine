@@ -477,12 +477,17 @@ test("og.ui.comboCounter, judgement, turnOrder, scorebug, speedometer, flightHud
 test("og.ui.statBar as pips: n of max lit with a gap between equal pips, its value read; an icon as tall as its label on a thin track", () => {
   // Wrong: pips drawn as one bar with notches (no gap), counted off by one, a part of a pip lit for a part of its
   // value, or pips of unequal widths that do not line up row over row; an icon sized by a thin track (an 8 px
-  // reactor bar's 11 px speck).
+  // reactor bar's 11 px speck), or by the bar's own label step beside a row's larger name.
   const e = engineFor("HudPips", () => {
     og.ui.anchor("Side", { anchor: "topLeft", direction: "column", width: { kind: "fixed", px: 300 } } as never, () => {
       og.ui.statBar("Shields", { value: 3.6, max: 4, style: "pips", kind: "mana", thickness: 12, showValue: true, valueText: "3 / 4", width: { kind: "grow" } });
       og.ui.statBar("Upgrade", { value: 4, max: 60, segment: 10, style: "pips", kind: "xp", thickness: 12, width: { kind: "grow" } });
       og.ui.statBar("Reactor", { value: 64, max: 100, kind: "mana", icon: "bolt", label: "Reactor", thickness: 8, width: { kind: "grow" } });
+      // A row's own name outside the bar, at a larger step than the bar's label: the icon follows its line.
+      og.ui.row("Row", { width: { kind: "grow" }, cross: "center" }, () => {
+        og.ui.label("Name", "Reactor", { step: "xl", nowrap: true });
+        og.ui.statBar("Bar", { value: 64, max: 100, kind: "mana", icon: "bolt", iconStep: "xl", thickness: 8, width: { kind: "grow" } });
+      });
     });
   });
   e.advance(2);
@@ -506,8 +511,13 @@ test("og.ui.statBar as pips: n of max lit with a gap between equal pips, its val
   const mark = at(els, "Side/Reactor/Main/Icon")!;
   const label = at(els, "Side/Reactor/Main/Label")!;
   const track = at(els, "Side/Reactor/Main/Track")!;
-  expect(mark.height).toBeGreaterThanOrEqual(label.height * 0.75);
+  expect(mark.height).toBeGreaterThanOrEqual(label.height - 0.5);
   expect(mark.height).toBeGreaterThan(track.height * 1.8);
+  // Beside a row's xl name the mark is as tall as that name's line (it was the bar's own label step's, 17 px
+  // beside a 24 px line).
+  const rowMark = at(els, "Side/Row/Bar/Main/Icon")!;
+  const name = at(els, "Side/Row/Name")!;
+  expect(rowMark.height).toBeGreaterThanOrEqual(name.height - 0.5);
 }, LOADED_MS);
 
 test("og.ui.turnOrder as a list: rows top to bottom, the acting one first and selected, an enemy's stripe on the start edge, allies lined up, mirrored right to left", () => {

@@ -67025,8 +67025,20 @@
         },
         "icon": {
           "type": "string",
-          "description": "An icon of the atlas before it, as tall as its label's text at least (never only the track's height).",
+          "description": "An icon of the atlas before it, as tall as the line of the text it stands beside at least (its label's, or iconStep's), never only the track's height.",
           "default": ""
+        },
+        "iconStep": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TypeStepName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The type step of the text the icon stands beside, when that is a label of the game's outside the bar (a row's name at body): the icon is that step's line tall. Null is the bar's own label step.",
+          "default": null
         },
         "width": {
           "anyOf": [

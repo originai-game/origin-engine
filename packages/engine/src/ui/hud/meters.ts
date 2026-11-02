@@ -73,8 +73,9 @@ export function statBar(id: string, desc: Api.StatBarDesc = {}): void {
     box(id, { direction: "column", gap: u(3), width: desc.width ?? px(u(240)), part: sel("StatBar", "frame", style, level), partClass: "hud" }, undefined, (path) => {
       if ((desc.shieldMax ?? 0) > 0) shieldRow(desc, h, radius, style);
       kit.row("Main", { gap: tk.sm, cross: "center", width: { kind: "grow" } }, () => {
-        // As tall as the label's text at least: a thin track (a reactor's 8 px) left its mark a speck.
-        if (desc.icon) icon("Icon", desc.icon, Math.max(Math.round(h * 1.4), Math.round(stepSize(ts(14)).size * 1.2)), lit(ink), "");
+        // As tall as the line of the text beside it (its own label, or a row label of iconStep outside it) at
+        // least: a thin track (a reactor's 8 px) left its mark a speck, and a label's step a speck beside a larger row label.
+        if (desc.icon) icon("Icon", desc.icon, Math.max(Math.round(h * 1.4), Math.round(stepSize(desc.iconStep ?? ts(14)).line)), lit(ink), "");
         // Over the scene, not a card: full ink a step up, with the HUD's outline and halo (4.5:1 on a bright ground).
         if (desc.label) text("Label", desc.label, { step: ts(14), font: "display", color: token("ink"), nowrap: true, outline: 1.2 });
         if (style === "pips") pips(desc, value, max, ink, h, radius);

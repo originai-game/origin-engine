@@ -38504,11 +38504,17 @@ export interface StatBarDesc {
    */
   readonly valueText?: string;
   /**
-   * An icon of the atlas before it, as tall as its label's text at least (never only the track's height).
+   * An icon of the atlas before it, as tall as the line of the text it stands beside at least (its label's, or iconStep's), never only the track's height.
    *
    * @default ""
    */
   readonly icon?: string;
+  /**
+   * The type step of the text the icon stands beside, when that is a label of the game's outside the bar (a row's name at body): the icon is that step's line tall. Null is the bar's own label step.
+   *
+   * @default null
+   */
+  readonly iconStep?: TypeStepName | null;
   /**
    * Its width; null is 240 (grows with the surface).
    *

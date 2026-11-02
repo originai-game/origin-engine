@@ -7979,7 +7979,8 @@ module ui {
     field showValue bool "The value as text at its end (72 / 100)."
     field valueInside bool "The value inside the track at its end, over the fill, so the bar keeps its full length (a unit frame's health); the track grows to hold the text."
     field valueText String "The value as text instead (72%); empty formats value / max."
-    field icon String "An icon of the atlas before it, as tall as its label's text at least (never only the track's height)."
+    field icon String "An icon of the atlas before it, as tall as the line of the text it stands beside at least (its label's, or iconStep's), never only the track's height."
+    field iconStep Option.TypeStepName "The type step of the text the icon stands beside, when that is a label of the game's outside the bar (a row's name at body): the icon is that step's line tall. Null is the bar's own label step."
     field width Option.Size "Its width; null is 240 (grows with the surface)."
     field thickness f32 "Its height; 0 is 14." {
       min 0
