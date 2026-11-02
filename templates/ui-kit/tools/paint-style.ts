@@ -4,8 +4,10 @@
 // prompt from the art brief (packages/knowledge/scripts/brief.ts) and the
 // slot's own `note`, paints it through the origin platform's image API with
 // the pack's approved concept sheets as references, and writes
-// <pack>/art/<part>.png and its entry in <pack>/art/provenance.json. Then
-// `og style art <pack>` verifies and packs what arrived.
+// <pack>/art/<part>.png and its entry in <pack>/art/provenance.json. It runs
+// `og style art <pack>` before (completing the requests) and after (verifying
+// and packing what arrived), so a pack is painted in one command; the og it
+// runs is $OG_BIN, else the checkout's target/debug/og.
 //
 //   bun templates/ui-kit/tools/paint-style.ts templates/styles/fantasy [--all] [--slot <part>]… [--dry-run] [--shrink]
 //
@@ -14,7 +16,8 @@
 //
 // The requests name the look preset the brief reads (`lookPreset`, a
 // templates/looks slug) and the concept sheets (`concepts`, paths from the
-// repository root). Needs OG_PLATFORM_DEVELOPMENT_KEY. Slots paint in
+// repository root, read from the working tree, else from origin/ui-art; or
+// `<git ref>:<path>`, such as origin/ui-art-2:tests/evidence/ui-art/…). Needs OG_PLATFORM_DEVELOPMENT_KEY. Slots paint in
 // parallel; a failed slot is reported and the rest are kept.
 
 import { execFileSync } from "node:child_process";
@@ -50,13 +53,31 @@ const pack = args[0] ? resolve(args[0]) : usage();
 const all = args.includes("--all");
 const dry = args.includes("--dry-run");
 const only = args.flatMap((a, i) => (a === "--slot" ? [args[i + 1] ?? usage()] : []));
+const OG = process.env.OG_BIN ?? join(ROOT, "target/debug/og");
+/** `og style art <pack>`: its output passed through, its failure reported. */
+function styleArt(): boolean {
+  try {
+    execFileSync(OG, ["style", "art", pack], { stdio: "inherit" });
+    return true;
+  } catch {
+    console.error(`og style art ${args[0]} failed (above)`);
+    return false;
+  }
+}
+if (!shrinkOnly) styleArt();
 const requests = JSON.parse(readFileSync(join(pack, "art-requests.json"), "utf8"));
 const slots: Slot[] = requests.slots.filter((s: Slot) => s.hash && s.size);
 const look = presetLook(requests.lookPreset ?? usage());
-// The concept sheets: from the working tree, else from the art director's branch (origin/ui-art).
+// The concept sheets: `<ref>:<path>` from that git ref; a path from the
+// working tree, else from the art director's branch (origin/ui-art).
 const concepts: string[] = requests.concepts ?? [];
-const conceptBytes = (c: string): Buffer =>
-  existsSync(join(ROOT, c)) ? readFileSync(join(ROOT, c)) : execFileSync("git", ["show", `origin/ui-art:${c}`], { cwd: ROOT, maxBuffer: 1 << 26 });
+const conceptBytes = (c: string): Buffer => {
+  const git = (spec: string) => execFileSync("git", ["show", spec], { cwd: ROOT, maxBuffer: 1 << 26 });
+  if (c.includes(":")) return git(c);
+  return existsSync(join(ROOT, c)) ? readFileSync(join(ROOT, c)) : git(`origin/ui-art:${c}`);
+};
+const conceptName = (c: string) => basename(c.split(":").pop()!);
+const conceptType = (c: string) => (c.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg");
 const conceptData = concepts.map(conceptBytes);
 const artDir = join(pack, "art");
 mkdirSync(artDir, { recursive: true });
@@ -134,7 +155,7 @@ async function paint(s: Slot): Promise<void> {
   form.set("background", "transparent");
   form.set("size", size(s));
   form.set("prompt", text);
-  concepts.forEach((c, i) => form.append("image[]", new Blob([conceptData[i]!], { type: "image/jpeg" }), basename(c)));
+  concepts.forEach((c, i) => form.append("image[]", new Blob([conceptData[i]!], { type: conceptType(c) }), conceptName(c)));
   const started = Date.now();
   const res = await fetch(API, { method: "POST", headers: { Authorization: `Bearer ${process.env.OG_PLATFORM_DEVELOPMENT_KEY}` }, body: form });
   const body = await res.json().catch(() => null);
@@ -164,4 +185,5 @@ if (!process.env.OG_PLATFORM_DEVELOPMENT_KEY && !dry) throw new Error("OG_PLATFO
 const results = await Promise.allSettled(todo.map(paint));
 for (const r of results) if (r.status === "rejected") console.error(String(r.reason));
 if (!dry) writeFileSync(provPath, JSON.stringify(Object.fromEntries(Object.entries(provenance).sort()), null, 2) + "\n");
-console.log(`${todo.length - results.filter((r) => r.status === "rejected").length} of ${todo.length} slots painted; now: og style art ${args[0]}`);
+console.log(`${todo.length - results.filter((r) => r.status === "rejected").length} of ${todo.length} slots ${dry ? "drafted" : "painted"}`);
+if (!dry && !styleArt()) process.exit(1);
