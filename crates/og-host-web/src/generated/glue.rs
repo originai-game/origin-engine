@@ -3058,6 +3058,26 @@ pub fn og_net_submit(world: u32, input: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_net_shape(world: u32, desc: Option<String>) -> String {
+    <Host as NetApi>::og_net_shape(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_net_submit_input(world: u32, component: String, value: String) -> String {
+    <Host as NetApi>::og_net_submit_input(&Host, world, component, value)
+}
+
+#[wasm_bindgen]
+pub fn og_net_command(world: u32, component: String, value: String) -> String {
+    <Host as NetApi>::og_net_command(&Host, world, component, value)
+}
+
+#[wasm_bindgen]
+pub fn og_net_commands(world: u32, component: String) -> String {
+    <Host as NetApi>::og_net_commands(&Host, world, component)
+}
+
+#[wasm_bindgen]
 pub fn og_net_status(world: u32) -> String {
     <Host as NetApi>::og_net_status(&Host, world)
 }

@@ -23766,6 +23766,122 @@
     {
       "id": 582,
       "kind": "fn",
+      "path": "og.net.shape",
+      "symbol": "og_net_shape",
+      "module": "net",
+      "name": "shape",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "NetShapeDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 583,
+      "kind": "fn",
+      "path": "og.net.submitInput",
+      "symbol": "og_net_submit_input",
+      "module": "net",
+      "name": "submitInput",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "component",
+          "type": "C",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "Partial<Value<C>>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 584,
+      "kind": "fn",
+      "path": "og.net.command",
+      "symbol": "og_net_command",
+      "module": "net",
+      "name": "command",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "component",
+          "type": "C",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "Partial<Value<C>>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 585,
+      "kind": "fn",
+      "path": "og.net.commands",
+      "symbol": "og_net_commands",
+      "module": "net",
+      "name": "commands",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "component",
+          "type": "C",
+          "optional": false
+        }
+      ],
+      "returns": "Result<List<Value<C>>>",
+      "publish": true
+    },
+    {
+      "id": 586,
+      "kind": "fn",
       "path": "og.net.status",
       "symbol": "og_net_status",
       "module": "net",
@@ -23781,7 +23897,7 @@
       "publish": true
     },
     {
-      "id": 583,
+      "id": 587,
       "kind": "fn",
       "path": "og.net.resimulating",
       "symbol": "og_net_resimulating",
@@ -23798,7 +23914,7 @@
       "publish": true
     },
     {
-      "id": 584,
+      "id": 588,
       "kind": "fn",
       "path": "og.net.finalHash",
       "symbol": "og_net_final_hash",
@@ -23820,7 +23936,7 @@
       "publish": true
     },
     {
-      "id": 585,
+      "id": 589,
       "kind": "fn",
       "path": "og.net.hash",
       "symbol": "og_net_hash",
@@ -23837,7 +23953,7 @@
       "publish": true
     },
     {
-      "id": 586,
+      "id": 590,
       "kind": "fn",
       "path": "og.motion.pose",
       "symbol": "og_motion_pose",
@@ -23864,7 +23980,7 @@
       "publish": true
     },
     {
-      "id": 587,
+      "id": 591,
       "kind": "fn",
       "path": "og.motion.place",
       "symbol": "og_motion_place",
@@ -23891,7 +24007,7 @@
       "publish": true
     },
     {
-      "id": 588,
+      "id": 592,
       "kind": "fn",
       "path": "og.motion.face",
       "symbol": "og_motion_face",
@@ -23918,7 +24034,7 @@
       "publish": true
     },
     {
-      "id": 589,
+      "id": 593,
       "kind": "fn",
       "path": "og.motion.walkTo",
       "symbol": "og_motion_walk_to",
@@ -23945,7 +24061,7 @@
       "publish": true
     },
     {
-      "id": 590,
+      "id": 594,
       "kind": "fn",
       "path": "og.motion.clear",
       "symbol": "og_motion_clear",
@@ -23967,7 +24083,7 @@
       "publish": true
     },
     {
-      "id": 591,
+      "id": 595,
       "kind": "fn",
       "path": "og.motion.status",
       "symbol": "og_motion_status",
@@ -23989,7 +24105,7 @@
       "publish": true
     },
     {
-      "id": 592,
+      "id": 596,
       "kind": "fn",
       "path": "og.motion.capabilities",
       "symbol": "og_motion_capabilities",
@@ -24006,7 +24122,7 @@
       "publish": true
     },
     {
-      "id": 593,
+      "id": 597,
       "kind": "fn",
       "path": "og.motion.poses",
       "symbol": "og_motion_poses",

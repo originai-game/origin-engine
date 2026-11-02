@@ -1363,6 +1363,14 @@ pub trait TimelineApi: Wire {
 pub trait NetApi: Wire {
     /// `og.net.submit`
     fn og_net_submit(&self, world: u32, input: Option<String>) -> String;
+    /// `og.net.shape`
+    fn og_net_shape(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.net.submitInput`
+    fn og_net_submit_input(&self, world: u32, component: String, value: String) -> String;
+    /// `og.net.command`
+    fn og_net_command(&self, world: u32, component: String, value: String) -> String;
+    /// `og.net.commands`
+    fn og_net_commands(&self, world: u32, component: String) -> String;
     /// `og.net.status`
     fn og_net_status(&self, world: u32) -> String;
     /// `og.net.resimulating`
@@ -1982,6 +1990,10 @@ pub const SYMBOLS: &[&str] = &[
     "og_timeline_seek",
     "og_timeline_stop",
     "og_net_submit",
+    "og_net_shape",
+    "og_net_submit_input",
+    "og_net_command",
+    "og_net_commands",
     "og_net_status",
     "og_net_resimulating",
     "og_net_final_hash",

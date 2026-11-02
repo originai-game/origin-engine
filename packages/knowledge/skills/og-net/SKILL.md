@@ -8,6 +8,7 @@ only inputs over a room; og-platform-sdk §2 lists the room calls.
 
 - §1 Two players over a room: the three rules, running and testing in a
   room, and a desync.
+- §2 A game's own input and commands (an RTS's orders).
 
 ## 1. Two players over a room: lockstep
 
@@ -64,3 +65,31 @@ When the worlds part, `og.Desync { tick, peer }` fires once and
 the entity, component and field that differ, with both values: fix the
 system that writes that field. The archetype `templates/archetypes/arena`
 (Coin Duel) is the worked example.
+
+## 2. A game's own input and commands
+
+When og.PlayerInput's buttons and two axes do not fit (an RTS, a card
+game, a builder), call `og.net.shape` in `start`, before the room starts,
+the same on every peer:
+
+```ts
+const Cursor = defineComponent("Cursor", { player: u32(), tick: u32(), x: f32(), y: f32() });
+const Order = defineComponent("Order", { player: u32(), unit: u32(), x: f32(), y: f32() });
+must(og.net.shape(world, { input: Cursor, command: Order, maxCommands: 16 }));
+```
+
+- `input` replaces og.PlayerInput: one entity per player carries it with
+  `player` set to its seat, the engine writes the rest each tick, and the
+  one system that reads og.Input gives it with
+  `og.net.submitInput(world, Cursor, { x, y })`.
+- `command` is a record of one order: `og.net.command(world, Order, {
+  unit, x, y })` sends it once, for the tick inputDelay on, and every
+  peer reads it at that tick with `og.net.commands(world, Order)`, by
+  seat then in the order given, `player` set to the seat that gave it.
+  A rollback never repeats an order: a prediction repeats the cursor
+  alone. A seat gives at most `maxCommands` per tick.
+- Systems that change the world read the input component and
+  `og.net.commands`, never og.Input. Alone, a command acts on the next
+  tick as seat 0's, so the game plays alone too.
+
+`packages/engine/tests/fixtures/rts-commands` is the worked example.

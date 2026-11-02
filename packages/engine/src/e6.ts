@@ -128,6 +128,12 @@ export const platform = Object.freeze({
 
 export const net = Object.freeze({
   submit: (world: W, input?: unknown) => parse(abi().og_net_submit(world.id, json(input))),
+  shape: (world: W, desc?: unknown) => parse(abi().og_net_shape(world.id, json(desc))),
+  submitInput: (world: W, component: { name: string }, value?: unknown) =>
+    parse(abi().og_net_submit_input(world.id, component.name, JSON.stringify(value ?? {}))),
+  command: (world: W, component: { name: string }, value?: unknown) =>
+    parse(abi().og_net_command(world.id, component.name, JSON.stringify(value ?? {}))),
+  commands: (world: W, component: { name: string }) => parse(abi().og_net_commands(world.id, component.name)),
   status: (world: W) => parse(abi().og_net_status(world.id)),
   hash: (world: W) => parse<string>(abi().og_net_hash(world.id)),
   resimulating: (world: W) => abi().og_net_resimulating(world.id) as boolean,

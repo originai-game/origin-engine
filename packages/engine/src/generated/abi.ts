@@ -1213,6 +1213,14 @@ export interface HostAbi<A, V> {
   og_timeline_stop(world: number, entity: number): string;
   /** `og.net.submit` */
   og_net_submit(world: number, input: string | undefined): string;
+  /** `og.net.shape` */
+  og_net_shape(world: number, desc: string | undefined): string;
+  /** `og.net.submitInput` */
+  og_net_submit_input(world: number, component: string, value: string): string;
+  /** `og.net.command` */
+  og_net_command(world: number, component: string, value: string): string;
+  /** `og.net.commands` */
+  og_net_commands(world: number, component: string): string;
   /** `og.net.status` */
   og_net_status(world: number): string;
   /** `og.net.resimulating` */
@@ -1823,6 +1831,10 @@ export const SYMBOLS: readonly string[] = [
   "og_timeline_seek",
   "og_timeline_stop",
   "og_net_submit",
+  "og_net_shape",
+  "og_net_submit_input",
+  "og_net_command",
+  "og_net_commands",
   "og_net_status",
   "og_net_resimulating",
   "og_net_final_hash",

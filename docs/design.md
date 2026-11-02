@@ -1408,6 +1408,22 @@ cross the room. Lockstep rests on §1's determinism and snapshot.
   `og.Input`; it acts `inputDelay` ticks later. Every other system reads
   `og.PlayerInput`. Without a room, or with lockstep off, a submit drives
   the local player on the next tick, so the same game plays alone.
+- **Input shapes and commands.** `og.net.shape` (outside a system, before
+  the room starts, the same on every peer) replaces `og.PlayerInput` with
+  a game's own component (a u32 `player`; a u32 `tick` is written when
+  present; `og.net.submitInput` gives it) and declares a command record:
+  orders that act on one tick only (`og.net.command`, at most
+  `maxCommands` per seat and tick). A seat's input for a tick is its
+  state's packed bytes followed by that tick's commands, packed one after
+  another; `og.net.commands` reads them at the tick on every peer, by seat
+  then in the order given, with `player` set to the giver's seat. A
+  prediction repeats a seat's last state and never its commands, so a
+  rollback never acts on an order twice; a command given while a tick is
+  re-simulated is dropped (its first run sent it). The start message
+  carries the shape's fingerprint (its records' names and field types),
+  and a peer whose shape differs refuses it. Lockstep's messages are at
+  wire version 4 (2 for rollback, 3 for the seat-change epoch, 4 for
+  commands and the shape).
 - **Start.** Until the room holds `players` peers, each world runs freely
   (the lobby). Then the authority starts lockstep: the authority is the
   lowest peer number, and its settings become the room's. Every other

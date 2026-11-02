@@ -123,6 +123,38 @@ struct Net {
     /// re-simulated tick delivers them again.
     delivered: BTreeMap<u64, Vec<(&'static str, Value)>>,
     cost: Cost,
+    shape: Shape,
+    /// This peer's commands given this tick (og.net.command, packed).
+    given: Vec<Vec<u8>>,
+    /// Outside a run: the local player's commands for a tick, given the
+    /// tick before (og.net.commands reads them as seat 0's).
+    local_commands: (u64, Vec<Vec<u8>>),
+}
+
+/// og.net.shape: the game's input record and its commands.
+#[derive(Clone, Debug, Default)]
+struct Shape {
+    /// The input component (empty: og.PlayerInput).
+    input: String,
+    /// The command component (empty: no commands) and its packed size.
+    command: String,
+    command_bytes: usize,
+    max_commands: u32,
+    /// The input record's packed size, when there are commands (og-net's
+    /// state_bytes: a prediction repeats these bytes alone).
+    state_bytes: usize,
+    /// The two layouts' fingerprint (0 for the default shape).
+    fingerprint: u64,
+}
+
+impl Shape {
+    fn input(&self) -> &str {
+        if self.input.is_empty() {
+            PLAYER_INPUT
+        } else {
+            &self.input
+        }
+    }
 }
 
 thread_local! {
@@ -494,6 +526,13 @@ pub fn og_net_submit(world: u32, input: Option<String>) -> String {
             "og.net.submit takes buttons, x, y, aimX and aimY; not '{k}'"
         ));
     }
+    if let Some(input) = with(world, |n| {
+        (!n.shape.input.is_empty()).then(|| n.shape.input.clone())
+    }) {
+        return refuse(format!(
+            "og.net.submit gives og.PlayerInput; og.net.shape named '{input}': og.net.submitInput(world, {input}, {{ ... }})"
+        ));
+    }
     let layout = match engine_of(world)
         .ok()
         .and_then(|e| e.state.borrow().layouts.get(PLAYER_INPUT).cloned())
@@ -507,6 +546,304 @@ pub fn og_net_submit(world: u32, input: Option<String>) -> String {
     };
     with(world, |n| n.ls.set_local(bytes));
     ok_void()
+}
+
+/// The zero value of the input record `name` (its defaults), packed.
+fn state_zero(engine: u32, name: &str) -> Vec<u8> {
+    engine_of(engine)
+        .ok()
+        .and_then(|e| e.state.borrow().layouts.get(name).cloned())
+        .and_then(|l| l.encode(None, None).ok())
+        .unwrap_or_default()
+}
+
+/// A token's name: `{ kind, name }` (a token as JSON) or the name itself.
+fn token_name(v: &Value) -> Option<String> {
+    match v {
+        Value::String(s) => Some(s.clone()),
+        Value::Object(o) => o.get("name").and_then(Value::as_str).map(str::to_string),
+        _ => None,
+    }
+}
+
+/// A game's own component that og.net.shape may name: registered, not the
+/// engine's, with a u32 `player` field.
+fn shape_layout(eng: &Engine, name: &str, what: &str) -> Result<super::codec::Layout, String> {
+    let layout = eng
+        .state
+        .borrow()
+        .layouts
+        .get(name)
+        .cloned()
+        .filter(|l| l.kind == super::codec::RecordKind::Component)
+        .ok_or_else(|| format!("og.net.shape's {what}: '{name}' is not a registered component"))?;
+    if name.starts_with("og.") {
+        return Err(format!(
+            "og.net.shape's {what}: '{name}' is the engine's; name a component of the game's own (defineComponent)"
+        ));
+    }
+    match layout.field("player") {
+        Some((_, f)) if f.kind == super::codec::Kind::U32 => Ok(layout),
+        _ => Err(format!(
+            "og.net.shape's {what}: '{name}' needs a `player: u32()` field (the seat it carries)"
+        )),
+    }
+}
+
+/// FNV-1a over the shape's names and layouts: equal on two peers exactly
+/// when their inputs are read the same way.
+fn fingerprint(parts: &[&super::codec::Layout], max: u32) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut eat = |b: &[u8]| {
+        for x in b {
+            h = (h ^ u64::from(*x)).wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    };
+    for l in parts {
+        eat(l.schema.as_bytes());
+        for f in l.fields.iter() {
+            eat(f.name.as_bytes());
+            eat(format!("{:?}", f.ty).as_bytes());
+        }
+        eat(b";");
+    }
+    eat(&max.to_le_bytes());
+    h.max(1)
+}
+
+pub fn og_net_shape(world: u32, desc: Option<String>) -> String {
+    let d = match parse(desc.as_deref()) {
+        Ok(d) => d,
+        Err(e) => return refuse(e),
+    };
+    let eng = match engine_of(world) {
+        Ok(e) => e,
+        Err(e) => return refuse(e),
+    };
+    let w = match eng.world() {
+        Ok(w) => w,
+        Err(_) => {
+            return refuse(
+                "og.net.shape is called outside a system (setup or start), before the room starts",
+            );
+        }
+    };
+    if with(world, |n| n.ls.running()) {
+        return refuse("og.net.shape: lockstep runs; set the shape before the room starts");
+    }
+    let name = |k: &str| -> Result<Option<String>, String> {
+        match &d[k] {
+            Value::Null => Ok(None),
+            v => token_name(v)
+                .map(Some)
+                .ok_or_else(|| format!("og.net.shape's {k} is a component token, got {v}")),
+        }
+    };
+    let (input, command) = match (name("input"), name("command")) {
+        (Ok(i), Ok(c)) => (i.unwrap_or_default(), c.unwrap_or_default()),
+        (Err(e), _) | (_, Err(e)) => return refuse(e),
+    };
+    let input = if input == PLAYER_INPUT {
+        String::new()
+    } else {
+        input
+    };
+    let max_commands = d["maxCommands"].as_u64().unwrap_or(32).clamp(1, 256) as u32;
+    let input_layout = if input.is_empty() {
+        eng.state.borrow().layouts.get(PLAYER_INPUT).cloned()
+    } else {
+        match shape_layout(&eng, &input, "input") {
+            Ok(l) => Some(l),
+            Err(e) => return refuse(e),
+        }
+    };
+    let Some(input_layout) = input_layout else {
+        return refuse("og.PlayerInput is not registered in this world");
+    };
+    let command_layout = if command.is_empty() {
+        None
+    } else {
+        match shape_layout(&eng, &command, "command") {
+            Ok(l) => Some(l),
+            Err(e) => return refuse(e),
+        }
+    };
+    if !input.is_empty()
+        && let Err(e) = w.grant(NET_SYSTEM, &[input.as_str()])
+    {
+        return refuse(e.reason());
+    }
+    let shape = Shape {
+        fingerprint: if input.is_empty() && command.is_empty() {
+            0
+        } else {
+            let mut parts = vec![&input_layout];
+            parts.extend(command_layout.as_ref());
+            fingerprint(&parts, max_commands)
+        },
+        state_bytes: if command.is_empty() {
+            0
+        } else {
+            input_layout.size()
+        },
+        command_bytes: command_layout.as_ref().map_or(0, |l| l.size()),
+        input,
+        command,
+        max_commands,
+    };
+    with(world, |n| {
+        if n.shape.input != shape.input {
+            n.ls.set_local(Vec::new());
+        }
+        n.shape = shape;
+        n.given.clear();
+    });
+    ok_void()
+}
+
+pub fn og_net_submit_input(world: u32, component: String, value: String) -> String {
+    let (shape, eng) = match engine_of(world) {
+        Ok(e) => (with(world, |n| n.shape.clone()), e),
+        Err(e) => return refuse(e),
+    };
+    if shape.input.is_empty() {
+        return refuse(
+            "og.net.submitInput needs og.net.shape's input; og.PlayerInput's is given with og.net.submit",
+        );
+    }
+    let name =
+        token_name(&serde_json::from_str(&component).unwrap_or(Value::String(component.clone())))
+            .unwrap_or(component);
+    if name != shape.input {
+        return refuse(format!(
+            "og.net.submitInput takes '{}', og.net.shape's input; not '{name}'",
+            shape.input
+        ));
+    }
+    let v = match parse(Some(&value)) {
+        Ok(v) => v,
+        Err(e) => return refuse(e),
+    };
+    if v.get("player").is_some() || v.get("tick").is_some() {
+        return refuse("og.net.submitInput: `player` and `tick` are the engine's");
+    }
+    let Some(layout) = eng.state.borrow().layouts.get(&name).cloned() else {
+        return refuse(format!("'{name}' is not registered in this world"));
+    };
+    match layout.encode(None, Some(&v)) {
+        Ok(bytes) => {
+            with(world, |n| n.ls.set_local(bytes));
+            ok_void()
+        }
+        Err(e) => refuse(e),
+    }
+}
+
+pub fn og_net_command(world: u32, component: String, value: String) -> String {
+    let (shape, eng) = match engine_of(world) {
+        Ok(e) => (with(world, |n| n.shape.clone()), e),
+        Err(e) => return refuse(e),
+    };
+    let name =
+        token_name(&serde_json::from_str(&component).unwrap_or(Value::String(component.clone())))
+            .unwrap_or(component);
+    if shape.command.is_empty() {
+        return refuse(
+            "og.net.command needs a command component: og.net.shape(world, { command: MyCommand })",
+        );
+    }
+    if name != shape.command {
+        return refuse(format!(
+            "og.net.command takes '{}', og.net.shape's command; not '{name}'",
+            shape.command
+        ));
+    }
+    let v = match parse(Some(&value)) {
+        Ok(v) => v,
+        Err(e) => return refuse(e),
+    };
+    if v.get("player").is_some() {
+        return refuse("og.net.command: `player` is the engine's (the seat that gave it)");
+    }
+    let Some(layout) = eng.state.borrow().layouts.get(&name).cloned() else {
+        return refuse(format!("'{name}' is not registered in this world"));
+    };
+    let bytes = match layout.encode(None, Some(&v)) {
+        Ok(b) => b,
+        Err(e) => return refuse(e),
+    };
+    let tick = tick_of(world);
+    with(world, |n| {
+        // A re-simulated tick's commands went out on its first run.
+        if n.ls.resimulating(tick) {
+            return ok_void();
+        }
+        if n.given.len() >= shape.max_commands as usize {
+            return refuse(format!(
+                "og.net.command: {} commands this tick already (og.net.shape's maxCommands)",
+                shape.max_commands
+            ));
+        }
+        n.given.push(bytes);
+        ok_void()
+    })
+}
+
+pub fn og_net_commands(world: u32, component: String) -> String {
+    let (shape, eng) = match engine_of(world) {
+        Ok(e) => (with(world, |n| n.shape.clone()), e),
+        Err(e) => return refuse(e),
+    };
+    let name =
+        token_name(&serde_json::from_str(&component).unwrap_or(Value::String(component.clone())))
+            .unwrap_or(component);
+    if shape.command.is_empty() {
+        return super::ok(json!([]));
+    }
+    if name != shape.command {
+        return refuse(format!(
+            "og.net.commands reads '{}', og.net.shape's command; not '{name}'",
+            shape.command
+        ));
+    }
+    let Some(layout) = eng.state.borrow().layouts.get(&name).cloned() else {
+        return refuse(format!("'{name}' is not registered in this world"));
+    };
+    let tick = tick_of(world);
+    let size = shape.command_bytes.max(1);
+    let by_seat: Vec<(u32, Vec<Vec<u8>>)> = with(world, |n| {
+        if !n.ls.running() {
+            return if n.local_commands.0 == tick {
+                vec![(0, n.local_commands.1.clone())]
+            } else {
+                Vec::new()
+            };
+        }
+        (0..n.ls.players().unwrap_or(0))
+            .map(|seat| {
+                let cmds =
+                    n.ls.input(tick, seat)
+                        .and_then(|b| b.get(shape.state_bytes..))
+                        .unwrap_or_default();
+                let list = cmds
+                    .chunks_exact(size)
+                    .take(shape.max_commands as usize)
+                    .map(<[u8]>::to_vec)
+                    .collect();
+                (seat, list)
+            })
+            .collect()
+    });
+    let mut out = Vec::new();
+    for (seat, list) in by_seat {
+        for c in list {
+            match layout.encode(Some(&c), Some(&json!({ "player": seat }))) {
+                Ok(b) => out.push(layout.decode(&b)),
+                Err(e) => return refuse(e),
+            }
+        }
+    }
+    super::ok(Value::Array(out))
 }
 
 pub fn og_net_status(world: u32) -> String {
@@ -609,6 +946,8 @@ fn config(eng: &Engine, world: &World) -> Config {
         stall_timeout: u("stallTimeout", 5000).min(600_000),
         rejoin: v["rejoin"].as_bool().unwrap_or(true),
         budget: with(eng.id, |n| n.cost.budget(f64::from(world.time().dt))),
+        state_bytes: with(eng.id, |n| n.shape.state_bytes as u32),
+        shape: with(eng.id, |n| n.shape.fingerprint),
     }
 }
 
@@ -704,6 +1043,19 @@ pub(crate) fn after_tick(engine: u32, world: &mut World) {
         if let Some(t0) = n.cost.started.take() {
             Cost::note(&mut n.cost.tick_ms, super::probe::now_ms() - t0);
         }
+        // This tick's commands go with this peer's input inputDelay on,
+        // after its state (whole, so the commands start where every peer
+        // reads them).
+        let given = std::mem::take(&mut n.given);
+        if !given.is_empty() {
+            if n.ls.local().len() != n.shape.state_bytes {
+                let zero = state_zero(engine, n.shape.input());
+                n.ls.set_local(zero);
+            }
+            for c in &given {
+                n.ls.push_commands(c);
+            }
+        }
         n.ls.after_tick(tick, &mut || {
             let bytes = world.snapshot();
             (shared_hash(&bytes).unwrap_or(0), bytes)
@@ -769,35 +1121,41 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                 .filter_map(|n| st.layouts.get(*n).map(|l| (n.to_string(), l.clone())));
                 og_core::sort::map(rows)
             };
-            let (events, desync, running, seat, players, local, seats) = with(engine_id, |n| {
-                for m in n.messages.iter_mut().filter(|m| m.tick.is_none()) {
-                    m.tick = Some(tick);
-                }
-                // A re-simulated tick hears what its first run heard; a new
-                // tick takes what arrived, kept while it may run again.
-                let events = if n.ls.resimulating(tick) {
-                    n.delivered.get(&tick).cloned().unwrap_or_default()
-                } else {
-                    let e = std::mem::take(&mut n.pending);
-                    if n.ls.running() {
-                        if !e.is_empty() {
-                            n.delivered.insert(tick, e.clone());
-                        }
-                        let floor = n.ls.final_tick().unwrap_or(tick);
-                        n.delivered.retain(|t, _| *t >= floor);
+            let (events, desync, running, seat, players, local, seats, input) =
+                with(engine_id, |n| {
+                    for m in n.messages.iter_mut().filter(|m| m.tick.is_none()) {
+                        m.tick = Some(tick);
                     }
-                    e
-                };
-                (
-                    events,
-                    n.ls.take_desync(),
-                    n.ls.running(),
-                    n.ls.seat(tick),
-                    n.ls.players(),
-                    n.ls.local().to_vec(),
-                    n.ls.seat_events(tick),
-                )
-            });
+                    // Outside a run, the commands given last tick are this one's.
+                    if !n.ls.running() {
+                        n.local_commands = (tick, std::mem::take(&mut n.given));
+                    }
+                    // A re-simulated tick hears what its first run heard; a new
+                    // tick takes what arrived, kept while it may run again.
+                    let events = if n.ls.resimulating(tick) {
+                        n.delivered.get(&tick).cloned().unwrap_or_default()
+                    } else {
+                        let e = std::mem::take(&mut n.pending);
+                        if n.ls.running() {
+                            if !e.is_empty() {
+                                n.delivered.insert(tick, e.clone());
+                            }
+                            let floor = n.ls.final_tick().unwrap_or(tick);
+                            n.delivered.retain(|t, _| *t >= floor);
+                        }
+                        e
+                    };
+                    (
+                        events,
+                        n.ls.take_desync(),
+                        n.ls.running(),
+                        n.ls.seat(tick),
+                        n.ls.players(),
+                        n.ls.local().to_vec(),
+                        n.ls.seat_events(tick),
+                        n.shape.input().to_string(),
+                    )
+                });
             for (name, v) in &events {
                 send(ctx, &layouts, name, v)?;
             }
@@ -842,20 +1200,45 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                     ctx.set_resource_bytes(id, &bytes)?;
                 }
             }
-            // og.PlayerInput: each seat's input for this tick.
-            let Some(layout) = layouts.get(PLAYER_INPUT) else {
-                return Ok(());
+            // og.PlayerInput (or og.net.shape's input): each seat's input
+            // for this tick.
+            let (layout, entities) = if input == PLAYER_INPUT {
+                let Some(layout) = layouts.get(PLAYER_INPUT).cloned() else {
+                    return Ok(());
+                };
+                let e: Vec<og_ecs::Entity> =
+                    ctx.query(0)?.flat_map(|v| v.entities().to_vec()).collect();
+                (layout, e)
+            } else {
+                let Some(layout) = eng.state.borrow().layouts.get(&input).cloned() else {
+                    return Ok(());
+                };
+                let q = QueryDesc {
+                    write: vec![input.clone()],
+                    ..QueryDesc::default()
+                };
+                let e: Vec<og_ecs::Entity> = ctx
+                    .query_with(&q)?
+                    .flat_map(|v| v.entities().to_vec())
+                    .collect();
+                (layout, e)
             };
-            let id = ctx.id_by_name(PLAYER_INPUT)?;
-            let entities: Vec<og_ecs::Entity> =
-                ctx.query(0)?.flat_map(|v| v.entities().to_vec()).collect();
             if entities.is_empty() {
                 return Ok(());
             }
+            let id = ctx.id_by_name(&input)?;
+            let (player_at, _) = layout.field("player").expect("og.net.shape checked it");
+            let stamp = |player: u32| {
+                if layout.field("tick").is_some() {
+                    json!({ "player": player, "tick": tick })
+                } else {
+                    json!({ "player": player })
+                }
+            };
             let zero = layout.encode(None, None).unwrap_or_default();
             for e in entities {
                 let current = ctx.get_bytes(e, id)?;
-                let player = layout.decode_one(&current, 0).as_u64().unwrap_or(0) as u32;
+                let player = layout.decode_one(&current, player_at).as_u64().unwrap_or(0) as u32;
                 let input: Vec<u8> = if running {
                     with(engine_id, |n| n.ls.input(tick, player).map(<[u8]>::to_vec))
                         .unwrap_or_else(|| zero.clone())
@@ -864,13 +1247,10 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                 } else {
                     zero.clone()
                 };
-                let base = if input.len() == zero.len() {
-                    &input
-                } else {
-                    &zero
-                };
+                // Its state: the input's first bytes (commands follow them).
+                let base = input.get(..zero.len()).unwrap_or(&zero);
                 let bytes = layout
-                    .encode(Some(base), Some(&json!({ "player": player, "tick": tick })))
+                    .encode(Some(base), Some(&stamp(player)))
                     .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
                 if bytes != current {
                     ctx.set_bytes(e, id, &bytes)?;

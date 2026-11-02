@@ -182,10 +182,11 @@ pub use nav::{
     og_nav_set_link, og_nav_set_link_open, og_nav_set_obstacle,
 };
 pub use net::{
-    og_net_final_hash, og_net_hash, og_net_resimulating, og_net_status, og_net_submit,
-    og_platform_room_create, og_platform_room_info, og_platform_room_join, og_platform_room_leave,
-    og_platform_room_message, og_platform_room_peers, og_platform_room_send, og_room_deliver,
-    og_room_set_host, og_room_take, world_snapshot_bytes,
+    og_net_command, og_net_commands, og_net_final_hash, og_net_hash, og_net_resimulating,
+    og_net_shape, og_net_status, og_net_submit, og_net_submit_input, og_platform_room_create,
+    og_platform_room_info, og_platform_room_join, og_platform_room_leave, og_platform_room_message,
+    og_platform_room_peers, og_platform_room_send, og_room_deliver, og_room_set_host, og_room_take,
+    world_snapshot_bytes,
 };
 /// The counting allocator the hosts install (`#[global_allocator]`), for the probe's `memory`.
 pub use og_core::alloc::Counting as CountingAlloc;

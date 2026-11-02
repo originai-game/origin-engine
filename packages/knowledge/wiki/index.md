@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2236 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2241 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -831,6 +831,7 @@ Field units the docs and Tune use.
 | [`Neighbour`](world.md#type-Neighbour) | struct | world | — |
 | [`NetMode`](net.md#type-NetMode) | enum | net | — |
 | [`NetMode()`](net.md#column-NetMode) | column kind | net | — |
+| [`NetShapeDesc`](net.md#type-NetShapeDesc) | desc struct | net | — |
 | [`NodeGraphDesc`](ui.md#type-NodeGraphDesc) | desc struct | ui | — |
 | [`NodeGraphResult`](ui.md#type-NodeGraphResult) | struct | ui | — |
 | [`NoiseDesc`](ai.md#type-NoiseDesc) | desc struct | ai | — |
@@ -1091,11 +1092,15 @@ Field units the docs and Tune use.
 | [`og.NavAgent`](nav.md#record-NavAgent) | component | nav | — |
 | [`og.NavFilter`](nav.md#record-NavFilter) | component | nav | — |
 | [`og.NavLinkReached`](nav.md#record-NavLinkReached) | event | nav | — |
+| [`og.net.command`](net.md#fn-command) | function | net | `og_net_command` |
+| [`og.net.commands`](net.md#fn-commands) | function | net | `og_net_commands` |
 | [`og.net.finalHash`](net.md#fn-finalHash) | function | net | `og_net_final_hash` |
 | [`og.net.hash`](net.md#fn-hash) | function | net | `og_net_hash` |
 | [`og.net.resimulating`](net.md#fn-resimulating) | function | net | `og_net_resimulating` |
+| [`og.net.shape`](net.md#fn-shape) | function | net | `og_net_shape` |
 | [`og.net.status`](net.md#fn-status) | function | net | `og_net_status` |
 | [`og.net.submit`](net.md#fn-submit) | function | net | `og_net_submit` |
+| [`og.net.submitInput`](net.md#fn-submitInput) | function | net | `og_net_submit_input` |
 | [`og.Occluder2D`](render.md#record-Occluder2D) | component | render | — |
 | [`og.OrbitCamera`](camera.md#record-OrbitCamera) | component | camera | — |
 | [`og.Parent`](transform.md#record-Parent) | component | transform | — |

@@ -3661,6 +3661,30 @@ pub fn og_net_submit(env: Env, world: u32, input: Option<String>) -> String {
     <Host as NetApi>::og_net_submit(&Host, world, input)
 }
 
+#[napi(js_name = "og_net_shape")]
+pub fn og_net_shape(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NetApi>::og_net_shape(&Host, world, desc)
+}
+
+#[napi(js_name = "og_net_submit_input")]
+pub fn og_net_submit_input(env: Env, world: u32, component: String, value: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NetApi>::og_net_submit_input(&Host, world, component, value)
+}
+
+#[napi(js_name = "og_net_command")]
+pub fn og_net_command(env: Env, world: u32, component: String, value: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NetApi>::og_net_command(&Host, world, component, value)
+}
+
+#[napi(js_name = "og_net_commands")]
+pub fn og_net_commands(env: Env, world: u32, component: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NetApi>::og_net_commands(&Host, world, component)
+}
+
 #[napi(js_name = "og_net_status")]
 pub fn og_net_status(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

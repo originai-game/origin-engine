@@ -46121,6 +46121,33 @@ export interface InputDesc {
   readonly aimY?: number;
 }
 
+/**
+ * A game's own input shape (og.net.shape): the record each seat's input fills in place of og.PlayerInput, and the commands a seat gives on single ticks (an RTS's orders).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NetShapeDesc {
+  /**
+   * The component every seat's input fills, one entity per player, in place of og.PlayerInput: a game's own with a u32 `player` field (the seat it carries, set by the game) and any others (a u32 `tick`, when it has one, is written as og.PlayerInput's is). og.net.submitInput gives this peer's. Null keeps og.PlayerInput.
+   *
+   * @default null
+   */
+  readonly input?: AnyComponent | null;
+  /**
+   * The component whose values are the commands (og.net.command, read with og.net.commands): a game's own with a u32 `player` field, which the engine sets to the seat that gave the command. Used as a record shape only: no entity needs to carry it. Null: no commands.
+   *
+   * @default null
+   */
+  readonly command?: AnyComponent | null;
+  /**
+   * The most commands one seat gives for one tick; og.net.command refuses one more.
+   *
+   * @default 32
+   * @range 1..256
+   */
+  readonly maxCommands?: number;
+}
+
 /** One peer's hold on a seat. */
 export interface LockstepSeat {
   /** The seat. */
@@ -46220,6 +46247,10 @@ export interface LockstepStatus {
    */
   readonly snapshotBytes: number;
 }
+
+
+
+
 
 
 
@@ -52429,6 +52460,40 @@ export declare namespace og {
      * @returns Refused for an axis that is not finite.
      */
     function submit(world: World, input?: InputDesc): Result<void>;
+    /**
+     * Give the room a game's own input shape: a component of the game's in place of og.PlayerInput, and commands (an RTS's orders, a card played, a unit built) that act on one tick only, never repeated by a prediction. Call it in setup or start, outside a system and before the room starts, the same on every peer: a peer whose shape differs is refused the room's start. Without a call, og.PlayerInput and no commands.
+     *
+     * @param world The world.
+     * @param desc The input component, the command component and the most commands per tick.
+     * @returns Refused inside a system, while lockstep runs, or for a component that is not a game's own with a u32 `player` field.
+     */
+    function shape(world: World, desc?: NetShapeDesc): Result<void>;
+    /**
+     * Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`player` and `tick` are the engine's). It holds until the next call. Callable from a system.
+     *
+     * @param world The world.
+     * @param component The input component og.net.shape named.
+     * @param value Its fields; omitted ones take their defaults.
+     * @returns Refused for another component than the shape's, or a field that does not fit.
+     */
+    function submitInput<C extends AnyComponent>(world: World, component: C, value: Partial<Value<C>>): Result<void>;
+    /**
+     * Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system.
+     *
+     * @param world The world.
+     * @param component The command component og.net.shape named.
+     * @param value Its fields (`player` is the engine's).
+     * @returns Refused with no command shape, for another component, or past maxCommands this tick.
+     */
+    function command<C extends AnyComponent>(world: World, component: C, value: Partial<Value<C>>): Result<void>;
+    /**
+     * The commands every seat gave for the tick now running, the same list on every peer: by seat, then in the order given, each with `player` set to its seat. Empty without a command shape. Callable from a system.
+     *
+     * @param world The world.
+     * @param component The command component og.net.shape named.
+     * @returns Refused for another component than the shape's.
+     */
+    function commands<C extends AnyComponent>(world: World, component: C): Result<readonly Value<C>[]>;
     /**
      * Lockstep on this peer: running, the seats and who it waits for.
      *

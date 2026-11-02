@@ -19204,6 +19204,7 @@
         "SeatRejoined",
         "PeerStalled",
         "InputDesc",
+        "NetShapeDesc",
         "LockstepSeat",
         "LockstepStatus"
       ],
@@ -19228,6 +19229,120 @@
           ],
           "returns": "Result<Void>",
           "returnsDoc": "Refused for an axis that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "shape",
+          "doc": "Give the room a game's own input shape: a component of the game's in place of og.PlayerInput, and commands (an RTS's orders, a card played, a unit built) that act on one tick only, never repeated by a prediction. Call it in setup or start, outside a system and before the room starts, the same on every peer: a peer whose shape differs is refused the room's start. Without a call, og.PlayerInput and no commands.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "NetShapeDesc",
+              "optional": true,
+              "doc": "The input component, the command component and the most commands per tick."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused inside a system, while lockstep runs, or for a component that is not a game's own with a u32 `player` field.",
+          "publish": true
+        },
+        {
+          "name": "submitInput",
+          "doc": "Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`player` and `tick` are the engine's). It holds until the next call. Callable from a system.",
+          "generics": [
+            {
+              "name": "C",
+              "bound": "AnyComponent"
+            }
+          ],
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "component",
+              "type": "C",
+              "optional": false,
+              "doc": "The input component og.net.shape named."
+            },
+            {
+              "name": "value",
+              "type": "Partial<Value<C>>",
+              "optional": false,
+              "doc": "Its fields; omitted ones take their defaults."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for another component than the shape's, or a field that does not fit.",
+          "publish": true
+        },
+        {
+          "name": "command",
+          "doc": "Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system.",
+          "generics": [
+            {
+              "name": "C",
+              "bound": "AnyComponent"
+            }
+          ],
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "component",
+              "type": "C",
+              "optional": false,
+              "doc": "The command component og.net.shape named."
+            },
+            {
+              "name": "value",
+              "type": "Partial<Value<C>>",
+              "optional": false,
+              "doc": "Its fields (`player` is the engine's)."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused with no command shape, for another component, or past maxCommands this tick.",
+          "publish": true
+        },
+        {
+          "name": "commands",
+          "doc": "The commands every seat gave for the tick now running, the same list on every peer: by seat, then in the order given, each with `player` set to its seat. Empty without a command shape. Callable from a system.",
+          "generics": [
+            {
+              "name": "C",
+              "bound": "AnyComponent"
+            }
+          ],
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "component",
+              "type": "C",
+              "optional": false,
+              "doc": "The command component og.net.shape named."
+            }
+          ],
+          "returns": "Result<List<Value<C>>>",
+          "returnsDoc": "Refused for another component than the shape's.",
           "publish": true
         },
         {
@@ -77232,6 +77347,48 @@
           "type": "number",
           "description": "A second axis.",
           "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "NetShapeDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "net",
+      "description": "A game's own input shape (og.net.shape): the record each seat's input fills in place of og.PlayerInput, and the commands a seat gives on single ticks (an RTS's orders).",
+      "type": "object",
+      "properties": {
+        "input": {
+          "anyOf": [
+            {
+              "x-og-type": "AnyComponent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The component every seat's input fills, one entity per player, in place of og.PlayerInput: a game's own with a u32 `player` field (the seat it carries, set by the game) and any others (a u32 `tick`, when it has one, is written as og.PlayerInput's is). og.net.submitInput gives this peer's. Null keeps og.PlayerInput.",
+          "default": null
+        },
+        "command": {
+          "anyOf": [
+            {
+              "x-og-type": "AnyComponent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The component whose values are the commands (og.net.command, read with og.net.commands): a game's own with a u32 `player` field, which the engine sets to the seat that gave the command. Used as a record shape only: no entity needs to carry it. Null: no commands.",
+          "default": null
+        },
+        "maxCommands": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most commands one seat gives for one tick; og.net.command refuses one more.",
+          "default": 32,
+          "minimum": 1,
+          "maximum": 256
         }
       },
       "additionalProperties": false

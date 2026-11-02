@@ -123,6 +123,18 @@ module net {
     field aimY f32 "A second axis."
   }
 
+  struct NetShapeDesc {
+    doc "A game's own input shape (og.net.shape): the record each seat's input fills in place of og.PlayerInput, and the commands a seat gives on single ticks (an RTS's orders)."
+    desc true
+    field input Option.AnyComponent "The component every seat's input fills, one entity per player, in place of og.PlayerInput: a game's own with a u32 `player` field (the seat it carries, set by the game) and any others (a u32 `tick`, when it has one, is written as og.PlayerInput's is). og.net.submitInput gives this peer's. Null keeps og.PlayerInput."
+    field command Option.AnyComponent "The component whose values are the commands (og.net.command, read with og.net.commands): a game's own with a u32 `player` field, which the engine sets to the seat that gave the command. Used as a record shape only: no entity needs to carry it. Null: no commands."
+    field maxCommands u32 "The most commands one seat gives for one tick; og.net.command refuses one more." {
+      default 32
+      min 1
+      max 256
+    }
+  }
+
   struct LockstepSeat {
     doc "One peer's hold on a seat."
     field seat u32 "The seat."
@@ -182,6 +194,39 @@ module net {
     param world World "The world."
     param input InputDesc "The buttons and axes."
     returns Result.Void "Refused for an axis that is not finite."
+  }
+
+  fn shape {
+    doc "Give the room a game's own input shape: a component of the game's in place of og.PlayerInput, and commands (an RTS's orders, a card played, a unit built) that act on one tick only, never repeated by a prediction. Call it in setup or start, outside a system and before the room starts, the same on every peer: a peer whose shape differs is refused the room's start. Without a call, og.PlayerInput and no commands."
+    param world World "The world."
+    param desc NetShapeDesc "The input component, the command component and the most commands per tick."
+    returns Result.Void "Refused inside a system, while lockstep runs, or for a component that is not a game's own with a u32 `player` field."
+  }
+
+  fn submitInput {
+    doc "Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`player` and `tick` are the engine's). It holds until the next call. Callable from a system."
+    generic C AnyComponent
+    param world World "The world."
+    param component C "The input component og.net.shape named."
+    param value Partial.Value.C "Its fields; omitted ones take their defaults."
+    returns Result.Void "Refused for another component than the shape's, or a field that does not fit."
+  }
+
+  fn command {
+    doc "Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system."
+    generic C AnyComponent
+    param world World "The world."
+    param component C "The command component og.net.shape named."
+    param value Partial.Value.C "Its fields (`player` is the engine's)."
+    returns Result.Void "Refused with no command shape, for another component, or past maxCommands this tick."
+  }
+
+  fn commands {
+    doc "The commands every seat gave for the tick now running, the same list on every peer: by seat, then in the order given, each with `player` set to its seat. Empty without a command shape. Callable from a system."
+    generic C AnyComponent
+    param world World "The world."
+    param component C "The command component og.net.shape named."
+    returns Result.List.Value.C "Refused for another component than the shape's."
   }
 
   fn status {

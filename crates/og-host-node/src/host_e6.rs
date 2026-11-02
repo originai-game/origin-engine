@@ -265,6 +265,18 @@ impl NetApi for NodeHost {
     fn og_net_submit(&self, world: u32, input: Option<String>) -> String {
         rt::og_net_submit(world, input)
     }
+    fn og_net_shape(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_net_shape(world, desc)
+    }
+    fn og_net_submit_input(&self, world: u32, component: String, value: String) -> String {
+        rt::og_net_submit_input(world, component, value)
+    }
+    fn og_net_command(&self, world: u32, component: String, value: String) -> String {
+        rt::og_net_command(world, component, value)
+    }
+    fn og_net_commands(&self, world: u32, component: String) -> String {
+        rt::og_net_commands(world, component)
+    }
     fn og_net_status(&self, world: u32) -> String {
         rt::og_net_status(world)
     }

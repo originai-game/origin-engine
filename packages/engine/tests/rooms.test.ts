@@ -41,7 +41,7 @@ type Summary = {
   netHash: string;
   confirmedHash: string | null;
   lockstep: { running: boolean; peer: number; startTick: number | null; desync: number | null; rollback: boolean; rollbacks: number; resimulatedTicks: number; finalTick: number | null; drops: number };
-  facts: { droppedAt: number; drops: number; rejoinedAt: number; rejoins: number } | null;
+  facts: { droppedAt: number; drops: number; rejoinedAt: number; rejoins: number } & Record<string, unknown> | null;
 };
 
 /**
@@ -213,6 +213,32 @@ test("rollback through latency, jitter and loss confirms tick 600 as lockstep do
   // It did roll back: predictions went wrong and ticks ran again.
   expect(roll[0]!.lockstep.rollbacks + roll[1]!.lockstep.rollbacks).toBeGreaterThan(10);
   expect(roll[0]!.lockstep.resimulatedTicks + roll[1]!.lockstep.resimulatedTicks).toBeGreaterThan(roll[0]!.lockstep.rollbacks);
+}, 300_000);
+
+// G2-7 batch 4: a game's own input shape (og.net.shape) over a room. Each
+// seat's input is the fixture's Cursor, and its orders are commands: 30 per
+// seat, given by the tick alone. Every order acts once on every peer, by the
+// seat that gave it, in lockstep and in rollback through a lossy relay (a
+// prediction repeats a seat's cursor, never its orders), and both sessions
+// confirm one world.
+test("an RTS's orders cross the room as commands once each, in lockstep and in rollback", async () => {
+  const project = "packages/engine/tests/fixtures/rts-commands";
+  const lock = await pair(project, "rts-lockstep", [["--ticks", "600"], ["--ticks", "600"]]);
+  const roll = await pair(
+    project,
+    "rts-rollback",
+    [["--ticks", "600", "--setup", "rollback:8"], ["--ticks", "600", "--setup", "rollback:8"]],
+    ["--latency", "80", "--jitter", "30", "--loss", "5", "--seed", "3"],
+  );
+  for (const r of [...lock, ...roll]) {
+    expect(r.lockstep.startTick!).toBeLessThan(58);
+    expect(r.lockstep.desync).toBeNull();
+    // Orders at ticks 100 to 380 act inputDelay (2) ticks on: the last at 382.
+    expect(r.facts).toMatchObject({ orders0: 30, orders1: 30, lastTick: 382 });
+    expect(r.confirmedHash).toBe(lock[0]!.confirmedHash);
+  }
+  expect(lock[0]!.confirmedHash).not.toBeNull();
+  expect(roll[0]!.lockstep.rollbacks + roll[1]!.lockstep.rollbacks).toBeGreaterThan(5);
 }, 300_000);
 
 test("a peer frozen past stallTimeout is dropped at one tick, then takes its seat back from the room's world", async () => {

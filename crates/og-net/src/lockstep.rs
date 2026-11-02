@@ -38,6 +38,11 @@
 //!   now known (*re-simulated* ticks, [`Lockstep::resimulating`]). How far
 //!   a peer predicts only decides when it waits: the confirmed world is a
 //!   function of the confirmed inputs alone, so every peer agrees on it.
+//! - **Commands.** With [`Config::state_bytes`] set, an input is that many
+//!   bytes of state followed by the tick's commands
+//!   ([`Lockstep::push_commands`]): a prediction repeats the state alone,
+//!   so a command is never acted on at a tick its giver did not send it
+//!   for. A `start` whose [`Config::shape`] differs is refused.
 //! - **Late join.** A peer that joins a running room is admitted by the
 //!   authority at its next boundary T: a free seat (one never held, or
 //!   left) from `T + inputDelay`, or none (a spectator). The authority
@@ -75,7 +80,7 @@ use std::collections::BTreeSet;
 
 /// The version of lockstep's messages: a `start` of another version is
 /// refused, so peers on different engines never play together.
-pub const WIRE_VERSION: u64 = 3;
+pub const WIRE_VERSION: u64 = 4;
 
 /// og.Lockstep's settings, as the game set them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -98,6 +103,15 @@ pub struct Config {
     /// Whether a dropped peer that comes back, or a newcomer, takes a seat
     /// a dropped or departed peer held (else such a seat stays empty).
     pub rejoin: bool,
+    /// The bytes of a seat's input that hold its state (og.net.shape's
+    /// input record); what follows them are that tick's commands. A
+    /// prediction repeats the state alone, never a command. 0: the whole
+    /// input is state (no commands).
+    pub state_bytes: u32,
+    /// The game's input shape (og.net.shape), as a fingerprint: a start
+    /// from a peer whose shape differs is refused, since its inputs would
+    /// be read through another layout.
+    pub shape: u64,
 }
 
 impl Default for Config {
@@ -112,6 +126,8 @@ impl Default for Config {
             budget: u32::MAX,
             stall_timeout: 5000,
             rejoin: true,
+            state_bytes: 0,
+            shape: 0,
         }
     }
 }
@@ -180,6 +196,8 @@ struct Run {
     stall_timeout: u64,
     /// Whether a seat a dropped peer held is taken again.
     rejoin: bool,
+    /// The input shape's fingerprint ([`Config::shape`]).
+    shape: u64,
 }
 
 impl Run {
@@ -280,6 +298,11 @@ pub struct Lockstep {
     own: IdMap<u64, Vec<u8>>,
     /// The input og.net.submit gave last (packed og.PlayerInput).
     local: Vec<u8>,
+    /// The commands given since this peer's last input went out
+    /// (og.net.command), sent once after the state of the next.
+    commands: Vec<u8>,
+    /// [`Config::state_bytes`], as the last gate read it.
+    state_bytes: usize,
     /// Every tick up to this one is confirmed.
     confirmed: u64,
     /// The furthest world tick reached: below it a tick is re-simulated.
@@ -486,6 +509,16 @@ impl Lockstep {
 
     pub fn local(&self) -> &[u8] {
         &self.local
+    }
+
+    /// Commands (og.net.command, packed) for this peer's next input: sent
+    /// once, after its state, on the next tick run for the first time.
+    /// Outside a run they are not lockstep's (the runtime plays them on
+    /// the local player), and dropped here.
+    pub fn push_commands(&mut self, bytes: &[u8]) {
+        if self.run.is_some() {
+            self.commands.extend_from_slice(bytes);
+        }
     }
 
     /// Seat `seat`'s input for `tick`, as the tick runs it (in rollback, a
@@ -1202,11 +1235,17 @@ impl Lockstep {
                 if let Some(b) = have.and_then(|m| m.get(&seat)) {
                     return b.clone();
                 }
-                self.inputs
+                // A prediction repeats the last state, never its commands.
+                let mut b = self
+                    .inputs
                     .range(hold.since..tick)
                     .rev()
                     .find_map(|(_, m)| m.get(&seat).cloned())
-                    .unwrap_or_default()
+                    .unwrap_or_default();
+                if self.state_bytes > 0 {
+                    b.truncate(self.state_bytes);
+                }
+                b
             })
             .collect()
     }
@@ -1215,7 +1254,14 @@ impl Lockstep {
     /// `snapshot` gives the world's snapshot now, when one is needed (to
     /// start, or for a newcomer).
     pub fn gate(&mut self, cfg: &Config, tick: u64, snapshot: &mut dyn FnMut() -> Vec<u8>) -> Gate {
+        self.state_bytes = cfg.state_bytes as usize;
         if let Some((run, at, bytes)) = self.handover.take() {
+            if run.shape != cfg.shape {
+                self.notes.push(format!(
+                    "lockstep: the start of tick {at} was refused: its input shape (og.net.shape) differs from this peer's; every peer sets the same one before the room starts"
+                ));
+                return Gate::Go;
+            }
             self.notes.push(format!(
                 "lockstep: joined at tick {at} as {} of {} ({} peers running, {})",
                 match self.me.and_then(|me| run.open_seat(me)) {
@@ -1361,6 +1407,7 @@ impl Lockstep {
             admitted: peers.iter().copied().collect(),
             stall_timeout: u64::from(cfg.stall_timeout),
             rejoin: cfg.rejoin,
+            shape: cfg.shape,
         };
         let msg = start_msg(&run, tick, &bytes, &self.inputs, &self.seat_last);
         self.notes.push(format!(
@@ -1487,8 +1534,10 @@ impl Lockstep {
         if tick_after > self.frontier {
             self.frontier = tick_after;
             let target = ran + delay;
+            let commands = std::mem::take(&mut self.commands);
             if let Some(seat) = self.me.and_then(|me| run.seat_of(me, target)) {
-                let bytes = self.local.clone();
+                let mut bytes = self.local.clone();
+                bytes.extend_from_slice(&commands);
                 self.own.insert(target, bytes.clone());
                 self.take_input(target, seat, bytes);
             }
@@ -1667,6 +1716,7 @@ fn start_msg(
         "admitted": run.admitted,
         "stallTimeout": run.stall_timeout,
         "rejoin": run.rejoin,
+        "shape": hex(run.shape),
         "inputs": inputs,
         "last": seat_last.iter().map(|(s, t)| json!([s, t])).collect::<Vec<_>>(),
         "snapshot": base64::encode(snapshot),
@@ -1709,6 +1759,7 @@ fn parse_run(d: &Value) -> Option<Parsed> {
         admitted: set("admitted")?,
         stall_timeout: u64_of(&d["stallTimeout"]).unwrap_or(5000),
         rejoin: d["rejoin"].as_bool().unwrap_or(true),
+        shape: unhex(&d["shape"]).unwrap_or(0),
     };
     let inputs = d["inputs"]
         .as_array()?
@@ -1979,9 +2030,25 @@ mod tests {
                     p.first += 1;
                 }
                 p.ls.set_local(made(p.id, t));
+                if let Some(c) = command(&p.cfg, t)
+                    && !p.ls.resimulating(t)
+                {
+                    p.ls.push_commands(&c);
+                }
                 let inputs: Vec<Vec<u8>> = (0..p.ls.players().unwrap_or(0))
                     .map(|s| p.ls.input(t, s).unwrap_or(&[]).to_vec())
                     .collect();
+                // A prediction carries the seat's state alone, never a command.
+                for (s, b) in inputs.iter().enumerate() {
+                    let real =
+                        p.ls.inputs
+                            .get(&t)
+                            .is_some_and(|m| m.contains_key(&(s as u32)));
+                    assert!(
+                        real || p.cfg.state_bytes == 0 || b.len() <= p.cfg.state_bytes as usize,
+                        "tick {t} seat {s} ran on a predicted command: {b:?}"
+                    );
+                }
                 let mut state = fold(p.world.state, t, &inputs);
                 if p.world.chaos.is_some_and(|c| t >= c) {
                     state ^= 0x9e37_79b9;
@@ -2067,15 +2134,29 @@ mod tests {
         }
     }
 
+    /// The command a peer gives at tick `t` when its config has a shape
+    /// with commands: one every 5 ticks, after its 2 bytes of state.
+    fn command(cfg: &Config, t: u64) -> Option<Vec<u8>> {
+        (cfg.state_bytes > 0 && t.is_multiple_of(5)).then(|| vec![0xc0, (t % 251) as u8])
+    }
+
     /// The world of tick `until` from the inputs alone: seat s held by the
     /// peer of number s from tick `delay`, each making [`made`].
     fn offline(players: u32, delay: u64, until: u64) -> u64 {
+        offline_with(&cfg(players, delay as u32, 1), until)
+    }
+
+    /// [`offline`], with the commands `cfg` gives ([`command`]).
+    fn offline_with(cfg: &Config, until: u64) -> u64 {
+        let (players, delay) = (cfg.players, u64::from(cfg.input_delay));
         let mut state = 7;
         for t in 0..until {
             let inputs: Vec<Vec<u8>> = (0..players)
                 .map(|s| {
                     if t >= delay {
-                        made(s, t - delay)
+                        let mut b = made(s, t - delay);
+                        b.extend(command(cfg, t - delay).unwrap_or_default());
+                        b
                     } else {
                         Vec::new()
                     }
@@ -2166,6 +2247,58 @@ mod tests {
                 "seed {seed}: {rb} rollbacks, {again} ticks again"
             );
         }
+    }
+
+    #[test]
+    fn commands_cross_once_after_the_state_and_are_never_predicted() {
+        let n = 400;
+        for mode in [cfg(2, 2, 1), rollback(2, 2, 8)] {
+            let shaped = Config {
+                state_bytes: 2,
+                shape: 0x5eed,
+                ..mode
+            };
+            let want = offline_with(&shaped, n);
+            assert_ne!(want, offline(2, 2, n), "the commands move the world");
+            let mut room = Room::new(lossy(11, 5, 4, 10));
+            room.join(0, shaped);
+            room.join(1, shaped);
+            room.run_to(n);
+            for p in &room.peers {
+                assert_eq!(
+                    p.ls.finals[&n], want,
+                    "rollback {}, peer {}",
+                    mode.rollback, p.id
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_start_with_another_input_shape_is_refused() {
+        let mut room = Room::new(None);
+        room.join(
+            0,
+            Config {
+                shape: 1,
+                ..cfg(2, 2, 1)
+            },
+        );
+        room.join(
+            1,
+            Config {
+                shape: 2,
+                ..cfg(2, 2, 1)
+            },
+        );
+        for _ in 0..20 {
+            room.frame(0, 1);
+            room.frame(1, 1);
+        }
+        assert!(room.peers[0].ls.running());
+        assert!(!room.peers[1].ls.running());
+        let notes = room.peers[1].ls.take_notes().join("\n");
+        assert!(notes.contains("input shape"), "{notes}");
     }
 
     #[test]
