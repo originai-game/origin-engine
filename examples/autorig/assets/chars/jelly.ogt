@@ -1,0 +1,7 @@
+type rig2d
+version 1
+---
+# Rigged by the cook from the layers of jelly.psd (art/make.sh draws
+# them): no bone, slot or region is written here.
+parts "jelly.psd"
+template creature

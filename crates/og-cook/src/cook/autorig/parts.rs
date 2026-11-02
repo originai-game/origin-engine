@@ -350,7 +350,7 @@ pub fn read(root: &Path, id: &str, t: &Template, notes: &mut Vec<String>) -> Res
         .collect();
     if !missing.is_empty() {
         return Err(format!(
-            "{id}: the {} template needs {}; add {} named for {}",
+            "{id}: the {} template needs {}; add {} named for {} ({})",
             t.name,
             missing.join(", "),
             if missing.len() == 1 {
@@ -359,6 +359,7 @@ pub fn read(root: &Path, id: &str, t: &Template, notes: &mut Vec<String>) -> Res
                 "layers"
             },
             if missing.len() == 1 { "it" } else { "them" },
+            t.sides,
         ));
     }
     Ok(Art {

@@ -524,6 +524,48 @@ fn every_clip_keeps_rigid_parts_rigid_and_folds_no_mesh_and_parts_keep_apart_in_
     });
     let rig = cooked(&root).load_rig2d("chars/stick.ogt").unwrap();
     assert!(rig.bone("cape-3").is_some());
+    keeps_rigid_parts_rigid_folds_nothing_and_parts_apart(&rig);
+    for (dir, template) in TEMPLATES {
+        let root = fixture("rigid", dir, template);
+        let rig = cooked(&root)
+            .load_rig2d(&format!("chars/{dir}.ogt"))
+            .unwrap();
+        keeps_rigid_parts_rigid_folds_nothing_and_parts_apart(&rig);
+    }
+}
+
+/// The other templates' fixtures: a folder of parts each and its template.
+const TEMPLATES: [(&str, &str); 3] = [
+    ("front", "humanoid-front"),
+    ("dog", "quadruped"),
+    ("blob", "creature"),
+];
+
+/// A project `name` with fixture folder `dir` under `assets/chars/` and
+/// `chars/<dir>.ogt` rigging it on `template`.
+fn fixture(name: &str, dir: &str, template: &str) -> PathBuf {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join("og-cook-autorig")
+        .join(format!("{name}-{dir}"));
+    let _ = std::fs::remove_dir_all(&root);
+    let chars = root.join("assets/chars");
+    std::fs::create_dir_all(chars.join(dir)).unwrap();
+    for e in std::fs::read_dir(fixtures().join(dir)).unwrap() {
+        let e = e.unwrap();
+        std::fs::copy(e.path(), chars.join(dir).join(e.file_name())).unwrap();
+    }
+    std::fs::write(
+        chars.join(format!("{dir}.ogt")),
+        format!("type rig2d\nversion 1\n---\nparts \"{dir}/\"\ntemplate {template}\n"),
+    )
+    .unwrap();
+    root
+}
+
+/// In every frame of every clip: each region (a head, a hand, an eye, a
+/// sword) keeps its shape, no mesh triangle turns over, and in the atlas
+/// each part's texels lie 8 texels from every other's.
+fn keeps_rigid_parts_rigid_folds_nothing_and_parts_apart(rig: &Rig2dAsset) {
     let setup = rig.pose(None, 0.0, &[]);
     let px = |v: &og_anim::RigVertex| [v.position[0] * rig.unit, v.position[1] * rig.unit];
     let mut checked = 0;
@@ -535,8 +577,8 @@ fn every_clip_keeps_rigid_parts_rigid_and_folds_no_mesh_and_parts_keep_apart_in_
             for (slot, s) in rig.slots.iter().enumerate() {
                 let Some(a) = s.attachment else { continue };
                 let (v0, v1) = (
-                    slot_vertices(&rig, &setup, &before, slot),
-                    slot_vertices(&rig, &pose, &after, slot),
+                    slot_vertices(rig, &setup, &before, slot),
+                    slot_vertices(rig, &pose, &after, slot),
                 );
                 match &rig.attachments[a].kind {
                     // A region (a head, a hand, a sword) keeps its shape.
@@ -548,7 +590,8 @@ fn every_clip_keeps_rigid_parts_rigid_and_folds_no_mesh_and_parts_keep_apart_in_
                             };
                             assert!(
                                 (d(v0) - d(v1)).abs() < 0.05,
-                                "{} in {} at {t}: {} is not rigid",
+                                "{}: {} in {} at {t}: {} is not rigid",
+                                rig.texture,
                                 s.name,
                                 c.name,
                                 s.name
@@ -567,7 +610,8 @@ fn every_clip_keeps_rigid_parts_rigid_and_folds_no_mesh_and_parts_keep_apart_in_
                             let (s0, s1) = (area(v0, tri), area(v1, tri));
                             assert!(
                                 s1 * s0.signum() > 0.0,
-                                "{} in {} at {t}: a triangle folds ({s0} to {s1})",
+                                "{}: {} in {} at {t}: a triangle folds ({s0} to {s1})",
+                                rig.texture,
                                 s.name,
                                 c.name
                             );
@@ -588,7 +632,7 @@ fn every_clip_keeps_rigid_parts_rigid_and_folds_no_mesh_and_parts_keep_apart_in_
         .iter()
         .enumerate()
         .map(|(slot, s)| {
-            let v = slot_vertices(&rig, &setup, &rig.triangles(&setup).0, slot).to_vec();
+            let v = slot_vertices(rig, &setup, &rig.triangles(&setup).0, slot).to_vec();
             let us = v.iter().map(|v| v.uv[0] * size[0]);
             let vs = v.iter().map(|v| v.uv[1] * size[1]);
             let b = [
@@ -616,4 +660,188 @@ fn every_clip_keeps_rigid_parts_rigid_and_folds_no_mesh_and_parts_keep_apart_in_
             );
         }
     }
+}
+
+/// Whether a looping clip ends where it starts.
+fn loops(rig: &Rig2dAsset) {
+    for c in rig.clips.iter().filter(|c| c.looping) {
+        let (a, b) = (
+            rig.pose(Some(c), 0.0, &[]),
+            rig.pose(Some(c), c.duration, &[]),
+        );
+        for (p, q) in drawn(rig, &a).iter().zip(drawn(rig, &b)) {
+            assert!(
+                near(*p, q, 0.05),
+                "{}: {} does not loop: {p:?} then {q:?}",
+                rig.texture,
+                c.name
+            );
+        }
+    }
+}
+
+/// `bone`'s origin at `fraction` of `clip`, rig pixels.
+fn at(rig: &Rig2dAsset, clip: &str, fraction: f32, bone: &str) -> [f32; 2] {
+    let c = &rig.clips[rig.clip(clip).unwrap() as usize];
+    let pose = rig.pose(Some(c), fraction * c.duration, &[]);
+    pose.world[rig.bone(bone).unwrap()].apply(0.0, 0.0)
+}
+
+/// Each `(foot, phase)` is on the ground (its setup height) and its IK
+/// reaches it from its contact at `phase` for `stance` of `clip`'s cycle.
+fn planted(rig: &Rig2dAsset, clip: &str, stance: f32, feet: &[(&str, f32)]) {
+    let c = &rig.clips[rig.clip(clip).unwrap() as usize];
+    for i in 0..=48 {
+        let f = i as f32 / 48.0;
+        let pose = rig.pose(Some(c), f * c.duration, &[]);
+        assert!(
+            pose.ik_error.iter().all(|e| *e < 0.5),
+            "{} {clip} at {f}: a foot misses its target by {:?}",
+            rig.texture,
+            pose.ik_error
+        );
+        for (foot, phase) in feet {
+            if (f - phase).rem_euclid(1.0) <= stance {
+                let y = pose.world[rig.bone(foot).unwrap()].apply(0.0, 0.0)[1];
+                let ground = origin(rig, foot)[1];
+                assert!(
+                    (y - ground).abs() < 0.5,
+                    "{} {clip} at {f}: planted `{foot}` is at {y}, not {ground}",
+                    rig.texture
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn every_template_plays_its_library_with_its_feet_on_the_ground() {
+    let rigs: Vec<Rig2dAsset> = TEMPLATES
+        .iter()
+        .map(|(dir, template)| {
+            cooked(&fixture("library", dir, template))
+                .load_rig2d(&format!("chars/{dir}.ogt"))
+                .unwrap()
+        })
+        .collect();
+    let [front, dog, blob] = &rigs[..] else {
+        unreachable!()
+    };
+    let names = |r: &Rig2dAsset| r.clips.iter().map(|c| c.name.clone()).collect::<Vec<_>>();
+    let common = ["idle", "walk", "run", "jump", "attack", "hit", "die"];
+    for (rig, emotes) in [
+        (front, ["wave", "cheer", "shrug"]),
+        (dog, ["howl", "play", "sniff"]),
+        (blob, ["happy", "wiggle", "look"]),
+    ] {
+        assert_eq!(
+            names(rig),
+            [&common[..], &emotes[..]].concat(),
+            "{}",
+            rig.texture
+        );
+        loops(rig);
+    }
+    // Seen from the front, a planted foot stays put while the other lifts,
+    // and straight knees bend outwards, never across each other.
+    planted(front, "walk", 0.55, &[("foot-r", 0.0), ("foot-l", 0.5)]);
+    planted(front, "run", 0.35, &[("foot-r", 0.0), ("foot-l", 0.5)]);
+    for side in ["l", "r"] {
+        let (hip, knee, ankle) = (
+            at(front, "jump", 0.18, &format!("leg-upper-{side}")),
+            at(front, "jump", 0.18, &format!("leg-lower-{side}")),
+            at(front, "jump", 0.18, &format!("foot-{side}")),
+        );
+        let line = hip[0] + (ankle[0] - hip[0]) * (knee[1] - hip[1]) / (ankle[1] - hip[1]);
+        let out = if side == "l" {
+            line - knee[0]
+        } else {
+            knee[0] - line
+        };
+        assert!(out > 2.0, "the {side} knee bends {out} outwards");
+    }
+    // A dog walks its four paws one after another and bounds on pairs,
+    // each planted through its stance.
+    planted(
+        dog,
+        "walk",
+        0.66,
+        &[
+            ("paw-back-l", 0.0),
+            ("paw-front-l", 0.25),
+            ("paw-back-r", 0.5),
+            ("paw-front-r", 0.75),
+        ],
+    );
+    planted(
+        dog,
+        "run",
+        0.34,
+        &[
+            ("paw-back-l", 0.0),
+            ("paw-back-r", 0.07),
+            ("paw-front-l", 0.48),
+            ("paw-front-r", 0.55),
+        ],
+    );
+    // Dead, it lies with its belly on the ground and its paws on it.
+    let die = &dog.clips[dog.clip("die").unwrap() as usize];
+    let lying = drawn(dog, &dog.pose(Some(die), die.duration, &[]));
+    let low = lying.iter().map(|p| p[1]).fold(f32::MAX, f32::min);
+    assert!(
+        low > -1.0 && low < 3.0,
+        "the dog's lowest point is at {low}"
+    );
+    let pose = dog.pose(Some(die), die.duration, &[]);
+    let body = dog.slots.iter().position(|s| s.name == "body").unwrap();
+    let belly = slot_vertices(dog, &pose, &dog.triangles(&pose).0, body)
+        .iter()
+        .map(|v| v.position[1] * dog.unit)
+        .fold(f32::MAX, f32::min);
+    assert!(belly.abs() < 1.5, "the belly is {belly} off the ground");
+    // A blob squashes and stretches about its bottom: breathing, landing
+    // from a jump and slumping dead (upright, where its mesh's lowest
+    // vertices are its drawn bottom), its body's bottom stays on the
+    // ground, and its eyes stay round (the rigid check above).
+    let body = blob.slots.iter().position(|s| s.name == "body").unwrap();
+    let bottom = |clip: &str, f: f32| {
+        let c = &blob.clips[blob.clip(clip).unwrap() as usize];
+        let pose = blob.pose(Some(c), f * c.duration, &[]);
+        let v = blob.triangles(&pose).0;
+        slot_vertices(blob, &pose, &v, body)
+            .iter()
+            .map(|v| v.position[1] * blob.unit)
+            .fold(f32::MAX, f32::min)
+    };
+    let rest = bottom("idle", 0.0);
+    for (clip, f) in [
+        ("idle", 0.45),
+        ("idle", 0.95),
+        ("jump", 29.0 / 36.0),
+        ("die", 1.0),
+    ] {
+        let b = bottom(clip, f);
+        assert!(
+            (b - rest).abs() < 1.0,
+            "the blob's bottom in {clip} at {f} is at {b}, not {rest}"
+        );
+    }
+    let c = &blob.clips[blob.clip("jump").unwrap() as usize];
+    let s = |f: f32| {
+        let pose = blob.pose(Some(c), f * c.duration, &[]);
+        let w = pose.world[blob.bone("body").unwrap()];
+        [
+            (w.a * w.a + w.b * w.b).sqrt(),
+            (w.c * w.c + w.d * w.d).sqrt(),
+        ]
+    };
+    let (crouch, launch) = (s(0.2), s(0.3));
+    assert!(
+        crouch[0] < 0.8 && crouch[1] > 1.1,
+        "the crouch is {crouch:?}"
+    );
+    assert!(
+        launch[0] > 1.2 && launch[1] < 0.9,
+        "the launch is {launch:?}"
+    );
 }
