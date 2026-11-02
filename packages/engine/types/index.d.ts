@@ -5179,7 +5179,7 @@ export interface VirtualCamera {
    */
   collisionLayers: number;
   /**
-   * Controller state: the followed point after smoothing, before collision.
+   * Controller state: the followed point after smoothing, before collision, in world space (a floating-origin rebase shifts it).
    *
    * @unit m (metres)
    * @readonly written by the engine
@@ -5209,6 +5209,7 @@ export interface VirtualCamera {
 /**
  * Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is.
  * Registered with og.VirtualCamera. Its state fields are world state, saved and restored with the world, so a replay or a restore mid-blend continues the same blend.
+ * Read and write it as any resource: `const brain = world.resource(og.CameraBrain)`; when `brain.ok`, `brain.value.live` is the live shot and `brain.value.solo = shot` makes one solo (0 releases it). A system that reads it lists og.CameraBrain among its reads, one that sets solo among its writes.
  *
  * The `CameraBrain` resource (token `og.CameraBrain`).
  */
@@ -5271,7 +5272,7 @@ export interface CameraBrain {
    */
   readonly blendCurve: Ease;
   /**
-   * A held pose to blend from: its position.
+   * A held pose to blend from: its position, in world space (a floating-origin rebase shifts it).
    *
    * @unit m (metres)
    * @readonly written by the engine
@@ -46599,6 +46600,7 @@ export declare namespace og {
   /**
    * Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is.
    * Registered with og.VirtualCamera. Its state fields are world state, saved and restored with the world, so a replay or a restore mid-blend continues the same blend.
+   * Read and write it as any resource: `const brain = world.resource(og.CameraBrain)`; when `brain.ok`, `brain.value.live` is the live shot and `brain.value.solo = shot` makes one solo (0 releases it). A system that reads it lists og.CameraBrain among its reads, one that sets solo among its writes.
    */
   const CameraBrain: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly solo: FieldSpec<"Entity">; readonly live: FieldSpec<"Entity">; readonly from: FieldSpec<"Entity">; readonly blend: FieldSpec<"f32">; readonly blendDuration: FieldSpec<"f32">; readonly blendCurve: FieldSpec<"Ease">; readonly fromPosition: FieldSpec<"Vector3">; readonly fromQuaternion: FieldSpec<"Quaternion">; readonly fromFov: FieldSpec<"f32">; readonly fromFocus: FieldSpec<"f32">; readonly fromFocusRange: FieldSpec<"f32">; readonly activations: FieldSpec<"u32">; readonly focusHeld: FieldSpec<"bool">; readonly heldDepthOfField: FieldSpec<"bool">; readonly heldFocusDistance: FieldSpec<"f32">; readonly heldFocusRange: FieldSpec<"f32"> }, CameraBrain>;
   /** The live virtual camera changed (sent by the og.camera system; read the tick after). */

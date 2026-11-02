@@ -20,7 +20,7 @@ module story {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 13071</sub>
+<sub>`api.ogt` line 13072</sub>
 
 ## Contents
 
@@ -107,7 +107,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 13329</sub>
+<sub>`api.ogt` line 13330</sub>
 
 <a id="fn-parse"></a>
 
@@ -137,7 +137,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 13336</sub>
+<sub>`api.ogt` line 13337</sub>
 
 <a id="fn-start"></a>
 
@@ -167,7 +167,7 @@ fn start {
 }
 ```
 
-<sub>`api.ogt` line 13343</sub>
+<sub>`api.ogt` line 13344</sub>
 
 <a id="fn-view"></a>
 
@@ -197,7 +197,7 @@ fn view {
 }
 ```
 
-<sub>`api.ogt` line 13350</sub>
+<sub>`api.ogt` line 13351</sub>
 
 <a id="fn-history"></a>
 
@@ -227,7 +227,7 @@ fn history {
 }
 ```
 
-<sub>`api.ogt` line 13357</sub>
+<sub>`api.ogt` line 13358</sub>
 
 <a id="fn-conversations"></a>
 
@@ -255,7 +255,7 @@ fn conversations {
 }
 ```
 
-<sub>`api.ogt` line 13364</sub>
+<sub>`api.ogt` line 13365</sub>
 
 <a id="fn-advance"></a>
 
@@ -285,7 +285,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 13370</sub>
+<sub>`api.ogt` line 13371</sub>
 
 <a id="fn-choose"></a>
 
@@ -317,7 +317,7 @@ fn choose {
 }
 ```
 
-<sub>`api.ogt` line 13377</sub>
+<sub>`api.ogt` line 13378</sub>
 
 <a id="fn-stop"></a>
 
@@ -347,7 +347,7 @@ fn stop {
 }
 ```
 
-<sub>`api.ogt` line 13385</sub>
+<sub>`api.ogt` line 13386</sub>
 
 <a id="fn-bark"></a>
 
@@ -377,7 +377,7 @@ fn bark {
 }
 ```
 
-<sub>`api.ogt` line 13392</sub>
+<sub>`api.ogt` line 13393</sub>
 
 <a id="fn-ambient"></a>
 
@@ -407,7 +407,7 @@ fn ambient {
 }
 ```
 
-<sub>`api.ogt` line 13399</sub>
+<sub>`api.ogt` line 13400</sub>
 
 <a id="fn-barks"></a>
 
@@ -435,7 +435,7 @@ fn barks {
 }
 ```
 
-<sub>`api.ogt` line 13406</sub>
+<sub>`api.ogt` line 13407</sub>
 
 <a id="fn-get"></a>
 
@@ -465,7 +465,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 13412</sub>
+<sub>`api.ogt` line 13413</sub>
 
 <a id="fn-set"></a>
 
@@ -497,7 +497,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 13419</sub>
+<sub>`api.ogt` line 13420</sub>
 
 <a id="fn-reset"></a>
 
@@ -524,7 +524,7 @@ fn reset {
 }
 ```
 
-<sub>`api.ogt` line 13427</sub>
+<sub>`api.ogt` line 13428</sub>
 
 <a id="fn-startQuest"></a>
 
@@ -554,7 +554,7 @@ fn startQuest {
 }
 ```
 
-<sub>`api.ogt` line 13432</sub>
+<sub>`api.ogt` line 13433</sub>
 
 <a id="fn-progress"></a>
 
@@ -590,7 +590,7 @@ fn progress {
 }
 ```
 
-<sub>`api.ogt` line 13439</sub>
+<sub>`api.ogt` line 13440</sub>
 
 <a id="fn-setStage"></a>
 
@@ -622,7 +622,7 @@ fn setStage {
 }
 ```
 
-<sub>`api.ogt` line 13450</sub>
+<sub>`api.ogt` line 13451</sub>
 
 <a id="fn-completeQuest"></a>
 
@@ -652,7 +652,7 @@ fn completeQuest {
 }
 ```
 
-<sub>`api.ogt` line 13458</sub>
+<sub>`api.ogt` line 13459</sub>
 
 <a id="fn-failQuest"></a>
 
@@ -682,7 +682,7 @@ fn failQuest {
 }
 ```
 
-<sub>`api.ogt` line 13465</sub>
+<sub>`api.ogt` line 13466</sub>
 
 <a id="fn-quest"></a>
 
@@ -712,7 +712,7 @@ fn quest {
 }
 ```
 
-<sub>`api.ogt` line 13472</sub>
+<sub>`api.ogt` line 13473</sub>
 
 <a id="fn-quests"></a>
 
@@ -740,7 +740,7 @@ fn quests {
 }
 ```
 
-<sub>`api.ogt` line 13479</sub>
+<sub>`api.ogt` line 13480</sub>
 
 <a id="fn-track"></a>
 
@@ -772,7 +772,7 @@ fn track {
 }
 ```
 
-<sub>`api.ogt` line 13485</sub>
+<sub>`api.ogt` line 13486</sub>
 
 <a id="fn-markSeen"></a>
 
@@ -802,7 +802,7 @@ fn markSeen {
 }
 ```
 
-<sub>`api.ogt` line 13493</sub>
+<sub>`api.ogt` line 13494</sub>
 
 <a id="fn-mark"></a>
 
@@ -834,7 +834,7 @@ fn mark {
 }
 ```
 
-<sub>`api.ogt` line 13500</sub>
+<sub>`api.ogt` line 13501</sub>
 
 ## Components, resources and events
 
@@ -867,7 +867,7 @@ resource Story {
 }
 ```
 
-<sub>`api.ogt` line 13078</sub>
+<sub>`api.ogt` line 13079</sub>
 
 <a id="record-DialogueShown"></a>
 
@@ -890,7 +890,7 @@ event DialogueShown {
 }
 ```
 
-<sub>`api.ogt` line 13091</sub>
+<sub>`api.ogt` line 13092</sub>
 
 <a id="record-DialogueEnded"></a>
 
@@ -911,7 +911,7 @@ event DialogueEnded {
 }
 ```
 
-<sub>`api.ogt` line 13097</sub>
+<sub>`api.ogt` line 13098</sub>
 
 <a id="record-DialogueCheck"></a>
 
@@ -940,7 +940,7 @@ event DialogueCheck {
 }
 ```
 
-<sub>`api.ogt` line 13102</sub>
+<sub>`api.ogt` line 13103</sub>
 
 <a id="record-QuestUpdated"></a>
 
@@ -963,7 +963,7 @@ event QuestUpdated {
 }
 ```
 
-<sub>`api.ogt` line 13111</sub>
+<sub>`api.ogt` line 13112</sub>
 
 <a id="record-BarkSaid"></a>
 
@@ -990,7 +990,7 @@ event BarkSaid {
 }
 ```
 
-<sub>`api.ogt` line 13117</sub>
+<sub>`api.ogt` line 13118</sub>
 
 <a id="record-StoryEvent"></a>
 
@@ -1015,7 +1015,7 @@ event StoryEvent {
 }
 ```
 
-<sub>`api.ogt` line 13125</sub>
+<sub>`api.ogt` line 13126</sub>
 
 ## Types
 
@@ -1044,7 +1044,7 @@ struct StoryAsset {
 }
 ```
 
-<sub>`api.ogt` line 13132</sub>
+<sub>`api.ogt` line 13133</sub>
 
 <a id="type-StartDesc"></a>
 
@@ -1072,7 +1072,7 @@ struct StartDesc {
 }
 ```
 
-<sub>`api.ogt` line 13141</sub>
+<sub>`api.ogt` line 13142</sub>
 
 <a id="type-SpeakerView"></a>
 
@@ -1101,7 +1101,7 @@ struct SpeakerView {
 }
 ```
 
-<sub>`api.ogt` line 13150</sub>
+<sub>`api.ogt` line 13151</sub>
 
 <a id="type-CheckView"></a>
 
@@ -1126,7 +1126,7 @@ struct CheckView {
 }
 ```
 
-<sub>`api.ogt` line 13160</sub>
+<sub>`api.ogt` line 13161</sub>
 
 <a id="type-ChoiceView"></a>
 
@@ -1167,7 +1167,7 @@ struct ChoiceView {
 }
 ```
 
-<sub>`api.ogt` line 13168</sub>
+<sub>`api.ogt` line 13169</sub>
 
 <a id="type-TimerView"></a>
 
@@ -1190,7 +1190,7 @@ struct TimerView {
 }
 ```
 
-<sub>`api.ogt` line 13184</sub>
+<sub>`api.ogt` line 13185</sub>
 
 <a id="type-RollView"></a>
 
@@ -1215,7 +1215,7 @@ struct RollView {
 }
 ```
 
-<sub>`api.ogt` line 13191</sub>
+<sub>`api.ogt` line 13192</sub>
 
 <a id="type-DialogueView"></a>
 
@@ -1262,7 +1262,7 @@ struct DialogueView {
 }
 ```
 
-<sub>`api.ogt` line 13199</sub>
+<sub>`api.ogt` line 13200</sub>
 
 <a id="type-ChosenView"></a>
 
@@ -1283,7 +1283,7 @@ struct ChosenView {
 }
 ```
 
-<sub>`api.ogt` line 13218</sub>
+<sub>`api.ogt` line 13219</sub>
 
 <a id="type-StoryLine"></a>
 
@@ -1318,7 +1318,7 @@ struct StoryLine {
 }
 ```
 
-<sub>`api.ogt` line 13224</sub>
+<sub>`api.ogt` line 13225</sub>
 
 <a id="type-BarkDesc"></a>
 
@@ -1344,7 +1344,7 @@ struct BarkDesc {
 }
 ```
 
-<sub>`api.ogt` line 13237</sub>
+<sub>`api.ogt` line 13238</sub>
 
 <a id="type-AmbientDesc"></a>
 
@@ -1376,7 +1376,7 @@ struct AmbientDesc {
 }
 ```
 
-<sub>`api.ogt` line 13245</sub>
+<sub>`api.ogt` line 13246</sub>
 
 <a id="type-BarkView"></a>
 
@@ -1417,7 +1417,7 @@ struct BarkView {
 }
 ```
 
-<sub>`api.ogt` line 13257</sub>
+<sub>`api.ogt` line 13258</sub>
 
 <a id="type-MarkerDesc"></a>
 
@@ -1443,7 +1443,7 @@ struct MarkerDesc {
 }
 ```
 
-<sub>`api.ogt` line 13273</sub>
+<sub>`api.ogt` line 13274</sub>
 
 <a id="type-MarkerView"></a>
 
@@ -1466,7 +1466,7 @@ struct MarkerView {
 }
 ```
 
-<sub>`api.ogt` line 13282</sub>
+<sub>`api.ogt` line 13283</sub>
 
 <a id="type-RewardView"></a>
 
@@ -1491,7 +1491,7 @@ struct RewardView {
 }
 ```
 
-<sub>`api.ogt` line 13290</sub>
+<sub>`api.ogt` line 13291</sub>
 
 <a id="type-ObjectiveView"></a>
 
@@ -1524,7 +1524,7 @@ struct ObjectiveView {
 }
 ```
 
-<sub>`api.ogt` line 13298</sub>
+<sub>`api.ogt` line 13299</sub>
 
 <a id="type-QuestView"></a>
 
@@ -1571,4 +1571,4 @@ struct QuestView {
 }
 ```
 
-<sub>`api.ogt` line 13310</sub>
+<sub>`api.ogt` line 13311</sub>
