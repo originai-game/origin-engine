@@ -680,6 +680,12 @@ step_determinism() {
   "$OG_ROOT/tools/wasm-determinism/run.sh"
 }
 
+# bun-functional and bun-test give each bun test 30 s, not bun's 5 s: four
+# UI tests in a row crossed 5 s only under the gate's load (2026-11-02), and a
+# real hang still fails at 30 s. An explicit OG_BUN_TEST_TIMEOUT (CI's 60000)
+# wins.
+BUN_GATE_TIMEOUT="${OG_BUN_TEST_TIMEOUT:-30000}"
+
 # bun_test_packages DIR...: `bun run test` in each package that has a test
 # script, installing its dependencies first when node_modules is missing.
 bun_test_packages() {
@@ -722,16 +728,16 @@ step_bun_functional() {
   # shellcheck disable=SC2046 # the rule is a word list
   if og_unchanged wasm-build $(rule_wasm); then
     og_say "bun-functional: the web module ($OG_WASM_OUT/opt-all.txt) is current"
-    OG_GATE=1 bun_test_packages packages/*/
+    OG_GATE=1 OG_BUN_TEST_TIMEOUT="$BUN_GATE_TIMEOUT" bun_test_packages packages/*/
   else
     og_say "bun-functional: the web module ($OG_WASM_OUT/opt-all.txt) predates a crate change; the cross-host tests skip (OG_WASM_STALE=1), the full lane runs them"
-    OG_GATE=1 OG_WASM_STALE=1 bun_test_packages packages/*/
+    OG_GATE=1 OG_WASM_STALE=1 OG_BUN_TEST_TIMEOUT="$BUN_GATE_TIMEOUT" bun_test_packages packages/*/
   fi
 }
 
 step_bun_test() {
   require_wasm bun-test || return 1
-  OG_GATE=1 bun_test_packages packages/*/
+  OG_GATE=1 OG_BUN_TEST_TIMEOUT="$BUN_GATE_TIMEOUT" bun_test_packages packages/*/
 }
 
 # Every built-in style pack's reference sheets, desktop and phone
