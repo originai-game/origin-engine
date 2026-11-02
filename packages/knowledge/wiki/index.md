@@ -166,7 +166,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2164 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2168 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -880,6 +880,8 @@ Field units the docs and Tune use.
 | [`og.CameraRail`](camera.md#record-CameraRail) | component | camera | — |
 | [`og.CameraView`](render.md#record-CameraView) | component | render | — |
 | [`og.CameraZone`](camera.md#record-CameraZone) | component | camera | — |
+| [`og.CellEvent`](stream.md#record-CellEvent) | event | stream | — |
+| [`og.CellMember`](stream.md#record-CellMember) | component | stream | — |
 | [`og.CharacterController`](physics.md#record-CharacterController) | component | physics | — |
 | [`og.CharacterEvent`](physics.md#record-CharacterEvent) | event | physics | — |
 | [`og.Cloth`](physics.md#record-Cloth) | component | physics | — |
@@ -1258,6 +1260,8 @@ Field units the docs and Tune use.
 | [`og.stream.request`](stream.md#fn-request) | function | stream | `og_stream_request` |
 | [`og.stream.setBudget`](stream.md#fn-setBudget) | function | stream | `og_stream_set_budget` |
 | [`og.stream.status`](stream.md#fn-status) | function | stream | `og_stream_status` |
+| [`og.StreamAnchor`](stream.md#record-StreamAnchor) | component | stream | — |
+| [`og.StreamCell`](stream.md#record-StreamCell) | component | stream | — |
 | [`og.StreamEvent`](stream.md#record-StreamEvent) | event | stream | — |
 | [`og.Stylise`](render.md#record-Stylise) | resource | render | — |
 | [`og.systems.cameras`](systems.md#value-cameras) | value | systems | — |

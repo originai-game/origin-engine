@@ -448,10 +448,12 @@ pub fn cook_project_with_texture_cache(
     sources.retain(|s| !consumed.contains(&s.rel));
     ignored.retain(|r| !consumed.contains(r));
     let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
-    // Prefab texts by asset id: scenes and prefabs flatten through them.
+    // Prefab and scene texts by asset id: scenes and prefabs flatten
+    // through the prefabs, and a sub-scene (`scene "<id>"`) is checked
+    // against the scenes (a scene, and no cycle).
     let prefab_texts: BTreeMap<String, String> = sources
         .iter()
-        .filter(|s| s.kind == Kind::Prefab)
+        .filter(|s| matches!(s.kind, Kind::Prefab | Kind::Scene))
         .map(|s| {
             (
                 s.rel.clone(),

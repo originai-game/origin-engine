@@ -141,10 +141,37 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::story::BARK_SAID,
         enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::BARK_SAID]),
     },
+    // G3-3: world cells, read and written by the runtime's before-tick
+    // hook (stream::cells); no module to grant. Naming any of the cell's
+    // records registers them together; an anchor alone is its own.
+    Lazy {
+        name: crate::stream::cells::CELL,
+        enable: |_| Ok(()),
+    },
+    Lazy {
+        name: crate::stream::cells::MEMBER,
+        enable: |_| Ok(()),
+    },
+    Lazy {
+        name: crate::stream::cells::EVENT,
+        enable: |_| Ok(()),
+    },
+    Lazy {
+        name: crate::stream::cells::ANCHOR,
+        enable: |_| Ok(()),
+    },
 ];
 
 /// Lazy records registered together: naming one registers the rest.
-const TOGETHER: &[&[&str]] = &[&["og.TimeGroup", "og.TimeGroups"], &crate::story::RECORDS];
+const TOGETHER: &[&[&str]] = &[
+    &["og.TimeGroup", "og.TimeGroups"],
+    &crate::story::RECORDS,
+    &[
+        crate::stream::cells::CELL,
+        crate::stream::cells::MEMBER,
+        crate::stream::cells::EVENT,
+    ],
+];
 
 /// Lazy record `name` and the ones registered with it.
 pub(crate) fn with_partners(name: &'static str) -> Vec<&'static str> {

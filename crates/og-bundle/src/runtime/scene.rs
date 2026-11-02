@@ -12,6 +12,9 @@ pub struct EntityDesc {
     pub instance: Option<String>,
     /// Where it came from when it was placed from a prefab.
     pub prefab: Option<PrefabOrigin>,
+    /// The asset id of a scene placed under it (`scene "<id>"`, a
+    /// sub-scene): spawned with it, or when its cell loads.
+    pub subscene: Option<String>,
 }
 
 /// An entity's prefab origin (`docs/design.md` §2.5, prefabs): the prefab
@@ -123,6 +126,7 @@ impl SceneDesc {
                     None => None,
                 },
                 prefab: None,
+                subscene: None,
             });
         }
         // Older blobs and scenes without prefabs have no `prefabs` table.
@@ -147,6 +151,22 @@ impl SceneDesc {
                     node: r.node,
                     root,
                 });
+            }
+        }
+        // Older blobs and scenes without sub-scenes have no `subscenes` table.
+        if blob.section("subscenes").is_some() {
+            let ids = table::<RefRow>(blob, "subscene_refs")?
+                .iter()
+                .map(|r| s(r.id_offset, r.id_len))
+                .collect::<Result<Vec<_>, _>>()?;
+            for r in table::<SubsceneRow>(blob, "subscenes")? {
+                let id = ids
+                    .get(r.scene as usize)
+                    .ok_or_else(|| bad("sub-scene out of range".into()))?;
+                let e = out
+                    .get_mut(r.entity as usize)
+                    .ok_or_else(|| bad("sub-scene entity out of range".into()))?;
+                e.subscene = Some(id.clone());
             }
         }
         let mut components = Vec::with_capacity(comps.len());

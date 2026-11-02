@@ -43741,6 +43741,95 @@ export interface TerrainLayerDesc {
 // Texture arrays, flipbooks, environment maps, palettes, looks and colour LUTs have no stand-in: they load once their group is resident, and when it unloads the renderer lets them go and their handles wait (the sky lights the scene, Stylise.palette quantises to none, PostEffects.lut grades nothing, og.render.sprite of the array and applying the look are refused, an og.Sprite, a flipbook's sprite or a particle emitter of the array draws nothing) until the group is resident again, when they come back under the same handles. One the frame still uses when its group unloads (the map Environment lights it with, the palette Stylise quantises to, an array a sprite, a screen sprite or a particle emitter draws from, the look last applied, the LUT PostEffects grades with) is never freed under the frame: it is kept, with a warning naming it in the engine's log, until the frame stops using it. What is kept still takes its memory: its bytes count in the budget's `used` (and `kept`, and its group's StreamStatus.kept) until it is let go, so a group that would not fit beside it waits.
 // Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick, what it keeps for the frame after unloading with each asset's bytes), the recent changes, the terrain streamer's tiles and the fetch queue.
 // What streams is read through one queue: first the chunks of the sounds cooked in chunks that a playhead needs soonest (the one it is playing, then by the seconds until it gets there at its pitch, a loop's start by the time to its wrap), then the loading groups' packs by priority (then name). At most four reads are in flight at once (on the web, fetches; natively a read completes at once, so only the order shows); the rest wait in that order. `dump_stream`'s `fetch` lists what is in flight and what waits, each with its path and what it is for (a sound's chunk and its seconds, a group's pack and its priority).
+// World cells (G3-3) stream entities, not assets: an entity with an og.StreamCell and a sub-scene (a `scene "<id>"` line in its scene block, or StreamCell.scene from og.load.scene) is a cell. Its sub-scene's entities, and with them their colliders, bodies and everything else they carry, spawn when it loads, placed by the cell's transform (its top-level entities are roots, at the cell's transform after their own, so physics bodies among them are where they look) and each with an og.CellMember naming the cell; when it unloads, every member and its descendants are despawned. Whether a cell is loaded is decided as each tick starts, before any system runs, from world state alone: it loads while an og.StreamAnchor (a player, a vehicle) is within StreamCell.load of its box, unloads once every anchor is past StreamCell.unload, and stays loaded while StreamCell.pin is set. Without any anchor the og.Camera resource's position anchors, a convenience for a single-player game; a lockstep or rollback session (og.net) refuses that, since each peer's camera is its own. Cells load in entity id order and a sub-scene's entities spawn in its text order, so the same world spawns the same entity ids on both hosts, in a replay, a rollback and after a restore. Nothing about a cell waits on a download: the sub-scene's blob is in the boot bundle, and its models and textures draw their stand-ins until their streaming group is resident.
+// A cell's state is world state: StreamCell.loaded, and its sub-scene's entities, are in snapshots, saves and the world hash, so restoring a save restores which cells are loaded and what is in them; an unloaded cell's entities are not in the world and come back from its sub-scene, as authored, when it loads again. Each change sends CellEvent in the tick it happens, and add hooks and `added` filters on the sub-scene's components see its entities arrive. The probe's `dump_stream` lists every cell (`cells`): its entity, sub-scene, state, entities and the ticks it last loaded and unloaded.
+
+/**
+ * A world cell: loads its sub-scene's entities while an og.StreamAnchor is near its box, and despawns them when none is (the module's doc). The box is the entity's world position ± half `size`, turned with it; a zero size is a point.
+ *
+ * The value of the `StreamCell` component (token `og.StreamCell`).
+ */
+export interface StreamCell {
+  /**
+   * The sub-scene it loads: set from the entity's `scene "<id>"` line when its scene spawns, or og.load.scene's handle for a cell spawned by game code. 0: none (the cell never loads).
+   */
+  scene: Asset;
+  /**
+   * The box's full extents, in metres along the entity's axes (its scale does not apply). Zero: a point at the entity's position.
+   *
+   * @unit m (metres)
+   */
+  size: Vector3;
+  /**
+   * Loads while an anchor is within this distance of the box (0: only while one is inside it).
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  load: number;
+  /**
+   * Unloads once every anchor is farther than this from the box, so an anchor on the edge does not load and unload it every tick; 0: 1.25 × load. Less than `load` is taken as `load`.
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  unload: number;
+  /**
+   * Loaded whatever the anchors while true (a cell game code needs, such as a quest's destination); set it false and the anchors decide again.
+   */
+  pin: boolean;
+  /**
+   * Written by the engine: true while the sub-scene's entities are in the world (from the tick it loaded until the tick it unloaded).
+   *
+   * @readonly written by the engine
+   */
+  readonly loaded: boolean;
+}
+
+/**
+ * What loads cells: every entity with one (the player, a vehicle, each player of a networked game) loads the cells within their StreamCell.load of it, from its world position. Without any anchor the og.Camera resource's position anchors (refused in an og.net session).
+ *
+ * The value of the `StreamAnchor` component (token `og.StreamAnchor`).
+ */
+export interface StreamAnchor {
+  /**
+   * Added to every cell's load and unload distances for this anchor: a fast vehicle reaches further than a walker.
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  reach: number;
+}
+
+/**
+ * Which cell an entity came from: every entity a cell's sub-scene spawns carries one, and when the cell unloads every entity naming it, with its descendants, is despawned, wherever it has moved. Remove it from an entity to keep it past its cell's unload (an item the player picked up); the cell spawns the item again from its sub-scene when it loads again.
+ *
+ * The value of the `CellMember` component (token `og.CellMember`).
+ */
+export interface CellMember {
+  /**
+   * The cell's entity.
+   *
+   * @readonly written by the engine
+   */
+  readonly cell: Entity;
+}
+
+/**
+ * A cell loaded or unloaded: sent in the tick it happened, before any system runs, so the tick's systems read it with the cell's entities already spawned (or despawned).
+ *
+ * The payload of the `CellEvent` event (token `og.CellEvent`).
+ */
+export interface CellEvent {
+  /** The cell's entity. */
+  readonly cell: Entity;
+  /**
+   * True: its sub-scene's entities spawned; false: its members and their descendants were despawned.
+   */
+  readonly loaded: boolean;
+  /** How many entities spawned or were despawned. */
+  readonly entities: number;
+}
 
 /**
  * Where a streaming group is.
@@ -50145,6 +50234,22 @@ export declare namespace og {
      */
     function setLayer(world: World, data: TerrainData, index: number, layer?: TerrainLayerDesc): Result<void>;
   }
+  /**
+   * A world cell: loads its sub-scene's entities while an og.StreamAnchor is near its box, and despawns them when none is (the module's doc). The box is the entity's world position ± half `size`, turned with it; a zero size is a point.
+   */
+  const StreamCell: ComponentType<{ readonly scene: FieldSpec<"Asset">; readonly size: FieldSpec<"Vector3">; readonly load: FieldSpec<"f32">; readonly unload: FieldSpec<"f32">; readonly pin: FieldSpec<"bool">; readonly loaded: FieldSpec<"bool"> }, StreamCell>;
+  /**
+   * What loads cells: every entity with one (the player, a vehicle, each player of a networked game) loads the cells within their StreamCell.load of it, from its world position. Without any anchor the og.Camera resource's position anchors (refused in an og.net session).
+   */
+  const StreamAnchor: ComponentType<{ readonly reach: FieldSpec<"f32"> }, StreamAnchor>;
+  /**
+   * Which cell an entity came from: every entity a cell's sub-scene spawns carries one, and when the cell unloads every entity naming it, with its descendants, is despawned, wherever it has moved. Remove it from an entity to keep it past its cell's unload (an item the player picked up); the cell spawns the item again from its sub-scene when it loads again.
+   */
+  const CellMember: ComponentType<{ readonly cell: FieldSpec<"Entity"> }, CellMember>;
+  /**
+   * A cell loaded or unloaded: sent in the tick it happened, before any system runs, so the tick's systems read it with the cell's entities already spawned (or despawned).
+   */
+  const CellEvent: EventType<CellEvent>;
   /** A group changed state: sent by og.stream at the start of the tick after the change. */
   const StreamEvent: EventType<StreamEvent>;
   /**
@@ -50153,6 +50258,8 @@ export declare namespace og {
    * Texture arrays, flipbooks, environment maps, palettes, looks and colour LUTs have no stand-in: they load once their group is resident, and when it unloads the renderer lets them go and their handles wait (the sky lights the scene, Stylise.palette quantises to none, PostEffects.lut grades nothing, og.render.sprite of the array and applying the look are refused, an og.Sprite, a flipbook's sprite or a particle emitter of the array draws nothing) until the group is resident again, when they come back under the same handles. One the frame still uses when its group unloads (the map Environment lights it with, the palette Stylise quantises to, an array a sprite, a screen sprite or a particle emitter draws from, the look last applied, the LUT PostEffects grades with) is never freed under the frame: it is kept, with a warning naming it in the engine's log, until the frame stops using it. What is kept still takes its memory: its bytes count in the budget's `used` (and `kept`, and its group's StreamStatus.kept) until it is let go, so a group that would not fit beside it waits.
    * Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick, what it keeps for the frame after unloading with each asset's bytes), the recent changes, the terrain streamer's tiles and the fetch queue.
    * What streams is read through one queue: first the chunks of the sounds cooked in chunks that a playhead needs soonest (the one it is playing, then by the seconds until it gets there at its pitch, a loop's start by the time to its wrap), then the loading groups' packs by priority (then name). At most four reads are in flight at once (on the web, fetches; natively a read completes at once, so only the order shows); the rest wait in that order. `dump_stream`'s `fetch` lists what is in flight and what waits, each with its path and what it is for (a sound's chunk and its seconds, a group's pack and its priority).
+   * World cells (G3-3) stream entities, not assets: an entity with an og.StreamCell and a sub-scene (a `scene "<id>"` line in its scene block, or StreamCell.scene from og.load.scene) is a cell. Its sub-scene's entities, and with them their colliders, bodies and everything else they carry, spawn when it loads, placed by the cell's transform (its top-level entities are roots, at the cell's transform after their own, so physics bodies among them are where they look) and each with an og.CellMember naming the cell; when it unloads, every member and its descendants are despawned. Whether a cell is loaded is decided as each tick starts, before any system runs, from world state alone: it loads while an og.StreamAnchor (a player, a vehicle) is within StreamCell.load of its box, unloads once every anchor is past StreamCell.unload, and stays loaded while StreamCell.pin is set. Without any anchor the og.Camera resource's position anchors, a convenience for a single-player game; a lockstep or rollback session (og.net) refuses that, since each peer's camera is its own. Cells load in entity id order and a sub-scene's entities spawn in its text order, so the same world spawns the same entity ids on both hosts, in a replay, a rollback and after a restore. Nothing about a cell waits on a download: the sub-scene's blob is in the boot bundle, and its models and textures draw their stand-ins until their streaming group is resident.
+   * A cell's state is world state: StreamCell.loaded, and its sub-scene's entities, are in snapshots, saves and the world hash, so restoring a save restores which cells are loaded and what is in them; an unloaded cell's entities are not in the world and come back from its sub-scene, as authored, when it loads again. Each change sends CellEvent in the tick it happens, and add hooks and `added` filters on the sub-scene's components see its entities arrive. The probe's `dump_stream` lists every cell (`cells`): its entity, sub-scene, state, entities and the ticks it last loaded and unloaded.
    */
   namespace stream {
     /**

@@ -327,6 +327,67 @@ entities in the same order with the same values, and a replay or a save
 does not depend on whether a tree was written by hand or placed from a
 prefab, apart from the `og.PrefabLink` components it carries.
 
+#### Sub-scenes and world cells (G3-3) **(D)**
+
+Streaming groups (§2.6's assets, IDL `stream`) move what a frame draws
+and plays; nothing a tick reads depends on them. World cells move
+entities, which a tick does read, so their rule is the opposite: what is
+loaded at a tick is a function of world state alone, never of I/O
+timing.
+
+**Sub-scenes.** In an entity block, `scene "<id>"` places another scene
+there. Unlike a prefab it is not flattened: it stays its own blob, named
+in the placing scene's optional `subscenes` table, so editing it re-cooks
+it alone, and a sub-scene that reaches the placing scene again is refused
+naming the chain. Without a cell, the runtime spawns it under the entity
+as it spawns the scene (`world.instantiate` under a root).
+
+**Cells.** An entity with a sub-scene and `og.StreamCell { scene, size,
+load, unload, pin, loaded }` is a cell. As each tick starts (the probe's
+before-tick hook, so a replay, a rollback's re-simulation and a restored
+world all run it, before any system), the engine decides from the
+world's state whether each cell is loaded: an `og.StreamAnchor { reach }`
+entity within `load` of the box (the cell's world position ± half
+`size`, turned with it), kept until every anchor is past `unload`
+(hysteresis), or `pin`. Without anchors the `og.Camera` resource's
+position anchors, a single-player convenience refused while
+`og.Lockstep.enabled` (each peer's camera is its own). A load spawns the
+sub-scene: its top-level entities are roots at the cell's pose after
+their own (physics bodies are roots), every spawned entity carries
+`og.CellMember { cell }`; an unload despawns every member and its
+descendants, wherever they moved (a game keeps one past its cell by
+removing the member). Each change writes `loaded` and sends
+`og.CellEvent { cell, loaded, entities }`, delivered in the same tick,
+and G2-2's add hooks and `added` filters see the entities arrive.
+
+**Order.** Cells are visited by entity (slot, then generation); a
+sub-scene spawns in its blob's order (text order, depth first); an
+unload despawns children first, by entity. The same world therefore
+allocates the same entity ids on both hosts, in a replay and after a
+restore (pinned in og-runtime's `tests/cells.rs`).
+
+**Snapshots and saves.** `loaded` is a component field and a loaded
+cell's entities are ordinary entities, so a snapshot, a save, the hash
+and a rollback carry exactly which cells are loaded and what is in them;
+an unloaded cell's entities are not in the world and come back from its
+sub-scene, as authored, when it loads again. `StreamCell.scene` is an
+asset handle, saved as its number like every handle: a session loads the
+scenes that place the cells (GameDesc.scene does) before restoring. The
+four records are lazy (og-runtime's `lazy`): a world without cells keeps its
+type table, saves and hash.
+
+**A cell that is not ready.** Batch 1 keeps a sub-scene's blob in the
+boot bundle, so a cell's entities are always ready at the tick that
+wants them; its models, textures and sounds draw their stand-ins until
+their streaming group is resident, as any grouped asset does, and
+physics only ever reads colliders from components and proxies. Later
+batches (in order): `persist` cells whose edits survive an unload in a
+state block, a per-tick entity budget that spreads a large cell over
+consecutive ticks, the cell's own asset group prefetched from the
+anchors' declared speed, sub-scene blobs in packs with a tick gate that
+holds the simulation (never skips or reorders it) when one has not
+landed, colliders baked by the cook, and texture mip streaming.
+
 ### 2.6 Renderer **(D)**
 
 wgpu with WGSL shaders cooked per backend (naga). On the web the renderer

@@ -1322,6 +1322,21 @@ fn resolve<'a>(layouts: &'a BTreeMap<String, Layout>, name: &str) -> Option<&'a 
         .filter(|l| l.kind == super::codec::RecordKind::Component)
 }
 
+/// Where a scene's entities go ([`spawn_placed`]).
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Placement {
+    /// Its top-level entities under this root (at the top level when `None`).
+    Under(Option<Entity>),
+    /// A world cell's sub-scene (G3-3, [`super::stream::cells`]): its
+    /// top-level entities are roots placed at the cell's world pose after
+    /// their own transforms, and every entity it spawns carries an
+    /// `og.CellMember` naming the cell.
+    Cell {
+        cell: Entity,
+        pose: og_core::math::Pose,
+    },
+}
+
 /// Spawns scene entity rows under `root` (top level when `None`). The whole
 /// scene is refused before anything spawns when a name is taken.
 pub(crate) fn spawn_scene(
@@ -1329,6 +1344,22 @@ pub(crate) fn spawn_scene(
     scene: &SceneDesc,
     root: Option<Entity>,
 ) -> Result<Vec<Entity>, String> {
+    spawn_placed(eng, scene, Placement::Under(root))
+}
+
+/// [`spawn_scene`] with a [`Placement`]. An entity with a sub-scene
+/// (`scene "<id>"`) gets it spawned under it, or, when it is a world cell
+/// (`og.StreamCell`), its `scene` set to the sub-scene's handle for the
+/// cell to load.
+pub(crate) fn spawn_placed(
+    eng: &Engine,
+    scene: &SceneDesc,
+    placement: Placement,
+) -> Result<Vec<Entity>, String> {
+    let root = match placement {
+        Placement::Under(root) => root,
+        Placement::Cell { .. } => None,
+    };
     // A prefab's own blob (og.load.prefab) spawns unnamed: it is placed
     // many times.
     let prefab = scene.prefabs.first() == Some(&scene.id);
@@ -1356,7 +1387,12 @@ pub(crate) fn spawn_scene(
     let mut tables = Vec::new();
     for t in &scene.components {
         match resolve(&layouts, &t.name) {
-            Some(l) => tables.push((t, l.clone())),
+            Some(l) => {
+                // A lazy engine record (og.StreamCell, ...) is registered
+                // once a scene names it.
+                super::lazy::ensure(eng, eng.world()?, &l.schema)?;
+                tables.push((t, l.clone()))
+            }
             None => dropped.push(format!(
                 "{} (no registered component of that name; declare it with defineComponent before the scene loads)",
                 t.name
@@ -1380,6 +1416,25 @@ pub(crate) fn spawn_scene(
         let layout = eng.state.borrow().layouts.get(super::prefab::LINK).cloned();
         layout.map(|l| (id, l))
     };
+    // A cell's members: og.CellMember, registered with the cell.
+    let member = match placement {
+        Placement::Cell { cell, .. } => {
+            let name = super::stream::cells::MEMBER;
+            super::lazy::ensure(eng, eng.world()?, name)?;
+            let layout = layouts
+                .get(name)
+                .ok_or_else(|| format!("{name} has no layout"))?;
+            let id = eng
+                .world()?
+                .id_by_name(name)
+                .map_err(|e| e.reason().to_string())?;
+            let bytes = layout.encode(None, Some(&json!({ "cell": cell.to_bits() as f64 })))?;
+            Some((id, bytes))
+        }
+        Placement::Under(_) => None,
+    };
+    let cell_layout = resolve(&layouts, super::stream::cells::CELL).cloned();
+    let mut subscenes: Vec<(Entity, String, bool)> = Vec::new();
     let mut spawned: Vec<Entity> = Vec::with_capacity(scene.entities.len());
     before_structural(eng);
     for (i, e) in scene.entities.iter().enumerate() {
@@ -1396,12 +1451,26 @@ pub(crate) fn spawn_scene(
             components.push((*id, layout.encode(None, Some(&value))?));
         }
         let mut has_transform = false;
+        let mut is_cell = false;
         // A `Model` table beside a `model` line: its fields, with the
         // line's asset (`model_table`).
         let mut model_table = None;
+        // A cell's top-level entity: placed at the cell's pose after its own.
+        let place = match placement {
+            Placement::Cell { pose, .. } if e.parent.is_none() => Some(pose),
+            _ => None,
+        };
         for (t, layout) in &tables {
             if let Some(row) = t.get(i) {
-                let value = migrate(&t.schema, row, layout, &mut dropped);
+                let mut value = migrate(&t.schema, row, layout, &mut dropped);
+                if let (Some(pose), Some(tl)) = (place, &transform)
+                    && tl.schema == layout.schema
+                {
+                    value = super::stream::cells::placed(pose, &value);
+                }
+                is_cell |= cell_layout
+                    .as_ref()
+                    .is_some_and(|cl| cl.schema == layout.schema);
                 if e.instance.is_some()
                     && model_layout
                         .as_ref()
@@ -1423,7 +1492,11 @@ pub(crate) fn spawn_scene(
             let id = world
                 .id_by_name(&tl.schema)
                 .map_err(|e| e.reason().to_string())?;
-            components.push((id, tl.encode(None, None)?));
+            let value = place.map(|pose| super::stream::cells::placed(pose, &json!({})));
+            components.push((id, tl.encode(None, value.as_ref())?));
+        }
+        if let Some((id, bytes)) = &member {
+            components.push((*id, bytes.clone()));
         }
         let parent = e.parent.and_then(|p| spawned.get(p).copied()).or(root);
         if let (Some(p), Some(pl)) = (parent, &parent_layout) {
@@ -1484,6 +1557,24 @@ pub(crate) fn spawn_scene(
             spawn_lights(eng, index, entity)
                 .map_err(|r| format!("{}: entity '{}': {r}", scene.id, e.name))?;
         }
+        if let Some(sub) = &e.subscene {
+            subscenes.push((entity, sub.clone(), is_cell));
+        }
+    }
+    // Sub-scenes, once the scene's own entities are in: a cell's handle
+    // set for it to load; any other spawned under its entity now.
+    for (entity, sub, is_cell) in subscenes {
+        let index =
+            load_scene(eng, &sub).map_err(|r| format!("{}: sub-scene {sub}: {r}", scene.id))?;
+        if is_cell {
+            super::stream::cells::set_scene(eng, entity, handle(index))?;
+            continue;
+        }
+        let desc = match &eng.assets.borrow().entries[index].payload {
+            Payload::Scene(s) => s.clone(),
+            _ => return Err(format!("{}: sub-scene {sub} is not a scene", scene.id)),
+        };
+        spawn_placed(eng, &desc, Placement::Under(Some(entity)))?;
     }
     apply_resources(eng, scene, &layouts, &mut dropped)?;
     if !dropped.is_empty() {
@@ -1499,7 +1590,10 @@ pub(crate) fn spawn_scene(
         .scene_instances
         .push(super::engine::SceneInstance {
             id: scene.id.clone(),
-            root: root.map(Entity::to_bits),
+            root: match placement {
+                Placement::Under(root) => root.map(Entity::to_bits),
+                Placement::Cell { cell, .. } => Some(cell.to_bits()),
+            },
             entities: spawned.iter().map(|e| e.to_bits()).collect(),
         });
     Ok(spawned)

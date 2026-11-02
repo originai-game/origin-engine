@@ -10,6 +10,7 @@ mod art_contract;
 mod baked_scenes;
 mod billboards;
 mod camera_projection;
+mod cells;
 mod contact_hit;
 mod cookie_cap;
 mod display;

@@ -6409,6 +6409,76 @@
     },
     {
       "id": 81,
+      "name": "StreamCell",
+      "schema": "og.StreamCell",
+      "module": "stream",
+      "fields": [
+        {
+          "name": "scene",
+          "column": "Asset",
+          "default": 0
+        },
+        {
+          "name": "size",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "load",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "unload",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "pin",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "loaded",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 82,
+      "name": "StreamAnchor",
+      "schema": "og.StreamAnchor",
+      "module": "stream",
+      "fields": [
+        {
+          "name": "reach",
+          "column": "f32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 83,
+      "name": "CellMember",
+      "schema": "og.CellMember",
+      "module": "stream",
+      "fields": [
+        {
+          "name": "cell",
+          "column": "Entity",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 84,
       "name": "VideoPlayer",
       "schema": "og.VideoPlayer",
       "module": "video",
@@ -6460,7 +6530,7 @@
       ]
     },
     {
-      "id": 82,
+      "id": 85,
       "name": "PathFollower",
       "schema": "og.PathFollower",
       "module": "path",
@@ -6514,7 +6584,7 @@
       ]
     },
     {
-      "id": 83,
+      "id": 86,
       "name": "Timeline",
       "schema": "og.Timeline",
       "module": "timeline",
@@ -6548,7 +6618,7 @@
       ]
     },
     {
-      "id": 84,
+      "id": 87,
       "name": "PlayerInput",
       "schema": "og.PlayerInput",
       "module": "net",
@@ -10622,6 +10692,29 @@
     },
     {
       "id": 44,
+      "name": "CellEvent",
+      "schema": "og.CellEvent",
+      "module": "stream",
+      "fields": [
+        {
+          "name": "cell",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "loaded",
+          "type": "bool",
+          "default": false
+        },
+        {
+          "name": "entities",
+          "type": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 45,
       "name": "StreamEvent",
       "schema": "og.StreamEvent",
       "module": "stream",
@@ -10639,7 +10732,7 @@
       ]
     },
     {
-      "id": 45,
+      "id": 46,
       "name": "TimelineStarted",
       "schema": "og.TimelineStarted",
       "module": "timeline",
@@ -10657,7 +10750,7 @@
       ]
     },
     {
-      "id": 46,
+      "id": 47,
       "name": "TimelineMarker",
       "schema": "og.TimelineMarker",
       "module": "timeline",
@@ -10685,7 +10778,7 @@
       ]
     },
     {
-      "id": 47,
+      "id": 48,
       "name": "TimelineEnded",
       "schema": "og.TimelineEnded",
       "module": "timeline",
@@ -10703,7 +10796,7 @@
       ]
     },
     {
-      "id": 48,
+      "id": 49,
       "name": "Desync",
       "schema": "og.Desync",
       "module": "net",
@@ -10726,7 +10819,7 @@
       ]
     },
     {
-      "id": 49,
+      "id": 50,
       "name": "SeatDropped",
       "schema": "og.SeatDropped",
       "module": "net",
@@ -10754,7 +10847,7 @@
       ]
     },
     {
-      "id": 50,
+      "id": 51,
       "name": "SeatRejoined",
       "schema": "og.SeatRejoined",
       "module": "net",
@@ -10777,7 +10870,7 @@
       ]
     },
     {
-      "id": 51,
+      "id": 52,
       "name": "PeerStalled",
       "schema": "og.PeerStalled",
       "module": "net",

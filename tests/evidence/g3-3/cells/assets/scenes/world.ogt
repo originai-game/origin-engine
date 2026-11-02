@@ -1,0 +1,83 @@
+type scene
+version 1
+---
+# The G3-3 cells sample: the rover (the anchor) on a road through five
+# cells, 32 m apart. Each cell's box is 24 x 12 x 24 m; it loads with
+# the rover within 12 m of the box and unloads once it is 15 m past.
+name "World"
+entity "road" {
+  model "models/road.ogt"
+}
+entity "rover" {
+  model "models/rover.ogt"
+  Transform {
+    position -36 0 0
+  }
+  StreamAnchor {
+    reach 0
+  }
+}
+entity "sun" {
+  Transform {
+    quaternion -0.4 0.3 0.2 0.844
+  }
+  DirectionalLight {
+    intensity 3
+    castShadow true
+  }
+}
+entity "cell-0" {
+  scene "scenes/cells/village.ogt"
+  Transform {
+    position 0 0 0
+  }
+  StreamCell {
+    size 24 12 24
+    load 12
+    unload 15
+  }
+}
+entity "cell-1" {
+  scene "scenes/cells/forest.ogt"
+  Transform {
+    position 32 0 0
+  }
+  StreamCell {
+    size 24 12 24
+    load 12
+    unload 15
+  }
+}
+entity "cell-2" {
+  scene "scenes/cells/quarry.ogt"
+  Transform {
+    position 64 0 0
+  }
+  StreamCell {
+    size 24 12 24
+    load 12
+    unload 15
+  }
+}
+entity "cell-3" {
+  scene "scenes/cells/village.ogt"
+  Transform {
+    position 96 0 0
+  }
+  StreamCell {
+    size 24 12 24
+    load 12
+    unload 15
+  }
+}
+entity "cell-4" {
+  scene "scenes/cells/forest.ogt"
+  Transform {
+    position 128 0 0
+  }
+  StreamCell {
+    size 24 12 24
+    load 12
+    unload 15
+  }
+}

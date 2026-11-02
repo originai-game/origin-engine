@@ -291,7 +291,7 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
         "dump_stream",
         og_probe::CommandDesc {
             usage: "dump_stream[:path]".into(),
-            doc: "the streaming groups: the memory budget, what is used and its peak, every group's trigger, state, why and since which tick and what it keeps for the frame after unloading, and the recent state changes; and the terrain streamer: its mode, tiles resident, waiting, decoding and cached".into(),
+            doc: "the streaming groups: the memory budget, what is used and its peak, every group's trigger, state, why and since which tick and what it keeps for the frame after unloading, and the recent state changes; the terrain streamer: its mode, tiles resident, waiting, decoding and cached; and the world cells: each cell's entity, sub-scene, whether it is loaded, its entities and when it last loaded and unloaded".into(),
         },
         0,
         move |_world, _args| Ok(super::stream::dump(engine)),

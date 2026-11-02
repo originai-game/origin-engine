@@ -60,6 +60,20 @@ row!(
     }
 );
 
+row!(
+    /// A sub-scene placed under an entity (the optional `subscenes` table,
+    /// one row per entity with a `scene "<id>"` line, in entity order):
+    /// `entity` is the entity's index and `scene` its `subscene_refs`
+    /// entry, the placed scene's asset id. The placed scene stays its own
+    /// blob (it is not flattened): the runtime spawns it under the entity,
+    /// with it or, for a streaming cell (`og.StreamCell`), when the cell
+    /// loads.
+    SubsceneRow, "og.SceneSubscene", 1 {
+        entity: u32,
+        scene: u32,
+    }
+);
+
 /// The scene blob. A prefab's blob is one too (manifest type
 /// `og.Scene`), its entities all linked to it.
 pub struct Scene;

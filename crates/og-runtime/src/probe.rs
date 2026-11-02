@@ -360,6 +360,8 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         super::trace::before_tick(id);
         if let Ok(eng) = engine(id) {
             super::save::before_tick(&eng, world);
+            // World cells load and unload as the tick starts (G3-3).
+            super::stream::cells::before_tick(&eng, world);
             super::geometry::before_tick(&eng, world);
             if let Ok(mut rs) = eng.render.try_borrow_mut() {
                 super::interpolate::before_tick(&mut rs, world);

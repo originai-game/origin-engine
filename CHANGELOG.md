@@ -26,6 +26,20 @@ is one line here, written at the merge that changes
   `glow-icons.png`, Instrument Sans, Newsreader SemiBold, PT Mono, Chakra
   Petch, Rajdhani). `og style new` still starts from the folded seeds'
   choices for their look families.
+- **World cells and sub-scenes (G3-3, batch 1).** An entity's
+  `scene "<id>"` line places another scene under it, kept as its own
+  blob (not flattened; a cycle is refused naming the chain). With an
+  `og.StreamCell` the entity is a world cell: its sub-scene's entities,
+  colliders and bodies included, spawn as each tick starts while an
+  `og.StreamAnchor` is within `load` of the cell's box, and are despawned
+  once every anchor is past `unload` (or while `pin` holds them). The
+  decision reads world state only, cells by entity and a sub-scene in its
+  text order, so replays, rollbacks and restored saves spawn the same
+  entity ids; each change sends `og.CellEvent` in its tick, and every
+  entity a cell spawned carries `og.CellMember`. Without anchors the
+  camera loads cells, refused in an og.net session. `dump_stream` lists
+  the cells. The four records are lazy: a world without cells hashes and
+  saves as before.
 - **Removed: the built-in `minimal` style** (the owner, 2026-11-02). No
   `@styles/minimal/` pack ships and `og style list` no longer names it; a
   look with `ui "minimal"` no longer cooks. `og style new` still starts

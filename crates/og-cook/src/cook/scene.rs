@@ -21,7 +21,11 @@
 //! ```
 //!
 //! Inside an `entity` block: `entity` nests a child, `model "<asset id>"`
-//! instantiates a cooked glTF under the entity, and any other key with a
+//! instantiates a cooked glTF under the entity, `scene "<asset id>"` places
+//! another scene under it (a sub-scene: its own blob, not flattened, named
+//! in the `subscenes` table; the runtime spawns it with the entity, or
+//! when the entity's `og.StreamCell` loads; a sub-scene that reaches the
+//! scene placing it again is refused naming the chain), and any other key with a
 //! block is a component whose entries are its fields (numbers, the words
 //! `true`/`false`, or one quoted string for a `strN` field: `name "Mei"`,
 //! packed as its UTF-8 then zeros, refused over the capacity). A list field
@@ -303,7 +307,7 @@ pub fn references(text: &str) -> Vec<String> {
     let mut out = BTreeSet::new();
     fn walk(b: &Block, out: &mut BTreeSet<String>) {
         for e in &b.entries {
-            if e.key == "model"
+            if (e.key == "model" || e.key == "scene")
                 && let Ok(s) = e.string(0)
             {
                 out.insert(crate::runtime::asset_id(s).to_string());
@@ -321,9 +325,79 @@ pub fn references(text: &str) -> Vec<String> {
     out.into_iter().collect()
 }
 
-/// What a scene's cook reads beside its text: prefab texts by asset id
-/// (`None`: not a prefab of the project), and whether the cook is a
-/// publish's (an orphaned override is then refused, not noted).
+/// The sub-scenes a scene or prefab text places directly (`scene "<id>"`
+/// lines in its entities, at any depth), and those of the prefabs it
+/// reaches, as asset ids.
+pub fn subscenes(text: &str, texts: &dyn Fn(&str) -> Option<String>) -> Vec<String> {
+    fn walk(b: &Block, out: &mut BTreeSet<String>) {
+        for e in &b.entries {
+            if e.key == "scene"
+                && e.block.is_none()
+                && let Ok(s) = e.string(0)
+            {
+                out.insert(crate::runtime::asset_id(s).to_string());
+            }
+            if let Some(b) = &e.block
+                && matches!(e.key.as_str(), "entity" | "override")
+            {
+                walk(b, out);
+            }
+        }
+    }
+    let mut out = BTreeSet::new();
+    let mut docs = vec![text.to_string()];
+    docs.extend(
+        super::prefab::reached(text, texts)
+            .iter()
+            .filter_map(|id| texts(id)),
+    );
+    for t in docs {
+        if let Ok(doc) = Document::parse(&t) {
+            walk(&doc.body, &mut out);
+        }
+    }
+    out.into_iter().collect()
+}
+
+/// The chain `source -> placed -> ... -> source` when sub-scene `placed`
+/// reaches `source` again through sub-scenes; `None` when it never does.
+fn subscene_cycle(
+    source: &str,
+    placed: &str,
+    texts: &dyn Fn(&str) -> Option<String>,
+) -> Option<Vec<String>> {
+    fn go(
+        at: &str,
+        target: &str,
+        texts: &dyn Fn(&str) -> Option<String>,
+        path: &mut Vec<String>,
+        seen: &mut BTreeSet<String>,
+    ) -> bool {
+        path.push(at.to_string());
+        if at == target {
+            return true;
+        }
+        if seen.insert(at.to_string())
+            && let Some(t) = texts(at)
+        {
+            for next in subscenes(&t, texts) {
+                if go(&next, target, texts, path, seen) {
+                    return true;
+                }
+            }
+        }
+        path.pop();
+        false
+    }
+    let mut path = vec![source.to_string()];
+    let mut seen = BTreeSet::new();
+    go(placed, source, texts, &mut path, &mut seen).then_some(path)
+}
+
+/// What a scene's cook reads beside its text: the project's scene and
+/// prefab texts by asset id (`None`: no such scene or prefab), and whether
+/// the cook is a publish's (an orphaned override is then refused, not
+/// noted).
 pub struct Prefabs<'a> {
     pub texts: &'a dyn Fn(&str) -> Option<String>,
     pub publish: bool,
@@ -393,6 +467,9 @@ pub fn cook(
     };
     let mut entities: Vec<Entity> = Vec::new();
     let mut refs: Vec<String> = Vec::new();
+    // Sub-scenes: (entity index, `subscene_ids` entry).
+    let mut subscenes: Vec<(u32, u32)> = Vec::new();
+    let mut subscene_ids: Vec<String> = Vec::new();
     let mut tables: BTreeMap<String, Vec<Pending>> = BTreeMap::new();
     let mut name = String::new();
     let mut paths: Vec<(String, og_timeline::PathDesc)> = Vec::new();
@@ -499,6 +576,43 @@ pub fn cook(
                     }
                     static_flag = Some((given, c.line));
                 }
+                ("scene", None) => {
+                    let id = crate::runtime::asset_id(
+                        c.string(0)
+                            .map_err(|x| CookError(format!("line {}: scene: {x}", c.line)))?,
+                    )
+                    .to_string();
+                    let is_scene = (prefabs.texts)(&id)
+                        .and_then(|t| Document::parse(&t).ok())
+                        .is_some_and(|d| d.ty == "scene");
+                    if !is_scene {
+                        return Err(CookError(format!(
+                            "line {}: scene '{id}' is not a scene of this project (a sub-scene is an .ogt of type scene)",
+                            c.line
+                        )));
+                    }
+                    if let Some(chain) = subscene_cycle(source, &id, prefabs.texts) {
+                        return Err(CookError(format!(
+                            "line {}: sub-scene '{id}' places this scene again: {}",
+                            c.line,
+                            chain.join(" -> ")
+                        )));
+                    }
+                    if subscenes.iter().any(|(e, _)| *e == index) {
+                        return Err(CookError(format!(
+                            "line {}: an entity places one sub-scene",
+                            c.line
+                        )));
+                    }
+                    let r = match subscene_ids.iter().position(|r| r == &id) {
+                        Some(r) => r,
+                        None => {
+                            subscene_ids.push(id);
+                            subscene_ids.len() - 1
+                        }
+                    };
+                    subscenes.push((index, r as u32));
+                }
                 ("model", None) => {
                     let id = crate::runtime::asset_id(
                         c.string(0)
@@ -533,7 +647,7 @@ pub fn cook(
                 }
                 (k, None) => {
                     return Err(CookError(format!(
-                        "line {}: '{k}' in an entity is neither a component block, a child entity nor a model",
+                        "line {}: '{k}' in an entity is neither a component block, a child entity, a model nor a sub-scene",
                         c.line
                     )));
                 }
@@ -691,6 +805,11 @@ pub fn cook(
         let (id_offset, id_len) = add(r);
         prefab_ref_rows.push(RefRow { id_offset, id_len });
     }
+    let mut subscene_ref_rows = Vec::new();
+    for r in &subscene_ids {
+        let (id_offset, id_len) = add(r);
+        subscene_ref_rows.push(RefRow { id_offset, id_len });
+    }
     let meta = SceneMeta {
         entity_count: entity_rows.len() as u32,
         component_count: comp_rows.len() as u32,
@@ -719,6 +838,19 @@ pub fn cook(
             "{} entities from {} prefab(s)",
             prefab_rows.iter().filter(|r| r.prefab != NONE).count(),
             prefab_ids.len()
+        ));
+    }
+    if !subscenes.is_empty() {
+        let rows: Vec<SubsceneRow> = subscenes
+            .iter()
+            .map(|&(entity, scene)| SubsceneRow { entity, scene })
+            .collect();
+        w.table("subscenes", &rows, row_hash::<SubsceneRow>())
+            .table("subscene_refs", &subscene_ref_rows, row_hash::<RefRow>());
+        notes.push(format!(
+            "{} sub-scene placement(s) of {} scene(s)",
+            rows.len(),
+            subscene_ids.len()
         ));
     }
     if !resource_rows.is_empty() {

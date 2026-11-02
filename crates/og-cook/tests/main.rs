@@ -36,6 +36,7 @@ mod sound_opus;
 mod story;
 mod stream;
 mod strings;
+mod subscene;
 mod support;
 mod template;
 mod terrain;

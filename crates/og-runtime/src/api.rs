@@ -252,7 +252,7 @@ fn runtime_name(eng: &Engine, e: Entity, name: &str) {
     st.name_of.insert(e.to_bits(), name.to_string());
 }
 
-fn forget_name(eng: &Engine, e: Entity) {
+pub(crate) fn forget_name(eng: &Engine, e: Entity) {
     let mut st = eng.state.borrow_mut();
     if let Some(name) = st.name_of.remove(&e.to_bits()) {
         st.names.remove(&name);

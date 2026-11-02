@@ -45,6 +45,7 @@
 //! read completes at once, so nothing waits and only the order shows.
 //! `dump_stream`'s `fetch` lists what is in flight and what waits.
 
+pub(crate) mod cells;
 mod loading;
 mod residency;
 
@@ -243,6 +244,9 @@ pub(crate) struct Streams {
     peak: u64,
     log: Vec<Value>,
     fetch: Fetches,
+    /// The world cells' history by cell entity bits, for `dump_stream`
+    /// (0: refusals of no one cell).
+    pub(crate) cells: BTreeMap<u64, cells::CellLog>,
 }
 
 /// An asset kept for the frame after its group unloaded.
@@ -522,6 +526,7 @@ pub(crate) fn dump(engine_id: u32) -> Value {
     v["fetch"] = fetch_json(s);
     drop(a);
     v["terrain"] = super::terrain::stream_json(engine_id);
+    v["cells"] = cells::dump(&eng);
     v
 }
 
