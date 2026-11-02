@@ -353,6 +353,9 @@ impl StateBlock for UiState {
         };
         let _ = self.0.lock().restore_state(&bytes);
     }
+
+    /// The UI is in the screen's space.
+    fn shift(&mut self, _: &og_ecs::Shift) {}
 }
 
 // ── the viewport ────────────────────────────────────────────────────────────

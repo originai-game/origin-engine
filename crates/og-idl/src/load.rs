@@ -291,6 +291,7 @@ impl Loader {
             max: None,
             step: None,
             unit: None,
+            worldspace: None,
             label: None,
             tunable: false,
             readonly: false,
@@ -310,6 +311,17 @@ impl Loader {
                         self.error(child.line, "`unit` names a declared unit, written bare");
                     }
                 }
+                "worldspace" => {
+                    let words: Option<Vec<&str>> =
+                        child.values.iter().map(Value::as_word).collect();
+                    f.worldspace = words.filter(|w| !w.is_empty()).map(|w| w.join(" "));
+                    if f.worldspace.is_none() {
+                        self.error(
+                            child.line,
+                            "`worldspace` is a frame (world, root, hook or none) and its axes, written bare",
+                        );
+                    }
+                }
                 "label" => f.label = self.string_value(child),
                 "tunable" => f.tunable = self.bool_value(child).unwrap_or(false),
                 "readonly" => f.readonly = self.bool_value(child).unwrap_or(false),
@@ -317,7 +329,7 @@ impl Loader {
                 other => self.error(
                     child.line,
                     format!(
-                        "unknown key `{other}` in field `{}`: expected doc, default, min, max, step, unit, label, tunable, readonly or optional",
+                        "unknown key `{other}` in field `{}`: expected doc, default, min, max, step, unit, worldspace, label, tunable, readonly or optional",
                         f.name
                     ),
                 ),

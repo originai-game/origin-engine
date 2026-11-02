@@ -907,6 +907,16 @@ impl StateBlock for TileBlock {
             }
         }
     }
+
+    /// Each live map's origin is its entity's og.Transform.position: it
+    /// moves with a root, as the Transform does (so the map does not
+    /// rebuild its colliders, which the shift moved too).
+    fn shift(&mut self, s: &og_ecs::Shift) {
+        let mut t = lock(&self.0);
+        for (k, l) in t.live.iter_mut() {
+            l.origin = s.moved_of(*k, l.origin);
+        }
+    }
 }
 
 struct LiveMaps(IdMap<u64, LiveMap>, Vec<(u64, Arc<MapAsset>)>, u64);

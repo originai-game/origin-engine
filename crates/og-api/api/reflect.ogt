@@ -16,6 +16,7 @@ module reflect {
     field label String "The person-facing name; empty uses the field name."
     field doc String "One sentence on what the field means."
     field tunable bool "Publish the field to Tune and to the probe's bounds and patch."
+    field worldspace String "Where a Vector2, Vector3, f32 or f64 field's numbers lie when og.WorldOrigin shifts the world: `world` (a point in the world, moved by every shift), `root` (in its entity's Transform frame: moved on an entity without a parent), `none` (an offset, a size, a direction), then optionally its axes (`world y` for an absolute height); empty for a field that is not a coordinate."
   }
 
   column f32 {

@@ -256,6 +256,16 @@ pub struct RayCastInfo {
 }
 
 impl DynamicRayCastVehicleController {
+    /// Moves every world-space point the wheels keep through `moved` (the
+    /// world's zero moved: og.WorldOrigin).
+    pub(crate) fn shift(&mut self, moved: &dyn Fn(Vector) -> Vector) {
+        for w in &mut self.wheels {
+            w.center = moved(w.center);
+            w.raycast_info.hard_point_ws = moved(w.raycast_info.hard_point_ws);
+            w.raycast_info.contact_point_ws = moved(w.raycast_info.contact_point_ws);
+        }
+    }
+
     /// Creates a new vehicle represented by the given rigid-body.
     ///
     /// Wheels have to be attached afterwards calling [`Self::add_wheel`].

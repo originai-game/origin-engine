@@ -65,6 +65,7 @@ fn derive_produces_the_schema_with_metadata() {
             doc: "Current hit points.".into(),
             label: Some("Hit points".into()),
             unit: Some("hp".into()),
+            worldspace: None,
             min: Some(0.0),
             max: Some(1000.0),
             tunable: true,

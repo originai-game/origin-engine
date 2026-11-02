@@ -121,7 +121,8 @@ impl RuntimeView {
             serde_json::Value::Null
         } else {
             // In the world: the frame is drawn from its render origin.
-            let (position, target) = (c.position + scene.origin, c.target + scene.origin);
+            let back = scene.origin - rs.zero;
+            let (position, target) = (c.position + back, c.target + back);
             json!({
             "position": [position.x, position.y, position.z],
             "target": [target.x, target.y, target.z],

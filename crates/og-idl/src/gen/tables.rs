@@ -431,6 +431,9 @@ fn object_body(
         if let Some(l) = &f.label {
             p.set("x-og-label", Json::str(l.clone()));
         }
+        if let Some(w) = &f.worldspace {
+            p.set("x-og-worldspace", Json::str(w.clone()));
+        }
         if f.tunable {
             p.set("x-og-tunable", Json::Bool(true));
         }

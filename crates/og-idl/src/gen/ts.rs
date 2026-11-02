@@ -557,6 +557,11 @@ impl<'a> Gen<'a, '_> {
         if let Some(l) = &f.label {
             tags.push(format!("@label {l}"));
         }
+        if let Some(w) = &f.worldspace {
+            tags.push(format!(
+                "@worldspace {w} (how og.WorldOrigin's shift moves it)"
+            ));
+        }
         if f.tunable {
             tags.push("@tunable".to_string());
         }

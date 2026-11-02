@@ -209,6 +209,41 @@ pub struct Leaf {
 }
 
 impl Leaf {
+    /// Moves the leaf's absolute lanes on a place in the world by the
+    /// shift (og.WorldOrigin, R12): `to` unless relative, `from`, and the
+    /// running start and end, each lane along its field's axis
+    /// ([`og_ecs::Shift::lane`]).
+    fn shift(&mut self, s: &og_ecs::Shift) {
+        let t = self.target;
+        let width = t.lane.width() as u32;
+        for i in 0..t.lanes {
+            let d = s.lane(t.entity, t.component, t.offset + i * width);
+            if d == 0.0 {
+                continue;
+            }
+            let i = i as usize;
+            let by = |v: &mut Vec<f32>, lanes: usize| {
+                if v.len() == 1 && lanes > 1 {
+                    *v = vec![v[0]; lanes];
+                }
+                if let Some(x) = v.get_mut(i) {
+                    *x = (f64::from(*x) + d) as f32;
+                }
+            };
+            let lanes = t.lanes as usize;
+            if !self.relative {
+                by(&mut self.to, lanes);
+            }
+            if let Some(f) = &mut self.from {
+                by(f, lanes);
+            }
+            if self.started {
+                by(&mut self.start, lanes);
+                by(&mut self.end, lanes);
+            }
+        }
+    }
+
     /// A 0.3 s quadOut tween of `target` to `to`.
     pub fn new(target: Target, to: Vec<f32>) -> Leaf {
         Leaf {
@@ -652,5 +687,16 @@ impl StateBlock for TweenState {
                     .expect("decoded by TweenState::decode")
             })
             .unwrap_or_default();
+    }
+
+    /// Every leaf that tweens a place in the world (a root's
+    /// og.Transform.position, og.Camera.position) moves with it.
+    fn shift(&mut self, s: &og_ecs::Shift) {
+        for r in lock(&self.0).running.values_mut() {
+            match &mut r.node {
+                Node::Leaf(l) => l.shift(s),
+                Node::Group(g) => g.children.iter_mut().for_each(|l| l.shift(s)),
+            }
+        }
     }
 }

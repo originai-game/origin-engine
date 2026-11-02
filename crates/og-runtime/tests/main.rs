@@ -58,4 +58,5 @@ mod ui_configure;
 mod video_rendition;
 mod virtual_cameras;
 mod web_findings;
+mod world_origin;
 mod world_ui;

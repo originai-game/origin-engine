@@ -92,6 +92,7 @@ module ai {
       readonly true
     }
     field lastSeen Vector3 "Where it last saw the target (written by og.ai)." {
+      worldspace world
       unit m
       readonly true
     }
@@ -104,6 +105,7 @@ module ai {
       readonly true
     }
     field heardAt Vector3 "Where it last heard something (written by og.ai)." {
+      worldspace world
       unit m
       readonly true
     }

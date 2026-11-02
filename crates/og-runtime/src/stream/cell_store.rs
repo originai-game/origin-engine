@@ -217,6 +217,19 @@ impl og_ecs::StateBlock for Block {
             .unwrap_or_default();
         *lock(&self.0) = next;
     }
+
+    /// R12's origin shift: the kept entities' places move as they would
+    /// in the world (a row with og.Parent is a child; its parent's frame
+    /// moved with the parent). A load in progress keeps ids only.
+    fn shift(&mut self, shift: &og_ecs::Shift) {
+        let mut s = lock(&self.0);
+        for row in s.kept.values_mut().flatten() {
+            let child = row.components.iter().any(|c| c.0 == "og.Parent");
+            for (name, hash, bytes) in &mut row.components {
+                shift.kept_value(name, *hash, bytes, child);
+            }
+        }
+    }
 }
 
 #[cfg(test)]

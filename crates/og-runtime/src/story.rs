@@ -110,6 +110,9 @@ impl StateBlock for StoryBlock {
             .map_or_else(fresh, |s| *s);
         with(self.0, |rt| rt.story = Some(story));
     }
+
+    /// A story's state is its variables and choices: nothing in the world.
+    fn shift(&mut self, _: &og_ecs::Shift) {}
 }
 
 /// og.Story was registered with `world` (super::lazy::ensure, or assembly

@@ -71,6 +71,11 @@ fn turn() -> Quat {
 /// One frame of a world with a box at `boxed`, a point light at `lit` and
 /// og.Camera at `eye` turned by `turn()`: what extraction handed over.
 fn frame_at(eye: Vec3, boxed: Vec3, lit: Vec3) -> Seen {
+    frame_with(eye, boxed, lit, None)
+}
+
+/// [`frame_at`] in a world with og.WorldOrigin set to `origin` (R12).
+fn frame_with(eye: Vec3, boxed: Vec3, lit: Vec3, origin: Option<Value>) -> Seen {
     og_host_begin_bundle();
     let game = og_game_game(Some(json!({ "seed": 1 }).to_string()));
     let e = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
@@ -99,6 +104,11 @@ fn frame_at(eye: Vec3, boxed: Vec3, lit: Vec3) -> Seen {
     let w: Value =
         serde_json::from_str(&write_resource(e, "og.Camera", &camera.to_string())).unwrap();
     assert_eq!(w["ok"], json!(true), "{w}");
+    if let Some(o) = origin {
+        let w: Value =
+            serde_json::from_str(&write_resource(e, "og.WorldOrigin", &o.to_string())).unwrap();
+        assert_eq!(w["ok"], json!(true), "{w}");
+    }
     let answer: Value = serde_json::from_str(&og_engine_frame(e, 1000.0 / 60.0)).unwrap();
     assert_eq!(answer["rendered"], json!(true), "{answer}");
     seen.take()
@@ -156,4 +166,24 @@ fn a_camera_near_the_world_zero_draws_at_it() {
         seen.instances[0].w_axis.truncate(),
         Vec3::new(4003.0, 0.5, -4100.0)
     );
+}
+
+#[test]
+fn a_shifted_world_draws_from_the_render_origin_it_had_in_the_absolute_world() {
+    // R12: og.WorldOrigin shifts the world by -49 x 2048 m on x and -29 x
+    // 2048 m on z as the first tick starts (the camera is its focus), so
+    // the camera is at (-351.5, 2, 1391.75) in the world's coordinates. The
+    // render origin is laid on the grid of the absolute world (98304, 0,
+    // -57344, as unshifted), so the frame handed to the renderer is the
+    // unshifted world's, bit for bit, and a shift moves nothing drawn.
+    let eye = Vec3::new(100_000.5, 2.0, -60_000.25);
+    let boxed = Vec3::new(100_003.0, 0.5, -60_010.0);
+    let lit = Vec3::new(99_998.0, 3.0, -60_004.5);
+    let plain = frame_at(eye, boxed, lit);
+    let shifted = frame_with(eye, boxed, lit, Some(json!({ "step": 2048 })));
+    assert_eq!(shifted.origin, plain.origin, "the absolute grid point");
+    assert_eq!(shifted.position, plain.position);
+    assert_eq!(shifted.target, plain.target);
+    assert_eq!(shifted.instances, plain.instances);
+    assert_eq!(shifted.lights, plain.lights);
 }

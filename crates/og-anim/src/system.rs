@@ -196,6 +196,16 @@ struct LockState {
     lock: Lock,
 }
 
+impl Lock {
+    fn shift(&mut self, d: og_core::glam::DVec3) {
+        let m = |p: &mut Vec3| *p = (p.as_dvec3() + d).as_vec3();
+        match self {
+            Lock::Free => {}
+            Lock::Held(p) | Lock::Releasing(p, _) => m(p),
+        }
+    }
+}
+
 /// One `og.SpringBone` entity's tails between ticks, keyed by that
 /// entity; positions and velocities in the spring's `space`.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -381,6 +391,21 @@ impl Shared {
         lock_bindings(&self.bindings).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
         lock_plants(&self.plants).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
         lock_mirrors(&self.mirrors).retain(|k, _| Some(k.0) != skeleton && Some(k.1) != clip);
+    }
+
+    /// og.WorldOrigin moved the world's zero ([`og_ecs::StateBlock::shift`]).
+    fn shift(&mut self, s: &og_ecs::Shift) {
+        for l in self.locks.values_mut() {
+            l.lock.shift(s.of(l.skeleton));
+        }
+        for sp in self.springs.values_mut() {
+            if sp.space == 0 {
+                let d = s.of(sp.skeleton);
+                for (p, _) in &mut sp.tails {
+                    *p = (p.as_dvec3() + d).as_vec3();
+                }
+            }
+        }
     }
 
     fn recompute_outputs(&mut self) {

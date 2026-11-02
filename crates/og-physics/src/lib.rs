@@ -618,6 +618,26 @@ impl StateBlock for PhysicsState {
             }
         }
     }
+
+    /// The simulation in place ([`dim3::Sim::shift`]) and the points of the
+    /// pushes not yet applied. The query view recorded for this tick was
+    /// read before the shift: dropped, so the next query records again.
+    fn shift(&mut self, s: &og_ecs::Shift) {
+        let mut shared = lock(&self.0);
+        #[cfg(feature = "physics3d")]
+        if let Some(sim) = shared.sim3.as_deref_mut() {
+            sim.shift(s);
+        }
+        #[cfg(feature = "physics2d")]
+        if let Some(sim) = shared.sim2.as_deref_mut() {
+            sim.shift(s);
+        }
+        for p in &mut shared.pushes {
+            p.point = p.point.map(|q| s.moved(q));
+        }
+        shared.recorded = None;
+        shared.recorded_query = None;
+    }
 }
 
 /// Registers the physics types, inserts `settings` as the `og.Physics`

@@ -54,6 +54,8 @@ impl StateBlock for Counter {
     fn apply(&mut self, decoded: Option<Box<dyn Any + Send>>) {
         *self.0.lock().unwrap() = decoded.and_then(|d| *d.downcast::<Option<u64>>().unwrap());
     }
+    /// A count is no place.
+    fn shift(&mut self, _: &og_ecs::Shift) {}
 }
 
 fn world() -> World {

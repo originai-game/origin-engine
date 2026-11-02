@@ -385,6 +385,14 @@ pub fn quat_from_axis_angle(axis: Vec3, angle: f32) -> Quat {
     Quat::from_xyzw(axis.x * s, axis.y * s, axis.z * s, c)
 }
 
+/// `p + offset`, and `p` bit for bit while `offset` is zero: a sum would
+/// turn a -0.0 lane into 0.0, so a frame offset that og.WorldOrigin never
+/// moved (R12) would change a world's bytes. (`p - offset` needs no such
+/// care: subtracting 0.0 keeps every bit.)
+pub fn offset(p: Vec3, offset: Vec3) -> Vec3 {
+    if offset == Vec3::ZERO { p } else { p + offset }
+}
+
 /// The arc cosine of `x` in `[0, pi]`, from [`atan2`] and `sqrt` (which IEEE
 /// 754 rounds exactly): `atan2(sqrt(1 - x^2), x)` in `f64`. NaN outside
 /// `[-1, 1]`, as `f32::acos`.

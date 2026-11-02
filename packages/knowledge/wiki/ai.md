@@ -18,7 +18,7 @@ module ai {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 12940</sub>
+<sub>`api.ogt` line 13063</sub>
 
 ## Contents
 
@@ -78,7 +78,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 13130</sub>
+<sub>`api.ogt` line 13255</sub>
 
 <a id="fn-parse"></a>
 
@@ -108,7 +108,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 13137</sub>
+<sub>`api.ogt` line 13262</sub>
 
 <a id="fn-get"></a>
 
@@ -140,7 +140,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 13144</sub>
+<sub>`api.ogt` line 13269</sub>
 
 <a id="fn-set"></a>
 
@@ -174,7 +174,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 13152</sub>
+<sub>`api.ogt` line 13277</sub>
 
 <a id="fn-restart"></a>
 
@@ -204,7 +204,7 @@ fn restart {
 }
 ```
 
-<sub>`api.ogt` line 13161</sub>
+<sub>`api.ogt` line 13286</sub>
 
 <a id="fn-finish"></a>
 
@@ -240,7 +240,7 @@ fn finish {
 }
 ```
 
-<sub>`api.ogt` line 13168</sub>
+<sub>`api.ogt` line 13293</sub>
 
 <a id="fn-noise"></a>
 
@@ -270,7 +270,7 @@ fn noise {
 }
 ```
 
-<sub>`api.ogt` line 13179</sub>
+<sub>`api.ogt` line 13304</sub>
 
 <a id="fn-describe"></a>
 
@@ -300,7 +300,7 @@ fn describe {
 }
 ```
 
-<sub>`api.ogt` line 13186</sub>
+<sub>`api.ogt` line 13311</sub>
 
 ## Components, resources and events
 
@@ -350,7 +350,7 @@ component AiAgent {
 }
 ```
 
-<sub>`api.ogt` line 12960</sub>
+<sub>`api.ogt` line 13083</sub>
 
 <a id="record-Perception"></a>
 
@@ -373,10 +373,10 @@ Token `og.Perception`, registered under the schema name `og.Perception`; its val
 | `forward` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | Where it looks; zero: the way it last moved (before it moves, the way its Transform faces: +Z in 3D, +X in 2D). |
 | `target` | `Entity` | `0` | — | — | read only | What it sees or remembers seeing (written by og.ai). |
 | `sees` | `boolean` | `false` | — | — | read only | It sees the target now (written by og.ai). |
-| `lastSeen` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only | Where it last saw the target (written by og.ai). |
+| `lastSeen` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only, worldspace `world` | Where it last saw the target (written by og.ai). |
 | `sinceSeen` | `number` | `1000000` | — | `s` | read only | Seconds since it last saw a target (written by og.ai; 1e6 before the first time). |
 | `heard` | `boolean` | `false` | — | — | read only | It heard something this tick (written by og.ai). |
-| `heardAt` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only | Where it last heard something (written by og.ai). |
+| `heardAt` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only, worldspace `world` | Where it last heard something (written by og.ai). |
 | `sinceHeard` | `number` | `1000000` | — | `s` | read only | Seconds since it last heard something (written by og.ai; 1e6 before the first time). |
 
 ```ogt
@@ -428,6 +428,7 @@ component Perception {
     readonly true
   }
   field lastSeen Vector3 "Where it last saw the target (written by og.ai)." {
+    worldspace world
     unit m
     readonly true
   }
@@ -440,6 +441,7 @@ component Perception {
     readonly true
   }
   field heardAt Vector3 "Where it last heard something (written by og.ai)." {
+    worldspace world
     unit m
     readonly true
   }
@@ -451,7 +453,7 @@ component Perception {
 }
 ```
 
-<sub>`api.ogt` line 12986</sub>
+<sub>`api.ogt` line 13109</sub>
 
 <a id="record-Perceivable"></a>
 
@@ -480,7 +482,7 @@ component Perceivable {
 }
 ```
 
-<sub>`api.ogt` line 13056</sub>
+<sub>`api.ogt` line 13181</sub>
 
 <a id="record-AiChanged"></a>
 
@@ -507,7 +509,7 @@ event AiChanged {
 }
 ```
 
-<sub>`api.ogt` line 13068</sub>
+<sub>`api.ogt` line 13193</sub>
 
 <a id="record-AiActionStarted"></a>
 
@@ -534,7 +536,7 @@ event AiActionStarted {
 }
 ```
 
-<sub>`api.ogt` line 13076</sub>
+<sub>`api.ogt` line 13201</sub>
 
 <a id="record-AiActionStopped"></a>
 
@@ -561,7 +563,7 @@ event AiActionStopped {
 }
 ```
 
-<sub>`api.ogt` line 13084</sub>
+<sub>`api.ogt` line 13209</sub>
 
 ## Types
 
@@ -577,7 +579,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Behaviour "A loaded behaviour tree or state machine."
 ```
 
-<sub>`api.ogt` line 12946</sub>
+<sub>`api.ogt` line 13069</sub>
 
 <a id="type-BehaviourInfo"></a>
 
@@ -608,7 +610,7 @@ struct BehaviourInfo {
 }
 ```
 
-<sub>`api.ogt` line 13092</sub>
+<sub>`api.ogt` line 13217</sub>
 
 <a id="type-NoiseDesc"></a>
 
@@ -640,7 +642,7 @@ struct NoiseDesc {
 }
 ```
 
-<sub>`api.ogt` line 13103</sub>
+<sub>`api.ogt` line 13228</sub>
 
 <a id="type-AiDescription"></a>
 
@@ -675,7 +677,7 @@ struct AiDescription {
 }
 ```
 
-<sub>`api.ogt` line 13117</sub>
+<sub>`api.ogt` line 13242</sub>
 
 ## Column kinds
 
@@ -694,7 +696,7 @@ column Behaviour {
 }
 ```
 
-<sub>`api.ogt` line 12948</sub>
+<sub>`api.ogt` line 13071</sub>
 
 ## Constants
 
@@ -709,22 +711,22 @@ column Behaviour {
 const AI_RUNNING u32 1 "AiAgent.status: the tree or state is still running."
 ```
 
-<sub>`api.ogt` line 12955</sub>
+<sub>`api.ogt` line 13078</sub>
 
 ```ogt
 const AI_SUCCESS u32 2 "AiAgent.status: the tree succeeded on the last think."
 ```
 
-<sub>`api.ogt` line 12956</sub>
+<sub>`api.ogt` line 13079</sub>
 
 ```ogt
 const AI_FAILURE u32 3 "AiAgent.status: the tree failed on the last think."
 ```
 
-<sub>`api.ogt` line 12957</sub>
+<sub>`api.ogt` line 13080</sub>
 
 ```ogt
 const AI_INTERRUPTED u32 4 "AiActionStopped.result: the action stopped before the game finished it (another branch won, the state changed, the agent restarted)."
 ```
 
-<sub>`api.ogt` line 12958</sub>
+<sub>`api.ogt` line 13081</sub>

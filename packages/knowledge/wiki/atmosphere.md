@@ -16,7 +16,7 @@ module atmosphere {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 9811</sub>
+<sub>`api.ogt` line 9923</sub>
 
 ## Contents
 
@@ -64,7 +64,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 10262</sub>
+<sub>`api.ogt` line 10375</sub>
 
 ## Components, resources and events
 
@@ -84,7 +84,7 @@ Token `og.Fog`, registered under the schema name `og.Fog`; its value type is `Fo
 | `start` | `number` | `0` | ≥ 0 | `m` | tunable | The distance from the camera where distance fog starts. |
 | `end` | `number` | `0` | ≥ 0 | `m` | tunable | The distance from the camera where fog is full: with end > start, a linear ramp from start to end applied together with density's exponential fog (0: no ramp). |
 | `heightDensity` | `number` | `0` | 0 … 10 | — | tunable | Height fog at and below height (0: none). |
-| `height` | `number` | `0` | — | `m` | tunable | The world height below which height fog is densest. |
+| `height` | `number` | `0` | — | `m` | tunable, worldspace `world y` | The world height below which height fog is densest. |
 | `falloff` | `number` | `0.5` | 0.0001 … 20 | — | tunable | How fast height fog thins above height, per metre. |
 | `sunColor` | `Color` | `{ r: 1, g: 0.86, b: 0.62 }` | — | — | — | The fog's colour looking into the sun (forward scattering). |
 | `sunPower` | `number` | `8` | 0 … 256 | — | tunable | How tight the sun's glow in the fog is (higher: smaller). |
@@ -124,6 +124,7 @@ resource Fog {
     tunable true
   }
   field height f32 "The world height below which height fog is densest." {
+    worldspace world y
     unit m
     tunable true
   }
@@ -178,7 +179,7 @@ resource Fog {
 }
 ```
 
-<sub>`api.ogt` line 9822</sub>
+<sub>`api.ogt` line 9934</sub>
 
 <a id="record-Sky"></a>
 
@@ -285,7 +286,7 @@ resource Sky {
 }
 ```
 
-<sub>`api.ogt` line 9903</sub>
+<sub>`api.ogt` line 10016</sub>
 
 <a id="record-DayNight"></a>
 
@@ -367,7 +368,7 @@ resource DayNight {
 }
 ```
 
-<sub>`api.ogt` line 9978</sub>
+<sub>`api.ogt` line 10091</sub>
 
 <a id="record-Weather"></a>
 
@@ -429,7 +430,7 @@ resource Weather {
 }
 ```
 
-<sub>`api.ogt` line 10035</sub>
+<sub>`api.ogt` line 10148</sub>
 
 <a id="record-Wind"></a>
 
@@ -475,7 +476,7 @@ resource Wind {
 }
 ```
 
-<sub>`api.ogt` line 10075</sub>
+<sub>`api.ogt` line 10188</sub>
 
 <a id="record-Water"></a>
 
@@ -644,7 +645,7 @@ component Water {
 }
 ```
 
-<sub>`api.ogt` line 10102</sub>
+<sub>`api.ogt` line 10215</sub>
 
 <a id="record-Water2D"></a>
 
@@ -698,7 +699,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 10230</sub>
+<sub>`api.ogt` line 10343</sub>
 
 ## Constants
 
@@ -714,28 +715,28 @@ component Water2D {
 const WEATHER_NONE u32 0 "Weather.kind: clear."
 ```
 
-<sub>`api.ogt` line 9816</sub>
+<sub>`api.ogt` line 9928</sub>
 
 ```ogt
 const WEATHER_RAIN u32 1 "Weather.kind: rain streaks falling with the wind, the light dimmed and a grey distance fog."
 ```
 
-<sub>`api.ogt` line 9817</sub>
+<sub>`api.ogt` line 9929</sub>
 
 ```ogt
 const WEATHER_SNOW u32 2 "Weather.kind: flakes drifting down on gusts, a pale fog."
 ```
 
-<sub>`api.ogt` line 9818</sub>
+<sub>`api.ogt` line 9930</sub>
 
 ```ogt
 const WEATHER_DUST u32 3 "Weather.kind: dust blowing along the wind near the ground, a warm thick fog."
 ```
 
-<sub>`api.ogt` line 9819</sub>
+<sub>`api.ogt` line 9931</sub>
 
 ```ogt
 const WEATHER_MIST u32 4 "Weather.kind: no particles, a dense low height fog."
 ```
 
-<sub>`api.ogt` line 9820</sub>
+<sub>`api.ogt` line 9932</sub>

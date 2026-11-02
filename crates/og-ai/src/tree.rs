@@ -107,6 +107,10 @@ pub struct Senses<'a> {
     pub nav_status: u32,
     pub nav_target: Vec3,
     pub stop_distance: f32,
+    /// How far og.WorldOrigin has moved the world's zero since the
+    /// behaviours' points were written (R12): a route's and a MoveTo's
+    /// point are where they were authored plus this.
+    pub origin: Vec3,
     /// A key, `Component.field` or `Resource.field` (built-in keys included).
     pub resolve: &'a dyn Fn(&str, &AgentMem) -> Option<Value>,
     /// Where an entity is.
@@ -441,7 +445,7 @@ impl Walker<'_, '_> {
                         Some(p) => p,
                         None => return Status::Failure,
                     },
-                    None => *point,
+                    None => og_core::math::offset(*point, s.origin),
                 };
                 if self.arrived_at(t) || pos.distance(t) <= s.stop_distance {
                     return Status::Success;
@@ -488,7 +492,11 @@ impl Walker<'_, '_> {
                 speed,
                 loops,
             } => {
-                let pts = &self.b.routes[*route].1;
+                let pts: Vec<Vec3> = self.b.routes[*route]
+                    .1
+                    .iter()
+                    .map(|p| og_core::math::offset(*p, s.origin))
+                    .collect();
                 if starting {
                     // Resume at the nearest point.
                     let mut best = (f32::MAX, 0usize);

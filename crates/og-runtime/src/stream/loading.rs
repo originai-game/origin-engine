@@ -12,6 +12,18 @@ pub(crate) fn update(eng: &Engine) {
     let tick = tick_of(eng);
     retry_retained(eng);
     let cam = camera(eng);
+    // A distance group's anchor is cooked in the absolute world: the
+    // camera's place there is its own plus og.WorldOrigin's zero (R12).
+    let zero = eng.world().map_or(glam::DVec3::ZERO, |w| {
+        let l = eng
+            .state
+            .borrow()
+            .layouts
+            .get(crate::origin::RESOURCE)
+            .cloned();
+        crate::origin::zero(w, l.as_ref())
+    });
+    let absolute = cam.map(|c| c.as_dvec3() + zero);
     // Cell groups: wanted with their cells, read ahead of the anchors.
     let cell_wants = if eng
         .assets
@@ -70,7 +82,8 @@ pub(crate) fn update(eng: &Engine) {
                     radius,
                     unload,
                 } => {
-                    let d = cam.map(|c| c.distance(glam::Vec3::from(*anchor)));
+                    let d =
+                        absolute.map(|c| c.distance(glam::Vec3::from(*anchor).as_dvec3()) as f32);
                     g.near = match d {
                         Some(d) if d <= *radius => true,
                         Some(d) if d > *unload => false,

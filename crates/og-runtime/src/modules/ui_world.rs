@@ -116,6 +116,11 @@ impl StateBlock for WorldState {
             .unwrap_or_default();
         let _ = self.0.lock().restore_world_state(&bytes);
     }
+
+    /// The world-space pools' instances are at places in the world.
+    fn shift(&mut self, s: &og_ecs::Shift) {
+        self.0.lock().shift_world(s.d.as_vec3());
+    }
 }
 
 // ── reading descs ───────────────────────────────────────────────────────────

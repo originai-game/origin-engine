@@ -324,6 +324,10 @@ pub(crate) struct RenderState {
     pub terrain: super::terrain::TerrainState,
     /// The last frame's hierarchy, kept for its allocations.
     pub hierarchy: Hierarchy,
+    /// Where og.WorldOrigin put the world's zero for the last frame (R12):
+    /// `scene.origin` is in the absolute world, so the world's place of a
+    /// drawn position is it plus `scene.origin` less this.
+    pub zero: Vec3,
     /// Runtime geometry, lines, points, debug draw (`super::geometry`).
     pub geo: super::geometry::GeoState,
     /// The entity of each drawable of the last extraction (`super::describe`).
@@ -387,6 +391,7 @@ impl RenderState {
             env: Default::default(),
             terrain: Default::default(),
             hierarchy: Hierarchy::default(),
+            zero: Vec3::ZERO,
             geo: Default::default(),
             ids: Default::default(),
             views: Default::default(),
@@ -615,6 +620,8 @@ pub(crate) struct DrawLayouts {
     pub probe: Option<Layout>,
     /// og.Interpolation (`super::interpolate`).
     pub interpolation: Option<Layout>,
+    /// og.WorldOrigin (R12): the render origin's grid is in the absolute world.
+    pub origin: Option<Layout>,
     /// og.CameraView and og.Mirror (`super::views`).
     pub views: super::views::ViewLayouts,
     /// The engine's physics, for the debug view (`super::geometry`).

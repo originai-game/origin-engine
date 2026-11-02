@@ -3060,7 +3060,11 @@
       "types": [
         "Transform",
         "Parent",
-        "MatrixWorld"
+        "MatrixWorld",
+        "WorldOriginPlane",
+        "WorldOriginPlane",
+        "WorldOrigin",
+        "OriginShifted"
       ],
       "consts": [],
       "functions": [
@@ -20551,6 +20555,11 @@
           "type": "boolean",
           "description": "Publish the field to Tune and to the probe's bounds and patch.",
           "default": false
+        },
+        "worldspace": {
+          "type": "string",
+          "description": "Where a Vector2, Vector3, f32 or f64 field's numbers lie when og.WorldOrigin shifts the world: `world` (a point in the world, moved by every shift), `root` (in its entity's Transform frame: moved on an entity without a parent), `none` (an offset, a size, a direction), then optionally its axes (`world y` for an absolute height); empty for a field that is not a coordinate.",
+          "default": ""
         }
       },
       "additionalProperties": false
@@ -21303,7 +21312,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "root"
         },
         "quaternion": {
           "$ref": "#/$defs/Quaternion",
@@ -21356,6 +21366,118 @@
           "readOnly": true
         }
       },
+      "additionalProperties": false
+    },
+    "WorldOriginPlane": {
+      "x-og-kind": "enum",
+      "x-og-module": "transform",
+      "description": "The axes og.WorldOrigin moves the world's zero along.",
+      "type": "string",
+      "enum": [
+        "xz",
+        "xyz",
+        "xy"
+      ],
+      "x-og-variants": {
+        "xz": "x and z: the ground plane of a 3D world (heights stay absolute).",
+        "xyz": "x, y and z: a world that is also deep or high (space, flight).",
+        "xy": "x and y: a 2D world (its z, the drawing order, stays)."
+      }
+    },
+    "WorldOrigin": {
+      "x-og-kind": "resource",
+      "x-og-module": "transform",
+      "description": "Large worlds (R12): naming it keeps every place in the world near its zero. As each tick starts, before any system runs, when the focus is farther from the zero than `step` along one of the plane's axes, the whole world shifts by the multiple of `step` nearest the focus, so the focus is within half a step of the zero again: every Transform of an entity without a parent, and every field the API marks `worldspace`, moves by the same amount (a body, its contacts and warm starts, a path, a particle, a tween to a place, the camera), and nothing in the world sees a change but the numbers. Precision then holds however far the world goes, while the zero's own place is kept here, in f64.\nThe shift is world state, decided from world state alone (the focus's Transform, else the first og.StreamAnchor, else og.Camera.position), so a replay, a rollback, a restore and every peer of an og.net session shift on the same tick by the same amount; a session refuses the og.Camera fallback (each peer's camera is its own) and holds the zero until a focus or an anchor exists. A world that never names it keeps its hash and frames. Values a game keeps outside the marked fields (a world position in its own component, a key it set in an og.ai blackboard) are its own: OriginShifted says when to add its `delta` to them. 2D worlds shift too, on `xy`.",
+      "type": "object",
+      "properties": {
+        "step": {
+          "type": "number",
+          "description": "How far the focus may stray from the zero along an axis before the world shifts, and the grid the zero moves on (whole metres).",
+          "default": 2048,
+          "minimum": 64,
+          "x-og-unit": "m"
+        },
+        "plane": {
+          "$ref": "#/$defs/WorldOriginPlane",
+          "description": "The axes the zero moves along: xz (the default), xyz, or xy for a 2D world.",
+          "default": "xz"
+        },
+        "focus": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity the zero follows (a player, a vehicle; a root). 0: the first og.StreamAnchor by entity id, else og.Camera.position.",
+          "default": 0
+        },
+        "off": {
+          "type": "boolean",
+          "description": "Hold the zero where it is.",
+          "default": false
+        },
+        "x": {
+          "type": "number",
+          "description": "Written: where the zero is in the world, along x (a place's absolute position is its own plus this).",
+          "default": 0,
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "y": {
+          "type": "number",
+          "description": "Written: where the zero is, along y.",
+          "default": 0,
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "z": {
+          "type": "number",
+          "description": "Written: where the zero is, along z.",
+          "default": 0,
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "shifts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Written: how many times the world has shifted.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "OriginShifted": {
+      "x-og-kind": "event",
+      "x-og-module": "transform",
+      "description": "og.WorldOrigin shifted the world as this tick started, before any system ran: every marked place moved by `delta`. Add it to the world positions a game keeps of its own.",
+      "type": "object",
+      "properties": {
+        "delta": {
+          "$ref": "#/$defs/Vector3",
+          "description": "How far every place moved (a whole multiple of og.WorldOrigin.step along each axis of its plane).",
+          "x-og-unit": "m",
+          "x-og-worldspace": "none"
+        },
+        "x": {
+          "type": "number",
+          "description": "Where the zero is now in the world, along x (og.WorldOrigin.x).",
+          "x-og-unit": "m"
+        },
+        "y": {
+          "type": "number",
+          "description": "Along y.",
+          "x-og-unit": "m"
+        },
+        "z": {
+          "type": "number",
+          "description": "Along z.",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "delta",
+        "x",
+        "y",
+        "z"
+      ],
       "additionalProperties": false
     },
     "Time": {
@@ -23428,6 +23550,7 @@
             "y": 0
           },
           "x-og-unit": "cssPx",
+          "x-og-worldspace": "none",
           "readOnly": true
         },
         "pointerInside": {
@@ -23655,6 +23778,7 @@
             "y": 0
           },
           "x-og-unit": "cssPx",
+          "x-og-worldspace": "none",
           "readOnly": true
         },
         "position1": {
@@ -23665,6 +23789,7 @@
             "y": 0
           },
           "x-og-unit": "cssPx",
+          "x-og-worldspace": "none",
           "readOnly": true
         },
         "position2": {
@@ -23675,6 +23800,7 @@
             "y": 0
           },
           "x-og-unit": "cssPx",
+          "x-og-worldspace": "none",
           "readOnly": true
         },
         "position3": {
@@ -23685,6 +23811,7 @@
             "y": 0
           },
           "x-og-unit": "cssPx",
+          "x-og-worldspace": "none",
           "readOnly": true
         },
         "position4": {
@@ -23695,6 +23822,7 @@
             "y": 0
           },
           "x-og-unit": "cssPx",
+          "x-og-worldspace": "none",
           "readOnly": true
         },
         "start0": {
@@ -23705,6 +23833,7 @@
             "y": 0
           },
           "x-og-unit": "cssPx",
+          "x-og-worldspace": "none",
           "readOnly": true
         },
         "start1": {
@@ -23715,6 +23844,7 @@
             "y": 0
           },
           "x-og-unit": "cssPx",
+          "x-og-worldspace": "none",
           "readOnly": true
         },
         "start2": {
@@ -23725,6 +23855,7 @@
             "y": 0
           },
           "x-og-unit": "cssPx",
+          "x-og-worldspace": "none",
           "readOnly": true
         },
         "start3": {
@@ -23735,6 +23866,7 @@
             "y": 0
           },
           "x-og-unit": "cssPx",
+          "x-og-worldspace": "none",
           "readOnly": true
         },
         "start4": {
@@ -23745,6 +23877,7 @@
             "y": 0
           },
           "x-og-unit": "cssPx",
+          "x-og-worldspace": "none",
           "readOnly": true
         },
         "movement": {
@@ -24464,7 +24597,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "quaternion": {
           "$ref": "#/$defs/Quaternion",
@@ -24619,7 +24753,8 @@
             "x": 0,
             "y": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "zoneMax": {
           "$ref": "#/$defs/Vector2",
@@ -24628,7 +24763,8 @@
             "x": 0,
             "y": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "zoneFromActive": {
           "type": "boolean",
@@ -24642,7 +24778,8 @@
             "x": 0,
             "y": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "zoneFromMax": {
           "$ref": "#/$defs/Vector2",
@@ -24651,7 +24788,8 @@
             "x": 0,
             "y": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "zoneScroll": {
           "type": "number",
@@ -24691,7 +24829,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "none"
         },
         "distance": {
           "type": "number",
@@ -24792,6 +24931,7 @@
             "y": 0
           },
           "x-og-unit": "cssPx",
+          "x-og-worldspace": "none",
           "readOnly": true
         }
       },
@@ -24922,6 +25062,7 @@
             "y": 0
           },
           "x-og-unit": "m",
+          "x-og-worldspace": "root",
           "readOnly": true
         },
         "clamp": {
@@ -24936,7 +25077,8 @@
             "x": 0,
             "y": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "boundsMax": {
           "$ref": "#/$defs/Vector2",
@@ -24945,7 +25087,8 @@
             "x": 0,
             "y": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         }
       },
       "additionalProperties": false
@@ -24963,7 +25106,8 @@
             "x": 0,
             "y": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "max": {
           "$ref": "#/$defs/Vector2",
@@ -24972,7 +25116,8 @@
             "x": 10,
             "y": 10
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "priority": {
           "type": "integer",
@@ -25014,7 +25159,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "p1": {
           "$ref": "#/$defs/Vector3",
@@ -25024,7 +25170,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "p2": {
           "$ref": "#/$defs/Vector3",
@@ -25034,7 +25181,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "p3": {
           "$ref": "#/$defs/Vector3",
@@ -25044,7 +25192,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "p4": {
           "$ref": "#/$defs/Vector3",
@@ -25054,7 +25203,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "p5": {
           "$ref": "#/$defs/Vector3",
@@ -25064,7 +25214,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "p6": {
           "$ref": "#/$defs/Vector3",
@@ -25074,7 +25225,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "p7": {
           "$ref": "#/$defs/Vector3",
@@ -25084,7 +25236,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "smoothTime": {
           "type": "number",
@@ -25245,6 +25398,7 @@
             "z": 0
           },
           "x-og-unit": "m",
+          "x-og-worldspace": "world",
           "readOnly": true
         },
         "pull": {
@@ -25351,6 +25505,7 @@
             "z": 0
           },
           "x-og-unit": "m",
+          "x-og-worldspace": "world",
           "readOnly": true
         },
         "fromQuaternion": {
@@ -27250,6 +27405,7 @@
             "x": 0.5,
             "y": 0.5
           },
+          "x-og-worldspace": "none",
           "x-og-tunable": true
         },
         "screenBlurAngle": {
@@ -27517,6 +27673,7 @@
             "x": 0.5,
             "y": 0.5
           },
+          "x-og-worldspace": "none",
           "x-og-tunable": true
         },
         "filmGrain": {
@@ -28493,7 +28650,8 @@
           "default": {
             "x": 0,
             "y": 0
-          }
+          },
+          "x-og-worldspace": "none"
         },
         "uvMax": {
           "$ref": "#/$defs/Vector2",
@@ -28501,7 +28659,8 @@
           "default": {
             "x": 1,
             "y": 1
-          }
+          },
+          "x-og-worldspace": "none"
         },
         "emissive": {
           "$ref": "#/$defs/Color",
@@ -28696,7 +28855,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "width": {
           "type": "number",
@@ -29310,7 +29470,8 @@
           "default": {
             "x": 0.5,
             "y": 0.5
-          }
+          },
+          "x-og-worldspace": "none"
         },
         "color": {
           "$ref": "#/$defs/Color",
@@ -29335,7 +29496,8 @@
           "default": {
             "x": 0,
             "y": 0
-          }
+          },
+          "x-og-worldspace": "none"
         },
         "uvMax": {
           "$ref": "#/$defs/Vector2",
@@ -29343,7 +29505,8 @@
           "default": {
             "x": 1,
             "y": 1
-          }
+          },
+          "x-og-worldspace": "none"
         },
         "layer": {
           "type": "integer",
@@ -33220,7 +33383,8 @@
         "point": {
           "$ref": "#/$defs/Vector3",
           "description": "The deepest contact point in world space (z is 0 in 2D).",
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "normal": {
           "$ref": "#/$defs/Vector3",
@@ -33497,7 +33661,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "none"
         },
         "otherAnchor": {
           "$ref": "#/$defs/Vector3",
@@ -33507,7 +33672,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "hook"
         },
         "axis": {
           "$ref": "#/$defs/Vector3",
@@ -34566,7 +34732,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "none"
         },
         "iterations": {
           "type": "integer",
@@ -34922,6 +35089,7 @@
             "z": 0
           },
           "x-og-unit": "m",
+          "x-og-worldspace": "world",
           "readOnly": true
         }
       },
@@ -34958,7 +35126,8 @@
             "x": 0,
             "y": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "none"
         },
         "radius": {
           "type": "number",
@@ -35121,7 +35290,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "none"
         },
         "radius": {
           "type": "number",
@@ -35484,7 +35654,8 @@
         "point": {
           "$ref": "#/$defs/Vector3",
           "description": "Where it crossed the surface.",
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "speed": {
           "type": "number",
@@ -36319,6 +36490,7 @@
           "description": "The world height below which height fog is densest.",
           "default": 0,
           "x-og-unit": "m",
+          "x-og-worldspace": "world y",
           "x-og-tunable": true
         },
         "falloff": {
@@ -37438,7 +37610,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "hook"
         },
         "pole": {
           "$ref": "#/$defs/Vector3",
@@ -37448,7 +37621,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "hook"
         },
         "space": {
           "$ref": "#/$defs/IkSpace",
@@ -37531,7 +37705,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "hook"
         },
         "space": {
           "$ref": "#/$defs/IkSpace",
@@ -38554,7 +38729,8 @@
             "x": 0,
             "y": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "hook"
         },
         "weight": {
           "type": "number",
@@ -40824,7 +41000,8 @@
             "x": 0,
             "y": 0,
             "z": 0
-          }
+          },
+          "x-og-worldspace": "world"
         },
         "seeking": {
           "type": "boolean",
@@ -40945,6 +41122,7 @@
             "z": 0
           },
           "x-og-unit": "m",
+          "x-og-worldspace": "world",
           "readOnly": true
         },
         "remaining": {
@@ -40995,7 +41173,8 @@
             "y": 0,
             "z": 0
           },
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "fleeRadius": {
           "type": "number",
@@ -41302,12 +41481,14 @@
         "start": {
           "$ref": "#/$defs/Vector3",
           "description": "Where the agent leaves the surface.",
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "end": {
           "$ref": "#/$defs/Vector3",
           "description": "Where it lands.",
-          "x-og-unit": "m"
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
         },
         "game": {
           "type": "boolean",
@@ -42052,6 +42233,7 @@
             "z": 0
           },
           "x-og-unit": "m",
+          "x-og-worldspace": "world",
           "readOnly": true
         },
         "sinceSeen": {
@@ -42076,6 +42258,7 @@
             "z": 0
           },
           "x-og-unit": "m",
+          "x-og-worldspace": "world",
           "readOnly": true
         },
         "sinceHeard": {

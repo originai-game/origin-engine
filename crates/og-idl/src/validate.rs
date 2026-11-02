@@ -646,6 +646,37 @@ impl<'a> Validator<'a, '_> {
                     format!("field `{owner}.{}` uses unknown unit `{unit}`", f.name),
                 );
             }
+            if let Some(space) = &f.worldspace {
+                let lanes = match f.ty.name() {
+                    "Vector3" => Some(3),
+                    "Vector2" => Some(2),
+                    "f32" | "f64" => Some(1),
+                    _ => None,
+                };
+                match lanes {
+                    _ if !matches!(site, FieldSite::Record(_)) => self.error(
+                        f.line,
+                        format!("field `{owner}.{}`: `worldspace` belongs to component, resource and event fields", f.name),
+                    ),
+                    None => self.error(
+                        f.line,
+                        format!("field `{owner}.{}`: `worldspace` belongs to Vector3, Vector2, f32 and f64 fields, not `{}`", f.name, f.ty),
+                    ),
+                    Some(n) => {
+                        if let Err(e) = og_core::Worldspace::parse(space, n) {
+                            self.error(f.line, format!("field `{owner}.{}`: {e}", f.name));
+                        }
+                    }
+                }
+            } else if matches!(site, FieldSite::Record(_))
+                && matches!(f.ty.name(), "Vector3" | "Vector2")
+                && placelike(&f.name)
+            {
+                self.error(
+                    f.line,
+                    format!("field `{owner}.{}` reads as a place: mark how og.WorldOrigin's shift moves it, `worldspace world`, `root`, `hook` or `none`", f.name),
+                );
+            }
             let numeric = !matches!(self.ix.decl(f.ty.name()), Some(TypeDecl::Enum(_)))
                 && self
                     .ix
@@ -1020,4 +1051,20 @@ fn show(values: &[Value]) -> String {
         .map(|v| format!("`{}`", show_value(v)))
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+/// A record field whose name says it holds a place in the world (R12): it
+/// must say how og.WorldOrigin's shift moves it, even when the answer is
+/// `none` (a place in its own frame), so a new field is never left behind.
+fn placelike(name: &str) -> bool {
+    const WORDS: [&str; 10] = [
+        "position", "point", "target", "center", "centre", "anchor", "origin", "pivot", "focus",
+        "eye",
+    ];
+    let lower = name.to_ascii_lowercase();
+    WORDS.iter().any(|w| {
+        lower == *w
+            || (lower.ends_with(w)
+                && name[name.len() - w.len()..].starts_with(|c: char| c.is_ascii_uppercase()))
+    })
 }

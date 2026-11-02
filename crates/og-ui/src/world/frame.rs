@@ -374,6 +374,27 @@ impl Ui {
         out
     }
 
+    /// Moves the world-space pools' instances by `d` (og.WorldOrigin moved
+    /// the world's zero): every pool whose template is not in the screen's
+    /// space. Emitters' particles and anchors' eased offsets are CSS px.
+    pub fn shift_world(&mut self, d: og_core::glam::Vec3) {
+        let d = d.as_dvec3();
+        for (k, pool) in self.world.state.pools.iter_mut() {
+            let world = self
+                .world
+                .templates
+                .get(*k as usize)
+                .is_some_and(|(_, _, space)| *space != UiMassSpace::Screen);
+            if !world {
+                continue;
+            }
+            for i in pool {
+                let p = og_core::glam::Vec3::from_array(i.position).as_dvec3() + d;
+                i.position = p.as_vec3().to_array();
+            }
+        }
+    }
+
     /// Restores [`Ui::save_world_state`]'s bytes (empty: the empty state).
     pub fn restore_world_state(&mut self, bytes: &[u8]) -> og_core::Result<()> {
         self.world.state = decode_world(bytes).ok_or_else(|| {

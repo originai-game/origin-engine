@@ -50,6 +50,7 @@ struct FieldMeta {
     doc: String,
     label: Option<String>,
     unit: Option<String>,
+    worldspace: Option<String>,
     min: Option<f64>,
     max: Option<f64>,
     tunable: bool,
@@ -119,6 +120,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
         let doc = &f.doc;
         let label = opt_str(&f.label);
         let unit = opt_str(&f.unit);
+        let worldspace = opt_str(&f.worldspace);
         let min = opt_f64(f.min);
         let max = opt_f64(f.max);
         let tunable = f.tunable;
@@ -150,6 +152,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
                 doc: ::og_core::reflect_doc!(#doc),
                 label: #label,
                 unit: #unit,
+                worldspace: #worldspace,
                 min: #min,
                 max: #max,
                 tunable: #tunable,
@@ -247,6 +250,7 @@ fn field_meta(field: &syn::Field) -> syn::Result<FieldMeta> {
         doc: doc_of(&field.attrs),
         label: None,
         unit: None,
+        worldspace: None,
         min: None,
         max: None,
         tunable: false,
@@ -262,6 +266,8 @@ fn field_meta(field: &syn::Field) -> syn::Result<FieldMeta> {
                 meta.label = Some(m.value()?.parse::<LitStr>()?.value());
             } else if m.path.is_ident("unit") {
                 meta.unit = Some(m.value()?.parse::<LitStr>()?.value());
+            } else if m.path.is_ident("worldspace") {
+                meta.worldspace = Some(m.value()?.parse::<LitStr>()?.value());
             } else if m.path.is_ident("min") {
                 meta.min = Some(number(&m.value()?.parse::<Expr>()?)?);
             } else if m.path.is_ident("max") {
@@ -307,7 +313,7 @@ fn field_meta(field: &syn::Field) -> syn::Result<FieldMeta> {
                 });
             } else {
                 return Err(m.error(
-                    "unknown reflect attribute on a field; expected min, max, label, unit, tunable, default, name or variants",
+                    "unknown reflect attribute on a field; expected min, max, label, unit, worldspace, tunable, default, name or variants",
                 ));
             }
             Ok(())

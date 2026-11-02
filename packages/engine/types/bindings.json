@@ -81,6 +81,12 @@
       "value": "Entity"
     },
     {
+      "name": "WorldOriginPlane",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "WorldOriginPlane"
+    },
+    {
       "name": "Geometry",
       "array": "Uint32Array",
       "stride": 2,
@@ -6920,6 +6926,58 @@
   "resources": [
     {
       "id": 0,
+      "name": "WorldOrigin",
+      "schema": "og.WorldOrigin",
+      "module": "transform",
+      "fields": [
+        {
+          "name": "step",
+          "column": "f32",
+          "default": 2048
+        },
+        {
+          "name": "plane",
+          "column": "WorldOriginPlane",
+          "default": "xz"
+        },
+        {
+          "name": "focus",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "off",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "x",
+          "column": "f64",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "y",
+          "column": "f64",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "z",
+          "column": "f64",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "shifts",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 1,
       "name": "Time",
       "schema": "og.Time",
       "module": "time",
@@ -6975,7 +7033,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 2,
       "name": "TimeGroups",
       "schema": "og.TimeGroups",
       "module": "time",
@@ -6989,7 +7047,7 @@
       ]
     },
     {
-      "id": 2,
+      "id": 3,
       "name": "Rng",
       "schema": "og.Rng",
       "module": "rng",
@@ -7009,7 +7067,7 @@
       ]
     },
     {
-      "id": 3,
+      "id": 4,
       "name": "Input",
       "schema": "og.Input",
       "module": "input",
@@ -7161,7 +7219,7 @@
       ]
     },
     {
-      "id": 4,
+      "id": 5,
       "name": "Pointers",
       "schema": "og.Pointers",
       "module": "input",
@@ -7292,7 +7350,7 @@
       ]
     },
     {
-      "id": 5,
+      "id": 6,
       "name": "PointerLock",
       "schema": "og.PointerLock",
       "module": "input",
@@ -7311,7 +7369,7 @@
       ]
     },
     {
-      "id": 6,
+      "id": 7,
       "name": "Gamepad",
       "schema": "og.Gamepad",
       "module": "input",
@@ -7691,7 +7749,7 @@
       ]
     },
     {
-      "id": 7,
+      "id": 8,
       "name": "Camera",
       "schema": "og.Camera",
       "module": "camera",
@@ -7877,7 +7935,7 @@
       ]
     },
     {
-      "id": 8,
+      "id": 9,
       "name": "CameraBrain",
       "schema": "og.CameraBrain",
       "module": "camera",
@@ -8015,7 +8073,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 10,
       "name": "RenderSettings",
       "schema": "og.RenderSettings",
       "module": "render",
@@ -8186,7 +8244,7 @@
       ]
     },
     {
-      "id": 10,
+      "id": 11,
       "name": "Environment",
       "schema": "og.Environment",
       "module": "render",
@@ -8246,7 +8304,7 @@
       ]
     },
     {
-      "id": 11,
+      "id": 12,
       "name": "PostEffects",
       "schema": "og.PostEffects",
       "module": "render",
@@ -8712,7 +8770,7 @@
       ]
     },
     {
-      "id": 12,
+      "id": 13,
       "name": "Stylise",
       "schema": "og.Stylise",
       "module": "render",
@@ -8977,7 +9035,7 @@
       ]
     },
     {
-      "id": 13,
+      "id": 14,
       "name": "MaterialStyle",
       "schema": "og.MaterialStyle",
       "module": "render",
@@ -9077,7 +9135,7 @@
       ]
     },
     {
-      "id": 14,
+      "id": 15,
       "name": "Lighting2D",
       "schema": "og.Lighting2D",
       "module": "render",
@@ -9119,7 +9177,7 @@
       ]
     },
     {
-      "id": 15,
+      "id": 16,
       "name": "Physics",
       "schema": "og.Physics",
       "module": "physics",
@@ -9172,7 +9230,7 @@
       ]
     },
     {
-      "id": 16,
+      "id": 17,
       "name": "Fog",
       "schema": "og.Fog",
       "module": "atmosphere",
@@ -9279,7 +9337,7 @@
       ]
     },
     {
-      "id": 17,
+      "id": 18,
       "name": "Sky",
       "schema": "og.Sky",
       "module": "atmosphere",
@@ -9409,7 +9467,7 @@
       ]
     },
     {
-      "id": 18,
+      "id": 19,
       "name": "DayNight",
       "schema": "og.DayNight",
       "module": "atmosphere",
@@ -9475,7 +9533,7 @@
       ]
     },
     {
-      "id": 19,
+      "id": 20,
       "name": "Weather",
       "schema": "og.Weather",
       "module": "atmosphere",
@@ -9530,7 +9588,7 @@
       ]
     },
     {
-      "id": 20,
+      "id": 21,
       "name": "Wind",
       "schema": "og.Wind",
       "module": "atmosphere",
@@ -9566,7 +9624,7 @@
       ]
     },
     {
-      "id": 21,
+      "id": 22,
       "name": "Audio",
       "schema": "og.Audio",
       "module": "audio",
@@ -9644,7 +9702,7 @@
       ]
     },
     {
-      "id": 22,
+      "id": 23,
       "name": "Story",
       "schema": "og.Story",
       "module": "story",
@@ -9670,7 +9728,7 @@
       ]
     },
     {
-      "id": 23,
+      "id": 24,
       "name": "PlatformGrants",
       "schema": "og.PlatformGrants",
       "module": "platform",
@@ -9684,7 +9742,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 25,
       "name": "Lockstep",
       "schema": "og.Lockstep",
       "module": "net",
@@ -9744,7 +9802,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 26,
       "name": "ArtPalette",
       "schema": "og.ArtPalette",
       "module": "art",
@@ -9783,7 +9841,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 27,
       "name": "ArtPixels",
       "schema": "og.ArtPixels",
       "module": "art",
@@ -9822,7 +9880,7 @@
       ]
     },
     {
-      "id": 27,
+      "id": 28,
       "name": "ArtTexels",
       "schema": "og.ArtTexels",
       "module": "art",
@@ -9850,7 +9908,7 @@
       ]
     },
     {
-      "id": 28,
+      "id": 29,
       "name": "ArtShape",
       "schema": "og.ArtShape",
       "module": "art",
@@ -9893,7 +9951,7 @@
       ]
     },
     {
-      "id": 29,
+      "id": 30,
       "name": "ArtLine",
       "schema": "og.ArtLine",
       "module": "art",
@@ -9930,7 +9988,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 31,
       "name": "ArtMotion",
       "schema": "og.ArtMotion",
       "module": "art",
@@ -9953,7 +10011,7 @@
       ]
     },
     {
-      "id": 31,
+      "id": 32,
       "name": "ArtCamera",
       "schema": "og.ArtCamera",
       "module": "art",
@@ -10017,6 +10075,38 @@
     },
     {
       "id": 1,
+      "name": "OriginShifted",
+      "schema": "og.OriginShifted",
+      "module": "transform",
+      "fields": [
+        {
+          "name": "delta",
+          "type": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "x",
+          "type": "f64",
+          "default": 0
+        },
+        {
+          "name": "y",
+          "type": "f64",
+          "default": 0
+        },
+        {
+          "name": "z",
+          "type": "f64",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 2,
       "name": "KeyDown",
       "schema": "og.KeyDown",
       "module": "input",
@@ -10039,7 +10129,7 @@
       ]
     },
     {
-      "id": 2,
+      "id": 3,
       "name": "TextInput",
       "schema": "og.TextInput",
       "module": "input",
@@ -10062,7 +10152,7 @@
       ]
     },
     {
-      "id": 3,
+      "id": 4,
       "name": "KeyUp",
       "schema": "og.KeyUp",
       "module": "input",
@@ -10080,7 +10170,7 @@
       ]
     },
     {
-      "id": 4,
+      "id": 5,
       "name": "PointerDown",
       "schema": "og.PointerDown",
       "module": "input",
@@ -10113,7 +10203,7 @@
       ]
     },
     {
-      "id": 5,
+      "id": 6,
       "name": "PointerUp",
       "schema": "og.PointerUp",
       "module": "input",
@@ -10146,7 +10236,7 @@
       ]
     },
     {
-      "id": 6,
+      "id": 7,
       "name": "PointerMove",
       "schema": "og.PointerMove",
       "module": "input",
@@ -10179,7 +10269,7 @@
       ]
     },
     {
-      "id": 7,
+      "id": 8,
       "name": "Wheel",
       "schema": "og.Wheel",
       "module": "input",
@@ -10197,7 +10287,7 @@
       ]
     },
     {
-      "id": 8,
+      "id": 9,
       "name": "A11yAction",
       "schema": "og.A11yAction",
       "module": "input",
@@ -10215,7 +10305,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 10,
       "name": "CameraCut",
       "schema": "og.CameraCut",
       "module": "camera",
@@ -10238,7 +10328,7 @@
       ]
     },
     {
-      "id": 10,
+      "id": 11,
       "name": "AssetReady",
       "schema": "og.AssetReady",
       "module": "load",
@@ -10256,7 +10346,7 @@
       ]
     },
     {
-      "id": 11,
+      "id": 12,
       "name": "AssetFailed",
       "schema": "og.AssetFailed",
       "module": "load",
@@ -10279,7 +10369,7 @@
       ]
     },
     {
-      "id": 12,
+      "id": 13,
       "name": "CollisionStarted",
       "schema": "og.CollisionStarted",
       "module": "physics",
@@ -10329,7 +10419,7 @@
       ]
     },
     {
-      "id": 13,
+      "id": 14,
       "name": "CollisionEnded",
       "schema": "og.CollisionEnded",
       "module": "physics",
@@ -10347,7 +10437,7 @@
       ]
     },
     {
-      "id": 14,
+      "id": 15,
       "name": "SensorEntered",
       "schema": "og.SensorEntered",
       "module": "physics",
@@ -10365,7 +10455,7 @@
       ]
     },
     {
-      "id": 15,
+      "id": 16,
       "name": "SensorExited",
       "schema": "og.SensorExited",
       "module": "physics",
@@ -10383,7 +10473,7 @@
       ]
     },
     {
-      "id": 16,
+      "id": 17,
       "name": "JointBroken",
       "schema": "og.JointBroken",
       "module": "physics",
@@ -10416,7 +10506,7 @@
       ]
     },
     {
-      "id": 17,
+      "id": 18,
       "name": "BodySlept",
       "schema": "og.BodySlept",
       "module": "physics",
@@ -10429,7 +10519,7 @@
       ]
     },
     {
-      "id": 18,
+      "id": 19,
       "name": "BodyWoke",
       "schema": "og.BodyWoke",
       "module": "physics",
@@ -10442,7 +10532,7 @@
       ]
     },
     {
-      "id": 19,
+      "id": 20,
       "name": "Contact",
       "schema": "og.Contact",
       "module": "physics",
@@ -10465,7 +10555,7 @@
       ]
     },
     {
-      "id": 20,
+      "id": 21,
       "name": "CharacterEvent",
       "schema": "og.CharacterEvent",
       "module": "physics",
@@ -10488,7 +10578,7 @@
       ]
     },
     {
-      "id": 21,
+      "id": 22,
       "name": "Splash",
       "schema": "og.Splash",
       "module": "physics",
@@ -10520,7 +10610,7 @@
       ]
     },
     {
-      "id": 22,
+      "id": 23,
       "name": "AnimationEvent",
       "schema": "og.AnimationEvent",
       "module": "anim",
@@ -10553,7 +10643,7 @@
       ]
     },
     {
-      "id": 23,
+      "id": 24,
       "name": "FlipbookEvent",
       "schema": "og.FlipbookEvent",
       "module": "anim",
@@ -10581,7 +10671,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 25,
       "name": "Skeleton2DEvent",
       "schema": "og.Skeleton2DEvent",
       "module": "anim",
@@ -10614,7 +10704,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 26,
       "name": "TweenCompleted",
       "schema": "og.TweenCompleted",
       "module": "tween",
@@ -10637,7 +10727,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 27,
       "name": "MusicBeat",
       "schema": "og.MusicBeat",
       "module": "audio",
@@ -10665,7 +10755,7 @@
       ]
     },
     {
-      "id": 27,
+      "id": 28,
       "name": "SoundStarted",
       "schema": "og.SoundStarted",
       "module": "audio",
@@ -10688,7 +10778,7 @@
       ]
     },
     {
-      "id": 28,
+      "id": 29,
       "name": "SoundEnded",
       "schema": "og.SoundEnded",
       "module": "audio",
@@ -10716,7 +10806,7 @@
       ]
     },
     {
-      "id": 29,
+      "id": 30,
       "name": "NavLinkReached",
       "schema": "og.NavLinkReached",
       "module": "nav",
@@ -10767,7 +10857,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 31,
       "name": "AiChanged",
       "schema": "og.AiChanged",
       "module": "ai",
@@ -10795,7 +10885,7 @@
       ]
     },
     {
-      "id": 31,
+      "id": 32,
       "name": "AiActionStarted",
       "schema": "og.AiActionStarted",
       "module": "ai",
@@ -10823,7 +10913,7 @@
       ]
     },
     {
-      "id": 32,
+      "id": 33,
       "name": "AiActionStopped",
       "schema": "og.AiActionStopped",
       "module": "ai",
@@ -10851,7 +10941,7 @@
       ]
     },
     {
-      "id": 33,
+      "id": 34,
       "name": "DialogueShown",
       "schema": "og.DialogueShown",
       "module": "story",
@@ -10869,7 +10959,7 @@
       ]
     },
     {
-      "id": 34,
+      "id": 35,
       "name": "DialogueEnded",
       "schema": "og.DialogueEnded",
       "module": "story",
@@ -10882,7 +10972,7 @@
       ]
     },
     {
-      "id": 35,
+      "id": 36,
       "name": "DialogueCheck",
       "schema": "og.DialogueCheck",
       "module": "story",
@@ -10915,7 +11005,7 @@
       ]
     },
     {
-      "id": 36,
+      "id": 37,
       "name": "QuestUpdated",
       "schema": "og.QuestUpdated",
       "module": "story",
@@ -10933,7 +11023,7 @@
       ]
     },
     {
-      "id": 37,
+      "id": 38,
       "name": "BarkSaid",
       "schema": "og.BarkSaid",
       "module": "story",
@@ -10961,7 +11051,7 @@
       ]
     },
     {
-      "id": 38,
+      "id": 39,
       "name": "StoryEvent",
       "schema": "og.StoryEvent",
       "module": "story",
@@ -10984,7 +11074,7 @@
       ]
     },
     {
-      "id": 39,
+      "id": 40,
       "name": "PlatformAnswered",
       "schema": "og.PlatformAnswered",
       "module": "platform",
@@ -11002,7 +11092,7 @@
       ]
     },
     {
-      "id": 40,
+      "id": 41,
       "name": "PlatformNotice",
       "schema": "og.PlatformNotice",
       "module": "platform",
@@ -11020,7 +11110,7 @@
       ]
     },
     {
-      "id": 41,
+      "id": 42,
       "name": "RoomJoined",
       "schema": "og.RoomJoined",
       "module": "platform",
@@ -11053,7 +11143,7 @@
       ]
     },
     {
-      "id": 42,
+      "id": 43,
       "name": "RoomPeerJoined",
       "schema": "og.RoomPeerJoined",
       "module": "platform",
@@ -11071,7 +11161,7 @@
       ]
     },
     {
-      "id": 43,
+      "id": 44,
       "name": "RoomPeerLeft",
       "schema": "og.RoomPeerLeft",
       "module": "platform",
@@ -11089,7 +11179,7 @@
       ]
     },
     {
-      "id": 44,
+      "id": 45,
       "name": "RoomMessage",
       "schema": "og.RoomMessage",
       "module": "platform",
@@ -11112,7 +11202,7 @@
       ]
     },
     {
-      "id": 45,
+      "id": 46,
       "name": "CellEvent",
       "schema": "og.CellEvent",
       "module": "stream",
@@ -11135,7 +11225,7 @@
       ]
     },
     {
-      "id": 46,
+      "id": 47,
       "name": "StreamEvent",
       "schema": "og.StreamEvent",
       "module": "stream",
@@ -11153,7 +11243,7 @@
       ]
     },
     {
-      "id": 47,
+      "id": 48,
       "name": "TimelineStarted",
       "schema": "og.TimelineStarted",
       "module": "timeline",
@@ -11171,7 +11261,7 @@
       ]
     },
     {
-      "id": 48,
+      "id": 49,
       "name": "TimelineMarker",
       "schema": "og.TimelineMarker",
       "module": "timeline",
@@ -11199,7 +11289,7 @@
       ]
     },
     {
-      "id": 49,
+      "id": 50,
       "name": "TimelineEnded",
       "schema": "og.TimelineEnded",
       "module": "timeline",
@@ -11217,7 +11307,7 @@
       ]
     },
     {
-      "id": 50,
+      "id": 51,
       "name": "Desync",
       "schema": "og.Desync",
       "module": "net",
@@ -11240,7 +11330,7 @@
       ]
     },
     {
-      "id": 51,
+      "id": 52,
       "name": "SeatDropped",
       "schema": "og.SeatDropped",
       "module": "net",
@@ -11268,7 +11358,7 @@
       ]
     },
     {
-      "id": 52,
+      "id": 53,
       "name": "SeatRejoined",
       "schema": "og.SeatRejoined",
       "module": "net",
@@ -11291,7 +11381,7 @@
       ]
     },
     {
-      "id": 53,
+      "id": 54,
       "name": "PeerStalled",
       "schema": "og.PeerStalled",
       "module": "net",

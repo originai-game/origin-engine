@@ -198,6 +198,7 @@ module physics {
     field a Entity "The entity with the lower id."
     field b Entity "The entity with the higher id."
     field point Vector3 "The deepest contact point in world space (z is 0 in 2D)." {
+      worldspace world
       unit m
     }
     field normal Vector3 "The contact normal, from a towards b."
@@ -300,9 +301,11 @@ module physics {
     field body Entity "The first body; 0 is this entity."
     field other Entity "The second body; 0 joins the first one to the world at `otherAnchor`."
     field anchor Vector3 "Where the joint sits on the first body, in its frame." {
+      worldspace none
       unit m
     }
     field otherAnchor Vector3 "Where it sits on the second body, in its frame (a world point without `other`)." {
+      worldspace hook
       unit m
     }
     field axis Vector3 "The hinge or slide axis in the first body's frame (a hinge in 2D turns about z)." {
@@ -934,6 +937,7 @@ module physics {
     }
     field end Entity "The entity the far end is tied to; 0 leaves it free."
     field endOffset Vector3 "The far end's offset from `end`'s position." {
+      worldspace none
       unit m
     }
     field iterations u32 "Constraint passes per step: more is stiffer, at more cost." {
@@ -1151,6 +1155,7 @@ module physics {
       readonly true
     }
     field center Vector3 "Written: the mean of its points, in world space." {
+      worldspace world
       unit m
       readonly true
     }
@@ -1168,6 +1173,7 @@ module physics {
       unit m
     }
     field bounds Vector2 "The container around the entity (0 0: none; colliders still hold it)." {
+      worldspace none
       unit m
     }
     field radius f32 "The interaction radius: particles closer than this push and drag each other." {
@@ -1256,6 +1262,7 @@ module physics {
       unit m
     }
     field bounds Vector3 "The container around the entity (0 on an axis: open on that axis; colliders and the terrain still hold it)." {
+      worldspace none
       unit m
     }
     field radius f32 "The interaction radius: particles closer than this push and drag each other. Cost grows with the particles, not the radius." {
@@ -1472,6 +1479,7 @@ module physics {
     field water Entity "The water's entity."
     field entity Entity "What crossed it."
     field point Vector3 "Where it crossed the surface." {
+      worldspace world
       unit m
     }
     field speed f32 "Its vertical speed (negative going in)." {

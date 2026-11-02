@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2309 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2294 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -406,7 +406,6 @@ Field units the docs and Tune use.
 | [`Currency`](ui.md#type-Currency) | desc struct | ui | — |
 | [`Cursor`](ui.md#type-Cursor) | enum | ui | — |
 | [`CurveDesc`](path.md#type-CurveDesc) | desc struct | path | — |
-| [`Customize`](ui.md#type-Customize) | desc struct | ui | — |
 | [`CutsceneDesc`](ui.md#type-CutsceneDesc) | desc struct | ui | — |
 | [`CutsceneResult`](ui.md#type-CutsceneResult) | struct | ui | — |
 | [`CyclerDesc`](ui.md#type-CyclerDesc) | desc struct | ui | — |
@@ -617,10 +616,6 @@ Field units the docs and Tune use.
 | [`HookDesc`](system.md#type-HookDesc) | desc struct | system | — |
 | [`HookEvent`](system.md#type-HookEvent) | enum | system | — |
 | [`HookRun`](system.md#type-HookRun) | callback | system | — |
-| [`HudEdit`](ui.md#type-HudEdit) | struct | ui | — |
-| [`HudEditorDesc`](ui.md#type-HudEditorDesc) | desc struct | ui | — |
-| [`HudEditorResult`](ui.md#type-HudEditorResult) | struct | ui | — |
-| [`HudPlacement`](ui.md#type-HudPlacement) | struct | ui | — |
 | [`HudResult`](ui.md#type-HudResult) | struct | ui | — |
 | [`HudTimerDesc`](ui.md#type-HudTimerDesc) | desc struct | ui | — |
 | [`HumanBone`](anim.md#type-HumanBone) | struct | anim | — |
@@ -1119,6 +1114,7 @@ Field units the docs and Tune use.
 | [`og.net.submitInput`](net.md#fn-submitInput) | function | net | `og_net_submit_input` |
 | [`og.Occluder2D`](render.md#record-Occluder2D) | component | render | — |
 | [`og.OrbitCamera`](camera.md#record-OrbitCamera) | component | camera | — |
+| [`og.OriginShifted`](transform.md#record-OriginShifted) | event | transform | — |
 | [`og.Parent`](transform.md#record-Parent) | component | transform | — |
 | [`og.ParticleSystem`](render.md#record-ParticleSystem) | component | render | — |
 | [`og.path.create`](path.md#fn-create) | function | path | `og_path_create` |
@@ -1480,12 +1476,6 @@ Field units the docs and Tune use.
 | [`og.ui.hasIcon`](ui.md#fn-hasIcon) | function | ui | `og_ui_has_icon` |
 | [`og.ui.heroButton`](ui.md#fn-heroButton) | function | ui | — |
 | [`og.ui.holdButton`](ui.md#fn-holdButton) | function | ui | — |
-| [`og.ui.hudEdit`](ui.md#fn-hudEdit) | function | ui | `og_ui_hud_edit` |
-| [`og.ui.hudLayout`](ui.md#fn-hudLayout) | function | ui | `og_ui_hud_layout` |
-| [`og.ui.hudLayoutEditor`](ui.md#fn-hudLayoutEditor) | function | ui | `og_ui_hud_layout_editor` |
-| [`og.ui.hudReset`](ui.md#fn-hudReset) | function | ui | `og_ui_hud_reset` |
-| [`og.ui.hudSelect`](ui.md#fn-hudSelect) | function | ui | `og_ui_hud_select` |
-| [`og.ui.hudStep`](ui.md#fn-hudStep) | function | ui | `og_ui_hud_step` |
 | [`og.ui.hudTimer`](ui.md#fn-hudTimer) | function | ui | — |
 | [`og.ui.icon`](ui.md#fn-icon) | function | ui | `og_ui_icon` |
 | [`og.ui.iconButton`](ui.md#fn-iconButton) | function | ui | — |
@@ -1628,14 +1618,10 @@ Field units the docs and Tune use.
 | [`og.ui.setDraw`](ui.md#fn-setDraw) | function | ui | `og_ui_set_draw` |
 | [`og.ui.setFocus`](ui.md#fn-setFocus) | function | ui | `og_ui_set_focus` |
 | [`og.ui.setHaptics`](ui.md#fn-setHaptics) | function | ui | `og_ui_set_haptics` |
-| [`og.ui.setHudEdit`](ui.md#fn-setHudEdit) | function | ui | `og_ui_set_hud_edit` |
-| [`og.ui.setHudLayout`](ui.md#fn-setHudLayout) | function | ui | `og_ui_set_hud_layout` |
-| [`og.ui.setHudPlayer`](ui.md#fn-setHudPlayer) | function | ui | `og_ui_set_hud_player` |
 | [`og.ui.setNavigation`](ui.md#fn-setNavigation) | function | ui | `og_ui_set_navigation` |
 | [`og.ui.setPlayers`](ui.md#fn-setPlayers) | function | ui | `og_ui_set_players` |
 | [`og.ui.setProp`](ui.md#fn-setProp) | function | ui | `og_ui_set_prop` |
 | [`og.ui.settingsScreen`](ui.md#fn-settingsScreen) | function | ui | — |
-| [`og.ui.setVirtualCursor`](ui.md#fn-setVirtualCursor) | function | ui | `og_ui_set_virtual_cursor` |
 | [`og.ui.shake`](ui.md#fn-shake) | function | ui | `og_ui_shake` |
 | [`og.ui.shapeBox`](ui.md#fn-shapeBox) | function | ui | — |
 | [`og.ui.sheet`](ui.md#fn-sheet) | function | ui | — |
@@ -1685,7 +1671,6 @@ Field units the docs and Tune use.
 | [`og.ui.valueSlider`](ui.md#fn-valueSlider) | function | ui | — |
 | [`og.ui.viewFrame`](ui.md#fn-viewFrame) | function | ui | — |
 | [`og.ui.viewport`](ui.md#fn-viewport) | function | ui | `og_ui_viewport` |
-| [`og.ui.virtualCursor`](ui.md#fn-virtualCursor) | function | ui | `og_ui_virtual_cursor` |
 | [`og.ui.visualState`](ui.md#fn-visualState) | function | ui | `og_ui_visual_state` |
 | [`og.ui.wavePreview`](ui.md#fn-wavePreview) | function | ui | — |
 | [`og.ui.waypoint`](ui.md#fn-waypoint) | function | ui | — |
@@ -1703,6 +1688,7 @@ Field units the docs and Tune use.
 | [`og.Weather`](atmosphere.md#record-Weather) | resource | atmosphere | — |
 | [`og.Wheel`](input.md#record-Wheel) | event | input | — |
 | [`og.Wind`](atmosphere.md#record-Wind) | resource | atmosphere | — |
+| [`og.WorldOrigin`](transform.md#record-WorldOrigin) | resource | transform | — |
 | [`og.WorldRestored`](world.md#record-WorldRestored) | event | world | — |
 | [`OrbMeterDesc`](ui.md#type-OrbMeterDesc) | desc struct | ui | — |
 | [`Orientation`](ui.md#type-Orientation) | enum | ui | — |
@@ -2333,7 +2319,6 @@ Field units the docs and Tune use.
 | [`TreeResult`](ui.md#type-TreeResult) | struct | ui | — |
 | [`TubeGeometryDesc`](render.md#type-TubeGeometryDesc) | desc struct | render | — |
 | [`TurnOrderDesc`](ui.md#type-TurnOrderDesc) | desc struct | ui | — |
-| [`TurnOrderStyle`](ui.md#type-TurnOrderStyle) | enum | ui | — |
 | [`TurnUnit`](ui.md#type-TurnUnit) | desc struct | ui | — |
 | [`TutorialDesc`](ui.md#type-TutorialDesc) | desc struct | ui | — |
 | [`TutorialResult`](ui.md#type-TutorialResult) | struct | ui | — |
@@ -2425,8 +2410,6 @@ Field units the docs and Tune use.
 | [`ViewFrameDesc`](ui.md#type-ViewFrameDesc) | desc struct | ui | — |
 | [`ViewFrameResult`](ui.md#type-ViewFrameResult) | struct | ui | — |
 | [`Viewport`](ui.md#type-Viewport) | struct | ui | — |
-| [`VirtualCursor`](ui.md#type-VirtualCursor) | struct | ui | — |
-| [`VirtualCursorDesc`](ui.md#type-VirtualCursorDesc) | desc struct | ui | — |
 | [`VisualState`](ui.md#type-VisualState) | struct | ui | — |
 | [`VolumetricFog`](render.md#type-VolumetricFog) | enum | render | — |
 | [`WalkGoalDesc`](motion.md#type-WalkGoalDesc) | desc struct | motion | — |
@@ -2476,6 +2459,8 @@ Field units the docs and Tune use.
 | [`WorldAnchorDesc`](ui.md#type-WorldAnchorDesc) | desc struct | ui | — |
 | [`WorldDump`](probe.md#type-WorldDump) | struct | probe | — |
 | [`WorldOcclusion`](ui.md#type-WorldOcclusion) | enum | ui | — |
+| [`WorldOriginPlane`](transform.md#type-WorldOriginPlane) | enum | transform | — |
+| [`WorldOriginPlane()`](transform.md#column-WorldOriginPlane) | column kind | transform | — |
 | [`WorldPanelDesc`](ui.md#type-WorldPanelDesc) | desc struct | ui | — |
 | [`WorldTarget`](ui.md#type-WorldTarget) | desc struct | ui | — |
 | [`ZoomResult`](ui.md#type-ZoomResult) | struct | ui | — |

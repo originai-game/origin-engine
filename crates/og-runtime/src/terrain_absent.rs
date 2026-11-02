@@ -62,6 +62,9 @@ impl og_ecs::StateBlock for TerrainBlock {
     }
 
     fn apply(&mut self, _decoded: Option<Box<dyn std::any::Any + Send>>) {}
+
+    /// Holds no edits.
+    fn shift(&mut self, _: &og_ecs::Shift) {}
 }
 
 /// The edit log's state block (the world's state is the same here as in the

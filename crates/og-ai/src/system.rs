@@ -296,6 +296,9 @@ struct State {
     seen_tick: IdMap<u64, u64>,
     heard_tick: IdMap<u64, u64>,
     noises: Vec<Noise>,
+    /// How far og.WorldOrigin has moved the world's zero (R12): what the
+    /// behaviours' authored points are offset by.
+    origin: Vec3,
     commands: Vec<(String, Vec<String>)>,
     warnings: Vec<String>,
     warned: std::collections::BTreeSet<String>,
@@ -819,6 +822,7 @@ fn run(
         }
         let perception = ctx.get::<Perception>(e).ok();
         let mut mem = st.mems.remove(&key).unwrap_or_default();
+        let origin = st.origin;
         let mut interrupted: Vec<(u32, String)> = Vec::new();
         if !mem.started || mem.behaviour != agent.behaviour || mem.nodes.len() != b.nodes.len() {
             // A first think, another behaviour or a restart: start afresh, at
@@ -891,6 +895,7 @@ fn run(
             nav_status: nav.map_or(0, |a| a.status),
             nav_target: nav.map_or(Vec3::ZERO, |a| a.target),
             stop_distance: nav.map_or(0.1, |a| a.stop_distance),
+            origin,
             resolve: &resolve,
             locate: &locate,
         };
@@ -980,6 +985,8 @@ struct AiBlock(AiSystem);
 
 /// The og.ai trailer's tag for game actions' pending results (G2-4).
 const TAG_RESULTS: u16 = 1;
+/// The trailer's section of [`State::origin`], when it is not zero.
+const TAG_ORIGIN: u16 = 2;
 
 #[derive(Debug)]
 struct Saved {
@@ -988,6 +995,7 @@ struct Saved {
     seen: IdMap<u64, u64>,
     heard: IdMap<u64, u64>,
     noises: Vec<Noise>,
+    origin: Vec3,
 }
 
 fn put_u32(o: &mut Vec<u8>, v: u32) {
@@ -1149,6 +1157,11 @@ impl StateBlock for AiBlock {
             }
             sections.push((TAG_RESULTS, b));
         }
+        if st.origin != Vec3::ZERO {
+            let mut b = Vec::new();
+            put_v3(&mut b, st.origin);
+            sections.push((TAG_ORIGIN, b));
+        }
         og_ecs::trailer::write(o, &sections);
     }
 
@@ -1209,7 +1222,11 @@ impl StateBlock for AiBlock {
                 source: r.u64()?,
             });
         }
+        let mut origin = Vec3::ZERO;
         for (tag, body) in og_ecs::trailer::read(SYSTEM_NAME, &r.b[r.at..])? {
+            if tag == TAG_ORIGIN {
+                origin = Rd { b: body, at: 0 }.v3()?;
+            }
             if tag == TAG_RESULTS {
                 let mut r = Rd { b: body, at: 0 };
                 for _ in 0..r.u32()? {
@@ -1232,6 +1249,7 @@ impl StateBlock for AiBlock {
             seen,
             heard,
             noises,
+            origin,
         }))
     }
 
@@ -1244,8 +1262,10 @@ impl StateBlock for AiBlock {
                 st.seen_tick = s.seen;
                 st.heard_tick = s.heard;
                 st.noises = s.noises;
+                st.origin = s.origin;
             }
             None => {
+                st.origin = Vec3::ZERO;
                 st.mems.clear();
                 st.forward.clear();
                 st.seen_tick.clear();
@@ -1254,5 +1274,28 @@ impl StateBlock for AiBlock {
             }
         }
         st.commands.clear();
+    }
+
+    /// Every agent's wander point, home and og.ai's own place keys, the
+    /// noises not yet heard, and the offset the behaviours' authored
+    /// points (routes, MoveTo) are read at. A key the game set is the
+    /// game's value: og.OriginShifted says when to move it.
+    fn shift(&mut self, s: &og_ecs::Shift) {
+        let mut st = lock(&self.0.state);
+        for m in st.mems.values_mut() {
+            for n in &mut m.nodes {
+                n.point = s.moved(n.point);
+            }
+            m.home = s.moved(m.home);
+            for k in ["position", "targetPosition", "lastSeen", "heardAt"] {
+                if let Some(Value::Vec(v)) = m.keys.get_mut(k) {
+                    *v = s.moved(*v);
+                }
+            }
+        }
+        for n in &mut st.noises {
+            n.position = s.moved(n.position);
+        }
+        st.origin = s.moved(st.origin);
     }
 }

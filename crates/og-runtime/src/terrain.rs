@@ -197,6 +197,12 @@ impl og_ecs::StateBlock for TerrainBlock {
         log.edits = edits;
         log.replay = true;
     }
+
+    /// Each logged brush carries its terrain's pose with its centre, as
+    /// they were when it was applied: a replay applies it where it was in
+    /// the terrain, whatever the world's zero is now. Left as logged, so a
+    /// replay after a shift touches the same samples, bit for bit.
+    fn shift(&mut self, _: &og_ecs::Shift) {}
 }
 
 const TERRAIN_SYSTEM: &str = "og.terrain";

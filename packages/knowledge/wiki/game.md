@@ -14,7 +14,7 @@ module game {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1412</sub>
+<sub>`api.ogt` line 1413</sub>
 
 ## Contents
 
@@ -54,7 +54,7 @@ fn game {
 }
 ```
 
-<sub>`api.ogt` line 1471</sub>
+<sub>`api.ogt` line 1472</sub>
 
 ## Interfaces
 
@@ -70,7 +70,7 @@ interface Game {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1465</sub>
+<sub>`api.ogt` line 1466</sub>
 
 <a id="member-Game-tick"></a>
 
@@ -88,7 +88,7 @@ Binding symbol `og_game_get_tick` · publish builds: kept
 prop tick u32 "GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do)."
 ```
 
-<sub>`api.ogt` line 1467</sub>
+<sub>`api.ogt` line 1468</sub>
 
 <a id="member-Game-systems"></a>
 
@@ -106,7 +106,7 @@ Binding symbol `og_game_get_systems` · publish builds: kept
 prop systems List.System "The systems in declaration order."
 ```
 
-<sub>`api.ogt` line 1468</sub>
+<sub>`api.ogt` line 1469</sub>
 
 ## Types
 
@@ -134,7 +134,7 @@ callback FactsFn {
 }
 ```
 
-<sub>`api.ogt` line 1417</sub>
+<sub>`api.ogt` line 1418</sub>
 
 <a id="type-StartFn"></a>
 
@@ -159,7 +159,7 @@ callback StartFn {
 }
 ```
 
-<sub>`api.ogt` line 1423</sub>
+<sub>`api.ogt` line 1424</sub>
 
 <a id="type-GameDesc"></a>
 
@@ -228,4 +228,4 @@ struct GameDesc {
 }
 ```
 
-<sub>`api.ogt` line 1428</sub>
+<sub>`api.ogt` line 1429</sub>

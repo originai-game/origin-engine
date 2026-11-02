@@ -18,7 +18,7 @@ module nav {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 12286</sub>
+<sub>`api.ogt` line 12403</sub>
 
 ## Contents
 
@@ -102,7 +102,7 @@ fn grid {
 }
 ```
 
-<sub>`api.ogt` line 12780</sub>
+<sub>`api.ogt` line 12903</sub>
 
 <a id="fn-gridFromTilemap"></a>
 
@@ -132,7 +132,7 @@ fn gridFromTilemap {
 }
 ```
 
-<sub>`api.ogt` line 12787</sub>
+<sub>`api.ogt` line 12910</sub>
 
 <a id="fn-setCost"></a>
 
@@ -168,7 +168,7 @@ fn setCost {
 }
 ```
 
-<sub>`api.ogt` line 12794</sub>
+<sub>`api.ogt` line 12917</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -200,7 +200,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 12804</sub>
+<sub>`api.ogt` line 12927</sub>
 
 <a id="fn-findPath"></a>
 
@@ -230,7 +230,7 @@ fn findPath {
 }
 ```
 
-<sub>`api.ogt` line 12812</sub>
+<sub>`api.ogt` line 12935</sub>
 
 <a id="fn-flowField"></a>
 
@@ -260,7 +260,7 @@ fn flowField {
 }
 ```
 
-<sub>`api.ogt` line 12819</sub>
+<sub>`api.ogt` line 12942</sub>
 
 <a id="fn-setFlowTargets"></a>
 
@@ -292,7 +292,7 @@ fn setFlowTargets {
 }
 ```
 
-<sub>`api.ogt` line 12826</sub>
+<sub>`api.ogt` line 12949</sub>
 
 <a id="fn-flowAt"></a>
 
@@ -324,7 +324,7 @@ fn flowAt {
 }
 ```
 
-<sub>`api.ogt` line 12834</sub>
+<sub>`api.ogt` line 12957</sub>
 
 <a id="fn-load"></a>
 
@@ -358,7 +358,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 12842</sub>
+<sub>`api.ogt` line 12965</sub>
 
 <a id="fn-build"></a>
 
@@ -388,7 +388,7 @@ fn build {
 }
 ```
 
-<sub>`api.ogt` line 12852</sub>
+<sub>`api.ogt` line 12975</sub>
 
 <a id="fn-setObstacle"></a>
 
@@ -424,7 +424,7 @@ fn setObstacle {
 }
 ```
 
-<sub>`api.ogt` line 12859</sub>
+<sub>`api.ogt` line 12982</sub>
 
 <a id="fn-carve"></a>
 
@@ -460,7 +460,7 @@ fn carve {
 }
 ```
 
-<sub>`api.ogt` line 12870</sub>
+<sub>`api.ogt` line 12993</sub>
 
 <a id="fn-setArea"></a>
 
@@ -496,7 +496,7 @@ fn setArea {
 }
 ```
 
-<sub>`api.ogt` line 12881</sub>
+<sub>`api.ogt` line 13004</sub>
 
 <a id="fn-setLink"></a>
 
@@ -532,7 +532,7 @@ fn setLink {
 }
 ```
 
-<sub>`api.ogt` line 12892</sub>
+<sub>`api.ogt` line 13015</sub>
 
 <a id="fn-setLinkOpen"></a>
 
@@ -566,7 +566,7 @@ fn setLinkOpen {
 }
 ```
 
-<sub>`api.ogt` line 12903</sub>
+<sub>`api.ogt` line 13026</sub>
 
 <a id="fn-finishLink"></a>
 
@@ -596,7 +596,7 @@ fn finishLink {
 }
 ```
 
-<sub>`api.ogt` line 12912</sub>
+<sub>`api.ogt` line 13035</sub>
 
 <a id="fn-nearest"></a>
 
@@ -632,7 +632,7 @@ fn nearest {
 }
 ```
 
-<sub>`api.ogt` line 12919</sub>
+<sub>`api.ogt` line 13042</sub>
 
 <a id="fn-pathOf"></a>
 
@@ -662,7 +662,7 @@ fn pathOf {
 }
 ```
 
-<sub>`api.ogt` line 12930</sub>
+<sub>`api.ogt` line 13053</sub>
 
 ## Components, resources and events
 
@@ -677,7 +677,7 @@ Token `og.NavAgent`, registered under the schema name `og.NavAgent`; its value t
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `nav` | `Navigation` | `0` | — | — | — | The grid, navmesh or flow field it plans on (og.nav.grid, og.nav.load, og.nav.flowField); 0 moves straight at the target. |
-| `target` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | Where it goes while seeking. |
+| `target` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | worldspace `world` | Where it goes while seeking. |
 | `seeking` | `boolean` | `false` | — | — | — | Moves towards the target while true. |
 | `speed` | `number` | `3.5` | 0 … 100 | `mps` | tunable | Top speed. |
 | `acceleration` | `number` | `20` | 0 … 1000 | `mps2` | tunable | How fast it changes velocity. |
@@ -692,7 +692,7 @@ Token `og.NavAgent`, registered under the schema name `og.NavAgent`; its value t
 | `drive` | `boolean` | `true` | — | — | — | Moves the entity (its og.Velocity, or its og.Transform) while true; false keeps planning but leaves the motion to the game (a knock-back, a stun). |
 | `status` | `number` | `0` | — | — | read only | NAV_IDLE, NAV_MOVING, NAV_ARRIVED, NAV_UNREACHABLE or NAV_PARTIAL (written by og.nav). |
 | `velocity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | read only | Its velocity (written by og.nav). |
-| `waypoint` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only | The path corner it heads for (written by og.nav). |
+| `waypoint` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only, worldspace `world` | The path corner it heads for (written by og.nav). |
 | `remaining` | `number` | `0` | — | `m` | read only | The path length left (written by og.nav). |
 | `plans` | `number` | `0` | — | — | read only | Paths planned so far (written by og.nav). |
 
@@ -700,7 +700,9 @@ Token `og.NavAgent`, registered under the schema name `og.NavAgent`; its value t
 component NavAgent {
   doc "An entity that moves itself towards `target` while `seeking`, by a path over `nav` (a grid, navmesh or flow field; 0 goes straight). og.nav re-plans when the target moved more than repathDistance, every repathTicks, or when the grid or navmesh changed, at most 32 plans a tick across agents."
   field nav Navigation "The grid, navmesh or flow field it plans on (og.nav.grid, og.nav.load, og.nav.flowField); 0 moves straight at the target."
-  field target Vector3 "Where it goes while seeking."
+  field target Vector3 "Where it goes while seeking." {
+    worldspace world
+  }
   field seeking bool "Moves towards the target while true."
   field speed f32 "Top speed." {
     default 3.5
@@ -770,6 +772,7 @@ component NavAgent {
     readonly true
   }
   field waypoint Vector3 "The path corner it heads for (written by og.nav)." {
+    worldspace world
     unit m
     readonly true
   }
@@ -783,7 +786,7 @@ component NavAgent {
 }
 ```
 
-<sub>`api.ogt` line 12314</sub>
+<sub>`api.ogt` line 12431</sub>
 
 <a id="record-Steering"></a>
 
@@ -797,7 +800,7 @@ Token `og.Steering`, registered under the schema name `og.Steering`; its value t
 |---|---|---|---|---|---|---|
 | `seek` | `number` | `1` | 0 … 10 | — | tunable | Weight of following the path to the target (seek, then arrive at the end). |
 | `flee` | `number` | `0` | 0 … 10 | — | tunable | Weight of fleeing fleeFrom. |
-| `fleeFrom` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | What it flees. |
+| `fleeFrom` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | What it flees. |
 | `fleeRadius` | `number` | `6` | 0 … 100 | `m` | tunable | It flees (and evades) only inside this distance (0: always). |
 | `wander` | `number` | `0` | 0 … 10 | — | tunable | Weight of wandering. |
 | `wanderRadius` | `number` | `1` | 0 … 20 | `m` | tunable | The wander circle's radius. |
@@ -829,6 +832,7 @@ component Steering {
     tunable true
   }
   field fleeFrom Vector3 "What it flees." {
+    worldspace world
     unit m
   }
   field fleeRadius f32 "It flees (and evades) only inside this distance (0: always)." {
@@ -910,7 +914,7 @@ component Steering {
 }
 ```
 
-<sub>`api.ogt` line 12399</sub>
+<sub>`api.ogt` line 12519</sub>
 
 <a id="record-NavFilter"></a>
 
@@ -933,7 +937,7 @@ component NavFilter {
 }
 ```
 
-<sub>`api.ogt` line 12493</sub>
+<sub>`api.ogt` line 12614</sub>
 
 <a id="record-Crowd"></a>
 
@@ -982,7 +986,7 @@ component Crowd {
 }
 ```
 
-<sub>`api.ogt` line 12499</sub>
+<sub>`api.ogt` line 12620</sub>
 
 <a id="record-NavLinkReached"></a>
 
@@ -998,8 +1002,8 @@ Token `og.NavLinkReached`, registered under the schema name `og.NavLinkReached`;
 | `mesh` | `Navigation` | `0` | — | — | — | The navmesh. |
 | `link` | `number` | `0` | — | — | — | The link's id. |
 | `kind` | `number` | `0` | — | — | — | Its NavLinkKind, by index: 0 jump, 1 ladder, 2 door, 3 teleport. |
-| `start` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the agent leaves the surface. |
-| `end` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where it lands. |
+| `start` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | Where the agent leaves the surface. |
+| `end` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | Where it lands. |
 | `game` | `boolean` | `false` | — | — | — | The game moves it across. |
 
 ```ogt
@@ -1010,16 +1014,18 @@ event NavLinkReached {
   field link u32 "The link's id."
   field kind u32 "Its NavLinkKind, by index: 0 jump, 1 ladder, 2 door, 3 teleport."
   field start Vector3 "Where the agent leaves the surface." {
+    worldspace world
     unit m
   }
   field end Vector3 "Where it lands." {
+    worldspace world
     unit m
   }
   field game bool "The game moves it across."
 }
 ```
 
-<sub>`api.ogt` line 12564</sub>
+<sub>`api.ogt` line 12685</sub>
 
 ## Types
 
@@ -1035,7 +1041,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Navigation "A grid, a navmesh or a flow field agents plan on."
 ```
 
-<sub>`api.ogt` line 12292</sub>
+<sub>`api.ogt` line 12409</sub>
 
 <a id="type-NavAlgorithm"></a>
 
@@ -1058,7 +1064,7 @@ enum NavAlgorithm {
 }
 ```
 
-<sub>`api.ogt` line 12308</sub>
+<sub>`api.ogt` line 12425</sub>
 
 <a id="type-NavLinkKind"></a>
 
@@ -1085,7 +1091,7 @@ enum NavLinkKind {
 }
 ```
 
-<sub>`api.ogt` line 12529</sub>
+<sub>`api.ogt` line 12650</sub>
 
 <a id="type-NavLinkDesc"></a>
 
@@ -1135,7 +1141,7 @@ struct NavLinkDesc {
 }
 ```
 
-<sub>`api.ogt` line 12537</sub>
+<sub>`api.ogt` line 12658</sub>
 
 <a id="type-NavShapeKind"></a>
 
@@ -1162,7 +1168,7 @@ enum NavShapeKind {
 }
 ```
 
-<sub>`api.ogt` line 12579</sub>
+<sub>`api.ogt` line 12702</sub>
 
 <a id="type-NavShape"></a>
 
@@ -1216,7 +1222,7 @@ struct NavShape {
 }
 ```
 
-<sub>`api.ogt` line 12587</sub>
+<sub>`api.ogt` line 12710</sub>
 
 <a id="type-NavAreaDesc"></a>
 
@@ -1242,7 +1248,7 @@ struct NavAreaDesc {
 }
 ```
 
-<sub>`api.ogt` line 12617</sub>
+<sub>`api.ogt` line 12740</sub>
 
 <a id="type-NavGridDesc"></a>
 
@@ -1287,7 +1293,7 @@ struct NavGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 12626</sub>
+<sub>`api.ogt` line 12749</sub>
 
 <a id="type-TilemapGridDesc"></a>
 
@@ -1315,7 +1321,7 @@ struct TilemapGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 12651</sub>
+<sub>`api.ogt` line 12774</sub>
 
 <a id="type-NavCell"></a>
 
@@ -1338,7 +1344,7 @@ struct NavCell {
 }
 ```
 
-<sub>`api.ogt` line 12661</sub>
+<sub>`api.ogt` line 12784</sub>
 
 <a id="type-PathDesc"></a>
 
@@ -1384,7 +1390,7 @@ struct PathDesc {
 }
 ```
 
-<sub>`api.ogt` line 12668</sub>
+<sub>`api.ogt` line 12791</sub>
 
 <a id="type-NavPath"></a>
 
@@ -1415,7 +1421,7 @@ struct NavPath {
 }
 ```
 
-<sub>`api.ogt` line 12691</sub>
+<sub>`api.ogt` line 12814</sub>
 
 <a id="type-FlowDesc"></a>
 
@@ -1439,7 +1445,7 @@ struct FlowDesc {
 }
 ```
 
-<sub>`api.ogt` line 12703</sub>
+<sub>`api.ogt` line 12826</sub>
 
 <a id="type-NavBox"></a>
 
@@ -1467,7 +1473,7 @@ struct NavBox {
 }
 ```
 
-<sub>`api.ogt` line 12710</sub>
+<sub>`api.ogt` line 12833</sub>
 
 <a id="type-NavMeshDesc"></a>
 
@@ -1525,7 +1531,7 @@ struct NavMeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 12721</sub>
+<sub>`api.ogt` line 12844</sub>
 
 <a id="type-NavMeshInfo"></a>
 
@@ -1562,7 +1568,7 @@ struct NavMeshInfo {
 }
 ```
 
-<sub>`api.ogt` line 12757</sub>
+<sub>`api.ogt` line 12880</sub>
 
 <a id="type-NavRebuild"></a>
 
@@ -1583,7 +1589,7 @@ struct NavRebuild {
 }
 ```
 
-<sub>`api.ogt` line 12774</sub>
+<sub>`api.ogt` line 12897</sub>
 
 ## Column kinds
 
@@ -1602,7 +1608,7 @@ column Navigation {
 }
 ```
 
-<sub>`api.ogt` line 12294</sub>
+<sub>`api.ogt` line 12411</sub>
 
 ## Constants
 
@@ -1619,34 +1625,34 @@ column Navigation {
 const NAV_IDLE u32 0 "NavAgent.status: not seeking."
 ```
 
-<sub>`api.ogt` line 12301</sub>
+<sub>`api.ogt` line 12418</sub>
 
 ```ogt
 const NAV_MOVING u32 1 "NavAgent.status: following a path or a flow field."
 ```
 
-<sub>`api.ogt` line 12302</sub>
+<sub>`api.ogt` line 12419</sub>
 
 ```ogt
 const NAV_ARRIVED u32 2 "NavAgent.status: within stopDistance of the target."
 ```
 
-<sub>`api.ogt` line 12303</sub>
+<sub>`api.ogt` line 12420</sub>
 
 ```ogt
 const NAV_UNREACHABLE u32 3 "NavAgent.status: no path reaches the target, or the agent is off its grid or navmesh."
 ```
 
-<sub>`api.ogt` line 12304</sub>
+<sub>`api.ogt` line 12421</sub>
 
 ```ogt
 const NAV_PARTIAL u32 4 "NavAgent.status: the target is cut off; moving to the reachable point nearest it."
 ```
 
-<sub>`api.ogt` line 12305</sub>
+<sub>`api.ogt` line 12422</sub>
 
 ```ogt
 const NAV_ON_LINK u32 5 "NavAgent.status: crossing an off-mesh link (a jump, a ladder, a door, a teleport)."
 ```
 
-<sub>`api.ogt` line 12306</sub>
+<sub>`api.ogt` line 12423</sub>

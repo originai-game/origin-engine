@@ -22,8 +22,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let ids = std::mem::take(&mut rs.ids.instances);
     // The last frame was drawn from its render origin; this one is built
     // in the world and moved to its own at the end (`rebase`).
+    // In the absolute world (R12's og.WorldOrigin moves the world's zero
+    // there); the world's place is it less the zero.
     let drawn_at = std::mem::take(&mut rs.scene.origin);
-    let framed = super::review::bounds(rs, &h, &ids).map(|(a, b)| (a + drawn_at, b + drawn_at));
+    let zero = crate::origin::zero(world, rs.draw.origin.as_ref());
+    let back = drawn_at - zero.as_vec3();
+    let framed = super::review::bounds(rs, &h, &ids).map(|(a, b)| (a + back, b + back));
     rs.ids.instances = ids;
     let size = backend_size(rs);
     let camera = resource(world, rs.camera.as_ref());
@@ -91,7 +95,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         cam.position = position;
         cam.target = position + rot * Vec3::NEG_Z;
         cam.up = rot * Vec3::Y;
-        origin = render_origin(position);
+        origin = render_origin(position, zero);
         look_along = Some(rot * Vec3::NEG_Z);
         cam.near = f(c, "near", 0.1);
         cam.far = f(c, "far", 2000.0);
@@ -615,6 +619,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     crate::inspector::emit(rs);
     super::interpolate::end(rs, &mut h);
     rebase(&mut rs.scene, origin, look_along);
+    // The frame's zero is the grid point, in the absolute world.
+    rs.scene.origin += zero.as_vec3();
+    rs.zero = zero.as_vec3();
     rs.hierarchy = h;
 }
 
@@ -622,15 +629,22 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
 /// a grid point to it is exact.
 pub(crate) const RENDER_GRID: f32 = 8192.0;
 
-/// The render origin for a camera at `position`: the nearest point of the
-/// [`RENDER_GRID`], so the frame is drawn within 4096 m of the camera on
-/// every axis, and a scene whose camera stays within 4096 m of the world's
-/// zero is drawn at it, exactly as before render origins.
-pub(crate) fn render_origin(position: Vec3) -> Vec3 {
-    if !position.is_finite() {
+/// The render origin for a camera at `position` in a world whose zero
+/// og.WorldOrigin puts at `zero` of the absolute world (R12; zero without
+/// one): the nearest point of the [`RENDER_GRID`] laid in the absolute
+/// world, in the world's coordinates. The frame is drawn within 4096 m of
+/// the camera on every axis; a shift of the world's zero moves the point
+/// in the world's coordinates by the shift, so it stays where it was in the
+/// absolute world and nothing drawn moves; and a scene without
+/// og.WorldOrigin whose camera stays within 4096 m of the zero is drawn at
+/// it, exactly as before render origins.
+pub(crate) fn render_origin(position: Vec3, zero: glam::DVec3) -> Vec3 {
+    if !position.is_finite() || !zero.is_finite() {
         return Vec3::ZERO;
     }
-    (position / RENDER_GRID).round() * RENDER_GRID
+    let g = f64::from(RENDER_GRID);
+    let at = position.as_dvec3() + zero;
+    ((at / g).round() * g - zero).as_vec3()
 }
 
 /// Moves the frame, built in the world, to its render origin

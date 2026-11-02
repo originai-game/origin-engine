@@ -546,6 +546,20 @@ impl StateBlock for SkeletonState {
         sh.playback = playback;
         sh.boxes = boxes;
     }
+
+    /// The boxes are in the frame their skeleton's Transform is written in:
+    /// they move with a root.
+    fn shift(&mut self, s: &og_ecs::Shift) {
+        let mut sh = lock(&self.0);
+        for (k, list) in sh.boxes.iter_mut() {
+            let d = s.of(*k);
+            for b in list {
+                for p in &mut b.points {
+                    *p = (p.as_dvec2() + d.truncate()).as_vec2();
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
