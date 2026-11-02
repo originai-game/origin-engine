@@ -39,3 +39,9 @@ the shop's merchant, so each style's screens sit on their own scene:
 | `events/kawaii.jpg`, `cartoon.jpg`, `storybook.jpg` | banner (the title's limited-banner card) | origin MCP `generate_image`, one featured character per style in its own look, 640×360 |
 | `scenes/scifi.jpg`, `cyber.jpg` | menuBackground | regenerated to the owner's redirected pack sheets (ui-art/70c6e287e1a1: a crewed launch pad at dawn; ui-art/46b39cda6040: acid yellow, signal red and cyan, no magenta) |
 | `scenes/neutral.jpg` | menuBackground | self-made: a dark radial gradient with a vignette (ImageMagick), the default style's neutral ground |
+
+## Round 3 (2026-11-02, the art review's notes)
+
+| File | Kind | Origin |
+|---|---|---|
+| `scenes/midcore.jpg` | menuBackground | regenerated after the originality gate refused the first (character trade dress, real heraldry, a pasted seam): origin MCP `generate_image` (gpt-image-2.5-sunburst), a landscape with no characters, a stone fort on a bright hill behind a palisade, invented frog-on-lily-pad banners, thick-outlined stylised terrain; cut to 1280×720 |

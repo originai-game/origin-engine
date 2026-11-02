@@ -269,12 +269,16 @@ const STYLE_BACKDROPS: Record<string, string> = {
 };
 
 /**
- * Each style's event art beside its backdrop: a featured character in the
- * style's own look for the title's limited-banner card. A style without one
- * shows no card rather than another style's art.
+ * Each style's event beside its backdrop: a featured character in the
+ * style's own look for the title's limited-banner card, and the banner's
+ * name in the style's voice (a string key). A style without one shows no
+ * card rather than another style's art.
  */
-const STYLE_EVENTS: Record<string, string> = {
-  fantasy: "gacha-moonlit-tide", kawaii: "event-kawaii", cartoon: "event-cartoon", storybook: "event-storybook",
+const STYLE_EVENTS: Record<string, { art: string; name: string }> = {
+  fantasy: { art: "gacha-moonlit-tide", name: "menu.event" },
+  kawaii: { art: "event-kawaii", name: "menu.event.kawaii" },
+  cartoon: { art: "event-cartoon", name: "menu.event.cartoon" },
+  storybook: { art: "event-storybook", name: "menu.event.storybook" },
 };
 
 const SHOP = [
@@ -732,15 +736,16 @@ const PATTERN_SCREENS: ReadonlySet<string> = new Set(["gear", "cards", "rewards"
  * art (STYLE_EVENTS), its name and how long it runs, at the bottom end corner over the
  * version line. Not on a phone, where the menu takes the bottom.
  */
-function eventCard(world: World, key: string | undefined): void {
+function eventCard(world: World, event: { art: string; name: string } | undefined): void {
   const vp = og.ui.frameViewport();
-  const image = key ? kitArt(key) : null;
+  if (!event) return;
+  const image = kitArt(event.art);
   if (!image || vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape") return;
   const t = og.ui.frameTheme();
   const grow = { kind: "grow" } as const;
   og.ui.anchor("Event", { anchor: "bottomRight", offsetY: -40, direction: "column", width: { kind: "fixed", px: 280 }, gap: t.space.xs, padding: { left: t.space.sm, top: t.space.sm, right: t.space.sm, bottom: t.space.sm }, background: { token: "hud" }, radius: t.radius.panel, frame: "hud" }, () => {
     og.ui.artSlot("Art", { texture: image, kind: "banner", aspect: 16 / 9, focal: { x: 0.65, y: 0.35 }, width: grow, label: "" });
-    og.ui.label("Name", tr(world, "menu.event"), { step: "lg", font: "display", nowrap: true });
+    og.ui.label("Name", tr(world, event.name), { step: "lg", font: "display", nowrap: true });
     og.ui.label("When", tr(world, "menu.eventWhen"), { step: "meta", color: { token: "inkMuted" }, nowrap: true });
   });
 }

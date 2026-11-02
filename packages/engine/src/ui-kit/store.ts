@@ -7,19 +7,29 @@ import { kit } from "./bind.ts";
 import { all as edges, hudBox, fit, fmt, frame, grow, iconOr, px, token, xy } from "./util.ts";
 import { artSlot } from "../ui/foundations/media.ts";
 import { over } from "../ui/containers/base.ts";
-import { rarityColor } from "../ui/feedback/core.ts";
+import { luminance, rarityColor, role } from "../ui/feedback/core.ts";
 
 /**
- * A slot's ground in its rarity's colour (the style's rarity roles): a glow
- * from the centre under the art, so a cut-out item stands on its tier and no
- * square of its own. Built first in the cell, under what follows.
+ * A slot's ground for its rarity, as commercial inventories draw it: the
+ * slot's own ground stays, a common item adds nothing, and a higher tier
+ * adds a glow in its hue (the style's rarity roles) rising from the bottom
+ * centre, stronger on a dark panel than a light one, and a hairline round
+ * the slot (`line`; the detail's showcase has none). Built first in the
+ * cell, under what follows.
  */
-export function rarityGround(id: string, rarity: Api.Rarity | undefined): void {
+export function rarityGround(id: string, rarity: Api.Rarity | undefined, line = true): void {
   const c = rarityColor(rarity);
-  if (!c) return;
+  if (!c || rarity === "common") return;
+  const dark = luminance(role("panel")) < 0.36;
+  const glow = (rarity === "legendary" || rarity === "mythic" ? 0.35 : 0.25) * (dark ? 1 : 0.72);
   const ink = (alpha: number): Api.Paint => ({ color: { r: c.r, g: c.g, b: c.b }, alpha });
+  const r = frame().t.small;
   kit.open(id, { width: grow(), height: grow() });
-  kit.setDraw({ shape: { kind: "rect", radii: [6, 6, 6, 6] }, clip: "shape", fills: [{ kind: "gradient", type: "radial", from: { x: 0.5, y: 0.55 }, to: { x: 1.05, y: 1.05 }, stops: [{ offset: 0, color: ink(0.55) }, { offset: 1, color: ink(0.12) }] }], strokes: [{ width: 1, align: "inside", paint: { kind: "solid", color: ink(0.7) } }] } as Api.DrawDesc);
+  kit.setDraw({
+    shape: { kind: "rect", radii: [r, r, r, r] }, clip: "shape",
+    fills: [{ kind: "gradient", type: "radial", from: { x: 0.5, y: 1 }, to: { x: 0.5, y: 0.05 }, stops: [{ offset: 0, color: ink(glow) }, { offset: 0.6, color: ink(glow * 0.35) }, { offset: 1, color: ink(0) }] }],
+    strokes: line ? [{ width: 1, align: "inside", paint: { kind: "solid", color: ink(0.6) } }] : [],
+  } as Api.DrawDesc);
   kit.close();
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 0 });
 }
@@ -32,21 +42,24 @@ function cutout(id: string, image: Api.Texture, width: Api.Size, label = ""): vo
 /** The detail panel's head: the item's cut-out large on its rarity's ground. */
 function showcase(id: string, image: Api.Texture, rarity: Api.Rarity | undefined): void {
   kit.column(id, { width: grow(), aspect: 1.25, align: "center", cross: "center", padding: edges(8) }, () => {
-    rarityGround("Ground", rarity);
+    rarityGround("Ground", rarity, false);
     cutout("Image", image, grow());
   });
 }
 
-/** A portrait in the style's card frame, its lower edge fading into the panel's ground. */
+/**
+ * A portrait in the style's card frame, faded out from 70 % of its height
+ * down: an alpha mask over the frame and the art, so what shows through at
+ * the foot is the panel's own ground (a painted parchment too), not a colour.
+ */
 function portrait(id: string, art: Api.Texture, aspect: number, label: string): void {
   const { t } = frame();
-  kit.column(id, { width: grow(), padding: edges(0), radius: t.panel, frame: "card" }, () => {
+  kit.open(id, { width: grow() });
+  kit.setDraw({ clip: "mask", mask: { gradient: { type: "linear", from: { x: 0.5, y: 0.7 }, to: { x: 0.5, y: 1 }, stops: [[0, 1], [0.3, 0.85], [0.65, 0.35], [1, 0]].map(([offset, alpha]) => ({ offset, color: { color: { r: 1, g: 1, b: 1 }, alpha } })) } } } as Api.DrawDesc);
+  kit.column("Card", { width: grow(), padding: edges(0), radius: t.panel, frame: "card" }, () => {
     artSlot("Art", { texture: art, kind: "portrait", aspect, focal: { x: 0.5, y: 0.25 }, radius: t.panel, width: grow(), label });
-    kit.open("Vignette", { width: grow(), height: grow() });
-    kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, clip: "shape", fills: [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 0.5 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: token("panel", 0) }, { offset: 1, color: token("panel", 0.85) }] }] } as Api.DrawDesc);
-    kit.close();
-    over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 3 });
   });
+  kit.close();
 }
 
 /** A screen panel: a dialog over the game, wide on desktop, full width on a phone. With `scrim` a press on the backdrop closes it too. */
