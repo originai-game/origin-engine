@@ -44,6 +44,7 @@ impl Renderer {
         // sets its own grid (`scene_size`).
         self.width = width;
         self.height = height;
+        self.taau = false;
         self.persistent = post::Persistent::new(
             &self.device,
             width,
@@ -189,16 +190,38 @@ impl Renderer {
 
     /// Draws the scene at `width` × `height` from now on (the output keeps
     /// its size): the graph, the TAA history and the glass targets follow.
-    pub(crate) fn scene_size(&mut self, width: u32, height: u32) {
-        if (width, height) == (self.width, self.height) {
+    /// `taau`: TAA resolves it to the output's size (the render scale's
+    /// frame under TAA, smaller than the output), where its history then
+    /// lives.
+    pub(crate) fn scene_size(&mut self, width: u32, height: u32, taau: bool) {
+        let taau = taau && self.info.antialias == Antialias::Taa;
+        if (width, height) == (self.width, self.height) && taau == self.taau {
             return;
         }
+        let kept = taau && self.taau;
         self.width = width;
         self.height = height;
-        self.persistent
-            .resize_history(&self.device, width, height, self.info.antialias);
+        self.taau = taau;
         self.graph.invalidate();
+        // Under TAAU before and after the history is the output's size:
+        // a new render scale (dynamic resolution) keeps it.
+        if kept {
+            return;
+        }
+        let (hw, hh) = self.history_size();
+        self.persistent
+            .resize_history(&self.device, hw, hh, self.info.antialias);
         self.taa_history = None;
+    }
+
+    /// The size of TAA's history and of the frame after it: the output's
+    /// under TAAU, else the scene's.
+    pub(crate) fn history_size(&self) -> (u32, u32) {
+        if self.taau {
+            (self.out_width, self.out_height)
+        } else {
+            (self.width, self.height)
+        }
     }
 }
 

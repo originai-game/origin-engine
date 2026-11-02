@@ -94,7 +94,22 @@ impl Renderer {
             Self::cull_skinned(&mut skinned, &view_frustum, scene.camera_layers);
         let mut skinned_batches = std::mem::take(&mut skinned.batches);
         let skinned_data = std::mem::take(&mut skinned.data);
-        let joint_matrices = std::mem::take(&mut skinned.matrices);
+        let mut joint_matrices = std::mem::take(&mut skinned.matrices);
+        let joints_drawn = joint_matrices.len() as u32;
+        // TAA's skinned motion vectors: the previous frame's joints in a
+        // second section of the palette (skin.rs `append_previous`), read by
+        // the skinned prepass at `Fx::decal_info.w`.
+        let taa_on = self.info.antialias == Antialias::Taa;
+        let skinned_motion = if taa_on {
+            skin::append_previous(
+                &scene.joint_palettes,
+                &scene.previous_joint_palettes,
+                &scene.skinned_instances,
+                &mut joint_matrices,
+            )
+        } else {
+            None
+        };
 
         // Effects this frame.
         let post_fx = &scene.post;
@@ -159,7 +174,13 @@ impl Renderer {
             || !scene_water.is_empty()
             || fluids_3d
             // UI occluders and mass elements the scene hides (§14).
-            || ui_depth;
+            || ui_depth
+            // TAA's motion vectors of what moved besides the camera.
+            // (Instances only where they are culled on the CPU: GPU culling
+            // draws them without their previous transforms.)
+            || (taa_on
+                && (skinned_motion == Some(true)
+                    || (!self.gpu_culls(transforms.len() as u32) && objects_moved(scene))));
         let (face_fluid, face_depth, object_space) =
             self.prepare_frame_pipelines(PrepareFramePipelinesInputs {
                 scene,
@@ -539,9 +560,13 @@ impl Renderer {
         // GPU-driven culling (cull_gpu.rs): each pass's list is indirect
         // draws the compute fills; the CPU sorts the transparent instances
         // and culls the skinned ones as before.
-        let object_motion = motion_blur.is_some()
-            && !scene.previous_transforms.is_empty()
+        // Per-object motion for motion blur, and for TAA's motion vectors
+        // where the instances are culled on the CPU (GPU culling compacts
+        // them without their previous transforms, so TAA there reprojects
+        // the camera's motion alone).
+        let previous_valid = !scene.previous_transforms.is_empty()
             && scene.previous_transforms.len() == scene.instances.len();
+        let blur_motion = motion_blur.is_some() && previous_valid;
         let sorted = transforms.len() as u32;
         // The passes this frame can cull at most: the camera, the
         // occluders, the planar reflection, the cascades and the shadowed
@@ -568,26 +593,19 @@ impl Renderer {
                     self.info.shadowed_lights as usize,
                     self.info.point_shadows,
                 ));
-        let gpu_cull = self.indirect
-            && match self.desc_culling {
-                Culling::Auto => sorted >= GPU_CULLING_MIN_INSTANCES,
-                Culling::Gpu => true,
-                Culling::Cpu => false,
-            }
-            && !object_motion
-            && !batches.is_empty()
-            && {
-                let limits = self.device.limits();
-                let gc = self.gpu_cull.get_or_insert_with(|| {
-                    cull_gpu::GpuCulling::new(
-                        &self.device,
-                        limits
-                            .max_storage_buffer_binding_size
-                            .min(limits.max_buffer_size),
-                    )
-                });
-                gc.fits(sorted, max_passes)
-            };
+        let gpu_cull = self.gpu_culls(sorted) && !blur_motion && !batches.is_empty() && {
+            let limits = self.device.limits();
+            let gc = self.gpu_cull.get_or_insert_with(|| {
+                cull_gpu::GpuCulling::new(
+                    &self.device,
+                    limits
+                        .max_storage_buffer_binding_size
+                        .min(limits.max_buffer_size),
+                )
+            });
+            gc.fits(sorted, max_passes)
+        };
+        let object_motion = previous_valid && (blur_motion || (taa && !gpu_cull));
         let mut cull_passes: Vec<cull_gpu::CullPass> = Vec::new();
         let mut gpu_pass = |kind, frustum: &Frustum| {
             cull_passes.push(cull_gpu::CullPass {
@@ -1436,7 +1454,7 @@ impl Renderer {
             god_rays.is_some(),
             sprite_frame.untonemapped,
             scene.tick,
-            self.width,
+            self.history_size().0,
         );
         if camera.exposure.adaptation().is_some() {
             self.post.advance_exposure(
@@ -1452,6 +1470,10 @@ impl Renderer {
         let mut fx_uniform =
             fx::fx_uniform(cam.view_proj, prev_view_proj, (self.width, self.height));
         let decals = fx::pack_decals(&scene.decals, &mut fx_uniform.decals);
+        // The previous joints' section (`skin::append_previous`).
+        if skinned_motion.is_some() {
+            fx_uniform.decal_info[3] = joints_drawn as f32;
+        }
         fx_uniform.decal_info[0] = decals as f32;
         fx_uniform.decal_info[1] = scene.decal_atlas.is_some() as u32 as f32;
         if let Some(a) = &ao {
@@ -1533,7 +1555,7 @@ impl Renderer {
         });
         let slot = (self.frame_index % 2) as usize;
         let taa_blend = taa && self.taa_history.is_some();
-        self.write_frame_taa_uniform(taa, &cam);
+        self.write_frame_taa_uniform(taa, prepass, &cam);
         // The frame's passes, compiled into the render graph (cached while
         // the pass list stays the same).
         let auto_exposure = matches!(camera.exposure, Exposure::Auto { .. });
@@ -1625,7 +1647,8 @@ impl Renderer {
             }
         }
         if bloom {
-            let levels = post::bloom_levels(self.width, self.height);
+            let (pw, ph) = self.history_size();
+            let levels = post::bloom_levels(pw, ph);
             passes.push(FramePass::BloomPrefilter);
             passes.extend((0..levels - 1).map(FramePass::BloomDown));
             passes.extend((0..levels - 1).rev().map(FramePass::BloomUp));
@@ -1650,7 +1673,8 @@ impl Renderer {
         if self.info.antialias == Antialias::Fxaa {
             passes.push(FramePass::Fxaa);
         }
-        if (self.width, self.height) != (self.out_width, self.out_height) {
+        // Under TAAU the frame after TAA is already the output's size.
+        if self.history_size() != (self.out_width, self.out_height) {
             passes.push(FramePass::Upscale);
         }
         self.post.ensure_chain(&self.device, &passes);
@@ -1763,6 +1787,7 @@ impl Renderer {
                 &post::GraphConfig {
                     width: self.width,
                     height: self.height,
+                    post: self.history_size(),
                     samples: self.samples,
                     taa,
                     lightmap: lightmap_size,
@@ -1927,7 +1952,7 @@ impl Renderer {
             lights_2d,
             occluders_2d,
             skinned_instances: scene.skinned_instances.len() as u32,
-            joints: joint_matrices.len() as u32,
+            joints: joints_drawn,
             taa_history: taa_blend,
             ..Default::default()
         };
@@ -3017,7 +3042,7 @@ impl Renderer {
                             self.graph.view("gbuffer"),
                             write,
                         ],
-                        (self.width, self.height),
+                        self.history_size(),
                     );
                 }
                 post_pass => {
@@ -3294,5 +3319,31 @@ impl Timings {
         if encoder.timed() {
             self.pass_queries.push((name.into(), at.q0..encoder.used()));
         }
+    }
+}
+
+/// Whether an instance was drawn elsewhere in the previous frame
+/// ([`RenderScene::previous_transforms`]): TAA then needs the prepass's
+/// motion vectors.
+fn objects_moved(scene: &RenderScene) -> bool {
+    scene.previous_transforms.len() == scene.instances.len()
+        && scene
+            .previous_transforms
+            .iter()
+            .zip(&scene.instances)
+            .any(|(p, i)| *p != i.transform)
+}
+
+impl Renderer {
+    /// Whether `sorted` instances are culled on the GPU as far as the
+    /// renderer's culling choice goes (the frame may still fall back: its
+    /// motion blur, an empty frame, buffers over the device's limits).
+    fn gpu_culls(&self, sorted: u32) -> bool {
+        self.indirect
+            && match self.desc_culling {
+                Culling::Auto => sorted >= GPU_CULLING_MIN_INSTANCES,
+                Culling::Gpu => true,
+                Culling::Cpu => false,
+            }
     }
 }

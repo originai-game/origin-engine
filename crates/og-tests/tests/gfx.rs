@@ -231,6 +231,20 @@ fn lights_beyond_the_limit_are_counted() {
     );
 }
 
+/// Temporal upscaling (R2): render scale 0.5 resolved by TAA.
+#[test]
+fn taau_matches_its_reference() {
+    let report = check("taau");
+    assert_eq!(report.info.antialias, Antialias::Taa);
+}
+
+/// TAAU under a sliding camera with a sphere rolling across the view on
+/// its motion vectors.
+#[test]
+fn taau_moving_matches_its_reference() {
+    check("taau-moving");
+}
+
 #[test]
 fn taa_matches_its_reference() {
     let report = check("taa");

@@ -29,7 +29,12 @@ impl Renderer {
         }
         self.stylise_chain = Some(chain);
         let (grid, upscale, grid_offset) = self.pixel_grid(scene.stylise.pixel);
-        self.scene_size(grid.0, grid.1);
+        // The render scale's frame (upscale 0, not a pixel grid) below the
+        // output under TAA is resolved to the output by TAA itself (TAAU);
+        // above it, it is supersampled and scaled down after TAA.
+        let out = (self.out_width, self.out_height);
+        let taau = upscale == 0 && grid != out && grid.0 <= out.0 && grid.1 <= out.1;
+        self.scene_size(grid.0, grid.1, taau);
         self.grow_local_shadows(scene);
         self.ensure_environment(scene);
         (upscale, grid_offset)

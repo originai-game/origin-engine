@@ -592,7 +592,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::geometry::extract(world, rs, &mut h, vp);
     // Teleported into this frame: drawn without per-object motion.
     let mut cut = IdMap::new();
-    if rs.interp.drawn.is_some() && rs.scene.post.motion_blur.is_some() {
+    if rs.interp.drawn.is_some() && (rs.scene.post.motion_blur.is_some() || super::fx::taa(rs)) {
         for &(e, _) in &keys {
             if !cut.contains_key(&e) && h.cut(e) {
                 cut.insert(e, ());

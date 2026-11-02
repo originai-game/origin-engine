@@ -44,6 +44,13 @@ impl RenderScene {
         for m in &mut self.previous_transforms {
             moved(m, d);
         }
+        for m in self
+            .previous_joint_palettes
+            .iter_mut()
+            .flat_map(|p| &mut p.matrices)
+        {
+            moved(m, d);
+        }
         for i in &mut self.skinned_instances {
             moved(&mut i.transform, d);
         }

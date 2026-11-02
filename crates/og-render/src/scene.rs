@@ -145,6 +145,13 @@ pub struct RenderScene {
     /// `instances`), for per-object motion blur. Ignored unless its length
     /// equals `instances`'; then only the camera's motion blurs.
     pub previous_transforms: Vec<Mat4>,
+    /// Each joint palette's joints as the previous frame drew them, in
+    /// the world (the transform its instances were drawn at times each
+    /// joint), same order as `joint_palettes`: TAA's motion vectors of
+    /// skinned meshes. Ignored unless its length equals
+    /// `joint_palettes`'; a palette whose joint count differs, or a mesh
+    /// with morph targets alone, moves with the camera only.
+    pub previous_joint_palettes: Vec<JointPalette>,
     /// The camera cut into this frame (a teleport or a cut between shots):
     /// motion blur takes no camera motion from the frame before, and TAA
     /// starts from this frame's samples ([`crate::Renderer::reset_history`]).

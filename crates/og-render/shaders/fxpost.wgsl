@@ -38,13 +38,21 @@ struct FxPost {
 
 const FX_PI: f32 = 3.14159265359;
 
+// The prepass texel under pixel `px` of this pass's frame (`fxp.screen`):
+// the same pixel, or under TAAU, where the passes after TAA run at the
+// output's size, the scene pixel it lies in.
+fn prepass_px(px: vec2<i32>, size: vec2<i32>) -> vec2<i32> {
+  let p = vec2<i32>((vec2<f32>(px) + 0.5) * vec2<f32>(size) * fxp.screen.zw);
+  return clamp(p, vec2<i32>(0), size - 1);
+}
+
 fn depth_at(px: vec2<i32>) -> f32 {
   let size = vec2<i32>(textureDimensions(tex_depth));
-  return textureLoad(tex_depth, clamp(px, vec2<i32>(0), size - 1), 0).r;
+  return textureLoad(tex_depth, prepass_px(px, size), 0).r;
 }
 
 fn depth_uv(uv: vec2<f32>) -> f32 {
-  return depth_at(vec2<i32>(uv * vec2<f32>(textureDimensions(tex_depth))));
+  return depth_at(vec2<i32>(uv * fxp.screen.xy));
 }
 
 // `depth_uv` with the depth's size (`size`, and as floats `size_f`) read
@@ -67,7 +75,7 @@ fn oct_decode(e: vec2<f32>) -> vec3<f32> {
 
 fn world_normal(px: vec2<i32>) -> vec3<f32> {
   let size = vec2<i32>(textureDimensions(tex_gbuffer));
-  return oct_decode(textureLoad(tex_gbuffer, clamp(px, vec2<i32>(0), size - 1), 0).xy);
+  return oct_decode(textureLoad(tex_gbuffer, prepass_px(px, size), 0).xy);
 }
 
 // The view-space point at `uv` whose view depth is `d`.
@@ -548,12 +556,12 @@ fn fs_motion_blur(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
   let c = textureLoad(tex_a, px, 0);
   let size = vec2<i32>(textureDimensions(tex_gbuffer));
-  var v = textureLoad(tex_gbuffer, px, 0).zw;
+  var v = textureLoad(tex_gbuffer, prepass_px(px, size), 0).zw;
   let reach = i32(fxp.mb.z * 0.5);
   for (var i = 0u; i < 8u; i++) {
     let a = f32(i) * FX_PI * 0.25;
-    let q = clamp(px + vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * f32(reach))), vec2<i32>(0), size - 1);
-    let w = textureLoad(tex_gbuffer, q, 0).zw;
+    let q = px + vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * f32(reach)));
+    let w = textureLoad(tex_gbuffer, prepass_px(q, size), 0).zw;
     if (dot(w, w) > dot(v, v)) { v = w; }
   }
   v *= fxp.mb.x;

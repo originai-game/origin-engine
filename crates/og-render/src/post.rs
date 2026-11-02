@@ -213,11 +213,19 @@ pub(crate) struct TaaUniform {
     pub inv_view_proj: [[f32; 4]; 4],
     pub cur_view_proj: [[f32; 4]; 4],
     pub prev_view_proj: [[f32; 4]; 4],
+    /// x: the current frame's weight, yz: the scene's (render) size, w:
+    /// the sharpening.
     pub params: [f32; 4],
     /// x: 1 when the camera did not move since the history's frame (its
     /// view-projection bit for bit the same): every pixel reads its own
-    /// history texel, no reprojection computed on the GPU.
+    /// history texel, no reprojection computed on the GPU. y: 1 when the
+    /// prepass's velocity is bound (object and skinned motion). zw: this
+    /// frame's jitter in scene pixels (x right, y down).
     pub still: [f32; 4],
+    /// xy: the history's size (the output's under TAAU, else the scene's),
+    /// z: 1 under TAAU (the scene drawn smaller or larger than the output
+    /// and resolved up to it here).
+    pub upscale: [f32; 4],
 }
 
 fn layout_entry(binding: u32, ty: wgpu::BindingType) -> wgpu::BindGroupLayoutEntry {
@@ -394,6 +402,9 @@ pub(crate) struct PostPasses {
     pub taa_buffer: wgpu::Buffer,
     fx_layout: wgpu::BindGroupLayout,
     pub fx_buffer: wgpu::Buffer,
+    /// The effect passes' uniform after TAA ([`FramePass::after_taa`]): the
+    /// same but sized to the post chain's frame, the output's under TAAU.
+    pub fx_after_buffer: wgpu::Buffer,
     fx: HashMap<&'static str, Deferred<wgpu::RenderPipeline>>,
 }
 

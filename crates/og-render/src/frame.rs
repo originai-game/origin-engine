@@ -146,9 +146,20 @@ impl CameraFrame {
     }
 }
 
-/// The TAA jitter for frame `index`: Halton(2, 3) over 8 frames, in pixels
-/// (-0.5..0.5).
-pub(crate) fn halton_jitter(index: u64) -> Vec2 {
+/// How many frames the jitter cycles over for a scene drawn at `scene`
+/// and resolved by TAA to `out`: 8 at one scene pixel per output pixel,
+/// and 8 per output pixel a scene pixel covers below that (TAAU: each
+/// output pixel is sampled about as often as without upscaling), at most
+/// 32 (render scale 0.5).
+pub(crate) fn jitter_phases(scene: (u32, u32), out: (u32, u32)) -> u64 {
+    let area =
+        f64::from(out.0) * f64::from(out.1) / (f64::from(scene.0) * f64::from(scene.1)).max(1.0);
+    ((8.0 * area).round() as u64).clamp(8, 32)
+}
+
+/// The TAA jitter for frame `index`: Halton(2, 3) over `phases` frames
+/// ([`jitter_phases`]), in pixels (-0.5..0.5).
+pub(crate) fn halton_jitter(index: u64, phases: u64) -> Vec2 {
     fn halton(mut i: u64, base: u64) -> f32 {
         let (mut f, mut r) = (1.0f32, 0.0f32);
         while i > 0 {
@@ -158,7 +169,7 @@ pub(crate) fn halton_jitter(index: u64) -> Vec2 {
         }
         r
     }
-    let i = index % 8 + 1;
+    let i = index % phases.max(1) + 1;
     Vec2::new(halton(i, 2) - 0.5, halton(i, 3) - 0.5)
 }
 
@@ -704,6 +715,36 @@ pub(crate) fn local_lights(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The phases follow the area a scene pixel covers in the output, so
+    /// an output pixel at render scale 0.5 is sampled near its centre as
+    /// often as one at scale 1; scale 1 keeps the 8-frame sequence it
+    /// always had (frame for frame), and supersampling never goes under 8.
+    #[test]
+    fn the_jitter_cycles_longer_as_the_scene_shrinks() {
+        assert_eq!(jitter_phases((1920, 1080), (1920, 1080)), 8);
+        assert_eq!(jitter_phases((960, 540), (1920, 1080)), 32);
+        assert_eq!(jitter_phases((1344, 756), (1920, 1080)), 16);
+        assert_eq!(jitter_phases((3840, 2160), (1920, 1080)), 8);
+        assert_eq!(jitter_phases((1, 1), (8192, 8192)), 32);
+        // Scale 1's sequence as before: Halton(2, 3) from index 1.
+        assert_eq!(halton_jitter(0, 8), Vec2::new(0.0, 1.0 / 3.0 - 0.5));
+        assert_eq!(halton_jitter(8, 8), halton_jitter(0, 8));
+        // At 32 phases a scene pixel's four output pixels (its quadrants)
+        // each get a quarter of the samples, give or take two, and the
+        // sequence repeats after 32 frames.
+        let mut quadrants = [0; 4];
+        for i in 0..32 {
+            let j = halton_jitter(i, 32);
+            assert!(j.abs().max_element() < 0.5);
+            quadrants[(j.x >= 0.0) as usize + 2 * (j.y >= 0.0) as usize] += 1;
+            assert_eq!(j, halton_jitter(i + 32, 32));
+        }
+        assert!(
+            quadrants.iter().all(|&n| (6..=10).contains(&n)),
+            "{quadrants:?}"
+        );
+    }
 
     /// `n` bounds on a grid that the frustum of [`view`] cuts through (about
     /// half inside), every seventh one unmarked (it must stay false wherever

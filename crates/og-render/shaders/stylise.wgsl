@@ -86,9 +86,17 @@ fn tone(c: vec3<f32>) -> f32 {
 
 // --- surfaces -------------------------------------------------------------
 
+// The prepass texel under logical pixel `px` (`st.screen`): the same, or
+// under TAAU, where this chain runs at the output's size, the scene pixel
+// it lies in.
+fn prepass_px(px: vec2<i32>, size: vec2<i32>) -> vec2<i32> {
+  let p = vec2<i32>((vec2<f32>(px) + 0.5) * vec2<f32>(size) * st.screen.zw);
+  return clamp(p, vec2<i32>(0), size - 1);
+}
+
 fn view_depth(px: vec2<i32>) -> f32 {
   let size = vec2<i32>(textureDimensions(pre_depth));
-  return textureLoad(pre_depth, clamp(px, vec2<i32>(0), size - 1), 0).r;
+  return textureLoad(pre_depth, prepass_px(px, size), 0).r;
 }
 
 fn oct_decode(e: vec2<f32>) -> vec3<f32> {
@@ -101,7 +109,7 @@ fn oct_decode(e: vec2<f32>) -> vec3<f32> {
 
 fn normal_at(px: vec2<i32>) -> vec3<f32> {
   let size = vec2<i32>(textureDimensions(pre_normal));
-  return oct_decode(textureLoad(pre_normal, clamp(px, vec2<i32>(0), size - 1), 0).xy);
+  return oct_decode(textureLoad(pre_normal, prepass_px(px, size), 0).xy);
 }
 
 // The point at view depth `d` under the logical pixel position `p`, from
@@ -193,7 +201,7 @@ fn surface_at(p: vec2<f32>) -> Surf {
 // with bit 0 set (0: no instance there).
 fn object_texel(p: vec2<f32>) -> vec4<u32> {
   let size = vec2<i32>(textureDimensions(pre_object));
-  return textureLoad(pre_object, clamp(vec2<i32>(p), vec2<i32>(0), size - 1), 0);
+  return textureLoad(pre_object, prepass_px(vec2<i32>(p), size), 0);
 }
 
 // The object-space step to the neighbour `side` along `e` (towards +e),

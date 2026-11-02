@@ -114,6 +114,7 @@ mod web {
             tolerance: Tolerance::default(),
             frames: 1,
             update: None,
+            render_scale: 1.0,
         })
     }
 
@@ -164,7 +165,8 @@ mod web {
         if CPU_CULLING.with(Cell::get) {
             built.desc.culling = og_render::Culling::Cpu;
         }
-        let renderer = Renderer::new(&built.desc).await.map_err(err)?;
+        let mut renderer = Renderer::new(&built.desc).await.map_err(err)?;
+        renderer.set_render_scale(built.render_scale);
         let info = renderer.info();
         let t = &built.tolerance;
         let json = format!(

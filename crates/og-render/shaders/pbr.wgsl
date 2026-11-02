@@ -27,7 +27,7 @@ struct Fx {
   prev_view_proj: mat4x4<f32>,
   screen: vec4<f32>,      // w, h, 1/w, 1/h
   ao: vec4<f32>,          // x: 1 when the AO texture is valid, y: intensity
-  decal_info: vec4<f32>,  // x: decals, y: 1 with an atlas, z: cos fade width
+  decal_info: vec4<f32>,  // x: decals, y: 1 with an atlas, z: cos fade width, w: the previous joints' section (0: none; vs_prepass_skinned)
   planar: vec4<f32>,      // the planar reflection's plane (n, n·at); n 0: none, then w -1 while drawing it
   decals: array<DecalGpu, 32>,
 };
@@ -340,7 +340,15 @@ fn vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn) -> PrepassOut {
 @vertex
 fn vs_prepass_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> PrepassOut {
   let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette);
-  var p = prepass_vertex(model, model, morph_vertex(v, vi, i));
+  // The previous frame's pose (skin.rs `append_previous`): the same
+  // joints in the palette's second section, already in the world. A
+  // vertex without weights (morph targets alone) moves with the camera.
+  var prev = model;
+  let section = fx.decal_info.w;
+  if (section > 0.5 && dot(s.weights, vec4<f32>(1.0)) >= 1e-6) {
+    prev = skin_matrix(s, vec4<f32>(i.palette.x + section, i.palette.yzw));
+  }
+  var p = prepass_vertex(model, prev, morph_vertex(v, vi, i));
   // The instance's, not the skinned vertex's (its joints move it).
   p.object = object_id(i.m0, i.m1, i.m2, i.m3);
   return p;

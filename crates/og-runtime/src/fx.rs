@@ -166,6 +166,9 @@ pub(crate) struct FxState {
     /// The last display frame's instance transforms by key, as drawn (blended
     /// between ticks): what a display frame between ticks moves from.
     pub drawn: Vec<((u64, u32), Mat4)>,
+    /// The last frame's joints of each posed model by entity, in the world
+    /// (its instance's transform times its palette): TAA's skinned motion.
+    pub drawn_joints: IdMap<u64, Vec<Mat4>>,
 }
 
 pub(crate) fn f(v: &Value, key: &str, default: f32) -> f32 {
@@ -1131,15 +1134,30 @@ pub(crate) fn posed_model(
     true
 }
 
+/// Whether the renderer resolved TAA, whose motion vectors want the
+/// previous frame's transforms and joints whatever the post effects.
+pub(crate) fn taa(rs: &RenderState) -> bool {
+    rs.backend.as_ref().is_some_and(|b| b.antialias() == "taa")
+}
+
 /// Per-object motion: this tick's instance transforms, keyed, and last
 /// tick's for `previous_transforms` (same order as the instances); a
 /// display frame drawn between ticks (`super::interpolate`) moves from the
 /// display frame before it instead, as drawn, since the shutter is a
 /// fraction of the frame. An entity in `cut` (teleported into the frame:
 /// `Hierarchy::cut`) moves from where it is drawn, so it does not smear.
+/// Under TAA without motion blur every frame moves from the frame drawn
+/// before it (TAA's history is that frame), instances and posed models'
+/// joints alike (`previous_joint_palettes`). Only what is drawn is read:
+/// the simulation never sees any of it.
 pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: &IdMap<u64, ()>) {
+    let taa = taa(rs);
     let RenderState {
-        scene, fx, interp, ..
+        scene,
+        fx,
+        interp,
+        atmo,
+        ..
     } = rs;
     if fx.tick != tick {
         std::mem::swap(&mut fx.previous, &mut fx.current);
@@ -1153,7 +1171,10 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
             .map(|(k, i)| (*k, i.transform)),
     );
     scene.previous_transforms.clear();
-    if scene.post.motion_blur.is_some() && keys.len() == scene.instances.len() {
+    scene.previous_joint_palettes.clear();
+    let blur = scene.post.motion_blur.is_some();
+    let keyed = keys.len() == scene.instances.len();
+    if blur && keyed {
         let previous = fx
             .previous_by_key
             .get_or_insert_with(|| fx.previous.iter().copied().collect());
@@ -1163,16 +1184,27 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
             .map(|(k, i)| previous.get(k).copied().unwrap_or(i.transform))
             .collect();
     }
-    // Kept only while motion blur is on (a copy of every instance's
+    // Kept only while motion blur or TAA is on (a copy of every instance's
     // transform a frame otherwise).
-    if scene.post.motion_blur.is_none() {
+    if !blur && !taa {
         fx.drawn.clear();
+        fx.drawn_joints.clear();
         return;
     }
-    if !interp.display {
+    if taa {
+        joints(scene, atmo, fx);
+    } else {
+        fx.drawn_joints.clear();
+    }
+    if !interp.display && !taa {
         return;
     }
-    if interp.drawn.is_some() && !scene.previous_transforms.is_empty() {
+    let from_drawn = if blur {
+        interp.drawn.is_some() && !scene.previous_transforms.is_empty()
+    } else {
+        keyed
+    };
+    if from_drawn {
         let last: BTreeMap<(u64, u32), Mat4> = fx.drawn.iter().copied().collect();
         scene.previous_transforms = keys
             .iter()
@@ -1197,6 +1229,49 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
             .zip(&scene.instances)
             .map(|(k, i)| (*k, i.transform)),
     );
+}
+
+/// TAA's skinned motion: each joint palette's joints as the frame before
+/// drew them, in the world (`previous_joint_palettes`, in palette order;
+/// a model new to the frame, or whose joint count changed, as it is drawn
+/// now), and this frame's kept for the next.
+fn joints(
+    scene: &mut og_render::RenderScene,
+    atmo: &super::atmosphere::AtmoState,
+    fx: &mut FxState,
+) {
+    let mut entity_of = vec![None; scene.joint_palettes.len()];
+    for (&e, &p) in &atmo.palettes {
+        if let Some(slot) = entity_of.get_mut(p as usize) {
+            *slot = Some(e);
+        }
+    }
+    let mut at = vec![None; scene.joint_palettes.len()];
+    for s in &scene.skinned_instances {
+        if let Some(t) = at.get_mut(s.palette as usize) {
+            t.get_or_insert(s.transform);
+        }
+    }
+    let mut now = IdMap::new();
+    scene.previous_joint_palettes = scene
+        .joint_palettes
+        .iter()
+        .zip(entity_of.iter().zip(&at))
+        .map(|(p, (e, t))| {
+            let t = t.unwrap_or(Mat4::IDENTITY);
+            let world: Vec<Mat4> = p.matrices.iter().map(|m| t * *m).collect();
+            let before = e
+                .and_then(|e| fx.drawn_joints.get(&e))
+                .filter(|b| b.len() == world.len())
+                .cloned()
+                .unwrap_or_else(|| world.clone());
+            if let Some(e) = e {
+                now.insert(*e, world);
+            }
+            og_render::JointPalette::from(before)
+        })
+        .collect();
+    fx.drawn_joints = now;
 }
 
 /// The overlay's size in CSS pixels: the host's viewport, else the target.

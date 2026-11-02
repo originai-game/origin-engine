@@ -827,6 +827,7 @@ impl Renderer {
             info,
             desc: *desc,
             render_scale: 1.0,
+            taau: false,
             lost,
             width,
             height,

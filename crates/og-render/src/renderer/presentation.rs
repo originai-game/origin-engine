@@ -182,14 +182,19 @@ pub(crate) fn view_bytes(view: &wgpu::TextureView) -> u64 {
 impl Renderer {
     /// Draws the 3D scene at `scale` times the output's size from the next
     /// frame on, scaled to the output by the last post pass (bilinear;
-    /// below 1 it is softer and cheaper, above 1 it supersamples); the UI,
+    /// below 1 it is softer and cheaper, above 1 it supersamples), or under
+    /// TAA below 1 by TAA itself (temporal upscaling: the jitter walks the
+    /// scene's samples over every output pixel, and TAA and every pass
+    /// after it run at the output's size); the UI,
     /// the overlay and text over the frame stay at the output's size.
     /// Within [`MIN_RENDER_SCALE`] and [`MAX_RENDER_SCALE`] (not finite:
     /// 1), each side within 1 and the device's largest texture. A
     /// stylisation pixel grid ([`Stylise::pixel`](crate::Stylise::pixel))
     /// sets the scene's size itself and this is not applied under it.
     /// Changing it remakes the frame graph's targets and starts TAA's
-    /// history over, as a resize does.
+    /// history over, as a resize does, except from one scale below 1 to
+    /// another under TAA, where the output-sized history is kept (dynamic
+    /// resolution without a reset).
     pub fn set_render_scale(&mut self, scale: f32) {
         self.render_scale = if scale.is_finite() {
             scale.clamp(MIN_RENDER_SCALE, MAX_RENDER_SCALE)

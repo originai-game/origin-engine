@@ -147,6 +147,19 @@ impl Renderer {
         };
         self.queue
             .write_buffer(&self.post.fx_buffer, 0, bytemuck::bytes_of(&fxp));
+        // The passes after TAA see the frame it resolved: the output's
+        // size under TAAU (`FramePass::after_taa`), the scene's otherwise.
+        let (pw, ph) = self.history_size();
+        let mut after = fxp;
+        after.screen = [pw as f32, ph as f32, 1.0 / pw as f32, 1.0 / ph as f32];
+        if let Some(d) = dof {
+            after.dof[2] = (d.max_blur * ph as f32).max(0.0);
+        }
+        if let Some(b) = screen_blur {
+            after.blur = b.rows(pw as f32, ph as f32);
+        }
+        self.queue
+            .write_buffer(&self.post.fx_after_buffer, 0, bytemuck::bytes_of(&after));
         let view_t = cam.view.transpose();
         let pview = particles_gpu::ParticleViewGpu {
             view_proj: cam.view_proj.to_cols_array_2d(),
@@ -165,9 +178,18 @@ impl Renderer {
             .write_buffer(&self.sprite_fx_buffer, 0, bytemuck::bytes_of(&fxp.screen));
     }
 
-    pub(super) fn write_frame_taa_uniform(&self, taa: bool, cam: &frame::CameraFrame) {
+    /// `velocity`: the prepass's velocity is bound (object and skinned
+    /// motion).
+    pub(super) fn write_frame_taa_uniform(
+        &self,
+        taa: bool,
+        velocity: bool,
+        cam: &frame::CameraFrame,
+    ) {
         if taa {
             let prev = self.taa_history.unwrap_or(cam.view_proj);
+            let jitter = self.taa_jitter();
+            let (hw, hh) = self.history_size();
             let taa_uniform = post::TaaUniform {
                 inv_view_proj: cam.jittered_view_proj.inverse().to_cols_array_2d(),
                 cur_view_proj: cam.view_proj.to_cols_array_2d(),
@@ -180,10 +202,11 @@ impl Renderer {
                 ],
                 still: [
                     still_camera(&prev, &cam.view_proj) as u32 as f32,
-                    0.0,
-                    0.0,
-                    0.0,
+                    velocity as u32 as f32,
+                    jitter.x,
+                    jitter.y,
                 ],
+                upscale: [hw as f32, hh as f32, self.taau as u32 as f32, 0.0],
             };
             self.queue
                 .write_buffer(&self.post.taa_buffer, 0, bytemuck::bytes_of(&taa_uniform));

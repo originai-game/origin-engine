@@ -38,6 +38,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         tolerance: Tolerance::default(),
         frames: 1,
         update: None,
+        render_scale: 1.0,
     };
     let scene: fn(&mut GfxScene, &str) -> Result<(), String> = match name {
         // Owed row 63: a .vox transform keyed across frames, cooked and

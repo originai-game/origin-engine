@@ -326,3 +326,112 @@ impl GpuPalette {
         }
     }
 }
+
+/// The previous frame's joints for TAA's skinned motion vectors, appended
+/// after the frame's own `joints` (one section of the same layout, at
+/// `joints.len()` before the call, which the prepass reads through
+/// `Fx::decal_info.w`): each palette's
+/// [`crate::RenderScene::previous_joint_palettes`] entry, in the world,
+/// or, where it has none of the same length, its joints this frame times
+/// the transform its first instance is drawn at (motion with the camera
+/// only). `None` without previous palettes or room for a second section;
+/// else whether any joint moved since the previous frame.
+pub(crate) fn append_previous(
+    palettes: &[JointPalette],
+    previous: &[JointPalette],
+    instances: &[SkinnedInstance],
+    joints: &mut Vec<[[f32; 4]; 4]>,
+) -> Option<bool> {
+    if previous.is_empty() || previous.len() != palettes.len() || joints.len() * 2 > MAX_JOINTS {
+        return None;
+    }
+    let mut at = vec![None; palettes.len()];
+    for s in instances {
+        if let Some(t) = at.get_mut(s.palette as usize) {
+            t.get_or_insert(s.transform);
+        }
+    }
+    let mut moved = false;
+    for ((p, q), t) in palettes.iter().zip(previous).zip(at) {
+        let t = t.unwrap_or(Mat4::IDENTITY);
+        if q.matrices.len() == p.matrices.len() {
+            moved |= p
+                .matrices
+                .iter()
+                .zip(&q.matrices)
+                .any(|(m, w)| !(t * *m).abs_diff_eq(*w, 1e-6));
+            joints.extend(q.matrices.iter().map(Mat4::to_cols_array_2d));
+        } else {
+            joints.extend(p.matrices.iter().map(|m| (t * *m).to_cols_array_2d()));
+        }
+    }
+    Some(moved)
+}
+
+#[cfg(test)]
+mod motion_tests {
+    use super::*;
+    use crate::scene::{MaterialHandle, MeshHandle};
+
+    fn palette(m: &[Mat4]) -> JointPalette {
+        JointPalette::from(m.to_vec())
+    }
+
+    /// The second section mirrors the first's layout: a palette with a
+    /// previous pose of its own length takes it as given (world space); one
+    /// without (a joint count that changed) repeats this frame's joints in
+    /// the world at its first instance's transform, which reads as no
+    /// motion; a pose that only moved with its instance still counts as
+    /// moved.
+    #[test]
+    fn previous_joints_follow_the_palettes_layout() {
+        let t = Mat4::from_translation(Vec3::new(5.0, 0.0, 0.0));
+        let j = Mat4::from_translation(Vec3::Y);
+        let instances = [
+            SkinnedInstance::new(
+                MeshHandle::from_index(0),
+                MaterialHandle::from_index(0),
+                t,
+                1,
+            ),
+            SkinnedInstance::new(
+                MeshHandle::from_index(0),
+                MaterialHandle::from_index(0),
+                Mat4::IDENTITY,
+                0,
+            ),
+        ];
+        let now = [palette(&[j]), palette(&[j, j])];
+        let mut joints: Vec<_> = [j, j, j].iter().map(Mat4::to_cols_array_2d).collect();
+        // Palette 0 unmoved (its world joints as now), palette 1 lost a joint.
+        let before = [palette(&[j]), palette(&[j])];
+        assert_eq!(
+            append_previous(&now, &before, &instances, &mut joints),
+            Some(false)
+        );
+        assert_eq!(joints.len(), 6);
+        assert_eq!(joints[4], (t * j).to_cols_array_2d());
+        // The instance under palette 0 moved a metre: moved.
+        let mut joints: Vec<_> = [j, j, j].iter().map(Mat4::to_cols_array_2d).collect();
+        let before = [
+            palette(&[Mat4::from_translation(Vec3::X) * j]),
+            palette(&[t * j, t * j]),
+        ];
+        assert_eq!(
+            append_previous(&now, &before, &instances, &mut joints),
+            Some(true)
+        );
+        assert_eq!(
+            joints[3],
+            (Mat4::from_translation(Vec3::X) * j).to_cols_array_2d()
+        );
+        // No previous palettes, or a count that does not match: no section.
+        assert_eq!(
+            append_previous(&now, &before[1..], &instances, &mut joints),
+            None
+        );
+        let mut joints = Vec::new();
+        assert_eq!(append_previous(&now, &[], &instances, &mut joints), None);
+        assert!(joints.is_empty());
+    }
+}

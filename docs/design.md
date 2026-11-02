@@ -558,7 +558,17 @@ tests in orbs and CI, and the probe's CPU description of a frame.
   editor's colour adjustments baked into it on the CPU), lens distortion, zoom, spin and directional screen blurs, SSAO (GTAO on
   WebGPU), antialiasing: TAA by default (optional Catmull-Rom history
   and sharpening), 4× MSAA or FXAA as choices, FXAA where the HDR target
-  cannot be multisampled.
+  cannot be multisampled. TAA reprojects along the prepass's motion
+  vectors where something moved besides the camera (instances with
+  `previous_transforms`, skinned meshes with `previous_joint_palettes`,
+  both filled by og-runtime from the frame drawn before, interpolated or
+  not; under GPU culling instances move with the camera only), and below
+  render scale 1 it is temporal upscaling (TAAU, R2): the scene is drawn
+  at the render scale with a Halton jitter over 8 phases per output pixel
+  a scene pixel covers (up to 32), TAA writes an output-sized history
+  from the sample nearest each output pixel, weighted by its distance,
+  and every pass after it runs at the output's size; a change of scale
+  below 1 keeps the history (dynamic resolution without a reset).
 - What a frame may cost is data the renderer reads every frame:
   RenderSettings' quality fields (rect-light shadows, the number of
   shadowed lights, the shadow maps' scale, volumetric fog, soft particles,

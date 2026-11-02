@@ -29,6 +29,7 @@ mod shadows;
 mod sprites2d;
 mod stylise_space;
 mod taa_look;
+mod taau;
 mod targets;
 mod terrain;
 mod ui;

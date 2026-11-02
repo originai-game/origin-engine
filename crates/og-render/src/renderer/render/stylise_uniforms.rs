@@ -13,7 +13,10 @@ impl Renderer {
         lens: Option<LensDistortion>,
     ) {
         {
-            let (w, h) = (self.width as f32, self.height as f32);
+            // The chain's frame: the output's under TAAU (its prepass
+            // reads map to the scene's pixels, stylise.wgsl `prepass_px`).
+            let (w, h) = self.history_size();
+            let (w, h) = (w as f32, h as f32);
             let bg = match scene.environment.background {
                 Background::Color(c) => c,
                 _ => Vec3::ZERO,

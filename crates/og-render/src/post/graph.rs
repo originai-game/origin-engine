@@ -221,6 +221,10 @@ impl FrameGraph {
             }
         };
         let source = |slot: usize| stage(names.last, slot);
+        // The prepass's velocity and view depth TAA reprojects moving
+        // objects with (placeholders without a prepass: `TaaUniform::still.y` 0).
+        let taa_velocity = self.try_view("gbuffer").unwrap_or(&passes.black);
+        let taa_depth = self.try_view("lindepth").unwrap_or(&passes.far_depth);
         let taa_groups = history.map(|h| {
             [0usize, 1].map(|slot| {
                 group(
@@ -233,6 +237,8 @@ impl FrameGraph {
                         sampler.clone(),
                         passes.taa_buffer.as_entire_binding(),
                         wgpu::BindingResource::Sampler(&passes.nearest_sampler),
+                        tex(taa_velocity),
+                        tex(taa_depth),
                     ],
                 )
             })
@@ -250,6 +256,8 @@ impl FrameGraph {
                         sampler.clone(),
                         passes.taa_buffer.as_entire_binding(),
                         wgpu::BindingResource::Sampler(&passes.nearest_sampler),
+                        tex(taa_velocity),
+                        tex(taa_depth),
                     ],
                 )
             })
@@ -409,23 +417,34 @@ impl FrameGraph {
         // The effect passes: (a, depth, gbuffer, b) per slot.
         let depth = self.try_view("lindepth").unwrap_or(&passes.far_depth);
         let gbuffer = self.try_view("gbuffer").unwrap_or(&passes.black);
+        let fx_group_in = |uniform: &wgpu::Buffer,
+                           a: &wgpu::TextureView,
+                           d: &wgpu::TextureView,
+                           b: &wgpu::TextureView| {
+            group(
+                "fx post",
+                &passes.fx_layout,
+                &[
+                    uniform.as_entire_binding(),
+                    sampler.clone(),
+                    tex(a),
+                    tex(d),
+                    tex(gbuffer),
+                    tex(b),
+                    wgpu::BindingResource::Sampler(&passes.nearest_sampler),
+                ],
+            )
+        };
         let fx_group_depth =
             |a: &wgpu::TextureView, d: &wgpu::TextureView, b: &wgpu::TextureView| {
-                group(
-                    "fx post",
-                    &passes.fx_layout,
-                    &[
-                        passes.fx_buffer.as_entire_binding(),
-                        sampler.clone(),
-                        tex(a),
-                        tex(d),
-                        tex(gbuffer),
-                        tex(b),
-                        wgpu::BindingResource::Sampler(&passes.nearest_sampler),
-                    ],
-                )
+                fx_group_in(&passes.fx_buffer, a, d, b)
             };
         let fx_group = |a: &wgpu::TextureView, b: &wgpu::TextureView| fx_group_depth(a, depth, b);
+        // The passes after TAA: the frame it resolved (the output's size
+        // under TAAU), with their own uniform's screen.
+        let fx_after = |a: &wgpu::TextureView, b: &wgpu::TextureView| {
+            fx_group_in(&passes.fx_after_buffer, a, depth, b)
+        };
         let black = &passes.black;
         let mut fx = HashMap::new();
         for &p in frame {
@@ -443,17 +462,17 @@ impl FrameGraph {
                 FramePass::Outline => {
                     pair(&|_| fx_group(self.view(names.lit), self.view("outline-id")))
                 }
-                FramePass::DofCoc => pair(&|slot| fx_group(stage(names.aa, slot), black)),
-                FramePass::DofBlur => pair(&|_| fx_group(self.view("dof.coc"), black)),
+                FramePass::DofCoc => pair(&|slot| fx_after(stage(names.aa, slot), black)),
+                FramePass::DofBlur => pair(&|_| fx_after(self.view("dof.coc"), black)),
                 FramePass::DofComposite => {
-                    pair(&|slot| fx_group(stage(names.aa, slot), self.view("dof.blur")))
+                    pair(&|slot| fx_after(stage(names.aa, slot), self.view("dof.blur")))
                 }
                 FramePass::MotionBlur => {
-                    pair(&|slot| fx_group(stage(names.after_dof, slot), black))
+                    pair(&|slot| fx_after(stage(names.after_dof, slot), black))
                 }
-                FramePass::ScreenBlur => pair(&|slot| fx_group(stage(names.after_mb, slot), black)),
-                FramePass::GodRaysMask => pair(&|slot| fx_group(source(slot), black)),
-                FramePass::GodRaysBlur => pair(&|_| fx_group(black, self.view("god.mask"))),
+                FramePass::ScreenBlur => pair(&|slot| fx_after(stage(names.after_mb, slot), black)),
+                FramePass::GodRaysMask => pair(&|slot| fx_after(source(slot), black)),
+                FramePass::GodRaysBlur => pair(&|_| fx_after(black, self.view("god.mask"))),
                 _ => continue,
             };
             fx.insert(p, groups);
@@ -762,6 +781,6 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
     .map(|s| s.to_string())
     .collect();
     names.extend((0..meter_levels()).map(luminance_name));
-    names.extend((0..bloom_levels(cfg.width, cfg.height)).map(bloom_name));
+    names.extend((0..bloom_levels(cfg.post.0, cfg.post.1)).map(bloom_name));
     names
 }

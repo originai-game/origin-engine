@@ -3,6 +3,14 @@
 use super::*;
 
 impl Renderer {
+    /// This frame's TAA jitter in scene pixels (x right, y down: the
+    /// image moves by it), over more phases under TAAU
+    /// ([`frame::jitter_phases`]).
+    pub(super) fn taa_jitter(&self) -> Vec2 {
+        let phases = frame::jitter_phases((self.width, self.height), self.history_size());
+        frame::halton_jitter(self.frame_index, phases)
+    }
+
     pub(super) fn prepare_frame_camera(
         &self,
         scene: &RenderScene,
@@ -11,7 +19,7 @@ impl Renderer {
         let aspect = self.width as f32 / self.height as f32;
         let taa = self.info.antialias == Antialias::Taa;
         let jitter = if taa {
-            let px = frame::halton_jitter(self.frame_index);
+            let px = self.taa_jitter();
             Vec2::new(
                 px.x * 2.0 / self.width as f32,
                 -px.y * 2.0 / self.height as f32,

@@ -204,6 +204,7 @@ pub struct Rendered {
 pub fn render_built(built: &mut GfxScene) -> Result<Rendered, String> {
     let t0 = Instant::now();
     let mut renderer = Renderer::new_blocking(&built.desc).map_err(|e| e.to_string())?;
+    renderer.set_render_scale(built.render_scale);
     let mut stats = FrameStats::default();
     for frame in 0..built.frames.max(1) {
         if let Some(update) = built.update {

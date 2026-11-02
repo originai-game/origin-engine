@@ -189,6 +189,22 @@ pub fn pan_thin_geometry(scene: &mut RenderScene, frame: u32) {
     scene.camera.target.x = x;
 }
 
+/// [`pan_thin_geometry`] with the thin geometry's sphere (its last
+/// instance) rolling 8 cm to the right a frame, its previous transform
+/// set for the motion vectors.
+pub fn pan_and_roll_sphere(scene: &mut RenderScene, frame: u32) {
+    pan_thin_geometry(scene, frame);
+    let at = |f: u32| {
+        Mat4::from_translation(Vec3::new(1.0 + 0.08 * f as f32, 1.0, 1.0))
+            * Mat4::from_rotation_z(-0.04 * f as f32)
+            * Mat4::from_scale(Vec3::splat(2.0))
+    };
+    let sphere = scene.instances.len() - 1;
+    scene.instances[sphere].transform = at(frame);
+    scene.previous_transforms = scene.instances.iter().map(|i| i.transform).collect();
+    scene.previous_transforms[sphere] = at(frame.saturating_sub(1));
+}
+
 /// A roofed stone room (a crypt) on a lit field: four walls with a door in
 /// the east one, a roof slab, an altar and a pillar inside, a low sun
 /// outside that reaches the floor only through the door, and a shadowed point

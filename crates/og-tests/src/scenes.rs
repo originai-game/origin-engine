@@ -84,6 +84,8 @@ pub const SCENES: &[&str] = &[
     "shadows-local-8",
     "fxaa",
     "taa-sharp",
+    "taau",
+    "taau-moving",
     "stylise-pixel",
     "stylise-palette",
     "stylise-print",
@@ -174,6 +176,8 @@ pub struct GfxScene {
     /// Frames rendered before the capture (TAA needs its history).
     pub frames: u32,
     pub update: Option<Update>,
+    /// The renderer's render scale (`Renderer::set_render_scale`; 1).
+    pub render_scale: f32,
 }
 
 /// The directory of the committed test assets (`crates/og-tests/assets`),
@@ -242,6 +246,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         tolerance: Tolerance::default(),
         frames: 1,
         update: None,
+        render_scale: 1.0,
     };
     // Each scene is built in a closure of its own, so its temporaries live
     // in that closure's frame. Unoptimised, one function's frame holds every
@@ -296,6 +301,26 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // Catmull-Rom history and a 0.5 sharpening pass, after 16 frames.
         // The browser tier judges a moving camera's reprojection against
         // metal here.
+        // Temporal upscaling: the thin geometry drawn at render scale 0.5
+        // under TAA and resolved by TAA to the output over the jitter's 32
+        // phases (twice over).
+        "taau" => |g, _| {
+            g.scene = thin_geometry();
+            g.desc.antialias = Antialias::Taa;
+            g.render_scale = 0.5;
+            g.frames = 64;
+            Ok(())
+        },
+        // TAAU with the camera sliding and the sphere crossing the view
+        // with its previous transforms (the prepass's motion vectors).
+        "taau-moving" => |g, _| {
+            g.scene = thin_geometry();
+            g.desc.antialias = Antialias::Taa;
+            g.render_scale = 0.5;
+            g.frames = 24;
+            g.update = Some(crate::shadow_scenes::pan_and_roll_sphere);
+            Ok(())
+        },
         "taa-sharp" => |g, _| {
             g.scene = thin_geometry();
             g.desc.antialias = Antialias::Taa;

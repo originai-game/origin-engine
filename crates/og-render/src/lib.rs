@@ -257,6 +257,10 @@ pub struct Renderer {
     /// The scene's size as a fraction of the output's
     /// ([`Renderer::set_render_scale`]).
     render_scale: f32,
+    /// TAA resolves the scene drawn at the render scale up (or down) to
+    /// the output (TAAU): its history and every pass after it are at the
+    /// output's size, and no upscale pass runs.
+    taau: bool,
     /// Set once the device is lost ([`Renderer::lost`]).
     lost: renderer::LostFlag,
     /// The size the scene is drawn at: the output's, or the stylisation's

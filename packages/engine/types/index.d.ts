@@ -9595,7 +9595,7 @@ export interface DisplaySettings {
    */
   readonly batterySaver?: boolean;
   /**
-   * The 3D scene's resolution as a fraction of the display's: below 1 it is drawn smaller and scaled up bilinearly (softer, cheaper), above 1 it is supersampled; the UI, screen text and screen sprites stay at the display's resolution. With autoQuality it is the most the automatic quality draws at.
+   * The 3D scene's resolution as a fraction of the display's: below 1 it is drawn smaller and scaled up, bilinearly or under TAA by temporal upscaling, which recovers most of the detail over a few frames (softer, cheaper), above 1 it is supersampled; the UI, screen text and screen sprites stay at the display's resolution. With autoQuality it is the most the automatic quality draws at.
    *
    * @default 1
    * @range 0.5..2

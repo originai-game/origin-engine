@@ -111,6 +111,36 @@ pub(super) fn ldr_name(i: usize) -> String {
 }
 
 impl FramePass {
+    /// Whether the pass runs after TAA, on the frame TAA resolved: at the
+    /// output's size under TAAU ([`GraphConfig::post`]).
+    pub fn after_taa(self) -> bool {
+        matches!(
+            self,
+            FramePass::TaaSharpen
+                | FramePass::DofCoc
+                | FramePass::DofBlur
+                | FramePass::DofComposite
+                | FramePass::MotionBlur
+                | FramePass::ScreenBlur
+                | FramePass::CustomPost(_)
+                | FramePass::GodRaysMask
+                | FramePass::GodRaysBlur
+                | FramePass::Meter
+                | FramePass::Reduce(_)
+                | FramePass::Adapt
+                | FramePass::BloomPrefilter
+                | FramePass::BloomDown(_)
+                | FramePass::BloomUp(_)
+                | FramePass::Tonemap
+                | FramePass::Paint
+                | FramePass::Lines
+                | FramePass::Lens
+                | FramePass::Quantize
+                | FramePass::Fxaa
+                | FramePass::Upscale
+        )
+    }
+
     pub fn name(self) -> String {
         match self {
             FramePass::Cascade(i) => format!("cascade.{i}"),
@@ -164,6 +194,10 @@ impl FramePass {
 pub(crate) struct GraphConfig {
     pub width: u32,
     pub height: u32,
+    /// The size of the frame after TAA ([`FramePass::after_taa`]): the
+    /// output's under TAAU (the scene drawn at the render scale and
+    /// resolved up to the output by TAA), else the scene's.
+    pub post: (u32, u32),
     pub samples: u32,
     pub taa: bool,
     /// The 2D light map's size.
@@ -308,6 +342,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     };
     let (w, h) = (cfg.width, cfg.height);
     let (hw, hh) = ((w / 2).max(1), (h / 2).max(1));
+    // The frame after TAA (the output's under TAAU) and its half.
+    let (pw, ph) = cfg.post;
+    let (phw, phh) = ((pw / 2).max(1), (ph / 2).max(1));
     let mut g = RenderGraph::new();
     g.import("cascades")
         .import("local-shadows")
@@ -468,7 +505,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     }
     let chain = chain_passes(passes);
     for i in 0..chain.len() {
-        g.transient(ldr_name(i), desc(w, h, LDR_FORMAT, 1, attach_bind));
+        g.transient(ldr_name(i), desc(pw, ph, LDR_FORMAT, 1, attach_bind));
     }
     if has(FramePass::DepthBands) {
         g.transient("hdr.bands", desc(w, h, HDR_FORMAT, 1, attach_bind));
@@ -484,23 +521,24 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         (FramePass::ScreenBlur, "hdr.blur"),
     ] {
         if has(pass) {
-            g.transient(name, desc(w, h, HDR_FORMAT, 1, attach_bind));
+            let (tw, th) = if pass.after_taa() { (pw, ph) } else { (w, h) };
+            g.transient(name, desc(tw, th, HDR_FORMAT, 1, attach_bind));
         }
     }
     if has(FramePass::DofCoc) {
-        g.transient("dof.coc", desc(hw, hh, HDR_FORMAT, 1, attach_bind))
-            .transient("dof.blur", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
+        g.transient("dof.coc", desc(phw, phh, HDR_FORMAT, 1, attach_bind))
+            .transient("dof.blur", desc(phw, phh, HDR_FORMAT, 1, attach_bind));
     }
     let customs = passes
         .iter()
         .filter(|p| matches!(p, FramePass::CustomPost(_)))
         .count();
     for &name in &CUSTOM_POST_NAMES[..customs] {
-        g.transient(name, desc(w, h, HDR_FORMAT, 1, attach_bind));
+        g.transient(name, desc(pw, ph, HDR_FORMAT, 1, attach_bind));
     }
     if has(FramePass::GodRaysMask) {
-        g.transient("god.mask", desc(hw, hh, HDR_FORMAT, 1, attach_bind))
-            .transient("god.blur", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
+        g.transient("god.mask", desc(phw, phh, HDR_FORMAT, 1, attach_bind))
+            .transient("god.blur", desc(phw, phh, HDR_FORMAT, 1, attach_bind));
     }
     let mut size = METER_SIZE;
     for i in 0..meter_levels() {
@@ -510,12 +548,12 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         );
         size /= 8;
     }
-    for i in 0..bloom_levels(w, h) {
+    for i in 0..bloom_levels(pw, ph) {
         g.transient(
             bloom_name(i),
             desc(
-                (hw >> i).max(1),
-                (hh >> i).max(1),
+                (phw >> i).max(1),
+                (phh >> i).max(1),
                 HDR_FORMAT,
                 1,
                 attach_bind,
@@ -657,10 +695,21 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 &[names.lit, "gbuffer", "lindepth", "outline-id"],
                 &["hdr.outline"],
             ),
+            // With a prepass TAA binds its velocity and view depth.
+            FramePass::Taa if prepass => g.pass(
+                name,
+                &[names.main, "depth", "history-read", "gbuffer", "lindepth"],
+                &["history-write"],
+            ),
             FramePass::Taa => g.pass(
                 name,
                 &[names.main, "depth", "history-read"],
                 &["history-write"],
+            ),
+            FramePass::TaaSharpen if prepass => g.pass(
+                name,
+                &["history-write", "depth", "gbuffer", "lindepth"],
+                &["hdr.sharp"],
             ),
             FramePass::TaaSharpen => g.pass(name, &["history-write", "depth"], &["hdr.sharp"]),
             // Every effect pass binds the prepass's lindepth and gbuffer

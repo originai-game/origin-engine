@@ -84,7 +84,8 @@ impl PostPasses {
         let taa_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("taa"),
             entries: &[
-                layout_entry(0, float_texture(false)),
+                // The lit image, sampled bilinearly as TAAU's first frame.
+                layout_entry(0, float_texture(true)),
                 layout_entry(1, float_texture(true)),
                 // The depth buffer as an unfilterable float texture: every
                 // backend reads the same depth this way.
@@ -97,6 +98,10 @@ impl PostPasses {
                     5,
                     wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                 ),
+                // The prepass's gbuffer (velocity) and view depth
+                // (placeholders without a prepass).
+                layout_entry(6, float_texture(false)),
+                layout_entry(7, float_texture(false)),
             ],
         });
         let module = |label: &'static str, body: &str| {
@@ -402,6 +407,7 @@ impl PostPasses {
             no_object,
             fx_layout,
             fx_buffer: uniform("fx post", std::mem::size_of::<FxPostUniform>()),
+            fx_after_buffer: uniform("fx post after taa", std::mem::size_of::<FxPostUniform>()),
             fx,
             source_layout,
             post_layout,
