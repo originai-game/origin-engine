@@ -178,6 +178,11 @@ commands:
                       a contact sheet per screen and style (a row per breakpoint, a column per
                       locale) and index.json of every cell, or a filmstrip of a motion at the
                       chosen times after the screen settles (default <project>/og-out/ui-preview)
+  ui eject <screen> [project] [--force] | ui eject --list [project]
+                      copy one of the library's screen documents (the engine package's
+                      src/ui/screens/, one for every screen type of docs/ui.md Appendix B) into
+                      assets/ui/<screen>.ogt to edit as the game's own; refuses to overwrite one
+                      there without --force; --list prints each with its Appendix B row
   relay [--port P] [--host <ip>]
                       a local WebSocket relay for rooms: `og run --room ws://127.0.0.1:P/<room>`
                       processes join <room> and play together (og.net's lockstep)

@@ -15,6 +15,19 @@
 //! what its spec gets wrong with the fix (exit 3 on one). `--json` prints
 //! them as one array, what the art pipeline reads.
 //!
+//! `og ui eject <screen> [project] [--force]` (docs/ui.md §11) copies one
+//! of the library's screen documents (the engine package's
+//! `src/ui/screens/<screen>.ogt`, one or more for every screen type of
+//! docs/ui.md Appendix B) into the game's `assets/ui/<screen>.ogt`, where
+//! `og.load.document(world, "ui/<screen>.ogt")` loads it and the game edits
+//! it as its own file. It refuses to overwrite one already there without
+//! `--force`; an unknown name exits 1 with the closest names. `og ui eject
+//! --list [project]` prints every screen with its Appendix B row, read from
+//! the table of that directory's README.md, marking those that leave a slot
+//! for a pattern still to come. The package is the one og run uses
+//! (`OG_ENGINE_PACKAGE`, the project's installed @origingame/engine, or a
+//! checkout's packages/engine).
+//!
 //! Without `--screen`, every screen the project declares: project.ogt's
 //! `ui { screen "<name>" "<commands>" ... }` entries and its `screens { title
 //! "<commands>" play ... results ... }` block (og style check's); without
@@ -26,7 +39,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::{Command, ExitCode, ExitStatus};
 
-const USAGE: &str = "usage: og ui slots [project] [--json]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,200] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
+const USAGE: &str = "usage: og ui slots [project] [--json]\n       og ui eject <screen> [project] [--force]\n       og ui eject --list [project]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,200] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
 
 /// Options forwarded to ui-run.ts with their value.
 const VALUED: [&str; 10] = [
@@ -45,6 +58,9 @@ const VALUED: [&str; 10] = [
 pub fn run(args: &[&str]) -> ExitCode {
     if let ["slots", rest @ ..] = args {
         return slots(rest);
+    }
+    if let ["eject", rest @ ..] = args {
+        return eject(rest);
     }
     let (mode, rest) = match args {
         [m @ ("check" | "preview"), rest @ ..] => (*m, rest),
@@ -317,6 +333,208 @@ fn slots(args: &[&str]) -> ExitCode {
     }
 }
 
+/// Where the library's screen documents sit in the engine package.
+const SCREENS_DIR: &str = "src/ui/screens";
+
+/// One library screen: its name (the file's stem), its Appendix B row, and
+/// whether it leaves a slot for a pattern still to come.
+#[derive(Debug, PartialEq)]
+struct LibScreen {
+    name: String,
+    row: String,
+    pending: bool,
+}
+
+/// The library's screens in the order of the README's table
+/// (`| <Appendix B row> | `a`, `b` | <the pending pattern of `a`> |`).
+fn lib_screens(dir: &Path) -> Result<Vec<LibScreen>, String> {
+    let readme = dir.join("README.md");
+    let text = std::fs::read_to_string(&readme)
+        .map_err(|e| format!("{}: {e} (reinstall @origingame/engine)", readme.display()))?;
+    let mut out = Vec::new();
+    for line in text
+        .lines()
+        .skip_while(|l| !l.starts_with("|---"))
+        .skip(1)
+        .take_while(|l| l.starts_with('|'))
+    {
+        let cells: Vec<&str> = line.split('|').map(str::trim).collect();
+        let (Some(row), Some(docs)) = (cells.get(1), cells.get(2)) else {
+            continue;
+        };
+        let pending: Vec<&str> = cells
+            .get(3)
+            .map_or("", |c| c)
+            .split('`')
+            .skip(1)
+            .step_by(2)
+            .collect();
+        for d in docs.split(',') {
+            let name = d.trim().trim_matches('`').to_string();
+            out.push(LibScreen {
+                pending: pending.contains(&name.as_str()),
+                name,
+                row: (*row).to_string(),
+            });
+        }
+    }
+    Ok(out)
+}
+
+/// Levenshtein distance, for the closest names to a mistyped one.
+fn distance(a: &str, b: &str) -> usize {
+    let b: Vec<char> = b.chars().collect();
+    let mut row: Vec<usize> = (0..=b.len()).collect();
+    for (i, ca) in a.chars().enumerate() {
+        let mut prev = row[0];
+        row[0] = i + 1;
+        for (j, cb) in b.iter().enumerate() {
+            let next = (row[j + 1] + 1)
+                .min(row[j] + 1)
+                .min(prev + usize::from(ca != *cb));
+            prev = row[j + 1];
+            row[j + 1] = next;
+        }
+    }
+    row[b.len()]
+}
+
+/// The screens nearest `name`, at most three: those whose name contains it
+/// or it contains, then those a few edits from their name or from a word of
+/// their Appendix B row (`shop` finds `vendor`, the shop in the world).
+fn closest<'a>(name: &str, screens: &'a [LibScreen]) -> Vec<&'a str> {
+    // How far `name` is from `b`, when it is near enough to suggest.
+    let near = |b: &str| {
+        let d = if b.contains(name) || name.contains(b) {
+            0
+        } else {
+            distance(name, b)
+        };
+        (d <= (b.len().max(name.len()) / 3).max(1)).then_some(d)
+    };
+    let mut scored: Vec<(usize, &str)> = screens
+        .iter()
+        .filter_map(|s| {
+            let row = s
+                .row
+                .to_lowercase()
+                .split(|c: char| !c.is_alphanumeric())
+                .filter(|w| w.len() > 2)
+                .filter_map(|w| near(w).map(|d| d + 1))
+                .min();
+            let d = match (near(&s.name), row) {
+                (Some(a), Some(b)) => a.min(b),
+                (a, b) => a.or(b)?,
+            };
+            Some((d, s.name.as_str()))
+        })
+        .collect();
+    scored.sort();
+    scored.into_iter().take(3).map(|(_, n)| n).collect()
+}
+
+/// Copies the library's `name` from `dir` into `project`'s
+/// `assets/ui/<name>.ogt`; answers the path written.
+fn eject_from(
+    dir: &Path,
+    name: &str,
+    project: &Path,
+    force: bool,
+) -> Result<std::path::PathBuf, String> {
+    let screens = lib_screens(dir)?;
+    if !screens.iter().any(|s| s.name == name) {
+        let near = closest(name, &screens);
+        return Err(if near.is_empty() {
+            format!("no library screen '{name}' (og ui eject --list names them)")
+        } else {
+            format!(
+                "no library screen '{name}'; the closest: {} (og ui eject --list names them all)",
+                near.join(", ")
+            )
+        });
+    }
+    if !project.join("project.ogt").is_file() {
+        return Err(format!(
+            "{}: no project.ogt; run it in a game's directory or pass the project",
+            project.display()
+        ));
+    }
+    let source = dir.join(format!("{name}.ogt"));
+    let bytes = std::fs::read(&source).map_err(|e| format!("{}: {e}", source.display()))?;
+    let target = project.join("assets/ui").join(format!("{name}.ogt"));
+    if target.exists() && !force {
+        return Err(format!(
+            "assets/ui/{name}.ogt already exists; nothing written (--force overwrites it)"
+        ));
+    }
+    let parent = target.parent().expect("assets/ui");
+    std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+    std::fs::write(&target, bytes).map_err(|e| format!("{}: {e}", target.display()))?;
+    Ok(target)
+}
+
+/// `og ui eject <screen> [project] [--force]`, `og ui eject --list [project]`.
+fn eject(args: &[&str]) -> ExitCode {
+    let (mut words, mut list, mut force) = (Vec::new(), false, false);
+    for a in args {
+        match *a {
+            "--list" => list = true,
+            "--force" => force = true,
+            a if a.starts_with('-') => {
+                eprintln!("og ui eject: unknown option `{a}`. {USAGE}");
+                return ExitCode::from(2);
+            }
+            a => words.push(a),
+        }
+    }
+    let (name, project) = match (list, words.as_slice()) {
+        (true, []) => (None, "."),
+        (true, [p]) => (None, *p),
+        (false, [n]) => (Some(*n), "."),
+        (false, [n, p]) => (Some(*n), *p),
+        _ => {
+            eprintln!("og ui eject: {USAGE}");
+            return ExitCode::from(2);
+        }
+    };
+    let project = Path::new(project);
+    let Some(package) = project::engine_package(Some(project)) else {
+        eprintln!("og ui eject: {}", project::NO_ENGINE);
+        return ExitCode::FAILURE;
+    };
+    let dir = package.join(SCREENS_DIR);
+    let Some(name) = name else {
+        return match lib_screens(&dir) {
+            Ok(screens) => {
+                for s in &screens {
+                    let pending = if s.pending { "  (pattern pending)" } else { "" };
+                    println!("{:<20} {}{pending}", s.name, s.row);
+                }
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("og ui eject: {e}");
+                ExitCode::FAILURE
+            }
+        };
+    };
+    match eject_from(&dir, name, project, force) {
+        Ok(_) => {
+            println!(
+                "og ui eject: the library's '{name}' into assets/ui/{name}.ogt\n\
+                 load it once with og.load.document(world, \"ui/{name}.ogt\") and push it with og.ui.push(world, \"{name}\", vm);\n\
+                 its header names the viewmodel's props, its events and what fills each slot.\n\
+                 preview it with og run --commands \"0.5:ui:push:{name}:default\", and add screen \"{name}\" \"<commands>\" to project.ogt's ui block so og ui check covers it"
+            );
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("og ui eject: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
 fn collect_ogt(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -333,7 +551,102 @@ fn collect_ogt(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
 
 #[cfg(test)]
 mod tests {
-    use super::declared_screens;
+    use super::{SCREENS_DIR, declared_screens, eject_from, lib_screens};
+    use std::path::{Path, PathBuf};
+
+    /// The checkout's library (what the engine package ships).
+    fn library() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../packages/engine")
+            .join(SCREENS_DIR)
+    }
+
+    /// An empty game in a fresh temporary directory.
+    fn game(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("og-ui-eject-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("project.ogt"),
+            "type project\nversion 1\n---\nname \"G\"\n",
+        )
+        .unwrap();
+        dir
+    }
+
+    #[test]
+    fn eject_copies_the_library_document_into_assets_ui() {
+        let dir = game("copies");
+        let got = eject_from(&library(), "inventory", &dir, false).unwrap();
+        assert_eq!(got, dir.join("assets/ui/inventory.ogt"));
+        assert_eq!(
+            std::fs::read(&got).unwrap(),
+            std::fs::read(library().join("inventory.ogt")).unwrap()
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn eject_refuses_to_overwrite_without_force() {
+        let dir = game("refuses");
+        let target = dir.join("assets/ui/pause.ogt");
+        std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+        std::fs::write(&target, "the game's own").unwrap();
+        let e = eject_from(&library(), "pause", &dir, false).unwrap_err();
+        assert!(e.contains("already exists") && e.contains("--force"), "{e}");
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "the game's own");
+        eject_from(&library(), "pause", &dir, true).unwrap();
+        assert_eq!(
+            std::fs::read(&target).unwrap(),
+            std::fs::read(library().join("pause.ogt")).unwrap()
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn eject_list_names_every_document_with_its_appendix_b_row() {
+        let screens = lib_screens(&library()).unwrap();
+        let mut files: Vec<String> = std::fs::read_dir(library())
+            .unwrap()
+            .filter_map(|e| {
+                let f = e.unwrap().file_name().into_string().unwrap();
+                f.strip_suffix(".ogt").map(str::to_string)
+            })
+            .collect();
+        files.sort();
+        let mut names: Vec<String> = screens.iter().map(|s| s.name.clone()).collect();
+        names.sort();
+        assert_eq!(names, files);
+        let pause = screens.iter().find(|s| s.name == "pause").unwrap();
+        assert_eq!(pause.row, "Pause and system menu");
+        assert!(!pause.pending);
+        let garage = screens.iter().find(|s| s.name == "garage").unwrap();
+        assert_eq!(garage.row, "Garage, tuning, livery editor");
+        assert!(garage.pending);
+        let backlog = screens.iter().find(|s| s.name == "backlog").unwrap();
+        assert!(
+            !backlog.pending,
+            "the row's gallery and flowchart are pending, not its backlog"
+        );
+    }
+
+    #[test]
+    fn eject_of_an_unknown_name_answers_the_closest() {
+        let dir = game("unknown");
+        let e = eject_from(&library(), "inventroy", &dir, false).unwrap_err();
+        assert!(
+            e.contains("no library screen 'inventroy'") && e.contains("inventory"),
+            "{e}"
+        );
+        let e = eject_from(&library(), "map", &dir, false).unwrap_err();
+        assert!(e.contains("world-map") && e.contains("saga-map"), "{e}");
+        let e = eject_from(&library(), "shop", &dir, false).unwrap_err();
+        assert!(e.contains("the closest: vendor"), "{e}");
+        let e = eject_from(&library(), "zzzzzzzzzzzz", &dir, false).unwrap_err();
+        assert!(e.contains("og ui eject --list"), "{e}");
+        assert!(!dir.join("assets").exists());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 
     #[test]
     fn a_project_declares_its_screens_in_ui_and_in_screens() {
